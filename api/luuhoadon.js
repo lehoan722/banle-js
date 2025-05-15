@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  'https://xxxx.supabase.co',            // THAY bằng Supabase URL của bạn
-  'SUPABASE_SERVICE_ROLE_KEY'            // THAY bằng service role key
+https://rddjrmbyftlcvrgzlyby.supabase.co',                // Thay bằng URL Supabase của bạn
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'           // Thay bằng Service Role Key (có quyền ghi)
 );
 
 function formatSoHD(prefix, stt) {
