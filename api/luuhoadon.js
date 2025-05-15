@@ -5,8 +5,8 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'           // Thay bằng Service Role Key (có quyền ghi)
 );
 
-function formatSoHD(stt) {
-  return `hdbl_${String(stt).padStart(5, '0')}`;
+function formatSoHD(prefix, stt) {
+  return `${prefix}_${String(stt).padStart(5, '0')}`;
 }
 
 export default async function handler(req, res) {
@@ -16,35 +16,38 @@ export default async function handler(req, res) {
 
   const { hoadon, chitiet } = req.body;
 
+  // Xác định prefix chứng từ dựa vào địa điểm hoặc loại
+  const prefix = hoadon.loai || (hoadon.diadiem === "Cơ sở 1" ? "bancs1" : "bancs2");
+
   // 1. Lấy số hiện tại
-  const { data: soRow, error: soErr } = await supabase
+  const { data: soRow } = await supabase
     .from('sochungtu')
     .select('so_hientai')
-    .eq('loai', 'hdbl')
+    .eq('loai', prefix)
     .single();
 
-  let sohd_num = soRow ? soRow.so_hientai + 1 : 1;
-  let sohd = formatSoHD(sohd_num);
+  const sohd_num = soRow ? soRow.so_hientai + 1 : 1;
+  const sohd = formatSoHD(prefix, sohd_num);
 
-  // 2. Cập nhật lại số
-  await supabase
-    .from('sochungtu')
-    .upsert({ loai: 'hdbl', so_hientai: sohd_num });
-
-  // 3. Ghi hóa đơn tổng
+  // 2. Ghi hóa đơn tổng
   const { error: hdErr } = await supabase
     .from('hoadon_banle')
     .insert([{ sohd, ...hoadon }]);
 
   if (hdErr) return res.status(500).json({ error: 'Lỗi ghi hóa đơn', detail: hdErr });
 
-  // 4. Ghi từng dòng chi tiết
+  // 3. Ghi chi tiết hóa đơn
   const ct_data = chitiet.map(row => ({ sohd, ...row }));
   const { error: ctErr } = await supabase
     .from('ct_hoadon_banle')
     .insert(ct_data);
 
   if (ctErr) return res.status(500).json({ error: 'Lỗi ghi chi tiết', detail: ctErr });
+
+  // 4. Cập nhật số chứng từ
+  await supabase
+    .from('sochungtu')
+    .upsert({ loai: prefix, so_hientai: sohd_num });
 
   res.status(200).json({ success: true, sohd });
 }
