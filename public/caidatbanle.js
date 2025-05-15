@@ -471,6 +471,64 @@ function xoaDongDangChon() {
   }
 }
 
+async function luuHoaDonQuaAPI() {
+  try {
+    // 1. Lấy thông tin hóa đơn
+    const hoadon = {
+      ngay: new Date().toISOString().split("T")[0],
+      manv: document.getElementById("manv").value,
+      tennv: document.getElementById("tennv").value,
+      diadiem: document.getElementById("diadiem").value,
+      khachhang: document.getElementById("khachhang").value,
+      tongsl: parseInt(document.getElementById("tongsl").value) || 0,
+      tongkm: parseFloat(document.getElementById("tongkm").value) || 0,
+      chietkhau: parseFloat(document.getElementById("chietkhau").value) || 0,
+      thanhtoan: parseFloat(document.getElementById("thanhtoan").value) || 0,
+      hinhthuctt: document.getElementById("hinhthuctt").value,
+      ghichu: document.getElementById("ghichu")?.value || ""
+    };
+
+    // 2. Chuẩn bị dữ liệu bảng chi tiết
+    const table = document.querySelector("table"); // giả sử bảng chứa dòng chi tiết
+    const rows = table.querySelectorAll("tbody tr");
+    const chitiet = [];
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll("td");
+      if (cells.length >= 7) {
+        chitiet.push({
+          masp: cells[0].innerText.trim(),
+          tensp: cells[1].innerText.trim(),
+          size: cells[2].innerText.trim(),
+          soluong: parseInt(cells[3].innerText.trim()) || 0,
+          gia: parseFloat(cells[5].innerText.trim()) || 0,
+          km: parseFloat(cells[6].innerText.trim()) || 0,
+          thanhtien: parseFloat(cells[7].innerText.trim()) || 0
+        });
+      }
+    });
+
+    // 3. Gửi đến API
+    const res = await fetch("https://banle-js.vercel.app/api/luuhoadon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hoadon, chitiet })
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      alert("✅ Đã lưu hóa đơn qua API thành công!\nSố HĐ: " + result.sohd);
+    } else {
+      alert("❌ Lỗi khi lưu hóa đơn qua API: " + result.error);
+      console.error(result.detail);
+    }
+
+  } catch (err) {
+    alert("❌ Lỗi hệ thống khi gọi API");
+    console.error(err);
+  }
+}
 
 
 // ====== het ======
