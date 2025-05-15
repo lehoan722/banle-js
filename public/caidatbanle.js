@@ -475,18 +475,22 @@ async function luuHoaDonQuaAPI() {
   try {
     // 1. Lấy thông tin hóa đơn
     const hoadon = {
-      ngay: new Date().toISOString().split("T")[0],
-      manv: document.getElementById("manv").value,
-      tennv: document.getElementById("tennv").value,
-      diadiem: document.getElementById("diadiem").value,
-      khachhang: document.getElementById("khachhang").value,
-      tongsl: parseInt(document.getElementById("tongsl").value) || 0,
-      tongkm: parseFloat(document.getElementById("tongkm").value) || 0,
-      chietkhau: parseFloat(document.getElementById("chietkhau").value) || 0,
-      thanhtoan: parseFloat(document.getElementById("thanhtoan").value) || 0,
-      hinhthuctt: document.getElementById("hinhthuctt").value,
-      ghichu: document.getElementById("ghichu")?.value || ""
-    };
+
+      const hoadon = {
+  ngay: new Date().toISOString().split("T")[0],
+  manv: document.getElementById("manv")?.value || "",
+  tennv: document.getElementById("tennv")?.value || "",
+  diadiem: document.getElementById("diadiem")?.value || "",
+  khachhang: document.getElementById("khachhang")?.value || "",
+  tongsl: parseInt(document.getElementById("tongsl")?.value || "0"),
+  tongkm: parseFloat(document.getElementById("tongkm")?.value || "0"),
+  chietkhau: parseFloat(document.getElementById("chietkhau")?.value || "0"),
+  thanhtoan: parseFloat(document.getElementById("thanhtoan")?.value || "0"),
+  hinhthuctt: document.getElementById("hinhthuctt")?.value || "Tiền mặt",
+  ghichu: document.getElementById("ghichu")?.value || "",
+  loai: "bancs1" // hoặc tự động xác định theo diadiem nếu muốn
+};
+    
 
     // 2. Chuẩn bị dữ liệu bảng chi tiết
     const table = document.querySelector("table"); // giả sử bảng chứa dòng chi tiết
