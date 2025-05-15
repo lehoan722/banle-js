@@ -475,8 +475,6 @@ async function luuHoaDonQuaAPI() {
   try {
     // 1. Lấy thông tin hóa đơn
     const hoadon = {
-
-      const hoadon = {
   ngay: new Date().toISOString().split("T")[0],
   manv: document.getElementById("manv")?.value || "",
   tennv: document.getElementById("tennv")?.value || "",
