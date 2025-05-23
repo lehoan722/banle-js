@@ -475,23 +475,22 @@ async function luuHoaDonQuaAPI() {
   try {
     // 1. Lấy thông tin hóa đơn
     const hoadon = {
-  ngay: new Date().toISOString().split("T")[0],
-  manv: document.getElementById("manv")?.value || "",
-  tennv: document.getElementById("tennv")?.value || "",
-  diadiem: document.getElementById("diadiem")?.value || "",
-  khachhang: document.getElementById("khachhang")?.value || "",
-  tongsl: parseInt(document.getElementById("tongsl")?.value || "0"),
-  tongkm: parseFloat(document.getElementById("tongkm")?.value || "0"),
-  chietkhau: parseFloat(document.getElementById("chietkhau")?.value || "0"),
-  thanhtoan: parseFloat(document.getElementById("thanhtoan")?.value || "0"),
-  hinhthuctt: document.getElementById("hinhthuctt")?.value || "Tiền mặt",
-  ghichu: document.getElementById("ghichu")?.value || "",
-  loai: "bancs1" // hoặc tự động xác định theo diadiem nếu muốn
-};
-    
+      ngay: new Date().toISOString().split("T")[0],
+      manv: document.getElementById("manv")?.value || "",
+      tennv: document.getElementById("tennv")?.value || "",
+      diadiem: document.getElementById("diadiem")?.value || "",
+      khachhang: document.getElementById("khachhang")?.value || "",
+      tongsl: parseInt(document.getElementById("tongsl")?.value || "0"),
+      tongkm: parseFloat(document.getElementById("tongkm")?.value || "0"),
+      chietkhau: parseFloat(document.getElementById("chietkhau")?.value || "0"),
+      thanhtoan: parseFloat(document.getElementById("thanhtoan")?.value || "0"),
+      hinhthuctt: document.getElementById("hinhthuctt")?.value || "Tiền mặt",
+      ghichu: document.getElementById("ghichu")?.value || "",
+      loai: "bancs1" // hoặc xác định tự động tùy cơ sở
+    };
 
     // 2. Chuẩn bị dữ liệu bảng chi tiết
-    const table = document.querySelector("table"); // giả sử bảng chứa dòng chi tiết
+    const table = document.querySelector("table");
     const rows = table.querySelectorAll("tbody tr");
     const chitiet = [];
 
@@ -521,11 +520,30 @@ async function luuHoaDonQuaAPI() {
 
     if (result.success) {
       alert("✅ Đã lưu hóa đơn qua API thành công!\nSố HĐ: " + result.sohd);
+
+      // === Làm mới trang sau khi lưu thành công ===
+      const diadiemVal = document.getElementById("diadiem").value;
+      const manvVal = document.getElementById("manv").value;
+      const tennvVal = document.getElementById("tennv").value;
+
+      document.querySelectorAll("input").forEach(input => {
+        if (!["diadiem", "manv", "tennv"].includes(input.id)) {
+          input.value = "";
+        }
+      });
+
+      bangKetQua = {};
+      capNhatBangHTML();
+
+      document.getElementById("diadiem").value = diadiemVal;
+      document.getElementById("manv").value = manvVal;
+      document.getElementById("tennv").value = tennvVal;
+      document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+      document.getElementById("masp").focus();
     } else {
       alert("❌ Lỗi khi lưu hóa đơn qua API: " + result.error);
       console.error(result.detail);
     }
-
   } catch (err) {
     alert("❌ Lỗi hệ thống khi gọi API");
     console.error(err);
