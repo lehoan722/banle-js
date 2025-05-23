@@ -1,3 +1,14 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://rddjrmbyftlcvrgzlyby.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njc2NTgwNCwiZXhwIjoyMDYyMzQxODA0fQ.6UBSL-2jW7Qj73W8PEKOtIeDcGldbCMwpHn1He0MfhM' // Thay bằng key thật
+);
+
+function formatSoHD(prefix, stt) {
+  return `${prefix}_${String(stt).padStart(5, '0')}`;
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
