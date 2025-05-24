@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://rddjrmbyftlcvrgzlyby.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njc2NTgwNCwiZXhwIjoyMDYyMzQxODA0fQ.6UBSL-2jW7Qj73W8PEKOtIeDcGldbCMwpHn1He0MfhM' // Thay bằng key thật
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njc2NTgwNCwiZXhwIjoyMDYyMzQxODA0fQ.6UBSL-2jW7Qj73W8PEKOtIeDcGldbCMwpHn1He0MfhM'
 );
 
 function formatSoHD(prefix, stt) {
@@ -32,15 +32,20 @@ export default async function handler(req, res) {
       const sohd_num = soRow ? soRow.so_hientai + 1 : 1;
       const sohd = formatSoHD(prefix, sohd_num);
 
-      const { error: err2 } = await supabase.from('hoadon_banle').insert([{ sohd, ...hoadon }]);
-      if (err2) throw new Error("Lỗi ghi bảng hoadon_banle: " + err2.message);
+      const hoaDonData = { sohd, ...hoadon };
+      const chiTietData = chitiet.map(row => ({ sohd, ...row }));
+      const soCTData = { loai: prefix, so_hientai: sohd_num };
 
-      const ct_data = chitiet.map(row => ({ sohd, ...row }));
-      const { error: err3 } = await supabase.from('ct_hoadon_banle').insert(ct_data);
-      if (err3) throw new Error("Lỗi ghi bảng ct_hoadon_banle: " + err3.message);
+      // Ghi song song cả 3 bảng
+      const [res1, res2, res3] = await Promise.all([
+        supabase.from('hoadon_banle').insert([hoaDonData]),
+        supabase.from('ct_hoadon_banle').insert(chiTietData),
+        supabase.from('sochungtu').upsert(soCTData)
+      ]);
 
-      const { error: err4 } = await supabase.from('sochungtu').upsert({ loai: prefix, so_hientai: sohd_num });
-      if (err4) throw new Error("Lỗi cập nhật số chứng từ: " + err4.message);
+      if (res1.error) throw new Error("Lỗi ghi bảng hoadon_banle: " + res1.error.message);
+      if (res2.error) throw new Error("Lỗi ghi bảng ct_hoadon_banle: " + res2.error.message);
+      if (res3.error) throw new Error("Lỗi cập nhật số chứng từ: " + res3.error.message);
 
       res.status(200).json({ success: true, sohd });
 
