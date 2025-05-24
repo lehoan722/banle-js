@@ -36,16 +36,18 @@ export default async function handler(req, res) {
       const chiTietData = chitiet.map(row => ({ sohd, ...row }));
       const soCTData = { loai: prefix, so_hientai: sohd_num };
 
-      // Ghi song song cả 3 bảng
-      const [res1, res2, res3] = await Promise.all([
-        supabase.from('hoadon_banle').insert([hoaDonData]),
+      // Bước 1: Ghi hóa đơn (bắt buộc ghi trước vì có khóa ngoại)
+      const { error: errHD } = await supabase.from('hoadon_banle').insert([hoaDonData]);
+      if (errHD) throw new Error("Lỗi ghi bảng hoadon_banle: " + errHD.message);
+
+      // Bước 2: Ghi song song chi tiết + cập nhật số CT
+      const [resCT, resSCT] = await Promise.all([
         supabase.from('ct_hoadon_banle').insert(chiTietData),
         supabase.from('sochungtu').upsert(soCTData)
       ]);
 
-      if (res1.error) throw new Error("Lỗi ghi bảng hoadon_banle: " + res1.error.message);
-      if (res2.error) throw new Error("Lỗi ghi bảng ct_hoadon_banle: " + res2.error.message);
-      if (res3.error) throw new Error("Lỗi cập nhật số chứng từ: " + res3.error.message);
+      if (resCT.error) throw new Error("Lỗi ghi bảng ct_hoadon_banle: " + resCT.error.message);
+      if (resSCT.error) throw new Error("Lỗi cập nhật số chứng từ: " + resSCT.error.message);
 
       res.status(200).json({ success: true, sohd });
 
