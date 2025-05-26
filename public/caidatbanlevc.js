@@ -552,21 +552,22 @@ async function luuHoaDonQuaAPI() {
 
 
 // ====== het ======
-// === Tự động cập nhật số hóa đơn mới nhất ===
 
 // === Tự động cập nhật số hóa đơn mới nhất ===
+
 async function capNhatSoHoaDonTuDong() {
   const { data, error } = await supabase
-    .from("hoadon")
+    .from("hoadon_banle")
     .select("sohd")
-    .like("loai", "bancs*")  // <- Đã sửa đúng cú pháp REST API
+    .like("sohd", "bancs%")  // lấy các hóa đơn bán cs1 hoặc cs2
     .order("sohd", { ascending: false })
     .limit(1);
+
   if (!error && data.length > 0) {
-    const so = parseInt(data[0].sohd.replace(/\\D/g, '')) + 1;
-    document.getElementById("sohd").value = "HD" + so.toString().padStart(5, "0");
+    const so = parseInt(data[0].sohd.replace(/\D/g, '')) + 1;
+    document.getElementById("sohd").value = "bancs1_" + so.toString().padStart(5, "0");
   } else {
-    document.getElementById("sohd").value = "HD00001";
+    document.getElementById("sohd").value = "bancs1_00001";
   }
 }
 
