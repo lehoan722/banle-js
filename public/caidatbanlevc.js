@@ -553,15 +553,17 @@ async function luuHoaDonQuaAPI() {
 
 // ====== het ======
 // === Tự động cập nhật số hóa đơn mới nhất ===
+
+// === Tự động cập nhật số hóa đơn mới nhất ===
 async function capNhatSoHoaDonTuDong() {
   const { data, error } = await supabase
     .from("hoadon")
     .select("sohd")
-    .like("loai", "bancs%")
+    .like("loai", "bancs*")  // <- Đã sửa đúng cú pháp REST API
     .order("sohd", { ascending: false })
     .limit(1);
   if (!error && data.length > 0) {
-    const so = parseInt(data[0].sohd.replace(/\D/g, '')) + 1;
+    const so = parseInt(data[0].sohd.replace(/\\D/g, '')) + 1;
     document.getElementById("sohd").value = "HD" + so.toString().padStart(5, "0");
   } else {
     document.getElementById("sohd").value = "HD00001";
