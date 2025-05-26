@@ -552,3 +552,34 @@ async function luuHoaDonQuaAPI() {
 
 
 // ====== het ======
+// === Tự động cập nhật số hóa đơn mới nhất ===
+async function capNhatSoHoaDonTuDong() {
+  const { data, error } = await supabase
+    .from("hoadon")
+    .select("sohd")
+    .like("loai", "bancs%")
+    .order("sohd", { ascending: false })
+    .limit(1);
+  if (!error && data.length > 0) {
+    const so = parseInt(data[0].sohd.replace(/\D/g, '')) + 1;
+    document.getElementById("sohd").value = "HD" + so.toString().padStart(5, "0");
+  } else {
+    document.getElementById("sohd").value = "HD00001";
+  }
+}
+
+// Gọi khi trang load xong
+window.addEventListener("load", () => {
+  capNhatSoHoaDonTuDong();
+});
+
+// Tự động lọc theo input người dùng trong popup
+document.addEventListener("DOMContentLoaded", () => {
+  const inputPopup = document.getElementById("timKiemMaspPopup");
+  if (inputPopup) {
+    inputPopup.addEventListener("input", function () {
+      const keyword = inputPopup.value.trim().toUpperCase();
+      hienThiDanhMucSP(keyword);
+    });
+  }
+});
