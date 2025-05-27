@@ -1,0 +1,186 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bán lẻ di động</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
+    .navbar { background: #009966; color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .navbar h1 { font-size: 18px; margin: 0; }
+    .main { padding: 12px; padding-bottom: 100px; }
+    .field { margin-bottom: 10px; }
+    label { display: block; font-size: 14px; margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box; }
+    .flex-row { display: flex; gap: 10px; }
+    .flex-row > * { flex: 1; }
+    .quantity-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+    .quantity-row button { font-size: 18px; padding: 6px 12px; }
+    .total-row { text-align: right; font-size: 18px; margin-bottom: 12px; }
+    .action-bar {
+      position: fixed; bottom: 0; left: 0; width: 100%; background: white;
+      border-top: 1px solid #ccc; display: flex; justify-content: space-around;
+      padding: 8px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    }
+    .action-bar button {
+      flex: 1; margin: 0 4px; padding: 10px; font-size: 14px;
+      border: none; border-radius: 4px;
+    }
+    .btn-green { background: #009966; color: white; }
+    .btn-blue { background: #007bff; color: white; }
+    .btn-yellow { background: #ffc107; color: black; }
+    .btn-gray { background: #6c757d; color: white; }
+    .popup {
+      display: none; position: fixed; top: 10%; left: 5%; width: 90%; height: 70%;
+      background: white; border: 1px solid #ccc; border-radius: 8px;
+      overflow: auto; z-index: 1000; padding: 10px;
+    }
+    .popup-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px; }
+    .popup-item { padding: 6px; border-bottom: 1px solid #eee; }
+    #reader {
+      width: 100%; max-width: 400px; margin: 10px auto;
+      display: none; border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <button onclick="batQuetMa()">Quét mã</button>
+    <h1>Tạo đơn bán</h1>
+    <button onclick="moPopup()">Nhập tay</button>
+  </div>
+
+  <div id="reader"></div>
+
+  <div class="main">
+    <div class="field">
+      <label for="masp">Tên sản phẩm</label>
+      <div class="flex-row">
+        <button onclick="moPopup()">...</button>
+        <input id="masp" placeholder="Nhập hoặc chọn..." />
+      </div>
+    </div>
+    <div class="field">
+      Tổng SL sản phẩm: <span id="tongsl">0</span>
+    </div>
+
+    <div class="quantity-row">
+      <span>1.</span>
+      <button onclick="giam()">−</button>
+      <input id="soluong" type="number" value="1" style="width:60px;text-align:center;" />
+      <button onclick="tang()">+</button>
+      <input id="gia" type="text" value="0 đ" readonly />
+    </div>
+
+    <div class="field total-row">
+      Tổng tiền: <span id="tongtien">0 đ</span>
+    </div>
+
+    <div class="flex-row field">
+      <div>
+        <label for="phaithanhtoan">Tổng tiền T.Toán</label>
+        <input id="phaithanhtoan" type="text" value="0 đ" readonly />
+      </div>
+      <div>
+        <label for="khachtra">Khách T.Toán</label>
+        <input id="khachtra" type="text" />
+      </div>
+    </div>
+
+    <div class="flex-row field">
+      <div>
+        <label for="hinhthuctt">Hình thức T.Toán</label>
+        <select id="hinhthuctt">
+          <option>Tiền mặt</option>
+          <option>Chuyển khoản</option>
+        </select>
+      </div>
+      <div>
+        <label for="trangthai">Trạng thái</label>
+        <select id="trangthai">
+          <option>Hoàn thành</option>
+          <option>Chưa thanh toán</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ngay">Thời gian tạo đơn</label>
+      <input id="ngay" type="date" />
+    </div>
+
+    <div class="field">
+      <label for="ghichu">Ghi chú</label>
+      <textarea id="ghichu" rows="2" placeholder="Nhập ghi chú"></textarea>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn-green">Thêm</button>
+    <button class="btn-blue">Chỉnh</button>
+    <button class="btn-yellow">Lưu</button>
+    <button class="btn-gray">Chia sẻ</button>
+  </div>
+
+  <div id="popup" class="popup">
+    <div class="popup-header">
+      <span>Chọn sản phẩm</span>
+      <button onclick="dongPopup()">X</button>
+    </div>
+    <input id="timkiem" placeholder="Tìm kiếm sản phẩm..." oninput="locSP()" />
+    <div id="danhsachsp">
+      <div class="popup-item">Áo thun trắng - A001 - Kho 1 - 200.000</div>
+      <div class="popup-item">Quần jeans - QJ02 - Kho 2 - 350.000</div>
+    </div>
+  </div>
+
+  <script>
+    function giam() {
+      const sl = document.getElementById("soluong");
+      let val = parseInt(sl.value) || 1;
+      if (val > 1) sl.value = val - 1;
+    }
+    function tang() {
+      const sl = document.getElementById("soluong");
+      let val = parseInt(sl.value) || 1;
+      sl.value = val + 1;
+    }
+    function moPopup() {
+      document.getElementById("popup").style.display = "block";
+    }
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+    function locSP() {
+      const keyword = document.getElementById("timkiem").value.toLowerCase();
+      const items = document.querySelectorAll(".popup-item");
+      items.forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(keyword) ? "block" : "none";
+      });
+    }
+    function batQuetMa() {
+      const reader = document.getElementById("reader");
+      reader.style.display = "block";
+      const html5QrCode = new Html5Qrcode("reader");
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+          html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            qrCodeMessage => {
+              document.getElementById("masp").value = qrCodeMessage;
+              html5QrCode.stop();
+              reader.style.display = "none";
+            },
+            errorMessage => { }
+          );
+        }
+      }).catch(err => {
+        alert("Không thể truy cập camera");
+      });
+    }
+  </script>
+</body>
+</html>
