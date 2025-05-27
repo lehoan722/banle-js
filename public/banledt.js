@@ -1,5 +1,4 @@
 
-// ====== CẤU HÌNH SUPABASE ======
 const supabase = window.supabase.createClient(
   "https://rddjrmbyftlcvrgzlyby.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM"
@@ -8,7 +7,6 @@ const supabase = window.supabase.createClient(
 let nhanVienHienTai = null;
 let sanPhamHienTai = null;
 
-// ====== XÁC THỰC MÃ NHÂN VIÊN ======
 async function xacThucNhanVien() {
   const manv = document.getElementById("manv")?.value.trim().toUpperCase();
   if (!manv) return alert("Vui lòng nhập mã nhân viên");
@@ -16,7 +14,7 @@ async function xacThucNhanVien() {
   const { data, error } = await supabase
     .from("dmnhanvien")
     .select("*")
-    .eq("manv", manv)
+    .ilike("manv", manv)
     .eq("trangthai", true)
     .single();
 
@@ -30,7 +28,6 @@ async function xacThucNhanVien() {
   }
 }
 
-// ====== XỬ LÝ MÃ SẢN PHẨM ======
 async function xuLyMaSP() {
   const masp = document.getElementById("masp")?.value.trim().toUpperCase();
   if (!masp) return;
@@ -38,7 +35,7 @@ async function xuLyMaSP() {
   const { data, error } = await supabase
     .from("dmhanghoa")
     .select("*")
-    .eq("masp", masp)
+    .ilike("masp", masp)
     .eq("active", true)
     .single();
 
@@ -50,24 +47,43 @@ async function xuLyMaSP() {
 
   sanPhamHienTai = data;
   document.getElementById("gia").value = data.giale || 0;
+  tinhTienTuDong();
+}
 
-  // Nếu có khuyến mãi thì xử lý
-  const giam = parseFloat(data.khuyenmai) || 0;
-  if (giam > 0) {
-    const giaKM = (parseFloat(data.giale || 0) - giam);
-    document.getElementById("phaithanhtoan").value = giaKM.toFixed(0);
+function tinhTienTuDong() {
+  const sl = parseInt(document.getElementById("soluong").value || "0");
+  const gia = parseFloat(document.getElementById("gia").value || "0");
+  const km = parseFloat(sanPhamHienTai?.khuyenmai || "0");
+  const tien = (gia - km) * sl;
+  document.getElementById("phaithanhtoan").value = tien.toFixed(0);
+  document.getElementById("tongtien").innerText = tien.toFixed(0);
+  document.getElementById("tongsl").innerText = sl;
+  document.getElementById("khachtra").value = tien.toFixed(0);
+}
+
+async function capNhatSoHoaDon() {
+  const { data, error } = await supabase
+    .from("sochungtu")
+    .select("so_hientai")
+    .eq("loai", "banledt")
+    .single();
+
+  if (!error && data) {
+    const so = parseInt(data.so_hientai || 0) + 1;
+    const sohd = "banledt_" + String(so).padStart(5, "0");
+    document.getElementById("sohd").value = sohd;
   } else {
-    document.getElementById("phaithanhtoan").value = data.giale || 0;
+    document.getElementById("sohd").value = "banledt_00001";
   }
 }
 
-// ====== LƯU HÓA ĐƠN QUA API ======
 async function luuHoaDon() {
   if (!nhanVienHienTai) return alert("Bạn chưa đăng nhập nhân viên hợp lệ.");
   if (!sanPhamHienTai) return alert("Bạn chưa nhập sản phẩm hợp lệ.");
 
   const hoadon = {
-    ngay: new Date().toISOString().split("T")[0],
+    sohd: document.getElementById("sohd").value,
+    ngay: new Date().toISOString(),
     manv: nhanVienHienTai.manv,
     tennv: nhanVienHienTai.tennv,
     diadiem: "mobile",
@@ -105,20 +121,18 @@ async function luuHoaDon() {
   }
 }
 
-// ====== GẮN SỰ KIỆN ======
+function chonTuPopup(masp) {
+  document.getElementById("masp").value = masp;
+  xuLyMaSP();
+  dongPopup();
+  document.getElementById("masp").focus();
+}
+
 window.addEventListener("DOMContentLoaded", () => {
-  const manvInput = document.getElementById("manv");
-  if (manvInput) {
-    manvInput.addEventListener("change", xacThucNhanVien);
-  }
-
-  const maspInput = document.getElementById("masp");
-  if (maspInput) {
-    maspInput.addEventListener("change", xuLyMaSP);
-  }
-
-  const nutLuu = document.querySelector(".btn-yellow");
-  if (nutLuu) {
-    nutLuu.addEventListener("click", luuHoaDon);
-  }
+  document.getElementById("manv")?.addEventListener("change", xacThucNhanVien);
+  document.getElementById("masp")?.addEventListener("change", xuLyMaSP);
+  document.getElementById("soluong")?.addEventListener("input", tinhTienTuDong);
+  document.querySelector(".btn-yellow")?.addEventListener("click", luuHoaDon);
+  capNhatSoHoaDon();
+  document.getElementById("ngay").value = new Date().toISOString().slice(0, 16);
 });
