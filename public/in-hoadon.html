@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>In Hóa Đơn</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 80mm; margin: 0 auto; font-size: 14px; }
+    .header, .footer { text-align: center; }
+    .bold { font-weight: bold; }
+    .invoice-info, .totals, .note { margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid black; padding: 4px; text-align: center; font-size: 13px; }
+    .totals td { text-align: right; }
+    .note { font-size: 12px; margin-top: 10px; font-style: italic; }
+    .thankyou { font-size: 16px; font-family: 'Comic Sans MS', cursive; text-align: center; margin-top: 10px; }
+    .big { font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="bold big">SHOP HOÀN TUYẾT</div>
+    <div>CS 1: SN 540 Đường 3-2 TP Thái Nguyên</div>
+    <div>CS 2: SN 561 Đường LNQ - Thái Nguyên</div>
+    <div>CS 3: SN 40 Đ Quang Trung - T Nguyên</div>
+    <div>ĐT: 0916.633.860; 0916.747.401</div>
+    <div>facebook.com/shophoantuyet</div>
+    <div class="bold">HÓA ĐƠN BÁN LẺ</div>
+  </div>
+
+  <div class="invoice-info">
+    NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
+    (<span id="sohd"></span>)<br>
+    Date: <span id="ngay"></span> - <span id="gio"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>TÊN HÀNG</th><th>S.L</th><th>ĐƠN GIÁ</th><th>K. MAI</th><th>T.TIỀN</th></tr>
+    </thead>
+    <tbody id="noidungchitiet"></tbody>
+  </table>
+
+  <div class="totals">
+    <div>Khách TT: <span id="khachtra"></span> &nbsp;&nbsp; KM HD: <span id="tongkm"></span></div>
+    <div>Tổng tiền hàng: <span id="thanhtoan"></span></div>
+    <div>Trả lại khách: <span id="tralai"></span> &nbsp;&nbsp; Tổng SL: <span id="tongsl"></span> SP</div>
+    <div class="bold">Tổng phải trả: (<span id="phaithanhtoan"></span>VND)</div>
+  </div>
+
+  <div class="note">
+    Chú ý: Hàng chỉ được đổi lại trong 03 ngày phải còn nguyên nhãn, chưa sử dụng. không nhận hàng trả lại.
+  </div>
+
+  <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById("diadiem").textContent = params.get("diadiem") || "";
+    document.getElementById("khachhang").textContent = params.get("khachhang") || "";
+    document.getElementById("sohd").textContent = params.get("sohd") || "";
+    document.getElementById("ngay").textContent = params.get("ngay") || "";
+    document.getElementById("gio").textContent = params.get("gio") || "";
+    document.getElementById("khachtra").textContent = params.get("khachtra") || "0";
+    document.getElementById("tongkm").textContent = params.get("tongkm") || "0";
+    document.getElementById("thanhtoan").textContent = params.get("thanhtoan") || "0";
+    document.getElementById("tralai").textContent = params.get("tralai") || "0";
+    document.getElementById("tongsl").textContent = params.get("tongsl") || "0";
+    document.getElementById("phaithanhtoan").textContent = params.get("phaithanhtoan") || "0";
+
+    const data = JSON.parse(decodeURIComponent(params.get("data") || "[]"));
+    const tbody = document.getElementById("noidungchitiet");
+    data.forEach(sp => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${sp.tensp} ${sp.masp}</td>
+        <td>${sp.soluong}</td>
+        <td>${Number(sp.gia).toLocaleString()}</td>
+        <td>${Number(sp.km).toLocaleString()}</td>
+        <td>${Number(sp.thanhtien).toLocaleString()}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    window.print();
+  </script>
+</body>
+</html>
