@@ -706,30 +706,36 @@ async function napHoaDonVaoTrang(hoadon) {
     .eq("soct", hoadon.sohd);
 
   if (!error && chiTiet.length) {
-    chiTiet.forEach(row => {
-      if (!bangKetQua[row.masp]) {
-        bangKetQua[row.masp] = {
-          masp: row.masp,
-          tensp: sanPhamData[row.masp]?.tensp || "",
-          sizes: [],
-          soluongs: [],
-          tong: 0,
-          gia: row.gia || 0,
-          km: row.km || 0,
-          dvt: ""
-        };
-      }
-      const item = bangKetQua[row.masp];
-      item.sizes.push(row.size);
-      item.soluongs.push(row.soluong);
-      item.tong += row.soluong;
-    });
+  chiTiet.forEach(row => {
+    const masp = row.masp;
+    const size = row.size;
+    const sl = row.soluong;
 
-    capNhatBangHTML();
-    capNhatThongTinTong();
-  } else {
-    alert("Không tìm thấy chi tiết hóa đơn.");
-  }
+    if (!bangKetQua[masp]) {
+      bangKetQua[masp] = {
+        masp,
+        tensp: sanPhamData[masp]?.tensp || "",
+        sizes: [],
+        soluongs: [],
+        tong: 0,
+        gia: row.gia || sanPhamData[masp]?.gia || 0,
+        km: row.km || sanPhamData[masp]?.km || 0,
+        dvt: ""
+      };
+    }
+
+    const item = bangKetQua[masp];
+    item.sizes.push(size);
+    item.soluongs.push(sl);
+    item.tong += sl;
+  });
+
+  capNhatBangHTML();
+  capNhatThongTinTong();
+} else {
+  alert("Không tìm thấy chi tiết hóa đơn.");
+}
+
 }
 
 
