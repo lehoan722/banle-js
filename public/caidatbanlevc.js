@@ -521,7 +521,23 @@ async function luuHoaDonQuaAPI() {
     if (result.success) {
       alert("✅ Đã lưu hóa đơn qua API thành công!\nSố HĐ: " + result.sohd);
 
-      // === Làm mới trang sau khi lưu thành công ===
+      // 🔶 Gọi in hóa đơn sau khi lưu thành công
+      const hoadonIn = {
+        diadiem: hoadon.diadiem,
+        khachhang: hoadon.khachhang,
+        sohd: result.sohd,
+        ngay: hoadon.ngay,
+        gio: new Date().toLocaleTimeString(),
+        khachtra: document.getElementById("khachtra").value,
+        tongkm: document.getElementById("tongkm").value,
+        thanhtoan: document.getElementById("thanhtoan").value,
+        tralai: (parseFloat(document.getElementById("khachtra").value) - parseFloat(document.getElementById("phaithanhtoan").value)).toFixed(0),
+        tongsl: document.getElementById("tongsl").value,
+        phaithanhtoan: document.getElementById("phaithanhtoan").value
+      };
+      inHoaDon(hoadonIn, chitiet);
+
+      // === Làm mới trang sau khi lưu ===
       const diadiemVal = document.getElementById("diadiem").value;
       const manvVal = document.getElementById("manv").value;
       const tennvVal = document.getElementById("tennv").value;
@@ -586,3 +602,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+function inHoaDon(hoaDon, chiTiet) {
+  const query = new URLSearchParams({
+    diadiem: hoaDon.diadiem,
+    khachhang: hoaDon.khachhang,
+    sohd: hoaDon.sohd,
+    ngay: hoaDon.ngay,
+    gio: hoaDon.gio || new Date().toLocaleTimeString(),
+    khachtra: hoaDon.khachtra,
+    tongkm: hoaDon.tongkm,
+    thanhtoan: hoaDon.thanhtoan,
+    tralai: hoaDon.tralai,
+    tongsl: hoaDon.tongsl,
+    phaithanhtoan: hoaDon.phaithanhtoan,
+    data: encodeURIComponent(JSON.stringify(chiTiet))
+  });
+  const url = "/in-hoadon.html?" + query.toString();
+  window.open(url, "_blank");
+}
