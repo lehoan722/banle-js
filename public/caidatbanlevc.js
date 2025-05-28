@@ -525,19 +525,23 @@ async function luuHoaDonQuaAPI() {
       alert("✅ Đã lưu hóa đơn qua API thành công!\nSố HĐ: " + result.sohd);
 
       // 🔶 Gọi in hóa đơn sau khi lưu thành công
-      const hoadonIn = {
-        diadiem: hoadon.diadiem,
-        khachhang: hoadon.khachhang,
-        sohd: result.sohd,
-        ngay: hoadon.ngay,
-        gio: new Date().toLocaleTimeString(),
-        khachtra: document.getElementById("khachtra").value,
-        tongkm: document.getElementById("tongkm").value,
-        thanhtoan: document.getElementById("thanhtoan").value,
-        tralai: (parseFloat(document.getElementById("khachtra").value) - parseFloat(document.getElementById("phaithanhtoan").value)).toFixed(0),
-        tongsl: document.getElementById("tongsl").value,
-        phaithanhtoan: document.getElementById("phaithanhtoan").value
-      };
+      const khachtraVal = document.querySelector("input#khachtra")?.value || "0";
+const phaithanhtoanVal = document.querySelector("input#phaithanhtoan")?.value || "0";
+
+const hoadonIn = {
+  diadiem: hoadon.diadiem,
+  khachhang: hoadon.khachhang,
+  sohd: result.sohd,
+  ngay: hoadon.ngay,
+  gio: new Date().toLocaleTimeString(),
+  khachtra: khachtraVal,
+  tongkm: document.querySelector("input#tongkm")?.value || "0",
+  thanhtoan: document.querySelector("input#thanhtoan")?.value || "0",
+  tralai: (parseFloat(khachtraVal) - parseFloat(phaithanhtoanVal)).toFixed(0),
+  tongsl: document.querySelector("input#tongsl")?.value || "0",
+  phaithanhtoan: phaithanhtoanVal
+};
+
       inHoaDon(hoadonIn, chitiet);
 
       // === Làm mới trang sau khi lưu ===
