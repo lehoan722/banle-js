@@ -294,6 +294,15 @@ window.onload = () => {
   }
 
   document.addEventListener("keydown", function (e) {
+    if (e.key === "F1") {
+  e.preventDefault();
+  document.getElementById("them").click();
+}
+if (e.key === "F2") {
+  e.preventDefault();
+  luuHoaDonQuaAPI();
+}
+
     if (e.key === "F5") {
       e.preventDefault();
       const box = document.getElementById("nhapnhanh");
