@@ -662,7 +662,26 @@ async function luuHoaDonQuaAPI() {
   }
 }
 
+//------------------------------------------------------------------------
+async function xacNhanSuaHoaDon() {
+  const manv = document.getElementById("xacmanv").value.trim();
+  const mk = document.getElementById("xacmatkhau").value.trim();
 
+  const { data, error } = await supabase
+    .from("dmnhanvien")
+    .select("matkhau")
+    .eq("manv", manv)
+    .maybeSingle();
+
+  if (!error && data && data.matkhau === mk) {
+    choPhepSua = true;
+    document.getElementById("popupXacThucSua").style.display = "none";
+    alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
+    luuHoaDonQuaAPI(); // gọi lại
+  } else {
+    alert("❌ Sai mã nhân viên hoặc mật khẩu.");
+  }
+}
 
 // ====== het ======
 
@@ -782,24 +801,5 @@ async function napHoaDonVaoTrang(hoadon) {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
 }
-//------------------------------------------------------------------------
-async function xacNhanSuaHoaDon() {
-  const manv = document.getElementById("xacmanv").value.trim();
-  const mk = document.getElementById("xacmatkhau").value.trim();
 
-  const { data, error } = await supabase
-    .from("dmnhanvien")
-    .select("matkhau")
-    .eq("manv", manv)
-    .maybeSingle();
-
-  if (!error && data && data.matkhau === mk) {
-    choPhepSua = true;
-    document.getElementById("popupXacThucSua").style.display = "none";
-    alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
-    luuHoaDonQuaAPI(); // gọi lại
-  } else {
-    alert("❌ Sai mã nhân viên hoặc mật khẩu.");
-  }
-}
 
