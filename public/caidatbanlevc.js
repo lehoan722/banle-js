@@ -284,6 +284,38 @@ window.onload = () => {
   window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
 });
 
+  document.getElementById("quaylai").addEventListener("click", async () => {
+  const sohd = document.getElementById("sohd").value;
+  const { data, error } = await supabase
+    .from("hoadon_banle")
+    .select("*")
+    .lt("sohd", sohd)
+    .order("sohd", { ascending: false })
+    .limit(1);
+
+  if (!error && data.length) {
+    napHoaDonVaoTrang(data[0]);
+  } else {
+    alert("Không còn hóa đơn trước đó.");
+  }
+});
+
+  document.getElementById("tieptuc").addEventListener("click", async () => {
+  const sohd = document.getElementById("sohd").value;
+  const { data, error } = await supabase
+    .from("hoadon_banle")
+    .select("*")
+    .gt("sohd", sohd)
+    .order("sohd", { ascending: true })
+    .limit(1);
+
+  if (!error && data.length) {
+    napHoaDonVaoTrang(data[0]);
+  } else {
+    alert("Không còn hóa đơn tiếp theo.");
+  }
+});
+
 
   ["masp", "soluong", "size"].forEach(id => {
     const input = document.getElementById(id);
@@ -644,3 +676,60 @@ function inHoaDon(hoaDon, chiTiet) {
   const url = "/in-hoadon.html?" + query.toString();
   window.open(url, "_blank");
 }
+
+async function napHoaDonVaoTrang(hoadon) {
+  if (!hoadon) return;
+
+  // Gán các trường hóa đơn tổng
+  document.getElementById("sohd").value = hoadon.sohd || "";
+  document.getElementById("ngay").value = hoadon.ngay || "";
+  document.getElementById("manv").value = hoadon.manv || "";
+  document.getElementById("tennv").value = hoadon.tennv || "";
+  document.getElementById("diadiem").value = hoadon.diadiem || "";
+  document.getElementById("khachhang").value = hoadon.khachhang || "";
+  document.getElementById("hinhthuctt").value = hoadon.hinhthuctt || "";
+  document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
+  document.getElementById("tongkm").value = hoadon.tongkm || "0";
+  document.getElementById("thanhtoan").value = hoadon.thanhtoan || "0";
+  document.getElementById("phaithanhtoan").value = hoadon.phaithanhtoan || "0";
+  document.getElementById("khachtra").value = hoadon.khachtra || hoadon.phaithanhtoan || "0";
+  document.getElementById("conlai").value = hoadon.conlai || "0";
+  document.getElementById("tongsl").value = hoadon.tongsl || "0";
+
+  // Xóa bảng hiện tại
+  bangKetQua = {};
+
+  // Lấy dữ liệu chi tiết từ bảng xuatkho
+  const { data: chiTiet, error } = await supabase
+    .from("xuatkho")
+    .select("*")
+    .eq("soct", hoadon.sohd);
+
+  if (!error && chiTiet.length) {
+    chiTiet.forEach(row => {
+      if (!bangKetQua[row.masp]) {
+        bangKetQua[row.masp] = {
+          masp: row.masp,
+          tensp: sanPhamData[row.masp]?.tensp || "",
+          sizes: [],
+          soluongs: [],
+          tong: 0,
+          gia: row.gia || 0,
+          km: row.km || 0,
+          dvt: ""
+        };
+      }
+      const item = bangKetQua[row.masp];
+      item.sizes.push(row.size);
+      item.soluongs.push(row.soluong);
+      item.tong += row.soluong;
+    });
+
+    capNhatBangHTML();
+    capNhatThongTinTong();
+  } else {
+    alert("Không tìm thấy chi tiết hóa đơn.");
+  }
+}
+
+
