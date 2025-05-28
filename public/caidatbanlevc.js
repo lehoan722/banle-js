@@ -440,28 +440,28 @@ function capNhatThongTinTong() {
 
   mathangInput.value = tongSoMatHang;
   tongslInput.value = tongSoLuong;
-  tongkmInput.value = tongKhuyenMai.toFixed(0);
+  tongkmInput.value = tongKhuyenMai.toLocaleString();
 
   // Tính chiết khấu thông minh
   let ck = parseFloat(chietkhauInput.value.trim()) || 0;
   if (ck <= 100) {
     ck = tongThanhTien * (ck / 100);
-    chietkhauInput.value = ck.toFixed(0);
+    chietkhauInput.value = ck.toLocaleString();
   }
 
   // Tính phải trả và còn lại
   const phaitra = tongThanhTien - ck;
-  phaithanhtoanInput.value = phaitra.toFixed(0);
+  phaithanhtoanInput.value = phaitra.toLocaleString();
 
   // Mặc định khách trả bằng phải trả nếu chưa nhập gì
   let khachtra = parseFloat(khachtraInput.value.trim());
   if (!khachtraInput.dataset.modified) {
     khachtra = phaitra;
-    khachtraInput.value = phaitra.toFixed(0);
+    khachtraInput.value = phaitra.toLocaleString();
   }
 
   const conlai = khachtra - phaitra;
-  conlaiInput.value = conlai.toFixed(0);
+  conlaiInput.value = conlai.toLocaleString();
 document.getElementById("phaithanhtoan_text").textContent = phaitra.toLocaleString();
 document.getElementById("khachtra_text").textContent = khachtra.toLocaleString();
 document.getElementById("conlai_text").textContent = conlai.toLocaleString();
@@ -546,7 +546,7 @@ const hoadonIn = {
   khachtra: khachtraVal,
   tongkm: document.querySelector("input#tongkm")?.value || "0",
   thanhtoan: document.querySelector("input#thanhtoan")?.value || "0",
-  tralai: (parseFloat(khachtraVal) - parseFloat(phaithanhtoanVal)).toFixed(0),
+  tralai: (parseFloat(khachtraVal) - parseFloat(phaithanhtoanVal)).toLocaleString(),
   tongsl: document.querySelector("input#tongsl")?.value || "0",
   phaithanhtoan: phaithanhtoanVal
 };
@@ -580,6 +580,9 @@ const hoadonIn = {
     alert("❌ Lỗi hệ thống khi gọi API");
     console.error(err);
   }
+
+  await capNhatSoHoaDonTuDong();
+
 }
 
 
