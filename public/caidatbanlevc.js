@@ -453,6 +453,9 @@ function capNhatThongTinTong() {
 
   const conlai = khachtra - phaitra;
   conlaiInput.value = conlai.toFixed(0);
+document.getElementById("phaithanhtoan_text").textContent = phaitra.toLocaleString();
+document.getElementById("khachtra_text").textContent = khachtra.toLocaleString();
+document.getElementById("conlai_text").textContent = conlai.toLocaleString();
 
 
 }
