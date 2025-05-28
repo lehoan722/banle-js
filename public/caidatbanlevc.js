@@ -579,7 +579,7 @@ async function luuHoaDonQuaAPI() {
       tongsl: parseInt(document.getElementById("tongsl").value || "0"),
       tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
       chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
-      thanhtoan: parseFloat(document.getElementById("thanhtoan").value || "0"),
+      //thanhtoan: parseFloat(document.getElementById("thanhtoan").value || "0"),
       hinhthuctt: document.getElementById("hinhthuctt").value,
       ghichu: document.getElementById("ghichu")?.value || ""
     };
