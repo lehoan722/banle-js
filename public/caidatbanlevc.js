@@ -722,6 +722,38 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+//-------------------------------------------------------------------------------
+async function xacNhanSuaHoaDon() {
+  const manv = document.getElementById("xacmanv").value.trim();
+  const mk = document.getElementById("xacmatkhau").value.trim();
+  const sohd = document.getElementById("sohd").value.trim();
+  const loai = sohd.startsWith("bancs1") ? "hdbl" : "khac"; // tự điều chỉnh nếu cần
+
+  const { data, error } = await supabase
+    .from("dmnhanvien")
+    .select("matkhau, sua_hoadon, loai_duoc_sua")
+    .eq("manv", manv)
+    .maybeSingle();
+
+  if (error || !data || data.matkhau !== mk) {
+    alert("❌ Sai mã nhân viên hoặc mật khẩu.");
+    return;
+  }
+
+  const duocSua = data.sua_hoadon === true &&
+    (data.loai_duoc_sua || []).includes(loai);
+
+  if (!duocSua) {
+    alert("🚫 Bạn không có quyền sửa loại chứng từ này.");
+    return;
+  }
+
+  choPhepSua = true;
+  document.getElementById("popupXacThucSua").style.display = "none";
+  alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
+  luuHoaDonQuaAPI(); // gọi lại
+}
+
 
 function inHoaDon(hoaDon, chiTiet) {
   const query = new URLSearchParams({
