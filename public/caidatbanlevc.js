@@ -300,6 +300,26 @@ window.onload = () => {
   }
 });
 
+  document.getElementById("sohd").addEventListener("keydown", async (e) => {
+  if (e.key === "Enter") {
+    const sohd = document.getElementById("sohd").value.trim();
+    if (!sohd) return;
+
+    const { data, error } = await supabase
+      .from("hoadon_banle")
+      .select("*")
+      .eq("sohd", sohd)
+      .limit(1);
+
+    if (!error && data.length) {
+      napHoaDonVaoTrang(data[0]);
+    } else {
+      alert("Không tìm thấy hóa đơn: " + sohd);
+    }
+  }
+});
+
+
   document.getElementById("tieptuc").addEventListener("click", async () => {
   const sohd = document.getElementById("sohd").value;
   const { data, error } = await supabase
