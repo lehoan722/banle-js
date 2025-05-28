@@ -740,8 +740,8 @@ async function xacNhanSuaHoaDon() {
     return;
   }
 
-  const duocSua = data.sua_hoadon === true &&
-   // (data.loai_duoc_sua || []).includes(loai);
+  //const duocSua = data.sua_hoadon === true &&
+    //(data.loai_duoc_sua || []).includes(loai);
 
   if (!duocSua) {
     alert("🚫 Bạn không có quyền sửa loại chứng từ này.");
