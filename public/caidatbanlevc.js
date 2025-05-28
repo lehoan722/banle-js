@@ -650,17 +650,21 @@ async function capNhatSoHoaDonTuDong() {
   const { data, error } = await supabase
     .from("hoadon_banle")
     .select("sohd")
-    .like("sohd", "bancs%")  // lấy các hóa đơn bán cs1 hoặc cs2
+    .like("sohd", "bancs1_%")
     .order("sohd", { ascending: false })
     .limit(1);
 
   if (!error && data.length > 0) {
-    const so = parseInt(data[0].sohd.replace(/\D/g, '')) + 1;
-    document.getElementById("sohd").value = "bancs1_" + so.toString().padStart(5, "0");
+    const lastSohd = data[0].sohd;
+    const parts = lastSohd.split("_");
+    const so = parseInt(parts[1]) + 1;
+    const newSohd = "bancs1_" + so.toString().padStart(5, "0");
+    document.getElementById("sohd").value = newSohd;
   } else {
     document.getElementById("sohd").value = "bancs1_00001";
   }
 }
+
 
 // Gọi khi trang load xong
 window.addEventListener("load", () => {
