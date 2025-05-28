@@ -690,7 +690,7 @@ async function napHoaDonVaoTrang(hoadon) {
   document.getElementById("hinhthuctt").value = hoadon.hinhthuctt || "";
   document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
   document.getElementById("tongkm").value = hoadon.tongkm || "0";
-  document.getElementById("thanhtoan").value = hoadon.thanhtoan || "0";
+  //document.getElementById("thanhtoan").value = hoadon.thanhtoan || "0";
   document.getElementById("phaithanhtoan").value = hoadon.phaithanhtoan || "0";
   document.getElementById("khachtra").value = hoadon.khachtra || hoadon.phaithanhtoan || "0";
   document.getElementById("conlai").value = hoadon.conlai || "0";
