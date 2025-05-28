@@ -280,6 +280,10 @@ window.onload = () => {
     xoaDongDangChon();
   });
 
+  document.getElementById("timkiem").addEventListener("click", () => {
+  window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
+});
+
 
   ["masp", "soluong", "size"].forEach(id => {
     const input = document.getElementById(id);
