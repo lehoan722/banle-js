@@ -391,16 +391,33 @@ window.onload = () => {
   }
 });
 
-    document.addEventListener("keydown", function(e) {
+ document.addEventListener("keydown", function(e) {
   if (e.key === "F4") {
     e.preventDefault();
     const khachtra = document.getElementById("khachtra");
     if (khachtra) {
       khachtra.focus();
       khachtra.select();
+
+      // Gán sự kiện Enter chỉ một lần
+      khachtra.addEventListener("keydown", async function onEnter(ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          // Tránh gán nhiều lần
+          khachtra.removeEventListener("keydown", onEnter);
+
+          const rows = document.querySelectorAll("table tbody tr");
+          if (rows.length === 0) {
+            alert("❌ Không có dữ liệu để lưu.");
+            return;
+          }
+          await luuHoaDonQuaAPI();
+        }
+      }, { once: true }); // chỉ chạy 1 lần
     }
   }
 });
+
 
 
     if (e.key === "F5") {
