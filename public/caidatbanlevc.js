@@ -856,9 +856,7 @@ async function napHoaDonVaoTrang(hoadon) {
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("thongtinHoadon").style.display = "block";
-});
+
 
 
 
