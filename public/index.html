@@ -151,24 +151,6 @@
 .tab-pane input, .tab-pane select {
   width: 100%;
 }
-    .sidebar {
-  width: 350px;
-  border-left: 1px solid #ccc;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start; /* ⚠️ CHUYỂN TỪ space-between */
-}
-
-.tab-content {
-  flex-grow: 0; /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
-}
-
-.product-image {
-  margin-top: 10px;
-  max-height: 180px;
-  object-fit: cover;
-}
-
 </style>
 <script>
     function switchTab(tabName) {
@@ -177,10 +159,7 @@
       document.getElementById(tabName).classList.add('active');
       document.getElementById('btn_' + tabName).classList.add('active');
     }
-   document.addEventListener("DOMContentLoaded", () => {
-  switchTab("thongtin");
-});
-
+    window.onload = () => switchTab('thongtin');
     function dongPopupDM() {
       document.getElementById('popupDanhMuc').style.display = 'none';
     }
@@ -191,13 +170,11 @@
 <div class="top-inputs">
 <input id="masp" placeholder="Mã SP"/>
 <input id="soluong" value="1"/>
-<input id="dvt" placeholder="DVT"/>    
+<input id="dvt" placeholder="DVT"/>
 <input id="size" placeholder="SIZE"/>
 <input id="gia" placeholder="Giá SP"/>
 <input id="khuyenmai" placeholder="khuyen mai"/>
 <input id="thanhtien" placeholder="Thành tiền"/>
-    <input id="sohd" placeholder="Số HĐ"/>
-    
 <input id="ghichu" placeholder="Ghi chú HH"/>
 <button id="masp-search">🔍</button>
 </div>
@@ -206,8 +183,8 @@
 <table id="bangketqua">
 <thead>
 <tr>
-<th>Mã hàng</th><th>Tên hàng</th><th>Kích cỡ</th><th>S.lượng</th>
-<th>Tổng</th><th>Đơn giá</th><th>Khuyến mại</th><th>Thành tiền</th>
+<th>Mã hàng</th><th>Tên hàng</th><th>DVT</th><th>S.lượng</th>
+<th>Kích cỡ</th><th>Đơn giá</th><th>Khuyến mại</th><th>Thành tiền</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -226,7 +203,7 @@
 <label>Tên NV <input id="tennv" readonly=""/></label><label>Cơ sở <select id="diadiem"><option value="cs1">Cơ sở 1</option><option value="cs2">Cơ sở 2</option></select></label>
 <label>Khách hàng <select id="khachhang"></select></label>
 <label>Hình thức TT <select id="hinhthuctt"><option value="tm">Tiền mặt</option><option value="ck">Chuyển khoản</option></select></label>
-
+<label>Số HĐ <input id="sohd" /></label>
 <label>Chiết khấu <input id="chietkhau"/></label>
 <label>Tổng KM <input id="tongkm" readonly=""/></label>
 <label>Phải trả <input id="phaithanhtoan" readonly=""/></label>
@@ -248,11 +225,12 @@
 </div>
 <label><input checked="" type="checkbox"/> Hiển thị hình ảnh</label>
 
-<div class="btn-big red">Tổng phải trả <span id="phaithanhtoan_text" style="float:right">0</span></div>
+    <div class="btn-big red">Tổng phải trả <span id="phaithanhtoan_text" style="float:right">0</span></div>
 <div class="btn-big gray">Khách thanh toán <span id="khachtra_text" style="float:right">0</span></div>
 <div class="btn-big gray">Còn lại <span id="conlai_text" style="float:right">0</span></div>
+
     
-<img alt="Ảnh sản phẩm" class="product-image" src="https://via.placeholder.com/300x300.png?text=Ảnh+Sản+Phẩm"/>
+<img alt="Ảnh sản phẩm" class="product-image" src="https://via.placeholder.com/300x180.png?text=Ảnh+Sản+Phẩm"/>
 </div>
 </div>
 <div class="footer-buttons">
