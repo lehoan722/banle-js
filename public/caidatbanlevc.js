@@ -643,7 +643,7 @@ async function luuHoaDonQuaAPI() {
         phaithanhtoan: phaithanhtoanVal
       };
 
-      //inHoaDon(hoadonIn, chitiet);
+      inHoaDon(hoadonIn, chitiet);
 
       choPhepSua = false;
 
