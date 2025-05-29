@@ -414,8 +414,6 @@ window.onload = () => {
   }
 });
 
-
-  });
 };
 
 // ====== Popup MASP Search ======
