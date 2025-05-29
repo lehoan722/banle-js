@@ -602,23 +602,40 @@ async function luuHoaDonQuaAPI() {
     // Chuẩn bị dữ liệu chi tiết hóa đơn
     const table = document.querySelector("table");
     const rows = table.querySelectorAll("tbody tr");
-    const chitiet = [];
+    
+  const chitiet = [];
 
-    rows.forEach(row => {
-      const cells = row.querySelectorAll("td");
-      if (cells.length >= 7) {
+rows.forEach(row => {
+  const cells = row.querySelectorAll("td");
+  if (cells.length >= 7) {
+    const masp = cells[0].innerText.trim();
+    const tensp = cells[1].innerText.trim();
+    const sizeText = cells[2].innerText.trim();
+    const soluongText = cells[3].innerText.trim();
+    const gia = parseFloat(cells[5].innerText.trim()) || 0;
+    const km = parseFloat(cells[6].innerText.trim()) || 0;
+
+    const sizes = sizeText.split(",");
+    const soluongs = soluongText.split(",");
+
+    sizes.forEach((sz, i) => {
+      const sl = parseInt(soluongs[i] || "0");
+      if (sz.trim() && sl > 0) {
         chitiet.push({
           sohd: sohd,
-          masp: cells[0].innerText.trim(),
-          tensp: cells[1].innerText.trim(),
-          size: cells[2].innerText.trim(),
-          soluong: parseInt(cells[3].innerText.trim()) || 0,
-          gia: parseFloat(cells[5].innerText.trim()) || 0,
-          km: parseFloat(cells[6].innerText.trim()) || 0,
-          thanhtien: parseFloat(cells[7].innerText.trim()) || 0
+          masp: masp,
+          tensp: tensp,
+          size: sz.trim(),
+          soluong: sl,
+          gia: gia,
+          km: km,
+          thanhtien: sl * gia - km
         });
       }
     });
+  }
+});
+
 
     // Gửi dữ liệu lên Supabase
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
