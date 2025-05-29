@@ -217,21 +217,31 @@ window.onload = () => {
 
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
 
+  document.getElementById("them").addEventListener("click", async () => {
+    // Xóa dữ liệu cũ (giữ lại mã NV, địa điểm...)
+    const diadiemVal = document.getElementById("diadiem").value;
+    const manvVal = document.getElementById("manv").value;
+    const tennvVal = document.getElementById("tennv").value;
 
-  document.getElementById("them").addEventListener("click", () => {
-    // Reset lại mọi input trừ tên nhân viên
     document.querySelectorAll("input").forEach(input => {
-      if (input.id !== "tennv" && input.id !== "ngay") input.value = "";
+      if (!["diadiem", "manv", "tennv"].includes(input.id)) {
+        input.value = "";
+      }
     });
-    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
 
     bangKetQua = {};
     capNhatBangHTML();
+
+    document.getElementById("diadiem").value = diadiemVal;
+    document.getElementById("manv").value = manvVal;
+    document.getElementById("tennv").value = tennvVal;
+    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("masp").focus();
+
     // 👉 Cập nhật số hóa đơn mới
-
-     await capNhatSoHoaDonTuDong();
-
+    await capNhatSoHoaDonTuDong();
   });
+
 
 
   // Lệnh lưu dữ liệu bằng Supabase
