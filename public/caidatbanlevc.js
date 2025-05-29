@@ -65,6 +65,12 @@ function themVaoBang(forcedSize = null) {
   const manv = document.getElementById("manv").value.trim().toUpperCase();
 
   console.log(`Thêm SP: ${masp}, size: ${size}, SL: ${soluong}, NV: ${manv}`);
+  // ❗ Kiểm tra size hợp lệ tại đây
+  if (!danhSachSize.includes(size)) {
+    alert("❌ Size không hợp lệ. Vui lòng nhập size từ 38 đến 45.");
+    document.getElementById("size").focus();
+    return; // ⛔ Không cho thêm vào bảng nếu sai
+  }
 
   if (!masp || !size || isNaN(soluong)) return;
 
@@ -486,10 +492,7 @@ function hienThiDanhMucSP(keyword) {
     container.appendChild(div);
   });
 }
-//--------NAP SIZE---------------------
-document.addEventListener("DOMContentLoaded", async () => {
-  await napDanhMucSize();
-});
+
 
 document.addEventListener("DOMContentLoaded", async () => {
   await napDanhMucSize();
