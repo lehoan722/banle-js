@@ -1,7 +1,7 @@
 // ====== dau ======
 
 // Khai báo các biến lưu dữ liệu sản phẩm, nhân viên, bảng kết quả
-let danhSachSize = []; // chứa các size hợp lệ
+let danhSachSize = []; // chứa các size hợp lệ như "38", "39", ..., "45"
 
 let sanPhamData = {};
 let nhanVienData = {};
@@ -154,25 +154,6 @@ function capNhatBangHTML() {
 
 
 }
-
-async function napDanhMucSize() {
-  const { data, error } = await supabase.from("dm_size").select("size").order("size");
-  if (error) {
-    console.error("Lỗi khi tải danh sách size:", error);
-    return;
-  }
-
-  danhSachSize = data.map(x => x.size); // lưu lại để kiểm tra
-
-  const dl = document.getElementById("list-size");
-  dl.innerHTML = "";
-  danhSachSize.forEach(size => {
-    const opt = document.createElement("option");
-    opt.value = size;
-    dl.appendChild(opt);
-  });
-}
-
 
 // Reset lại form nhập liệu sau mỗi lần thêm
 function resetForm() {
@@ -456,20 +437,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+async function napDanhMucSize() {
+  const { data, error } = await supabase.from("dm_size").select("size").order("size");
+  if (error) {
+    console.error("Lỗi khi tải danh sách size:", error);
+    return;
+  }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await napDanhMucSize();
-
-  const inputSize = document.getElementById("size");
-  inputSize.addEventListener("blur", () => {
-    const val = inputSize.value.trim();
-    if (!danhSachSize.includes(val)) {
-      alert("❌ Size không hợp lệ. Chỉ chấp nhận size từ 38 đến 45.");
-      inputSize.value = "";
-      inputSize.focus();
-    }
-  });
-});
+  danhSachSize = data.map(x => x.size);
+}
 
 
 function hienThiDanhMucSP(keyword) {
@@ -510,8 +486,24 @@ function hienThiDanhMucSP(keyword) {
     container.appendChild(div);
   });
 }
+//--------NAP SIZE---------------------
+document.addEventListener("DOMContentLoaded", async () => {
+  await napDanhMucSize();
+});
 
+document.addEventListener("DOMContentLoaded", async () => {
+  await napDanhMucSize();
 
+  const inputSize = document.getElementById("size");
+  inputSize.addEventListener("blur", () => {
+    const val = inputSize.value.trim();
+    if (!danhSachSize.includes(val)) {
+      alert("❌ Size không hợp lệ. Chỉ chấp nhận từ 38 đến 45.");
+      inputSize.value = "";
+      inputSize.focus();
+    }
+  });
+});
 
 
 function timLaiSPTrongPopup() {
