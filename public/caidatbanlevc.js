@@ -217,16 +217,31 @@ window.onload = () => {
 
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
 
-  document.getElementById("them").addEventListener("click", () => {
-    // Reset lại mọi input trừ tên nhân viên
+  document.getElementById("them").addEventListener("click", async () => {
+    // Xóa dữ liệu cũ (giữ lại mã NV, địa điểm...)
+    const diadiemVal = document.getElementById("diadiem").value;
+    const manvVal = document.getElementById("manv").value;
+    const tennvVal = document.getElementById("tennv").value;
+
     document.querySelectorAll("input").forEach(input => {
-      if (input.id !== "tennv" && input.id !== "ngay") input.value = "";
+      if (!["diadiem", "manv", "tennv"].includes(input.id)) {
+        input.value = "";
+      }
     });
-    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
 
     bangKetQua = {};
     capNhatBangHTML();
+
+    document.getElementById("diadiem").value = diadiemVal;
+    document.getElementById("manv").value = manvVal;
+    document.getElementById("tennv").value = tennvVal;
+    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("masp").focus();
+
+    // 👉 Cập nhật số hóa đơn mới
+    await capNhatSoHoaDonTuDong();
   });
+
 
 
   // Lệnh lưu dữ liệu bằng Supabase
@@ -281,60 +296,60 @@ window.onload = () => {
   });
 
   document.getElementById("timkiem").addEventListener("click", () => {
-  window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
-});
+    window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
+  });
 
   document.getElementById("quaylai").addEventListener("click", async () => {
-  const sohd = document.getElementById("sohd").value;
-  const { data, error } = await supabase
-    .from("hoadon_banle")
-    .select("*")
-    .lt("sohd", sohd)
-    .order("sohd", { ascending: false })
-    .limit(1);
-
-  if (!error && data.length) {
-    napHoaDonVaoTrang(data[0]);
-  } else {
-    alert("Không còn hóa đơn trước đó.");
-  }
-});
-
-  document.getElementById("sohd").addEventListener("keydown", async (e) => {
-  if (e.key === "Enter") {
-    const sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) return;
-
+    const sohd = document.getElementById("sohd").value;
     const { data, error } = await supabase
       .from("hoadon_banle")
       .select("*")
-      .eq("sohd", sohd)
+      .lt("sohd", sohd)
+      .order("sohd", { ascending: false })
       .limit(1);
 
     if (!error && data.length) {
       napHoaDonVaoTrang(data[0]);
     } else {
-      alert("Không tìm thấy hóa đơn: " + sohd);
+      alert("Không còn hóa đơn trước đó.");
     }
-  }
-});
+  });
+
+  document.getElementById("sohd").addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      const sohd = document.getElementById("sohd").value.trim();
+      if (!sohd) return;
+
+      const { data, error } = await supabase
+        .from("hoadon_banle")
+        .select("*")
+        .eq("sohd", sohd)
+        .limit(1);
+
+      if (!error && data.length) {
+        napHoaDonVaoTrang(data[0]);
+      } else {
+        alert("Không tìm thấy hóa đơn: " + sohd);
+      }
+    }
+  });
 
 
   document.getElementById("tieptuc").addEventListener("click", async () => {
-  const sohd = document.getElementById("sohd").value;
-  const { data, error } = await supabase
-    .from("hoadon_banle")
-    .select("*")
-    .gt("sohd", sohd)
-    .order("sohd", { ascending: true })
-    .limit(1);
+    const sohd = document.getElementById("sohd").value;
+    const { data, error } = await supabase
+      .from("hoadon_banle")
+      .select("*")
+      .gt("sohd", sohd)
+      .order("sohd", { ascending: true })
+      .limit(1);
 
-  if (!error && data.length) {
-    napHoaDonVaoTrang(data[0]);
-  } else {
-    alert("Không còn hóa đơn tiếp theo.");
-  }
-});
+    if (!error && data.length) {
+      napHoaDonVaoTrang(data[0]);
+    } else {
+      alert("Không còn hóa đơn tiếp theo.");
+    }
+  });
 
 
   ["masp", "soluong", "size"].forEach(id => {
@@ -351,13 +366,13 @@ window.onload = () => {
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "F1") {
-  e.preventDefault();
-  document.getElementById("them").click();
-}
-if (e.key === "F2") {
-  e.preventDefault();
-  luuHoaDonQuaAPI();
-}
+      e.preventDefault();
+      document.getElementById("them").click();
+    }
+    if (e.key === "F2") {
+      e.preventDefault();
+      luuHoaDonQuaAPI();
+    }
 
     if (e.key === "F5") {
       e.preventDefault();
@@ -518,9 +533,9 @@ function capNhatThongTinTong() {
 
   const conlai = khachtra - phaitra;
   conlaiInput.value = conlai.toLocaleString();
-document.getElementById("phaithanhtoan_text").textContent = phaitra.toLocaleString();
-document.getElementById("khachtra_text").textContent = khachtra.toLocaleString();
-document.getElementById("conlai_text").textContent = conlai.toLocaleString();
+  document.getElementById("phaithanhtoan_text").textContent = phaitra.toLocaleString();
+  document.getElementById("khachtra_text").textContent = khachtra.toLocaleString();
+  document.getElementById("conlai_text").textContent = conlai.toLocaleString();
 
 
 }
@@ -630,8 +645,10 @@ async function luuHoaDonQuaAPI() {
 
       inHoaDon(hoadonIn, chitiet);
 
-      await capNhatSoHoaDonTuDong();
+
       choPhepSua = false; // reset lại trạng thái
+      await capNhatSoHoaDonTuDong();
+
 
       // Làm mới trang
       const diadiemVal = document.getElementById("diadiem").value;
