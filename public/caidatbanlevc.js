@@ -1,8 +1,6 @@
 // ====== dau ======
 
 // Khai báo các biến lưu dữ liệu sản phẩm, nhân viên, bảng kết quả
-let danhSachSize = []; // chứa các size hợp lệ như "38", "39", ..., "45"
-
 let sanPhamData = {};
 let nhanVienData = {};
 let bangKetQua = {};
@@ -65,12 +63,6 @@ function themVaoBang(forcedSize = null) {
   const manv = document.getElementById("manv").value.trim().toUpperCase();
 
   console.log(`Thêm SP: ${masp}, size: ${size}, SL: ${soluong}, NV: ${manv}`);
-  // ❗ Kiểm tra size hợp lệ tại đây
-  if (!danhSachSize.includes(size)) {
-    alert("❌ Size không hợp lệ. Vui lòng nhập size từ 38 đến 45.");
-    document.getElementById("size").focus();
-    return; // ⛔ Không cho thêm vào bảng nếu sai
-  }
 
   if (!masp || !size || isNaN(soluong)) return;
 
@@ -372,23 +364,29 @@ window.onload = () => {
     manvInput.addEventListener("change", ganTenNV);
   }
 
-  document.addEventListener("keydown", async function (e) {
-  if (e.key === "F1") {
-    e.preventDefault();
-    document.getElementById("them").click();
-  }
-
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "F1") {
+      e.preventDefault();
+      document.getElementById("them").click();
+    }
+    document.addEventListener("keydown", async function(e) {
   if (e.key === "F2") {
     e.preventDefault();
+
+    // ⚠️ Kiểm tra bảng dữ liệu có ít nhất 1 dòng
     const table = document.querySelector("table");
     const rows = table.querySelectorAll("tbody tr");
+
     if (rows.length === 0) {
       alert("❌ Không có dữ liệu để lưu hóa đơn.");
       return;
     }
+
     await luuHoaDonQuaAPI();
   }
+});
 
+    document.addEventListener("keydown", function(e) {
   if (e.key === "F4") {
     e.preventDefault();
     const khachtra = document.getElementById("khachtra");
@@ -397,31 +395,31 @@ window.onload = () => {
       khachtra.select();
     }
   }
-
-  if (e.key === "F3") {
-    e.preventDefault();
-    xoaDongDangChon();
-  }
-
-  if (e.key === "F5") {
-    e.preventDefault();
-    const box = document.getElementById("nhapnhanh");
-    if (box) {
-      box.checked = !box.checked;
-      console.log("Toggle Nhập Nhanh:", box.checked);
-    }
-  }
-
-  if (e.key === "F6") {
-    e.preventDefault();
-    const box = document.getElementById("size45");
-    if (box) {
-      box.checked = !box.checked;
-      console.log("Toggle Size 45:", box.checked);
-    }
-  }
 });
 
+
+    if (e.key === "F5") {
+      e.preventDefault();
+      const box = document.getElementById("nhapnhanh");
+      if (box) {
+        box.checked = !box.checked;
+        console.log("Toggle Nhập Nhanh:", box.checked);
+      }
+    }
+    if (e.key === "F6") {
+      e.preventDefault();
+      const box = document.getElementById("size45");
+      if (box) {
+        box.checked = !box.checked;
+        console.log("Toggle Size 45:", box.checked);
+      }
+    }
+    if (e.key === "F3") {
+      e.preventDefault();
+      xoaDongDangChon();
+    }
+
+  });
 };
 
 // ====== Popup MASP Search ======
@@ -443,16 +441,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-async function napDanhMucSize() {
-  const { data, error } = await supabase.from("dm_size").select("size").order("size");
-  if (error) {
-    console.error("Lỗi khi tải danh sách size:", error);
-    return;
-  }
-
-  danhSachSize = data.map(x => x.size);
-}
-
 
 function hienThiDanhMucSP(keyword) {
   const container = document.getElementById("danhSachSP");
@@ -494,19 +482,6 @@ function hienThiDanhMucSP(keyword) {
 }
 
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await napDanhMucSize();
-
-  const inputSize = document.getElementById("size");
-  inputSize.addEventListener("blur", () => {
-    const val = inputSize.value.trim();
-    if (!danhSachSize.includes(val)) {
-      alert("❌ Size không hợp lệ. Chỉ chấp nhận từ 38 đến 45.");
-      inputSize.value = "";
-      inputSize.focus();
-    }
-  });
-});
 
 
 function timLaiSPTrongPopup() {
@@ -927,4 +902,5 @@ async function napHoaDonVaoTrang(hoadon) {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
 }
+
 
