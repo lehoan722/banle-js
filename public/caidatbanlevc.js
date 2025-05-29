@@ -369,10 +369,34 @@ window.onload = () => {
       e.preventDefault();
       document.getElementById("them").click();
     }
-    if (e.key === "F2") {
-      e.preventDefault();
-      luuHoaDonQuaAPI();
+    document.addEventListener("keydown", async function(e) {
+  if (e.key === "F2") {
+    e.preventDefault();
+
+    // ⚠️ Kiểm tra bảng dữ liệu có ít nhất 1 dòng
+    const table = document.querySelector("table");
+    const rows = table.querySelectorAll("tbody tr");
+
+    if (rows.length === 0) {
+      alert("❌ Không có dữ liệu để lưu hóa đơn.");
+      return;
     }
+
+    await luuHoaDonQuaAPI();
+  }
+});
+
+    document.addEventListener("keydown", function(e) {
+  if (e.key === "F4") {
+    e.preventDefault();
+    const khachtra = document.getElementById("khachtra");
+    if (khachtra) {
+      khachtra.focus();
+      khachtra.select();
+    }
+  }
+});
+
 
     if (e.key === "F5") {
       e.preventDefault();
