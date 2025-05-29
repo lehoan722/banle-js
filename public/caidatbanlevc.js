@@ -777,24 +777,11 @@ async function xacNhanSuaHoaDon() {
 }
 
 
-function inHoaDon(hoaDon, chiTiet) {
-  const query = new URLSearchParams({
-    diadiem: hoaDon.diadiem,
-    khachhang: hoaDon.khachhang,
-    sohd: hoaDon.sohd,
-    ngay: hoaDon.ngay,
-    gio: hoaDon.gio || new Date().toLocaleTimeString(),
-    khachtra: hoaDon.khachtra,
-    tongkm: hoaDon.tongkm,
-    thanhtoan: hoaDon.thanhtoan,
-    tralai: hoaDon.tralai,
-    tongsl: hoaDon.tongsl,
-    phaithanhtoan: hoaDon.phaithanhtoan,
-    data: encodeURIComponent(JSON.stringify(chiTiet))
-  });
-  const url = "/in-hoadon.html?" + query.toString();
-  window.open(url, "_blank");
+function inHoaDon(hoadon, chitiet) {
+  localStorage.setItem("data_hoadon_in", JSON.stringify({ hoadon, chitiet }));
+  window.open("/in-hoadon.html", "_blank");
 }
+
 
 async function napHoaDonVaoTrang(hoadon) {
   if (!hoadon) return;
