@@ -436,6 +436,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+async function napDanhMucSize() {
+  const { data, error } = await supabase.from("dm_size").select("size").order("size");
+  if (error) {
+    console.error("Lỗi khi tải danh sách size:", error);
+    return;
+  }
+
+  const dl = document.getElementById("list-size");
+  dl.innerHTML = ""; // Xóa cũ nếu có
+
+  data.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.size;
+    dl.appendChild(opt);
+  });
+}
+
+
 function hienThiDanhMucSP(keyword) {
   const container = document.getElementById("danhSachSP");
   container.innerHTML = "";
@@ -474,8 +492,10 @@ function hienThiDanhMucSP(keyword) {
     container.appendChild(div);
   });
 }
-
-
+//--------NAP SIZE---------------------
+document.addEventListener("DOMContentLoaded", async () => {
+  await napDanhMucSize();
+});
 
 
 function timLaiSPTrongPopup() {
