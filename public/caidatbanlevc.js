@@ -795,9 +795,28 @@ async function xacNhanSuaHoaDon() {
 
 
 function inHoaDon(hoadon, chitiet) {
-  localStorage.setItem("data_hoadon_in", JSON.stringify({ hoadon, chitiet }));
-  window.open("/in-hoadon.html", "_blank");
+  const data = { hoadon, chitiet };
+  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+
+  // Tạo iframe ẩn
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.src = "/in-hoadon.html"; // Đường dẫn đến trang in
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error("Không thể gọi print() từ iframe:", e);
+      }
+      // Sau khi in, xóa iframe khỏi DOM
+      document.body.removeChild(iframe);
+    }, 500); // Đợi load nội dung xong rồi mới in
+  };
 }
+
 
 
 async function napHoaDonVaoTrang(hoadon) {
