@@ -643,10 +643,7 @@ async function luuHoaDonQuaAPI() {
         phaithanhtoan: phaithanhtoanVal
       };
 
-      setTimeout(() => {
-  inHoaDon(hoadonIn, chitiet);
-}, 300);
-
+      //inHoaDon(hoadonIn, chitiet);
 
       choPhepSua = false;
 
@@ -858,9 +855,5 @@ async function napHoaDonVaoTrang(hoadon) {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
 }
-
-
-
-
 
 
