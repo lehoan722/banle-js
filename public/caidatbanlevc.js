@@ -364,6 +364,11 @@ window.onload = () => {
     manvInput.addEventListener("change", ganTenNV);
   }
 
+    if (e.key === "F3") {
+      e.preventDefault();
+      xoaDongDangChon();
+    }
+  
   document.addEventListener("keydown", function (e) {
     if (e.key === "F1") {
       e.preventDefault();
@@ -413,11 +418,7 @@ window.onload = () => {
         box.checked = !box.checked;
         console.log("Toggle Size 45:", box.checked);
       }
-    }
-    if (e.key === "F3") {
-      e.preventDefault();
-      xoaDongDangChon();
-    }
+    }  
 
   });
 };
