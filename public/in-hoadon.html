@@ -68,36 +68,44 @@
 
   <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
 
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    document.getElementById("diadiem").textContent = params.get("diadiem") || "";
-    document.getElementById("khachhang").textContent = params.get("khachhang") || "";
-    document.getElementById("sohd").textContent = params.get("sohd") || "";
-    document.getElementById("ngay").textContent = params.get("ngay") || "";
-    document.getElementById("gio").textContent = params.get("gio") || "";
-    document.getElementById("khachtra").textContent = params.get("khachtra") || "0";
-    document.getElementById("tongkm").textContent = params.get("tongkm") || "0";
-    document.getElementById("thanhtoan").textContent = params.get("thanhtoan") || "0";
-    document.getElementById("tralai").textContent = params.get("tralai") || "0";
-    document.getElementById("tongsl").textContent = params.get("tongsl") || "0";
-    
-    document.getElementById("phaithanhtoan").textContent = params.get("phaithanhtoan") || "0";
+ <script>
+  // Lấy dữ liệu từ localStorage
+  const dataIn = JSON.parse(localStorage.getItem("data_hoadon_in") || "{}");
+  const hoadon = dataIn.hoadon || {};
+  const data = dataIn.chitiet || [];
 
-    const data = JSON.parse(decodeURIComponent(params.get("data") || "[]"));
-    const tbody = document.getElementById("noidungchitiet");
-    data.forEach(sp => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${sp.tensp} ${sp.masp}</td>
-        <td>${sp.soluong}</td>
-        <td>${Number(sp.gia).toLocaleString()}</td>
-        <td>${Number(sp.km).toLocaleString()}</td>
-        <td>${Number(sp.thanhtien).toLocaleString()}</td>
-      `;
-      tbody.appendChild(row);
-    });
+  // Hiển thị thông tin hóa đơn
+  document.getElementById("diadiem").textContent = hoadon.diadiem || "";
+  document.getElementById("khachhang").textContent = hoadon.khachhang || "";
+  document.getElementById("sohd").textContent = hoadon.sohd || "";
+  document.getElementById("ngay").textContent = hoadon.ngay || "";
+  document.getElementById("gio").textContent = hoadon.gio || "";
+  document.getElementById("khachtra").textContent = hoadon.khachtra || "0";
+  document.getElementById("tongkm").textContent = hoadon.tongkm || "0";
+  document.getElementById("thanhtoan").textContent = hoadon.thanhtoan || "0";
+  document.getElementById("tralai").textContent = hoadon.tralai || "0";
+  document.getElementById("tongsl").textContent = hoadon.tongsl || "0";
+  document.getElementById("phaithanhtoan").textContent = hoadon.phaithanhtoan || "0";
 
-    window.print();
-  </script>
+  // Hiển thị danh sách sản phẩm
+  const tbody = document.getElementById("noidungchitiet");
+  data.forEach(sp => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${sp.tensp} ${sp.masp}</td>
+      <td>${sp.soluong}</td>
+      <td>${Number(sp.gia).toLocaleString()}</td>
+      <td>${Number(sp.km).toLocaleString()}</td>
+      <td>${Number(sp.thanhtien).toLocaleString()}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  // In rồi xóa khỏi bộ nhớ tạm
+  localStorage.removeItem("data_hoadon_in");
+
+  window.print();
+</script>
+
 </body>
 </html>
