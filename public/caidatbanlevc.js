@@ -630,10 +630,7 @@ async function luuHoaDonQuaAPI() {
 
       inHoaDon(hoadonIn, chitiet);
 
-     // Gọi khi trang load xong
-window.addEventListener("load", () => {
-  capNhatSoHoaDonTuDong();
-});
+      await capNhatSoHoaDonTuDong();
       choPhepSua = false; // reset lại trạng thái
 
       // Làm mới trang
