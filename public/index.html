@@ -151,6 +151,24 @@
 .tab-pane input, .tab-pane select {
   width: 100%;
 }
+    .sidebar {
+  width: 350px;
+  border-left: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* ⚠️ CHUYỂN TỪ space-between */
+}
+
+.tab-content {
+  flex-grow: 0; /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
+}
+
+.product-image {
+  margin-top: 10px;
+  max-height: 180px;
+  object-fit: cover;
+}
+
 </style>
 <script>
     function switchTab(tabName) {
@@ -159,7 +177,10 @@
       document.getElementById(tabName).classList.add('active');
       document.getElementById('btn_' + tabName).classList.add('active');
     }
-    window.onload = () => switchTab('thongtin');
+   document.addEventListener("DOMContentLoaded", () => {
+  switchTab("thongtin");
+});
+
     function dongPopupDM() {
       document.getElementById('popupDanhMuc').style.display = 'none';
     }
