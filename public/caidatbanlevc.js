@@ -645,12 +645,9 @@ async function luuHoaDonQuaAPI() {
 
       inHoaDon(hoadonIn, chitiet);
 
+      choPhepSua = false;
 
-      choPhepSua = false; // reset lại trạng thái
-      await capNhatSoHoaDonTuDong();
-
-
-      // Làm mới trang
+      // === Làm mới giao diện
       const diadiemVal = document.getElementById("diadiem").value;
       const manvVal = document.getElementById("manv").value;
       const tennvVal = document.getElementById("tennv").value;
@@ -663,12 +660,20 @@ async function luuHoaDonQuaAPI() {
 
       bangKetQua = {};
       capNhatBangHTML();
+      capNhatThongTinTong();
 
       document.getElementById("diadiem").value = diadiemVal;
       document.getElementById("manv").value = manvVal;
       document.getElementById("tennv").value = tennvVal;
       document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-      document.getElementById("masp").focus();
+
+      // ✅ Cập nhật số hóa đơn mới
+      await capNhatSoHoaDonTuDong();
+
+      // ✅ Focus lại vào ô mã sản phẩm
+      setTimeout(() => {
+        document.getElementById("masp").focus();
+      }, 100);
     } else {
       alert("❌ Lỗi khi ghi hóa đơn.");
       console.error(errHD || errCT);
