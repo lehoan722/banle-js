@@ -643,7 +643,10 @@ async function luuHoaDonQuaAPI() {
         phaithanhtoan: phaithanhtoanVal
       };
 
-      inHoaDon(hoadonIn, chitiet);
+      setTimeout(() => {
+  inHoaDon(hoadonIn, chitiet);
+}, 300);
+
 
       choPhepSua = false;
 
