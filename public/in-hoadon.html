@@ -104,7 +104,13 @@
   // In rồi xóa khỏi bộ nhớ tạm
   localStorage.removeItem("data_hoadon_in");
 
- 
+ // Cho phép in bằng phím Enter
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    window.print();
+  }
+});
+
 
 </script>
 
