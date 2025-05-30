@@ -207,6 +207,7 @@ function ganTenNV() {
 // Khi trang được tải
 window.onload = () => {
   loadData();
+  capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
   document.getElementById("nhapnhanh").checked = true;
   document.getElementById("chietkhau").addEventListener("blur", capNhatThongTinTong);
@@ -364,12 +365,29 @@ window.onload = () => {
     manvInput.addEventListener("change", ganTenNV);
   }
 
-  document.addEventListener("keydown", async function (e) {
+  document.addEventListener("keydown", function (e) {
   if (e.key === "F1") {
     e.preventDefault();
-    document.getElementById("them").click();
-  }
+    moPopupThemMoi();
 
+    const btn = document.getElementById("btnThemMoiCo");
+    btn.onclick = function () {
+      dongTatCaPopup();
+      document.getElementById("them").click();
+    };
+
+    btn.addEventListener("keydown", function onKey(ev) {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        btn.onclick();
+        btn.removeEventListener("keydown", onKey);
+      }
+    });
+  }
+});
+
+  
+  document.addEventListener("keydown", async function (e) {
   if (e.key === "F2") {
     e.preventDefault();
     const table = document.querySelector("table");
@@ -739,26 +757,6 @@ rows.forEach(row => {
   }
 }
 
-//------------------------------------------------------------------------
-async function xacNhanSuaHoaDon() {
-  const manv = document.getElementById("xacmanv").value.trim();
-  const mk = document.getElementById("xacmatkhau").value.trim();
-
-  const { data, error } = await supabase
-    .from("dmnhanvien")
-    .select("matkhau")
-    .eq("manv", manv)
-    .maybeSingle();
-
-  if (!error && data && data.matkhau === mk) {
-    choPhepSua = true;
-    document.getElementById("popupXacThucSua").style.display = "none";
-    alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
-    luuHoaDonQuaAPI(); // gọi lại
-  } else {
-    alert("❌ Sai mã nhân viên hoặc mật khẩu.");
-  }
-}
 
 // ====== het ======
 
@@ -783,11 +781,6 @@ async function capNhatSoHoaDonTuDong() {
   }
 }
 
-
-// Gọi khi trang load xong
-window.addEventListener("load", () => {
-  capNhatSoHoaDonTuDong();
-});
 
 // Tự động lọc theo input người dùng trong popup
 document.addEventListener("DOMContentLoaded", () => {
@@ -916,3 +909,29 @@ async function napHoaDonVaoTrang(hoadon) {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
 }
+
+
+function moPopupThemMoi() {
+  const popup = document.getElementById("popupThemMoi");
+  popup.style.display = "block";
+
+  setTimeout(() => {
+    const btnCo = document.getElementById("btnThemMoiCo");
+    if (btnCo) btnCo.focus();
+  }, 50); // đợi 1 chút để DOM render xong
+}
+
+function dongTatCaPopup() {
+  document.querySelectorAll(".popup-confirm").forEach(popup => {
+    popup.style.display = "none";
+  });
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    dongTatCaPopup();
+  }
+});
+
+
+
