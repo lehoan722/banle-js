@@ -382,33 +382,35 @@ window.onload = () => {
     await luuHoaDonQuaAPI();
   }
 
-    document.addEventListener("keydown", function(e) {
-  if (e.key === "F4") {
-    e.preventDefault();
-    const khachtra = document.getElementById("khachtra");
-    if (khachtra) {
-      khachtra.focus();
-      khachtra.select();
+  
+   if (e.key === "F4") {
+  e.preventDefault();
+  const khachtra = document.getElementById("khachtra");
+  if (khachtra) {
+    khachtra.focus();
+    khachtra.select();
 
-      // Gán sự kiện Enter chỉ một lần
-      khachtra.addEventListener("keydown", async function onEnter(ev) {
-        if (ev.key === "Enter") {
-          ev.preventDefault();
-          // Tránh gán nhiều lần
-          khachtra.removeEventListener("keydown", onEnter);
+    // Gỡ handler cũ nếu có (tránh nhân bản)
+    khachtra.removeEventListener("keydown", khachtraEnterHandler);
 
-          const rows = document.querySelectorAll("table tbody tr");
-          if (rows.length === 0) {
-            alert("❌ Không có dữ liệu để lưu.");
-            return;
-          }
-          await luuHoaDonQuaAPI();
-        }
-      }, { once: true }); // chỉ chạy 1 lần
-    }
+    // Gán handler mới (chỉ chạy 1 lần)
+    khachtra.addEventListener("keydown", khachtraEnterHandler, { once: true });
   }
-});
-   
+}
+
+// Đặt bên ngoài listener
+async function khachtraEnterHandler(ev) {
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    const rows = document.querySelectorAll("table tbody tr");
+    if (rows.length === 0) {
+      alert("❌ Không có dữ liệu để lưu.");
+      return;
+    }
+    await luuHoaDonQuaAPI();
+  }
+}
+
   
 
   if (e.key === "F3") {
