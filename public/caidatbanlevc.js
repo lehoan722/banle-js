@@ -9,7 +9,6 @@ let maspDangChon = null;
 const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let optionsTamThoi = null; // ✅ di chuyển ra đầu file
 
 
 // =========================
@@ -208,7 +207,6 @@ function ganTenNV() {
 // Khi trang được tải
 window.onload = () => {
   loadData();
-  capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
   document.getElementById("nhapnhanh").checked = true;
   document.getElementById("chietkhau").addEventListener("blur", capNhatThongTinTong);
@@ -366,54 +364,22 @@ window.onload = () => {
     manvInput.addEventListener("change", ganTenNV);
   }
 
-  document.addEventListener("keydown", function (e) {
+  document.addEventListener("keydown", async function (e) {
   if (e.key === "F1") {
     e.preventDefault();
-    moPopupThemMoi();
-
-    const btn = document.getElementById("btnThemMoiCo");
-    btn.onclick = function () {
-      dongTatCaPopup();
-      document.getElementById("them").click();
-    };
-
-    btn.addEventListener("keydown", function onKey(ev) {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        btn.onclick();
-        btn.removeEventListener("keydown", onKey);
-      }
-    });
+    document.getElementById("them").click();
   }
-});
 
-  
- document.addEventListener("keydown", async function (e) {
   if (e.key === "F2") {
     e.preventDefault();
-
     const table = document.querySelector("table");
     const rows = table.querySelectorAll("tbody tr");
     if (rows.length === 0) {
       alert("❌ Không có dữ liệu để lưu hóa đơn.");
       return;
     }
-
-    const inKhongHoi = document.getElementById("inKhongHoi")?.checked;
-    const inSauKhiLuu = document.getElementById("inSauKhiLuu")?.checked;
-
-    let options = { inNgay: false, chiIn: false };
-    if (inKhongHoi) {
-      options.inNgay = true;
-    } else if (inSauKhiLuu) {
-      options.chiIn = true;
-    }
-
-    await luuHoaDonQuaAPI(options);
+    await luuHoaDonQuaAPI();
   }
-});
-
-
 
     document.addEventListener("keydown", function(e) {
   if (e.key === "F4") {
@@ -628,10 +594,7 @@ function xoaDongDangChon() {
 
 let choPhepSua = false; // cờ xác nhận sau khi nhập mật khẩu
 
-async function luuHoaDonQuaAPI(options = {}) {
- 
-  const { inNgay = false, chiIn = false } = options;
-
+async function luuHoaDonQuaAPI() {
   try {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) {
@@ -647,10 +610,10 @@ async function luuHoaDonQuaAPI(options = {}) {
       .maybeSingle();
 
     if (tonTai && !choPhepSua) {
-  optionsTamThoi = options; // ✅ lưu lại
-  document.getElementById("popupXacThucSua").style.display = "block";
-  return;
-}   
+      // Nếu hóa đơn tồn tại nhưng chưa xác thực → mở popup xác thực
+      document.getElementById("popupXacThucSua").style.display = "block";
+      return;
+    }
 
     // Nếu xác thực rồi hoặc là hóa đơn mới → tiếp tục
     if (tonTai && choPhepSua) {
@@ -735,22 +698,7 @@ rows.forEach(row => {
         phaithanhtoan: phaithanhtoanVal
       };
 
-    const data = { hoadon: hoadonIn, chitiet };
-localStorage.setItem("data_hoadon_in", JSON.stringify(data));
-
-if (inNgay) {
-  // ✅ Ưu tiên tuyệt đối: In luôn không hỏi
-  inHoaDon(hoadonIn, chitiet);
-} else if (chiIn) {
-  // ✅ Chỉ in, không xem
-  window.open("in-hoadon.html", "_blank");
-} else {
-  // ✅ Mặc định: xem trước và in
-  window.open("xemhoadon.html", "_blank");
-  setTimeout(() => window.open("in-hoadon.html", "_blank"), 500);
-}
-
-
+      inHoaDon(hoadonIn, chitiet);
 
       choPhepSua = false;
 
@@ -791,6 +739,26 @@ if (inNgay) {
   }
 }
 
+//------------------------------------------------------------------------
+async function xacNhanSuaHoaDon() {
+  const manv = document.getElementById("xacmanv").value.trim();
+  const mk = document.getElementById("xacmatkhau").value.trim();
+
+  const { data, error } = await supabase
+    .from("dmnhanvien")
+    .select("matkhau")
+    .eq("manv", manv)
+    .maybeSingle();
+
+  if (!error && data && data.matkhau === mk) {
+    choPhepSua = true;
+    document.getElementById("popupXacThucSua").style.display = "none";
+    alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
+    luuHoaDonQuaAPI(); // gọi lại
+  } else {
+    alert("❌ Sai mã nhân viên hoặc mật khẩu.");
+  }
+}
 
 // ====== het ======
 
@@ -815,6 +783,11 @@ async function capNhatSoHoaDonTuDong() {
   }
 }
 
+
+// Gọi khi trang load xong
+window.addEventListener("load", () => {
+  capNhatSoHoaDonTuDong();
+});
 
 // Tự động lọc theo input người dùng trong popup
 document.addEventListener("DOMContentLoaded", () => {
@@ -855,8 +828,7 @@ async function xacNhanSuaHoaDon() {
   choPhepSua = true;
   document.getElementById("popupXacThucSua").style.display = "none";
   alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
-  luuHoaDonQuaAPI(optionsTamThoi || {}); // ✅ gọi lại đúng options
-
+  luuHoaDonQuaAPI(); // gọi lại
 }
 
 
@@ -944,30 +916,3 @@ async function napHoaDonVaoTrang(hoadon) {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
 }
-
-
-function moPopupThemMoi() {
-  const popup = document.getElementById("popupThemMoi");
-  popup.style.display = "block";
-
-  setTimeout(() => {
-    const btnCo = document.getElementById("btnThemMoiCo");
-    if (btnCo) btnCo.focus();
-  }, 50); // đợi 1 chút để DOM render xong
-}
-
-function dongTatCaPopup() {
-  document.querySelectorAll(".popup-confirm").forEach(popup => {
-    popup.style.display = "none";
-  });
-}
-
-document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    dongTatCaPopup();
-  }
-});
-
-
-
-
