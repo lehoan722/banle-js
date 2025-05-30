@@ -366,10 +366,16 @@ window.onload = () => {
   }
 
   document.addEventListener("keydown", async function (e) {
-  if (e.key === "F1") {
-    e.preventDefault();
-    document.getElementById("them").click();
-  }
+ if (e.key === "F1") {
+  e.preventDefault();
+  document.getElementById("popupThemMoi").style.display = "block";
+}
+
+    function xacNhanThemMoi() {
+  document.getElementById("popupThemMoi").style.display = "none";
+  document.getElementById("them").click();
+}
+
 
   if (e.key === "F2") {
     e.preventDefault();
