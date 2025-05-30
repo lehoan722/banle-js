@@ -388,16 +388,22 @@ window.onload = () => {
 
   
   document.addEventListener("keydown", async function (e) {
-  if (e.key === "F2") {
-    e.preventDefault();
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-    if (rows.length === 0) {
-      alert("❌ Không có dữ liệu để lưu hóa đơn.");
-      return;
-    }
-    await luuHoaDonQuaAPI();
+    if (e.key === "F2") {
+  e.preventDefault();
+  const table = document.querySelector("table");
+  const rows = table.querySelectorAll("tbody tr");
+  if (rows.length === 0) {
+    alert("❌ Không có dữ liệu để lưu hóa đơn.");
+    return;
   }
+
+  // Xác định hành vi in
+  const inKhongHoi = document.getElementById("inKhongHoi")?.checked;
+  const inSauKhiLuu = document.getElementById("inSauKhiLuu")?.checked;
+
+  // Gọi lưu API và truyền hành vi in
+  luuHoaDonQuaAPI({ inNgay: inKhongHoi, chiIn: inSauKhiLuu });
+} 
 
     document.addEventListener("keydown", function(e) {
   if (e.key === "F4") {
@@ -612,7 +618,9 @@ function xoaDongDangChon() {
 
 let choPhepSua = false; // cờ xác nhận sau khi nhập mật khẩu
 
-async function luuHoaDonQuaAPI() {
+async function luuHoaDonQuaAPI(options = {}) {
+  const { inNgay = false, chiIn = false } = options;
+
   try {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) {
@@ -716,7 +724,22 @@ rows.forEach(row => {
         phaithanhtoan: phaithanhtoanVal
       };
 
-      inHoaDon(hoadonIn, chitiet);
+     if (inNgay) {
+  // In luôn, không hiển thị giao diện nào
+  inHoaDon(hoadonIn, chitiet);
+} else if (chiIn) {
+  // Mở giao diện in trực tiếp
+  const data = { hoadon: hoadonIn, chitiet };
+  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+  window.open("in-hoadon.html", "_blank");
+} else {
+  // Mặc định: vừa xem in vừa in
+  const data = { hoadon: hoadonIn, chitiet };
+  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+  window.open("xemhoadon.html", "_blank");
+  setTimeout(() => window.open("in-hoadon.html", "_blank"), 500);
+}
+
 
       choPhepSua = false;
 
