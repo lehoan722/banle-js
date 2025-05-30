@@ -363,11 +363,7 @@ window.onload = () => {
   if (manvInput) {
     manvInput.addEventListener("change", ganTenNV);
   }
-
-    if (e.key === "F3") {
-      e.preventDefault();
-      xoaDongDangChon();
-    }
+   
   
   document.addEventListener("keydown", function (e) {
     if (e.key === "F1") {
@@ -418,6 +414,10 @@ window.onload = () => {
   }
 });
 
+     if (e.key === "F3") {
+      e.preventDefault();
+      xoaDongDangChon();
+    }
 
 
     if (e.key === "F5") {
