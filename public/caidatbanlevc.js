@@ -364,38 +364,56 @@ window.onload = () => {
     manvInput.addEventListener("change", ganTenNV);
   }
 
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "F1") {
-      e.preventDefault();
-      document.getElementById("them").click();
-    }
-    if (e.key === "F2") {
-      e.preventDefault();
-      luuHoaDonQuaAPI();
-    }
+  document.addEventListener("keydown", async function (e) {
+  if (e.key === "F1") {
+    e.preventDefault();
+    document.getElementById("them").click();
+  }
 
-    if (e.key === "F5") {
-      e.preventDefault();
-      const box = document.getElementById("nhapnhanh");
-      if (box) {
-        box.checked = !box.checked;
-        console.log("Toggle Nhập Nhanh:", box.checked);
-      }
+  if (e.key === "F2") {
+    e.preventDefault();
+    const table = document.querySelector("table");
+    const rows = table.querySelectorAll("tbody tr");
+    if (rows.length === 0) {
+      alert("❌ Không có dữ liệu để lưu hóa đơn.");
+      return;
     }
-    if (e.key === "F6") {
-      e.preventDefault();
-      const box = document.getElementById("size45");
-      if (box) {
-        box.checked = !box.checked;
-        console.log("Toggle Size 45:", box.checked);
-      }
-    }
-    if (e.key === "F3") {
-      e.preventDefault();
-      xoaDongDangChon();
-    }
+    await luuHoaDonQuaAPI();
+  }
 
-  });
+  if (e.key === "F4") {
+    e.preventDefault();
+    const khachtra = document.getElementById("khachtra");
+    if (khachtra) {
+      khachtra.focus();
+      khachtra.select();
+    }
+  }
+
+  if (e.key === "F3") {
+    e.preventDefault();
+    xoaDongDangChon();
+  }
+
+  if (e.key === "F5") {
+    e.preventDefault();
+    const box = document.getElementById("nhapnhanh");
+    if (box) {
+      box.checked = !box.checked;
+      console.log("Toggle Nhập Nhanh:", box.checked);
+    }
+  }
+
+  if (e.key === "F6") {
+    e.preventDefault();
+    const box = document.getElementById("size45");
+    if (box) {
+      box.checked = !box.checked;
+      console.log("Toggle Size 45:", box.checked);
+    }
+  }
+});
+
 };
 
 // ====== Popup MASP Search ======
@@ -878,4 +896,3 @@ async function napHoaDonVaoTrang(hoadon) {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
 }
-
