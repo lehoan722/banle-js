@@ -383,33 +383,38 @@ window.onload = () => {
   }
 
   
-   if (e.key === "F4") {
-  e.preventDefault();
-  const khachtra = document.getElementById("khachtra");
-  if (khachtra) {
-    khachtra.focus();
-    khachtra.select();
+ // Gán toàn bộ trong window.onload hoặc phần setup sự kiện
+let handlerDaGan = false;
 
-    // Gỡ handler cũ nếu có (tránh nhân bản)
-    khachtra.removeEventListener("keydown", khachtraEnterHandler);
+document.addEventListener("keydown", function (e) {
+  if (e.key === "F4") {
+    e.preventDefault();
+    const khachtra = document.getElementById("khachtra");
+    if (khachtra) {
+      khachtra.focus();
+      khachtra.select();
 
-    // Gán handler mới (chỉ chạy 1 lần)
-    khachtra.addEventListener("keydown", khachtraEnterHandler, { once: true });
-  }
-}
-
-// Đặt bên ngoài listener
-async function khachtraEnterHandler(ev) {
-  if (ev.key === "Enter") {
-    ev.preventDefault();
-    const rows = document.querySelectorAll("table tbody tr");
-    if (rows.length === 0) {
-      alert("❌ Không có dữ liệu để lưu.");
-      return;
+      if (!handlerDaGan) {
+        console.log("👀 Gán handler cho Enter trong khachtra");
+        khachtra.addEventListener("keydown", async function khachtraEnterHandler(ev) {
+          if (ev.key === "Enter") {
+            console.log("🚀 Nhận Enter → gọi lưu API");
+            ev.preventDefault();
+            const rows = document.querySelectorAll("table tbody tr");
+            if (rows.length === 0) {
+              alert("❌ Không có dữ liệu để lưu.");
+              return;
+            }
+            await luuHoaDonQuaAPI();
+            handlerDaGan = false;
+          }
+        }, { once: true });
+        handlerDaGan = true;
+      }
     }
-    await luuHoaDonQuaAPI();
   }
-}
+});
+
 
   
 
