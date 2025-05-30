@@ -9,6 +9,7 @@ let maspDangChon = null;
 const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let optionsTamThoi = null; // ✅ di chuyển ra đầu file
 
 
 // =========================
@@ -387,28 +388,31 @@ window.onload = () => {
 });
 
   
-  document.addEventListener("keydown", async function (e) {
+ document.addEventListener("keydown", async function (e) {
   if (e.key === "F2") {
-  e.preventDefault();
-  const table = document.querySelector("table");
-  const rows = table.querySelectorAll("tbody tr");
-  if (rows.length === 0) {
-    alert("❌ Không có dữ liệu để lưu hóa đơn.");
-    return;
+    e.preventDefault();
+
+    const table = document.querySelector("table");
+    const rows = table.querySelectorAll("tbody tr");
+    if (rows.length === 0) {
+      alert("❌ Không có dữ liệu để lưu hóa đơn.");
+      return;
+    }
+
+    const inKhongHoi = document.getElementById("inKhongHoi")?.checked;
+    const inSauKhiLuu = document.getElementById("inSauKhiLuu")?.checked;
+
+    let options = { inNgay: false, chiIn: false };
+    if (inKhongHoi) {
+      options.inNgay = true;
+    } else if (inSauKhiLuu) {
+      options.chiIn = true;
+    }
+
+    await luuHoaDonQuaAPI(options);
   }
+});
 
-  const inKhongHoi = document.getElementById("inKhongHoi")?.checked;
-  const inSauKhiLuu = document.getElementById("inSauKhiLuu")?.checked;
-
-  let options = { inNgay: false, chiIn: false };
-  if (inKhongHoi) {
-    options.inNgay = true;
-  } else if (inSauKhiLuu) {
-    options.chiIn = true;
-  }
-
-  await luuHoaDonQuaAPI(options);
-}
 
 
     document.addEventListener("keydown", function(e) {
@@ -625,7 +629,7 @@ function xoaDongDangChon() {
 let choPhepSua = false; // cờ xác nhận sau khi nhập mật khẩu
 
 async function luuHoaDonQuaAPI(options = {}) {
-  let optionsTamThoi = null;
+ 
   const { inNgay = false, chiIn = false } = options;
 
   try {
