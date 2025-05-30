@@ -799,8 +799,25 @@ rows.forEach(row => {
   });
 
   inputMaSP.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") popup.style.display = "none";
-  });
+  if (e.key === "Escape") {
+    popup.style.display = "none";
+  }
+
+  if (e.key === "Enter") {
+    const itemFirst = popup.querySelector(".popup-masp-item");
+    if (popup.style.display !== "none" && itemFirst) {
+      e.preventDefault(); // Ngăn xử lý enter mặc định
+      const masp = itemFirst.dataset.masp;
+      inputMaSP.value = masp;
+      popup.style.display = "none";
+
+      // Giả lập hành vi Enter để tiếp tục
+      const evt = new KeyboardEvent("keydown", { key: "Enter" });
+      inputMaSP.dispatchEvent(evt);
+    }
+  }
+});
+
 
   document.addEventListener("click", (e) => {
     if (!popup.contains(e.target) && e.target !== inputMaSP) {
