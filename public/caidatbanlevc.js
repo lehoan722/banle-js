@@ -363,62 +363,16 @@ window.onload = () => {
   if (manvInput) {
     manvInput.addEventListener("change", ganTenNV);
   }
-   
-  
+
   document.addEventListener("keydown", function (e) {
     if (e.key === "F1") {
       e.preventDefault();
       document.getElementById("them").click();
     }
-    document.addEventListener("keydown", async function(e) {
-  if (e.key === "F2") {
-    e.preventDefault();
-
-    // ⚠️ Kiểm tra bảng dữ liệu có ít nhất 1 dòng
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-
-    if (rows.length === 0) {
-      alert("❌ Không có dữ liệu để lưu hóa đơn.");
-      return;
-    }
-
-    await luuHoaDonQuaAPI();
-  }
-});
-
- document.addEventListener("keydown", function(e) {
-  if (e.key === "F4") {
-    e.preventDefault();
-    const khachtra = document.getElementById("khachtra");
-    if (khachtra) {
-      khachtra.focus();
-      khachtra.select();
-
-      // Gán sự kiện Enter chỉ một lần
-      khachtra.addEventListener("keydown", async function onEnter(ev) {
-        if (ev.key === "Enter") {
-          ev.preventDefault();
-          // Tránh gán nhiều lần
-          khachtra.removeEventListener("keydown", onEnter);
-
-          const rows = document.querySelectorAll("table tbody tr");
-          if (rows.length === 0) {
-            alert("❌ Không có dữ liệu để lưu.");
-            return;
-          }
-          await luuHoaDonQuaAPI();
-        }
-      }, { once: true }); // chỉ chạy 1 lần
-    }
-  }
-});
-
-     if (e.key === "F3") {
+    if (e.key === "F2") {
       e.preventDefault();
-      xoaDongDangChon();
+      luuHoaDonQuaAPI();
     }
-
 
     if (e.key === "F5") {
       e.preventDefault();
@@ -435,7 +389,11 @@ window.onload = () => {
         box.checked = !box.checked;
         console.log("Toggle Size 45:", box.checked);
       }
-    }  
+    }
+    if (e.key === "F3") {
+      e.preventDefault();
+      xoaDongDangChon();
+    }
 
   });
 };
