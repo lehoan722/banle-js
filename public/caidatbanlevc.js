@@ -724,21 +724,21 @@ rows.forEach(row => {
         phaithanhtoan: phaithanhtoanVal
       };
 
-     if (inNgay) {
-  // In luôn, không hiển thị giao diện nào
+    const data = { hoadon: hoadonIn, chitiet };
+localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+
+if (inNgay) {
+  // ✅ Ưu tiên tuyệt đối: In luôn không hỏi
   inHoaDon(hoadonIn, chitiet);
 } else if (chiIn) {
-  // Mở giao diện in trực tiếp
-  const data = { hoadon: hoadonIn, chitiet };
-  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+  // ✅ Chỉ in, không xem
   window.open("in-hoadon.html", "_blank");
 } else {
-  // Mặc định: vừa xem in vừa in
-  const data = { hoadon: hoadonIn, chitiet };
-  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+  // ✅ Mặc định: xem trước và in
   window.open("xemhoadon.html", "_blank");
   setTimeout(() => window.open("in-hoadon.html", "_blank"), 500);
 }
+
 
 
       choPhepSua = false;
