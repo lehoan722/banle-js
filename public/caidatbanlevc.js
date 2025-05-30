@@ -365,13 +365,29 @@ window.onload = () => {
     manvInput.addEventListener("change", ganTenNV);
   }
 
+  document.addEventListener("keydown", function (e) {
+  if (e.key === "F1") {
+    e.preventDefault();
+    moPopupThemMoi();
+
+    const btn = document.getElementById("btnThemMoiCo");
+    btn.onclick = function () {
+      dongTatCaPopup();
+      document.getElementById("them").click();
+    };
+
+    btn.addEventListener("keydown", function onKey(ev) {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        btn.onclick();
+        btn.removeEventListener("keydown", onKey);
+      }
+    });
+  }
+});
+
+  
   document.addEventListener("keydown", async function (e) {
- if (e.key === "F1") {
-  e.preventDefault();
-  document.getElementById("popupThemMoi").style.display = "block";
-}
-
-
   if (e.key === "F2") {
     e.preventDefault();
     const table = document.querySelector("table");
@@ -894,10 +910,29 @@ async function napHoaDonVaoTrang(hoadon) {
   }
 }
 
-function xacNhanThemMoi() {
-  const popup = document.getElementById("popupThemMoi");
-  if (popup) popup.style.display = "none";
 
-  const btnThem = document.getElementById("them");
-  if (btnThem) btnThem.click();
+function moPopupThemMoi() {
+  const popup = document.getElementById("popupThemMoi");
+  popup.style.display = "block";
+
+  setTimeout(() => {
+    const btnCo = document.getElementById("btnThemMoiCo");
+    if (btnCo) btnCo.focus();
+  }, 50); // đợi 1 chút để DOM render xong
 }
+
+function dongTatCaPopup() {
+  document.querySelectorAll(".popup-confirm").forEach(popup => {
+    popup.style.display = "none";
+  });
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    dongTatCaPopup();
+  }
+});
+
+
+
+
