@@ -169,6 +169,8 @@
   object-fit: cover;
 }
 
+    #popupDanhMuc { display: none !important; }
+
 </style>
 <script>
     function switchTab(tabName) {
@@ -189,7 +191,12 @@
 <body>
 <div class="header">Hóa đơn bán lẻ</div>
 <div class="top-inputs">
-<input id="masp" placeholder="Mã SP"/>
+    <div style="position: relative;">
+  <input id="masp" placeholder="Mã SP" autocomplete="off" />
+  <div id="popup_masp" style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;"></div>
+</div>
+
+
 <input id="soluong" value="1"/>
 <input id="dvt" placeholder="DVT"/>
 <input id="size" placeholder="SIZE"/>
