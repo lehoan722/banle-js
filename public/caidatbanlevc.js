@@ -371,11 +371,6 @@ window.onload = () => {
   document.getElementById("popupThemMoi").style.display = "block";
 }
 
-    function xacNhanThemMoi() {
-  document.getElementById("popupThemMoi").style.display = "none";
-  document.getElementById("them").click();
-}
-
 
   if (e.key === "F2") {
     e.preventDefault();
@@ -897,4 +892,12 @@ async function napHoaDonVaoTrang(hoadon) {
   } else {
     alert("Không tìm thấy chi tiết hóa đơn.");
   }
+}
+
+function xacNhanThemMoi() {
+  const popup = document.getElementById("popupThemMoi");
+  if (popup) popup.style.display = "none";
+
+  const btnThem = document.getElementById("them");
+  if (btnThem) btnThem.click();
 }
