@@ -207,6 +207,7 @@ function ganTenNV() {
 // Khi trang được tải
 window.onload = () => {
   loadData();
+  capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
   document.getElementById("nhapnhanh").checked = true;
   document.getElementById("chietkhau").addEventListener("blur", capNhatThongTinTong);
@@ -783,11 +784,6 @@ async function capNhatSoHoaDonTuDong() {
   }
 }
 
-
-// Gọi khi trang load xong
-window.addEventListener("load", () => {
-  capNhatSoHoaDonTuDong();
-});
 
 // Tự động lọc theo input người dùng trong popup
 document.addEventListener("DOMContentLoaded", () => {
