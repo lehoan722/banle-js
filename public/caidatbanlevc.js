@@ -386,6 +386,7 @@ window.onload = () => {
  // Gán toàn bộ trong window.onload hoặc phần setup sự kiện
 let handlerDaGan = false;
 
+
 document.addEventListener("keydown", function (e) {
   if (e.key === "F4") {
     e.preventDefault();
@@ -394,26 +395,27 @@ document.addEventListener("keydown", function (e) {
       khachtra.focus();
       khachtra.select();
 
-      if (!handlerDaGan) {
-        console.log("👀 Gán handler cho Enter trong khachtra");
-        khachtra.addEventListener("keydown", async function khachtraEnterHandler(ev) {
-          if (ev.key === "Enter") {
-            console.log("🚀 Nhận Enter → gọi lưu API");
-            ev.preventDefault();
-            const rows = document.querySelectorAll("table tbody tr");
-            if (rows.length === 0) {
-              alert("❌ Không có dữ liệu để lưu.");
-              return;
-            }
-            await luuHoaDonQuaAPI();
-            handlerDaGan = false;
-          }
-        }, { once: true });
-        handlerDaGan = true;
-      }
+      // Gỡ mọi listener Enter cũ để không bị đè
+      khachtra.removeEventListener("keydown", khachtraEnterHandler);
+
+      // Gán lại listener Enter cho lần này
+      khachtra.addEventListener("keydown", khachtraEnterHandler, { once: true });
     }
   }
 });
+
+// Đặt ngoài để có thể gọi đúng khi remove
+async function khachtraEnterHandler(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const rows = document.querySelectorAll("table tbody tr");
+    if (rows.length === 0) {
+      alert("❌ Không có dữ liệu để lưu.");
+      return;
+    }
+    await luuHoaDonQuaAPI();
+  }
+}
 
 
   
