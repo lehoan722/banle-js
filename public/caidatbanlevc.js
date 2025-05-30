@@ -625,6 +625,7 @@ function xoaDongDangChon() {
 let choPhepSua = false; // cờ xác nhận sau khi nhập mật khẩu
 
 async function luuHoaDonQuaAPI(options = {}) {
+  let optionsTamThoi = null;
   const { inNgay = false, chiIn = false } = options;
 
   try {
@@ -642,10 +643,10 @@ async function luuHoaDonQuaAPI(options = {}) {
       .maybeSingle();
 
     if (tonTai && !choPhepSua) {
-      // Nếu hóa đơn tồn tại nhưng chưa xác thực → mở popup xác thực
-      document.getElementById("popupXacThucSua").style.display = "block";
-      return;
-    }
+  optionsTamThoi = options; // ✅ lưu lại
+  document.getElementById("popupXacThucSua").style.display = "block";
+  return;
+}   
 
     // Nếu xác thực rồi hoặc là hóa đơn mới → tiếp tục
     if (tonTai && choPhepSua) {
@@ -850,7 +851,8 @@ async function xacNhanSuaHoaDon() {
   choPhepSua = true;
   document.getElementById("popupXacThucSua").style.display = "none";
   alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
-  luuHoaDonQuaAPI(); // gọi lại
+  luuHoaDonQuaAPI(optionsTamThoi || {}); // ✅ gọi lại đúng options
+
 }
 
 
