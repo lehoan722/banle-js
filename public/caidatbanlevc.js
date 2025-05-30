@@ -387,37 +387,14 @@ window.onload = () => {
 let handlerDaGan = false;
 
 
-document.addEventListener("keydown", function (e) {
-  if (e.key === "F4") {
-    e.preventDefault();
-    const khachtra = document.getElementById("khachtra");
-    if (khachtra) {
-      khachtra.focus();
-      khachtra.select();
-
-      // Gỡ mọi listener Enter cũ để không bị đè
-      khachtra.removeEventListener("keydown", khachtraEnterHandler);
-
-      // Gán lại listener Enter cho lần này
-      khachtra.addEventListener("keydown", khachtraEnterHandler, { once: true });
+nếu  ( e . key  ===  "F4" )  {
+    e . preventDefault ( ) ;
+    const  khachtra  =  document .getElementById ( "khachtra " ) ;
+    nếu  ( khachtra )  {
+      khachtra . tập trung ( ) ;
+      khachtra .select ( ) ;​
     }
   }
-});
-
-// Đặt ngoài để có thể gọi đúng khi remove
-async function khachtraEnterHandler(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    const rows = document.querySelectorAll("table tbody tr");
-    if (rows.length === 0) {
-      alert("❌ Không có dữ liệu để lưu.");
-      return;
-    }
-    await luuHoaDonQuaAPI();
-  }
-}
-
-
   
 
   if (e.key === "F3") {
