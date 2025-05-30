@@ -388,7 +388,7 @@ window.onload = () => {
 
   
   document.addEventListener("keydown", async function (e) {
-    if (e.key === "F2") {
+  if (e.key === "F2") {
   e.preventDefault();
   const table = document.querySelector("table");
   const rows = table.querySelectorAll("tbody tr");
@@ -397,13 +397,19 @@ window.onload = () => {
     return;
   }
 
-  // Xác định hành vi in
   const inKhongHoi = document.getElementById("inKhongHoi")?.checked;
   const inSauKhiLuu = document.getElementById("inSauKhiLuu")?.checked;
 
-  // Gọi lưu API và truyền hành vi in
-  luuHoaDonQuaAPI({ inNgay: inKhongHoi, chiIn: inSauKhiLuu });
-} 
+  let options = { inNgay: false, chiIn: false };
+  if (inKhongHoi) {
+    options.inNgay = true;
+  } else if (inSauKhiLuu) {
+    options.chiIn = true;
+  }
+
+  await luuHoaDonQuaAPI(options);
+}
+
 
     document.addEventListener("keydown", function(e) {
   if (e.key === "F4") {
