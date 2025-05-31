@@ -86,7 +86,9 @@ export function khoiTaoTimMaSP(sanPhamData) {
   // 👉 Gọi trực tiếp hàm xử lý khi đã chọn mã
   xuLyKhiChonMaSanPham(masp);
 }
- function xuLyKhiChonMaSanPham(masp) {
+ 
+}
+function xuLyKhiChonMaSanPham(masp) {
   const sp = sanPhamData[masp];
   if (sp) {
     // ✅ điền thông tin sản phẩm ra các ô cần thiết ở form
@@ -97,8 +99,6 @@ export function khoiTaoTimMaSP(sanPhamData) {
     // ❌ mã không tồn tại → mở popup thêm mới
     window.moPopupNhapHangHoa("them", { masp });
   }
-}
-
 }
 
 export function hienThiFormMaMoi() {
