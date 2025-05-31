@@ -1,14 +1,25 @@
-import { supabase } from './supabaseClient.js'; // tách Supabase config ra file riêng nếu cần
+import { supabase } from './supabaseClient.js';
 
 const truongHangHoa = [
   { id: "masp", label: "Mã sản phẩm", batbuoc: true },
   { id: "tensp", label: "Tên sản phẩm", batbuoc: true },
-  { id: "gia", label: "Giá bán", batbuoc: true },
-  { id: "km", label: "Khuyến mãi" },
-  { id: "dvt", label: "Đơn vị tính" },
-  { id: "nhom", label: "Nhóm hàng" },
-  { id: "vitriCS1", label: "Vị trí CS1" },
-  { id: "vitriCS2", label: "Vị trí CS2" }
+  { id: "gianhap", label: "Giá nhập" },
+  { id: "giale", label: "Giá lẻ" },
+  { id: "giasi", label: "Giá sỉ" },
+  { id: "mangan", label: "Mã ngắn" },
+  { id: "nhomhang", label: "Nhóm hàng" },
+  { id: "tenhang", label: "Tên hàng (in hóa đơn)" },
+  { id: "nhacc", label: "Nhà cung cấp" },
+  { id: "chungloai", label: "Chủng loại" },
+  { id: "vitrikho1", label: "Vị trí kho 1" },
+  { id: "vitrikho2", label: "Vị trí kho 2" },
+  { id: "vitrikho3", label: "Vị trí kho 3" },
+  { id: "dakiem", label: "Đã kiểm", loai: "boolean" },
+  { id: "loaisp", label: "Loại sản phẩm" },
+  { id: "mausac", label: "Màu sắc" },
+  { id: "khuyenmai", label: "Khuyến mãi" },
+  { id: "quanlykhicoc", label: "Quản lý khi cọc", loai: "boolean" }
+  // không hiển thị nhapcuoi, nhapdau sẽ tự động gán
 ];
 
 export function khoiTaoTimMaSP(sanPhamData) {
@@ -80,7 +91,11 @@ export function hienThiFormMaMoi() {
   truongHangHoa.forEach(truong => {
     if (truong.batbuoc || config.includes(truong.id)) {
       const div = document.createElement("div");
-      div.innerHTML = `<input id="moi_${truong.id}" placeholder="${truong.label}" style="width:100%; padding:6px; margin-bottom:6px;" />`;
+      if (truong.loai === "boolean") {
+        div.innerHTML = `<label><input type="checkbox" id="moi_${truong.id}"/> ${truong.label}</label>`;
+      } else {
+        div.innerHTML = `<input id="moi_${truong.id}" placeholder="${truong.label}" style="width:100%; padding:6px; margin-bottom:6px;" />`;
+      }
       container.appendChild(div);
     }
   });
@@ -90,21 +105,31 @@ export function hienThiFormMaMoi() {
 
 export async function luuMaSanPhamMoi(sanPhamData) {
   const data = {};
+
   truongHangHoa.forEach(truong => {
     const el = document.getElementById(`moi_${truong.id}`);
-    if (el) data[truong.id] = el.value.trim();
+    if (el) {
+      if (truong.loai === "boolean") {
+        data[truong.id] = el.checked;
+      } else {
+        const val = el.value.trim();
+        data[truong.id] = val === "" ? null : val;
+      }
+    }
   });
 
-  if (!data.masp || !data.tensp || !data.gia) {
-    alert("❗ Vui lòng nhập đầy đủ Mã SP, Tên SP và Giá.");
+  // Validate
+  if (!data.masp || !data.tensp || (!data.giale && !data.giasi && !data.gianhap)) {
+    alert("❗ Cần nhập Mã SP, Tên SP và ít nhất một giá bán.");
     return;
   }
 
-  data.ngaynhapdau = new Date().toISOString().slice(0, 10);
+  data.nhapdau = new Date().toISOString().slice(0, 10); // tự gán ngày nhập đầu
 
   const { error } = await supabase.from("dmhanghoa").insert([data]);
   if (error) {
     alert("❌ Lỗi khi lưu mã mới: " + error.message);
+    console.error(error);
   } else {
     alert("✅ Đã thêm mã sản phẩm.");
     document.getElementById("popupNhapMaMoi").style.display = "none";
