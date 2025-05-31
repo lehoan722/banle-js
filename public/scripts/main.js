@@ -48,15 +48,3 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 
-import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
-
-window.timLaiTrongBangDM = timLaiTrongBangDM;
-window.chonDongDeSua = chonDongDeSua;
-
-
-
-import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
-window.moPopupNhapHangHoa = moPopupNhapHangHoa;
-window.luuHangHoa = luuHangHoa;
-window.themTiepSanPham = themTiepSanPham;
-
