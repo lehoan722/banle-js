@@ -1,6 +1,6 @@
 // shortcut.js
 import { luuHoaDonQuaAPI } from './luuhoadon.js';
-import { resetBangKetQua } from './hoadon.js';
+import { resetBangKetQua, xoaDongDangChon } from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 export function khoiTaoShortcut() {
@@ -18,9 +18,8 @@ export function khoiTaoShortcut() {
 
     if (e.key === "F2") {
       e.preventDefault();
-      const table = document.querySelector("table");
-      const rows = table.querySelectorAll("tbody tr");
-      if (rows.length === 0) {
+      const bang = getBangKetQua();
+      if (Object.keys(bang).length === 0) {
         alert("❌ Không có dữ liệu để lưu hóa đơn.");
         return;
       }
@@ -29,7 +28,7 @@ export function khoiTaoShortcut() {
 
     if (e.key === "F3") {
       e.preventDefault();
-      document.getElementById("xoa")?.click();
+      xoaDongDangChon();
     }
 
     if (e.key === "F4") {
@@ -41,8 +40,8 @@ export function khoiTaoShortcut() {
         if (ev.key === "Enter") {
           ev.preventDefault();
           khachtra.removeEventListener("keydown", onEnter);
-          const rows = document.querySelectorAll("table tbody tr");
-          if (rows.length === 0) {
+          const bang = getBangKetQua();
+          if (Object.keys(bang).length === 0) {
             alert("❌ Không có dữ liệu để lưu.");
             return;
           }
