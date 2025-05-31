@@ -26,4 +26,12 @@ import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './bangha
 
 window.timLaiTrongBangDM = timLaiTrongBangDM;
 window.chonDongDeSua = chonDongDeSua;
-window.moPopupThemMoiHangHoa = () => window.moPopupNhapHangHoa("them"); // sẽ viết sau
+window.moPopupThemMoiHangHoa = () => {
+  alert("🚧 Tính năng Thêm mới chưa được triển khai.");
+  // sau này sẽ gọi: moPopupNhapHangHoa({ mode: 'them' });
+};
+
+window.moPopupSuaHangHoa = (sp) => {
+  alert("🚧 Sửa mã: " + sp.masp + "\nTính năng đang phát triển.");
+};
+
