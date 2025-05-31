@@ -8,6 +8,7 @@ import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.
 import { luuHoaDonQuaAPI, xacNhanSuaHoaDon } from './luuhoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { khoiTaoShortcut } from './shortcut.js';
+import { ganSuKienDuyetHoaDon } from './duyetHoaDon.js';
 
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -60,6 +61,8 @@ document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
     manvInput.addEventListener("change", ganTenNV);
   }
   khoiTaoShortcut(); //
+  ganSuKienDuyetHoaDon();
+
 });
 
 
