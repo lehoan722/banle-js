@@ -41,7 +41,8 @@ function taoFormHangHoa(data = {}, mode = "them") {
 
   truongHangHoa.forEach(truong => {
     // ⛔ Nếu trường bị tắt hiển thị thì bỏ qua
-  if (cauHinhHienThi[truong.id] === false) return;
+  if (Object.keys(cauHinhHienThi).length > 0 && cauHinhHienThi[truong.id] === false) return;
+
     const label = truong.label;
     const value = data[truong.id] ?? "";
     const isReadOnly = (mode === "sua" && truong.id === "masp") ? "readonly style='background:#eee'" : "";
