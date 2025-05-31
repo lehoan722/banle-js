@@ -65,7 +65,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
     if (popup.style.display !== "none" && itemFirst) {
       chonMaSanPham(itemFirst.dataset.masp);
     } else if (window.sanPhamData[keyword]) {
-      chonMaSanPham(keyword); // ✅ mã đã có → chọn
+     xuLyKhiChonMaSanPham(keyword);
     } else {
       moBangDanhMucHangHoa(inputMaSP.value.trim()); // ❌ mã không có → nhập mới
     }
@@ -79,12 +79,26 @@ export function khoiTaoTimMaSP(sanPhamData) {
     }
   });
 
-  function chonMaSanPham(masp) {
-    inputMaSP.value = masp;
-    popup.style.display = "none";
-    const evt = new KeyboardEvent("keydown", { key: "Enter" });
-    inputMaSP.dispatchEvent(evt);
+ function chonMaSanPham(masp) {
+  inputMaSP.value = masp;
+  popup.style.display = "none";
+
+  // 👉 Gọi trực tiếp hàm xử lý khi đã chọn mã
+  xuLyKhiChonMaSanPham(masp);
+}
+ function xuLyKhiChonMaSanPham(masp) {
+  const sp = sanPhamData[masp];
+  if (sp) {
+    // ✅ điền thông tin sản phẩm ra các ô cần thiết ở form
+    console.log("Đã chọn sản phẩm:", sp);
+    // Ví dụ: document.getElementById("gia").value = sp.giale;
+    // Bạn có thể gắn thêm logic xử lý sau khi chọn mã ở đây.
+  } else {
+    // ❌ mã không tồn tại → mở popup thêm mới
+    window.moPopupNhapHangHoa("them", { masp });
   }
+}
+
 }
 
 export function hienThiFormMaMoi() {
