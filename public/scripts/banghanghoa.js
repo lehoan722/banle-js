@@ -52,12 +52,19 @@ export function timLaiTrongBangDM() {
 }
 
 export function chonDongDeSua() {
-  const selected = hot.getSelected();
+  const selected = hot.getSelectedLast(); // dùng getSelectedLast() thay vì getSelected()
   if (!selected || selected.length === 0) {
     alert("Vui lòng chọn một dòng để sửa.");
     return;
   }
-  const rowIndex = selected[0][0];
+
+  const rowIndex = selected[0]; // [row, col] → lấy row
   const sp = danhSachHienTai[rowIndex];
-  window.moPopupSuaHangHoa(sp); // gọi popup sửa
+  if (!sp || !sp.masp) {
+    alert("Không thể xác định dòng dữ liệu.");
+    return;
+  }
+
+  window.moPopupNhapHangHoa("sua", sp); // gọi popup sửa đúng cách
 }
+
