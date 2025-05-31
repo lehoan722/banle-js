@@ -35,3 +35,8 @@ window.moPopupSuaHangHoa = (sp) => {
   alert("🚧 Sửa mã: " + sp.masp + "\nTính năng đang phát triển.");
 };
 
+import { moPopupNhapHangHoa, luuHangHoa } from './popupHanghoa.js';
+
+window.moPopupNhapHangHoa = moPopupNhapHangHoa;
+window.luuHangHoa = luuHangHoa;
+
