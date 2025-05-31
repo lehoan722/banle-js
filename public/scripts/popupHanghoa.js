@@ -8,17 +8,17 @@ const truongHangHoa = [
   //{ id: "giasi", label: "Giá sỉ" },
   { id: "mangan", label: "Mã ngắn" },
   { id: "nhomhang", label: "Nhóm hàng" },
-  { id: "tenhang", label: "Tên hàng (in hóa đơn)" },
+  //{ id: "tenhang", label: "Tên hàng (in hóa đơn)" },
   { id: "nhacc", label: "Nhà cung cấp" },
   { id: "chungloai", label: "Chủng loại" },
-  { id: "vitrikho1", label: "Vị trí kho 1" },
-  { id: "vitrikho2", label: "Vị trí kho 2" },
-  { id: "vitrikho3", label: "Vị trí kho 3" },
-  { id: "dakiem", label: "Đã kiểm", loai: "boolean" },
+  //{ id: "vitrikho1", label: "Vị trí kho 1" },
+  //{ id: "vitrikho2", label: "Vị trí kho 2" },
+ // { id: "vitrikho3", label: "Vị trí kho 3" },
+ // { id: "dakiem", label: "Đã kiểm", loai: "boolean" },
   { id: "loaisp", label: "Loại sản phẩm" },
-  { id: "mausac", label: "Màu sắc" },
+ // { id: "mausac", label: "Màu sắc" },
   { id: "khuyenmai", label: "Khuyến mãi" },
-  { id: "quanlykhicoc", label: "Quản lý khi cọc", loai: "boolean" }
+  { id: "quanlykichco", label: "Quản lý kich co", loai: "boolean" }
 ];
 
 let cheDoNhap = "them";
