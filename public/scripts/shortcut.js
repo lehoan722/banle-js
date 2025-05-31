@@ -1,8 +1,10 @@
 // shortcut.js
 import { luuHoaDonQuaAPI } from './luuhoadon.js';
-import { getBangKetQua, xoaDongDangChon } from './hoadon.js';
-
-import { resetBangKetQua, xoaDongDangChon } from './hoadon.js';
+import {
+  resetBangKetQua,
+  getBangKetQua,
+  xoaDongDangChon
+} from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 export function khoiTaoShortcut() {
