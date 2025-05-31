@@ -32,7 +32,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.moPopupNhapHangHoa = moPopupNhapHangHoa;
   window.luuHangHoa = luuHangHoa;
   window.themTiepSanPham = themTiepSanPham;
-  document.getElementById("xacNhanSuaHoaDon").onclick = xacNhanSuaHoaDon;
+ 
+const btnXacNhanSua = document.getElementById("xacNhanSuaHoaDon");
+if (btnXacNhanSua) {
+  btnXacNhanSua.addEventListener("click", xacNhanSuaHoaDon);
+}
 
 
   // ✅ Gán Enter chuyển focus cho các input chính
