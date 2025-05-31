@@ -84,7 +84,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
 }
 
 export function hienThiFormMaMoi() {
-  const config = JSON.parse(localStorage.getItem("cauhinh_hienthi_truong") || "[]");
+  const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "[]");
   const container = document.getElementById("formFields");
   container.innerHTML = "";
 
@@ -143,7 +143,7 @@ export async function luuMaSanPhamMoi(sanPhamData) {
 export function moCauHinhTruong() {
   const ds = document.getElementById("dsTruongCauHinh");
   ds.innerHTML = "";
-  const config = JSON.parse(localStorage.getItem("cauhinh_hienthi_truong") || "[]");
+  const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "[]");
 
   truongHangHoa.forEach(truong => {
     if (truong.batbuoc) return;
@@ -157,7 +157,7 @@ export function moCauHinhTruong() {
 
 export function luuCauHinhTruong() {
   const checked = [...document.querySelectorAll("#dsTruongCauHinh input:checked")].map(el => el.value);
-  localStorage.setItem("cauhinh_hienthi_truong", JSON.stringify(checked));
+  localStorage.setItem("cauhinh_hh", JSON.stringify(checked));
   alert("✅ Đã lưu cấu hình hiển thị.");
   document.getElementById("popupCauHinh").style.display = "none";
 }
