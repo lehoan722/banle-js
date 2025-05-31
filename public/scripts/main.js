@@ -6,6 +6,7 @@ import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { luuHoaDonQuaAPI, xacNhanSuaHoaDon } from './luuhoadon.js';
+import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -41,6 +42,7 @@ if (btnXacNhanSua) {
   btnXacNhanSua.addEventListener("click", xacNhanSuaHoaDon);
 }
 
+await capNhatSoHoaDonTuDong();
 
   // ✅ Gán Enter chuyển focus cho các input chính
   ["masp", "soluong", "size"].forEach(id => {
