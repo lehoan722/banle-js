@@ -42,8 +42,8 @@ export function khoiTaoTimMaSP(sanPhamData) {
     }
 
     popup.innerHTML = danhSach.map(sp => `
-      <div class="popup-masp-item" data-masp="\${sp.masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
-        \${sp.masp} - \${sp.tensp}
+      <div class="popup-masp-item" data-masp="${sp.masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
+        ${sp.masp} - ${sp.tensp}
       </div>
     `).join("");
     popup.style.display = "block";
@@ -89,7 +89,7 @@ function xuLyKhiChonMaSanPham(masp) {
   const sp = sanPhamData[masp];
   if (sp) {
     console.log("Đã chọn sản phẩm:", sp);
-    // TODO: điền vào form tùy giao diện bạn cần xử lý
+    // TODO: xử lý khi đã chọn sản phẩm
   } else {
     window.moPopupNhapHangHoa("them", { masp });
   }
@@ -104,9 +104,9 @@ export function hienThiFormMaMoi() {
     if (truong.batbuoc || config.includes(truong.id)) {
       const div = document.createElement("div");
       if (truong.loai === "boolean") {
-        div.innerHTML = \`<label><input type="checkbox" id="moi_\${truong.id}"/> \${truong.label}</label>\`;
+        div.innerHTML = `<label><input type="checkbox" id="moi_${truong.id}"/> ${truong.label}</label>`;
       } else {
-        div.innerHTML = \`<input id="moi_\${truong.id}" placeholder="\${truong.label}" style="width:100%; padding:6px; margin-bottom:6px;" />\`;
+        div.innerHTML = `<input id="moi_${truong.id}" placeholder="${truong.label}" style="width:100%; padding:6px; margin-bottom:6px;" />`;
       }
       container.appendChild(div);
     }
@@ -119,7 +119,7 @@ export async function luuMaSanPhamMoi(sanPhamData) {
   const data = {};
 
   truongHangHoa.forEach(truong => {
-    const el = document.getElementById(\`moi_\${truong.id}\`);
+    const el = document.getElementById(`moi_${truong.id}`);
     if (el) {
       if (truong.loai === "boolean") {
         data[truong.id] = el.checked;
@@ -158,7 +158,7 @@ export function moCauHinhTruong() {
   truongHangHoa.forEach(truong => {
     if (truong.batbuoc) return;
     const div = document.createElement("div");
-    div.innerHTML = \`<label><input type="checkbox" value="\${truong.id}" \${config.includes(truong.id) ? "checked" : ""}/> \${truong.label}</label>\`;
+    div.innerHTML = `<label><input type="checkbox" value="${truong.id}" ${config.includes(truong.id) ? "checked" : ""}/> ${truong.label}</label>`;
     ds.appendChild(div);
   });
 
