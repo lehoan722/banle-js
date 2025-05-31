@@ -146,3 +146,9 @@ export function themTiepSanPham() {
 
   moPopupNhapHangHoa("them", truongGiulai);
 }
+
+window.moPopupCauHinh = () => {
+  document.getElementById("popupCauHinh").style.display = "block";
+};
+
+
