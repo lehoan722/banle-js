@@ -5,7 +5,7 @@ const truongHangHoa = [
   { id: "tensp", label: "Tên sản phẩm", batbuoc: true },
   { id: "gianhap", label: "Giá nhập" },
   { id: "giale", label: "Giá lẻ" },
-  { id: "giasi", label: "Giá sỉ" },
+  //{ id: "giasi", label: "Giá sỉ" },
   { id: "mangan", label: "Mã ngắn" },
   { id: "nhomhang", label: "Nhóm hàng" },
   { id: "tenhang", label: "Tên hàng (in hóa đơn)" },
@@ -169,7 +169,7 @@ export async function luuHangHoa() {
     alert("✅ Đã cập nhật sản phẩm.");
   }
 
-  document.getElementById("popupNhapHangHoa").style.display = "none";
+  
 }
 
 export function themTiepSanPham() {
