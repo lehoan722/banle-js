@@ -5,6 +5,7 @@ import Handsontable from 'https://cdn.jsdelivr.net/npm/handsontable@13.0.0/+esm'
 let hot;
 let container;
 let danhSachHienTai = [];
+let rowDangChon = null;
 
 export async function moBangDanhMucHangHoa(keyword = "") {
   document.getElementById("popupBangDanhMuc").style.display = "block";
@@ -28,21 +29,25 @@ export async function moBangDanhMucHangHoa(keyword = "") {
     hot.loadData(data);
   } else {
     hot = new Handsontable(container, {
-      data: data,
-      columns: [
-        { data: 'masp', title: 'Mã SP' },
-        { data: 'tensp', title: 'Tên SP' },
-        { data: 'giale', title: 'Giá lẻ' },
-        { data: 'gianhap', title: 'Giá nhập' },
-        { data: 'nhomhang', title: 'Nhóm hàng' },
-        { data: 'nhacc', title: 'Nhà cung cấp' },
-        { data: 'mausac', title: 'Màu' }
-      ],
-      colHeaders: true,
-      rowHeaders: true,
-      height: 400,
-      licenseKey: 'non-commercial-and-evaluation'
-    });
+  data: data,
+  columns: [
+    { data: 'masp', title: 'Mã SP' },
+    { data: 'tensp', title: 'Tên SP' },
+    { data: 'giale', title: 'Giá lẻ' },
+    { data: 'gianhap', title: 'Giá nhập' },
+    { data: 'nhomhang', title: 'Nhóm hàng' },
+    { data: 'nhacc', title: 'Nhà cung cấp' },
+    { data: 'mausac', title: 'Màu' }
+  ],
+  colHeaders: true,
+  rowHeaders: true,
+  height: 400,
+  licenseKey: 'non-commercial-and-evaluation',
+  afterSelection: (row, col) => {
+    rowDangChon = row;
+  }
+});
+
   }
 }
 
@@ -52,19 +57,12 @@ export function timLaiTrongBangDM() {
 }
 
 export function chonDongDeSua() {
-  const selected = hot.getSelectedLast(); // dùng getSelectedLast() thay vì getSelected()
-  if (!selected || selected.length === 0) {
+  if (rowDangChon === null || !danhSachHienTai[rowDangChon]) {
     alert("Vui lòng chọn một dòng để sửa.");
     return;
   }
-
-  const rowIndex = selected[0]; // [row, col] → lấy row
-  const sp = danhSachHienTai[rowIndex];
-  if (!sp || !sp.masp) {
-    alert("Không thể xác định dòng dữ liệu.");
-    return;
-  }
-
-  window.moPopupNhapHangHoa("sua", sp); // gọi popup sửa đúng cách
+  const sp = danhSachHienTai[rowDangChon];
+  window.moPopupNhapHangHoa("sua", sp);
 }
+
 
