@@ -338,6 +338,18 @@
   <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
 </div>
 
+    <!-- Popup nhập/sửa hàng hóa -->
+<div id="popupNhapHangHoa" class="popup-confirm" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+  background:white; border:1px solid #888; padding:20px; z-index:10003; width:500px; max-height:90%; overflow:auto;">
+  <h3 id="tieudePopupHangHoa">Thông tin sản phẩm</h3>
+  <div id="fieldsNhapHangHoa"></div>
+  <div style="margin-top:10px; font-size:13px; color:#444;" id="footerHangHoa"></div>
+  <div style="margin-top:10px; text-align:right;">
+    <button onclick="luuHangHoa()">💾 Lưu</button>
+    <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">Đóng</button>
+  </div>
+</div>
+
     
 </body>
 </html>
