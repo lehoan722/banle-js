@@ -43,6 +43,7 @@ if (btnXacNhanSua) {
 }
 
 await capNhatSoHoaDonTuDong();
+document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
 
   // ✅ Gán Enter chuyển focus cho các input chính
   ["masp", "soluong", "size"].forEach(id => {
@@ -57,6 +58,7 @@ await capNhatSoHoaDonTuDong();
   if (manvInput) {
     manvInput.addEventListener("change", ganTenNV);
   }
+  
 });
 
 
