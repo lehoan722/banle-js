@@ -55,19 +55,23 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
-  inputMaSP.addEventListener("keydown", (e) => {   
-    if (e.key === "Escape") popup.style.display = "none";
-    if (e.key === "Enter") {
-      const itemFirst = popup.querySelector(".popup-masp-item");
-      if (popup.style.display !== "none" && itemFirst) {
-        e.preventDefault();
-        chonMaSanPham(itemFirst.dataset.masp);
-      } else {
-        e.preventDefault();
-       moBangDanhMucHangHoa(inputMaSP.value.trim()); // ✅ mở bảng danh mục và truyền keyword
-      }
+ inputMaSP.addEventListener("keydown", (e) => {   
+  if (e.key === "Escape") popup.style.display = "none";
+  if (e.key === "Enter") {
+    const itemFirst = popup.querySelector(".popup-masp-item");
+    const keyword = inputMaSP.value.trim().toUpperCase();
+
+    e.preventDefault();
+    if (popup.style.display !== "none" && itemFirst) {
+      chonMaSanPham(itemFirst.dataset.masp);
+    } else if (window.sanPhamData[keyword]) {
+      chonMaSanPham(keyword); // ✅ mã đã có → chọn
+    } else {
+      window.moPopupNhapHangHoa("them", { masp: keyword }); // ❌ mã không có → nhập mới
     }
-  });
+  }
+});
+
 
   document.addEventListener("click", (e) => {
     if (!popup.contains(e.target) && e.target !== inputMaSP) {
