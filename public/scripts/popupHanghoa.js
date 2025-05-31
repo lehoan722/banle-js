@@ -77,16 +77,16 @@ function taoFormHangHoa(data = {}, mode = "them") {
 
     container.appendChild(row);
   });
-
-  const footer = document.getElementById("footerHangHoa");
+const footer = document.getElementById("footerHangHoa");
 
 if (mode === "sua") {
   const ngayNhap = data.nhapdau ? `📅 Ngày nhập: ${data.nhapdau}` : "";
   const ngaySua = `🕒 Ngày sửa: ${new Date().toLocaleString()}`;
-  footer.innerHTML = `${ngayNhap}<br>${ngaySua}`;
+  footer.innerHTML = `${ngayNhap} / ${ngaySua}`;
 } else {
   footer.innerHTML = data.nhapdau ? `📅 Ngày nhập: ${data.nhapdau}` : "";
 }
+  
 }
 
 export function moPopupCauHinh() {
