@@ -350,6 +350,22 @@
   </div>
 </div>
 
+    <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
+<div id="popupNhapHangHoa" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+  <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
+  
+  <div id="fieldsNhapHangHoa"></div>
+  
+  <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
+
+  <div style="margin-top:14px; text-align:center;">
+    <button onclick="themTiepSanPham()">➕ Thêm mới</button>
+    <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
+    <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
+  </div>
+</div>
+
     
 </body>
 </html>
