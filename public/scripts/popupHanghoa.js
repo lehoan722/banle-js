@@ -150,13 +150,12 @@ export function themTiepSanPham() {
   moPopupNhapHangHoa("them", truongGiulai);
 }
 
-window.moPopupCauHinh = () => {
-  document.getElementById("popupCauHinh").style.display = "block";
-};
 
 window.moPopupCauHinh = () => {
   const khung = document.getElementById("dsCauHinhTruong");
   khung.innerHTML = "";
+
+  const cauHinhDaLuu = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
 
   for (const truong of truongHangHoa) {
     const div = document.createElement("div");
@@ -165,7 +164,8 @@ window.moPopupCauHinh = () => {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.id = "cauhinh_" + truong.id;
-    checkbox.checked = true; // hoặc đọc từ localStorage nếu bạn đã có cấu hình trước
+
+    checkbox.checked = !(cauHinhDaLuu[truong.id] === false); // ⚠️ Nếu cấu hình là false → bỏ check
 
     const label = document.createElement("label");
     label.textContent = truong.label;
@@ -178,6 +178,7 @@ window.moPopupCauHinh = () => {
 
   document.getElementById("popupCauHinh").style.display = "block";
 };
+
 
 window.luuCauHinhTruong = () => {
   const cauHinh = {};
