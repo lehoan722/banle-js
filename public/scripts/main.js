@@ -32,6 +32,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.moPopupNhapHangHoa = moPopupNhapHangHoa;
   window.luuHangHoa = luuHangHoa;
   window.themTiepSanPham = themTiepSanPham;
+  window.luuHoaDonQuaAPI = luuHoaDonQuaAPI;
+window.xacNhanSuaHoaDon = xacNhanSuaHoaDon;
+
  
 const btnXacNhanSua = document.getElementById("xacNhanSuaHoaDon");
 if (btnXacNhanSua) {
