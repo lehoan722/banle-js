@@ -11,6 +11,7 @@ import { xacNhanSuaHoaDon } from './luuhoadon.js';
 import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
+import { luuHoaDonQuaAPI } from './luuhoadon.js';
 
 window.addEventListener('DOMContentLoaded', async () => {
   // Tải danh mục sản phẩm từ Supabase
