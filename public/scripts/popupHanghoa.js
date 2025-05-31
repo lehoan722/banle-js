@@ -186,3 +186,6 @@ export function themTiepSanPham() {
 
   moPopupNhapHangHoa("them", truongGiulai);
 }
+window.moPopupCauHinh = moPopupCauHinh;
+
+
