@@ -87,7 +87,7 @@ if (mode === "sua") {
 } else {
   footer.innerHTML = data.nhapdau ? `📅 Ngày nhập: ${data.nhapdau}` : "";
 }
-
+}
 
 export function moPopupCauHinh() {
   const khung = document.getElementById("dsCauHinhTruong");
