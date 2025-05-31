@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient.js';
-
+ import { moBangDanhMucHangHoa } from './banghanghoa.js'; // thêm vào đầu file
 const truongHangHoa = [
   { id: "masp", label: "Mã sản phẩm", batbuoc: true },
   { id: "tensp", label: "Tên sản phẩm", batbuoc: true },
@@ -55,7 +55,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
-  inputMaSP.addEventListener("keydown", (e) => {
+  inputMaSP.addEventListener("keydown", (e) => {   
     if (e.key === "Escape") popup.style.display = "none";
     if (e.key === "Enter") {
       const itemFirst = popup.querySelector(".popup-masp-item");
