@@ -32,6 +32,7 @@ export function chuyenFocus(e) {
       nextInput.focus();
       if (nextId === "soluong") nextInput.select();
     }
+
   } else if (e.target.id === "soluong") {
     document.getElementById("size").focus();
   } else if (e.target.id === "size") {
@@ -101,4 +102,17 @@ export function getMaspspDangChon() {
 export function ganTenNV() {
   const manv = document.getElementById("manv").value.trim();
   document.getElementById("tennv").value = window.nhanVienData?.[manv] || "";
+}
+
+export function xoaDongDangChon() {
+  if (!maspDangChon) {
+    alert("Vui lòng chọn dòng cần xóa.");
+    return;
+  }
+
+  if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
+    delete bangKetQua[maspDangChon];
+    maspDangChon = null;
+    capNhatBangHTML(bangKetQua);
+  }
 }
