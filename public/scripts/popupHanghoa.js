@@ -37,8 +37,11 @@ function taoFormHangHoa(data = {}, mode = "them") {
   container.innerHTML = "";
 
   const giuLaiConfig = JSON.parse(localStorage.getItem("giulai_hanghoa") || "{}");
+  const cauHinhHienThi = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
 
   truongHangHoa.forEach(truong => {
+    // ⛔ Nếu trường bị tắt hiển thị thì bỏ qua
+  if (cauHinhHienThi[truong.id] === false) return;
     const label = truong.label;
     const value = data[truong.id] ?? "";
     const isReadOnly = (mode === "sua" && truong.id === "masp") ? "readonly style='background:#eee'" : "";
@@ -151,4 +154,39 @@ window.moPopupCauHinh = () => {
   document.getElementById("popupCauHinh").style.display = "block";
 };
 
+window.moPopupCauHinh = () => {
+  const khung = document.getElementById("dsCauHinhTruong");
+  khung.innerHTML = "";
+
+  for (const truong of truongHangHoa) {
+    const div = document.createElement("div");
+    div.style = "margin-bottom:4px";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "cauhinh_" + truong.id;
+    checkbox.checked = true; // hoặc đọc từ localStorage nếu bạn đã có cấu hình trước
+
+    const label = document.createElement("label");
+    label.textContent = truong.label;
+    label.style = "margin-left:6px";
+
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    khung.appendChild(div);
+  }
+
+  document.getElementById("popupCauHinh").style.display = "block";
+};
+
+window.luuCauHinhTruong = () => {
+  const cauHinh = {};
+  for (const truong of truongHangHoa) {
+    const ck = document.getElementById("cauhinh_" + truong.id);
+    if (ck) cauHinh[truong.id] = ck.checked;
+  }
+  localStorage.setItem("cauhinh_hh", JSON.stringify(cauHinh));
+  alert("✅ Đã lưu cấu hình hiển thị.");
+  document.getElementById("popupCauHinh").style.display = "none";
+};
 
