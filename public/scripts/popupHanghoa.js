@@ -156,21 +156,22 @@ window.moPopupCauHinh = () => {
   const khung = document.getElementById("dsCauHinhTruong");
   khung.innerHTML = "";
 
-  const cauHinhDaLuu = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
+  const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
 
   for (const truong of truongHangHoa) {
     const div = document.createElement("div");
-    div.style = "margin-bottom:4px";
+    div.style = "margin-bottom:6px;";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.id = "cauhinh_" + truong.id;
+    checkbox.value = truong.id;
 
-    checkbox.checked = !(cauHinhDaLuu[truong.id] === false); // ⚠️ Nếu cấu hình là false → bỏ check
+    // ✅ Nếu config có và là false → bỏ tích
+    checkbox.checked = !(config[truong.id] === false);
 
     const label = document.createElement("label");
-    label.textContent = truong.label;
-    label.style = "margin-left:6px";
+    label.textContent = " " + truong.label;
 
     div.appendChild(checkbox);
     div.appendChild(label);
@@ -181,14 +182,20 @@ window.moPopupCauHinh = () => {
 };
 
 
+
 window.luuCauHinhTruong = () => {
-  const cauHinh = {};
+  const config = {};
+
   for (const truong of truongHangHoa) {
-    const ck = document.getElementById("cauhinh_" + truong.id);
-    if (ck) cauHinh[truong.id] = ck.checked;
+    const checkbox = document.getElementById("cauhinh_" + truong.id);
+    if (checkbox) {
+      config[truong.id] = checkbox.checked;
+    }
   }
-  localStorage.setItem("cauhinh_hh", JSON.stringify(cauHinh));
+
+  localStorage.setItem("cauhinh_hh", JSON.stringify(config));
   alert("✅ Đã lưu cấu hình hiển thị.");
   document.getElementById("popupCauHinh").style.display = "none";
 };
+
 
