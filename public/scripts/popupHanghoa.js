@@ -168,7 +168,7 @@ export async function luuHangHoa() {
     }
     alert("✅ Đã cập nhật sản phẩm.");
   }
-
+themTiepSanPham();
   
 }
 
