@@ -7,6 +7,7 @@ import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './bangha
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { luuHoaDonQuaAPI, xacNhanSuaHoaDon } from './luuhoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
+import { khoiTaoShortcut } from './shortcut.js';
 
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -58,7 +59,7 @@ document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
   if (manvInput) {
     manvInput.addEventListener("change", ganTenNV);
   }
-  
+  khoiTaoShortcut(); //
 });
 
 
