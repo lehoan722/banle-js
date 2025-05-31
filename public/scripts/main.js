@@ -1,4 +1,5 @@
 import { khoiTaoTimMaSP, luuMaSanPhamMoi, moCauHinhTruong, luuCauHinhTruong } from './sanpham.js';
+import { chuyenFocus, ganTenNV } from './hoadon.js';
 
 import { supabase } from './supabaseClient.js';
 
@@ -20,6 +21,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.luuMaSanPhamMoi = () => luuMaSanPhamMoi(window.sanPhamData);
   window.moCauHinhTruong = moCauHinhTruong;
   window.luuCauHinhTruong = luuCauHinhTruong;
+    // ✅ Gán Enter chuyển focus cho các input chính
+  ["masp", "soluong", "size"].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener("keydown", chuyenFocus);
+    }
+  });
+
+  // ✅ Tự động gán tên nhân viên khi đổi mã
+  const manvInput = document.getElementById("manv");
+  if (manvInput) {
+    manvInput.addEventListener("change", ganTenNV);
+  }
+
 });
 
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
