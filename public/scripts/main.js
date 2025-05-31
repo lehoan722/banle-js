@@ -21,3 +21,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.moCauHinhTruong = moCauHinhTruong;
   window.luuCauHinhTruong = luuCauHinhTruong;
 });
+
+import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
+
+window.timLaiTrongBangDM = timLaiTrongBangDM;
+window.chonDongDeSua = chonDongDeSua;
+window.moPopupThemMoiHangHoa = () => window.moPopupNhapHangHoa("them"); // sẽ viết sau
