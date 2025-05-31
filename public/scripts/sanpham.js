@@ -67,7 +67,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
     } else if (window.sanPhamData[keyword]) {
       chonMaSanPham(keyword); // ✅ mã đã có → chọn
     } else {
-      window.moPopupNhapHangHoa("them", { masp: keyword }); // ❌ mã không có → nhập mới
+      moBangDanhMucHangHoa(inputMaSP.value.trim()); // ❌ mã không có → nhập mới
     }
   }
 });
