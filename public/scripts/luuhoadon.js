@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient.js';
 import { resetBangKetQua, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
+import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 let choPhepSua = false;
 
@@ -64,7 +65,7 @@ export async function luuHoaDonQuaAPI() {
   if (!errHD && !errCT) {
     alert("✅ Đã lưu hóa đơn thành công!");
     inHoaDon(hoadon, chitiet);
-    lamMoiSauKhiLuu();
+    await lamMoiSauKhiLuu();
     choPhepSua = false;
   } else {
     alert("❌ Lỗi khi lưu hóa đơn");
@@ -72,7 +73,7 @@ export async function luuHoaDonQuaAPI() {
   }
 }
 
-function lamMoiSauKhiLuu() {
+async function lamMoiSauKhiLuu() {
   const diadiemVal = document.getElementById("diadiem").value;
   const manvVal = document.getElementById("manv").value;
   const tennvVal = document.getElementById("tennv").value;
@@ -88,6 +89,7 @@ function lamMoiSauKhiLuu() {
   document.getElementById("manv").value = manvVal;
   document.getElementById("tennv").value = tennvVal;
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+  await capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
 }
 
