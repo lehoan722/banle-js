@@ -79,10 +79,15 @@ function taoFormHangHoa(data = {}, mode = "them") {
   });
 
   const footer = document.getElementById("footerHangHoa");
-  footer.innerHTML = mode === "sua"
-    ? `🕒 Ngày sửa: ${new Date().toLocaleString()}`
-    : (data.nhapdau ? `📅 Nhập đầu: ${data.nhapdau}` : "");
+
+if (mode === "sua") {
+  const ngayNhap = data.nhapdau ? `📅 Ngày nhập: ${data.nhapdau}` : "";
+  const ngaySua = `🕒 Ngày sửa: ${new Date().toLocaleString()}`;
+  footer.innerHTML = `${ngayNhap}<br>${ngaySua}`;
+} else {
+  footer.innerHTML = data.nhapdau ? `📅 Ngày nhập: ${data.nhapdau}` : "";
 }
+
 
 export function moPopupCauHinh() {
   const khung = document.getElementById("dsCauHinhTruong");
