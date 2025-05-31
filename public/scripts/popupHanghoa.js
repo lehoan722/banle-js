@@ -36,12 +36,11 @@ function taoFormHangHoa(data = {}, mode = "them") {
   const container = document.getElementById("fieldsNhapHangHoa");
   container.innerHTML = "";
 
-  const giuLaiConfig = JSON.parse(localStorage.getItem("giulai_hanghoa") || "{}");
   const cauHinhHienThi = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
+  const giuLaiConfig = JSON.parse(localStorage.getItem("giulai_hanghoa") || "{}");
 
   truongHangHoa.forEach(truong => {
-    // ⛔ Nếu trường bị tắt hiển thị thì bỏ qua
-  if (Object.keys(cauHinhHienThi).length > 0 && cauHinhHienThi[truong.id] === false) return;
+    if (Object.keys(cauHinhHienThi).length > 0 && cauHinhHienThi[truong.id] === false) return;
 
     const label = truong.label;
     const value = data[truong.id] ?? "";
@@ -55,7 +54,7 @@ function taoFormHangHoa(data = {}, mode = "them") {
     labelEl.textContent = label;
     labelEl.style = "width: 140px; font-weight: bold;";
 
-    let inputEl = document.createElement(truong.loai === "boolean" ? "input" : "input");
+    let inputEl = document.createElement("input");
     inputEl.id = `nhh_${truong.id}`;
     inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
     inputEl.style = "flex: 1;";
@@ -85,6 +84,44 @@ function taoFormHangHoa(data = {}, mode = "them") {
     : (data.nhapdau ? `📅 Nhập đầu: ${data.nhapdau}` : "");
 }
 
+export function moPopupCauHinh() {
+  const khung = document.getElementById("dsCauHinhTruong");
+  khung.innerHTML = "";
+
+  const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
+
+  for (const truong of truongHangHoa) {
+    const div = document.createElement("div");
+    div.style = "margin-bottom:6px;";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "cauhinh_" + truong.id;
+    checkbox.value = truong.id;
+    checkbox.checked = !(config[truong.id] === false);
+
+    const label = document.createElement("label");
+    label.textContent = " " + truong.label;
+
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    khung.appendChild(div);
+  }
+
+  document.getElementById("popupCauHinh").style.display = "block";
+}
+
+export function luuCauHinhTruong() {
+  const config = {};
+  for (const truong of truongHangHoa) {
+    const checkbox = document.getElementById("cauhinh_" + truong.id);
+    if (checkbox) config[truong.id] = checkbox.checked;
+  }
+  localStorage.setItem("cauhinh_hh", JSON.stringify(config));
+  alert("✅ Đã lưu cấu hình hiển thị.");
+  document.getElementById("popupCauHinh").style.display = "none";
+}
+
 export async function luuHangHoa() {
   const data = {};
   const giuLai = {};
@@ -104,7 +141,6 @@ export async function luuHangHoa() {
     }
   }
 
-  // Lưu cấu hình giữ lại
   localStorage.setItem("giulai_hanghoa", JSON.stringify(giuLai));
 
   if (!data.masp || !data.tensp) {
@@ -150,52 +186,3 @@ export function themTiepSanPham() {
 
   moPopupNhapHangHoa("them", truongGiulai);
 }
-
-
-window.moPopupCauHinh = () => {
-  const khung = document.getElementById("dsCauHinhTruong");
-  khung.innerHTML = "";
-
-  const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
-
-  for (const truong of truongHangHoa) {
-    const div = document.createElement("div");
-    div.style = "margin-bottom:6px;";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.id = "cauhinh_" + truong.id;
-    checkbox.value = truong.id;
-
-    // ✅ Nếu config có và là false → bỏ tích
-    checkbox.checked = !(config[truong.id] === false);
-
-    const label = document.createElement("label");
-    label.textContent = " " + truong.label;
-
-    div.appendChild(checkbox);
-    div.appendChild(label);
-    khung.appendChild(div);
-  }
-
-  document.getElementById("popupCauHinh").style.display = "block";
-};
-
-
-
-window.luuCauHinhTruong = () => {
-  const config = {};
-
-  for (const truong of truongHangHoa) {
-    const checkbox = document.getElementById("cauhinh_" + truong.id);
-    if (checkbox) {
-      config[truong.id] = checkbox.checked;
-    }
-  }
-
-  localStorage.setItem("cauhinh_hh", JSON.stringify(config));
-  alert("✅ Đã lưu cấu hình hiển thị.");
-  document.getElementById("popupCauHinh").style.display = "none";
-};
-
-
