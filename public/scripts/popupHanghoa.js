@@ -90,7 +90,7 @@ export function moPopupCauHinh() {
 
   const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "{}");
 
-  for (const truong of truongHangHoa) {
+  truongHangHoa.forEach(truong => {
     const div = document.createElement("div");
     div.style = "margin-bottom:6px;";
 
@@ -106,17 +106,18 @@ export function moPopupCauHinh() {
     div.appendChild(checkbox);
     div.appendChild(label);
     khung.appendChild(div);
-  }
+  });
 
   document.getElementById("popupCauHinh").style.display = "block";
 }
 
 export function luuCauHinhTruong() {
   const config = {};
-  for (const truong of truongHangHoa) {
+  truongHangHoa.forEach(truong => {
     const checkbox = document.getElementById("cauhinh_" + truong.id);
     if (checkbox) config[truong.id] = checkbox.checked;
-  }
+  });
+
   localStorage.setItem("cauhinh_hh", JSON.stringify(config));
   alert("✅ Đã lưu cấu hình hiển thị.");
   document.getElementById("popupCauHinh").style.display = "none";
@@ -186,6 +187,5 @@ export function themTiepSanPham() {
 
   moPopupNhapHangHoa("them", truongGiulai);
 }
+
 window.moPopupCauHinh = moPopupCauHinh;
-
-
