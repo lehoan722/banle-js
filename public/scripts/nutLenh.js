@@ -1,5 +1,5 @@
 // nutLenh.js
-import { resetBangKetQua } from './hoadon.js';
+import { resetBangKetQua, getBangKetQua, xoaDongDangChon } from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { luuHoaDonQuaAPI } from './luuhoadon.js';
 import { capNhatThongTinTong } from './utils.js';
@@ -24,9 +24,8 @@ export function ganSuKienNutLenh() {
   });
 
   document.getElementById("luu")?.addEventListener("click", async () => {
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-    if (rows.length === 0) {
+    const bang = getBangKetQua();
+    if (Object.keys(bang).length === 0) {
       alert("❌ Không có dữ liệu để lưu hóa đơn.");
       return;
     }
@@ -34,9 +33,8 @@ export function ganSuKienNutLenh() {
   });
 
   document.getElementById("luuapi")?.addEventListener("click", async () => {
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-    if (rows.length === 0) {
+    const bang = getBangKetQua();
+    if (Object.keys(bang).length === 0) {
       alert("❌ Không có dữ liệu để lưu.");
       return;
     }
@@ -56,8 +54,7 @@ export function ganSuKienNutLenh() {
   });
 
   document.getElementById("xoa")?.addEventListener("click", () => {
-    const event = new CustomEvent("keydown", { detail: { key: "F3" }, bubbles: true });
-    document.dispatchEvent(event);
+    xoaDongDangChon();
   });
 
   document.getElementById("btnThemMoiCo")?.addEventListener("click", () => {
