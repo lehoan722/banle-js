@@ -64,7 +64,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
         chonMaSanPham(itemFirst.dataset.masp);
       } else {
         e.preventDefault();
-        hienThiFormMaMoi();
+       moBangDanhMucHangHoa(inputMaSP.value.trim()); // ✅ mở bảng danh mục và truyền keyword
       }
     }
   });
