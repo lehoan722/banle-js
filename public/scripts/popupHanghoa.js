@@ -14,7 +14,7 @@ const truongHangHoa = [
   //{ id: "vitrikho1", label: "Vị trí kho 1" },
   //{ id: "vitrikho2", label: "Vị trí kho 2" },
  // { id: "vitrikho3", label: "Vị trí kho 3" },
- { id: "ngaykiem", label: "ngay kiem" },
+ //{ id: "ngaykiem", label: "ngay kiem" },
   { id: "loaisp", label: "Loại sản phẩm" },
  // { id: "mausac", label: "Màu sắc" },
   { id: "khuyenmai", label: "Khuyến mãi" },
