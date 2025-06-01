@@ -48,16 +48,21 @@ hot = new Handsontable(container, {
 
 hot.addHook('afterChange', validateData);
 hot.addHook('afterPaste', validateData);
-hot.addHook('beforePaste', (data, coords) => {
-  if (data.length === 1 && data[0].length === 1) {
-    const raw = data[0][0];
-    if (!raw || typeof raw !== 'string') return;
-    const rows = raw.trim().split(/\r?\n/);
-    const parsed = rows.map(row => row.split('\t'));
-    if (Array.isArray(parsed) && parsed.every(r => Array.isArray(r))) {
-      data.splice(0, 1, ...parsed);
-    }
-  }
+
+// ✅ Xử lý paste thủ công từ clipboard (thay vì dùng beforePaste)
+document.addEventListener('paste', (event) => {
+  const clipboardData = event.clipboardData || window.clipboardData;
+  const raw = clipboardData.getData('text/plain');
+  if (!raw || typeof raw !== 'string') return;
+
+  const rows = raw.trim().split(/\r?\n/);
+  const parsed = rows.map(row => row.split('\t'));
+  const selected = hot.getSelectedLast();
+  if (!selected) return;
+
+  const [row, col] = selected;
+  event.preventDefault();
+  hot.populateFromArray(row, col, parsed, row + parsed.length - 1, col + parsed[0].length - 1, 'Clipboard');
 });
 
 function validateData() {
