@@ -4,12 +4,12 @@ const supabase = createClient(
   'https://rddjrmbyftlcvrgzlyby.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njc2NTgwNCwiZXhwIjoyMDYyMzQxODA0fQ.6UBSL-2jW7Qj73W8PEKOtIeDcGldbCMwpHn1He0MfhM'
 );
-
+let hot;
 const container = document.getElementById('hot');
 const uploadBtn = document.getElementById('uploadBtn');
 const statusDiv = document.getElementById('status');
 const errorDiv = document.getElementById('error');
-let hot;
+
 // Khởi tạo Handsontable
 const hot = new Handsontable(container, {
   data: [],
