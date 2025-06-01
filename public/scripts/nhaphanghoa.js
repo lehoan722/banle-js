@@ -20,7 +20,7 @@ hot = new Handsontable(container, {
     quanlykichco: false, ngaynhap: null, ngaysua: null
   },
   rowHeaders: true,
-  colHeaders: ['masp', 'tensp', 'dvt', 'chungloai', 'giale', 'giasi', 'shortma', 'nhomhang', 'mausac', 'gianhap', 'nhacc', 'quanlykichco', 'ngaynhap', 'ngaysua'],
+  colHeaders: true, // ✅ Chuyển từ mảng sang true → tự hiện theo columns
   columns: [
     { data: 'masp', type: 'text' },
     { data: 'tensp', type: 'text' },
@@ -35,14 +35,14 @@ hot = new Handsontable(container, {
     { data: 'nhacc', type: 'text' },
     { data: 'quanlykichco', type: 'checkbox' },
     { data: 'ngaynhap', type: 'date', dateFormat: 'YYYY-MM-DD' },
-    { data: 'ngaysua', type: 'date', dateFormat: 'YYYY-MM-DD' },
+    { data: 'ngaysua', type: 'date', dateFormat: 'YYYY-MM-DD' }
   ],
   minSpareRows: 1,
   licenseKey: 'non-commercial-and-evaluation',
   stretchH: 'all',
-  height: 'auto',
   allowInsertColumn: false,
 });
+
 
 // ✅ Gắn hook sau khi khởi tạo để tránh lỗi scope
 hot.addHook('afterChange', validateData);
