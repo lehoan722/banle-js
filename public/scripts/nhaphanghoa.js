@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const supabase = createClient(
@@ -20,7 +21,7 @@ hot = new Handsontable(container, {
     quanlykichco: false, ngaynhap: null, ngaysua: null
   },
   rowHeaders: true,
-  colHeaders: true, // Tự lấy từ columns
+  colHeaders: true,
   columns: [
     { data: 'masp', type: 'text' },
     { data: 'tensp', type: 'text' },
@@ -45,17 +46,17 @@ hot = new Handsontable(container, {
   pasteMode: 'shift_down',
 });
 
-// Gắn các hook sau khởi tạo
 hot.addHook('afterChange', validateData);
 hot.addHook('afterPaste', validateData);
-
-// ✅ Hook xử lý paste dữ liệu dán vào 1 ô
 hot.addHook('beforePaste', (data, coords) => {
   if (data.length === 1 && data[0].length === 1) {
     const raw = data[0][0];
+    if (!raw || typeof raw !== 'string') return;
     const rows = raw.trim().split(/\r?\n/);
     const parsed = rows.map(row => row.split('\t'));
-    data.splice(0, 1, ...parsed);
+    if (Array.isArray(parsed) && parsed.every(r => Array.isArray(r))) {
+      data.splice(0, 1, ...parsed);
+    }
   }
 });
 
