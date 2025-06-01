@@ -4,15 +4,21 @@ const supabase = createClient(
   'https://rddjrmbyftlcvrgzlyby.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njc2NTgwNCwiZXhwIjoyMDYyMzQxODA0fQ.6UBSL-2jW7Qj73W8PEKOtIeDcGldbCMwpHn1He0MfhM'
 );
+
 let hot;
 const container = document.getElementById('hot');
 const uploadBtn = document.getElementById('uploadBtn');
 const statusDiv = document.getElementById('status');
 const errorDiv = document.getElementById('error');
 
-// Khởi tạo Handsontable
- hot = new Handsontable(container, {
+hot = new Handsontable(container, {
   data: [],
+  dataSchema: {
+    masp: null, tensp: null, dvt: null, chungloai: null,
+    giale: null, giasi: null, shortma: null, nhomhang: null,
+    mausac: null, gianhap: null, nhacc: null,
+    quanlykichco: false, ngaynhap: null, ngaysua: null
+  },
   rowHeaders: true,
   colHeaders: ['masp', 'tensp', 'dvt', 'chungloai', 'giale', 'giasi', 'shortma', 'nhomhang', 'mausac', 'gianhap', 'nhacc', 'quanlykichco', 'ngaynhap', 'ngaysua'],
   columns: [
@@ -34,14 +40,16 @@ const errorDiv = document.getElementById('error');
   minSpareRows: 1,
   licenseKey: 'non-commercial-and-evaluation',
   stretchH: 'all',
-  height: 'auto', 
+  height: 'auto',
+  allowInsertColumn: false,
 });
 
+// ✅ Gắn hook sau khi khởi tạo để tránh lỗi scope
 hot.addHook('afterChange', validateData);
 hot.addHook('afterPaste', validateData);
 
-
 function validateData() {
+  if (!hot) return;
   const data = hot.getData();
   let valid = true;
   let hasData = false;
@@ -72,7 +80,6 @@ function validateData() {
   uploadBtn.disabled = !(valid && hasData);
 }
 
-// Hàm chia lô
 function chunkArray(array, size) {
   const chunks = [];
   for (let i = 0; i < array.length; i += size)
