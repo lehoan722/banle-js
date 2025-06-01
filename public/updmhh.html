@@ -25,7 +25,7 @@
 
 <script>
   const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
   const TABLE_NAME = 'dmhanghoa';
 
   const columns = [
@@ -130,14 +130,21 @@
 
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize).map(cleanRow);
-      console.log("📦 Batch đầu:", JSON.stringify(batch[0], null, 2));
+
+      if (!batch.length || !batch[0].masp) {
+        console.error("❗ Dữ liệu không hợp lệ:", batch[0]);
+        alert("❌ Lỗi dữ liệu: batch không có masp hoặc sai định dạng.");
+        return;
+      }
+
+      console.log("📦 Gửi batch:", JSON.stringify(batch[0], null, 2));
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
+        const res = await fetch(SUPABASE_URL + "/rest/v1/" + TABLE_NAME, {
           method: "POST",
           headers: {
             apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
+            Authorization: "Bearer " + SUPABASE_KEY,
             "Content-Type": "application/json",
             Prefer: "resolution=merge-duplicates,return=representation"
           },
