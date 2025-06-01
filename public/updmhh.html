@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Nhập Danh Mục Hàng Hóa</title>
-  <!-- PapaParse để đọc CSV -->
+  <!-- Handsontable v10 ổn định -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <!-- Handsontable -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     input, button { margin: 5px 0; }
@@ -26,7 +25,7 @@
 
 <script>
   const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+  const SUPABASE_KEY = 'eyJhbGciOiJI...'; // giữ như cũ
   const TABLE_NAME = 'dmhanghoa';
 
   const columns = [
@@ -42,17 +41,19 @@
     { data: 'gianhap', type: 'numeric' },
     { data: 'nhacc', type: 'text' },
     { data: 'quanlykichco', type: 'checkbox' },
-    { data: 'nhapdau', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true },
-    { data: 'ngaysua', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true }
+    { data: 'nhapdau', type: 'date' },
+    { data: 'ngaysua', type: 'date' }
   ];
 
   const hot = new Handsontable(document.getElementById('hot'), {
     data: Array(100).fill({}),
     columns,
-    colHeaders: columns.map(col => col.data),
+    colHeaders: columns.map(c => c.data),
     rowHeaders: true,
-    stretchH: 'all',
+    minSpareRows: 1,
+    width: '100%',
     height: 500,
+    stretchH: 'all',
     licenseKey: 'non-commercial-and-evaluation'
   });
 
@@ -66,7 +67,7 @@
       complete: function (results) {
         const data = results.data;
         hot.loadData(data);
-        console.log("🧪 Dòng đầu:", data[0]);
+        console.log("🧪 Loaded:", data[0]);
       }
     });
   }
@@ -76,69 +77,43 @@
   }
 
   function cleanRow(row) {
-    const validFields = {
-      masp: "text",
-      tensp: "text",
-      dvt: "text",
-      chungloai: "text",
-      giale: "numeric",
-      giasi: "numeric",
-      mangan: "text",
-      nhomhang: "text",
-      mausac: "text",
-      gianhap: "numeric",
-      nhacc: "text",
-      quanlykichco: "boolean",
-      nhapdau: "date",
-      ngaysua: "date"
+    const fields = {
+      masp: "text", tensp: "text", dvt: "text", chungloai: "text",
+      giale: "numeric", giasi: "numeric", mangan: "text", nhomhang: "text",
+      mausac: "text", gianhap: "numeric", nhacc: "text",
+      quanlykichco: "boolean", nhapdau: "date", ngaysua: "date"
     };
 
     const cleaned = {};
-    for (const key in validFields) {
-      if (!(key in row)) continue;
-      const val = row[key];
-
-      if (val === "" || val === null) {
-        cleaned[key] = null;
-      } else if (validFields[key] === "numeric") {
-        cleaned[key] = isNaN(Number(val)) ? null : Number(val);
-      } else if (validFields[key] === "boolean") {
-        cleaned[key] = val.toString().toLowerCase() === "true" || val === "1";
-      } else if (validFields[key] === "date") {
-        cleaned[key] = isValidDate(val) ? val : null;
-      } else {
-        cleaned[key] = val;
-      }
+    for (const key in fields) {
+      let val = row[key];
+      if (val === "" || val == null) cleaned[key] = null;
+      else if (fields[key] === "numeric") cleaned[key] = isNaN(Number(val)) ? null : Number(val);
+      else if (fields[key] === "boolean") cleaned[key] = val === true || val === "1" || val === "true";
+      else if (fields[key] === "date") cleaned[key] = isValidDate(val) ? val : null;
+      else cleaned[key] = val;
     }
-
     return cleaned;
   }
 
   async function uploadToSupabase() {
     const rawData = hot.getData();
-    const headers = columns.map(col => col.data);
-
-    const parsedData = rawData.map(row => {
+    const headers = columns.map(c => c.data);
+    const data = rawData.map(row => {
       const obj = {};
-      headers.forEach((h, i) => {
-        obj[h] = row[i];
-      });
+      headers.forEach((key, i) => obj[key] = row[i]);
       return obj;
-    }).filter(row => row.masp && row.masp.toString().trim() !== "");
+    }).filter(r => r.masp && r.masp.toString().trim() !== "");
 
-    if (parsedData.length === 0) return alert("Không có dòng hợp lệ để ghi.");
+    if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
 
-    const yes = confirm("Bạn có chắc muốn ghi dữ liệu này vào Supabase? (Sẽ ghi đè nếu mã sản phẩm trùng)");
-    if (!yes) return;
+    if (!confirm("Bạn có chắc muốn ghi dữ liệu này vào Supabase?")) return;
 
+    let inserted = 0, updated = 0, failed = 0, errors = [];
     const batchSize = 1000;
-    let countInsert = 0;
-    let countUpdate = 0;
-    let countError = 0;
-    let errorList = [];
 
-    for (let i = 0; i < parsedData.length; i += batchSize) {
-      const batch = parsedData.slice(i, i + batchSize).map(cleanRow);
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize).map(cleanRow);
 
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
@@ -152,34 +127,30 @@
           body: JSON.stringify(batch)
         });
 
-        const data = await res.json();
+        const result = await res.json();
         if (!res.ok) {
-          countError += batch.length;
-          errorList.push(`❌ Lỗi batch từ dòng ${i + 1} đến ${i + batch.length}: ${JSON.stringify(data)}`);
+          failed += batch.length;
+          errors.push(JSON.stringify(result));
         } else {
-          for (const item of data) {
-            if (item.updated_at || item.ngaysua) countUpdate++;
-            else countInsert++;
-          }
+          result.forEach(r => {
+            if (r.updated_at) updated++; else inserted++;
+          });
         }
-      } catch (err) {
-        countError += batch.length;
-        errorList.push(`❌ Lỗi kết nối batch từ dòng ${i + 1} đến ${i + batch.length}`);
-        console.error(err);
+      } catch (e) {
+        failed += batch.length;
+        errors.push(`Lỗi kết nối tại batch ${i + 1}: ${e.message}`);
       }
     }
 
-    const report = `
-      <h3>📊 Kết quả ghi dữ liệu:</h3>
+    document.getElementById("preview").innerHTML = `
+      <h3>Kết quả:</h3>
       <ul>
-        <li>✅ Tổng: ${parsedData.length}</li>
-        <li>🆕 Thêm mới: ${countInsert}</li>
-        <li>♻️ Ghi đè: ${countUpdate}</li>
-        <li>❌ Lỗi: ${countError}</li>
+        <li>🆕 Thêm mới: ${inserted}</li>
+        <li>♻️ Ghi đè: ${updated}</li>
+        <li>❌ Lỗi: ${failed}</li>
       </ul>
-      ${countError > 0 ? `<details><summary>🔍 Xem chi tiết lỗi</summary><pre>${errorList.join("\n")}</pre></details>` : ""}
+      ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
     `;
-    document.getElementById("preview").innerHTML = report;
   }
 </script>
 
