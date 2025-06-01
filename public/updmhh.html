@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Nhập Danh Mục Hàng Hóa</title>
-  <!-- Handsontable v10 ổn định -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    input, button { margin: 5px 0; }
+    input, button { margin: 5px 8px 5px 0; }
   </style>
 </head>
 <body>
@@ -19,13 +18,14 @@
 <input type="file" id="fileInput" accept=".csv,.xlsx" />
 <button onclick="loadCSV()">📂 Đọc dữ liệu từ file</button>
 <button onclick="uploadToSupabase()">📤 Ghi vào Supabase</button>
+<button onclick="console.log(hot.getData()[0])">🧪 Xem dòng 1</button>
 
 <div id="hot" style="margin-top:20px;"></div>
 <div id="preview" style="margin-top:20px;"></div>
 
 <script>
   const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // giữ như cũ
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
   const TABLE_NAME = 'dmhanghoa';
 
   const columns = [
@@ -72,8 +72,14 @@
     });
   }
 
-  function isValidDate(d) {
-    return !isNaN(Date.parse(d));
+  function parseDate(val) {
+    if (!val) return null;
+    if (typeof val === 'string' && val.includes('/')) {
+      const [d, m, y] = val.split('/');
+      if (d && m && y) return `${y.padStart(4, '20')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
   }
 
   function cleanRow(row) {
@@ -87,11 +93,21 @@
     const cleaned = {};
     for (const key in fields) {
       let val = row[key];
-      if (val === "" || val == null) cleaned[key] = null;
-      else if (fields[key] === "numeric") cleaned[key] = isNaN(Number(val)) ? null : Number(val);
-      else if (fields[key] === "boolean") cleaned[key] = val === true || val === "1" || val === "true";
-      else if (fields[key] === "date") cleaned[key] = isValidDate(val) ? val : null;
-      else cleaned[key] = val;
+      if (val === "" || val == null) {
+        cleaned[key] = null;
+        continue;
+      }
+
+      if (fields[key] === "numeric") {
+        cleaned[key] = isNaN(Number(val)) ? null : Number(val);
+      } else if (fields[key] === "boolean") {
+        const v = val.toString().toLowerCase();
+        cleaned[key] = (v === "true" || v === "1" || v === "x" || v === "yes");
+      } else if (fields[key] === "date") {
+        cleaned[key] = parseDate(val);
+      } else {
+        cleaned[key] = val.toString();
+      }
     }
     return cleaned;
   }
@@ -114,6 +130,7 @@
 
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize).map(cleanRow);
+      console.log("📦 Batch đầu:", JSON.stringify(batch[0], null, 2));
 
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
@@ -129,8 +146,9 @@
 
         const result = await res.json();
         if (!res.ok) {
+          const errText = JSON.stringify(result);
           failed += batch.length;
-          errors.push(JSON.stringify(result));
+          errors.push(`❌ Batch ${i + 1}: ${errText}`);
         } else {
           result.forEach(r => {
             if (r.updated_at) updated++; else inserted++;
@@ -138,7 +156,7 @@
         }
       } catch (e) {
         failed += batch.length;
-        errors.push(`Lỗi kết nối tại batch ${i + 1}: ${e.message}`);
+        errors.push(`⚠️ Lỗi kết nối tại batch ${i + 1}: ${e.message}`);
       }
     }
 
