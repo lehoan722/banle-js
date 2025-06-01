@@ -9,7 +9,7 @@ const container = document.getElementById('hot');
 const uploadBtn = document.getElementById('uploadBtn');
 const statusDiv = document.getElementById('status');
 const errorDiv = document.getElementById('error');
-
+let hot;
 // Khởi tạo Handsontable
 const hot = new Handsontable(container, {
   data: [],
@@ -38,7 +38,7 @@ const hot = new Handsontable(container, {
   afterChange: validateData,
   afterPaste: validateData,
 });
-let hot;
+
 function validateData() {
   const data = hot.getData();
   let valid = true;
