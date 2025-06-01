@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Nhập Danh Mục Hàng Hóa</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #999; padding: 5px; text-align: left; }
+    input, button { margin: 5px 0; }
+  </style>
+</head>
+<body>
+
+  <h2>📦 Cập nhật Danh Mục Hàng Hóa từ Excel/CSV</h2>
+
+  <input type="file" id="fileInput" accept=".csv,.xlsx" />
+  <button onclick="loadCSV()">Đọc dữ liệu</button>
+  <div id="preview"></div>
+  <button onclick="uploadToSupabase()">📤 Ghi vào Supabase</button>
+
+  <script>
+    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njc2NTgwNCwiZXhwIjoyMDYyMzQxODA0fQ.6UBSL-2jW7Qj73W8PEKOtIeDcGldbCMwpHn1He0MfhM';
+    const TABLE_NAME = 'dmhanghoa';
+
+    let parsedData = [];
+
+    function loadCSV() {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert('Vui lòng chọn file CSV.');
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          parsedData = results.data;
+          renderPreview(parsedData);
+        }
+      });
+    }
+
+    function renderPreview(data) {
+      const preview = document.getElementById("preview");
+      if (data.length === 0) return preview.innerHTML = "Không có dữ liệu.";
+
+      const keys = Object.keys(data[0]);
+      let html = "<table><thead><tr>";
+      keys.forEach(k => html += `<th>${k}</th>`);
+      html += "</tr></thead><tbody>";
+
+      data.slice(0, 10).forEach(row => {
+        html += "<tr>";
+        keys.forEach(k => html += `<td>${row[k]}</td>`);
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      preview.innerHTML = html;
+    }
+
+    async function uploadToSupabase() {
+      if (parsedData.length === 0) return alert("Chưa có dữ liệu để ghi.");
+      const yes = confirm("Bạn có chắc muốn ghi dữ liệu này vào Supabase? (Sẽ ghi đè nếu mã sản phẩm trùng)");
+      if (!yes) return;
+
+      for (const row of parsedData) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates"
+          },
+          body: JSON.stringify(row)
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          console.error("❌ Lỗi ghi:", row.ma || row.masp, msg);
+        }
+      }
+
+      alert("✅ Đã ghi xong dữ liệu!");
+    }
+  </script>
+
+</body>
+</html>
