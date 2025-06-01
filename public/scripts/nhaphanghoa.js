@@ -38,7 +38,7 @@ const hot = new Handsontable(container, {
   afterChange: validateData,
   afterPaste: validateData,
 });
-
+let hot;
 function validateData() {
   const data = hot.getData();
   let valid = true;
