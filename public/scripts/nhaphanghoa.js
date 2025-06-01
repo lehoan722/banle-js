@@ -20,7 +20,7 @@ hot = new Handsontable(container, {
     quanlykichco: false, ngaynhap: null, ngaysua: null
   },
   rowHeaders: true,
-  colHeaders: true, // ✅ Chuyển từ mảng sang true → tự hiện theo columns
+  colHeaders: true, // Tự lấy từ columns
   columns: [
     { data: 'masp', type: 'text' },
     { data: 'tensp', type: 'text' },
@@ -40,13 +40,24 @@ hot = new Handsontable(container, {
   minSpareRows: 1,
   licenseKey: 'non-commercial-and-evaluation',
   stretchH: 'all',
+  height: 'auto',
   allowInsertColumn: false,
+  pasteMode: 'shift_down',
 });
 
-
-// ✅ Gắn hook sau khi khởi tạo để tránh lỗi scope
+// Gắn các hook sau khởi tạo
 hot.addHook('afterChange', validateData);
 hot.addHook('afterPaste', validateData);
+
+// ✅ Hook xử lý paste dữ liệu dán vào 1 ô
+hot.addHook('beforePaste', (data, coords) => {
+  if (data.length === 1 && data[0].length === 1) {
+    const raw = data[0][0];
+    const rows = raw.trim().split(/\r?\n/);
+    const parsed = rows.map(row => row.split('\t'));
+    data.splice(0, 1, ...parsed);
+  }
+});
 
 function validateData() {
   if (!hot) return;
