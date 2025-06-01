@@ -11,7 +11,7 @@ const statusDiv = document.getElementById('status');
 const errorDiv = document.getElementById('error');
 
 // Khởi tạo Handsontable
-const hot = new Handsontable(container, {
+ hot = new Handsontable(container, {
   data: [],
   rowHeaders: true,
   colHeaders: ['masp', 'tensp', 'dvt', 'chungloai', 'giale', 'giasi', 'shortma', 'nhomhang', 'mausac', 'gianhap', 'nhacc', 'quanlykichco', 'ngaynhap', 'ngaysua'],
