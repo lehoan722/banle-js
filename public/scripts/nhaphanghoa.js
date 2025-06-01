@@ -44,12 +44,13 @@ hot = new Handsontable(container, {
   height: 'auto',
   allowInsertColumn: false,
   pasteMode: 'shift_down',
+  copyPaste: false
 });
 
 hot.addHook('afterChange', validateData);
 hot.addHook('afterPaste', validateData);
 
-// ✅ Xử lý paste thủ công từ clipboard (thay vì dùng beforePaste)
+// ✅ Xử lý paste thủ công từ clipboard
 document.addEventListener('paste', (event) => {
   const clipboardData = event.clipboardData || window.clipboardData;
   const raw = clipboardData.getData('text/plain');
