@@ -12,6 +12,9 @@ const errorDiv = document.getElementById('error');
 
 // Khởi tạo Handsontable
  hot = new Handsontable(container, {
+   hot.addHook('afterChange', validateData);
+hot.addHook('afterPaste', validateData);
+
   data: [],
   rowHeaders: true,
   colHeaders: ['masp', 'tensp', 'dvt', 'chungloai', 'giale', 'giasi', 'shortma', 'nhomhang', 'mausac', 'gianhap', 'nhacc', 'quanlykichco', 'ngaynhap', 'ngaysua'],
@@ -34,9 +37,7 @@ const errorDiv = document.getElementById('error');
   minSpareRows: 1,
   licenseKey: 'non-commercial-and-evaluation',
   stretchH: 'all',
-  height: 'auto',
-  afterChange: validateData,
-  afterPaste: validateData,
+  height: 'auto', 
 });
 
 function validateData() {
