@@ -67,7 +67,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
     } else if (window.sanPhamData[keyword]) {
      xuLyKhiChonMaSanPham(keyword);
     } else {
-      moBangDanhMucHangHoa(inputMaSP.value.trim()); // ❌ mã không có → nhập mới
+      window.moPopupNhapHangHoa("them", { masp: keyword });
     }
   }
 });
@@ -89,17 +89,21 @@ export function khoiTaoTimMaSP(sanPhamData) {
  
 }
 function xuLyKhiChonMaSanPham(masp) {
-  const sp = sanPhamData[masp];
+  const sp = window.sanPhamData?.[masp];
   if (sp) {
     // ✅ điền thông tin sản phẩm ra các ô cần thiết ở form
-    console.log("Đã chọn sản phẩm:", sp);
-    // Ví dụ: document.getElementById("gia").value = sp.giale;
-    // Bạn có thể gắn thêm logic xử lý sau khi chọn mã ở đây.
+    document.getElementById("gia").value = sp.giale || "";
+    document.getElementById("khuyenmai").value = sp.khuyenmai || "";
+    const cs = document.getElementById("diadiem").value;
+    const vitri = cs === "cs1" ? sp.vitrikho1 : sp.vitrikho2;
+    document.getElementById("vitri").value = vitri || "";
+    document.getElementById("soluong").focus();
   } else {
     // ❌ mã không tồn tại → mở popup thêm mới
     window.moPopupNhapHangHoa("them", { masp });
   }
 }
+
 
 export function hienThiFormMaMoi() {
   const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "[]");
