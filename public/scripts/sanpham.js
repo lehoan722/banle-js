@@ -55,22 +55,37 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
- inputMaSP.addEventListener("keydown", (e) => {   
-  if (e.key === "Escape") popup.style.display = "none";
+inputMaSP.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    const itemFirst = popup.querySelector(".popup-masp-item");
-    const keyword = inputMaSP.value.trim().toUpperCase();
-
     e.preventDefault();
-    if (popup.style.display !== "none" && itemFirst) {
-      chonMaSanPham(itemFirst.dataset.masp);
-    } else if (window.sanPhamData[keyword]) {
-     xuLyKhiChonMaSanPham(keyword);
+
+    const keyword = inputMaSP.value.trim().toUpperCase();
+    const sp = window.sanPhamData?.[keyword];
+
+    if (sp) {
+      // ✅ Có trong danh mục → xử lý như bình thường
+      xuLyKhiChonMaSanPham(keyword);  // điền thông tin
+      // ➝ Tự chuyển focus giống chuyenFocus
+      const nhapNhanh = document.getElementById("nhapnhanh").checked;
+      const size45 = document.getElementById("size45").checked;
+
+      if (size45) {
+        document.getElementById("soluong").value = "1";
+        window.themVaoBang("45");
+      } else {
+        const nextId = nhapNhanh ? "size" : "soluong";
+        const nextInput = document.getElementById(nextId);
+        nextInput?.focus();
+        if (nextId === "soluong") nextInput?.select();
+      }
+
     } else {
-      moBangDanhMucHangHoa(inputMaSP.value.trim()); // ❌ mã không có → nhập mới
+      // ❌ Không có trong danh mục → mở popup bảng danh mục để tạo mới
+      window.moBangDanhMucHangHoa(keyword);
     }
   }
 });
+
 
 
   document.addEventListener("click", (e) => {
