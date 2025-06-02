@@ -27,7 +27,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
   const popup = document.getElementById("popup_masp");
 
   inputMaSP.addEventListener("input", () => {
-    const keyword = inputMaSP.value.trim().toUpperCase();
+    const keyword = inputMaSP.value.trim().toUpperCase().trim().toUpperCase().toUpperCase();
     if (!keyword) return (popup.style.display = "none");
 
     const danhSach = Object.values(sanPhamData)
@@ -52,22 +52,22 @@ export function khoiTaoTimMaSP(sanPhamData) {
   popup.addEventListener("click", (e) => {
     const item = e.target.closest(".popup-masp-item");
     if (!item) return;
-    chonMaSanPham(item.dataset.masp);
+    chonMaSanPham(item.dataset.masp.toUpperCase());
   });
 
  inputMaSP.addEventListener("keydown", (e) => {   
   if (e.key === "Escape") popup.style.display = "none";
   if (e.key === "Enter") {
     const itemFirst = popup.querySelector(".popup-masp-item");
-    const keyword = inputMaSP.value.trim().toUpperCase();
+    const keyword = inputMaSP.value.trim().toUpperCase().trim().toUpperCase().toUpperCase();
 
     e.preventDefault();
     if (popup.style.display !== "none" && itemFirst) {
-      chonMaSanPham(itemFirst.dataset.masp);
+      chonMaSanPham(itemFirst.dataset.masp.toUpperCase());
     } else if (window.sanPhamData[keyword]) {
      xuLyKhiChonMaSanPham(keyword);
     } else {
-      moBangDanhMucHangHoa(inputMaSP.value.trim()); // ❌ mã không có → nhập mới
+      moBangDanhMucHangHoa(inputMaSP.value.trim().toUpperCase()); // ❌ mã không có → nhập mới
     }
   }
 });
