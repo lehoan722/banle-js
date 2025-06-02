@@ -162,41 +162,47 @@ function resetForm() {
 }
 
 // Hàm tải dữ liệu sản phẩm và nhân viên từ Google Apps Script
+// Hàm tải dữ liệu sản phẩm và nhân viên từ Supabase
 async function loadData() {
-  const urlBase =
-    "https://script.google.com/macros/s/AKfycbwzFuA2f51Rkg5UV2dwySxtd3y8iDBtpX7LMq_z_ftE5cnQ6_HIRCHeCm-bteLChvUC/exec";
-
   const [spRes, nvRes] = await Promise.all([
-    fetch(`${urlBase}?action=getSP`).then(r => r.json()),
-    fetch(`${urlBase}?action=getNV`).then(r => r.json())
+    supabase.from("dmhanghoa").select("masp, tensp, giale, khuyenmai, vitrikho1, vitrikho2"),
+    supabase.from("dmnhanvien").select("manv, tennv")
   ]);
 
-  // Đổ dữ liệu sản phẩm vào sanPhamData
+  if (spRes.error || nvRes.error) {
+    alert("❌ Lỗi tải dữ liệu sản phẩm hoặc nhân viên từ Supabase");
+    console.error(spRes.error || nvRes.error);
+    return;
+  }
 
-  spRes.forEach(sp => {
-    sanPhamData[sp.masp] = {
-      masp: sp.masp,
-      tensp: sp.tensp,
-      gia: Number(sp.gia),
-      km: typeof sp.km === 'number' ? sp.km : 0,
-      vitriCS1: sp.vitriCS1 || "",
-      vitriCS2: sp.vitriCS2 || ""
+  // Chuẩn hóa và đổ dữ liệu sản phẩm
+  sanPhamData = {};
+  spRes.data.forEach(sp => {
+    const masp = sp.masp?.trim().toUpperCase();
+    if (!masp) return;
+    sanPhamData[masp] = {
+      masp,
+      tensp: sp.tensp || "",
+      gia: Number(sp.giale) || 0,
+      km: Number(sp.khuyenmai) || 0,
+      vitriCS1: sp.vitrikho1 || "",
+      vitriCS2: sp.vitrikho2 || ""
     };
   });
 
-
-  // Đổ dữ liệu nhân viên
-  nvRes.forEach(nv => nhanVienData[nv.manv] = nv.tennv);
+  // Chuẩn hóa nhân viên
+  nhanVienData = {};
+  nvRes.data.forEach(nv => {
+    if (nv.manv) nhanVienData[nv.manv.trim()] = nv.tennv?.trim() || "";
+  });
 
   // 🔍 Log kiểm tra
-  console.group("📦 Kết quả tải dữ liệu:");
-  console.log("🧾 Tổng số mã sản phẩm:", spRes.length);
-  console.log("👨‍💼 Tổng số nhân viên:", nvRes.length);
-  const sanPhamDataSize = new TextEncoder().encode(JSON.stringify(sanPhamData)).length / 1024;
-  console.log(`🧠 Ước tính bộ nhớ RAM bị chiếm bởi sanPhamData: ~${sanPhamDataSize.toFixed(1)} KB`);
-  console.log("🔍 Mẫu 5 mã SP đầu tiên:", Object.values(sanPhamData).slice(0, 5));
+  console.group("📦 Dữ liệu Supabase:");
+  console.log("🧾 Tổng mã SP:", Object.keys(sanPhamData).length);
+  console.log("👨‍💼 Tổng NV:", Object.keys(nhanVienData).length);
   console.groupEnd();
 }
+
 
 // Gán tên nhân viên sau khi nhập mã nhân viên
 function ganTenNV() {
@@ -366,91 +372,91 @@ window.onload = () => {
   }
 
   document.addEventListener("keydown", function (e) {
-  if (e.key === "F1") {
-    e.preventDefault();
-    moPopupThemMoi();
+    if (e.key === "F1") {
+      e.preventDefault();
+      moPopupThemMoi();
 
-    const btn = document.getElementById("btnThemMoiCo");
-    btn.onclick = function () {
-      dongTatCaPopup();
-      document.getElementById("them").click();
-    };
+      const btn = document.getElementById("btnThemMoiCo");
+      btn.onclick = function () {
+        dongTatCaPopup();
+        document.getElementById("them").click();
+      };
 
-    btn.addEventListener("keydown", function onKey(ev) {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        btn.onclick();
-        btn.removeEventListener("keydown", onKey);
-      }
-    });
-  }
-});
-
-  
-  document.addEventListener("keydown", async function (e) {
-  if (e.key === "F2") {
-    e.preventDefault();
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-    if (rows.length === 0) {
-      alert("❌ Không có dữ liệu để lưu hóa đơn.");
-      return;
-    }
-    await luuHoaDonQuaAPI();
-  }
-
-    document.addEventListener("keydown", function(e) {
-  if (e.key === "F4") {
-    e.preventDefault();
-    const khachtra = document.getElementById("khachtra");
-    if (khachtra) {
-      khachtra.focus();
-      khachtra.select();
-
-      // Gán sự kiện Enter chỉ một lần
-      khachtra.addEventListener("keydown", async function onEnter(ev) {
+      btn.addEventListener("keydown", function onKey(ev) {
         if (ev.key === "Enter") {
           ev.preventDefault();
-          // Tránh gán nhiều lần
-          khachtra.removeEventListener("keydown", onEnter);
-
-          const rows = document.querySelectorAll("table tbody tr");
-          if (rows.length === 0) {
-            alert("❌ Không có dữ liệu để lưu.");
-            return;
-          }
-          await luuHoaDonQuaAPI();
+          btn.onclick();
+          btn.removeEventListener("keydown", onKey);
         }
-      }, { once: true }); // chỉ chạy 1 lần
+      });
     }
-  }
-});
-   
-  
+  });
 
-  if (e.key === "F3") {
-    e.preventDefault();
-    xoaDongDangChon();
-  }
 
-  if (e.key === "F5") {
-    e.preventDefault();
-    const box = document.getElementById("nhapnhanh");
-    if (box) {
-      box.checked = !box.checked;
-      console.log("Toggle Nhập Nhanh:", box.checked);
+  document.addEventListener("keydown", async function (e) {
+    if (e.key === "F2") {
+      e.preventDefault();
+      const table = document.querySelector("table");
+      const rows = table.querySelectorAll("tbody tr");
+      if (rows.length === 0) {
+        alert("❌ Không có dữ liệu để lưu hóa đơn.");
+        return;
+      }
+      await luuHoaDonQuaAPI();
     }
-  }
 
-  if (e.key === "F6") {
-    e.preventDefault();
-    const box = document.getElementById("size45");
-    if (box) {
-      box.checked = !box.checked;
-      console.log("Toggle Size 45:", box.checked);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "F4") {
+        e.preventDefault();
+        const khachtra = document.getElementById("khachtra");
+        if (khachtra) {
+          khachtra.focus();
+          khachtra.select();
+
+          // Gán sự kiện Enter chỉ một lần
+          khachtra.addEventListener("keydown", async function onEnter(ev) {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              // Tránh gán nhiều lần
+              khachtra.removeEventListener("keydown", onEnter);
+
+              const rows = document.querySelectorAll("table tbody tr");
+              if (rows.length === 0) {
+                alert("❌ Không có dữ liệu để lưu.");
+                return;
+              }
+              await luuHoaDonQuaAPI();
+            }
+          }, { once: true }); // chỉ chạy 1 lần
+        }
+      }
+    });
+
+
+
+    if (e.key === "F3") {
+      e.preventDefault();
+      xoaDongDangChon();
     }
-  }
-});
+
+    if (e.key === "F5") {
+      e.preventDefault();
+      const box = document.getElementById("nhapnhanh");
+      if (box) {
+        box.checked = !box.checked;
+        console.log("Toggle Nhập Nhanh:", box.checked);
+      }
+    }
+
+    if (e.key === "F6") {
+      e.preventDefault();
+      const box = document.getElementById("size45");
+      if (box) {
+        box.checked = !box.checked;
+        console.log("Toggle Size 45:", box.checked);
+      }
+    }
+  });
 
 };
 
@@ -658,39 +664,39 @@ async function luuHoaDonQuaAPI() {
     // Chuẩn bị dữ liệu chi tiết hóa đơn
     const table = document.querySelector("table");
     const rows = table.querySelectorAll("tbody tr");
-    
-  const chitiet = [];
 
-rows.forEach(row => {
-  const cells = row.querySelectorAll("td");
-  if (cells.length >= 7) {
-    const masp = cells[0].innerText.trim();
-    const tensp = cells[1].innerText.trim();
-    const sizeText = cells[2].innerText.trim();
-    const soluongText = cells[3].innerText.trim();
-    const gia = parseFloat(cells[5].innerText.trim()) || 0;
-    const km = parseFloat(cells[6].innerText.trim()) || 0;
+    const chitiet = [];
 
-    const sizes = sizeText.split(",");
-    const soluongs = soluongText.split(",");
+    rows.forEach(row => {
+      const cells = row.querySelectorAll("td");
+      if (cells.length >= 7) {
+        const masp = cells[0].innerText.trim();
+        const tensp = cells[1].innerText.trim();
+        const sizeText = cells[2].innerText.trim();
+        const soluongText = cells[3].innerText.trim();
+        const gia = parseFloat(cells[5].innerText.trim()) || 0;
+        const km = parseFloat(cells[6].innerText.trim()) || 0;
 
-    sizes.forEach((sz, i) => {
-      const sl = parseInt(soluongs[i] || "0");
-      if (sz.trim() && sl > 0) {
-        chitiet.push({
-          sohd: sohd,
-          masp: masp,
-          tensp: tensp,
-          size: sz.trim(),
-          soluong: sl,
-          gia: gia,
-          km: km,
-          thanhtien: sl * gia - km
+        const sizes = sizeText.split(",");
+        const soluongs = soluongText.split(",");
+
+        sizes.forEach((sz, i) => {
+          const sl = parseInt(soluongs[i] || "0");
+          if (sz.trim() && sl > 0) {
+            chitiet.push({
+              sohd: sohd,
+              masp: masp,
+              tensp: tensp,
+              size: sz.trim(),
+              soluong: sl,
+              gia: gia,
+              km: km,
+              thanhtien: sl * gia - km
+            });
+          }
         });
       }
     });
-  }
-});
 
 
     // Gửi dữ liệu lên Supabase
@@ -799,35 +805,35 @@ rows.forEach(row => {
   });
 
   inputMaSP.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
+    if (e.key === "Enter") {
+      e.preventDefault();
 
-    const keyword = inputMaSP.value.trim().toUpperCase();
-    const sp = window.sanPhamData?.[keyword];
+      const keyword = inputMaSP.value.trim().toUpperCase();
+      const sp = window.sanPhamData?.[keyword];
 
-    if (sp) {
-      // ✅ Có trong danh mục → xử lý như bình thường
-      xuLyKhiChonMaSanPham(keyword);  // điền thông tin
-      // ➝ Tự chuyển focus giống chuyenFocus
-      const nhapNhanh = document.getElementById("nhapnhanh").checked;
-      const size45 = document.getElementById("size45").checked;
+      if (sp) {
+        // ✅ Có trong danh mục → xử lý như bình thường
+        xuLyKhiChonMaSanPham(keyword);  // điền thông tin
+        // ➝ Tự chuyển focus giống chuyenFocus
+        const nhapNhanh = document.getElementById("nhapnhanh").checked;
+        const size45 = document.getElementById("size45").checked;
 
-      if (size45) {
-        document.getElementById("soluong").value = "1";
-        window.themVaoBang("45");
+        if (size45) {
+          document.getElementById("soluong").value = "1";
+          window.themVaoBang("45");
+        } else {
+          const nextId = nhapNhanh ? "size" : "soluong";
+          const nextInput = document.getElementById(nextId);
+          nextInput?.focus();
+          if (nextId === "soluong") nextInput?.select();
+        }
+
       } else {
-        const nextId = nhapNhanh ? "size" : "soluong";
-        const nextInput = document.getElementById(nextId);
-        nextInput?.focus();
-        if (nextId === "soluong") nextInput?.select();
+        // ❌ Không có trong danh mục → mở popup bảng danh mục để tạo mới
+        window.moBangDanhMucHangHoa(keyword);
       }
-
-    } else {
-      // ❌ Không có trong danh mục → mở popup bảng danh mục để tạo mới
-      window.moBangDanhMucHangHoa(keyword);
     }
-  }
-});
+  });
 
 
 
