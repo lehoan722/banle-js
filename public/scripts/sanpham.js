@@ -80,9 +80,16 @@ inputMaSP.addEventListener("keydown", (e) => {
       }
 
     } else {
-      // ❌ Không có trong danh mục → mở popup bảng danh mục để tạo mới
-      window.moBangDanhMucHangHoa(keyword);
-    }
+  const key = keyword.toUpperCase();
+  if (window.sanPhamData?.[key]) {
+    xuLyKhiChonMaSanPham(key);
+  } else {
+    alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
+    // Không mở popup
+    return;
+  }
+}
+
   }
 });
 
