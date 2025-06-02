@@ -55,41 +55,31 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
-inputMaSP.addEventListener("keydown", (e) => {
+
+inputMaSP.addEventListener("keydown", async (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
 
     const keyword = inputMaSP.value.trim().toUpperCase();
     const sp = window.sanPhamData?.[keyword];
 
-    if (sp) {
-      // ✅ Có trong danh mục → xử lý như bình thường
-      xuLyKhiChonMaSanPham(keyword);  // điền thông tin
-      // ➝ Tự chuyển focus giống chuyenFocus
-      const nhapNhanh = document.getElementById("nhapnhanh").checked;
-      const size45 = document.getElementById("size45").checked;
+    // ✅ Dù có hay không cũng không mở popup nào
+    // Chỉ log ra để biết
+    console.log("Nhấn Enter mã SP:", keyword, sp ? "(CÓ trong danh mục)" : "(KHÔNG có trong danh mục)");
 
-      if (size45) {
-        document.getElementById("soluong").value = "1";
-        window.themVaoBang("45");
-      } else {
-        const nextId = nhapNhanh ? "size" : "soluong";
-        const nextInput = document.getElementById(nextId);
-        nextInput?.focus();
-        if (nextId === "soluong") nextInput?.select();
-      }
+    // Luôn chuyển focus như bình thường
+    const nhapNhanh = document.getElementById("nhapnhanh")?.checked;
+    const size45 = document.getElementById("size45")?.checked;
 
+    if (size45) {
+      document.getElementById("soluong").value = "1";
+      window.themVaoBang("45");
     } else {
-  const key = keyword.toUpperCase();
-  if (window.sanPhamData?.[key]) {
-    xuLyKhiChonMaSanPham(key);
-  } else {
-    alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
-    // Không mở popup
-    return;
-  }
-}
-
+      const nextId = nhapNhanh ? "size" : "soluong";
+      const nextInput = document.getElementById(nextId);
+      nextInput?.focus();
+      if (nextId === "soluong") nextInput?.select();
+    }
   }
 });
 
