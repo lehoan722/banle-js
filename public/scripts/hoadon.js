@@ -1,4 +1,4 @@
-
+// hoadon.js
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 
 let bangKetQua = {};
@@ -12,35 +12,16 @@ export function chuyenFocus(e) {
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-    xuLyMaSanPhamNhap(maspVal, nhapNhanh, size45);
-  } else if (e.target.id === "soluong") {
-    document.getElementById("size").focus();
-  } else if (e.target.id === "size") {
-    themVaoBang();
-  }
-}
+    const spData = window.sanPhamData?.[maspVal];
 
-async function xuLyMaSanPhamNhap(maspVal, nhapNhanh, size45) {
-  let spData = window.sanPhamData?.[maspVal];
+    if (spData) {
+      document.getElementById("gia").value = spData.giale || "";
+      document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
-  if (!spData) {
-    const { data } = await window.supabase
-      .from("dmhanghoa")
-      .select("*")
-      .eq("masp", maspVal)
-      .maybeSingle();
-    if (data) {
-      window.sanPhamData[maspVal] = data;
-      spData = data;
+      const cs = document.getElementById("diadiem").value;
+      const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
+      document.getElementById("vitri").value = vitri || "";
     }
-  }
-
-  if (spData) {
-    document.getElementById("gia").value = spData.giale || "";
-    document.getElementById("khuyenmai").value = spData.khuyenmai || "";
-    const cs = document.getElementById("diadiem").value;
-    const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
-    document.getElementById("vitri").value = vitri || "";
 
     if (size45) {
       document.getElementById("soluong").value = "1";
@@ -48,37 +29,25 @@ async function xuLyMaSanPhamNhap(maspVal, nhapNhanh, size45) {
     } else {
       const nextId = nhapNhanh ? "size" : "soluong";
       const nextInput = document.getElementById(nextId);
-      nextInput?.focus();
-      if (nextId === "soluong") nextInput?.select();
+      nextInput.focus();
+      if (nextId === "soluong") nextInput.select();
     }
-  } else {
-    alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
+
+  } else if (e.target.id === "soluong") {
+    document.getElementById("size").focus();
+  } else if (e.target.id === "size") {
+    themVaoBang();
   }
 }
 
-export async function themVaoBang(forcedSize = null) {
+export function themVaoBang(forcedSize = null) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
   const size = forcedSize || document.getElementById("size").value.trim();
   const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
-  if (!masp || !size) return;
-
-  let sp = window.sanPhamData?.[masp];
-
-  if (!sp) {
-    const { data } = await window.supabase
-      .from("dmhanghoa")
-      .select("*")
-      .eq("masp", masp)
-      .maybeSingle();
-    if (data) {
-      sp = data;
-      window.sanPhamData[masp] = sp;
-    }
-  }
-
-  if (!sp) {
-    alert("❌ Mã sản phẩm không hợp lệ hoặc không tồn tại.");
+  const sp = window.sanPhamData?.[masp];
+  if (!masp || !size || !sp) {
+    alert("Mã sản phẩm không hợp lệ hoặc không tồn tại.");
     return;
   }
 
@@ -140,6 +109,7 @@ export function xoaDongDangChon() {
     alert("Vui lòng chọn dòng cần xóa.");
     return;
   }
+
   if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
     delete bangKetQua[maspDangChon];
     maspDangChon = null;
