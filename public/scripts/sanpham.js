@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient.js';
- import { moBangDanhMucHangHoa } from './banghanghoa.js'; // thêm vào đầu file
+import { moBangDanhMucHangHoa } from './banghanghoa.js';
+
 const truongHangHoa = [
   { id: "masp", label: "Mã sản phẩm", batbuoc: true },
   { id: "tensp", label: "Tên sản phẩm", batbuoc: true },
@@ -19,7 +20,6 @@ const truongHangHoa = [
   { id: "mausac", label: "Màu sắc" },
   { id: "khuyenmai", label: "Khuyến mãi" },
   { id: "quanlykhicoc", label: "Quản lý khi cọc", loai: "boolean" }
-  // không hiển thị nhapcuoi, nhapdau sẽ tự động gán
 ];
 
 export function khoiTaoTimMaSP(sanPhamData) {
@@ -55,25 +55,24 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
- inputMaSP.addEventListener("keydown", (e) => {   
-  if (e.key === "Escape") popup.style.display = "none";
-  if (e.key === "Enter") {
-    const itemFirst = popup.querySelector(".popup-masp-item");
-    const keyword = inputMaSP.value.trim().toUpperCase();
+  inputMaSP.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") popup.style.display = "none";
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const keyword = inputMaSP.value.trim();
+      const keywordUpper = keyword.toUpperCase();
 
-    e.preventDefault();
-   if (popup.style.display !== "none" && itemFirst) {
-  chonMaSanPham(itemFirst.dataset.masp);
-} else {
-  const keywordUpper = keyword.toUpperCase();
-  if (window.sanPhamData?.[keywordUpper]) {
-    xuLyKhiChonMaSanPham(keywordUpper);
-  } else {
-    window.moPopupNhapHangHoa("them", { masp: keyword });
-  }
-}
-});
+      const itemFirst = popup.querySelector(".popup-masp-item");
 
+      if (popup.style.display !== "none" && itemFirst) {
+        chonMaSanPham(itemFirst.dataset.masp);
+      } else if (window.sanPhamData?.[keywordUpper]) {
+        xuLyKhiChonMaSanPham(keywordUpper);
+      } else {
+        window.moPopupNhapHangHoa("them", { masp: keywordUpper });
+      }
+    }
+  });
 
   document.addEventListener("click", (e) => {
     if (!popup.contains(e.target) && e.target !== inputMaSP) {
@@ -81,19 +80,16 @@ export function khoiTaoTimMaSP(sanPhamData) {
     }
   });
 
- function chonMaSanPham(masp) {
-  inputMaSP.value = masp;
-  popup.style.display = "none";
+  function chonMaSanPham(masp) {
+    inputMaSP.value = masp;
+    popup.style.display = "none";
+    xuLyKhiChonMaSanPham(masp);
+  }
+}
 
-  // 👉 Gọi trực tiếp hàm xử lý khi đã chọn mã
-  xuLyKhiChonMaSanPham(masp);
-}
- 
-}
 function xuLyKhiChonMaSanPham(masp) {
   const sp = window.sanPhamData?.[masp.toUpperCase()];
   if (sp) {
-    // ✅ điền thông tin sản phẩm ra các ô cần thiết ở form
     document.getElementById("gia").value = sp.giale || "";
     document.getElementById("khuyenmai").value = sp.khuyenmai || "";
     const cs = document.getElementById("diadiem").value;
@@ -101,11 +97,9 @@ function xuLyKhiChonMaSanPham(masp) {
     document.getElementById("vitri").value = vitri || "";
     document.getElementById("soluong").focus();
   } else {
-    // ❌ mã không tồn tại → mở popup thêm mới
     window.moPopupNhapHangHoa("them", { masp });
   }
 }
-
 
 export function hienThiFormMaMoi() {
   const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "[]");
@@ -142,13 +136,12 @@ export async function luuMaSanPhamMoi(sanPhamData) {
     }
   });
 
-  // Validate
   if (!data.masp || !data.tensp || (!data.giale && !data.giasi && !data.gianhap)) {
     alert("❗ Cần nhập Mã SP, Tên SP và ít nhất một giá bán.");
     return;
   }
 
-  data.nhapdau = new Date().toISOString().slice(0, 10); // tự gán ngày nhập đầu
+  data.nhapdau = new Date().toISOString().slice(0, 10);
 
   const { error } = await supabase.from("dmhanghoa").insert([data]);
   if (error) {
