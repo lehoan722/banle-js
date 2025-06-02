@@ -7,10 +7,11 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { ganSuKienDuyetHoaDon } from './duyetHoaDon.js';
 import { ganSuKienNutLenh } from './nutLenh.js';
 import { khoiTaoShortcut } from './shortcut.js';
-
+import { xacNhanSuaHoaDon } from './luuhoadon.js';
 import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
+import { luuHoaDonQuaAPI } from './luuhoadon.js';
 
 window.addEventListener('DOMContentLoaded', async () => {
   // Tải danh mục sản phẩm từ Supabase
@@ -36,6 +37,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.moPopupNhapHangHoa = moPopupNhapHangHoa;
   window.luuHangHoa = luuHangHoa;
   window.themTiepSanPham = themTiepSanPham;
+  window.luuHoaDonQuaAPI = luuHoaDonQuaAPI;  
+window.xacNhanSuaHoaDon = xacNhanSuaHoaDon;
+
+
 
   // Gán phím tắt và sự kiện các nút bấm
   khoiTaoShortcut();
