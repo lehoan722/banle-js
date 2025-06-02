@@ -62,14 +62,16 @@ export function khoiTaoTimMaSP(sanPhamData) {
     const keyword = inputMaSP.value.trim().toUpperCase();
 
     e.preventDefault();
-    if (popup.style.display !== "none" && itemFirst) {
-      chonMaSanPham(itemFirst.dataset.masp);
-    } else if (window.sanPhamData[keyword]) {
-     xuLyKhiChonMaSanPham(keyword);
-    } else {
-      window.moPopupNhapHangHoa("them", { masp: keyword });
-    }
+   if (popup.style.display !== "none" && itemFirst) {
+  chonMaSanPham(itemFirst.dataset.masp);
+} else {
+  const keywordUpper = keyword.toUpperCase();
+  if (window.sanPhamData?.[keywordUpper]) {
+    xuLyKhiChonMaSanPham(keywordUpper);
+  } else {
+    window.moPopupNhapHangHoa("them", { masp: keyword });
   }
+}
 });
 
 
@@ -89,7 +91,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
  
 }
 function xuLyKhiChonMaSanPham(masp) {
-  const sp = window.sanPhamData?.[masp];
+  const sp = window.sanPhamData?.[masp.toUpperCase()];
   if (sp) {
     // ✅ điền thông tin sản phẩm ra các ô cần thiết ở form
     document.getElementById("gia").value = sp.giale || "";
