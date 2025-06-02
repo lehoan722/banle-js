@@ -105,9 +105,11 @@
         cleaned[key] = (v === "true" || v === "1" || v === "x" || v === "yes");
       } else if (fields[key] === "date") {
         cleaned[key] = parseDate(val);
-      } else {
-        cleaned[key] = val.toString();
-      }
+      }} else {
+  let textVal = val.toString();
+  if (key === "masp") textVal = textVal.toUpperCase();
+  cleaned[key] = textVal;
+}
     }
     return cleaned;
   }
