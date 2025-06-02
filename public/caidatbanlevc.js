@@ -164,12 +164,10 @@ function resetForm() {
 // Hàm tải dữ liệu sản phẩm và nhân viên từ Google Apps Script
 // Hàm tải dữ liệu sản phẩm và nhân viên từ Supabase
 async function loadData() {
-const [spRes, nvRes] = await Promise.all([
-  supabase.from("dmhanghoa")
-    .select("masp, tensp, giale, khuyenmai, vitrikho1, vitrikho2")
-    .range(0, 19999),
-  supabase.from("dmnhanvien").select("manv, tennv")
-]);
+  const [spRes, nvRes] = await Promise.all([
+    supabase.from("dmhanghoa").select("masp, tensp, giale, khuyenmai, vitrikho1, vitrikho2"),
+    supabase.from("dmnhanvien").select("manv, tennv")
+  ]);
 
   if (spRes.error || nvRes.error) {
     alert("❌ Lỗi tải dữ liệu sản phẩm hoặc nhân viên từ Supabase");
