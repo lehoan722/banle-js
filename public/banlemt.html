@@ -306,23 +306,48 @@
   </div>
 </div>
 
+<!-- Popup nhập mã sản phẩm mới -->
+<div id="popupNhapMaMoi" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
+  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
+  <h3>Thêm mã sản phẩm mới</h3>
+  <div id="formFields"></div>
+  <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
+  <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
+  <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
+</div>
+
+<div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
+  <h3>Cấu hình trường hiển thị</h3>
+  <div id="dsCauHinhTruong"></div>
+  <div style="text-align:right; margin-top:10px;">
+    <button onclick="luuCauHinhTruong()">Lưu</button>
+    <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
+  </div>
+</div>
 
 
     
-<div id="popupBangDanhMuc" class="popup" style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
-  <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-    <strong>Danh mục hàng hóa</strong>
-    <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
-  </div>
-  <div style="padding: 0 10px 10px;">
-    <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()" style="width: 300px; padding: 4px;" />
-    <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
-   
-  </div>
-  <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
+
+
+    <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
+<div id="popupNhapHangHoa" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+  <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
+  
+  <div id="fieldsNhapHangHoa"></div>
+  
+  <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
+
+    <div style="margin-top:14px; text-align:center;">
+  <button onclick="themTiepSanPham()">➕ Thêm mới</button>
+  <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
+  <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
+  <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
 </div>
 
- 
+  
+</div>
 
     
 </body>
