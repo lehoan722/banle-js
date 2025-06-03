@@ -49,12 +49,3 @@ export function capNhatThongTinTong(bangKetQua) {
   document.getElementById("khachtra_text").textContent = khachtra.toLocaleString();
   document.getElementById("conlai_text").textContent = conlai.toLocaleString();
 }
-
-export function logThongTinHeThong(sanPhamData, danhSachNhanVien) {
-  console.group("📊 Kết quả tải dữ liệu:");
-  console.log("📦 Tổng số mã sản phẩm:", sanPhamData?.length || 0);
-  console.log("👨‍💼 Tổng số nhân viên:", danhSachNhanVien?.length || 0);
-  console.log("💾 RAM ước tính:", Math.round(JSON.stringify(sanPhamData || []).length / 1024), "KB");
-  console.log("🔍 5 mã đầu tiên:", (sanPhamData || []).slice(0, 5).map(sp => sp.masp));
-  console.groupEnd();
-}

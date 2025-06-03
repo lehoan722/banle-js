@@ -76,10 +76,3 @@ window.xacNhanSuaHoaDon = xacNhanSuaHoaDon;
   await capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
 });
-
-// 👨‍💼 Debug: Thống kê danh sách nhân viên
-if (danhSachNhanVien && Array.isArray(danhSachNhanVien)) {
-  console.group("👨‍💼 Dữ liệu nhân viên đã tải");
-  console.log("Tổng số nhân viên:", danhSachNhanVien.length);
-  console.groupEnd();
-}
