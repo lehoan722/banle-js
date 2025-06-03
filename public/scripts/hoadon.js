@@ -1,11 +1,12 @@
-// hoadon.js
+
+// hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { supabase } from './supabaseClient.js';
 
 let bangKetQua = {};
 let maspDangChon = null;
 
-export function chuyenFocus(e) {
+export async function chuyenFocus(e) {
   if (e.key !== "Enter") return;
 
   const nhapNhanh = document.getElementById("nhapnhanh").checked;
@@ -13,7 +14,12 @@ export function chuyenFocus(e) {
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-    xuLyMaSanPham(maspVal, size45, nhapNhanh);
+    const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
+
+    // Nếu không thành công, mới mở popup tìm mã
+    if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
+      moPopupTimMaSanPham();
+    }
   } else if (e.target.id === "soluong") {
     document.getElementById("size").focus();
   } else if (e.target.id === "size") {
@@ -29,10 +35,10 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     if (data) {
       spData = data;
       window.sanPhamData[maspVal] = data;
-      console.log("🔄 Đã tải từ Supabase:", data);
+      console.log("🔄 Fetched từ Supabase:", maspVal, data);
     } else {
-      alert("Mã sản phẩm không hợp lệ hoặc không tồn tại.");
-      return;
+      console.warn("❌ Không tìm thấy mã:", maspVal);
+      return false;
     }
   }
 
@@ -52,6 +58,8 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     nextInput.focus();
     if (nextId === "soluong") nextInput.select();
   }
+
+  return true;
 }
 
 export function themVaoBang(forcedSize = null) {
