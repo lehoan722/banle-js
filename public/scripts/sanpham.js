@@ -34,7 +34,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
       .filter(sp =>
         sp.masp.includes(keyword) || (sp.tensp || "").toUpperCase().includes(keyword)
       )
-      .slice(0, 10000);
+      .slice(0, 100000);
 
     if (danhSach.length === 0) {
       popup.style.display = "none";
