@@ -12,7 +12,19 @@ export function chuyenFocus(e) {
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-    const spData = window.sanPhamData?.[maspVal];
+   let spData = window.sanPhamData?.[maspVal];
+if (!spData) {
+  const { data, error } = await supabase.from("dmhanghoa").select("*").eq("masp", maspVal).single();
+  if (data) {
+    spData = data;
+    window.sanPhamData[maspVal] = data; // cache lại để không gọi lại nữa
+  }
+}
+if (!spData) {
+  alert("Mã sản phẩm không hợp lệ hoặc không tồn tại");
+  return;
+}
+
 
     if (spData) {
       document.getElementById("gia").value = spData.giale || "";
