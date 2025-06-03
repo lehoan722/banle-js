@@ -1,5 +1,6 @@
 // hoadon.js
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
+import { supabase } from './supabaseClient.js';
 
 let bangKetQua = {};
 let maspDangChon = null;
@@ -12,43 +13,44 @@ export function chuyenFocus(e) {
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-   let spData = window.sanPhamData?.[maspVal];
-if (!spData) {
-  const { data, error } = await supabase.from("dmhanghoa").select("*").eq("masp", maspVal).single();
-  if (data) {
-    spData = data;
-    window.sanPhamData[maspVal] = data; // cache lại để không gọi lại nữa
-  }
-}
-if (!spData) {
-  alert("Mã sản phẩm không hợp lệ hoặc không tồn tại");
-  return;
-}
-
-
-    if (spData) {
-      document.getElementById("gia").value = spData.giale || "";
-      document.getElementById("khuyenmai").value = spData.khuyenmai || "";
-
-      const cs = document.getElementById("diadiem").value;
-      const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
-      document.getElementById("vitri").value = vitri || "";
-    }
-
-    if (size45) {
-      document.getElementById("soluong").value = "1";
-      themVaoBang("45");
-    } else {
-      const nextId = nhapNhanh ? "size" : "soluong";
-      const nextInput = document.getElementById(nextId);
-      nextInput.focus();
-      if (nextId === "soluong") nextInput.select();
-    }
-
+    xuLyMaSanPham(maspVal, size45, nhapNhanh);
   } else if (e.target.id === "soluong") {
     document.getElementById("size").focus();
   } else if (e.target.id === "size") {
     themVaoBang();
+  }
+}
+
+async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
+  let spData = window.sanPhamData?.[maspVal];
+
+  if (!spData) {
+    const { data, error } = await supabase.from("dmhanghoa").select("*").eq("masp", maspVal).single();
+    if (data) {
+      spData = data;
+      window.sanPhamData[maspVal] = data;
+      console.log("🔄 Đã tải từ Supabase:", data);
+    } else {
+      alert("Mã sản phẩm không hợp lệ hoặc không tồn tại.");
+      return;
+    }
+  }
+
+  document.getElementById("gia").value = spData.giale || "";
+  document.getElementById("khuyenmai").value = spData.khuyenmai || "";
+
+  const cs = document.getElementById("diadiem").value;
+  const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
+  document.getElementById("vitri").value = vitri || "";
+
+  if (size45) {
+    document.getElementById("soluong").value = "1";
+    themVaoBang("45");
+  } else {
+    const nextId = nhapNhanh ? "size" : "soluong";
+    const nextInput = document.getElementById(nextId);
+    nextInput.focus();
+    if (nextId === "soluong") nextInput.select();
   }
 }
 
