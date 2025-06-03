@@ -328,7 +328,18 @@
 
 
     
-
+<div id="popupBangDanhMuc" class="popup" style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
+  <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+    <strong>Danh mục hàng hóa</strong>
+    <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
+  </div>
+  <div style="padding: 0 10px 10px;">
+    <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()" style="width: 300px; padding: 4px;" />
+    <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
+   
+  </div>
+  <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
+</div>
 
     <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
 <div id="popupNhapHangHoa" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
