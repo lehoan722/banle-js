@@ -23,6 +23,15 @@ const truongHangHoa = [
 ];
 
 export function khoiTaoTimMaSP(sanPhamData) {
+  // 📦 Debug: Thống kê danh sách sản phẩm
+  if (sanPhamData && Array.isArray(sanPhamData)) {
+    console.group("📦 Dữ liệu sản phẩm đã tải");
+    console.log("Tổng số mã sản phẩm:", sanPhamData.length);
+    console.log("Dung lượng RAM ~", Math.round(JSON.stringify(sanPhamData).length / 1024), "KB");
+    console.log("5 mã đầu tiên:", sanPhamData.slice(0, 5).map(sp => sp.masp));
+    console.groupEnd();
+  }
+
   const inputMaSP = document.getElementById("masp");
   const popup = document.getElementById("popup_masp");
 
@@ -34,7 +43,7 @@ export function khoiTaoTimMaSP(sanPhamData) {
       .filter(sp =>
         sp.masp.includes(keyword) || (sp.tensp || "").toUpperCase().includes(keyword)
       )
-      .slice(0, 100000);
+      .slice(0, 100);
 
     if (danhSach.length === 0) {
       popup.style.display = "none";
@@ -180,11 +189,4 @@ export function luuCauHinhTruong() {
   document.getElementById("popupCauHinh").style.display = "none";
 }
 
-// 📦 Debug: Thống kê danh sách sản phẩm
-if (sanPhamData && Array.isArray(sanPhamData)) {
-  console.group("📦 Dữ liệu sản phẩm đã tải");
-  console.log("Tổng số mã sản phẩm:", sanPhamData.length);
-  console.log("Dung lượng RAM ~", Math.round(JSON.stringify(sanPhamData).length / 1024), "KB");
-  console.log("5 mã đầu tiên:", sanPhamData.slice(0, 5).map(sp => sp.masp));
-  console.groupEnd();
-}
+
