@@ -15,12 +15,7 @@ import { luuHoaDonQuaAPI } from './luuhoadon.js';
 
 window.addEventListener('DOMContentLoaded', async () => {
   // Tải danh mục sản phẩm từ Supabase
-
- const { data: dssp, error } = await supabase
-  .from("dmhanghoa")
-  .select("masp, tensp, gianhap, giale, mangan, nhomhang, nhacc, chungloai, loaisp, khuyenmai, quanlykichco");
-
-
+  const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
   if (error) {
     alert("Lỗi khi tải danh mục hàng hóa");
     console.error(error);
