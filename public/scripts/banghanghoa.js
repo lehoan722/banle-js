@@ -1,7 +1,5 @@
-
 import { supabase } from './supabaseClient.js';
-// ❌ ĐÃ BỎ import ESM do sử dụng v8.4.0 UMD trong HTML
-// import Handsontable from 'https://cdn.jsdelivr.net/npm/handsontable@13.0.0/+esm';
+import Handsontable from 'https://cdn.jsdelivr.net/npm/handsontable@13.0.0/+esm';
 
 let hot;
 let container;
@@ -29,7 +27,7 @@ export async function moBangDanhMucHangHoa(keyword = "") {
   if (hot) {
     hot.loadData(data);
   } else {
-    hot = new window.Handsontable(container, {
+    hot = new Handsontable(container, {
       data: data,
       columns: [
         { data: 'masp', title: 'Mã SP' },
@@ -53,11 +51,8 @@ export async function moBangDanhMucHangHoa(keyword = "") {
         if (sp && sp.masp) {
           document.getElementById("masp").value = sp.masp;
           document.getElementById("popupBangDanhMuc").style.display = "none";
-          document.getElementById("masp").focus();
-          setTimeout(() => {
-            const evt = new KeyboardEvent("keydown", { key: "Enter" });
-            document.getElementById("masp").dispatchEvent(evt);
-          }, 50);
+          const evt = new KeyboardEvent("keydown", { key: "Enter" });
+          document.getElementById("masp").dispatchEvent(evt);
         }
       }
     });
