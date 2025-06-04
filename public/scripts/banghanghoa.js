@@ -1,4 +1,3 @@
-// scripts/banghanghoa.js
 import { supabase } from './supabaseClient.js';
 import Handsontable from 'https://cdn.jsdelivr.net/npm/handsontable@13.0.0/+esm';
 
@@ -29,34 +28,36 @@ export async function moBangDanhMucHangHoa(keyword = "") {
     hot.loadData(data);
   } else {
     hot = new Handsontable(container, {
-  data: data,
-  columns: [
-    { data: 'masp', title: 'Mã SP' },
-    { data: 'tensp', title: 'Tên SP' },
-    { data: 'giale', title: 'Giá lẻ' },
-    { data: 'gianhap', title: 'Giá nhập' },
-    { data: 'nhomhang', title: 'Nhóm hàng' },
-    { data: 'nhacc', title: 'Nhà cung cấp' },
-    { data: 'mausac', title: 'Màu' }
-  ],
-  colHeaders: true,
-  rowHeaders: true,
-  height: 400,
-  licenseKey: 'non-commercial-and-evaluation',
-  afterSelection: (row, col) => {
-    rowDangChon = row;
-  },
-  afterOnCellDblClick: (event, coords, td) => {
-    const row = coords.row;
-    const sp = danhSachHienTai[row];
-    if (sp && sp.masp) {
-      document.getElementById("masp").value = sp.masp;
-      document.getElementById("popupBangDanhMuc").style.display = "none";
-      const evt = new KeyboardEvent("keydown", { key: "Enter" });
-      document.getElementById("masp").dispatchEvent(evt);
-    }
+      data: data,
+      columns: [
+        { data: 'masp', title: 'Mã SP' },
+        { data: 'tensp', title: 'Tên SP' },
+        { data: 'giale', title: 'Giá lẻ' },
+        { data: 'gianhap', title: 'Giá nhập' },
+        { data: 'nhomhang', title: 'Nhóm hàng' },
+        { data: 'nhacc', title: 'Nhà cung cấp' },
+        { data: 'mausac', title: 'Màu' }
+      ],
+      colHeaders: true,
+      rowHeaders: true,
+      height: 400,
+      licenseKey: 'non-commercial-and-evaluation',
+      afterSelection: (row, col) => {
+        rowDangChon = row;
+      },
+      afterOnCellDblClick: (event, coords, td) => {
+        const row = coords.row;
+        const sp = danhSachHienTai[row];
+        if (sp && sp.masp) {
+          document.getElementById("masp").value = sp.masp;
+          document.getElementById("popupBangDanhMuc").style.display = "none";
+          const evt = new KeyboardEvent("keydown", { key: "Enter" });
+          document.getElementById("masp").dispatchEvent(evt);
+        }
+      }
+    });
   }
-});
+}
 
 export function timLaiTrongBangDM() {
   const keyword = document.getElementById("timKiemMaspDM").value.trim();
@@ -71,5 +72,3 @@ export function chonDongDeSua() {
   const sp = danhSachHienTai[rowDangChon];
   window.moPopupNhapHangHoa("sua", sp);
 }
-
-
