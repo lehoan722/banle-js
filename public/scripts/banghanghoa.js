@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient.js';
-import Handsontable from 'https://cdn.jsdelivr.net/npm/handsontable@13.0.0/+esm';
+import Handsontable from 'https://cdn.jsdelivr.net/npm/handsontable@10.0.0/+esm';
 
 let hot;
 let container;
