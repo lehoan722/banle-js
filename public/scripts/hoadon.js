@@ -28,32 +28,20 @@ export async function chuyenFocus(e) {
 }
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
-  maspVal = maspVal.toUpperCase().trim();
   let spData = window.sanPhamData?.[maspVal];
 
-  // Nếu không có trong cache, gọi Supabase để tìm chính xác
   if (!spData) {
-    const { data, error } = await supabase
-      .from("dmhanghoa")
-      .select("*")
-      .eq("masp", maspVal)
-      .single();
-
+    const { data, error } = await supabase.from("dmhanghoa").select("*").eq("masp", maspVal).single();
     if (data) {
       spData = data;
-      window.sanPhamData[maspVal] = data; // cache lại
+      window.sanPhamData[maspVal] = data;
+      console.log("🔄 Fetched từ Supabase:", maspVal, data);
+    } else {
+      console.warn("❌ Không tìm thấy mã:", maspVal);
+      return false;
     }
   }
 
-  // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
-  if (!spData) {
-    if (typeof moBangDanhMucHangHoa === "function") {
-      moBangDanhMucHangHoa(maspVal);
-    }
-    return false;
-  }
-
-  // Gán thông tin sản phẩm vào form
   document.getElementById("gia").value = spData.giale || "";
   document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
