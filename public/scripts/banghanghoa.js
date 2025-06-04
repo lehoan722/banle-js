@@ -55,13 +55,8 @@ export async function moBangDanhMucHangHoa(keyword = "") {
       const evt = new KeyboardEvent("keydown", { key: "Enter" });
       document.getElementById("masp").dispatchEvent(evt);
     }
-  },
-    rowDangChon = row;
   }
 });
-
-  }
-}
 
 export function timLaiTrongBangDM() {
   const keyword = document.getElementById("timKiemMaspDM").value.trim();
