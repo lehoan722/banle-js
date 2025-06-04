@@ -31,10 +31,9 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   maspVal = maspVal.toUpperCase().trim();
   let spData = window.sanPhamData?.[maspVal];
 
-  // Nếu chưa có trong cache, thử gọi Supabase
+  // Nếu không có trong cache, gọi Supabase để tìm chính xác
   if (!spData) {
-    // Bước 1: Gọi .eq() để tìm chính xác
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("dmhanghoa")
       .select("*")
       .eq("masp", maspVal)
@@ -42,29 +41,19 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
     if (data) {
       spData = data;
-    } else {
-      // Bước 2: Nếu không có, thử tìm gần đúng bằng .ilike()
-      const { data: ganDung } = await supabase
-        .from("dmhanghoa")
-        .select("*")
-        .ilike("masp", `${maspVal}%`)
-        .limit(1);
-
-      if (ganDung && ganDung.length > 0) {
-        spData = ganDung[0];
-      }
-    }
-
-    if (spData) {
-      window.sanPhamData[spData.masp] = spData; // cache lại
+      window.sanPhamData[maspVal] = data; // cache lại
     }
   }
 
+  // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
   if (!spData) {
-    return false; // không tìm được
+    if (typeof moBangDanhMucHangHoa === "function") {
+      moBangDanhMucHangHoa(maspVal);
+    }
+    return false;
   }
 
-  // Gán giá trị vào form
+  // Gán thông tin sản phẩm vào form
   document.getElementById("gia").value = spData.giale || "";
   document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
@@ -84,7 +73,6 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
   return true;
 }
-
 
 export function themVaoBang(forcedSize = null) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
