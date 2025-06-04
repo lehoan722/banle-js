@@ -28,20 +28,43 @@ export async function chuyenFocus(e) {
 }
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
+  maspVal = maspVal.toUpperCase().trim();
   let spData = window.sanPhamData?.[maspVal];
 
+  // Nếu chưa có trong cache, thử gọi Supabase
   if (!spData) {
-    const { data, error } = await supabase.from("dmhanghoa").select("*").eq("masp", maspVal).single();
+    // Bước 1: Gọi .eq() để tìm chính xác
+    let { data, error } = await supabase
+      .from("dmhanghoa")
+      .select("*")
+      .eq("masp", maspVal)
+      .single();
+
     if (data) {
       spData = data;
-      window.sanPhamData[maspVal] = data;
-      console.log("🔄 Fetched từ Supabase:", maspVal, data);
     } else {
-      console.warn("❌ Không tìm thấy mã:", maspVal);
-      return false;
+      // Bước 2: Nếu không có, thử tìm gần đúng bằng .ilike()
+      const { data: ganDung } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .ilike("masp", `${maspVal}%`)
+        .limit(1);
+
+      if (ganDung && ganDung.length > 0) {
+        spData = ganDung[0];
+      }
+    }
+
+    if (spData) {
+      window.sanPhamData[spData.masp] = spData; // cache lại
     }
   }
 
+  if (!spData) {
+    return false; // không tìm được
+  }
+
+  // Gán giá trị vào form
   document.getElementById("gia").value = spData.giale || "";
   document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
@@ -61,6 +84,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
   return true;
 }
+
 
 export function themVaoBang(forcedSize = null) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
