@@ -55,24 +55,24 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
-inputMaSP.addEventListener("keydown", (e) => {
+ inputMaSP.addEventListener("keydown", (e) => {   
   if (e.key === "Escape") popup.style.display = "none";
-
   if (e.key === "Enter") {
-    e.preventDefault(); // ✅ chặn hành động mặc định
-
     const itemFirst = popup.querySelector(".popup-masp-item");
     const keyword = inputMaSP.value.trim().toUpperCase();
 
+    e.preventDefault();
     if (popup.style.display !== "none" && itemFirst) {
-      chonMaSanPham(itemFirst.dataset.masp); // chọn nhanh nếu có
+      chonMaSanPham(itemFirst.dataset.masp);
+    } else if (window.sanPhamData[keyword]) {
+     xuLyKhiChonMaSanPham(keyword);
     } else {
-      // ✅ KHÔNG xử lý gì ở đây nữa → để `hoadon.js` lo việc fetch
-      popup.style.display = "none";
+      // ❌ KHÔNG mở popup tự động ở đây nữa
+      // Vì đã có xử lý fetch từ Supabase ở hoadon.js → tránh mở thừa
+      console.warn("Không tìm thấy mã trong cache, chờ xử lý bên hoadon.js");
     }
   }
 });
-
 
 
   document.addEventListener("click", (e) => {
