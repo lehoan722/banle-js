@@ -51,8 +51,12 @@ export async function moBangDanhMucHangHoa(keyword = "") {
         if (sp && sp.masp) {
           document.getElementById("masp").value = sp.masp;
           document.getElementById("popupBangDanhMuc").style.display = "none";
-          const evt = new KeyboardEvent("keydown", { key: "Enter" });
-          document.getElementById("masp").dispatchEvent(evt);
+          document.getElementById("masp").focus();
+          setTimeout(() => {
+            const evt = new KeyboardEvent("keydown", { key: "Enter" });
+            document.getElementById("masp").dispatchEvent(evt);
+          }, 50);
+
         }
       }
     });
