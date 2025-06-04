@@ -45,6 +45,18 @@ export async function moBangDanhMucHangHoa(keyword = "") {
   licenseKey: 'non-commercial-and-evaluation',
   afterSelection: (row, col) => {
     rowDangChon = row;
+  },
+  afterOnCellDblClick: (event, coords, td) => {
+    const row = coords.row;
+    const sp = danhSachHienTai[row];
+    if (sp && sp.masp) {
+      document.getElementById("masp").value = sp.masp;
+      document.getElementById("popupBangDanhMuc").style.display = "none";
+      const evt = new KeyboardEvent("keydown", { key: "Enter" });
+      document.getElementById("masp").dispatchEvent(evt);
+    }
+  },
+    rowDangChon = row;
   }
 });
 
@@ -66,17 +78,3 @@ export function chonDongDeSua() {
 }
 
 
-
-
-document.addEventListener("dblclick", function(e) {
-  const row = e.target.closest("[data-masp]");
-  if (row) {
-    const masp = row.dataset.masp || row.getAttribute("data-masp");
-    if (masp) {
-      document.getElementById("masp").value = masp;
-      document.getElementById("popupBangDM").style.display = "none";
-      const evt = new KeyboardEvent("keydown", { key: "Enter" });
-      document.getElementById("masp").dispatchEvent(evt);
-    }
-  }
-});
