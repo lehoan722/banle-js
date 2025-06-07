@@ -54,92 +54,8 @@ function taoFormHangHoa(data = {}, mode = "them") {
     labelEl.textContent = label;
     labelEl.style = "width: 140px; font-weight: bold;";
 
-    let inputEl;
-    
-
-if (truong.id === "masp") {
-  inputEl = document.createElement("input");
-  inputEl.id = `nhh_${truong.id}`;
-  inputEl.type = "text";
-  inputEl.style = "flex: 1;";
-  inputEl.value = value;
-
-  // Tạo popup gợi ý nếu chưa có
-  let popup = document.getElementById("popup_suggest_masp");
-  if (!popup) {
-    popup = document.createElement("div");
-    popup.id = "popup_suggest_masp";
-    popup.style = "position: absolute; z-index: 1000; background: white; border: 1px solid #ccc; display: none; max-height: 200px; overflow-y: auto; font-size: 14px;";
-    document.body.appendChild(popup);
-  }
-
-  inputEl.addEventListener("input", () => {
-    const keyword = inputEl.value.trim().toUpperCase();
-    if (!keyword || !window.sanPhamData) {
-      popup.style.display = "none";
-      return;
-    }
-
-    const danhSach = Object.values(window.sanPhamData)
-      .filter(sp => sp.masp.includes(keyword) || (sp.tensp || "").toUpperCase().includes(keyword))
-      .slice(0, 100);
-
-    if (danhSach.length === 0) {
-      popup.style.display = "none";
-      return;
-    }
-
-    popup.innerHTML = danhSach.map(sp => `
-      <div class="popup-masp-item" data-masp="${sp.masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
-        ${sp.masp} - ${sp.tensp || ""}
-      </div>
-    `).join("");
-
-    const rect = inputEl.getBoundingClientRect();
-    popup.style.top = rect.bottom + window.scrollY + "px";
-    popup.style.left = rect.left + window.scrollX + "px";
-    popup.style.width = rect.width + "px";
-    popup.style.display = "block";
-  });
-
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") popup.style.display = "none";
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const firstItem = popup.querySelector(".popup-masp-item");
-      if (popup.style.display !== "none" && firstItem) {
-        inputEl.value = firstItem.dataset.masp;
-        popup.style.display = "none";
-      }
-    }
-  });
-
-  popup.addEventListener("click", (e) => {
-    const item = e.target.closest(".popup-masp-item");
-    if (!item) return;
-    inputEl.value = item.dataset.masp;
-    popup.style.display = "none";
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!popup.contains(e.target) && e.target !== inputEl) {
-      popup.style.display = "none";
-    }
-  });
-}
-
- else {
-      inputEl = document.createElement("input");
-      inputEl.id = `nhh_${truong.id}`;
-      inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
-      inputEl.style = "flex: 1;";
-      if (truong.loai !== "boolean") {
-        inputEl.value = value;
-        if (isReadOnly) inputEl.setAttribute("readonly", "true");
-      } else {
-        inputEl.checked = !!value;
-      }
-    }
+    let inputEl = document.createElement("input");
+    inputEl.id = `nhh_${truong.id}`;
     inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
     inputEl.style = "flex: 1;";
     if (truong.loai !== "boolean") {
@@ -233,9 +149,6 @@ export async function luuHangHoa() {
 
   localStorage.setItem("giulai_hanghoa", JSON.stringify(giuLai));
 
-  if (data.masp) {
-    data.masp = data.masp.toUpperCase();
-  }
   if (!data.masp || !data.tensp) {
     alert("❗ Cần nhập Mã SP và Tên SP.");
     return;
@@ -287,7 +200,7 @@ let cacheMaSP = [];
 
 async function napDanhSachMaSPVaoPopup() {
   if (cacheMaSP.length > 0) return;
-  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(1000);
+  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(100000);
   if (data) {
     cacheMaSP = data.map(d => d.masp?.toUpperCase());
     const datalist = document.getElementById("dsmasp");
@@ -302,13 +215,30 @@ async function napDanhSachMaSPVaoPopup() {
 
 document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") {
-    const popup = document.getElementById("popupNhapHangHoa");
-    if (popup && popup.style.display !== "none") {
-      popup.style.display = "none";
+    const popupSua = document.getElementById("popupNhapHangHoa");
+    const popupDanhMuc = document.getElementById("popupBangDanhMuc");
+    const popupCauHinh = document.getElementById("popupCauHinh");
+
+    if (popupSua && popupSua.style.display !== "none") {
+      popupSua.style.display = "none";
+      return; // ❗ chỉ đóng sửa trước, không làm gì thêm
     }
-    const cauhinh = document.getElementById("popupCauHinh");
-    if (cauhinh && cauhinh.style.display !== "none") {
-      cauhinh.style.display = "none";
+
+    if (popupCauHinh && popupCauHinh.style.display !== "none") {
+      popupCauHinh.style.display = "none";
+      return;
+    }
+
+    if (popupDanhMuc && popupDanhMuc.style.display !== "none") {
+      popupDanhMuc.style.display = "none";
+
+      // ✅ Sau khi đóng danh mục → focus lại ô mã
+      const oMaSP = document.getElementById("masp");
+      if (oMaSP) {
+        oMaSP.focus();
+        oMaSP.select(); // ✅ bôi đen toàn bộ
+      }
     }
   }
 });
+
