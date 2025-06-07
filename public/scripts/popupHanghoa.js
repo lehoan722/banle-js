@@ -54,8 +54,34 @@ function taoFormHangHoa(data = {}, mode = "them") {
     labelEl.textContent = label;
     labelEl.style = "width: 140px; font-weight: bold;";
 
-    let inputEl = document.createElement("input");
-    inputEl.id = `nhh_${truong.id}`;
+    let inputEl;
+    if (truong.id === "masp") {
+      inputEl = document.createElement("input");
+      inputEl.id = `nhh_${truong.id}`;
+      inputEl.type = "text";
+      inputEl.setAttribute("list", "dsmasp");
+      inputEl.value = value;
+      inputEl.style = "flex: 1;";
+
+      if (!document.getElementById("dsmasp")) {
+        const datalist = document.createElement("datalist");
+        datalist.id = "dsmasp";
+        document.body.appendChild(datalist);
+      }
+
+      napDanhSachMaSPVaoPopup();
+    } else {
+      inputEl = document.createElement("input");
+      inputEl.id = `nhh_${truong.id}`;
+      inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
+      inputEl.style = "flex: 1;";
+      if (truong.loai !== "boolean") {
+        inputEl.value = value;
+        if (isReadOnly) inputEl.setAttribute("readonly", "true");
+      } else {
+        inputEl.checked = !!value;
+      }
+    }
     inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
     inputEl.style = "flex: 1;";
     if (truong.loai !== "boolean") {
@@ -149,6 +175,9 @@ export async function luuHangHoa() {
 
   localStorage.setItem("giulai_hanghoa", JSON.stringify(giuLai));
 
+  if (data.masp) {
+    data.masp = data.masp.toUpperCase();
+  }
   if (!data.masp || !data.tensp) {
     alert("❗ Cần nhập Mã SP và Tên SP.");
     return;
@@ -194,3 +223,34 @@ export function themTiepSanPham() {
 }
 
 window.moPopupCauHinh = moPopupCauHinh;
+
+
+let cacheMaSP = [];
+
+async function napDanhSachMaSPVaoPopup() {
+  if (cacheMaSP.length > 0) return;
+  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(1000);
+  if (data) {
+    cacheMaSP = data.map(d => d.masp?.toUpperCase());
+    const datalist = document.getElementById("dsmasp");
+    datalist.innerHTML = "";
+    cacheMaSP.forEach(masp => {
+      const opt = document.createElement("option");
+      opt.value = masp;
+      datalist.appendChild(opt);
+    });
+  }
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") {
+    const popup = document.getElementById("popupNhapHangHoa");
+    if (popup && popup.style.display !== "none") {
+      popup.style.display = "none";
+    }
+    const cauhinh = document.getElementById("popupCauHinh");
+    if (cauhinh && cauhinh.style.display !== "none") {
+      cauhinh.style.display = "none";
+    }
+  }
+});
