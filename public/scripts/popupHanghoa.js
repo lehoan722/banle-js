@@ -300,8 +300,7 @@ async function napDanhSachMaSPVaoPopup() {
     console.error("❌ Lỗi tải danh sách mã sản phẩm:", error);
   }
 }
-);
-  }
+}
 }
 
 document.addEventListener("keydown", function (e) {
