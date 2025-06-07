@@ -252,10 +252,6 @@ document.addEventListener("keydown", function (e) {
     if (cauhinh && cauhinh.style.display !== "none") {
       cauhinh.style.display = "none";
     }
-    const popupBangDanhMuc = document.getElementById("popupBangDanhMuc");
-    if (popupBangDanhMuc && popupBangDanhMuc.style.display !== "none") {
-      popupBangDanhMuc.style.display = "none";
-    }
   }
   
 });
