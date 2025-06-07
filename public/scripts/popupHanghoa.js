@@ -244,18 +244,30 @@ async function napDanhSachMaSPVaoPopup() {
 
 document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") {
-    const popup = document.getElementById("popupNhapHangHoa");
-    if (popup && popup.style.display !== "none") {
-      popup.style.display = "none";
+    const popupSua = document.getElementById("popupNhapHangHoa");
+    const popupDanhMuc = document.getElementById("popupBangDanhMuc");
+    const popupCauHinh = document.getElementById("popupCauHinh");
+
+    if (popupSua && popupSua.style.display !== "none") {
+      popupSua.style.display = "none";
+      return; // ❗ chỉ đóng sửa trước, không làm gì thêm
     }
-    const cauhinh = document.getElementById("popupCauHinh");
-    if (cauhinh && cauhinh.style.display !== "none") {
-      cauhinh.style.display = "none";
+
+    if (popupCauHinh && popupCauHinh.style.display !== "none") {
+      popupCauHinh.style.display = "none";
+      return;
     }
-    const popupBangDanhMuc = document.getElementById("popupBangDanhMuc");
-    if (popupBangDanhMuc && popupBangDanhMuc.style.display !== "none") {
-      popupBangDanhMuc.style.display = "none";
+
+    if (popupDanhMuc && popupDanhMuc.style.display !== "none") {
+      popupDanhMuc.style.display = "none";
+
+      // ✅ Sau khi đóng danh mục → focus lại ô mã
+      const oMaSP = document.getElementById("masp");
+      if (oMaSP) {
+        oMaSP.focus();
+        oMaSP.select(); // ✅ bôi đen toàn bộ
+      }
     }
   }
-  
 });
+
