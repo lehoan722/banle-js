@@ -54,8 +54,87 @@ function taoFormHangHoa(data = {}, mode = "them") {
     labelEl.textContent = label;
     labelEl.style = "width: 140px; font-weight: bold;";
 
-    let inputEl = document.createElement("input");
-    inputEl.id = `nhh_${truong.id}`;
+    let inputEl;
+    
+if (truong.id === "masp") {
+  const wrapper = document.createElement("div");
+  wrapper.style = "position: relative; flex: 1;";
+
+  inputEl = document.createElement("input");
+  inputEl.id = `nhh_${truong.id}`;
+  inputEl.type = "text";
+  inputEl.value = value;
+  inputEl.style = "width: 100%;";
+
+  const popup = document.createElement("div");
+  popup.className = "popup_suggest_inline";
+  popup.style = "position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 1000; display: none; max-height: 200px; overflow-y: auto;";
+  wrapper.appendChild(inputEl);
+  wrapper.appendChild(popup);
+
+  inputEl.addEventListener("input", () => {
+    const keyword = inputEl.value.trim().toUpperCase();
+    if (!keyword || !window.sanPhamData) {
+      popup.style.display = "none";
+      return;
+    }
+
+    const danhSach = Object.values(window.sanPhamData)
+      .filter(sp => sp.masp.includes(keyword) || (sp.tensp || "").toUpperCase().includes(keyword))
+      .slice(0, 100);
+
+    if (danhSach.length === 0) {
+      popup.style.display = "none";
+      return;
+    }
+
+    popup.innerHTML = danhSach.map(sp => `
+      <div class="popup-masp-item" data-masp="\${sp.masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
+        \${sp.masp} - \${sp.tensp || ""}
+      </div>
+    `).join("");
+    popup.style.display = "block";
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") popup.style.display = "none";
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const firstItem = popup.querySelector(".popup-masp-item");
+      if (popup.style.display !== "none" && firstItem) {
+        inputEl.value = firstItem.dataset.masp;
+        popup.style.display = "none";
+      }
+    }
+  });
+
+  popup.addEventListener("click", (e) => {
+    const item = e.target.closest(".popup-masp-item");
+    if (!item) return;
+    inputEl.value = item.dataset.masp;
+    popup.style.display = "none";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!popup.contains(e.target) && e.target !== inputEl) {
+      popup.style.display = "none";
+    }
+  });
+
+  inputEl = wrapper;
+}
+ else {
+      inputEl = document.createElement("input");
+      inputEl.id = `nhh_${truong.id}`;
+      inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
+      inputEl.style = "flex: 1;";
+      if (truong.loai !== "boolean") {
+        inputEl.value = value;
+        if (isReadOnly) inputEl.setAttribute("readonly", "true");
+      } else {
+        inputEl.checked = !!value;
+      }
+    }
     inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
     inputEl.style = "flex: 1;";
     if (truong.loai !== "boolean") {
@@ -149,6 +228,9 @@ export async function luuHangHoa() {
 
   localStorage.setItem("giulai_hanghoa", JSON.stringify(giuLai));
 
+  if (data.masp) {
+    data.masp = data.masp.toUpperCase();
+  }
   if (!data.masp || !data.tensp) {
     alert("❗ Cần nhập Mã SP và Tên SP.");
     return;
