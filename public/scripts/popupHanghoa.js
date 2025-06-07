@@ -55,22 +55,74 @@ function taoFormHangHoa(data = {}, mode = "them") {
     labelEl.style = "width: 140px; font-weight: bold;";
 
     let inputEl;
-    if (truong.id === "masp") {
-      inputEl = document.createElement("input");
-      inputEl.id = `nhh_${truong.id}`;
-      inputEl.type = "text";
-      inputEl.setAttribute("list", "dsmasp");
-      inputEl.value = value;
-      inputEl.style = "flex: 1;";
+    
+if (truong.id === "masp") {
+  inputEl = document.createElement("input");
+  inputEl.id = `nhh_${truong.id}`;
+  inputEl.type = "text";
+  inputEl.style = "flex: 1;";
+  inputEl.value = value;
 
-      if (!document.getElementById("dsmasp")) {
-        const datalist = document.createElement("datalist");
-        datalist.id = "dsmasp";
-        document.body.appendChild(datalist);
+  // Tạo popup gợi ý
+  let popup = document.getElementById("popup_masp_popup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "popup_masp_popup";
+    popup.style = "position: absolute; z-index: 9999; background: white; border: 1px solid #ccc; display: none; max-height: 200px; overflow-y: auto;";
+    document.body.appendChild(popup);
+  }
+
+  inputEl.addEventListener("input", () => {
+    const keyword = inputEl.value.trim().toUpperCase();
+    if (!keyword) return (popup.style.display = "none");
+
+    const danhSach = cacheMaSP.filter(masp => masp.includes(keyword)).slice(0, 100);
+    if (danhSach.length === 0) {
+      popup.style.display = "none";
+      return;
+    }
+
+    popup.innerHTML = danhSach.map(masp => \`
+      <div class="popup-masp-item" data-masp="\${masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
+        \${masp}
+      </div>
+    \`).join("");
+
+    const rect = inputEl.getBoundingClientRect();
+    popup.style.top = rect.bottom + window.scrollY + "px";
+    popup.style.left = rect.left + window.scrollX + "px";
+    popup.style.width = rect.width + "px";
+    popup.style.display = "block";
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") popup.style.display = "none";
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const firstItem = popup.querySelector(".popup-masp-item");
+      if (popup.style.display !== "none" && firstItem) {
+        inputEl.value = firstItem.dataset.masp;
+        popup.style.display = "none";
       }
+    }
+  });
 
-      napDanhSachMaSPVaoPopup();
-    } else {
+  popup.addEventListener("click", (e) => {
+    const item = e.target.closest(".popup-masp-item");
+    if (!item) return;
+    inputEl.value = item.dataset.masp;
+    popup.style.display = "none";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!popup.contains(e.target) && e.target !== inputEl) {
+      popup.style.display = "none";
+    }
+  });
+
+  napDanhSachMaSPVaoPopup();
+}
+ else {
       inputEl = document.createElement("input");
       inputEl.id = `nhh_${truong.id}`;
       inputEl.type = truong.loai === "boolean" ? "checkbox" : "text";
