@@ -229,7 +229,7 @@ let cacheMaSP = [];
 
 async function napDanhSachMaSPVaoPopup() {
   if (cacheMaSP.length > 0) return;
-  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(1000);
+  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(10000);
   if (data) {
     cacheMaSP = data.map(d => d.masp?.toUpperCase());
     const datalist = document.getElementById("dsmasp");
