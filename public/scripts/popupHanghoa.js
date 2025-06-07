@@ -83,19 +83,20 @@ if (truong.id === "masp") {
     }
 
     popup.innerHTML = danhSach.map(masp => `
+   <div class="popup-masp-item" data-masp="${masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
+    ${masp}
+   </div>
+   `).join("");
+
+   
+
+
+    popup.innerHTML = danhSach.map(masp => `
   <div class="popup-masp-item" data-masp="${masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
     ${masp}
   </div>
 `).join("");
 
-   
-
-
-    popup.innerHTML = danhSach.map(masp => \`
-      <div class="popup-masp-item" data-masp="\${masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
-        \${masp}
-      </div>
-    \`).join("");
 
     const rect = inputEl.getBoundingClientRect();
     popup.style.top = rect.bottom + window.scrollY + "px";
