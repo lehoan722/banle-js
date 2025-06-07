@@ -229,7 +229,7 @@ let cacheMaSP = [];
 
 async function napDanhSachMaSPVaoPopup() {
   if (cacheMaSP.length > 0) return;
-  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(10000);
+  const { data, error } = await supabase.from("dmhanghoa").select("masp").limit(1000);
   if (data) {
     cacheMaSP = data.map(d => d.masp?.toUpperCase());
     const datalist = document.getElementById("dsmasp");
@@ -253,4 +253,8 @@ document.addEventListener("keydown", function (e) {
       cauhinh.style.display = "none";
     }
   }
+  const popupBangDanhMuc = document.getElementById("popupBangDanhMuc");
+    if (popupBangDanhMuc && popupBangDanhMuc.style.display !== "none") {
+      popupBangDanhMuc.style.display = "none";
+    }
 });
