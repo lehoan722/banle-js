@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient.js';
 import { resetBangKetQua, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
-import { capNhatSoHoaDonTuDong } from './sohoadon.js';
+import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 
 let choPhepSua = false;
 
@@ -70,6 +70,64 @@ export async function luuHoaDonQuaAPI() {
   } else {
     alert("❌ Lỗi khi lưu hóa đơn");
     console.error(errHD || errCT);
+  }
+}
+
+export async function luuHoaDonCaHaiBan() {
+  const bangKetQua = getBangKetQua();
+  const tennv = document.getElementById("tennv").value.trim();
+  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+
+  const sohd = document.getElementById("sohd").value.trim();
+  if (!sohd) return alert("❌ Chưa có số hóa đơn.");
+  const sohdT = await phatSinhSoHDTMoi();
+
+  const hoadon = {
+    ngay: document.getElementById("ngay").value,
+    manv: document.getElementById("manv").value,
+    tennv,
+    diadiem: document.getElementById("diadiem").value,
+    khachhang: document.getElementById("khachhang").value,
+    tongsl: parseInt(document.getElementById("tongsl").value || "0"),
+    tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
+    chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
+    hinhthuctt: document.getElementById("hinhthuctt").value,
+    ghichu: document.getElementById("ghichu")?.value || ""
+  };
+
+  const chitiet = [];
+  Object.values(bangKetQua).forEach(item => {
+    item.sizes.forEach((sz, i) => {
+      const sl = item.soluongs[i];
+      chitiet.push({
+        masp: item.masp,
+        tensp: item.tensp,
+        size: sz,
+        soluong: sl,
+        gia: item.gia,
+        km: item.km,
+        thanhtien: (item.gia - item.km) * sl
+      });
+    });
+  });
+
+  const hoadonChinh = { ...hoadon, sohd };
+  const hoadonPhu = { ...hoadon, sohd: sohdT };
+  const chitietChinh = chitiet.map(ct => ({ ...ct, sohd }));
+  const chitietPhu = chitiet.map(ct => ({ ...ct, sohd: sohdT }));
+
+  const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadonChinh]);
+  const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitietChinh);
+  const { error: errHDT } = await supabase.from("hoadon_banleT").insert([hoadonPhu]);
+  const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
+
+  if (!errHD && !errCT && !errHDT && !errCTT) {
+    alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
+    inHoaDon(hoadonChinh, chitietChinh);
+    await lamMoiSauKhiLuu();
+  } else {
+    alert("❌ Lỗi khi lưu hóa đơn vào hai bảng");
+    console.error(errHD || errCT || errHDT || errCTT);
   }
 }
 
