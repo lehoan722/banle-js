@@ -80,12 +80,12 @@
   document.getElementById("sohd").textContent = hoadon.sohd || "";
   document.getElementById("ngay").textContent = hoadon.ngay || "";
   document.getElementById("gio").textContent = hoadon.gio || "";
-  document.getElementById("khachtra").textContent = hoadon.khachtra || "0";
+  document.getElementById("khachtra").textContent = dataIn.tiendua || "0";
   document.getElementById("tongkm").textContent = hoadon.tongkm || "0";
   document.getElementById("thanhtoan").textContent = hoadon.thanhtoan || "0";
-  document.getElementById("tralai").textContent = hoadon.tralai || "0";
+  document.getElementById("tralai").textContent = dataIn.tralai || "0";
   document.getElementById("tongsl").textContent = hoadon.tongsl || "0";
-  document.getElementById("phaithanhtoan").textContent = hoadon.phaithanhtoan || "0";
+  document.getElementById("phaithanhtoan").textContent = dataIn.tongtien || "0";
 
   // Hiển thị danh sách sản phẩm
   const tbody = document.getElementById("noidungchitiet");
