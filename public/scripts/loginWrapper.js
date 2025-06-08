@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient.js';
 
 async function dangNhap() {
@@ -23,14 +22,15 @@ async function dangNhap() {
     return;
   }
 
-  sessionStorage.setItem("user", JSON.stringify(data));
+  // Không lưu sessionStorage nữa
+  // sessionStorage.setItem("user", JSON.stringify(data));
 
   // Ẩn đăng nhập, hiện app container
   setTimeout(async () => {
     document.getElementById("login-container").style.display = "none";
     document.getElementById("app-container").style.display = "block";
+    document.getElementById("tennvHienThi").textContent = "NV: " + data.tennv;
 
-    // Nạp và khởi động main.js sau khi hiển thị giao diện
     const module = await import('./main.js');
     if (module.khoiTaoUngDung) {
       await module.khoiTaoUngDung();
@@ -39,18 +39,3 @@ async function dangNhap() {
 }
 
 window.dangNhap = dangNhap;
-
-window.addEventListener("DOMContentLoaded", async () => {
-  const savedUser = sessionStorage.getItem("user");
-  if (savedUser) {
-    setTimeout(async () => {
-      document.getElementById("login-container").style.display = "none";
-      document.getElementById("app-container").style.display = "block";
-
-      const module = await import('./main.js');
-      if (module.khoiTaoUngDung) {
-        await module.khoiTaoUngDung();
-      }
-    }, 0);
-  }
-});
