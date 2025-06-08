@@ -196,13 +196,15 @@
 </head>
 <body>  
 
-    <style>
+  <style>
   .menu-bar {
     background: #0088cc;
-    padding: 8px;
+    padding: 8px 20px;
     display: flex;
-    gap: 20px;
+    gap: 30px;
     color: white;
+    position: relative;
+    z-index: 1000;
   }
   .menu-item {
     position: relative;
@@ -212,21 +214,26 @@
     text-decoration: none;
     font-weight: bold;
     cursor: pointer;
+    padding: 6px 10px;
+    display: inline-block;
   }
   .dropdown-content {
     display: none;
     position: absolute;
     background-color: #f1f1f1;
-    min-width: 220px;
+    min-width: 240px;
     box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
-    z-index: 1;
-    top: 28px;
+    top: 100%;
+    left: 0;
+    z-index: 1001;
+    padding: 6px 0;
   }
   .dropdown-content a {
     color: black;
-    padding: 10px 14px;
+    padding: 10px 16px;
     text-decoration: none;
     display: block;
+    white-space: nowrap;
   }
   .dropdown-content a:hover {
     background-color: #ddd;
@@ -254,6 +261,7 @@
     </div>
   </div>
 </div>
+
 
 <div id="app-container" style="display:none;">
 <div class="header">Hóa đơn bán lẻ</div>
