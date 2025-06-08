@@ -13,6 +13,38 @@ import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 
+// Xử lý đăng nhập
+async function dangNhap() {
+  const username = document.getElementById("login-user").value.trim();
+  const password = document.getElementById("login-pass").value.trim();
+  const errBox = document.getElementById("login-error");
+
+  if (!username || !password) {
+    errBox.textContent = "Vui lòng nhập đầy đủ!";
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("dmnhanvien")
+    .select("*")
+    .eq("manv", username)
+    .eq("matkhau", password)
+    .single();
+
+  if (error || !data) {
+    errBox.textContent = "Sai tên đăng nhập hoặc mật khẩu!";
+    return;
+  }
+
+  // Ẩn form đăng nhập, hiển thị nội dung chính
+  document.getElementById("login-container").style.display = "none";
+  document.getElementById("app-container").style.display = "block";
+
+  // Khởi động ứng dụng
+  await khoiTaoUngDung();
+}
+
+
 window.addEventListener('DOMContentLoaded', async () => {
   // Tải danh mục sản phẩm từ Supabase
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
