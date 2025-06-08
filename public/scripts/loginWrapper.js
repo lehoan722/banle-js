@@ -13,8 +13,8 @@ async function dangNhap() {
   const { data, error } = await supabase
     .from("dmnhanvien")
     .select("*")
-    .eq("manv", username)
-    .eq("matkhau", password)
+    .eq("tennv", username)
+    .eq("manv", password)
     .single();
 
   if (error || !data) {
