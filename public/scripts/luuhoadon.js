@@ -80,7 +80,30 @@ export async function luuHoaDonCaHaiBan() {
 
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
-  const sohdT = await phatSinhSoHDTMoi();
+  const diadiem = document.getElementById("diadiem").value;
+const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
+
+// Lấy số hiện tại từ bảng sochungtu
+const { data: row, error } = await supabase
+  .from("sochungtu")
+  .select("so_hientai")
+  .eq("loai", loaiT)
+  .single();
+
+if (error || !row) {
+  alert("❌ Không lấy được số chứng từ từ bảng sochungtu.");
+  return;
+}
+
+const soMoi = row.so_hientai + 1;
+const sohdT = `${loaiT}_${String(soMoi).padStart(3, "0")}`;
+
+// Cập nhật lại số chứng từ mới
+await supabase
+  .from("sochungtu")
+  .update({ so_hientai: soMoi })
+  .eq("loai", loaiT);
+
 
   const hoadon = {
     ngay: document.getElementById("ngay").value,
