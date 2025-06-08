@@ -13,9 +13,10 @@ async function dangNhap() {
   const { data, error } = await supabase
     .from("dmnhanvien")
     .select("*")
-    .eq("tennv", username)
-    .eq("manv", password)
+    .eq("manv", username)
+    .eq("matkhau", password)
     .single();
+  
 
   if (error || !data) {
     errBox.textContent = "Sai tên đăng nhập hoặc mật khẩu!";
