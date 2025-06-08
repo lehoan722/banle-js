@@ -247,4 +247,4 @@ function inHoaDon(hoadon, chitiet) {
       document.body.removeChild(iframe);
     }, 500);
   };
-}
+
