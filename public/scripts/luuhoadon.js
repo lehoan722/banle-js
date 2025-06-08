@@ -205,13 +205,8 @@ export async function xacNhanSuaHoaDon() {
   luuHoaDonQuaAPI();
 }
 
-
 function inHoaDon(hoadon, chitiet) {
-  const tiendua = document.getElementById("tiendua")?.value || "0";
-  const tralai = document.getElementById("tralai")?.value || "0";
-  const tongtien = document.getElementById("tongtien")?.value || "0";
-
-  const data = { hoadon, chitiet, tiendua, tralai, tongtien };
+  const data = { hoadon, chitiet };
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
   const iframe = document.createElement("iframe");
@@ -229,5 +224,4 @@ function inHoaDon(hoadon, chitiet) {
       document.body.removeChild(iframe);
     }, 500);
   };
-};
-  
+}
