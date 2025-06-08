@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient.js';
 
 async function dangNhap() {
@@ -16,7 +17,6 @@ async function dangNhap() {
     .eq("manv", username)
     .eq("matkhau", password)
     .single();
-  
 
   if (error || !data) {
     errBox.textContent = "Sai tên đăng nhập hoặc mật khẩu!";
@@ -25,33 +25,32 @@ async function dangNhap() {
 
   sessionStorage.setItem("user", JSON.stringify(data));
 
-  // Ẩn đăng nhập, hiện nội dung chính
+  // Ẩn đăng nhập, hiện app container
+  setTimeout(async () => {
+    document.getElementById("login-container").style.display = "none";
+    document.getElementById("app-container").style.display = "block";
 
-  setTimeout(() => {
-  document.getElementById("login-container").style.display = "none";
-  document.getElementById("app-container").style.display = "block";
-}, 0);
-
-
-  // Sau đăng nhập mới load main.js
-  const script = document.createElement("script");
-  script.type = "module";
-  script.src = "scripts/main.js";
-  document.body.appendChild(script);
+    // Nạp và khởi động main.js sau khi hiển thị giao diện
+    const module = await import('./main.js');
+    if (module.khoiTaoUngDung) {
+      await module.khoiTaoUngDung();
+    }
+  }, 0);
 }
 
 window.dangNhap = dangNhap;
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const savedUser = sessionStorage.getItem("user");
   if (savedUser) {
-    document.getElementById("login-container").style.display = "none";
-    document.getElementById("app-container").style.display = "block";
+    setTimeout(async () => {
+      document.getElementById("login-container").style.display = "none";
+      document.getElementById("app-container").style.display = "block";
 
-    // Đã đăng nhập rồi thì load main.js ngay
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = "scripts/main.js";
-    document.body.appendChild(script);
+      const module = await import('./main.js');
+      if (module.khoiTaoUngDung) {
+        await module.khoiTaoUngDung();
+      }
+    }, 0);
   }
 });
