@@ -1,42 +1,64 @@
 // sohoadon.js
 import { supabase } from './supabaseClient.js';
 
+/**
+ * Sinh số hóa đơn từ bảng sochungtu (dùng cho hóa đơn gốc: hoadon_banle)
+ */
 export async function capNhatSoHoaDonTuDong() {
   const diadiem = document.getElementById("diadiem")?.value || "cs1";
-  const prefix = diadiem === "cs1" ? "bancs1_" : "bancs2_";
+  const loai = diadiem === "cs1" ? "bancs1" : "bancs2";
 
   const { data, error } = await supabase
-    .from("hoadon_banle")
-    .select("sohd")
-    .like("sohd", `${prefix}%`)
-    .order("sohd", { ascending: false })
-    .limit(1);
+    .from("sochungtu")
+    .select("so_hientai")
+    .eq("loai", loai)
+    .single();
 
-  let newSohd = prefix + "00001";
-  if (!error && data.length > 0) {
-    const last = data[0].sohd;
-    const so = parseInt(last.split("_")[1] || "0") + 1;
-    newSohd = prefix + so.toString().padStart(5, "0");
+  if (error || !data) {
+    alert("Không thể lấy số hóa đơn từ bảng sochungtu");
+    return;
   }
 
-  document.getElementById("sohd").value = newSohd;
+  const soMoi = data.so_hientai + 1;
+  const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
+
+  // Cập nhật lại so_hientai
+  await supabase
+    .from("sochungtu")
+    .update({ so_hientai: soMoi })
+    .eq("loai", loai);
+
+  document.getElementById("sohd").value = sohd;
 }
 
+/**
+ * Sinh số hóa đơn từ bảng sochungtu (dùng cho hóa đơn tạm: hoadon_banleT)
+ */
 export async function phatSinhSoHDTMoi() {
-  const prefix = "blt" + new Date().toISOString().slice(2, 10).replace(/-/g, "").slice(0, 6) + "_";
-  const { data, error } = await supabase
-    .from("hoadon_banleT")
-    .select("sohd")
-    .like("sohd", `${prefix}%`)
-    .order("sohd", { ascending: false })
-    .limit(1);
+  const now = new Date();
+  const prefix = "blt" + now.toISOString().slice(2, 10).replace(/-/g, "").slice(0, 6); // vd: blt2506
+  const loai = `${prefix}`;
 
-  let newSohd = prefix + "001";
-  if (!error && data.length > 0) {
-    const last = data[0].sohd;
-    const so = parseInt(last.split("_")[1] || "0") + 1;
-    newSohd = prefix + so.toString().padStart(3, "0");
+  const { data, error } = await supabase
+    .from("sochungtu")
+    .select("so_hientai")
+    .eq("loai", loai)
+    .single();
+
+  let soMoi = 1;
+  if (!error && data) {
+    soMoi = data.so_hientai + 1;
+    await supabase
+      .from("sochungtu")
+      .update({ so_hientai: soMoi })
+      .eq("loai", loai);
+  } else {
+    // Chưa có thì insert mới
+    await supabase
+      .from("sochungtu")
+      .insert([{ loai, so_hientai: 1 }]);
   }
 
-  return newSohd;
+  const sohd = `${prefix}_${String(soMoi).padStart(3, "0")}`;
+  return sohd;
 }
