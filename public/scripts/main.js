@@ -1,5 +1,4 @@
 
-// main.js
 import { khoiTaoTimMaSP, luuMaSanPhamMoi, moCauHinhTruong, luuCauHinhTruong } from './sanpham.js';
 import { chuyenFocus, ganTenNV, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
@@ -13,8 +12,9 @@ import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 
-window.addEventListener('DOMContentLoaded', async () => {
-  // Tải danh mục sản phẩm từ Supabase
+export async function khoiTaoUngDung() {
+  console.log("🚀 Khởi động hệ thống sau đăng nhập...");
+
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
   if (error) {
     alert("Lỗi khi tải danh mục hàng hóa");
@@ -25,7 +25,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.sanPhamData = {};
   dssp.forEach(sp => window.sanPhamData[sp.masp] = sp);
 
-  // Tải danh sách nhân viên và gán vào window
   const { data: dsnv, error: errnv } = await supabase.from("dmnhanvien").select("manv, tennv");
   if (!errnv) {
     window.nhanVienData = {};
@@ -34,7 +33,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   khoiTaoTimMaSP(window.sanPhamData);
 
-  // Gán các hàm cho HTML
   window.luuMaSanPhamMoi = () => luuMaSanPhamMoi(window.sanPhamData);
   window.moCauHinhTruong = moCauHinhTruong;
   window.luuCauHinhTruong = luuCauHinhTruong;
@@ -44,31 +42,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   window.moPopupNhapHangHoa = moPopupNhapHangHoa;
   window.luuHangHoa = luuHangHoa;
   window.themTiepSanPham = themTiepSanPham;
-
   window.luuHoaDonQuaAPI = luuHoaDonQuaAPI;
   window.luuHoaDonCaHaiBan = luuHoaDonCaHaiBan;
   window.xacNhanSuaHoaDon = xacNhanSuaHoaDon;
 
-  // Gán phím tắt và sự kiện các nút bấm
   khoiTaoShortcut();
   ganSuKienDuyetHoaDon();
   ganSuKienNutLenh();
 
-  // Gán Enter chuyển focus cho các input chính
   ["masp", "soluong", "size"].forEach(id => {
     const input = document.getElementById(id);
-    if (input) {
-      input.addEventListener("keydown", chuyenFocus);
-    }
+    if (input) input.addEventListener("keydown", chuyenFocus);
   });
 
-  // Gán tên NV khi đổi mã
   const manvInput = document.getElementById("manv");
-  if (manvInput) {
-    manvInput.addEventListener("change", ganTenNV);
-  }
+  if (manvInput) manvInput.addEventListener("change", ganTenNV);
 
-  // Gán sự kiện tính toán tổng khi blur chiết khấu hoặc nhập khách trả
   document.getElementById("chietkhau")?.addEventListener("blur", () => {
     capNhatThongTinTong(getBangKetQua());
   });
@@ -78,8 +67,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     capNhatThongTinTong(getBangKetQua());
   });
 
-  // Gán ngày mặc định và số hóa đơn đầu tiên
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
   await capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
-});
+}
