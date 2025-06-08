@@ -195,6 +195,66 @@
   </script>
 </head>
 <body>  
+//---------------------------bat dau menu ---------------------------------------------
+    <style>
+  .menu-bar {
+    background: #0088cc;
+    padding: 8px;
+    display: flex;
+    gap: 20px;
+    color: white;
+  }
+  .menu-item {
+    position: relative;
+  }
+  .menu-link {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f1f1f1;
+    min-width: 220px;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+    z-index: 1;
+    top: 28px;
+  }
+  .dropdown-content a {
+    color: black;
+    padding: 10px 14px;
+    text-decoration: none;
+    display: block;
+  }
+  .dropdown-content a:hover {
+    background-color: #ddd;
+  }
+  .menu-item:hover .dropdown-content {
+    display: block;
+  }
+</style>
+
+<div class="menu-bar">
+  <div class="menu-item">
+    <span class="menu-link">📁 Báo cáo hóa đơn</span>
+    <div class="dropdown-content">
+      <a href="xemhoadon.html" target="_blank">Xem hóa đơn bán lẻ</a>
+      <a href="xemhoadonT.html" target="_blank">Xem hóa đơn tạm</a>
+      <a href="baocaohoadon.html" target="_blank">Báo cáo tổng hợp</a>
+    </div>
+  </div>
+  <div class="menu-item">
+    <span class="menu-link">📦 Báo cáo nhập hàng</span>
+    <div class="dropdown-content">
+      <a href="nhaphang1.html" target="_blank">Chi tiết nhập hàng CS1</a>
+      <a href="nhaphang2.html" target="_blank">Chi tiết nhập hàng CS2</a>
+      <a href="baocaonhap.html" target="_blank">Tổng hợp nhập theo ngày</a>
+    </div>
+  </div>
+</div>
+//-------------------------------------------het phan menu -----------------------------------------
 <div id="app-container" style="display:none;">
 <div class="header">Hóa đơn bán lẻ</div>
 <div class="top-inputs">    
