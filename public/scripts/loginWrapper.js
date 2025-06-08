@@ -22,10 +22,6 @@ async function dangNhap() {
     return;
   }
 
-  // Không lưu sessionStorage nữa
-  // sessionStorage.setItem("user", JSON.stringify(data));
-
-  // Ẩn đăng nhập, hiện app container
   setTimeout(async () => {
     document.getElementById("login-container").style.display = "none";
     document.getElementById("app-container").style.display = "block";
