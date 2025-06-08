@@ -1,5 +1,5 @@
 // shortcut.js
-import { luuHoaDonQuaAPI } from './luuhoadon.js';
+import { luuHoaDonQuaAPI, luuHoaDonCaHaiBan } from './luuhoadon.js';
 import {
   resetBangKetQua,
   getBangKetQua,
@@ -9,6 +9,7 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 export function khoiTaoShortcut() {
   document.addEventListener("keydown", async function (e) {
+    // F1: popup thêm mới
     if (e.key === "F1") {
       e.preventDefault();
       const popup = document.getElementById("popupThemMoi");
@@ -20,6 +21,7 @@ export function khoiTaoShortcut() {
       };
     }
 
+    // F2: lưu hóa đơn thường
     if (e.key === "F2") {
       e.preventDefault();
       const bang = getBangKetQua();
@@ -30,11 +32,13 @@ export function khoiTaoShortcut() {
       await luuHoaDonQuaAPI();
     }
 
+    // F3: xóa dòng đang chọn
     if (e.key === "F3") {
       e.preventDefault();
       xoaDongDangChon();
     }
 
+    // F4: nhảy tới ô khách trả và xử lý Enter
     if (e.key === "F4") {
       e.preventDefault();
       const khachtra = document.getElementById("khachtra");
@@ -54,6 +58,7 @@ export function khoiTaoShortcut() {
       }, { once: true });
     }
 
+    // F5: toggle nhập nhanh
     if (e.key === "F5") {
       e.preventDefault();
       const box = document.getElementById("nhapnhanh");
@@ -63,6 +68,7 @@ export function khoiTaoShortcut() {
       }
     }
 
+    // F6: toggle size 45
     if (e.key === "F6") {
       e.preventDefault();
       const box = document.getElementById("size45");
@@ -70,6 +76,17 @@ export function khoiTaoShortcut() {
         box.checked = !box.checked;
         console.log("Toggle Size 45:", box.checked);
       }
+    }
+
+    // Ctrl + T: lưu hóa đơn vào cả 2 bảng
+    if (e.ctrlKey && e.key.toLowerCase() === "t") {
+      e.preventDefault();
+      const bang = getBangKetQua();
+      if (Object.keys(bang).length === 0) {
+        alert("❌ Không có dữ liệu để lưu.");
+        return;
+      }
+      await luuHoaDonCaHaiBan();
     }
   });
 }
