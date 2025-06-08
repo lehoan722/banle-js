@@ -229,23 +229,5 @@ function inHoaDon(hoadon, chitiet) {
       document.body.removeChild(iframe);
     }, 500);
   };
-}
-;
-  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
-
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.src = "/in-hoadon.html";
-  document.body.appendChild(iframe);
-
-  iframe.onload = () => {
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error("Không thể gọi print() từ iframe:", e);
-      }
-      document.body.removeChild(iframe);
-    }, 500);
-  };
-
+};
+  
