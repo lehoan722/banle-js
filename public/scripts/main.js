@@ -1,3 +1,4 @@
+
 // main.js
 import { khoiTaoTimMaSP, luuMaSanPhamMoi, moCauHinhTruong, luuCauHinhTruong } from './sanpham.js';
 import { chuyenFocus, ganTenNV, getBangKetQua } from './hoadon.js';
@@ -23,6 +24,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   window.sanPhamData = {};
   dssp.forEach(sp => window.sanPhamData[sp.masp] = sp);
+
+  // Tải danh sách nhân viên và gán vào window
+  const { data: dsnv, error: errnv } = await supabase.from("dmnhanvien").select("manv, tennv");
+  if (!errnv) {
+    window.nhanVienData = {};
+    dsnv.forEach(nv => window.nhanVienData[nv.manv] = nv.tennv);
+  }
 
   khoiTaoTimMaSP(window.sanPhamData);
 
