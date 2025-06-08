@@ -210,6 +210,7 @@ function inHoaDon(hoadon, chitiet) {
   const tiendua = document.getElementById("tiendua")?.value || "0";
   const tralai = document.getElementById("tralai")?.value || "0";
   const tongtien = document.getElementById("tongtien")?.value || "0";
+
   const data = { hoadon, chitiet, tiendua, tralai, tongtien };
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
