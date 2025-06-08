@@ -25,8 +25,12 @@ async function dangNhap() {
   sessionStorage.setItem("user", JSON.stringify(data));
 
   // Ẩn đăng nhập, hiện nội dung chính
+
+  setTimeout(() => {
   document.getElementById("login-container").style.display = "none";
   document.getElementById("app-container").style.display = "block";
+}, 0);
+
 
   // Sau đăng nhập mới load main.js
   const script = document.createElement("script");
