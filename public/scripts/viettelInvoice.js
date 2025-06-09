@@ -112,16 +112,16 @@ async function taoDuLieuHoaDon(mahoadon) {
     })),
 
     summarizeInfo: {
-      sumOfTotalLineAmountWithoutTax: hoadon.thanhtoan,
-      totalAmountWithoutTax: hoadon.thanhtoan,
+      sumOfTotalLineAmountWithoutTax: hoadon.thanhtoan || 0,
+      totalAmountWithoutTax: hoadon.thanhtoan || 0,
       totalTaxAmount: 0,
-      totalAmountWithTax: hoadon.thanhtoan,
+      totalAmountWithTax: hoadon.thanhtoan || 0,
       discountAmount: hoadon.chietkhau || 0,
       settlementDiscountAmount: 0,
-      amountPaid: hoadon.thanhtoan,
+      amountPaid: hoadon.thanhtoan || 0,
       amountRemaining: 0,
-      totalAmount: hoadon.thanhtoan,
-      totalAmountInWords: "Bốn trăm nghìn đồng" // Có thể dùng hàm chuyển số → chữ sau
+      totalAmount: hoadon.thanhtoan || 0,
+      totalAmountInWords: "Bốn trăm nghìn đồng"
     },
 
     sellerInfo: {
