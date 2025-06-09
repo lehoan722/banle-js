@@ -60,13 +60,13 @@ async function taoDuLieuHoaDon(mahoadon) {
   const { data: hoadon } = await supabase
     .from("hoadon_banleT")
     .select("*")
-    .eq("mahoadon", mahoadon)
+    .eq("sohd", mahoadon)
     .single();
 
   const { data: chitiet } = await supabase
     .from("ct_hoadon_banleT")
     .select("*")
-    .eq("mahoadon", mahoadon);
+    .eq("sohd", mahoadon);
 
   if (!hoadon || chitiet.length === 0) throw new Error("Không tìm thấy dữ liệu hóa đơn");
 
@@ -88,5 +88,5 @@ async function capNhatTrangThaiHoaDon(mahoadon, obj) {
   await supabase
     .from("hoadon_banleT")
     .update(obj)
-    .eq("mahoadon", mahoadon);
+    .eq("sohd", mahoadon);
 }
