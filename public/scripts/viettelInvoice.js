@@ -82,7 +82,7 @@ async function taoDuLieuHoaDon(mahoadon) {
     invoiceSeries: configViettel.invoiceSeries,
 
     generalInvoiceInfo: {
-      invoiceType: "01GTKT",
+      invoiceType: "01GTGT",
       invoiceName: "HÓA ĐƠN BÁN HÀNG",
       currencyCode: "VND",
       adjustmentType: "0",
