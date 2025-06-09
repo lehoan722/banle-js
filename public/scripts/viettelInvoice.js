@@ -21,6 +21,17 @@ const configViettel = {
 export async function guiHoaDonViettel(mahoadon) {
   try {
     const duLieu = await taoDuLieuHoaDon(mahoadon);
+
+    // 👀 In dữ liệu gửi đi để kiểm tra
+    console.log("🔥 Dữ liệu gửi Viettel:", JSON.stringify({
+      username: configViettel.username,
+      password: configViettel.password,
+      taxCode: configViettel.supplierTaxCode,
+      templateCode: configViettel.templateCode,
+      invoiceSeries: configViettel.invoiceSeries,
+      data: duLieu
+    }, null, 2));
+
     const response = await fetch(configViettel.apiUrl, {
       method: "POST",
       headers: {
@@ -37,6 +48,8 @@ export async function guiHoaDonViettel(mahoadon) {
     });
 
     const result = await response.json();
+    console.log("📥 Phản hồi từ Viettel:", result);
+
     if (result.success) {
       await capNhatTrangThaiHoaDon(mahoadon, {
         so_hoadon: result.invoiceNo,
@@ -45,15 +58,23 @@ export async function guiHoaDonViettel(mahoadon) {
         trang_thai_gui: "DA_GUI"
       });
     } else {
-      throw new Error(result.message || "Không rõ lỗi từ API Viettel");
+      throw new Error(result.message || "GENERAL");
     }
   } catch (error) {
-    alert("Gửi hóa đơn điện tử thất bại: " + error.message + "\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
-    await capNhatTrangThaiHoaDon(mahoadon, {
-      trang_thai_gui: "CHUA_GUI"
-    });
+    alert("Gửi hóa đơn điện tử thất bại: " + error.message + "\\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
+    console.error("❌ Lỗi khi gửi HĐĐT:", error);
+
+    const { error: updateError } = await supabase
+      .from("hoadon_banleT")
+      .update({ trang_thai_gui: "CHUA_GUI" })
+      .eq("sohd", mahoadon);
+
+    if (updateError) {
+      console.error("❌ Lỗi ghi trạng thái Supabase:", updateError);
+    }
   }
 }
+
 
 // Lấy dữ liệu hóa đơn từ Supabase
 async function taoDuLieuHoaDon(mahoadon) {
