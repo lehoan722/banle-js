@@ -1,27 +1,50 @@
+
 // viettelInvoice.js - Gửi hóa đơn điện tử Viettel từ hệ thống bán lẻ
 
-import { supabase } from './supabaseClient.js';
+import { supabase } from './supabaseClient.js'; // ← Bổ sung dòng này
+
+// viettelInvoice.js - Gửi hóa đơn điện tử Viettel từ hệ thống bán lẻ
+
+
+// ⚠️ Bạn cần điền cấu hình kết nối API Viettel tại đây
 
 const configViettel = {
   apiUrl: "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/createInvoice",
   username: "4600370592",
   password: "123456aA*",
   supplierTaxCode: "4600370592",
-  templateCode: "1/002",
-  invoiceSeries: "C25MHT"
+  templateCode: "2/001",
+  invoiceSeries: "2C25MLH"
 };
 
-// Gửi hóa đơn điện tử
+// Hàm gọi sau khi lưu bảng T thành công
 export async function guiHoaDonViettel(mahoadon) {
   try {
-    const data = await taoDuLieuHoaDon(mahoadon);
+    const duLieu = await taoDuLieuHoaDon(mahoadon);
 
-    console.log("🔥 JSON gửi Viettel:", JSON.stringify(data, null, 2));
+    // 👀 In dữ liệu gửi đi để kiểm tra
+    console.log("🔥 Dữ liệu gửi Viettel:", JSON.stringify({
+      username: configViettel.username,
+      password: configViettel.password,
+      taxCode: configViettel.supplierTaxCode,
+      templateCode: configViettel.templateCode,
+      invoiceSeries: configViettel.invoiceSeries,
+      data: duLieu
+    }, null, 2));
 
     const response = await fetch(configViettel.apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username: configViettel.username,
+        password: configViettel.password,
+        taxCode: configViettel.supplierTaxCode,
+        templateCode: configViettel.templateCode,
+        invoiceSeries: configViettel.invoiceSeries,
+        data: duLieu
+      })
     });
 
     const result = await response.json();
@@ -38,7 +61,7 @@ export async function guiHoaDonViettel(mahoadon) {
       throw new Error(result.message || "GENERAL");
     }
   } catch (error) {
-    alert("Gửi hóa đơn điện tử thất bại: " + error.message + "\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
+    alert("Gửi hóa đơn điện tử thất bại: " + error.message + "\\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
     console.error("❌ Lỗi khi gửi HĐĐT:", error);
 
     const { error: updateError } = await supabase
@@ -52,7 +75,8 @@ export async function guiHoaDonViettel(mahoadon) {
   }
 }
 
-// Tạo dữ liệu JSON theo chuẩn Viettel
+
+// Lấy dữ liệu hóa đơn từ Supabase
 async function taoDuLieuHoaDon(mahoadon) {
   const { data: hoadon } = await supabase
     .from("hoadon_banleT")
@@ -65,77 +89,22 @@ async function taoDuLieuHoaDon(mahoadon) {
     .select("*")
     .eq("sohd", mahoadon);
 
-  if (!hoadon || chitiet.length === 0) {
-    throw new Error("Không tìm thấy dữ liệu hóa đơn");
-  }
-
-  const ngayLap = hoadon.ngay || new Date().toISOString().slice(0, 10);
-  const thanhToan = hoadon.thanhtoan || 0;
-  const chietKhau = hoadon.chietkhau || 0;
+  if (!hoadon || chitiet.length === 0) throw new Error("Không tìm thấy dữ liệu hóa đơn");
 
   return {
-    username: configViettel.username,
-    password: configViettel.password,
-    supplierTaxCode: configViettel.supplierTaxCode,
-    invoiceCode: "",
-    templateCode: configViettel.templateCode,
-    invoiceSeries: configViettel.invoiceSeries,
-
-    generalInvoiceInfo: {
-      invoiceType: "01GTGT",
-      invoiceName: "HÓA ĐƠN BÁN HÀNG",
-      currencyCode: "VND",
-      adjustmentType: "0",
-      paymentStatus: "1",
-      cusGetInvoiceRight: false,
-      invoiceIssuedDate: ngayLap
-    },
-
-    buyerInfo: {
-      buyerName: hoadon.khachhang || "Khách lẻ",
-      buyerTaxCode: "",
-      buyerAddress: hoadon.diadiem || "",
-      buyerPhoneNumber: "",
-      buyerEmail: ""
-    },
-
-    itemInfo: chitiet.map(sp => ({
-      itemCode: sp.masp,
-      itemName: sp.tensp,
-      unitName: "Chiếc",
-      unitPrice: sp.gia || 0,
-      quantity: sp.soluong || 0,
-      itemTotalAmountWithoutTax: sp.thanhtien || 0,
-      taxPercentage: 0,
-      taxAmount: 0,
-      itemDiscount: sp.km || 0
+    buyerName: hoadon.tenkhach || "Khách lẻ",
+    buyerTaxCode: hoadon.masothue || "",
+    items: chitiet.map(sp => ({
+      name: sp.tensp || sp.masp,
+      quantity: sp.soluong,
+      unitPrice: sp.gia,
+      amount: sp.thanhtien
     })),
-
-    summarizeInfo: {
-      sumOfTotalLineAmountWithoutTax: thanhToan,
-      totalAmountWithoutTax: thanhToan,
-      totalTaxAmount: 0,
-      totalAmountWithTax: thanhToan,
-      discountAmount: chietKhau,
-      settlementDiscountAmount: 0,
-      amountPaid: thanhToan,
-      amountRemaining: 0,
-      totalAmount: thanhToan,
-      totalAmountInWords: "Bốn trăm nghìn đồng"
-    },
-
-    sellerInfo: {
-      sellerLegalName: "ĐẶNG LÊ HOÀN",
-      sellerTaxCode: configViettel.supplierTaxCode,
-      sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, TP Thái Nguyên",
-      sellerPhoneNumber: "0916747401",
-      sellerBankAccount: "123456789",
-      sellerEmail: "cskt.viettelhue@gmail.com"
-    }
+    totalAmount: hoadon.tongcong || 0
   };
 }
 
-// Ghi trạng thái gửi hóa đơn
+// Ghi lại kết quả gửi hóa đơn vào bảng
 async function capNhatTrangThaiHoaDon(mahoadon, obj) {
   await supabase
     .from("hoadon_banleT")
