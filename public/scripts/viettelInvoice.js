@@ -11,7 +11,7 @@ const configViettel = {
   invoiceSeries: "C25MHT"
 };
 
-// Hàm gửi hóa đơn điện tử Viettel
+// Gửi hóa đơn điện tử
 export async function guiHoaDonViettel(mahoadon) {
   try {
     const data = await taoDuLieuHoaDon(mahoadon);
@@ -20,9 +20,7 @@ export async function guiHoaDonViettel(mahoadon) {
 
     const response = await fetch(configViettel.apiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
     });
 
@@ -54,7 +52,7 @@ export async function guiHoaDonViettel(mahoadon) {
   }
 }
 
-// Hàm tạo JSON đúng định dạng Viettel
+// Tạo dữ liệu JSON theo chuẩn Viettel
 async function taoDuLieuHoaDon(mahoadon) {
   const { data: hoadon } = await supabase
     .from("hoadon_banleT")
@@ -72,23 +70,25 @@ async function taoDuLieuHoaDon(mahoadon) {
   }
 
   const ngayLap = hoadon.ngay || new Date().toISOString().slice(0, 10);
+  const thanhToan = hoadon.thanhtoan || 0;
+  const chietKhau = hoadon.chietkhau || 0;
 
   return {
     username: configViettel.username,
     password: configViettel.password,
     supplierTaxCode: configViettel.supplierTaxCode,
-    invoiceCode: "", // để rỗng cho hệ thống tự sinh
+    invoiceCode: "",
     templateCode: configViettel.templateCode,
     invoiceSeries: configViettel.invoiceSeries,
 
     generalInvoiceInfo: {
-      invoiceType: "01GTKT", // Hoá đơn GTGT
+      invoiceType: "01GTKT",
       invoiceName: "HÓA ĐƠN BÁN HÀNG",
       currencyCode: "VND",
-      adjustmentType: "0", // không điều chỉnh
+      adjustmentType: "0",
       paymentStatus: "1",
       cusGetInvoiceRight: false,
-      invoiceIssuedDate: ngayLap,
+      invoiceIssuedDate: ngayLap
     },
 
     buyerInfo: {
@@ -103,24 +103,24 @@ async function taoDuLieuHoaDon(mahoadon) {
       itemCode: sp.masp,
       itemName: sp.tensp,
       unitName: "Chiếc",
-      unitPrice: sp.gia,
-      quantity: sp.soluong,
-      itemTotalAmountWithoutTax: sp.thanhtien,
+      unitPrice: sp.gia || 0,
+      quantity: sp.soluong || 0,
+      itemTotalAmountWithoutTax: sp.thanhtien || 0,
       taxPercentage: 0,
       taxAmount: 0,
       itemDiscount: sp.km || 0
     })),
 
     summarizeInfo: {
-      sumOfTotalLineAmountWithoutTax: hoadon.thanhtoan || 0,
-      totalAmountWithoutTax: hoadon.thanhtoan || 0,
+      sumOfTotalLineAmountWithoutTax: thanhToan,
+      totalAmountWithoutTax: thanhToan,
       totalTaxAmount: 0,
-      totalAmountWithTax: hoadon.thanhtoan || 0,
-      discountAmount: hoadon.chietkhau || 0,
+      totalAmountWithTax: thanhToan,
+      discountAmount: chietKhau,
       settlementDiscountAmount: 0,
-      amountPaid: hoadon.thanhtoan || 0,
+      amountPaid: thanhToan,
       amountRemaining: 0,
-      totalAmount: hoadon.thanhtoan || 0,
+      totalAmount: thanhToan,
       totalAmountInWords: "Bốn trăm nghìn đồng"
     },
 
@@ -135,7 +135,7 @@ async function taoDuLieuHoaDon(mahoadon) {
   };
 }
 
-// Cập nhật trạng thái gửi hóa đơn
+// Ghi trạng thái gửi hóa đơn
 async function capNhatTrangThaiHoaDon(mahoadon, obj) {
   await supabase
     .from("hoadon_banleT")
