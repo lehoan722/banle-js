@@ -225,3 +225,10 @@ function inHoaDon(hoadon, chitiet) {
     }, 500);
   };
 }
+
+// Sau khi lưu thành công vào bảng hoadon_banleT
+if (ketquaLuuCaiBangT === true) {
+  guiHoaDonViettel(mahoadon); // ← Tự động gửi hóa đơn điện tử
+}
+
+
