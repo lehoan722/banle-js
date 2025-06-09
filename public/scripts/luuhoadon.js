@@ -227,8 +227,10 @@ function inHoaDon(hoadon, chitiet) {
 }
 
 // Sau khi lưu thành công vào bảng hoadon_banleT
-if (ketquaLuuCaiBangT === true) {
-  guiHoaDonViettel(mahoadon); // ← Tự động gửi hóa đơn điện tử
+const ketQua = await luuHoaDonCaHaiBan(mahoadon, data1, data2);
+if (ketQua === true) {
+  guiHoaDonViettel(mahoadon);
 }
+
 
 
