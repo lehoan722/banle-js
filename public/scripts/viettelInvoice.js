@@ -2,10 +2,11 @@
 // viettelInvoice.js - Gửi hóa đơn điện tử Viettel từ hệ thống bán lẻ
 
 // ⚠️ Bạn cần điền cấu hình kết nối API Viettel tại đây
+
 const configViettel = {
-  apiUrl: "https://your-api-endpoint",  // ← Thay bằng API URL thực tế
-  username: "your-api-username",
-  password: "your-api-password",
+  apiUrl: "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/createInvoice",
+  username: "4600370592",
+  password: "123456aA*",
   supplierTaxCode: "4600370592",
   templateCode: "2/001",
   invoiceSeries: "2C25MLH"
