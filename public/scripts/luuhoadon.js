@@ -5,7 +5,7 @@ import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 import { guiHoaDonViettel } from './viettelInvoice.js';
- 
+
 
 let choPhepSua = false;
 
@@ -147,13 +147,15 @@ await supabase
   const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
 
   if (!errHD && !errCT && !errHDT && !errCTT) {
-    alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
-    inHoaDon(hoadonChinh, chitietChinh);
-    await lamMoiSauKhiLuu();
-  } else {
-    alert("❌ Lỗi khi lưu hóa đơn vào hai bảng");
-    console.error(errHD || errCT || errHDT || errCTT);
-  }
+  alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
+  inHoaDon(hoadonChinh, chitietChinh);
+  await lamMoiSauKhiLuu();
+
+  // ✅ Gửi hóa đơn điện tử sau khi lưu bảng T thành công
+  guiHoaDonViettel(sohdT);
+}
+
+  
 }
 
 async function lamMoiSauKhiLuu() {
