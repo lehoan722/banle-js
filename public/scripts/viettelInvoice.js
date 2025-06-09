@@ -1,6 +1,11 @@
 
 // viettelInvoice.js - Gửi hóa đơn điện tử Viettel từ hệ thống bán lẻ
 
+import { supabase } from './supabaseClient.js'; // ← Bổ sung dòng này
+
+// viettelInvoice.js - Gửi hóa đơn điện tử Viettel từ hệ thống bán lẻ
+
+
 // ⚠️ Bạn cần điền cấu hình kết nối API Viettel tại đây
 
 const configViettel = {
