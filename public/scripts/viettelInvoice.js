@@ -14,7 +14,7 @@ const configViettel = {
   password: "123456aA*",
   supplierTaxCode: "4600370592",
   templateCode: "2/001",
-  invoiceSeries: "2C25MLH"
+  invoiceSeries: "C25MLH"
 };
 
 // Hàm gọi sau khi lưu bảng T thành công
