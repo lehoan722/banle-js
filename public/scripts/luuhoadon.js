@@ -4,6 +4,8 @@ import { resetBangKetQua, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
+import { guiHoaDonViettel } from './viettelInvoice.js';
+
 
 let choPhepSua = false;
 
@@ -227,10 +229,15 @@ function inHoaDon(hoadon, chitiet) {
 }
 
 // Sau khi lưu thành công vào bảng hoadon_banleT
-const ketQua = await luuHoaDonCaHaiBan(mahoadon, data1, data2);
-if (ketQua === true) {
-  guiHoaDonViettel(mahoadon);
+if (!errHD && !errCT && !errHDT && !errCTT) {
+  alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
+  inHoaDon(hoadonChinh, chitietChinh);
+  await lamMoiSauKhiLuu();
+
+  // ✅ Gửi hóa đơn điện tử từ hóa đơn bảng T (sohdT)
+  guiHoaDonViettel(sohdT);
+} else {
+  alert("❌ Lỗi khi lưu hóa đơn vào hai bảng");
+  console.error(errHD || errCT || errHDT || errCTT);
 }
-
-
 
