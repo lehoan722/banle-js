@@ -13,7 +13,7 @@ const configViettel = {
 };
 
 // Hàm gọi sau khi lưu bảng T thành công
-async function guiHoaDonViettel(mahoadon) {
+export async function guiHoaDonViettel(mahoadon) {
   try {
     const duLieu = await taoDuLieuHoaDon(mahoadon);
     const response = await fetch(configViettel.apiUrl, {
