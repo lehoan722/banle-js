@@ -31,13 +31,20 @@ export async function guiHoaDonViettel(mahoadon) {
     });
 
     let result;
+    let responseText = '';
     try {
+      const clone = response.clone(); // 👈 Clone response để đọc dự phòng
       result = await response.json();
     } catch (err) {
-      const text = await response.text();
-      console.error("❌ Phản hồi không phải JSON:", text);
-      throw new Error("Lỗi từ server trung gian: " + text);
+      try {
+        responseText = await response.text(); // dùng stream từ clone
+      } catch (readErr) {
+        responseText = 'Không đọc được phản hồi';
+      }
+      console.error("❌ Phản hồi không hợp lệ (không phải JSON):", responseText);
+      throw new Error("Lỗi từ server trung gian: " + responseText);
     }
+
 
     console.log('📥 Phản hồi từ API trung gian:', result);
 
