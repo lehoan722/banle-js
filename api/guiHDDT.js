@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
     console.log("📤 Nhận dữ liệu từ frontend:", JSON.stringify(data));
 
-    // 1. Lấy access_token từ Viettel
+    // 1. Lấy token từ Viettel
     const tokenRes = await fetch('https://api-vinvoice.viettel.vn/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -28,23 +28,19 @@ export default async function handler(req, res) {
     try {
       tokenData = await tokenRes.json();
     } catch (e) {
-      const raw = await tokenRes.text();
-      console.error('❌ Token API trả về không phải JSON:', raw);
-      return res.status(502).json({ message: 'Token API trả về không hợp lệ', raw });
+      const fallback = await tokenRes.text();
+      console.error('❌ Token trả về không phải JSON:', fallback);
+      return res.status(502).json({ message: 'Token API lỗi', raw: fallback });
     }
 
-    console.log("🪪 Phản hồi lấy token:", tokenData);
-
     if (!tokenData?.access_token) {
-      return res.status(401).json({
-        message: 'Không lấy được access_token',
-        detail: tokenData
-      });
+      console.error("❌ Không lấy được access_token:", tokenData);
+      return res.status(401).json({ message: 'Không lấy được access_token', detail: tokenData });
     }
 
     const token = tokenData.access_token;
 
-    // 2. Gửi hóa đơn lên Viettel
+    // 2. Gửi hóa đơn đến Viettel
     const hoaDonRes = await fetch('https://api-vinvoice.viettel.vn/services/einvoiceapplication/v2/createInvoice', {
       method: 'POST',
       headers: {
@@ -64,12 +60,10 @@ export default async function handler(req, res) {
     try {
       hoaDonData = await hoaDonRes.json();
     } catch (e) {
-      const raw = await hoaDonRes.text();
-      console.error('❌ Phản hồi gửi HĐ không phải JSON:', raw);
-      return res.status(502).json({ message: 'Phản hồi Viettel không hợp lệ', raw });
+      const fallback = await hoaDonRes.text();
+      console.error('❌ Phản hồi gửi HĐ không phải JSON:', fallback);
+      return res.status(502).json({ message: 'Phản hồi Viettel lỗi', raw: fallback });
     }
-
-    console.log("📩 Phản hồi gửi hóa đơn:", hoaDonData);
 
     if (hoaDonRes.status >= 400 || hoaDonData?.message === 'GENERAL') {
       return res.status(500).json({
@@ -88,7 +82,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       message: 'Lỗi server khi gửi HĐĐT',
       error: error.message,
-      stack: error.stack
+      stack: error.stack || 'no stack trace'
     });
   }
 }
