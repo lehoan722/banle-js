@@ -19,32 +19,33 @@ export async function guiHoaDonViettel(mahoadon) {
       return;
     }
 
-    // 2. Tạo dữ liệu JSON chuẩn hóa gửi lên Viettel
+    // 2. Tạo JSON gửi trung gian
     const json = taoDuLieuHoaDon(hoadon, chitiet);
-    console.log('🔥 Dữ liệu gửi trung gian:', json);
+    console.log('🔥 Dữ liệu gửi trung gian: ', json);
 
-    // 3. Gửi dữ liệu lên API trung gian (Vercel)
+    // 3. Gửi lên API trung gian
     const response = await fetch('/api/guiHDDT', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: json })
     });
 
+    console.log("📦 Response status:", response.status);
+    console.log("📦 Response headers:", [...response.headers.entries()]);
+
     let result;
-    let responseText = '';
     try {
-      const clone = response.clone(); // 👈 Clone response để đọc dự phòng
-      result = await response.json();
+      const clone = response.clone();
+      result = await clone.json();
     } catch (err) {
       try {
-        responseText = await response.text(); // dùng stream từ clone
+        const fallbackText = await response.text();
+        console.error("❌ Phản hồi không hợp lệ (không phải JSON):", fallbackText);
+        throw new Error("Lỗi từ server trung gian: " + fallbackText);
       } catch (readErr) {
-        responseText = 'Không đọc được phản hồi';
+        throw new Error("Lỗi từ server trung gian: Không đọc được phản hồi");
       }
-      console.error("❌ Phản hồi không hợp lệ (không phải JSON):", responseText);
-      throw new Error("Lỗi từ server trung gian: " + responseText);
     }
-
 
     console.log('📥 Phản hồi từ API trung gian:', result);
 
@@ -52,7 +53,7 @@ export async function guiHoaDonViettel(mahoadon) {
       throw new Error(result?.message || 'Gửi thất bại');
     }
 
-    // 4. Ghi trạng thái "Đã gửi" nếu thành công
+    // 4. Cập nhật trạng thái
     await supabase
       .from('hoadon_banleT')
       .update({ trang_thai_gui: 'Đã gửi' })
@@ -64,7 +65,6 @@ export async function guiHoaDonViettel(mahoadon) {
     console.error('❌ Lỗi khi gửi HĐĐT:', error);
     alert(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`);
 
-    // Ghi trạng thái lỗi vào bảng hóa đơn
     await supabase
       .from('hoadon_banleT')
       .update({ trang_thai_gui: 'Lỗi: ' + error.message })
@@ -72,7 +72,6 @@ export async function guiHoaDonViettel(mahoadon) {
   }
 }
 
-// Tạo dữ liệu đúng chuẩn Viettel từ hóa đơn và chi tiết
 function taoDuLieuHoaDon(hoadon, chitiet) {
   return {
     generalInvoiceInfo: {
@@ -125,7 +124,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       totalAmountWithoutTax: hoadon.thanhtoan,
       totalTaxAmount: 0,
       totalAmountWithTax: hoadon.thanhtoan,
-      totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn", // TODO: auto chuyển số thành chữ
+      totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn",
       discountAmount: 0
     },
     taxBreakdowns: [],
