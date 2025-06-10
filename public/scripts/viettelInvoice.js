@@ -30,7 +30,15 @@ export async function guiHoaDonViettel(mahoadon) {
       body: JSON.stringify({ data: json })
     });
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (err) {
+      const text = await response.text();
+      console.error("❌ Phản hồi không phải JSON:", text);
+      throw new Error("Lỗi từ server trung gian: " + text);
+    }
+
     console.log('📥 Phản hồi từ API trung gian:', result);
 
     if (!response.ok) {
