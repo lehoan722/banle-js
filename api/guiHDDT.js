@@ -17,12 +17,16 @@ export default async function handler(req, res) {
     // 1. Lấy token từ Viettel
     const tokenRes = await fetch('https://api-vinvoice.viettel.vn/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'banle-js-vercel-client' // 👈 Thêm dòng này để tránh bị chặn
+      },
       body: JSON.stringify({
         username: '4600370592',
         password: '123456aA*'
       })
     });
+
 
     let tokenData;
     try {
