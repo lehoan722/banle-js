@@ -1,9 +1,8 @@
 import { supabase } from './supabaseClient.js';
 
-// Hàm chính để gửi hóa đơn lên Viettel
 export async function guiHoaDonViettel(mahoadon) {
   try {
-    // 1. Lấy dữ liệu hóa đơn và chi tiết
+    // 1. Lấy dữ liệu hóa đơn và chi tiết từ Supabase
     const { data: hoadon, error: errHD } = await supabase
       .from('hoadon_banleT')
       .select('*')
@@ -20,37 +19,25 @@ export async function guiHoaDonViettel(mahoadon) {
       return;
     }
 
-    // 2. Lấy token truy cập
-    const token = await layAccessToken();
-
-    // 3. Tạo dữ liệu JSON hóa đơn
+    // 2. Tạo dữ liệu JSON chuẩn hóa gửi lên Viettel
     const json = taoDuLieuHoaDon(hoadon, chitiet);
-    console.log('🔥 Dữ liệu gửi Viettel:', json);
+    console.log('🔥 Dữ liệu gửi trung gian:', json);
 
-    // 4. Gửi hóa đơn lên Viettel
-    const response = await fetch("https://api-vinvoice.viettel.vn/services/einvoiceapplication/v2/createInvoice", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        invoiceApplication: {
-          templateCode: "2/001",
-          invoiceSeries: "C25MLH",
-          data: json
-        }
-      })
+    // 3. Gửi dữ liệu lên API trung gian (Vercel)
+    const response = await fetch('/api/guiHDDT', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: json })
     });
 
     const result = await response.json();
-    console.log('📥 Phản hồi từ Viettel: ', result);
+    console.log('📥 Phản hồi từ API trung gian:', result);
 
-    if (response.status >= 400 || result.message === 'GENERAL') {
-      throw new Error(result?.description || result?.message || 'Gửi hóa đơn thất bại');
+    if (!response.ok) {
+      throw new Error(result?.message || 'Gửi thất bại');
     }
 
-    // 5. Ghi trạng thái thành công vào Supabase
+    // 4. Ghi trạng thái "Đã gửi" nếu thành công
     await supabase
       .from('hoadon_banleT')
       .update({ trang_thai_gui: 'Đã gửi' })
@@ -62,7 +49,7 @@ export async function guiHoaDonViettel(mahoadon) {
     console.error('❌ Lỗi khi gửi HĐĐT:', error);
     alert(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`);
 
-    // Ghi trạng thái thất bại
+    // Ghi trạng thái lỗi vào bảng hóa đơn
     await supabase
       .from('hoadon_banleT')
       .update({ trang_thai_gui: 'Lỗi: ' + error.message })
@@ -70,23 +57,7 @@ export async function guiHoaDonViettel(mahoadon) {
   }
 }
 
-// Hàm lấy access token từ Viettel
-async function layAccessToken() {
-  const response = await fetch("https://api-vinvoice.viettel.vn/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: "4600370592",
-      password: "123456aA*"
-    })
-  });
-
-  const result = await response.json();
-  if (!result?.access_token) throw new Error("Không lấy được access_token từ Viettel");
-  return result.access_token;
-}
-
-// Hàm tạo dữ liệu JSON đúng chuẩn Viettel
+// Tạo dữ liệu đúng chuẩn Viettel từ hóa đơn và chi tiết
 function taoDuLieuHoaDon(hoadon, chitiet) {
   return {
     generalInvoiceInfo: {
@@ -139,7 +110,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       totalAmountWithoutTax: hoadon.thanhtoan,
       totalTaxAmount: 0,
       totalAmountWithTax: hoadon.thanhtoan,
-      totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn", // Cần cải tiến: viết số ra chữ tự động
+      totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn", // TODO: auto chuyển số thành chữ
       discountAmount: 0
     },
     taxBreakdowns: [],
@@ -147,5 +118,5 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     customFields: [],
     deliveryInfo: {},
     meterReading: []
-  }
+  };
 }
