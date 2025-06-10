@@ -28,7 +28,7 @@ export async function guiHoaDonViettel(mahoadon) {
     console.log('🔥 Dữ liệu gửi Viettel:', json);
 
     // 4. Gửi hóa đơn lên Viettel
-    const response = await fetch("https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/createInvoice", {
+    const response = await fetch("https://api-vinvoice.viettel.vn/services/einvoiceapplication/v2/createInvoice", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
