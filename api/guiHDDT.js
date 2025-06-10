@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'Thiếu dữ liệu hóa đơn' });
     }
 
-    console.log("📤 Nhận dữ liệu từ frontend:", data);
+    console.log("📤 Nhận dữ liệu từ frontend:", JSON.stringify(data));
 
     // 1. Lấy access_token từ Viettel
     const tokenRes = await fetch('https://api-vinvoice.viettel.vn/auth/login', {
@@ -24,7 +24,14 @@ export default async function handler(req, res) {
       })
     });
 
-    const tokenData = await tokenRes.json();
+    let tokenData;
+    try {
+      tokenData = await tokenRes.json();
+    } catch (e) {
+      const raw = await tokenRes.text();
+      console.error('❌ Token API trả về không phải JSON:', raw);
+      return res.status(502).json({ message: 'Token API trả về không hợp lệ', raw });
+    }
 
     console.log("🪪 Phản hồi lấy token:", tokenData);
 
@@ -37,7 +44,7 @@ export default async function handler(req, res) {
 
     const token = tokenData.access_token;
 
-    // 2. Gửi hóa đơn đến Viettel
+    // 2. Gửi hóa đơn lên Viettel
     const hoaDonRes = await fetch('https://api-vinvoice.viettel.vn/services/einvoiceapplication/v2/createInvoice', {
       method: 'POST',
       headers: {
@@ -53,7 +60,14 @@ export default async function handler(req, res) {
       })
     });
 
-    const hoaDonData = await hoaDonRes.json();
+    let hoaDonData;
+    try {
+      hoaDonData = await hoaDonRes.json();
+    } catch (e) {
+      const raw = await hoaDonRes.text();
+      console.error('❌ Phản hồi gửi HĐ không phải JSON:', raw);
+      return res.status(502).json({ message: 'Phản hồi Viettel không hợp lệ', raw });
+    }
 
     console.log("📩 Phản hồi gửi hóa đơn:", hoaDonData);
 
@@ -70,7 +84,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("❌ Lỗi khi xử lý API:", error);
+    console.error("❌ Lỗi khi xử lý API trung gian:", error);
     return res.status(500).json({
       message: 'Lỗi server khi gửi HĐĐT',
       error: error.message,
