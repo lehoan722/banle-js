@@ -1,8 +1,8 @@
+
 import { supabase } from './supabaseClient.js';
 
 export async function guiHoaDonViettel(mahoadon) {
   try {
-    // 1. Lấy dữ liệu hóa đơn và chi tiết từ Supabase
     const { data: hoadon, error: errHD } = await supabase
       .from('hoadon_banleT')
       .select('*')
@@ -19,11 +19,9 @@ export async function guiHoaDonViettel(mahoadon) {
       return;
     }
 
-    // 2. Tạo JSON gửi trung gian
     const json = taoDuLieuHoaDon(hoadon, chitiet);
     console.log('🔥 Dữ liệu gửi trung gian: ', json);
 
-    // 3. Gửi lên API trung gian
     const response = await fetch('/api/guiHDDT', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,22 +51,11 @@ export async function guiHoaDonViettel(mahoadon) {
       throw new Error(result?.message || 'Gửi thất bại');
     }
 
-    // 4. Cập nhật trạng thái
-    await supabase
-      .from('hoadon_banleT')
-      .update({ trang_thai_gui: 'Đã gửi' })
-      .eq('sohd', mahoadon);
-
     alert("✅ Gửi hóa đơn thành công!");
 
   } catch (error) {
     console.error('❌ Lỗi khi gửi HĐĐT:', error);
     alert(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`);
-
-    await supabase
-      .from('hoadon_banleT')
-      .update({ trang_thai_gui: 'Lỗi: ' + error.message })
-      .eq('sohd', mahoadon);
   }
 }
 
@@ -104,28 +91,26 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       sellerEmail: "cskt.viettelhue@gmail.com",
       sellerBankAccount: "123456789"
     },
-    payments: [
-      { paymentMethodName: "TM/CK" }
-    ],
-    itemInfo: chitiet.map((item, index) => ({
-      lineNumber: index + 1,
-      itemCode: item.masp,
-      itemName: item.tensp,
-      unitName: item.size || "Chiếc",
-      quantity: item.soluong,
-      unitPrice: item.gia,
-      itemTotalAmountWithoutTax: item.thanhtien,
+    payments: [{ paymentMethodName: "TM/CK" }],
+    itemInfo: chitiet.map((ct, i) => ({
+      lineNumber: i + 1,
+      itemCode: ct.masp,
+      itemName: ct.tensp,
+      unitName: ct.size || "Chiếc",
+      quantity: ct.soluong,
+      unitPrice: ct.gia,
+      itemTotalAmountWithoutTax: ct.thanhtien,
       taxPercentage: 0,
       taxAmount: 0,
       discount: 0,
-      itemDiscount: item.km || 0
+      itemDiscount: ct.km || 0
     })),
     summarizeInfo: {
       totalAmountWithoutTax: hoadon.thanhtoan,
       totalTaxAmount: 0,
       totalAmountWithTax: hoadon.thanhtoan,
       totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn",
-      discountAmount: 0
+      discountAmount: hoadon.chietkhau || 0
     },
     taxBreakdowns: [],
     metadata: [],
