@@ -55,7 +55,7 @@ export async function guiHoaDonViettel(mahoadon) {
 
   } catch (error) {
     console.error('❌ Lỗi khi gửi HĐĐT:', error);
-    alert(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`);
+    //alert(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`);
   }
 }
 
