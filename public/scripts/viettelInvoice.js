@@ -68,26 +68,33 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
 }
 
 // Hàm gửi hóa đơn từ Web (giữ nguyên logic lỗi/thành công)
-export async function guiHoaDonViettel(mahoadon) {
+export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
   try {
-    const { data: hoadon } = await supabase
-      .from('hoadon_banleT')
-      .select('*')
-      .eq('sohd', mahoadon)
-      .single();
+    let hoadon, chitiet, json;
+    if (duLieuHoaDonCu) {
+      // Nếu là lần gửi lại, dùng dữ liệu cũ
+      json = duLieuHoaDonCu;
+    } else {
+      // Lấy từ DB (bình thường)
+      const { data: hoadonData } = await supabase
+        .from('hoadon_banleT')
+        .select('*')
+        .eq('sohd', mahoadon)
+        .single();
 
-    const { data: chitiet } = await supabase
-      .from('ct_hoadon_banleT')
-      .select('*')
-      .eq('sohd', mahoadon);
+      const { data: chitietData } = await supabase
+        .from('ct_hoadon_banleT')
+        .select('*')
+        .eq('sohd', mahoadon);
 
-    if (!hoadon || !chitiet || chitiet.length === 0) {
-      alert("❌ Không tìm thấy dữ liệu hóa đơn\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
-      return;
+      if (!hoadonData || !chitietData || chitietData.length === 0) {
+        alert("❌ Không tìm thấy dữ liệu hóa đơn\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
+        return;
+      }
+      hoadon = hoadonData;
+      chitiet = chitietData;
+      json = taoDuLieuHoaDon(hoadon, chitiet);
     }
-
-    // Chuẩn hóa JSON đầu ra
-    const json = taoDuLieuHoaDon(hoadon, chitiet);
 
     // Gửi lên API backend
     const response = await fetch('/api/guiHDDT', {
@@ -100,16 +107,16 @@ export async function guiHoaDonViettel(mahoadon) {
     try {
       result = await response.json();
     } catch (err) {
-      alert("❌ Lỗi khi đọc phản hồi từ server trung gian.");
+      hienThiThongBaoLoiVoiGuiLai("❌ Lỗi khi đọc phản hồi từ server trung gian.", json, mahoadon);
       return;
     }
 
     if (!response.ok) {
-      alert(result?.message || 'Gửi hóa đơn thất bại');
+      hienThiThongBaoLoiVoiGuiLai(result?.message || '❌ Gửi hóa đơn thất bại!', json, mahoadon);
       return;
     }
 
-    // Cập nhật trạng thái
+    // Cập nhật trạng thái thành công
     await supabase
       .from('hoadon_banleT')
       .update({ trang_thai_gui: 'Đã gửi' })
@@ -118,10 +125,19 @@ export async function guiHoaDonViettel(mahoadon) {
     alert("✅ Gửi hóa đơn thành công!");
 
   } catch (error) {
-    alert(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`);
+    hienThiThongBaoLoiVoiGuiLai(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`, duLieuHoaDonCu, mahoadon);
+
     await supabase
       .from('hoadon_banleT')
       .update({ trang_thai_gui: 'Lỗi: ' + error.message })
       .eq('sohd', mahoadon);
   }
 }
+
+function hienThiThongBaoLoiVoiGuiLai(message, duLieuHoaDonCu, mahoadon) {
+  if (confirm(`${message}\n\nBạn muốn gửi lại hóa đơn này không?`)) {
+    // Khi người dùng chọn OK thì gọi lại đúng hàm gửi, dùng lại dữ liệu cũ
+    guiHoaDonViettel(mahoadon, duLieuHoaDonCu);
+  }
+}
+
