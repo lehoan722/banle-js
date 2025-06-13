@@ -90,6 +90,7 @@ export async function luuHoaDonCaHaiBan() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const diadiem = document.getElementById("diadiem").value;
+  const createdAt = new Date().toISOString();  // <--- thêm dòng này!
   const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
 
   // Lấy số hiện tại từ bảng sochungtu
