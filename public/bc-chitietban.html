@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>BÁO CÁO CHI TIẾT BÁN HÀNG</title>
+  <style>
+    body { font-family: Arial; margin: 0; padding: 0; background: #f8f8f8; }
+    .container { max-width: 1350px; margin: 0 auto; background: #fff; padding: 30px 30px 80px 30px; }
+    h2 { text-align: center; margin-top: 0; }
+    .filter-wrap { background: #fafafa; padding: 18px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #eee; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .filter-row input, .filter-row select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px; }
+    .filter-row label { font-weight: 600; margin-right: 4px; }
+    .filter-row .checkbox-wrap { display: flex; align-items: center; gap: 12px; margin-left: 10px;}
+    .filter-actions { margin: 10px 0 0 0; display: flex; gap: 10px; }
+    .btn { padding: 6px 16px; border: none; border-radius: 5px; background: #1890ff; color: #fff; font-weight: bold; cursor: pointer; transition: background .2s;}
+    .btn:hover { background: #005ecb; }
+    .btn-toggle { background: #999; }
+    .hidden { display: none; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 12px;}
+    th, td { border: 1px solid #ccc; padding: 7px 6px; text-align: left; }
+    tr:hover { background: #f1f7fd; }
+    th { background: #f4f8fc; }
+    tfoot td { font-weight: bold; background: #fafafa; }
+    .sum-row td { background: #f8f8f8; color: #111; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>BÁO CÁO CHI TIẾT BÁN HÀNG</h2>
+    <div id="filterWrap" class="filter-wrap">
+      <div class="filter-row">
+        <label>Từ ngày: <input type="date" id="fromDate"></label>
+        <label>Đến ngày: <input type="date" id="toDate"></label>
+        <label>Khách hàng: <input id="khachhang"></label>
+        <label>Nhân viên: <input id="nhanvien"></label>
+        <label>Tên hàng: <input id="tenhang"></label>
+        <label>Mã ngắn: <input id="mangan"></label>
+        <label>Địa điểm: <input id="diadiem"></label>
+        <label>Kho hàng: <input id="khohang"></label>
+        <label>Nhóm hàng: <input id="nhomhang"></label>
+        <label>Loại hàng: <input id="loaihang"></label>
+      </div>
+      <div class="filter-row">
+        <label>Mã hàng: <input id="mahang"></label>
+        <label>Màu sắc: <input id="mausac"></label>
+        <label>Kích cỡ: <input id="kichco"></label>
+        <label>Từ giá: <input type="number" id="fromGia"></label>
+        <label>Đến giá: <input type="number" id="toGia"></label>
+        <div class="checkbox-wrap">
+          <label><input type="checkbox" id="banLeTraLai"> Bán lẻ trả lại</label>
+          <label><input type="checkbox" id="banBuonTraLai"> Bán buôn trả lại</label>
+          <label><input type="checkbox" id="locGiamGia"> Lọc hàng giảm giá</label>
+          <label><input type="checkbox" id="locNCC"> Lọc theo nhà cung cấp</label>
+          <label><input type="checkbox" id="chiTietDVT"> Chi tiết theo ĐVT</label>
+          <label><input type="checkbox" id="sapXepNgay"> Sắp xếp theo ngày</label>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-toggle" type="button" onclick="toggleFilter()">Ẩn tùy chọn lọc</button>
+        <button class="btn" type="button" onclick="xemBaoCao()">Xem báo cáo</button>
+        <button class="btn" type="button" onclick="xuatExcel()">Xuất Excel</button>
+      </div>
+    </div>
+
+    <table id="bangBaoCao">
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Ngày</th>
+          <th>Chứng từ</th>
+          <th>Tên khách hàng</th>
+          <th>Kho xuất</th>
+          <th>Mã hàng</th>
+          <th>Tên hàng</th>
+          <th>Số lượng</th>
+          <th>Kích cỡ</th>
+          <th>ĐVT</th>
+          <th>Đơn giá</th>
+          <th>Khuyến mại</th>
+          <th>Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody id="bodyBaoCao"></tbody>
+      <tfoot>
+        <tr class="sum-row">
+          <td colspan="7">Tổng cộng</td>
+          <td id="sumSL"></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td id="sumKM"></td>
+          <td id="sumTT"></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div id="sumExtra" style="margin-top:16px; font-weight:500;"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script>
+    // Ẩn/hiện filter
+    function toggleFilter() {
+      const wrap = document.getElementById('filterWrap');
+      if (wrap.classList.contains('hidden')) {
+        wrap.classList.remove('hidden');
+        document.querySelector('.btn-toggle').innerText = "Ẩn tùy chọn lọc";
+      } else {
+        wrap.classList.add('hidden');
+        document.querySelector('.btn-toggle').innerText = "Hiện tùy chọn lọc";
+      }
+    }
+
+    // Hàm load dữ liệu từ Supabase/Backend (dummy demo)
+    async function xemBaoCao() {
+      // Lấy các giá trị lọc
+      const params = {
+        fromDate: document.getElementById("fromDate").value,
+        toDate: document.getElementById("toDate").value,
+        khachhang: document.getElementById("khachhang").value,
+        nhanvien: document.getElementById("nhanvien").value,
+        tenhang: document.getElementById("tenhang").value,
+        mangan: document.getElementById("mangan").value,
+        diadiem: document.getElementById("diadiem").value,
+        khohang: document.getElementById("khohang").value,
+        nhomhang: document.getElementById("nhomhang").value,
+        loaihang: document.getElementById("loaihang").value,
+        mahang: document.getElementById("mahang").value,
+        mausac: document.getElementById("mausac").value,
+        kichco: document.getElementById("kichco").value,
+        fromGia: document.getElementById("fromGia").value,
+        toGia: document.getElementById("toGia").value,
+        banLeTraLai: document.getElementById("banLeTraLai").checked,
+        banBuonTraLai: document.getElementById("banBuonTraLai").checked,
+        locGiamGia: document.getElementById("locGiamGia").checked,
+        locNCC: document.getElementById("locNCC").checked,
+        chiTietDVT: document.getElementById("chiTietDVT").checked,
+        sapXepNgay: document.getElementById("sapXepNgay").checked
+      };
+      // TODO: Query thực từ Supabase/API, sau đó fill bảng
+      renderBangBaoCao([]); // Dùng dữ liệu thực tế thay cho []
+    }
+
+    // Render bảng báo cáo
+    function renderBangBaoCao(data) {
+      // data: mảng các dòng chi tiết đã join đủ trường
+      const tbody = document.getElementById('bodyBaoCao');
+      tbody.innerHTML = '';
+      let sumSL = 0, sumKM = 0, sumTT = 0;
+      data.forEach((row, idx) => {
+        sumSL += row.soluong || 0;
+        sumKM += row.km || 0;
+        sumTT += row.thanhtien || 0;
+        tbody.innerHTML += `
+          <tr>
+            <td>${idx+1}</td>
+            <td>${row.ngay || ''}</td>
+            <td>${row.sohd || ''}</td>
+            <td>${row.khachhang || ''}</td>
+            <td>${row.kho || row.diadiem || ''}</td>
+            <td>${row.masp || ''}</td>
+            <td>${row.tensp || ''}</td>
+            <td>${row.soluong || ''}</td>
+            <td>${row.size || ''}</td>
+            <td>${row.dvt || ''}</td>
+            <td>${row.gia ? row.gia.toLocaleString() : ''}</td>
+            <td>${row.km ? row.km.toLocaleString() : ''}</td>
+            <td>${row.thanhtien ? row.thanhtien.toLocaleString() : ''}</td>
+          </tr>
+        `;
+      });
+      document.getElementById('sumSL').innerText = sumSL.toLocaleString();
+      document.getElementById('sumKM').innerText = sumKM.toLocaleString();
+      document.getElementById('sumTT').innerText = sumTT.toLocaleString();
+      document.getElementById('sumExtra').innerHTML = `
+        Tổng KM theo hóa đơn: 0<br>
+        Tổng sau khuyến mại: ${sumTT.toLocaleString()}<br>
+        Tổng thanh toán bằng thẻ: 0<br>
+        Tổng cộng đã trừ thanh toán bằng thẻ: ${sumTT.toLocaleString()}
+      `;
+    }
+
+    // Xuất Excel với SheetJS
+    function xuatExcel() {
+      const wb = XLSX.utils.table_to_book(document.getElementById('bangBaoCao'), { sheet: "Báo cáo" });
+      XLSX.writeFile(wb, "baocao_chitiet_banhang.xlsx");
+    }
+  </script>
+</body>
+</html>
