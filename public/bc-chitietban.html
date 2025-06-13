@@ -134,7 +134,14 @@
         <label>Nhân viên: <input id="nhanvien"></label>
         <label>Tên hàng: <input id="tenhang"></label>
         <label>Mã ngắn: <input id="mangan"></label>
-        <label>Địa điểm: <input id="diadiem"></label>
+        <label>Địa điểm:
+          <select id="diadiem">
+            <option value="">--Chọn cơ sở--</option>
+            <option value="CS1">CS1</option>
+            <option value="CS2">CS2</option>
+          </select>
+        </label>
+
         <label>Kho hàng: <input id="khohang"></label>
         <label>Nhóm hàng: <input id="nhomhang"></label>
         <label>Loại hàng: <input id="loaihang"></label>
@@ -154,12 +161,15 @@
           <label><input type="checkbox" id="sapXepNgay"> Sắp xếp theo ngày</label>
         </div>
       </div>
-      <div class="filter-actions">
-        <button class="btn btn-toggle" type="button" onclick="toggleFilter()">Ẩn tùy chọn lọc</button>
-        <button class="btn" type="button" onclick="xemBaoCao()">Xem báo cáo</button>
-        <button class="btn" type="button" onclick="xuatExcel()">Xuất Excel</button>
-      </div>
     </div>
+
+    <div class="filter-actions" id="actionBar">
+      <button class="btn btn-toggle" type="button" onclick="toggleFilter()">Ẩn tùy chọn lọc</button>
+      <button class="btn" type="button" onclick="xemBaoCao()">Xem báo cáo</button>
+      <button class="btn" type="button" onclick="xuatExcel()">Xuất Excel</button>
+    </div>
+    <div id="filterWrap" class="filter-wrap"> ... </div>
+
 
     <table id="bangBaoCao">
       <thead>
@@ -182,7 +192,13 @@
       <tbody id="bodyBaoCao"></tbody>
       <tfoot>
         <tr class="sum-row">
-          <td></td>Tổng cộng</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td style="font-weight:bold;">Tổng cộng</td>
           <td id="sumSL"></td>
           <td></td>
           <td></td>
@@ -191,6 +207,7 @@
           <td id="sumTT"></td>
         </tr>
       </tfoot>
+
     </table>
 
     <div id="sumExtra" style="margin-top:16px; font-weight:500;"></div>
@@ -202,7 +219,10 @@
     // Khai báo client ngay sau khi đã nhúng thư viện JS
     const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co'; // Thay cho bạn
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // Dùng anon key của bạn
-    
+
+
+    const diadiem = document.getElementById("diadiem").value;
+    if (diadiem) query = query.eq('hoadon_banle.diadiem', diadiem);
 
     // Ẩn/hiện filter
     function toggleFilter() {
