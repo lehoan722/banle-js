@@ -43,7 +43,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       lineNumber: index + 1,
       itemCode: item.masp,
       itemName: item.tensp,
-      unitName: item.size || "Chiếc",
+      unitName: item.dvt,
       quantity: Number(item.soluong),
       unitPrice: Number(item.gia) - Number(item.km || 0),
       itemTotalAmountWithoutTax: Number(item.thanhtien),
