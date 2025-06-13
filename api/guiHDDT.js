@@ -74,6 +74,7 @@ export default async function handler(req, res) {
       })
     });
     const tokenData = await tokenRes.json();
+    console.log(">>> Kết quả lấy token:", tokenData);    
     if (!tokenData?.access_token) {
       return res.status(401).json({ message: 'Không lấy được access_token', detail: tokenData });
     }
