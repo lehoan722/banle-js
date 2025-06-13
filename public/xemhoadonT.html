@@ -1,18 +1,56 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <title>Xem Hóa Đơn Tạm</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    tr:hover { background-color: #f1f1f1; cursor: pointer; }
-    input, select { margin: 4px; padding: 6px; }
-    #popup { display: none; position: fixed; top: 10%; left: 10%; width: 80%; height: 70%; background: #fff; border: 1px solid #888; overflow: auto; padding: 20px; z-index: 9999; }
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+      cursor: pointer;
+    }
+
+    input,
+    select {
+      margin: 4px;
+      padding: 6px;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 10%;
+      width: 80%;
+      height: 70%;
+      background: #fff;
+      border: 1px solid #888;
+      overflow: auto;
+      padding: 20px;
+      z-index: 9999;
+    }
   </style>
 </head>
+
 <body>
   <h2>📋 Tra cứu Hóa Đơn Tạm</h2>
   <label>Ngày: <input type="date" id="locNgay"></label>
@@ -22,7 +60,18 @@
 
   <table>
     <thead>
-      <tr><th>Số HĐ</th><th>Ngày</th><th>NV</th><th>Khách</th><th>TT</th><th>Ghi chú</th></tr>
+      <thead>
+        <tr>
+          <th>Số HĐ</th>
+          <th>Ngày</th>
+          <th>NV</th>
+          <th>Khách</th>
+          <th>TT</th>
+          <th>Ghi chú</th>
+          <th>Trạng thái gửi</th> <!-- Thêm dòng này -->
+        </tr>
+      </thead>
+
     </thead>
     <tbody id="dsHoaDon"></tbody>
   </table>
@@ -31,7 +80,15 @@
     <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
     <table>
       <thead>
-        <tr><th>Mã SP</th><th>Tên SP</th><th>Size</th><th>SL</th><th>Giá</th><th>KM</th><th>Thành tiền</th></tr>
+        <tr>
+          <th>Mã SP</th>
+          <th>Tên SP</th>
+          <th>Size</th>
+          <th>SL</th>
+          <th>Giá</th>
+          <th>KM</th>
+          <th>Thành tiền</th>
+        </tr>
       </thead>
       <tbody id="ctHoaDon"></tbody>
     </table>
@@ -62,11 +119,22 @@
       if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
       data.forEach(hd => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${hd.sohd}</td><td>${hd.ngay}</td><td>${hd.tennv}</td><td>${hd.khachhang}</td><td>${hd.thanhtoan?.toLocaleString()}</td><td>${hd.ghichu || ""}</td>`;
-        tr.onclick = () => xemChiTiet(hd.sohd);
-        tbody.appendChild(tr);
-      });
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${hd.sohd}</td>
+    <td>${hd.ngay}</td>
+    <td>${hd.tennv}</td>
+    <td>${hd.khachhang}</td>
+    <td>${hd.thanhtoan?.toLocaleString()}</td>
+    <td>${hd.ghichu || ""}</td>
+    <td style="color:${hd.trang_thai_gui === 'Đã gửi' ? 'green' : (hd.trang_thai_gui?.startsWith('Lỗi') ? 'red' : 'orange')}">
+      ${hd.trang_thai_gui || 'Chưa gửi'}
+    </td>
+  `;
+  tr.onclick = () => xemChiTiet(hd.sohd);
+  tbody.appendChild(tr);
+});
+
     }
 
     async function xemChiTiet(sohd) {
@@ -94,4 +162,5 @@
     window.onload = taiDanhSachHoaDon;
   </script>
 </body>
+
 </html>
