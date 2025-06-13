@@ -106,7 +106,13 @@
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
 
-      let query = supabase.from('hoadon_banleT').select('*').order('ngay', { ascending: false }).limit(100);
+      let query = supabase
+        .from('hoadon_banleT')
+        .select('*')
+        .order('ngay', { ascending: false })   // Sắp xếp giảm dần theo ngày trước
+        .order('sohd', { ascending: false })   // Sau đó giảm dần theo số hóa đơn (nếu ngày giống nhau)
+        .limit(1000);
+
 
       if (ngay) query = query.eq('ngay', ngay);
       if (nv) query = query.ilike('manv', `%${nv}%`);
@@ -119,8 +125,8 @@
       if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
       data.forEach(hd => {
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
     <td>${hd.sohd}</td>
     <td>${hd.ngay}</td>
     <td>${hd.tennv}</td>
@@ -131,9 +137,9 @@
       ${hd.trang_thai_gui || 'Chưa gửi'}
     </td>
   `;
-  tr.onclick = () => xemChiTiet(hd.sohd);
-  tbody.appendChild(tr);
-});
+        tr.onclick = () => xemChiTiet(hd.sohd);
+        tbody.appendChild(tr);
+      });
 
     }
 
