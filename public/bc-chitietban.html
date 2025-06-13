@@ -202,7 +202,7 @@
     // Khai báo client ngay sau khi đã nhúng thư viện JS
     const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co'; // Thay cho bạn
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // Dùng anon key của bạn
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
 
     // Ẩn/hiện filter
     function toggleFilter() {
@@ -217,7 +217,7 @@
     }
 
     // Hàm load dữ liệu từ Supabase/Backend (dummy demo)
-    const supabase = window.supabase.createClient('https://YOUR_PROJECT.supabase.co', 'YOUR_PUBLIC_API_KEY');
+    const supabase = window.supabase.createClient('https://rddjrmbyftlcvrgzlyby.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM');
 
     async function xemBaoCao() {
       // Lấy các giá trị lọc từ form
