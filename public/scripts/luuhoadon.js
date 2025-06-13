@@ -44,6 +44,9 @@ export async function luuHoaDonQuaAPI() {
     ghichu: document.getElementById("ghichu")?.value || ""
   };
 
+  const diadiem = document.getElementById("diadiem").value;
+  const createdAt = new Date().toISOString();
+
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
@@ -56,10 +59,14 @@ export async function luuHoaDonQuaAPI() {
         soluong: sl,
         gia: item.gia,
         km: item.km,
-        thanhtien: (item.gia - item.km) * sl
+        thanhtien: (item.gia - item.km) * sl,
+        dvt: item.dvt || '',
+        diadiem,
+        created_at: createdAt
       });
     });
   });
+
 
   const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
@@ -83,28 +90,28 @@ export async function luuHoaDonCaHaiBan() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const diadiem = document.getElementById("diadiem").value;
-const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
+  const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
 
-// Lấy số hiện tại từ bảng sochungtu
-const { data: row, error } = await supabase
-  .from("sochungtu")
-  .select("so_hientai")
-  .eq("loai", loaiT)
-  .single();
+  // Lấy số hiện tại từ bảng sochungtu
+  const { data: row, error } = await supabase
+    .from("sochungtu")
+    .select("so_hientai")
+    .eq("loai", loaiT)
+    .single();
 
-if (error || !row) {
-  alert("❌ Không lấy được số chứng từ từ bảng sochungtu.");
-  return;
-}
+  if (error || !row) {
+    alert("❌ Không lấy được số chứng từ từ bảng sochungtu.");
+    return;
+  }
 
-const soMoi = row.so_hientai + 1;
-const sohdT = `${loaiT}_${String(soMoi).padStart(3, "0")}`;
+  const soMoi = row.so_hientai + 1;
+  const sohdT = `${loaiT}_${String(soMoi).padStart(3, "0")}`;
 
-// Cập nhật lại số chứng từ mới
-await supabase
-  .from("sochungtu")
-  .update({ so_hientai: soMoi })
-  .eq("loai", loaiT);
+  // Cập nhật lại số chứng từ mới
+  await supabase
+    .from("sochungtu")
+    .update({ so_hientai: soMoi })
+    .eq("loai", loaiT);
 
 
   const hoadon = {
@@ -120,6 +127,9 @@ await supabase
     ghichu: document.getElementById("ghichu")?.value || ""
   };
 
+  const diadiem = document.getElementById("diadiem").value;
+  const createdAt = new Date().toISOString();
+
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
@@ -131,10 +141,14 @@ await supabase
         soluong: sl,
         gia: item.gia,
         km: item.km,
-        thanhtien: (item.gia - item.km) * sl
+        thanhtien: (item.gia - item.km) * sl,
+        dvt: item.dvt || '',
+        diadiem,
+        created_at: createdAt
       });
     });
   });
+
 
   const hoadonChinh = { ...hoadon, sohd };
   const hoadonPhu = { ...hoadon, sohd: sohdT };
@@ -147,15 +161,15 @@ await supabase
   const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
 
   if (!errHD && !errCT && !errHDT && !errCTT) {
-  alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
-  inHoaDon(hoadonChinh, chitietChinh);
-  await lamMoiSauKhiLuu();
+    alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
+    inHoaDon(hoadonChinh, chitietChinh);
+    await lamMoiSauKhiLuu();
 
-  // ✅ Gửi hóa đơn điện tử sau khi lưu bảng T thành công
-  guiHoaDonViettel(sohdT);
-}
+    // ✅ Gửi hóa đơn điện tử sau khi lưu bảng T thành công
+    guiHoaDonViettel(sohdT);
+  }
 
-  
+
 }
 
 async function lamMoiSauKhiLuu() {
