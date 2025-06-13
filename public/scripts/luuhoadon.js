@@ -126,9 +126,7 @@ export async function luuHoaDonCaHaiBan() {
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || ""
   };
-
-  const diadiem = document.getElementById("diadiem").value;
-  const createdAt = new Date().toISOString();
+  
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
