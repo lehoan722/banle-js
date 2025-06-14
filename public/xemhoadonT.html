@@ -58,6 +58,8 @@
   <label>Số HĐ: <input type="text" id="locSoHD"></label>
   <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
 
+  <button id="btnGuiLai" onclick="guiLaiHoaDonDaChon()" disabled>📤 Gửi lại hóa đơn</button>
+
   <table>
     <thead>
       <thead>
@@ -96,6 +98,8 @@
   </div>
 
   <script>
+    let sohdDangChon = null;
+
     const supabase = window.supabase.createClient(
       'https://rddjrmbyftlcvrgzlyby.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
@@ -124,6 +128,7 @@
 
       if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
+
       data.forEach(hd => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -136,10 +141,14 @@
     <td style="color:${hd.trang_thai_gui === 'Đã gửi' ? 'green' : (hd.trang_thai_gui?.startsWith('Lỗi') ? 'red' : 'orange')}">
       ${hd.trang_thai_gui || 'Chưa gửi'}
     </td>
-  `;
-        tr.onclick = () => xemChiTiet(hd.sohd);
+        `;
+        tr.onclick = function () {
+          chonHoaDon(hd.sohd, this, hd.trang_thai_gui);
+          xemChiTiet(hd.sohd);
+        };
         tbody.appendChild(tr);
       });
+
 
     }
 
@@ -164,6 +173,137 @@
     function dongPopup() {
       document.getElementById("popup").style.display = "none";
     }
+
+    function chonHoaDon(sohd, row, trangThaiGui) {
+      document.querySelectorAll("#dsHoaDon tr").forEach(tr => tr.style.backgroundColor = "");
+      row.style.backgroundColor = "#ffe066";
+      sohdDangChon = sohd;
+      // Chỉ bật nút nếu hóa đơn chưa gửi hoặc lỗi
+      document.getElementById("btnGuiLai").disabled = !(!trangThaiGui || trangThaiGui === 'Chưa gửi' || trangThaiGui.startsWith('Lỗi'));
+    }
+
+
+    async function guiLaiHoaDonDaChon() {
+      if (!sohdDangChon) {
+        alert("Bạn chưa chọn hóa đơn!");
+        return;
+      }
+      if (!confirm(`Bạn muốn gửi lại hóa đơn [${sohdDangChon}] lên Viettel?`)) return;
+
+      // Lấy lại dữ liệu hóa đơn & chi tiết
+      const { data: hoadon } = await supabase
+        .from('hoadon_banleT')
+        .select('*')
+        .eq('sohd', sohdDangChon)
+        .single();
+
+      const { data: chitiet } = await supabase
+        .from('ct_hoadon_banleT')
+        .select('*')
+        .eq('sohd', sohdDangChon);
+
+      if (!hoadon || !chitiet || chitiet.length === 0) {
+        alert("Không tìm thấy dữ liệu hóa đơn!");
+        return;
+      }
+
+      const json = taoDuLieuHoaDon(hoadon, chitiet);
+
+      const response = await fetch('/api/guiHDDT', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: json })
+      });
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (err) {
+        alert("❌ Lỗi khi đọc phản hồi từ server.");
+        return;
+      }
+
+      if (!response.ok) {
+        alert(result?.message || '❌ Gửi lại hóa đơn thất bại!');
+        return;
+      }
+
+      await supabase
+        .from('hoadon_banleT')
+        .update({ trang_thai_gui: 'Đã gửi' })
+        .eq('sohd', sohdDangChon);
+
+      alert("✅ Gửi lại hóa đơn thành công!");
+      taiDanhSachHoaDon();
+    }
+
+    // Tạo dữ liệu JSON chuẩn
+    function taoDuLieuHoaDon(hoadon, chitiet) {
+      let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
+      return {
+        generalInvoiceInfo: {
+          sohd: hoadon.sohd, // truyền sohd để backend nhận diện cơ sở
+          invoiceType: "02GTTT",
+          templateCode: "2/001",
+          invoiceSeries: hoadon.sohd.startsWith('bancs2T_') ? "C25MAT" : "C25MLH",
+          invoiceIssuedDate: new Date().getTime(),
+          currencyCode: "VND",
+          adjustmentType: "1",
+          paymentStatus: true,
+          paymentType: "TM/CK",
+          paymentTypeName: "TM/CK",
+          cusGetInvoiceRight: true
+        },
+        buyerInfo: {
+          sohd: hoadon.sohd, // truyền cả ở đây (hoặc chỉ 1 nơi)
+          buyerName: hoadon.khachhang || "Khách lẻ",
+          buyerTaxCode: "",
+          buyerAddressLine: hoadon.diadiem || "",
+          buyerPhoneNumber: "",
+          buyerEmail: "",
+          buyerIdNo: "",
+          buyerIdType: "",
+          buyerBudgetCode: ""
+        },
+        sellerInfo: {
+          sellerLegalName: "ĐẶNG LÊ HOÀN",
+          sellerTaxCode: hoadon.sohd.startsWith('bancs2T_') ? "4600960665" : "4600370592",
+          sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, TP Thái Nguyên, Tỉnh Thái Nguyên, Việt Nam",
+          sellerPhoneNumber: "0916747401",
+          sellerEmail: "cskt.viettelhue@gmail.com",
+          sellerBankAccount: "123456789"
+        },
+        payments: [
+          { paymentMethodName: "TM/CK", paymentAmount: tongTien }
+        ],
+        itemInfo: chitiet.map((item, index) => ({
+          lineNumber: index + 1,
+          itemCode: item.masp,
+          itemName: item.tensp,
+          unitName: item.dvt,
+          quantity: Number(item.soluong),
+          unitPrice: Number(item.gia) - Number(item.km || 0),
+          itemTotalAmountWithoutTax: Number(item.thanhtien),
+          taxPercentage: 0,
+          taxAmount: 0,
+          discount: 0,
+          itemDiscount: Number(item.km) || 0
+        })),
+        summarizeInfo: {
+          totalAmountWithoutTax: tongTien,
+          totalTaxAmount: 0,
+          totalAmountWithTax: tongTien,
+          totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn",
+          discountAmount: Number(hoadon.chietkhau) || 0
+        },
+        taxBreakdowns: [],
+        metadata: [],
+        customFields: [],
+        deliveryInfo: {},
+        meterReading: []
+      };
+    }
+
 
     window.onload = taiDanhSachHoaDon;
   </script>
