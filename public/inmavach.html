@@ -251,29 +251,13 @@
                 .select('masp, tensp, dvt, giale, gianhap')
                 .or(`masp.ilike.%${keyword}%,tensp.ilike.%${keyword}%`)
                 .order('masp')
-                .limit(100); // lấy 100 dòng đầu
+                .limit(100);
             filtered = data || [];
+            // Dòng dưới là QUAN TRỌNG để selectProduct tìm được mã!
+            products = data || [];
             renderProductList();
         }
-        searchInput.addEventListener('input', () => {
-            const val = searchInput.value.trim().toLowerCase();
-            if (val.length === 0) {
-                filtered = [];
-                renderProductList();
-            } else {
-                searchProducts(val);
-            }
-        });
-
-
-        // 2. Filter search
-        searchInput.addEventListener('input', () => {
-            const val = searchInput.value.trim().toLowerCase();
-            filtered = products.filter(
-                p => p.masp?.toLowerCase().includes(val) || p.tensp?.toLowerCase().includes(val)
-            );
-            renderProductList();
-        });
+        
 
         // 3. Render product list
         function renderProductList() {
