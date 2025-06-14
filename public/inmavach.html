@@ -315,19 +315,17 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
             let html = `<div class="print-preview" style="
-    padding-top: ${PAGE_MARGIN_TOP_MM}mm;
-    padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
-    width: ${205 + 2 * PAGE_MARGIN_LEFT_MM}mm;
-    height: ${170 + 2 * PAGE_MARGIN_TOP_MM}mm;
-">
-<div class="tem-grid" style="
-    display: grid;
-    grid-template-columns: 39mm 39mm 39mm 39mm 39mm;
-    grid-template-rows: 21mm 21mm 21mm 21mm 21mm 21mm 21mm 21mm;
-    column-gap: 0.5mm;
-    row-gap: 0.5mm;
-">`;
-
+                padding-top:${PAGE_MARGIN_TOP_MM}mm;
+                padding-left:${PAGE_MARGIN_LEFT_MM}mm;
+                width:${205 + 2 * PAGE_MARGIN_LEFT_MM}mm;
+                height:${170 + 2 * PAGE_MARGIN_TOP_MM}mm;
+            ">
+            <div class="tem-grid" style="
+                column-gap:${TEM_H_GAP_MM}mm;
+                row-gap:${TEM_V_GAP_MM}mm;
+                grid-template-columns:repeat(5,${TEM_WIDTH_MM}mm);
+                grid-template-rows:repeat(8,${TEM_HEIGHT_MM}mm);
+            ">`;
             // Blank cho trang đầu
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
@@ -415,5 +413,4 @@
         };
     </script>
 </body>
-
 </html>
