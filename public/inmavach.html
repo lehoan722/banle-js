@@ -210,10 +210,19 @@
                 <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
                 <button class="btn" onclick="renderPreview()">Xem in</button>
                 <button class="btn" onclick="window.print()">In</button>
+
             </div>
             <div class="preview-area" id="previewArea"></div>
         </div>
     </div>
+
+    <div class="preview-area" id="previewArea"></div>
+    <div style="margin: 8px 0;">
+        <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
+        <span id="pageInfo"></span>
+        <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
+    </div>
+
 
     <!-- QR Code lib -->
     <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
@@ -255,7 +264,7 @@
                 searchProducts(val);
             }
         });
-        
+
 
         // 2. Filter search
         searchInput.addEventListener('input', () => {
@@ -271,14 +280,20 @@
             let html = '<table>';
             html += '<tr><th>Mã SP</th><th>Tên hàng</th></tr>';
             for (let p of filtered) {
-                html += `<tr ondblclick="selectProduct('${p.masp.replace(/'/g, "\\'")}')">
-          <td>${p.masp}</td>
-          <td>${p.tensp}</td>
-        </tr>`;
+                html += `<tr data-masp="${p.masp}">
+      <td>${p.masp}</td>
+      <td>${p.tenhang}</td>
+    </tr>`;
             }
             html += '</table>';
             productListDiv.innerHTML = html;
+
+            // Gắn double click event cho từng dòng
+            productListDiv.querySelectorAll('tr[data-masp]').forEach(row => {
+                row.ondblclick = () => selectProduct(row.dataset.masp);
+            });
         }
+
 
         // 4. Select product
         window.selectProduct = function (masp) {
@@ -295,22 +310,31 @@
             selectedTableBody.innerHTML = '';
             selected.forEach((row, idx) => {
                 selectedTableBody.innerHTML += `
-          <tr>
-            <td>${idx + 1}</td>
-            <td>${row.masp}</td>
-            <td>${row.tensp}</td>
-            <td><input type="number" min="1" max="50" value="${row.sltem}" style="width:38px"
-                 onchange="changeSlTem(${idx}, this.value)"></td>
-            <td>${row.dvt || ''}</td>
-            <td><input type="number" min="1" max="999" value="${row.sl}" style="width:38px"
-                 onchange="changeSl(${idx}, this.value)"></td>
-            <td>${formatGia(row.giale)}</td>
-            <td><input type="checkbox" ${row.tick ? 'checked' : ''} onchange="toggleTick(${idx}, this.checked)"></td>
-            <td>${formatGia(row.gianhap)}</td>
-          </tr>
-        `;
+      <tr data-idx="${idx}">
+        <td>${idx + 1}</td>
+        <td>${row.masp}</td>
+        <td>${row.tenhang}</td>
+        <td><input type="number" min="1" max="50" value="${row.sltem}" style="width:38px"
+             onchange="changeSlTem(${idx}, this.value)"></td>
+        <td>${row.dvt || ''}</td>
+        <td><input type="number" min="1" max="999" value="${row.sl}" style="width:38px"
+             onchange="changeSl(${idx}, this.value)"></td>
+        <td>${formatGia(row.giale)}</td>
+        <td><input type="checkbox" ${row.tick ? 'checked' : ''} onchange="toggleTick(${idx}, this.checked)"></td>
+        <td>${formatGia(row.gianhap)}</td>
+      </tr>
+     `;
+            });
+            // Gắn double click xóa dòng
+            selectedTableBody.querySelectorAll('tr[data-idx]').forEach(tr => {
+                tr.ondblclick = () => {
+                    const idx = parseInt(tr.dataset.idx);
+                    selected.splice(idx, 1);
+                    renderSelectedTable();
+                };
             });
         }
+
         window.changeSlTem = function (idx, val) {
             selected[idx].sltem = parseInt(val) || 1;
         };
@@ -391,6 +415,71 @@
             XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
             XLSX.writeFile(wb, "tem-ma-vach.xlsx");
         };
+
+        let currentPage = 1;
+        let totalPages = 1;
+        let temsAll = [];
+
+        window.renderPreview = function (page = 1) {
+            // Chuẩn bị danh sách tem cần in (theo tick, số lượng)
+            temsAll = [];
+            selected.forEach(row => {
+                if (row.tick) {
+                    for (let i = 0; i < row.sltem; i++) {
+                        temsAll.push(row);
+                    }
+                }
+            });
+            totalPages = Math.ceil(temsAll.length / 40) || 1;
+            currentPage = page > totalPages ? totalPages : page;
+            const fromRow = parseInt(fromRowInput.value) || 1;
+            const fromCol = parseInt(fromColInput.value) || 1;
+
+            // Tính blank cho trang đầu, các trang sau không có blank
+            let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
+            let maxTems = 40 - blank;
+            let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
+            let html = `<div class="print-preview"><div class="tem-grid">`;
+            // Blank cho trang đầu
+            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
+            for (let i = 0; i < maxTems; i++) {
+                const t = pageTems[i] || null;
+                if (!t) html += `<div class="tem tem-blank"></div>`;
+                else html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
+      <p>shop hoàn tuyết thái nguyên; Giày/ dép;<br>
+      chất liệu: da, nhựa, cao su tổng hợp;<br>
+      kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
+      Bảo quản nơi khô ráo;</p>
+      <span style="font-size: 13px; font-weight: bold; display:block; margin-top:0.5mm;">${t.masp}</span>
+      <canvas class="qr" width="32" height="32"></canvas>
+      <span style="font-size: 11px; font-weight: bold;">Giá: ${formatGia(t.giale)}</span>
+    </div>`;
+            }
+            html += `</div></div>`;
+            previewArea.innerHTML = html;
+
+            // Sinh QR code cho từng tem
+            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
+                const parent = el.closest('.tem');
+                if (!parent || parent.classList.contains('tem-blank')) return;
+                const masp = parent.getAttribute('data-masp');
+                new QRious({
+                    element: el,
+                    value: masp,
+                    size: 32,
+                    level: 'M'
+                });
+            });
+            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+        };
+
+        window.prevPage = function () {
+            if (currentPage > 1) renderPreview(currentPage - 1);
+        };
+        window.nextPage = function () {
+            if (currentPage < totalPages) renderPreview(currentPage + 1);
+        };
+
 
         // Init
         loadProducts();
