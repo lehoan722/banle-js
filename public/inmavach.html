@@ -239,7 +239,7 @@
         async function searchProducts(keyword) {
             let { data, error } = await supabase
                 .from('dmhanghoa')
-                .select('masp, tenhang, dvt, giale, gianhap')
+                .select('masp, tensp, dvt, giale, gianhap')
                 .or(`masp.ilike.%${keyword}%,tenhang.ilike.%${keyword}%`)
                 .order('masp')
                 .limit(100); // lấy 100 dòng đầu
@@ -255,7 +255,7 @@
                 searchProducts(val);
             }
         });
-       
+        
 
         // 2. Filter search
         searchInput.addEventListener('input', () => {
