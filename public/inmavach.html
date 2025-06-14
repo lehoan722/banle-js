@@ -257,6 +257,17 @@
             products = data || [];
             renderProductList();
         }
+
+        searchInput.addEventListener('input', () => {
+            const val = searchInput.value.trim().toLowerCase();
+            if (val.length === 0) {
+                filtered = [];
+                renderProductList();
+            } else {
+                searchProducts(val);
+            }
+        });
+
         
 
         // 3. Render product list
