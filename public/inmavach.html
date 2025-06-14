@@ -131,38 +131,11 @@
             height: 21mm;
             box-sizing: border-box;
             overflow: hidden;
-            padding: 0.5mm 1mm 0 1mm;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: flex-start;
-        }
-
-        .tem p,
-        .tem span {
-            margin: 0;
-            padding: 0;
-            font-size: 6pt;
-            line-height: 1.1;
-        }
-
-        .tem {
-            border: 0.4px solid #888;
-            width: 39mm;
-            height: 21mm;
-            box-sizing: border-box;
-            overflow: hidden;
             padding: 1mm 1.5mm 0.5mm 1.5mm;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
-        }
-
-
-        .qr {
-            display: block;
-            margin: 0.5mm auto 0.5mm auto;
         }
 
         .tem-blank {
@@ -222,27 +195,23 @@
                 <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
                 <button class="btn" onclick="renderPreview()">Xem in</button>
                 <button class="btn" onclick="window.print()">In</button>
-
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
             </div>
             <div class="preview-area" id="previewArea"></div>
+            <div style="margin: 8px 0;">
+                <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
+                <span id="pageInfo"></span>
+                <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
+            </div>
         </div>
     </div>
-
-    <div class="preview-area" id="previewArea"></div>
-    <div style="margin: 8px 0;">
-        <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
-        <span id="pageInfo"></span>
-        <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
-    </div>
-
 
     <!-- QR Code lib -->
     <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
     <!-- SheetJS for export Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script type="module">
-        import { supabase } from './scripts/supabaseClient.js';
+        import { supabase } from './supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
 
         // State
         let products = [];
@@ -257,7 +226,7 @@
         const fromRowInput = document.getElementById('fromRow');
         const fromColInput = document.getElementById('fromCol');
 
-        // 1. Load products
+        // 1. Search products (không load all)
         async function searchProducts(keyword) {
             let { data, error } = await supabase
                 .from('dmhanghoa')
@@ -266,7 +235,6 @@
                 .order('masp')
                 .limit(100);
             filtered = data || [];
-            // Dòng dưới là QUAN TRỌNG để selectProduct tìm được mã!
             products = data || [];
             renderProductList();
         }
@@ -275,15 +243,14 @@
             const val = searchInput.value.trim().toLowerCase();
             if (val.length === 0) {
                 filtered = [];
+                products = [];
                 renderProductList();
             } else {
                 searchProducts(val);
             }
         });
 
-
-
-        // 3. Render product list
+        // Render product list
         function renderProductList() {
             let html = '<table>';
             html += '<tr><th>Mã SP</th><th>Tên hàng</th></tr>';
@@ -295,15 +262,13 @@
             }
             html += '</table>';
             productListDiv.innerHTML = html;
-
             // Gắn double click event cho từng dòng
             productListDiv.querySelectorAll('tr[data-masp]').forEach(row => {
                 row.ondblclick = () => selectProduct(row.dataset.masp);
             });
         }
 
-
-        // 4. Select product
+        // Chọn sản phẩm
         window.selectProduct = function (masp) {
             const p = products.find(x => x.masp === masp);
             if (!p) return;
@@ -313,7 +278,7 @@
             }
         };
 
-        // 5. Render selected table
+        // Render lưới chọn
         function renderSelectedTable() {
             selectedTableBody.innerHTML = '';
             selected.forEach((row, idx) => {
@@ -353,85 +318,7 @@
             selected[idx].tick = val;
         };
 
-        // 6. Render print preview
-        window.renderPreview = function () {
-            let tems = [];
-            selected.forEach(row => {
-                if (row.tick) {
-                    for (let i = 0; i < row.sltem; i++) {
-                        tems.push(row);
-                    }
-                }
-            });
-            const fromRow = parseInt(fromRowInput.value) || 1;
-            const fromCol = parseInt(fromColInput.value) || 1;
-            let blank = (fromRow - 1) * 5 + (fromCol - 1);
-            let maxTems = 5 * 8;
-            let html = `<div class="print-preview"><div class="tem-grid">`;
-            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-            for (let i = 0; i < maxTems - blank; i++) {
-                const t = tems[i] || null;
-                if (!t) html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
-  <div style="display: flex; flex-direction: row; height: 100%; align-items: flex-start;">
-    <div style="flex:1; min-width:0;">
-      <div style="font-size:6pt;line-height:1.1;margin-bottom:1mm;">
-        shop hoàn tuyết thái nguyên; Giày/ dép;<br>
-        chất liệu: da, nhựa, cao su tổng hợp;<br>
-        kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
-        Bảo quản nơi khô ráo;
-      </div>
-      <div style="font-size:10pt;font-weight:bold;">${t.masp}</div>
-      <div style="font-size:11pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
-    </div>
-    <div style="width:33%;min-width:32px;display:flex;justify-content:center;align-items:center;">
-      <canvas class="qr" width="38" height="38"></canvas>
-    </div>
-  </div>
-</div>
-`;
-            }
-            html += `</div></div>`;
-            previewArea.innerHTML = html;
-            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
-                const parent = el.closest('.tem');
-                if (!parent || parent.classList.contains('tem-blank')) return;
-                const masp = parent.getAttribute('data-masp');
-                new QRious({
-                    element: el,
-                    value: masp,
-                    size: 32,
-                    level: 'M'
-                });
-            });
-        };
-
-        // Giá
-        function formatGia(val) {
-            if (!val || val == 0) return '';
-            return parseInt(val).toLocaleString('vi-VN');
-        }
-
-        // 7. Export Excel
-        window.exportExcel = function () {
-            // Chuẩn bị dữ liệu và header
-            const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
-            const data = selected.map((row, idx) => [
-                idx + 1,
-                row.masp,
-                row.tensp,
-                row.sltem,
-                row.dvt || "",
-                row.sl,
-                formatGia(row.giale),
-                row.tick ? "x" : "",
-                formatGia(row.gianhap)
-            ]);
-            const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
-            XLSX.writeFile(wb, "tem-ma-vach.xlsx");
-        };
-
+        // Phân trang preview
         let currentPage = 1;
         let totalPages = 1;
         let temsAll = [];
@@ -450,8 +337,6 @@
             currentPage = page > totalPages ? totalPages : page;
             const fromRow = parseInt(fromRowInput.value) || 1;
             const fromCol = parseInt(fromColInput.value) || 1;
-
-            // Tính blank cho trang đầu, các trang sau không có blank
             let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
             let maxTems = 40 - blank;
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
@@ -461,15 +346,25 @@
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
-                else html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
-      <p>shop hoàn tuyết thái nguyên; Giày/ dép;<br>
-      chất liệu: da, nhựa, cao su tổng hợp;<br>
-      kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
-      Bảo quản nơi khô ráo;</p>
-      <span style="font-size: 13px; font-weight: bold; display:block; margin-top:0.5mm;">${t.masp}</span>
-      <canvas class="qr" width="32" height="32"></canvas>
-      <span style="font-size: 11px; font-weight: bold;">Giá: ${formatGia(t.giale)}</span>
-    </div>`;
+                else html += `
+                <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
+                  <div style="display: flex; flex-direction: row; height: 100%; align-items: flex-start;">
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:6pt;line-height:1.1;margin-bottom:0.6mm;">
+                        shop hoàn tuyết thái nguyên; Giày/ dép;<br>
+                        chất liệu: da, nhựa, cao su tổng hợp;<br>
+                        kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
+                        Bảo quản nơi khô ráo;
+                      </div>
+                      <div style="font-size:10pt;font-weight:bold;margin-bottom:1mm;">${t.masp}</div>
+                      <div style="font-size:11pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
+                    </div>
+                    <div style="width:32px;min-width:32px;display:flex;justify-content:center;align-items:center;margin-left:1mm;">
+                      <canvas class="qr" width="32" height="32"></canvas>
+                    </div>
+                  </div>
+                </div>
+                `;
             }
             html += `</div></div>`;
             previewArea.innerHTML = html;
@@ -496,10 +391,31 @@
             if (currentPage < totalPages) renderPreview(currentPage + 1);
         };
 
+        // Giá
+        function formatGia(val) {
+            if (!val || val == 0) return '';
+            return parseInt(val).toLocaleString('vi-VN');
+        }
 
-        // Init
-        loadProducts();
-        window.renderSelectedTable = renderSelectedTable;
+        // Xuất Excel
+        window.exportExcel = function () {
+            const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
+            const data = selected.map((row, idx) => [
+                idx + 1,
+                row.masp,
+                row.tensp,
+                row.sltem,
+                row.dvt || "",
+                row.sl,
+                formatGia(row.giale),
+                row.tick ? "x" : "",
+                formatGia(row.gianhap)
+            ]);
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
+            XLSX.writeFile(wb, "tem-ma-vach.xlsx");
+        };
     </script>
 </body>
 
