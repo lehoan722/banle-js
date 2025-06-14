@@ -1,154 +1,300 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8">
-  <title>In Tem QR - Giấy TOMY 108</title>
-  <script type="module" src="./supabaseClient.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; }
-    .container { display: flex; gap: 12px; margin: 16px; }
-    .left, .right { border: 1px solid #ccc; border-radius: 5px; padding: 10px; }
-    .left { width: 270px; }
-    .right { flex: 1; }
-    .search-box input { width: 90%; padding: 4px; }
-    .product-list { height: 340px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #eee;}
-    .product-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .product-list tr { cursor: pointer; }
-    .product-list tr:hover { background: #eef; }
-    .selected-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-    .selected-table th, .selected-table td { border: 1px solid #bbb; padding: 3px 5px; text-align: center; }
-    .selected-table th { background: #f5f5f5; }
-    .print-options { margin: 10px 0 12px 0; }
-    .preview-area { border: 1px solid #bbb; margin-top: 16px; padding: 8px; background: #fafafa;}
-    /* In preview tem */
-    @media print {
-      body * { visibility: hidden; }
-      .print-preview, .print-preview * { visibility: visible; }
-      .print-preview { position: absolute; left: 0; top: 0; width: 100vw; background: white; }
-    }
-    .print-preview { width: 205mm; height: 170mm; margin: auto; background: white; display: flex; flex-direction: column; }
-    .tem-grid { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(8, 1fr); gap: 0; width: 205mm; height: 170mm; }
-    .tem { border: 0.4px solid #888; width: 39mm; height: 21mm; box-sizing: border-box; overflow: hidden; padding: 0.5mm 1mm 0 1mm; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; }
-    .tem p, .tem span { margin: 0; padding: 0; font-size: 6pt; line-height: 1.1; }
-    .qr { display: block; margin: 0.5mm auto 0.5mm auto; }
-    .tem-blank { background: transparent; border: none; }
-    .btn { background: #2a87f4; color: white; border: none; padding: 5px 12px; margin: 0 6px; border-radius: 4px; cursor: pointer; }
-    .btn:hover { background: #1360b2; }
-  </style>
+    <meta charset="UTF-8">
+    <title>In Tem QR - Giấy TOMY 108</title>
+    <script type="module" src="./supabaseClient.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        .container {
+            display: flex;
+            gap: 12px;
+            margin: 16px;
+        }
+
+        .left,
+        .right {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .left {
+            width: 270px;
+        }
+
+        .right {
+            flex: 1;
+        }
+
+        .search-box input {
+            width: 90%;
+            padding: 4px;
+        }
+
+        .product-list {
+            height: 340px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .product-list table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .product-list tr {
+            cursor: pointer;
+        }
+
+        .product-list tr:hover {
+            background: #eef;
+        }
+
+        .selected-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .selected-table th,
+        .selected-table td {
+            border: 1px solid #bbb;
+            padding: 3px 5px;
+            text-align: center;
+        }
+
+        .selected-table th {
+            background: #f5f5f5;
+        }
+
+        .print-options {
+            margin: 10px 0 12px 0;
+        }
+
+        .preview-area {
+            border: 1px solid #bbb;
+            margin-top: 16px;
+            padding: 8px;
+            background: #fafafa;
+        }
+
+        /* In preview tem */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            .print-preview,
+            .print-preview * {
+                visibility: visible;
+            }
+
+            .print-preview {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100vw;
+                background: white;
+            }
+        }
+
+        .print-preview {
+            width: 205mm;
+            height: 170mm;
+            margin: auto;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tem-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 0;
+            width: 205mm;
+            height: 170mm;
+        }
+
+        .tem {
+            border: 0.4px solid #888;
+            width: 39mm;
+            height: 21mm;
+            box-sizing: border-box;
+            overflow: hidden;
+            padding: 0.5mm 1mm 0 1mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+
+        .tem p,
+        .tem span {
+            margin: 0;
+            padding: 0;
+            font-size: 6pt;
+            line-height: 1.1;
+        }
+
+        .qr {
+            display: block;
+            margin: 0.5mm auto 0.5mm auto;
+        }
+
+        .tem-blank {
+            background: transparent;
+            border: none;
+        }
+
+        .btn {
+            background: #2a87f4;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            margin: 0 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #1360b2;
+        }
+    </style>
 </head>
+
 <body>
-  <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
-  <div class="container">
-    <!-- Bên trái: danh sách sản phẩm -->
-    <div class="left">
-      <b>Tìm kiếm sản phẩm</b>
-      <div class="search-box">
-        <input id="search" type="text" placeholder="Nhập mã, tên sản phẩm..." autocomplete="off"/>
-      </div>
-      <div class="product-list" id="productList"></div>
+    <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
+    <div class="container">
+        <!-- Bên trái: danh sách sản phẩm -->
+        <div class="left">
+            <b>Tìm kiếm sản phẩm</b>
+            <div class="search-box">
+                <input id="search" type="text" placeholder="Nhập mã, tên sản phẩm..." autocomplete="off" />
+            </div>
+            <div class="product-list" id="productList"></div>
+        </div>
+        <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
+        <div class="right">
+            <b>Danh sách tem in</b>
+            <table class="selected-table" id="selectedTable">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
+                        <th>SL Tem in</th>
+                        <th>ĐVT</th>
+                        <th>SL</th>
+                        <th>Giá lẻ</th>
+                        <th>In</th>
+                        <th>Giá nhập</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div style="margin-top:8px;">
+                <button class="btn" onclick="exportExcel()">Xuất Excel</button>
+            </div>
+            <div class="print-options">
+                <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
+                <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
+                <button class="btn" onclick="renderPreview()">Xem in</button>
+                <button class="btn" onclick="window.print()">In</button>
+            </div>
+            <div class="preview-area" id="previewArea"></div>
+        </div>
     </div>
-    <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
-    <div class="right">
-      <b>Danh sách tem in</b>
-      <table class="selected-table" id="selectedTable">
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Mã hàng</th>
-            <th>Tên hàng</th>
-            <th>SL Tem in</th>
-            <th>ĐVT</th>
-            <th>SL</th>
-            <th>Giá lẻ</th>
-            <th>In</th>
-            <th>Giá nhập</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div style="margin-top:8px;">
-        <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-      </div>
-      <div class="print-options">
-        <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
-        <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
-        <button class="btn" onclick="renderPreview()">Xem in</button>
-        <button class="btn" onclick="window.print()">In</button>
-      </div>
-      <div class="preview-area" id="previewArea"></div>
-    </div>
-  </div>
 
-  <!-- QR Code lib -->
-  <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
-  <!-- SheetJS for export Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script type="module">
-    import { supabase } from './scripts/supabaseClient.js';
+    <!-- QR Code lib -->
+    <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+    <!-- SheetJS for export Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script type="module">
+        import { supabase } from './scripts/supabaseClient.js';
 
-    // State
-    let products = [];
-    let filtered = [];
-    let selected = [];
+        // State
+        let products = [];
+        let filtered = [];
+        let selected = [];
 
-    // Elements
-    const searchInput = document.getElementById('search');
-    const productListDiv = document.getElementById('productList');
-    const selectedTableBody = document.querySelector('#selectedTable tbody');
-    const previewArea = document.getElementById('previewArea');
-    const fromRowInput = document.getElementById('fromRow');
-    const fromColInput = document.getElementById('fromCol');
+        // Elements
+        const searchInput = document.getElementById('search');
+        const productListDiv = document.getElementById('productList');
+        const selectedTableBody = document.querySelector('#selectedTable tbody');
+        const previewArea = document.getElementById('previewArea');
+        const fromRowInput = document.getElementById('fromRow');
+        const fromColInput = document.getElementById('fromCol');
 
-    // 1. Load products
-    async function loadProducts() {
-      let { data, error } = await supabase
-        .from('dmhanghoa')
-        .select('masp, tensp, dvt, giale, gianhap')
-        .eq('active', true)
-        .order('masp');
-      products = data || [];
-      filtered = products;
-      renderProductList();
-    }
+        // 1. Load products
+        async function searchProducts(keyword) {
+            let { data, error } = await supabase
+                .from('dmhanghoa')
+                .select('masp, tenhang, dvt, giale, gianhap')
+                .or(`masp.ilike.%${keyword}%,tenhang.ilike.%${keyword}%`)
+                .order('masp')
+                .limit(100); // lấy 100 dòng đầu
+            filtered = data || [];
+            renderProductList();
+        }
+        searchInput.addEventListener('input', () => {
+            const val = searchInput.value.trim().toLowerCase();
+            if (val.length === 0) {
+                filtered = [];
+                renderProductList();
+            } else {
+                searchProducts(val);
+            }
+        });
+       
 
-    // 2. Filter search
-    searchInput.addEventListener('input', () => {
-      const val = searchInput.value.trim().toLowerCase();
-      filtered = products.filter(
-        p => p.masp?.toLowerCase().includes(val) || p.tensp?.toLowerCase().includes(val)
-      );
-      renderProductList();
-    });
+        // 2. Filter search
+        searchInput.addEventListener('input', () => {
+            const val = searchInput.value.trim().toLowerCase();
+            filtered = products.filter(
+                p => p.masp?.toLowerCase().includes(val) || p.tensp?.toLowerCase().includes(val)
+            );
+            renderProductList();
+        });
 
-    // 3. Render product list
-    function renderProductList() {
-      let html = '<table>';
-      html += '<tr><th>Mã SP</th><th>Tên hàng</th></tr>';
-      for (let p of filtered) {
-        html += `<tr ondblclick="selectProduct('${p.masp.replace(/'/g, "\\'")}')">
+        // 3. Render product list
+        function renderProductList() {
+            let html = '<table>';
+            html += '<tr><th>Mã SP</th><th>Tên hàng</th></tr>';
+            for (let p of filtered) {
+                html += `<tr ondblclick="selectProduct('${p.masp.replace(/'/g, "\\'")}')">
           <td>${p.masp}</td>
           <td>${p.tensp}</td>
         </tr>`;
-      }
-      html += '</table>';
-      productListDiv.innerHTML = html;
-    }
+            }
+            html += '</table>';
+            productListDiv.innerHTML = html;
+        }
 
-    // 4. Select product
-    window.selectProduct = function(masp) {
-      const p = products.find(x => x.masp === masp);
-      if (!p) return;
-      if (!selected.find(x => x.masp === masp)) {
-        selected.push({ ...p, sltem: 1, sl: 1, tick: true });
-        renderSelectedTable();
-      }
-    };
+        // 4. Select product
+        window.selectProduct = function (masp) {
+            const p = products.find(x => x.masp === masp);
+            if (!p) return;
+            if (!selected.find(x => x.masp === masp)) {
+                selected.push({ ...p, sltem: 1, sl: 1, tick: true });
+                renderSelectedTable();
+            }
+        };
 
-    // 5. Render selected table
-    function renderSelectedTable() {
-      selectedTableBody.innerHTML = '';
-      selected.forEach((row, idx) => {
-        selectedTableBody.innerHTML += `
+        // 5. Render selected table
+        function renderSelectedTable() {
+            selectedTableBody.innerHTML = '';
+            selected.forEach((row, idx) => {
+                selectedTableBody.innerHTML += `
           <tr>
             <td>${idx + 1}</td>
             <td>${row.masp}</td>
@@ -163,38 +309,38 @@
             <td>${formatGia(row.gianhap)}</td>
           </tr>
         `;
-      });
-    }
-    window.changeSlTem = function(idx, val) {
-      selected[idx].sltem = parseInt(val) || 1;
-    };
-    window.changeSl = function(idx, val) {
-      selected[idx].sl = parseInt(val) || 1;
-    };
-    window.toggleTick = function(idx, val) {
-      selected[idx].tick = val;
-    };
-
-    // 6. Render print preview
-    window.renderPreview = function() {
-      let tems = [];
-      selected.forEach(row => {
-        if (row.tick) {
-          for (let i = 0; i < row.sltem; i++) {
-            tems.push(row);
-          }
+            });
         }
-      });
-      const fromRow = parseInt(fromRowInput.value) || 1;
-      const fromCol = parseInt(fromColInput.value) || 1;
-      let blank = (fromRow - 1) * 5 + (fromCol - 1);
-      let maxTems = 5 * 8;
-      let html = `<div class="print-preview"><div class="tem-grid">`;
-      for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-      for (let i = 0; i < maxTems - blank; i++) {
-        const t = tems[i] || null;
-        if (!t) html += `<div class="tem tem-blank"></div>`;
-        else html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
+        window.changeSlTem = function (idx, val) {
+            selected[idx].sltem = parseInt(val) || 1;
+        };
+        window.changeSl = function (idx, val) {
+            selected[idx].sl = parseInt(val) || 1;
+        };
+        window.toggleTick = function (idx, val) {
+            selected[idx].tick = val;
+        };
+
+        // 6. Render print preview
+        window.renderPreview = function () {
+            let tems = [];
+            selected.forEach(row => {
+                if (row.tick) {
+                    for (let i = 0; i < row.sltem; i++) {
+                        tems.push(row);
+                    }
+                }
+            });
+            const fromRow = parseInt(fromRowInput.value) || 1;
+            const fromCol = parseInt(fromColInput.value) || 1;
+            let blank = (fromRow - 1) * 5 + (fromCol - 1);
+            let maxTems = 5 * 8;
+            let html = `<div class="print-preview"><div class="tem-grid">`;
+            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
+            for (let i = 0; i < maxTems - blank; i++) {
+                const t = tems[i] || null;
+                if (!t) html += `<div class="tem tem-blank"></div>`;
+                else html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
           <p>shop hoàn tuyết thái nguyên; Giày/ dép;<br>
           chất liệu: da, nhựa, cao su tổng hợp;<br>
           kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
@@ -203,52 +349,53 @@
           <canvas class="qr" width="32" height="32"></canvas>
           <span style="font-size: 11px; font-weight: bold;">Giá: ${formatGia(t.giale)}</span>
         </div>`;
-      }
-      html += `</div></div>`;
-      previewArea.innerHTML = html;
-      document.querySelectorAll('.tem .qr').forEach((el, idx) => {
-        const parent = el.closest('.tem');
-        if (!parent || parent.classList.contains('tem-blank')) return;
-        const masp = parent.getAttribute('data-masp');
-        new QRious({
-          element: el,
-          value: masp,
-          size: 32,
-          level: 'M'
-        });
-      });
-    };
+            }
+            html += `</div></div>`;
+            previewArea.innerHTML = html;
+            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
+                const parent = el.closest('.tem');
+                if (!parent || parent.classList.contains('tem-blank')) return;
+                const masp = parent.getAttribute('data-masp');
+                new QRious({
+                    element: el,
+                    value: masp,
+                    size: 32,
+                    level: 'M'
+                });
+            });
+        };
 
-    // Giá
-    function formatGia(val) {
-      if (!val || val == 0) return '';
-      return parseInt(val).toLocaleString('vi-VN');
-    }
+        // Giá
+        function formatGia(val) {
+            if (!val || val == 0) return '';
+            return parseInt(val).toLocaleString('vi-VN');
+        }
 
-    // 7. Export Excel
-    window.exportExcel = function() {
-      // Chuẩn bị dữ liệu và header
-      const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
-      const data = selected.map((row, idx) => [
-        idx + 1,
-        row.masp,
-        row.tensp,
-        row.sltem,
-        row.dvt || "",
-        row.sl,
-        formatGia(row.giale),
-        row.tick ? "x" : "",
-        formatGia(row.gianhap)
-      ]);
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
-      XLSX.writeFile(wb, "tem-ma-vach.xlsx");
-    };
+        // 7. Export Excel
+        window.exportExcel = function () {
+            // Chuẩn bị dữ liệu và header
+            const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
+            const data = selected.map((row, idx) => [
+                idx + 1,
+                row.masp,
+                row.tensp,
+                row.sltem,
+                row.dvt || "",
+                row.sl,
+                formatGia(row.giale),
+                row.tick ? "x" : "",
+                formatGia(row.gianhap)
+            ]);
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
+            XLSX.writeFile(wb, "tem-ma-vach.xlsx");
+        };
 
-    // Init
-    loadProducts();
-    window.renderSelectedTable = renderSelectedTable;
-  </script>
+        // Init
+        loadProducts();
+        window.renderSelectedTable = renderSelectedTable;
+    </script>
 </body>
+
 </html>
