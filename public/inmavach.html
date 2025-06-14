@@ -249,7 +249,7 @@
             let { data, error } = await supabase
                 .from('dmhanghoa')
                 .select('masp, tensp, dvt, giale, gianhap')
-                .or(`masp.ilike.%${keyword}%,tenhang.ilike.%${keyword}%`)
+                .or(`masp.ilike.%${keyword}%,tensp.ilike.%${keyword}%`)
                 .order('masp')
                 .limit(100); // lấy 100 dòng đầu
             filtered = data || [];
@@ -282,7 +282,7 @@
             for (let p of filtered) {
                 html += `<tr data-masp="${p.masp}">
       <td>${p.masp}</td>
-      <td>${p.tenhang}</td>
+      <td>${p.tensp}</td>
     </tr>`;
             }
             html += '</table>';
@@ -313,7 +313,7 @@
       <tr data-idx="${idx}">
         <td>${idx + 1}</td>
         <td>${row.masp}</td>
-        <td>${row.tenhang}</td>
+        <td>${row.tensp}</td>
         <td><input type="number" min="1" max="50" value="${row.sltem}" style="width:38px"
              onchange="changeSlTem(${idx}, this.value)"></td>
         <td>${row.dvt || ''}</td>
