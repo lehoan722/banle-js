@@ -146,6 +146,20 @@
             line-height: 1.1;
         }
 
+        .tem {
+            border: 0.4px solid #888;
+            width: 39mm;
+            height: 21mm;
+            box-sizing: border-box;
+            overflow: hidden;
+            padding: 1mm 1.5mm 0.5mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+
+
         .qr {
             display: block;
             margin: 0.5mm auto 0.5mm auto;
@@ -202,14 +216,14 @@
                 </thead>
                 <tbody></tbody>
             </table>
-            
+
             <div class="print-options">
                 <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
                 <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
                 <button class="btn" onclick="renderPreview()">Xem in</button>
                 <button class="btn" onclick="window.print()">In</button>
 
-                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
+                <button class="btn" onclick="exportExcel()">Xuất Excel</button>
             </div>
             <div class="preview-area" id="previewArea"></div>
         </div>
@@ -267,7 +281,7 @@
             }
         });
 
-        
+
 
         // 3. Render product list
         function renderProductList() {
@@ -357,16 +371,24 @@
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems - blank; i++) {
                 const t = tems[i] || null;
-                if (!t) html += `<div class="tem tem-blank"></div>`;
-                else html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
-          <p>shop hoàn tuyết thái nguyên; Giày/ dép;<br>
-          chất liệu: da, nhựa, cao su tổng hợp;<br>
-          kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
-          Bảo quản nơi khô ráo;</p>
-          <span style="font-size: 13px; font-weight: bold; display:block; margin-top:0.5mm;">${t.masp}</span>
-          <canvas class="qr" width="32" height="32"></canvas>
-          <span style="font-size: 11px; font-weight: bold;">Giá: ${formatGia(t.giale)}</span>
-        </div>`;
+                if (!t) html += `<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}">
+  <div style="display: flex; flex-direction: row; height: 100%; align-items: flex-start;">
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:6pt;line-height:1.1;margin-bottom:1mm;">
+        shop hoàn tuyết thái nguyên; Giày/ dép;<br>
+        chất liệu: da, nhựa, cao su tổng hợp;<br>
+        kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
+        Bảo quản nơi khô ráo;
+      </div>
+      <div style="font-size:10pt;font-weight:bold;">${t.masp}</div>
+      <div style="font-size:11pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
+    </div>
+    <div style="width:33%;min-width:32px;display:flex;justify-content:center;align-items:center;">
+      <canvas class="qr" width="38" height="38"></canvas>
+    </div>
+  </div>
+</div>
+`;
             }
             html += `</div></div>`;
             previewArea.innerHTML = html;
