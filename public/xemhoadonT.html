@@ -39,14 +39,31 @@
       display: none;
       position: fixed;
       top: 10%;
-      left: 40%;
-      width: 50%;
-      height: 70%;
+      left: 10%;
+      width: 500px;
+      min-width: 350px;
+      min-height: 200px;
+      height: 400px;
       background: #fff;
-      border: 1px solid #888;
+      border: 2px solid #4884ce;
       overflow: auto;
       padding: 20px;
       z-index: 9999;
+      box-shadow: 0 2px 18px rgba(0, 0, 0, 0.2);
+      border-radius: 7px;
+      resize: both;
+      /* Cho phép thay đổi kích thước */
+    }
+
+    #popup .drag-header {
+      cursor: move;
+      background: #f3f7fa;
+      font-weight: bold;
+      padding: 8px 10px;
+      margin: -20px -20px 15px -20px;
+      border-bottom: 1px solid #4884ce;
+      border-radius: 7px 7px 0 0;
+      user-select: none;
     }
   </style>
 </head>
@@ -79,7 +96,11 @@
   </table>
 
   <div id="popup">
-    <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
+    <div class="drag-header" id="popupHeader">
+      Chi tiết hóa đơn: <span id="sohdCT"></span>
+      <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
+    </div>
+
     <table>
       <thead>
         <tr>
@@ -174,6 +195,7 @@
       document.getElementById("popup").style.display = "none";
     }
 
+
     function chonHoaDon(sohd, row, trangThaiGui) {
       document.querySelectorAll("#dsHoaDon tr").forEach(tr => tr.style.backgroundColor = "");
       row.style.backgroundColor = "#ffe066";
@@ -181,7 +203,6 @@
       // Chỉ bật nút nếu hóa đơn chưa gửi hoặc lỗi
       document.getElementById("btnGuiLai").disabled = !(!trangThaiGui || trangThaiGui === 'Chưa gửi' || trangThaiGui.startsWith('Lỗi'));
     }
-
 
     async function guiLaiHoaDonDaChon() {
       if (!sohdDangChon) {
@@ -303,6 +324,32 @@
         meterReading: []
       };
     }
+
+    // DRAG POPUP
+    (function dragPopup() {
+      let popup = document.getElementById('popup');
+      let header = document.getElementById('popupHeader');
+      let offsetX, offsetY, isDragging = false;
+      header.onmousedown = function (e) {
+        isDragging = true;
+        let rect = popup.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        document.onmousemove = function (ev) {
+          if (isDragging) {
+            popup.style.left = (ev.clientX - offsetX) + 'px';
+            popup.style.top = (ev.clientY - offsetY) + 'px';
+          }
+        };
+        document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
+      };
+    })();
+
+    // Đóng popup bằng phím ESC
+    document.addEventListener('keydown', function (e) {
+      if (e.key === "Escape") dongPopup();
+    });
+
 
 
     window.onload = taiDanhSachHoaDon;
