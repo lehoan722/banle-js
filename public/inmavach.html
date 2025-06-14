@@ -320,15 +320,30 @@
                 width:${205 + 2 * PAGE_MARGIN_LEFT_MM}mm;
                 height:${170 + 2 * PAGE_MARGIN_TOP_MM}mm;
             ">
+
+            let html = <div class="print-preview" style="
+    padding-top:${PAGE_MARGIN_TOP_MM}mm;
+    padding-left:${PAGE_MARGIN_LEFT_MM}mm;
+    width:${205 + 2 * PAGE_MARGIN_LEFT_MM}mm;
+    height:${170 + 2 * PAGE_MARGIN_TOP_MM}mm;
+">
+<div class="tem-grid" style="
+    display: grid;
+    grid-template-columns: 39mm 39mm 39mm 39mm 39mm;
+    grid-template-rows: 21mm 21mm 21mm 21mm 21mm 21mm 21mm 21mm;
+    column-gap: 0.5mm;
+    row-gap: 0.5mm;
+">`;
+
             <div class="tem-grid" style="
                 column-gap:${TEM_H_GAP_MM}mm;
                 row-gap:${TEM_V_GAP_MM}mm;
                 grid-template-columns:repeat(5,${TEM_WIDTH_MM}mm);
                 grid-template-rows:repeat(8,${TEM_HEIGHT_MM}mm);
             ">`;
-            // Blank cho trang đầu
-            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-            for (let i = 0; i < maxTems; i++) {
+                // Blank cho trang đầu
+                for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
+                for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
@@ -343,26 +358,26 @@
                     flex-direction:column;
                     justify-content:space-between;
                 ">
-                  <div style="font-size:5.4pt;line-height:1.15;word-break:break-word;">
-                    shop hoàn tuyết thái nguyên; Giày/ dép;<br>
-                    chất liệu: da, nhựa, cao su tổng hợp;<br>
-                    kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
-                    Bảo quản nơi khô ráo;
-                  </div>
-                  <div style="display:flex;flex-direction:row;align-items: flex-end;width:100%;justify-content:space-between;margin-top:0.5mm;">
-                    <div style="flex:1;">
-                      <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin-bottom:0.5mm;">${t.masp}</div>
-                      <div style="font-size:9.5pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
-                    </div>
-                    <div style="width:30px;height:30px;display:flex;align-items:flex-end;justify-content:flex-end;">
-                      <canvas class="qr" width="30" height="30"></canvas>
-                    </div>
-                  </div>
-                </div>
-                `;
+                    <div style="font-size:5.4pt;line-height:1.15;word-break:break-word;">
+                        shop hoàn tuyết thái nguyên; Giày/ dép;<br>
+                            chất liệu: da, nhựa, cao su tổng hợp;<br>
+                                kích cỡ: 38 đến 43; không giặt, không tẩy;<br>
+                                    Bảo quản nơi khô ráo;
+                                </div>
+                                <div style="display:flex;flex-direction:row;align-items: flex-end;width:100%;justify-content:space-between;margin-top:0.5mm;">
+                                    <div style="flex:1;">
+                                        <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin-bottom:0.5mm;">${t.masp}</div>
+                                        <div style="font-size:9.5pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
+                                    </div>
+                                    <div style="width:30px;height:30px;display:flex;align-items:flex-end;justify-content:flex-end;">
+                                        <canvas class="qr" width="30" height="30"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            `;
             }
-            html += `</div></div>`;
-            previewArea.innerHTML = html;
+                            html += `</div></div>`;
+                previewArea.innerHTML = html;
 
             // Sinh QR code cho từng tem
             document.querySelectorAll('.tem .qr').forEach((el, idx) => {
@@ -371,12 +386,12 @@
                 const masp = parent.getAttribute('data-masp');
                 new QRious({
                     element: el,
-                    value: masp,
-                    size: 30,
-                    level: 'M'
+                value: masp,
+                size: 30,
+                level: 'M'
                 });
             });
-            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+                document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
         };
 
         window.prevPage = function () {
@@ -413,4 +428,5 @@
         };
     </script>
 </body>
+
 </html>
