@@ -202,15 +202,14 @@
                 </thead>
                 <tbody></tbody>
             </table>
-            <div style="margin-top:8px;">
-                <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-            </div>
+            
             <div class="print-options">
                 <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
                 <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
                 <button class="btn" onclick="renderPreview()">Xem in</button>
                 <button class="btn" onclick="window.print()">In</button>
 
+                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
             </div>
             <div class="preview-area" id="previewArea"></div>
         </div>
