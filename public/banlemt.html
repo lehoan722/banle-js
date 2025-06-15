@@ -361,6 +361,7 @@
 <button id="xoa">Xoá</button>
 <button id="xemin">Xem in</button>
 <button id="xuatexcel">Xuất Excel</button>
+<button onclick="dongBoHoaDon()">🔄 Đồng bộ hóa đơn chờ</button>
 </div>
 <div class="popup" id="popupDanhMuc">
 <div class="popup-content">
@@ -520,6 +521,11 @@ async function dongBoHoaDon() {
 
 // Tự động chạy khi mạng trở lại
 window.addEventListener('online', dongBoHoaDon);
+function demHoaDonChuaGui() {
+  const queue = JSON.parse(localStorage.getItem('hoadonQueue') || '[]');
+  return queue.length;
+}
+
 
           </script>
     <script src="offline.js"></script>
