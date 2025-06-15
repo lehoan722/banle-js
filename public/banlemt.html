@@ -457,6 +457,73 @@
     <p id="login-error" style="color:red; margin-top:10px;"></p>
   </div>
 </div>
+
+    <script>
+    // === offline.js ===
+
+function isOnline() {
+  return navigator.onLine;
+}
+
+function saveToLocal(hoaDon) {
+  const queue = JSON.parse(localStorage.getItem('hoadonQueue') || '[]');
+  queue.push(hoaDon);
+  localStorage.setItem('hoadonQueue', JSON.stringify(queue));
+  alert("💾 Mạng mất! Hóa đơn đã được lưu tạm vào máy.");
+}
+
+// Hàm dùng thay thế fetch gửi hóa đơn (dùng trong banlemt.html)
+async function safeSaveHoaDon(hoaDonObj) {
+  if (isOnline()) {
+    try {
+      const res = await fetch('/api/savehoadon', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(hoaDonObj)
+      });
+      if (!res.ok) throw new Error("Gửi không thành công");
+    } catch (e) {
+      console.warn("Lỗi gửi server, lưu local:", e);
+      saveToLocal(hoaDonObj);
+    }
+  } else {
+    saveToLocal(hoaDonObj);
+  }
+}
+
+// Đồng bộ hóa đơn từ local lên server
+async function dongBoHoaDon() {
+  const queue = JSON.parse(localStorage.getItem('hoadonQueue') || '[]');
+  if (queue.length === 0) return;
+
+  const daGui = [];
+  for (const hd of queue) {
+    try {
+      const res = await fetch('/api/savehoadon', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(hd)
+      });
+      if (res.ok) daGui.push(hd);
+    } catch (e) {
+      console.warn("Không gửi được:", e);
+    }
+  }
+
+  // Cập nhật lại hàng chờ
+  const queueMoi = queue.filter(hd => !daGui.includes(hd));
+  localStorage.setItem('hoadonQueue', JSON.stringify(queueMoi));
+  if (daGui.length > 0) {
+    alert(`✅ Đã đồng bộ ${daGui.length} hóa đơn từ máy lên server.`);
+  }
+}
+
+// Tự động chạy khi mạng trở lại
+window.addEventListener('online', dongBoHoaDon);
+
+          </script>
+    <script src="offline.js"></script>
+
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
 </body>
