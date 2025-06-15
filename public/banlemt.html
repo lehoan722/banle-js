@@ -456,6 +456,8 @@
       <button id="xemin">Xem in</button>
       <button id="xuatexcel">Xuất Excel</button>
       <button onclick="dongBoHoaDon()">🔄 Đồng bộ hóa đơn chờ</button>
+      <button onclick="xemHoaDonOffline()">📄 Xem hóa đơn offline</button>
+
     </div>
     <div class="popup" id="popupDanhMuc">
       <div class="popup-content">
@@ -601,7 +603,9 @@
       const daGui = [];
 
       for (const item of queue) {
-        const { hoadon, chitiet } = item;
+        const isNewFormat = item.hoadon && item.chitiet;
+        const hoadon = isNewFormat ? item.hoadon : item;
+        const chitiet = isNewFormat ? item.chitiet : [];
 
         try {
           const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
@@ -633,6 +637,16 @@
     function demHoaDonChuaGui() {
       const queue = JSON.parse(localStorage.getItem('hoadonQueue') || '[]');
       return queue.length;
+    }
+
+    function xemHoaDonOffline() {
+      const queue = JSON.parse(localStorage.getItem('hoadonQueue') || '[]');
+      if (queue.length === 0) return alert("✅ Không có hóa đơn nào đang chờ.");
+      const danhSach = queue.map((item, i) => {
+        const hd = item.hoadon || item; // bản cũ chỉ lưu hoadon trực tiếp
+        return `${i + 1}. Số HĐ: ${hd.sohd}, Ngày: ${hd.ngay}, NV: ${hd.tennv}`;
+      }).join("\n");
+      alert("📄 Danh sách hóa đơn đang lưu tạm:\n\n" + danhSach);
     }
 
 
