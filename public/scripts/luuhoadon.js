@@ -12,14 +12,6 @@ let choPhepSua = false;
 export async function luuHoaDonQuaAPI() {
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
-
-  // 🆕 Nếu mất mạng và chưa có số hóa đơn → tạo số offline tạm thời
-  if (!sohd && !navigator.onLine) {
-    const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
-    sohd = "offline_" + timestamp;
-    document.getElementById("sohd").value = sohd; // gán lại vào ô input để người dùng thấy
-  }
-
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
 
   const { data: tonTai } = await supabase
@@ -56,17 +48,6 @@ export async function luuHoaDonQuaAPI() {
   const createdAt = new Date().toISOString();
 
   const chitiet = [];
-
-  // 🆕 [OFFLINE] Kiểm tra nếu mất mạng thì lưu vào máy, không gọi Supabase
-  if (!navigator.onLine) {
-    saveToLocal(hoadon, chitiet);
-    inHoaDon(hoadon, chitiet); // in nếu người dùng chọn in
-    await lamMoiSauKhiLuu(); // 🆕 reset lại form, tạo số HĐ mới
-    return;
-  }
-
-
-
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
       const sl = item.soluongs[i];
@@ -146,7 +127,7 @@ export async function luuHoaDonCaHaiBan() {
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || ""
   };
-
+  
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
@@ -166,6 +147,7 @@ export async function luuHoaDonCaHaiBan() {
       });
     });
   });
+
 
   const hoadonChinh = { ...hoadon, sohd };
   const hoadonPhu = { ...hoadon, sohd: sohdT };
