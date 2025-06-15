@@ -51,9 +51,12 @@ export async function luuHoaDonQuaAPI() {
 
   // 🆕 [OFFLINE] Kiểm tra nếu mất mạng thì lưu vào máy, không gọi Supabase
   if (!navigator.onLine) {
-    saveToLocal(hoadon, chitiet); // ✅ Ghi hóa đơn vào localStorage
-    return; // ❌ Dừng tại đây, không chạy phần ghi vào Supabase
+    saveToLocal(hoadon, chitiet);
+    inHoaDon(hoadon, chitiet); // in nếu người dùng chọn in
+    await lamMoiSauKhiLuu(); // 🆕 reset lại form, tạo số HĐ mới
+    return;
   }
+
 
 
   Object.values(bangKetQua).forEach(item => {
@@ -155,12 +158,6 @@ export async function luuHoaDonCaHaiBan() {
       });
     });
   });
-
-  // 🆕 [OFFLINE] Kiểm tra nếu mất mạng thì lưu vào máy, không gọi Supabase
-  if (!navigator.onLine) {
-    saveToLocal(hoadon, chitiet); // ✅ Ghi hóa đơn vào localStorage
-    return; // ❌ Dừng tại đây, không chạy phần ghi vào Supabase
-  }
 
   const hoadonChinh = { ...hoadon, sohd };
   const hoadonPhu = { ...hoadon, sohd: sohdT };
