@@ -333,16 +333,18 @@
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                else html += `
-  <div class="tem" style="
-      width:${TEM_WIDTH_MM}mm;
-      height:${TEM_HEIGHT_MM}mm;
-      box-sizing:border-box;
-      overflow:hidden;
-      border:0.4px solid #888;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      padding: 0 0 0 1mm;">
+  <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
+    width:${TEM_WIDTH_MM}mm;
+    height:${TEM_HEIGHT_MM}mm;
+    box-sizing:border-box;
+    overflow:hidden;
+    border:0.4px solid #888;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0;
+">
+
     <div style="flex-basis: 4mm;"></div>
     <div style="font-size:5.4pt;line-height:1;word-break:break-word;margin:0;padding:0;">
       shop hoàn tuyết thái nguyên; Giày/dép;<br>
