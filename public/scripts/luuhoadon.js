@@ -12,6 +12,14 @@ let choPhepSua = false;
 export async function luuHoaDonQuaAPI() {
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
+
+  // 🆕 Nếu mất mạng và chưa có số hóa đơn → tạo số offline tạm thời
+  if (!sohd && !navigator.onLine) {
+    const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+    sohd = "offline_" + timestamp;
+    document.getElementById("sohd").value = sohd; // gán lại vào ô input để người dùng thấy
+  }
+
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
 
   const { data: tonTai } = await supabase
