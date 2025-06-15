@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -183,7 +184,7 @@
         const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
         const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
         const TEM_WIDTH_MM = 37;           // Rộng mỗi tem (mm)
-        const TEM_HEIGHT_MM = 19;          // Cao mỗi tem (mm)
+        const TEM_HEIGHT_MM = 20;          // Cao mỗi tem (mm)
         // ==== KẾT THÚC CẤU HÌNH ====
 
         // State
@@ -322,7 +323,7 @@
 <div class="tem-grid" style="
     display: grid;
     grid-template-columns: 37mm 37mm 37mm 37mm 37mm ;
-    grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm  ;
+    grid-template-rows: 20mm 20mm 20mm 20mm 20mm 20mm 20mm 20mm ;
     column-gap: 2.4mm;
     row-gap: 0.5mm;
 ">`;
@@ -334,34 +335,33 @@
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
                 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
-    width:${TEM_WIDTH_MM}mm;
-    height:${TEM_HEIGHT_MM}mm;
-    box-sizing:border-box;
-    overflow:hidden;
-    border:0.4px solid #888;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 0;
-">
-  <div style="font-size:5.4pt;line-height:1;word-break:break-word;margin-bottom:0;">
-    shop hoàn tuyết thái nguyên; Giày/dép;<br>
-    chất liệu: da, nhựa, cao su tổng hợp;<br>
-    kích cỡ:38 đến 43; không giặt, không tẩy;
-    Bảo quản nơi khô ráo;<br>
-    Dán nhãn tại Việt Nam.
-  </div>
-  <div style="display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between; width: 100%; margin-top: 0;">
-    <div style="display: flex; flex-direction: column; justify-content: flex-end;">
-      <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin-bottom:0;">${t.masp}</div>
-      <div style="font-size:9.5pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
-    </div>
-    <div style="width:32px; height:32px; display: flex; align-items: flex-end; justify-content: flex-end; margin-left:2px;">
-      <canvas class="qr" width="30" height="30"></canvas>
-    </div>
-  </div>
-</div>
-
+                    width:${TEM_WIDTH_MM}mm;
+                    height:${TEM_HEIGHT_MM}mm;
+                    box-sizing:border-box;
+                    overflow:hidden;
+                    border:0.4px solid #888;
+                
+                    display:flex;
+                   
+                    justify-content:space-between;
+                ">
+                  <div style="font-size:5.4pt;line-height:1;word-break:break-word;">
+                    shop hoàn tuyết thái nguyên; Giày/dép;<br>
+                    chất liệu: da, nhựa, cao su tổng hợp;<br>
+                    kích cỡ:38 đến 43; không giặt, không tẩy;
+                    Bảo quản nơi khô ráo;<br>
+                    Dán nhãn tại Việt Nam.
+                  </div>
+                  <div style="display:flex;flex-direction:row;align-items: flex-end;width:100%;justify-content:space-between;margin-top:0.5mm;">
+                    <div style="flex:1;">
+                      <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin-bottom:0.5mm;">${t.masp}</div>
+                      <div style="font-size:9.5pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
+                    </div>
+                    <div style="width:30px;height:30px;display:flex;align-items:flex-end;justify-content:flex-end;">
+                      <canvas class="qr" width="30" height="30"></canvas>
+                    </div>
+                  </div>
+                </div>
                 `;
             }
             html += `</div></div>`;
@@ -418,3 +418,4 @@
 </body>
 
 </html>
+<script async data-explicit-opt-in="true" data-cookie-opt-in="true" data-deployment-id="dpl_E68rz3BhjcjMk7NvCV1119usYLqt" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
