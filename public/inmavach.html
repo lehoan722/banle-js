@@ -178,9 +178,9 @@
         import { supabase } from './scripts/supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-        const PAGE_MARGIN_TOP_MM = 5;      // Lề trên của toàn bộ khối tem (mm)
-        const PAGE_MARGIN_LEFT_MM = 5;   // Lề trái của toàn bộ khối tem (mm)
-        const TEM_H_GAP_MM = 3;          // Khoảng cách ngang giữa 2 tem (mm)
+        const PAGE_MARGIN_TOP_MM = 55;      // Lề trên của toàn bộ khối tem (mm)
+        const PAGE_MARGIN_LEFT_MM = 55;   // Lề trái của toàn bộ khối tem (mm)
+        const TEM_H_GAP_MM = 53;          // Khoảng cách ngang giữa 2 tem (mm)
         const TEM_V_GAP_MM = 1.5;          // Khoảng cách dọc giữa 2 tem (mm)
         const TEM_WIDTH_MM = 39;           // Rộng mỗi tem (mm)
         const TEM_HEIGHT_MM = 21;          // Cao mỗi tem (mm)
@@ -317,15 +317,15 @@
             let html = `<div class="print-preview" style="
     padding-top: ${PAGE_MARGIN_TOP_MM}mm;
     padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
-    width: ${205 + 2 * PAGE_MARGIN_LEFT_MM}mm;
+    width: ${204 + 2 * PAGE_MARGIN_LEFT_MM}mm;
     height: ${170 + 2 * PAGE_MARGIN_TOP_MM}mm;
 ">
 <div class="tem-grid" style="
     display: grid;
     grid-template-columns: 39mm 39mm 39mm 39mm 39mm;
     grid-template-rows: 21mm 21mm 21mm 21mm 21mm 21mm 21mm 21mm;
-    column-gap: 5mm;
-    row-gap: 0.5mm;
+    column-gap: 3mm;
+    row-gap: 1mm;
 ">`;
 
             // Blank cho trang đầu
