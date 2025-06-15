@@ -48,6 +48,14 @@ export async function luuHoaDonQuaAPI() {
   const createdAt = new Date().toISOString();
 
   const chitiet = [];
+
+  // 🆕 [OFFLINE] Kiểm tra nếu mất mạng thì lưu vào máy, không gọi Supabase
+  if (!navigator.onLine) {
+    saveToLocal(hoadon, chitiet); // ✅ Ghi hóa đơn vào localStorage
+    return; // ❌ Dừng tại đây, không chạy phần ghi vào Supabase
+  }
+
+
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
       const sl = item.soluongs[i];
@@ -127,7 +135,7 @@ export async function luuHoaDonCaHaiBan() {
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || ""
   };
-  
+
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
@@ -148,6 +156,11 @@ export async function luuHoaDonCaHaiBan() {
     });
   });
 
+  // 🆕 [OFFLINE] Kiểm tra nếu mất mạng thì lưu vào máy, không gọi Supabase
+  if (!navigator.onLine) {
+    saveToLocal(hoadon, chitiet); // ✅ Ghi hóa đơn vào localStorage
+    return; // ❌ Dừng tại đây, không chạy phần ghi vào Supabase
+  }
 
   const hoadonChinh = { ...hoadon, sohd };
   const hoadonPhu = { ...hoadon, sohd: sohdT };
