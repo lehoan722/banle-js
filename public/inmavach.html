@@ -281,7 +281,11 @@
             if (!p) return;
             let data = hot.getSourceData();
             // Loại dòng trắng cuối bảng (dòng chỉ toàn rỗng/null)
-            data = data.filter(row => row.some(cell => cell !== null && cell !== ""));
+            data = data.filter(row => Array.isArray(row)
+                ? row.some(cell => cell !== null && cell !== "")
+                : Object.values(row).some(cell => cell !== null && cell !== "")
+            );
+
             // Kiểm tra mã đã có chưa
             if (data.some(row => row[1] === p.masp)) return;
             // Thêm sản phẩm mới
