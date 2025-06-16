@@ -369,7 +369,7 @@
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
-       else html += `
+                else html += `
 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
     width:${TEM_WIDTH_MM}mm;
     height:${TEM_HEIGHT_MM}mm;
@@ -384,22 +384,23 @@
     <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
         ${infoChung}
     </div>
-    <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
-      <div style="
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-end;
-          max-width: calc(100% - 22px);
-          overflow: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;">
-        <div style="font-size:8pt;line-height:1;">${t.masp}</div>
-        <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
-      </div>
-      <div style="width:20px; height:20px; margin-left:4px; margin-top:2px; align-self: flex-start; display:flex; align-items:flex-start; justify-content:flex-start;">
-      <canvas class="qr" width="20" height="20"></canvas>
-      </div>
-    </div>
+   <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
+  <div style="
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      max-width: calc(100% - 22px);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;">
+    <div style="font-size:8pt;line-height:1; margin-top:2px;">${t.masp}</div>
+    <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
+  </div>
+  <div style="width:20px; height:20px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
+    <canvas class="qr" width="20" height="20"></canvas>
+  </div>
+</div>
+
 </div>
 `;
             }
