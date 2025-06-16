@@ -353,29 +353,23 @@
   shop hoàn tuyết thái nguyên; <br>  
   Dán nhãn tại Việt Nam.
 </div>
-<div style="
-    display:flex;
-    flex-direction:row;
-    align-items:flex-end;
-    justify-content:space-between;
-    width:100%;
-    margin:0;
-    padding:0;">
+<div style="display: flex; flex-direction: row; align-items: flex-end; justify-content: flex-start;">
   <div style="
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-end;
-      max-width:calc(100% - 32px); /* phần còn lại cho QR, có thể điều chỉnh */
-      overflow:hidden;
-      white-space:nowrap;
-      text-overflow:ellipsis;">
-    <div style="font-size:8.5pt;line-height:1;margin:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.masp}</div>
-    <div style="font-size:9.5pt;font-weight:bold;line-height:1;margin:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Giá: ${formatGia(t.giale)}</div>
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      max-width: calc(100% - 32px);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;">
+    <div style="font-size:8.5pt;font-weight:bold;line-height:1;">${t.masp}</div>
+    <div style="font-size:9.5pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
   </div>
-  <div style="width:22px;height:22px;display:flex;align-items:flex-start;justify-content:flex-start;">
+  <div style="width:22px; height:22px; display:flex; align-items:flex-start; justify-content:flex-start;">
     <canvas class="qr" width="22" height="22"></canvas>
   </div>
 </div>
+
     
   </div>
                 `;
