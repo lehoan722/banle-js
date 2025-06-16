@@ -181,7 +181,7 @@
             "ĐVT", "Size", "Giá lẻ", "In", "Giá nhập"
         ];
         const columns = [
-            { data: 0, readOnly: true },       // STT
+            { data: 0, type: 'numeric' },       // STT
             { data: 1, type: 'text' },   // Mã hàng
             { data: 2, type: 'text' },   // Tên hàng
             { data: 3, type: 'numeric' },      // Số lượng tem in
@@ -525,9 +525,10 @@
                 row.sltem,
                 row.dvt || "",
                 row.sl,
-                formatGia(row.giale),
+                // Chỉ để giá trị số, không format dấu chấm
+                Number(row.giale) || 0,
                 row.tick ? true : false,
-                formatGia(row.gianhap)
+                Number(row.gianhap) || 0
             ]);
             const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
             const wb = XLSX.utils.book_new();
