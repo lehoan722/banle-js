@@ -459,7 +459,7 @@
 
         // chon loai tem in
 
-        function checkLoaiTemAndRender() {
+        window.checkLoaiTemAndRender = function () {
             const loaiTem = document.getElementById('loaiTem').value;
             if (!loaiTem) {
                 alert("Vui lòng chọn loại tem cần in!");
@@ -467,7 +467,7 @@
             }
             renderPreview();
         }
-        function checkLoaiTemAndPrint() {
+        window.checkLoaiTemAndPrint = function () {
             const loaiTem = document.getElementById('loaiTem').value;
             if (!loaiTem) {
                 alert("Vui lòng chọn loại tem cần in!");
@@ -475,6 +475,7 @@
             }
             window.print();
         }
+
 
 
     </script>
