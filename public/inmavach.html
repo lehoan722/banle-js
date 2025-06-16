@@ -276,35 +276,41 @@
         }
 
         function selectProduct(masp) {
-            if (!hot) {
-                alert("Bảng chưa sẵn sàng, vui lòng đợi trang tải xong!");
-                return;
-            }
+            if (!hot) return;
             const p = products.find(x => x.masp === masp);
             if (!p) return;
-            // Kiểm tra trùng mã hàng, nếu đã có thì không thêm nữa
-            let data = hot.getData();
-            if (data.some(row => row[1] === p.masp)) return;
-
-            // Đếm số dòng thực tế (trừ spare row)
-            let currentRows = data.filter(row => row[1] && row[2]).length;
-            // Thêm dòng vào cuối bảng
-            hot.alter('insert_row', currentRows);
-            // Gán dữ liệu dòng mới
-            
-            if (data.some(row => row[1] === p.masp)) return;
+            let data = hot.getSourceData();
+            if (data.some(row => row[1] === p.masp)) return; // đã có mã này
             data.push([data.length + 1, p.masp, p.tensp, 1, p.dvt || "", "", p.giale, true, p.gianhap]);
             data.forEach((row, idx) => row[0] = idx + 1); // cập nhật lại STT
             hot.loadData(data);
+        }
 
-            hot.setDataAtRowProp(currentRows, 1, p.masp);             // Mã hàng
-            hot.setDataAtRowProp(currentRows, 2, p.tensp);            // Tên hàng
-            hot.setDataAtRowProp(currentRows, 3, 1);                  // Số lượng tem in mặc định
-            hot.setDataAtRowProp(currentRows, 4, p.dvt || "");        // ĐVT
-            hot.setDataAtRowProp(currentRows, 5, "");                 // Size để trống nhập/paste
-            hot.setDataAtRowProp(currentRows, 6, p.giale);            // Giá lẻ
-            hot.setDataAtRowProp(currentRows, 7, true);               // In (checkbox)
-            hot.setDataAtRowProp(currentRows, 8, p.gianhap);          // Giá nhập
+        const p = products.find(x => x.masp === masp);
+        if (!p) return;
+        // Kiểm tra trùng mã hàng, nếu đã có thì không thêm nữa
+        let data = hot.getData();
+        if (data.some(row => row[1] === p.masp)) return;
+
+        // Đếm số dòng thực tế (trừ spare row)
+        let currentRows = data.filter(row => row[1] && row[2]).length;
+        // Thêm dòng vào cuối bảng
+        hot.alter('insert_row', currentRows);
+        // Gán dữ liệu dòng mới
+
+        if (data.some(row => row[1] === p.masp)) return;
+        data.push([data.length + 1, p.masp, p.tensp, 1, p.dvt || "", "", p.giale, true, p.gianhap]);
+        data.forEach((row, idx) => row[0] = idx + 1); // cập nhật lại STT
+        hot.loadData(data);
+
+        hot.setDataAtRowProp(currentRows, 1, p.masp);             // Mã hàng
+        hot.setDataAtRowProp(currentRows, 2, p.tensp);            // Tên hàng
+        hot.setDataAtRowProp(currentRows, 3, 1);                  // Số lượng tem in mặc định
+        hot.setDataAtRowProp(currentRows, 4, p.dvt || "");        // ĐVT
+        hot.setDataAtRowProp(currentRows, 5, "");                 // Size để trống nhập/paste
+        hot.setDataAtRowProp(currentRows, 6, p.giale);            // Giá lẻ
+        hot.setDataAtRowProp(currentRows, 7, true);               // In (checkbox)
+        hot.setDataAtRowProp(currentRows, 8, p.gianhap);          // Giá nhập
         }
 
         function syncHandsontableToSelected() {
