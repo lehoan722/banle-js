@@ -159,17 +159,14 @@
                 <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
                 <button onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button onclick="checkLoaiTemAndPrint()">In</button>
-
-                <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-                <div class="print-options">
+                <button class="btn" onclick="exportExcel()">Xuất Excel</button>                
                     <label>Loại tem:
                         <select id="loaiTem">
                             <option value="">– Chọn loại tem –</option>
                             <option value="giaydep">Tem giày dép</option>
                             <option value="quanao">Tem quần áo</option>
                         </select>
-                    </label>
-                </div>
+                    </label>               
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -377,11 +374,11 @@
     height:${TEM_HEIGHT_MM}mm;
     box-sizing:border-box;
     overflow:hidden;
-    border:0px solid #888;
+    border:0.4px solid #888;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 2mm 0mm 2mm 1mm;
+    padding: 2mm 2mm 2mm 1mm;
 ">
     <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
         ${infoChung}
