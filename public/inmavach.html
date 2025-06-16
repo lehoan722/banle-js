@@ -170,6 +170,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
     <!-- SheetJS for export Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
     <script type="module">
         import { supabase } from './scripts/supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
 
@@ -227,7 +228,7 @@
         // Elements
         const searchInput = document.getElementById('search');
         const productListDiv = document.getElementById('productList');
-        
+
         const previewArea = document.getElementById('previewArea');
         const fromRowInput = document.getElementById('fromRow');
         const fromColInput = document.getElementById('fromCol');
@@ -275,6 +276,10 @@
         }
 
         function selectProduct(masp) {
+            if (!hot) {
+                alert("Bảng chưa sẵn sàng, vui lòng đợi trang tải xong!");
+                return;
+            }
             const p = products.find(x => x.masp === masp);
             if (!p) return;
             // Kiểm tra trùng mã hàng, nếu đã có thì không thêm nữa
@@ -298,6 +303,7 @@
         }
 
         function syncHandsontableToSelected() {
+            if (!hot) return;
             const data = hot.getData().filter(row => row[1] && row[2]);
             selected = data.map(row => ({
                 stt: row[0],
