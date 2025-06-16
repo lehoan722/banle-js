@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.min.js"></script>
 
 <head>
     <meta charset="UTF-8">
@@ -137,22 +139,7 @@
         <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
         <div class="right">
             <b>Danh sách tem in</b>
-            <table class="selected-table" id="selectedTable">
-                <thead>
-                    <tr>
-                        <th>STT</th>
-                        <th>Mã hàng</th>
-                        <th>Tên hàng</th>
-                        <th>SL Tem in</th>
-                        <th>ĐVT</th>
-                        <th>SL</th>
-                        <th>Giá lẻ</th>
-                        <th>In</th>
-                        <th>Giá nhập</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <div id="hot" style="margin-bottom:12px"></div>
 
             <div class="print-options">
                 <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
@@ -186,6 +173,43 @@
     <script type="module">
         import { supabase } from './scripts/supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
 
+        // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
+        let hot;
+        const colHeaders = [
+            "STT", "Mã hàng", "Tên hàng", "Số lượng tem in",
+            "ĐVT", "Size", "Giá lẻ", "In", "Giá nhập"
+        ];
+        const columns = [
+            { data: 0, readOnly: true },       // STT
+            { data: 1, type: 'text', readOnly: true },   // Mã hàng
+            { data: 2, type: 'text', readOnly: true },   // Tên hàng
+            { data: 3, type: 'numeric' },               // Số lượng tem in (nhập hoặc paste)
+            { data: 4, type: 'text', readOnly: true },   // ĐVT
+            { data: 5, type: 'text' },                  // Size (nhập hoặc paste)
+            { data: 6, type: 'numeric', readOnly: true },// Giá lẻ
+            { data: 7, type: 'checkbox' },              // In
+            { data: 8, type: 'numeric', readOnly: true } // Giá nhập
+        ];
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const container = document.getElementById('hot');
+            hot = new Handsontable(container, {
+                data: [],
+                colHeaders: colHeaders,
+                columns: columns,
+                rowHeaders: true,
+                minSpareRows: 1,
+                licenseKey: 'non-commercial-and-evaluation',
+                contextMenu: true,
+                copyPaste: true,
+                manualColumnResize: true,
+                manualRowResize: true,
+                stretchH: 'all',
+                afterChange: syncHandsontableToSelected // để luôn đồng bộ biến selected (cho in tem)
+            });
+        });
+
+
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
         const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
         const PAGE_MARGIN_LEFT_MM = 5;   // Lề trái của toàn bộ khối tem (mm)
@@ -203,7 +227,7 @@
         // Elements
         const searchInput = document.getElementById('search');
         const productListDiv = document.getElementById('productList');
-        const selectedTableBody = document.querySelector('#selectedTable tbody');
+        
         const previewArea = document.getElementById('previewArea');
         const fromRowInput = document.getElementById('fromRow');
         const fromColInput = document.getElementById('fromCol');
@@ -249,6 +273,45 @@
                 row.ondblclick = () => selectProduct(row.dataset.masp);
             });
         }
+
+        function selectProduct(masp) {
+            const p = products.find(x => x.masp === masp);
+            if (!p) return;
+            // Kiểm tra trùng mã hàng, nếu đã có thì không thêm nữa
+            let data = hot.getData();
+            if (data.some(row => row[1] === p.masp)) return;
+
+            // Đếm số dòng thực tế (trừ spare row)
+            let currentRows = data.filter(row => row[1] && row[2]).length;
+            // Thêm dòng vào cuối bảng
+            hot.alter('insert_row', currentRows);
+            // Gán dữ liệu dòng mới
+            hot.setDataAtRowProp(currentRows, 0, currentRows + 1);    // STT
+            hot.setDataAtRowProp(currentRows, 1, p.masp);             // Mã hàng
+            hot.setDataAtRowProp(currentRows, 2, p.tensp);            // Tên hàng
+            hot.setDataAtRowProp(currentRows, 3, 1);                  // Số lượng tem in mặc định
+            hot.setDataAtRowProp(currentRows, 4, p.dvt || "");        // ĐVT
+            hot.setDataAtRowProp(currentRows, 5, "");                 // Size để trống nhập/paste
+            hot.setDataAtRowProp(currentRows, 6, p.giale);            // Giá lẻ
+            hot.setDataAtRowProp(currentRows, 7, true);               // In (checkbox)
+            hot.setDataAtRowProp(currentRows, 8, p.gianhap);          // Giá nhập
+        }
+
+        function syncHandsontableToSelected() {
+            const data = hot.getData().filter(row => row[1] && row[2]);
+            selected = data.map(row => ({
+                stt: row[0],
+                masp: row[1],
+                tensp: row[2],
+                sltem: row[3],
+                dvt: row[4],
+                size: row[5],
+                giale: row[6],
+                tick: !!row[7],
+                gianhap: row[8]
+            }));
+        }
+
 
         // Chọn sản phẩm
         window.selectProduct = function (masp) {
@@ -306,6 +369,7 @@
         let temsAll = [];
 
         window.renderPreview = function (page = 1) {
+            syncHandsontableToSelected();
             // Kiểm tra chọn loại tem
             const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
             if (!loaiTem) {
