@@ -178,7 +178,7 @@
         import { supabase } from './scripts/supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-        const PAGE_MARGIN_TOP_MM = 6;      // Lề trên của toàn bộ khối tem (mm)
+        const PAGE_MARGIN_TOP_MM = 5;      // Lề trên của toàn bộ khối tem (mm)
         const PAGE_MARGIN_LEFT_MM = 5;   // Lề trái của toàn bộ khối tem (mm)
         const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
         const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
@@ -339,7 +339,7 @@
     height:${TEM_HEIGHT_MM}mm;
     box-sizing:border-box;
     overflow:hidden;
-    border:0.4px solid #888;
+    border:0px solid #888;// neu hien khung thi cho thanh //border:0px solid #888;
     display: flex;
     flex-direction: column;
     justify-content: center;
