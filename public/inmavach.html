@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="vi">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
@@ -182,15 +182,16 @@
         ];
         const columns = [
             { data: 0, readOnly: true },       // STT
-            { data: 1, type: 'text', readOnly: true },   // Mã hàng
-            { data: 2, type: 'text', readOnly: true },   // Tên hàng
-            { data: 3, type: 'numeric' },               // Số lượng tem in (nhập hoặc paste)
-            { data: 4, type: 'text', readOnly: true },   // ĐVT
-            { data: 5, type: 'text' },                  // Size (nhập hoặc paste)
-            { data: 6, type: 'numeric', readOnly: true },// Giá lẻ
-            { data: 7, type: 'checkbox' },              // In
-            { data: 8, type: 'numeric', readOnly: true } // Giá nhập
+            { data: 1, type: 'text' },   // Mã hàng
+            { data: 2, type: 'text' },   // Tên hàng
+            { data: 3, type: 'numeric' },      // Số lượng tem in
+            { data: 4, type: 'text' },   // ĐVT
+            { data: 5, type: 'text' },         // Size
+            { data: 6, type: 'numeric' },      // Giá lẻ
+            { data: 7, type: 'checkbox' },     // In
+            { data: 8, type: 'numeric' }       // Giá nhập
         ];
+
 
         document.addEventListener("DOMContentLoaded", function () {
             const container = document.getElementById('hot');
@@ -206,7 +207,19 @@
                 manualColumnResize: true,
                 manualRowResize: true,
                 stretchH: 'all',
-                afterChange: syncHandsontableToSelected // để luôn đồng bộ biến selected (cho in tem)
+                afterChange: syncHandsontableToSelected,
+                beforeChange: function (changes, source) {  //Thêm event beforeChange để chặn chỉnh sửa thủ công các cột "chỉ đọc"
+                    if (source === 'edit') {
+                        // Không cho chỉnh sửa trực tiếp các cột mã hàng, tên hàng, dvt, giá lẻ, giá nhập
+                        const readOnlyColumns = [1, 2, 4, 6, 8];
+                        for (let i = changes.length - 1; i >= 0; i--) {
+                            if (readOnlyColumns.includes(changes[i][1])) {
+                                changes.splice(i, 1); // Hủy thay đổi trên cột chỉ đọc nếu là thao tác nhập tay
+                            }
+                        }
+                    }
+                    // Nếu là paste thì không chặn gì cả!
+                }
             });
         });
 
@@ -287,7 +300,7 @@
             );
 
             // Kiểm tra mã đã có chưa
-            if (data.some(row => row[1] === p.masp)) return;
+            //if (data.some(row => row[1] === p.masp)) return; //Bỏ kiểm tra trùng mã sản phẩm khi thêm từ danh sách
             // Thêm sản phẩm mới
             data.push([
                 data.length + 1,
