@@ -345,6 +345,7 @@
     justify-content: center;
     padding: 2mm 0mm 2mm 1mm; /* padding-left: 1mm */
 ">
+
 <div style="font-size:5.4pt;line-height:1;word-break:break-word;margin:0;padding:0;">
   Giày/dép; chất liệu: da, nhựa, cao su <br> 
   tổng hợp; kích cỡ:38 đến 43; không<br>
@@ -352,20 +353,29 @@
   shop hoàn tuyết thái nguyên; <br>  
   Dán nhãn tại Việt Nam.
 </div>
-
-<div style="display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;width:100%;margin:0;padding:0;">
-
-    <div style="width:22px;height:22px;display:flex;align-items:flex-end;justify-content:flex-end;">
+<div style="
+    display:flex;
+    flex-direction:row;
+    align-items:flex-end;
+    justify-content:space-between;
+    width:100%;
+    margin:0;
+    padding:0;">
+  <div style="
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      max-width:calc(100% - 26px); /* phần còn lại cho QR, có thể điều chỉnh */
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;">
+    <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.masp}</div>
+    <div style="font-size:9.5pt;font-weight:bold;line-height:1;margin:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Giá: ${formatGia(t.giale)}</div>
+  </div>
+  <div style="width:22px;height:22px;display:flex;align-items:flex-end;justify-content:flex-end;">
     <canvas class="qr" width="22" height="22"></canvas>
   </div>
-
-  <div style="display:flex;flex-direction:column;justify-content:flex-end;">
-    <div style="font-size:8pt;line-height:1;margin:0;padding:0;">${t.masp}</div>
-    <div style="font-size:9.5pt;font-weight:bold;line-height:1;margin:0;padding:0;">Giá: ${formatGia(t.giale)}</div>
-  </div>
-  
 </div>
-
     
   </div>
                 `;
