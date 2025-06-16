@@ -342,10 +342,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 4mm 0mm 4mm 1mm; /* padding-left: 1mm */
+    padding: 2mm 0mm 2mm 1mm; /* padding-left: 1mm */
 ">
 
-    <div style="flex-basis: 4mm;"></div>
+    <div style="display:flex;flex-direction:row;align-items:flex-end;width:100%;justify-content:space-between;">
+  <div style="display:flex;flex-direction:column;justify-content:flex-start;">
     <div style="font-size:5.4pt;line-height:1;word-break:break-word;margin:0;padding:0;">
       shop hoàn tuyết thái nguyên; Giày/dép;<br>
       chất liệu: da, nhựa, cao su tổng hợp;<br>
@@ -353,15 +354,14 @@
       Bảo quản nơi khô ráo;<br>
       Dán nhãn tại Việt Nam.
     </div>
-    <div style="display:flex;flex-direction:row;align-items:flex-end;width:100%;justify-content:space-between;margin:0;padding:0;">
-      <div style="display:flex;flex-direction:column;justify-content:flex-end;">
-        <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin:0;padding:0;">${t.masp}</div>
-        <div style="font-size:9.5pt;font-weight:bold;line-height:1;margin:0;padding:0;">Giá: ${formatGia(t.giale)}</div>
-      </div>
-      <div style="width:31px;height:31px;display:flex;align-items:flex-end;justify-content:flex-end;">
-        <canvas class="qr" width="31" height="31"></canvas>      
-      </div>
-    </div>
+    <div style="font-size:8.5pt;font-weight:bold;line-height:1;margin:0;padding:0;">${t.masp}</div>
+    <div style="font-size:9.5pt;font-weight:bold;line-height:1;margin:0;padding:0;">Giá: ${formatGia(t.giale)}</div>
+  </div>
+  <div style="width:31px;height:31px;display:flex;align-items:flex-end;justify-content:flex-end;margin-left:2mm;">
+    <canvas class="qr" width="31" height="31"></canvas>
+  </div>
+</div>
+
     <div style="flex-basis: 4mm;"></div>
   </div>
                 `;
