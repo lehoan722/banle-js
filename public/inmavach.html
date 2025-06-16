@@ -280,13 +280,29 @@
             const p = products.find(x => x.masp === masp);
             if (!p) return;
             let data = hot.getSourceData();
-            if (data.some(row => row[1] === p.masp)) return; // đã có mã này
-            data.push([data.length + 1, p.masp, p.tensp, 1, p.dvt || "", "", p.giale, true, p.gianhap]);
-            data.forEach((row, idx) => row[0] = idx + 1); // cập nhật lại STT
+            // Loại dòng trắng cuối bảng (dòng chỉ toàn rỗng/null)
+            data = data.filter(row => row.some(cell => cell !== null && cell !== ""));
+            // Kiểm tra mã đã có chưa
+            if (data.some(row => row[1] === p.masp)) return;
+            // Thêm sản phẩm mới
+            data.push([
+                data.length + 1,
+                p.masp,
+                p.tensp,
+                1,
+                p.dvt || "",
+                "",
+                p.giale,
+                true,
+                p.gianhap
+            ]);
+            // Cập nhật lại STT liên tục
+            data.forEach((row, idx) => row[0] = idx + 1);
             hot.loadData(data);
         }
 
-       
+
+
 
         function syncHandsontableToSelected() {
             if (!hot) return;
@@ -493,7 +509,7 @@
                 row.dvt || "",
                 row.sl,
                 formatGia(row.giale),
-                row.tick ? "x" : "",
+                row.tick ? true : false,
                 formatGia(row.gianhap)
             ]);
             const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
