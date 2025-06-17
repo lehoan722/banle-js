@@ -620,7 +620,6 @@
         }
 
         window.printAllPages = function () {
-            page = 1;
             syncHandsontableToSelected();
 
             globalTemsAll = [];
@@ -640,8 +639,10 @@
             const firstPageTems = 40 - globalBlank;
             totalPages = (totalTems <= firstPageTems) ? 1 : 1 + Math.ceil((totalTems - firstPageTems) / 40);
 
-            printPage(); // bắt đầu in từ trang 1
+            renderPreview(1);
+            setTimeout(() => window.print(), 500);
         };
+
 
 
         window.chonLoaiTemPrintAll = function (loai) {
