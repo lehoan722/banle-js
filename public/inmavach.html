@@ -417,9 +417,15 @@
             // Kiểm tra chọn loại tem
             const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
             if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
+                let html = `
+      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
+      <button onclick="chonLoaiTem('quanao')" style="margin-right:10px">In tem Quần áo</button>
+      <button onclick="chonLoaiTem('giaydep')">In tem Giày dép</button>
+    `;
+                showCustomPopup(html);
                 return;
             }
+
 
             // Info chung mẫu cho từng loại tem
             let infoChung = "";
@@ -455,11 +461,12 @@
             currentPage = page > totalPages ? totalPages : page;
             const fromRow = parseInt(fromRowInput.value) || 1;
             const fromCol = parseInt(fromColInput.value) || 1;
+
             let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
-            let maxTems = 40 - (page === 1 ? blank : 0);
-            let startIdx = (page - 1) * 40;
-            let endIdx = page * 40;
+            let startIdx = (page - 1) * 40 - (page === 1 ? 0 : blank);
+            let endIdx = startIdx + (page === 1 ? 40 - blank : 40);
             let pageTems = temsAll.slice(startIdx, endIdx);
+
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
             let html = `<div class="print-preview" style="
@@ -618,30 +625,37 @@
             if (popup) popup.remove();
         }
 
-
-
-        window.printAllPages = function () {
+        window.printAllPages = async function () {
             syncHandsontableToSelected();
             const loaiTem = document.getElementById('loaiTem').value;
             if (!loaiTem) {
-                if (confirm("Bạn muốn in tem Quần áo hay Giày dép?")) {
-                    // Tuỳ chọn nhanh có thể bổ sung 2 nút riêng ở đây nếu muốn
-                }
+                let html = `
+      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
+      <button onclick="chonLoaiTemPrintAll('quanao')">In tem Quần áo</button>
+      <button onclick="chonLoaiTemPrintAll('giaydep')">In tem Giày dép</button>
+    `;
+                showCustomPopup(html);
                 return;
             }
 
             let page = 1;
-            function printNext() {
+            function printPage() {
                 if (page > totalPages) return;
                 renderPreview(page);
                 setTimeout(() => {
                     window.print();
                     page++;
-                    printNext();
-                }, 1000); // đợi 1 giây để render xong mới in
+                    setTimeout(printPage, 1500); // đợi người dùng đóng hộp thoại in
+                }, 300);
             }
-            printNext();
+            printPage();
         };
+
+        window.chonLoaiTemPrintAll = function (loai) {
+            document.getElementById('loaiTem').value = loai;
+            closeCustomPopup();
+            window.printAllPages(); // gọi lại
+        }
 
 
 
