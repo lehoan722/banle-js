@@ -456,8 +456,10 @@
             const fromRow = parseInt(fromRowInput.value) || 1;
             const fromCol = parseInt(fromColInput.value) || 1;
             let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
-            let maxTems = 40 - blank;
-            let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
+            let maxTems = 40 - (page === 1 ? blank : 0);
+            let startIdx = (page - 1) * 40;
+            let endIdx = page * 40;
+            let pageTems = temsAll.slice(startIdx, endIdx);
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
             let html = `<div class="print-preview" style="
@@ -578,11 +580,44 @@
         window.checkLoaiTemAndPrint = function () {
             const loaiTem = document.getElementById('loaiTem').value;
             if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
+                let html = `
+      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
+      <button onclick="chonLoaiTem('quanao')" style="margin-right:10px">In tem Quần áo</button>
+      <button onclick="chonLoaiTem('giaydep')">In tem Giày dép</button>
+    `;
+                showCustomPopup(html);
                 return;
             }
             window.print();
         }
+
+        window.chonLoaiTem = function (loai) {
+            document.getElementById('loaiTem').value = loai;
+            closeCustomPopup();
+            renderPreview();
+            setTimeout(() => window.print(), 800);
+        }
+
+        function showCustomPopup(html) {
+            const div = document.createElement("div");
+            div.id = "popup";
+            div.style.position = "fixed";
+            div.style.top = "30%";
+            div.style.left = "50%";
+            div.style.transform = "translate(-50%, -30%)";
+            div.style.padding = "20px";
+            div.style.background = "#fff";
+            div.style.border = "1px solid #ccc";
+            div.style.zIndex = 9999;
+            div.innerHTML = html;
+            document.body.appendChild(div);
+        }
+
+        function closeCustomPopup() {
+            const popup = document.getElementById("popup");
+            if (popup) popup.remove();
+        }
+
 
 
         window.printAllPages = function () {
