@@ -266,6 +266,9 @@
         let products = [];
         let filtered = [];
         let selected = [];
+        let globalTemsAll = [];
+        let globalBlank = 0;
+
 
         // Elements
         const searchInput = document.getElementById('search');
@@ -413,80 +416,86 @@
         let temsAll = [];
 
         window.renderPreview = function (page = 1) {
-    syncHandsontableToSelected();
-    const loaiTem = document.getElementById('loaiTem')?.value || "";
-    if (!loaiTem) {
-        let html = `
+            syncHandsontableToSelected();
+            const loaiTem = document.getElementById('loaiTem')?.value || "";
+            if (!loaiTem) {
+                let html = `
       <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
       <button onclick="chonLoaiTem('quanao')" style="margin-right:10px">In tem Quần áo</button>
       <button onclick="chonLoaiTem('giaydep')">In tem Giày dép</button>
     `;
-        showCustomPopup(html);
-        return;
-    }
+                showCustomPopup(html);
+                return;
+            }
 
-    // Nội dung tem tùy loại
-    let infoChung = "";
-    if (loaiTem === "giaydep") {
-        infoChung = `không giặt,tẩy;Bảo quản nơi khô ráo;<br>
+            // Nội dung tem tùy loại
+            let infoChung = "";
+            if (loaiTem === "giaydep") {
+                infoChung = `không giặt,tẩy;Bảo quản nơi khô ráo;<br>
         Dán nhãn tại Việt Nam.Giày/dép;chất liệu:da,nhựa,caosu tổng hợp;cỡ:38-43<br>
         Shop Hoàn Tuyết, Thái Nguyên;`;
-    } else if (loaiTem === "quanao") {
-        infoChung = `không tẩy;giặt tay,Bảo quản khô ráo;<br>
+            } else if (loaiTem === "quanao") {
+                infoChung = `không tẩy;giặt tay,Bảo quản khô ráo;<br>
         Dán nhãn tại Việt Nam. Quần,Áo ;<br>
         chất liệu: Vải sợi tổng hợp;cỡ: S-XXL<br>
         Shop Hoàn Tuyết, Thái Nguyên;`;
-    }
-
-    // Chuẩn bị danh sách tem
-    temsAll = [];
-    selected.forEach(row => {
-        if (row.tick) {
-            for (let i = 0; i < row.sltem; i++) {
-                temsAll.push(row);
             }
-        }
-    });
 
-    const fromRow = parseInt(fromRowInput.value) || 1;
-    const fromCol = parseInt(fromColInput.value) || 1;
-    const blank = (page === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
+            // Chuẩn bị danh sách tem
+            temsAll = [];
+            selected.forEach(row => {
+                if (row.tick) {
+                    for (let i = 0; i < row.sltem; i++) {
+                        temsAll.push(row);
+                    }
+                }
+            });
+            globalTemsAll = temsAll; // Lưu lại danh sách tem toàn bộ để in nhiều trang
 
-    const totalTems = temsAll.length;
-    const firstPageTems = 40 - blank;
-    if (totalTems <= firstPageTems) {
-        totalPages = 1;
-    } else {
-        const remaining = totalTems - firstPageTems;
-        totalPages = 1 + Math.ceil(remaining / 40);
-    }
-    currentPage = Math.min(page, totalPages);
 
-    // Tính lại vị trí bắt đầu và số tem mỗi trang
-    let pageTems = [];
-    if (currentPage === 1) {
-        pageTems = temsAll.slice(0, 40 - blank);
-    } else {
-        const startIdx = (40 - blank) + (currentPage - 2) * 40;
-        const endIdx = startIdx + 40;
-        pageTems = temsAll.slice(startIdx, endIdx);
-    }
+            let blank = 0;
+            if (page === 1) {
+                const fromRow = parseInt(fromRowInput.value) || 1;
+                const fromCol = parseInt(fromColInput.value) || 1;
+                globalBlank = (fromRow - 1) * 5 + (fromCol - 1);
+                blank = globalBlank;
+            } else {
+                blank = 0;
+            }
 
-    // Bắt đầu dựng HTML preview
-    let html = `<div class="print-preview" style="padding-top:${PAGE_MARGIN_TOP_MM}mm; padding-left:${PAGE_MARGIN_LEFT_MM}mm;">
+
+            const totalTems = temsAll.length;
+            const firstPageTems = 40 - blank;
+            if (totalTems <= firstPageTems) {
+                totalPages = 1;
+            } else {
+                const remaining = totalTems - firstPageTems;
+                totalPages = 1 + Math.ceil(remaining / 40);
+            }
+            currentPage = Math.min(page, totalPages);
+
+            // Tính lại vị trí bắt đầu và số tem mỗi trang
+            const temList = globalTemsAll.length > 0 ? globalTemsAll : temsAll;
+            let startIdx = (currentPage === 1) ? 0 : (40 - globalBlank) + (currentPage - 2) * 40;
+            let endIdx = startIdx + (currentPage === 1 ? 40 - globalBlank : 40);
+            let pageTems = temList.slice(startIdx, endIdx);
+
+
+            // Bắt đầu dựng HTML preview
+            let html = `<div class="print-preview" style="padding-top:${PAGE_MARGIN_TOP_MM}mm; padding-left:${PAGE_MARGIN_LEFT_MM}mm;">
       <div class="tem-grid" style="display: grid; grid-template-columns: 35mm 35mm 35mm 35mm 35mm; grid-template-rows: repeat(8, 19mm); column-gap: 5mm; row-gap: 1.9mm;">`;
 
-    const maxTems = (currentPage === 1) ? (40 - blank) : 40;
-    for (let i = 0; i < (currentPage === 1 ? blank : 0); i++) {
-        html += `<div class="tem tem-blank"></div>`;
-    }
+            const maxTems = (currentPage === 1) ? (40 - blank) : 40;
+            for (let i = 0; i < (currentPage === 1 ? blank : 0); i++) {
+                html += `<div class="tem tem-blank"></div>`;
+            }
 
-    for (let i = 0; i < maxTems; i++) {
-        const t = pageTems[i] || null;
-        if (!t) {
-            html += `<div class="tem tem-blank"></div>`;
-        } else {
-            html += `
+            for (let i = 0; i < maxTems; i++) {
+                const t = pageTems[i] || null;
+                if (!t) {
+                    html += `<div class="tem tem-blank"></div>`;
+                } else {
+                    html += `
 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="width:${TEM_WIDTH_MM}mm;height:${TEM_HEIGHT_MM}mm;box-sizing:border-box;overflow:hidden;border:0px solid #888;display:flex;flex-direction:column;justify-content:center;padding:0mm 0mm 0mm 1mm;">
     <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
         ${infoChung}
@@ -501,27 +510,27 @@
         </div>
     </div>
 </div>`;
-        }
-    }
+                }
+            }
 
-    html += `</div></div>`;
-    previewArea.innerHTML = html;
+            html += `</div></div>`;
+            previewArea.innerHTML = html;
 
-    // Gán mã QR
-    document.querySelectorAll('.tem .qr').forEach((el) => {
-        const parent = el.closest('.tem');
-        if (!parent || parent.classList.contains('tem-blank')) return;
-        const masp = parent.getAttribute('data-masp');
-        new QRious({
-            element: el,
-            value: masp,
-            size: 25,
-            level: 'M'
-        });
-    });
+            // Gán mã QR
+            document.querySelectorAll('.tem .qr').forEach((el) => {
+                const parent = el.closest('.tem');
+                if (!parent || parent.classList.contains('tem-blank')) return;
+                const masp = parent.getAttribute('data-masp');
+                new QRious({
+                    element: el,
+                    value: masp,
+                    size: 25,
+                    level: 'M'
+                });
+            });
 
-    document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
-};
+            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+        };
 
 
 
@@ -610,31 +619,30 @@
             if (popup) popup.remove();
         }
 
-        window.printAllPages = async function () {
+        window.printAllPages = function () {
+            page = 1;
             syncHandsontableToSelected();
-            const loaiTem = document.getElementById('loaiTem').value;
-            if (!loaiTem) {
-                let html = `
-      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
-      <button onclick="chonLoaiTemPrintAll('quanao')">In tem Quần áo</button>
-      <button onclick="chonLoaiTemPrintAll('giaydep')">In tem Giày dép</button>
-    `;
-                showCustomPopup(html);
-                return;
-            }
 
-            let page = 1;
-            function printPage() {
-                if (page > totalPages) return;
-                renderPreview(page);
-                setTimeout(() => {
-                    window.print();
-                    page++;
-                    setTimeout(printPage, 1500); // đợi người dùng đóng hộp thoại in
-                }, 300);
-            }
-            printPage();
+            globalTemsAll = [];
+            selected.forEach(row => {
+                if (row.tick) {
+                    for (let i = 0; i < row.sltem; i++) {
+                        globalTemsAll.push(row);
+                    }
+                }
+            });
+
+            const fromRow = parseInt(fromRowInput.value) || 1;
+            const fromCol = parseInt(fromColInput.value) || 1;
+            globalBlank = (fromRow - 1) * 5 + (fromCol - 1);
+
+            const totalTems = globalTemsAll.length;
+            const firstPageTems = 40 - globalBlank;
+            totalPages = (totalTems <= firstPageTems) ? 1 : 1 + Math.ceil((totalTems - firstPageTems) / 40);
+
+            printPage(); // bắt đầu in từ trang 1
         };
+
 
         window.chonLoaiTemPrintAll = function (loai) {
             document.getElementById('loaiTem').value = loai;
