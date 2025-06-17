@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
@@ -84,12 +83,11 @@
         }
 
         .preview-area {
-            border: none;
-            margin: 0;
-            padding: 0;
-            background: none;
+            border: 1px solid #bbb;
+            margin-top: 16px;
+            padding: 8px;
+            background: #fafafa;
         }
-
 
         /* In preview tem */
         @media print {
@@ -97,21 +95,21 @@
                 visibility: hidden;
             }
 
-            #printContainer,
-            #printContainer * {
+            .print-preview,
+            .print-preview * {
                 visibility: visible;
             }
 
-            #printContainer {
+            .print-preview {
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 201mm;
-                height: 168mm;
+                width: 210mm;
+                height: 297mm;
                 background: white;
-                margin: 0 !important;
-                padding: 0 !important;
-                
+                padding: 0;
+                margin: 0;
+                transform: scale(1.46222);
                 transform-origin: top left;
             }
 
@@ -121,13 +119,14 @@
                 padding: 0 !important;
             }
 
-            #printContainer * {
+            .print-preview * {
                 box-sizing: border-box;
                 margin: 0 !important;
                 padding: 0 !important;
             }
-        }
 
+
+        }
 
         .btn {
             background: #2a87f4;
@@ -177,10 +176,7 @@
 
 
             </div>
-            <div class="preview-area">
-                <div id="printContainer"></div>
-            </div>
-
+            <div class="preview-area" id="previewArea"></div>
             <div style="margin: 8px 0;">
                 <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
                 <span id="pageInfo"></span>
@@ -454,17 +450,17 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
-            let html = `<div id="printPage" style="width: 201mm; height: 168mm; overflow: hidden; padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
-  <div class="tem-grid" style="
-    width: calc(201mm - ${PAGE_MARGIN_LEFT_MM}mm);
-    height: auto;
-    display: grid;
-    grid-template-columns: ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm;
-    grid-template-rows: repeat(8, ${TEM_HEIGHT_MM}mm);
-    column-gap: 5mm;
-    row-gap: 1.8mm;
-">`;
-
+            let html = `<div class="print-preview" style="
+        padding-top: ${PAGE_MARGIN_TOP_MM}mm;
+        padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
+    ">
+    <div class="tem-grid" style="
+        display: grid;
+        grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
+        grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
+        column-gap: 5mm;
+        row-gap: 1.5mm;
+    ">`;
 
             // Blank cho trang đầu
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
@@ -472,7 +468,7 @@
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
-                <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
+<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
     width:${TEM_WIDTH_MM}mm;
     height:${TEM_HEIGHT_MM}mm;
     box-sizing:border-box;
@@ -483,11 +479,11 @@
     justify-content: center;
     padding: 0mm 0mm 0mm 1mm;
 ">
-                    <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
-                        ${infoChung}
-                    </div>
-                    <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
-                        <div style="
+    <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
+        ${infoChung}
+    </div>
+   <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
+  <div style="
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -495,19 +491,19 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;">
-                            <div style="font-size:8pt;line-height:1; margin-top:2px;">${t.masp}</div>
-                            <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
-                        </div>
-                        <div style="width:18px; height:18px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
-                            <canvas class="qr" width="18" height="18"></canvas>
-                        </div>
-                    </div>
+    <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
+    <div style="font-size:8pt; line-height:1; margin-top:2px; word-break: break-word; white-space: normal;">${t.masp}</div>    
+  </div>
+  <div style="width:18px; height:18px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
+    <canvas class="qr" width="18" height="18"></canvas>
+  </div>
+</div>
 
-                </div>
-                `;
+</div>
+`;
             }
-            html += `</div></div > `;
-            document.getElementById("printContainer").innerHTML = html;
+            html += `</div></div>`;
+            previewArea.innerHTML = html;
 
             // Sinh QR code cho từng tem
             document.querySelectorAll('.tem .qr').forEach((el, idx) => {
@@ -584,4 +580,3 @@
 </body>
 
 </html>
-<script async data-explicit-opt-in="true" data-cookie-opt-in="true" data-deployment-id="dpl_F4CFhnALPrErZM4fGRVE5nDE1AaD" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
