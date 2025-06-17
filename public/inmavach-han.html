@@ -105,8 +105,8 @@
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 210mm;
-                height: 297mm;
+                width: 170mm;
+                height: 203mm;
                 background: white;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -453,7 +453,7 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
-            let html = `<div id="printPage" style="width: 210mm; height: 297mm; overflow: hidden; padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
+            let html = `<div id="printPage" style="width: 170mm; height: 203mm; overflow: hidden; padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
   <div class="tem-grid" style="
     width: calc(210mm - ${PAGE_MARGIN_LEFT_MM}mm);
     height: auto;
