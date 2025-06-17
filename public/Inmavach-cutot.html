@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>In Tem QR - Giấy TOMY 108</title>
+    <script type="module" src="./scripts/supabaseClient.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        .container {
+            display: flex;
+            gap: 12px;
+            margin: 16px;
+        }
+
+        .left,
+        .right {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .left {
+            width: 270px;
+        }
+
+        .right {
+            flex: 1;
+        }
+
+        .search-box input {
+            width: 90%;
+            padding: 4px;
+        }
+
+        .product-list {
+            height: 340px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .product-list table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .product-list tr {
+            cursor: pointer;
+        }
+
+        .product-list tr:hover {
+            background: #eef;
+        }
+
+        .selected-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .selected-table th,
+        .selected-table td {
+            border: 1px solid #bbb;
+            padding: 3px 5px;
+            text-align: center;
+        }
+
+        .selected-table th {
+            background: #f5f5f5;
+        }
+
+        .print-options {
+            margin: 10px 0 12px 0;
+        }
+
+        .preview-area {
+            border: 1px solid #bbb;
+            margin-top: 16px;
+            padding: 8px;
+            background: #fafafa;
+        }
+
+        /* In preview tem */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            .print-preview,
+            .print-preview * {
+                visibility: visible;
+            }
+
+            .print-preview {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100vw;
+                background: white;
+            }
+        }
+
+        .btn {
+            background: #2a87f4;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            margin: 0 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #1360b2;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
+    <div class="container">
+        <!-- Bên trái: danh sách sản phẩm -->
+        <div class="left">
+            <b>Tìm kiếm sản phẩm</b>
+            <div class="search-box">
+                <input id="search" type="text" placeholder="Nhập mã, tên sản phẩm..." autocomplete="off" />
+            </div>
+            <div class="product-list" id="productList"></div>
+        </div>
+        <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
+        <div class="right">
+            <b>Danh sách tem in</b>
+            <table class="selected-table" id="selectedTable">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
+                        <th>SL Tem in</th>
+                        <th>ĐVT</th>
+                        <th>SL</th>
+                        <th>Giá lẻ</th>
+                        <th>In</th>
+                        <th>Giá nhập</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <div class="print-options">
+                <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
+                <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
+                <label>Loại tem:
+                    <select id="loaiTem">
+                        <option value="">– Chọn loại tem –</option>
+                        <option value="giaydep">Tem giày dép</option>
+                        <option value="quanao">Tem quần áo</option>
+                    </select>
+                </label>
+                <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
+                <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
+                <button class="btn" onclick="exportExcel()">Xuất Excel</button>
+
+
+            </div>
+            <div class="preview-area" id="previewArea"></div>
+            <div style="margin: 8px 0;">
+                <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
+                <span id="pageInfo"></span>
+                <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code lib -->
+    <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+    <!-- SheetJS for export Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script type="module">
+        import { supabase } from './scripts/supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
+
+        // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
+        const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
+        const PAGE_MARGIN_LEFT_MM = 5;   // Lề trái của toàn bộ khối tem (mm)
+        const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
+        const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
+        const TEM_WIDTH_MM = 37;           // Rộng mỗi tem (mm)
+        const TEM_HEIGHT_MM = 19;          // Cao mỗi tem (mm)
+        // ==== KẾT THÚC CẤU HÌNH ====
+
+        // State
+        let products = [];
+        let filtered = [];
+        let selected = [];
+
+        // Elements
+        const searchInput = document.getElementById('search');
+        const productListDiv = document.getElementById('productList');
+        const selectedTableBody = document.querySelector('#selectedTable tbody');
+        const previewArea = document.getElementById('previewArea');
+        const fromRowInput = document.getElementById('fromRow');
+        const fromColInput = document.getElementById('fromCol');
+
+        // 1. Search products (không load all)
+        async function searchProducts(keyword) {
+            let { data, error } = await supabase
+                .from('dmhanghoa')
+                .select('masp, tensp, dvt, giale, gianhap')
+                .or(`masp.ilike.%${keyword}%,tensp.ilike.%${keyword}%`)
+                .order('masp')
+                .limit(100);
+            filtered = data || [];
+            products = data || [];
+            renderProductList();
+        }
+
+        searchInput.addEventListener('input', () => {
+            const val = searchInput.value.trim().toLowerCase();
+            if (val.length === 0) {
+                filtered = [];
+                products = [];
+                renderProductList();
+            } else {
+                searchProducts(val);
+            }
+        });
+
+        // Render product list
+        function renderProductList() {
+            let html = '<table>';
+            html += '<tr><th>Mã SP</th><th>Tên hàng</th></tr>';
+            for (let p of filtered) {
+                html += `<tr data-masp="${p.masp}">
+      <td>${p.masp}</td>
+      <td>${p.tensp}</td>
+    </tr>`;
+            }
+            html += '</table>';
+            productListDiv.innerHTML = html;
+            // Gắn double click event cho từng dòng
+            productListDiv.querySelectorAll('tr[data-masp]').forEach(row => {
+                row.ondblclick = () => selectProduct(row.dataset.masp);
+            });
+        }
+
+        // Chọn sản phẩm
+        window.selectProduct = function (masp) {
+            const p = products.find(x => x.masp === masp);
+            if (!p) return;
+            if (!selected.find(x => x.masp === masp)) {
+                selected.push({ ...p, sltem: 1, sl: 1, tick: true });
+                renderSelectedTable();
+            }
+        };
+
+        // Render lưới chọn
+        function renderSelectedTable() {
+            selectedTableBody.innerHTML = '';
+            selected.forEach((row, idx) => {
+                selectedTableBody.innerHTML += `
+      <tr data-idx="${idx}">
+        <td>${idx + 1}</td>
+        <td>${row.masp}</td>
+        <td>${row.tensp}</td>
+        <td><input type="number" min="1" max="50" value="${row.sltem}" style="width:38px"
+             onchange="changeSlTem(${idx}, this.value)"></td>
+        <td>${row.dvt || ''}</td>
+        <td><input type="number" min="1" max="999" value="${row.sl}" style="width:38px"
+             onchange="changeSl(${idx}, this.value)"></td>
+        <td>${formatGia(row.giale)}</td>
+        <td><input type="checkbox" ${row.tick ? 'checked' : ''} onchange="toggleTick(${idx}, this.checked)"></td>
+        <td>${formatGia(row.gianhap)}</td>
+      </tr>
+     `;
+            });
+            // Gắn double click xóa dòng
+            selectedTableBody.querySelectorAll('tr[data-idx]').forEach(tr => {
+                tr.ondblclick = () => {
+                    const idx = parseInt(tr.dataset.idx);
+                    selected.splice(idx, 1);
+                    renderSelectedTable();
+                };
+            });
+        }
+
+        window.changeSlTem = function (idx, val) {
+            selected[idx].sltem = parseInt(val) || 1;
+        };
+        window.changeSl = function (idx, val) {
+            selected[idx].sl = parseInt(val) || 1;
+        };
+        window.toggleTick = function (idx, val) {
+            selected[idx].tick = val;
+        };
+
+        // Phân trang preview
+        let currentPage = 1;
+        let totalPages = 1;
+        let temsAll = [];
+
+        window.renderPreview = function (page = 1) {
+            // Kiểm tra chọn loại tem
+            const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
+            if (!loaiTem) {
+                alert("Vui lòng chọn loại tem cần in!");
+                return;
+            }
+
+            // Info chung mẫu cho từng loại tem
+            let infoChung = "";
+            if (loaiTem === "giaydep") {
+                infoChung = `
+            không giặt,tẩy;Bảo quản nơi khô ráo;<br>
+            Dán nhãn tại Việt Nam.Giày/dép;chất
+            liệu:da,nhựa,caosu tổng hợp;cỡ:38-43<br>
+            Shop Hoàn Tuyết, Thái Nguyên;
+        `;
+            } else if (loaiTem === "quanao") {
+                infoChung = `
+            không tẩy;giặt tay,Bảo quản khô ráo;<br>
+            Dán nhãn tại Việt Nam. Quần,Áo ;<br>
+            chất liệu: Vải sợi tổng hợp;cỡ: S-XXL<br>
+            Shop Hoàn Tuyết, Thái Nguyên;
+        `;
+            } else {
+                // Thêm các loại tem khác ở đây nếu muốn mở rộng
+                infoChung = "";
+            }
+
+            // Chuẩn bị danh sách tem cần in (theo tick, số lượng)
+            temsAll = [];
+            selected.forEach(row => {
+                if (row.tick) {
+                    for (let i = 0; i < row.sltem; i++) {
+                        temsAll.push(row);
+                    }
+                }
+            });
+            totalPages = Math.ceil(temsAll.length / 40) || 1;
+            currentPage = page > totalPages ? totalPages : page;
+            const fromRow = parseInt(fromRowInput.value) || 1;
+            const fromCol = parseInt(fromColInput.value) || 1;
+            let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
+            let maxTems = 40 - blank;
+            let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
+
+            // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
+            let html = `<div class="print-preview" style="
+        padding-top: ${PAGE_MARGIN_TOP_MM}mm;
+        padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
+    ">
+    <div class="tem-grid" style="
+        display: grid;
+        grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
+        grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
+        column-gap: 5mm;
+        row-gap: 1.8mm;
+    ">`;
+
+            // Blank cho trang đầu
+            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
+            for (let i = 0; i < maxTems; i++) {
+                const t = pageTems[i] || null;
+                if (!t) html += `<div class="tem tem-blank"></div>`;
+                else html += `
+<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
+    width:${TEM_WIDTH_MM}mm;
+    height:${TEM_HEIGHT_MM}mm;
+    box-sizing:border-box;
+    overflow:hidden;
+    border:0px solid #888;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0mm 0mm 0mm 1mm;
+">
+    <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
+        ${infoChung}
+    </div>
+   <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
+  <div style="
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      max-width: calc(100% - 32px);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;">
+    <div style="font-size:8pt;line-height:1; margin-top:2px;">${t.masp}</div>
+    <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
+  </div>
+  <div style="width:18px; height:18px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
+    <canvas class="qr" width="18" height="18"></canvas>
+  </div>
+</div>
+
+</div>
+`;
+            }
+            html += `</div></div>`;
+            previewArea.innerHTML = html;
+
+            // Sinh QR code cho từng tem
+            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
+                const parent = el.closest('.tem');
+                if (!parent || parent.classList.contains('tem-blank')) return;
+                const masp = parent.getAttribute('data-masp');
+                new QRious({
+                    element: el,
+                    value: masp,
+                    size: 25,
+                    level: 'M'
+                });
+            });
+            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+        };
+
+
+        window.prevPage = function () {
+            if (currentPage > 1) renderPreview(currentPage - 1);
+        };
+        window.nextPage = function () {
+            if (currentPage < totalPages) renderPreview(currentPage + 1);
+        };
+
+        // Giá
+        function formatGia(val) {
+            if (!val || val == 0) return '';
+            return parseInt(val).toLocaleString('vi-VN');
+        }
+
+        // Xuất Excel
+        window.exportExcel = function () {
+            const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
+            const data = selected.map((row, idx) => [
+                idx + 1,
+                row.masp,
+                row.tensp,
+                row.sltem,
+                row.dvt || "",
+                row.sl,
+                formatGia(row.giale),
+                row.tick ? "x" : "",
+                formatGia(row.gianhap)
+            ]);
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
+            XLSX.writeFile(wb, "tem-ma-vach.xlsx");
+        };
+
+        // chon loai tem in
+
+        window.checkLoaiTemAndRender = function () {
+            const loaiTem = document.getElementById('loaiTem').value;
+            if (!loaiTem) {
+                alert("Vui lòng chọn loại tem cần in!");
+                return;
+            }
+            renderPreview();
+        }
+        window.checkLoaiTemAndPrint = function () {
+            const loaiTem = document.getElementById('loaiTem').value;
+            if (!loaiTem) {
+                alert("Vui lòng chọn loại tem cần in!");
+                return;
+            }
+            window.print();
+        }
+
+
+
+    </script>
+</body>
+
+</html>
