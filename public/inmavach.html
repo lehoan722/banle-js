@@ -416,7 +416,7 @@
         let temsAll = [];
 
         window.renderPreview = function (page = 1, silent = false) {
-        
+
             syncHandsontableToSelected();
             const loaiTem = document.getElementById('loaiTem')?.value || "";
             if (!loaiTem) {
@@ -478,8 +478,9 @@
             // Tính lại vị trí bắt đầu và số tem mỗi trang
             const temList = globalTemsAll.length > 0 ? globalTemsAll : temsAll;
             let startIdx = (currentPage === 1) ? 0 : (40 - globalBlank) + (currentPage - 2) * 40;
-            let endIdx = startIdx + (currentPage === 1 ? 40 - globalBlank : 40);
+            let endIdx = startIdx + ((currentPage === 1) ? (40 - globalBlank) : 40);
             let pageTems = temList.slice(startIdx, endIdx);
+
 
 
             // Bắt đầu dựng HTML preview
@@ -515,8 +516,10 @@
             }
 
             html += `</div></div>`;
-           if (!silent) previewArea.innerHTML = html;
-
+            if (!silent) {
+                previewArea.innerHTML = html;
+                document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+            }
 
             // Gán mã QR
             document.querySelectorAll('.tem .qr').forEach((el) => {
