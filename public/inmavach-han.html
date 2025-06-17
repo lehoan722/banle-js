@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
@@ -453,9 +454,9 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
-            let html = `<div id="printPage" style="width: 210mm; height: 297mm; overflow: hidden; padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
+            let html = `<div id="printPage" style="width: 201mm; height: 168mm; overflow: hidden; padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
   <div class="tem-grid" style="
-    width: calc(210mm - ${PAGE_MARGIN_LEFT_MM}mm);
+    width: calc(201mm - ${PAGE_MARGIN_LEFT_MM}mm);
     height: auto;
     display: grid;
     grid-template-columns: ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm;
@@ -583,3 +584,4 @@
 </body>
 
 </html>
+<script async data-explicit-opt-in="true" data-cookie-opt-in="true" data-deployment-id="dpl_F4CFhnALPrErZM4fGRVE5nDE1AaD" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
