@@ -91,11 +91,6 @@
 
         /* In preview tem */
         @media print {
-            @page {
-                size: 201mm 168mm;
-                margin: 0;
-            }
-
             body * {
                 visibility: hidden;
             }
@@ -107,25 +102,19 @@
 
             .print-preview {
                 position: absolute;
-                top: 0;
                 left: 0;
-                width: 201mm;
-                height: 168mm;
-                padding: 0;
-                margin: 0;
-                box-sizing: border-box;
+                top: 0;
+                width: 100vw;
                 background: white;
             }
 
-            .preview-area {
-                padding: 0 !important;
-                margin: 0 !important;
-                border: none !important;
-                background: none !important;
+            .tem-grid {
+                column-gap: calc(5mm / 1.46);
+                row-gap: calc(1.8mm / 1.46);
+                grid-template-columns: repeat(5, calc(35mm / 1.46));
+                grid-template-rows: repeat(8, calc(19mm / 1.46));
             }
         }
-
-
 
         .btn {
             background: #2a87f4;
@@ -247,8 +236,8 @@
         const PAGE_MARGIN_LEFT_MM = 5;   // Lề trái của toàn bộ khối tem (mm)
         const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
         const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
-        const TEM_WIDTH_MM = 36.5;           // Rộng mỗi tem (mm)
-        const TEM_HEIGHT_MM = 18.5;          // Cao mỗi tem (mm)
+        const TEM_WIDTH_MM = 37;           // Rộng mỗi tem (mm)
+        const TEM_HEIGHT_MM = 19;          // Cao mỗi tem (mm)
         // ==== KẾT THÚC CẤU HÌNH ====
 
         // State
@@ -450,18 +439,16 @@
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
             let html = `<div class="print-preview" style="
-    padding-top: ${PAGE_MARGIN_TOP_MM}mm;
-    padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
-">
-<div class="tem-grid" style="
-    display: grid;
-    grid-template-columns: repeat(5, 36.5mm);
-    grid-template-rows: repeat(8, 18.5mm);
-    column-gap: 2mm;
-    row-gap: 1.5mm;
-">
-`;
-
+        padding-top: ${PAGE_MARGIN_TOP_MM}mm;
+        padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
+    ">
+    <div class="tem-grid" style="
+        display: grid;
+        grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
+        grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
+        column-gap: 5mm;
+        row-gap: 1.8mm;
+    ">`;
 
             // Blank cho trang đầu
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
