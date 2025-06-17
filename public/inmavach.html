@@ -172,6 +172,7 @@
                 </label>
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
+                <button class="btn" onclick="printAllPages()">In tất cả</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
 
 
@@ -238,7 +239,16 @@
                         }
                     }
                     // Nếu là paste thì không chặn gì cả!
+                },
+                afterOnCellDblClick: function (row, col, e) {
+                    const data = hot.getSourceData();
+                    if (confirm("Bạn có chắc chắn muốn xóa dòng này?")) {
+                        data.splice(row, 1);
+                        data.forEach((r, idx) => r[0] = idx + 1); // cập nhật lại STT
+                        hot.loadData(data);
+                    }
                 }
+
             });
         });
 
@@ -573,6 +583,30 @@
             }
             window.print();
         }
+
+
+        window.printAllPages = function () {
+            syncHandsontableToSelected();
+            const loaiTem = document.getElementById('loaiTem').value;
+            if (!loaiTem) {
+                if (confirm("Bạn muốn in tem Quần áo hay Giày dép?")) {
+                    // Tuỳ chọn nhanh có thể bổ sung 2 nút riêng ở đây nếu muốn
+                }
+                return;
+            }
+
+            let page = 1;
+            function printNext() {
+                if (page > totalPages) return;
+                renderPreview(page);
+                setTimeout(() => {
+                    window.print();
+                    page++;
+                    printNext();
+                }, 1000); // đợi 1 giây để render xong mới in
+            }
+            printNext();
+        };
 
 
 
