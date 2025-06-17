@@ -452,11 +452,8 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
-            let html = `<div class="print-preview" style="
-        padding-top: ${PAGE_MARGIN_TOP_MM}mm;
-        padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
-    ">
-    <div class="tem-grid" style="
+            let html = `<div style="padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
+            <div class="tem-grid" style="
         display: grid;
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
@@ -464,13 +461,13 @@
         row-gap: 1.8mm;
     ">`;
 
-            // Blank cho trang đầu
-            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-            for (let i = 0; i < maxTems; i++) {
+                // Blank cho trang đầu
+                for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
+                for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
-<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
+                <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
     width:${TEM_WIDTH_MM}mm;
     height:${TEM_HEIGHT_MM}mm;
     box-sizing:border-box;
@@ -481,11 +478,11 @@
     justify-content: center;
     padding: 0mm 0mm 0mm 1mm;
 ">
-    <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
-        ${infoChung}
-    </div>
-   <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
-  <div style="
+                    <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
+                        ${infoChung}
+                    </div>
+                    <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
+                        <div style="
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -493,18 +490,18 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;">
-    <div style="font-size:8pt;line-height:1; margin-top:2px;">${t.masp}</div>
-    <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
-  </div>
-  <div style="width:18px; height:18px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
-    <canvas class="qr" width="18" height="18"></canvas>
-  </div>
-</div>
+                            <div style="font-size:8pt;line-height:1; margin-top:2px;">${t.masp}</div>
+                            <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
+                        </div>
+                        <div style="width:18px; height:18px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
+                            <canvas class="qr" width="18" height="18"></canvas>
+                        </div>
+                    </div>
 
-</div>
-`;
+                </div>
+                `;
             }
-            html += `</div></div>`;
+                html += `</div></div > `;
             document.getElementById("printContainer").innerHTML = html;
 
             // Sinh QR code cho từng tem
@@ -519,7 +516,7 @@
                     level: 'M'
                 });
             });
-            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+            document.getElementById("pageInfo").textContent = `Trang ${ currentPage } / ${totalPages}`;
         };
 
 
