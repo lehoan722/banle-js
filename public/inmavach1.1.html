@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
+<script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
 
 <head>
     <meta charset="UTF-8">
@@ -137,22 +139,7 @@
         <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
         <div class="right">
             <b>Danh sách tem in</b>
-            <table class="selected-table" id="selectedTable">
-                <thead>
-                    <tr>
-                        <th>STT</th>
-                        <th>Mã hàng</th>
-                        <th>Tên hàng</th>
-                        <th>SL Tem in</th>
-                        <th>ĐVT</th>
-                        <th>SL</th>
-                        <th>Giá lẻ</th>
-                        <th>In</th>
-                        <th>Giá nhập</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <div id="hot" style="margin-bottom:12px"></div>
 
             <div class="print-options">
                 <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
@@ -183,8 +170,59 @@
     <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
     <!-- SheetJS for export Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
     <script type="module">
         import { supabase } from './scripts/supabaseClient.js'; // Sửa đúng đường dẫn nếu cần
+
+        // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
+        let hot;
+        const colHeaders = [
+            "STT", "Mã hàng", "Tên hàng", "Số lượng tem in",
+            "ĐVT", "Size", "Giá lẻ", "In", "Giá nhập"
+        ];
+        const columns = [
+            { data: 0, type: 'numeric' },       // STT
+            { data: 1, type: 'text' },   // Mã hàng
+            { data: 2, type: 'text' },   // Tên hàng
+            { data: 3, type: 'numeric' },      // Số lượng tem in
+            { data: 4, type: 'text' },   // ĐVT
+            { data: 5, type: 'text' },         // Size
+            { data: 6, type: 'numeric' },      // Giá lẻ
+            { data: 7, type: 'checkbox' },     // In
+            { data: 8, type: 'numeric' }       // Giá nhập
+        ];
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const container = document.getElementById('hot');
+            hot = new Handsontable(container, {
+                data: [],
+                colHeaders: colHeaders,
+                columns: columns,
+                rowHeaders: true,
+                minSpareRows: 1,
+                licenseKey: 'non-commercial-and-evaluation',
+                contextMenu: true,
+                copyPaste: true,
+                manualColumnResize: true,
+                manualRowResize: true,
+                stretchH: 'all',
+                afterChange: syncHandsontableToSelected,
+                beforeChange: function (changes, source) {  //Thêm event beforeChange để chặn chỉnh sửa thủ công các cột "chỉ đọc"
+                    if (source === 'edit') {
+                        // Không cho chỉnh sửa trực tiếp các cột mã hàng, tên hàng, dvt, giá lẻ, giá nhập
+                        const readOnlyColumns = [1, 2, 4, 6, 8];
+                        for (let i = changes.length - 1; i >= 0; i--) {
+                            if (readOnlyColumns.includes(changes[i][1])) {
+                                changes.splice(i, 1); // Hủy thay đổi trên cột chỉ đọc nếu là thao tác nhập tay
+                            }
+                        }
+                    }
+                    // Nếu là paste thì không chặn gì cả!
+                }
+            });
+        });
+
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
         const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
@@ -203,7 +241,7 @@
         // Elements
         const searchInput = document.getElementById('search');
         const productListDiv = document.getElementById('productList');
-        const selectedTableBody = document.querySelector('#selectedTable tbody');
+
         const previewArea = document.getElementById('previewArea');
         const fromRowInput = document.getElementById('fromRow');
         const fromColInput = document.getElementById('fromCol');
@@ -250,15 +288,55 @@
             });
         }
 
-        // Chọn sản phẩm
-        window.selectProduct = function (masp) {
+        function selectProduct(masp) {
+            if (!hot) return;
             const p = products.find(x => x.masp === masp);
             if (!p) return;
-            if (!selected.find(x => x.masp === masp)) {
-                selected.push({ ...p, sltem: 1, sl: 1, tick: true });
-                renderSelectedTable();
-            }
-        };
+            let data = hot.getSourceData();
+            // Loại dòng trắng cuối bảng (dòng chỉ toàn rỗng/null)
+            data = data.filter(row => Array.isArray(row)
+                ? row.some(cell => cell !== null && cell !== "")
+                : Object.values(row).some(cell => cell !== null && cell !== "")
+            );
+
+            // Kiểm tra mã đã có chưa
+            //if (data.some(row => row[1] === p.masp)) return; //Bỏ kiểm tra trùng mã sản phẩm khi thêm từ danh sách
+            // Thêm sản phẩm mới
+            data.push([
+                data.length + 1,
+                p.masp,
+                p.tensp,
+                1,
+                p.dvt || "",
+                "",
+                p.giale,
+                true,
+                p.gianhap
+            ]);
+            // Cập nhật lại STT liên tục
+            data.forEach((row, idx) => row[0] = idx + 1);
+            hot.loadData(data);
+        }
+
+
+
+
+        function syncHandsontableToSelected() {
+            if (!hot) return;
+            const data = hot.getData().filter(row => row[1] && row[2]);
+            selected = data.map(row => ({
+                stt: row[0],
+                masp: row[1],
+                tensp: row[2],
+                sltem: row[3],
+                dvt: row[4],
+                size: row[5],
+                giale: row[6],
+                tick: !!row[7],
+                gianhap: row[8]
+            }));
+        }
+
 
         // Render lưới chọn
         function renderSelectedTable() {
@@ -306,6 +384,7 @@
         let temsAll = [];
 
         window.renderPreview = function (page = 1) {
+            syncHandsontableToSelected();
             // Kiểm tra chọn loại tem
             const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
             if (!loaiTem) {
@@ -446,9 +525,10 @@
                 row.sltem,
                 row.dvt || "",
                 row.sl,
-                formatGia(row.giale),
-                row.tick ? "x" : "",
-                formatGia(row.gianhap)
+                // Chỉ để giá trị số, không format dấu chấm
+                Number(row.giale) || 0,
+                row.tick ? true : false,
+                Number(row.gianhap) || 0
             ]);
             const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
             const wb = XLSX.utils.book_new();
