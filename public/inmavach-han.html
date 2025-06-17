@@ -95,20 +95,20 @@
                 visibility: hidden;
             }
 
-            .print-preview,
-            .print-preview * {
+            #printContainer,
+            #printContainer * {
                 visibility: visible;
             }
 
-            .print-preview {
+            #printContainer {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 210mm;
                 height: 297mm;
                 background: white;
-                padding: 0;
-                margin: 0;
+                margin: 0 !important;
+                padding: 0 !important;
                 transform: scale(1);
                 transform-origin: top left;
             }
@@ -119,12 +119,13 @@
                 padding: 0 !important;
             }
 
-            .print-preview * {
+            #printContainer * {
                 box-sizing: border-box;
                 margin: 0 !important;
                 padding: 0 !important;
             }
         }
+
 
         .btn {
             background: #2a87f4;
@@ -174,7 +175,10 @@
 
 
             </div>
-            <div class="preview-area" id="previewArea"></div>
+            <div class="preview-area">
+                <div id="printContainer"></div>
+            </div>
+
             <div style="margin: 8px 0;">
                 <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
                 <span id="pageInfo"></span>
@@ -501,7 +505,7 @@
 `;
             }
             html += `</div></div>`;
-            previewArea.innerHTML = html;
+            document.getElementById("printContainer").innerHTML = html;
 
             // Sinh QR code cho từng tem
             document.querySelectorAll('.tem .qr').forEach((el, idx) => {
