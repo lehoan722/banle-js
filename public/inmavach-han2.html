@@ -89,12 +89,8 @@
             background: #fafafa;
         }
 
+        /* In preview tem */
         @media print {
-            @page {
-                size: 201mm 168mm;
-                margin: 0;
-            }
-
             body * {
                 visibility: hidden;
             }
@@ -106,15 +102,30 @@
 
             .print-preview {
                 position: absolute;
-                top: 0;
                 left: 0;
-                width: 201mm;
-                height: 168mm;
+                top: 0;
+                width: 210mm;
+                height: 297mm;
+                background: white;
                 padding: 0;
                 margin: 0;
-                box-sizing: border-box;
-                background: white;
+                transform: scale(1.46);
+                transform-origin: top left;
             }
+
+            body,
+            html {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .print-preview * {
+                box-sizing: border-box;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+
         }
 
         .btn {
@@ -130,17 +141,9 @@
         .btn:hover {
             background: #1360b2;
         }
-
-        /* Kích thước và lưới tem in theo tỉ lệ chuẩn giấy TOMY 108 */
-        .tem-grid {
-            column-gap: calc(5mm / 1.46);
-            row-gap: calc(1.8mm / 1.46);
-            display: grid;
-            grid-template-columns: repeat(5, calc(35mm / 1.46));
-            grid-template-rows: repeat(8, calc(19mm / 1.46));
-        }
     </style>
 </head>
+
 <body>
     <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
     <div class="container">
