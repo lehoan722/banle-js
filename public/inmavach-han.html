@@ -104,11 +104,26 @@
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 146,226415vw;
-                width: 146,226415vw;
+                width: 210mm;
+                height: 297mm;
                 background: white;
+                padding: 0;
+                margin: 0;
+                transform: scale(1);
+                transform-origin: top left;
             }
-            
+
+            body,
+            html {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .print-preview * {
+                box-sizing: border-box;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
         }
 
         .btn {
