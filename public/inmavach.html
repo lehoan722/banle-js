@@ -171,7 +171,7 @@
                     </select>
                 </label>
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
-                <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
+                
                 <button class="btn" onclick="printAllPages()">In tất cả</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
 
@@ -578,19 +578,7 @@
             }
             renderPreview();
         }
-        window.checkLoaiTemAndPrint = function () {
-            const loaiTem = document.getElementById('loaiTem').value;
-            if (!loaiTem) {
-                let html = `
-      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
-      <button onclick="chonLoaiTem('quanao')" style="margin-right:10px">In tem Quần áo</button>
-      <button onclick="chonLoaiTem('giaydep')">In tem Giày dép</button>
-    `;
-                showCustomPopup(html);
-                return;
-            }
-            window.print();
-        }
+       
 
         window.chonLoaiTem = function (loai) {
             document.getElementById('loaiTem').value = loai;
