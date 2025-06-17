@@ -83,11 +83,12 @@
         }
 
         .preview-area {
-            border: 1px solid #bbb;
-            margin-top: 16px;
-            padding: 8px;
-            background: #fafafa;
+            border: none;
+            margin: 0;
+            padding: 0;
+            background: none;
         }
+
 
         /* In preview tem */
         @media print {
@@ -461,9 +462,9 @@
         row-gap: 1.8mm;
     ">`;
 
-                // Blank cho trang đầu
-                for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-                for (let i = 0; i < maxTems; i++) {
+            // Blank cho trang đầu
+            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
+            for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
@@ -501,7 +502,7 @@
                 </div>
                 `;
             }
-                html += `</div></div > `;
+            html += `</div></div > `;
             document.getElementById("printContainer").innerHTML = html;
 
             // Sinh QR code cho từng tem
@@ -516,7 +517,7 @@
                     level: 'M'
                 });
             });
-            document.getElementById("pageInfo").textContent = `Trang ${ currentPage } / ${totalPages}`;
+            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
         };
 
 
