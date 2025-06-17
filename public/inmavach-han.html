@@ -453,14 +453,17 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
-            let html = `<div style="padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
-            <div class="tem-grid" style="
-        display: grid;
-        grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
-        grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
-        column-gap: 5mm;
-        row-gap: 1.8mm;
-    ">`;
+            let html = `<div id="printPage" style="width: 210mm; height: 297mm; overflow: hidden; padding-top: ${PAGE_MARGIN_TOP_MM}mm; padding-left: ${PAGE_MARGIN_LEFT_MM}mm;">
+  <div class="tem-grid" style="
+    width: calc(210mm - ${PAGE_MARGIN_LEFT_MM}mm);
+    height: auto;
+    display: grid;
+    grid-template-columns: ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm ${TEM_WIDTH_MM}mm;
+    grid-template-rows: repeat(8, ${TEM_HEIGHT_MM}mm);
+    column-gap: 5mm;
+    row-gap: 1.8mm;
+">`;
+
 
             // Blank cho trang đầu
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
