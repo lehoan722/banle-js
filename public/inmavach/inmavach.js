@@ -50,5 +50,5 @@ window.exportExcel = function () {
     XLSX.writeFile(wb, "tem-ma-vach.xlsx");
 };
 
-<script type="module" src="./main.js"></script>
+
 
