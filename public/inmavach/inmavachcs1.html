@@ -1,31 +1,103 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>In Tem QR - Giấy TOMY 108</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
   <script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script type="module" src="./scripts/supabaseClient.js"></script>
+  <script type="module" src="./inmavach/inmavach-main.js"></script>
+  <script type="module" src="./inmavach/inmavach-print.js"></script>
+
   <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; }
-    .container { display: flex; gap: 12px; margin: 16px; }
-    .left, .right { border: 1px solid #ccc; border-radius: 5px; padding: 10px; }
-    .left { width: 270px; }
-    .right { flex: 1; }
-    .search-box input { width: 90%; padding: 4px; }
-    .product-list { height: 340px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #eee; }
-    .product-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .product-list tr { cursor: pointer; }
-    .product-list tr:hover { background: #eef; }
-    .selected-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-    .selected-table th, .selected-table td { border: 1px solid #bbb; padding: 3px 5px; text-align: center; }
-    .selected-table th { background: #f5f5f5; }
-    .print-options { margin: 10px 0 12px 0; }
-    .preview-area { border: 1px solid #bbb; margin-top: 16px; padding: 8px; background: #fafafa; }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+    }
+
+    .container {
+      display: flex;
+      gap: 12px;
+      margin: 16px;
+    }
+
+    .left, .right {
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 10px;
+    }
+
+    .left {
+      width: 270px;
+    }
+
+    .right {
+      flex: 1;
+    }
+
+    .search-box input {
+      width: 90%;
+      padding: 4px;
+    }
+
+    .product-list {
+      height: 340px;
+      overflow-y: auto;
+      margin-top: 10px;
+      border-top: 1px solid #eee;
+    }
+
+    .product-list table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .product-list tr {
+      cursor: pointer;
+    }
+
+    .product-list tr:hover {
+      background: #eef;
+    }
+
+    .btn {
+      background: #2a87f4;
+      color: white;
+      border: none;
+      padding: 5px 12px;
+      margin: 0 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #1360b2;
+    }
+
+    .print-options {
+      margin: 10px 0 12px 0;
+    }
+
+    .preview-area {
+      border: 1px solid #bbb;
+      margin-top: 16px;
+      padding: 8px;
+      background: #fafafa;
+    }
+
     @media print {
-      body * { visibility: hidden; }
-      .print-preview, .print-preview * { visibility: visible; }
+      body * {
+        visibility: hidden;
+      }
+
+      .print-preview, .print-preview * {
+        visibility: visible;
+      }
+
       .print-preview {
         position: absolute;
         left: 0;
@@ -38,16 +110,21 @@
         transform: scale(1.46222);
         transform-origin: top left;
       }
-      body, html { margin: 0 !important; padding: 0 !important; }
-      .print-preview * { box-sizing: border-box; margin: 0 !important; padding: 0 !important; }
+
+      body, html {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .print-preview * {
+        box-sizing: border-box;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
     }
-    .btn {
-      background: #2a87f4; color: white; border: none;
-      padding: 5px 12px; margin: 0 6px; border-radius: 4px; cursor: pointer;
-    }
-    .btn:hover { background: #1360b2; }
   </style>
 </head>
+
 <body>
   <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
   <div class="container">
@@ -58,49 +135,35 @@
       </div>
       <div class="product-list" id="productList"></div>
     </div>
+
     <div class="right">
       <b>Danh sách tem in</b>
       <div id="hot" style="margin-bottom:12px"></div>
+
       <div class="print-options">
         <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
         <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
         <label>Loại tem:
           <select id="loaiTem">
-            <option value="">- Chọn loại tem -</option>
+            <option value="">– Chọn loại tem –</option>
             <option value="giaydep">Tem giày dép</option>
             <option value="quanao">Tem quần áo</option>
           </select>
         </label>
-        <button class="btn" id="btnPreview">Xem in</button>
-        <button class="btn" id="btnPrint">In</button>
-        <button class="btn" id="btnPrintAll">In tất cả</button>
-        <button class="btn" id="btnExportExcel">Xuất Excel</button>
+        <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
+        <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
+        <button class="btn" onclick="printAllPages()">In tất cả</button>
+        <button class="btn" onclick="exportExcel()">Xuất Excel</button>
       </div>
+
       <div class="preview-area" id="previewArea"></div>
       <div style="margin: 8px 0;">
-        <button class="btn" id="btnPrevPage">&#8592; Trang trước</button>
+        <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
         <span id="pageInfo"></span>
-        <button class="btn" id="btnNextPage">Trang sau &#8594;</button>
+        <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
       </div>
     </div>
   </div>
-
-  <!-- Gọi tất cả các module -->
-  <script type="module">
-    import { initGrid, getSelectedRows } from './grid.js';
-    import { renderPreview, renderPageNavigation, printAllPages, printCurrentPage } from './preview.js';
-    import { setupPrintHandlers } from './print.js';
-
-    window.onload = async () => {
-      await initGrid();
-      renderPageNavigation();
-      setupPrintHandlers();
-    };
-
-    // Gán cho window để nút gọi được
-    window.renderPreview = renderPreview;
-    window.printAllPages = printAllPages;
-    window.printCurrentPage = printCurrentPage;
-  </script>
 </body>
+
 </html>
