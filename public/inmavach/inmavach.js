@@ -1,8 +1,5 @@
-// File: public/inmavach/inmavach.js
-
+import { initGrid, getSelectedRows, syncHandsontableToSelected, setDataToGrid } from './grid.js';
 import { loadData } from './data.js';
-import { syncHandsontableToSelected } from './grid.js';
-
 import { renderPreview } from './preview.js';
 import { printAllPages } from './print.js';
 import { formatGia } from './utils.js';
@@ -11,19 +8,15 @@ window.selected = [];
 
 window.onload = async () => {
     initGrid();
-    await loadData();
+    const data = await loadData();
+    setDataToGrid(data);
+    window.selected = syncHandsontableToSelected();
+
     renderPreview();
 
-    // Tải dữ liệu mẫu (hoặc từ API)
-    const data = await loadData();
-    window.selected = data;
-    syncGridToSelected();
-
-    // Gán sự kiện
     document.getElementById('btnRender').onclick = () => renderPreview();
     document.getElementById('btnPrintAll').onclick = () => printAllPages();
 
-    // Phím tắt
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             document.getElementById('previewArea').innerHTML = '';
@@ -31,7 +24,6 @@ window.onload = async () => {
     });
 };
 
-// Xuất Excel
 window.exportExcel = function () {
     const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
     const data = getSelectedRows().map((row, idx) => [
@@ -51,6 +43,3 @@ window.exportExcel = function () {
     XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
     XLSX.writeFile(wb, "tem-ma-vach.xlsx");
 };
-
-
-
