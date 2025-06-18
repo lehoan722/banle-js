@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient.js';
 import { resetBangKetQua, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
-
+import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 import { guiHoaDonViettel } from './viettelInvoice.js';
 
 
@@ -187,7 +187,7 @@ async function lamMoiSauKhiLuu() {
   document.getElementById("manv").value = manvVal;
   document.getElementById("tennv").value = tennvVal;
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-  await window.capNhatSoHoaDonTuDong();
+  await capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
 }
 
