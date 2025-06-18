@@ -1,1 +1,69 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>IN TEM MÃ VẠCH – CƠ SỞ 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Handsontable -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.0.0/dist/handsontable.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.0.0/dist/handsontable.min.js"></script>
+
+  <!-- QRious -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+  <style>
+    body { font-family: Arial; padding: 10px; }
+    #previewArea .tem {
+      font-size: 6pt;
+      line-height: 1.1;
+      width: 35mm;
+      height: 19mm;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding: 1mm 1mm 0 1mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .tem-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 35mm);
+      grid-template-rows: repeat(8, 19mm);
+      column-gap: 5mm;
+      row-gap: 1.8mm;
+    }
+    .print-preview {
+      padding-top: 5mm;
+      padding-left: 5mm;
+      page-break-after: always;
+    }
+    .page-break {
+      page-break-after: always;
+    }
+    canvas.qr {
+      width: 18px;
+      height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h3>HỆ THỐNG IN TEM QR - GIẤY TOMY 108 - CS1</h3>
+
+  <div style="margin-bottom: 10px;">
+    <label for="fromRow">Từ dòng:</label>
+    <input type="number" id="fromRow" value="1" style="width: 50px;" />
+    <label for="fromCol">Từ cột:</label>
+    <input type="number" id="fromCol" value="1" style="width: 50px;" />
+    <button id="btnXem">Xem in</button>
+    <button id="btnIn">In tất cả</button>
+  </div>
+
+  <div id="hot" style="width:100%; overflow-x:auto;"></div>
+  <div id="previewArea" style="margin-top:20px;"></div>
+
+  <!-- Module scripts -->
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
