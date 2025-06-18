@@ -68,7 +68,7 @@ window.renderPreview = function (page = 1, silent = false) {
   const totalTems = _globalTemsAll.length;
   const firstPageTems = 40 - _globalBlank;
   _totalPages = (totalTems <= firstPageTems) ? 1 : 1 + Math.ceil((totalTems - firstPageTems) / 40);
-  _currentPage = Math.min(page, _totalPages);
+  _currentPage = silent ? page : Math.min(page, _totalPages);
 
   const temList = _globalTemsAll;
   let startIdx = (_currentPage === 1) ? 0 : (40 - _globalBlank) + (_currentPage - 2) * 40;
