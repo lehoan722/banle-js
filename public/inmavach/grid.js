@@ -3,7 +3,7 @@
 let hot;
 let selected = [];
 
-window.initGrid = function () {
+export function initGrid() {
   const container = document.getElementById('grid');
   hot = new Handsontable(container, {
     data: [],
@@ -26,9 +26,9 @@ window.initGrid = function () {
     manualColumnResize: true,
     licenseKey: 'non-commercial-and-evaluation'
   });
-};
+}
 
-window.syncHandsontableToSelected = function () {
+export function syncHandsontableToSelected() {
   selected = hot.getData()
     .map((row, index) => {
       const rowData = hot.getSourceDataAtRow(index);
@@ -44,8 +44,13 @@ window.syncHandsontableToSelected = function () {
       };
     })
     .filter(r => r.masp);
-};
+  return selected;
+}
 
-window.setDataToGrid = function (data) {
+export function getSelectedRows() {
+  return selected;
+}
+
+export function setDataToGrid(data) {
   hot.loadData(data);
-};
+}
