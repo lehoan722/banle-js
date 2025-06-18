@@ -1,6 +1,6 @@
 // print.js – Xử lý hiển thị và in mã vạch
+import { getSelectedRows, syncHandsontableToSelected } from './grid.js';
 
-import { selected, syncHandsontableToSelected } from './grid.js';
 import { generateQRBase64 } from './qr.js';
 
 export let currentPage = 1;
