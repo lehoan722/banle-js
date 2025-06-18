@@ -8,3 +8,11 @@ import './print.js';
 import './events.js';
 import './popup.js';
 import './inmavach.js';
+
+import './supabaseClient.js';
+
+
+
+import './preview.js';
+import './data.js';
+
