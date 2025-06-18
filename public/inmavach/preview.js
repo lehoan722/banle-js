@@ -1,5 +1,6 @@
 // File: public/inmavach/preview.js
-import { syncGridToSelected, getSelectedRows } from './grid.js';
+import { getSelectedRows, syncHandsontableToSelected } from './grid.js';
+
 import { generateQRBase64 } from './utils.js';
 
 export function renderPreview(page = 1) {
