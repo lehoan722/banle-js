@@ -49,3 +49,6 @@ window.exportExcel = function () {
     XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
     XLSX.writeFile(wb, "tem-ma-vach.xlsx");
 };
+
+<script type="module" src="./main.js"></script>
+
