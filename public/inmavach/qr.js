@@ -1,6 +1,16 @@
 // qr.js - Xử lý sinh mã QR từ mã sản phẩm
 
-import QRious from "https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js";
+
+// Dùng thẳng window.QRious vì QRious không export dạng module
+window.generateQR = function (element, text) {
+    new QRious({
+        element,
+        value: text,
+        size: 25,
+        level: 'M',
+    });
+};
+
 
 // Hàm khởi tạo mã QR cho các phần tử có class 'qr'
 export function generateQRCodesForPage() {
