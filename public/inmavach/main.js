@@ -1,0 +1,10 @@
+// main.js
+import './config.js';
+import './utils.js';
+import './qr.js';
+import './render.js';
+import './grid.js';
+import './print.js';
+import './events.js';
+import './popup.js';
+import './inmavach.js';
