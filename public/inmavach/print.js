@@ -262,3 +262,21 @@ window.prevPage = function () {
 window.nextPage = function () {
   if (_currentPage < _totalPages) renderPreview(_currentPage + 1);
 };
+
+window.checkLoaiTemAndRender = function () {
+  const loaiTem = document.getElementById('loaiTem').value;
+  if (!loaiTem) {
+    alert("Vui lòng chọn loại tem cần in!");
+    return;
+  }
+  renderPreview();
+};
+
+
+
+window.printAllPages = printAllPages;
+window.exportExcel = exportExcel;
+window.prevPage = prevPage;
+window.nextPage = nextPage;
+window.chonLoaiTem = chonLoaiTem;
+window.chonLoaiTemPrintAll = chonLoaiTemPrintAll;
