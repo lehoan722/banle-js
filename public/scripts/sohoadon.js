@@ -1,5 +1,6 @@
-// sohoadon.js - cập nhật số hóa đơn tự động theo loại chứng từ và giao diện
+// sohoadon.js - Gộp đầy đủ: hỗ trợ cả hóa đơn chính và hóa đơn tạm
 
+// Hàm sinh số hóa đơn cho các loại chứng từ chính
 window.capNhatSoHoaDonTuDong = async function () {
   try {
     if (!diadiem) {
@@ -25,11 +26,12 @@ window.capNhatSoHoaDonTuDong = async function () {
     } else if (pathname.includes("ccn2v1")) {
       loai = "ccn2v1";
     } else if (pathname.includes("kiemkho")) {
-      // Tùy theo logic tăng hay giảm kho (cần xử lý riêng nếu phân biệt giao diện)
-      const isTang = document.title.includes("Tăng"); // VD: tiêu đề trang chứa từ "Tăng"
+      const isTang = document.title.includes("Tăng");
       loai = isTang
         ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
         : (diadiem === "cs1" ? "giamkhocs1" : "giamkhocs2");
+    } else if (pathname.includes("tam")) {
+      loai = diadiem === "cs1" ? "tamcs1" : "tamcs2";
     } else {
       alert("Không nhận diện được loại chứng từ từ giao diện.");
       return;
@@ -50,7 +52,6 @@ window.capNhatSoHoaDonTuDong = async function () {
     const sohd = `${loai}_${String(sott).padStart(5, "0")}`;
     document.getElementById("sohd").value = sohd;
 
-    // Ghi ngược vào bảng sochungtu
     await supabase
       .from("sochungtu")
       .upsert([{ loai, sott }], { onConflict: "loai" });
@@ -58,5 +59,39 @@ window.capNhatSoHoaDonTuDong = async function () {
   } catch (err) {
     console.error("Lỗi khi cập nhật số chứng từ:", err);
     alert("Không thể tạo số chứng từ tự động.");
+  }
+};
+
+// Hàm sinh số hóa đơn tạm (mã theo ngày)
+window.phatSinhSoHDTMoi = async function () {
+  try {
+    const today = new Date();
+    const yy = today.getFullYear().toString().slice(-2);
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const loai = `blt${yy}${mm}`;
+
+    const { data, error } = await supabase
+      .from("sochungtu")
+      .select("sott")
+      .eq("loai", loai)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    let sott = data?.sott || 0;
+    sott++;
+    const sohd = `${loai}_${String(sott).padStart(3, "0")}`;
+
+    await supabase
+      .from("sochungtu")
+      .upsert([{ loai, sott }], { onConflict: "loai" });
+
+    return sohd;
+  } catch (err) {
+    console.error("Lỗi khi tạo số hóa đơn tạm:", err);
+    alert("Không thể tạo số hóa đơn tạm.");
+    return null;
   }
 };
