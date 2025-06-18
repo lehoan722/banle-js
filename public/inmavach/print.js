@@ -62,19 +62,22 @@ window.renderPreview = function (page = 1, silent = false) {
   const totalTems = _globalTemsAll.length;
   const firstPageTems = 40 - _globalBlank;
   _totalPages = (totalTems <= firstPageTems) ? 1 : 1 + Math.ceil((totalTems - firstPageTems) / 40);
-  _currentPage = silent ? page : Math.min(page, _totalPages);
+  const pageIndex = page;
+  if (!silent) _currentPage = Math.min(pageIndex, _totalPages);
 
   const temList = _globalTemsAll;
-  let startIdx = (_currentPage === 1) ? 0 : (40 - _globalBlank) + (_currentPage - 2) * 40;
-  let endIdx = startIdx + ((_currentPage === 1) ? (40 - _globalBlank) : 40);
+  let startIdx = (pageIndex === 1) ? 0 : (40 - _globalBlank) + (pageIndex - 2) * 40;
+  let endIdx = startIdx + ((pageIndex === 1) ? (40 - _globalBlank) : 40);
   let pageTems = temList.slice(startIdx, endIdx);
 
   let html = `<div class="print-preview" style="padding-top:${PAGE_MARGIN_TOP_MM}mm; padding-left:${PAGE_MARGIN_LEFT_MM}mm;">
     <div class="tem-grid" style="display: grid; grid-template-columns: 35mm 35mm 35mm 35mm 35mm; grid-template-rows: repeat(8, 19mm); column-gap: 5mm; row-gap: 1.9mm;">`;
 
-  const maxTems = (_currentPage === 1) ? (40 - _globalBlank) : 40;
-  for (let i = 0; i < (_currentPage === 1 ? _globalBlank : 0); i++) {
-    html += `<div class="tem tem-blank"></div>`;
+  const maxTems = (pageIndex === 1) ? (40 - _globalBlank) : 40;
+  if (pageIndex === 1) {
+    for (let i = 0; i < _globalBlank; i++) {
+      html += `<div class="tem tem-blank"></div>`;
+    }
   }
 
   for (let i = 0; i < maxTems; i++) {
@@ -102,7 +105,7 @@ window.renderPreview = function (page = 1, silent = false) {
 
   if (!silent) {
     previewArea.innerHTML = html;
-    document.getElementById("pageInfo").textContent = `Trang ${_currentPage} / ${_totalPages}`;
+    document.getElementById("pageInfo").textContent = `Trang ${pageIndex} / ${_totalPages}`;
   }
 
   document.querySelectorAll('.tem .qr').forEach((el) => {
@@ -118,7 +121,6 @@ window.renderPreview = function (page = 1, silent = false) {
   });
 };
 
-// ✅ In tất cả (đã sửa)
 window.printAllPages = async function () {
   syncHandsontableToSelected();
   const selected = getSelectedRows();
@@ -152,7 +154,7 @@ window.printAllPages = async function () {
   let fullHtml = '';
   for (let p = 1; p <= totalPagesCalc; p++) {
     renderPreview(p, true);
-    await new Promise(resolve => setTimeout(resolve, 20)); // đảm bảo DOM cập nhật
+    await new Promise(resolve => setTimeout(resolve, 20)); // chờ DOM cập nhật xong
     fullHtml += document.querySelector(".print-preview")?.outerHTML || '';
   }
 
@@ -181,8 +183,7 @@ window.printAllPages = async function () {
   setTimeout(() => printWindow.print(), 500);
 };
 
-// Các hàm gắn global để HTML gọi được
-window.exportExcel = function () { /* giữ nguyên như cũ */ };
+// Các hàm hỗ trợ
 window.prevPage = () => { if (_currentPage > 1) renderPreview(_currentPage - 1); };
 window.nextPage = () => { if (_currentPage < _totalPages) renderPreview(_currentPage + 1); };
 window.checkLoaiTemAndRender = () => {
@@ -211,7 +212,7 @@ window.chonLoaiTemPrintAll = (loai) => {
   window.printAllPages();
 };
 
-// Popup xử lý
+// Popup đơn giản
 function showCustomPopup(html) {
   const div = document.createElement("div");
   div.id = "popup";
