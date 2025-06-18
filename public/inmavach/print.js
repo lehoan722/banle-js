@@ -6,7 +6,7 @@ import {
   globalBlank,
   currentPage,
   totalPages
-} from './inmavach-main.js';
+} from './main.js';
 
 // Các biến cấu hình in tem
 const PAGE_MARGIN_TOP_MM = 3.5;
