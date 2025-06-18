@@ -1,7 +1,8 @@
 // File: public/inmavach/inmavach.js
 
 import { loadData } from './data.js';
-import { initGrid, getSelectedRows, syncGridToSelected } from './grid.js';
+import { syncHandsontableToSelected } from './grid.js';
+
 import { renderPreview } from './preview.js';
 import { printAllPages } from './print.js';
 import { formatGia } from './utils.js';
