@@ -1,12 +1,7 @@
-// sohoadon.js - phiên bản chuẩn hóa cho tất cả giao diện, giữ tương thích cũ
-
 import { supabase } from './supabaseClient.js';
 
-/**
- * Sinh số hóa đơn từ bảng sochungtu (dùng cho hóa đơn gốc: hoadon_banle và các giao diện tương tự)
- * Ghi kết quả vào input#sohd
- */
-window.capNhatSoHoaDonTuDong = async function () {
+// Hàm phát sinh số chứng từ động
+export async function capNhatSoHoaDonTuDong() {
   try {
     const diadiem = document.getElementById("diadiem")?.value || "cs1";
     const pathname = window.location.pathname;
@@ -60,13 +55,11 @@ window.capNhatSoHoaDonTuDong = async function () {
     console.error("Lỗi phát sinh số hóa đơn:", err);
     alert("Không thể phát sinh số hóa đơn.");
   }
-};
+}
+window.capNhatSoHoaDonTuDong = capNhatSoHoaDonTuDong;
 
-/**
- * Sinh số hóa đơn tạm (dùng cho bảng hoadon_banleT)
- * Trả về chuỗi số hóa đơn, ví dụ: blt2506_001
- */
-window.phatSinhSoHDTMoi = async function () {
+// Hàm phát sinh số hóa đơn tạm
+export async function phatSinhSoHDTMoi() {
   try {
     const today = new Date();
     const yy = today.getFullYear().toString().slice(-2);
@@ -99,4 +92,5 @@ window.phatSinhSoHDTMoi = async function () {
     alert("Không thể phát sinh số hóa đơn tạm.");
     return null;
   }
-};
+}
+window.phatSinhSoHDTMoi = phatSinhSoHDTMoi;
