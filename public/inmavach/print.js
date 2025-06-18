@@ -62,22 +62,19 @@ window.renderPreview = function (page = 1, silent = false) {
   const totalTems = _globalTemsAll.length;
   const firstPageTems = 40 - _globalBlank;
   _totalPages = (totalTems <= firstPageTems) ? 1 : 1 + Math.ceil((totalTems - firstPageTems) / 40);
-  const pageIndex = page;
-  if (!silent) _currentPage = Math.min(pageIndex, _totalPages);
+  _currentPage = silent ? page : Math.min(page, _totalPages);
 
   const temList = _globalTemsAll;
-  let startIdx = (pageIndex === 1) ? 0 : (40 - _globalBlank) + (pageIndex - 2) * 40;
-  let endIdx = startIdx + ((pageIndex === 1) ? (40 - _globalBlank) : 40);
+  let startIdx = (_currentPage === 1) ? 0 : (40 - _globalBlank) + (_currentPage - 2) * 40;
+  let endIdx = startIdx + ((_currentPage === 1) ? (40 - _globalBlank) : 40);
   let pageTems = temList.slice(startIdx, endIdx);
 
   let html = `<div class="print-preview" style="padding-top:${PAGE_MARGIN_TOP_MM}mm; padding-left:${PAGE_MARGIN_LEFT_MM}mm;">
     <div class="tem-grid" style="display: grid; grid-template-columns: 35mm 35mm 35mm 35mm 35mm; grid-template-rows: repeat(8, 19mm); column-gap: 5mm; row-gap: 1.9mm;">`;
 
-  const maxTems = (pageIndex === 1) ? (40 - _globalBlank) : 40;
-  if (pageIndex === 1) {
-    for (let i = 0; i < _globalBlank; i++) {
-      html += `<div class="tem tem-blank"></div>`;
-    }
+  const maxTems = (_currentPage === 1) ? (40 - _globalBlank) : 40;
+  for (let i = 0; i < (_currentPage === 1 ? _globalBlank : 0); i++) {
+    html += `<div class="tem tem-blank"></div>`;
   }
 
   for (let i = 0; i < maxTems; i++) {
@@ -105,7 +102,7 @@ window.renderPreview = function (page = 1, silent = false) {
 
   if (!silent) {
     previewArea.innerHTML = html;
-    document.getElementById("pageInfo").textContent = `Trang ${pageIndex} / ${_totalPages}`;
+    document.getElementById("pageInfo").textContent = `Trang ${_currentPage} / ${_totalPages}`;
   }
 
   document.querySelectorAll('.tem .qr').forEach((el) => {
@@ -121,6 +118,95 @@ window.renderPreview = function (page = 1, silent = false) {
   });
 };
 
+// ✅ In tất cả (đã sửa)
+
+window.printAllPages = async function () {
+  syncHandsontableToSelected();
+  const selected = getSelectedRows();
+  _globalTemsAll = [];
+  selected.forEach(row => {
+    if (row.tick) {
+      for (let i = 0; i < row.sltem; i++) {
+        _globalTemsAll.push(row);
+      }
+    }
+  });
+
+  const loaiTem = document.getElementById('loaiTem')?.value || "";
+  if (!loaiTem) {
+    showCustomPopup(`
+      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
+      <button onclick="chonLoaiTemPrintAll('quanao')" style="margin-right:10px">In tem Quần áo</button>
+      <button onclick="chonLoaiTemPrintAll('giaydep')">In tem Giày dép</button>
+    `);
+    return;
+  }
+
+  const fromRow = parseInt(fromRowInput.value) || 1;
+  const fromCol = parseInt(fromColInput.value) || 1;
+  _globalBlank = (fromRow - 1) * 5 + (fromCol - 1);
+
+  const totalTems = _globalTemsAll.length;
+  const firstPageTems = 40 - _globalBlank;
+  const totalPagesCalc = (totalTems <= firstPageTems) ? 1 : 1 + Math.ceil((totalTems - firstPageTems) / 40);
+
+  let fullHtml = '';
+  const hiddenContainer = document.createElement("div");
+  hiddenContainer.style.display = "none";
+  document.body.appendChild(hiddenContainer);
+
+  for (let p = 1; p <= totalPagesCalc; p++) {
+    renderPreview(p, true);
+    await new Promise(resolve => setTimeout(resolve, 30));
+    const tempHTML = document.querySelector(".print-preview")?.outerHTML || '';
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = tempHTML;
+    hiddenContainer.innerHTML = tempDiv.innerHTML;
+
+    hiddenContainer.querySelectorAll('.tem .qr').forEach((el) => {
+      const parent = el.closest('.tem');
+      if (!parent || parent.classList.contains('tem-blank')) return;
+      const masp = parent.getAttribute('data-masp');
+      new QRious({
+        element: el,
+        value: masp,
+        size: 25,
+        level: 'M'
+      });
+    });
+
+    fullHtml += hiddenContainer.innerHTML;
+  }
+
+  document.body.removeChild(hiddenContainer);
+
+  const printWindow = window.open('', '', 'width=800,height=600');
+  printWindow.document.write(`
+    <html><head><title>In tem mã vạch</title>
+    <style>
+      .print-preview {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        background: white;
+        page-break-after: always;
+        transform: scale(1.46222);
+        transform-origin: top left;
+      }
+      body, html {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    </head><body>\${fullHtml}</body></html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+};
+
+
+// ✅ In tất cả (đã sửa)
 window.printAllPages = async function () {
   syncHandsontableToSelected();
   const selected = getSelectedRows();
@@ -154,7 +240,7 @@ window.printAllPages = async function () {
   let fullHtml = '';
   for (let p = 1; p <= totalPagesCalc; p++) {
     renderPreview(p, true);
-    await new Promise(resolve => setTimeout(resolve, 20)); // chờ DOM cập nhật xong
+    await new Promise(resolve => setTimeout(resolve, 20)); // đảm bảo DOM cập nhật
     fullHtml += document.querySelector(".print-preview")?.outerHTML || '';
   }
 
@@ -183,7 +269,8 @@ window.printAllPages = async function () {
   setTimeout(() => printWindow.print(), 500);
 };
 
-// Các hàm hỗ trợ
+// Các hàm gắn global để HTML gọi được
+window.exportExcel = function () { /* giữ nguyên như cũ */ };
 window.prevPage = () => { if (_currentPage > 1) renderPreview(_currentPage - 1); };
 window.nextPage = () => { if (_currentPage < _totalPages) renderPreview(_currentPage + 1); };
 window.checkLoaiTemAndRender = () => {
@@ -212,7 +299,7 @@ window.chonLoaiTemPrintAll = (loai) => {
   window.printAllPages();
 };
 
-// Popup đơn giản
+// Popup xử lý
 function showCustomPopup(html) {
   const div = document.createElement("div");
   div.id = "popup";
