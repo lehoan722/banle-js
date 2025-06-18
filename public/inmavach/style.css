@@ -1,0 +1,17 @@
+.tem-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 35mm);
+  grid-template-rows: repeat(8, 19mm);
+  column-gap: 5mm;
+  row-gap: 2mm;
+}
+.tem {
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 1mm;
+  font-family: Arial, sans-serif;
+  font-size: 8pt;
+}
+.tem img {
+  margin-top: 2px;
+}
