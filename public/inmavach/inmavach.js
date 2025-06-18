@@ -9,9 +9,10 @@ import { formatGia } from './utils.js';
 
 window.selected = [];
 
-window.onload = async function () {
-    // Khởi tạo bảng dữ liệu
+window.onload = async () => {
     initGrid();
+    await loadData();
+    renderPreview();
 
     // Tải dữ liệu mẫu (hoặc từ API)
     const data = await loadData();
