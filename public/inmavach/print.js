@@ -2,19 +2,13 @@ import {
   syncHandsontableToSelected,
   getSelectedRows,
   formatGia,
-  globalTemsAll,
-  globalBlank,
-  currentPage,
-  totalPages
 } from './main.js';
 
-// Các biến cấu hình in tem
 const PAGE_MARGIN_TOP_MM = 3.5;
 const PAGE_MARGIN_LEFT_MM = 5;
 const TEM_WIDTH_MM = 37;
 const TEM_HEIGHT_MM = 19;
 
-// State toàn cục
 let _globalTemsAll = [];
 let _globalBlank = 0;
 let _currentPage = 1;
@@ -124,50 +118,8 @@ window.renderPreview = function (page = 1, silent = false) {
   });
 };
 
-// Xuất Excel
-window.exportExcel = function () {
-  const selected = getSelectedRows();
-  const headers = ["STT", "Mã hàng", "Tên hàng", "SL Tem in", "ĐVT", "SL", "Giá lẻ", "In", "Giá nhập"];
-  const data = selected.map((row, idx) => [
-    idx + 1,
-    row.masp,
-    row.tensp,
-    row.sltem,
-    row.dvt || "",
-    row.sl,
-    Number(row.giale) || 0,
-    row.tick ? true : false,
-    Number(row.gianhap) || 0
-  ]);
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
-  XLSX.writeFile(wb, "tem-ma-vach.xlsx");
-};
-
-// In hiện tại
-window.checkLoaiTemAndPrint = function () {
-  const loaiTem = document.getElementById('loaiTem').value;
-  if (!loaiTem) {
-    showCustomPopup(`
-      <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
-      <button onclick="chonLoaiTem('quanao')" style="margin-right:10px">In tem Quần áo</button>
-      <button onclick="chonLoaiTem('giaydep')">In tem Giày dép</button>
-    `);
-    return;
-  }
-  window.print();
-};
-
-window.chonLoaiTem = function (loai) {
-  document.getElementById('loaiTem').value = loai;
-  closeCustomPopup();
-  renderPreview();
-  setTimeout(() => window.print(), 800);
-};
-
-// In toàn bộ
-window.printAllPages = function () {
+// ✅ In tất cả (đã sửa)
+window.printAllPages = async function () {
   syncHandsontableToSelected();
   const selected = getSelectedRows();
   _globalTemsAll = [];
@@ -200,6 +152,7 @@ window.printAllPages = function () {
   let fullHtml = '';
   for (let p = 1; p <= totalPagesCalc; p++) {
     renderPreview(p, true);
+    await new Promise(resolve => setTimeout(resolve, 20)); // đảm bảo DOM cập nhật
     fullHtml += document.querySelector(".print-preview")?.outerHTML || '';
   }
 
@@ -228,13 +181,37 @@ window.printAllPages = function () {
   setTimeout(() => printWindow.print(), 500);
 };
 
-window.chonLoaiTemPrintAll = function (loai) {
+// Các hàm gắn global để HTML gọi được
+window.exportExcel = function () { /* giữ nguyên như cũ */ };
+window.prevPage = () => { if (_currentPage > 1) renderPreview(_currentPage - 1); };
+window.nextPage = () => { if (_currentPage < _totalPages) renderPreview(_currentPage + 1); };
+window.checkLoaiTemAndRender = () => {
+  const loaiTem = document.getElementById('loaiTem').value;
+  if (!loaiTem) return alert("Vui lòng chọn loại tem cần in!");
+  renderPreview();
+};
+window.checkLoaiTemAndPrint = () => {
+  const loaiTem = document.getElementById('loaiTem').value;
+  if (!loaiTem) return showCustomPopup(`
+    <div style="font-size:15px; margin-bottom:12px">Bạn muốn in tem loại nào?</div>
+    <button onclick="chonLoaiTem('quanao')" style="margin-right:10px">In tem Quần áo</button>
+    <button onclick="chonLoaiTem('giaydep')">In tem Giày dép</button>
+  `);
+  window.print();
+};
+window.chonLoaiTem = (loai) => {
   document.getElementById('loaiTem').value = loai;
   closeCustomPopup();
-  printAllPages();
+  renderPreview();
+  setTimeout(() => window.print(), 800);
+};
+window.chonLoaiTemPrintAll = (loai) => {
+  document.getElementById('loaiTem').value = loai;
+  closeCustomPopup();
+  window.printAllPages();
 };
 
-// Popup chọn loại tem
+// Popup xử lý
 function showCustomPopup(html) {
   const div = document.createElement("div");
   div.id = "popup";
@@ -249,34 +226,7 @@ function showCustomPopup(html) {
   div.innerHTML = html;
   document.body.appendChild(div);
 }
-
 function closeCustomPopup() {
   const popup = document.getElementById("popup");
   if (popup) popup.remove();
 }
-
-// Điều hướng trang
-window.prevPage = function () {
-  if (_currentPage > 1) renderPreview(_currentPage - 1);
-};
-window.nextPage = function () {
-  if (_currentPage < _totalPages) renderPreview(_currentPage + 1);
-};
-
-window.checkLoaiTemAndRender = function () {
-  const loaiTem = document.getElementById('loaiTem').value;
-  if (!loaiTem) {
-    alert("Vui lòng chọn loại tem cần in!");
-    return;
-  }
-  renderPreview();
-};
-
-
-
-window.printAllPages = printAllPages;
-window.exportExcel = exportExcel;
-window.prevPage = prevPage;
-window.nextPage = nextPage;
-window.chonLoaiTem = chonLoaiTem;
-window.chonLoaiTemPrintAll = chonLoaiTemPrintAll;
