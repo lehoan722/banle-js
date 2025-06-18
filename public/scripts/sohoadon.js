@@ -1,13 +1,14 @@
-// sohoadon.js - Gộp đầy đủ: hỗ trợ cả hóa đơn chính và hóa đơn tạm
+// sohoadon.js - phiên bản chuẩn hóa cho tất cả giao diện, giữ tương thích cũ
 
-// Hàm sinh số hóa đơn cho các loại chứng từ chính
+import { supabase } from './supabaseClient.js';
+
+/**
+ * Sinh số hóa đơn từ bảng sochungtu (dùng cho hóa đơn gốc: hoadon_banle và các giao diện tương tự)
+ * Ghi kết quả vào input#sohd
+ */
 window.capNhatSoHoaDonTuDong = async function () {
   try {
-    if (!diadiem) {
-      alert("Chưa xác định được địa điểm (cs1/cs2)");
-      return;
-    }
-
+    const diadiem = document.getElementById("diadiem")?.value || "cs1";
     const pathname = window.location.pathname;
     let loai = "";
 
@@ -27,11 +28,8 @@ window.capNhatSoHoaDonTuDong = async function () {
       loai = "ccn2v1";
     } else if (pathname.includes("kiemkho")) {
       const isTang = document.title.includes("Tăng");
-      loai = isTang
-        ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
-        : (diadiem === "cs1" ? "giamkhocs1" : "giamkhocs2");
-    } else if (pathname.includes("tam")) {
-      loai = diadiem === "cs1" ? "tamcs1" : "tamcs2";
+      loai = isTang ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
+                   : (diadiem === "cs1" ? "giamkhocs1" : "giamkhocs2");
     } else {
       alert("Không nhận diện được loại chứng từ từ giao diện.");
       return;
@@ -39,30 +37,35 @@ window.capNhatSoHoaDonTuDong = async function () {
 
     const { data, error } = await supabase
       .from("sochungtu")
-      .select("sott")
+      .select("so_hientai")
       .eq("loai", loai)
       .single();
 
-    if (error && error.code !== "PGRST116") {
-      throw error;
+    let soMoi = 1;
+    if (!error && data) {
+      soMoi = data.so_hientai + 1;
+      await supabase
+        .from("sochungtu")
+        .update({ so_hientai: soMoi })
+        .eq("loai", loai);
+    } else {
+      await supabase
+        .from("sochungtu")
+        .insert([{ loai, so_hientai: soMoi }]);
     }
 
-    let sott = data?.sott || 0;
-    sott++;
-    const sohd = `${loai}_${String(sott).padStart(5, "0")}`;
+    const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
     document.getElementById("sohd").value = sohd;
-
-    await supabase
-      .from("sochungtu")
-      .upsert([{ loai, sott }], { onConflict: "loai" });
-
   } catch (err) {
-    console.error("Lỗi khi cập nhật số chứng từ:", err);
-    alert("Không thể tạo số chứng từ tự động.");
+    console.error("Lỗi phát sinh số hóa đơn:", err);
+    alert("Không thể phát sinh số hóa đơn.");
   }
 };
 
-// Hàm sinh số hóa đơn tạm (mã theo ngày)
+/**
+ * Sinh số hóa đơn tạm (dùng cho bảng hoadon_banleT)
+ * Trả về chuỗi số hóa đơn, ví dụ: blt2506_001
+ */
 window.phatSinhSoHDTMoi = async function () {
   try {
     const today = new Date();
@@ -72,26 +75,28 @@ window.phatSinhSoHDTMoi = async function () {
 
     const { data, error } = await supabase
       .from("sochungtu")
-      .select("sott")
+      .select("so_hientai")
       .eq("loai", loai)
       .single();
 
-    if (error && error.code !== "PGRST116") {
-      throw error;
+    let soMoi = 1;
+    if (!error && data) {
+      soMoi = data.so_hientai + 1;
+      await supabase
+        .from("sochungtu")
+        .update({ so_hientai: soMoi })
+        .eq("loai", loai);
+    } else {
+      await supabase
+        .from("sochungtu")
+        .insert([{ loai, so_hientai: soMoi }]);
     }
 
-    let sott = data?.sott || 0;
-    sott++;
-    const sohd = `${loai}_${String(sott).padStart(3, "0")}`;
-
-    await supabase
-      .from("sochungtu")
-      .upsert([{ loai, sott }], { onConflict: "loai" });
-
+    const sohd = `${loai}_${String(soMoi).padStart(3, "0")}`;
     return sohd;
   } catch (err) {
-    console.error("Lỗi khi tạo số hóa đơn tạm:", err);
-    alert("Không thể tạo số hóa đơn tạm.");
+    console.error("Lỗi phát sinh số hóa đơn tạm:", err);
+    alert("Không thể phát sinh số hóa đơn tạm.");
     return null;
   }
 };
