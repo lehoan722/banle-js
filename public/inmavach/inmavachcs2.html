@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>In mã vạch - CS1</title>
+
+  <!-- Handsontable -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+
+  <!-- QRious -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+
+  <!-- Style -->
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
+
+  <div style="margin-bottom: 10px;">
+    <input id="searchInput" type="text" placeholder="Tìm kiếm sản phẩm..." />
+    <button id="btnSearch">Tìm</button>
+  </div>
+
+  <div id="hot" style="margin-bottom: 10px;"></div>
+
+  <div style="margin-top: 10px;">
+    Từ dòng: <input id="fromRow" type="number" value="1" min="1" style="width: 60px;" />
+    Từ cột: <input id="fromCol" type="number" value="1" min="1" style="width: 60px;" />
+    Loại tem:
+    <select id="loaiTem">
+      <option value="">-- Chọn loại tem --</option>
+      <option value="quanao">Tem quần áo</option>
+      <option value="giaydep">Tem giày dép</option>
+    </select>
+    <button id="btnXemIn">Xem in</button>
+    <button id="btnInTatCa">In tất cả</button>
+    <button id="btnXuatExcel">Xuất Excel</button>
+  </div>
+
+  <div id="previewArea" style="margin-top: 10px;"></div>
+
+  <div style="margin-top: 5px;">
+    <button id="prevPage">← Trang trước</button>
+    <span id="pageInfo">Trang 1 / 1</span>
+    <button id="nextPage">Trang sau →</button>
+  </div>
+
+  <!-- Script Supabase & Main -->
+  <script src="./supabaseClient.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
