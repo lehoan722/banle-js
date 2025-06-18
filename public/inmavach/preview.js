@@ -4,7 +4,7 @@ import { getSelectedRows, syncHandsontableToSelected } from './grid.js';
 import { generateQRBase64 } from './utils.js';
 
 export function renderPreview(page = 1) {
-    syncGridToSelected();
+    syncHandsontableToSelected();
     const loaiTem = document.getElementById('loaiTem').value;
     if (!loaiTem) return alert("Vui lòng chọn loại tem!");
 
@@ -22,7 +22,7 @@ export function renderPreview(page = 1) {
     const maxPerPage = 40;
     const startIdx = (page - 1) * maxPerPage;
     const endIdx = startIdx + maxPerPage;
-    const rows = allTems.slice(startIdx, endIdx);
+    const rows = getSelectedRows();    
 
     let html = `<div class="print-preview"><div class="tem-grid">`;
     for (const row of rows) {
