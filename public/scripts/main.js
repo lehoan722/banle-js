@@ -84,18 +84,42 @@ export async function khoiTaoUngDung() {
   imgEl.onerror = () => {
     imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/no-image.jpg';
   };
-}
+ }
 
-// Gán sự kiện khi nhập xong
-const maspInput = document.getElementById("masp");
-if (maspInput) {
+ // Gán sự kiện khi nhập xong
+ const maspInput = document.getElementById("masp");
+ if (maspInput) {
   maspInput.addEventListener("blur", hienThiAnhSanPhamTuMasp);
   maspInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       hienThiAnhSanPhamTuMasp();
     }
   });
-}
+ }
+ 
+ const soluongInput = document.getElementById("soluong");
+
+ if (soluongInput) {
+  soluongInput.addEventListener("input", () => {
+    // Chỉ giữ lại chữ số
+    let val = soluongInput.value.replace(/[^0-9]/g, "");
+
+    if (val === "") return;
+
+    // Giới hạn tối đa 100
+    let num = parseInt(val, 10);
+    if (num > 100) num = 100;
+
+    soluongInput.value = num;
+  });
+
+  soluongInput.addEventListener("blur", () => {
+    let val = soluongInput.value.trim();
+    if (val === "" || parseInt(val, 10) === 0) {
+      soluongInput.value = "1";
+    }
+  });
+ }
 
 
 }
