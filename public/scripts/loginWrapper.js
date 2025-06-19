@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient.js';
 
 async function dangNhap() {
+  window.dangNhap = dangNhap;
   const username = document.getElementById("login-user")?.value.trim();
   const password = document.getElementById("login-pass")?.value.trim();
   const errBox = document.getElementById("login-error");
@@ -37,4 +38,4 @@ async function dangNhap() {
   }, 0);
 }
 
-window.dangNhap = dangNhap;
+
