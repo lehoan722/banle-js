@@ -79,7 +79,7 @@ export async function khoiTaoUngDung() {
   if (!masp) return;
 
   const imgEl = document.querySelector('.product-image');
-  const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//${masp}.jpg`;
+  const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}.jpg`;
   imgEl.src = url;
   imgEl.onerror = () => {
     imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/no-image.jpg';
