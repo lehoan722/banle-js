@@ -78,7 +78,7 @@ export function initAutocompleteRealtimeMasp() {
     const val = e.target.value.trim().toUpperCase();
 
     // Nếu độ dài mã sản phẩm > 5 → chờ 400ms không gõ thêm thì đóng popup
-    if (val.length > 5) {
+    if (val.length > 3) {
       clearTimeout(closePopupTimer);
       closePopupTimer = setTimeout(() => {
         // Kiểm tra nếu popup còn hiển thị
