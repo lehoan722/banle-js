@@ -15,12 +15,14 @@ self.addEventListener('install', event => {
           const response = await fetch(url);
           if (response.ok) {
             await cache.put(url, response.clone());
+          } else {
+            console.warn("❌ Không cache được (response not ok):", url);
           }
         } catch (err) {
-          console.warn("Không thể cache", url, err);
+          console.warn("❌ Lỗi khi cache:", url, err);
         }
       });
-      return Promise.all(promises);
+      await Promise.all(promises);
     })
   );
 });
