@@ -13,9 +13,6 @@ import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './bangha
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  initAutocompleteRealtimeMasp();
-});
 
 export async function khoiTaoUngDung() {
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
