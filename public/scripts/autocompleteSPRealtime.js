@@ -89,17 +89,6 @@ export function initAutocompleteRealtimeMasp() {
     }
   });
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      setTimeout(() => {
-        popup.style.display = "none";
-        input.focus(); // đảm bảo luôn quay lại ô mã sp
-        input.select(); // chọn lại nội dung để nhập tiếp
-      }, 200);
-    }
-  });
-
-
 }
 
 
