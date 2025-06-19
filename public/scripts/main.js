@@ -75,4 +75,7 @@ export async function khoiTaoUngDung() {
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
   await capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
+  document.addEventListener("DOMContentLoaded", () => {
+  initAutocompleteRealtimeMasp();
+});
 }
