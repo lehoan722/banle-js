@@ -29,7 +29,7 @@ async function dangNhap() {
 
     // Gán thông tin nhân viên vào form hóa đơn
     document.getElementById("tennv").value = data.tennv;
-    document.getElementById("manv").value = data.manv;
+    //document.getElementById("manv").value = data.manv;  // do bo di o ma n vien
 
     const module = await import('./main.js');
     if (module.khoiTaoUngDung) {
