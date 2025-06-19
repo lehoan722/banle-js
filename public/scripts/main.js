@@ -127,6 +127,9 @@ export async function khoiTaoUngDung() {
       }
     });
   }
+ 
+  document.getElementById("masp").focus();
+document.getElementById("masp").select(); // chọn lại toàn bộ để nhập tiếp
 
 
 
