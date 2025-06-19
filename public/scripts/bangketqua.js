@@ -39,8 +39,17 @@ function highlightRow(selectedRow) {
 }
 
 export function resetFormBang() {
-  document.getElementById("masp").value = "";
-  document.getElementById("soluong").value = "1";
-  document.getElementById("size").value = "";
-  document.getElementById("masp").focus();
+  const maspInput = document.getElementById("masp");
+  const soluongInput = document.getElementById("soluong");
+  const sizeInput = document.getElementById("size");
+
+  // Xóa nội dung, đặt lại giá trị
+  maspInput.value = "";
+  soluongInput.value = "1";
+  sizeInput.value = "";
+
+  // Làm mất focus, rồi mới focus lại để đảm bảo nhận diện lại sự kiện
+  maspInput.blur();
+  setTimeout(() => maspInput.focus(), 50);
 }
+
