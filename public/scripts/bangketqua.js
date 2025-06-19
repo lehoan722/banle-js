@@ -9,25 +9,33 @@ export function capNhatBangHTML(bangKetQua) {
   tbody.innerHTML = "";
 
   Object.values(bangKetQua).forEach(item => {
+    // Sắp xếp kích cỡ và số lượng tương ứng
+    const zipped = item.sizes.map((size, i) => ({ size: parseInt(size), soluong: item.soluongs[i] }));
+    zipped.sort((a, b) => a.size - b.size);  // sắp xếp theo size tăng dần
+
+    const sortedSizes = zipped.map(z => z.size);
+    const sortedSoluongs = zipped.map(z => z.soluong);
+
     const thanhtien = (item.gia - item.km) * item.tong;
     const row = tbody.insertRow();
     row.innerHTML = `
-      <td>${item.masp}</td>
-      <td>${item.tensp}</td>
-      <td>${item.sizes.join(",")}</td>
-      <td>${item.soluongs.join(",")}</td>
-      <td>${item.tong}</td>
-      <td>${item.gia}</td>
-      <td>${item.km}</td>
-      <td>${thanhtien.toLocaleString()}</td>
-      <td>${item.dvt}</td>
-    `;
+    <td>${item.masp}</td>
+    <td>${item.tensp}</td>
+    <td>${sortedSizes.join(",")}</td>
+    <td>${sortedSoluongs.join(",")}</td>
+    <td>${item.tong}</td>
+    <td>${item.gia}</td>
+    <td>${item.km}</td>
+    <td>${thanhtien.toLocaleString()}</td>
+    <td>${item.dvt}</td>
+  `;
 
     row.addEventListener("click", () => {
       setMaspspDangChon(item.masp);
       highlightRow(row);
     });
   });
+
 
   capNhatThongTinTong(bangKetQua);
 }
