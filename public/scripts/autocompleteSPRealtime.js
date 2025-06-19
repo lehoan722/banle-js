@@ -53,6 +53,19 @@ export function initAutocompleteRealtimeMasp() {
     input.focus();
   });
 
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      popup.style.display = "none";
+    }, 200); // delay nhỏ để xử lý các click chọn
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      input.blur(); // tự mất focus để gọi blur
+    }
+  });
+
+
   // Ẩn popup khi click ngoài
   document.addEventListener("click", (e) => {
     if (!popup.contains(e.target) && e.target !== input) {
