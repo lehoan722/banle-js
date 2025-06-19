@@ -87,7 +87,7 @@ export function initAutocompleteRealtimeMasp() {
       // Nếu không gõ gì thêm sau 300ms → đóng popup
       popupTimeout = setTimeout(() => {
         if (document.activeElement.id !== "masp") {
-          closePopupSP();
+          closepopup_masp();
         }
       }, 300);
     }
