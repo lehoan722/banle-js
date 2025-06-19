@@ -72,54 +72,62 @@ export async function khoiTaoUngDung() {
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
   await capNhatSoHoaDonTuDong();
   document.getElementById("masp").focus();
-   initAutocompleteRealtimeMasp();
+  initAutocompleteRealtimeMasp();
 
-   async function hienThiAnhSanPhamTuMasp() {
-  const masp = document.getElementById('masp').value.trim().toUpperCase();
-  if (!masp) return;
+  async function hienThiAnhSanPhamTuMasp() {
+    const masp = document.getElementById('masp').value.trim().toUpperCase();
+    if (!masp) return;
 
-  const imgEl = document.querySelector('.product-image');
-  const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}.jpg`;
-  imgEl.src = url;
-  imgEl.onerror = () => {
-    imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/no-image.jpg';
-  };
- }
+    const imgEl = document.querySelector('.product-image');
+    const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}.jpg`;
+    imgEl.src = url;
+    imgEl.onerror = () => {
+      imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/no-image.jpg';
+    };
+  }
 
- // Gán sự kiện khi nhập xong
- const maspInput = document.getElementById("masp");
- if (maspInput) {
-  maspInput.addEventListener("blur", hienThiAnhSanPhamTuMasp);
-  maspInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      hienThiAnhSanPhamTuMasp();
-    }
-  });
- }
- 
- const soluongInput = document.getElementById("soluong");
+  // Gán sự kiện khi nhập xong
+  const maspInput = document.getElementById("masp");
+  if (maspInput) {
+    maspInput.addEventListener("blur", hienThiAnhSanPhamTuMasp);
+    maspInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        hienThiAnhSanPhamTuMasp();
+      }
+    });
+  }
 
- if (soluongInput) {
-  soluongInput.addEventListener("input", () => {
-    // Chỉ giữ lại chữ số
-    let val = soluongInput.value.replace(/[^0-9]/g, "");
+  const soluongInput = document.getElementById("soluong");
 
-    if (val === "") return;
+  if (soluongInput) {
+    soluongInput.addEventListener("input", (e) => {
+      const val = soluongInput.value;
 
-    // Giới hạn tối đa 100
-    let num = parseInt(val, 10);
-    if (num > 100) num = 100;
+      // Nếu có ký tự không phải số
+      if (!/^\d*$/.test(val)) {
+        alert("Chỉ được phép nhập số!");
+        soluongInput.value = "";
+        return;
+      }
 
-    soluongInput.value = num;
-  });
+      // Nếu vượt quá 100
+      const num = parseInt(val, 10);
+      if (num > 100) {
+        alert("Không được nhập số lớn hơn 100!");
+        soluongInput.value = "";
+        return;
+      }
+    });
 
-  soluongInput.addEventListener("blur", () => {
-    let val = soluongInput.value.trim();
-    if (val === "" || parseInt(val, 10) === 0) {
-      soluongInput.value = "1";
-    }
-  });
- }
+    // Nếu người dùng bỏ trống khi blur → gán mặc định 1
+    soluongInput.addEventListener("blur", () => {
+      const val = soluongInput.value.trim();
+      if (val === "" || parseInt(val, 10) === 0) {
+        soluongInput.value = "1";
+      }
+    });
+  }
+
 
 
 }
