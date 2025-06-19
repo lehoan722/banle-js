@@ -1,72 +1,64 @@
-import { supabase } from './supabaseClient.js';
+import { supabase } from "./supabaseClient.js";
 
-let popupEl;
-let inputEl;
-let ketQua = [];
+let cacheMaSP = [];
+
+async function napDanhSachMaSPRealtime() {
+  if (cacheMaSP.length === 0) {
+    const { data } = await supabase.from("dmhanghoa").select("masp, tensp").limit(5000);
+    if (data) cacheMaSP = data.map(sp => ({
+      masp: sp.masp?.toUpperCase(),
+      tensp: sp.tensp || ""
+    }));
+  }
+}
 
 export function initAutocompleteRealtimeMasp() {
-  popupEl = document.getElementById("popup-gioi-y-sp");
-  inputEl = document.getElementById("masp");
+  const input = document.getElementById("masp");
+  const popup = document.getElementById("popup-gioi-y-sp");
 
-  if (!popupEl || !inputEl) return;
+  if (!input || !popup) return;
 
-  inputEl.addEventListener("input", handleInput);
-  inputEl.addEventListener("keydown", handleKeyDown);
-  document.addEventListener("click", (e) => {
-    if (!popupEl.contains(e.target) && e.target !== inputEl) {
-      popupEl.style.display = "none";
+  napDanhSachMaSPRealtime(); // preload cache
+
+  input.addEventListener("input", () => {
+    const keyword = input.value.trim().toUpperCase();
+    if (!keyword) return popup.style.display = "none";
+
+    const goiY = cacheMaSP.filter(sp =>
+      sp.masp.includes(keyword) || sp.tensp.toUpperCase().includes(keyword)
+    ).slice(0, 50);
+
+    if (goiY.length === 0) {
+      popup.style.display = "none";
+      return;
     }
-  });
-}
 
-async function handleInput(e) {
-  const keyword = inputEl.value.trim();
-  if (!keyword) {
-    popupEl.style.display = "none";
-    return;
-  }
+    const rect = input.getBoundingClientRect();
+    popup.style.left = `${rect.left + window.scrollX}px`;
+    popup.style.top = `${rect.bottom + window.scrollY}px`;
+    popup.style.width = `${rect.width}px`;
+    popup.innerHTML = goiY.map(sp => `
+      <div class="item-sp" data-masp="${sp.masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
+        <b>${sp.masp}</b> – ${sp.tensp}
+      </div>
+    `).join("");
 
-  // Ẩn popup cũ nếu có
-  const popupMaspCu = document.getElementById("popup_masp");
-  if (popupMaspCu) popupMaspCu.style.display = "none";
+    popup.style.display = "block";
 
-  const { data, error } = await supabase
-    .from("dmhanghoa")
-    .select("masp, tensp")
-    .or(`masp.ilike.%${keyword}%,tensp.ilike.%${keyword}%`)
-    .order("masp")
-    .limit(100);
-
-  ketQua = data || [];
-  if (ketQua.length === 0) {
-    popupEl.style.display = "none";
-    return;
-  }
-
-  const rect = inputEl.getBoundingClientRect();
-  popupEl.style.left = `${rect.left + window.scrollX}px`;
-  popupEl.style.top = `${rect.bottom + window.scrollY}px`;
-  popupEl.style.width = `${rect.width}px`;
-
-  popupEl.innerHTML = ketQua.map(item => `
-    <div class="item-sp" data-masp="${item.masp}" style="padding:6px; cursor:pointer; border-bottom:1px solid #eee">
-      <b>${item.masp}</b> – ${item.tensp}
-    </div>
-  `).join("");
-
-  popupEl.style.display = "block";
-
-  popupEl.querySelectorAll(".item-sp").forEach(div => {
-    div.addEventListener("click", () => {
-      const masp = div.dataset.masp;
-      inputEl.value = masp;
-      popupEl.style.display = "none";
-      inputEl.focus();
+    popup.querySelectorAll(".item-sp").forEach(div => {
+      div.addEventListener("click", () => {
+        const masp = div.dataset.masp;
+        input.value = masp;
+        popup.style.display = "none";
+        input.focus();
+      });
     });
   });
-}
 
-
-function handleKeyDown(e) {
-  if (e.key === "Escape") popupEl.style.display = "none";
+  // Ẩn popup khi click ra ngoài
+  document.addEventListener("click", e => {
+    if (!popup.contains(e.target) && e.target !== input) {
+      popup.style.display = "none";
+    }
+  });
 }
