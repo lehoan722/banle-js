@@ -26,6 +26,10 @@ async function handleInput(e) {
     return;
   }
 
+  // Ẩn popup cũ nếu có
+  const popupMaspCu = document.getElementById("popup_masp");
+  if (popupMaspCu) popupMaspCu.style.display = "none";
+
   const { data, error } = await supabase
     .from("dmhanghoa")
     .select("masp, tensp")
@@ -52,7 +56,6 @@ async function handleInput(e) {
 
   popupEl.style.display = "block";
 
-  // Gán sự kiện click
   popupEl.querySelectorAll(".item-sp").forEach(div => {
     div.addEventListener("click", () => {
       const masp = div.dataset.masp;
@@ -62,6 +65,7 @@ async function handleInput(e) {
     });
   });
 }
+
 
 function handleKeyDown(e) {
   if (e.key === "Escape") popupEl.style.display = "none";
