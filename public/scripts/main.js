@@ -74,18 +74,27 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
    initAutocompleteRealtimeMasp();
 
-   function hienThiAnhSanPhamTuMasp() {
+   async function hienThiAnhSanPhamTuMasp() {
   const masp = document.getElementById('masp').value.trim().toUpperCase();
   if (!masp) return;
 
-  const imgURL = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${encodeURIComponent(masp)}.jpg`;
   const imgEl = document.querySelector('.product-image');
-  if (imgEl) {
-    imgEl.src = imgURL;
-    imgEl.onerror = () => {
-      imgEl.src = `https://abcxyzghijklmno.supabase.co/storage/v1/object/public/anhsanpham/no-image.jpg`;
-    };
-  }
+  const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//${masp}.jpg`;
+  imgEl.src = url;
+  imgEl.onerror = () => {
+    imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/no-image.jpg';
+  };
+}
+
+// Gán sự kiện khi nhập xong
+const maspInput = document.getElementById("masp");
+if (maspInput) {
+  maspInput.addEventListener("blur", hienThiAnhSanPhamTuMasp);
+  maspInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      hienThiAnhSanPhamTuMasp();
+    }
+  });
 }
 
 
