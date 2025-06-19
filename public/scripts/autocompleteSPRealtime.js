@@ -72,5 +72,28 @@ export function initAutocompleteRealtimeMasp() {
       popup.style.display = "none";
     }
   });
+
+  let popupTimeout;
+  document.getElementById("masp").addEventListener("input", (e) => {
+    const val = e.target.value.trim().toUpperCase();
+
+    // ... gọi gợi ý
+    if (val.length >= 2) {
+      // ... fetch Supabase
+
+      // Clear timeout cũ nếu đang đợi
+      clearTimeout(popupTimeout);
+
+      // Nếu không gõ gì thêm sau 300ms → đóng popup
+      popupTimeout = setTimeout(() => {
+        if (document.activeElement.id !== "masp") {
+          closePopupSP();
+        }
+      }, 300);
+    }
+  });
+
+
 }
+
 
