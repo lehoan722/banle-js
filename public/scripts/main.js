@@ -36,7 +36,7 @@ export async function khoiTaoUngDung() {
     dsnv.forEach(nv => window.nhanVienData[nv.manv] = nv.tennv);
   }
 
-  khoiTaoTimMaSP(window.sanPhamData);
+  //khoiTaoTimMaSP(window.sanPhamData);
 
   window.luuMaSanPhamMoi = () => luuMaSanPhamMoi(window.sanPhamData);
   window.moCauHinhTruong = moCauHinhTruong;
