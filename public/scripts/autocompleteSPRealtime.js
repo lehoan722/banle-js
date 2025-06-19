@@ -73,26 +73,21 @@ export function initAutocompleteRealtimeMasp() {
     }
   });
 
-  let popupTimeout;
-  document.getElementById("masp").addEventListener("input", (e) => {
+  let closePopupTimer;
+  input.addEventListener("input", (e) => {
     const val = e.target.value.trim().toUpperCase();
 
-    // ... gọi gợi ý
-    if (val.length >= 2) {
-      // ... fetch Supabase
-
-      // Clear timeout cũ nếu đang đợi
-      clearTimeout(popupTimeout);
-
-      // Nếu không gõ gì thêm sau 300ms → đóng popup
-      popupTimeout = setTimeout(() => {
-        if (document.activeElement.id !== "masp") {
-          closepopup_masp();
+    // Nếu độ dài mã sản phẩm > 5 → chờ 400ms không gõ thêm thì đóng popup
+    if (val.length > 5) {
+      clearTimeout(closePopupTimer);
+      closePopupTimer = setTimeout(() => {
+        // Kiểm tra nếu popup còn hiển thị
+        if (popup.style.display === "block") {
+          popup.style.display = "none";
         }
-      }, 300);
+      }, 400);
     }
   });
-
 
 }
 
