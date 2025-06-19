@@ -74,19 +74,32 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
    initAutocompleteRealtimeMasp();
 
-   document.getElementById('masp').addEventListener('input', () => {
+   function hienThiAnhSanPhamTuMasp() {
   const masp = document.getElementById('masp').value.trim().toUpperCase();
   if (!masp) return;
 
   const imgURL = `https://firebasestorage.googleapis.com/v0/b/banle-project.firebasestorage.app/o/anhsanpham%2F${encodeURIComponent(masp)}.jpg?alt=media`;
-
   const imgEl = document.querySelector('.product-image');
   if (imgEl) {
     imgEl.src = imgURL;
     imgEl.onerror = () => {
-      imgEl.src = "https://via.placeholder.com/300x300.png?text=Không+Tìm+Thấy";
+      imgEl.src = "https://firebasestorage.googleapis.com/v0/b/banle-project.firebasestorage.app/o/anhsanpham%2Fno-image.jpg?alt=media";
     };
   }
+}
+
+const maspInput = document.getElementById('masp');
+
+// Khi nhấn Enter trong ô mã sản phẩm
+maspInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    hienThiAnhSanPhamTuMasp();
+  }
+});
+
+// Khi người dùng rời khỏi ô mã sản phẩm (click chỗ khác)
+maspInput.addEventListener('blur', () => {
+  hienThiAnhSanPhamTuMasp();
 });
 
 
