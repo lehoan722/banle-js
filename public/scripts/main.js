@@ -11,6 +11,11 @@ import { xacNhanSuaHoaDon, luuHoaDonQuaAPI, luuHoaDonCaHaiBan } from './luuhoado
 import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
+import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
+
+document.addEventListener("DOMContentLoaded", () => {
+  initAutocompleteRealtimeMasp();
+});
 
 export async function khoiTaoUngDung() {
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
