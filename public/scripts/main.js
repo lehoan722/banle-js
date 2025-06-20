@@ -74,33 +74,22 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
   initAutocompleteRealtimeMasp();
 
- async function hienThiAnhSanPhamTuMasp() {
-  let masp = document.getElementById('masp')?.value?.trim().toUpperCase();
-  if (!masp || masp.includes(' ')) return;
+  async function hienThiAnhSanPhamTuMasp() {
+    let masp = document.getElementById('masp').value.trim();
+    if (!masp) return;
 
-  // Gỡ dấu '-' cuối nếu có
-  if (masp.endsWith('-')) masp = masp.slice(0, -1);
+    masp = masp.toUpperCase(); // Ép toàn bộ mã sản phẩm thành chữ in hoa
+    const extension = '.JPG';  // Đuôi ảnh cố định dạng in hoa
 
-  const imgEl = document.querySelector('.product-image');
-  const baseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
-  const urlJPG = `${baseUrl}${masp}.JPG`;
-  const urljpg = `${baseUrl}${masp}.jpg`;
-  const fallback = `${baseUrl}NO-IMAGE.JPG`;
+    const imgEl = document.querySelector('.product-image');
+    const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}${extension}`;
 
-  try {
-    const res = await fetch(urlJPG, { method: 'HEAD' });
-    if (res.ok) {
-      imgEl.src = urlJPG;
-    } else {
-      const res2 = await fetch(urljpg, { method: 'HEAD' });
-      console.log(masp)
-      imgEl.src = res2.ok ? urljpg : fallback;
-    }
-  } catch {
-    imgEl.src = fallback;
+    imgEl.src = url;
+
+    imgEl.onerror = () => {
+      imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG';
+    };
   }
-}
-
 
 
   // Gán sự kiện khi nhập xong
@@ -144,6 +133,6 @@ export async function khoiTaoUngDung() {
       }
     });
   }
- 
-  
+
+
 }
