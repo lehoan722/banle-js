@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseAdmin.js';
 
 export default async function handler(req, res) {
@@ -6,8 +5,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let body = "";
   try {
-    const { masp } = req.body;
+    // Parse body thủ công
+    for await (const chunk of req.body) {
+      body += chunk;
+    }
+    const { masp } = JSON.parse(body);
+
     if (!masp) {
       return res.status(400).json({ error: 'Thiếu mã sản phẩm' });
     }
@@ -25,6 +30,6 @@ export default async function handler(req, res) {
     return res.status(200).json(data);
   } catch (err) {
     console.error('Lỗi API hoadon:', err);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: 'Lỗi xử lý server hoặc dữ liệu JSON sai' });
   }
 }
