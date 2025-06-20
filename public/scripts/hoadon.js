@@ -1,7 +1,5 @@
 
-// hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
-import { supabase } from './supabaseClient.js';
 
 let bangKetQua = {};
 let maspDangChon = null;
@@ -16,7 +14,6 @@ export async function chuyenFocus(e) {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
     const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
 
-    // Nếu không thành công, mới mở popup tìm mã
     if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
       moPopupTimMaSanPham();
     }
@@ -31,21 +28,20 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   maspVal = maspVal.toUpperCase().trim();
   let spData = window.sanPhamData?.[maspVal];
 
-  // Nếu không có trong cache, gọi Supabase để tìm chính xác
   if (!spData) {
-    const { data, error } = await supabase
-      .from("dmhanghoa")
-      .select("*")
-      .eq("masp", maspVal)
-      .single();
+    const res = await fetch('/api/hoadon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ masp: maspVal })
+    });
 
-    if (data) {
-      spData = data;
-      window.sanPhamData[maspVal] = data; // cache lại
+    const result = await res.json();
+    if (res.ok) {
+      spData = result;
+      window.sanPhamData[maspVal] = result;
     }
   }
 
-  // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
   if (!spData) {
     if (typeof moBangDanhMucHangHoa === "function") {
       moBangDanhMucHangHoa(maspVal);
@@ -53,7 +49,6 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     return false;
   }
 
-  // Gán thông tin sản phẩm vào form
   document.getElementById("gia").value = spData.giale || "";
   document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
