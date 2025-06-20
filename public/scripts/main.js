@@ -93,6 +93,7 @@ export async function khoiTaoUngDung() {
       imgEl.src = urlJPG;
     } else {
       const res2 = await fetch(urljpg, { method: 'HEAD' });
+      console.log(masp)
       imgEl.src = res2.ok ? urljpg : fallback;
     }
   } catch {
