@@ -1,97 +1,164 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Xem hóa đơn sau đăng nhập</title>
-  <script type="module" src="./scripts/supabaseClient.js"></script>
+  <meta charset="UTF-8">
+  <title>Đăng nhập Supabase</title>
+  <style>
+    body { font-family: Arial; padding: 40px; }
+    #login-form { border: 1px solid #ccc; padding: 20px; width: 300px; margin: auto; }
+    #app-content { display: none; margin-top: 40px; }
+  </style>
 </head>
 <body>
-  <h2>Đăng nhập để xem hóa đơn</h2>
 
-  <div id="login-form">
-    <input type="email" id="email" placeholder="Email" /><br/>
-    <input type="password" id="password" placeholder="Mật khẩu" /><br/>
-    <button onclick="dangNhap()">Đăng nhập</button>
-    <p id="login-status" style="color:red;"></p>
-  </div>
+<div id="login-form">
+  <h3>Đăng nhập để sử dụng phần mềm</h3>
+  <input id="login-email" type="email" placeholder="Email đăng nhập" style="width: 100%;"><br><br>
+  <input id="login-password" type="password" placeholder="Mật khẩu" style="width: 100%;"><br><br>
+  <button onclick="dangNhap()">Đăng nhập</button>
+  <div id="login-status" style="margin-top:10px;color:red;"></div>
+</div>
 
-  <div id="report-container" style="display:none;">
-    <h3>Danh sách hóa đơn bán lẻ</h3>
-    <table border="1" id="hoadon-table">
+<div id="app-content">
+  
+  <!DOCTYPE html>
+<html lang="vi"> 
+<head>
+  <meta charset="UTF-8">
+  <title>Xem Hóa Đơn Bán Lẻ</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    tr:hover { background-color: #f1f1f1; cursor: pointer; }
+    input, select { margin: 4px; padding: 6px; }
+    #popup { display: none; position: fixed; top: 10%; left: 10%; width: 80%; height: 70%; background: #fff; border: 1px solid #888; overflow: auto; padding: 20px; z-index: 9999; }
+  </style>
+</head>
+<body>
+  <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
+  <label>Ngày: <input type="date" id="locNgay"></label>
+  <label>Nhân viên: <input type="text" id="locNV"></label>
+  <label>Số HĐ: <input type="text" id="locSoHD"></label>
+  <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
+
+  <table>
+    <thead>
+      <tr><th>Số HĐ</th><th>Ngày</th><th>NV</th><th>Khách</th><th>TT</th><th>Ghi chú</th></tr>
+    </thead>
+    <tbody id="dsHoaDon"></tbody>
+  </table>
+
+  <div id="popup">
+    <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
+    <table>
       <thead>
-        <tr>
-          <th>ID</th>
-          <th>Số hóa đơn</th>
-          <th>Ngày</th>
-          <th>Người tạo</th>
-        </tr>
+        <tr><th>Mã SP</th><th>Tên SP</th><th>Size</th><th>SL</th><th>Giá</th><th>KM</th><th>Thành tiền</th></tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="ctHoaDon"></tbody>
     </table>
-    <button onclick="dangXuat()">Đăng xuất</button>
+    <button onclick="dongPopup()">Đóng</button>
   </div>
 
-  <script type="module">
-    const supabase = window.supabase;
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://rddjrmbyftlcvrgzlyby.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+    );
 
-    // Kiểm tra đăng nhập tự động
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        document.getElementById('login-form').style.display = 'none';
-        document.getElementById('report-container').style.display = 'block';
-        taiHoaDon();
-      }
-    });
+    async function taiDanhSachHoaDon() {
+      const ngay = document.getElementById("locNgay").value;
+      const nv = document.getElementById("locNV").value.trim().toUpperCase();
+      const sohd = document.getElementById("locSoHD").value.trim();
 
-    // Hàm đăng nhập
-    window.dangNhap = async function () {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      let query = supabase.from('hoadon_banle').select('*').order('ngay', { ascending: false }).limit(100);
 
-      if (error) {
-        document.getElementById('login-status').innerText = "Đăng nhập thất bại: " + error.message;
-      } else {
-        document.getElementById('login-form').style.display = 'none';
-        document.getElementById('report-container').style.display = 'block';
-        taiHoaDon();
-      }
-    };
+      if (ngay) query = query.eq('ngay', ngay);
+      if (nv) query = query.ilike('manv', `%${nv}%`);
+      if (sohd) query = query.ilike('sohd', `%${sohd}%`);
 
-    // Hàm đăng xuất
-    window.dangXuat = async function () {
-      await supabase.auth.signOut();
-      location.reload();
-    };
+      const { data, error } = await query;
 
-    // Hàm tải dữ liệu hóa đơn
-    async function taiHoaDon() {
-      const { data, error } = await supabase
-        .from("hoadon_banle")
-        .select("id, sohd, ngay, nguoi_tao")
-        .limit(20)
-        .order("ngay", { ascending: false });
-
-      const tbody = document.querySelector("#hoadon-table tbody");
+      const tbody = document.getElementById("dsHoaDon");
       tbody.innerHTML = "";
 
-      if (error) {
-        tbody.innerHTML = "<tr><td colspan='4'>Lỗi: " + error.message + "</td></tr>";
-        return;
-      }
+      if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
-      for (const hd of data) {
+      data.forEach(hd => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${hd.id}</td>
-          <td>${hd.sohd}</td>
-          <td>${hd.ngay || ''}</td>
-          <td>${hd.nguoi_tao || ''}</td>
-        `;
+        tr.innerHTML = `<td>${hd.sohd}</td><td>${hd.ngay}</td><td>${hd.tennv}</td><td>${hd.khachhang}</td><td>${hd.thanhtoan?.toLocaleString()}</td><td>${hd.ghichu || ""}</td>`;
+        tr.onclick = () => xemChiTiet(hd.sohd);
         tbody.appendChild(tr);
-      }
+      });
     }
+
+    async function xemChiTiet(sohd) {
+      document.getElementById("popup").style.display = "block";
+      document.getElementById("sohdCT").textContent = sohd;
+      const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+      const tbody = document.getElementById("ctHoaDon");
+      tbody.innerHTML = "";
+      if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+      data.forEach(row => {
+        const tt = (row.gia - row.km) * row.soluong;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    window.onload = taiDanhSachHoaDon;
   </script>
+</body>
+</html>
+
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // ← thay bằng anon key thật của bạn
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  window.dangNhap = async function () {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const statusEl = document.getElementById('login-status');
+
+    if (!email || !password) {
+      statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
+    } else {
+      statusEl.style.color = 'green';
+      statusEl.textContent = '✅ Đăng nhập thành công!';
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+
+      // Khởi tạo Supabase client có token (để gọi truy vấn)
+      window.supabaseUser = createClient(supabaseUrl, supabaseKey, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+        },
+      });
+
+      // Sau khi đăng nhập, bạn có thể dùng supabaseUser.from(...) để truy vấn
+    }
+  };
+</script>
+
 </body>
 </html>
