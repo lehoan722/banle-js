@@ -1,4 +1,27 @@
+
 <!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Đăng nhập Supabase</title>
+  <style>
+    body { font-family: Arial; padding: 40px; }
+    #login-form { border: 1px solid #ccc; padding: 20px; width: 300px; margin: auto; }
+    #app-content { display: none; margin-top: 40px; }
+  </style>
+</head>
+<body>
+
+<div id="login-form">
+  <h3>Đăng nhập để sử dụng phần mềm</h3>
+  <input id="login-email" type="email" placeholder="Email đăng nhập" style="width: 100%;"><br><br>
+  <input id="login-password" type="password" placeholder="Mật khẩu" style="width: 100%;"><br><br>
+  <button onclick="dangNhap()">Đăng nhập</button>
+  <div id="login-status" style="margin-top:10px;color:red;"></div>
+</div>
+
+<div id="app-content">
+  <!DOCTYPE html>
 <html lang="vi">
 
 <head>
@@ -356,4 +379,51 @@
   </script>
 </body>
 
+</html>
+
+  
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // ← thay bằng anon key thật của bạn
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  window.dangNhap = async function () {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    const statusEl = document.getElementById('login-status');
+
+    if (!email || !password) {
+      statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
+    } else {
+      statusEl.style.color = 'green';
+      statusEl.textContent = '✅ Đăng nhập thành công!';
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+
+      // Khởi tạo Supabase client có token (để gọi truy vấn)
+      window.supabaseUser = createClient(supabaseUrl, supabaseKey, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+        },
+      });
+
+      // Sau khi đăng nhập, bạn có thể dùng supabaseUser.from(...) để truy vấn
+    }
+  };
+</script>
+
+</body>
 </html>
