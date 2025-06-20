@@ -1,5 +1,5 @@
 
-import { supabase } from './api/supabaseAdmin.js';
+import { supabase } from './supabaseAdmin.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
