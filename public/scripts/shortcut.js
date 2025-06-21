@@ -3,7 +3,7 @@ import { luuHoaDonQuaAPI, luuHoaDonCaHaiBan } from './luuhoadon.js';
 import {
   resetBangKetQua,
   getBangKetQua,
-  xoaDongDangChon
+  suaDongDangChon
 } from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
@@ -35,8 +35,8 @@ export function khoiTaoShortcut() {
     // F3: xóa dòng đang chọn
     if (e.key === "F3") {
       e.preventDefault();
-      xoaDongDangChon();
-    }
+      suaDongDangChon();
+    } 
 
     // F4: nhảy tới ô khách trả và xử lý Enter
     if (e.key === "F4") {
