@@ -390,6 +390,21 @@
 
 
     <div id="app-container" style="display:none;">
+ 
+        <div class="footer-userinfo">
+            
+            <label>Mã NV <input id="manv" /></label>
+            <label>Tên NV <input id="tennv" readonly="" /></label>
+            <label>Cơ sở
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+            <label>Khách hàng <select id="khachhang"></select></label>
+            <label>Ngày <input id="ngay" type="date" /></label>
+            <label>Giờ <input id="gio" /></label>
+        </div>
 
         <div class="top-inputs">
             <div style="position: relative;">
@@ -398,8 +413,6 @@
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
             </div>
-
-
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
             <input id="size" placeholder="SIZE" />
@@ -412,19 +425,6 @@
             <button id="masp-search">🔍</button>
         </div>
         
-        <div class="footer-userinfo">
-            <label>Ngày <input id="ngay" type="date" /></label>
-            <label>Giờ <input id="gio" /></label>
-            <label>Mã NV <input id="manv" /></label>
-            <label>Tên NV <input id="tennv" readonly="" /></label>
-            <label>Cơ sở
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-            <label>Khách hàng <select id="khachhang"></select></label>
-        </div>
 
         <div class="main">
             <div class="table-area">
