@@ -328,7 +328,9 @@
                 <a href="xemhoadon.html" target="_blank">Xem hóa đơn bán lẻ</a>
                 <a href="xemhoadonT.html" target="_blank">Xem hóa đơn tạm</a>
                 <a href="bc-chitietban.html" target="_blank">báo cáo chi tiết bán</a>
-                <a href="inmavach.html" target="_blank">in mã vạch</a>
+                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
+                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
+                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
                 <a href="baocaohoadon.html" target="_blank">Báo cáo tổng hợp</a>
             </div>
         </div>
@@ -563,7 +565,7 @@
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
-        const supabase = createClient(supabaseUrl, supabaseKey);       
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
         window.dangNhap = async function () {
             const email = document.getElementById('login-email').value.trim();
