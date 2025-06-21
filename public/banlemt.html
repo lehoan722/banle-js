@@ -33,6 +33,7 @@
             background: #f4f4f4;
             align-items: center;
         }
+
         .tennv {
             display: flex;
             padding: 5px;
@@ -444,13 +445,12 @@
             <label>Tên NV <input id="tennv" readonly="" /></label>
             <label>Cơ sở
                 <select id="diadiem">
-                    <option value="">Chon Cơ sở</option>
                     <option value="cs1">Cơ sở 1</option>
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
             <label>Mã Khách <input id="makh" /></label>
-            <label>Khách hàng <input id="khachhang" readonly="" /></label>            
+            <label>Khách hàng <input id="khachhang" readonly="" /></label>
             <label>Ngày <input id="ngay" type="date" /></label>
             <label>Giờ <input id="gio" /></label>
         </div>
@@ -653,12 +653,20 @@
             <h2>Đăng nhập hệ thống</h2>
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
-                <input type="email" id="login-email" style="width:200px; padding:6px;" /><br />
+                <input type="email" id="login-email" ...><br />
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" style="width:200px; padding:6px;" /><br /><br />
+                <input type="password" id="login-password" ...><br /><br />
+                <!-- Thêm đoạn sau: -->
+                <label>Cơ sở bán hàng:</label><br />
+                <select id="login-cs" style="width:200px; padding:6px;">
+                    <option value="">-- Chọn cơ sở --</option>
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select><br /><br />
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
             </form>
+
         </div>
 
     </div>
@@ -673,10 +681,15 @@
         window.dangNhap = async function () {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value.trim();
+            const cs = document.getElementById('login-cs').value;
             const statusEl = document.getElementById('login-error');
 
             if (!email || !password) {
                 statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+                return;
+            }
+            if (!cs) {
+                statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!';
                 return;
             }
 
@@ -703,6 +716,9 @@
             }
 
         };
+       
+
+
         // dang xuat
         document.getElementById('btn-logout').onclick = async function () {
             if (window.supabase && window.supabase.auth) {
