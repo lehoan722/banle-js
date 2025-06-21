@@ -51,13 +51,20 @@ export function resetFormBang() {
   const soluongInput = document.getElementById("soluong");
   const sizeInput = document.getElementById("size");
 
+  // LƯU lại mã sản phẩm vừa nhập trước khi xóa trắng
+  window.masp_last = maspInput.value || window.masp_last || "";
+
   // Xóa nội dung, đặt lại giá trị
   maspInput.value = "";
   soluongInput.value = "1";
   sizeInput.value = "";
 
+  // Gọi hàm hiển thị ảnh vừa nhập cuối cùng (sẽ ưu tiên từ masp_last)
+  if (window.hienThiAnhSanPhamTuMasp) window.hienThiAnhSanPhamTuMasp();
+
   // Làm mất focus, rồi mới focus lại để đảm bảo nhận diện lại sự kiện
   maspInput.blur();
   setTimeout(() => maspInput.focus(), 50);
 }
+
 
