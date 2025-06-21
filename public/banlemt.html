@@ -14,6 +14,7 @@
         body {
             font-family: Arial;
             margin: 0;
+            height: 100%;
         }
 
         .header {
@@ -77,6 +78,7 @@
         .main {
             display: flex;
             height: calc(100vh - 150px);
+            overflow: hidden;
         }
 
         .table-area {
@@ -177,10 +179,22 @@
 
         .footer-buttons {
             display: flex;
-            justify-content: space-between;
-            padding: 5px;
+            flex-direction: row;
+            justify-content: flex-start;
+            /* dồn trái */
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 5px 0 5px 8px;
             background: #dce9f9;
         }
+
+        .footer-buttons button {
+            margin-right: 4px;
+            font-size: 15px;
+            padding: 7px 13px;
+            min-width: 85px;
+        }
+
 
         .popup {
             display: none;
@@ -246,9 +260,49 @@
         #popupDanhMuc {
             display: none !important;
         }
-    </style>
-    <script>
 
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1 1 auto;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo,
+        .footer-buttons {
+            flex-shrink: 0;
+            width: 75%;
+            z-index: 100;
+        }
+    </style>
+
+
+    <script>
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
@@ -319,6 +373,28 @@
         .menu-item:hover .dropdown-content {
             display: block;
         }
+
+        .footer-userinfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 4px 0 4px 8px;
+            background: #e5eef9;
+            border-top: 1px solid #c7d3e9;
+        }
+
+        .footer-userinfo label {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .footer-userinfo input,
+        .footer-userinfo select {
+            padding: 3px 6px;
+            font-size: 15px;
+            margin-left: 2px;
+        }
     </style>
 
     <div class="menu-bar">
@@ -356,14 +432,27 @@
     <div id="app-container" style="display:none;">
 
         <div class="top-inputs">
+
+            <label>Mã NV <input id="manv" /></label>
+            <label>Tên NV <input id="tennv" readonly="" /></label>
+            <label>Cơ sở
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+            <label>Khách hàng <select id="khachhang"></select></label>
+            <label>Ngày <input id="ngay" type="date" /></label>
+            <label>Giờ <input id="gio" /></label>
+        </div>
+
+        <div class="top-inputs">
             <div style="position: relative;">
                 <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
             </div>
-
-
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
             <input id="size" placeholder="SIZE" />
@@ -375,6 +464,8 @@
             <input id="ghichu" placeholder="Ghi chú HH" />
             <button id="masp-search">🔍</button>
         </div>
+
+
         <div class="main">
             <div class="table-area">
                 <table id="bangketqua">
@@ -400,14 +491,7 @@
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
-                        <label>Ngày <input id="ngay" type="date" /></label>
-                        <label>Giờ <input id="gio" /></label>
-                        <label>Mã NV <input id="manv" /></label>
-                        <label>Tên NV <input id="tennv" readonly="" /></label><label>Cơ sở <select id="diadiem">
-                                <option value="cs1">Cơ sở 1</option>
-                                <option value="cs2">Cơ sở 2</option>
-                            </select></label>
-                        <label>Khách hàng <select id="khachhang"></select></label>
+
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
@@ -428,12 +512,13 @@
                             <label><input id="size45" type="checkbox" /> Size 45</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
 
                             <label><input type="checkbox" /> Cộng dồn số lượng</label>
                         </div>
                     </div>
                 </div>
-                <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
 
                 <div class="btn-big red">Tổng phải trả <span id="phaithanhtoan_text" style="float:right">0</span></div>
                 <div class="btn-big gray">Khách thanh toán <span id="khachtra_text" style="float:right">0</span></div>
@@ -444,11 +529,13 @@
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
         </div>
+
+
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="luu">Lưu</button>
             <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
-            <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
+            <button onclick="luuHoaDonCaHaiBan()">💾 Lưu 2</button>
 
             <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
@@ -456,8 +543,11 @@
             <button id="xoa">Xoá</button>
             <button id="xemin">Xem in</button>
             <button id="xuatexcel">Xuất Excel</button>
-            <button id="btn-logout">THOAT PM</button>
+            <button id="btn-logout">THOAT PM</button> <br>
+            dfhfgh
+
         </div>
+
         <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
                 <strong>Tìm kiếm mã sản phẩm</strong>
