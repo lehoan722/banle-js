@@ -702,21 +702,23 @@
             } else {
                 statusEl.textContent = '✅ Đăng nhập thành công!';
                 statusEl.style.color = 'green';
+                // <<< Đặt dòng này tại đây:
+                localStorage.setItem("diadiem", document.getElementById('login-cs').value);
+
                 document.getElementById('login-container').style.display = 'none';
                 document.getElementById('app-container').style.display = '';
-                // Thiết lập lại session cho supabase
                 await window.supabase.auth.setSession({
                     access_token: data.session.access_token,
                     refresh_token: data.session.refresh_token
                 });
-                // SAU LOGIN MỚI IMPORT main.js VÀ KHỞI TẠO ỨNG DỤNG
                 import('./scripts/main.js').then(module => {
                     if (module.khoiTaoUngDung) module.khoiTaoUngDung();
                 });
             }
 
+
         };
-       
+
 
 
         // dang xuat
