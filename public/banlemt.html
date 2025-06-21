@@ -26,6 +26,35 @@
             font-weight: bold;
         }
 
+        #app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+        }
+
+        .table-area {
+            flex: 1;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo {
+            flex-shrink: 0;
+        }
+
+        .footer-buttons {
+            flex-shrink: 0;
+        }
+
         .top-inputs {
             display: flex;
             padding: 5px;
@@ -436,7 +465,7 @@
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
-                        
+
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
