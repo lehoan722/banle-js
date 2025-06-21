@@ -17,7 +17,6 @@
             height: 100%;
         }
 
-
         .header {
             background-color: #0078d7;
             color: white;
@@ -26,42 +25,6 @@
             font-size: 28px;
             font-weight: bold;
         }
-
-        html,
-        body {
-            height: 100%;
-        }
-
-        #app-container {
-            min-height: 100vh;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .main {
-            flex: 1 1 auto;
-            display: flex;
-            min-height: 0;
-            height: 1px;
-            overflow: hidden;
-        }
-
-        .table-area {
-            flex: 1 1 auto;
-            overflow: auto;
-            min-height: 0;
-            max-height: 100%;
-            background: #fff;
-        }
-
-        .footer-userinfo,
-        .footer-buttons {
-            flex-shrink: 0;
-            width: 100%;
-            z-index: 100;
-        }
-
 
         .top-inputs {
             display: flex;
@@ -112,6 +75,16 @@
             flex: 1;
         }
 
+        .main {
+            display: flex;
+            height: calc(100vh - 150px);
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1;
+            overflow: auto;
+        }
 
         table {
             width: 100%;
@@ -286,6 +259,45 @@
 
         #popupDanhMuc {
             display: none !important;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1 1 auto;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo,
+        .footer-buttons {
+            flex-shrink: 0;
+            width: 100%;
+            z-index: 100;
         }
     </style>
     <script>
@@ -517,6 +529,22 @@
             </div>
         </div>
 
+
+        <div class="footer-buttons">
+            <button id="them">Thêm mới</button>
+            <button id="luu">Lưu</button>
+            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
+            <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
+
+            <button id="quaylai">Quay lại</button>
+            <button id="tieptuc">Tiếp tục</button>
+            <button id="timkiem">Tìm kiếm</button>
+            <button id="xoa">Xoá</button>
+            <button id="xemin">Xem in</button>
+            <button id="xuatexcel">Xuất Excel</button>
+            <button id="btn-logout">THOAT PM</button>
+        </div>
+
         <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
                 <strong>Tìm kiếm mã sản phẩm</strong>
@@ -602,20 +630,6 @@
                 <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
             </div>
 
-            <div class="footer-buttons">
-                <button id="them">Thêm mới</button>
-                <button id="luu">Lưu</button>
-                <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
-                <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
-
-                <button id="quaylai">Quay lại</button>
-                <button id="tieptuc">Tiếp tục</button>
-                <button id="timkiem">Tìm kiếm</button>
-                <button id="xoa">Xoá</button>
-                <button id="xemin">Xem in</button>
-                <button id="xuatexcel">Xuất Excel</button>
-                <button id="btn-logout">THOAT PM</button>
-            </div>
 
         </div>
     </div>
