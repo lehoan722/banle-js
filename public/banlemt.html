@@ -177,10 +177,22 @@
 
         .footer-buttons {
             display: flex;
-            justify-content: space-between;
-            padding: 5px;
+            flex-direction: row;
+            justify-content: flex-start;
+            /* dồn trái */
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 5px 0 5px 8px;
             background: #dce9f9;
         }
+
+        .footer-buttons button {
+            margin-right: 4px;
+            font-size: 15px;
+            padding: 7px 13px;
+            min-width: 85px;
+        }
+
 
         .popup {
             display: none;
@@ -319,6 +331,28 @@
         .menu-item:hover .dropdown-content {
             display: block;
         }
+
+        .footer-userinfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 4px 0 4px 8px;
+            background: #e5eef9;
+            border-top: 1px solid #c7d3e9;
+        }
+
+        .footer-userinfo label {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .footer-userinfo input,
+        .footer-userinfo select {
+            padding: 3px 6px;
+            font-size: 15px;
+            margin-left: 2px;
+        }
     </style>
 
     <div class="menu-bar">
@@ -428,12 +462,13 @@
                             <label><input id="size45" type="checkbox" /> Size 45</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
 
                             <label><input type="checkbox" /> Cộng dồn số lượng</label>
                         </div>
                     </div>
                 </div>
-                <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
 
                 <div class="btn-big red">Tổng phải trả <span id="phaithanhtoan_text" style="float:right">0</span></div>
                 <div class="btn-big gray">Khách thanh toán <span id="khachtra_text" style="float:right">0</span></div>
@@ -444,6 +479,22 @@
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
         </div>
+
+        <div class="footer-userinfo">
+            <label>Ngày <input id="ngay" type="date" /></label>
+            <label>Giờ <input id="gio" /></label>
+            <label>Mã NV <input id="manv" /></label>
+            <label>Tên NV <input id="tennv" readonly="" /></label>
+            <label>Cơ sở
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+            <label>Khách hàng <select id="khachhang"></select></label>
+        </div>
+
+
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="luu">Lưu</button>
