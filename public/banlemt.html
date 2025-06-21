@@ -456,6 +456,7 @@
             <button id="xoa">Xoá</button>
             <button id="xemin">Xem in</button>
             <button id="xuatexcel">Xuất Excel</button>
+            <button id="btn-logout">Xuất Excel</button>
         </div>
         <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
@@ -602,6 +603,17 @@
                 });
             }
         };
+           // dang xuat
+        document.getElementById('btn-logout').onclick = async function () {
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+            }
+            document.getElementById('app-container').style.display = 'none';
+            document.getElementById('login-container').style.display = '';
+        };
+
 
     </script>
     <script type="module" src="scripts/viettelInvoice.js"></script>
