@@ -7,7 +7,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Hóa đơn bán lẻ</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
     <style>
@@ -563,7 +563,7 @@
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const supabase = createClient(supabaseUrl, supabaseKey);       
 
         window.dangNhap = async function () {
             const email = document.getElementById('login-email').value.trim();
@@ -587,20 +587,21 @@
                 document.getElementById('login-container').style.display = 'none';
                 document.getElementById('app-container').style.display = '';
                 // Khởi tạo lại supabase client với token người dùng
-                window.supabaseUser = createClient(supabaseUrl, supabaseKey, {
+                window.supabase = createClient(supabaseUrl, supabaseKey, {
                     global: {
                         headers: {
                             Authorization: `Bearer ${data.session.access_token}`,
                         },
                     },
                 });
-                // Gán lại biến supabase nếu code cũ sử dụng
-                window.supabase = window.supabaseUser;
-                // (Tùy vào code thao tác dữ liệu, bạn dùng window.supabaseUser hoặc window.supabase để truy vấn)
+                // SAU LOGIN MỚI IMPORT main.js VÀ KHỞI TẠO ỨNG DỤNG
+                import('./scripts/main.js').then(module => {
+                    if (module.khoiTaoUngDung) module.khoiTaoUngDung();
+                });
             }
         };
+
     </script>
-      <script type="module" src="scripts/main.js"></script>
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
 </body>
