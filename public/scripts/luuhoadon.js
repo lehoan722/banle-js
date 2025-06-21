@@ -10,6 +10,7 @@ import { guiHoaDonViettel } from './viettelInvoice.js';
 let choPhepSua = false;
 
 export async function luuHoaDonQuaAPI() {
+  const diadiem = localStorage.getItem("diadiem"); // <-- Lấy từ localStorage, không lấy từ input
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
