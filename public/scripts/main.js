@@ -143,5 +143,13 @@ export async function khoiTaoUngDung() {
     });
   }
 
+  // Đảm bảo ô cơ sở luôn hiển thị đúng và bị khóa không đổi
+  const cs = localStorage.getItem("diadiem");
+  const csSelect = document.getElementById("diadiem");
+  if (cs && csSelect) {
+    csSelect.value = cs;
+    csSelect.disabled = true; // Không cho đổi
+  }
+
 
 }
