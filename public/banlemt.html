@@ -566,7 +566,7 @@
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        window.supabase = createClient(supabaseUrl, supabaseKey);
 
         window.dangNhap = async function () {
             const email = document.getElementById('login-email').value.trim();
@@ -580,43 +580,41 @@
 
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
+
             if (error) {
                 statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
                 statusEl.style.color = 'red';
             } else {
                 statusEl.textContent = '✅ Đăng nhập thành công!';
                 statusEl.style.color = 'green';
-                // Ẩn form đăng nhập, hiện giao diện bán lẻ
                 document.getElementById('login-container').style.display = 'none';
                 document.getElementById('app-container').style.display = '';
-                // Khởi tạo lại supabase client với token người dùng
-                window.supabase = createClient(supabaseUrl, supabaseKey, {
-                    global: {
-                        headers: {
-                            Authorization: `Bearer ${data.session.access_token}`,
-                        },
-                    },
+                // Thiết lập lại session cho supabase
+                await window.supabase.auth.setSession({
+                    access_token: data.session.access_token,
+                    refresh_token: data.session.refresh_token
                 });
                 // SAU LOGIN MỚI IMPORT main.js VÀ KHỞI TẠO ỨNG DỤNG
                 import('./scripts/main.js').then(module => {
                     if (module.khoiTaoUngDung) module.khoiTaoUngDung();
                 });
             }
+
         };
         // dang xuat
-        document.getElementById('btn-logout').onclick = async function() {
-    if (window.supabase && window.supabase.auth) {
-        await window.supabase.auth.signOut();
-        localStorage.clear();
-        sessionStorage.clear();
-    }
-    document.getElementById('login-email').value = "";
-    document.getElementById('login-password').value = "";
-    document.getElementById('login-error').textContent = "";
-    document.getElementById('login-container').style.display = '';
-    document.getElementById('app-container').style.display = 'none';
-    document.getElementById('login-email').focus();
-};
+        document.getElementById('btn-logout').onclick = async function () {
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+            }
+            document.getElementById('login-email').value = "";
+            document.getElementById('login-password').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            document.getElementById('login-email').focus();
+        };
 
 
     </script>
