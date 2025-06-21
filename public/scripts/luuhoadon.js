@@ -13,6 +13,8 @@ export async function luuHoaDonQuaAPI() {
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
+  const tennv = document.getElementById("tennv").value.trim();
+  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
   const { data: tonTai } = await supabase
     .from("hoadon_banle")
