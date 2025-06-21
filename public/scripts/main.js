@@ -76,10 +76,15 @@ export async function khoiTaoUngDung() {
 
   async function hienThiAnhSanPhamTuMasp() {
     let masp = document.getElementById('masp').value.trim();
+
+    // Nếu input trống, lấy từ masp_last (vừa nhập xong)
+    if (!masp && window.masp_last) {
+      masp = window.masp_last;
+    }
     if (!masp) return;
 
-    masp = masp.toUpperCase(); // Ép toàn bộ mã sản phẩm thành chữ in hoa
-    const extension = '.JPG';  // Đuôi ảnh cố định dạng in hoa
+    masp = masp.toUpperCase();
+    const extension = '.JPG';
 
     const imgEl = document.querySelector('.product-image');
     const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}${extension}`;
@@ -90,6 +95,10 @@ export async function khoiTaoUngDung() {
       imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG';
     };
   }
+
+  // Đảm bảo cho biến global dùng được ở bangketqua.js
+  window.hienThiAnhSanPhamTuMasp = hienThiAnhSanPhamTuMasp;
+
 
 
   // Gán sự kiện khi nhập xong
