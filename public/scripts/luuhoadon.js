@@ -10,12 +10,14 @@ import { guiHoaDonViettel } from './viettelInvoice.js';
 let choPhepSua = false;
 
 export async function luuHoaDonQuaAPI() {
-  const diadiem = localStorage.getItem("diadiem"); // <-- Lấy từ localStorage, không lấy từ input
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+
+  // Lấy cơ sở từ localStorage, không lấy từ input
+  const diadiem = localStorage.getItem("diadiem");
 
   const { data: tonTai } = await supabase
     .from("hoadon_banle")
@@ -38,7 +40,7 @@ export async function luuHoaDonQuaAPI() {
     ngay: document.getElementById("ngay").value,
     manv: document.getElementById("manv").value,
     tennv: document.getElementById("tennv").value,
-    diadiem: document.getElementById("diadiem").value,
+    diadiem: diadiem, // luôn lấy từ localStorage
     khachhang: document.getElementById("khachhang").value,
     tongsl: parseInt(document.getElementById("tongsl").value || "0"),
     tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
@@ -47,7 +49,6 @@ export async function luuHoaDonQuaAPI() {
     ghichu: document.getElementById("ghichu")?.value || ""
   };
 
-  const diadiem = document.getElementById("diadiem").value;
   const createdAt = new Date().toISOString();
 
   const chitiet = [];
@@ -64,12 +65,11 @@ export async function luuHoaDonQuaAPI() {
         km: item.km,
         thanhtien: (item.gia - item.km) * sl,
         dvt: item.dvt || '',
-        diadiem,
+        diadiem: diadiem, // luôn lấy từ localStorage
         created_at: createdAt
       });
     });
   });
-
 
   const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
@@ -85,6 +85,7 @@ export async function luuHoaDonQuaAPI() {
   }
 }
 
+
 export async function luuHoaDonCaHaiBan() {
   const bangKetQua = getBangKetQua();
   const tennv = document.getElementById("tennv").value.trim();
@@ -92,8 +93,10 @@ export async function luuHoaDonCaHaiBan() {
 
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
-  const diadiem = document.getElementById("diadiem").value;
-  const createdAt = new Date().toISOString();  // <--- thêm dòng này!
+
+  // Lấy địa điểm từ localStorage (không lấy từ input)
+  const diadiem = localStorage.getItem("diadiem");
+  const createdAt = new Date().toISOString();
   const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
 
   // Lấy số hiện tại từ bảng sochungtu
@@ -117,12 +120,11 @@ export async function luuHoaDonCaHaiBan() {
     .update({ so_hientai: soMoi })
     .eq("loai", loaiT);
 
-
   const hoadon = {
     ngay: document.getElementById("ngay").value,
     manv: document.getElementById("manv").value,
     tennv,
-    diadiem: document.getElementById("diadiem").value,
+    diadiem: diadiem,
     khachhang: document.getElementById("khachhang").value,
     tongsl: parseInt(document.getElementById("tongsl").value || "0"),
     tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
@@ -130,7 +132,6 @@ export async function luuHoaDonCaHaiBan() {
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || ""
   };
-  
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
@@ -145,12 +146,11 @@ export async function luuHoaDonCaHaiBan() {
         km: item.km,
         thanhtien: (item.gia - item.km) * sl,
         dvt: item.dvt || '',
-        diadiem,
+        diadiem: diadiem,
         created_at: createdAt
       });
     });
   });
-
 
   const hoadonChinh = { ...hoadon, sohd };
   const hoadonPhu = { ...hoadon, sohd: sohdT };
@@ -170,8 +170,6 @@ export async function luuHoaDonCaHaiBan() {
     // ✅ Gửi hóa đơn điện tử sau khi lưu bảng T thành công
     guiHoaDonViettel(sohdT);
   }
-
-
 }
 
 async function lamMoiSauKhiLuu() {
