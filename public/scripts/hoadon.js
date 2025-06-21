@@ -150,3 +150,37 @@ export function xoaDongDangChon() {
     capNhatBangHTML(bangKetQua);
   }
 }
+
+export function suaDongDangChon() {
+  if (!maspDangChon) {
+    alert("Vui lòng chọn dòng muốn sửa.");
+    return;
+  }
+  const item = bangKetQua[maspDangChon];
+  if (!item) {
+    alert("Không tìm thấy dòng để sửa.");
+    return;
+  }
+
+  // Nếu có nhiều size, lấy size đầu tiên
+  const size = item.sizes && item.sizes.length > 0 ? item.sizes[0] : "";
+  const soluong = item.soluongs && item.soluongs.length > 0 ? item.soluongs[0] : "";
+
+  // Đưa thông tin về các ô nhập liệu
+  document.getElementById("masp").value = item.masp || "";
+  document.getElementById("size").value = size || "";
+  document.getElementById("soluong").value = soluong || "1";
+  document.getElementById("dvt").value = item.dvt || "";
+  document.getElementById("gia").value = item.gia || "";
+  document.getElementById("khuyenmai").value = item.km || "";
+  // Thành tiền có thể để tự động tính lại khi sửa số lượng/giá
+
+  // Xóa dòng đang chọn khỏi bảng và cập nhật lại lưới
+  delete bangKetQua[maspDangChon];
+  maspDangChon = null;
+  capNhatBangHTML(bangKetQua);
+
+  // Focus lại vào ô nhập liệu đầu vào để sửa
+  document.getElementById("masp").focus();
+}
+
