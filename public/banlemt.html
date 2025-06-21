@@ -187,18 +187,25 @@
     </style>
 
     <script>
+
         function switchTab(tabName) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabName).classList.add('active');
             document.getElementById('btn_' + tabName).classList.add('active');
         }
-        document.addEventListener("DOMContentLoaded", () => { switchTab("thongtin"); });
-        function dongPopupDM() { document.getElementById('popupDanhMuc').style.display = 'none'; }
+        document.addEventListener("DOMContentLoaded", () => {
+            switchTab("thongtin");
+        });
+
+        function dongPopupDM() {
+            document.getElementById('popupDanhMuc').style.display = 'none';
+        }
     </script>
 </head>
 
-<body>
+<body>    
+
     <div class="menu-bar">
         <div class="menu-item">
             <span class="menu-link">📁 Báo cáo hóa đơn</span>
@@ -230,7 +237,24 @@
         </div>
     </div>
 
-    <div id="app-container">
+
+    <div id="app-container" style="display:none;">
+
+        <div class="footer-userinfo">
+
+            <label>Mã NV <input id="manv" /></label>
+            <label>Tên NV <input id="tennv" readonly="" /></label>
+            <label>Cơ sở
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+            <label>Khách hàng <select id="khachhang"></select></label>
+            <label>Ngày <input id="ngay" type="date" /></label>
+            <label>Giờ <input id="gio" /></label>
+        </div>
+
         <div class="top-inputs">
             <div style="position: relative;">
                 <input id="masp" placeholder="Mã SP" autocomplete="off" />
@@ -245,42 +269,29 @@
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
+
             <input id="ghichu" placeholder="Ghi chú HH" />
             <button id="masp-search">🔍</button>
         </div>
 
+
         <div class="main">
-            <div class="main-left">
-                <div class="table-area">
-                    <table id="bangketqua">
-                        <thead>
-                            <tr>
-                                <th>Mã hàng</th>
-                                <th>Tên hàng</th>
-                                <th>Kích cỡ</th>
-                                <th>S.lượng</th>
-                                <th>Tổng</th>
-                                <th>Đơn giá</th>
-                                <th>Khuyến mại</th>
-                                <th>Thành tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <div class="footer-buttons">
-                    <button id="them">Thêm mới</button>
-                    <button id="luu">Lưu</button>
-                    <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
-                    <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
-                    <button id="quaylai">Quay lại</button>
-                    <button id="tieptuc">Tiếp tục</button>
-                    <button id="timkiem">Tìm kiếm</button>
-                    <button id="xoa">Xoá</button>
-                    <button id="xemin">Xem in</button>
-                    <button id="xuatexcel">Xuất Excel</button>
-                    <button id="btn-logout">THOAT PM</button>
-                </div>
+            <div class="table-area">
+                <table id="bangketqua">
+                    <thead>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Tên hàng</th>
+                            <th>Kích cỡ</th>
+                            <th>S.lượng</th>
+                            <th>Tổng</th>
+                            <th>Đơn giá</th>
+                            <th>Khuyến mại</th>
+                            <th>Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
             <div class="sidebar">
                 <div class="tabs">
@@ -289,10 +300,12 @@
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
+
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
                             </select></label>
+
                         <label>Chiết khấu <input id="chietkhau" /></label>
                         <label>Tổng KM <input id="tongkm" readonly="" /></label>
                         <label>Phải trả <input id="phaithanhtoan" readonly="" /></label>
@@ -309,34 +322,40 @@
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
+
                             <label><input type="checkbox" /> Cộng dồn số lượng</label>
                         </div>
                     </div>
                 </div>
+
                 <div class="btn-big red">Tổng phải trả <span id="phaithanhtoan_text" style="float:right">0</span></div>
                 <div class="btn-big gray">Khách thanh toán <span id="khachtra_text" style="float:right">0</span></div>
                 <div class="btn-big gray">Còn lại <span id="conlai_text" style="float:right">0</span></div>
+
+
                 <img alt="Ảnh sản phẩm" class="product-image"
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
         </div>
 
-        <div class="footer-userinfo">
-            <label>Mã NV <input id="manv" /></label>
-            <label>Tên NV <input id="tennv" readonly="" /></label>
-            <label>Cơ sở
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-            <label>Khách hàng <select id="khachhang"></select></label>
-            <label>Ngày <input id="ngay" type="date" /></label>
-            <label>Giờ <input id="gio" /></label>
-        </div>
-    </div>
 
-    <div class="popup" id="popupDanhMuc">
+        <div class="footer-buttons">
+            <button id="them">Thêm mới</button>
+            <button id="luu">Lưu</button>
+            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
+            <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
+
+            <button id="quaylai">Quay lại</button>
+            <button id="tieptuc">Tiếp tục</button>
+            <button id="timkiem">Tìm kiếm</button>
+            <button id="xoa">Xoá</button>
+            <button id="xemin">Xem in</button>
+            <button id="xuatexcel">Xuất Excel</button>
+            <button id="btn-logout">THOAT PM</button>
+        </div>
+
+        <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
                 <strong>Tìm kiếm mã sản phẩm</strong>
                 <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
@@ -502,4 +521,5 @@
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
 </body>
+
 </html>
