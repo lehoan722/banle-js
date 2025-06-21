@@ -17,6 +17,7 @@
             height: 100%;
         }
 
+
         .header {
             background-color: #0078d7;
             color: white;
@@ -25,6 +26,42 @@
             font-size: 28px;
             font-weight: bold;
         }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1 1 auto;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo,
+        .footer-buttons {
+            flex-shrink: 0;
+            width: 100%;
+            z-index: 100;
+        }
+
 
         .top-inputs {
             display: flex;
@@ -75,16 +112,6 @@
             flex: 1;
         }
 
-        .main {
-            display: flex;
-            height: calc(100vh - 150px);
-            overflow: hidden;
-        }
-
-        .table-area {
-            flex: 1;
-            overflow: auto;
-        }
 
         table {
             width: 100%;
@@ -390,9 +417,9 @@
 
 
     <div id="app-container" style="display:none;">
- 
+
         <div class="footer-userinfo">
-            
+
             <label>Mã NV <input id="manv" /></label>
             <label>Tên NV <input id="tennv" readonly="" /></label>
             <label>Cơ sở
@@ -424,7 +451,7 @@
             <input id="ghichu" placeholder="Ghi chú HH" />
             <button id="masp-search">🔍</button>
         </div>
-        
+
 
         <div class="main">
             <div class="table-area">
@@ -490,21 +517,6 @@
             </div>
         </div>
 
-
-        <div class="footer-buttons">
-            <button id="them">Thêm mới</button>
-            <button id="luu">Lưu</button>
-            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
-            <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
-
-            <button id="quaylai">Quay lại</button>
-            <button id="tieptuc">Tiếp tục</button>
-            <button id="timkiem">Tìm kiếm</button>
-            <button id="xoa">Xoá</button>
-            <button id="xemin">Xem in</button>
-            <button id="xuatexcel">Xuất Excel</button>
-            <button id="btn-logout">THOAT PM</button>
-        </div>
         <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
                 <strong>Tìm kiếm mã sản phẩm</strong>
@@ -515,7 +527,7 @@
         </div>
         <!-- ✅ Popup xác thực sửa hóa đơn -->
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-  background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
             <h3>Xác thực sửa hóa đơn</h3>
             <input id="xacmanv" placeholder="Mã nhân viên"
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
@@ -527,7 +539,7 @@
 
         <!-- Popup xác nhận thêm mới -->
         <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
             <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
@@ -538,7 +550,7 @@
         <!-- Popup nhập mã sản phẩm mới -->
         <div id="popupNhapMaMoi" class="popup-confirm"
             style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
-  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
+     background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
             <h3>Thêm mã sản phẩm mới</h3>
             <div id="formFields"></div>
             <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
@@ -547,7 +559,7 @@
         </div>
 
         <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
-  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
+     background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
             <h3>Cấu hình trường hiển thị</h3>
             <div id="dsCauHinhTruong"></div>
             <div style="text-align:right; margin-top:10px;">
@@ -576,7 +588,7 @@
         <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
         <div id="popupNhapHangHoa"
             style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
             <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
 
             <div id="fieldsNhapHangHoa"></div>
@@ -590,6 +602,20 @@
                 <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
             </div>
 
+            <div class="footer-buttons">
+                <button id="them">Thêm mới</button>
+                <button id="luu">Lưu</button>
+                <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
+                <button onclick="luuHoaDonCaHaiBan()">💾 Lưu cả hai bảng</button>
+
+                <button id="quaylai">Quay lại</button>
+                <button id="tieptuc">Tiếp tục</button>
+                <button id="timkiem">Tìm kiếm</button>
+                <button id="xoa">Xoá</button>
+                <button id="xemin">Xem in</button>
+                <button id="xuatexcel">Xuất Excel</button>
+                <button id="btn-logout">THOAT PM</button>
+            </div>
 
         </div>
     </div>
