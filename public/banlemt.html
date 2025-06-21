@@ -515,15 +515,7 @@
       statusEl.textContent = '✅ Đăng nhập thành công!';
       document.getElementById('login-form').style.display = 'none';
       document.getElementById('app-content').style.display = 'block';
-
-      // Khởi tạo Supabase client có token (để gọi truy vấn)
-      window.supabaseUser = createClient(supabaseUrl, supabaseKey, {
-        global: {
-          headers: {
-            Authorization: `Bearer ${data.session.access_token}`,
-          },
-        },
-      });
+      
 
       // Sau khi đăng nhập, bạn có thể dùng supabaseUser.from(...) để truy vấn
     }
