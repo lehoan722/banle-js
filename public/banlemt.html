@@ -449,9 +449,14 @@
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
-            <label>Mã Khách <input id="makh" /></label>
-            <input id="makh" ...>
-            <button id="btnPopupKH" type="button" tabindex="-1">🔍</button>
+            <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
+                    autocomplete="off">
+                <button id="btnPopupKH" type="button"
+                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                    🔍
+                </button>
+            </div>
 
             <label>Khách hàng <input id="khachhang" readonly="" /></label>
             <label>Ngày <input id="ngay" type="date" /></label>
