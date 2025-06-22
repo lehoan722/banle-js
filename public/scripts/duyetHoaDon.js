@@ -76,7 +76,7 @@ async function napHoaDonVaoTrang(hoadon) {
     .select("*")
     .eq("sohd", hoadon.sohd);
 
-  const bangKetQua = {};
+  resetBangKetQua(); // reset tất cả thuộc tính cũ
   if (!error && ct.length > 0) {
     ct.forEach(row => {
       const masp = row.masp;
