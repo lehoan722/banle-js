@@ -225,7 +225,8 @@ export async function napLaiChiTietHoaDon(sohd) {
     }
     const index = bangKetQua[masp].sizes.indexOf(ct.size);
     if (index === -1) {
-      bangKetQua[masp].sizes.push(ct.size);
+      bangKetQua[masp].sizes.push(String(ct.size)); // luôn lưu về kiểu string
+
       bangKetQua[masp].soluongs.push(ct.soluong);
     } else {
       bangKetQua[masp].soluongs[index] += ct.soluong;
