@@ -133,13 +133,6 @@ export function resetBangKetQua() {
   capNhatBangHTML(bangKetQua);
 }
 
-export function setMaspspDangChon(masp) {
-  maspDangChon = masp;
-}
-
-export function getMaspspDangChon() {
-  return maspDangChon;
-}
 
 export function ganTenNV() {
   const manv = document.getElementById("manv").value.trim();
