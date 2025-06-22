@@ -8,37 +8,42 @@ export function capNhatBangHTML(bangKetQua) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
+  // Duyệt từng mã sản phẩm
   Object.values(bangKetQua).forEach(item => {
     // Sắp xếp kích cỡ và số lượng tương ứng
-    const zipped = item.sizes.map((size, i) => ({ size: parseInt(size), soluong: item.soluongs[i] }));
-    zipped.sort((a, b) => a.size - b.size);  // sắp xếp theo size tăng dần
+    const zipped = item.sizes.map((size, i) => ({ 
+      size: parseInt(size), 
+      soluong: item.soluongs[i] 
+    }));
+    zipped.sort((a, b) => a.size - b.size);
 
-    const sortedSizes = zipped.map(z => z.size);
-    const sortedSoluongs = zipped.map(z => z.soluong);
+    // Với mỗi size, render thành 1 dòng riêng
+    zipped.forEach((z, idx) => {
+      const thanhtien = (item.gia - item.km) * z.soluong;
+      const row = tbody.insertRow();
+      row.innerHTML = `
+        <td>${item.masp}</td>
+        <td>${item.tensp}</td>
+        <td>${z.size}</td>
+        <td>${z.soluong}</td>
+        <td>${z.soluong}</td>
+        <td>${item.gia}</td>
+        <td>${item.km}</td>
+        <td>${thanhtien.toLocaleString()}</td>
+        <td>${item.dvt}</td>
+      `;
 
-    const thanhtien = (item.gia - item.km) * item.tong;
-    const row = tbody.insertRow();
-    row.innerHTML = `
-    <td>${item.masp}</td>
-    <td>${item.tensp}</td>
-    <td>${sortedSizes.join(",")}</td>
-    <td>${sortedSoluongs.join(",")}</td>
-    <td>${item.tong}</td>
-    <td>${item.gia}</td>
-    <td>${item.km}</td>
-    <td>${thanhtien.toLocaleString()}</td>
-    <td>${item.dvt}</td>
-  `;
-
-    row.addEventListener("click", () => {
-      setMaspspDangChon(item.masp);
-      highlightRow(row);
+      // Khi click dòng, lưu cả mã + size
+      row.addEventListener("click", () => {
+        setMaspspDangChon({ masp: item.masp, size: z.size });
+        highlightRow(row);
+      });
     });
   });
 
-
   capNhatThongTinTong(bangKetQua);
 }
+
 
 function highlightRow(selectedRow) {
   document.querySelectorAll("#bangketqua tbody tr").forEach(row => {
