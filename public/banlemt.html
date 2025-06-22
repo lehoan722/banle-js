@@ -814,6 +814,40 @@
             });
         }
 
+        // Copy bảng sang clipboard
+        document.getElementById('btnCopy').onclick = function () {
+            const table = document.getElementById('bangketqua');
+            let str = '';
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
+            }
+            navigator.clipboard.writeText(str).then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
+        };
+
+        // Dán từ clipboard (Excel) vào bảng web
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            const rows = text.trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            tbody.innerHTML = '';
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+                const tr = document.createElement('tr');
+                rowArr.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        });
+
+
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
