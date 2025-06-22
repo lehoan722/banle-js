@@ -8,16 +8,15 @@ export function capNhatBangHTML(bangKetQua) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Duyệt từng mã sản phẩm
   Object.values(bangKetQua).forEach(item => {
     // Sắp xếp kích cỡ và số lượng tương ứng
-    const zipped = item.sizes.map((size, i) => ({ 
-      size: parseInt(size), 
-      soluong: item.soluongs[i] 
+    const zipped = item.sizes.map((size, i) => ({
+      size: parseInt(size),
+      soluong: item.soluongs[i]
     }));
-    zipped.sort((a, b) => a.size - b.size);
+    zipped.sort((a, b) => a.size - b.size);  // sắp xếp theo size tăng dần
 
-    // Với mỗi size, render thành 1 dòng riêng
+    // Mỗi size là một dòng riêng
     zipped.forEach((z, idx) => {
       const thanhtien = (item.gia - item.km) * z.soluong;
       const row = tbody.insertRow();
@@ -33,7 +32,7 @@ export function capNhatBangHTML(bangKetQua) {
         <td>${item.dvt}</td>
       `;
 
-      // Khi click dòng, lưu cả mã + size
+      // Lưu cả mã sản phẩm và size khi chọn dòng
       row.addEventListener("click", () => {
         setMaspspDangChon({ masp: item.masp, size: z.size });
         highlightRow(row);
@@ -43,6 +42,7 @@ export function capNhatBangHTML(bangKetQua) {
 
   capNhatThongTinTong(bangKetQua);
 }
+
 
 
 function highlightRow(selectedRow) {
