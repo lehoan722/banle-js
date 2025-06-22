@@ -52,17 +52,17 @@ export async function capNhatSoHoaDonTuDong() {
     let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
 
     // 4. Kiểm tra số này đã có ai dùng chưa (trong bảng hóa đơn)
-    while (await kiemTraSoHoaDonDaTonTai(loai, soMoi)) {
-      soMoi++; // nếu đã tồn tại thì tăng lên tiếp
-    }
+    //while (await kiemTraSoHoaDonDaTonTai(loai, soMoi)) {
+    //  soMoi++; // nếu đã tồn tại thì tăng lên tiếp
+    //}
 
     // 5. Cập nhật lại số_hientai vào bảng sochungtu (chỉ khi soMoi > số hiện tại)
-    if (data?.so_hientai < soMoi) {
-      await supabase
-        .from("sochungtu")
-        .update({ so_hientai: soMoi })
-        .eq("loai", loai);
-    }
+    //if (data?.so_hientai < soMoi) {
+      //await supabase
+       // .from("sochungtu")
+       // .update({ so_hientai: soMoi })
+       // .eq("loai", loai);
+   // }
 
     // 6. Ghép số hóa đơn đúng chuẩn
     const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
