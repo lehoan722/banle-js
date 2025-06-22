@@ -164,7 +164,8 @@ export function suaDongDangChon() {
     alert("Không tìm thấy dòng để sửa.");
     return;
   }
-  const idx = item.sizes.indexOf(size + "");
+  const idx = item.sizes.findIndex(s => s == size);
+  
   if (idx === -1) {
     alert("Không tìm thấy size để sửa.");
     return;
