@@ -439,7 +439,21 @@
 
     <div id="app-container" style="display:none;">
 
-        
+        <div class="tennv">
+
+            <label>Mã NV <input id="manv" /></label>
+            <label>Tên NV <input id="tennv" readonly="" /></label>
+            <label>Cơ sở
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+            <label>Mã Khách <input id="makh" /></label>
+            <label>Khách hàng <input id="khachhang" readonly="" /></label>
+            <label>Ngày <input id="ngay" type="date" /></label>
+            <label>Giờ <input id="gio" /></label>
+        </div>
 
         <div class="top-inputs">
             <div style="position: relative;">
@@ -538,22 +552,14 @@
             <button id="xoa">Xoá</button>
             <button id="xemin">Xem in</button>
             <button id="xuatexcel">Xuất Excel</button>
-            <button id="btn-logout">THOAT PM</button> 
-            
+            <button id="btn-logout">THOAT PM</button>
+
         </div>
         <div class="tennv">
-            <label>Mã NV <input id="manv" /></label>
-            <label>Tên NV <input id="tennv" readonly="" /></label>
-            <label>Cơ sở
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-            <label>Mã Khách <input id="makh" /></label>
-            <label>Khách hàng <input id="khachhang" readonly="" /></label>
-            <label>Ngày <input id="ngay" type="date" /></label>
-            <label>Giờ <input id="gio" /></label>
+            ----------------------------------------------------------
+        </div>
+        <div class="tennv">
+            ----------------------------------------------------------
         </div>
         <div class="tennv">
             ----------------------------------------------------------
@@ -740,6 +746,24 @@
 
 
     </script>
+
+    <script type="module">
+        document.getElementById("makh").addEventListener("blur", async function () {
+            const makh = this.value.trim();
+            const khEl = document.getElementById("khachhang");
+            khEl.value = "";
+            if (!makh) return;
+            const { data, error } = await window.supabase
+                .from("dmkhachhang")
+                .select("tenkh")
+                .eq("makh", makh)
+                .single();
+            if (data && data.tenkh) khEl.value = data.tenkh;
+            else khEl.value = "";
+        });
+    </script>
+
+
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
 </body>
