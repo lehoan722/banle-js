@@ -5,7 +5,7 @@ import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 import { guiHoaDonViettel } from './viettelInvoice.js';
-
+await napLaiChiTietHoaDon(sohd);
 
 let choPhepSua = false;
 
@@ -256,8 +256,7 @@ export async function xacNhanSuaHoaDon() {
   // 4. Nếu qua tất cả kiểm tra trên, cho phép sửa
   choPhepSua = true;
   document.getElementById("popupXacThucSua").style.display = "none";
-  alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
-  await napLaiChiTietHoaDon(sohd);
+  alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");  
 
   luuHoaDonQuaAPI();
 }
