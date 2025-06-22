@@ -163,7 +163,7 @@ export function suaDongDangChon() {
     alert("Không tìm thấy dòng để sửa.");
     return;
   }
-  const idx = item.sizes.indexOf(size + ""); // size là int, trong mảng có thể là string
+  const idx = item.sizes.indexOf(size + "");
   if (idx === -1) {
     alert("Không tìm thấy size để sửa.");
     return;
@@ -177,7 +177,7 @@ export function suaDongDangChon() {
   document.getElementById("gia").value = item.gia || "";
   document.getElementById("khuyenmai").value = item.km || "";
 
-  // Xóa dòng đang chọn khỏi bảng và cập nhật lại lưới
+  // Xóa đúng dòng đang chọn (đúng size) khỏi bảng
   item.sizes.splice(idx, 1);
   item.soluongs.splice(idx, 1);
   item.tong -= parseInt(document.getElementById("soluong").value) || 0;
@@ -189,6 +189,7 @@ export function suaDongDangChon() {
   // Focus lại vào ô nhập liệu đầu vào để sửa
   document.getElementById("masp").focus();
 }
+
 
 export async function napLaiChiTietHoaDon(sohd) {
   // Lấy chi tiết từ bảng ct_hoadon_banle
