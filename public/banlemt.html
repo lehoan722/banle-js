@@ -406,8 +406,7 @@
     </style>
 
     <div class="menu-bar">
-        <div class="menu-item">
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải lại danh mục</button>
+        <div class="menu-item">            
 
             <span class="menu-link">📁 Báo cáo hóa đơn</span>
             <div class="dropdown-content">
@@ -442,6 +441,8 @@
     <div id="app-container" style="display:none;">
 
         <div class="tennv">
+            <label>Ngày <input id="ngay" type="date" /></label>
+            <label>Giờ <input id="gio" /></label>
 
             <label>Mã NV <input id="manv" /></label>
             <label>Tên NV <input id="tennv" readonly="" /></label>
@@ -461,8 +462,8 @@
             </div>
 
             <label>Khách hàng <input id="khachhang" readonly="" /></label>
-            <label>Ngày <input id="ngay" type="date" /></label>
-            <label>Giờ <input id="gio" /></label>
+            
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
         </div>
 
         <!-- Popup tìm khách hàng -->
@@ -866,8 +867,6 @@
         });
 
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
-
-        
     </script>
 
 
