@@ -74,20 +74,23 @@ export async function luuHoaDonQuaAPI() {
   const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
-  if (!errHD && !errCT) {
-    // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
-    const [loai, so] = sohd.split('_');
-    const soMoi = parseInt(so, 10);
+  // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
+  const [loai, so] = sohd.split('_');
+  const soMoi = parseInt(so, 10);
+  // Kiểm tra số mới có lớn hơn số hiện tại không trước khi update
+  const { data: currSoChungTu } = await supabase
+    .from("sochungtu")
+    .select("so_hientai")
+    .eq("loai", loai)
+    .single();
+
+  if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
     await supabase
       .from("sochungtu")
       .update({ so_hientai: soMoi })
       .eq("loai", loai);
-
-    alert("✅ Đã lưu hóa đơn thành công!");
-    inHoaDon(hoadon, chitiet);
-    await lamMoiSauKhiLuu();
-    choPhepSua = false;
   }
+
   else {
     alert("❌ Lỗi khi lưu hóa đơn");
     console.error(errHD || errCT);
