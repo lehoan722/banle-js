@@ -175,5 +175,7 @@ export async function khoiTaoUngDung() {
     }
   });
 
+  document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+
 
 }
