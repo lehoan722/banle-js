@@ -217,32 +217,49 @@ export async function xacNhanSuaHoaDon() {
   const manv = document.getElementById("xacmanv").value.trim();
   const mk = document.getElementById("xacmatkhau").value.trim();
   const sohd = document.getElementById("sohd").value.trim();
-  const loai = sohd.startsWith("bancs1") ? "hdbl" : "khac";
 
-  const { data, error } = await supabase
+  // 1. Kiểm tra mã nhân viên và mật khẩu
+  const { data: nv, error: errNV } = await supabase
     .from("dmnhanvien")
-    .select("matkhau, sua_hoadon, loai_duoc_sua")
+    .select("matkhau, sua_hoadon")
     .eq("manv", manv)
     .maybeSingle();
 
-  if (error || !data || data.matkhau !== mk) {
+  if (errNV || !nv || nv.matkhau !== mk) {
     alert("❌ Sai mã nhân viên hoặc mật khẩu.");
     return;
   }
-
-  const duocSua = data.sua_hoadon === true &&
-    (data.loai_duoc_sua || []).includes(loai);
-
-  if (!duocSua) {
-    alert("🚫 Bạn không có quyền sửa loại chứng từ này.");
+  if (nv.sua_hoadon !== true) {
+    alert("🚫 Bạn không có quyền sửa hóa đơn.");
     return;
   }
 
+  // 2. Kiểm tra địa điểm lập hóa đơn
+  const { data: hd, error: errHD } = await supabase
+    .from("hoadon_banle")
+    .select("diadiem")
+    .eq("sohd", sohd)
+    .maybeSingle();
+
+  if (errHD || !hd) {
+    alert("❌ Không tìm thấy hóa đơn cần sửa.");
+    return;
+  }
+
+  // 3. Địa điểm đăng nhập phải trùng với địa điểm hóa đơn lập
+  const diadiemDangNhap = localStorage.getItem("diadiem");
+  if (hd.diadiem !== diadiemDangNhap) {
+    alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
+    return;
+  }
+
+  // 4. Nếu qua tất cả kiểm tra trên, cho phép sửa
   choPhepSua = true;
   document.getElementById("popupXacThucSua").style.display = "none";
   alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
   luuHoaDonQuaAPI();
 }
+
 
 function inHoaDon(hoadon, chitiet) {
   const data = { hoadon, chitiet };
