@@ -3,7 +3,8 @@
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { supabase } from './supabaseClient.js';
 
-let bangKetQua = {};
+export let bangKetQua = {};
+
 // Trong hoadon.js
 let maspDangChon = null;
 export function setMaspspDangChon(obj) {
