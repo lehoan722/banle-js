@@ -4,7 +4,15 @@ import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { supabase } from './supabaseClient.js';
 
 let bangKetQua = {};
+// Trong hoadon.js
 let maspDangChon = null;
+export function setMaspspDangChon(obj) {
+  maspDangChon = obj; // obj = {masp, size}
+}
+export function getMaspspDangChon() {
+  return maspDangChon;
+}
+
 
 export async function chuyenFocus(e) {
   if (e.key !== "Enter") return;
