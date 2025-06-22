@@ -190,9 +190,6 @@ export function suaDongDangChon() {
   document.getElementById("masp").focus();
 }
 
-
-import { capNhatBangHTML } from './bangketqua.js';
-
 export async function napLaiChiTietHoaDon(sohd) {
   // Lấy chi tiết từ bảng ct_hoadon_banle
   const { data: chitiet, error } = await supabase
