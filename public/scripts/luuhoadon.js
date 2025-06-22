@@ -258,7 +258,7 @@ export async function xacNhanSuaHoaDon() {
   choPhepSua = true;
   document.getElementById("popupXacThucSua").style.display = "none";
   alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");  
-  await napLaiChiTietHoaDon(sohd);
+ 
   luuHoaDonQuaAPI();
 }
 
