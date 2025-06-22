@@ -151,5 +151,29 @@ export async function khoiTaoUngDung() {
     csSelect.disabled = true; // Không cho đổi
   }
 
+  // 1. Hàm tải lại danh mục sản phẩm
+  window.taiLaiSanPhamData = async function () {
+    const { data, error } = await window.supabase
+      .from('dmhanghoa')
+      .select('*');
+    if (error) {
+      alert('Không tải được danh mục hàng hóa!');
+      return;
+    }
+    window.sanPhamData = {};
+    data.forEach(sp => {
+      window.sanPhamData[sp.masp.toUpperCase()] = sp;
+    });
+    alert('✅ Đã tải lại danh mục sản phẩm!');
+  };
+
+  // 2. Gắn F1 toàn trang (hoặc giới hạn theo vùng nhập liệu tuỳ ý)
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'F1') {
+      e.preventDefault();
+      window.taiLaiSanPhamData();
+    }
+  });
+
 
 }
