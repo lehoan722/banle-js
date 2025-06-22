@@ -60,7 +60,7 @@ export async function capNhatSoHoaDonTuDong() {
     if (data?.so_hientai < soMoi) {
       await supabase
         .from("sochungtu")
-        //.update({ so_hientai: soMoi })
+        .update({ so_hientai: soMoi })
         .eq("loai", loai);
     }
 
