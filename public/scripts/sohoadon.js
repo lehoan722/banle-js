@@ -1,12 +1,27 @@
 import { supabase } from './supabaseClient.js';
 
 // Hàm phát sinh số chứng từ động
+import { supabase } from './supabaseClient.js';
+
+// Hàm kiểm tra số hóa đơn đã được dùng chưa
+async function kiemTraSoHoaDonDaTonTai(loai, so) {
+  const { data } = await supabase
+    .from("hoadon_banle")
+    .select("sohd")
+    .eq("sohd", `${loai}_${String(so).padStart(5, "0")}`)
+    .maybeSingle(); // dùng maybeSingle để không lỗi nếu không có bản ghi
+  return !!data;
+}
+
+// Hàm phát sinh số hóa đơn động (chuẩn mới)
 export async function capNhatSoHoaDonTuDong() {
   try {
-    const diadiem = document.getElementById("diadiem")?.value || "cs1";
+    // 1. Lấy địa điểm từ localStorage
+    const diadiem = localStorage.getItem("diadiem") || "cs1";
+
+    // 2. Xác định loại chứng từ như cũ
     const pathname = window.location.pathname;
     let loai = "";
-
     if (pathname.includes("banle")) {
       loai = diadiem === "cs1" ? "bancs1" : "bancs2";
     } else if (pathname.includes("nhapmoi")) {
@@ -24,39 +39,50 @@ export async function capNhatSoHoaDonTuDong() {
     } else if (pathname.includes("kiemkho")) {
       const isTang = document.title.includes("Tăng");
       loai = isTang ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
-                   : (diadiem === "cs1" ? "giamkhocs1" : "giamkhocs2");
+                    : (diadiem === "cs1" ? "giamkhocs1" : "giamkhocs2");
     } else {
       alert("Không nhận diện được loại chứng từ từ giao diện.");
       return;
     }
 
+    // 3. Lấy số hiện tại từ bảng sochungtu
     const { data, error } = await supabase
       .from("sochungtu")
       .select("so_hientai")
       .eq("loai", loai)
       .single();
 
-    let soMoi = 1;
-    if (!error && data) {
-      soMoi = data.so_hientai + 1;
+    let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
+
+    // 4. Kiểm tra số này đã có ai dùng chưa (trong bảng hóa đơn)
+    while (await kiemTraSoHoaDonDaTonTai(loai, soMoi)) {
+      soMoi++; // nếu đã tồn tại thì tăng lên tiếp
+    }
+
+    // 5. Cập nhật lại số_hientai vào bảng sochungtu (chỉ khi soMoi > số hiện tại)
+    if (data?.so_hientai < soMoi) {
       await supabase
         .from("sochungtu")
         .update({ so_hientai: soMoi })
         .eq("loai", loai);
-    } else {
-      await supabase
-        .from("sochungtu")
-        .insert([{ loai, so_hientai: soMoi }]);
     }
 
+    // 6. Ghép số hóa đơn đúng chuẩn
     const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
+
+    // 7. Cập nhật lên giao diện
     document.getElementById("sohd").value = sohd;
+    document.getElementById("diadiem").value = diadiem;
+
+    return sohd;
   } catch (err) {
     console.error("Lỗi phát sinh số hóa đơn:", err);
     alert("Không thể phát sinh số hóa đơn.");
+    return null;
   }
 }
 window.capNhatSoHoaDonTuDong = capNhatSoHoaDonTuDong;
+
 
 // Hàm phát sinh số hóa đơn tạm
 export async function phatSinhSoHDTMoi() {
