@@ -152,37 +152,44 @@ export function xoaDongDangChon() {
 }
 
 export function suaDongDangChon() {
-  if (!maspDangChon) {
+  const dangChon = getMaspspDangChon();
+  if (!dangChon) {
     alert("Vui lòng chọn dòng muốn sửa.");
     return;
   }
-  const item = bangKetQua[maspDangChon];
+  const { masp, size } = dangChon;
+  const item = bangKetQua[masp];
   if (!item) {
     alert("Không tìm thấy dòng để sửa.");
     return;
   }
+  const idx = item.sizes.indexOf(size + ""); // size là int, trong mảng có thể là string
+  if (idx === -1) {
+    alert("Không tìm thấy size để sửa.");
+    return;
+  }
 
-  // Nếu có nhiều size, lấy size đầu tiên
-  const size = item.sizes && item.sizes.length > 0 ? item.sizes[0] : "";
-  const soluong = item.soluongs && item.soluongs.length > 0 ? item.soluongs[0] : "";
-
-  // Đưa thông tin về các ô nhập liệu
+  // Đưa thông tin về form nhập
   document.getElementById("masp").value = item.masp || "";
-  document.getElementById("size").value = size || "";
-  document.getElementById("soluong").value = soluong || "1";
+  document.getElementById("size").value = item.sizes[idx] || "";
+  document.getElementById("soluong").value = item.soluongs[idx] || "1";
   document.getElementById("dvt").value = item.dvt || "";
   document.getElementById("gia").value = item.gia || "";
   document.getElementById("khuyenmai").value = item.km || "";
-  // Thành tiền có thể để tự động tính lại khi sửa số lượng/giá
 
   // Xóa dòng đang chọn khỏi bảng và cập nhật lại lưới
-  delete bangKetQua[maspDangChon];
+  item.sizes.splice(idx, 1);
+  item.soluongs.splice(idx, 1);
+  item.tong -= parseInt(document.getElementById("soluong").value) || 0;
+  if (item.sizes.length === 0) delete bangKetQua[masp];
+
   maspDangChon = null;
   capNhatBangHTML(bangKetQua);
 
   // Focus lại vào ô nhập liệu đầu vào để sửa
   document.getElementById("masp").focus();
 }
+
 
 import { capNhatBangHTML } from './bangketqua.js';
 
