@@ -17,8 +17,7 @@ export function khoiTaoShortcut() {
       setTimeout(() => document.getElementById("btnThemMoiCo")?.focus(), 50);
       document.getElementById("btnThemMoiCo").onclick = async () => {
         popup.style.display = "none";
-        await taoMoiHoaDon();
-        taiLaiSanPhamData();
+        await taoMoiHoaDon();        
       };
     }
 
