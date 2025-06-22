@@ -449,14 +449,22 @@
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
+            <label>Mã Khách <input id="makh" /></label>
             <input id="makh" ...>
             <button id="btnPopupKH" type="button" tabindex="-1">🔍</button>
 
-            <label>Mã Khách <input id="makh" /></label>
             <label>Khách hàng <input id="khachhang" readonly="" /></label>
             <label>Ngày <input id="ngay" type="date" /></label>
             <label>Giờ <input id="gio" /></label>
         </div>
+
+        <!-- Popup tìm khách hàng -->
+        <div id="popupTimKH"
+            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
+            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
+            <table id="tableKH" style="width:100%;font-size:15px"></table>
+        </div>
+
 
         <div class="top-inputs">
             <div style="position: relative;">
@@ -564,7 +572,7 @@
         <div class="tennv">
             ----------------------------------------------------------
         </div>
-       
+
 
         <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
@@ -728,25 +736,6 @@
 
         };
 
-        import { showPopupTimKH } from './popupKhachhang.js';
-
-        document.getElementById('btnPopupKH').onclick = function () {
-            showPopupTimKH((makh, tenkh) => {
-                document.getElementById('makh').value = makh;
-                document.getElementById('khachhang').value = tenkh;
-            });
-        };
-
-        document.getElementById('makh').addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                showPopupTimKH((makh, tenkh) => {
-                    document.getElementById('makh').value = makh;
-                    document.getElementById('khachhang').value = tenkh;
-                });
-            }
-        });
-
-
 
 
         // dang xuat
@@ -768,21 +757,69 @@
     </script>
 
     <script type="module">
-        document.getElementById("makh").addEventListener("blur", async function () {
-            const makh = this.value.trim();
-            const khEl = document.getElementById("khachhang");
-            khEl.value = "";
-            if (!makh) return;
-            const { data, error } = await window.supabase
-                .from("dmkhachhang")
-                .select("tenkh")
-                .eq("makh", makh)
-                .single();
-            if (data && data.tenkh) khEl.value = data.tenkh;
-            else khEl.value = "";
+        // Nút kính lúp cạnh ô nhập mã KH
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
+
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
+
+        // Hàm show popup
+        function showPopupTimKH() {
+            const popup = document.getElementById('popupTimKH');
+            popup.style.display = '';
+            document.getElementById('txtSearchKH').value = '';
+            document.getElementById('txtSearchKH').focus();
+            loadListKH('');
+        }
+
+        // Tìm kiếm realtime theo ký tự gõ
+        document.getElementById('txtSearchKH').oninput = function () {
+            loadListKH(this.value.trim());
+        };
+
+        // Hàm load danh sách KH (gọi Supabase)
+        async function loadListKH(keyword) {
+            const table = document.getElementById('tableKH');
+            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
+            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
+            if (keyword) {
+                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+            }
+            const { data, error } = await query;
+            if (error || !data || !data.length) {
+                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
+                return;
+            }
+            table.innerHTML = data.map(kh =>
+                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
+        <td>${kh.makh}</td><td>${kh.tenkh}</td>
+      </tr>`
+            ).join('');
+            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
+                row.onclick = function () {
+                    document.getElementById('makh').value = this.dataset.makh;
+                    document.getElementById('khachhang').value = this.dataset.tenkh;
+                    document.getElementById('popupTimKH').style.display = 'none';
+                }
+            });
+        }
+
+        // Đóng popup khi bấm ESC hoặc click ra ngoài
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
+        });
+        document.addEventListener('click', function (e) {
+            const p = document.getElementById('popupTimKH');
+            if (p.style.display === '' && !p.contains(e.target) && e.target.id !== 'btnPopupKH') {
+                p.style.display = 'none';
+            }
         });
     </script>
-
 
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
