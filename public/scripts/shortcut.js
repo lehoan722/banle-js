@@ -12,6 +12,7 @@ export function khoiTaoShortcut() {
     // F1: popup thêm mới
     if (e.key === "F1") {
       e.preventDefault();
+      taiLaiSanPhamData();
       const popup = document.getElementById("popupThemMoi");
       popup.style.display = "block";
       setTimeout(() => document.getElementById("btnThemMoiCo")?.focus(), 50);
