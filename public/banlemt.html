@@ -407,6 +407,8 @@
 
     <div class="menu-bar">
         <div class="menu-item">
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải lại danh mục</button>
+
             <span class="menu-link">📁 Báo cáo hóa đơn</span>
             <div class="dropdown-content">
                 <a href="xemhoadon.html" target="_blank">Xem hóa đơn bán lẻ</a>
@@ -862,6 +864,10 @@
                 p.style.display = 'none';
             }
         });
+
+        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+
+        
     </script>
 
 
