@@ -2,6 +2,7 @@
 // hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { supabase } from './supabaseClient.js';
+import { tinhKhuyenMai } from './khuyenmai.js';
 
 export let bangKetQua = {};
 
@@ -95,8 +96,9 @@ export function themVaoBang(forcedSize = null) {
   }
 
   const gia = parseFloat(document.getElementById("gia").value) || 0;
-  let km = parseFloat(document.getElementById("khuyenmai").value) || 0;
-  if (!km) km = gia < 100000 ? 5000 : gia < 500000 ? 10000 : 20000;
+
+  // --- Áp dụng cách tính khuyến mại mới ---
+  let km = tinhKhuyenMai(sp, gia);
 
   const key = masp;
   const bang = bangKetQua[key] || {
@@ -124,6 +126,7 @@ export function themVaoBang(forcedSize = null) {
   capNhatBangHTML(bangKetQua);
   resetFormBang();
 }
+
 
 export function getBangKetQua() {
   return bangKetQua;
@@ -166,7 +169,7 @@ export function suaDongDangChon() {
     return;
   }
   const idx = item.sizes.findIndex(s => s == size);
-  
+
   if (idx === -1) {
     alert("Không tìm thấy size để sửa.");
     return;
@@ -188,7 +191,6 @@ export function suaDongDangChon() {
 
   maspDangChon = null;
   capNhatBangHTML(bangKetQua);
-  console.log(JSON.stringify(bangKetQua));
 
   // Focus lại vào ô nhập liệu đầu vào để sửa
   document.getElementById("masp").focus();
