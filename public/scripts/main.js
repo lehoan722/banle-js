@@ -164,7 +164,7 @@ export async function khoiTaoUngDung() {
     data.forEach(sp => {
       window.sanPhamData[sp.masp.toUpperCase()] = sp;
     });
-    alert('✅ Đã tải lại danh mục sản phẩm!');
+    //alert('✅ Đã tải lại danh mục sản phẩm!');
   };
 
   // 2. Gắn F1 toàn trang (hoặc giới hạn theo vùng nhập liệu tuỳ ý)
