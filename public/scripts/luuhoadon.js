@@ -75,11 +75,20 @@ export async function luuHoaDonQuaAPI() {
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
   if (!errHD && !errCT) {
+    // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
+    const [loai, so] = sohd.split('_');
+    const soMoi = parseInt(so, 10);
+    await supabase
+      .from("sochungtu")
+      .update({ so_hientai: soMoi })
+      .eq("loai", loai);
+
     alert("✅ Đã lưu hóa đơn thành công!");
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
-  } else {
+  }
+  else {
     alert("❌ Lỗi khi lưu hóa đơn");
     console.error(errHD || errCT);
   }
