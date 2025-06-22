@@ -1,8 +1,8 @@
 // duyetHoaDon.js
 import { supabase } from './supabaseClient.js';
-import { getBangKetQua, resetBangKetQua } from './hoadon.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
+import { bangKetQua, resetBangKetQua } from './hoadon.js';
 
 export function ganSuKienDuyetHoaDon() {
   document.getElementById("quaylai")?.addEventListener("click", taiHoaDonTruoc);
@@ -76,7 +76,6 @@ async function napHoaDonVaoTrang(hoadon) {
     .select("*")
     .eq("sohd", hoadon.sohd);
 
-  resetBangKetQua(); // reset tất cả thuộc tính cũ
   if (!error && ct.length > 0) {
     ct.forEach(row => {
       const masp = row.masp;
