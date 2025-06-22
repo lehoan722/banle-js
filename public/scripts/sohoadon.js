@@ -79,3 +79,40 @@ export async function capNhatSoHoaDonTuDong() {
   }
 }
 window.capNhatSoHoaDonTuDong = capNhatSoHoaDonTuDong;
+
+// Hàm phát sinh số hóa đơn tạm
+export async function phatSinhSoHDTMoi() {
+  try {
+    const today = new Date();
+    const yy = today.getFullYear().toString().slice(-2);
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const loai = `blt${yy}${mm}`;
+
+    const { data, error } = await supabase
+      .from("sochungtu")
+      .select("so_hientai")
+      .eq("loai", loai)
+      .single();
+
+    let soMoi = 1;
+    if (!error && data) {
+      soMoi = data.so_hientai + 1;
+      await supabase
+        .from("sochungtu")
+        .update({ so_hientai: soMoi })
+        .eq("loai", loai);
+    } else {
+      await supabase
+        .from("sochungtu")
+        .insert([{ loai, so_hientai: soMoi }]);
+    }
+
+    const sohd = `${loai}_${String(soMoi).padStart(3, "0")}`;
+    return sohd;
+  } catch (err) {
+    console.error("Lỗi phát sinh số hóa đơn tạm:", err);
+    alert("Không thể phát sinh số hóa đơn tạm.");
+    return null;
+  }
+}
+window.phatSinhSoHDTMoi = phatSinhSoHDTMoi;
