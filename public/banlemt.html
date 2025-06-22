@@ -449,6 +449,9 @@
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
+            <input id="makh" ...>
+            <button id="btnPopupKH" type="button" tabindex="-1">🔍</button>
+
             <label>Mã Khách <input id="makh" /></label>
             <label>Khách hàng <input id="khachhang" readonly="" /></label>
             <label>Ngày <input id="ngay" type="date" /></label>
@@ -561,9 +564,7 @@
         <div class="tennv">
             ----------------------------------------------------------
         </div>
-        <div class="tennv">
-            ----------------------------------------------------------
-        </div>
+       
 
         <div class="popup" id="popupDanhMuc">
             <div class="popup-content">
@@ -727,6 +728,25 @@
 
         };
 
+        import { showPopupTimKH } from './popupKhachhang.js';
+
+        document.getElementById('btnPopupKH').onclick = function () {
+            showPopupTimKH((makh, tenkh) => {
+                document.getElementById('makh').value = makh;
+                document.getElementById('khachhang').value = tenkh;
+            });
+        };
+
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                showPopupTimKH((makh, tenkh) => {
+                    document.getElementById('makh').value = makh;
+                    document.getElementById('khachhang').value = tenkh;
+                });
+            }
+        });
+
+
 
 
         // dang xuat
@@ -762,6 +782,7 @@
             else khEl.value = "";
         });
     </script>
+
 
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
