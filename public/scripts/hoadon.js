@@ -184,3 +184,47 @@ export function suaDongDangChon() {
   document.getElementById("masp").focus();
 }
 
+import { capNhatBangHTML } from './bangketqua.js';
+
+export async function napLaiChiTietHoaDon(sohd) {
+  // Lấy chi tiết từ bảng ct_hoadon_banle
+  const { data: chitiet, error } = await supabase
+    .from("ct_hoadon_banle")
+    .select("*")
+    .eq("sohd", sohd);
+
+  if (error || !chitiet || chitiet.length === 0) {
+    alert("❌ Không tìm thấy chi tiết hóa đơn để sửa.");
+    return;
+  }
+
+  // Reset lại bảng tạm
+  resetBangKetQua();
+
+  // Ghép lại đúng cấu trúc của bangKetQua
+  chitiet.forEach(ct => {
+    const masp = ct.masp;
+    if (!bangKetQua[masp]) {
+      bangKetQua[masp] = {
+        masp: ct.masp,
+        tensp: ct.tensp,
+        sizes: [],
+        soluongs: [],
+        tong: 0,
+        gia: ct.gia,
+        km: ct.km,
+        dvt: ct.dvt || ""
+      };
+    }
+    const index = bangKetQua[masp].sizes.indexOf(ct.size);
+    if (index === -1) {
+      bangKetQua[masp].sizes.push(ct.size);
+      bangKetQua[masp].soluongs.push(ct.soluong);
+    } else {
+      bangKetQua[masp].soluongs[index] += ct.soluong;
+    }
+    bangKetQua[masp].tong += ct.soluong;
+  });
+
+  capNhatBangHTML(bangKetQua);
+}
