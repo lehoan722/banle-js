@@ -187,6 +187,7 @@ export function suaDongDangChon() {
 
   maspDangChon = null;
   capNhatBangHTML(bangKetQua);
+  console.log(JSON.stringify(bangKetQua));
 
   // Focus lại vào ô nhập liệu đầu vào để sửa
   document.getElementById("masp").focus();
