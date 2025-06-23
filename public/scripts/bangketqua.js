@@ -115,3 +115,4 @@ export function capNhatBangKetQuaTuDOM() {
   window.bangKetQua = bang;
 }
 
+window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
