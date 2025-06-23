@@ -406,7 +406,7 @@
     </style>
 
     <div class="menu-bar">
-        <div class="menu-item">            
+        <div class="menu-item">
 
             <span class="menu-link">📁 Báo cáo hóa đơn</span>
             <div class="dropdown-content">
@@ -462,7 +462,7 @@
             </div>
 
             <label>Khách hàng <input id="khachhang" readonly="" /></label>
-            
+
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
         </div>
 
@@ -560,12 +560,12 @@
 
 
         <div class="footer-buttons">
-            <button id="them">Thêm mới</button>            
+            <button id="them">Thêm mới</button>
             <button onclick="luuHoaDonCaHaiBan()">💾 Lưu 2</button>
             <button id="quaylai">Quay lại</button>
-            <button id="tieptuc">Tiếp tục</button>                        
+            <button id="tieptuc">Tiếp tục</button>
             <button id="btnCopy">Copy</button>
-            <button id="xemin">Xem in</button>            
+            <button id="xemin">Xem in</button>
             <button id="btn-logout">THOAT PM</button>
 
             <!-- Popup tìm khách hàng
@@ -852,7 +852,10 @@
                 });
                 tbody.appendChild(tr);
             });
+            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
+            capNhatBangKetQuaTuDOM();
         });
+
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
