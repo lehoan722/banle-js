@@ -73,3 +73,45 @@ export function resetFormBang() {
 }
 
 
+
+export function capNhatBangKetQuaTuDOM() {
+  const tbody = document.querySelector("#bangketqua tbody");
+  if (!tbody) return;
+
+  const bang = {};
+
+  Array.from(tbody.rows).forEach(row => {
+    // Chú ý: các chỉ số cells[] phải khớp với thứ tự cột của bảng!
+    const masp = (row.cells[0]?.innerText || "").trim().toUpperCase();
+    const tensp = (row.cells[1]?.innerText || "").trim();
+    const size = (row.cells[2]?.innerText || "").trim();
+    const soluong = parseFloat(row.cells[3]?.innerText || "0");
+    // cells[4] là Tổng, không cần dùng
+    const gia = parseFloat(row.cells[5]?.innerText || "0");
+    const km = parseFloat(row.cells[6]?.innerText || "0");
+    // cells[7] là Thành tiền, không cần dùng
+    const dvt = (row.cells[8]?.innerText || "").trim();
+
+    if (!masp) return; // Bỏ qua dòng rỗng
+
+    // Nếu đã có mã này, chỉ push thêm size & số lượng
+    if (!bang[masp]) {
+      bang[masp] = {
+        masp,
+        tensp,
+        sizes: [],
+        soluongs: [],
+        gia,
+        km,
+        dvt,
+      };
+    }
+    bang[masp].sizes.push(size);
+    bang[masp].soluongs.push(soluong);
+    // Nếu muốn cộng dồn size trùng, bổ sung logic group thêm
+  });
+
+  // Gán vào window để getBangKetQua() có thể đọc
+  window.bangKetQua = bang;
+}
+
