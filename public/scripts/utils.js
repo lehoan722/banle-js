@@ -1,5 +1,3 @@
-// utils.js
-
 export function capNhatThongTinTong(bangKetQua) {
   const mathangInput = document.getElementById("mathang");
   const tongslInput = document.getElementById("tongsl");
@@ -15,12 +13,26 @@ export function capNhatThongTinTong(bangKetQua) {
   let tongThanhTien = 0;
 
   Object.values(bangKetQua).forEach(item => {
-    const sl = item.tong;
-    const km = item.km;
-    const gia = item.gia;
-    tongSoLuong += sl;
-    tongKhuyenMai += km * sl;
-    tongThanhTien += (gia - km) * sl;
+    // Nếu nhập từng dòng tay thì item.tong là số lẻ, còn copy/dán thì soluongs là mảng
+    if (Array.isArray(item.soluongs)) {
+      item.soluongs.forEach((sl, idx) => {
+        const soluong = Number(sl) || 0;
+        tongSoLuong += soluong;
+        // Nếu km là số chung
+        let km1 = Number(item.km || 0);
+        // Nếu bạn lưu km từng dòng thì dùng mảng, ở đây ưu tiên số chung
+        tongKhuyenMai += km1 * soluong;
+        tongThanhTien += (Number(item.gia || 0) - km1) * soluong;
+      });
+    } else {
+      // Trường hợp cũ, nhập từng dòng
+      const sl = Number(item.tong || 0);
+      const km = Number(item.km || 0);
+      const gia = Number(item.gia || 0);
+      tongSoLuong += sl;
+      tongKhuyenMai += km * sl;
+      tongThanhTien += (gia - km) * sl;
+    }
   });
 
   mathangInput.value = tongSoMatHang;
