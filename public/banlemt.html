@@ -821,10 +821,23 @@
             });
         }
 
-        // Copy bảng sang clipboard
+        // Copy bảng sang clipboard, có cả dòng tiêu đề
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
             let str = '';
+
+            // 1. Copy dòng tiêu đề (thead)
+            const thead = table.querySelector('thead');
+            if (thead) {
+                const headerCells = thead.rows[0].cells;
+                let headerLine = [];
+                for (let cell of headerCells) {
+                    headerLine.push(cell.innerText);
+                }
+                str += headerLine.join('\t') + '\n';
+            }
+
+            // 2. Copy từng dòng dữ liệu (tbody)
             for (let row of table.querySelectorAll('tbody tr')) {
                 let line = [];
                 for (let cell of row.cells) {
@@ -832,8 +845,11 @@
                 }
                 str += line.join('\t') + '\n';
             }
-            navigator.clipboard.writeText(str).then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
+
+            navigator.clipboard.writeText(str)
+                .then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
         };
+
 
         // Dán từ clipboard (Excel) vào bảng web
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
