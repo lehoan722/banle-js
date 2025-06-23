@@ -15,10 +15,12 @@ export function capNhatThongTinTong(bangKetQua) {
   Object.values(bangKetQua).forEach(item => {
     // Luôn cộng tổng theo các số lượng trong mảng soluongs (cột S.lượng)
     if (Array.isArray(item.soluongs)) {
-      item.soluongs.forEach(sl => {
-            const slnum = Number(sl) || 0;
-            tongsl += slnum;
-            tongkm += (Number(item.km || 0)) * slnum;
+      item.soluongs.forEach((sl, idx) => {
+        const soluong = Number(sl) || 0;
+        tongSoLuong += soluong;
+        // Khuyến mãi: có thể là số chung, nếu có mảng riêng cho từng size thì sửa lại cho phù hợp
+        let km1 = Number(item.km || 0);
+        tongKhuyenMai += km1 * soluong;
         tongThanhTien += (Number(item.gia || 0) - km1) * soluong;
       });
     }
