@@ -81,20 +81,24 @@ export function capNhatBangKetQuaTuDOM() {
   const bang = {};
 
   Array.from(tbody.rows).forEach(row => {
-    // Chú ý: các chỉ số cells[] phải khớp với thứ tự cột của bảng!
+    // Chú ý: cập nhật lại chỉ số cột nếu bảng có thay đổi thứ tự
     const masp = (row.cells[0]?.innerText || "").trim().toUpperCase();
     const tensp = (row.cells[1]?.innerText || "").trim();
     const size = (row.cells[2]?.innerText || "").trim();
     const soluong = parseFloat(row.cells[3]?.innerText || "0");
-    // cells[4] là Tổng, không cần dùng
-    const gia = parseFloat(row.cells[5]?.innerText || "0");
-    const km = parseFloat(row.cells[6]?.innerText || "0");
+    // cells[4] là ĐVT nhưng sẽ không lấy trực tiếp
+    const gia = parseFloat(row.cells[5]?.innerText?.replace(/,/g, "") || "0");
+    const km = parseFloat(row.cells[6]?.innerText?.replace(/,/g, "") || "0");
     // cells[7] là Thành tiền, không cần dùng
-    const dvt = (row.cells[8]?.innerText || "").trim();
 
     if (!masp) return; // Bỏ qua dòng rỗng
 
-    // Nếu đã có mã này, chỉ push thêm size & số lượng
+    // Lấy dvt từ danh mục hàng hóa (window.sanPhamData)
+    let dvt = "";
+    if (window.sanPhamData && window.sanPhamData[masp]) {
+      dvt = window.sanPhamData[masp].dvt || "";
+    }
+
     if (!bang[masp]) {
       bang[masp] = {
         masp,
@@ -108,7 +112,7 @@ export function capNhatBangKetQuaTuDOM() {
     }
     bang[masp].sizes.push(size);
     bang[masp].soluongs.push(soluong);
-    // Nếu muốn cộng dồn size trùng, bổ sung logic group thêm
+    // Có thể bổ sung logic cộng dồn size nếu cần
   });
 
   // Gán vào window để getBangKetQua() có thể đọc
