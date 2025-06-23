@@ -7,6 +7,7 @@ import {
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { luuHoaDonQuaAPI } from './luuhoadon.js';
 import { capNhatThongTinTong } from './utils.js';
+import { napLaiChiTietHoaDon } from './hoadon.js';
 
 export function ganSuKienNutLenh() {
   document.getElementById("them")?.addEventListener("click", async () => {
@@ -44,10 +45,56 @@ export function ganSuKienNutLenh() {
     }
     await luuHoaDonQuaAPI();
   });
+  
 
-  document.getElementById("xemin")?.addEventListener("click", () => {
+  // Gắn lại sự kiện cho nút "xemin"
+  document.getElementById("xemin")?.addEventListener("click", async () => {
+    const sohd = document.getElementById("sohd").value.trim();
+    if (!sohd) {
+      alert("❌ Bạn chưa nhập số hóa đơn cần in.");
+      return;
+    }
+    // Truy vấn chi tiết hóa đơn từ Supabase về
+    await napLaiChiTietHoaDon(sohd);
+
+    // Lấy lại dữ liệu vừa nạp
+    const { getBangKetQua } = await import('./hoadon.js');
+    const bang = getBangKetQua();
+
+    // Lấy các thông tin hóa đơn (đầy đủ nhất từ DB nếu cần)
+    // Nếu cần truy vấn thêm bảng hoadon_banle thì làm như sau:
+    const { data: hoadon } = await window.supabase
+      .from("hoadon_banle")
+      .select("*")
+      .eq("sohd", sohd)
+      .maybeSingle();
+
+    // Lấy chi tiết:
+    const chitiet = [];
+    Object.values(bang).forEach(item => {
+      item.sizes.forEach((sz, i) => {
+        chitiet.push({
+          sohd,
+          masp: item.masp,
+          tensp: item.tensp,
+          size: sz,
+          soluong: item.soluongs[i],
+          gia: item.gia,
+          km: item.km,
+          thanhtien: (item.gia - item.km) * item.soluongs[i],
+          dvt: item.dvt || '',
+          diadiem: hoadon?.diadiem || "",
+        });
+      });
+    });
+
+    // Lưu vào localStorage như logic in bình thường
+    localStorage.setItem("data_hoadon_in", JSON.stringify({ hoadon, chitiet }));
+
+    // Mở tab in hóa đơn (hoặc reload lại nếu đã mở)
     window.open("/in-hoadon.html", "_blank");
   });
+
 
   document.getElementById("xuatexcel")?.addEventListener("click", () => {
     alert("🔧 Chức năng xuất Excel sẽ được tích hợp sau.");
