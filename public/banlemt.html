@@ -872,11 +872,18 @@
             // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
             capNhatBangKetQuaTuDOM();
 
-            // ✅ GỌI THÊM dòng này để cập nhật tổng sl và tổng km
-            if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(window.bangKetQua || {});
-            console.log(window.bangKetQua, bangKetQua);
+            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
+            if (typeof capNhatThongTinTong === "function") {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
 
+            // Log để kiểm tra
+            console.log("window.bangKetQua:", window.bangKetQua);
+            if (typeof bangKetQua !== "undefined") {
+                console.log("bangKetQua:", bangKetQua);
+            }
         });
+
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
