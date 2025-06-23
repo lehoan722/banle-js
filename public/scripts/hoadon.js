@@ -135,9 +135,9 @@ export function getBangKetQua() {
   return bangKetQua;
 }
 
-
 export function resetBangKetQua() {
   bangKetQua = {};
+  if (window.bangKetQua) window.bangKetQua = {};
   capNhatBangHTML(bangKetQua);
 }
 
