@@ -129,8 +129,12 @@ export function themVaoBang(forcedSize = null) {
 
 
 export function getBangKetQua() {
+  if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
+    return window.bangKetQua;
+  }
   return bangKetQua;
 }
+
 
 export function resetBangKetQua() {
   bangKetQua = {};
