@@ -13,47 +13,51 @@ export function capNhatThongTinTong(bangKetQua) {
   let tongThanhTien = 0;
 
   Object.values(bangKetQua).forEach(item => {
-    // Nếu nhập từng dòng tay thì item.tong là số lẻ, còn copy/dán thì soluongs là mảng
+    // Luôn cộng tổng theo các số lượng trong mảng soluongs (cột S.lượng)
     if (Array.isArray(item.soluongs)) {
       item.soluongs.forEach((sl, idx) => {
         const soluong = Number(sl) || 0;
         tongSoLuong += soluong;
-        // Nếu km là số chung
+        // Khuyến mãi: có thể là số chung, nếu có mảng riêng cho từng size thì sửa lại cho phù hợp
         let km1 = Number(item.km || 0);
-        // Nếu bạn lưu km từng dòng thì dùng mảng, ở đây ưu tiên số chung
         tongKhuyenMai += km1 * soluong;
         tongThanhTien += (Number(item.gia || 0) - km1) * soluong;
       });
-    } else {
-      // Trường hợp cũ, nhập từng dòng
-      const sl = Number(item.tong || 0);
-      const km = Number(item.km || 0);
-      const gia = Number(item.gia || 0);
-      tongSoLuong += sl;
-      tongKhuyenMai += km * sl;
-      tongThanhTien += (gia - km) * sl;
+    }
+    // Trường hợp hiếm còn dữ liệu lẻ cũ
+    else if (typeof item.soluong !== "undefined") {
+      let soluong = Number(item.soluong) || 0;
+      tongSoLuong += soluong;
+      let km1 = Number(item.km || 0);
+      tongKhuyenMai += km1 * soluong;
+      tongThanhTien += (Number(item.gia || 0) - km1) * soluong;
     }
   });
 
+  // Cập nhật lên giao diện
   mathangInput.value = tongSoMatHang;
   tongslInput.value = tongSoLuong;
   tongkmInput.value = tongKhuyenMai.toLocaleString();
 
+  // Chiết khấu
   let ck = parseFloat(chietkhauInput.value.trim()) || 0;
   if (ck <= 100) {
     ck = tongThanhTien * (ck / 100);
     chietkhauInput.value = ck.toLocaleString();
   }
 
+  // Phải thanh toán
   const phaitra = tongThanhTien - ck;
   phaithanhtoanInput.value = phaitra.toLocaleString();
 
+  // Khách trả
   let khachtra = parseFloat(khachtraInput.value.replace(/,/g, "").trim());
   if (!khachtraInput.dataset.modified) {
     khachtra = phaitra;
     khachtraInput.value = phaitra.toLocaleString();
   }
 
+  // Còn lại
   const conlai = khachtra - phaitra;
   conlaiInput.value = conlai.toLocaleString();
 
