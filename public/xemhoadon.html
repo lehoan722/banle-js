@@ -1,28 +1,82 @@
 <!DOCTYPE html>
-<html lang="vi"> 
+<html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <title>Xem Hóa Đơn Bán Lẻ</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    tr:hover { background-color: #f1f1f1; cursor: pointer; }
-    input, select { margin: 4px; padding: 6px; }
-    #popup { display: none; position: fixed; top: 10%; left: 10%; width: 80%; height: 70%; background: #fff; border: 1px solid #888; overflow: auto; padding: 20px; z-index: 9999; }
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+      cursor: pointer;
+    }
+
+    input,
+    select {
+      margin: 4px;
+      padding: 6px;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 10%;
+      width: 80%;
+      height: 70%;
+      background: #fff;
+      border: 1px solid #888;
+      overflow: auto;
+      padding: 20px;
+      z-index: 9999;
+    }
   </style>
 </head>
+
 <body>
   <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
   <label>Ngày: <input type="date" id="locNgay"></label>
   <label>Nhân viên: <input type="text" id="locNV"></label>
+  <label>Từ ngày: <input type="date" id="tuNgay"></label>
+  <label>Đến ngày: <input type="date" id="denNgay"></label>
+  <label>Khách hàng: <input type="text" id="locKhach"></label>
+  <label>Tiền từ: <input type="number" id="tienTu" style="width:80px"></label>
+  <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
   <label>Số HĐ: <input type="text" id="locSoHD"></label>
   <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
 
   <table>
     <thead>
-      <tr><th>Số HĐ</th><th>Ngày</th><th>NV</th><th>Khách</th><th>TT</th><th>Ghi chú</th></tr>
+      <thead>
+        <tr>
+          <th>Số HĐ</th>
+          <th>Ngày</th>
+          <th>NV</th>
+          <th>Khách</th>
+          <th>Tổng SL</th> <!-- MỚI -->
+          <th>TT</th>
+          <th>Ghi chú</th>
+        </tr>
+      </thead>
+
     </thead>
     <tbody id="dsHoaDon"></tbody>
   </table>
@@ -31,7 +85,15 @@
     <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
     <table>
       <thead>
-        <tr><th>Mã SP</th><th>Tên SP</th><th>Size</th><th>SL</th><th>Giá</th><th>KM</th><th>Thành tiền</th></tr>
+        <tr>
+          <th>Mã SP</th>
+          <th>Tên SP</th>
+          <th>Size</th>
+          <th>SL</th>
+          <th>Giá</th>
+          <th>KM</th>
+          <th>Thành tiền</th>
+        </tr>
       </thead>
       <tbody id="ctHoaDon"></tbody>
     </table>
@@ -45,30 +107,47 @@
     );
 
     async function taiDanhSachHoaDon() {
-      const ngay = document.getElementById("locNgay").value;
+      // Lấy giá trị filter
+      const tuNgay = document.getElementById("tuNgay").value;
+      const denNgay = document.getElementById("denNgay").value;
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
+      const khach = document.getElementById("locKhach").value.trim();
+      const tienTu = Number(document.getElementById("tienTu").value);
+      const tienDen = Number(document.getElementById("tienDen").value);
 
       let query = supabase.from('hoadon_banle').select('*').order('ngay', { ascending: false }).limit(100);
 
-      if (ngay) query = query.eq('ngay', ngay);
+      if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
+      else if (tuNgay) query = query.gte('ngay', tuNgay);
+      else if (denNgay) query = query.lte('ngay', denNgay);
+
       if (nv) query = query.ilike('manv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+      if (khach) query = query.ilike('khachhang', `%${khach}%`);
+      if (!isNaN(tienTu) && tienTu > 0) query = query.gte('phaithanhtoan', tienTu);
+      if (!isNaN(tienDen) && tienDen > 0) query = query.lte('phaithanhtoan', tienDen);
 
       const { data, error } = await query;
-
       const tbody = document.getElementById("dsHoaDon");
       tbody.innerHTML = "";
-
       if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
       data.forEach(hd => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${hd.sohd}</td><td>${hd.ngay}</td><td>${hd.tennv}</td><td>${hd.khachhang}</td><td>${hd.thanhtoan?.toLocaleString()}</td><td>${hd.ghichu || ""}</td>`;
+        tr.innerHTML =
+          `<td>${hd.sohd}</td>
+       <td>${hd.ngay}</td>
+       <td>${hd.tennv}</td>
+       <td>${hd.khachhang}</td>
+       <td>${hd.tongsl || 0}</td> <!-- Tổng số lượng mới -->
+       <td>${hd.phaithanhtoan?.toLocaleString()}</td>
+       <td>${hd.ghichu || ""}</td>`;
         tr.onclick = () => xemChiTiet(hd.sohd);
         tbody.appendChild(tr);
       });
     }
+
 
     async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "block";
@@ -92,4 +171,5 @@
     window.onload = taiDanhSachHoaDon;
   </script>
 </body>
+
 </html>
