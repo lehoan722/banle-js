@@ -11,6 +11,7 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 let choPhepSua = false;
 
 export async function luuHoaDonQuaAPI() {
+  capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
