@@ -564,8 +564,9 @@
             <button onclick="luuHoaDonCaHaiBan()">💾 Lưu 2</button>
             <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
-            <button id="btnCopy">Copy</button>
             <button id="xemin">Xem in</button>
+            <button id="btnCopy">Copy</button>
+            <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
 
             <!-- Popup tìm khách hàng
@@ -702,7 +703,7 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        
+
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
         window.supabase = createClient(supabaseUrl, supabaseKey);
@@ -870,10 +871,10 @@
             });
             // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
             capNhatBangKetQuaTuDOM();
-            console.log(window.bangKetQua);
 
+            // ✅ GỌI THÊM dòng này để cập nhật tổng sl và tổng km
+            if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(window.bangKetQua || {});
         });
-
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
