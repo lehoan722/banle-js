@@ -155,18 +155,22 @@ export async function luuHoaDonCaHaiBan() {
     .update({ so_hientai: soMoi })
     .eq("loai", loaiT);
 
+    const getIntValue = (id) =>
+    parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+   
   const hoadon = {
     ngay: document.getElementById("ngay").value,
     manv: document.getElementById("manv").value,
-    tennv,
+    tennv: document.getElementById("tennv").value,
     diadiem: diadiem,
     khachhang: document.getElementById("khachhang").value,
-    tongsl: parseInt(document.getElementById("tongsl").value || "0"),
-    tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
-    chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
+    tongsl: getIntValue("tongsl"),
+    tongkm: getIntValue("tongkm"),
+    chietkhau: getIntValue("chietkhau"),
     thanhtoan: getIntValue("phaithanhtoan"),
     hinhthuctt: document.getElementById("hinhthuctt").value,
-    ghichu: document.getElementById("ghichu")?.value || ""
+    ghichu: document.getElementById("ghichu")?.value || "",
+    created_at: createdAt,
   };
 
   const chitiet = [];
