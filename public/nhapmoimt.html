@@ -925,7 +925,7 @@
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script>
-        setTimeout(() => {
+       window.addEventListener("load", () => {
             if (!window.location.pathname.includes('nhapmoi')) return;
 
             const oldCapNhatBangHTML = window.capNhatBangHTML || window.bangketqua_capNhatBangHTML || null;
