@@ -35,11 +35,11 @@
         }
 
         .tennv {
-            width: 250px;
+            width: 600px;
             display: flex;
             padding: 5px;
             gap: 5px;
-            background: #1e93f3;
+            background: #0088cc;
             align-items: center;
         }
 
@@ -438,25 +438,26 @@
         </div>
 
         <div class="tennv">
-       
-        <label>Cơ sở
-            <select id="diadiem">
-                <option value="cs1">Cơ sở 1</option>
-                <option value="cs2">Cơ sở 2</option>
-            </select>
-        </label>
 
-        <label>Ngày <input id="ngay" type="date" /></label>
-        <!-- <label>Giờ <input id="gio" /></label> -->
-        <label>Mã NV <input id="manv" /></label>
-        <label>Tên NV <input id="tennv" readonly="" /></label>
-        <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-         </div>
+            <label>
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+
+            <label> <input id="ngay" type="date" /></label>
+            <!-- <label>Giờ <input id="gio" /></label> -->
+            <input id="manv" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+        </div>
 
     </div>
 
 
-    <div id="app-container" style="display:none;">      
+    <div id="app-container" style="display:none;">
 
 
         <div class="top-inputs">
