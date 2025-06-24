@@ -36,6 +36,7 @@ export async function luuHoaDonQuaAPI() {
     await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
     await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
   }
+  const createdAt = new Date().toISOString();
 
   const hoadon = {
     sohd,
@@ -56,9 +57,7 @@ export async function luuHoaDonQuaAPI() {
     loaihd: "",
     nhacc: ""
   };
-
-
-  const createdAt = new Date().toISOString();
+  
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
