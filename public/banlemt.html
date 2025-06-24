@@ -435,42 +435,27 @@
                 <a href="baocaonhap.html" target="_blank">Tổng hợp nhập theo ngày</a>
             </div>
         </div>
+        <label>Cơ sở
+            <select id="diadiem">
+                <option value="cs1">Cơ sở 1</option>
+                <option value="cs2">Cơ sở 2</option>
+            </select>
+        </label>
+
+        <label>Ngày <input id="ngay" type="date" /></label>
+        <!-- <label>Giờ <input id="gio" /></label> -->
+        <label>Mã NV <input id="manv" /></label>
+        <label>Tên NV <input id="tennv" readonly="" /></label>
+        <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+
     </div>
 
 
     <div id="app-container" style="display:none;">
 
         <div class="tennv">
-            <label>Ngày <input id="ngay" type="date" /></label>
-            <label>Giờ <input id="gio" /></label>
 
-            <label>Mã NV <input id="manv" /></label>
-            <label>Tên NV <input id="tennv" readonly="" /></label>
-            <label>Cơ sở
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-            <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
-                    autocomplete="off">
-                <button id="btnPopupKH" type="button"
-                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                    🔍
-                </button>
-            </div>
 
-            <label>Khách hàng <input id="khachhang" readonly="" /></label>
-
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-        </div>
-
-        <!-- Popup tìm khách hàng -->
-        <div id="popupTimKH"
-            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
-            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
-            <table id="tableKH" style="width:100%;font-size:15px"></table>
         </div>
 
 
@@ -532,6 +517,24 @@
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
                         <label>Vị trí <input id="vitri" readonly="" /></label>
+                        <!-- khu vuc tìm khách hàng -->
+                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                            <input id="makh" placeholder="mã khách"
+                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                            <button id="btnPopupKH" type="button"
+                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                🔍
+                            </button>
+                        </div>
+                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+
+                        <!-- Popup tìm khách hàng -->
+                        <div id="popupTimKH"
+                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
+                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
+                            <table id="tableKH" style="width:100%;font-size:15px"></table>
+                        </div>
+                        <!-- het khu vuc tìm khách hàng -->
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
@@ -550,8 +553,7 @@
                 <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
                     Tổng phải trả
                     <input id="phaithanhtoan"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;"
-                         />
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
                 </div>
                 <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
                     Khách thanh toán
