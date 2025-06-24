@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient.js';
- import { moBangDanhMucHangHoa } from './banghanghoa.js'; // thêm vào đầu file
+import { moBangDanhMucHangHoa } from './banghanghoa.js'; // thêm vào đầu file
 const truongHangHoa = [
   { id: "masp", label: "Mã sản phẩm", batbuoc: true },
   { id: "tensp", label: "Tên sản phẩm", batbuoc: true },
@@ -55,24 +55,24 @@ export function khoiTaoTimMaSP(sanPhamData) {
     chonMaSanPham(item.dataset.masp);
   });
 
- inputMaSP.addEventListener("keydown", (e) => {   
-  if (e.key === "Escape") popup.style.display = "none";
-  if (e.key === "Enter") {
-    const itemFirst = popup.querySelector(".popup-masp-item");
-    const keyword = inputMaSP.value.trim().toUpperCase();
+  inputMaSP.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") popup.style.display = "none";
+    if (e.key === "Enter") {
+      const itemFirst = popup.querySelector(".popup-masp-item");
+      const keyword = inputMaSP.value.trim().toUpperCase();
 
-    e.preventDefault();
-    if (popup.style.display !== "none" && itemFirst) {
-      chonMaSanPham(itemFirst.dataset.masp);
-    } else if (window.sanPhamData[keyword]) {
-     xuLyKhiChonMaSanPham(keyword);
-    } else {
-      // ❌ KHÔNG mở popup tự động ở đây nữa
-      // Vì đã có xử lý fetch từ Supabase ở hoadon.js → tránh mở thừa
-      console.warn("Không tìm thấy mã trong cache, chờ xử lý bên hoadon.js");
+      e.preventDefault();
+      if (popup.style.display !== "none" && itemFirst) {
+        chonMaSanPham(itemFirst.dataset.masp);
+      } else if (window.sanPhamData[keyword]) {
+        xuLyKhiChonMaSanPham(keyword);
+      } else {
+        // ❌ KHÔNG mở popup tự động ở đây nữa
+        // Vì đã có xử lý fetch từ Supabase ở hoadon.js → tránh mở thừa
+        console.warn("Không tìm thấy mã trong cache, chờ xử lý bên hoadon.js");
+      }
     }
-  }
-});
+  });
 
 
   document.addEventListener("click", (e) => {
@@ -81,27 +81,50 @@ export function khoiTaoTimMaSP(sanPhamData) {
     }
   });
 
- function chonMaSanPham(masp) {
-  inputMaSP.value = masp;
-  popup.style.display = "none";
+  function chonMaSanPham(masp) {
+    inputMaSP.value = masp;
+    popup.style.display = "none";
 
-  // 👉 Gọi trực tiếp hàm xử lý khi đã chọn mã
-  xuLyKhiChonMaSanPham(masp);
-}
- 
+    // 👉 Gọi trực tiếp hàm xử lý khi đã chọn mã
+    xuLyKhiChonMaSanPham(masp);
+  }
+
 }
 function xuLyKhiChonMaSanPham(masp) {
   const sp = sanPhamData[masp];
   if (sp) {
-    // ✅ điền thông tin sản phẩm ra các ô cần thiết ở form
+    // Tự động nhận biết nghiệp vụ bán lẻ hay nhập mới theo URL
+    const pathname = window.location.pathname;
+    const isNhap = pathname.includes("nhapmoi");
+    const giaInput = document.getElementById("gia");
+    const khuyenmaiInput = document.getElementById("khuyenmai");
+
+    // Đơn giá: nhập mới lấy gianhap, bán lẻ lấy giale
+    if (giaInput) {
+      giaInput.value = isNhap ? (sp.gianhap || 0) : (sp.giale || 0);
+    }
+
+    // Khuyến mại: nhập mới luôn = 0, bán lẻ lấy đúng dữ liệu
+    if (khuyenmaiInput) {
+      khuyenmaiInput.value = isNhap ? 0 : (sp.khuyenmai || 0);
+      if (isNhap) {
+        khuyenmaiInput.readOnly = true;
+        khuyenmaiInput.style.background = "#eee";
+      } else {
+        khuyenmaiInput.readOnly = false;
+        khuyenmaiInput.style.background = "";
+      }
+    }
+
+    // (Giữ các dòng code khác bạn muốn xử lý tiếp sau khi chọn mã...)
     console.log("Đã chọn sản phẩm:", sp);
-    // Ví dụ: document.getElementById("gia").value = sp.giale;
-    // Bạn có thể gắn thêm logic xử lý sau khi chọn mã ở đây.
+
   } else {
     // ❌ mã không tồn tại → mở popup thêm mới
     window.moPopupNhapHangHoa("them", { masp });
   }
 }
+
 
 export function hienThiFormMaMoi() {
   const config = JSON.parse(localStorage.getItem("cauhinh_hh") || "[]");
