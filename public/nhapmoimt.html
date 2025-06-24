@@ -919,56 +919,58 @@
             }
         });
 
-
+        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
     </script>
+
+
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script>
-        setTimeout(() => {
-            if (!window.location.pathname.includes('nhapmoi')) return;
+        window.capNhatBangHTML = function (bangKetQua) {
+            const tbody = document.querySelector("#bangketqua tbody");
+            if (!tbody) return;
+            tbody.innerHTML = "";
 
-            const oldCapNhatBangHTML = window.capNhatBangHTML || window.bangketqua_capNhatBangHTML || null;
-            if (!oldCapNhatBangHTML) return;
+            Object.values(bangKetQua).forEach(item => {
+                const zipped = item.sizes.map((size, i) => ({
+                    size: parseInt(size),
+                    soluong: item.soluongs[i]
+                }));
+                zipped.sort((a, b) => a.size - b.size);
 
-            window.capNhatBangHTML = function (bangKetQua) {
-                const tbody = document.querySelector("#bangketqua tbody");
-                if (!tbody) return;
-                tbody.innerHTML = "";
+                zipped.forEach((z, idx) => {
+                    // Lấy giá nhập từ danh mục
+                    let gia = (window.sanPhamData && window.sanPhamData[item.masp]) ? window.sanPhamData[item.masp].gianhap || 0 : 0;
+                    let km = 0;
+                    const thanhtien = (gia - km) * z.soluong;
 
-                Object.values(bangKetQua).forEach(item => {
-                    const zipped = item.sizes.map((size, i) => ({
-                        size: parseInt(size),
-                        soluong: item.soluongs[i]
-                    }));
-                    zipped.sort((a, b) => a.size - b.size);
+                    // Ép lại giá trị trên bangKetQua (giúp sửa cả khi dán/lỗi logic nhập)
+                    item.gia = gia;
+                    item.km = km;
 
-                    zipped.forEach((z, idx) => {
-                        let gia = (window.sanPhamData && window.sanPhamData[item.masp]) ? window.sanPhamData[item.masp].gianhap || 0 : 0;
-                        let km = 0;
-                        const thanhtien = (gia - km) * z.soluong;
-                        const row = tbody.insertRow();
-                        row.innerHTML = `
-          <td>${item.masp}</td>
-          <td>${item.tensp}</td>
-          <td>${z.size}</td>
-          <td>${z.soluong}</td>
-          <td>${z.soluong}</td>
-          <td>${gia}</td>
-          <td>${km}</td>
-          <td>${thanhtien.toLocaleString()}</td>
-          <td>${item.dvt}</td>
-        `;
-                        row.addEventListener("click", () => {
-                            if (window.setMaspspDangChon) window.setMaspspDangChon({ masp: item.masp, size: z.size });
-                            if (window.highlightRow) window.highlightRow(row);
-                        });
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                <td>${item.masp}</td>
+                <td>${item.tensp}</td>
+                <td>${z.size}</td>
+                <td>${z.soluong}</td>
+                <td>${z.soluong}</td>
+                <td>${gia}</td>
+                <td>${km}</td>
+                <td>${thanhtien.toLocaleString()}</td>
+                <td>${item.dvt}</td>
+            `;
+                    row.addEventListener("click", () => {
+                        if (window.setMaspspDangChon) window.setMaspspDangChon({ masp: item.masp, size: z.size });
+                        if (window.highlightRow) window.highlightRow(row);
                     });
                 });
+            });
 
-                if (window.capNhatThongTinTong) window.capNhatThongTinTong(bangKetQua);
-            };
-        }, 2000); // Đặt timeout đủ lớn để chắc chắn override sau khi app đã load xong
+            if (window.capNhatThongTinTong) window.capNhatThongTinTong(bangKetQua);
+        };
+
     </script>
 
 </body>
