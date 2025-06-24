@@ -164,11 +164,12 @@ export async function luuHoaDonCaHaiBan() {
     tongsl: parseInt(document.getElementById("tongsl").value || "0"),
     tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
     chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
+    thanhtoan: getIntValue("phaithanhtoan"),
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || ""
   };
 
-   const chitiet = [];
+  const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
       const sl = item.soluongs[i];
