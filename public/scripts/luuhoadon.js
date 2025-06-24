@@ -420,3 +420,4 @@ function inHoaDon(hoadon, chitiet) {
   };
 }
 
+window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI;
