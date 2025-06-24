@@ -442,17 +442,7 @@
 
         <div class="tennv">
 
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-
-            <label> <input id="ngay" type="date" /></label>
-            <!-- <label>Giờ <input id="gio" /></label> -->
-            <input id="manv" placeholder="Mã NV" />
-            <input id="tennv" placeholder="Tên NV" readonly />
+            
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
         </div>
@@ -509,6 +499,17 @@
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
+                        <label>
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+
+            <label> <input id="ngay" type="date" /></label>
+            <!-- <label>Giờ <input id="gio" /></label> -->
+            <input id="manv" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
 
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
@@ -560,7 +561,7 @@
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
                 </div>
                 <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    Khách thanh toán
+                    thanh toán
                     <input id="khachtra"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
                          />
@@ -571,11 +572,10 @@
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
                         readonly />
                 </div>
-
-
-
-                <img alt="Ảnh sản phẩm" class="product-image"
+                <!-- <img alt="Ảnh sản phẩm" class="product-image"
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+                  -->
+                
             </div>
         </div>
 
