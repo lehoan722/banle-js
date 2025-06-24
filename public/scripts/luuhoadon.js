@@ -168,11 +168,12 @@ export async function luuHoaDonCaHaiBan() {
     ghichu: document.getElementById("ghichu")?.value || ""
   };
 
-  const chitiet = [];
+   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
       const sl = item.soluongs[i];
       chitiet.push({
+        sohd,
         masp: item.masp,
         tensp: item.tensp,
         size: sz,
@@ -182,8 +183,10 @@ export async function luuHoaDonCaHaiBan() {
         thanhtien: (item.gia - item.km) * sl,
         dvt: item.dvt || '',
         diadiem: diadiem,
-        created_at: createdAt
+        created_at: createdAt,
+        ngay: document.getElementById("ngay").value
       });
+
     });
   });
 
