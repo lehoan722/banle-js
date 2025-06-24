@@ -42,14 +42,21 @@ export async function luuHoaDonQuaAPI() {
     ngay: document.getElementById("ngay").value,
     manv: document.getElementById("manv").value,
     tennv: document.getElementById("tennv").value,
-    diadiem: diadiem, // luôn lấy từ localStorage
+    diadiem: diadiem,
     khachhang: document.getElementById("khachhang").value,
     tongsl: parseInt(document.getElementById("tongsl").value || "0"),
     tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
     chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
+    thanhtoan: parseFloat(document.getElementById("phaithanhtoan").value.replace(/,/g, "") || "0"),
     hinhthuctt: document.getElementById("hinhthuctt").value,
-    ghichu: document.getElementById("ghichu")?.value || ""
+    ghichu: document.getElementById("ghichu")?.value || "",
+    created_at: createdAt,
+    loai: "", // Nếu cần phân loại hóa đơn, không thì để ""
+    dvt: "",
+    loaihd: "",
+    nhacc: ""
   };
+
 
   const createdAt = new Date().toISOString();
 
@@ -67,9 +74,11 @@ export async function luuHoaDonQuaAPI() {
         km: item.km,
         thanhtien: (item.gia - item.km) * sl,
         dvt: item.dvt || '',
-        diadiem: diadiem, // luôn lấy từ localStorage
-        created_at: createdAt
+        diadiem: diadiem,
+        created_at: createdAt,
+        ngay: document.getElementById("ngay").value
       });
+
     });
   });
 
@@ -144,23 +153,32 @@ export async function luuHoaDonCaHaiBan() {
     .eq("loai", loaiT);
 
   const hoadon = {
+    sohd,
     ngay: document.getElementById("ngay").value,
     manv: document.getElementById("manv").value,
-    tennv,
+    tennv: document.getElementById("tennv").value,
     diadiem: diadiem,
     khachhang: document.getElementById("khachhang").value,
     tongsl: parseInt(document.getElementById("tongsl").value || "0"),
     tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
     chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
+    thanhtoan: parseFloat(document.getElementById("phaithanhtoan").value.replace(/,/g, "") || "0"),
     hinhthuctt: document.getElementById("hinhthuctt").value,
-    ghichu: document.getElementById("ghichu")?.value || ""
+    ghichu: document.getElementById("ghichu")?.value || "",
+    created_at: createdAt,
+    loai: "", // Nếu cần phân loại hóa đơn, không thì để ""
+    dvt: "",
+    loaihd: "",
+    nhacc: ""
   };
+
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
       const sl = item.soluongs[i];
       chitiet.push({
+        sohd,
         masp: item.masp,
         tensp: item.tensp,
         size: sz,
@@ -170,8 +188,10 @@ export async function luuHoaDonCaHaiBan() {
         thanhtien: (item.gia - item.km) * sl,
         dvt: item.dvt || '',
         diadiem: diadiem,
-        created_at: createdAt
+        created_at: createdAt,
+        ngay: document.getElementById("ngay").value
       });
+
     });
   });
 
@@ -258,8 +278,8 @@ export async function xacNhanSuaHoaDon() {
   // 4. Nếu qua tất cả kiểm tra trên, cho phép sửa
   choPhepSua = true;
   document.getElementById("popupXacThucSua").style.display = "none";
-  alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");  
- 
+  alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
+
   luuHoaDonQuaAPI();
 }
 
