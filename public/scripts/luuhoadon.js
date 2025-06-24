@@ -38,6 +38,9 @@ export async function luuHoaDonQuaAPI() {
   }
   const createdAt = new Date().toISOString();
 
+  const getIntValue = (id) =>
+    parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+
   const hoadon = {
     sohd,
     ngay: document.getElementById("ngay").value,
@@ -45,19 +48,20 @@ export async function luuHoaDonQuaAPI() {
     tennv: document.getElementById("tennv").value,
     diadiem: diadiem,
     khachhang: document.getElementById("khachhang").value,
-    tongsl: parseInt(document.getElementById("tongsl").value || "0"),
-    tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
-    chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
-    thanhtoan: parseFloat(document.getElementById("phaithanhtoan").value.replace(/,/g, "") || "0"),
+    tongsl: getIntValue("tongsl"),
+    tongkm: getIntValue("tongkm"),
+    chietkhau: getIntValue("chietkhau"),
+    thanhtoan: getIntValue("phaithanhtoan"),
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || "",
     created_at: createdAt,
-    loai: "", // Nếu cần phân loại hóa đơn, không thì để ""
+    loai: "",
     dvt: "",
     loaihd: "",
     nhacc: ""
   };
-  
+
+
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
@@ -152,32 +156,23 @@ export async function luuHoaDonCaHaiBan() {
     .eq("loai", loaiT);
 
   const hoadon = {
-    sohd,
     ngay: document.getElementById("ngay").value,
     manv: document.getElementById("manv").value,
-    tennv: document.getElementById("tennv").value,
+    tennv,
     diadiem: diadiem,
     khachhang: document.getElementById("khachhang").value,
     tongsl: parseInt(document.getElementById("tongsl").value || "0"),
     tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
     chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
-    thanhtoan: parseFloat(document.getElementById("phaithanhtoan").value.replace(/,/g, "") || "0"),
     hinhthuctt: document.getElementById("hinhthuctt").value,
-    ghichu: document.getElementById("ghichu")?.value || "",
-    created_at: createdAt,
-    loai: "", // Nếu cần phân loại hóa đơn, không thì để ""
-    dvt: "",
-    loaihd: "",
-    nhacc: ""
+    ghichu: document.getElementById("ghichu")?.value || ""
   };
-
 
   const chitiet = [];
   Object.values(bangKetQua).forEach(item => {
     item.sizes.forEach((sz, i) => {
       const sl = item.soluongs[i];
       chitiet.push({
-        sohd,
         masp: item.masp,
         tensp: item.tensp,
         size: sz,
@@ -187,10 +182,8 @@ export async function luuHoaDonCaHaiBan() {
         thanhtien: (item.gia - item.km) * sl,
         dvt: item.dvt || '',
         diadiem: diadiem,
-        created_at: createdAt,
-        ngay: document.getElementById("ngay").value
+        created_at: createdAt
       });
-
     });
   });
 
