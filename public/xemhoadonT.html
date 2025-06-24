@@ -9,7 +9,7 @@
     body {
       font-family: Arial;
       padding: 20px;
-    } 
+    }
 
     table {
       border-collapse: collapse;
@@ -70,12 +70,19 @@
 
 <body>
   <h2>📋 Tra cứu Hóa Đơn Tạm</h2>
-  <label>Ngày: <input type="date" id="locNgay"></label>
+  <label>Từ ngày: <input type="date" id="locTuNgay"></label>
+  <label>Đến ngày: <input type="date" id="locDenNgay"></label>
+
   <label>Nhân viên: <input type="text" id="locNV"></label>
   <label>Số HĐ: <input type="text" id="locSoHD"></label>
   <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
 
   <button id="btnGuiLai" onclick="guiLaiHoaDonDaChon()" disabled>📤 Gửi lại hóa đơn</button>
+  <div style="margin:10px 0;">
+    <b>Tổng thanh toán các hóa đơn đang hiển thị: </b>
+    <span id="tongThanhToan" style="font-weight:bold;color:blue;">0</span>
+  </div>
+
 
   <table>
     <thead>
@@ -127,7 +134,9 @@
     );
 
     async function taiDanhSachHoaDon() {
-      const ngay = document.getElementById("locNgay").value;
+      const tuNgay = document.getElementById("locTuNgay").value;
+      const denNgay = document.getElementById("locDenNgay").value;
+
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
 
@@ -139,13 +148,21 @@
         .limit(1000);
 
 
-      if (ngay) query = query.eq('ngay', ngay);
+      if (tuNgay && denNgay) {
+        query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
+      } else if (tuNgay) {
+        query = query.gte('ngay', tuNgay);
+      } else if (denNgay) {
+        query = query.lte('ngay', denNgay);
+      }
+
       if (nv) query = query.ilike('manv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
 
       const { data, error } = await query;
       const tbody = document.getElementById("dsHoaDon");
       tbody.innerHTML = "";
+      let tongTien = 0;
 
       if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
@@ -168,8 +185,9 @@
           xemChiTiet(hd.sohd);
         };
         tbody.appendChild(tr);
+        tongTien += Number(hd.thanhtoan) || 0; // Cộng dồn
       });
-
+      document.getElementById('tongThanhToan').textContent = tongTien.toLocaleString();
 
     }
 
