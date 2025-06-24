@@ -8,9 +8,6 @@ export function capNhatBangHTML(bangKetQua) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Xác định có phải nghiệp vụ nhập mới không
-  const isNhap = window.location.pathname.includes("nhapmoi");
-
   Object.values(bangKetQua).forEach(item => {
     // Sắp xếp kích cỡ và số lượng tương ứng
     const zipped = item.sizes.map((size, i) => ({
@@ -21,21 +18,7 @@ export function capNhatBangHTML(bangKetQua) {
 
     // Mỗi size là một dòng riêng
     zipped.forEach((z, idx) => {
-      // Lấy giá trị chuẩn theo nghiệp vụ
-      let gia = item.gia;
-      let km = item.km;
-
-      if (isNhap) {
-        // Lấy giá nhập từ danh mục hàng hóa nếu có
-        if (window.sanPhamData && window.sanPhamData[item.masp]) {
-          gia = window.sanPhamData[item.masp].gianhap || 0;
-        } else {
-          gia = 0;
-        }
-        km = 0; // nhập mới không có khuyến mại
-      }
-
-      const thanhtien = (gia - km) * z.soluong;
+      const thanhtien = (item.gia - item.km) * z.soluong;
       const row = tbody.insertRow();
       row.innerHTML = `
         <td>${item.masp}</td>
@@ -43,8 +26,8 @@ export function capNhatBangHTML(bangKetQua) {
         <td>${z.size}</td>
         <td>${z.soluong}</td>
         <td>${z.soluong}</td>
-        <td>${gia}</td>
-        <td>${km}</td>
+        <td>${item.gia}</td>
+        <td>${item.km}</td>
         <td>${thanhtien.toLocaleString()}</td>
         <td>${item.dvt}</td>
       `;
@@ -59,7 +42,6 @@ export function capNhatBangHTML(bangKetQua) {
 
   capNhatThongTinTong(bangKetQua);
 }
-
 
 
 
