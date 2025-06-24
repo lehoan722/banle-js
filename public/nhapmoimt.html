@@ -918,24 +918,25 @@
                 p.style.display = 'none';
             }
         });
-        
 
-        (function () {
-            // Chỉ override khi đúng trang nghiệp vụ cần
+
+    </script>
+
+    <script type="module" src="scripts/viettelInvoice.js"></script>
+
+    <script>
+        setTimeout(() => {
             if (!window.location.pathname.includes('nhapmoi')) return;
 
-            // Ghi đè hàm gốc hoặc hook vào render bảng
             const oldCapNhatBangHTML = window.capNhatBangHTML || window.bangketqua_capNhatBangHTML || null;
-            if (!oldCapNhatBangHTML) return; // Không có hàm gốc thì thôi
+            if (!oldCapNhatBangHTML) return;
 
             window.capNhatBangHTML = function (bangKetQua) {
-                // Sử dụng logic y hệt hàm gốc nhưng ép lại giá & khuyến mại cho nhập mới
                 const tbody = document.querySelector("#bangketqua tbody");
                 if (!tbody) return;
                 tbody.innerHTML = "";
 
                 Object.values(bangKetQua).forEach(item => {
-                    // Sắp xếp kích cỡ và số lượng tương ứng
                     const zipped = item.sizes.map((size, i) => ({
                         size: parseInt(size),
                         soluong: item.soluongs[i]
@@ -943,7 +944,6 @@
                     zipped.sort((a, b) => a.size - b.size);
 
                     zipped.forEach((z, idx) => {
-                        // Luôn lấy giá nhập và km = 0 nếu là nhập mới
                         let gia = (window.sanPhamData && window.sanPhamData[item.masp]) ? window.sanPhamData[item.masp].gianhap || 0 : 0;
                         let km = 0;
                         const thanhtien = (gia - km) * z.soluong;
@@ -968,16 +968,8 @@
 
                 if (window.capNhatThongTinTong) window.capNhatThongTinTong(bangKetQua);
             };
-        })();
-
-
-        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+        }, 2000); // Đặt timeout đủ lớn để chắc chắn override sau khi app đã load xong
     </script>
-
-
-
-
-    <script type="module" src="scripts/viettelInvoice.js"></script>
 
 </body>
 
