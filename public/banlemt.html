@@ -35,13 +35,15 @@
         }
 
         .tennv {
-            width: 600px;
             display: flex;
             padding: 5px;
             gap: 5px;
             background: #0088cc;
             align-items: center;
+            justify-content: flex-end;
+            /* Đẩy hết sang phải */
         }
+
 
         .top-inputs input,
         .top-inputs select {
@@ -517,7 +519,7 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        
+                        <label>Vị trí <input id="vitri" readonly="" /></label>
                         <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
@@ -536,8 +538,6 @@
                             <table id="tableKH" style="width:100%;font-size:15px"></table>
                         </div>
                         <!-- het khu vuc tìm khách hàng -->
-                         
-                         <label>Vị trí <input id="vitri" readonly="" /></label>
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
@@ -703,9 +703,7 @@
             <h2>Đăng nhập hệ thống</h2>
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
-                <input type="email" id="login-email" ...><br />
-                <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
+                <input type="email" id="login-email" ...><br />                
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;">
@@ -713,6 +711,8 @@
                     <option value="cs1">Cơ sở 1</option>
                     <option value="cs2">Cơ sở 2</option>
                 </select><br /><br />
+                <label>Mật khẩu:</label><br />
+                <input type="password" id="login-password" ...><br /><br />
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
             </form>
