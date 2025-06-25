@@ -161,6 +161,37 @@
         #maspSuggestList tr:hover {
             background: #e6f3ff;
         }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .form-row label {
+            flex: 0 0 90px;
+            text-align: left;
+            margin-right: 5px;
+            font-size: 13px;
+        }
+
+        .form-input {
+            flex: 1 1 auto;
+            position: relative;
+        }
+
+        .form-input input {
+            width: 100%;
+            padding: 2px 5px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .required {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -178,46 +209,70 @@
             <div id="productInputForm"
                 style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
                 <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
-                <form id="addProductForm" autocomplete="off">
-                    <label>Mã sản phẩm <span style="color: red;">*</span>
-                        <input name="masp" id="maspInput" type="text" style="width: 60%;" required autocomplete="off" />
-                    </label><br>
-                    <!-- Popup gợi ý mã sản phẩm -->
-                    <div id="maspSuggestList" class="product-list"
-                        style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
-                    </div>
 
-                    <label>Tên sản phẩm <span style="color: red;">*</span>
-                        <input name="tensp" id="tenspInput" type="text" style="width: 60%;" required />
-                    </label><br>
-                    <label>Giá nhập <span style="color: red;">*</span>
-                        <input name="gianhap" id="gianhapInput" type="number" style="width: 60%;" required />
-                    </label><br>
-                    <label>Giá lẻ <span style="color: red;">*</span>
-                        <input name="giale" id="gialeInput" type="number" style="width: 60%;" required />
-                    </label><br>
-                    <label>Màu sắc <input name="mausac" id="mausacInput" list="mausacList" style="width: 60%;"
-                            autocomplete="off" />
-                        <datalist id="mausacList"></datalist>
-                    </label><br>
-                    <label>Khuyến mãi
-                        <input name="khuyenmai" id="khuyenmaiInput" type="text" style="width: 60%;" />
-                    </label><br>
-                    <label>Nhà cung cấp
-                        <input name="nhacc" id="nhaccInput" list="nhaccList" style="width: 60%;" autocomplete="off" />
-                        <datalist id="nhaccList"></datalist>
-                    </label><br>
-                    <label>Chủng loại
-                        <input name="chungloai" id="chungloaiInput" list="chungloaiList" style="width: 60%;"
-                            autocomplete="off" />
-                        <datalist id="chungloaiList"></datalist>
-                    </label>
+                <form id="addProductForm" autocomplete="off">
+                    <div class="form-row">
+                        <label for="maspInput">Mã sản phẩm <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="masp" id="maspInput" type="text" required autocomplete="off" />
+                            <!-- Popup gợi ý mã sản phẩm -->
+                            <div id="maspSuggestList" class="product-list"
+                                style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="tenspInput">Tên sản phẩm <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="tensp" id="tenspInput" type="text" required />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="gianhapInput">Giá nhập <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="gianhap" id="gianhapInput" type="number" required />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="gialeInput">Giá lẻ <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="giale" id="gialeInput" type="number" required />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="mausacInput">Màu sắc</label>
+                        <div class="form-input">
+                            <input name="mausac" id="mausacInput" list="mausacList" autocomplete="off" />
+                            <datalist id="mausacList"></datalist>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="khuyenmaiInput">Khuyến mãi</label>
+                        <div class="form-input">
+                            <input name="khuyenmai" id="khuyenmaiInput" type="text" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="nhaccInput">Nhà cung cấp <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="nhacc" id="nhaccInput" list="nhaccList" autocomplete="off" />
+                            <datalist id="nhaccList"></datalist>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label for="chungloaiInput">Chủng loại <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="chungloai" id="chungloaiInput" list="chungloaiList" autocomplete="off" />
+                            <datalist id="chungloaiList"></datalist>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
                         <button type="button" id="resetFormBtn" class="btn" style="flex: 1;">Thêm mới</button>
                         <button type="submit" id="saveFormBtn" class="btn" style="flex: 1;">Lưu</button>
                     </div>
                     <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
                 </form>
+
             </div>
 
         </div>
@@ -709,7 +764,7 @@
             document.getElementById('addProductForm').reset();
             // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
             GIU_LAI_FIELDS.forEach(field => {
-                if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
+                //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
                 document.getElementById(field + 'Input').value = data[field] || '';
             });
             document.getElementById('addProductMessage').textContent = '';
@@ -726,6 +781,8 @@
                 { id: 'tenspInput', label: 'Tên sản phẩm' },
                 { id: 'gianhapInput', label: 'Giá nhập' },
                 { id: 'gialeInput', label: 'Giá lẻ' },
+                { id: 'nhaccInput', label: 'Nhà cung cấp' },   // Thêm bắt buộc
+                { id: 'chungloaiInput', label: 'Chủng loại' }  // Thêm bắt buộc
             ];
             bbFields.forEach(f => {
                 const inp = document.getElementById(f.id);
@@ -739,6 +796,7 @@
             });
             return { valid, msg: msg.join(', ') };
         }
+
 
         // ==== Nút Lưu (submit form) ====
         document.getElementById('addProductForm').onsubmit = async function (e) {
