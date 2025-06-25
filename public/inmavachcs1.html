@@ -181,7 +181,7 @@
                 <form id="addProductForm" autocomplete="off">
                     <label>Mã sản phẩm <span style="color: red;">*</span>
                         <input name="masp" id="maspInput" type="text" style="width: 60%;" required autocomplete="off" />
-                    </label>
+                    </label><br>
                     <!-- Popup gợi ý mã sản phẩm -->
                     <div id="maspSuggestList" class="product-list"
                         style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
@@ -189,25 +189,24 @@
 
                     <label>Tên sản phẩm <span style="color: red;">*</span>
                         <input name="tensp" id="tenspInput" type="text" style="width: 60%;" required />
-                    </label>
+                    </label><br>
                     <label>Giá nhập <span style="color: red;">*</span>
                         <input name="gianhap" id="gianhapInput" type="number" style="width: 60%;" required />
-                    </label>
+                    </label><br>
                     <label>Giá lẻ <span style="color: red;">*</span>
                         <input name="giale" id="gialeInput" type="number" style="width: 60%;" required />
-                    </label>
-                    <label>Màu sắc
-                        <input name="mausac" id="mausacInput" list="mausacList" style="width: 60%;"
+                    </label><br>
+                    <label>Màu sắc <input name="mausac" id="mausacInput" list="mausacList" style="width: 60%;"
                             autocomplete="off" />
                         <datalist id="mausacList"></datalist>
-                    </label>
+                    </label><br>
                     <label>Khuyến mãi
                         <input name="khuyenmai" id="khuyenmaiInput" type="text" style="width: 60%;" />
-                    </label>
+                    </label><br>
                     <label>Nhà cung cấp
                         <input name="nhacc" id="nhaccInput" list="nhaccList" style="width: 60%;" autocomplete="off" />
                         <datalist id="nhaccList"></datalist>
-                    </label>
+                    </label><br>
                     <label>Chủng loại
                         <input name="chungloai" id="chungloaiInput" list="chungloaiList" style="width: 60%;"
                             autocomplete="off" />
