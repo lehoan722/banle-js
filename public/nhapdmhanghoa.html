@@ -49,8 +49,8 @@
       { data: 'nhacc', type: 'text' },
       { data: 'chungloai', type: 'text' },
 
-      { data: 'dvt', type: 'text' },
-      { data: 'mausac', type: 'text' },
+      { data: 'dvt', type: 'text' },      
+      { data: 'khuyenmai', type: 'text' },      
       { data: 'nhapdau', type: 'date' },
       { data: 'ngaysua', type: 'date' }
     ];
@@ -75,20 +75,12 @@
         header: true,
         skipEmptyLines: true,
         complete: function (results) {
-          const data = results.data.map(row => {
-            const normalized = {};
-            for (const key in row) {
-              normalized[key.toLowerCase()] = row[key];
-            }
-            return normalized;
-          });
-
+          const data = results.data;
           hot.loadData(data);
           console.log("🧪 Loaded:", data[0]);
         }
       });
     }
-
 
     function parseDate(val) {
       if (!val) return null;
