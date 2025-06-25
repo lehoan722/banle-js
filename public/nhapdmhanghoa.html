@@ -28,6 +28,13 @@
   <button onclick="loadCSV()">📂 Đọc dữ liệu từ file</button>
   <button onclick="uploadToSupabase()">📤 Ghi vào Supabase</button>
   <button onclick="console.log(hot.getData()[0])">🧪 Xem dòng 1</button>
+  <label for="modeSelect">Cách ghi dữ liệu:</label>
+  <select id="modeSelect">
+    <option value="">-- Chọn cách ghi dữ liệu --</option>
+    <option value="overwrite">📝 Ghi đè tất cả</option>
+    <option value="update">✏️ Chỉ cập nhật dữ liệu</option>
+  </select>
+
 
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
@@ -100,7 +107,7 @@
       return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
     }
 
-    function cleanRow(row) {
+    function cleanRowFull(row) {
       const fields = {
         masp: "text", tensp: "text", dvt: "text", chungloai: "text",
         giale: "numeric", giasi: "numeric", mangan: "text", nhomhang: "text",
@@ -128,10 +135,41 @@
           if (key === "masp") textVal = textVal.toUpperCase();
           cleaned[key] = textVal;
         }
-
       }
       return cleaned;
     }
+
+    function cleanRowPartial(row) {
+      const fields = {
+        masp: "text", tensp: "text", dvt: "text", chungloai: "text",
+        giale: "numeric", giasi: "numeric", mangan: "text", nhomhang: "text",
+        mausac: "text", gianhap: "numeric", nhacc: "text",
+        quanlykichco: "boolean", nhapdau: "date", ngaysua: "date"
+      };
+
+      const cleaned = {};
+      for (const key in fields) {
+        let val = row[key];
+        if (val === "" || val == null || (typeof val === "string" && val.trim() === "")) continue;
+
+        if (fields[key] === "numeric") {
+          const num = Number(val);
+          if (!isNaN(num)) cleaned[key] = num;
+        } else if (fields[key] === "boolean") {
+          const v = val.toString().toLowerCase();
+          cleaned[key] = (v === "true" || v === "1" || v === "x" || v === "yes");
+        } else if (fields[key] === "date") {
+          const d = parseDate(val);
+          if (d) cleaned[key] = d;
+        } else {
+          let textVal = val.toString();
+          if (key === "masp") textVal = textVal.toUpperCase();
+          cleaned[key] = textVal;
+        }
+      }
+      return cleaned;
+    }
+
 
     async function uploadToSupabase() {
       const rawData = hot.getData();
@@ -150,7 +188,16 @@
       const batchSize = 1000;
 
       for (let i = 0; i < data.length; i += batchSize) {
-        const batch = data.slice(i, i + batchSize).map(cleanRow);
+        const mode = document.getElementById("modeSelect").value;
+        if (!mode) return alert("❗ Vui lòng chọn cách ghi dữ liệu trước khi ghi.");
+
+        let batch;
+        if (mode === "update") {
+          batch = data.slice(i, i + batchSize).map(cleanRowPartial);
+        } else {
+          batch = data.slice(i, i + batchSize).map(cleanRowFull);
+        }
+
 
         if (!batch.length || !batch[0].masp) {
           console.error("❗ Dữ liệu không hợp lệ:", batch[0]);
