@@ -409,6 +409,22 @@
     </style>
 
     <div class="menu-bar">
+        <div class="tennv">
+
+            <label>
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+
+            <label> <input id="ngay" type="date" /></label>
+            <!-- <label>Giờ <input id="gio" /></label> -->
+            <input id="manv" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+        </div>
         <div class="menu-item">
 
             <span class="menu-link">📁 Báo cáo hóa đơn</span>
@@ -446,22 +462,6 @@
             </div>
         </div>
 
-        <div class="tennv">
-
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-
-            <label> <input id="ngay" type="date" /></label>
-            <!-- <label>Giờ <input id="gio" /></label> -->
-            <input id="manv" placeholder="Mã NV" />
-            <input id="tennv" placeholder="Tên NV" readonly />
-
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-        </div>
 
     </div>
 
