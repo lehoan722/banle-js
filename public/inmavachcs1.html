@@ -40,7 +40,7 @@
         }
 
         .product-list {
-            height: 340px;
+            height: 300px;
             overflow-y: auto;
             margin-top: 10px;
             border-top: 1px solid #eee;
@@ -191,6 +191,12 @@
         .required {
             color: red;
             font-weight: bold;
+        }
+
+        #maspSuggestList {
+            position: fixed !important;
+            z-index: 9999 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
     </style>
 </head>
@@ -857,12 +863,15 @@
         const maspSuggestDiv = document.getElementById('maspSuggestList');
 
         // Xác định lại vị trí popup
+
         function positionMaspSuggestList() {
             const rect = maspInput.getBoundingClientRect();
-            maspSuggestDiv.style.top = (window.scrollY + rect.bottom) + 'px';
-            maspSuggestDiv.style.left = (window.scrollX + rect.left) + 'px';
+            maspSuggestDiv.style.position = 'fixed';
+            maspSuggestDiv.style.top = (rect.bottom) + 'px';
+            maspSuggestDiv.style.left = (rect.left) + 'px';
             maspSuggestDiv.style.width = rect.width + 'px';
         }
+        
 
         maspInput.addEventListener('input', async function () {
             const val = maspInput.value.trim().toLowerCase();
