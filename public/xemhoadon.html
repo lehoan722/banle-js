@@ -53,8 +53,8 @@
 
 <body>
   <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
-  
-  
+
+
   <label>Từ ngày: <input type="date" id="tuNgay"></label>
   <label>Đến ngày: <input type="date" id="denNgay"></label>
   <label>Nhân viên: <input type="text" id="locNV"></label>
@@ -63,16 +63,19 @@
   <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
   <label>Số HĐ: <input type="text" id="locSoHD"></label>
   <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
+  <button onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+
 
   <table>
     <thead>
       <thead>
         <tr>
+          <th>✔️</th>
           <th>Số HĐ</th>
           <th>Ngày</th>
           <th>NV</th>
           <th>Khách</th>
-          <th>Tổng SL</th> <!-- MỚI -->
+          <th>Tổng SL</th>
           <th>TT</th>
           <th>Ghi chú</th>
         </tr>
@@ -108,7 +111,7 @@
     );
 
     async function taiDanhSachHoaDon() {
-      // Lấy giá trị filter
+      // 1. Lấy các giá trị lọc từ giao diện
       const tuNgay = document.getElementById("tuNgay").value;
       const denNgay = document.getElementById("denNgay").value;
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
@@ -117,7 +120,12 @@
       const tienTu = Number(document.getElementById("tienTu").value);
       const tienDen = Number(document.getElementById("tienDen").value);
 
-      let query = supabase.from('hoadon_banle').select('*').order('ngay', { ascending: false }).limit(100);
+      // 2. Tạo truy vấn Supabase
+      let query = supabase
+        .from('hoadon_banle')
+        .select('*')
+        .order('ngay', { ascending: false })
+        .limit(100);
 
       if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
       else if (tuNgay) query = query.gte('ngay', tuNgay);
@@ -129,25 +137,37 @@
       if (!isNaN(tienTu) && tienTu > 0) query = query.gte('phaithanhtoan', tienTu);
       if (!isNaN(tienDen) && tienDen > 0) query = query.lte('phaithanhtoan', tienDen);
 
+      // 3. Nhận dữ liệu
       const { data, error } = await query;
       const tbody = document.getElementById("dsHoaDon");
       tbody.innerHTML = "";
-      if (error) return alert("Lỗi tải hóa đơn: " + error.message);
 
+      if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+      if (!data.length) return tbody.innerHTML = `<tr><td colspan="8">Không có dữ liệu</td></tr>`;
+
+      // 4. Tạo bảng kết quả
       data.forEach(hd => {
         const tr = document.createElement("tr");
-        tr.innerHTML =
-          `<td>${hd.sohd}</td>
-       <td>${hd.ngay}</td>
-       <td>${hd.tennv}</td>
-       <td>${hd.khachhang}</td>
-       <td>${hd.tongsl || 0}</td> <!-- Tổng số lượng mới -->
-       <td>${hd.phaithanhtoan?.toLocaleString()}</td>
-       <td>${hd.ghichu || ""}</td>`;
-        tr.onclick = () => xemChiTiet(hd.sohd);
+        tr.innerHTML = `
+      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
+      <td>${hd.sohd}</td>
+      <td>${hd.ngay}</td>
+      <td>${hd.tennv}</td>
+      <td>${hd.khachhang}</td>
+      <td>${hd.tongsl || 0}</td>
+      <td>${hd.phaithanhtoan?.toLocaleString()}</td>
+      <td>${hd.ghichu || ""}</td>
+    `;
+
+        // Mở popup chi tiết nếu click ngoài checkbox
+        tr.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT') xemChiTiet(hd.sohd);
+        };
+
         tbody.appendChild(tr);
       });
     }
+
 
 
     async function xemChiTiet(sohd) {
@@ -169,7 +189,35 @@
       document.getElementById("popup").style.display = "none";
     }
 
+    async function xoaHoaDonDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+
+      if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+      if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
+
+      // Xóa khỏi ct_hoadon_banle trước
+      const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
+      if (errCT) {
+        console.error("❌ Lỗi xóa chi tiết:", errCT.message);
+        return alert("Không thể xóa chi tiết hóa đơn.");
+      }
+
+      // Sau đó xóa khỏi hoadon_banle
+      const { error: errHD } = await supabase.from('hoadon_banle').delete().in('sohd', sohdList);
+      if (errHD) {
+        console.error("❌ Lỗi xóa hóa đơn:", errHD.message);
+        return alert("Không thể xóa hóa đơn.");
+      }
+
+      alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+      taiDanhSachHoaDon();
+    }
+
+
     window.onload = taiDanhSachHoaDon;
+
   </script>
 </body>
 
