@@ -755,23 +755,13 @@
             resetForm(false);
         };
 
-        function resetForm(keepMasp = false) {
-            // Lấy giá trị các trường giữ lại hiện tại
-            const data = {};
-            GIU_LAI_FIELDS.forEach(field => {
-                data[field] = document.getElementById(field + 'Input').value;
-            });
-            // Xóa trắng toàn bộ form
+        function resetForm() {
             document.getElementById('addProductForm').reset();
-            // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
-            GIU_LAI_FIELDS.forEach(field => {
-                //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
-                document.getElementById(field + 'Input').value = data[field] || '';
-            });
             document.getElementById('addProductMessage').textContent = '';
             document.getElementById('addProductForm').style.border = '';
             isEditMode = false;
         }
+
 
         // ==== Validate các trường bắt buộc ====
         function validateForm() {
