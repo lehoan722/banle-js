@@ -46,11 +46,6 @@
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
     const TABLE_NAME = 'dmhanghoa';
-    const { createClient } = supabase;
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-    const supabase = window.supabase = supabaseClient;
-
-
 
     const columns = [
       { data: 'quanlykichco', type: 'checkbox' },
@@ -312,9 +307,17 @@
       alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
     }
 
+    window.addEventListener("load", () => {
+      const { createClient } = window.supabase;
+      window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+      window.supabase = window.supabaseClient;
+    });
 
   </script>
 
 </body>
 
 </html>
+<script async data-explicit-opt-in="true" data-cookie-opt-in="true"
+  data-deployment-id="dpl_72h3v5BH1ss3PevUAaiq4t6ddMxx"
+  src="https://vercel.live/_next-live/feedback/feedback.js"></script>
