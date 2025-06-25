@@ -40,7 +40,7 @@
         }
 
         .product-list {
-            height: 300px;
+            height: 280px;
             overflow-y: auto;
             margin-top: 10px;
             border-top: 1px solid #eee;
@@ -369,6 +369,8 @@
                 }
             });
         });
+
+
 
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
@@ -871,7 +873,7 @@
             maspSuggestDiv.style.left = (rect.left) + 'px';
             maspSuggestDiv.style.width = rect.width + 'px';
         }
-        
+
 
         maspInput.addEventListener('input', async function () {
             const val = maspInput.value.trim().toLowerCase();
@@ -929,6 +931,47 @@
         maspInput.addEventListener('focus', function () {
             if (maspSuggestDiv.innerHTML.trim() !== '') maspSuggestDiv.style.display = 'block';
             positionMaspSuggestList();
+        });
+
+
+        const gianhapInput = document.getElementById('gianhapInput');
+        const gialeInput = document.getElementById('gialeInput');
+
+        // Tự động tính giá lẻ khi nhập xong giá nhập
+        gianhapInput.addEventListener('change', function () {
+            const val = parseFloat(this.value);
+            if (!isNaN(val) && val > 0) {
+                gialeInput.value = Math.round(val * 1.5);
+            }
+        });
+
+        const formOrder = [
+            'maspInput',
+            'tenspInput',
+            'gianhapInput',
+            'gialeInput',
+            'mausacInput',
+            'khuyenmaiInput',
+            'nhaccInput',
+            'chungloaiInput'
+        ];
+
+        formOrder.forEach((id, idx) => {
+            const inp = document.getElementById(id);
+            if (!inp) return;
+            inp.addEventListener('keydown', function (e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    // Nếu không phải ô cuối cùng thì focus ô tiếp theo
+                    if (idx < formOrder.length - 1) {
+                        const next = document.getElementById(formOrder[idx + 1]);
+                        if (next) next.focus();
+                    } else {
+                        // Nếu là ô cuối cùng, submit form
+                        document.getElementById('saveFormBtn').focus();
+                    }
+                }
+            });
         });
 
 
