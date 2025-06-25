@@ -324,20 +324,19 @@
         // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
         let hot;
         const colHeaders = [
-            "STT", "Mã hàng", "Tên hàng","Size", "Số lượng",
-            "ĐVT", "Giá nhập", "Giá lẻ", "In" 
+            "STT", "Mã hàng", "Tên hàng", "Số lượng tem in",
+            "ĐVT", "Size", "Giá lẻ", "In", "Giá nhập"
         ];
         const columns = [
             { data: 0, type: 'numeric' },       // STT
             { data: 1, type: 'text' },   // Mã hàng
             { data: 2, type: 'text' },   // Tên hàng
-            { data: 5, type: 'text' },         // Size
             { data: 3, type: 'numeric' },      // Số lượng tem in
             { data: 4, type: 'text' },   // ĐVT
-             { data: 8, type: 'numeric' },       // Giá nhập
+            { data: 5, type: 'text' },         // Size
             { data: 6, type: 'numeric' },      // Giá lẻ
-            { data: 7, type: 'checkbox' }     // In
-           
+            { data: 7, type: 'checkbox' },     // In
+            { data: 8, type: 'numeric' }       // Giá nhập
         ];
 
 
