@@ -63,8 +63,9 @@
 
       { data: 'dvt', type: 'text' },
       { data: 'khuyenmai', type: 'text' },
-      { data: 'nhapdau', type: 'date' },
-      { data: 'ngaysua', type: 'date' }
+      { data: 'nhapdau', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true },
+      { data: 'ngaysua', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true }
+      
     ];
 
     const hot = new Handsontable(document.getElementById('hot'), {
