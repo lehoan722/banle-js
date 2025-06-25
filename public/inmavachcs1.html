@@ -645,11 +645,13 @@
         async function checkExistAndFillForm() {
             const masp = document.getElementById('maspInput').value.trim().toUpperCase();
             if (!masp) return;
+
+            // Tránh gọi reset liên tục, chỉ fill dữ liệu khi có mã, không thì giữ nguyên input đang nhập
             const { data, error } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).maybeSingle();
+
             if (data) {
-                // Chế độ SỬA
+                // Chế độ SỬA: điền dữ liệu vào form
                 isEditMode = true;
-                // Điền thông tin lên form
                 document.getElementById('tenspInput').value = data.tensp || '';
                 document.getElementById('gianhapInput').value = data.gianhap || '';
                 document.getElementById('gialeInput').value = data.giale || '';
@@ -657,16 +659,16 @@
                 document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                 document.getElementById('nhaccInput').value = data.nhacc || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
-                // Đổi màu viền cho biết đang sửa
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
-                // Chế độ THÊM MỚI
+                // Không fill gì cả, không reset
                 isEditMode = false;
                 document.getElementById('addProductForm').style.border = '';
-                // Reset các trường (giữ lại masp)
-                resetForm(true);
+                // Không gọi resetForm ở đây!
+                // Giữ nguyên các trường, để người dùng nhập tiếp tục
             }
         }
+
 
         // ==== Nút Thêm mới ====
         document.getElementById('resetFormBtn').onclick = function () {
