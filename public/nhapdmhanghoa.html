@@ -33,6 +33,8 @@
     <option value="">-- Chọn cách ghi dữ liệu --</option>
     <option value="overwrite">📝 Ghi đè tất cả</option>
     <option value="update">✏️ Chỉ cập nhật dữ liệu</option>
+    <button onclick="kiemTraTuSupabase()">🔍 Kiểm tra dữ liệu</button>
+
   </select>
 
 
@@ -254,6 +256,57 @@
       ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
     `;
     }
+
+    async function kiemTraTuSupabase() {
+      const allData = hot.getData();
+      const maspIndex = columns.findIndex(c => c.data === 'masp');
+      if (maspIndex === -1) return alert("Không tìm thấy cột mã sản phẩm!");
+
+      // 1. Lấy danh sách mã sản phẩm duy nhất, bỏ rỗng
+      const maspList = Array.from(
+        new Set(
+          allData
+            .map(row => row[maspIndex])
+            .filter(m => m && typeof m === 'string' && m.trim() !== '')
+            .map(m => m.trim().toUpperCase())
+        )
+      );
+
+      if (maspList.length === 0) {
+        return alert("Không có mã sản phẩm nào để kiểm tra.");
+      }
+
+      // 2. Truy vấn dữ liệu từ Supabase
+      const { data: serverData, error } = await supabase
+        .from(TABLE_NAME)
+        .select('*')
+        .in('masp', maspList);
+
+      if (error) {
+        console.error("❌ Lỗi khi truy vấn Supabase:", error);
+        return alert("Không thể lấy dữ liệu từ Supabase.");
+      }
+
+      const dataMap = {};
+      serverData.forEach(item => dataMap[item.masp.toUpperCase()] = item);
+
+      // 3. Cập nhật từng dòng trên bảng
+      allData.forEach((row, rowIndex) => {
+        const masp = row[maspIndex];
+        if (!masp || !dataMap[masp.toUpperCase()]) return;
+
+        const data = dataMap[masp.toUpperCase()];
+        columns.forEach((col, colIndex) => {
+          const field = col.data;
+          if (field === 'masp') return; // giữ nguyên mã
+          hot.setDataAtCell(rowIndex, colIndex, data[field] ?? null);
+        });
+      });
+
+      alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
+    }
+
+
   </script>
 
 </body>
