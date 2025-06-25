@@ -154,6 +154,55 @@
                 <input id="search" type="text" placeholder="Nhập mã, tên sản phẩm..." autocomplete="off" />
             </div>
             <div class="product-list" id="productList"></div>
+
+            <div id="productInputForm"
+                style="padding: 8px; border-top: 1px solid #eee; height: 100%; display: flex; flex-direction: column; justify-content: flex-start;">
+                <b style="font-size: 14px;">Thêm mới sản phẩm</b>
+                <form id="addProductForm" autocomplete="off">
+                    <!-- Mã sản phẩm (giữ lại, bắt buộc) -->
+                    <label>Mã sản phẩm <span style="color: red;">*</span>
+                        <input name="masp" id="maspInput" type="text" style="width: 95%;" required />
+                    </label>
+                    <!-- Tên sản phẩm (giữ lại, bắt buộc) -->
+                    <label>Tên sản phẩm <span style="color: red;">*</span>
+                        <input name="tensp" id="tenspInput" type="text" style="width: 95%;" required />
+                    </label>
+                    <!-- Giá nhập (bắt buộc) -->
+                    <label>Giá nhập <span style="color: red;">*</span>
+                        <input name="gianhap" id="gianhapInput" type="number" style="width: 95%;" required />
+                    </label>
+                    <!-- Giá lẻ (bắt buộc) -->
+                    <label>Giá lẻ <span style="color: red;">*</span>
+                        <input name="giale" id="gialeInput" type="number" style="width: 95%;" required />
+                    </label>
+                    <!-- Màu sắc (dropdown) -->
+                    <label>Màu sắc
+                        <input name="mausac" id="mausacInput" list="mausacList" style="width: 95%;"
+                            autocomplete="off" />
+                        <datalist id="mausacList"></datalist>
+                    </label>
+                    <!-- Khuyến mãi -->
+                    <label>Khuyến mãi
+                        <input name="khuyenmai" id="khuyenmaiInput" type="text" style="width: 95%;" />
+                    </label>
+                    <!-- Nhà cung cấp (dropdown, giữ lại) -->
+                    <label>Nhà cung cấp
+                        <input name="nhacc" id="nhaccInput" list="nhaccList" style="width: 95%;" autocomplete="off" />
+                        <datalist id="nhaccList"></datalist>
+                    </label>
+                    <!-- Chủng loại (dropdown, giữ lại) -->
+                    <label>Chủng loại
+                        <input name="chungloai" id="chungloaiInput" list="chungloaiList" style="width: 95%;"
+                            autocomplete="off" />
+                        <datalist id="chungloaiList"></datalist>
+                    </label>
+                    <!-- Nút Thêm mới -->
+                    <button type="submit" class="btn" style="width: 100%; margin-top: 10px;">Thêm mới</button>
+                    <!-- Thông báo -->
+                    <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
+                </form>
+            </div>
+
         </div>
         <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
         <div class="right">
