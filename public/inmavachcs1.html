@@ -156,49 +156,42 @@
             <div class="product-list" id="productList"></div>
 
             <div id="productInputForm"
-                style="padding: 8px; border-top: 1px solid #eee; height: 100%; display: flex; flex-direction: column; justify-content: flex-start;">
-                <b style="font-size: 14px;">Thêm mới sản phẩm</b>
+                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
+                <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
                 <form id="addProductForm" autocomplete="off">
-                    <!-- Mã sản phẩm (giữ lại, bắt buộc) -->
                     <label>Mã sản phẩm <span style="color: red;">*</span>
-                        <input name="masp" id="maspInput" type="text" style="width: 95%;" required />
+                        <input name="masp" id="maspInput" type="text" style="width: 95%;" required autocomplete="off" />
                     </label>
-                    <!-- Tên sản phẩm (giữ lại, bắt buộc) -->
                     <label>Tên sản phẩm <span style="color: red;">*</span>
                         <input name="tensp" id="tenspInput" type="text" style="width: 95%;" required />
                     </label>
-                    <!-- Giá nhập (bắt buộc) -->
                     <label>Giá nhập <span style="color: red;">*</span>
                         <input name="gianhap" id="gianhapInput" type="number" style="width: 95%;" required />
                     </label>
-                    <!-- Giá lẻ (bắt buộc) -->
                     <label>Giá lẻ <span style="color: red;">*</span>
                         <input name="giale" id="gialeInput" type="number" style="width: 95%;" required />
                     </label>
-                    <!-- Màu sắc (dropdown) -->
                     <label>Màu sắc
                         <input name="mausac" id="mausacInput" list="mausacList" style="width: 95%;"
                             autocomplete="off" />
                         <datalist id="mausacList"></datalist>
                     </label>
-                    <!-- Khuyến mãi -->
                     <label>Khuyến mãi
                         <input name="khuyenmai" id="khuyenmaiInput" type="text" style="width: 95%;" />
                     </label>
-                    <!-- Nhà cung cấp (dropdown, giữ lại) -->
                     <label>Nhà cung cấp
                         <input name="nhacc" id="nhaccInput" list="nhaccList" style="width: 95%;" autocomplete="off" />
                         <datalist id="nhaccList"></datalist>
                     </label>
-                    <!-- Chủng loại (dropdown, giữ lại) -->
                     <label>Chủng loại
                         <input name="chungloai" id="chungloaiInput" list="chungloaiList" style="width: 95%;"
                             autocomplete="off" />
                         <datalist id="chungloaiList"></datalist>
                     </label>
-                    <!-- Nút Thêm mới -->
-                    <button type="submit" class="btn" style="width: 100%; margin-top: 10px;">Thêm mới</button>
-                    <!-- Thông báo -->
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" id="resetFormBtn" class="btn" style="flex: 1;">Thêm mới</button>
+                        <button type="submit" id="saveFormBtn" class="btn" style="flex: 1;">Lưu</button>
+                    </div>
                     <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
                 </form>
             </div>
@@ -622,6 +615,156 @@
             }
             window.print();
         }
+
+        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
+        const GIU_LAI_FIELDS = ['masp', 'tensp', 'nhacc', 'chungloai'];
+
+        // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
+        async function loadDropdownOptions() {
+            const fields = ['mausac', 'nhacc', 'chungloai'];
+            for (const field of fields) {
+                const { data } = await supabase.from('dmhanghoa').select(`${field}`);
+                const unique = [...new Set((data || []).map(r => r[field]).filter(Boolean))];
+                const list = document.getElementById(field + 'List');
+                list.innerHTML = unique.map(val => `<option value="${val}"></option>`).join('');
+            }
+        }
+
+        // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
+        document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
+        document.getElementById('maspInput').addEventListener('keydown', function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                checkExistAndFillForm();
+                document.getElementById('tenspInput').focus();
+            }
+        });
+
+        let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
+
+        async function checkExistAndFillForm() {
+            const masp = document.getElementById('maspInput').value.trim().toUpperCase();
+            if (!masp) return;
+            const { data } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).single();
+            if (data) {
+                // Chế độ SỬA
+                isEditMode = true;
+                // Điền thông tin lên form
+                document.getElementById('tenspInput').value = data.tensp || '';
+                document.getElementById('gianhapInput').value = data.gianhap || '';
+                document.getElementById('gialeInput').value = data.giale || '';
+                document.getElementById('mausacInput').value = data.mausac || '';
+                document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
+                document.getElementById('nhaccInput').value = data.nhacc || '';
+                document.getElementById('chungloaiInput').value = data.chungloai || '';
+                // Đổi màu viền cho biết đang sửa
+                document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
+            } else {
+                // Chế độ THÊM MỚI
+                isEditMode = false;
+                document.getElementById('addProductForm').style.border = '';
+                // Reset các trường (giữ lại masp)
+                resetForm(true);
+            }
+        }
+
+        // ==== Nút Thêm mới ====
+        document.getElementById('resetFormBtn').onclick = function () {
+            resetForm(false);
+        };
+
+        function resetForm(keepMasp = false) {
+            // Lấy giá trị các trường giữ lại hiện tại
+            const data = {};
+            GIU_LAI_FIELDS.forEach(field => {
+                data[field] = document.getElementById(field + 'Input').value;
+            });
+            // Xóa trắng toàn bộ form
+            document.getElementById('addProductForm').reset();
+            // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
+            GIU_LAI_FIELDS.forEach(field => {
+                if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
+                document.getElementById(field + 'Input').value = data[field] || '';
+            });
+            document.getElementById('addProductMessage').textContent = '';
+            document.getElementById('addProductForm').style.border = '';
+            isEditMode = false;
+        }
+
+        // ==== Validate các trường bắt buộc ====
+        function validateForm() {
+            let valid = true;
+            let msg = [];
+            const bbFields = [
+                { id: 'maspInput', label: 'Mã sản phẩm' },
+                { id: 'tenspInput', label: 'Tên sản phẩm' },
+                { id: 'gianhapInput', label: 'Giá nhập' },
+                { id: 'gialeInput', label: 'Giá lẻ' },
+            ];
+            bbFields.forEach(f => {
+                const inp = document.getElementById(f.id);
+                if (!inp.value.trim()) {
+                    inp.style.border = '1.5px solid red';
+                    msg.push(`${f.label} là bắt buộc`);
+                    valid = false;
+                } else {
+                    inp.style.border = '';
+                }
+            });
+            return { valid, msg: msg.join(', ') };
+        }
+
+        // ==== Nút Lưu (submit form) ====
+        document.getElementById('addProductForm').onsubmit = async function (e) {
+            e.preventDefault();
+            // Validate
+            const { valid, msg } = validateForm();
+            if (!valid) {
+                document.getElementById('addProductMessage').textContent = msg;
+                return;
+            }
+
+            // Chuẩn hóa dữ liệu
+            const data = {
+                masp: document.getElementById('maspInput').value.trim().toUpperCase(),
+                tensp: document.getElementById('tenspInput').value.trim(),
+                gianhap: parseInt(document.getElementById('gianhapInput').value) || 0,
+                giale: parseInt(document.getElementById('gialeInput').value) || 0,
+                mausac: document.getElementById('mausacInput').value.trim(),
+                khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
+                nhacc: document.getElementById('nhaccInput').value.trim(),
+                chungloai: document.getElementById('chungloaiInput').value.trim(),
+            };
+
+            let res, errorMsg;
+            if (isEditMode) {
+                // Update
+                res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
+                if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
+            } else {
+                // Insert mới
+                res = await supabase.from('dmhanghoa').insert([data]);
+                if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
+            }
+
+            if (errorMsg) {
+                document.getElementById('addProductMessage').textContent = errorMsg;
+                return;
+            }
+
+            // Hiện thông báo thành công
+            document.getElementById('addProductMessage').style.color = '#0a9e1c';
+            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
+            // Reset lại form theo giữ lại trường
+            resetForm();
+            // Load lại dropdown option (nếu có giá trị mới)
+            loadDropdownOptions();
+            // Reload danh sách sản phẩm panel tìm kiếm để có thể in mã vạch mới ngay
+            searchProducts(document.getElementById('search').value.trim().toLowerCase());
+        };
+
+        loadDropdownOptions();
+
 
 
 
