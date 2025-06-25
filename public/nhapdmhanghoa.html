@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
+
   <style>
     body {
       font-family: sans-serif;
@@ -44,6 +46,11 @@
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
     const TABLE_NAME = 'dmhanghoa';
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = window.supabase = supabaseClient;
+
+
 
     const columns = [
       { data: 'quanlykichco', type: 'checkbox' },
