@@ -141,6 +141,26 @@
         .btn:hover {
             background: #1360b2;
         }
+
+        #maspSuggestList {
+            font-size: 13px;
+        }
+
+        #maspSuggestList table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #maspSuggestList th,
+        #maspSuggestList td {
+            border-bottom: 1px solid #eee;
+            padding: 2px 5px;
+            cursor: pointer;
+        }
+
+        #maspSuggestList tr:hover {
+            background: #e6f3ff;
+        }
     </style>
 </head>
 
@@ -162,6 +182,11 @@
                     <label>Mã sản phẩm <span style="color: red;">*</span>
                         <input name="masp" id="maspInput" type="text" style="width: 95%;" required autocomplete="off" />
                     </label>
+                    <!-- Popup gợi ý mã sản phẩm -->
+                    <div id="maspSuggestList" class="product-list"
+                        style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
+                    </div>
+
                     <label>Tên sản phẩm <span style="color: red;">*</span>
                         <input name="tensp" id="tenspInput" type="text" style="width: 95%;" required />
                     </label>
@@ -767,7 +792,76 @@
 
         loadDropdownOptions();
 
+        // === GỢI Ý MÃ SẢN PHẨM GIỐNG TÌM KIẾM SẢN PHẨM ===
 
+        const maspInput = document.getElementById('maspInput');
+        const maspSuggestDiv = document.getElementById('maspSuggestList');
+
+        // Xác định lại vị trí popup
+        function positionMaspSuggestList() {
+            const rect = maspInput.getBoundingClientRect();
+            maspSuggestDiv.style.top = (window.scrollY + rect.bottom) + 'px';
+            maspSuggestDiv.style.left = (window.scrollX + rect.left) + 'px';
+            maspSuggestDiv.style.width = rect.width + 'px';
+        }
+
+        maspInput.addEventListener('input', async function () {
+            const val = maspInput.value.trim().toLowerCase();
+            if (val.length === 0) {
+                maspSuggestDiv.style.display = 'none';
+                maspSuggestDiv.innerHTML = '';
+                return;
+            }
+            // Lọc mã & tên
+            let { data } = await supabase
+                .from('dmhanghoa')
+                .select('masp, tensp')
+                .or(`masp.ilike.%${val}%,tensp.ilike.%${val}%`)
+                .order('masp')
+                .limit(100);
+
+            if (!data || !data.length) {
+                maspSuggestDiv.style.display = 'none';
+                maspSuggestDiv.innerHTML = '';
+                return;
+            }
+            // Hiển thị popup
+            let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
+            for (let p of data) {
+                html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
+            }
+            html += '</table>';
+            maspSuggestDiv.innerHTML = html;
+            maspSuggestDiv.style.display = 'block';
+            positionMaspSuggestList();
+
+            // Sự kiện chọn
+            maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
+                row.onclick = function () {
+                    maspInput.value = row.dataset.masp;
+                    document.getElementById('tenspInput').value = row.dataset.tensp;
+                    maspSuggestDiv.style.display = 'none';
+                    checkExistAndFillForm(); // Tải info nếu có
+                    document.getElementById('tenspInput').focus();
+                }
+            });
+        });
+
+        // Ẩn popup khi click ra ngoài hoặc tab/blur
+        document.addEventListener('mousedown', function (e) {
+            if (!maspInput.contains(e.target) && !maspSuggestDiv.contains(e.target)) {
+                maspSuggestDiv.style.display = 'none';
+            }
+        });
+
+        // Đặt lại vị trí popup khi resize/scroll
+        window.addEventListener('resize', positionMaspSuggestList);
+        window.addEventListener('scroll', positionMaspSuggestList);
+
+        maspInput.addEventListener('focus', function () {
+            if (maspSuggestDiv.innerHTML.trim() !== '') maspSuggestDiv.style.display = 'block';
+            positionMaspSuggestList();
+        });
 
 
     </script>
