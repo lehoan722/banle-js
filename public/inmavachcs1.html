@@ -645,7 +645,7 @@
         async function checkExistAndFillForm() {
             const masp = document.getElementById('maspInput').value.trim().toUpperCase();
             if (!masp) return;
-            const { data } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).single();
+            const { data, error } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).maybeSingle();
             if (data) {
                 // Chế độ SỬA
                 isEditMode = true;
