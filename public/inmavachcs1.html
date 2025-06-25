@@ -207,7 +207,7 @@
             <div class="product-list" id="productList"></div>
 
             <div id="productInputForm"
-                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 40vh; overflow-y: auto;">
+                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
                 <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
 
                 <form id="addProductForm" autocomplete="off">
@@ -217,7 +217,7 @@
                             <input name="masp" id="maspInput" type="text" required autocomplete="off" />
                             <!-- Popup gợi ý mã sản phẩm -->
                             <div id="maspSuggestList" class="product-list"
-                                style="position:absolute;z-index:9999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
+                                style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
                             </div>
                         </div>
                     </div>
@@ -272,6 +272,7 @@
                     </div>
                     <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
                 </form>
+
 
             </div>
 
@@ -796,6 +797,7 @@
             });
             return { valid, msg: msg.join(', ') };
         }
+
 
 
         // ==== Nút Lưu (submit form) ====
