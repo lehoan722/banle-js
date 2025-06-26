@@ -17,11 +17,12 @@ export function khoiTaoShortcut() {
       setTimeout(() => document.getElementById("btnThemMoiCo")?.focus(), 50);
       document.getElementById("btnThemMoiCo").onclick = async () => {
         popup.style.display = "none";
-        await taoMoiHoaDon();        
+        await taoMoiHoaDon();
       };
     }
 
     // F2: lưu hóa đơn thường
+
     if (e.key === "F2") {
       e.preventDefault();
       const bang = getBangKetQua();
@@ -29,14 +30,20 @@ export function khoiTaoShortcut() {
         alert("❌ Không có dữ liệu để lưu hóa đơn.");
         return;
       }
-      await luuHoaDonQuaAPI();
+      // Gọi đúng hàm tùy từng trang
+      if (typeof window.LUU_HOADON_F2 === "function") {
+        await window.LUU_HOADON_F2();
+      } else {
+        await luuHoaDonQuaAPI(); // fallback cho an toàn
+      }
     }
+
 
     // F3: xóa dòng đang chọn
     if (e.key === "F3") {
       e.preventDefault();
       suaDongDangChon();
-    } 
+    }
 
     // F4: nhảy tới ô khách trả và xử lý Enter
     if (e.key === "F4") {
