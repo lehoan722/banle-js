@@ -177,5 +177,15 @@ export async function khoiTaoUngDung() {
 
   document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
 
+  document.addEventListener("DOMContentLoaded", function () {
+    loadQuickActionState();
+    // Gắn lại sự kiện "change" cho tất cả các checkbox
+    ["nhapnhanh", "size45", "inSauKhiLuu", "inKhongHoi"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("change", saveQuickActionState);
+    });
+  });
+
+
 
 }
