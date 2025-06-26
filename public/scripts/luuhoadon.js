@@ -585,5 +585,6 @@ export async function luuHoaDonccn1v2() {
   }
 }
 
-window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI;
-window.luuHoaDonNhapQuaAPI = luuHoaDonccn1v2;
+window.luuHoaDonccn1v2 = luuHoaDonccn1v2; // expose đúng hàm lưu chuyển chi nhánh
+window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI; // nếu muốn giữ hàm nhập qua API cho các trang khác
+
