@@ -50,7 +50,7 @@ async function handleSpecialSoHoaDon(sohd) {
   const tienHoaDon = getIntValue("phaithanhtoan");
 
   if (tongTien + tienHoaDon > hanMuc) {
-    alert(`🚫 Đã đạt hạn mức ${hanMuc.toLocaleString()}₫ cho cơ sở này trong ngày!\nChỉ cho phép lưu thường.`);
+    //alert(`🚫 Đã đạt hạn mức ${hanMuc.toLocaleString()}₫ cho cơ sở này trong ngày!\nChỉ cho phép lưu thường.`);
     return false;
   }
 
