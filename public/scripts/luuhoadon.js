@@ -586,3 +586,4 @@ export async function luuHoaDonccn1v2() {
 }
 
 window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI;
+window.luuHoaDonNhapQuaAPI = luuHoaDonccn1v2;
