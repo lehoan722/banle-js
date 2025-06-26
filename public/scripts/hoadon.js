@@ -111,9 +111,13 @@ export function themVaoBang(forcedSize = null) {
   const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
   const sp = window.sanPhamData?.[masp];
-  // ==== KIỂM TRA SIZE HỢP LỆ ====
+
+  // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp) ====
   if (!masp || !size || !sp) {
     alert("Phải nhập size hợp lệ cho sản phẩm.");
+    const sizeInput = document.getElementById("size");
+    sizeInput.focus();
+    sizeInput.select();
     return;
   }
   if (
@@ -126,7 +130,6 @@ export function themVaoBang(forcedSize = null) {
     sizeInput.select(); // <-- Bôi đen toàn bộ ô nhập size
     return;
   }
-
   // ==== END KIỂM TRA ====
 
   const gia = parseFloat(document.getElementById("gia").value) || 0;
@@ -159,6 +162,7 @@ export function themVaoBang(forcedSize = null) {
   capNhatBangHTML(bangKetQua);
   resetFormBang();
 }
+
 
 
 
