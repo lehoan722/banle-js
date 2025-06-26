@@ -15,11 +15,15 @@ async function handleSpecialSoHoaDon(sohd) {
   if (parts.length < 2) return false;
   const num = parseInt(parts[1], 10);
 
-  // Kiểm tra chia hết cho 2
-  if (num % 2 !== 0) return false;
-
-  // Xác định ngày và cơ sở hiện tại
+  // Xác định cơ sở và điều kiện chia hết
   const diadiem = localStorage.getItem("diadiem");
+  let modulus = 6; // Mặc định cho cs2
+  if (diadiem === "cs1") modulus = 4;
+
+  // Kiểm tra có phải hóa đơn đặc biệt không
+  if (num % modulus !== 0) return false;
+
+  // Giới hạn tiền theo cơ sở
   const ngay = document.getElementById("ngay").value;
   let hanMuc = 6000000;
   let loaiT = "bancs2T";
@@ -29,7 +33,6 @@ async function handleSpecialSoHoaDon(sohd) {
   }
 
   // Truy vấn tổng số tiền đã lưu qua hai bản trong ngày và cơ sở này
-  // Lưu ý: thanhtoan có thể null, cần mặc định 0
   const { data, error } = await supabase
     .from("hoadon_banleT")
     .select("thanhtoan")
@@ -41,20 +44,21 @@ async function handleSpecialSoHoaDon(sohd) {
     tongTien = data.reduce((sum, hd) => sum + (Number(hd.thanhtoan) || 0), 0);
   }
 
-  // Lấy số tiền hóa đơn chuẩn bị lưu (lấy trực tiếp trên giao diện)
+  // Lấy số tiền hóa đơn chuẩn bị lưu
   const getIntValue = (id) =>
     parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
   const tienHoaDon = getIntValue("phaithanhtoan");
 
   if (tongTien + tienHoaDon > hanMuc) {
-    //alert(`🚫 Đã đạt hạn mức ${hanMuc.toLocaleString()}₫ cho cơ sở này trong ngày!\nChỉ cho phép lưu thường.`);
+    alert(`🚫 Đã đạt hạn mức ${hanMuc.toLocaleString()}₫ cho cơ sở này trong ngày!\nChỉ cho phép lưu thường.`);
     return false;
   }
 
-  // Nếu tổng tiền chưa vượt hạn mức, tiếp tục lưu hai bản như bình thường
+  // Nếu chưa vượt hạn mức thì gọi lưu hai bản
   await luuHoaDonCaHaiBan();
   return true;
 }
+
 
 
 
