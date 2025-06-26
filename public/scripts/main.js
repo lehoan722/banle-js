@@ -120,9 +120,10 @@ export async function khoiTaoUngDung() {
 
       // Nếu có ký tự không phải số
       if (!/^\d*$/.test(val)) {
-        alert("Chỉ được phép nhập số!");
-        soluongInput.value = "";
-        return;
+        alert("Chỉ được phép nhập số!");        
+        soluongInput.focus();
+        soluongInput.select(); // <-- Bôi đen toàn bộ ô nhập size
+        return;        
       }
 
       // Nếu vượt quá 100
