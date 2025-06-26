@@ -108,10 +108,25 @@ export async function luuHoaDonQuaAPI() {
         .eq("loai", loai);
     }
 
-    //alert("✅ Đã lưu hóa đơn thành công!");
-    inHoaDon(hoadon, chitiet);
-    await lamMoiSauKhiLuu();
+    const inSauKhiLuu = document.getElementById('inSauKhiLuu')?.checked;
+    const inKhongHoi = document.getElementById('inKhongHoi')?.checked;
+
+    alert("✅ Đã lưu hóa đơn thành công!");
+
+    if (inKhongHoi) {
+      // In không hỏi: Gọi print luôn, không mở giao diện xem in
+      inHoaDon(hoadon, chitiet, { tuIn: true });
+      await lamMoiSauKhiLuu();
+    } else if (inSauKhiLuu) {
+      // In sau khi lưu: Mở giao diện xem in để in thủ công
+      inHoaDon(hoadon, chitiet, { tuIn: false });
+      await lamMoiSauKhiLuu();
+    } else {
+      // Không in: chỉ lưu và reset giao diện
+      await lamMoiSauKhiLuu();
+    }
     choPhepSua = false;
+
   }
   else {
     alert("❌ Lỗi khi lưu hóa đơn");
@@ -399,7 +414,7 @@ export async function xacNhanSuaHoaDon() {
 }
 
 
-function inHoaDon(hoadon, chitiet) {
+function inHoaDon(hoadon, chitiet, options = {}) {
   const data = { hoadon, chitiet };
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
@@ -411,13 +426,21 @@ function inHoaDon(hoadon, chitiet) {
   iframe.onload = () => {
     setTimeout(() => {
       try {
-        iframe.contentWindow.print();
+        if (options.tuIn) {
+          iframe.contentWindow.print();
+        } else {
+          // show giao diện in (hiện tab xem trước)
+          iframe.style.display = "block";
+          // Nếu muốn tự show popup preview, bạn có thể mở modal hoặc tab mới tại đây
+        }
       } catch (e) {
         console.error("Không thể gọi print() từ iframe:", e);
       }
-      document.body.removeChild(iframe);
+      // Nếu "in không hỏi" thì xoá iframe luôn sau khi in
+      if (options.tuIn) document.body.removeChild(iframe);
     }, 500);
   };
 }
+
 
 window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI;
