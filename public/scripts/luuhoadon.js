@@ -64,6 +64,13 @@ async function handleSpecialSoHoaDon(sohd) {
 
 export async function luuHoaDonQuaAPI() {
   capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
+  // BỔ SUNG CHẶN LƯU Ở ĐÂY:
+  const maspChuaNhap = document.getElementById("masp")?.value.trim();
+  if (maspChuaNhap) {
+    alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
+    document.getElementById("masp").focus();
+    return;
+  }
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
@@ -176,6 +183,13 @@ export async function luuHoaDonQuaAPI() {
 
 export async function luuHoaDonNhapQuaAPI() {
   capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
+  // BỔ SUNG CHẶN LƯU Ở ĐÂY:
+  const maspChuaNhap = document.getElementById("masp")?.value.trim();
+  if (maspChuaNhap) {
+    alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
+    document.getElementById("masp").focus();
+    return;
+  }
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
@@ -293,6 +307,13 @@ export async function luuHoaDonNhapQuaAPI() {
 
 export async function luuHoaDonCaHaiBan() {
   const bangKetQua = getBangKetQua();
+  // BỔ SUNG CHẶN LƯU Ở ĐÂY:
+  const maspChuaNhap = document.getElementById("masp")?.value.trim();
+  if (maspChuaNhap) {
+    alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
+    document.getElementById("masp").focus();
+    return;
+  }
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
@@ -478,6 +499,13 @@ function inHoaDon(hoadon, chitiet) {
 
 export async function luuHoaDonccn1v2() {
   capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
+  // BỔ SUNG CHẶN LƯU Ở ĐÂY:
+  const maspChuaNhap = document.getElementById("masp")?.value.trim();
+  if (maspChuaNhap) {
+    alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
+    document.getElementById("masp").focus();
+    return;
+  }
   const bangKetQua = getBangKetQua();
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
