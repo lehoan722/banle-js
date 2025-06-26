@@ -118,19 +118,11 @@ export async function khoiTaoUngDung() {
     soluongInput.addEventListener("input", (e) => {
       const val = soluongInput.value;
 
-      // Nếu có ký tự không phải số
-      if (!/^\d*$/.test(val)) {
-        alert("Chỉ được phép nhập số!");        
+      // Nếu không phải số hoặc số > 100
+      if (!/^\d*$/.test(val) || parseInt(val, 10) > 100) {
+        alert("Chỉ được phép nhập số nhỏ hơn 100!");
         soluongInput.focus();
-        soluongInput.select(); // <-- Bôi đen toàn bộ ô nhập size
-        return;        
-      }
-
-      // Nếu vượt quá 100
-      const num = parseInt(val, 10);
-      if (num > 100) {
-        alert("Không được nhập số lớn hơn 100!");
-        soluongInput.value = "";
+        soluongInput.select(); // Bôi đen toàn bộ nội dung để nhập lại
         return;
       }
     });
@@ -143,6 +135,7 @@ export async function khoiTaoUngDung() {
       }
     });
   }
+
 
   // Đảm bảo ô cơ sở luôn hiển thị đúng và bị khóa không đổi
   const cs = localStorage.getItem("diadiem");
