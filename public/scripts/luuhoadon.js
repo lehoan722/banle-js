@@ -108,24 +108,10 @@ export async function luuHoaDonQuaAPI() {
         .eq("loai", loai);
     }
 
-    const inSauKhiLuu = document.getElementById('inSauKhiLuu')?.checked;
-    const inKhongHoi = document.getElementById('inKhongHoi')?.checked;
-
-    alert("✅ Đã lưu hóa đơn thành công!");
-
-    if (inKhongHoi) {
-      // In không hỏi: Gọi print luôn, không mở giao diện xem in, làm mới sau khi in xong
-      inHoaDon(hoadon, chitiet, { tuIn: true, lamMoiSauIn: true });
-    } else if (inSauKhiLuu) {
-      // In sau khi lưu: Mở giao diện xem in, chỉ làm mới sau khi in xong
-      inHoaDon(hoadon, chitiet, { tuIn: false, lamMoiSauIn: true });
-    } else {
-      // Không in: chỉ lưu và reset giao diện
-      await lamMoiSauKhiLuu();
-    }
-
+    //alert("✅ Đã lưu hóa đơn thành công!");
+    inHoaDon(hoadon, chitiet);
+    await lamMoiSauKhiLuu();
     choPhepSua = false;
-
   }
   else {
     alert("❌ Lỗi khi lưu hóa đơn");
@@ -413,7 +399,7 @@ export async function xacNhanSuaHoaDon() {
 }
 
 
-function inHoaDon(hoadon, chitiet, options = {}) {
+function inHoaDon(hoadon, chitiet) {
   const data = { hoadon, chitiet };
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
@@ -425,37 +411,13 @@ function inHoaDon(hoadon, chitiet, options = {}) {
   iframe.onload = () => {
     setTimeout(() => {
       try {
-        if (options.tuIn) {
-          // In không hỏi: gọi print luôn, sau đó làm mới giao diện
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-          // Chờ một chút rồi làm mới (không cần show giao diện in)
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-            if (options.lamMoiSauIn) lamMoiSauKhiLuu();
-          }, 1000);
-        } else {
-          // In bình thường: show giao diện in, chỉ làm mới sau khi in xong
-          iframe.style.display = "block";
-          // Gắn sự kiện afterprint để làm mới giao diện sau khi in thủ công
-          const afterPrint = () => {
-            window.removeEventListener('afterprint', afterPrint);
-            document.body.removeChild(iframe);
-            if (options.lamMoiSauIn) lamMoiSauKhiLuu();
-          };
-          // Sự kiện này chỉ hoạt động trong context của parent, không phải iframe
-          // Nếu muốn chính xác hơn, nên gọi từ trong trang /in-hoadon.html (gửi message sang parent)
-          window.addEventListener('afterprint', afterPrint);
-        }
+        iframe.contentWindow.print();
       } catch (e) {
         console.error("Không thể gọi print() từ iframe:", e);
-        document.body.removeChild(iframe);
-        if (options.lamMoiSauIn) lamMoiSauKhiLuu();
       }
+      document.body.removeChild(iframe);
     }, 500);
   };
 }
-
-
 
 window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI;
