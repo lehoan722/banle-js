@@ -104,7 +104,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
   if (size45) {
     document.getElementById("soluong").value = "1";
-    themVaoBang("45");
+    themVaoBang("");
   } else {
     const nextId = nhapNhanh ? "size" : "soluong";
     const nextInput = document.getElementById(nextId);
