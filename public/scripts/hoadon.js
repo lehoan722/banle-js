@@ -15,6 +15,39 @@ export function getMaspspDangChon() {
   return maspDangChon;
 }
 
+// Đặt ở đầu file scripts/main.js hoặc scripts/hoadon.js tùy cách bạn tách file
+function saveQuickActionState() {
+  // Lưu trạng thái từng checkbox vào localStorage
+  const states = {
+    nhapnhanh: document.getElementById("nhapnhanh").checked,
+    size45: document.getElementById("size45").checked,
+    inSauKhiLuu: document.getElementById("inSauKhiLuu")?.checked,
+    inKhongHoi: document.getElementById("inKhongHoi")?.checked
+  };
+  localStorage.setItem("quickActions", JSON.stringify(states));
+}
+
+function loadQuickActionState() {
+  const states = JSON.parse(localStorage.getItem("quickActions") || '{}');
+  if ("nhapnhanh" in states) document.getElementById("nhapnhanh").checked = states.nhapnhanh;
+  if ("size45" in states) document.getElementById("size45").checked = states.size45;
+  if ("inSauKhiLuu" in states && document.getElementById("inSauKhiLuu"))
+    document.getElementById("inSauKhiLuu").checked = states.inSauKhiLuu;
+  if ("inKhongHoi" in states && document.getElementById("inKhongHoi"))
+    document.getElementById("inKhongHoi").checked = states.inKhongHoi;
+
+  // Thêm đoạn sau vào cuối hàm loadQuickActionState() hoặc sau khi đã render giao diện xong
+  ["nhapnhanh", "size45", "inSauKhiLuu", "inKhongHoi"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", saveQuickActionState);
+  });
+
+  // Khi khởi tạo ứng dụng, gọi hàm này để khôi phục trạng thái
+  document.addEventListener("DOMContentLoaded", loadQuickActionState);
+
+}
+
+
 
 export async function chuyenFocus(e) {
   if (e.key !== "Enter") return;
@@ -71,6 +104,25 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
   document.getElementById("vitri").value = vitri || "";
 
+  // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
+  if (
+    size45 &&
+    spData.chungloai &&
+    spData.chungloai.toLowerCase() === "gd"
+  ) {
+    const sizeInput = document.getElementById("size");
+    if (!sizeInput.value.trim()) {
+      sizeInput.focus();
+      alert("Sản phẩm giày dép phải nhập SIZE khi dùng chế độ Size 45!");
+      return true; // Dừng lại, không tự thêm vào bảng
+    }
+    // Nếu đã nhập size thì thêm vào bảng như bình thường
+    document.getElementById("soluong").value = "1";
+    themVaoBang(sizeInput.value.trim());
+    return true;
+  }
+
+  // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
   if (size45) {
     document.getElementById("soluong").value = "1";
     themVaoBang("45");
@@ -84,6 +136,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   return true;
 }
 
+
 export function themVaoBang(forcedSize = null) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
   const size = forcedSize || document.getElementById("size").value.trim();
@@ -91,7 +144,7 @@ export function themVaoBang(forcedSize = null) {
 
   const sp = window.sanPhamData?.[masp];
   if (!masp || !size || !sp) {
-    alert("Mã sản phẩm không hợp lệ hoặc không tồn tại.");
+    alert("Phải nhập size hợp lệ cho sản phẩm.");
     return;
   }
 
