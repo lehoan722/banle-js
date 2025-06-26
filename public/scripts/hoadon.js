@@ -124,23 +124,28 @@ export function themVaoBang(forcedSize = null) {
 
   const sp = window.sanPhamData?.[masp];
 
-  // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp) ====
-  if (!masp || !size || !sp) {
-    alert("Phải nhập size hợp lệ cho sản phẩm.");
-    const sizeInput = document.getElementById("size");
-    sizeInput.focus();
-    sizeInput.select();
-    return;
-  }
-  if (
-    Array.isArray(window.danhMucSize) &&
-    !window.danhMucSize.includes(size)
-  ) {
-    alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
-    const sizeInput = document.getElementById("size");
-    sizeInput.focus();
-    sizeInput.select(); // <-- Bôi đen toàn bộ ô nhập size
-    return;
+  // --- Kiểm tra trạng thái bán siêu nhanh ---
+  const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
+
+  // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
+  if (!banSieuNhanh) {
+    if (!masp || !size || !sp) {
+      alert("Phải nhập size hợp lệ cho sản phẩm.");
+      const sizeInput = document.getElementById("size");
+      sizeInput.focus();
+      sizeInput.select();
+      return;
+    }
+    if (
+      Array.isArray(window.danhMucSize) &&
+      !window.danhMucSize.includes(size)
+    ) {
+      alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
+      const sizeInput = document.getElementById("size");
+      sizeInput.focus();
+      sizeInput.select(); // <-- Bôi đen toàn bộ ô nhập size
+      return;
+    }
   }
   // ==== END KIỂM TRA ====
 
@@ -174,6 +179,7 @@ export function themVaoBang(forcedSize = null) {
   capNhatBangHTML(bangKetQua);
   resetFormBang();
 }
+
 
 
 
