@@ -68,7 +68,7 @@ export async function luuHoaDonQuaAPI() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
-  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+  if (!tennv) return alert("❌api Bạn chưa nhập tên nhân viên bán hàng.");
   // ---- THÊM ĐOẠN NÀY ----
   if (await handleSpecialSoHoaDon(sohd)) return;
 
@@ -180,7 +180,7 @@ export async function luuHoaDonNhapQuaAPI() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
-  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên nhập hàng.");
+  if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
   // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
@@ -297,7 +297,7 @@ export async function luuHoaDonCaHaiBan() {
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
   const sohd = document.getElementById("sohd").value.trim();
-  if (!sohd) return alert("❌ Chưa có số hóa đơn.");
+  if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
 
   // Lấy địa điểm từ localStorage (không lấy từ input)
   const diadiem = localStorage.getItem("diadiem");
@@ -482,7 +482,7 @@ export async function luuHoaDonccn1v2() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
-  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+  if (!tennv) return alert("❌1v2 Bạn chưa nhập tên nhân viên bán hàng.");
 
   // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
