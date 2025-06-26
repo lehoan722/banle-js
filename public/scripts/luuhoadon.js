@@ -574,7 +574,7 @@ export async function luuHoaDonccn1v2() {
         .eq("loai", loai);
     }
 
-    alert("✅ Đã lưu hóa đơn thành công!");
+    alert("✅ Đã lưu hóa đơn 1v2 !");
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
