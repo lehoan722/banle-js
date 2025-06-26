@@ -15,9 +15,7 @@ export function getMaspspDangChon() {
   return maspDangChon;
 }
 
-// Đặt ở đầu file scripts/main.js hoặc scripts/hoadon.js tùy cách bạn tách file
 function saveQuickActionState() {
-  // Lưu trạng thái từng checkbox vào localStorage
   const states = {
     nhapnhanh: document.getElementById("nhapnhanh").checked,
     size45: document.getElementById("size45").checked,
@@ -35,17 +33,8 @@ function loadQuickActionState() {
     document.getElementById("inSauKhiLuu").checked = states.inSauKhiLuu;
   if ("inKhongHoi" in states && document.getElementById("inKhongHoi"))
     document.getElementById("inKhongHoi").checked = states.inKhongHoi;
-
-  // Thêm đoạn sau vào cuối hàm loadQuickActionState() hoặc sau khi đã render giao diện xong
-  ["nhapnhanh", "size45", "inSauKhiLuu", "inKhongHoi"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("change", saveQuickActionState);
-  });
-
-  // Khi khởi tạo ứng dụng, gọi hàm này để khôi phục trạng thái
-  document.addEventListener("DOMContentLoaded", loadQuickActionState);
-
 }
+
 
 
 
@@ -113,7 +102,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     const sizeInput = document.getElementById("size");
     if (!sizeInput.value.trim()) {
       sizeInput.focus();
-      alert("Sản phẩm giày dép phải nhập SIZE khi dùng chế độ Size 45!");
+      //alert("Sản phẩm giày dép phải nhập SIZE khi dùng chế độ Size 45!");
       return true; // Dừng lại, không tự thêm vào bảng
     }
     // Nếu đã nhập size thì thêm vào bảng như bình thường
@@ -297,3 +286,12 @@ export async function napLaiChiTietHoaDon(sohd) {
 
   capNhatBangHTML(bangKetQua);
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+  loadQuickActionState();
+  // Gắn lại sự kiện "change" cho tất cả các checkbox
+  ["nhapnhanh", "size45", "inSauKhiLuu", "inKhongHoi"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", saveQuickActionState);
+  });
+});
