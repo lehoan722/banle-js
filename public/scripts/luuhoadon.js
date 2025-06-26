@@ -108,7 +108,7 @@ export async function luuHoaDonQuaAPI() {
         .eq("loai", loai);
     }
 
-    alert("✅ Đã lưu hóa đơn thành công!");
+    //alert("✅ Đã lưu hóa đơn thành công!");
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
