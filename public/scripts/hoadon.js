@@ -15,27 +15,6 @@ export function getMaspspDangChon() {
   return maspDangChon;
 }
 
-function saveQuickActionState() {
-  const states = {
-    nhapnhanh: document.getElementById("nhapnhanh").checked,
-    size45: document.getElementById("size45").checked,
-    inSauKhiLuu: document.getElementById("inSauKhiLuu")?.checked,
-    inKhongHoi: document.getElementById("inKhongHoi")?.checked
-  };
-  localStorage.setItem("quickActions", JSON.stringify(states));
-}
-
-function loadQuickActionState() {
-  const states = JSON.parse(localStorage.getItem("quickActions") || '{}');
-  if ("nhapnhanh" in states) document.getElementById("nhapnhanh").checked = states.nhapnhanh;
-  if ("size45" in states) document.getElementById("size45").checked = states.size45;
-  if ("inSauKhiLuu" in states && document.getElementById("inSauKhiLuu"))
-    document.getElementById("inSauKhiLuu").checked = states.inSauKhiLuu;
-  if ("inKhongHoi" in states && document.getElementById("inKhongHoi"))
-    document.getElementById("inKhongHoi").checked = states.inKhongHoi;
-}
-
-
 
 
 export async function chuyenFocus(e) {
@@ -287,11 +266,3 @@ export async function napLaiChiTietHoaDon(sohd) {
   capNhatBangHTML(bangKetQua);
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  loadQuickActionState();
-  // Gắn lại sự kiện "change" cho tất cả các checkbox
-  ["nhapnhanh", "size45", "inSauKhiLuu", "inKhongHoi"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("change", saveQuickActionState);
-  });
-});
