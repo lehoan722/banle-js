@@ -111,13 +111,22 @@ export function themVaoBang(forcedSize = null) {
   const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
   const sp = window.sanPhamData?.[masp];
+  // ==== KIỂM TRA SIZE HỢP LỆ ====
   if (!masp || !size || !sp) {
     alert("Phải nhập size hợp lệ cho sản phẩm.");
     return;
   }
+  if (
+    Array.isArray(window.danhMucSize) &&
+    !window.danhMucSize.includes(size)
+  ) {
+    alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
+    document.getElementById("size").focus();
+    return;
+  }
+  // ==== END KIỂM TRA ====
 
   const gia = parseFloat(document.getElementById("gia").value) || 0;
-
   // --- Áp dụng cách tính khuyến mại mới ---
   let km = tinhKhuyenMai(sp, gia);
 
@@ -147,6 +156,7 @@ export function themVaoBang(forcedSize = null) {
   capNhatBangHTML(bangKetQua);
   resetFormBang();
 }
+
 
 
 export function getBangKetQua() {
