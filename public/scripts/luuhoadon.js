@@ -119,6 +119,24 @@ export async function luuHoaDonQuaAPI() {
   }
 }
 
+function handleSpecialSoHoaDon(sohd) {
+  // Tách phần số phía sau dấu '_'
+  const parts = sohd.split('_');
+  if (parts.length < 2) return false;
+  const num = parseInt(parts[1], 10);
+
+  // Kiểm tra chia hết cho 2
+  if (num % 2 === 0) {
+    // Nếu chia hết cho 2, gọi lưu cả hai bản
+    luuHoaDonCaHaiBan();
+    return true; // Đã xử lý rồi, không làm gì nữa
+  }
+  // Sau này mở rộng: nếu chia hết cho 3, 5... thì bổ sung ở đây
+
+  return false; // Không thuộc các điều kiện đặc biệt
+}
+
+
 export async function luuHoaDonNhapQuaAPI() {
   capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
   const bangKetQua = getBangKetQua();
@@ -126,6 +144,8 @@ export async function luuHoaDonNhapQuaAPI() {
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên nhập hàng.");
+  // ---- THÊM ĐOẠN NÀY ----
+  if (handleSpecialSoHoaDon(sohd)) return;
 
   // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
