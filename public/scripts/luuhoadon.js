@@ -10,22 +10,52 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 
 let choPhepSua = false;
 
-function handleSpecialSoHoaDon(sohd) {
-  // Tách phần số phía sau dấu '_'
+async function handleSpecialSoHoaDon(sohd) {
   const parts = sohd.split('_');
   if (parts.length < 2) return false;
   const num = parseInt(parts[1], 10);
 
   // Kiểm tra chia hết cho 2
-  if (num % 2 === 0) {
-    // Nếu chia hết cho 2, gọi lưu cả hai bản
-    luuHoaDonCaHaiBan();
-    return true; // Đã xử lý rồi, không làm gì nữa
-  }
-  // Sau này mở rộng: nếu chia hết cho 3, 5... thì bổ sung ở đây
+  if (num % 2 !== 0) return false;
 
-  return false; // Không thuộc các điều kiện đặc biệt
+  // Xác định ngày và cơ sở hiện tại
+  const diadiem = localStorage.getItem("diadiem");
+  const ngay = document.getElementById("ngay").value;
+  let hanMuc = 6000000;
+  let loaiT = "bancs2T";
+  if (diadiem === "cs1") {
+    hanMuc = 1700000;
+    loaiT = "bancs1T";
+  }
+
+  // Truy vấn tổng số tiền đã lưu qua hai bản trong ngày và cơ sở này
+  // Lưu ý: thanhtoan có thể null, cần mặc định 0
+  const { data, error } = await supabase
+    .from("hoadon_banleT")
+    .select("thanhtoan")
+    .eq("ngay", ngay)
+    .eq("diadiem", diadiem);
+
+  let tongTien = 0;
+  if (data && data.length) {
+    tongTien = data.reduce((sum, hd) => sum + (Number(hd.thanhtoan) || 0), 0);
+  }
+
+  // Lấy số tiền hóa đơn chuẩn bị lưu (lấy trực tiếp trên giao diện)
+  const getIntValue = (id) =>
+    parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+  const tienHoaDon = getIntValue("phaithanhtoan");
+
+  if (tongTien + tienHoaDon > hanMuc) {
+    alert(`🚫 Đã đạt hạn mức ${hanMuc.toLocaleString()}₫ cho cơ sở này trong ngày!\nChỉ cho phép lưu thường.`);
+    return false;
+  }
+
+  // Nếu tổng tiền chưa vượt hạn mức, tiếp tục lưu hai bản như bình thường
+  await luuHoaDonCaHaiBan();
+  return true;
 }
+
 
 
 export async function luuHoaDonQuaAPI() {
@@ -36,7 +66,7 @@ export async function luuHoaDonQuaAPI() {
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
   // ---- THÊM ĐOẠN NÀY ----
-  if (handleSpecialSoHoaDon(sohd)) return;
+  if (await handleSpecialSoHoaDon(sohd)) return;
 
   // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
