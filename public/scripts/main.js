@@ -176,6 +176,12 @@ export async function khoiTaoUngDung() {
   });
 
   document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+  // Chèn cuối khoiTaoUngDung()
+  loadQuickActionState();
+  ["nhapnhanh", "size45", "inSauKhiLuu", "inKhongHoi"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", saveQuickActionState);
+  });
 
 
 }
