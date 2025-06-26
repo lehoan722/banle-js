@@ -482,7 +482,7 @@ export async function luuHoaDonccn1v2() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
-  if (!tennv) return alert("❌1v2 Bạn chưa nhập tên nhân viên bán hàng.");
+  if (!tennv) return alert("❌1v2/2v1 Bạn chưa nhập tên nhân viên bán hàng.");
 
   // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
