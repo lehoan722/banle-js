@@ -64,7 +64,19 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     return false;
   }
 
-  // Gán thông tin sản phẩm vào form
+  // ==== ⚡️ THÊM XỬ LÝ BÁN SIÊU NHANH Ở ĐÂY ====
+  const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
+  if (banSieuNhanh) {
+    document.getElementById("soluong").value = "1";
+    document.getElementById("size").value = ""; // size rỗng
+    themVaoBang(""); // Bỏ qua kiểm tra size, số lượng
+    document.getElementById("masp").focus();
+    document.getElementById("masp").select();
+    return true; // Không chạy các logic kiểm tra khác nữa!
+  }
+  // ==== ⚡️ END ====
+
+  // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
   document.getElementById("gia").value = spData.giale || "";
   document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
@@ -72,6 +84,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
   document.getElementById("vitri").value = vitri || "";
 
+  // ... Các xử lý logic size45, nhập nhanh cũ giữ nguyên ...
   // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
   if (
     size45 &&
@@ -81,10 +94,8 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     const sizeInput = document.getElementById("size");
     if (!sizeInput.value.trim()) {
       sizeInput.focus();
-      //alert("Sản phẩm giày dép phải nhập SIZE khi dùng chế độ Size 45!");
       return true; // Dừng lại, không tự thêm vào bảng
     }
-    // Nếu đã nhập size thì thêm vào bảng như bình thường
     document.getElementById("soluong").value = "1";
     themVaoBang(sizeInput.value.trim());
     return true;
@@ -103,6 +114,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
   return true;
 }
+
 
 
 export function themVaoBang(forcedSize = null) {
