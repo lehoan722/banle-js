@@ -121,9 +121,12 @@ export function themVaoBang(forcedSize = null) {
     !window.danhMucSize.includes(size)
   ) {
     alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
-    document.getElementById("size").focus();
+    const sizeInput = document.getElementById("size");
+    sizeInput.focus();
+    sizeInput.select(); // <-- Bôi đen toàn bộ ô nhập size
     return;
   }
+
   // ==== END KIỂM TRA ====
 
   const gia = parseFloat(document.getElementById("gia").value) || 0;
