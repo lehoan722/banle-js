@@ -183,6 +183,16 @@ export async function khoiTaoUngDung() {
     if (el) el.addEventListener("change", saveQuickActionState);
   });
 
+  // Tải danh sách size từ Supabase về cache global
+  const { data: dsSize, error: errSize } = await supabase.from("dm_size").select("size");
+  if (!errSize && dsSize) {
+    // Lưu danh sách size (toàn bộ giá trị, ép về string)
+    window.danhMucSize = dsSize.map(row => String(row.size).trim());
+  } else {
+    window.danhMucSize = []; // fallback rỗng nếu có lỗi
+  }
+
+
 
 }
 
