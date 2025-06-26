@@ -321,7 +321,8 @@ export async function luuHoaDonCaHaiBan() {
   const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
 
   if (!errHD && !errCT && !errHDT && !errCTT) {
-    alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
+    alert("✅ Đã lưu hóa đơn thành công!");
+    //alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
     inHoaDon(hoadonChinh, chitietChinh);
     await lamMoiSauKhiLuu();
 
