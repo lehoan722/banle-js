@@ -68,7 +68,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
   if (banSieuNhanh) {
     document.getElementById("soluong").value = "1";
-    document.getElementById("size").value = ""; // size rỗng
+    document.getElementById("size").value = "0"; // size rỗng
     themVaoBang(""); // Bỏ qua kiểm tra size, số lượng
     document.getElementById("masp").focus();
     document.getElementById("masp").select();
