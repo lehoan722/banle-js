@@ -476,4 +476,113 @@ function inHoaDon(hoadon, chitiet) {
   };
 }
 
+export async function luuHoaDonccn1v2() {
+  capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
+  const bangKetQua = getBangKetQua();
+  const sohd = document.getElementById("sohd").value.trim();
+  if (!sohd) return alert("❌ Chưa có số hóa đơn.");
+  const tennv = document.getElementById("tennv").value.trim();
+  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+
+  // Lấy cơ sở từ localStorage, không lấy từ input
+  const diadiem = localStorage.getItem("diadiem");
+
+  const { data: tonTai } = await supabase
+    .from("hoadon_banle")
+    .select("sohd")
+    .eq("sohd", sohd)
+    .maybeSingle();
+
+  if (tonTai && !choPhepSua) {
+    document.getElementById("popupXacThucSua").style.display = "block";
+    return;
+  }
+
+  if (tonTai && choPhepSua) {
+    await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+    await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+  }
+  const createdAt = new Date().toISOString();
+
+  const getIntValue = (id) =>
+    parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+
+  const hoadon = {
+    sohd,
+    ngay: document.getElementById("ngay").value,
+    manv: document.getElementById("manv").value,
+    tennv: document.getElementById("tennv").value,
+    diadiem: diadiem,
+    khachhang: document.getElementById("khachhang").value,
+    tongsl: getIntValue("tongsl"),
+    tongkm: getIntValue("tongkm"),
+    chietkhau: getIntValue("chietkhau"),
+    thanhtoan: getIntValue("phaithanhtoan"),
+    hinhthuctt: document.getElementById("hinhthuctt").value,
+    ghichu: document.getElementById("ghichu")?.value || "",
+    created_at: createdAt,
+    loai: "",
+    dvt: "",
+    loaihd: "",
+    nhacc: ""
+  };
+
+
+
+  const chitiet = [];
+  Object.values(bangKetQua).forEach(item => {
+    item.sizes.forEach((sz, i) => {
+      const sl = item.soluongs[i];
+      chitiet.push({
+        sohd,
+        masp: item.masp,
+        tensp: item.tensp,
+        size: sz,
+        soluong: sl,
+        gia: item.gia,
+        km: item.km,
+        thanhtien: (item.gia - item.km) * sl,
+        dvt: item.dvt || '',
+        diadiem: diadiem,
+        created_at: createdAt,
+        ngay: document.getElementById("ngay").value
+      });
+
+    });
+  });
+
+  const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
+  const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
+
+  if (!errHD && !errCT) {
+    // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
+    const [loai, so] = sohd.split('_');
+    const soMoi = parseInt(so, 10);
+
+    // Đọc số hiện tại của loại này từ bảng sochungtu
+    const { data: currSoChungTu } = await supabase
+      .from("sochungtu")
+      .select("so_hientai")
+      .eq("loai", loai)
+      .single();
+
+    // Chỉ update nếu số mới lớn hơn số hiện tại
+    if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
+      await supabase
+        .from("sochungtu")
+        .update({ so_hientai: soMoi })
+        .eq("loai", loai);
+    }
+
+    alert("✅ Đã lưu hóa đơn thành công!");
+    inHoaDon(hoadon, chitiet);
+    await lamMoiSauKhiLuu();
+    choPhepSua = false;
+  }
+  else {
+    alert("❌ Lỗi khi lưu hóa đơn");
+    console.error(errHD || errCT);
+  }
+}
+
 window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI;
