@@ -785,6 +785,8 @@
                 statusEl.style.color = 'green';
                 // <<< Đặt dòng này tại đây:
                 localStorage.setItem("diadiem", document.getElementById('login-cs').value);
+                // === DÒNG MỚI THÊM VÀO ĐÂY! ===
+                localStorage.setItem('supabase_access_token', data.session.access_token);
 
                 document.getElementById('login-container').style.display = 'none';
                 document.getElementById('app-container').style.display = '';
