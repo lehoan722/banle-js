@@ -967,8 +967,13 @@
     </script>
 
     <script>
-        window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        document.addEventListener("DOMContentLoaded", function () {
+            setTimeout(function () {
+                window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+            }, 400);
+        });
     </script>
+
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
