@@ -279,7 +279,6 @@
       ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
     `;
     }
-
     async function kiemTraTuSupabase() {
       const allData = hot.getData();
       const maspIndex = columns.findIndex(c => c.data === 'masp');
@@ -316,24 +315,23 @@
       const dataMap = {};
       serverData.forEach(item => dataMap[item.masp.toUpperCase()] = item);
 
-      // Tạo ra bảng dữ liệu mới với các giá trị đã cập nhật từ Supabase
-      const newData = allData.map((row, rowIndex) => {
+      // Tạo dữ liệu mới dạng array of arrays
+      const newData = allData.map((row) => {
         const masp = row[maspIndex];
-        if (!masp) return { ...row };
-        const fresh = dataMap[masp.toUpperCase()];
-        if (!fresh) return { ...row }; // Không có dữ liệu mới, giữ nguyên dòng
+        if (!masp) return row.slice(); // dòng trống, giữ nguyên
 
-        // Tạo object mới, cập nhật các trường (giữ masp gốc)
-        const updatedRow = { ...row };
-        columns.forEach((col) => {
-          const field = col.data;
-          if (field === 'masp') return; // Không sửa mã sản phẩm
-          updatedRow[field] = fresh[field] ?? null;
-        });
-        return updatedRow;
+        const fresh = dataMap[masp.toUpperCase()];
+        if (!fresh) return row.slice(); // Không có dữ liệu mới, giữ nguyên
+
+        // Trả về mảng theo đúng thứ tự cột, giữ nguyên masp gốc
+        return columns.map(col => col.data === 'masp' ? masp : fresh[col.data] ?? null);
       });
 
-      // Nạp lại toàn bộ bảng (Nhanh, không còn lag từng dòng!)
+      // Đảm bảo luôn có ít nhất 1 dòng trống cuối
+      if (!newData[newData.length - 1] || newData[newData.length - 1].some(x => x)) {
+        newData.push(Array(columns.length).fill(null));
+      }
+
       hot.loadData(newData);
 
       alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
