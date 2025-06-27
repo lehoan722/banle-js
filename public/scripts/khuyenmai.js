@@ -10,6 +10,9 @@ export function tinhKhuyenMai(sp, gia) {
   let km = sp && sp.khuyenmai !== undefined && sp.khuyenmai !== null && sp.khuyenmai !== ''
     ? parseFloat(sp.khuyenmai)
     : NaN;
+  if (km === 0) {
+    return 0;
+  }
 
   if (isNaN(km)) {
     // Không có khuyến mại trong danh mục: Quy tắc cũ
