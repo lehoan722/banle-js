@@ -276,7 +276,9 @@
     }
 
     async function kiemTraTuSupabase() {
-      const allData = hot.getData();
+      const allDataRaw = hot.getData();
+      // Tạo bản sao để load lại không bị mất dữ liệu
+      const allData = allDataRaw.map(row => ({ ...row }));
       if (!Array.isArray(allData) || !allData.length) return alert("Không có dữ liệu để kiểm tra.");
 
       // 1. Lấy danh sách mã sản phẩm duy nhất, bỏ rỗng
@@ -321,10 +323,12 @@
           }
         });
       });
+
       hot.loadData(allData);
 
       alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
     }
+
 
 
 
