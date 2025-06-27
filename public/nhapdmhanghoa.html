@@ -332,11 +332,6 @@
         });
         return updatedRow;
       });
-      // Đảm bảo luôn có 1 dòng trống cuối
-      if (!newData[newData.length - 1] || Object.values(newData[newData.length - 1]).some(x => x)) {
-        newData.push({});
-      }
-
 
       // Nạp lại toàn bộ bảng (Nhanh, không còn lag từng dòng!)
       hot.loadData(newData);
