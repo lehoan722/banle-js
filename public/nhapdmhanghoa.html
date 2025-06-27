@@ -37,12 +37,28 @@
     <option value="update">✏️ Chỉ cập nhật dữ liệu</option>
   </select>
   <button onclick="kiemTraTuSupabase()">🔍 Kiểm tra dữ liệu</button>
+  <div id="loginModule" style="display:inline-block; margin-left:16px;">
+    <input id="login-email" type="email" placeholder="Email Supabase" style="width:130px;margin-right:2px;">
+    <input id="login-password" type="password" placeholder="Mật khẩu" style="width:110px;margin-right:2px;">
+    <button id="login-submit" class="btn">Đăng nhập</button>
+    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b"></span>
+  </div>
+
 
 
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
 
   <script>
+
+    const token = localStorage.getItem('supabase_access_token');
+    export const supabase = token
+      ? createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      })
+      : createClient(supabaseUrl, supabaseKey);
+
+
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
     const TABLE_NAME = 'dmhanghoa';
@@ -321,6 +337,24 @@
     });
 
   </script>
+
+  <script type="module">
+    // Đăng nhập thành công reload lại trang để các API dùng token mới
+
+    import { renderLoginModule } from './scripts/loginSupabaseModule.js';
+
+    const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+    renderLoginModule({
+      supabaseUrl,
+      supabaseKey,
+      onLoginSuccess: () => {
+        window.location.reload(); // Đăng nhập thành công reload lại trang để các API dùng token mới
+      }
+    });
+  </script>
+
 
 </body>
 
