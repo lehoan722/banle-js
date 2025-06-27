@@ -705,7 +705,7 @@
         }
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai']; // const GIU_LAI_FIELDS = ['masp', 'tensp', 'nhacc', 'chungloai'];
+        const GIU_LAI_FIELDS = ['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         async function loadDropdownOptions() {
@@ -761,7 +761,6 @@
         // ==== Nút Thêm mới ====
         document.getElementById('resetFormBtn').onclick = function () {
             resetForm(false);
-            document.getElementById('maspInput').focus(); // <-- thêm dòng này
         };
 
         function resetForm(keepMasp = false) {
@@ -833,170 +832,147 @@
 
             let res, errorMsg;
             if (isEditMode) {
-                // Trường hợp đang sửa sản phẩm đã tồn tại
-                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
-                if (!userConfirm) {
-                    document.getElementById('addProductMessage').style.color = 'orange';
-                    document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
-                    document.getElementById('maspInput').focus();
-                    return;
-                }
-
-                // Tiếp tục cập nhật nếu người dùng xác nhận
+                // Update
                 res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
                 if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
             } else {
-                // Kiểm tra trùng mã sản phẩm trước khi thêm
-                const { data: maspCheck, error: checkError } = await supabase
-                    .from('dmhanghoa')
-                    .select('masp')
-                    .eq('masp', data.masp)
-                    .maybeSingle();
-
-                if (maspCheck) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại. Không thể thêm mới.`;
-                    document.getElementById('maspInput').focus();
-                    return;
-                }
-
                 // Insert mới
                 res = await supabase.from('dmhanghoa').insert([data]);
                 if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
             }
 
-            // Nếu có lỗi sau khi insert/update
             if (errorMsg) {
-                document.getElementById('addProductMessage').style.color = 'red';
                 document.getElementById('addProductMessage').textContent = errorMsg;
-                document.getElementById('maspInput').focus();
                 return;
             }
 
-            // Thành công
+            // Hiện thông báo thành công
             document.getElementById('addProductMessage').style.color = '#0a9e1c';
-            document.getElementById('addProductMessage').textContent = '✅ Đã lưu dữ liệu thành công!';
+            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
+            // Reset lại form theo giữ lại trường
             resetForm();
+            // Load lại dropdown option (nếu có giá trị mới)
             loadDropdownOptions();
+            // Reload danh sách sản phẩm panel tìm kiếm để có thể in mã vạch mới ngay
             searchProducts(document.getElementById('search').value.trim().toLowerCase());
-            document.getElementById('maspInput').focus();
+        };
 
-            loadDropdownOptions();
+        loadDropdownOptions();
 
-            // === GỢI Ý MÃ SẢN PHẨM GIỐNG TÌM KIẾM SẢN PHẨM ===
+        // === GỢI Ý MÃ SẢN PHẨM GIỐNG TÌM KIẾM SẢN PHẨM ===
 
-            const maspInput = document.getElementById('maspInput');
-            const maspSuggestDiv = document.getElementById('maspSuggestList');
+        const maspInput = document.getElementById('maspInput');
+        const maspSuggestDiv = document.getElementById('maspSuggestList');
 
-            // Xác định lại vị trí popup
+        // Xác định lại vị trí popup
 
-            function positionMaspSuggestList() {
-                const rect = maspInput.getBoundingClientRect();
-                maspSuggestDiv.style.position = 'fixed';
-                maspSuggestDiv.style.top = (rect.bottom) + 'px';
-                maspSuggestDiv.style.left = (rect.left) + 'px';
-                maspSuggestDiv.style.width = rect.width + 'px';
+        function positionMaspSuggestList() {
+            const rect = maspInput.getBoundingClientRect();
+            maspSuggestDiv.style.position = 'fixed';
+            maspSuggestDiv.style.top = (rect.bottom) + 'px';
+            maspSuggestDiv.style.left = (rect.left) + 'px';
+            maspSuggestDiv.style.width = rect.width + 'px';
+        }
+
+
+        maspInput.addEventListener('input', async function () {
+            const val = maspInput.value.trim().toLowerCase();
+            if (val.length === 0) {
+                maspSuggestDiv.style.display = 'none';
+                maspSuggestDiv.innerHTML = '';
+                return;
             }
+            // Lọc mã & tên
+            let { data } = await supabase
+                .from('dmhanghoa')
+                .select('masp, tensp')
+                .or(`masp.ilike.%${val}%,tensp.ilike.%${val}%`)
+                .order('masp')
+                .limit(100);
 
+            if (!data || !data.length) {
+                maspSuggestDiv.style.display = 'none';
+                maspSuggestDiv.innerHTML = '';
+                return;
+            }
+            // Hiển thị popup
+            let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
+            for (let p of data) {
+                html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
+            }
+            html += '</table>';
+            maspSuggestDiv.innerHTML = html;
+            maspSuggestDiv.style.display = 'block';
+            positionMaspSuggestList();
 
-            maspInput.addEventListener('input', async function () {
-                const val = maspInput.value.trim().toLowerCase();
-                if (val.length === 0) {
+            // Sự kiện chọn
+            maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
+                row.onclick = function () {
+                    maspInput.value = row.dataset.masp;
+                    document.getElementById('tenspInput').value = row.dataset.tensp;
                     maspSuggestDiv.style.display = 'none';
-                    maspSuggestDiv.innerHTML = '';
-                    return;
+                    checkExistAndFillForm(); // Tải info nếu có
+                    document.getElementById('tenspInput').focus();
                 }
-                // Lọc mã & tên
-                let { data } = await supabase
-                    .from('dmhanghoa')
-                    .select('masp, tensp')
-                    .or(`masp.ilike.%${val}%,tensp.ilike.%${val}%`)
-                    .order('masp')
-                    .limit(100);
+            });
+        });
 
-                if (!data || !data.length) {
-                    maspSuggestDiv.style.display = 'none';
-                    maspSuggestDiv.innerHTML = '';
-                    return;
-                }
-                // Hiển thị popup
-                let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
-                for (let p of data) {
-                    html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
-                }
-                html += '</table>';
-                maspSuggestDiv.innerHTML = html;
-                maspSuggestDiv.style.display = 'block';
-                positionMaspSuggestList();
+        // Ẩn popup khi click ra ngoài hoặc tab/blur
+        document.addEventListener('mousedown', function (e) {
+            if (!maspInput.contains(e.target) && !maspSuggestDiv.contains(e.target)) {
+                maspSuggestDiv.style.display = 'none';
+            }
+        });
 
-                // Sự kiện chọn
-                maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
-                    row.onclick = function () {
-                        maspInput.value = row.dataset.masp;
-                        document.getElementById('tenspInput').value = row.dataset.tensp;
-                        maspSuggestDiv.style.display = 'none';
-                        checkExistAndFillForm(); // Tải info nếu có
-                        document.getElementById('tenspInput').focus();
+        // Đặt lại vị trí popup khi resize/scroll
+        window.addEventListener('resize', positionMaspSuggestList);
+        window.addEventListener('scroll', positionMaspSuggestList);
+
+        maspInput.addEventListener('focus', function () {
+            if (maspSuggestDiv.innerHTML.trim() !== '') maspSuggestDiv.style.display = 'block';
+            positionMaspSuggestList();
+        });
+
+
+        const gianhapInput = document.getElementById('gianhapInput');
+        const gialeInput = document.getElementById('gialeInput');
+
+        // Tự động tính giá lẻ khi nhập xong giá nhập
+        gianhapInput.addEventListener('change', function () {
+            const val = parseFloat(this.value);
+            if (!isNaN(val) && val > 0) {
+                gialeInput.value = Math.round(val * 1.5);
+            }
+        });
+
+        const formOrder = [
+            'maspInput',
+            'tenspInput',
+            'gianhapInput',
+            'gialeInput',
+            'mausacInput',
+            'khuyenmaiInput',
+            'nhaccInput',
+            'chungloaiInput'
+        ];
+
+        formOrder.forEach((id, idx) => {
+            const inp = document.getElementById(id);
+            if (!inp) return;
+            inp.addEventListener('keydown', function (e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    // Nếu không phải ô cuối cùng thì focus ô tiếp theo
+                    if (idx < formOrder.length - 1) {
+                        const next = document.getElementById(formOrder[idx + 1]);
+                        if (next) next.focus();
+                    } else {
+                        // Nếu là ô cuối cùng, submit form
+                        document.getElementById('saveFormBtn').focus();
                     }
-                });
-            });
-
-            // Ẩn popup khi click ra ngoài hoặc tab/blur
-            document.addEventListener('mousedown', function (e) {
-                if (!maspInput.contains(e.target) && !maspSuggestDiv.contains(e.target)) {
-                    maspSuggestDiv.style.display = 'none';
                 }
             });
-
-            // Đặt lại vị trí popup khi resize/scroll
-            window.addEventListener('resize', positionMaspSuggestList);
-            window.addEventListener('scroll', positionMaspSuggestList);
-
-            maspInput.addEventListener('focus', function () {
-                if (maspSuggestDiv.innerHTML.trim() !== '') maspSuggestDiv.style.display = 'block';
-                positionMaspSuggestList();
-            });
-
-
-            const gianhapInput = document.getElementById('gianhapInput');
-            const gialeInput = document.getElementById('gialeInput');
-
-            // Tự động tính giá lẻ khi nhập xong giá nhập
-            gianhapInput.addEventListener('change', function () {
-                const val = parseFloat(this.value);
-                if (!isNaN(val) && val > 0) {
-                    gialeInput.value = Math.round(val * 1.5);
-                }
-            });
-
-            const formOrder = [
-                'maspInput',
-                'tenspInput',
-                'gianhapInput',
-                'gialeInput',
-                'mausacInput',
-                'khuyenmaiInput',
-                'nhaccInput',
-                'chungloaiInput'
-            ];
-
-            formOrder.forEach((id, idx) => {
-                const inp = document.getElementById(id);
-                if (!inp) return;
-                inp.addEventListener('keydown', function (e) {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        // Nếu không phải ô cuối cùng thì focus ô tiếp theo
-                        if (idx < formOrder.length - 1) {
-                            const next = document.getElementById(formOrder[idx + 1]);
-                            if (next) next.focus();
-                        } else {
-                            // Nếu là ô cuối cùng, submit form
-                            document.getElementById('saveFormBtn').focus();
-                        }
-                    }
-                });
-            });
+        });
 
 
     </script>
