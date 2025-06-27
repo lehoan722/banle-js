@@ -50,15 +50,6 @@
   <div id="preview" style="margin-top:20px;"></div>
 
   <script>
-
-    const token = localStorage.getItem('supabase_access_token');
-    export const supabase = token
-      ? createClient(supabaseUrl, supabaseKey, {
-        global: { headers: { Authorization: `Bearer ${token}` } }
-      })
-      : createClient(supabaseUrl, supabaseKey);
-
-
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
     const TABLE_NAME = 'dmhanghoa';
@@ -337,9 +328,9 @@
     });
 
   </script>
-
+   
   <script type="module">
-    // Đăng nhập thành công reload lại trang để các API dùng token mới
+       // Đăng nhập thành công reload lại trang để các API dùng token mới
 
     import { renderLoginModule } from './scripts/loginSupabaseModule.js';
 
