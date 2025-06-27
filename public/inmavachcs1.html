@@ -16,7 +16,7 @@
         .container {
             display: flex;
             gap: 12px;
-            margin: 16px; 
+            margin: 16px;
         }
 
         .left,
@@ -718,7 +718,7 @@
         }
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['masp', 'tensp', 'nhacc', 'chungloai'];
+        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         async function loadDropdownOptions() {
@@ -774,6 +774,7 @@
         // ==== Nút Thêm mới ====
         document.getElementById('resetFormBtn').onclick = function () {
             resetForm(false);
+             document.getElementById('maspInput').focus();  // <== Tự động focus lại
         };
 
         function resetForm(keepMasp = false) {
@@ -849,10 +850,24 @@
                 res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
                 if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
             } else {
+                // Kiểm tra trùng mã sản phẩm trước khi thêm
+                const { data: maspCheck, error: checkError } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp')
+                    .eq('masp', data.masp)
+                    .maybeSingle();
+
+                if (maspCheck) {
+                    document.getElementById('addProductMessage').style.color = 'red';
+                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại. Không thể thêm mới.`;
+                    return;
+                }
+
                 // Insert mới
                 res = await supabase.from('dmhanghoa').insert([data]);
                 if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
             }
+
 
             if (errorMsg) {
                 document.getElementById('addProductMessage').textContent = errorMsg;
@@ -864,6 +879,7 @@
             document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
             // Reset lại form theo giữ lại trường
             resetForm();
+            document.getElementById('maspInput').focus();  // <== Tự động focus lại
             // Load lại dropdown option (nếu có giá trị mới)
             loadDropdownOptions();
             // Reload danh sách sản phẩm panel tìm kiếm để có thể in mã vạch mới ngay
