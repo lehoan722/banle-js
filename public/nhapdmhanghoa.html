@@ -301,6 +301,7 @@
 
       // 2. Truy vấn Supabase (chỉ lấy cột cần thiết)
       const fieldList = columns.map(c => c.data).join(", ");
+      const supabase = getSupabaseClient();
       const { data: serverData, error } = await supabase
         .from(TABLE_NAME)
         .select(fieldList)
