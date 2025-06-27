@@ -761,6 +761,7 @@
         // ==== Nút Thêm mới ====
         document.getElementById('resetFormBtn').onclick = function () {
             resetForm(false);
+            document.getElementById('maspInput').focus(); // <-- thêm dòng này
         };
 
         function resetForm(keepMasp = false) {
@@ -830,9 +831,16 @@
                 chungloai: document.getElementById('chungloaiInput').value.trim(),
             };
 
-            let res, errorMsg;
             if (isEditMode) {
-                // Update
+                // Trường hợp đang sửa sản phẩm đã tồn tại
+                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
+                if (!userConfirm) {
+                    document.getElementById('addProductMessage').style.color = 'orange';
+                    document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
+                    return;
+                }
+
+                // Tiếp tục cập nhật nếu người dùng xác nhận
                 res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
                 if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
             } else {
@@ -853,6 +861,7 @@
                 res = await supabase.from('dmhanghoa').insert([data]);
                 if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
             }
+
 
 
             if (errorMsg) {
