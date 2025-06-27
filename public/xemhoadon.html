@@ -61,10 +61,28 @@
   <label>Khách hàng: <input type="text" id="locKhach"></label>
   <label>Tiền từ: <input type="number" id="tienTu" style="width:80px"></label>
   <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
-  <label>Số HĐ: <input type="text" id="locSoHD"></label>
+
+  <label>Loại chứng từ:</label>
+  <select id="loaiChungTu" multiple style="min-width:140px;">
+    <option value="bancs1">bancs1</option>
+    <option value="bancs2">bancs2</option>
+    <option value="nmcs1">nmcs1</option>
+    <option value="nmcs2">nmcs2</option>
+    <option value="ccn1v2">ccn1v2</option>
+    <option value="ccn2v1">ccn2v1</option>
+  </select>
+
   <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
   <button onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
 
+  <table id="tongTable" class="tbl" style="margin-top:6px;width:99%">
+    <tr style="font-weight:bold;background:#f8f8f8">
+      <td colspan="4">Tổng</td>
+      <td id="tongSoLuong"></td>
+      <td id="tongTien"></td>
+      <td colspan="2"></td>
+    </tr>
+  </table>
 
   <table>
     <thead>
@@ -84,6 +102,7 @@
     </thead>
     <tbody id="dsHoaDon"></tbody>
   </table>
+
 
   <div id="popup">
     <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
@@ -120,6 +139,9 @@
       const tienTu = Number(document.getElementById("tienTu").value);
       const tienDen = Number(document.getElementById("tienDen").value);
 
+      const selectLoai = document.getElementById("loaiChungTu");
+      const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+
       // 2. Tạo truy vấn Supabase
       let query = supabase
         .from('hoadon_banle')
@@ -134,8 +156,8 @@
       if (nv) query = query.ilike('manv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
       if (khach) query = query.ilike('khachhang', `%${khach}%`);
-      if (!isNaN(tienTu) && tienTu > 0) query = query.gte('phaithanhtoan', tienTu);
-      if (!isNaN(tienDen) && tienDen > 0) query = query.lte('phaithanhtoan', tienDen);
+      if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+      if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
       // 3. Nhận dữ liệu
       const { data, error } = await query;
@@ -145,8 +167,25 @@
       if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
       if (!data.length) return tbody.innerHTML = `<tr><td colspan="8">Không có dữ liệu</td></tr>`;
 
-      // 4. Tạo bảng kết quả
-      data.forEach(hd => {
+      // 4. Lọc theo loại chứng từ (nếu người dùng có chọn)
+      let filtered = data;
+      if (loaiChungTuArr.length > 0) {
+        filtered = data.filter(hd => {
+          // lấy tiền tố sohd, ví dụ "bancs1" trong "bancs1_00123"
+          const loai = hd.sohd.split("_")[0];
+          return loaiChungTuArr.includes(loai);
+        });
+      }
+
+      // 5. Tính tổng số lượng và tổng tiền
+      let tongSL = 0, tongTien = 0;
+      filtered.forEach(hd => {
+        tongSL += Number(hd.tongsl || 0);
+        tongTien += Number(hd.thanhtoan || 0);
+      });
+
+      // 6. Tạo bảng kết quả
+      filtered.forEach(hd => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
       <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
@@ -158,15 +197,25 @@
       <td>${hd.thanhtoan?.toLocaleString()}</td>
       <td>${hd.ghichu || ""}</td>
     `;
-
-        // Mở popup chi tiết nếu click ngoài checkbox
         tr.onclick = (e) => {
           if (e.target.tagName !== 'INPUT') xemChiTiet(hd.sohd);
         };
-
         tbody.appendChild(tr);
       });
+
+      // 7. Thêm dòng tổng cuối bảng
+      const trTong = document.createElement("tr");
+      trTong.style.fontWeight = "bold";
+      trTong.style.background = "#f8f8f8";
+      trTong.innerHTML = `
+    <td colspan="5" style="text-align:right">TỔNG</td>
+    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+    <td id="tongTien">${tongTien.toLocaleString()}</td>
+    <td></td>
+  `;
+      tbody.appendChild(trTong);
     }
+
 
 
 
