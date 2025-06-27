@@ -7,6 +7,24 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+    // Hàm tạo Supabase client dùng token mới nhất mỗi lần gọi
+    function getSupabaseClient() {
+      const token = localStorage.getItem('supabase_access_token');
+      return window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        token
+          ? { global: { headers: { Authorization: `Bearer ${token}` } } }
+          : {}
+      );
+    }
+  </script>
+
   <style>
     body {
       font-family: sans-serif;
@@ -34,14 +52,20 @@
     <option value="overwrite">📝 Ghi đè tất cả</option>
     <option value="update">✏️ Chỉ cập nhật dữ liệu</option>
   </select>
+  <button onclick="kiemTraTuSupabase()">🔍 Kiểm tra dữ liệu</button>
+  <div id="loginModule" style="display:inline-block; margin-left:16px;">
+    <input id="login-email" type="email" placeholder="Email Supabase" style="width:130px;margin-right:2px;">
+    <input id="login-password" type="password" placeholder="Mật khẩu" style="width:110px;margin-right:2px;">
+    <button id="login-submit" class="btn">Đăng nhập</button>
+    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b"></span>
+  </div>
+
 
 
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
 
-  <script>
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+  <script>    
     const TABLE_NAME = 'dmhanghoa';
 
     const columns = [
@@ -60,12 +84,13 @@
 
       { data: 'dvt', type: 'text' },
       { data: 'khuyenmai', type: 'text' },
-      { data: 'nhapdau', type: 'date' },
-      { data: 'ngaysua', type: 'date' }
+      { data: 'nhapdau', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true },
+      { data: 'ngaysua', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true }
+
     ];
 
     const hot = new Handsontable(document.getElementById('hot'), {
-      data: Array(100).fill({}),
+      data: Array.from({ length: 100 }, () => ({})),
       columns,
       colHeaders: columns.map(c => c.data),
       rowHeaders: true,
@@ -254,8 +279,87 @@
       ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
     `;
     }
+
+    async function kiemTraTuSupabase() {
+      const allData = hot.getData();
+      const maspIndex = columns.findIndex(c => c.data === 'masp');
+      if (maspIndex === -1) return alert("Không tìm thấy cột mã sản phẩm!");
+
+      // 1. Lấy danh sách mã sản phẩm duy nhất, bỏ rỗng
+      const maspList = Array.from(
+        new Set(
+          allData
+            .map(row => row[maspIndex])
+            .filter(m => m && typeof m === 'string' && m.trim() !== '')
+            .map(m => m.trim().toUpperCase())
+        )
+      );
+
+      if (maspList.length === 0) {
+        return alert("Không có mã sản phẩm nào để kiểm tra.");
+      }
+
+      // 2. Truy vấn Supabase (chỉ lấy cột cần thiết)
+      const fieldList = columns.map(c => c.data).join(", ");
+      const supabase = getSupabaseClient();
+      const { data: serverData, error } = await supabase
+        .from(TABLE_NAME)
+        .select(fieldList)
+        .in('masp', maspList);
+
+      if (error) {
+        console.error("❌ Lỗi khi truy vấn Supabase:", error);
+        return alert("Không thể lấy dữ liệu từ Supabase.");
+      }
+
+      // 3. Dò lại dữ liệu và cập nhật theo batch
+      const dataMap = {};
+      serverData.forEach(item => dataMap[item.masp.toUpperCase()] = item);
+
+      hot.batch(() => {
+        allData.forEach((row, rowIndex) => {
+          const masp = row[maspIndex];
+          if (!masp) return;
+
+          const fresh = dataMap[masp.toUpperCase()];
+          if (!fresh) return;
+
+          columns.forEach((col, colIndex) => {
+            const field = col.data;
+            if (field === 'masp') return; // không thay mã sản phẩm
+            hot.setDataAtCell(rowIndex, colIndex, fresh[field] ?? null);
+          });
+        });
+      });
+
+      alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
+    }
+
+
+
   </script>
+
+  <script type="module">
+    // Đăng nhập thành công reload lại trang để các API dùng token mới
+
+    import { renderLoginModule } from './scripts/loginSupabaseModule.js';
+
+    const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+    renderLoginModule({
+      supabaseUrl,
+      supabaseKey,
+      onLoginSuccess: () => {
+        window.location.reload(); // Đăng nhập thành công reload lại trang để các API dùng token mới
+      }
+    });
+  </script>
+
 
 </body>
 
 </html>
+<script async data-explicit-opt-in="true" data-cookie-opt-in="true"
+  data-deployment-id="dpl_72h3v5BH1ss3PevUAaiq4t6ddMxx"
+  src="https://vercel.live/_next-live/feedback/feedback.js"></script>
