@@ -8,6 +8,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+    // Hàm tạo Supabase client dùng token mới nhất mỗi lần gọi
+    function getSupabaseClient() {
+      const token = localStorage.getItem('supabase_access_token');
+      return window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        token
+          ? { global: { headers: { Authorization: `Bearer ${token}` } } }
+          : {}
+      );
+    }
+  </script>
 
   <style>
     body {
@@ -49,9 +65,7 @@
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
 
-  <script>
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+  <script>    
     const TABLE_NAME = 'dmhanghoa';
 
     const columns = [
@@ -321,16 +335,11 @@
     }
 
 
-    window.addEventListener("load", () => {
-      const { createClient } = window.supabase;
-      window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-      window.supabase = window.supabaseClient;
-    });
 
   </script>
-   
+
   <script type="module">
-       // Đăng nhập thành công reload lại trang để các API dùng token mới
+    // Đăng nhập thành công reload lại trang để các API dùng token mới
 
     import { renderLoginModule } from './scripts/loginSupabaseModule.js';
 
