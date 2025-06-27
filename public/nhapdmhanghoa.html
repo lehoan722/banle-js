@@ -65,7 +65,7 @@
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
 
-  <script>    
+  <script>
     const TABLE_NAME = 'dmhanghoa';
 
     const columns = [
@@ -312,25 +312,34 @@
         return alert("Không thể lấy dữ liệu từ Supabase.");
       }
 
-      // 3. Dò lại dữ liệu và cập nhật theo batch
+      // 3. Map lại dữ liệu mới theo từng dòng (không cập nhật từng cell)
       const dataMap = {};
       serverData.forEach(item => dataMap[item.masp.toUpperCase()] = item);
 
-      hot.batch(() => {
-        allData.forEach((row, rowIndex) => {
-          const masp = row[maspIndex];
-          if (!masp) return;
+      // Tạo ra bảng dữ liệu mới với các giá trị đã cập nhật từ Supabase
+      const newData = allData.map((row, rowIndex) => {
+        const masp = row[maspIndex];
+        if (!masp) return { ...row };
+        const fresh = dataMap[masp.toUpperCase()];
+        if (!fresh) return { ...row }; // Không có dữ liệu mới, giữ nguyên dòng
 
-          const fresh = dataMap[masp.toUpperCase()];
-          if (!fresh) return;
-
-          columns.forEach((col, colIndex) => {
-            const field = col.data;
-            if (field === 'masp') return; // không thay mã sản phẩm
-            hot.setDataAtCell(rowIndex, colIndex, fresh[field] ?? null);
-          });
+        // Tạo object mới, cập nhật các trường (giữ masp gốc)
+        const updatedRow = { ...row };
+        columns.forEach((col) => {
+          const field = col.data;
+          if (field === 'masp') return; // Không sửa mã sản phẩm
+          updatedRow[field] = fresh[field] ?? null;
         });
+        return updatedRow;
       });
+      // Đảm bảo luôn có 1 dòng trống cuối
+      if (!newData[newData.length - 1] || Object.values(newData[newData.length - 1]).some(x => x)) {
+        newData.push({});
+      }
+
+
+      // Nạp lại toàn bộ bảng (Nhanh, không còn lag từng dòng!)
+      hot.loadData(newData);
 
       alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
     }
