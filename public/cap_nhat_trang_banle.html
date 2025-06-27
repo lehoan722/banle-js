@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Hóa đơn bán lẻ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
+
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            height: 100%;
+        }
+
+        .header {
+            background-color: #0078d7;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .top-inputs {
+            display: flex;
+            padding: 5px;
+            gap: 5px;
+            background: #f4f4f4;
+            align-items: center;
+        }
+
+        .tennv {
+            display: flex;
+            padding: 5px;
+            gap: 5px;
+            background: #0088cc;
+            align-items: center;
+            justify-content: flex-end;
+            /* Đẩy hết sang phải */
+        }
+
+
+        .top-inputs input,
+        .top-inputs select {
+            padding: 4px;
+            font-size: 20px;
+        }
+
+        .top-inputs input {
+            box-sizing: border-box;
+        }
+
+        #masp {
+            width: 250px;
+            background: cyan;
+        }
+
+        #soluong {
+            width: 60px;
+            background: yellow;
+            text-align: center;
+        }
+
+        #dvt {
+            width: 60px;
+        }
+
+        #size {
+            width: 60px;
+            text-align: center;
+        }
+
+        #gia,
+        #khuyenmai,
+        #thanhtien {
+            width: 150px;
+            text-align: right;
+        }
+
+        #ghichu {
+            flex: 1;
+        }
+
+        .main {
+            display: flex;
+            height: calc(100vh - 150px);
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th,
+        table td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .sidebar {
+            width: 360px;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .tabs {
+            display: flex;
+            background: #eee;
+        }
+
+        .tabs button {
+            flex: 1;
+            padding: 8px;
+            cursor: pointer;
+            border: none;
+            background: #ddd;
+        }
+
+        .tabs button.active {
+            background: white;
+            font-weight: bold;
+            border-bottom: 2px solid #0078d7;
+        }
+
+        .tab-content {
+            flex: 1;
+            padding: 10px;
+            font-size: 13px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .sidebar input,
+        .sidebar select {
+            width: 100%;
+            padding: 4px;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .checkbox-list label {
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .btn-big {
+            width: 85%;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px;
+            margin: 6px 0;
+        }
+
+        .red {
+            background-color: darkred;
+            color: white;
+        }
+
+        .gray {
+            background-color: lightgray;
+            color: black;
+        }
+
+        .product-image {
+            width: 360px !important;
+            height: 360px !important;
+            display: block;
+            object-fit: contain;
+            /* Giữ nguyên tỉ lệ, không cắt ảnh */
+            object-position: center;
+            background: #f5f5f5;
+            /* Màu nền trung tính, có thể chỉnh nếu muốn */
+            border: 1px solid #ccc;
+            margin: 0 auto;
+        }
+
+
+        .footer-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            /* dồn trái */
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 5px 0 5px 8px;
+            background: #dce9f9;
+        }
+
+        .footer-buttons button {
+            margin-right: 4px;
+            font-size: 15px;
+            padding: 7px 13px;
+            min-width: 85px;
+        }
+
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 5%;
+            width: 90%;
+            height: 70%;
+            background: white;
+            border: 1px solid #ccc;
+            z-index: 999;
+            box-shadow: 0 0 10px #333;
+        }
+
+        .popup-content {
+            padding: 10px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .popup-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin-top: 6px;
+        }
+
+        /* Bố cục nhóm nhập liệu */
+        .tab-pane label {
+            display: inline-block;
+            width: 32%;
+            box-sizing: border-box;
+            padding-right: 4px;
+            margin-bottom: 6px;
+        }
+
+        .tab-pane input,
+        .tab-pane select {
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 360px;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            /* ⚠️ CHUYỂN TỪ space-between */
+        }
+
+        .tab-content {
+            flex-grow: 0;
+            /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
+        }
+
+
+        #popupDanhMuc {
+            display: none !important;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1 1 auto;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo,
+        .footer-buttons {
+            flex-shrink: 0;
+            width: 75%;
+            z-index: 100;
+        }
+
+        @media print {
+
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 80mm;
+                /* đúng khổ K80 */
+                box-sizing: border-box;
+            }
+
+            body {
+                /* Xóa font-size mặc định lớn */
+                font-size: 12px;
+                line-height: 1.2;
+            }
+
+            /* Xóa header/footer mặc định của trình duyệt nếu có */
+            @page {
+                margin: 0;
+                size: 80mm auto;
+            }
+        }
+    </style>
+
+
+    <script>
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.getElementById('btn_' + tabName).classList.add('active');
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            switchTab("thongtin");
+        });
+
+        function dongPopupDM() {
+            document.getElementById('popupDanhMuc').style.display = 'none';
+        }
+    </script>
+</head>
+
+<body>
+
+    <style>
+        .menu-bar {
+            background: #0088cc;
+            padding: 8px 20px;
+            display: flex;
+            gap: 30px;
+            color: white;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .menu-item {
+            position: relative;
+        }
+
+        .menu-link {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 6px 10px;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 240px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            top: 100%;
+            left: 0;
+            z-index: 1001;
+            padding: 6px 0;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+            white-space: nowrap;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #ddd;
+        }
+
+        .menu-item:hover .dropdown-content {
+            display: block;
+        }
+
+        .footer-userinfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 4px 0 4px 8px;
+            background: #e5eef9;
+            border-top: 1px solid #c7d3e9;
+        }
+
+        .footer-userinfo label {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .footer-userinfo input,
+        .footer-userinfo select {
+            padding: 3px 6px;
+            font-size: 15px;
+            margin-left: 2px;
+        }
+    </style>
+
+    <div class="menu-bar">
+        <div class="tennv">
+
+            <label>
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+
+            <label> <input id="ngay" type="date" /></label>
+            <!-- <label>Giờ <input id="gio" /></label> -->
+             <input id="manv" type="password" placeholder="Mã NV" />
+            
+            <input id="tennv" placeholder="Tên NV" readonly />
+
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+        </div>
+        <div class="menu-item">
+
+            <span class="menu-link">📁 Báo cáo hóa đơn</span>
+            <div class="dropdown-content">
+
+                <a href="xemhoadonT.html" target="_blank">Xem hóa đơn tạm</a>
+
+                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
+                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
+                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
+                <a href="baocaohoadon.html" target="_blank">Báo cáo tổng hợp</a>
+            </div>
+        </div>
+        <div class="menu-item">
+            <span class="menu-link">📦 Báo cáo nhập hàng</span>
+            <div class="dropdown-content">
+                <a href="banlemt.html" target="_blank">HOA DON BAN LE</a>
+                <a href="nhapmoimt.html" target="_blank">HOA DON NHAP MOI</a>
+                <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
+                <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
+                <a href="nhapdoikh.html" target="_blank">NHAP DOI TU KHACH</a>
+                <a href="tralaincc.html" target="_blank">TRA LAI NHA CC</a>
+                <a href="xuathuy.html" target="_blank">XUAT HUY HANG HONG</a>
+                <a href="kiemkho.html" target="_blank">PHIEU KIEM KHO</a>
+
+
+            </div>
+        </div>
+        <div class="menu-item">
+            <span class="menu-link">📦 Hóa đơn bán lẻ</span>
+            <div class="dropdown-content">
+                <a href="nhaphang1.html" target="_blank">Chi tiết nhập hàng CS1</a>
+                <a href="nhaphang2.html" target="_blank">Chi tiết nhập hàng CS2</a>
+                <a href="baocaonhap.html" target="_blank">Tổng hợp nhập theo ngày</a>
+            </div>
+        </div>
+
+
+    </div>
+
+
+    <div id="app-container" style="display:none;">
+
+
+        <div class="top-inputs">
+            <div style="position: relative;">
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <div id="popup_masp"
+                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                </div>
+            </div>
+            <input id="soluong" value="1" />
+            <input id="dvt" placeholder="DVT" />
+            <input id="size" placeholder="SIZE" />
+            <input id="gia" placeholder="Giá SP" />
+            <input id="khuyenmai" placeholder="khuyen mai" />
+            <input id="thanhtien" placeholder="Thành tiền" />
+            <input id="sohd" placeholder="Số HĐ" />
+
+            <input id="ghichu" placeholder="Ghi chú HH" />
+            <button id="masp-search">🔍</button>
+        </div>
+
+
+        <div class="main">
+            <div class="table-area">
+                <table id="bangketqua">
+                    <thead>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Tên hàng</th>
+                            <th>Kích cỡ</th>
+                            <th>S.lượng</th>
+                            <th>ĐVT</th>
+                            <th>Đơn giá</th>
+                            <th>Khuyến mại</th>
+                            <th>Thành tiền</th>
+
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="sidebar">
+                <div class="tabs">
+                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
+                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane" id="thongtin">
+
+                        <label>Hình thức TT <select id="hinhthuctt">
+                                <option value="tm">Tiền mặt</option>
+                                <option value="ck">Chuyển khoản</option>
+                            </select></label>
+
+                        <label>Chiết khấu <input id="chietkhau" /></label>
+                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
+
+                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
+                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
+                        <label>Vị trí <input id="vitri" readonly="" /></label>
+                        <!-- khu vuc tìm khách hàng -->
+                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                            <input id="makh" placeholder="mã khách"
+                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                            <button id="btnPopupKH" type="button"
+                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                🔍
+                            </button>
+                        </div>
+                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+
+                        <!-- Popup tìm khách hàng -->
+                        <div id="popupTimKH"
+                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
+                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
+                            <table id="tableKH" style="width:100%;font-size:15px"></table>
+                        </div>
+                        <!-- het khu vuc tìm khách hàng -->
+                    </div>
+                    <div class="tab-pane" id="tacvu">
+                        <div class="checkbox-list">
+                            <label><input id="nhapnhanh" type="checkbox" /> quan size all</label>
+                            <label><input id="size45" type="checkbox" />quan size GD</label>
+                            <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
+                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
+                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
+
+                            <label><input type="checkbox" /> Cộng dồn số lượng</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
+                    Tổng phải trả
+                    <input id="phaithanhtoan"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
+                </div>
+                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                    Khách thanh toán
+                    <input id="khachtra"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
+                </div>
+                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                    Còn lại
+                    <input id="conlai"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
+                        readonly />
+                </div>
+
+
+
+                <img alt="Ảnh sản phẩm" class="product-image"
+                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+            </div>
+        </div>
+
+
+        <div class="footer-buttons">
+            <button id="them">Thêm mới</button>
+            <button onclick="luuHoaDonCaHaiBan()">💾 Lưu</button>
+            <button id="quaylai">Quay lại</button>
+            <button id="tieptuc">Tiếp tục</button>
+            <button id="xemin">Xem in</button>
+            <button id="btnCopy">Copy</button>
+            <button id="xuatexcel">Xuất Excel</button>
+            <button id="btn-logout">THOAT PM</button>
+
+            <!-- Popup tìm khách hàng
+             <button id="xuatexcel">Xuất Excel</button>
+             <button id="timkiem">Tìm kiếm</button>
+             <button id="luu">Lưu</button>
+            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
+            
+            -->
+
+        </div>
+
+        <div class="top-inputs">
+            ----------------------------------------------------------
+        </div>
+        <div class="top-inputs">
+            ----------------------------------------------------------
+        </div>
+
+
+        <div class="popup" id="popupDanhMuc">
+            <div class="popup-content">
+                <strong>Tìm kiếm mã sản phẩm</strong>
+                <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
+                <div class="popup-list" id="danhSachSP"></div>
+                <button onclick="dongPopupDM()">Đóng</button>
+            </div>
+        </div>
+        <!-- ✅ Popup xác thực sửa hóa đơn -->
+        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+  background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+            <h3>Xác thực sửa hóa đơn</h3>
+            <input id="xacmanv" placeholder="Mã nhân viên"
+                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+        </div>
+
+        <!-- Popup xác nhận thêm mới -->
+        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+  background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+            <h3>Bạn có thực sự muốn thêm mới?</h3>
+            <div style="text-align:center; margin-top:10px;">
+                <button id="btnThemMoiCo">✅ Có</button>
+                <button onclick="dongTatCaPopup()">❌ Không</button>
+            </div>
+        </div>
+
+        <!-- Popup nhập mã sản phẩm mới -->
+        <div id="popupNhapMaMoi" class="popup-confirm"
+            style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
+  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
+            <h3>Thêm mã sản phẩm mới</h3>
+            <div id="formFields"></div>
+            <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
+            <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
+            <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
+        </div>
+
+        <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
+            <h3>Cấu hình trường hiển thị</h3>
+            <div id="dsCauHinhTruong"></div>
+            <div style="text-align:right; margin-top:10px;">
+                <button onclick="luuCauHinhTruong()">Lưu</button>
+                <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
+            </div>
+        </div>
+
+
+
+        <div id="popupBangDanhMuc" class="popup"
+            style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
+            <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                <strong>Danh mục hàng hóa</strong>
+                <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
+            </div>
+            <div style="padding: 0 10px 10px;">
+                <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
+                    style="width: 300px; padding: 4px;" />
+                <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
+
+            </div>
+            <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
+        </div>
+
+        <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
+        <div id="popupNhapHangHoa"
+            style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+            <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
+
+            <div id="fieldsNhapHangHoa"></div>
+
+            <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
+
+            <div style="margin-top:14px; text-align:center;">
+                <button onclick="themTiepSanPham()">➕ Thêm mới</button>
+                <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
+                <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
+                <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Đăng nhập Supabase -->
+    <div id="login-container"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:99999;">
+        <div style="background:#f9f9f9; padding:30px; border-radius:8px; box-shadow:0 0 10px #ccc;">
+            <h2>Đăng nhập hệ thống</h2>
+            <form id="form-login" onsubmit="dangNhap(); return false;">
+                <label>Email đăng nhập:</label><br />
+                <input type="email" id="login-email" ...><br />
+                <!-- Thêm đoạn sau: -->
+                <label>Cơ sở bán hàng:</label><br />
+                <select id="login-cs" style="width:200px; padding:6px;">
+                    <option value="">-- Chọn cơ sở --</option>
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select><br /><br />
+                <label>Mật khẩu:</label><br />
+                <input type="password" id="login-password" ...><br /><br />
+                <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
+                <p id="login-error" style="color:red; margin-top:10px;"></p>
+            </form>
+
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
+        window.supabase = createClient(supabaseUrl, supabaseKey);
+
+        window.dangNhap = async function () {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const cs = document.getElementById('login-cs').value;
+            const statusEl = document.getElementById('login-error');
+
+            if (!email || !password) {
+                statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+                return;
+            }
+            if (!cs) {
+                statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!';
+                return;
+            }
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+
+            if (error) {
+                statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
+                statusEl.style.color = 'red';
+            } else {
+                statusEl.textContent = '✅ Đăng nhập thành công!';
+                statusEl.style.color = 'green';
+                // <<< Đặt dòng này tại đây:
+                localStorage.setItem("diadiem", document.getElementById('login-cs').value);
+                // === DÒNG MỚI THÊM VÀO ĐÂY! ===
+                localStorage.setItem('supabase_access_token', data.session.access_token);
+
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('app-container').style.display = '';
+                await window.supabase.auth.setSession({
+                    access_token: data.session.access_token,
+                    refresh_token: data.session.refresh_token
+                });
+                import('./scripts/main.js').then(module => {
+                    if (module.khoiTaoUngDung) module.khoiTaoUngDung();
+                });
+            }
+
+
+        };
+
+
+
+        // dang xuat
+        document.getElementById('btn-logout').onclick = async function () {
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+            }
+            document.getElementById('login-email').value = "";
+            document.getElementById('login-password').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            document.getElementById('login-email').focus();
+        };
+
+
+    </script>
+
+    <script type="module">
+        // Nút kính lúp cạnh ô nhập mã KH
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
+
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
+
+        // Hàm show popup
+        function showPopupTimKH() {
+            const popup = document.getElementById('popupTimKH');
+            popup.style.display = '';
+            document.getElementById('txtSearchKH').value = '';
+            document.getElementById('txtSearchKH').focus();
+            loadListKH('');
+        }
+
+        // Tìm kiếm realtime theo ký tự gõ
+        document.getElementById('txtSearchKH').oninput = function () {
+            loadListKH(this.value.trim());
+        };
+
+        // Hàm load danh sách KH (gọi Supabase)
+        async function loadListKH(keyword) {
+            const table = document.getElementById('tableKH');
+            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
+            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
+            if (keyword) {
+                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+            }
+            const { data, error } = await query;
+            if (error || !data || !data.length) {
+                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
+                return;
+            }
+            table.innerHTML = data.map(kh =>
+                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
+        <td>${kh.makh}</td><td>${kh.tenkh}</td>
+      </tr>`
+            ).join('');
+            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
+                row.onclick = function () {
+                    document.getElementById('makh').value = this.dataset.makh;
+                    document.getElementById('khachhang').value = this.dataset.tenkh;
+                    document.getElementById('popupTimKH').style.display = 'none';
+                }
+            });
+        }
+
+        // Copy bảng sang clipboard, có cả dòng tiêu đề
+        document.getElementById('btnCopy').onclick = function () {
+            const table = document.getElementById('bangketqua');
+            let str = '';
+
+            // 1. Copy dòng tiêu đề (thead)
+            const thead = table.querySelector('thead');
+            if (thead) {
+                const headerCells = thead.rows[0].cells;
+                let headerLine = [];
+                for (let cell of headerCells) {
+                    headerLine.push(cell.innerText);
+                }
+                str += headerLine.join('\t') + '\n';
+            }
+
+            // 2. Copy từng dòng dữ liệu (tbody)
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
+            }
+
+            navigator.clipboard.writeText(str)
+                .then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
+        };
+
+
+        // Dán từ clipboard (Excel) vào bảng web
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            const rows = text.trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            tbody.innerHTML = '';
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+                const tr = document.createElement('tr');
+                rowArr.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
+            capNhatBangKetQuaTuDOM();
+
+            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
+            if (typeof capNhatThongTinTong === "function") {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
+
+            // Log để kiểm tra
+            console.log("window.bangKetQua:", window.bangKetQua);
+            if (typeof bangKetQua !== "undefined") {
+                console.log("bangKetQua:", bangKetQua);
+            }
+        });
+
+
+
+        // Đóng popup khi bấm ESC hoặc click ra ngoài
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
+        });
+        document.addEventListener('click', function (e) {
+            const p = document.getElementById('popupTimKH');
+            if (p.style.display === '' && !p.contains(e.target) && e.target.id !== 'btnPopupKH') {
+                p.style.display = 'none';
+            }
+        });
+
+        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const img = document.querySelector('.product-image');
+            if (img) {
+                img.addEventListener('dblclick', function () {
+                    window.open('https://banle-js.vercel.app/xembaocao.html', '_blank');
+                });
+            }
+        });
+    </script>
+
+
+
+    <script type="module" src="scripts/viettelInvoice.js"></script>
+
+</body>
+
+</html>
