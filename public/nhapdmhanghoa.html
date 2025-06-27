@@ -65,7 +65,7 @@
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
 
-  <script>
+  <script>    
     const TABLE_NAME = 'dmhanghoa';
 
     const columns = [
@@ -206,7 +206,12 @@
 
     async function uploadToSupabase() {
       const rawData = hot.getData();
-      const data = rawData.filter(r => r.masp && r.masp.toString().trim() !== "");
+      const headers = columns.map(c => c.data);
+      const data = rawData.map(row => {
+        const obj = {};
+        headers.forEach((key, i) => obj[key] = row[i]);
+        return obj;
+      }).filter(r => r.masp && r.masp.toString().trim() !== "");
 
       if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
 
@@ -307,32 +312,25 @@
         return alert("Không thể lấy dữ liệu từ Supabase.");
       }
 
-      // 3. Map lại dữ liệu mới theo từng dòng (giữ đúng kiểu object)
+      // 3. Dò lại dữ liệu và cập nhật theo batch
       const dataMap = {};
       serverData.forEach(item => dataMap[item.masp.toUpperCase()] = item);
 
-      // Tạo array of objects với đủ key cho Handsontable
-      const newData = allData.map((row) => {
-        const masp = row[maspIndex];
-        if (!masp) return { ...row }; // dòng trống, giữ nguyên
+      hot.batch(() => {
+        allData.forEach((row, rowIndex) => {
+          const masp = row[maspIndex];
+          if (!masp) return;
 
-        const fresh = dataMap[masp.toUpperCase()];
-        if (!fresh) return { ...row }; // Không có dữ liệu mới, giữ nguyên
+          const fresh = dataMap[masp.toUpperCase()];
+          if (!fresh) return;
 
-        const obj = { ...row };
-        columns.forEach(col => {
-          if (col.data === 'masp') return;
-          obj[col.data] = fresh[col.data] ?? null;
+          columns.forEach((col, colIndex) => {
+            const field = col.data;
+            if (field === 'masp') return; // không thay mã sản phẩm
+            hot.setDataAtCell(rowIndex, colIndex, fresh[field] ?? null);
+          });
         });
-        return obj;
       });
-
-      // Đảm bảo luôn có dòng trống cuối
-      if (!newData[newData.length - 1] || Object.values(newData[newData.length - 1]).some(x => x)) {
-        newData.push({});
-      }
-
-      hot.loadData(newData);
 
       alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
     }
