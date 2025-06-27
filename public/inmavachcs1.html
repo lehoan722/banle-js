@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <title>In Tem QR - Giấy TOMY 108</title>
-    <script type="module" src="./scripts/supabaseClient.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -1021,21 +1021,20 @@
                 }
             });
         });
+        
+        
+        // Đăng nhập xong reload lại để token cập nhật
+        import { renderLoginModule } from './scripts/loginSupabaseModule.js';
+        renderLoginModule({
+            supabaseUrl,
+            supabaseKey,
+            onLoginSuccess: (accessToken) => {
+                window.location.reload(); // Đăng nhập xong reload lại để token cập nhật
+            }
+        });
 
 
     </script>
-    <script type="module">
-import { renderLoginModule } from './scripts/loginSupabaseModule.js';
-
-renderLoginModule({
-    supabaseUrl,
-    supabaseKey,
-    onLoginSuccess: (accessToken) => {
-        // Có thể reload lại trang để supabase client nhận token mới
-        window.location.reload();
-    }
-});
-</script>
 
 </body>
 
