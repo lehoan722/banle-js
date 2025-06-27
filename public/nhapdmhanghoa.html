@@ -206,12 +206,7 @@
 
     async function uploadToSupabase() {
       const rawData = hot.getData();
-      const headers = columns.map(c => c.data);
-      const data = rawData.map(row => {
-        const obj = {};
-        headers.forEach((key, i) => obj[key] = row[i]);
-        return obj;
-      }).filter(r => r.masp && r.masp.toString().trim() !== "");
+      const data = rawData.filter(r => r.masp && r.masp.toString().trim() !== "");
 
       if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
 
