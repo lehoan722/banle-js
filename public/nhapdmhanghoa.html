@@ -65,7 +65,7 @@
   <div id="hot" style="margin-top:20px;"></div>
   <div id="preview" style="margin-top:20px;"></div>
 
-  <script>
+  <script>    
     const TABLE_NAME = 'dmhanghoa';
 
     const columns = [
@@ -205,8 +205,13 @@
 
 
     async function uploadToSupabase() {
-      const data = hot.getData().filter(r => r.masp && r.masp.toString().trim() !== "");
-
+      const rawData = hot.getData();
+      const headers = columns.map(c => c.data);
+      const data = rawData.map(row => {
+        const obj = {};
+        headers.forEach((key, i) => obj[key] = row[i]);
+        return obj;
+      }).filter(r => r.masp && r.masp.toString().trim() !== "");
 
       if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
 
@@ -276,20 +281,20 @@
     }
 
     async function kiemTraTuSupabase() {
-      const allDataRaw = hot.getData();
-      // Tạo bản sao để load lại không bị mất dữ liệu
-      const allData = allDataRaw.map(row => ({ ...row }));
-      if (!Array.isArray(allData) || !allData.length) return alert("Không có dữ liệu để kiểm tra.");
+      const allData = hot.getData();
+      const maspIndex = columns.findIndex(c => c.data === 'masp');
+      if (maspIndex === -1) return alert("Không tìm thấy cột mã sản phẩm!");
 
       // 1. Lấy danh sách mã sản phẩm duy nhất, bỏ rỗng
       const maspList = Array.from(
         new Set(
           allData
-            .map(row => row.masp)
+            .map(row => row[maspIndex])
             .filter(m => m && typeof m === 'string' && m.trim() !== '')
             .map(m => m.trim().toUpperCase())
         )
       );
+
       if (maspList.length === 0) {
         return alert("Không có mã sản phẩm nào để kiểm tra.");
       }
@@ -307,28 +312,28 @@
         return alert("Không thể lấy dữ liệu từ Supabase.");
       }
 
-      // 3. Map lại dữ liệu mới theo từng dòng
+      // 3. Dò lại dữ liệu và cập nhật theo batch
       const dataMap = {};
       serverData.forEach(item => dataMap[item.masp.toUpperCase()] = item);
 
-      // 4. Cập nhật từng dòng trong allData (giữ nguyên masp)
-      allData.forEach(row => {
-        const masp = row.masp;
-        if (!masp) return;
-        const fresh = dataMap[masp.toUpperCase()];
-        if (!fresh) return;
-        Object.keys(fresh).forEach(key => {
-          if (key !== 'masp' && fresh[key] !== undefined) {
-            row[key] = fresh[key];
-          }
+      hot.batch(() => {
+        allData.forEach((row, rowIndex) => {
+          const masp = row[maspIndex];
+          if (!masp) return;
+
+          const fresh = dataMap[masp.toUpperCase()];
+          if (!fresh) return;
+
+          columns.forEach((col, colIndex) => {
+            const field = col.data;
+            if (field === 'masp') return; // không thay mã sản phẩm
+            hot.setDataAtCell(rowIndex, colIndex, fresh[field] ?? null);
+          });
         });
       });
 
-      hot.loadData(allData);
-
       alert("✅ Đã cập nhật dữ liệu từ Supabase cho các mã sản phẩm.");
     }
-
 
 
 
