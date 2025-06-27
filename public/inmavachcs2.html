@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <title>In Tem QR - Giấy TOMY 108</title>
-    <script type="module" src="./scripts/supabaseClient.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -301,6 +301,16 @@
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
+                <!-- MODULE ĐĂNG NHẬP SUPABASE -->
+                <div id="loginModule" style="display:inline-block; margin-left:16px;">
+                    <input id="login-email" type="email" placeholder="Email Supabase"
+                        style="width:130px;margin-right:2px;">
+                    <input id="login-password" type="password" placeholder="Mật khẩu"
+                        style="width:110px;margin-right:2px;">
+                    <button id="login-submit" class="btn">Đăng nhập</button>
+                    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b"></span>
+                </div>
+
 
 
             </div>
@@ -602,10 +612,10 @@
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
         column-gap: 5mm;
-        row-gap: 1.5mm;
+        row-gap: 1.5mm;        
     ">`;
 
-            // Blank cho trang đầu
+            // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
@@ -718,7 +728,7 @@
         }
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['masp', 'tensp', 'nhacc', 'chungloai'];
+        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         async function loadDropdownOptions() {
@@ -774,6 +784,7 @@
         // ==== Nút Thêm mới ====
         document.getElementById('resetFormBtn').onclick = function () {
             resetForm(false);
+            document.getElementById('maspInput').focus();  // <== Tự động focus lại
         };
 
         function resetForm(keepMasp = false) {
@@ -845,14 +856,37 @@
 
             let res, errorMsg;
             if (isEditMode) {
-                // Update
+                // Trường hợp đang sửa sản phẩm đã tồn tại
+                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
+                if (!userConfirm) {
+                    document.getElementById('addProductMessage').style.color = 'orange';
+                    document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
+                    return;
+                }
+
+                // Tiếp tục cập nhật nếu người dùng xác nhận
                 res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
                 if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
             } else {
+                // Kiểm tra trùng mã sản phẩm trước khi thêm
+                const { data: maspCheck, error: checkError } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp')
+                    .eq('masp', data.masp)
+                    .maybeSingle();
+
+                if (maspCheck) {
+                    document.getElementById('addProductMessage').style.color = 'red';
+                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại. Không thể thêm mới.`;
+                    return;
+                }
+
                 // Insert mới
                 res = await supabase.from('dmhanghoa').insert([data]);
                 if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
             }
+
+
 
             if (errorMsg) {
                 document.getElementById('addProductMessage').textContent = errorMsg;
@@ -864,6 +898,7 @@
             document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
             // Reset lại form theo giữ lại trường
             resetForm();
+            document.getElementById('maspInput').focus();  // <== Tự động focus lại
             // Load lại dropdown option (nếu có giá trị mới)
             loadDropdownOptions();
             // Reload danh sách sản phẩm panel tìm kiếm để có thể in mã vạch mới ngay
@@ -986,9 +1021,21 @@
                 }
             });
         });
+        
+        
+        // Đăng nhập xong reload lại để token cập nhật
+        import { renderLoginModule } from './scripts/loginSupabaseModule.js';
+        renderLoginModule({
+            supabaseUrl,
+            supabaseKey,
+            onLoginSuccess: (accessToken) => {
+                window.location.reload(); // Đăng nhập xong reload lại để token cập nhật
+            }
+        });
 
 
     </script>
+
 </body>
 
 </html>
