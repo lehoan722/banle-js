@@ -185,12 +185,25 @@
       });
 
       // 6. Tạo bảng kết quả
+        // dinh dang ngay gio truoc
+      function dinhDangNgayGio(ngayStr) {
+        if (!ngayStr) return "";
+        const d = new Date(ngayStr);
+        // Lấy từng thành phần
+        const ngay = d.getDate().toString().padStart(2, "0");
+        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+        const nam = d.getFullYear();
+        const gio = d.getHours().toString().padStart(2, "0");
+        const phut = d.getMinutes().toString().padStart(2, "0");
+        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+      }
+
       filtered.forEach(hd => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
       <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
       <td>${hd.sohd}</td>
-      <td>${hd.ngay}</td>
+      <td>${dinhDangNgayGio(hd.ngay)}</td>
       <td>${hd.tennv}</td>
       <td>${hd.khachhang}</td>
       <td>${hd.tongsl || 0}</td>
