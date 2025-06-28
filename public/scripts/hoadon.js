@@ -5,7 +5,11 @@ import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
 export let bangKetQua = {};
-window.maspCuoiCung = null; // Lưu trạng thái mã sản phẩm cuối cùng vừa nhập thành công
+window.maspCuoiCung = null;         // Lưu trạng thái mã sản phẩm cuối cùng vừa nhập thành công
+window.sanPhamData = window.sanPhamData || {};  // Đảm bảo cache luôn có
+window.danhMucSize = window.danhMucSize || ["0", "38", "39", "40", "41", "42", "43", "44", "45"]; // Ví dụ mặc định
+
+
 
 // Trong hoadon.js
 let maspDangChon = null;
@@ -21,20 +25,20 @@ export function getMaspspDangChon() {
 export async function chuyenFocus(e) {
   if (e.key !== "Enter") return;
 
-  // Chặn mọi sự kiện gốc tiếp tục
+  // Chặn mọi event "dội" tiếp theo (bảo vệ khỏi double event)
   if (e.preventDefault) e.preventDefault();
   if (e.stopPropagation) e.stopPropagation();
 
-  const nhapNhanh = document.getElementById("nhapnhanh").checked;
-  const size45 = document.getElementById("size45").checked;
+  const nhapNhanh = document.getElementById("nhapnhanh")?.checked;
+  const size45 = document.getElementById("size45")?.checked;
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
     const tenTrang = window.location.pathname.split('/').pop().replace('.html', '');
     const laTrangNhapNhanh = ['nhapmoi', 'ccn1v2', 'ccn2v1'].includes(tenTrang);
-    const danhSachSizeNhanh = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+    const danhSachSizeNhanh = window.danhMucSize.map(x => String(x)); // Đảm bảo là chuỗi
 
-    // Xử lý nhập size nhanh
+    // ====== NHẬP SIZE NHANH ======
     if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
       if (window.maspCuoiCung && window.maspCuoiCung.masp) {
         const maspTruoc = window.maspCuoiCung.masp;
@@ -42,7 +46,7 @@ export async function chuyenFocus(e) {
         document.getElementById("size").value = maspVal;
         document.getElementById("soluong").value = 1;
 
-        themVaoBang(maspVal, maspTruoc); // truyền mã sản phẩm chắc chắn là mã cũ
+        themVaoBang(maspVal, maspTruoc); // forcedSize, forcedMasp
 
         setTimeout(() => {
           document.getElementById("masp").value = "";
@@ -56,17 +60,14 @@ export async function chuyenFocus(e) {
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
       }
-      return;
+      return; // Không cho chạy xuống dưới nữa
     }
 
-
-    // Xử lý nhập mã sản phẩm bình thường
+    // ====== NHẬP MÃ SẢN PHẨM BÌNH THƯỜNG ======
     const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
-
     if (thanhCong) {
       window.maspCuoiCung = { masp: maspVal };
     }
-
     if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
       moPopupTimMaSanPham();
     }
@@ -77,6 +78,7 @@ export async function chuyenFocus(e) {
     themVaoBang();
   }
 }
+
 
 
 
@@ -173,7 +175,7 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
   // --- Kiểm tra trạng thái bán siêu nhanh ---
   const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
 
-  // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
+  // ==== KIỂM TRA SIZE HỢP LỆ (TRỪ bán siêu nhanh) ====
   if (!banSieuNhanh) {
     if (!masp || !size || !sp) {
       alert("Phải nhập size hợp lệ cho sản phẩm.");
@@ -196,7 +198,7 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
   // ==== END KIỂM TRA ====
 
   const gia = parseFloat(document.getElementById("gia").value) || 0;
-  let km = tinhKhuyenMai(sp, gia);
+  let km = typeof tinhKhuyenMai === "function" ? tinhKhuyenMai(sp, gia) : 0;
 
   const key = masp;
   const bang = bangKetQua[key] || {
@@ -207,7 +209,7 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
     tong: 0,
     gia,
     km,
-    dvt: ""
+    dvt: sp.dvt || ""
   };
 
   const index = bang.sizes.indexOf(size);
@@ -221,13 +223,14 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
   bang.tong += soluong;
   bangKetQua[key] = bang;
 
-  capNhatBangHTML(bangKetQua);
+  if (typeof capNhatBangHTML === "function") capNhatBangHTML(bangKetQua);
 
-  // CHỈ reset toàn bộ form khi KHÔNG phải nhập size nhanh
+  // Chỉ reset toàn bộ form khi KHÔNG nhập size nhanh
   if (!forcedSize) {
-    resetFormBang();
+    if (typeof resetFormBang === "function") resetFormBang();
   }
 }
+
 
 
 
