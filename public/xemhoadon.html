@@ -62,6 +62,7 @@
   <label>Tiền từ: <input type="number" id="tienTu" style="width:80px"></label>
   <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
   <label>Số HĐ: <input type="text" id="locSoHD"></label>
+
   <label>Loại chứng từ:</label>
   <select id="loaiChungTu" multiple style="min-width:140px;">
     <option value="bancs1">bancs1</option>
@@ -72,17 +73,20 @@
     <option value="ccn2v1">ccn2v1</option>
   </select>
 
+  <label>
+    Xem tổng hợp:
+    <select id="loaiTongHop" style="min-width:120px">
+      <option value="chitiet">Chi tiết từng hóa đơn</option>
+      <option value="ngay">Tổng hợp theo ngày</option>
+      <option value="thang">Tổng hợp theo tháng</option>
+      <option value="nam">Tổng hợp theo năm</option>
+    </select>
+  </label>
+
+
+
   <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
   <button onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
-
-  <table id="tongTable" class="tbl" style="margin-top:6px;width:99%">
-    <tr style="font-weight:bold;background:#f8f8f8">
-      <td colspan="4">Tổng</td>
-      <td id="tongSoLuong"></td>
-      <td id="tongTien"></td>
-      <td colspan="2"></td>
-    </tr>
-  </table>
 
   <table>
     <thead>
@@ -144,6 +148,9 @@
       const selectLoai = document.getElementById("loaiChungTu");
       const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
 
+      // Lấy giá trị tổng hợp
+      const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+
       // 2. Tạo truy vấn Supabase
       let query = supabase
         .from('hoadon_banle')
@@ -154,7 +161,6 @@
       if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
       else if (tuNgay) query = query.gte('created_at', tuNgay);
       else if (denNgay) query = query.lte('created_at', denNgay);
-
 
       if (nv) query = query.ilike('tennv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -174,25 +180,51 @@
       let filtered = data;
       if (loaiChungTuArr.length > 0) {
         filtered = data.filter(hd => {
-          // lấy tiền tố sohd, ví dụ "bancs1" trong "bancs1_00123"
           const loai = hd.sohd.split("_")[0];
           return loaiChungTuArr.includes(loai);
         });
       }
 
-      // 5. Tính tổng số lượng và tổng tiền
-      let tongSL = 0, tongTien = 0;
-      filtered.forEach(hd => {
-        tongSL += Number(hd.tongsl || 0);
-        tongTien += Number(hd.thanhtoan || 0);
-      });
+      // 5. Xử lý tổng hợp nếu không phải chi tiết
+      let hienThiData = filtered;
+      if (loaiTongHop !== "chitiet") {
+        const groupMap = new Map();
+        filtered.forEach(hd => {
+          // Key nhóm
+          const d = new Date(hd.created_at);
+          let key = "";
+          if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+          if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+          if (loaiTongHop === "nam") key = d.getFullYear() + "";
+          if (!groupMap.has(key)) {
+            groupMap.set(key, {
+              sohd: 1,
+              created_at: hd.created_at,
+              tongsl: Number(hd.tongsl || 0),
+              thanhtoan: Number(hd.thanhtoan || 0)
+            });
+          } else {
+            let obj = groupMap.get(key);
+            obj.sohd += 1;
+            obj.tongsl += Number(hd.tongsl || 0);
+            obj.thanhtoan += Number(hd.thanhtoan || 0);
+          }
+        });
+        hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
+          // Định dạng lại ngày/tháng/năm để hiển thị
+          if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+          if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
+          if (loaiTongHop === "nam") val.created_at = key;
+          return val;
+        });
+      }
 
-      // 6. Tạo bảng kết quả
-      // dinh dang ngay gio truoc
+      // 6. Hàm định dạng ngày giờ cũ
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
+        // Nếu chuỗi có dạng dd/mm/yyyy thì giữ nguyên
+        if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
         const d = new Date(ngayStr);
-        // Lấy từng thành phần
         const ngay = d.getDate().toString().padStart(2, "0");
         const thang = (d.getMonth() + 1).toString().padStart(2, "0");
         const nam = d.getFullYear();
@@ -201,25 +233,31 @@
         return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
       }
 
-      filtered.forEach(hd => {
+      // 7. Hiển thị ra bảng
+      hienThiData.forEach(hd => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
-      <td>${hd.sohd}</td>
-      <td>${dinhDangNgayGio(hd.created_at)}</td>      
-      <td>${hd.tennv}</td>
-      <td>${hd.khachhang}</td>
+      <td></td>
+      <td>${hd.sohd || hd.sohd}</td>
+      <td>${dinhDangNgayGio(hd.created_at)}</td>
+      <td></td>
+      <td></td>
       <td>${hd.tongsl || 0}</td>
       <td>${hd.thanhtoan?.toLocaleString()}</td>
-      <td>${hd.ghichu || ""}</td>
+      <td></td>
     `;
         tr.onclick = (e) => {
-          if (e.target.tagName !== 'INPUT') xemChiTiet(hd.sohd);
+          if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") xemChiTiet(hd.sohd);
         };
         tbody.appendChild(tr);
       });
 
-      // 7. Thêm dòng tổng cuối bảng
+      // 8. Thêm dòng tổng cuối bảng
+      let tongSL = 0, tongTien = 0;
+      hienThiData.forEach(hd => {
+        tongSL += Number(hd.tongsl || 0);
+        tongTien += Number(hd.thanhtoan || 0);
+      });
       const trTong = document.createElement("tr");
       trTong.style.fontWeight = "bold";
       trTong.style.background = "#f8f8f8";
@@ -231,7 +269,6 @@
   `;
       tbody.appendChild(trTong);
     }
-
 
 
 
@@ -288,6 +325,8 @@
       document.getElementById('denNgay').value = today;
       taiDanhSachHoaDon();
     };
+
+    document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
 
 
   </script>
