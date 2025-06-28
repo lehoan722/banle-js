@@ -30,29 +30,34 @@ export async function chuyenFocus(e) {
     const laTrangNhapNhanh = ['nhapmoi', 'ccn1v2', 'ccn2v1'].includes(tenTrang);
     const danhSachSizeNhanh = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
 
+    // Xử lý nhập size nhanh
     if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
       if (window.maspCuoiCung && window.maspCuoiCung.masp) {
+        // Gán lại mã sản phẩm cũ, set size mới và số lượng = 1
         document.getElementById("masp").value = window.maspCuoiCung.masp;
         document.getElementById("size").value = maspVal;
         document.getElementById("soluong").value = 1;
 
         themVaoBang(maspVal);
 
+        // Sau khi thêm, xóa sạch input & focus lại
         setTimeout(() => {
           document.getElementById("masp").value = "";
           document.getElementById("size").value = "";
           document.getElementById("soluong").value = 1;
           document.getElementById("masp").focus();
           document.getElementById("masp").select();
-        }, 0);
+        }, 50); // Để 50ms cho chắc chắn không double event
+
       } else {
         alert("Bạn cần nhập mã sản phẩm trước khi nhập size!");
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
       }
-      return;
+      return false; // DỪNG LUÔN! KHÔNG GỌI XU LY MA SAN PHAM NỮA
     }
 
+    // Xử lý nhập mã sản phẩm bình thường
     const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
 
     if (thanhCong) {
@@ -69,6 +74,7 @@ export async function chuyenFocus(e) {
     themVaoBang();
   }
 }
+
 
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
