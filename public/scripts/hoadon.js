@@ -37,31 +37,28 @@ export async function chuyenFocus(e) {
     // Xử lý nhập size nhanh
     if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
       if (window.maspCuoiCung && window.maspCuoiCung.masp) {
-        // 1. Lấy đúng mã sp cũ
         const maspTruoc = window.maspCuoiCung.masp;
-        // 2. Đặt lại input masp = mã sản phẩm đúng trước khi gọi themVaoBang
         document.getElementById("masp").value = maspTruoc;
         document.getElementById("size").value = maspVal;
         document.getElementById("soluong").value = 1;
 
-        // 3. Gọi themVaoBang với forcedSize (size = maspVal), lúc này input masp chắc chắn đã là mã sản phẩm thực
-        themVaoBang(maspVal);
+        themVaoBang(maspVal, maspTruoc); // truyền mã sản phẩm chắc chắn là mã cũ
 
-        // 4. Reset sau cùng
         setTimeout(() => {
           document.getElementById("masp").value = "";
           document.getElementById("size").value = "";
           document.getElementById("soluong").value = 1;
           document.getElementById("masp").focus();
           document.getElementById("masp").select();
-        }, 0); // Đặt timeout 0ms là tốt nhất, không cần 50ms
+        }, 0);
       } else {
         alert("Bạn cần nhập mã sản phẩm trước khi nhập size!");
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
       }
-      return; // PHẢI là return; để dừng mọi event
+      return;
     }
+
 
     // Xử lý nhập mã sản phẩm bình thường
     const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
@@ -162,9 +159,10 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
 
 
-export function themVaoBang(forcedSize = null) {
-  const masp = document.getElementById("masp").value.trim().toUpperCase();
-  const size = forcedSize || document.getElementById("size").value.trim();
+export function themVaoBang(forcedSize = null, forcedMasp = null) {
+  const masp = (forcedMasp !== null && forcedMasp !== undefined)
+    ? forcedMasp.trim().toUpperCase()
+    : document.getElementById("masp").value.trim().toUpperCase();
   const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
   const sp = window.sanPhamData?.[masp];
