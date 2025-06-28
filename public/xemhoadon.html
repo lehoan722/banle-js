@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Xem Hóa Đơn Bán Lẻ</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+      cursor: pointer;
+    }
+
+    input,
+    select {
+      margin: 4px;
+      padding: 6px;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 10%;
+      width: 80%;
+      height: 70%;
+      background: #fff;
+      border: 1px solid #888;
+      overflow: auto;
+      padding: 20px;
+      z-index: 9999;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
+
+
+  <label>Từ ngày: <input type="date" id="tuNgay"></label>
+  <label>Đến ngày: <input type="date" id="denNgay"></label>
+  <label>Nhân viên: <input type="text" id="locNV"></label>
+  <label>Khách hàng: <input type="text" id="locKhach"></label>
+  <label>Tiền từ: <input type="number" id="tienTu" style="width:80px"></label>
+  <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
+  <label>Số HĐ: <input type="text" id="locSoHD"></label>
+  <label>Loại chứng từ:</label>
+  <select id="loaiChungTu" multiple style="min-width:140px;">
+    <option value="bancs1">bancs1</option>
+    <option value="bancs2">bancs2</option>
+    <option value="nmcs1">nmcs1</option>
+    <option value="nmcs2">nmcs2</option>
+    <option value="ccn1v2">ccn1v2</option>
+    <option value="ccn2v1">ccn2v1</option>
+  </select>
+
+  <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
+  <button onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button> 
+
+  <table>
+    <thead>
+      <thead>
+        <tr>
+          <th>✔️</th>
+          <th>Số HĐ</th>
+          <th>Ngày</th>
+          <th>NV</th>
+          <th>Khách</th>
+          <th>Tổng SL</th>
+          <th>TT</th>
+          <th>Ghi chú</th>
+        </tr>
+      </thead>
+
+    </thead>
+    <tbody id="dsHoaDon"></tbody>
+  </table>
+
+
+  <div id="popup">
+    <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Mã SP</th>
+          <th>Tên SP</th>
+          <th>Size</th>
+          <th>SL</th>
+          <th>Giá</th>
+          <th>KM</th>
+          <th>Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody id="ctHoaDon"></tbody>
+    </table>
+    <button onclick="dongPopup()">Đóng</button>
+  </div>
+
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://rddjrmbyftlcvrgzlyby.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+    );
+
+    async function taiDanhSachHoaDon() {
+      // 1. Lấy các giá trị lọc từ giao diện
+      const tuNgay = document.getElementById("tuNgay").value;
+      let denNgay = document.getElementById("denNgay").value;
+      if (denNgay) denNgay = denNgay + "T23:59:59.999"; // Thêm cuối ngày cho đến ngày
+
+      const nv = document.getElementById("locNV").value.trim().toUpperCase();
+      const sohd = document.getElementById("locSoHD").value.trim();
+      const khach = document.getElementById("locKhach").value.trim();
+      const tienTu = Number(document.getElementById("tienTu").value);
+      const tienDen = Number(document.getElementById("tienDen").value);
+
+      const selectLoai = document.getElementById("loaiChungTu");
+      const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+
+      // 2. Tạo truy vấn Supabase
+      let query = supabase
+        .from('hoadon_banle')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+      else if (tuNgay) query = query.gte('created_at', tuNgay);
+      else if (denNgay) query = query.lte('created_at', denNgay);
+
+
+      if (nv) query = query.ilike('tennv', `%${nv}%`);
+      if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+      if (khach) query = query.ilike('khachhang', `%${khach}%`);
+      if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+      if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+      // 3. Nhận dữ liệu
+      const { data, error } = await query;
+      const tbody = document.getElementById("dsHoaDon");
+      tbody.innerHTML = "";
+
+      if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+      if (!data.length) return tbody.innerHTML = `<tr><td colspan="8">Không có dữ liệu</td></tr>`;
+
+      // 4. Lọc theo loại chứng từ (nếu người dùng có chọn)
+      let filtered = data;
+      if (loaiChungTuArr.length > 0) {
+        filtered = data.filter(hd => {
+          // lấy tiền tố sohd, ví dụ "bancs1" trong "bancs1_00123"
+          const loai = hd.sohd.split("_")[0];
+          return loaiChungTuArr.includes(loai);
+        });
+      }
+
+      // 5. Tính tổng số lượng và tổng tiền
+      let tongSL = 0, tongTien = 0;
+      filtered.forEach(hd => {
+        tongSL += Number(hd.tongsl || 0);
+        tongTien += Number(hd.thanhtoan || 0);
+      });
+
+      // 6. Tạo bảng kết quả
+      // dinh dang ngay gio truoc
+      function dinhDangNgayGio(ngayStr) {
+        if (!ngayStr) return "";
+        const d = new Date(ngayStr);
+        // Lấy từng thành phần
+        const ngay = d.getDate().toString().padStart(2, "0");
+        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+        const nam = d.getFullYear();
+        const gio = d.getHours().toString().padStart(2, "0");
+        const phut = d.getMinutes().toString().padStart(2, "0");
+        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+      }
+
+      filtered.forEach(hd => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
+      <td>${hd.sohd}</td>
+      <td>${dinhDangNgayGio(hd.created_at)}</td>      
+      <td>${hd.tennv}</td>
+      <td>${hd.khachhang}</td>
+      <td>${hd.tongsl || 0}</td>
+      <td>${hd.thanhtoan?.toLocaleString()}</td>
+      <td>${hd.ghichu || ""}</td>
+    `;
+        tr.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT') xemChiTiet(hd.sohd);
+        };
+        tbody.appendChild(tr);
+      });
+
+      // 7. Thêm dòng tổng cuối bảng
+      const trTong = document.createElement("tr");
+      trTong.style.fontWeight = "bold";
+      trTong.style.background = "#f8f8f8";
+      trTong.innerHTML = `
+    <td colspan="5" style="text-align:right">TỔNG</td>
+    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+    <td id="tongTien">${tongTien.toLocaleString()}</td>
+    <td></td>
+  `;
+      tbody.appendChild(trTong);
+    }
+
+
+    async function xemChiTiet(sohd) {
+      document.getElementById("popup").style.display = "block";
+      document.getElementById("sohdCT").textContent = sohd;
+      const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+      const tbody = document.getElementById("ctHoaDon");
+      tbody.innerHTML = "";
+      if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+      data.forEach(row => {
+        const tt = (row.gia - row.km) * row.soluong;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    async function xoaHoaDonDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+
+      if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+      if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
+
+      // Xóa khỏi ct_hoadon_banle trước
+      const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
+      if (errCT) {
+        console.error("❌ Lỗi xóa chi tiết:", errCT.message);
+        return alert("Không thể xóa chi tiết hóa đơn.");
+      }
+
+      // Sau đó xóa khỏi hoadon_banle
+      const { error: errHD } = await supabase.from('hoadon_banle').delete().in('sohd', sohdList);
+      if (errHD) {
+        console.error("❌ Lỗi xóa hóa đơn:", errHD.message);
+        return alert("Không thể xóa hóa đơn.");
+      }
+
+      alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+      taiDanhSachHoaDon();
+    }
+
+
+    window.onload = function () {
+      // Set ngày mặc định là hôm nay
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('tuNgay').value = today;
+      document.getElementById('denNgay').value = today;
+      taiDanhSachHoaDon();
+    };
+
+
+  </script>
+</body>
+
+</html>
