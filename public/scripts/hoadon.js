@@ -34,10 +34,15 @@ export async function chuyenFocus(e) {
 
     if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
       if (window.maspCuoiCung && window.maspCuoiCung.masp) {
+        // Thêm dòng mới với mã cuối cùng và size vừa nhập
         document.getElementById("masp").value = window.maspCuoiCung.masp;
         document.getElementById("size").value = maspVal;
         document.getElementById("soluong").value = 1;
         themVaoBang(maspVal);
+        // Reset lại chỉ riêng ô mã sản phẩm để chờ nhập size tiếp
+        document.getElementById("masp").value = ""; // <--- CHÚ Ý DÒNG NÀY
+        document.getElementById("size").value = "";
+        document.getElementById("soluong").value = 1;
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
       } else {
@@ -50,6 +55,15 @@ export async function chuyenFocus(e) {
 
     // Trường hợp nhập mã sản phẩm như cũ
     const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
+
+    // Nếu nhập mã thành công thì cập nhật window.maspCuoiCung
+    if (thanhCong) {
+      window.maspCuoiCung = {
+        masp: maspVal,
+        // Bạn có thể thêm các trường khác nếu muốn nhớ
+      };
+    }
+
     // Nếu không thành công, mới mở popup tìm mã
     if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
       moPopupTimMaSanPham();
@@ -60,6 +74,7 @@ export async function chuyenFocus(e) {
     themVaoBang();
   }
 }
+
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   maspVal = maspVal.toUpperCase().trim();
