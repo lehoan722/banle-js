@@ -10,7 +10,6 @@ window.sanPhamData = window.sanPhamData || {};  // Đảm bảo cache luôn có
 window.danhMucSize = window.danhMucSize || ["0", "38", "39", "40", "41", "42", "43", "44", "45"]; // Ví dụ mặc định
 
 
-
 // Trong hoadon.js
 let maspDangChon = null;
 export function setMaspspDangChon(obj) {
@@ -19,7 +18,6 @@ export function setMaspspDangChon(obj) {
 export function getMaspspDangChon() {
   return maspDangChon;
 }
-
 
 
 export async function chuyenFocus(e) {
@@ -80,56 +78,57 @@ export async function chuyenFocus(e) {
 }
 
 
-
-
-async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
+export async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
+  // Chuẩn hóa mã sản phẩm
   maspVal = maspVal.toUpperCase().trim();
+  if (!maspVal) return false;
+
+  // 1. Tìm trong cache trước
   let spData = window.sanPhamData?.[maspVal];
 
-  // Nếu không có trong cache, gọi Supabase để tìm chính xác
+  // 2. Nếu chưa có, fetch từ Supabase
   if (!spData) {
-    const { data, error } = await supabase
-      .from("dmhanghoa")
-      .select("*")
-      .eq("masp", maspVal)
-      .single();
-
-    if (data) {
-      spData = data;
-      window.sanPhamData[maspVal] = data; // cache lại
+    try {
+      const { data, error } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", maspVal)
+        .single();
+      if (error) throw error;
+      if (data) {
+        spData = data;
+        window.sanPhamData[maspVal] = data; // cache lại
+      }
+    } catch (err) {
+      spData = null;
     }
   }
 
-  // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
+  // 3. Không tìm thấy thì mở popup tìm mã
   if (!spData) {
-    if (typeof moBangDanhMucHangHoa === "function") {
-      moBangDanhMucHangHoa(maspVal);
-    }
+    if (typeof moBangDanhMucHangHoa === "function") moBangDanhMucHangHoa(maspVal);
     return false;
   }
 
-  // ==== ⚡️ THÊM XỬ LÝ BÁN SIÊU NHANH Ở ĐÂY ====
+  // 4. Xử lý bán siêu nhanh (tự động ghi size=0, số lượng=1, thêm luôn)
   const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
   if (banSieuNhanh) {
     document.getElementById("soluong").value = "1";
-    document.getElementById("size").value = "0"; // size rỗng
-    themVaoBang(""); // Bỏ qua kiểm tra size, số lượng
+    document.getElementById("size").value = "0";
+    themVaoBang("0", maspVal); // size = 0, masp ép buộc
     document.getElementById("masp").focus();
     document.getElementById("masp").select();
-    return true; // Không chạy các logic kiểm tra khác nữa!
+    return true;
   }
-  // ==== ⚡️ END ====
 
-  // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
+  // 5. Gán thông tin sản phẩm vào form
   document.getElementById("gia").value = spData.giale || "";
   document.getElementById("khuyenmai").value = spData.khuyenmai || "";
-
-  const cs = document.getElementById("diadiem").value;
+  const cs = document.getElementById("diadiem")?.value;
   const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
-  document.getElementById("vitri").value = vitri || "";
+  if (document.getElementById("vitri")) document.getElementById("vitri").value = vitri || "";
 
-  // ... Các xử lý logic size45, nhập nhanh cũ giữ nguyên ...
-  // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
+  // 6. Xử lý riêng với sản phẩm giày dép khi bật size45: BẮT BUỘC nhập size
   if (
     size45 &&
     spData.chungloai &&
@@ -138,26 +137,31 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     const sizeInput = document.getElementById("size");
     if (!sizeInput.value.trim()) {
       sizeInput.focus();
-      return true; // Dừng lại, không tự thêm vào bảng
+      return true; // Dừng, chờ người dùng nhập size
     }
     document.getElementById("soluong").value = "1";
-    themVaoBang(sizeInput.value.trim());
+    themVaoBang(sizeInput.value.trim(), maspVal); // truyền size, masp ép buộc
     return true;
   }
 
-  // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
+  // 7. Nếu là nhập size45 nhưng KHÔNG phải giày dép: mặc định size=0, số lượng=1, thêm luôn
   if (size45) {
     document.getElementById("soluong").value = "1";
-    themVaoBang("0");
-  } else {
-    const nextId = nhapNhanh ? "size" : "soluong";
-    const nextInput = document.getElementById(nextId);
+    themVaoBang("0", maspVal);
+    return true;
+  }
+
+  // 8. Nếu là nhập nhanh: focus sang ô size, còn lại: focus sang ô số lượng
+  const nextId = nhapNhanh ? "size" : "soluong";
+  const nextInput = document.getElementById(nextId);
+  if (nextInput) {
     nextInput.focus();
     if (nextId === "soluong") nextInput.select();
   }
 
   return true;
 }
+
 
 
 
@@ -230,9 +234,6 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
     if (typeof resetFormBang === "function") resetFormBang();
   }
 }
-
-
-
 
 
 
