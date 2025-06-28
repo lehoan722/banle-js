@@ -37,19 +37,24 @@ export async function chuyenFocus(e) {
     // Xử lý nhập size nhanh
     if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
       if (window.maspCuoiCung && window.maspCuoiCung.masp) {
-        document.getElementById("masp").value = window.maspCuoiCung.masp;
+        // 1. Lấy đúng mã sp cũ
+        const maspTruoc = window.maspCuoiCung.masp;
+        // 2. Đặt lại input masp = mã sản phẩm đúng trước khi gọi themVaoBang
+        document.getElementById("masp").value = maspTruoc;
         document.getElementById("size").value = maspVal;
         document.getElementById("soluong").value = 1;
 
+        // 3. Gọi themVaoBang với forcedSize (size = maspVal), lúc này input masp chắc chắn đã là mã sản phẩm thực
         themVaoBang(maspVal);
 
+        // 4. Reset sau cùng
         setTimeout(() => {
           document.getElementById("masp").value = "";
           document.getElementById("size").value = "";
           document.getElementById("soluong").value = 1;
           document.getElementById("masp").focus();
           document.getElementById("masp").select();
-        }, 50);
+        }, 0); // Đặt timeout 0ms là tốt nhất, không cần 50ms
       } else {
         alert("Bạn cần nhập mã sản phẩm trước khi nhập size!");
         document.getElementById("masp").focus();
