@@ -5,7 +5,6 @@ import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
 export let bangKetQua = {};
-window.maspCuoiCung = null; // Lưu trạng thái mã sản phẩm cuối cùng vừa nhập thành công
 
 // Trong hoadon.js
 let maspDangChon = null;
@@ -21,64 +20,23 @@ export function getMaspspDangChon() {
 export async function chuyenFocus(e) {
   if (e.key !== "Enter") return;
 
-  // Chặn mọi sự kiện gốc tiếp tục
-  if (e.preventDefault) e.preventDefault();
-  if (e.stopPropagation) e.stopPropagation();
-
   const nhapNhanh = document.getElementById("nhapnhanh").checked;
   const size45 = document.getElementById("size45").checked;
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-    const tenTrang = window.location.pathname.split('/').pop().replace('.html', '');
-    const laTrangNhapNhanh = ['nhapmoi', 'ccn1v2', 'ccn2v1'].includes(tenTrang);
-    const danhSachSizeNhanh = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-
-    // Xử lý nhập size nhanh
-    if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
-      if (window.maspCuoiCung && window.maspCuoiCung.masp) {
-        const maspTruoc = window.maspCuoiCung.masp;
-        document.getElementById("masp").value = maspTruoc;
-        document.getElementById("size").value = maspVal;
-        document.getElementById("soluong").value = 1;
-
-        themVaoBang(maspVal, maspTruoc); // truyền mã sản phẩm chắc chắn là mã cũ
-
-        setTimeout(() => {
-          document.getElementById("masp").value = "";
-          document.getElementById("size").value = "";
-          document.getElementById("soluong").value = 1;
-          document.getElementById("masp").focus();
-          document.getElementById("masp").select();
-        }, 0);
-      } else {
-        alert("Bạn cần nhập mã sản phẩm trước khi nhập size!");
-        document.getElementById("masp").focus();
-        document.getElementById("masp").select();
-      }
-      return;
-    }
-
-
-    // Xử lý nhập mã sản phẩm bình thường
     const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
 
-    if (thanhCong) {
-      window.maspCuoiCung = { masp: maspVal };
-    }
-
+    // Nếu không thành công, mới mở popup tìm mã
     if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
       moPopupTimMaSanPham();
     }
-  }
-  else if (e.target.id === "soluong") {
+  } else if (e.target.id === "soluong") {
     document.getElementById("size").focus();
   } else if (e.target.id === "size") {
     themVaoBang();
   }
 }
-
-
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   maspVal = maspVal.toUpperCase().trim();
@@ -163,7 +121,11 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
   const masp = (forcedMasp !== null && forcedMasp !== undefined)
     ? forcedMasp.trim().toUpperCase()
     : document.getElementById("masp").value.trim().toUpperCase();
+  const size = (forcedSize !== null && forcedSize !== undefined)
+    ? String(forcedSize)
+    : document.getElementById("size").value.trim();
   const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
+
 
   const sp = window.sanPhamData?.[masp];
 
@@ -186,13 +148,14 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
       alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
       const sizeInput = document.getElementById("size");
       sizeInput.focus();
-      sizeInput.select();
+      sizeInput.select(); // <-- Bôi đen toàn bộ ô nhập size
       return;
     }
   }
   // ==== END KIỂM TRA ====
 
   const gia = parseFloat(document.getElementById("gia").value) || 0;
+  // --- Áp dụng cách tính khuyến mại mới ---
   let km = tinhKhuyenMai(sp, gia);
 
   const key = masp;
@@ -219,13 +182,8 @@ export function themVaoBang(forcedSize = null, forcedMasp = null) {
   bangKetQua[key] = bang;
 
   capNhatBangHTML(bangKetQua);
-
-  // CHỈ reset toàn bộ form khi KHÔNG phải nhập size nhanh
-  if (!forcedSize) {
-    resetFormBang();
-  }
+  resetFormBang();
 }
-
 
 
 
