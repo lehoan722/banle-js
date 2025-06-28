@@ -132,7 +132,9 @@
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
       const tuNgay = document.getElementById("tuNgay").value;
-      const denNgay = document.getElementById("denNgay").value;
+      let denNgay = document.getElementById("denNgay").value;
+      if (denNgay) denNgay = denNgay + "T23:59:59.999"; // Thêm cuối ngày cho đến ngày
+
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
       const khach = document.getElementById("locKhach").value.trim();
