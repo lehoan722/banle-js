@@ -146,12 +146,13 @@
       let query = supabase
         .from('hoadon_banle')
         .select('*')
-        .order('ngay', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(100);
 
-      if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
-      else if (tuNgay) query = query.gte('ngay', tuNgay);
-      else if (denNgay) query = query.lte('ngay', denNgay);
+      if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+      else if (tuNgay) query = query.gte('created_at', tuNgay);
+      else if (denNgay) query = query.lte('created_at', denNgay);
+
 
       if (nv) query = query.ilike('tennv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -185,7 +186,7 @@
       });
 
       // 6. Tạo bảng kết quả
-        // dinh dang ngay gio truoc
+      // dinh dang ngay gio truoc
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
         const d = new Date(ngayStr);
@@ -203,7 +204,7 @@
         tr.innerHTML = `
       <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
       <td>${hd.sohd}</td>
-      <td>${dinhDangNgayGio(hd.ngay)}</td>
+      <td>${dinhDangNgayGio(hd.created_at)}</td>      
       <td>${hd.tennv}</td>
       <td>${hd.khachhang}</td>
       <td>${hd.tongsl || 0}</td>
