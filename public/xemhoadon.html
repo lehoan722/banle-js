@@ -153,7 +153,7 @@
       else if (tuNgay) query = query.gte('ngay', tuNgay);
       else if (denNgay) query = query.lte('ngay', denNgay);
 
-      if (nv) query = query.ilike('manv', `%${nv}%`);
+      if (nv) query = query.ilike('tennv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
       if (khach) query = query.ilike('khachhang', `%${khach}%`);
       if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
@@ -265,7 +265,14 @@
     }
 
 
-    window.onload = taiDanhSachHoaDon;
+    window.onload = function () {
+      // Set ngày mặc định là hôm nay
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('tuNgay').value = today;
+      document.getElementById('denNgay').value = today;
+      taiDanhSachHoaDon();
+    };
+
 
   </script>
 </body>
