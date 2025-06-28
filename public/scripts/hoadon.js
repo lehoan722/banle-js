@@ -21,6 +21,10 @@ export function getMaspspDangChon() {
 export async function chuyenFocus(e) {
   if (e.key !== "Enter") return;
 
+  // Chặn mọi sự kiện gốc tiếp tục
+  if (e.preventDefault) e.preventDefault();
+  if (e.stopPropagation) e.stopPropagation();
+
   const nhapNhanh = document.getElementById("nhapnhanh").checked;
   const size45 = document.getElementById("size45").checked;
 
@@ -33,28 +37,25 @@ export async function chuyenFocus(e) {
     // Xử lý nhập size nhanh
     if (laTrangNhapNhanh && danhSachSizeNhanh.includes(maspVal)) {
       if (window.maspCuoiCung && window.maspCuoiCung.masp) {
-        // Gán lại mã sản phẩm cũ, set size mới và số lượng = 1
         document.getElementById("masp").value = window.maspCuoiCung.masp;
         document.getElementById("size").value = maspVal;
         document.getElementById("soluong").value = 1;
 
         themVaoBang(maspVal);
 
-        // Sau khi thêm, xóa sạch input & focus lại
         setTimeout(() => {
           document.getElementById("masp").value = "";
           document.getElementById("size").value = "";
           document.getElementById("soluong").value = 1;
           document.getElementById("masp").focus();
           document.getElementById("masp").select();
-        }, 50); // Để 50ms cho chắc chắn không double event
-
+        }, 50);
       } else {
         alert("Bạn cần nhập mã sản phẩm trước khi nhập size!");
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
       }
-      return false; // DỪNG LUÔN! KHÔNG GỌI XU LY MA SAN PHAM NỮA
+      return; // PHẢI là return; để dừng mọi event
     }
 
     // Xử lý nhập mã sản phẩm bình thường
