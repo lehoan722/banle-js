@@ -62,37 +62,6 @@ export async function chuyenFocus(e) {
 }
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
-
-  // ==== Nhận biết trang cần dùng nhập nhanh size ====
-  const tenTrang = window.location.pathname.split('/').pop().replace('.html', '');
-  const laTrangNhapNhanh = ['nhapmoi', 'ccn1v2', 'ccn2v1'].includes(tenTrang);
-
-  // ==== Nhận biết nhập size nhanh ====
-  if (laTrangNhapNhanh) {
-    const sizeNhanh = maspVal.trim();
-    const danhSachSizeNhanh = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-
-    if (danhSachSizeNhanh.includes(sizeNhanh)) {
-      if (window.maspCuoiCung && window.maspCuoiCung.masp) {
-        // Tự động nhập sản phẩm cũ với size mới
-        document.getElementById("masp").value = window.maspCuoiCung.masp;
-        document.getElementById("size").value = sizeNhanh;
-        document.getElementById("soluong").value = 1;
-        themVaoBang(sizeNhanh);
-
-        // Focus lại vào ô nhập mã để tiếp tục nhập size khác hoặc mã khác
-        document.getElementById("masp").focus();
-        document.getElementById("masp").select();
-      } else {
-        alert("Bạn cần nhập mã sản phẩm trước khi nhập size.");
-        document.getElementById("masp").focus();
-        document.getElementById("masp").select();
-      }
-      return true; // Dừng xử lý các bước còn lại!
-    }
-  }
-
-
   maspVal = maspVal.toUpperCase().trim();
   let spData = window.sanPhamData?.[maspVal];
 
@@ -165,13 +134,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     nextInput.focus();
     if (nextId === "soluong") nextInput.select();
   }
-  if (laTrangNhapNhanh) {
-    window.maspCuoiCung = {
-      masp: maspVal,
-      tensp: spData.tensp,
-      gia: spData.giale, // có thể bổ sung thêm các trường nếu cần
-    };
-  }
+
   return true;
 }
 
