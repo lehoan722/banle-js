@@ -744,15 +744,13 @@
                     <option value="cs1">Cơ sở 1</option>
                     <option value="cs2">Cơ sở 2</option>
                 </select><br /><br />
-                
-                <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
-
                 <div class="login-field">
-                    <label for="login-manv">Mã nhân viên</label>
-                    <input type="text" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên" required />
+                    <label for="login-manv">Mã nhân viên</label><br />
+                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên" required />
                 </div>
-                
+                <label>Mật khẩu:</label><br />
+                <input type="password" id="login-password" ...><br /><br />                
+
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
             </form>
@@ -792,7 +790,6 @@
             }
         });
 
-
         window.dangNhap = async function () {
             const email = document.getElementById('login-email').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value.trim();
@@ -817,7 +814,22 @@
                 return;
             }
 
-            // 1. Xác thực mã nhân viên với Supabase (bảng dmnhanvien)
+            // 1. Đăng nhập Supabase trước!
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
+                statusEl.style.color = 'red';
+                return;
+            }
+
+            // 2. Sau khi đăng nhập thành công, lấy thông tin nhân viên
+            // Đảm bảo session Supabase (phòng trường hợp chậm set session)
+            await window.supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token
+            });
+
+            // Truy vấn bảng nhân viên với RLS đã mở
             const { data: nvArr, error: errNV } = await supabase
                 .from('dmnhanvien')
                 .select('manv, tennv')
@@ -826,53 +838,41 @@
             if (errNV || !nvArr || nvArr.length === 0) {
                 statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
                 statusEl.style.color = 'red';
+
+                // Đăng xuất ngay nếu nhập mã nhân viên sai!
+                await supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+
+                document.getElementById('login-container').style.display = '';
+                document.getElementById('app-container').style.display = 'none';
                 document.getElementById('login-manv').focus();
                 return;
             }
 
-            const nv = nvArr[0]; // luôn lấy dòng đầu tiên, vì bạn đảm bảo unique mã nhân viên
+            const nv = nvArr[0];
 
+            // Lưu thông tin vào localStorage
+            localStorage.setItem("diadiem", cs);
+            localStorage.setItem('supabase_access_token', data.session.access_token);
+            localStorage.setItem("manv", nv.manv);
+            localStorage.setItem("tennv", nv.tennv);
 
-            // 2. Đăng nhập Supabase
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            // Ẩn form đăng nhập, hiển thị app
+            statusEl.textContent = '✅ Đăng nhập thành công!';
+            statusEl.style.color = 'green';
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('app-container').style.display = '';
 
-            if (error) {
-                statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
-                statusEl.style.color = 'red';
-                return;
-            } else {
-                statusEl.textContent = '✅ Đăng nhập thành công!';
-                statusEl.style.color = 'green';
+            // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
+            document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
+            document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
 
-                // Lưu thông tin vào localStorage
-                localStorage.setItem("diadiem", cs);
-                localStorage.setItem('supabase_access_token', data.session.access_token);
-
-                // === Lưu mã và tên nhân viên vào localStorage ===
-                localStorage.setItem("manv", nv.manv);
-                localStorage.setItem("tennv", nv.tennv);
-
-                // Ẩn form đăng nhập, hiển thị app
-                document.getElementById('login-container').style.display = 'none';
-                document.getElementById('app-container').style.display = '';
-
-                // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
-                document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
-                document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
-
-                // Đảm bảo session Supabase
-                await window.supabase.auth.setSession({
-                    access_token: data.session.access_token,
-                    refresh_token: data.session.refresh_token
-                });
-
-                // Khởi tạo ứng dụng
-                import('./scripts/main.js').then(module => {
-                    if (module.khoiTaoUngDung) module.khoiTaoUngDung();
-                });
-            }
+            // Khởi tạo ứng dụng
+            import('./scripts/main.js').then(module => {
+                if (module.khoiTaoUngDung) module.khoiTaoUngDung();
+            });
         };
-
 
 
 
