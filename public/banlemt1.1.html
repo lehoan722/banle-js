@@ -744,6 +744,10 @@
                     <option value="cs1">Cơ sở 1</option>
                     <option value="cs2">Cơ sở 2</option>
                 </select><br /><br />
+                <div class="login-field">
+                    <label for="login-manv">Mã nhân viên</label>
+                    <input type="text" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên" required />
+                </div>
                 <label>Mật khẩu:</label><br />
                 <input type="password" id="login-password" ...><br /><br />
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
@@ -787,47 +791,83 @@
 
 
         window.dangNhap = async function () {
-            const email = document.getElementById('login-email').value.trim();
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value.trim();
             const cs = document.getElementById('login-cs').value;
+            const manv = document.getElementById('login-manv').value.trim().toUpperCase();
             const statusEl = document.getElementById('login-error');
 
+            // Kiểm tra đầu vào
             if (!email || !password) {
                 statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+                statusEl.style.color = 'red';
                 return;
             }
             if (!cs) {
                 statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!';
+                statusEl.style.color = 'red';
+                return;
+            }
+            if (!manv) {
+                statusEl.textContent = 'Vui lòng nhập mã nhân viên!';
+                statusEl.style.color = 'red';
                 return;
             }
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            // 1. Xác thực mã nhân viên với Supabase (bảng dmnhanvien)
+            let { data: nv, error: errNV } = await supabase
+                .from('dmnhanvien')
+                .select('manv, tennv')
+                .eq('manv', manv)
+                .maybeSingle();
 
+            if (errNV || !nv) {
+                statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
+                statusEl.style.color = 'red';
+                document.getElementById('login-manv').focus();
+                return;
+            }
+
+            // 2. Đăng nhập Supabase
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
             if (error) {
                 statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
                 statusEl.style.color = 'red';
+                return;
             } else {
                 statusEl.textContent = '✅ Đăng nhập thành công!';
                 statusEl.style.color = 'green';
-                // <<< Đặt dòng này tại đây:
-                localStorage.setItem("diadiem", document.getElementById('login-cs').value);
-                // === DÒNG MỚI THÊM VÀO ĐÂY! ===
+
+                // Lưu thông tin vào localStorage
+                localStorage.setItem("diadiem", cs);
                 localStorage.setItem('supabase_access_token', data.session.access_token);
 
+                // === Lưu mã và tên nhân viên vào localStorage ===
+                localStorage.setItem("manv", nv.manv);
+                localStorage.setItem("tennv", nv.tennv);
+
+                // Ẩn form đăng nhập, hiển thị app
                 document.getElementById('login-container').style.display = 'none';
                 document.getElementById('app-container').style.display = '';
+
+                // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
+                document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
+                document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
+
+                // Đảm bảo session Supabase
                 await window.supabase.auth.setSession({
                     access_token: data.session.access_token,
                     refresh_token: data.session.refresh_token
                 });
+
+                // Khởi tạo ứng dụng
                 import('./scripts/main.js').then(module => {
                     if (module.khoiTaoUngDung) module.khoiTaoUngDung();
                 });
             }
-
-
         };
+
 
 
 
