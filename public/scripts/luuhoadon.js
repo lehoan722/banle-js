@@ -64,7 +64,6 @@ async function handleSpecialSoHoaDon(sohd) {
 
 export async function luuHoaDonQuaAPI() {
   capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
-  // BỔ SUNG CHẶN LƯU Ở ĐÂY:
   const maspChuaNhap = document.getElementById("masp")?.value.trim();
   if (maspChuaNhap) {
     alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
@@ -75,18 +74,18 @@ export async function luuHoaDonQuaAPI() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌ Chưa có số hóa đơn.");
   const tennv = document.getElementById("tennv").value.trim();
-  if (!tennv) return alert("❌api Bạn chưa nhập tên nhân viên bán hàng.");
-  // ---- THÊM ĐOẠN NÀY ----
-  if (await handleSpecialSoHoaDon(sohd)) return;
+  if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-  // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
 
+  // ---- CHỈ GỌI CHO HÓA ĐƠN MỚI, KHÔNG PHẢI SỬA ----
   const { data: tonTai } = await supabase
     .from("hoadon_banle")
     .select("sohd")
     .eq("sohd", sohd)
     .maybeSingle();
+
+  if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
 
   if (tonTai && !choPhepSua) {
     document.getElementById("popupXacThucSua").style.display = "block";
@@ -97,6 +96,7 @@ export async function luuHoaDonQuaAPI() {
     await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
     await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
   }
+
   const createdAt = new Date().toISOString();
 
   const getIntValue = (id) =>
