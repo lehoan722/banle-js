@@ -336,7 +336,7 @@ export async function luuHoaDonCaHaiBan() {
   }
 
   // Xác nhận với người dùng trước khi tiếp tục
-  const xacNhan = confirm("Bạn có chắc chắn muốn lưu hóa đơn này vào cả hai bản?\nNhấn OK để lưu, Trở lại để quay về giao diện hóa đơn.");
+  const xacNhan = confirm("Bạn có chắc chắn muốn lưu hóa đơn này ?\nNhấn OK để lưu, Huỷ để quay về giao diện hóa đơn.");
   if (!xacNhan) return;
 
 
