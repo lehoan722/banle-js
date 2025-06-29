@@ -8,13 +8,9 @@ import { guiHoaDonViettel } from './viettelInvoice.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
 
-window.choPhepSua = false;
+let choPhepSua = false;
 
 async function handleSpecialSoHoaDon(sohd) {
-  if (window.choPhepSua) {
-    alert("🚫 Không được phép sửa hóa đơn đặc biệt !");
-    return false;
-  }
   const parts = sohd.split('_');
   if (parts.length < 2) return false;
   const num = parseInt(parts[1], 10);
@@ -310,10 +306,6 @@ export async function luuHoaDonNhapQuaAPI() {
 
 
 export async function luuHoaDonCaHaiBan() {
-  if (window.choPhepSua) {
-    alert("🚫 Không được phép sửa hóa đơn bằng cach nay.");
-    return;
-  }
   const bangKetQua = getBangKetQua();
   // BỔ SUNG CHẶN LƯU Ở ĐÂY:
   const maspChuaNhap = document.getElementById("masp")?.value.trim();
@@ -327,6 +319,23 @@ export async function luuHoaDonCaHaiBan() {
 
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
+
+  // ==== CHẶN LƯU 2 BẢN NẾU LÀ HÓA ĐƠN CŨ ====
+  const [loai, soStr] = sohd.split('_');
+  const so = parseInt(soStr, 10);
+  const { data: currSoChungTu, error: errSoHienTai } = await supabase
+    .from("sochungtu")
+    .select("so_hientai")
+    .eq("loai", loai)
+    .single();
+  if (errSoHienTai || !currSoChungTu) {
+    alert("❌ Không lấy được số hiện tại từ bảng sochungtu.");
+    return;
+  }
+  if (so < currSoChungTu.so_hientai) {
+    alert("🚫 Không được phép dùng chức năng này để sửa hóa đơn cũ!");
+    return;
+  }
 
   // Lấy địa điểm từ localStorage (không lấy từ input)
   const diadiem = localStorage.getItem("diadiem");
