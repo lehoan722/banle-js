@@ -310,7 +310,7 @@ export async function luuHoaDonCaHaiBan() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
 
-  // ==== CHẶN LƯU 2 BẢN NẾU LÀ HÓA ĐƠN CŨ NGAY ĐẦU HÀM ====
+  // ==== CHẶN LƯU 2 BẢN NẾU LÀ HÓA ĐƠN CŨ (<=) NGAY ĐẦU HÀM ====
   const [loai, soStr] = sohd.split('_');
   const so = parseInt(soStr, 10);
   const { data: currSoChungTu, error: errSoHienTai } = await supabase
@@ -321,14 +321,29 @@ export async function luuHoaDonCaHaiBan() {
   if (errSoHienTai || !currSoChungTu) {
     alert("❌ Không lấy được số hiện tại từ bảng sochungtu.");
     return;
-  } if (so <= currSoChungTu.so_hientai) {
+  }
+  if (so <= currSoChungTu.so_hientai) {
     alert("🚫 Không được phép dùng chức năng này để sửa hóa đơn cũ!");
     return;
   }
   // ==== HẾT ĐOẠN CHẶN ====
 
-  // TIẾP ĐÓ mới kiểm tra các dữ liệu nhập liệu khác
+  // Kiểm tra bảng kết quả có dữ liệu không
   const bangKetQua = getBangKetQua();
+  if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
+    alert("⛔ Hóa đơn chưa có sản phẩm nào! Không thể lưu hai bản hóa đơn trắng.");
+    return;
+  }
+
+  // Xác nhận với người dùng trước khi tiếp tục
+  const xacNhan = confirm("Bạn có chắc chắn muốn lưu hóa đơn này vào cả hai bản?\nNhấn OK để lưu, Trở lại để quay về giao diện hóa đơn.");
+  if (!xacNhan) return;
+
+
+  // ==== HẾT ĐOẠN CHẶN ====
+
+  // TIẾP ĐÓ mới kiểm tra các dữ liệu nhập liệu khác
+  
   // BỔ SUNG CHẶN LƯU Ở ĐÂY:
   const maspChuaNhap = document.getElementById("masp")?.value.trim();
   if (maspChuaNhap) {
