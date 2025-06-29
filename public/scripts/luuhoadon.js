@@ -8,7 +8,7 @@ import { guiHoaDonViettel } from './viettelInvoice.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
 
-let choPhepSua = false;
+window.choPhepSua = false;
 
 async function handleSpecialSoHoaDon(sohd) {
   if (window.choPhepSua) {
