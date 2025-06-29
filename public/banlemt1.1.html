@@ -746,10 +746,11 @@
                 </select><br /><br />
                 <div class="login-field">
                     <label for="login-manv">Mã nhân viên</label><br />
-                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên" required />
+                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
+                        required />
                 </div>
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />                
+                <input type="password" id="login-password" ...><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -832,7 +833,7 @@
             // Truy vấn bảng nhân viên với RLS đã mở
             const { data: nvArr, error: errNV } = await supabase
                 .from('dmnhanvien')
-                .select('manv, tennv')
+                .select('manv, tennv, sua_hoadon')
                 .eq('manv', manv);
 
             if (errNV || !nvArr || nvArr.length === 0) {
@@ -857,6 +858,7 @@
             localStorage.setItem('supabase_access_token', data.session.access_token);
             localStorage.setItem("manv", nv.manv);
             localStorage.setItem("tennv", nv.tennv);
+            localStorage.setItem("quyen_sua_hoadon", nv.sua_hoadon ? "true" : "false");
 
             // Ẩn form đăng nhập, hiển thị app
             statusEl.textContent = '✅ Đăng nhập thành công!';
@@ -867,6 +869,8 @@
             // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
             document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
             document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
+            // Thêm dòng này:
+            capNhatQuyenGiaoDien();
 
             // Khởi tạo ứng dụng
             import('./scripts/main.js').then(module => {
@@ -882,6 +886,8 @@
                 await window.supabase.auth.signOut();
                 localStorage.clear();
                 sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+
             }
             document.getElementById('login-email').value = "";
             document.getElementById('login-password').value = "";
@@ -891,6 +897,19 @@
             document.getElementById('login-email').focus();
         };
 
+        function capNhatQuyenGiaoDien() {
+            // Lấy quyền từ localStorage
+            const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
+            // Nếu dùng kiểu số: const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "1";
+            // Nút quay lại
+            document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
+            // Nút tiếp tục
+            document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
+
+            // Nếu muốn ẩn nút thay vì disable thì dùng:
+            // document.getElementById('quaylai').style.display = quyenSua ? "" : "none";
+            // document.getElementById('tieptuc').style.display = quyenSua ? "" : "none";
+        }
 
     </script>
 
