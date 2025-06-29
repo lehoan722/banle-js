@@ -321,8 +321,7 @@ export async function luuHoaDonCaHaiBan() {
   if (errSoHienTai || !currSoChungTu) {
     alert("❌ Không lấy được số hiện tại từ bảng sochungtu.");
     return;
-  }
-  if (so < currSoChungTu.so_hientai) {
+  } if (so <= currSoChungTu.so_hientai) {
     alert("🚫 Không được phép dùng chức năng này để sửa hóa đơn cũ!");
     return;
   }
@@ -339,9 +338,6 @@ export async function luuHoaDonCaHaiBan() {
   }
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
-
-  
-  if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
 
   // Lấy địa điểm từ localStorage (không lấy từ input)
   const diadiem = localStorage.getItem("diadiem");
