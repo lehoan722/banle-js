@@ -340,7 +340,7 @@ export async function luuHoaDonCaHaiBan() {
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-  const sohd = document.getElementById("sohd").value.trim();
+  
   if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
 
   // Lấy địa điểm từ localStorage (không lấy từ input)
