@@ -815,18 +815,20 @@
             }
 
             // 1. Xác thực mã nhân viên với Supabase (bảng dmnhanvien)
-            let { data: nv, error: errNV } = await supabase
+            const { data: nvArr, error: errNV } = await supabase
                 .from('dmnhanvien')
                 .select('manv, tennv')
-                .eq('manv', manv)
-                .maybeSingle();
+                .eq('manv', manv);
 
-            if (errNV || !nv) {
+            if (errNV || !nvArr || nvArr.length === 0) {
                 statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
                 statusEl.style.color = 'red';
                 document.getElementById('login-manv').focus();
                 return;
             }
+
+            const nv = nvArr[0]; // luôn lấy dòng đầu tiên, vì bạn đảm bảo unique mã nhân viên
+
 
             // 2. Đăng nhập Supabase
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
