@@ -11,6 +11,10 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 let choPhepSua = false;
 
 async function handleSpecialSoHoaDon(sohd) {
+  if (window.choPhepSua) {
+    alert("🚫 Không được phép sửa hóa đơn đặc biệt !");
+    return false;
+  }
   const parts = sohd.split('_');
   if (parts.length < 2) return false;
   const num = parseInt(parts[1], 10);
@@ -306,6 +310,10 @@ export async function luuHoaDonNhapQuaAPI() {
 
 
 export async function luuHoaDonCaHaiBan() {
+  if (window.choPhepSua) {
+    alert("🚫 Không được phép sửa hóa đơn bằng cach nay.");
+    return;
+  }
   const bangKetQua = getBangKetQua();
   // BỔ SUNG CHẶN LƯU Ở ĐÂY:
   const maspChuaNhap = document.getElementById("masp")?.value.trim();
