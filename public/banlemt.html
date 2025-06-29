@@ -446,7 +446,7 @@
 
             <label> <input id="ngay" type="date" /></label>
             <!-- <label>Giờ <input id="gio" /></label> -->
-            <input id="manv" type="password" placeholder="Mã NV" />           
+            <input id="manv" type="password" placeholder="Mã NV" />
             <input id="tennv" placeholder="Tên NV" readonly />
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
@@ -744,8 +744,14 @@
                     <option value="cs1">Cơ sở 1</option>
                     <option value="cs2">Cơ sở 2</option>
                 </select><br /><br />
+                <div class="login-field">
+                    <label for="login-manv">Mã nhân viên</label><br />
+                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
+                        required />
+                </div>
                 <label>Mật khẩu:</label><br />
                 <input type="password" id="login-password" ...><br /><br />
+
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
             </form>
@@ -761,47 +767,115 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
         window.supabase = createClient(supabaseUrl, supabaseKey);
 
+        // Ánh xạ email sang cơ sở bán hàng
+        function getDiaDiemFromEmail(email) {
+            if (!email) return "";
+            email = email.trim().toLowerCase();
+            if (email === "khohangcs1@gmail.com") return "cs1";
+            if (email === "khohangcs2@gmail.com") return "cs2";
+            // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
+            return "";
+        }
+
+        // Sự kiện khi người dùng nhập email xong (rời khỏi ô email)
+        document.getElementById("login-email").addEventListener("blur", function () {
+            const email = this.value.trim();
+            const cs = getDiaDiemFromEmail(email);
+            const csSelect = document.getElementById("login-cs");
+            if (cs) {
+                csSelect.value = cs;
+                csSelect.disabled = true; // Không cho chọn lại
+            } else {
+                csSelect.value = "";
+                csSelect.disabled = false; // Cho chọn khi không nằm trong danh sách
+            }
+        });
+
         window.dangNhap = async function () {
-            const email = document.getElementById('login-email').value.trim();
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
             const password = document.getElementById('login-password').value.trim();
             const cs = document.getElementById('login-cs').value;
+            const manv = document.getElementById('login-manv').value.trim().toUpperCase();
             const statusEl = document.getElementById('login-error');
 
+            // Kiểm tra đầu vào
             if (!email || !password) {
                 statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+                statusEl.style.color = 'red';
                 return;
             }
             if (!cs) {
                 statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!';
+                statusEl.style.color = 'red';
+                return;
+            }
+            if (!manv) {
+                statusEl.textContent = 'Vui lòng nhập mã nhân viên!';
+                statusEl.style.color = 'red';
                 return;
             }
 
+            // 1. Đăng nhập Supabase trước!
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-
             if (error) {
                 statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
                 statusEl.style.color = 'red';
-            } else {
-                statusEl.textContent = '✅ Đăng nhập thành công!';
-                statusEl.style.color = 'green';
-                // <<< Đặt dòng này tại đây:
-                localStorage.setItem("diadiem", document.getElementById('login-cs').value);
-                // === DÒNG MỚI THÊM VÀO ĐÂY! ===
-                localStorage.setItem('supabase_access_token', data.session.access_token);
-
-                document.getElementById('login-container').style.display = 'none';
-                document.getElementById('app-container').style.display = '';
-                await window.supabase.auth.setSession({
-                    access_token: data.session.access_token,
-                    refresh_token: data.session.refresh_token
-                });
-                import('./scripts/main.js').then(module => {
-                    if (module.khoiTaoUngDung) module.khoiTaoUngDung();
-                });
+                return;
             }
 
+            // 2. Sau khi đăng nhập thành công, lấy thông tin nhân viên
+            // Đảm bảo session Supabase (phòng trường hợp chậm set session)
+            await window.supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token
+            });
 
+            // Truy vấn bảng nhân viên với RLS đã mở
+            const { data: nvArr, error: errNV } = await supabase
+                .from('dmnhanvien')
+                .select('manv, tennv, sua_hoadon')
+                .eq('manv', manv);
+
+            if (errNV || !nvArr || nvArr.length === 0) {
+                statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
+                statusEl.style.color = 'red';
+
+                // Đăng xuất ngay nếu nhập mã nhân viên sai!
+                await supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+
+                document.getElementById('login-container').style.display = '';
+                document.getElementById('app-container').style.display = 'none';
+                document.getElementById('login-manv').focus();
+                return;
+            }
+
+            const nv = nvArr[0];
+
+            // Lưu thông tin vào localStorage
+            localStorage.setItem("diadiem", cs);
+            localStorage.setItem('supabase_access_token', data.session.access_token);
+            localStorage.setItem("manv", nv.manv);
+            localStorage.setItem("tennv", nv.tennv);
+            localStorage.setItem("quyen_sua_hoadon", nv.sua_hoadon ? "true" : "false");
+
+            // Ẩn form đăng nhập, hiển thị app
+            statusEl.textContent = '✅ Đăng nhập thành công!';
+            statusEl.style.color = 'green';
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('app-container').style.display = '';
+
+            // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
+            document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
+            document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
+            // Thêm dòng này:
+            capNhatQuyenGiaoDien();
+
+            // Khởi tạo ứng dụng
+            import('./scripts/main.js').then(module => {
+                if (module.khoiTaoUngDung) module.khoiTaoUngDung();
+            });
         };
 
 
@@ -812,6 +886,8 @@
                 await window.supabase.auth.signOut();
                 localStorage.clear();
                 sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+
             }
             document.getElementById('login-email').value = "";
             document.getElementById('login-password').value = "";
@@ -821,6 +897,19 @@
             document.getElementById('login-email').focus();
         };
 
+        function capNhatQuyenGiaoDien() {
+            // Lấy quyền từ localStorage
+            const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
+            // Nếu dùng kiểu số: const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "1";
+            // Nút quay lại
+            document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
+            // Nút tiếp tục
+            document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
+
+            // Nếu muốn ẩn nút thay vì disable thì dùng:
+            // document.getElementById('quaylai').style.display = quyenSua ? "" : "none";
+            // document.getElementById('tieptuc').style.display = quyenSua ? "" : "none";
+        }
 
     </script>
 
