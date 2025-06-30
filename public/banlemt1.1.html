@@ -653,7 +653,7 @@
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
   background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
             <h3>Xác thực sửa hóa đơn</h3>
-            <input id="xacmanv" placeholder="Mã nhân viên"
+            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
@@ -896,6 +896,17 @@
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
+            // XÓA TRẮNG LƯỚI DỮ LIỆU HÓA ĐƠN SAU ĐĂNG XUẤT
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
 
             document.getElementById('login-manv').focus();
         };
