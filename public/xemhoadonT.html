@@ -84,23 +84,25 @@
   </div>
 
 
+  <!-- Thêm nút xóa và cột số thứ tự, checkbox -->
+  <button onclick="xoaHoaDonDaChon()" style="margin-bottom:8px;">❌ Xóa hóa đơn đã chọn</button>
   <table>
     <thead>
-      <thead>
-        <tr>
-          <th>Số HĐ</th>
-          <th>Ngày</th>
-          <th>NV</th>
-          <th>Khách</th>
-          <th>TT</th>
-          <th>Ghi chú</th>
-          <th>Trạng thái gửi</th> <!-- Thêm dòng này -->
-        </tr>
-      </thead>
-
+      <tr>
+        <th>#</th>
+        <th>✔️</th>
+        <th>Số HĐ</th>
+        <th>Ngày</th>
+        <th>NV</th>
+        <th>Khách</th>
+        <th>TT</th>
+        <th>Ghi chú</th>
+        <th>Trạng thái gửi</th>
+      </tr>
     </thead>
     <tbody id="dsHoaDon"></tbody>
   </table>
+
 
   <div id="popup">
     <div class="drag-header" id="popupHeader">
@@ -134,19 +136,17 @@
     );
 
     async function taiDanhSachHoaDon() {
+      // Lấy giá trị lọc
       const tuNgay = document.getElementById("locTuNgay").value;
       const denNgay = document.getElementById("locDenNgay").value;
-
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
 
       let query = supabase
         .from('hoadon_banleT')
         .select('*')
-        .order('ngay', { ascending: false })   // Sắp xếp giảm dần theo ngày trước
-        .order('sohd', { ascending: false })   // Sau đó giảm dần theo số hóa đơn (nếu ngày giống nhau)
-        .limit(1000);
-
+        .order('ngay', { ascending: false })
+        .order('sohd', { ascending: false }); // Không limit!
 
       if (tuNgay && denNgay) {
         query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
@@ -165,31 +165,39 @@
       let tongTien = 0;
 
       if (error) return alert("Lỗi tải hóa đơn: " + error.message);
+      if (!data || !data.length) {
+        document.getElementById('tongThanhToan').textContent = "0";
+        return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
+      }
 
-
-      data.forEach(hd => {
+      // Tạo từng dòng bảng với số thứ tự, checkbox
+      data.forEach((hd, idx) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-    <td>${hd.sohd}</td>
-    <td>${hd.ngay}</td>
-    <td>${hd.tennv}</td>
-    <td>${hd.khachhang}</td>
-    <td>${hd.thanhtoan?.toLocaleString()}</td>
-    <td>${hd.ghichu || ""}</td>
-    <td style="color:${hd.trang_thai_gui === 'Đã gửi' ? 'green' : (hd.trang_thai_gui?.startsWith('Lỗi') ? 'red' : 'orange')}">
-      ${hd.trang_thai_gui || 'Chưa gửi'}
-    </td>
-        `;
-        tr.onclick = function () {
-          chonHoaDon(hd.sohd, this, hd.trang_thai_gui);
-          xemChiTiet(hd.sohd);
+      <td>${idx + 1}</td>
+      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
+      <td>${hd.sohd}</td>
+      <td>${hd.ngay}</td>
+      <td>${hd.tennv}</td>
+      <td>${hd.khachhang}</td>
+      <td>${hd.thanhtoan?.toLocaleString()}</td>
+      <td>${hd.ghichu || ""}</td>
+      <td style="color:${hd.trang_thai_gui === 'Đã gửi' ? 'green' : (hd.trang_thai_gui?.startsWith('Lỗi') ? 'red' : 'orange')}">
+        ${hd.trang_thai_gui || 'Chưa gửi'}
+      </td>
+    `;
+        tr.onclick = function (e) {
+          if (e.target.tagName !== "INPUT") {
+            chonHoaDon(hd.sohd, this, hd.trang_thai_gui);
+            xemChiTiet(hd.sohd);
+          }
         };
         tbody.appendChild(tr);
-        tongTien += Number(hd.thanhtoan) || 0; // Cộng dồn
+        tongTien += Number(hd.thanhtoan) || 0;
       });
       document.getElementById('tongThanhToan').textContent = tongTien.toLocaleString();
-
     }
+
 
     async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "block";
@@ -368,9 +376,40 @@
       if (e.key === "Escape") dongPopup();
     });
 
+    async function xoaHoaDonDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+
+      if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+      if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
+
+      // Xóa chi tiết trước
+      const { error: errCT } = await supabase.from('ct_hoadon_banleT').delete().in('sohd', sohdList);
+      if (errCT) {
+        console.error("❌ Lỗi xóa chi tiết:", errCT.message);
+        return alert("Không thể xóa chi tiết hóa đơn.");
+      }
+
+      // Xóa hóa đơn chính
+      const { error: errHD } = await supabase.from('hoadon_banleT').delete().in('sohd', sohdList);
+      if (errHD) {
+        console.error("❌ Lỗi xóa hóa đơn:", errHD.message);
+        return alert("Không thể xóa hóa đơn.");
+      }
+
+      alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+      taiDanhSachHoaDon();
+    }
+
+    window.onload = function () {
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('locTuNgay').value = today;
+      document.getElementById('locDenNgay').value = today;
+      taiDanhSachHoaDon();
+    };
 
 
-    window.onload = taiDanhSachHoaDon;
   </script>
 </body>
 
