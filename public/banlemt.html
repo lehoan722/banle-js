@@ -896,6 +896,17 @@
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
+            // XÓA TRẮNG LƯỚI DỮ LIỆU HÓA ĐƠN SAU ĐĂNG XUẤT
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
 
             document.getElementById('login-manv').focus();
         };
