@@ -231,31 +231,67 @@
     }
 
     async function guiLaiHoaDonDaChon() {
-      if (!sohdDangChon) {
-        alert("Bạn chưa chọn hóa đơn!");
-        return;
-      }
-      if (!confirm(`Bạn muốn gửi lại hóa đơn [${sohdDangChon}] lên Viettel?`)) return;
+  // Lấy danh sách các checkbox được chọn
+  const checkboxes = document.querySelectorAll(".chonHD:checked");
+  const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
 
-      // Lấy lại dữ liệu hóa đơn & chi tiết
-      const { data: hoadon } = await supabase
+  if (sohdList.length === 0) {
+    alert("Vui lòng tick chọn ít nhất 1 hóa đơn chưa gửi/lỗi để gửi lại!");
+    return;
+  }
+
+  // Lấy trạng thái gửi của từng hóa đơn
+  // => Đọc thẳng từ DOM bảng hiện tại cho đơn giản
+  const rows = Array.from(document.querySelectorAll("#dsHoaDon tr"));
+  const hoadonToSend = [];
+  for (let sohd of sohdList) {
+    const row = rows.find(tr => {
+      const td = tr.querySelector("td:nth-child(3)");
+      return td && td.textContent.trim() === sohd;
+    });
+    if (!row) continue;
+    // Lấy trạng thái gửi ở cột cuối cùng (thứ 9)
+    const trangThai = row.querySelector("td:last-child").textContent.trim();
+    if (trangThai === "Chưa gửi" || trangThai.startsWith("Lỗi")) {
+      hoadonToSend.push(sohd);
+    }
+  }
+
+  if (hoadonToSend.length === 0) {
+    alert("Chỉ gửi lại các hóa đơn chưa gửi hoặc báo lỗi. Không có hóa đơn nào hợp lệ để gửi lại!");
+    return;
+  }
+
+  if (!confirm(`Bạn có chắc chắn muốn gửi lại ${hoadonToSend.length} hóa đơn chưa gửi/lỗi này lên Viettel?`)) return;
+
+  let thanhCong = 0, thatBai = 0, loiList = [];
+
+  for (const sohd of hoadonToSend) {
+    // Lấy lại dữ liệu hóa đơn & chi tiết
+    const { data: hoadon } = await supabase
+      .from('hoadon_banleT')
+      .select('*')
+      .eq('sohd', sohd)
+      .single();
+
+    const { data: chitiet } = await supabase
+      .from('ct_hoadon_banleT')
+      .select('*')
+      .eq('sohd', sohd);
+
+    if (!hoadon || !chitiet || chitiet.length === 0) {
+      loiList.push(`HĐ [${sohd}]: Không tìm thấy dữ liệu!`);
+      await supabase
         .from('hoadon_banleT')
-        .select('*')
-        .eq('sohd', sohdDangChon)
-        .single();
+        .update({ trang_thai_gui: 'Lỗi: Không tìm thấy dữ liệu' })
+        .eq('sohd', sohd);
+      thatBai++;
+      continue;
+    }
 
-      const { data: chitiet } = await supabase
-        .from('ct_hoadon_banleT')
-        .select('*')
-        .eq('sohd', sohdDangChon);
+    const json = taoDuLieuHoaDon(hoadon, chitiet);
 
-      if (!hoadon || !chitiet || chitiet.length === 0) {
-        alert("Không tìm thấy dữ liệu hóa đơn!");
-        return;
-      }
-
-      const json = taoDuLieuHoaDon(hoadon, chitiet);
-
+    try {
       const response = await fetch('/api/guiHDDT', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,23 +302,46 @@
       try {
         result = await response.json();
       } catch (err) {
-        alert("❌ Lỗi khi đọc phản hồi từ server.");
-        return;
+        loiList.push(`HĐ [${sohd}]: Lỗi phản hồi từ server.`);
+        await supabase
+          .from('hoadon_banleT')
+          .update({ trang_thai_gui: 'Lỗi: Lỗi phản hồi server' })
+          .eq('sohd', sohd);
+        thatBai++;
+        continue;
       }
 
       if (!response.ok) {
-        alert(result?.message || '❌ Gửi lại hóa đơn thất bại!');
-        return;
+        loiList.push(`HĐ [${sohd}]: ${result?.message || "Gửi thất bại!"}`);
+        await supabase
+          .from('hoadon_banleT')
+          .update({ trang_thai_gui: 'Lỗi: ' + (result?.message || "Gửi thất bại!") })
+          .eq('sohd', sohd);
+        thatBai++;
+        continue;
       }
 
+      // Thành công
       await supabase
         .from('hoadon_banleT')
         .update({ trang_thai_gui: 'Đã gửi' })
-        .eq('sohd', sohdDangChon);
+        .eq('sohd', sohd);
 
-      alert("✅ Gửi lại hóa đơn thành công!");
-      taiDanhSachHoaDon();
+      thanhCong++;
+    } catch (error) {
+      loiList.push(`HĐ [${sohd}]: ${error.message}`);
+      await supabase
+        .from('hoadon_banleT')
+        .update({ trang_thai_gui: 'Lỗi: ' + error.message })
+        .eq('sohd', sohd);
+      thatBai++;
     }
+  }
+
+  alert(`Gửi lại hóa đơn hoàn tất.\nThành công: ${thanhCong}\nThất bại: ${thatBai}\n${loiList.length ? "Chi tiết lỗi:\n" + loiList.join("\n") : ""}`);
+  taiDanhSachHoaDon();
+}
+
 
     // Tạo dữ liệu JSON chuẩn
     function taoDuLieuHoaDon(hoadon, chitiet) {
