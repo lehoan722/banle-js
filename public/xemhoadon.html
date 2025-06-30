@@ -120,32 +120,38 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
     );
 
-    async function taiDanhSachHoaDon() {
-      // 1. Lấy các giá trị lọc từ giao diện
-      const tuNgay = document.getElementById("tuNgay").value;
-      let denNgay = document.getElementById("denNgay").value;
-      if (denNgay) denNgay = denNgay + "T23:59:59.999"; // Thêm cuối ngày cho đến ngày
+   async function taiDanhSachHoaDon() {
+  // 1. Lấy các giá trị lọc từ giao diện
+  const tuNgay = document.getElementById("tuNgay").value;
+  let denNgay = document.getElementById("denNgay").value;
+  if (denNgay) denNgay = denNgay + "T23:59:59.999";
 
-      const nv = document.getElementById("locNV").value.trim().toUpperCase();
-      const sohd = document.getElementById("locSoHD").value.trim();
-      const khach = document.getElementById("locKhach").value.trim();
-      const tienTu = Number(document.getElementById("tienTu").value);
-      const tienDen = Number(document.getElementById("tienDen").value);
+  const nv = document.getElementById("locNV").value.trim().toUpperCase();
+  const sohd = document.getElementById("locSoHD").value.trim();
+  const khach = document.getElementById("locKhach").value.trim();
+  const tienTu = Number(document.getElementById("tienTu").value);
+  const tienDen = Number(document.getElementById("tienDen").value);
 
-      const selectLoai = document.getElementById("loaiChungTu");
-      const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+  const selectLoai = document.getElementById("loaiChungTu");
+  const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
 
-      // 2. Tạo truy vấn Supabase
+  const tbody = document.getElementById("dsHoaDon");
+  tbody.innerHTML = "";
+
+  let filtered = [];
+
+  // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
+  if (loaiChungTuArr.length > 0) {
+    const queries = loaiChungTuArr.map(loai => {
       let query = supabase
         .from('hoadon_banle')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .ilike('sohd', `${loai}_%`);
 
       if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
       else if (tuNgay) query = query.gte('created_at', tuNgay);
       else if (denNgay) query = query.lte('created_at', denNgay);
-
 
       if (nv) query = query.ilike('tennv', `%${nv}%`);
       if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -153,48 +159,72 @@
       if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
       if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-      // 3. Nhận dữ liệu
-      const { data, error } = await query;
-      const tbody = document.getElementById("dsHoaDon");
-      tbody.innerHTML = "";
+      return query;
+    });
 
-      if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
-      if (!data.length) return tbody.innerHTML = `<tr><td colspan="8">Không có dữ liệu</td></tr>`;
-
-      // 4. Lọc theo loại chứng từ (nếu người dùng có chọn)
-      let filtered = data;
-      if (loaiChungTuArr.length > 0) {
-        filtered = data.filter(hd => {
-          // lấy tiền tố sohd, ví dụ "bancs1" trong "bancs1_00123"
-          const loai = hd.sohd.split("_")[0];
-          return loaiChungTuArr.includes(loai);
-        });
+    // Chạy song song các truy vấn
+    const results = await Promise.all(queries.map(q => q));
+    let arr = [];
+    for (const { data, error } of results) {
+      if (error) {
+        alert("❌ Lỗi tải hóa đơn: " + error.message);
+        return;
       }
+      arr = arr.concat(data || []);
+    }
+    // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
+    const hash = {};
+    filtered = arr.filter(hd => {
+      if (hash[hd.sohd]) return false;
+      hash[hd.sohd] = true;
+      return true;
+    });
+  } else {
+    // Không chọn loại, lấy toàn bộ
+    let query = supabase
+      .from('hoadon_banle')
+      .select('*')
+      .order('created_at', { ascending: false }); // Không limit
 
-      // 5. Tính tổng số lượng và tổng tiền
-      let tongSL = 0, tongTien = 0;
-      filtered.forEach(hd => {
-        tongSL += Number(hd.tongsl || 0);
-        tongTien += Number(hd.thanhtoan || 0);
-      });
+    if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+    else if (tuNgay) query = query.gte('created_at', tuNgay);
+    else if (denNgay) query = query.lte('created_at', denNgay);
 
-      // 6. Tạo bảng kết quả
-      // dinh dang ngay gio truoc
-      function dinhDangNgayGio(ngayStr) {
-        if (!ngayStr) return "";
-        const d = new Date(ngayStr);
-        // Lấy từng thành phần
-        const ngay = d.getDate().toString().padStart(2, "0");
-        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
-        const nam = d.getFullYear();
-        const gio = d.getHours().toString().padStart(2, "0");
-        const phut = d.getMinutes().toString().padStart(2, "0");
-        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
-      }
+    if (nv) query = query.ilike('tennv', `%${nv}%`);
+    if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+    if (khach) query = query.ilike('khachhang', `%${khach}%`);
+    if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+    if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-      filtered.forEach(hd => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+    const { data, error } = await query;
+    if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+    filtered = data || [];
+  }
+
+  if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="8">Không có dữ liệu</td></tr>`;
+
+  // 5. Tính tổng số lượng và tổng tiền
+  let tongSL = 0, tongTien = 0;
+  filtered.forEach(hd => {
+    tongSL += Number(hd.tongsl || 0);
+    tongTien += Number(hd.thanhtoan || 0);
+  });
+
+  // 6. Tạo bảng kết quả
+  function dinhDangNgayGio(ngayStr) {
+    if (!ngayStr) return "";
+    const d = new Date(ngayStr);
+    const ngay = d.getDate().toString().padStart(2, "0");
+    const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+    const nam = d.getFullYear();
+    const gio = d.getHours().toString().padStart(2, "0");
+    const phut = d.getMinutes().toString().padStart(2, "0");
+    return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+  }
+
+  filtered.forEach(hd => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
       <td>${hd.sohd}</td>
       <td>${dinhDangNgayGio(hd.created_at)}</td>      
@@ -204,24 +234,25 @@
       <td>${hd.thanhtoan?.toLocaleString()}</td>
       <td>${hd.ghichu || ""}</td>
     `;
-        tr.onclick = (e) => {
-          if (e.target.tagName !== 'INPUT') xemChiTiet(hd.sohd);
-        };
-        tbody.appendChild(tr);
-      });
+    tr.onclick = (e) => {
+      if (e.target.tagName !== 'INPUT') xemChiTiet(hd.sohd);
+    };
+    tbody.appendChild(tr);
+  });
 
-      // 7. Thêm dòng tổng cuối bảng
-      const trTong = document.createElement("tr");
-      trTong.style.fontWeight = "bold";
-      trTong.style.background = "#f8f8f8";
-      trTong.innerHTML = `
+  // 7. Thêm dòng tổng cuối bảng
+  const trTong = document.createElement("tr");
+  trTong.style.fontWeight = "bold";
+  trTong.style.background = "#f8f8f8";
+  trTong.innerHTML = `
     <td colspan="5" style="text-align:right">TỔNG</td>
     <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
     <td id="tongTien">${tongTien.toLocaleString()}</td>
     <td></td>
   `;
-      tbody.appendChild(trTong);
-    }
+  tbody.appendChild(trTong);
+}
+
 
 
     async function xemChiTiet(sohd) {
