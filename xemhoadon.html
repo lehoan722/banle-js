@@ -374,9 +374,6 @@
       tbody.appendChild(trTong);
     }
 
-
-
-
     async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "block";
       document.getElementById("sohdCT").textContent = sohd;
@@ -384,13 +381,23 @@
       const tbody = document.getElementById("ctHoaDon");
       tbody.innerHTML = "";
       if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+      let tongSL = 0, tongTT = 0;
       data.forEach(row => {
         const tt = (row.gia - row.km) * row.soluong;
+        tongSL += Number(row.soluong);
+        tongTT += Number(tt);
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
         tbody.appendChild(tr);
       });
+      // Thêm dòng tổng cuối bảng
+      const trTong = document.createElement("tr");
+      trTong.style.fontWeight = "bold";
+      trTong.innerHTML = `<td colspan="3" style="text-align:right">TỔNG</td>
+    <td>${tongSL}</td><td></td><td></td><td>${tongTT.toLocaleString()}</td>`;
+      tbody.appendChild(trTong);
     }
+
 
     function dongPopup() {
       document.getElementById("popup").style.display = "none";
@@ -404,7 +411,7 @@
       // Gọi xác thực và chỉ xóa nếu xác thực thành công
       kiemTraNhanVienTruocKhiXoa(async function () {
         if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
-      // het doan  xác thực và chỉ xóa nếu xác thực thành công
+        // het doan  xác thực và chỉ xóa nếu xác thực thành công
 
         // Xóa khỏi ct_hoadon_banle trước
         const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
