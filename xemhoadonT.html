@@ -143,7 +143,7 @@
   </div>
 
   <!-- Thêm nút xóa và cột số thứ tự, checkbox -->
-  
+
   <table>
     <thead>
       <tr>
@@ -188,6 +188,18 @@
 
   <script>
     let sohdDangChon = null;
+
+    const getTrangThaiGui = (trangThai) => {
+      if (!trangThai || trangThai.trim() === "") return "Chưa gửi";
+      return trangThai;
+    };
+    const getMauTrangThai = (trangThai) => {
+      if (!trangThai || trangThai === "Chưa gửi") return "orange";
+      if (trangThai === "Đã gửi") return "green";
+      if (trangThai.startsWith("Lỗi")) return "red";
+      return "#888";
+    };
+
 
     const supabase = window.supabase.createClient(
       'https://rddjrmbyftlcvrgzlyby.supabase.co',
@@ -282,6 +294,8 @@
       // HIỂN THỊ RA BẢNG
       hienThiData.forEach((hd, idx) => {
         const tr = document.createElement("tr");
+        // Sử dụng 2 hàm getTrangThaiGui và getMauTrangThai để luôn có trạng thái và màu sắc đúng
+        const trangThai = getTrangThaiGui(hd.trang_thai_gui);
         tr.innerHTML = `
       <td>${idx + 1}</td>
       <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
@@ -292,7 +306,7 @@
       <td>${hd.tongsl || 0}</td>
       <td>${hd.thanhtoan?.toLocaleString()}</td>
       <td>${hd.ghichu || ""}</td>
-      <td>${hd.trang_thai_gui || ""}</td>
+      <td style="color:${getMauTrangThai(trangThai)}">${trangThai}</td>
     `;
         tr.onclick = (e) => {
           if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
@@ -304,6 +318,7 @@
         };
         tbody.appendChild(tr);
       });
+
 
       // Tổng cộng
       let tongSL = 0, tongTien2 = 0;
@@ -324,7 +339,26 @@
     <td id="tongTienTong">${tongTien2.toLocaleString()}</td>
     <td colspan="2"></td>
   `;
+
+      // Bắt sự kiện tick chọn checkbox
+      document.querySelectorAll('.chonHD').forEach(cb => {
+        cb.onchange = () => {
+          const checkboxes = document.querySelectorAll('.chonHD:checked');
+          let allValid = false;
+          if (checkboxes.length > 0) {
+            allValid = Array.from(checkboxes).every(cb2 => {
+              const tr = cb2.closest('tr');
+              const trangThai = tr && tr.querySelector("td:last-child")?.textContent?.trim();
+              return !trangThai || trangThai === "Chưa gửi" || (trangThai && trangThai.startsWith("Lỗi"));
+            });
+          }
+          document.getElementById("btnGuiLai").disabled = !allValid || checkboxes.length === 0;
+        };
+      });
+
       tbody.appendChild(trTong);
+      document.getElementById("btnGuiLai").disabled = true;
+
     }
 
 
