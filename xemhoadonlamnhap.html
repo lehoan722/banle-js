@@ -8,6 +8,7 @@
   <!-- Handsontable 10.0.0 CSS + JS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@10.0.0/dist/handsontable.min.css">
   <script src="https://cdn.jsdelivr.net/npm/handsontable@10.0.0/dist/handsontable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@10.0.0/dist/plugins/filters/filters.min.js"></script>
 
   <style>
     body {
@@ -376,6 +377,7 @@
       document.getElementById("sohdCT").textContent = sohd;
 
       const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+
       // Kiểm tra lỗi/trống
       if (error || !data || !data.length) {
         document.getElementById("ctHoaDonGrid").innerHTML = `<div style="color:red">Không có dữ liệu hóa đơn hoặc lỗi: ${error?.message || ''}</div>`;
@@ -384,11 +386,18 @@
         if (hotCT) { hotCT.destroy(); hotCT = null; }
         return;
       }
-      // Chuẩn hóa dữ liệu
+
+      // Chuẩn hóa dữ liệu cho grid
       const tableData = data.map(row => {
-        const tt = (row.gia - row.km) * row.soluong;
+        const tt = (Number(row.gia) - Number(row.km)) * Number(row.soluong);
         return [
-          row.masp, row.tensp, row.size, row.soluong, row.gia, row.km, tt
+          row.masp || "",
+          row.tensp || "",
+          row.size || "",
+          Number(row.soluong) || 0,
+          Number(row.gia) || 0,
+          Number(row.km) || 0,
+          tt
         ];
       });
 
@@ -401,8 +410,10 @@
       document.getElementById("tongSLCT").textContent = tongSL.toLocaleString();
       document.getElementById("tongTTCT").textContent = tongTT.toLocaleString();
 
-      // Render Handsontable grid
+      // Xóa/hủy bảng cũ nếu có
       if (hotCT) { hotCT.destroy(); hotCT = null; }
+
+      // Render Handsontable với filter, sort
       hotCT = new Handsontable(document.getElementById("ctHoaDonGrid"), {
         data: tableData,
         colHeaders: ['Mã SP', 'Tên SP', 'Size', 'SL', 'Giá', 'KM', 'Thành tiền'],
@@ -429,6 +440,7 @@
         readOnly: true,
       });
     }
+
 
 
     function dongPopup() {
