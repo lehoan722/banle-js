@@ -284,13 +284,13 @@
           columns: [
             { data: 'stt', readOnly: true, width: 40 },
             { data: 'chon', type: 'checkbox', width: 45 },
-            { data: 'sohd', readOnly: true, width: 120 },
-            { data: 'ngay', readOnly: true, width: 120 },
+            { data: 'sohd', readOnly: true, width: 150 },
+            { data: 'ngay', readOnly: true, width: 240 },
             { data: 'tennv', readOnly: true },
             { data: 'khachhang', readOnly: true },
-            { data: 'tongsl', readOnly: true, type: 'numeric', width: 80 },
+            { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
             {
-              data: 'thanhtoan', readOnly: true, type: 'numeric', width: 110,
+              data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
               renderer: function (instance, td, row, col, prop, value) {
                 td.innerHTML = value?.toLocaleString();
               }
