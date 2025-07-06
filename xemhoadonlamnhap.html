@@ -190,6 +190,7 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
     );
     let rowDangChon = null;
+    let hotCT = null; // Khai báo ngoài cùng nếu muốn reuse grid
 
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
@@ -369,26 +370,28 @@
       tbody.appendChild(trTong);
     }
 
-    let hotCT = null; // Khai báo ngoài cùng nếu muốn reuse grid
 
     async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "block";
       document.getElementById("sohdCT").textContent = sohd;
 
       const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
-      if (error) {
-        document.getElementById("ctHoaDonGrid").innerHTML = `<div style="color:red">Lỗi: ${error.message}</div>`;
+      // Kiểm tra lỗi/trống
+      if (error || !data || !data.length) {
+        document.getElementById("ctHoaDonGrid").innerHTML = `<div style="color:red">Không có dữ liệu hóa đơn hoặc lỗi: ${error?.message || ''}</div>`;
         document.getElementById("tongSLCT").textContent = "0";
         document.getElementById("tongTTCT").textContent = "0";
+        if (hotCT) { hotCT.destroy(); hotCT = null; }
         return;
       }
-      // Định dạng lại data cho grid
-      const tableData = (data || []).map(row => {
+      // Chuẩn hóa dữ liệu
+      const tableData = data.map(row => {
         const tt = (row.gia - row.km) * row.soluong;
         return [
           row.masp, row.tensp, row.size, row.soluong, row.gia, row.km, tt
         ];
       });
+
       // Tính tổng
       let tongSL = 0, tongTT = 0;
       tableData.forEach(r => {
@@ -398,22 +401,19 @@
       document.getElementById("tongSLCT").textContent = tongSL.toLocaleString();
       document.getElementById("tongTTCT").textContent = tongTT.toLocaleString();
 
-      // Khởi tạo grid
-      if (hotCT) {
-        hotCT.destroy();
-        hotCT = null;
-      }
+      // Render Handsontable grid
+      if (hotCT) { hotCT.destroy(); hotCT = null; }
       hotCT = new Handsontable(document.getElementById("ctHoaDonGrid"), {
         data: tableData,
         colHeaders: ['Mã SP', 'Tên SP', 'Size', 'SL', 'Giá', 'KM', 'Thành tiền'],
         columns: [
-          { data: 0, type: 'text', readOnly: true },
-          { data: 1, type: 'text', readOnly: true },
-          { data: 2, type: 'text', readOnly: true },
-          { data: 3, type: 'numeric', readOnly: true },
-          { data: 4, type: 'numeric', readOnly: true },
-          { data: 5, type: 'numeric', readOnly: true },
-          { data: 6, type: 'numeric', readOnly: true }
+          { type: 'text', readOnly: true },
+          { type: 'text', readOnly: true },
+          { type: 'text', readOnly: true },
+          { type: 'numeric', readOnly: true },
+          { type: 'numeric', readOnly: true },
+          { type: 'numeric', readOnly: true },
+          { type: 'numeric', readOnly: true }
         ],
         width: '100%',
         height: 220,
@@ -422,15 +422,13 @@
         manualRowResize: true,
         rowHeaders: true,
         licenseKey: 'non-commercial-and-evaluation',
-        columnSorting: true,
+        dropdownMenu: true,     // Bật menu filter/sort trên tiêu đề
+        filters: true,          // Bật lọc dữ liệu
+        columnSorting: true,    // Cho phép sắp xếp từng cột
         autoWrapRow: true,
         readOnly: true,
-        afterRender() {
-          // Có thể custom style hoặc event ở đây nếu cần
-        }
       });
     }
-
 
 
     function dongPopup() {
