@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>BÁO CÁO CHI TIẾT BÁN HÀNG</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      padding: 0;
+      background: #f8f8f8;
+    }
+
+    .container {
+      max-width: 1350px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 30px 30px 80px 30px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .filter-wrap {
+      background: #fafafa;
+      padding: 18px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #eee;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .filter-row input,
+    .filter-row select {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      min-width: 150px;
+    }
+
+    .filter-row label {
+      font-weight: 600;
+      margin-right: 4px;
+    }
+
+    .filter-row .checkbox-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: 10px;
+    }
+
+    .filter-actions {
+      margin: 10px 0 0 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 5px;
+      background: #1890ff;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .btn:hover {
+      background: #005ecb;
+    }
+
+    .btn-toggle {
+      background: #999;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 7px 6px;
+      text-align: left;
+    }
+
+    tr:hover {
+      background: #f1f7fd;
+    }
+
+    th {
+      background: #f4f8fc;
+    }
+
+    tfoot td {
+      font-weight: bold;
+      background: #fafafa;
+    }
+
+    .sum-row td {
+      background: #f8f8f8;
+      color: #111;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>BÁO CÁO CHI TIẾT BÁN HÀNG</h2>
+    <div id="filterWrap" class="filter-wrap">
+      <div class="filter-row">
+        <label>Từ ngày: <input type="date" id="fromDate"></label>
+        <label>Đến ngày: <input type="date" id="toDate"></label>
+        <label>Khách hàng: <input id="khachhang"></label>
+        <label>Nhân viên: <input id="nhanvien"></label>
+        <label>Tên hàng: <input id="tenhang"></label>
+        <label>Mã ngắn: <input id="mangan"></label>
+        <label>Địa điểm:
+          <select id="diadiem">
+            <option value="">--Chọn cơ sở--</option>
+            <option value="CS1">CS1</option>
+            <option value="CS2">CS2</option>
+          </select>
+        </label>
+
+        <label>Kho hàng: <input id="khohang"></label>
+        <label>Nhóm hàng: <input id="nhomhang"></label>
+        <label>Loại hàng: <input id="loaihang"></label>
+      </div>
+      <div class="filter-row">
+        <label>Mã hàng: <input id="mahang"></label>
+        <label>Màu sắc: <input id="mausac"></label>
+        <label>Kích cỡ: <input id="kichco"></label>
+        <label>Từ giá: <input type="number" id="fromGia"></label>
+        <label>Đến giá: <input type="number" id="toGia"></label>
+        <div class="checkbox-wrap">
+          <label><input type="checkbox" id="banLeTraLai"> Bán lẻ trả lại</label>
+          <label><input type="checkbox" id="banBuonTraLai"> Bán buôn trả lại</label>
+          <label><input type="checkbox" id="locGiamGia"> Lọc hàng giảm giá</label>
+          <label><input type="checkbox" id="locNCC"> Lọc theo nhà cung cấp</label>
+          <label><input type="checkbox" id="chiTietDVT"> Chi tiết theo ĐVT</label>
+          <label><input type="checkbox" id="sapXepNgay"> Sắp xếp theo ngày</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-actions" id="actionBar">
+      <button class="btn btn-toggle" type="button" onclick="toggleFilter()">Ẩn tùy chọn lọc</button>
+      <button class="btn" type="button" onclick="xemBaoCao()">Xem báo cáo</button>
+      <button class="btn" type="button" onclick="xuatExcel()">Xuất Excel</button>
+    </div>
+    <table id="bangBaoCao">
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Ngày</th>
+          <th>Chứng từ</th>
+          <th>Tên khách hàng</th>
+          <th>Kho xuất</th>
+          <th>Mã hàng</th>
+          <th>Tên hàng</th>
+          <th>Số lượng</th>
+          <th>Kích cỡ</th>
+          <th>ĐVT</th>
+          <th>Đơn giá</th>
+          <th>Khuyến mại</th>
+          <th>Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody id="bodyBaoCao"></tbody>
+      <tfoot>
+        <tr class="sum-row">
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td style="font-weight:bold;">Tổng cộng</td>
+          <td id="sumSL"></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td id="sumKM"></td>
+          <td id="sumTT"></td>
+        </tr>
+      </tfoot>
+
+    </table>
+
+    <div id="sumExtra" style="margin-top:16px; font-weight:500;"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script>
+
+    // Khai báo client ngay sau khi đã nhúng thư viện JS
+    const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co'; // Thay cho bạn
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // Dùng anon key của bạn
+
+
+    const diadiem = document.getElementById("diadiem").value;
+    if (diadiem) query = query.eq('hoadon_banle.diadiem', diadiem);
+
+    // Ẩn/hiện filter
+    function toggleFilter() {
+      const wrap = document.getElementById('filterWrap');
+      if (wrap.classList.contains('hidden')) {
+        wrap.classList.remove('hidden');
+        document.querySelector('.btn-toggle').innerText = "Ẩn tùy chọn lọc";
+      } else {
+        wrap.classList.add('hidden');
+        document.querySelector('.btn-toggle').innerText = "Hiện tùy chọn lọc";
+      }
+    }
+
+    // Hàm load dữ liệu từ Supabase/Backend (dummy demo)
+    const supabase = window.supabase.createClient('https://rddjrmbyftlcvrgzlyby.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM');
+
+    async function xemBaoCao() {
+      // Lấy các giá trị lọc từ form
+      const params = {
+        fromDate: document.getElementById("fromDate").value,
+        toDate: document.getElementById("toDate").value,
+        khachhang: document.getElementById("khachhang").value.trim(),
+        nhanvien: document.getElementById("nhanvien").value.trim(),
+        tenhang: document.getElementById("tenhang").value.trim(),
+        mangan: document.getElementById("mangan").value.trim(),
+        diadiem: document.getElementById("diadiem").value.trim(),
+        khohang: document.getElementById("khohang").value.trim(),
+        nhomhang: document.getElementById("nhomhang").value.trim(),
+        loaihang: document.getElementById("loaihang").value.trim(),
+        mahang: document.getElementById("mahang").value.trim(),
+        mausac: document.getElementById("mausac").value.trim(),
+        kichco: document.getElementById("kichco").value.trim(),
+        fromGia: document.getElementById("fromGia").value,
+        toGia: document.getElementById("toGia").value
+        // ... các checkbox nếu cần
+      };
+
+      // Query bảng chi tiết và join sang hóa đơn tổng
+      let query = supabase
+        .from('ct_hoadon_banle')
+        .select(`
+      *,
+      hoadon_banle:sohd (
+        ngay, khachhang, manv, tennv, diadiem
+      )
+    `)
+        .order('sohd', { ascending: false });
+
+      // Thêm điều kiện lọc
+      if (params.fromDate) query = query.gte('hoadon_banle.ngay', params.fromDate);
+      if (params.toDate) query = query.lte('hoadon_banle.ngay', params.toDate);
+      if (params.khachhang) query = query.ilike('hoadon_banle.khachhang', `%${params.khachhang}%`);
+      if (params.nhanvien) query = query.ilike('hoadon_banle.tennv', `%${params.nhanvien}%`);
+      if (params.mahang) query = query.ilike('masp', `%${params.mahang}%`);
+      if (params.tenhang) query = query.ilike('tensp', `%${params.tenhang}%`);
+      if (params.diadiem) query = query.eq('hoadon_banle.diadiem', params.diadiem);
+      if (params.khohang) query = query.eq('diadiem', params.khohang); // nếu muốn lọc riêng kho xuất
+      if (params.kichco) query = query.eq('size', params.kichco);
+      if (params.fromGia) query = query.gte('gia', +params.fromGia);
+      if (params.toGia) query = query.lte('gia', +params.toGia);
+
+      // Lấy dữ liệu
+      const { data, error } = await query.limit(1000);
+
+      if (error) {
+        alert("Lỗi truy vấn: " + error.message);
+        return;
+      }
+
+      // Ghép dữ liệu cho đúng định dạng bảng
+      const rows = (data || []).map(row => ({
+        ngay: row.hoadon_banle?.ngay,
+        sohd: row.sohd,
+        khachhang: row.hoadon_banle?.khachhang,
+        kho: row.diadiem, // hoặc row.hoadon_banle?.diadiem nếu bạn muốn hiển thị theo địa điểm
+        masp: row.masp,
+        tensp: row.tensp,
+        soluong: row.soluong,
+        size: row.size,
+        dvt: row.dvt,
+        gia: row.gia,
+        km: row.km,
+        thanhtien: row.thanhtien
+      }));
+
+      renderBangBaoCao(rows);
+    }
+
+
+    // Render bảng báo cáo
+    function renderBangBaoCao(data) {
+      // data: mảng các dòng chi tiết đã join đủ trường
+      const tbody = document.getElementById('bodyBaoCao');
+      tbody.innerHTML = '';
+      let sumSL = 0, sumKM = 0, sumTT = 0;
+      data.forEach((row, idx) => {
+        sumSL += row.soluong || 0;
+        sumKM += row.km || 0;
+        sumTT += row.thanhtien || 0;
+        tbody.innerHTML += `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${row.ngay || ''}</td>
+            <td>${row.sohd || ''}</td>
+            <td>${row.khachhang || ''}</td>
+            <td>${row.kho || row.diadiem || ''}</td>
+            <td>${row.masp || ''}</td>
+            <td>${row.tensp || ''}</td>
+            <td>${row.soluong || ''}</td>
+            <td>${row.size || ''}</td>
+            <td>${row.dvt || ''}</td>
+            <td>${row.gia ? row.gia.toLocaleString() : ''}</td>
+            <td>${row.km ? row.km.toLocaleString() : ''}</td>
+            <td>${row.thanhtien ? row.thanhtien.toLocaleString() : ''}</td>
+          </tr>
+        `;
+      });
+      document.getElementById('sumSL').innerText = sumSL.toLocaleString();
+      document.getElementById('sumKM').innerText = sumKM.toLocaleString();
+      document.getElementById('sumTT').innerText = sumTT.toLocaleString();
+      document.getElementById('sumExtra').innerHTML = `
+        Tổng KM theo hóa đơn: 0<br>
+        Tổng sau khuyến mại: ${sumTT.toLocaleString()}<br>
+        Tổng thanh toán bằng thẻ: 0<br>
+        Tổng cộng đã trừ thanh toán bằng thẻ: ${sumTT.toLocaleString()}
+      `;
+    }
+
+    // Xuất Excel với SheetJS
+    function xuatExcel() {
+      const wb = XLSX.utils.table_to_book(document.getElementById('bangBaoCao'), { sheet: "Báo cáo" });
+      XLSX.writeFile(wb, "baocao_chitiet_banhang.xlsx");
+    }
+  </script>
+</body>
+
+</html>

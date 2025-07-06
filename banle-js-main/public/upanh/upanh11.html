@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload ảnh lên Supabase qua API</title>
+</head>
+<body>
+    <h2>Chọn ảnh để upload lên Supabase</h2>
+    <input type="file" id="fileInput" accept="image/*">
+    <button id="btnUpload">Upload</button>
+    <div id="result"></div>
+
+    <script>
+    document.getElementById('btnUpload').onclick = async function() {
+        const input = document.getElementById('fileInput');
+        if (!input.files.length) {
+            alert('Vui lòng chọn ảnh!');
+            return;
+        }
+        const file = input.files[0];
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Đường dẫn /api/upload sẽ trỏ đến API của bạn trên Vercel
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        if (result.data) {
+            document.getElementById('result').innerHTML = `<b style="color:green;">Upload thành công!</b><br>File public URL: ${result.data.path}`;
+        } else {
+            document.getElementById('result').innerHTML = `<b style="color:red;">Lỗi: ${result.error}</b>`;
+        }
+    }
+    </script>
+</body>
+</html>

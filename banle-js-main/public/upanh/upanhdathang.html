@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload ảnh đặt hàng</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: center;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 95%;
+            padding: 4px;
+        }
+
+        .buttons {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .buttons button {
+            padding: 8px 12px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .preview {
+            border: 1px solid #ccc;
+            padding: 6px;
+            width: 200px;
+            text-align: center;
+        }
+
+        td input.masp-input {
+            min-width: 100px;
+            max-width: 150px;
+        }
+
+
+        .preview img {
+            width: 90%;
+            height: auto;
+        }
+
+        /* ✅ Responsive: trên điện thoại (dưới 600px) – chia 2 ảnh mỗi dòng */
+        @media (max-width: 600px) {
+            .image-preview {
+                width: calc(100% - 10px);
+                /* 2 ảnh trên 1 dòng, trừ khoảng cách */
+            }
+
+
+            #statusMessage {
+                text-align: center;
+                margin-top: 10px;
+                font-weight: bold;
+                color: green;
+            }
+
+            th:nth-child(1),
+            td:nth-child(1) {
+                width: 5%;
+            }
+
+            /* STT */
+            th:nth-child(2),
+            td:nth-child(2) {
+                width: 40%;
+            }
+
+            /* Mã SP */
+            th:nth-child(3),
+            td:nth-child(3) {
+                width: 45%;
+            }
+
+            /* Nội dung */
+            th:nth-child(4),
+            td:nth-child(4) {
+                width: 10%;
+            }
+
+        }
+
+        /* Tên ảnh */
+    </style>
+</head>
+
+<body>
+    <h2>📸 Tải ảnh sản phẩm</h2>
+
+    <!-- //soct: Ô nhập số chứng từ -->
+    <div style="margin-bottom: 10px">
+        <label for="soChungTu"><b>Số chứng từ:</b></label>
+        <input type="text" id="soChungTu" readonly style="width: 180px; font-weight: bold; color: blue" />
+    </div>
+
+    <input type="file" id="imageFiles" accept="image/*" multiple onchange="generateRows()">
+    <table>
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Mã sản phẩm</th>
+                <th>Nội dung</th>
+                <th>Tên ảnh</th>
+            </tr>
+        </thead>
+        <tbody id="imageTable"></tbody>
+    </table>
+
+
+
+    <div class="buttons">
+        <button onclick="resizeAndPreview()">Hiển thị ảnh</button>
+        <button onclick="goBack()">Quay lại</button>
+        <button id="saveButton" onclick="uploadResizedImages()">Lưu dữ liệu</button> <!-- (pb1) -->
+        <button onclick="resetForm()">Thêm mới</button>
+    </div>
+
+    <div id="statusMessage"></div>
+    <div id="statusMessage1"></div>
+    <div class="preview-container" id="previewContainer"></div>
+
+    <script>
+        let allFiles = [];        // Ảnh đã chọn
+        const resizedImages = [];
+
+        const SHEET_URL = "https://script.google.com/macros/s/AKfycbwhI-vok96nNRIUuzMLn4SeCAKXSGc8IgedyCAhh2sgz7mMovz85JSJMJudGjfIi-5q/exec"; // Đường dẫn Apps Script
+
+        //----------lenh---soct: lấy số chứng từ mới---------------------------------------
+        async function loadSoChungTu() {
+            try {
+                const res = await fetch(SHEET_URL + '?action=getSoChungTu');
+                const nextSo = await res.text();
+                document.getElementById('soChungTu').value = nextSo;
+            } catch (err) {
+                console.error('Không lấy được số chứng từ:', err);
+                document.getElementById('soChungTu').value = 'dathangcs1_000001';
+            }
+        }
+
+        // //----------lenh---(pb1) – Gọi danh sách mã sản phẩm từ Google Sheet để gợi ý
+
+
+
+        ////----------lenh--- Tạo dòng nhập mã SP – nội dung – tên ảnh
+
+        function generateRows() {
+            const newFiles = Array.from(document.getElementById("imageFiles").files);
+            allFiles.push(...newFiles); // ✅ ghi thêm ảnh mới vào danh sách toàn bộ
+
+            const tbody = document.getElementById("imageTable");
+            const currentRowCount = tbody.querySelectorAll("tr").length;
+
+            for (let i = 0; i < newFiles.length; i++) {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+      <td>${currentRowCount + i + 1}</td>
+
+      <td>
+  <div style="display:flex; align-items:center;">
+    <input type="text" placeholder="Mã SP" class="masp-input" style="flex:1; padding-right:30px;">
+    <button type="button" class="popup-btn" style="margin-left:4px;">🔍</button>
+  </div>
+</td>
+
+      <td><input type="text" placeholder="Nội dung" class="noidung-input"></td>
+      <td><input type="text" value="${newFiles[i].name}" disabled></td>
+    `;
+                tbody.appendChild(row);
+            }
+
+            const maspInputs = document.querySelectorAll(".masp-input");
+            const noidungInputs = document.querySelectorAll(".noidung-input");
+            // Gắn nút 🔍 mở popup cho từng dòng
+            const popupButtons = document.querySelectorAll(".popup-btn");
+            popupButtons.forEach((btn, index) => {
+                btn.addEventListener("click", () => {
+                    currentMaspInput = document.querySelectorAll(".masp-input")[index];
+                    document.getElementById("popupDanhMuc").style.display = "block";
+                    document.getElementById("timKiemMaspPopup").focus();
+                    hienThiDanhMucSP("");
+                });
+            });
+
+
+            // Gắn sự kiện Enter cho chuyển ô
+            maspInputs.forEach((input, index) => {
+                input.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        noidungInputs[index]?.focus();
+                    }
+                });
+
+                // Gắn sự kiện oninput để cập nhật tên ảnh tương ứng
+                input.addEventListener("input", function () {
+                    const newMasp = input.value.trim();
+                    const imagePreview = document.querySelectorAll(".image-preview")[index];
+                    const imageData = resizedImages[index];
+
+                    if (newMasp && imagePreview && imageData) {
+                        imageData.masp = newMasp;
+                        imageData.name = `${newMasp}.jpg`;
+
+                        const nameDisplay = imagePreview.querySelector("p");
+                        if (nameDisplay) nameDisplay.textContent = imageData.name;
+                    }
+                });
+            });
+
+            noidungInputs.forEach((input, index) => {
+                input.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        maspInputs[index + 1]?.focus();  // //----------lenh--- tao focus o ma sp---
+                    }
+                });
+            });
+
+            resizeAndPreview(); // Gọi resize sau khi thêm dòng
+        }
+
+
+
+        ////----------lenh--- Xử lý resize và tạo ảnh mới theo mã SP
+
+        async function resizeAndPreview() {
+            const rows = document.querySelectorAll("#imageTable tr");
+            const preview = document.getElementById("previewContainer");
+
+            preview.innerHTML = "";
+            resizedImages.length = 0;
+
+            for (let i = 0; i < allFiles.length; i++) {
+                const row = rows[i];
+                const file = allFiles[i];
+                if (!row || !file) continue;
+
+                const masp = row.children[1].querySelector("input").value.trim();
+                const noidung = row.children[2].querySelector("input").value.trim();
+
+                await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.onload = function () {
+                            const isHorizontal = img.width > img.height;
+                            const targetWidth = isHorizontal ? 640 : 480;
+                            const targetHeight = isHorizontal ? 480 : 640;
+                            const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+                            const scaledWidth = img.width * scale;
+                            const scaledHeight = img.height * scale;
+                            const offsetX = (targetWidth - scaledWidth) / 2;
+                            const offsetY = (targetHeight - scaledHeight) / 2;
+
+                            const canvas = document.createElement("canvas");
+                            const ctx = canvas.getContext("2d");
+                            canvas.width = targetWidth;
+                            canvas.height = targetHeight;
+                            ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+
+                            canvas.toBlob(blob => {
+                                const newName = masp ? `${masp}.jpg` : file.name;
+                                resizedImages.push({ blob, name: newName, masp, noidung });
+
+                                const container = document.createElement("div");
+                                container.className = "image-preview";
+                                container.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Preview"><p>${newName}</p>`;
+                                preview.appendChild(container);
+                                resolve();
+                            }, "image/jpeg");
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // Focus dòng trống dau tien
+            const maspInputs = document.querySelectorAll(".masp-input");
+            for (let i = 0; i < maspInputs.length; i++) {
+                const input = maspInputs[i];
+                if (!input.value.trim()) {
+                    input.focus();
+                    input.scrollIntoView({ behavior: "smooth", block: "center" });
+                    break;
+                }
+            }
+
+        }
+
+
+
+        //----------lenh--- tro lai------------------------------------------
+
+        function goBack() {
+            document.getElementById("previewContainer").innerHTML = "";
+        }
+
+        //----------lenh--- luu du lieu anh va dat hang --------------------------------
+
+        async function uploadResizedImages() {
+            const saveBtn = document.getElementById("saveButton");
+            saveBtn.disabled = true;
+            document.getElementById("statusMessage").innerText = "⏳ Đang kiểm tra dữ liệu trước khi lưu...";
+
+            // ✅ Sử dụng allFiles thay vì input.files
+            if (resizedImages.length !== allFiles.length) {
+                document.getElementById("statusMessage").innerText = "❌ Số lượng ảnh chưa được xử lý đủ.";
+                alert("⚠️ Vui lòng nhập đầy đủ mã sản phẩm để tạo tên mới cho tất cả ảnh trước khi lưu.");
+                saveBtn.disabled = false;
+                return;
+            }
+
+            const hasMissing = resizedImages.some(r => !r.masp || !r.blob);
+            if (hasMissing) {
+                document.getElementById("statusMessage").innerText = "❌ Một số ảnh thiếu mã sản phẩm hoặc lỗi ảnh.";
+                saveBtn.disabled = false;
+                return;
+            }
+
+            document.getElementById("statusMessage").innerText = "⏳ Đang lưu dữ liệu...";
+
+            const formData = new FormData();
+            resizedImages.forEach(img => formData.append("imageFiles[]", img.blob, img.name));
+
+            try {
+                const serverIP = location.origin;
+
+                const uploadRes = await fetch(`${serverIP}/a/uploadkhongghide.php`, {
+                    method: "POST",
+                    body: formData
+                });
+                const uploadText = await uploadRes.text();
+                document.getElementById("statusMessage1").innerHTML = uploadText;
+
+
+                const soChungTu = document.getElementById("soChungTu").value;
+                const data = [];
+                const rows = document.querySelectorAll("#imageTable tr");
+
+                rows.forEach(row => {
+                    const masp = row.children[1].querySelector("input").value.trim();
+                    const noidung = row.children[2].querySelector("input").value.trim();
+                    if (masp) {
+                        data.push({ masp, noidung, soChungTu });
+                    }
+                });
+
+                const res = await fetch(SHEET_URL, {
+                    method: "POST",
+                    body: JSON.stringify(data)
+                });
+
+                const text = await res.text();
+                document.getElementById("statusMessage").innerText = text.includes("thành công")
+                    ? "✅ Đã ghi dữ liệu thành công"
+                    : "❌ Ghi dữ liệu thất bại (Server không phản hồi đúng)";
+            } catch (err) {
+                document.getElementById("statusMessage").innerText = "❌ Ghi dữ liệu thất bại";
+                console.error(err);
+            }
+
+            saveBtn.disabled = false;
+            document.getElementById("imageFiles").value = "";
+            document.getElementById("imageTable").innerHTML = "";
+            document.getElementById("previewContainer").innerHTML = "";
+            resizedImages.length = 0;
+            allFiles = []; // ✅ Reset luôn cả danh sách ảnh đã chọn
+            loadSoChungTu();
+            allFiles = []; // ✅ Thêm dòng này để reset đúng danh sách ảnh
+        }
+
+        //----------lenh--- lam moi -------------------------------------------------------
+
+        function resetForm() {
+            document.getElementById("imageFiles").value = "";
+            document.getElementById("imageTable").innerHTML = "";
+            document.getElementById("previewContainer").innerHTML = "";
+            document.getElementById("statusMessage").innerText = "";
+            document.getElementById("statusMessage1").innerText = "";
+            resizedImages.length = 0;
+            loadSoChungTu();
+            allFiles = []; // ✅ Thêm dòng này để reset đúng danh sách ảnh
+        }
+
+        loadSoChungTu(); // //soct
+
+        let sanPhamData = {}; // 🔹 Cache toàn bộ mã sản phẩm để tìm popup
+        let currentMaspInput = null;
+
+        // 🔍 Tải dữ liệu sản phẩm 1 lần (sau khi trang tải)
+        async function taiDuLieuSanPham() {
+            try {
+                const res = await fetch(SHEET_URL + "?sheet=dmhanghoa");
+                const list = await res.json();
+                list.forEach(masp => sanPhamData[masp] = true);
+                console.log("✅ Đã nạp danh sách mã SP:", list.length);
+            } catch (err) {
+                console.error("❌ Lỗi khi nạp mã SP:", err);
+            }
+        }
+        taiDuLieuSanPham();
+
+        function hienThiDanhMucSP(keyword) {
+            const container = document.getElementById("danhSachSP");
+            container.innerHTML = "";
+
+            const danhSach = Object.keys(sanPhamData)
+                .filter(masp => masp.includes(keyword.toUpperCase()))
+                .slice(0, 100);
+
+            if (danhSach.length === 0) {
+                container.innerHTML = "<div style='padding:10px; color:#888;'>Không tìm thấy sản phẩm phù hợp</div>";
+                return;
+            }
+
+            danhSach.forEach(masp => {
+                const div = document.createElement("div");
+                div.textContent = masp;
+                div.className = "popup-item";
+                div.style = "padding:6px; border-bottom:1px solid #eee; cursor:pointer;";
+                div.addEventListener("click", () => {
+                    if (currentMaspInput) {
+                        currentMaspInput.value = masp;
+                        currentMaspInput.dispatchEvent(new Event("input"));
+                        dongPopupDM();
+                        currentMaspInput.focus();
+                    }
+                });
+                container.appendChild(div);
+            });
+        }
+
+        window.addEventListener("DOMContentLoaded", function () {
+            const inputPopup = document.getElementById("timKiemMaspPopup");
+            if (inputPopup) {
+
+                inputPopup.addEventListener("input", function (e) {
+                    hienThiDanhMucSP(e.target.value);
+                });
+
+            }
+        });
+
+
+        function dongPopupDM() {
+            document.getElementById("popupDanhMuc").style.display = "none";
+            document.getElementById("timKiemMaspPopup").value = "";
+        }
+
+    </script>
+
+    <!-- ✅ Popup tìm mã sản phẩm -->
+    <div class="popup" id="popupDanhMuc" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+  width:300px; height:600px; background:white; border:1px solid #ccc;
+  z-index:9999; overflow:auto; padding:10px;">
+
+        <div style="padding:10px; height:100%; display:flex; flex-direction:column;">
+            <strong>Tìm kiếm mã sản phẩm</strong>
+            <button onclick="dongPopupDM()">Đóng</button>
+            <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..."
+                style="margin:8px 0; padding:6px; font-size:16px;" />
+            <div id="danhSachSP" style="flex:1; overflow-y:auto; border:1px solid #ddd;"></div>
+
+        </div>
+    </div>
+
+
+
+</body>
+
+</html>

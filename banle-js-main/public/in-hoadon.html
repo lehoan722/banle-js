@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>In Hóa Đơn</title>
+
+    <style>
+        body {
+            
+            font-family: Arial, sans-serif;
+            width: 80mm;
+            margin-left: 2mm;
+            margin-right: 2mm;
+            font-size: 14px;
+        }
+
+        /* ... (các đoạn khác giữ nguyên) ... */
+        th,
+        td {
+            border: 1px solid black;
+            padding: 2px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        @media print {
+            body {
+                margin-left: 2mm !important;
+                margin-right: 2mm !important;
+            }
+        }
+
+
+        .header,
+        .invoice-info {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+
+
+        /* ... (các đoạn khác giữ nguyên) ... */
+        th,
+        td {
+            border: 1px solid black;
+            padding: 2px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .header,
+        .footer {
+            text-align: center;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .invoice-info,
+        .totals,
+        .note {
+            margin-top: 0px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0px;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 4px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .totals td {
+            text-align: right;
+        }
+
+        .note {
+            font-size: 12px;
+            margin-top: 0px;
+            font-style: italic;
+        }
+
+        .thankyou {
+            font-size: 16px;
+            font-family: 'Comic Sans MS', cursive;
+            text-align: center;
+            margin-top: 0px;
+        }
+
+        .big {
+            font-size: 20px;
+        }
+
+        .totals-flex {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 24px;
+            margin: 10px 0 0 0;
+        }
+
+        .totals-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .totals-col .label {
+            display: inline-block;
+            min-width: 90px;
+        }
+
+        .totals-col .value {
+            font-weight: bold;
+            float: right;
+            margin-left: 8px;
+        }
+
+        .total-line {
+            border-top: 1px dashed #555;
+            padding-top: 2px;
+            margin-top: 3px;
+        }
+
+
+        .totals-flex {
+            width: 100%;
+            display: block;
+            /* Đảm bảo không còn là flex! */
+            margin: 10px 0 0 0;
+        }
+
+        .totals-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            gap: 4px;
+        }
+
+        .totals-left {
+            flex: 5;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 2px;
+            font-size: 13px;
+            min-width: 0;
+            line-height: 1.6;
+            display: flex;
+        }
+
+        .totals-right {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 13px;
+           
+
+        }
+
+        .totals-pay {
+            border-top: 2px dashed #555;
+            margin-top: 3px;
+            padding-top: 6px;
+            font-size: 26px;
+
+            justify-content: space-between;
+            width: 100%;
+            font-weight: bold;
+            /* ĐẢM BẢO nằm dưới, cách xa các dòng trên */
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="bold big">SHOP HOÀN TUYẾT</div>
+        <div>CS 1: SN 540 Đường 3-2 TP Thái Nguyên</div>
+        <div>CS 2: SN 561 Đường LNQ - Thái Nguyên</div>
+        <div>CS 3: SN 40 Đ Quang Trung - T Nguyên</div>
+        <div>ĐT: 0916.633.860; 0916.747.401</div>
+        <div>facebook.com/shophoantuyet</div>
+        <div class="bold">HÓA ĐƠN BÁN LẺ</div>
+    </div>
+
+    <div class="invoice-info">
+        NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
+        (<span id="sohd"></span>)<br>
+        Date: <span id="ngay"></span> - <span id="gio"></span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>TÊN HÀNG</th>
+                <th>S.L</th>
+                <th>ĐƠN GIÁ</th>
+                <th>K. MAI</th>
+                <th>T.TIỀN</th>
+            </tr>
+        </thead>
+        <tbody id="noidungchitiet"></tbody>
+    </table>
+
+    <div class="totals-flex"></div>
+
+
+    <div class="note">
+        Chú ý: Hàng chỉ được đổi lại trong 03 ngày phải còn nguyên nhãn, chưa sử dụng. không nhận hàng trả lại.
+    </div>
+
+    <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
+
+    <script>
+        // Lấy dữ liệu từ localStorage
+        const dataIn = JSON.parse(localStorage.getItem("data_hoadon_in") || "{}");
+        const hoadon = dataIn.hoadon || {};
+        const data = dataIn.chitiet || [];
+
+        // Đọc các trường đã truyền (backup logic cũ)
+        const tongsl = Number(hoadon.tongsl) || 0;
+        const tongkm = Number(hoadon.tongkm) || 0;         // Tổng khuyến mại từng SP
+        const chietkhau = Number(hoadon.chietkhau) || 0;   // KM hóa đơn
+        const thanhtoan = Number(hoadon.thanhtoan) || 0;   // Tổng phải trả
+
+        // Tính các trường cần hiển thị theo logic mới hoặc lấy từ object hoadon nếu có
+        const tongtienhang = Number(hoadon.tongtienhang) || (thanhtoan + tongkm + chietkhau);
+        const thuegtgt = Number(hoadon.thuegtgt) || Math.round(tongtienhang * 0.01);
+        const giamthue = Number(hoadon.giamthue) || -thuegtgt;
+
+        function formatSo(val) {
+            if (isNaN(val)) return '0';
+            return Number(val).toLocaleString();
+        }
+
+        // Render tổng hợp hai cột
+        document.querySelector('.totals-flex').innerHTML = `
+  <div class="totals-row">
+    <div class="totals-left">
+      <span class="label">Tổng tiền hàng:</span> <span class="value">${formatSo(tongtienhang)}</span>
+      <span class="label">Tổng khuyến mại:</span> <span class="value">-${formatSo(tongkm)}</span>
+      <span class="label">KM hóa đơn:</span> <span class="value">-${formatSo(chietkhau)}</span>
+    </div>
+    <div class="totals-right">
+      <div><span class="label">Tổng SL:</span> <span class="value">${formatSo(tongsl)} sp</span></div>
+      <div><span class="label">thuế GTGT:</span> <span class="value">${formatSo(thuegtgt)}</span></div>
+      <div><span class="label">Giảm thuế:</span> <span class="value">-${formatSo(Math.abs(giamthue))}</span></div>
+    </div>
+  </div>
+  <div class="totals-pay bold">
+    <span class="label">Tổng phải trả:</span>
+    <span class="value" style="font-size:18px;">${formatSo(thanhtoan)}</span>
+  </div>
+`;
+
+
+        // Hiển thị thông tin hóa đơn
+        document.getElementById("diadiem").textContent = hoadon.diadiem || "";
+        document.getElementById("khachhang").textContent = hoadon.khachhang || "";
+        document.getElementById("sohd").textContent = hoadon.sohd || "";
+        document.getElementById("ngay").textContent = hoadon.ngay || "";
+        document.getElementById("gio").textContent = hoadon.gio || "";
+
+        // Hiển thị danh sách sản phẩm
+        const tbody = document.getElementById("noidungchitiet");
+        data.forEach(sp => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+            <td>${sp.tensp} ${sp.masp || ""}</td>
+            <td>${sp.soluong}</td>
+            <td>${Number(sp.gia).toLocaleString()}</td>
+            <td>${Number(sp.km || 0).toLocaleString()}</td>
+            <td>${Number(sp.thanhtien).toLocaleString()}</td>
+        `;
+            tbody.appendChild(row);
+        });
+
+        localStorage.removeItem("data_hoadon_in");
+
+        // Cho phép in bằng phím Enter
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                window.print();
+            }
+        });
+    </script>
+
+</body>
+
+</html>

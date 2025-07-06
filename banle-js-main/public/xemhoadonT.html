@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Xem Hóa Đơn Tạm</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+      cursor: pointer;
+    }
+
+    input,
+    select {
+      margin: 4px;
+      padding: 6px;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 10%;
+      width: 500px;
+      min-width: 350px;
+      min-height: 200px;
+      height: 400px;
+      background: #fff;
+      border: 2px solid #4884ce;
+      overflow: auto;
+      padding: 20px;
+      z-index: 9999;
+      box-shadow: 0 2px 18px rgba(0, 0, 0, 0.2);
+      border-radius: 7px;
+      resize: both;
+      /* Cho phép thay đổi kích thước */
+    }
+
+    #popup .drag-header {
+      cursor: move;
+      background: #f3f7fa;
+      font-weight: bold;
+      padding: 8px 10px;
+      margin: -20px -20px 15px -20px;
+      border-bottom: 1px solid #4884ce;
+      border-radius: 7px 7px 0 0;
+      user-select: none;
+    }
+
+    thead tr th {
+      position: sticky;
+      top: 0;
+      background: #f9f9f9;
+      z-index: 2;
+    }
+
+    button.loc-btn {
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    button.loc-btn:hover {
+      background: #1769aa;
+    }
+
+    button.xoa-btn {
+      background: #ffe066;
+      color: #555;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button.xoa-btn:hover {
+      background: #ffe599;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>📋 Tra cứu Hóa Đơn Tạm</h2>
+  <label>Từ ngày: <input type="date" id="locTuNgay"></label>
+  <label>Đến ngày: <input type="date" id="locDenNgay"></label>
+
+  <label>Nhân viên: <input type="text" id="locNV"></label>
+  <label>Số HĐ: <input type="text" id="locSoHD"></label>
+
+  <label>Loại chứng từ:</label>
+  <select id="loaiChungTuT" style="min-width:140px;">
+    <option value="">--Tất cả--</option>
+    <option value="bancs1T">bancs1T</option>
+    <option value="bancs2T">bancs2T</option>
+    <option value="nmcs1T">nmcs1T</option>
+    <option value="nmcs2T">nmcs2T</option>
+    <option value="ccn1v2T">ccn1v2T</option>
+    <option value="ccn2v1T">ccn2v1T</option>
+  </select>
+
+  <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
+
+  <button id="btnGuiLai" onclick="guiLaiHoaDonDaChon()" disabled>📤 Gửi lại hóa đơn</button>
+  <div style="margin:10px 0;">
+    <b>Tổng thanh toán các hóa đơn đang hiển thị: </b>
+    <span id="tongThanhToan" style="font-weight:bold;color:blue;">0</span>
+  </div>
+
+  <!-- Thêm nút xóa và cột số thứ tự, checkbox -->
+  <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>✔️</th>
+        <th>Số HĐ</th>
+        <th>Ngày</th>
+        <th>NV</th>
+        <th>Khách</th>
+        <th>TT</th>
+        <th>Ghi chú</th>
+        <th>Trạng thái gửi</th>
+      </tr>
+    </thead>
+    <tbody id="dsHoaDon"></tbody>
+  </table>
+
+
+  <div id="popup">
+    <div class="drag-header" id="popupHeader">
+      Chi tiết hóa đơn: <span id="sohdCT"></span>
+      <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Mã SP</th>
+          <th>Tên SP</th>
+          <th>Size</th>
+          <th>SL</th>
+          <th>Giá</th>
+          <th>KM</th>
+          <th>Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody id="ctHoaDon"></tbody>
+    </table>
+    <button onclick="dongPopup()">Đóng</button>
+  </div>
+
+  <script>
+    let sohdDangChon = null;
+
+    const supabase = window.supabase.createClient(
+      'https://rddjrmbyftlcvrgzlyby.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+    );
+
+    async function taiDanhSachHoaDon() {
+      // Lấy giá trị lọc
+      const tuNgay = document.getElementById("locTuNgay").value;
+      const denNgay = document.getElementById("locDenNgay").value;
+      const nv = document.getElementById("locNV").value.trim().toUpperCase();
+      const sohd = document.getElementById("locSoHD").value.trim();
+      const loaiChungTu = document.getElementById("loaiChungTuT").value; // mới thêm
+
+      let query = supabase
+        .from('hoadon_banleT')
+        .select('*')
+        .order('ngay', { ascending: false })
+        .order('sohd', { ascending: false }); // Không limit!
+      if (loaiChungTu) {
+        query = query.ilike('sohd', `${loaiChungTu}_%`);
+      }
+
+
+      if (tuNgay && denNgay) {
+        query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
+      } else if (tuNgay) {
+        query = query.gte('ngay', tuNgay);
+      } else if (denNgay) {
+        query = query.lte('ngay', denNgay);
+      }
+
+      if (nv) query = query.ilike('manv', `%${nv}%`);
+      if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+
+      const { data, error } = await query;
+      const tbody = document.getElementById("dsHoaDon");
+      tbody.innerHTML = "";
+      let tongTien = 0;
+
+      if (error) return alert("Lỗi tải hóa đơn: " + error.message);
+      if (!data || !data.length) {
+        document.getElementById('tongThanhToan').textContent = "0";
+        return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
+      }
+
+      // Tạo từng dòng bảng với số thứ tự, checkbox
+      data.forEach((hd, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd}"></td>
+      <td>${hd.sohd}</td>
+      <td>${dinhDangNgayGio(hd.created_at)}</td>
+      <td>${hd.tennv}</td>
+      <td>${hd.khachhang}</td>
+      <td>${hd.thanhtoan?.toLocaleString()}</td>
+      <td>${hd.ghichu || ""}</td>
+      <td style="color:${hd.trang_thai_gui === 'Đã gửi' ? 'green' : (hd.trang_thai_gui?.startsWith('Lỗi') ? 'red' : 'orange')}">
+        ${hd.trang_thai_gui || 'Chưa gửi'}
+      </td>
+    `;
+        tr.onclick = function (e) {
+          if (e.target.tagName !== "INPUT") {
+            chonHoaDon(hd.sohd, this, hd.trang_thai_gui);
+            xemChiTiet(hd.sohd);
+          }
+        };
+        tbody.appendChild(tr);
+        tongTien += Number(hd.thanhtoan) || 0;
+      });
+
+      function dinhDangNgayGio(ngayStr) {
+        if (!ngayStr) return "";
+        const d = new Date(ngayStr);
+        const ngay = d.getDate().toString().padStart(2, "0");
+        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+        const nam = d.getFullYear();
+        const gio = d.getHours().toString().padStart(2, "0");
+        const phut = d.getMinutes().toString().padStart(2, "0");
+        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+      }
+
+
+      document.getElementById('tongThanhToan').textContent = tongTien.toLocaleString();
+    }
+
+
+    async function xemChiTiet(sohd) {
+      document.getElementById("popup").style.display = "block";
+      document.getElementById("sohdCT").textContent = sohd;
+
+      const { data, error } = await supabase.from('ct_hoadon_banleT').select('*').eq('sohd', sohd);
+      const tbody = document.getElementById("ctHoaDon");
+      tbody.innerHTML = "";
+
+      if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+
+      data.forEach(row => {
+        const tt = (row.gia - row.km) * row.soluong;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+
+    function chonHoaDon(sohd, row, trangThaiGui) {
+      document.querySelectorAll("#dsHoaDon tr").forEach(tr => tr.style.backgroundColor = "");
+      row.style.backgroundColor = "#ffe066";
+      sohdDangChon = sohd;
+      // Chỉ bật nút nếu hóa đơn chưa gửi hoặc lỗi
+      document.getElementById("btnGuiLai").disabled = !(!trangThaiGui || trangThaiGui === 'Chưa gửi' || trangThaiGui.startsWith('Lỗi'));
+    }
+
+    async function guiLaiHoaDonDaChon() {
+      // Lấy danh sách các checkbox được chọn
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+
+      if (sohdList.length === 0) {
+        alert("Vui lòng tick chọn ít nhất 1 hóa đơn chưa gửi/lỗi để gửi lại!");
+        return;
+      }
+
+      // Lấy trạng thái gửi của từng hóa đơn
+      // => Đọc thẳng từ DOM bảng hiện tại cho đơn giản
+      const rows = Array.from(document.querySelectorAll("#dsHoaDon tr"));
+      const hoadonToSend = [];
+      for (let sohd of sohdList) {
+        const row = rows.find(tr => {
+          const td = tr.querySelector("td:nth-child(3)");
+          return td && td.textContent.trim() === sohd;
+        });
+        if (!row) continue;
+        // Lấy trạng thái gửi ở cột cuối cùng (thứ 9)
+        const trangThai = row.querySelector("td:last-child").textContent.trim();
+        if (trangThai === "Chưa gửi" || trangThai.startsWith("Lỗi")) {
+          hoadonToSend.push(sohd);
+        }
+      }
+
+      if (hoadonToSend.length === 0) {
+        alert("Chỉ gửi lại các hóa đơn chưa gửi hoặc báo lỗi. Không có hóa đơn nào hợp lệ để gửi lại!");
+        return;
+      }
+
+      if (!confirm(`Bạn có chắc chắn muốn gửi lại ${hoadonToSend.length} hóa đơn chưa gửi/lỗi này lên Viettel?`)) return;
+
+      let thanhCong = 0, thatBai = 0, loiList = [];
+
+      for (const sohd of hoadonToSend) {
+        // Lấy lại dữ liệu hóa đơn & chi tiết
+        const { data: hoadon } = await supabase
+          .from('hoadon_banleT')
+          .select('*')
+          .eq('sohd', sohd)
+          .single();
+
+        const { data: chitiet } = await supabase
+          .from('ct_hoadon_banleT')
+          .select('*')
+          .eq('sohd', sohd);
+
+        if (!hoadon || !chitiet || chitiet.length === 0) {
+          loiList.push(`HĐ [${sohd}]: Không tìm thấy dữ liệu!`);
+          await supabase
+            .from('hoadon_banleT')
+            .update({ trang_thai_gui: 'Lỗi: Không tìm thấy dữ liệu' })
+            .eq('sohd', sohd);
+          thatBai++;
+          continue;
+        }
+
+        const json = taoDuLieuHoaDon(hoadon, chitiet);
+
+        try {
+          const response = await fetch('/api/guiHDDT', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: json })
+          });
+
+          let result;
+          try {
+            result = await response.json();
+          } catch (err) {
+            loiList.push(`HĐ [${sohd}]: Lỗi phản hồi từ server.`);
+            await supabase
+              .from('hoadon_banleT')
+              .update({ trang_thai_gui: 'Lỗi: Lỗi phản hồi server' })
+              .eq('sohd', sohd);
+            thatBai++;
+            continue;
+          }
+
+          if (!response.ok) {
+            loiList.push(`HĐ [${sohd}]: ${result?.message || "Gửi thất bại!"}`);
+            await supabase
+              .from('hoadon_banleT')
+              .update({ trang_thai_gui: 'Lỗi: ' + (result?.message || "Gửi thất bại!") })
+              .eq('sohd', sohd);
+            thatBai++;
+            continue;
+          }
+
+          // Thành công
+          await supabase
+            .from('hoadon_banleT')
+            .update({ trang_thai_gui: 'Đã gửi' })
+            .eq('sohd', sohd);
+
+          thanhCong++;
+        } catch (error) {
+          loiList.push(`HĐ [${sohd}]: ${error.message}`);
+          await supabase
+            .from('hoadon_banleT')
+            .update({ trang_thai_gui: 'Lỗi: ' + error.message })
+            .eq('sohd', sohd);
+          thatBai++;
+        }
+      }
+
+      alert(`Gửi lại hóa đơn hoàn tất.\nThành công: ${thanhCong}\nThất bại: ${thatBai}\n${loiList.length ? "Chi tiết lỗi:\n" + loiList.join("\n") : ""}`);
+      taiDanhSachHoaDon();
+    }
+
+
+    // Tạo dữ liệu JSON chuẩn
+    function taoDuLieuHoaDon(hoadon, chitiet) {
+      let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
+      return {
+        generalInvoiceInfo: {
+          sohd: hoadon.sohd, // truyền sohd để backend nhận diện cơ sở
+          invoiceType: "02GTTT",
+          templateCode: "2/001",
+          invoiceSeries: hoadon.sohd.startsWith('bancs2T_') ? "C25MAT" : "C25MLH",
+          invoiceIssuedDate: new Date().getTime(),
+          currencyCode: "VND",
+          adjustmentType: "1",
+          paymentStatus: true,
+          paymentType: "TM/CK",
+          paymentTypeName: "TM/CK",
+          cusGetInvoiceRight: true
+        },
+        buyerInfo: {
+          sohd: hoadon.sohd, // truyền cả ở đây (hoặc chỉ 1 nơi)
+          buyerName: hoadon.khachhang || "Khách lẻ",
+          buyerTaxCode: "",
+          buyerAddressLine: hoadon.diadiem || "",
+          buyerPhoneNumber: "",
+          buyerEmail: "",
+          buyerIdNo: "",
+          buyerIdType: "",
+          buyerBudgetCode: ""
+        },
+        sellerInfo: {
+          sellerLegalName: "ĐẶNG LÊ HOÀN",
+          sellerTaxCode: hoadon.sohd.startsWith('bancs2T_') ? "4600960665" : "4600370592",
+          sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, TP Thái Nguyên, Tỉnh Thái Nguyên, Việt Nam",
+          sellerPhoneNumber: "0916747401",
+          sellerEmail: "cskt.viettelhue@gmail.com",
+          sellerBankAccount: "123456789"
+        },
+        payments: [
+          { paymentMethodName: "TM/CK", paymentAmount: tongTien }
+        ],
+        itemInfo: chitiet.map((item, index) => ({
+          lineNumber: index + 1,
+          itemCode: item.masp,
+          itemName: item.tensp,
+          unitName: item.dvt,
+          quantity: Number(item.soluong),
+          unitPrice: Number(item.gia) - Number(item.km || 0),
+          itemTotalAmountWithoutTax: Number(item.thanhtien),
+          taxPercentage: 0,
+          taxAmount: 0,
+          discount: 0,
+          itemDiscount: Number(item.km) || 0
+        })),
+        summarizeInfo: {
+          totalAmountWithoutTax: tongTien,
+          totalTaxAmount: 0,
+          totalAmountWithTax: tongTien,
+          totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn",
+          discountAmount: Number(hoadon.chietkhau) || 0
+        },
+        taxBreakdowns: [],
+        metadata: [],
+        customFields: [],
+        deliveryInfo: {},
+        meterReading: []
+      };
+    }
+
+    // DRAG POPUP
+    (function dragPopup() {
+      let popup = document.getElementById('popup');
+      let header = document.getElementById('popupHeader');
+      let offsetX, offsetY, isDragging = false;
+      header.onmousedown = function (e) {
+        isDragging = true;
+        let rect = popup.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        document.onmousemove = function (ev) {
+          if (isDragging) {
+            popup.style.left = (ev.clientX - offsetX) + 'px';
+            popup.style.top = (ev.clientY - offsetY) + 'px';
+          }
+        };
+        document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
+      };
+    })();
+
+    // Đóng popup bằng phím ESC
+    document.addEventListener('keydown', function (e) {
+      if (e.key === "Escape") dongPopup();
+    });
+
+    async function xoaHoaDonDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+
+      if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+      if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
+
+      // Xóa chi tiết trước
+      const { error: errCT } = await supabase.from('ct_hoadon_banleT').delete().in('sohd', sohdList);
+      if (errCT) {
+        console.error("❌ Lỗi xóa chi tiết:", errCT.message);
+        return alert("Không thể xóa chi tiết hóa đơn.");
+      }
+
+      // Xóa hóa đơn chính
+      const { error: errHD } = await supabase.from('hoadon_banleT').delete().in('sohd', sohdList);
+      if (errHD) {
+        console.error("❌ Lỗi xóa hóa đơn:", errHD.message);
+        return alert("Không thể xóa hóa đơn.");
+      }
+
+      alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+      taiDanhSachHoaDon();
+    }
+
+    window.onload = function () {
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('locTuNgay').value = today;
+      document.getElementById('locDenNgay').value = today;
+      taiDanhSachHoaDon();
+    };
+
+
+  </script>
+</body>
+
+</html>

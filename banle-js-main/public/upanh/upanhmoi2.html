@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tải lên và thay đổi kích thước ảnh</title>
+    <script type="module" src="../scripts/supabaseClient.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .upload-form {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .image-names-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .image-names-table {
+            border-collapse: collapse;
+            width: 80%;
+            max-width: 600px;
+            overflow-y: auto;
+            display: block;
+            max-height: 300px;
+        }
+
+        .image-names-table th,
+        .image-names-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .image-names-table th {
+            background-color: #f4f4f4;
+        }
+
+        .image-name-input {
+            width: 95%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .product-code-input {
+            text-align: left;
+        }
+
+        .image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .image-preview {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            width: 200px;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .buttons-container {
+            text-align: center;
+            margin: 20px;
+        }
+
+        .buttons-container button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tải lên và thay đổi kích thước ảnh</h1>
+
+    <div class="upload-form">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="imageFiles" name="imageFiles[]" accept="image/*" multiple>
+            onchange="generateNameFields()">
+            <div class="image-names-container">
+                <table class="image-names-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã sản phẩm</th>
+                            <th>Tên ảnh</th>
+                        </tr>
+                    </thead>
+                    <tbody id="imageNamesContainer">
+                        <!-- Các dòng sẽ được tạo động -->
+                    </tbody>
+                </table>
+            </div>
+            <label>
+                <input type="checkbox" id="renameCheckbox"> Ghép tên mới cho ảnh
+            </label>
+            <br><br>
+
+        </form>
+    </div>
+
+    <div class="buttons-container">
+        <button id="btnPreview">Hiển thị ảnh</button>
+        <button id="btnBack">Quay lại</button>
+
+        <button id="btnUpload">Lưu dữ liệu</button>
+
+    </div>
+    </div>
+
+    <h2>Kiểm tra ảnh</h2>
+
+    <div id="previewContainer" style="display: none;">
+        <div id="imagePreview" class="image-preview-container"></div>
+
+        <script type="module">
+            import { supabase } from '../scripts/supabaseClient.js';
+
+            const resizedImages = [];
+
+
+            // Hàm tạo các trường nhập mã sản phẩm, STT và tên ảnh
+            function generateNameFields() {
+                const container = document.getElementById('imageNamesContainer');
+                const files = document.getElementById('imageFiles').files;
+                container.innerHTML = ''; // Xóa các dòng cũ
+
+                for (let i = 0; i < files.length; i++) {
+                    const row = document.createElement('tr');
+
+                    // Cột STT
+                    const sttCell = document.createElement('td');
+                    const sttInput = document.createElement('input');
+                    sttInput.type = 'number';
+                    sttInput.value = i + 1; // STT mặc định
+                    sttInput.className = 'image-name-input';
+                    sttCell.appendChild(sttInput);
+                    row.appendChild(sttCell);
+
+                    // Cột mã sản phẩm
+                    const codeCell = document.createElement('td');
+                    const codeInput = document.createElement('input');
+                    codeInput.type = 'text';
+                    codeInput.placeholder = `Mã sản phẩm ${i + 1}`;
+                    codeInput.className = 'image-name-input product-code-input';
+                    codeInput.addEventListener('keydown', (event) => handleEnterKey(event, i));
+                    codeCell.appendChild(codeInput);
+                    row.appendChild(codeCell);
+
+                    // Cột tên ảnh
+                    const nameCell = document.createElement('td');
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text';
+                    nameInput.value = files[i].name;
+                    nameInput.className = 'image-name-input';
+                    nameInput.disabled = true;
+                    nameCell.appendChild(nameInput);
+                    row.appendChild(nameCell);
+
+                    container.appendChild(row);
+                }
+            }
+
+            // Hàm xử lý khi nhấn Enter
+            function handleEnterKey(event, currentIndex) {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); // Ngăn không refresh trang
+                    const rows = document.querySelectorAll('#imageNamesContainer tr');
+                    const nextRow = rows[currentIndex + 1];
+
+                    if (nextRow) {
+                        const nextInput = nextRow.querySelector('.product-code-input');
+                        if (nextInput) {
+                            nextInput.focus();
+                        }
+                    }
+                }
+            }
+
+            // Hàm resize và hiển thị ảnh
+            function resizeAndPreviewImages() {
+                const files = document.getElementById('imageFiles').files;
+                const renameCheckbox = document.getElementById('renameCheckbox').checked;
+                const rows = Array.from(document.querySelectorAll('#imageNamesContainer tr'));
+                const previewContainer = document.getElementById('previewContainer');
+                const imagePreview = document.getElementById('imagePreview');
+
+                if (files.length === 0) {
+                    alert('Vui lòng chọn ít nhất một tệp ảnh.');
+                    return;
+                }
+
+                resizedImages.length = 0;
+                previewContainer.style.display = 'none';
+                imagePreview.innerHTML = '';
+                let processed = 0;
+
+                // Lấy thứ tự từ cột STT và sắp xếp lại ảnh theo STT
+                const orderedFiles = rows
+                    .map((row, index) => ({
+                        stt: parseInt(row.querySelector('td:nth-child(1) input').value),
+                        file: files[index],
+                        code: row.querySelector('td:nth-child(2) input').value.trim(),
+                    }))
+                    .sort((a, b) => a.stt - b.stt); // Sắp xếp theo STT
+
+                orderedFiles.forEach(({ file, code }, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.onload = function () {
+                            let targetWidth, targetHeight;
+
+                            // Kiểm tra ảnh đứng hoặc ngang và điều chỉnh kích thước
+                            if (img.width > img.height) {
+                                // Ảnh nằm ngang
+                                targetWidth = 640;
+                                targetHeight = 480;
+                            } else {
+                                // Ảnh đứng
+                                targetWidth = 480;
+                                targetHeight = 640;
+                            }
+
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            canvas.width = targetWidth;
+                            canvas.height = targetHeight;
+
+                            // Tính toán lại tỷ lệ để không làm méo ảnh
+                            const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+                            const scaledWidth = img.width * scale;
+                            const scaledHeight = img.height * scale;
+
+                            // Vẽ ảnh vào canvas, căn giữa theo tỷ lệ
+                            const offsetX = (targetWidth - scaledWidth) / 2;
+                            const offsetY = (targetHeight - scaledHeight) / 2;
+                            ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+
+                            canvas.toBlob(blob => {
+                                const newName = renameCheckbox && code ? `${code}.jpg` : file.name;
+
+                                resizedImages.push({ blob, name: newName });
+
+                                const container = document.createElement('div');
+                                container.className = 'image-preview';
+                                container.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Preview"><p>${newName}</p>`;
+                                imagePreview.appendChild(container);
+
+                                processed++;
+                                if (processed === orderedFiles.length) {
+                                    previewContainer.style.display = 'block';
+                                }
+                            }, 'image/jpeg');
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+
+            // Hàm quay lại
+            function goBack() {
+                document.getElementById('previewContainer').style.display = 'none';
+            }
+
+            // Hàm tải ảnh lên máy chủ
+            async function uploadResizedImages() {
+                if (!resizedImages.length) {
+                    alert('Chưa có ảnh nào để tải lên!');
+                    return;
+                }
+                let success = 0, fail = 0;
+                for (let img of resizedImages) {
+                    const filePath = img.name;
+                    // KHÔNG remove trước khi upload nữa, chỉ dùng upsert: true
+                    const { data, error } = await supabase.storage.from('anhsanpham').upload(filePath, img.blob, {
+                        upsert: true,
+                        contentType: 'image/jpeg'
+                    });
+                    console.log({ filePath, data, error });
+                    if (!error) success++; else fail++;
+                }
+                alert(`Đã tải lên ${success} ảnh thành công, ${fail} ảnh lỗi.`);
+            }
+
+
+            document.getElementById('btnPreview').addEventListener('click', resizeAndPreviewImages);
+            document.getElementById('btnBack').addEventListener('click', goBack);
+
+            document.getElementById('btnUpload').addEventListener('click', uploadResizedImages);
+            document.getElementById('imageFiles').addEventListener('change', generateNameFields);
+
+
+        </script>
+</body>
+
+</html>
