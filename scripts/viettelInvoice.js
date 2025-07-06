@@ -3,40 +3,12 @@ import { supabase } from './supabaseClient.js';
 // Tạo dữ liệu JSON chuẩn
 function taoDuLieuHoaDon(hoadon, chitiet) {
   let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
-
-  let isCs2 = hoadon.sohd.startsWith('bancs2T_'); // Cơ sở 2
-  let isCs1 = hoadon.sohd.startsWith('bancs1T_'); // Cơ sở 1
-
-  if (!isCs1 && !isCs2) {
-    throw new Error("❌ Không xác định được cơ sở phát hành hóa đơn từ số hóa đơn: " + hoadon.sohd + ". Vui lòng kiểm tra lại!");
-  }
-
-  let sellerInfo = isCs2
-    ? {
-      sellerLegalName: "NGUYỄN ÁNH TUYẾT",
-      sellerTaxCode: "4600960665",
-      sellerAddressLine: "Số 561, Tổ 23, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
-      sellerPhoneNumber: "0916747401",
-      sellerEmail: "cskh.viettelhue@gmail.com",
-      sellerBankAccount: "",
-      sellerBankName: ""
-    }
-    : {
-      sellerLegalName: "ĐẶNG LÊ HOÀN",
-      sellerTaxCode: "4600370592",
-      sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, Tỉnh Thái Nguyên, Việt Nam",
-      sellerPhoneNumber: "0916747401",
-      sellerEmail: "huel31@viettel.com.vn",
-      sellerBankAccount: "",
-      sellerBankName: ""
-    };
-
   return {
     generalInvoiceInfo: {
-      sohd: hoadon.sohd, // <-- Quan trọng! Để backend xác định cơ sở!
+      sohd: hoadon.sohd, // truyền sohd để backend nhận diện cơ sở
       invoiceType: "02GTTT",
-      templateCode: isCs2 ? "2/001" : "2/001",
-      invoiceSeries: isCs2 ? "C25MAT" : "C25MLH",
+      templateCode: "2/001",
+      invoiceSeries: hoadon.sohd.startsWith('bancs2T_') ? "C25MAT" : "C25MLH",
       invoiceIssuedDate: new Date().getTime(),
       currencyCode: "VND",
       adjustmentType: "1",
@@ -46,17 +18,24 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       cusGetInvoiceRight: true
     },
     buyerInfo: {
-      sohd: hoadon.sohd, // <-- Nhớ truyền ở đây giống như file xemhoadonT.html
-      buyerName: "",
+      sohd: hoadon.sohd, // truyền cả ở đây (hoặc chỉ 1 nơi)
+      buyerName: hoadon.khachhang || "Khách lẻ",
       buyerTaxCode: "",
-      buyerAddressLine: "",
+      buyerAddressLine: hoadon.diadiem || "",
       buyerPhoneNumber: "",
       buyerEmail: "",
       buyerIdNo: "",
       buyerIdType: "",
       buyerBudgetCode: ""
     },
-    sellerInfo: sellerInfo,
+    sellerInfo: {
+      sellerLegalName: "ĐẶNG LÊ HOÀN",
+      sellerTaxCode: hoadon.sohd.startsWith('bancs2T_') ? "4600960665" : "4600370592",
+      sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, TP Thái Nguyên, Tỉnh Thái Nguyên, Việt Nam",
+      sellerPhoneNumber: "0916747401",
+      sellerEmail: "cskt.viettelhue@gmail.com",
+      sellerBankAccount: "123456789"
+    },
     payments: [
       { paymentMethodName: "TM/CK", paymentAmount: tongTien }
     ],
@@ -87,8 +66,6 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     meterReading: []
   };
 }
-
-
 
 // Hàm gửi hóa đơn từ Web (giữ nguyên logic lỗi/thành công)
 export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
