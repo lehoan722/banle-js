@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient.js';
 
-// Tạo dữ liệu JSON chuẩn
+// Tạo dữ liệu JSON chuẩn 
 function taoDuLieuHoaDon(hoadon, chitiet) {
   let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
 
