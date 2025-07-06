@@ -5,6 +5,10 @@
   <meta charset="UTF-8">
   <title>Xem Hóa Đơn Bán Lẻ</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <!-- Handsontable 7 Community bản miễn phí, đủ tính năng lọc/sắp xếp -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -144,26 +148,7 @@
     Tổng số lượng hóa đơn: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
   </div>
 
-
-  <table>
-    <thead>
-      <thead>
-        <tr>
-          <th>stt</th>
-          <th>chon</th>
-          <th>Số HĐ</th>
-          <th>Ngày</th>
-          <th>NV</th>
-          <th>Khách</th>
-          <th>Tổng SL</th>
-          <th>TT</th>
-          <th>Ghi chú</th>
-        </tr>
-      </thead>
-
-    </thead>
-    <tbody id="dsHoaDon"></tbody>
-  </table>
+  <div id="hoaDonGrid" style="width:100%; min-height:360px; margin:16px 0;"></div>
 
 
   <div id="popup">
@@ -195,6 +180,9 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
     );
     let rowDangChon = null;
+    let hoaDonHot = null; // Biến toàn cục bảng Handsontable
+    let hoaDonData = []; // Lưu dữ liệu hóa đơn đang hiển thị
+
 
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
@@ -213,8 +201,11 @@
 
       const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
 
-      const tbody = document.getElementById("dsHoaDon");
-      tbody.innerHTML = "";
+      // ----- Xóa bảng cũ nếu có -----
+      if (hoaDonHot) {
+        hoaDonHot.destroy();
+        hoaDonHot = null;
+      }
 
       let filtered = [];
 
@@ -262,7 +253,7 @@
         let query = supabase
           .from('hoadon_banle')
           .select('*')
-          .order('created_at', { ascending: false }); // Không limit
+          .order('created_at', { ascending: false });
 
         if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
         else if (tuNgay) query = query.gte('created_at', tuNgay);
@@ -279,7 +270,44 @@
         filtered = data || [];
       }
 
-      if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
+      // Nếu không có dữ liệu, hiển thị bảng trống
+      if (!filtered.length) {
+        hoaDonData = [];
+        document.getElementById('tongSoLuong2').textContent = "0";
+        document.getElementById('tongTien2').textContent = "0";
+        // Tạo Handsontable bảng rỗng vẫn hiển thị header
+        hoaDonHot = new Handsontable(document.getElementById('hoaDonGrid'), {
+          data: [],
+          colHeaders: [
+            'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+          ],
+          columns: [
+            { data: 'stt', readOnly: true, width: 40 },
+            { data: 'chon', type: 'checkbox', width: 45 },
+            { data: 'sohd', readOnly: true, width: 150 },
+            { data: 'ngay', readOnly: true, width: 240 },
+            { data: 'tennv', readOnly: true },
+            { data: 'khachhang', readOnly: true },
+            { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
+            {
+              data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
+              renderer: function (instance, td, row, col, prop, value) {
+                td.innerHTML = value?.toLocaleString();
+              }
+            },
+            { data: 'ghichu', readOnly: true }
+          ],
+          rowHeaders: false,
+          filters: true,
+          dropdownMenu: true,
+          manualColumnResize: true,
+          columnSorting: true,
+          licenseKey: 'non-commercial-and-evaluation',
+          width: '100%',
+          height: 420
+        });
+        return;
+      }
 
       // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
       let hienThiData = filtered;
@@ -317,7 +345,6 @@
       // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
-        // Nếu chuỗi có dạng dd/mm/yyyy thì giữ nguyên (đang tổng hợp)
         if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
         const d = new Date(ngayStr);
         const ngay = d.getDate().toString().padStart(2, "0");
@@ -328,51 +355,71 @@
         return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
       }
 
-      // ------------- HIỂN THỊ RA BẢNG -------------
-      hienThiData.forEach((hd, idx) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-      <td>${hd.sohd || ""}</td>
-      <td>${dinhDangNgayGio(hd.created_at)}</td>
-      <td>${hd.tennv || ""}</td>
-      <td>${hd.khachhang || ""}</td>
-      <td>${hd.tongsl || 0}</td>
-      <td>${hd.thanhtoan?.toLocaleString()}</td>
-      <td>${hd.ghichu || ""}</td>
-    `;
-        tr.onclick = (e) => {
-          if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
-            document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
-            tr.style.backgroundColor = "#ffe066";
-            rowDangChon = tr;
-            xemChiTiet(hd.sohd);
-          }
-        };
-        tbody.appendChild(tr);
-      });
+      // ----------- CHUẨN HÓA DỮ LIỆU ĐỂ ĐƯA VÀO HANDSONTABLE ----------
+      hoaDonData = hienThiData.map((hd, idx) => ({
+        stt: idx + 1,
+        chon: false,
+        sohd: hd.sohd || "",
+        ngay: dinhDangNgayGio(hd.created_at),
+        tennv: hd.tennv || "",
+        khachhang: hd.khachhang || "",
+        tongsl: hd.tongsl || 0,
+        thanhtoan: hd.thanhtoan || 0,
+        ghichu: hd.ghichu || ""
+      }));
 
-      // ------------- DÒNG TỔNG CUỐI BẢNG -------------
+      // ---------- TÍNH TỔNG SỐ LƯỢNG, TỔNG TIỀN ----------
       let tongSL = 0, tongTien = 0;
-      hienThiData.forEach(hd => {
+      hoaDonData.forEach(hd => {
         tongSL += Number(hd.tongsl || 0);
         tongTien += Number(hd.thanhtoan || 0);
       });
       document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
       document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
 
-      const trTong = document.createElement("tr");
-      trTong.style.fontWeight = "bold";
-      trTong.style.background = "#f8f8f8";
-      trTong.innerHTML = `
-    <td colspan="6" style="text-align:right">TỔNG</td>
-    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
-    <td id="tongTien">${tongTien.toLocaleString()}</td>
-    <td></td>
-  `;
-      tbody.appendChild(trTong);
+      // ------------- RENDER HANDSONTABLE -------------
+      const container = document.getElementById('hoaDonGrid');
+      hoaDonHot = new Handsontable(container, {
+        data: hoaDonData,
+        colHeaders: [
+          'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+        ],
+        columns: [
+          { data: 'stt', readOnly: true, width: 80 },
+          { data: 'chon', type: 'checkbox', width: 80 },
+          { data: 'sohd', readOnly: true, width: 150 },
+          { data: 'ngay', readOnly: true, width: 240 },
+          { data: 'tennv', readOnly: true },
+          { data: 'khachhang', readOnly: true },
+          { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
+          {
+            data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
+            renderer: function (instance, td, row, col, prop, value) {
+              td.innerHTML = value?.toLocaleString();
+            }
+          },
+          { data: 'ghichu', readOnly: true }
+        ],
+        rowHeaders: false,
+        filters: true,
+        dropdownMenu: true,
+        manualColumnResize: true,
+        columnSorting: true,
+        licenseKey: 'non-commercial-and-evaluation',
+        width: '100%',
+        height: 650,
+        afterOnCellMouseDown: function (e, coords, td) {
+          // Click vào dòng hóa đơn (không phải cột checkbox/chọn)
+          if (coords.col !== 1 && hoaDonData[coords.row] && loaiTongHop === "chitiet") {
+            document.querySelectorAll("#hoaDonGrid .ht_master tr").forEach(tr2 => tr2.style.backgroundColor = "");
+            td.parentNode.style.backgroundColor = "#ffe066";
+            rowDangChon = coords.row;
+            xemChiTiet(hoaDonData[coords.row].sohd);
+          }
+        }
+      });
     }
+
 
     async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "block";
@@ -404,8 +451,7 @@
     }
 
     async function xoaHoaDonDaChon() {
-      const checkboxes = document.querySelectorAll(".chonHD:checked");
-      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+      const sohdList = hoaDonData.filter(r => r.chon).map(r => r.sohd);
       if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
 
       // Gọi xác thực và chỉ xóa nếu xác thực thành công
