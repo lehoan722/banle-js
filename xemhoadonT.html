@@ -136,13 +136,14 @@
 
   <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
   <button id="btnGuiLai" onclick="guiLaiHoaDonDaChon()" disabled>📤 Gửi lại hóa đơn</button>
+  <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
 
   <div id="tongHopNhanhT" style="font-size:1.1em;margin:12px 0;color:#0066cc;font-weight:bold;">
     Tổng số lượng hóa đơn: <span id="tongSoLuongT">0</span> | Tổng tiền thanh toán: <span id="tongTienT">0</span>
   </div>
 
   <!-- Thêm nút xóa và cột số thứ tự, checkbox -->
-  <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+  
   <table>
     <thead>
       <tr>
@@ -152,6 +153,7 @@
         <th>Ngày</th>
         <th>NV</th>
         <th>Khách</th>
+        <th>Tổng SL</th>
         <th>TT</th>
         <th>Ghi chú</th>
         <th>Trạng thái gửi</th>
