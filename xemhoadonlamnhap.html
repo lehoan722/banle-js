@@ -385,8 +385,8 @@
           'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
         ],
         columns: [
-          { data: 'stt', readOnly: true, width: 40 },
-          { data: 'chon', type: 'checkbox', width: 45 },
+          { data: 'stt', readOnly: true, width: 80 },
+          { data: 'chon', type: 'checkbox', width: 80 },
           { data: 'sohd', readOnly: true, width: 150 },
           { data: 'ngay', readOnly: true, width: 240 },
           { data: 'tennv', readOnly: true },
@@ -407,7 +407,7 @@
         columnSorting: true,
         licenseKey: 'non-commercial-and-evaluation',
         width: '100%',
-        height: 420,
+        height: 620,
         afterOnCellMouseDown: function (e, coords, td) {
           // Click vào dòng hóa đơn (không phải cột checkbox/chọn)
           if (coords.col !== 1 && hoaDonData[coords.row] && loaiTongHop === "chitiet") {
