@@ -149,25 +149,8 @@
   </div>
 
 
-  <table>
-    <thead>
-      <thead>
-        <tr>
-          <th>stt</th>
-          <th>chon</th>
-          <th>Số HĐ</th>
-          <th>Ngày</th>
-          <th>NV</th>
-          <th>Khách</th>
-          <th>Tổng SL</th>
-          <th>TT</th>
-          <th>Ghi chú</th>
-        </tr>
-      </thead>
+  <div id="dsHoaDonGrid" style="width:100%;min-height:400px;"></div>
 
-    </thead>
-    <tbody id="dsHoaDon"></tbody>
-  </table>
 
 
   <div id="popup">
@@ -191,6 +174,67 @@
     );
     let rowDangChon = null;
     let hotCT = null; // Khai báo ngoài cùng nếu muốn reuse grid
+
+    function renderHoaDonGrid(data, tongHopType = "chitiet") {
+      // Chuẩn hóa lại data cho grid
+      const tableData = data.map((row, idx) => [
+        idx + 1,                         // STT
+        false,                           // Chọn (checkbox)
+        row.sohd || "",
+        (row.ngay || row.created_at) ? dinhDangNgayGio(row.ngay || row.created_at) : "",
+        row.tennv || "",
+        row.khachhang || "",
+        row.tongsl || 0,
+        row.thanhtoan ? Number(row.thanhtoan) : 0,
+        row.ghichu || "",
+        row.trang_thai_gui || ""
+      ]);
+
+      // Hủy bảng cũ nếu có
+      if (hotHD) { hotHD.destroy(); hotHD = null; }
+
+      hotHD = new Handsontable(document.getElementById('dsHoaDonGrid'), {
+        data: tableData,
+        colHeaders: [
+          "STT", "Chọn", "Số HĐ", "Ngày", "NV", "Khách", "Tổng SL", "TT", "Ghi chú", "Trạng thái gửi"
+        ],
+        columns: [
+          { type: 'numeric', readOnly: true, width: 40 },
+          {
+            data: 1,
+            type: 'checkbox',
+            className: 'htCenter',
+            readOnly: false,
+            width: 38,
+          },
+          { type: 'text', readOnly: true, width: 120 },
+          { type: 'text', readOnly: true, width: 120 },
+          { type: 'text', readOnly: true, width: 110 },
+          { type: 'text', readOnly: true, width: 140 },
+          { type: 'numeric', readOnly: true, width: 80 },
+          { type: 'numeric', readOnly: true, format: '0,0', width: 110 },
+          { type: 'text', readOnly: true, width: 120 },
+          { type: 'text', readOnly: true, width: 110 }
+        ],
+        width: '100%',
+        height: 420,
+        stretchH: 'all',
+        rowHeaders: true,
+        manualColumnResize: true,
+        manualRowResize: true,
+        filters: true,              // Filter cột
+        dropdownMenu: true,         // Menu filter/sort
+        columnSorting: true,        // Sắp xếp cột
+        licenseKey: 'non-commercial-and-evaluation',
+        afterOnCellMouseDown: function (r, c) {
+          // Chọn dòng (ngoài checkbox) thì mở popup chi tiết
+          if (c !== 1 && r >= 0 && tableData[r][2]) {
+            xemChiTiet(tableData[r][2]);
+          }
+        }
+      });
+    }
+
 
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
@@ -325,257 +369,215 @@
       }
 
       // ------------- HIỂN THỊ RA BẢNG -------------
-      hienThiData.forEach((hd, idx) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-      <td>${hd.sohd || ""}</td>
-      <td>${dinhDangNgayGio(hd.created_at)}</td>
-      <td>${hd.tennv || ""}</td>
-      <td>${hd.khachhang || ""}</td>
-      <td>${hd.tongsl || 0}</td>
-      <td>${hd.thanhtoan?.toLocaleString()}</td>
-      <td>${hd.ghichu || ""}</td>
-    `;
-        tr.onclick = (e) => {
-          if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
-            document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
-            tr.style.backgroundColor = "#ffe066";
-            rowDangChon = tr;
-            xemChiTiet(hd.sohd);
-          }
-        };
-        tbody.appendChild(tr);
-      });
-
-      // ------------- DÒNG TỔNG CUỐI BẢNG -------------
-      let tongSL = 0, tongTien = 0;
-      hienThiData.forEach(hd => {
-        tongSL += Number(hd.tongsl || 0);
-        tongTien += Number(hd.thanhtoan || 0);
-      });
-      document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
-      document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
-
-      const trTong = document.createElement("tr");
-      trTong.style.fontWeight = "bold";
-      trTong.style.background = "#f8f8f8";
-      trTong.innerHTML = `
-    <td colspan="6" style="text-align:right">TỔNG</td>
-    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
-    <td id="tongTien">${tongTien.toLocaleString()}</td>
-    <td></td>
-  `;
-      tbody.appendChild(trTong);
-    }
+      renderHoaDonGrid(hienThiData, loaiTongHop);
 
 
-    async function xemChiTiet(sohd) {
-      document.getElementById("popup").style.display = "block";
-      document.getElementById("sohdCT").textContent = sohd;
+      async function xemChiTiet(sohd) {
+        document.getElementById("popup").style.display = "block";
+        document.getElementById("sohdCT").textContent = sohd;
 
-      const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+        const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
 
-      // Kiểm tra lỗi/trống
-      if (error || !data || !data.length) {
-        document.getElementById("ctHoaDonGrid").innerHTML = `<div style="color:red">Không có dữ liệu hóa đơn hoặc lỗi: ${error?.message || ''}</div>`;
-        document.getElementById("tongSLCT").textContent = "0";
-        document.getElementById("tongTTCT").textContent = "0";
+        // Kiểm tra lỗi/trống
+        if (error || !data || !data.length) {
+          document.getElementById("ctHoaDonGrid").innerHTML = `<div style="color:red">Không có dữ liệu hóa đơn hoặc lỗi: ${error?.message || ''}</div>`;
+          document.getElementById("tongSLCT").textContent = "0";
+          document.getElementById("tongTTCT").textContent = "0";
+          if (hotCT) { hotCT.destroy(); hotCT = null; }
+          return;
+        }
+
+        // Chuẩn hóa dữ liệu cho grid
+        const tableData = data.map(row => {
+          const tt = (Number(row.gia) - Number(row.km)) * Number(row.soluong);
+          return [
+            row.masp || "",
+            row.tensp || "",
+            row.size || "",
+            Number(row.soluong) || 0,
+            Number(row.gia) || 0,
+            Number(row.km) || 0,
+            tt
+          ];
+        });
+
+        // Tính tổng
+        let tongSL = 0, tongTT = 0;
+        tableData.forEach(r => {
+          tongSL += Number(r[3]);
+          tongTT += Number(r[6]);
+        });
+        document.getElementById("tongSLCT").textContent = tongSL.toLocaleString();
+        document.getElementById("tongTTCT").textContent = tongTT.toLocaleString();
+
+        // Xóa/hủy bảng cũ nếu có
         if (hotCT) { hotCT.destroy(); hotCT = null; }
-        return;
+
+        // Render Handsontable với filter, sort
+        hotCT = new Handsontable(document.getElementById("ctHoaDonGrid"), {
+          data: tableData,
+          colHeaders: ['Mã SP', 'Tên SP', 'Size', 'SL', 'Giá', 'KM', 'Thành tiền'],
+          columns: [
+            { type: 'text', readOnly: true },
+            { type: 'text', readOnly: true },
+            { type: 'text', readOnly: true },
+            { type: 'numeric', readOnly: true },
+            { type: 'numeric', readOnly: true },
+            { type: 'numeric', readOnly: true },
+            { type: 'numeric', readOnly: true }
+          ],
+          width: '100%',
+          height: 220,
+          stretchH: 'all',
+          manualColumnResize: true,
+          manualRowResize: true,
+          rowHeaders: true,
+          licenseKey: 'non-commercial-and-evaluation',
+          dropdownMenu: true,     // Bật menu filter/sort trên tiêu đề
+          filters: true,          // Bật lọc dữ liệu
+          columnSorting: true,    // Cho phép sắp xếp từng cột
+          autoWrapRow: true,
+          readOnly: true,
+        });
       }
 
-      // Chuẩn hóa dữ liệu cho grid
-      const tableData = data.map(row => {
-        const tt = (Number(row.gia) - Number(row.km)) * Number(row.soluong);
-        return [
-          row.masp || "",
-          row.tensp || "",
-          row.size || "",
-          Number(row.soluong) || 0,
-          Number(row.gia) || 0,
-          Number(row.km) || 0,
-          tt
-        ];
-      });
 
-      // Tính tổng
-      let tongSL = 0, tongTT = 0;
-      tableData.forEach(r => {
-        tongSL += Number(r[3]);
-        tongTT += Number(r[6]);
-      });
-      document.getElementById("tongSLCT").textContent = tongSL.toLocaleString();
-      document.getElementById("tongTTCT").textContent = tongTT.toLocaleString();
 
-      // Xóa/hủy bảng cũ nếu có
-      if (hotCT) { hotCT.destroy(); hotCT = null; }
+      function dongPopup() {
+        document.getElementById("popup").style.display = "none";
+      }
 
-      // Render Handsontable với filter, sort
-      hotCT = new Handsontable(document.getElementById("ctHoaDonGrid"), {
-        data: tableData,
-        colHeaders: ['Mã SP', 'Tên SP', 'Size', 'SL', 'Giá', 'KM', 'Thành tiền'],
-        columns: [
-          { type: 'text', readOnly: true },
-          { type: 'text', readOnly: true },
-          { type: 'text', readOnly: true },
-          { type: 'numeric', readOnly: true },
-          { type: 'numeric', readOnly: true },
-          { type: 'numeric', readOnly: true },
-          { type: 'numeric', readOnly: true }
-        ],
-        width: '100%',
-        height: 220,
-        stretchH: 'all',
-        manualColumnResize: true,
-        manualRowResize: true,
-        rowHeaders: true,
-        licenseKey: 'non-commercial-and-evaluation',
-        dropdownMenu: true,     // Bật menu filter/sort trên tiêu đề
-        filters: true,          // Bật lọc dữ liệu
-        columnSorting: true,    // Cho phép sắp xếp từng cột
-        autoWrapRow: true,
-        readOnly: true,
-      });
-    }
+      async function xoaHoaDonDaChon() {
+        if (!hotHD) return alert("Bảng chưa tải xong!");
+        const data = hotHD.getData();
+        const sohdList = data.filter(row => row[1] === true).map(row => row[2]);
+        if (!sohdList.length) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+        // Gọi xác thực và chỉ xóa nếu xác thực thành công
+        kiemTraNhanVienTruocKhiXoa(async function () {
+          if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
+          // het doan  xác thực và chỉ xóa nếu xác thực thành công
+
+          // Xóa khỏi ct_hoadon_banle trước
+          const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
+          if (errCT) {
+            alert("Không thể xóa chi tiết hóa đơn.");
+            return;
+          }
+
+          // Sau đó xóa khỏi hoadon_banle
+          const { error: errHD } = await supabase.from('hoadon_banle').delete().in('sohd', sohdList);
+          if (errHD) {
+            alert("Không thể xóa hóa đơn.");
+            return;
+          }
+
+          alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+          taiDanhSachHoaDon();
+        });
+      }
 
 
 
-    function dongPopup() {
-      document.getElementById("popup").style.display = "none";
-    }
-
-    async function xoaHoaDonDaChon() {
-      const checkboxes = document.querySelectorAll(".chonHD:checked");
-      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
-      if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
-
-      // Gọi xác thực và chỉ xóa nếu xác thực thành công
-      kiemTraNhanVienTruocKhiXoa(async function () {
-        if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
-        // het doan  xác thực và chỉ xóa nếu xác thực thành công
-
-        // Xóa khỏi ct_hoadon_banle trước
-        const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
-        if (errCT) {
-          alert("Không thể xóa chi tiết hóa đơn.");
-          return;
-        }
-
-        // Sau đó xóa khỏi hoadon_banle
-        const { error: errHD } = await supabase.from('hoadon_banle').delete().in('sohd', sohdList);
-        if (errHD) {
-          alert("Không thể xóa hóa đơn.");
-          return;
-        }
-
-        alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+      window.onload = function () {
+        // Set ngày mặc định là hôm nay
+        const today = new Date().toISOString().slice(0, 10);
+        document.getElementById('tuNgay').value = today;
+        document.getElementById('denNgay').value = today;
         taiDanhSachHoaDon();
-      });
-    }
+      };
+      document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
 
-
-
-    window.onload = function () {
-      // Set ngày mặc định là hôm nay
-      const today = new Date().toISOString().slice(0, 10);
-      document.getElementById('tuNgay').value = today;
-      document.getElementById('denNgay').value = today;
-      taiDanhSachHoaDon();
-    };
-    document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
-
-    // DRAG POPUP (kéo popup)
-    (function dragPopup() {
-      let popup = document.getElementById('popup');
-      let header = document.getElementById('popupHeader');
-      let offsetX, offsetY, isDragging = false;
-      if (header) {
-        header.onmousedown = function (e) {
-          isDragging = true;
-          let rect = popup.getBoundingClientRect();
-          offsetX = e.clientX - rect.left;
-          offsetY = e.clientY - rect.top;
-          document.onmousemove = function (ev) {
-            if (isDragging) {
-              popup.style.left = (ev.clientX - offsetX) + 'px';
-              popup.style.top = (ev.clientY - offsetY) + 'px';
-            }
+      // DRAG POPUP (kéo popup)
+      (function dragPopup() {
+        let popup = document.getElementById('popup');
+        let header = document.getElementById('popupHeader');
+        let offsetX, offsetY, isDragging = false;
+        if (header) {
+          header.onmousedown = function (e) {
+            isDragging = true;
+            let rect = popup.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            document.onmousemove = function (ev) {
+              if (isDragging) {
+                popup.style.left = (ev.clientX - offsetX) + 'px';
+                popup.style.top = (ev.clientY - offsetY) + 'px';
+              }
+            };
+            document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
           };
-          document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
-        };
-      }
-    })();
+        }
+      })();
 
-    // Đóng popup bằng phím ESC
-    document.addEventListener('keydown', function (e) {
-      if (e.key === "Escape") dongPopup();
-    });
+      // Đóng popup bằng phím ESC
+      document.addEventListener('keydown', function (e) {
+        if (e.key === "Escape") dongPopup();
+      });
 
 
 
   </script>
 
   <script>
-    // Supabase project của bạn (dùng anon key)  xax nhan sua hoa don
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+      // Supabase project của bạn (dùng anon key)  xax nhan sua hoa don
+      const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
-    // Hàm xác thực nhân viên, gọi ở bất kỳ đâu!
-    async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
-      document.getElementById('maNVCheck').value = '';
-      document.getElementById('matkhauNVCheck').value = '';
-      document.getElementById('msgCheckNV').textContent = '';
-      document.getElementById('popupXacThucNV').style.display = 'block';
+      // Hàm xác thực nhân viên, gọi ở bất kỳ đâu!
+      async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+        document.getElementById('maNVCheck').value = '';
+        document.getElementById('matkhauNVCheck').value = '';
+        document.getElementById('msgCheckNV').textContent = '';
+        document.getElementById('popupXacThucNV').style.display = 'block';
 
-      // Đặt lại màu báo lỗi
-      document.getElementById('msgCheckNV').style.color = '#ad3a2b';
+        // Đặt lại màu báo lỗi
+        document.getElementById('msgCheckNV').style.color = '#ad3a2b';
 
-      // Xử lý khi bấm nút kiểm tra
-      document.getElementById('btnKiemTraNV').onclick = async function () {
-        const manv = document.getElementById('maNVCheck').value.trim();
-        const mk = document.getElementById('matkhauNVCheck').value.trim();
-        const msg = document.getElementById('msgCheckNV');
-        msg.style.color = '#ad3a2b';
-        msg.textContent = '';
-
-        if (!manv || !mk) {
-          msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
-          return;
-        }
-
-        // Import SDK Supabase
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data, error } = await supabase
-          .from('dmnhanvien')
-          .select('*')
-          .eq('manv', manv)
-          .single();
-
-        if (error || !data) {
-          msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
-          return;
-        }
-        if (data.matkhau !== mk) {
-          msg.textContent = "❌ Mật khẩu không đúng!";
-          return;
-        }
-        if (!data.xoa_hoadon) { // Nếu cần phân quyền khác thì đổi tên trường này
-          msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
-          return;
-        }
-        // Thành công!
-        msg.style.color = 'green';
-        msg.textContent = "✅ Đã xác thực, đang xử lý...";
-        setTimeout(() => {
-          document.getElementById('popupXacThucNV').style.display = 'none';
+        // Xử lý khi bấm nút kiểm tra
+        document.getElementById('btnKiemTraNV').onclick = async function () {
+          const manv = document.getElementById('maNVCheck').value.trim();
+          const mk = document.getElementById('matkhauNVCheck').value.trim();
+          const msg = document.getElementById('msgCheckNV');
+          msg.style.color = '#ad3a2b';
           msg.textContent = '';
-          if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data); // Truyền data nếu cần
-        }, 450);
-      };
-    }
+
+          if (!manv || !mk) {
+            msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
+            return;
+          }
+
+          // Import SDK Supabase
+          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+          const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          const { data, error } = await supabase
+            .from('dmnhanvien')
+            .select('*')
+            .eq('manv', manv)
+            .single();
+
+          if (error || !data) {
+            msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
+            return;
+          }
+          if (data.matkhau !== mk) {
+            msg.textContent = "❌ Mật khẩu không đúng!";
+            return;
+          }
+          if (!data.xoa_hoadon) { // Nếu cần phân quyền khác thì đổi tên trường này
+            msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
+            return;
+          }
+          // Thành công!
+          msg.style.color = 'green';
+          msg.textContent = "✅ Đã xác thực, đang xử lý...";
+          setTimeout(() => {
+            document.getElementById('popupXacThucNV').style.display = 'none';
+            msg.textContent = '';
+            if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data); // Truyền data nếu cần
+          }, 450);
+        };
+      }
   </script>
 
 
