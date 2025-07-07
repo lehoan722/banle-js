@@ -42,7 +42,8 @@ window.taiBaoCaoXNT = async function () {
   const khachhang = document.getElementById("khachhangInput").value.trim() || null;
   const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
   const nhomhang = document.getElementById("nhomhangInput").value.trim() || null;
-  const loaihang = document.getElementById("loaihangInput").value.trim() || null;
+  const chungloai = document.getElementById("chungloaiInput").value.trim() || null;
+
   const mausac = document.getElementById("mausacInput").value.trim() || null;
   const size = document.getElementById("sizeInput").value.trim() || null;
   const masp = document.getElementById("maspInput").value.trim() || null;
@@ -57,7 +58,7 @@ window.taiBaoCaoXNT = async function () {
     den_ngay: denNgay,
     diadiem_filter: diadiem,
     nhomhang_filter: nhomhang,
-    loaihang_filter: loaihang,
+    chungloai_filter: chungloai,
     mausac_filter: mausac,
     size_filter: size,
     masp_filter: masp,
@@ -195,7 +196,7 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
   if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
   else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
   else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
-  else if (type === 'loaihang') { table = 'dmhanghoa'; field = 'loaisp'; }
+  else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
   else if (type === 'mausac') { table = 'dmhanghoa'; field = 'mausac'; }
   else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
   else if (type === 'size') { table = 'dmhanghoa'; field = 'size'; }
@@ -228,7 +229,8 @@ window.selectPopupValue = function (type, value, el) {
   if (type === 'khachhang') inputId = 'khachhangInput';
   else if (type === 'mahang') inputId = 'maspInput';
   else if (type === 'nhomhang') inputId = 'nhomhangInput';
-  else if (type === 'loaihang') inputId = 'loaihangInput';
+  else if(type === 'chungloai') inputId = 'chungloaiInput';
+
   else if (type === 'mausac') inputId = 'mausacInput';
   else if (type === 'nhanvien') inputId = 'nhanvienInput';
   else if (type === 'size') inputId = 'sizeInput';
@@ -256,7 +258,8 @@ const popupTypes = [
   { id: "khachhangInput", type: "khachhang" },
   { id: "maspInput", type: "mahang" },
   { id: "nhomhangInput", type: "nhomhang" },
-  { id: "loaihangInput", type: "loaihang" },
+  { id: "chungloaiInput", type: "chungloai" },
+
   { id: "mausacInput", type: "mausac" },
   { id: "nhanvienInput", type: "nhanvien" },
   { id: "sizeInput", type: "size" }
@@ -278,7 +281,8 @@ async function searchPopup(keyword) {
   if(type === 'khachhang'){ table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
   else if(type === 'mahang'){ table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
   else if(type === 'nhomhang'){ table = 'dmhanghoa'; field = 'nhomhang'; }
-  else if(type === 'loaihang'){ table = 'dmhanghoa'; field = 'loaisp'; }
+  else if(type === 'chungloai'){ table = 'dmhanghoa'; field = 'chungloai'; }
+
   else if(type === 'mausac'){ table = 'dmhanghoa'; field = 'mausac'; }
   else if(type === 'nhanvien'){ table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
   else if(type === 'size'){ table = 'dmhanghoa'; field = 'size'; }
