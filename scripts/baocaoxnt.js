@@ -193,7 +193,7 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
   let table = '';
   let field = '';
   let extraFields = '';
-  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
   else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
   else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
   else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
@@ -218,7 +218,7 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
   document.getElementById('popupSearchList').innerHTML = data.map(row => `
     <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
          onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
+      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
     </div>
   `).join('');
 });
@@ -278,7 +278,7 @@ popupTypes.forEach(item => {
 async function searchPopup(keyword) {
   let type = window.currentPopupType;
   let table = '', field = '', extraFields = '';
-  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
   else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
   else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
   else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
@@ -314,10 +314,8 @@ async function searchPopup(keyword) {
          onclick="selectPopupValue('${type}', '${row[field] ? row[field].replace(/'/g, "\\'") : ""}', this)">
       ${row[field] ? row[field] : ""}
       ${row.tensp ? " - " + row.tensp : ""}
-      ${row.tenkhach ? " - " + row.tenkhach : ""}
+      ${row.tenkh ? " - " + row.tenkh : ""}
       ${row.tennv ? " - " + row.tennv : ""}
     </div>
   `).join('');
 }
-
-
