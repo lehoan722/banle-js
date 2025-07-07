@@ -229,7 +229,7 @@ window.selectPopupValue = function (type, value, el) {
   if (type === 'khachhang') inputId = 'khachhangInput';
   else if (type === 'mahang') inputId = 'maspInput';
   else if (type === 'nhomhang') inputId = 'nhomhangInput';
-  else if(type === 'chungloai') inputId = 'chungloaiInput';
+  else if (type === 'chungloai') inputId = 'chungloaiInput';
 
   else if (type === 'mausac') inputId = 'mausacInput';
   else if (type === 'nhanvien') inputId = 'nhanvienInput';
@@ -278,34 +278,46 @@ popupTypes.forEach(item => {
 async function searchPopup(keyword) {
   let type = window.currentPopupType;
   let table = '', field = '', extraFields = '';
-  if(type === 'khachhang'){ table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
-  else if(type === 'mahang'){ table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-  else if(type === 'nhomhang'){ table = 'dmhanghoa'; field = 'nhomhang'; }
-  else if(type === 'chungloai'){ table = 'dmhanghoa'; field = 'chungloai'; }
-
-  else if(type === 'mausac'){ table = 'dmhanghoa'; field = 'mausac'; }
-  else if(type === 'nhanvien'){ table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-  else if(type === 'size'){ table = 'dmhanghoa'; field = 'size'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
+  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
+  else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
+  else if (type === 'mausac') { table = 'dmhanghoa'; field = 'mausac'; }
+  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else if (type === 'size') { table = 'dmhanghoa'; field = 'size'; }
   else return;
 
-  let query = supabase.from(table).select(`${field}${extraFields}`).limit(100);
-
+  let query = supabase.from(table).select(`${field}${extraFields}`).limit(500);
   if (keyword && keyword.length >= 2) {
     query = query.ilike(field, `%${keyword}%`);
   }
-  // Nếu không có keyword hoặc keyword rỗng → lấy 100 bản đầu (không filter)
   const { data, error } = await query;
-
   if (error || !data || data.length === 0) {
     document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
     return;
   }
-  // Render kết quả
-  document.getElementById('popupSearchList').innerHTML = data.map(row => `
+
+  // Lọc unique cho các field không unique
+  let uniqueData = data;
+  if (['nhomhang', 'chungloai', 'mausac', 'size'].includes(field)) {
+    const seen = new Set();
+    uniqueData = data.filter(row => {
+      const val = row[field];
+      if (!val || seen.has(val)) return false;
+      seen.add(val);
+      return true;
+    });
+  }
+
+  document.getElementById('popupSearchList').innerHTML = uniqueData.map(row => `
     <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g,"\\'")}', this)">
-      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
+         onclick="selectPopupValue('${type}', '${row[field] ? row[field].replace(/'/g, "\\'") : ""}', this)">
+      ${row[field] ? row[field] : ""}
+      ${row.tensp ? " - " + row.tensp : ""}
+      ${row.tenkhach ? " - " + row.tenkhach : ""}
+      ${row.tennv ? " - " + row.tennv : ""}
     </div>
   `).join('');
 }
+
 
