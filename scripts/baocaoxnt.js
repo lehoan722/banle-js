@@ -64,7 +64,6 @@ window.taiBaoCaoXNT = async function () {
     tu_ngay: tuNgay,
     den_ngay: denNgay,
     loaihd_filter: diadiem,
-
     nhomhang_filter: nhomhang,
     chungloai_filter: chungloai,
     mausac_filter: mausac,
