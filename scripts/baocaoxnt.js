@@ -63,7 +63,8 @@ window.taiBaoCaoXNT = async function () {
   const params = {
     tu_ngay: tuNgay,
     den_ngay: denNgay,
-    diadiem_filter: diadiem,
+    loaihd_filter: diadiem,
+
     nhomhang_filter: nhomhang,
     chungloai_filter: chungloai,
     mausac_filter: mausac,
