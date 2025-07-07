@@ -52,6 +52,13 @@ window.taiBaoCaoXNT = async function () {
 
   if (!tuNgay || !denNgay) return alert("Chọn đủ từ ngày và đến ngày!");
 
+  const locDuong = document.getElementById('locDuong').checked;
+  const locAm = document.getElementById('locAm').checked;
+  const locHet = document.getElementById('locHet').checked;
+  const locPhatSinhNhap = document.getElementById('locPhatSinhNhap').checked;
+  const locPhatSinhXuat = document.getElementById('locPhatSinhXuat').checked;
+
+
   // Gửi filter xuống function SQL
   const params = {
     tu_ngay: tuNgay,
@@ -65,8 +72,14 @@ window.taiBaoCaoXNT = async function () {
     khachhang_filter: khachhang,
     nhanvien_filter: nhanvien,
     tu_gia: tuGia ? Number(tuGia) : null,
-    den_gia: denGia ? Number(denGia) : null
+    den_gia: denGia ? Number(denGia) : null,
+    loc_duong: locDuong,
+    loc_am: locAm,
+    loc_het: locHet,
+    loc_phatsinh_nhap: locPhatSinhNhap,
+    loc_phatsinh_xuat: locPhatSinhXuat
   };
+
   console.log(`🔎 Gửi filter báo cáo XNT [${functionName}]:`, params);
 
   const { data, error } = await supabase.rpc(functionName, params);
