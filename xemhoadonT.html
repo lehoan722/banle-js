@@ -283,6 +283,7 @@
         if (!ngayStr) return "";
         if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
         const d = new Date(ngayStr);
+        if (isNaN(d.getTime())) return ngayStr;
         const ngay = d.getDate().toString().padStart(2, "0");
         const thang = (d.getMonth() + 1).toString().padStart(2, "0");
         const nam = d.getFullYear();
@@ -290,6 +291,7 @@
         const phut = d.getMinutes().toString().padStart(2, "0");
         return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
       }
+
 
       // HIỂN THỊ RA BẢNG
       hienThiData.forEach((hd, idx) => {
