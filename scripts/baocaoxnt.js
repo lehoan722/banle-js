@@ -193,7 +193,7 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
   let table = '';
   let field = '';
   let extraFields = '';
-  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'tenkh'; extraFields = ', tenkh'; }
   else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
   else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
   else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
@@ -278,7 +278,7 @@ popupTypes.forEach(item => {
 async function searchPopup(keyword) {
   let type = window.currentPopupType;
   let table = '', field = '', extraFields = '';
-  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'tenkh'; extraFields = ', tenkh'; }
   else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
   else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
   else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
