@@ -93,12 +93,33 @@ window.taiBaoCaoXNT = async function () {
 
   if (error) {
     container.innerHTML = `<div style="color: red;">Lỗi: ${error.message}</div>`;
+    document.getElementById('xntSummary').innerHTML = "";
     return;
   }
   if (!data || !data.length) {
     container.innerHTML = `<div style="color: orange;">Không có dữ liệu</div>`;
+    document.getElementById('xntSummary').innerHTML = "";
     return;
   }
+
+  // --- Tổng hợp số liệu ---
+  let tongDauKy = 0, tongNhap = 0, tongXuat = 0, tongCuoiKy = 0;
+  data.forEach(row => {
+    tongDauKy += row.dauky || 0;
+    tongNhap += row.tongnhap || 0;
+    tongXuat += row.tongxuat || 0;
+    tongCuoiKy += row.cuoiky || 0;
+  });
+  document.getElementById('xntSummary').innerHTML = `
+  <span style="background:#e3f2fd;padding:7px 16px; border-radius:7px;">
+    <b>TỔNG SỐ LIỆU:</b>
+    Đầu kỳ: <b>${tongDauKy.toLocaleString()}</b>
+    &nbsp;|&nbsp; Nhập: <b>${tongNhap.toLocaleString()}</b>
+    &nbsp;|&nbsp; Xuất: <b>${tongXuat.toLocaleString()}</b>
+    &nbsp;|&nbsp; Cuối kỳ: <b>${tongCuoiKy.toLocaleString()}</b>
+  </span>
+`;
+
 
   const columns = [
     { data: 'stt', type: 'numeric', readOnly: true, width: 50 },
