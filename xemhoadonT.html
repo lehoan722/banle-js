@@ -281,7 +281,15 @@
       // Định dạng ngày
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
+        // Nếu dạng chỉ có ngày
+        if (/^\d{4}-\d{2}-\d{2}$/.test(ngayStr)) {
+          // Trả về ngày, không có giờ
+          const [y, m, d] = ngayStr.split("-");
+          return `${d}/${m}/${y}`;
+        }
+        // Các dạng tổng hợp (tổng hợp theo tháng, năm)
         if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
+        // Dạng có cả ngày giờ
         const d = new Date(ngayStr);
         if (isNaN(d.getTime())) return ngayStr;
         const ngay = d.getDate().toString().padStart(2, "0");
@@ -302,7 +310,8 @@
       <td>${idx + 1}</td>
       <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
       <td>${hd.sohd || ""}</td>
-      <td>${dinhDangNgayGio(hd.ngay || hd.created_at)}</td>
+      <td>${dinhDangNgayGio(hd.created_at || hd.ngay)}</td>
+
       <td>${hd.tennv || ""}</td>
       <td>${hd.khachhang || ""}</td>
       <td>${hd.tongsl || 0}</td>
