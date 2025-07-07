@@ -381,26 +381,26 @@
       const container = document.getElementById('hoaDonGrid');
       hoaDonHot = new Handsontable(container, {
         data: hoaDonData,
+        // rowHeaders là STT bắt đầu từ 1:
+        rowHeaders: function (index) { return index + 1; },
         colHeaders: [
-          'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+          'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
         ],
         columns: [
-          { data: 'stt', readOnly: true, width: 80 },
-          { data: 'chon', type: 'checkbox', width: 80 },
-          { data: 'sohd', readOnly: true, width: 150 },
-          { data: 'ngay', readOnly: true, width: 240 },
+          { data: 'chon', type: 'checkbox', width: 60 },
+          { data: 'sohd', readOnly: true, width: 120 },
+          { data: 'ngay', readOnly: true, width: 120 },
           { data: 'tennv', readOnly: true },
           { data: 'khachhang', readOnly: true },
-          { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
+          { data: 'tongsl', readOnly: true, type: 'numeric', width: 80 },
           {
-            data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
+            data: 'thanhtoan', readOnly: true, type: 'numeric', width: 110,
             renderer: function (instance, td, row, col, prop, value) {
               td.innerHTML = value?.toLocaleString();
             }
           },
           { data: 'ghichu', readOnly: true }
         ],
-        rowHeaders: false,
         filters: true,
         dropdownMenu: true,
         manualColumnResize: true,
@@ -408,30 +408,28 @@
         licenseKey: 'non-commercial-and-evaluation',
         width: '100%',
         height: 650,
-        // Không mở popup khi click đơn nữa!
-        afterOnCellMouseDown: function (e, coords, td) {
-          // Chỉ highlight dòng khi click đơn
+
+        afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
+          // Khi click vào row header, highlight toàn bộ dòng đó
           let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
-          trs.forEach(tr => tr.style.backgroundColor = "");
-          if (td && td.parentNode && coords.row >= 0) {
-            td.parentNode.style.backgroundColor = "#ffe066";
-            rowDangChon = coords.row;
-          }
+          trs.forEach((tr, idx) => {
+            tr.style.backgroundColor = (idx === row) ? "#ffe066" : "";
+          });
         },
         afterOnCellMouseOver: function (e, coords, td) {
-          // Khi hover chuột qua dòng cũng highlight
+          // Hover cũng highlight dòng
           let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
-          trs.forEach(tr => tr.style.backgroundColor = "");
-          if (td && td.parentNode && coords.row >= 0) {
-            td.parentNode.style.backgroundColor = "#ffe066";
-          }
+          trs.forEach((tr, idx) => {
+            tr.style.backgroundColor = (idx === coords.row) ? "#ffe066" : "";
+          });
         },
         afterOnCellMouseOut: function (e, coords, td) {
-          // Khi rời khỏi, bỏ highlight
+          // Khi rời chuột bỏ highlight
           let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
           trs.forEach(tr => tr.style.backgroundColor = "");
         }
       });
+
 
       // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
       setTimeout(function () {
