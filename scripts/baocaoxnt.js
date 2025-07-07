@@ -1,8 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 let hotInstance;
 
-
-// Hàm đăng nhập Supabase Auth
+// ==== 1. ĐĂNG NHẬP SUPABASE ====
 window.dangNhap = async function () {
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
@@ -23,9 +22,10 @@ window.dangNhap = async function () {
   status.style.color = "green";
   status.textContent = "Đăng nhập thành công!";
   document.getElementById("authBox").style.display = "none";
-}
+};
 
-// Hàm kiểm tra đăng nhập và truy vấn báo cáo
+
+// ==== 2. HÀM LẤY DỮ LIỆU VÀ HIỂN THỊ HANDSONTABLE ====
 window.taiBaoCaoXNT = async function () {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
@@ -34,39 +34,44 @@ window.taiBaoCaoXNT = async function () {
     return;
   }
 
+  // Lấy giá trị filter từ giao diện
+  const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt";
+  const diadiem = document.getElementById("diadiemSelect").value || null;
   const tuNgay = document.getElementById("tuNgay").value;
   const denNgay = document.getElementById("denNgay").value;
-  const nhomhang = document.getElementById("nhomhang").value.trim() || null;
-  const loaihang = document.getElementById("loaihang").value.trim() || null;
-  const mausac = document.getElementById("mausac").value.trim() || null;
-  const size = document.getElementById("size").value.trim() || null;
-  const masp = document.getElementById("masp").value.trim() || null;
+  const khachhang = document.getElementById("khachhangInput").value.trim() || null;
+  const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
+  const nhomhang = document.getElementById("nhomhangInput").value.trim() || null;
+  const loaihang = document.getElementById("loaihangInput").value.trim() || null;
+  const mausac = document.getElementById("mausacInput").value.trim() || null;
+  const size = document.getElementById("sizeInput").value.trim() || null;
+  const masp = document.getElementById("maspInput").value.trim() || null;
+  const tuGia = document.getElementById("tuGia").value || null;
+  const denGia = document.getElementById("denGia").value || null;
 
   if (!tuNgay || !denNgay) return alert("Chọn đủ từ ngày và đến ngày!");
 
-  // Lấy tên function từ dropdown
-  const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt";
-
+  // Gửi filter xuống function SQL
   const params = {
     tu_ngay: tuNgay,
     den_ngay: denNgay,
+    diadiem_filter: diadiem,
     nhomhang_filter: nhomhang,
     loaihang_filter: loaihang,
     mausac_filter: mausac,
     size_filter: size,
-    masp_filter: masp
+    masp_filter: masp,
+    khachhang_filter: khachhang,
+    nhanvien_filter: nhanvien,
+    tu_gia: tuGia ? Number(tuGia) : null,
+    den_gia: denGia ? Number(denGia) : null
   };
   console.log(`🔎 Gửi filter báo cáo XNT [${functionName}]:`, params);
 
   const { data, error } = await supabase.rpc(functionName, params);
 
-  if (error) {
-    console.error("❌ Lỗi gọi RPC Supabase:", error);
-  } else {
-    console.log("✅ Dữ liệu báo cáo XNT trả về:", data);
-  }
-
-  const container = document.getElementById('hot'); // hot là id div bạn sẽ thêm ở HTML
+  // HIỂN THỊ HANDSONTABLE
+  const container = document.getElementById('hot');
   if (hotInstance) {
     hotInstance.destroy();
     hotInstance = null;
@@ -81,7 +86,6 @@ window.taiBaoCaoXNT = async function () {
     return;
   }
 
-  // Chuẩn bị tiêu đề cột và dữ liệu cho Handsontable
   const columns = [
     { data: 'stt', type: 'numeric', readOnly: true, width: 50 },
     { data: 'masp', title: 'Mã hàng', readOnly: true },
@@ -98,7 +102,6 @@ window.taiBaoCaoXNT = async function () {
     { data: 'giale', title: 'Giá lẻ', type: 'numeric', readOnly: true, numericFormat: { pattern: "0,0" } },
   ];
 
-  // Map dữ liệu, thêm STT
   const hotData = data.map((row, idx) => ({
     stt: idx + 1,
     ...row
@@ -125,17 +128,95 @@ window.taiBaoCaoXNT = async function () {
 };
 
 
-// Khi load trang, kiểm tra trạng thái đăng nhập và set ngày mặc định
-  window.onload = async function () {
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('tuNgay').value = today;
-    document.getElementById('denNgay').value = today;
+// ==== 3. HANDLER POPUP TÌM KIẾM (DÙNG CHUNG CHO TẤT CẢ INPUT) ====
 
-    // Ẩn/hiện form đăng nhập tuỳ trạng thái
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      document.getElementById("authBox").style.display = "none";
-    } else {
-      document.getElementById("authBox").style.display = "block";
-    }
-  };
+// Mở popup search
+window.openPopupSearch = function(type) {
+  window.currentPopupType = type;
+  document.getElementById('popupSearch').style.display = 'block';
+  document.getElementById('popupSearchInput').value = '';
+  document.getElementById('popupSearchInput').focus();
+  document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+};
+
+// Đóng popup
+window.closePopupSearch = function() {
+  document.getElementById('popupSearch').style.display = 'none';
+};
+
+// Xóa input
+window.clearInput = function(inputId) {
+  document.getElementById(inputId).value = '';
+};
+
+// Sự kiện tìm kiếm trong popup
+document.getElementById('popupSearchInput').addEventListener('input', async function() {
+  let keyword = this.value.trim();
+  if (keyword.length < 2) {
+    document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+    return;
+  }
+  let type = window.currentPopupType;
+  // Xác định bảng và trường tìm kiếm theo type
+  let table = '';
+  let field = '';
+  let extraFields = '';
+  if(type === 'khachhang'){ table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
+  else if(type === 'mahang'){ table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if(type === 'nhomhang'){ table = 'dmhanghoa'; field = 'nhomhang'; }
+  else if(type === 'loaihang'){ table = 'dmhanghoa'; field = 'loaisp'; }
+  else if(type === 'mausac'){ table = 'dmhanghoa'; field = 'mausac'; }
+  else if(type === 'nhanvien'){ table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else if(type === 'size'){ table = 'dmhanghoa'; field = 'size'; }
+  else return;
+
+  // Truy vấn Supabase (bạn có thể chỉnh lại trường cho phù hợp bảng của bạn)
+  let { data, error } = await supabase
+    .from(table)
+    .select(`${field}${extraFields}`)
+    .ilike(field, `%${keyword}%`)
+    .limit(100);
+
+  if (error || !data || data.length === 0) {
+    document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
+    return;
+  }
+
+  // Render kết quả
+  document.getElementById('popupSearchList').innerHTML = data.map(row => `
+    <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g,"\\'")}', this)">
+      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
+    </div>
+  `).join('');
+});
+
+// Chọn giá trị từ popup
+window.selectPopupValue = function(type, value, el) {
+  let inputId = '';
+  if(type === 'khachhang') inputId = 'khachhangInput';
+  else if(type === 'mahang') inputId = 'maspInput';
+  else if(type === 'nhomhang') inputId = 'nhomhangInput';
+  else if(type === 'loaihang') inputId = 'loaihangInput';
+  else if(type === 'mausac') inputId = 'mausacInput';
+  else if(type === 'nhanvien') inputId = 'nhanvienInput';
+  else if(type === 'size') inputId = 'sizeInput';
+  if(inputId) document.getElementById(inputId).value = value;
+  closePopupSearch();
+};
+
+
+// ==== 4. AUTO FILL NGÀY, ẨN HIỆN ĐĂNG NHẬP ====
+window.onload = async function () {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('tuNgay').value = today;
+  document.getElementById('denNgay').value = today;
+
+  // Ẩn/hiện form đăng nhập tuỳ trạng thái
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    document.getElementById("authBox").style.display = "none";
+  } else {
+    document.getElementById("authBox").style.display = "block";
+  }
+};
