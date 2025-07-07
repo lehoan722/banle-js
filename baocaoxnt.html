@@ -1,307 +1,194 @@
-import { supabase } from "./supabaseClient.js";
-let hotInstance;
+<!DOCTYPE html>
+<html lang="vi">
 
-// ==== 1. ĐĂNG NHẬP SUPABASE ====
-window.dangNhap = async function () {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  const status = document.getElementById("authStatus");
-  status.textContent = "";
-
-  if (!email || !password) {
-    status.textContent = "Nhập đầy đủ email và mật khẩu!";
-    return;
-  }
-
-  const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    status.textContent = "Sai email hoặc mật khẩu!";
-    return;
-  }
-
-  status.style.color = "green";
-  status.textContent = "Đăng nhập thành công!";
-  document.getElementById("authBox").style.display = "none";
-};
-
-
-// ==== 2. HÀM LẤY DỮ LIỆU VÀ HIỂN THỊ HANDSONTABLE ====
-window.taiBaoCaoXNT = async function () {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    alert("Bạn cần đăng nhập trước khi xem báo cáo!");
-    document.getElementById("authBox").style.display = "block";
-    return;
-  }
-
-  // Lấy giá trị filter từ giao diện
-  const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt";
-  const diadiem = document.getElementById("diadiemSelect").value || null;
-  const tuNgay = document.getElementById("tuNgay").value;
-  const denNgay = document.getElementById("denNgay").value;
-  const khachhang = document.getElementById("khachhangInput").value.trim() || null;
-  const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
-  const nhomhang = document.getElementById("nhomhangInput").value.trim() || null;
-  const loaihang = document.getElementById("loaihangInput").value.trim() || null;
-  const mausac = document.getElementById("mausacInput").value.trim() || null;
-  const size = document.getElementById("sizeInput").value.trim() || null;
-  const masp = document.getElementById("maspInput").value.trim() || null;
-  const tuGia = document.getElementById("tuGia").value || null;
-  const denGia = document.getElementById("denGia").value || null;
-
-  if (!tuNgay || !denNgay) return alert("Chọn đủ từ ngày và đến ngày!");
-
-  // Gửi filter xuống function SQL
-  const params = {
-    tu_ngay: tuNgay,
-    den_ngay: denNgay,
-    diadiem_filter: diadiem,
-    nhomhang_filter: nhomhang,
-    loaihang_filter: loaihang,
-    mausac_filter: mausac,
-    size_filter: size,
-    masp_filter: masp,
-    khachhang_filter: khachhang,
-    nhanvien_filter: nhanvien,
-    tu_gia: tuGia ? Number(tuGia) : null,
-    den_gia: denGia ? Number(denGia) : null
-  };
-  console.log(`🔎 Gửi filter báo cáo XNT [${functionName}]:`, params);
-
-  const { data, error } = await supabase.rpc(functionName, params);
-
-  // HIỂN THỊ HANDSONTABLE
-  const container = document.getElementById('hot');
-  if (hotInstance) {
-    hotInstance.destroy();
-    hotInstance = null;
-  }
-
-  if (error) {
-    container.innerHTML = `<div style="color: red;">Lỗi: ${error.message}</div>`;
-    return;
-  }
-  if (!data || !data.length) {
-    container.innerHTML = `<div style="color: orange;">Không có dữ liệu</div>`;
-    return;
-  }
-
-  const columns = [
-    { data: 'stt', type: 'numeric', readOnly: true, width: 50 },
-    { data: 'masp', title: 'Mã hàng', readOnly: true },
-    { data: 'tensp', title: 'Tên hàng', readOnly: true },
-    //{ data: 'dvt', title: 'DVT', readOnly: true },
-    //{ data: 'nhomhang', title: 'Nhóm hàng', readOnly: true },
-    //{ data: 'mausac', title: 'Màu sắc', readOnly: true },
-    { data: 'size', title: 'Kích cỡ', readOnly: true },
-    { data: 'dauky', title: 'Đầu kỳ', type: 'numeric', readOnly: true },
-    { data: 'tongnhap', title: 'Tổng nhập', type: 'numeric', readOnly: true },
-    { data: 'tongxuat', title: 'Tổng xuất', type: 'numeric', readOnly: true },
-    { data: 'cuoiky', title: 'Cuối kỳ', type: 'numeric', readOnly: true },
-    { data: 'gianhap', title: 'Giá nhập', type: 'numeric', readOnly: true, numericFormat: { pattern: "0,0" } },
-    { data: 'giale', title: 'Giá lẻ', type: 'numeric', readOnly: true, numericFormat: { pattern: "0,0" } },
-  ];
-
-  const hotData = data.map((row, idx) => ({
-    stt: idx + 1,
-    ...row
-  }));
-
-  hotInstance = new Handsontable(container, {
-    data: hotData,
-    columns: columns,
-    colHeaders: columns.map(c => c.title || c.data),
-    rowHeaders: true,
-    width: '100%',
-    height: 480,
-    licenseKey: 'non-commercial-and-evaluation',
-    stretchH: 'all',
-    manualColumnResize: true,
-    manualRowResize: true,
-    filters: true,
-    dropdownMenu: true,
-    columnSorting: true,
-    readOnly: true,
-    autoWrapRow: true,
-    wordWrap: true
-  });
-};
-
-
-// ==== 3. HANDLER POPUP TÌM KIẾM (DÙNG CHUNG CHO TẤT CẢ INPUT) ====
-
-// Mở popup search
-// Hàm mở popup tìm kiếm nâng cấp
-window.openPopupSearch = function (type, keyword = "") {
-  window.currentPopupType = type;
-  const popup = document.getElementById('popupSearch');
-  const input = document.getElementById('popupSearchInput');
-  const list = document.getElementById('popupSearchList');
-
-  popup.style.display = 'block';
-  input.value = keyword || '';
-  input.focus();
-
-  // Nếu keyword rỗng --> tự động hiển thị 100 bản đầu tiên luôn
-  if (!keyword || keyword.trim().length === 0) {
-    searchPopup(""); // gọi lấy 100 bản đầu
-  }
-  // Nếu keyword đủ ≥2 ký tự --> tự động tìm kiếm theo keyword luôn
-  else if (keyword.trim().length >= 1) {
-    searchPopup(keyword.trim());
-  }
-  // Nếu keyword <2 ký tự (và khác rỗng) --> thông báo yêu cầu nhập tiếp
-  else {
-    list.innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
-  }
-};
-
-// Sự kiện tìm kiếm trong popup (người dùng gõ trực tiếp trong ô popupSearchInput)
-document.getElementById('popupSearchInput').addEventListener('input', function () {
-  let keyword = this.value.trim();
-  if (keyword.length === 0) {
-    searchPopup(""); // Lấy 100 bản đầu khi ô rỗng
-  } else if (keyword.length >= 1) {
-    searchPopup(keyword);
-  } else {
-    document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥1 ký tự)...</i>';
-  }
-});
-
-
-
-// Đóng popup
-window.closePopupSearch = function () {
-  document.getElementById('popupSearch').style.display = 'none';
-};
-
-// Xóa input
-window.clearInput = function (inputId) {
-  document.getElementById(inputId).value = '';
-};
-
-// Sự kiện tìm kiếm trong popup
-document.getElementById('popupSearchInput').addEventListener('input', async function () {
-  let keyword = this.value.trim();
-  if (keyword.length < 2) {
-    document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
-    return;
-  }
-  let type = window.currentPopupType;
-  // Xác định bảng và trường tìm kiếm theo type
-  let table = '';
-  let field = '';
-  let extraFields = '';
-  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
-  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-  else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
-  else if (type === 'loaihang') { table = 'dmhanghoa'; field = 'loaisp'; }
-  else if (type === 'mausac') { table = 'dmhanghoa'; field = 'mausac'; }
-  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-  else if (type === 'size') { table = 'dmhanghoa'; field = 'size'; }
-  else return;
-
-  // Truy vấn Supabase (bạn có thể chỉnh lại trường cho phù hợp bảng của bạn)
-  let { data, error } = await supabase
-    .from(table)
-    .select(`${field}${extraFields}`)
-    .ilike(field, `%${keyword}%`)
-    .limit(100);
-
-  if (error || !data || data.length === 0) {
-    document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-    return;
-  }
-
-  // Render kết quả
-  document.getElementById('popupSearchList').innerHTML = data.map(row => `
-    <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
-    </div>
-  `).join('');
-});
-
-// Chọn giá trị từ popup
-window.selectPopupValue = function (type, value, el) {
-  let inputId = '';
-  if (type === 'khachhang') inputId = 'khachhangInput';
-  else if (type === 'mahang') inputId = 'maspInput';
-  else if (type === 'nhomhang') inputId = 'nhomhangInput';
-  else if (type === 'loaihang') inputId = 'loaihangInput';
-  else if (type === 'mausac') inputId = 'mausacInput';
-  else if (type === 'nhanvien') inputId = 'nhanvienInput';
-  else if (type === 'size') inputId = 'sizeInput';
-  if (inputId) document.getElementById(inputId).value = value;
-  closePopupSearch();
-};
-
-
-// ==== 4. AUTO FILL NGÀY, ẨN HIỆN ĐĂNG NHẬP ====
-window.onload = async function () {
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('tuNgay').value = today;
-  document.getElementById('denNgay').value = today;
-
-  // Ẩn/hiện form đăng nhập tuỳ trạng thái
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    document.getElementById("authBox").style.display = "none";
-  } else {
-    document.getElementById("authBox").style.display = "block";
-  }
-};
-
-const popupTypes = [
-  { id: "khachhangInput", type: "khachhang" },
-  { id: "maspInput", type: "mahang" },
-  { id: "nhomhangInput", type: "nhomhang" },
-  { id: "loaihangInput", type: "loaihang" },
-  { id: "mausacInput", type: "mausac" },
-  { id: "nhanvienInput", type: "nhanvien" },
-  { id: "sizeInput", type: "size" }
-];
-
-popupTypes.forEach(item => {
-  const input = document.getElementById(item.id);
-  if (!input) return;
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      window.openPopupSearch(item.type, input.value);
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo Xuất Nhập Tồn Hàng Hóa</title>
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script type="module" src="scripts/baocaoxnt.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 18px;
+      background: #fcfcfd;
     }
-  });
-});
+    h2 {margin-bottom: 18px;}
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px 22px;
+      margin-bottom: 12px;
+    }
+    .input-popup-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-right: 8px;
+    }
+    .input-popup-group input {
+      width: 130px;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+    }
+    .input-popup-group button {
+      background: #eee;
+      color: #222;
+      border: 1px solid #bbb;
+      padding: 0 8px;
+      font-size: 15px;
+      border-radius: 3px;
+      cursor: pointer;
+      height: 32px;
+    }
+    .input-popup-group button:hover {background: #ddd;}
+    .filters label {margin-bottom: 0;}
+    .filters select, .filters input[type="date"], .filters input[type="number"] {
+      padding: 6px 8px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+    button.main {
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      font-weight: bold;
+      padding: 8px 22px;
+      border-radius: 5px;
+      margin-right: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button.main:hover {background: #1769aa;}
+    #authBox {
+      background: #f6f8fa;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 8px #eee;
+    }
+    /* Popup tìm kiếm */
+    #popupSearch {
+      display: none;
+      position: fixed;
+      top: 16%;
+      left: 50%;
+      transform: translate(-50%, 0);
+      background: #fff;
+      z-index: 2000;
+      border: 1px solid #ccc;
+      min-width: 340px;
+      max-width: 98vw;
+      box-shadow: 0 0 12px #888;
+      border-radius: 8px;
+    }
+    #popupSearch input {
+      width: 94%;
+      margin-bottom: 5px;
+    }
+    #popupSearchList {
+      max-height: 260px;
+      overflow: auto;
+      font-size: 15px;
+    }
+    #popupSearchList div {
+      padding: 5px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    #popupSearchList div:hover {background: #e3f0ff;}
+  </style>
+</head>
 
-async function searchPopup(keyword) {
-  let type = window.currentPopupType;
-  let table = '', field = '', extraFields = '';
-  if(type === 'khachhang'){ table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
-  else if(type === 'mahang'){ table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-  else if(type === 'nhomhang'){ table = 'dmhanghoa'; field = 'nhomhang'; }
-  else if(type === 'loaihang'){ table = 'dmhanghoa'; field = 'loaisp'; }
-  else if(type === 'mausac'){ table = 'dmhanghoa'; field = 'mausac'; }
-  else if(type === 'nhanvien'){ table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-  else if(type === 'size'){ table = 'dmhanghoa'; field = 'size'; }
-  else return;
+<body>
+  <div id="authBox">
+    <label>Email: <input type="email" id="email"></label>
+    <label>Mật khẩu: <input type="password" id="password"></label>
+    <button onclick="dangNhap()">Đăng nhập</button>
+    <span id="authStatus" style="color: red; margin-left: 10px"></span>
+  </div>
 
-  let query = supabase.from(table).select(`${field}${extraFields}`).limit(100);
+  <h2>📦 BÁO CÁO XUẤT NHẬP TỒN HÀNG HÓA</h2>
+  <div class="filters">
+    <!-- Chọn phương pháp function SQL -->
+    <label>
+      Phương pháp:
+      <select id="selectFunction">
+        <option value="baocaoxnt">Chuẩn (theo cột loại/diadiem)</option>
+        <option value="baocaoxnt_splithd">Tách từ Số HĐ (SPLIT)</option>
+      </select>
+    </label>
+    <!-- Chọn địa điểm/cơ sở -->
+    <label>
+      Địa điểm:
+      <select id="diadiemSelect">
+        <option value="">Tất cả</option>
+        <option value="cs1">Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+    </label>
+    <label>Từ ngày: <input type="date" id="tuNgay"></label>
+    <label>Đến ngày: <input type="date" id="denNgay"></label>
+    <!-- Các input có popup tìm kiếm -->
+    <span class="input-popup-group">
+      <input id="khachhangInput" placeholder="Khách hàng" >
+      <button onclick="openPopupSearch('khachhang')">🔍</button>
+      <button onclick="clearInput('khachhangInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="nhanvienInput" placeholder="Nhân viên" >
+      <button onclick="openPopupSearch('nhanvien')">🔍</button>
+      <button onclick="clearInput('nhanvienInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="nhomhangInput" placeholder="Nhóm hàng" >
+      <button onclick="openPopupSearch('nhomhang')">🔍</button>
+      <button onclick="clearInput('nhomhangInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="loaihangInput" placeholder="Loại hàng" >
+      <button onclick="openPopupSearch('loaihang')">🔍</button>
+      <button onclick="clearInput('loaihangInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="mausacInput" placeholder="Màu sắc" >
+      <button onclick="openPopupSearch('mausac')">🔍</button>
+      <button onclick="clearInput('mausacInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="sizeInput" placeholder="Kích cỡ" >
+      <button onclick="openPopupSearch('size')">🔍</button>
+      <button onclick="clearInput('sizeInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="maspInput" placeholder="Mã hàng" >
+      <button onclick="openPopupSearch('mahang')">🔍</button>
+      <button onclick="clearInput('maspInput')">✖</button>
+    </span>
+    <!-- Lọc giá bán -->
+    <label>Từ giá:
+      <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
+    </label>
+    <label>Đến giá:
+      <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
+    </label>
+    <!-- Nút xem báo cáo -->
+    <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
+  </div>
+  
+  <div id="hot" style="margin-top: 16px;"></div>
 
-  if (keyword && keyword.length >= 2) {
-    query = query.ilike(field, `%${keyword}%`);
-  }
-  // Nếu không có keyword hoặc keyword rỗng → lấy 100 bản đầu (không filter)
-  const { data, error } = await query;
-
-  if (error || !data || data.length === 0) {
-    document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-    return;
-  }
-  // Render kết quả
-  document.getElementById('popupSearchList').innerHTML = data.map(row => `
-    <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g,"\\'")}', this)">
-      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
+  <!-- Popup tìm kiếm dùng chung cho các filter -->
+  <div id="popupSearch">
+    <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+      <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+      <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
     </div>
-  `).join('');
-}
+    <div id="popupSearchList"></div>
+  </div>
+</body>
 
+</html>
