@@ -131,26 +131,57 @@ window.taiBaoCaoXNT = async function () {
 // ==== 3. HANDLER POPUP TÌM KIẾM (DÙNG CHUNG CHO TẤT CẢ INPUT) ====
 
 // Mở popup search
-window.openPopupSearch = function(type) {
+// Hàm mở popup tìm kiếm nâng cấp
+window.openPopupSearch = function (type, keyword = "") {
   window.currentPopupType = type;
-  document.getElementById('popupSearch').style.display = 'block';
-  document.getElementById('popupSearchInput').value = '';
-  document.getElementById('popupSearchInput').focus();
-  document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+  const popup = document.getElementById('popupSearch');
+  const input = document.getElementById('popupSearchInput');
+  const list = document.getElementById('popupSearchList');
+
+  popup.style.display = 'block';
+  input.value = keyword || '';
+  input.focus();
+
+  // Nếu keyword rỗng --> tự động hiển thị 100 bản đầu tiên luôn
+  if (!keyword || keyword.trim().length === 0) {
+    searchPopup(""); // gọi lấy 100 bản đầu
+  }
+  // Nếu keyword đủ ≥2 ký tự --> tự động tìm kiếm theo keyword luôn
+  else if (keyword.trim().length >= 1) {
+    searchPopup(keyword.trim());
+  }
+  // Nếu keyword <2 ký tự (và khác rỗng) --> thông báo yêu cầu nhập tiếp
+  else {
+    list.innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+  }
 };
 
+// Sự kiện tìm kiếm trong popup (người dùng gõ trực tiếp trong ô popupSearchInput)
+document.getElementById('popupSearchInput').addEventListener('input', function () {
+  let keyword = this.value.trim();
+  if (keyword.length === 0) {
+    searchPopup(""); // Lấy 100 bản đầu khi ô rỗng
+  } else if (keyword.length >= 1) {
+    searchPopup(keyword);
+  } else {
+    document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥1 ký tự)...</i>';
+  }
+});
+
+
+
 // Đóng popup
-window.closePopupSearch = function() {
+window.closePopupSearch = function () {
   document.getElementById('popupSearch').style.display = 'none';
 };
 
 // Xóa input
-window.clearInput = function(inputId) {
+window.clearInput = function (inputId) {
   document.getElementById(inputId).value = '';
 };
 
 // Sự kiện tìm kiếm trong popup
-document.getElementById('popupSearchInput').addEventListener('input', async function() {
+document.getElementById('popupSearchInput').addEventListener('input', async function () {
   let keyword = this.value.trim();
   if (keyword.length < 2) {
     document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
@@ -161,13 +192,13 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
   let table = '';
   let field = '';
   let extraFields = '';
-  if(type === 'khachhang'){ table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
-  else if(type === 'mahang'){ table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-  else if(type === 'nhomhang'){ table = 'dmhanghoa'; field = 'nhomhang'; }
-  else if(type === 'loaihang'){ table = 'dmhanghoa'; field = 'loaisp'; }
-  else if(type === 'mausac'){ table = 'dmhanghoa'; field = 'mausac'; }
-  else if(type === 'nhanvien'){ table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-  else if(type === 'size'){ table = 'dmhanghoa'; field = 'size'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
+  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
+  else if (type === 'loaihang') { table = 'dmhanghoa'; field = 'loaisp'; }
+  else if (type === 'mausac') { table = 'dmhanghoa'; field = 'mausac'; }
+  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else if (type === 'size') { table = 'dmhanghoa'; field = 'size'; }
   else return;
 
   // Truy vấn Supabase (bạn có thể chỉnh lại trường cho phù hợp bảng của bạn)
@@ -185,23 +216,23 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
   // Render kết quả
   document.getElementById('popupSearchList').innerHTML = data.map(row => `
     <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g,"\\'")}', this)">
+         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
       ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
     </div>
   `).join('');
 });
 
 // Chọn giá trị từ popup
-window.selectPopupValue = function(type, value, el) {
+window.selectPopupValue = function (type, value, el) {
   let inputId = '';
-  if(type === 'khachhang') inputId = 'khachhangInput';
-  else if(type === 'mahang') inputId = 'maspInput';
-  else if(type === 'nhomhang') inputId = 'nhomhangInput';
-  else if(type === 'loaihang') inputId = 'loaihangInput';
-  else if(type === 'mausac') inputId = 'mausacInput';
-  else if(type === 'nhanvien') inputId = 'nhanvienInput';
-  else if(type === 'size') inputId = 'sizeInput';
-  if(inputId) document.getElementById(inputId).value = value;
+  if (type === 'khachhang') inputId = 'khachhangInput';
+  else if (type === 'mahang') inputId = 'maspInput';
+  else if (type === 'nhomhang') inputId = 'nhomhangInput';
+  else if (type === 'loaihang') inputId = 'loaihangInput';
+  else if (type === 'mausac') inputId = 'mausacInput';
+  else if (type === 'nhanvien') inputId = 'nhanvienInput';
+  else if (type === 'size') inputId = 'sizeInput';
+  if (inputId) document.getElementById(inputId).value = value;
   closePopupSearch();
 };
 
@@ -220,3 +251,57 @@ window.onload = async function () {
     document.getElementById("authBox").style.display = "block";
   }
 };
+
+const popupTypes = [
+  { id: "khachhangInput", type: "khachhang" },
+  { id: "maspInput", type: "mahang" },
+  { id: "nhomhangInput", type: "nhomhang" },
+  { id: "loaihangInput", type: "loaihang" },
+  { id: "mausacInput", type: "mausac" },
+  { id: "nhanvienInput", type: "nhanvien" },
+  { id: "sizeInput", type: "size" }
+];
+
+popupTypes.forEach(item => {
+  const input = document.getElementById(item.id);
+  if (!input) return;
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      window.openPopupSearch(item.type, input.value);
+    }
+  });
+});
+
+async function searchPopup(keyword) {
+  let type = window.currentPopupType;
+  let table = '', field = '', extraFields = '';
+  if(type === 'khachhang'){ table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkhach'; }
+  else if(type === 'mahang'){ table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if(type === 'nhomhang'){ table = 'dmhanghoa'; field = 'nhomhang'; }
+  else if(type === 'loaihang'){ table = 'dmhanghoa'; field = 'loaisp'; }
+  else if(type === 'mausac'){ table = 'dmhanghoa'; field = 'mausac'; }
+  else if(type === 'nhanvien'){ table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else if(type === 'size'){ table = 'dmhanghoa'; field = 'size'; }
+  else return;
+
+  let query = supabase.from(table).select(`${field}${extraFields}`).limit(100);
+
+  if (keyword && keyword.length >= 2) {
+    query = query.ilike(field, `%${keyword}%`);
+  }
+  // Nếu không có keyword hoặc keyword rỗng → lấy 100 bản đầu (không filter)
+  const { data, error } = await query;
+
+  if (error || !data || data.length === 0) {
+    document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
+    return;
+  }
+  // Render kết quả
+  document.getElementById('popupSearchList').innerHTML = data.map(row => `
+    <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g,"\\'")}', this)">
+      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkhach ? " - " + row.tenkhach : ""}${row.tennv ? " - " + row.tennv : ""}
+    </div>
+  `).join('');
+}
+
