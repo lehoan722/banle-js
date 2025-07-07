@@ -105,6 +105,19 @@
     button.xoa-btn:hover {
       background: #ffe599;
     }
+
+    @media (max-width: 700px) {
+      #hoaDonGrid {
+        font-size: 0.93em;
+        min-height: 300px;
+        padding: 0;
+      }
+
+      .handsontable th,
+      .handsontable td {
+        padding: 5px !important;
+      }
+    }
   </style>
 </head>
 
@@ -148,7 +161,7 @@
     Tổng số lượng hóa đơn: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
   </div>
 
-  <div id="hoaDonGrid" style="width:100%; min-height:360px; margin:16px 0;"></div>
+  <div id="hoaDonGrid" style="width:100vw; min-height:360px; margin:16px 0; max-width:100vw; overflow-x:auto;"></div>
 
 
   <div id="popup">
@@ -381,33 +394,28 @@
       const container = document.getElementById('hoaDonGrid');
       hoaDonHot = new Handsontable(container, {
         data: hoaDonData,
-        // rowHeaders là STT bắt đầu từ 1:
         rowHeaders: function (index) { return index + 1; },
         colHeaders: [
           'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
         ],
         columns: [
-          { data: 'chon', type: 'checkbox', width: 60 },
-          { data: 'sohd', readOnly: true, width: 120 },
-          { data: 'ngay', readOnly: true, width: 120 },
+          { data: 'chon', type: 'checkbox', width: 55 },
+          { data: 'sohd', readOnly: true },
+          { data: 'ngay', readOnly: true },
           { data: 'tennv', readOnly: true },
           { data: 'khachhang', readOnly: true },
-          { data: 'tongsl', readOnly: true, type: 'numeric', width: 80 },
+          { data: 'tongsl', readOnly: true, type: 'numeric' },
           {
-            data: 'thanhtoan', readOnly: true, type: 'numeric', width: 110,
+            data: 'thanhtoan', readOnly: true, type: 'numeric',
             renderer: function (instance, td, row, col, prop, value) {
               td.innerHTML = value?.toLocaleString();
             }
           },
           { data: 'ghichu', readOnly: true }
         ],
-        filters: true,
-        dropdownMenu: true,
-        manualColumnResize: true,
-        columnSorting: true,
-        licenseKey: 'non-commercial-and-evaluation',
         width: '100%',
-        height: 650,
+        stretchH: 'all',
+        height: Math.min(window.innerHeight - 240, 650),
 
         afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
           // Khi click vào row header, highlight toàn bộ dòng đó
@@ -445,6 +453,10 @@
           };
         }
       }, 150); // Để chắc chắn DOM Handsontable đã render xong
+
+      window.addEventListener('resize', function () {
+        if (hoaDonHot) hoaDonHot.render();
+      });
 
     }
 
