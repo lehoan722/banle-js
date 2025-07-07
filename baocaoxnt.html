@@ -6,57 +6,63 @@
   <title>Báo cáo Xuất Nhập Tồn Hàng Hóa</title>
   <script type="module" src="scripts/supabaseClient.js"></script>
   <script type="module" src="scripts/baocaoxnt.js"></script>
-  <!-- Handsontable CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-
   <style>
     body {
-      font-family: Arial;
-      padding: 16px;
+      font-family: Arial, sans-serif;
+      padding: 18px;
+      background: #fcfcfd;
     }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 10px;
+    h2 {margin-bottom: 18px;}
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px 22px;
+      margin-bottom: 12px;
     }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 7px;
-      text-align: left;
+    .input-popup-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      margin-right: 8px;
     }
-
-    thead th {
-      position: sticky;
-      top: 0;
-      background: #f9f9f9;
-      z-index: 2;
-    }
-
-    .filters input,
-    .filters select {
-      margin: 4px;
+    .input-popup-group input {
+      width: 130px;
       padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
     }
-
-    button {
+    .input-popup-group button {
+      background: #eee;
+      color: #222;
+      border: 1px solid #bbb;
+      padding: 0 8px;
+      font-size: 15px;
+      border-radius: 3px;
+      cursor: pointer;
+      height: 32px;
+    }
+    .input-popup-group button:hover {background: #ddd;}
+    .filters label {margin-bottom: 0;}
+    .filters select, .filters input[type="date"], .filters input[type="number"] {
+      padding: 6px 8px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+    button.main {
       background: #2196f3;
       color: #fff;
       border: none;
       font-weight: bold;
-      padding: 7px 18px;
-      border-radius: 4px;
+      padding: 8px 22px;
+      border-radius: 5px;
       margin-right: 8px;
       cursor: pointer;
+      font-size: 16px;
     }
-
-    button:hover {
-      background: #1769aa;
-    }
-
+    button.main:hover {background: #1769aa;}
     #authBox {
       background: #f6f8fa;
       padding: 12px 16px;
@@ -64,6 +70,36 @@
       margin-bottom: 18px;
       box-shadow: 0 2px 8px #eee;
     }
+    /* Popup tìm kiếm */
+    #popupSearch {
+      display: none;
+      position: fixed;
+      top: 16%;
+      left: 50%;
+      transform: translate(-50%, 0);
+      background: #fff;
+      z-index: 2000;
+      border: 1px solid #ccc;
+      min-width: 340px;
+      max-width: 98vw;
+      box-shadow: 0 0 12px #888;
+      border-radius: 8px;
+    }
+    #popupSearch input {
+      width: 94%;
+      margin-bottom: 5px;
+    }
+    #popupSearchList {
+      max-height: 260px;
+      overflow: auto;
+      font-size: 15px;
+    }
+    #popupSearchList div {
+      padding: 5px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    #popupSearchList div:hover {background: #e3f0ff;}
   </style>
 </head>
 
@@ -77,27 +113,82 @@
 
   <h2>📦 BÁO CÁO XUẤT NHẬP TỒN HÀNG HÓA</h2>
   <div class="filters">
-    <label>Chọn phương pháp:
+    <!-- Chọn phương pháp function SQL -->
+    <label>
+      Phương pháp:
       <select id="selectFunction">
         <option value="baocaoxnt">Chuẩn (theo cột loại/diadiem)</option>
         <option value="baocaoxnt_splithd">Tách từ Số HĐ (SPLIT)</option>
       </select>
     </label>
+    <!-- Chọn địa điểm/cơ sở -->
+    <label>
+      Địa điểm:
+      <select id="diadiemSelect">
+        <option value="">Tất cả</option>
+        <option value="cs1">Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+    </label>
     <label>Từ ngày: <input type="date" id="tuNgay"></label>
     <label>Đến ngày: <input type="date" id="denNgay"></label>
-    <label>Khách hàng: <input type="text" id="khachhang"></label>
-    <label>Nhân viên: <input type="text" id="nhanvien"></label>
-    <label>Nhóm hàng: <input type="text" id="nhomhang"></label>
-    <label>Loại hàng: <input type="text" id="loaihang"></label>
-    <label>Màu sắc: <input type="text" id="mausac"></label>
-    <label>Kích cỡ: <input type="text" id="size"></label>
-    <label>Mã hàng: <input type="text" id="masp"></label>
-    <button onclick="taiBaoCaoXNT()">Xem báo cáo</button>
-    <!-- Có thể thêm nút xuất Excel, hoặc các tính năng mở rộng khác -->
+    <!-- Các input có popup tìm kiếm -->
+    <span class="input-popup-group">
+      <input id="khachhangInput" placeholder="Khách hàng" readonly>
+      <button onclick="openPopupSearch('khachhang')">🔍</button>
+      <button onclick="clearInput('khachhangInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="nhanvienInput" placeholder="Nhân viên" readonly>
+      <button onclick="openPopupSearch('nhanvien')">🔍</button>
+      <button onclick="clearInput('nhanvienInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="nhomhangInput" placeholder="Nhóm hàng" readonly>
+      <button onclick="openPopupSearch('nhomhang')">🔍</button>
+      <button onclick="clearInput('nhomhangInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="loaihangInput" placeholder="Loại hàng" readonly>
+      <button onclick="openPopupSearch('loaihang')">🔍</button>
+      <button onclick="clearInput('loaihangInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="mausacInput" placeholder="Màu sắc" readonly>
+      <button onclick="openPopupSearch('mausac')">🔍</button>
+      <button onclick="clearInput('mausacInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="sizeInput" placeholder="Kích cỡ" readonly>
+      <button onclick="openPopupSearch('size')">🔍</button>
+      <button onclick="clearInput('sizeInput')">✖</button>
+    </span>
+    <span class="input-popup-group">
+      <input id="maspInput" placeholder="Mã hàng" readonly>
+      <button onclick="openPopupSearch('mahang')">🔍</button>
+      <button onclick="clearInput('maspInput')">✖</button>
+    </span>
+    <!-- Lọc giá bán -->
+    <label>Từ giá:
+      <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
+    </label>
+    <label>Đến giá:
+      <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
+    </label>
+    <!-- Nút xem báo cáo -->
+    <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
   </div>
   
   <div id="hot" style="margin-top: 16px;"></div>
 
+  <!-- Popup tìm kiếm dùng chung cho các filter -->
+  <div id="popupSearch">
+    <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+      <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+      <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+    </div>
+    <div id="popupSearchList"></div>
+  </div>
 </body>
 
 </html>
