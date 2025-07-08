@@ -119,7 +119,7 @@ export async function luuHoaDonQuaAPI() {
     created_at: createdAt,
     loai: "",
     dvt: "",
-    loaihd: "",
+    loaihd: sohd.split("_")[0],   // <-- CHỈNH ĐOẠN NÀY!
     nhacc: ""
   };
 
@@ -236,7 +236,7 @@ export async function luuHoaDonNhapQuaAPI() {
     created_at: createdAt,
     loai: "",
     dvt: "",
-    loaihd: "",
+    loaihd: sohd.split("_")[0],   // <-- CHỈNH ĐOẠN NÀY!
     nhacc: ""
   };
 
@@ -585,7 +585,7 @@ export async function luuHoaDonccn1v2() {
     created_at: createdAt,
     loai: "",
     dvt: "",
-    loaihd: "",
+    loaihd: sohd.split("_")[0],   // <-- CHỈNH ĐOẠN NÀY!
     nhacc: ""
   };
 
