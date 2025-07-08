@@ -88,10 +88,7 @@ export async function luuHoaDonQuaAPI() {
   let createdAt = new Date().toISOString();
   let updatedAt = null;
 
-  if (!tonTai) {
-    await handleSpecialSoHoaDon(sohd);
-    // KHÔNG return, luôn ghi tiếp vào bảng chính phía dưới
-  }  
+  if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
 
   if (tonTai && !choPhepSua) {
     document.getElementById("popupXacThucSua").style.display = "block";
