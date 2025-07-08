@@ -63,22 +63,23 @@ window.taiBaoCaoXNT = async function () {
   const params = {
     tu_ngay: tuNgay,
     den_ngay: denNgay,
-    diadiem_filter: diadiem,
-    nhomhang_filter: nhomhang,
-    chungloai_filter: chungloai,
-    mausac_filter: mausac,
-    size_filter: size,
-    masp_filter: masp,
-    khachhang_filter: khachhang,
-    nhanvien_filter: nhanvien,
-    tu_gia: tuGia ? Number(tuGia) : null,
-    den_gia: denGia ? Number(denGia) : null,
+    p_diadiem_filter: diadiem,
+    p_nhomhang_filter: nhomhang,
+    p_chungloai_filter: chungloai,
+    p_mausac_filter: mausac,
+    p_size_filter: size,
+    p_masp_filter: masp,
+    p_khachhang_filter: khachhang,
+    p_nhanvien_filter: nhanvien,
+    p_tu_gia: tuGia ? Number(tuGia) : null,
+    p_den_gia: denGia ? Number(denGia) : null,
     loc_duong: locDuong,
     loc_am: locAm,
     loc_het: locHet,
     loc_phatsinh_nhap: locPhatSinhNhap,
     loc_phatsinh_xuat: locPhatSinhXuat
   };
+
 
   console.log(`🔎 Gửi filter báo cáo XNT [${functionName}]:`, params);
 
