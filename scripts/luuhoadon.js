@@ -586,16 +586,30 @@ export async function luuHoaDonccn1v2() {
     .eq("sohd", sohd)
     .maybeSingle();
 
+  let createdAt = new Date().toISOString();
+  let updatedAt = null;
+
+  if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
+
   if (tonTai && !choPhepSua) {
     document.getElementById("popupXacThucSua").style.display = "block";
     return;
   }
 
   if (tonTai && choPhepSua) {
+    // Đọc lại ngày tạo cũ trước khi xóa
+    const { data: hdCu } = await supabase
+      .from("hoadon_banle")
+      .select("created_at")
+      .eq("sohd", sohd)
+      .maybeSingle();
+    if (hdCu && hdCu.created_at) {
+      createdAt = hdCu.created_at;
+    }
+    updatedAt = new Date().toISOString();
     await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
     await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
   }
-  const createdAt = new Date().toISOString();
 
   const getIntValue = (id) =>
     parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -614,6 +628,7 @@ export async function luuHoaDonccn1v2() {
     hinhthuctt: document.getElementById("hinhthuctt").value,
     ghichu: document.getElementById("ghichu")?.value || "",
     created_at: createdAt,
+    updated_at: updatedAt,
     loai: "",
     dvt: "",
     loaihd: "",
@@ -638,6 +653,7 @@ export async function luuHoaDonccn1v2() {
         dvt: item.dvt || '',
         diadiem: diadiem,
         created_at: createdAt,
+        updated_at: updatedAt,
         ngay: document.getElementById("ngay").value
       });
 
