@@ -85,6 +85,9 @@ export async function luuHoaDonQuaAPI() {
     .eq("sohd", sohd)
     .maybeSingle();
 
+  let createdAt = new Date().toISOString();
+  let updatedAt = null;
+
   if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
 
   if (tonTai && !choPhepSua) {
@@ -106,10 +109,6 @@ export async function luuHoaDonQuaAPI() {
     await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
     await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
   }
-
-
-  let createdAt = new Date().toISOString();
-  let updatedAt = null;
 
 
   const getIntValue = (id) =>
@@ -154,7 +153,7 @@ export async function luuHoaDonQuaAPI() {
         dvt: item.dvt || '',
         diadiem: diadiem,
         created_at: createdAt,
-        updated_at: updatedAt,        
+        updated_at: updatedAt,
         ngay: document.getElementById("ngay").value
       });
 
