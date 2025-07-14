@@ -664,7 +664,7 @@ export async function luuHoaDonccn1v2() {
             ...hoadon,
             sohd: sohdDoiUng,
             diadiem: diadiemDoiUng,
-            ghichu: "Đối ứng chuyển chi nhánh tự động cho " + sohdBaseDoiUng,
+            //ghichu: "Đối ứng chuyển chi nhánh tự động cho " + sohdBaseDoiUng,
             created_at: new Date().toISOString(),
           };
           // Tạo chi tiết đối ứng
