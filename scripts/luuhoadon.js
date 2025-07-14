@@ -343,7 +343,7 @@ export async function luuHoaDonCaHaiBan() {
   // ==== HẾT ĐOẠN CHẶN ====
 
   // TIẾP ĐÓ mới kiểm tra các dữ liệu nhập liệu khác
-  
+
   // BỔ SUNG CHẶN LƯU Ở ĐÂY:
   const maspChuaNhap = document.getElementById("masp")?.value.trim();
   if (maspChuaNhap) {
@@ -636,11 +636,55 @@ export async function luuHoaDonccn1v2() {
         .eq("loai", loai);
     }
 
+    // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
+    try {
+      const [loaiGoc, soGoc] = sohd.split('_');
+      let sohdDoiUng = sohd + '_IN';
+      let diadiemDoiUng = '';
+      if (loaiGoc.startsWith('ccn2v1')) {
+        diadiemDoiUng = 'cs1'; // Nếu phiếu gốc là 2v1, bản đối ứng là nhập về cs1
+      } else if (loaiGoc.startsWith('ccn1v2')) {
+        diadiemDoiUng = 'cs2'; // Nếu phiếu gốc là 1v2, bản đối ứng là nhập về cs2
+      }
+      if (diadiemDoiUng) {
+        const { data: doiUngDaCo } = await supabase
+          .from("hoadon_banle")
+          .select("sohd")
+          .eq("sohd", sohdDoiUng)
+          .maybeSingle();
+
+        if (!doiUngDaCo) {
+          // Tạo hóa đơn đối ứng
+          const hoadonDoiUng = {
+            ...hoadon,
+            sohd: sohdDoiUng,
+            diadiem: diadiemDoiUng,
+            ghichu: "Đối ứng chuyển chi nhánh tự động cho " + sohd,
+            created_at: new Date().toISOString(),
+          };
+          // Tạo chi tiết đối ứng
+          const chitietDoiUng = chitiet.map(ct => ({
+            ...ct,
+            sohd: sohdDoiUng,
+            diadiem: diadiemDoiUng,
+            created_at: new Date().toISOString(),
+          }));
+
+          await supabase.from("hoadon_banle").insert([hoadonDoiUng]);
+          await supabase.from("ct_hoadon_banle").insert(chitietDoiUng);
+        }
+      }
+    } catch (e) {
+      console.error("Lỗi khi phát sinh chứng từ đối ứng:", e);
+    }
+    // === KẾT THÚC ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
+
     alert("✅ Đã lưu hóa đơn CCN !");
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
   }
+
   else {
     alert("❌ Lỗi khi lưu hóa đơn");
     console.error(errHD || errCT);
