@@ -617,8 +617,11 @@ export async function luuHoaDonccn1v2() {
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
   if (!errHD && !errCT) {
-    // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
-    const [loai, so] = sohd.split('_');
+    // === LẤY ĐÚNG LOẠI GỐC DÙ sohd CÓ HẬU TỐ _IN ===
+    let sohdBase = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd; // Bỏ _IN nếu có
+    const arr = sohdBase.split('_');
+    const loai = arr.slice(0, -1).join('_'); // Lấy tất cả các phần trước dấu _ cuối cùng
+    const so = arr[arr.length - 1];
     const soMoi = parseInt(so, 10);
 
     // Đọc số hiện tại của loại này từ bảng sochungtu
@@ -638,8 +641,10 @@ export async function luuHoaDonccn1v2() {
 
     // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
     try {
-      const [loaiGoc, soGoc] = sohd.split('_');
-      let sohdDoiUng = sohd + '_IN';
+      let sohdBaseDoiUng = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+      const arrDoiUng = sohdBaseDoiUng.split('_');
+      const loaiGoc = arrDoiUng.slice(0, -1).join('_');
+      let sohdDoiUng = sohdBaseDoiUng + '_IN';
       let diadiemDoiUng = '';
       if (loaiGoc.startsWith('ccn2v1')) {
         diadiemDoiUng = 'cs1'; // Nếu phiếu gốc là 2v1, bản đối ứng là nhập về cs1
@@ -659,7 +664,7 @@ export async function luuHoaDonccn1v2() {
             ...hoadon,
             sohd: sohdDoiUng,
             diadiem: diadiemDoiUng,
-            ghichu: "Đối ứng chuyển chi nhánh tự động cho " + sohd,
+            ghichu: "Đối ứng chuyển chi nhánh tự động cho " + sohdBaseDoiUng,
             created_at: new Date().toISOString(),
           };
           // Tạo chi tiết đối ứng
@@ -672,6 +677,22 @@ export async function luuHoaDonccn1v2() {
 
           await supabase.from("hoadon_banle").insert([hoadonDoiUng]);
           await supabase.from("ct_hoadon_banle").insert(chitietDoiUng);
+
+          // === CẬP NHẬT SỐ HIỆN TẠI CHO CHỨNG TỪ ĐỐI ỨNG ===
+          const soDoiUng = arrDoiUng[arrDoiUng.length - 1];
+          const soMoiDoiUng = parseInt(soDoiUng, 10);
+          const { data: currSoChungTuDoiUng } = await supabase
+            .from("sochungtu")
+            .select("so_hientai")
+            .eq("loai", loaiGoc)
+            .single();
+          if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {
+            await supabase
+              .from("sochungtu")
+              .update({ so_hientai: soMoiDoiUng })
+              .eq("loai", loaiGoc);
+          }
+          // === KẾT THÚC CẬP NHẬT SỐ HIỆN TẠI CHO ĐỐI ỨNG ===
         }
       }
     } catch (e) {
