@@ -645,12 +645,12 @@ export async function luuHoaDonccn1v2() {
       const arrDoiUng = sohdBaseDoiUng.split('_');
       const loaiGoc = arrDoiUng.slice(0, -1).join('_');
       let sohdDoiUng = sohdBaseDoiUng + '_IN';
+
+      // XÁC ĐỊNH ĐỊA ĐIỂM ĐỐI ỨNG: NGƯỢC LẠI VỚI ĐỊA ĐIỂM GỐC
       let diadiemDoiUng = '';
-      if (loaiGoc.startsWith('ccn2v1')) {
-        diadiemDoiUng = 'cs1'; // Nếu phiếu gốc là 2v1, bản đối ứng là nhập về cs1
-      } else if (loaiGoc.startsWith('ccn1v2')) {
-        diadiemDoiUng = 'cs2'; // Nếu phiếu gốc là 1v2, bản đối ứng là nhập về cs2
-      }
+      if (hoadon.diadiem === 'cs1') diadiemDoiUng = 'cs2';
+      else if (hoadon.diadiem === 'cs2') diadiemDoiUng = 'cs1';
+
       if (diadiemDoiUng) {
         const { data: doiUngDaCo } = await supabase
           .from("hoadon_banle")
