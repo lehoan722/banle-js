@@ -21,12 +21,64 @@
             margin-bottom: 18px;
         }
 
+        .filters-row {
+            display: flex;
+            width: 100%;
+            gap: 0;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+
+        .filters-left {
+            flex: 0 0 87%;
+            max-width: 87%;
+            box-sizing: border-box;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 10px 22px;
+        }
+
+        .filters-right {
+            flex: 0 0 13%;
+            max-width: 13%;
+            min-width: 140px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            height: 100%;
+            background: #f5f6fa;
+            padding: 14px 8px 14px 14px;
+            border-radius: 8px;
+            border: 1px solid #d4e0f7;
+            margin-left: 12px;
+        }
+        .filters-right label {
+            margin-bottom: 7px;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        .filters-right textarea {
+            width: 100%;
+            min-width: 120px;
+            max-width: 220px;
+            resize: vertical;
+            font-size: 15px;
+            border-radius: 6px;
+            border: 1px solid #bbb;
+            padding: 7px;
+            margin-top: 6px;
+            margin-bottom: 0;
+        }
+
         .filters {
             display: flex;
             flex-wrap: wrap;
             align-items: flex-end;
             gap: 10px 22px;
-            margin-bottom: 12px;
+            margin-bottom: 0;
         }
 
         .input-popup-group {
@@ -141,88 +193,88 @@
         <span id="authStatus" style="color: red; margin-left: 10px"></span>
     </div>
 
-    <h2>📦 BÁO CÁO XUẤT NHẬP TỒN HÀNG HÓA <span style="color:#1976d2">(Phiên bản nâng cấp)</span></h2>    
+    <h2>📦 BÁO CÁO XUẤT NHẬP TỒN HÀNG HÓA <span style="color:#1976d2">(Phiên bản nâng cấp)</span></h2>
 
-    <div class="filters">
+    <div class="filters-row">
         <div class="filters-left">
-            <label>
-                Phương pháp:
-                <select id="selectFunction">
-                    <option value="baocaoxnt1">Chuẩn mới (Tổng hợp size, cột nhập mua/xuất bán)</option>
-                </select>
-            </label>
-            <label>
-                Địa điểm:
-                <select id="diadiemSelect">
-                    <option value="">Tất cả</option>
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-            <label>Từ ngày: <input type="date" id="tuNgay"></label>
-            <label>Đến ngày: <input type="date" id="denNgay"></label>
-            <!-- Các input popup tìm kiếm -->
-            <span class="input-popup-group">
-                <input id="khachhangInput" placeholder="Khách hàng">
-                <button onclick="openPopupSearch('khachhang')">🔍</button>
-                <button onclick="clearInput('khachhangInput')">✖</button>
-            </span>
-            <span class="input-popup-group">
-                <input id="nhanvienInput" placeholder="Nhân viên">
-                <button onclick="openPopupSearch('nhanvien')">🔍</button>
-                <button onclick="clearInput('nhanvienInput')">✖</button>
-            </span>
-            <span class="input-popup-group">
-                <input id="nhomhangInput" placeholder="Nhóm hàng">
-                <button onclick="openPopupSearch('nhomhang')">🔍</button>
-                <button onclick="clearInput('nhomhangInput')">✖</button>
-            </span>
-            <span class="input-popup-group">
-                <input id="chungloaiInput" placeholder="Chủng loại">
-                <button onclick="openPopupSearch('chungloai')">🔍</button>
-                <button onclick="clearInput('chungloaiInput')">✖</button>
-            </span>
-            <span class="input-popup-group">
-                <input id="mausacInput" placeholder="Màu sắc">
-                <button onclick="openPopupSearch('mausac')">🔍</button>
-                <button onclick="clearInput('mausacInput')">✖</button>
-            </span>
-            <span class="input-popup-group">
-                <input id="sizeInput" placeholder="Kích cỡ">
-                <button onclick="openPopupSearch('size')">🔍</button>
-                <button onclick="clearInput('sizeInput')">✖</button>
-            </span>
-            <span class="input-popup-group">
-                <input id="maspInput" placeholder="Mã hàng">
-                <button onclick="openPopupSearch('mahang')">🔍</button>
-                <button onclick="clearInput('maspInput')">✖</button>
-            </span>
-            <label>Từ giá:
-                <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
-            </label>
-            <label>Đến giá:
-                <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
-            </label>
-            <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
-            <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
-            <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
-            <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
-            <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
-            <!-- CHECKBOX TỔNG HỢP SIZE -->
-            <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
-            <!-- Nút xem báo cáo -->
-            <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
-
+            <div class="filters">
+                <label>
+                    Phương pháp:
+                    <select id="selectFunction">
+                        <option value="baocaoxnt1">Chuẩn mới (Tổng hợp size, cột nhập mua/xuất bán)</option>
+                    </select>
+                </label>
+                <label>
+                    Địa điểm:
+                    <select id="diadiemSelect">
+                        <option value="">Tất cả</option>
+                        <option value="cs1">Cơ sở 1</option>
+                        <option value="cs2">Cơ sở 2</option>
+                    </select>
+                </label>
+                <label>Từ ngày: <input type="date" id="tuNgay"></label>
+                <label>Đến ngày: <input type="date" id="denNgay"></label>
+                <!-- Các input popup tìm kiếm -->
+                <span class="input-popup-group">
+                    <input id="khachhangInput" placeholder="Khách hàng">
+                    <button onclick="openPopupSearch('khachhang')">🔍</button>
+                    <button onclick="clearInput('khachhangInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="nhanvienInput" placeholder="Nhân viên">
+                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
+                    <button onclick="clearInput('nhanvienInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="nhomhangInput" placeholder="Nhóm hàng">
+                    <button onclick="openPopupSearch('nhomhang')">🔍</button>
+                    <button onclick="clearInput('nhomhangInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="chungloaiInput" placeholder="Chủng loại">
+                    <button onclick="openPopupSearch('chungloai')">🔍</button>
+                    <button onclick="clearInput('chungloaiInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="mausacInput" placeholder="Màu sắc">
+                    <button onclick="openPopupSearch('mausac')">🔍</button>
+                    <button onclick="clearInput('mausacInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="sizeInput" placeholder="Kích cỡ">
+                    <button onclick="openPopupSearch('size')">🔍</button>
+                    <button onclick="clearInput('sizeInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="maspInput" placeholder="Mã hàng">
+                    <button onclick="openPopupSearch('mahang')">🔍</button>
+                    <button onclick="clearInput('maspInput')">✖</button>
+                </span>
+                <label>Từ giá:
+                    <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
+                </label>
+                <label>Đến giá:
+                    <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
+                </label>
+                <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
+                <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
+                <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
+                <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
+                <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
+                <!-- CHECKBOX TỔNG HỢP SIZE -->
+                <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
+                <!-- Nút xem báo cáo -->
+                <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
+                <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
+            </div>
         </div>
-    </div>
-    <div class="filters-right">
-        <label for="maspList" style="font-weight:bold; color:#1976d2;">
-            Danh sách mã sản phẩm cần báo cáo (mỗi mã 1 dòng, có thể copy từ Excel/Google Sheet):
-        </label>
-        <textarea id="maspList" rows="13"
-            style="width:100%;min-width:120px;max-width:230px;resize:vertical;padding:7px;margin-top:6px;margin-bottom:0;border:1px solid #bbb;border-radius:6px;font-size:15px;"
-            placeholder="Dán (hoặc gõ) danh sách mã sản phẩm, mỗi mã 1 dòng..."></textarea>
-    </div>
+        <div class="filters-right">
+            <label for="maspList">
+                Danh sách mã sản phẩm cần báo cáo (mỗi mã 1 dòng, có thể copy từ Excel/Google Sheet):
+            </label>
+            <textarea id="maspList" rows="13"
+                placeholder="Dán (hoặc gõ) danh sách mã sản phẩm, mỗi mã 1 dòng..."></textarea>
+        </div>
     </div>
 
     <div id="hot" style="margin-top: 16px;"></div>
@@ -235,5 +287,4 @@
         <div id="popupSearchList"></div>
     </div>
 </body>
-
 </html>
