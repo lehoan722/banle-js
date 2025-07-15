@@ -80,7 +80,7 @@ window.taiBaoCaoXNT = async function () {
         p_chungloai_filter: chungloai,
         p_mausac_filter: mausac,
         p_size_filter: size,
-        p_masp_filter: masp,
+        
         p_khachhang_filter: khachhang,
         p_nhanvien_filter: nhanvien,
         p_tu_gia: tuGia ? Number(tuGia) : null,
