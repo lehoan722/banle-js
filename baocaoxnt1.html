@@ -26,7 +26,8 @@
             width: 100%;
             gap: 0;
             align-items: flex-start;
-            margin-bottom: 14px;
+            margin-bottom: 7px;
+            /* giảm margin-bottom */
         }
 
         .filters-left {
@@ -42,7 +43,7 @@
         .filters-right {
             flex: 0 0 13%;
             max-width: 13%;
-            min-width: 140px;
+            min-width: 130px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -50,27 +51,33 @@
             justify-content: flex-start;
             height: 100%;
             background: #f5f6fa;
-            padding: 14px 8px 14px 14px;
+            padding: 6px 4px 6px 6px;
+            /* giảm padding */
             border-radius: 8px;
             border: 1px solid #d4e0f7;
-            margin-left: 12px;
+            margin-left: 6px;
+            /* giảm khoảng cách sang trái */
         }
+
         .filters-right label {
             margin-bottom: 7px;
             color: #1976d2;
             font-weight: bold;
         }
+
         .filters-right textarea {
             width: 100%;
-            min-width: 120px;
+            min-width: 110px;
             max-width: 220px;
             resize: vertical;
             font-size: 15px;
             border-radius: 6px;
             border: 1px solid #bbb;
             padding: 7px;
-            margin-top: 6px;
-            margin-bottom: 0;
+            margin: 0;
+            height: 100%;
+            /* giúp nó kéo cao hết phần trên */
+            box-sizing: border-box;
         }
 
         .filters {
@@ -182,6 +189,11 @@
         #popupSearchList div:hover {
             background: #e3f0ff;
         }
+
+        .filters-right {
+            height: auto;
+            align-self: stretch;
+        }
     </style>
 </head>
 
@@ -268,12 +280,11 @@
                 <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
             </div>
         </div>
+
         <div class="filters-right">
-            <label for="maspList">
-                Danh sách mã sản phẩm cần báo cáo (mỗi mã 1 dòng, có thể copy từ Excel/Google Sheet):
-            </label>
-            <textarea id="maspList" rows="13"
-                placeholder="Dán (hoặc gõ) danh sách mã sản phẩm, mỗi mã 1 dòng..."></textarea>
+            <textarea id="maspList" rows="13" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
+                style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
+
         </div>
     </div>
 
@@ -287,4 +298,5 @@
         <div id="popupSearchList"></div>
     </div>
 </body>
+
 </html>
