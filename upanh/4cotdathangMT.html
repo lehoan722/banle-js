@@ -368,31 +368,18 @@
             const ipMatch = url.match(/^(https?:\/\/[^\/]+)/);
             return ipMatch ? ipMatch[1] : null;
         }
-        //---------------------lenh--lay dia chi may chu -------------------------------
-        async function fetchImageList() {
-            const serverIP = getServerIP();
-            try {
-                const response = await fetch(`${serverIP}/anh/`);
-                const data = await response.text();
-                const parser = new DOMParser();
-                const htmlDocument = parser.parseFromString(data, 'text/html');
-                const links = htmlDocument.querySelectorAll('a');
-                const images = [];
 
-                for (let link of links) {
-                    const href = link.getAttribute('href');
-                    if (href.match(/\.(jpg|jpeg|png|gif)$/i)) {
-                        const imageUrl = `${serverIP}/anh/${href}`;
-                        images.push({ url: imageUrl, name: href, date: new Date() }); // ⚡️ không HEAD
-                    }
-                }
-
-                return images;
-            } catch (error) {
-                console.error('Error fetching image list:', error);
-                return [];
-            }
+        // Giả sử bạn truyền vào 1 danh sách tên mã sp muốn tạo link ảnh
+        async function fetchImageList(maspList = []) {
+            const supabaseDomain = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
+            // Tạo list dạng [{url, name, date}]
+            return maspList.filter(Boolean).map(masp => ({
+                url: supabaseDomain + masp.toUpperCase() + '.jpg',
+                name: masp,
+                date: new Date()
+            }));
         }
+
 
         //---------------------lenh--hien thi anh -------------------------------
 
@@ -433,7 +420,6 @@
 
         async function searchImages() {
             const data = hot.getData();
-
             const searchNames = data
                 .map((row, index) => {
                     const raw = row[0];
@@ -449,32 +435,67 @@
 
             document.getElementById("loading").style.display = "block";
 
-            // ✅ Chỉ tải danh sách ảnh 1 lần duy nhất
-            if (allImages.length === 0) {
-                allImages = await fetchImageList();
-            }
-
-            const matchedImages = searchNames.map(({ name, index }) => {
-                const image = allImages.find(image => {
-                    const imageNameWithoutExtension = image.name.replace(/\.[^/.]+$/, "").toUpperCase();
-                    return imageNameWithoutExtension === name;
-                });
-
-                return image
-                    ? { ...image, notFound: false, index }
-                    : { name, url: "", date: new Date(), notFound: true, index };
-            });
+            const supabaseDomain = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
+            const matchedImages = searchNames.map(({ name, index }) => ({
+                name,
+                url: supabaseDomain + name + '.jpg',
+                date: new Date(),
+                notFound: false,
+                index
+            }));
 
             displayImages(matchedImages);
-
-            //matchedImages.forEach(({ notFound, index }) => {
-            //if (notFound) {
-            //  hot.setDataAtCell(index, 1, "Kca");
-            //}
-            // });
-
             document.getElementById("loading").style.display = "none";
         }
+
+        function displayImages(images) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            images.forEach((image, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.id = `image-${index}`;
+
+                const link = document.createElement('a');
+                link.href = image.url;
+                link.target = "_blank";
+
+                const img = document.createElement('img');
+                img.src = image.url || '';
+                img.onerror = function () {
+                    if (img.src.endsWith('.jpg')) {
+                        img.src = img.src.replace('.jpg', '.png');
+                    } else if (img.src.endsWith('.png')) {
+                        img.alt = 'Không có ảnh';
+                    }
+                };
+
+                img.alt = image.name || 'Không có ảnh';
+                img.onerror = function () {
+                    if (img.src.endsWith('.jpg')) {
+                        img.src = img.src.replace('.jpg', '.png');
+                    } else if (img.src.endsWith('.png')) {
+                        img.alt = 'Không có ảnh';
+                    }
+                };
+                link.appendChild(img);
+
+                const caption = document.createElement('div');
+                caption.className = 'caption';
+                caption.textContent = image.url ? image.name : `Không có ảnh`;
+
+                const itemNumber = document.createElement('div');
+                itemNumber.className = 'item-number';
+                itemNumber.textContent = index + 1;
+
+                galleryItem.appendChild(link);
+                galleryItem.appendChild(caption);
+                galleryItem.appendChild(itemNumber);
+                gallery.appendChild(galleryItem);
+            });
+        }
+
 
         //---------------------lenh---tu dong chuyen den hinh anh duoc chon------------------------------
 
@@ -795,7 +816,7 @@
                 document.getElementById("loading").style.display = "block";
                 const response = await fetch(url);
                 const json = await response.json();
-                
+
 
                 if (!Array.isArray(json) || json.length === 0) {
                     alert("✅ Kết nối thành công nhưng không có dữ liệu trong khoảng thời gian đã chọn hoặc sheet 1v2 rỗng.");
