@@ -367,18 +367,7 @@
             const url = window.location.href;
             const ipMatch = url.match(/^(https?:\/\/[^\/]+)/);
             return ipMatch ? ipMatch[1] : null;
-        }
-
-        // Giả sử bạn truyền vào 1 danh sách tên mã sp muốn tạo link ảnh
-        async function fetchImageList(maspList = []) {
-            const supabaseDomain = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
-            // Tạo list dạng [{url, name, date}]
-            return maspList.filter(Boolean).map(masp => ({
-                url: supabaseDomain + masp.toUpperCase() + '.jpg',
-                name: masp,
-                date: new Date()
-            }));
-        }
+        }      
 
 
         //---------------------lenh--hien thi anh -------------------------------
@@ -1023,13 +1012,7 @@
             alert("da tai xong bay mau cs2.");
 
         }
-
-
-
-        async function init() {
-            allImages = await fetchImageList();
-        }
-        init();
+       
 
         function resetPage() {
             hot.loadData(Handsontable.helper.createEmptySpreadsheetData(400, 1));
