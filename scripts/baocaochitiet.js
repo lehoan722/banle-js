@@ -250,3 +250,29 @@ window.onload = function () {
     document.getElementById('tuNgay').value = today;
     document.getElementById('denNgay').value = today;
 };
+
+window.searchPopup = async function (keyword) {
+    let type = window.currentPopupType;
+    let table = '', field = '', extraFields = '';
+    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+    else return;
+
+    let { data, error } = await supabase
+        .from(table)
+        .select(`${field}${extraFields}`)
+        .ilike(field, keyword ? `%${keyword}%` : "%")
+        .limit(100);
+
+    if (error || !data || data.length === 0) {
+        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
+        return;
+    }
+    document.getElementById('popupSearchList').innerHTML = data.map(row => `
+        <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
+            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
+        </div>
+    `).join('');
+};
