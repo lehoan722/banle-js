@@ -237,12 +237,31 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
 });
 window.selectPopupValue = function (type, value, el) {
     let inputId = '';
-    if (type === 'khachhang') inputId = 'khachhangInput';
-    else if (type === 'mahang') inputId = 'maspInput';
-    else if (type === 'nhanvien') inputId = 'nhanvienInput';
-    if (inputId) document.getElementById(inputId).value = value;
+    let ten = '';
+    if (type === 'khachhang') {
+        inputId = 'khachhangInput';
+        let fullText = el.innerText;
+        if (fullText.indexOf(" - ") !== -1) {
+            ten = fullText.split(" - ").slice(1).join(" - ").trim();
+        } else {
+            ten = fullText.trim();
+        }
+    } else if (type === 'mahang') {
+        inputId = 'maspInput';
+        ten = value;
+    } else if (type === 'nhanvien') {
+        inputId = 'nhanvienInput';
+        let fullText = el.innerText;
+        if (fullText.indexOf(" - ") !== -1) {
+            ten = fullText.split(" - ").slice(1).join(" - ").trim();
+        } else {
+            ten = fullText.trim();
+        }
+    }
+    if (inputId) document.getElementById(inputId).value = ten;
     closePopupSearch();
 };
+
 
 // ========== AUTO FILL NGÀY HÔM NAY ==========
 window.onload = function () {
@@ -251,7 +270,7 @@ window.onload = function () {
     document.getElementById('denNgay').value = today;
 };
 
-window.searchPopup = async function(keyword) {
+window.searchPopup = async function (keyword) {
     let type = window.currentPopupType;
     let table = '', field = '', extraFields = '';
     if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
