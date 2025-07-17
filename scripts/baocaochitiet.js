@@ -3,6 +3,20 @@ import { supabase } from "./supabaseClient.js";
 let hotInstance = null;
 
 // ========== HÀM CHÍNH LẤY BÁO CÁO =============
+console.log({
+    tu_ngay: tuNgay,
+    den_ngay: denNgay,
+    p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
+    p_diadiem: diadiem,
+    p_khachhang: khachhang,
+    p_nhanvien: nhanvien,
+    p_masp_list: finalMaspList,
+    p_tensp: tensp,
+    p_size: size,
+    p_tu_gia: tuGia,
+    p_den_gia: denGia
+});
+
 window.taiBaoCaoChiTiet = async function () {
     // 1. Lấy filter từ giao diện
     const tuNgay = document.getElementById("tuNgay").value;
