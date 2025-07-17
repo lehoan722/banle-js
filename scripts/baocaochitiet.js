@@ -9,10 +9,8 @@ window.taiBaoCaoChiTiet = async function () {
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
     const diadiem = document.getElementById("diadiemSelect").value || null;
-
-    const khachhang = document.getElementById("khachhangInput").dataset.makh || null;
-    const nhanvien = document.getElementById("nhanvienInput").dataset.manv || null;
-
+    const khachhang = document.getElementById("khachhangInput").value.trim() || null;
+    const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
     const masp = document.getElementById("maspInput").value.trim().toUpperCase() || null;
     const tensp = document.getElementById("tenspInput").value.trim() || null;
     const size = document.getElementById("sizeInput").value.trim() || null;
@@ -239,16 +237,12 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
 });
 window.selectPopupValue = function (type, value, el) {
     let inputId = '';
-    let name = el.innerText; // lấy luôn tên
     if (type === 'khachhang') inputId = 'khachhangInput';
     else if (type === 'mahang') inputId = 'maspInput';
     else if (type === 'nhanvien') inputId = 'nhanvienInput';
-    if (inputId) document.getElementById(inputId).value = name;
+    if (inputId) document.getElementById(inputId).value = value;
     closePopupSearch();
-    if (type === 'khachhang') document.getElementById('khachhangInput').dataset.makh = value;
-    if (type === 'nhanvien') document.getElementById('nhanvienInput').dataset.manv = value;
 };
-
 
 // ========== AUTO FILL NGÀY HÔM NAY ==========
 window.onload = function () {
@@ -257,7 +251,7 @@ window.onload = function () {
     document.getElementById('denNgay').value = today;
 };
 
-window.searchPopup = async function (keyword) {
+window.searchPopup = async function(keyword) {
     let type = window.currentPopupType;
     let table = '', field = '', extraFields = '';
     if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
