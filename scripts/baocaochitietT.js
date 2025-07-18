@@ -1,9 +1,9 @@
-// baocaochitiet.js
+// baocaochitietT.js
 import { supabase } from "./supabaseClient.js";
 let hotInstance = null;
 
 // ========== HÀM CHÍNH LẤY BÁO CÁO =============
-window.taiBaoCaoChiTiet = async function () {
+window.taiBaoCaoChiTietT = async function () {
     // 1. Lấy filter từ giao diện
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
