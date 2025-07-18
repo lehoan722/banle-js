@@ -1,4 +1,4 @@
-// baocaochitietT.js
+// baocaochitiet.js
 import { supabase } from "./supabaseClient.js";
 let hotInstance = null;
 
@@ -57,7 +57,7 @@ window.taiBaoCaoChiTiet = async function () {
 
     // 4. Gọi function SQL (tên ví dụ: baocaochitiet_bh)
     // --- Thay function name bên dưới cho đúng tên function SQL bạn tạo
-    const { data, error } = await supabase.rpc("baocaochitietT_bh", {
+    const { data, error } = await supabase.rpc("baocaochitietthue_bh", {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
         p_loaihd_arr: loaihdArr.length ? loaihdArr : null, // array
