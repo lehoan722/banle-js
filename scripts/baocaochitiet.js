@@ -134,17 +134,18 @@ window.taiBaoCaoChiTiet = async function () {
         readOnly: true,
     });
 
-    // 7. Hiển thị tổng cộng cuối bảng
-    let sumSL = 0, sumKM = 0, sumTT = 0;
+    // --- TÍNH TỔNG và HIỂN THỊ DÒNG TỔNG GIỐNG HÓA ĐƠN BÁN LẺ ---
+    let sumSL = 0, sumTT = 0;
     hotData.forEach(r => {
         sumSL += Number(r.soluong) || 0;
-        sumKM += Number(r.km) || 0;
         sumTT += Number(r.thanhtien) || 0;
     });
-    let footer = document.createElement("div");
-    footer.style = "margin:12px 0 0 0; font-weight:500; color:#1565c0;";
-    footer.innerHTML = `Tổng SL: <b>${sumSL.toLocaleString()}</b> &nbsp; | &nbsp; Tổng KM: <b>${sumKM.toLocaleString()}</b> &nbsp; | &nbsp; Tổng thành tiền: <b>${sumTT.toLocaleString()}</b>`;
-    container.appendChild(footer);
+    let tongDiv = document.createElement("div");
+    tongDiv.style = "margin: 8px 0 14px 0; font-weight:600; color:#1976d2; font-size:17px;";
+    tongDiv.innerHTML = `Tổng số lượng: <b>${sumSL.toLocaleString()}</b> &nbsp;|&nbsp; Tổng thành tiền: <b>${sumTT.toLocaleString()}</b>`;
+    container.prepend(tongDiv);
+
+    
 };
 
 // ========== FORMAT SỐ ==========
