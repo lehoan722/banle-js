@@ -134,18 +134,17 @@ window.taiBaoCaoChiTiet = async function () {
         readOnly: true,
     });
 
-    // --- TÍNH TỔNG và HIỂN THỊ DÒNG TỔNG GIỐNG HÓA ĐƠN BÁN LẺ ---
+    // TÍNH TỔNG VÀ HIỂN THỊ DÒNG TỔNG HỢP DƯỚI CÁC FILTER, TRÊN BẢNG
     let sumSL = 0, sumTT = 0;
     hotData.forEach(r => {
         sumSL += Number(r.soluong) || 0;
         sumTT += Number(r.thanhtien) || 0;
     });
-    let tongDiv = document.createElement("div");
-    tongDiv.style = "margin: 8px 0 14px 0; font-weight:600; color:#1976d2; font-size:17px;";
-    tongDiv.innerHTML = `Tổng số lượng: <b>${sumSL.toLocaleString()}</b> &nbsp;|&nbsp; Tổng thành tiền: <b>${sumTT.toLocaleString()}</b>`;
-    container.prepend(tongDiv);
+    let tonghopDiv = document.getElementById("tonghop");
+    if (tonghopDiv) {
+        tonghopDiv.innerHTML = `Tổng số lượng: <b>${sumSL.toLocaleString()}</b> &nbsp;|&nbsp; Tổng thành tiền: <b>${sumTT.toLocaleString()}</b>`;
+    }
 
-    
 };
 
 // ========== FORMAT SỐ ==========
