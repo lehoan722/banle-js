@@ -420,8 +420,12 @@ export async function luuHoaDonCaHaiBan() {
     });
   });
 
-  const hoadonChinh = { ...hoadon, sohd };
-  const hoadonPhu = { ...hoadon, sohd: sohdT };
+  //const hoadonChinh = { ...hoadon, sohd };
+  //const hoadonPhu = { ...hoadon, sohd: sohdT };
+
+  const hoadonChinh = { ...hoadon, sohd, loaihd: diadiem === 'cs1' ? 'bancs1' : 'bancs2' };
+  const hoadonPhu = { ...hoadon, sohd: sohdT, loaihd: diadiem === 'cs1' ? 'bancs1T' : 'bancs2T' };
+
   const chitietChinh = chitiet.map(ct => ({ ...ct, sohd }));
   const chitietPhu = chitiet.map(ct => ({ ...ct, sohd: sohdT }));
 
