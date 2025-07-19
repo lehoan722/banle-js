@@ -450,7 +450,7 @@
             <input id="tennv" placeholder="Tên NV" readonly />
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-            <label><input id="size45" type="checkbox" />QL SIZE</label>
+
         </div>
         <div class="menu-item">
 
@@ -458,6 +458,7 @@
             <div class="dropdown-content">
 
                 <a href="xemhoadonT.html" target="_blank">Xem hóa đơn bct</a>
+                <a href="baocaochitietT.html" target="_blank">Xem chi tiet bct</a>
 
                 <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
                 <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
@@ -482,14 +483,14 @@
         </div>
         <div class="menu-item">
             <span class="menu-link">📦 KHAC</span>
-            <div class="dropdown-content">                
-                <a href="upanh/upanhmoi2.html" target="_blank">Chi tiết nhập hàng CS1</a>
-                <a href="nhaphang1.html" target="_blank">Chi tiết nhập hàng CS1</a>
-                <a href="nhaphang2.html" target="_blank">Chi tiết nhập hàng CS2</a>
-                <a href="baocaonhap.html" target="_blank">Tổng hợp nhập theo ngày</a>
+            <div class="dropdown-content">
+                <a href="baocaochitiet.html" target="_blank">bao cao Chi tiết cac loai</a>
+                <a href="baocaotonghop.html" target="_blank">bao cao tong hop cac loai</a>
+                <a href="baocaoxnt1.html" target="_blank">bao cao xuat, nhap, ton cac loai</a>
+                <a href="xemhoadon.html" target="_blank">bao cao theo hoa don cac loai</a>
             </div>
         </div>
-
+        <label><input id="size45" type="checkbox" />QL SIZE</label>
 
     </div>
 
@@ -923,18 +924,29 @@
         function capNhatQuyenGiaoDien() {
             // Lấy quyền từ localStorage
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
-            // Nếu dùng kiểu số: const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "1";
             // Nút quay lại
             document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
-            // Nút tiếp tục
+            // Nút lưu
             document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
-            // Nếu muốn ẩn nút thay vì disable thì dùng:
-            // document.getElementById('quaylai').style.display = quyenSua ? "" : "none";
-            // document.getElementById('tieptuc').style.display = quyenSua ? "" : "none";
+            // ================= THÊM ĐOẠN SAU =================
+            // Ô số hóa đơn
+            var sohd = document.getElementById('sohd');
+            if (sohd) {
+                sohd.readOnly = !quyenSua; // Cấm sửa nếu không có quyền
+                sohd.style.background = quyenSua ? "" : "#eee"; // Màu nền để nhận biết không sửa được
+            }
+            // Ô chiết khấu
+            var chietkhau = document.getElementById('chietkhau');
+            if (chietkhau) {
+                chietkhau.readOnly = !quyenSua;
+                chietkhau.style.background = quyenSua ? "" : "#eee";
+            }
+            // ===============================================
         }
+
 
     </script>
 
@@ -991,23 +1003,12 @@
             });
         }
 
-        // Copy bảng sang clipboard, có cả dòng tiêu đề
+        // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
             let str = '';
 
-            // 1. Copy dòng tiêu đề (thead)
-            const thead = table.querySelector('thead');
-            if (thead) {
-                const headerCells = thead.rows[0].cells;
-                let headerLine = [];
-                for (let cell of headerCells) {
-                    headerLine.push(cell.innerText);
-                }
-                str += headerLine.join('\t') + '\n';
-            }
-
-            // 2. Copy từng dòng dữ liệu (tbody)
+            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
             for (let row of table.querySelectorAll('tbody tr')) {
                 let line = [];
                 for (let cell of row.cells) {
@@ -1017,8 +1018,9 @@
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
         };
+
 
 
         // Dán từ clipboard (Excel) vào bảng web
@@ -1100,10 +1102,6 @@
         };
 
     </script>
-
-
-
-
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
