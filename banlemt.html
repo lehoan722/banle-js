@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 
 <html lang="vi">
 
@@ -450,7 +450,7 @@
             <input id="tennv" placeholder="Tên NV" readonly />
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-            
+
         </div>
         <div class="menu-item">
 
@@ -922,20 +922,31 @@
         };
 
         function capNhatQuyenGiaoDien() {
-            // Lấy quyền từ localStorage
+            // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
-            // Nếu dùng kiểu số: const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "1";
             // Nút quay lại
             document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
-            // Nút tiếp tục
+            // Nút lưu
             document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
-            // Nếu muốn ẩn nút thay vì disable thì dùng:
-            // document.getElementById('quaylai').style.display = quyenSua ? "" : "none";
-            // document.getElementById('tieptuc').style.display = quyenSua ? "" : "none";
+            // ================= THÊM ĐOẠN SAU =================
+            // Ô số hóa đơn
+            var sohd = document.getElementById('sohd');
+            if (sohd) {
+                sohd.readOnly = !quyenSua; // Cấm sửa nếu không có quyền
+                sohd.style.background = quyenSua ? "" : "#eee"; // Màu nền để nhận biết không sửa được
+            }
+            // Ô chiết khấu
+            var chietkhau = document.getElementById('chietkhau');
+            if (chietkhau) {
+                chietkhau.readOnly = !quyenSua;
+                chietkhau.style.background = quyenSua ? "" : "#eee";
+            }
+            // ===============================================
         }
+
 
     </script>
 
