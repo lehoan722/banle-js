@@ -460,7 +460,7 @@
                 <a href="xemhoadonT.html" target="_blank">Xem hóa đơn bct</a>
                 <a href="baocaochitietT.html" target="_blank">Xem chi tiet bct</a>
                 <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
-                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>                
+                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
                 <a href="baocaohoadont.html" target="_blank">Báo cáo tổng hợp</a>
             </div>
         </div>
@@ -468,7 +468,7 @@
             <span class="menu-link">📦 GIAO DICH</span>
             <div class="dropdown-content">
                 <a href="banlemtt.html" target="_blank">HOA DON BAN LE</a>
-                <a href="nhapmoimtt.html" target="_blank">HOA DON NHAP MOI</a>               
+                <a href="nhapmoimtt.html" target="_blank">HOA DON NHAP MOI</a>
                 <a href="nhapdoikht.html" target="_blank">NHAP DOI TU KHACH</a>
                 <a href="tralaincct.html" target="_blank">TRA LAI NHA CC</a>
                 <a href="xuathuyt.html" target="_blank">XUAT HUY HANG HONG</a>
@@ -880,7 +880,7 @@
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
             // ======= Thêm vào đây =========
-            switchTab("tacvu");
+            switchTab("thongtin");
             document.getElementById("size45").checked = true;
             // ==============================
         };
@@ -1077,6 +1077,19 @@
             }
         });
     </script>
+
+    <script>
+        //Bỏ hành vi nhấn F2 gọi lệnh lưu hóa đơn
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "F2") {
+                e.preventDefault();
+                alert("⛔ Chức năng chưa được cài đặt.");
+                return false;
+            }
+        });
+    </script>
+
+
     <script>
 
         // Sau khi DOMContentLoaded hoặc ở script type="module"
