@@ -1079,16 +1079,9 @@
     </script>
 
     <script>
-        //Bỏ hành vi nhấn F2 gọi lệnh lưu hóa đơn
-        document.addEventListener("keydown", function (e) {
-            if (e.key === "F2") {
-                e.preventDefault();
-                alert("⛔ Chức năng chưa được cài đặt.");
-                return false;
-            }
-        });
+        // Chặn riêng F2 cho trang này
+        window.CHAN_F2 = true;
     </script>
-
 
     <script>
 
