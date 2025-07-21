@@ -25,6 +25,11 @@ export function khoiTaoShortcut() {
 
     // Đặt biến dangLuu phía trên file hoặc dùng chung với btn-luu
     if (e.key === "F2") {
+      if (window.CHAN_F2) {
+        e.preventDefault();
+        alert("⛔ Chức năng chưa được cài đặt.");
+        return;
+      }
       e.preventDefault();
       if (window.dangLuu) return;
       const bang = getBangKetQua();
