@@ -110,7 +110,7 @@ async function triggerSearch() {
     }
 
     // 2. Lấy dữ liệu xuất nhập tồn theo size từ function SQL mới
-   
+
 
     // 3. Lấy lịch sử nhập (5 lần gần nhất, hoặc tất cả, phân biệt nhập đầu/cuối...)
     let { data: nhapList, error: err3 } = await supabase
@@ -241,4 +241,7 @@ async function triggerSearch() {
     // Bạn có thể thêm vào đây nếu muốn lấy chi tiết bán/tồn từng cơ sở, chỉ cần lấy thêm trường ở SQL.
 
     table.innerHTML = html;
+
+    // Sau khi render bảng xong, bôi đen toàn bộ ô nhập mã sản phẩm
+    document.getElementById('maspInput').select();
 }
