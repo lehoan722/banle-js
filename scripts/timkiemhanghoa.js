@@ -110,13 +110,7 @@ async function triggerSearch() {
     }
 
     // 2. Lấy dữ liệu xuất nhập tồn theo size từ function SQL mới
-    let { data: xntdata, error: err2 } = await supabase.rpc("timkiemhanghoa", {
-        masp_query: masp
-    });
-    if (err2 || !xntdata || !xntdata.length) {
-        msg.textContent = "Không có dữ liệu xuất nhập tồn!";
-        return;
-    }
+   
 
     // 3. Lấy lịch sử nhập (5 lần gần nhất, hoặc tất cả, phân biệt nhập đầu/cuối...)
     let { data: nhapList, error: err3 } = await supabase
