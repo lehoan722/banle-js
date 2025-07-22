@@ -131,118 +131,116 @@ async function triggerSearch() {
     // ==== Chuẩn bị bảng dữ liệu ====
     // Lấy danh sách size, tổng nhập/xuất/tồn
 
-    let sizeArr = xntdata.map(r => r.size).filter(s => !!s && s !== 'Tổng');
-    if (sizeArr.length === 0) sizeArr = ["38", "39", "40", "41", "42", "43", "44", "45"]; // fallback nếu dữ liệu trống
+    // Gọi function mới
+    let { data: xntdata, error: err2 } = await supabase.rpc("timkiemhanghoa_v2", { masp_query: masp });
+    if (err2 || !xntdata || !xntdata.length) {
+        msg.textContent = "Không có dữ liệu xuất nhập tồn!";
+        return;
+    }
+
+    // Duyệt mảng size, chuẩn hóa dữ liệu
+    let sizeArr = xntdata.filter(r => r.size !== 'Tổng').map(r => r.size);
     let bySize = {};
-    xntdata.forEach(row => {
-        bySize[row.size] = row;
-    });
+    xntdata.forEach(row => { bySize[row.size] = row; });
     let totalRow = xntdata.find(r => r.size === 'Tổng');
 
-    // === Bắt đầu HTML ===
+    // Render bảng đúng mẫu
     let html = `
-        <tr>
-            <td class="title label">Mã hàng</td>
-            <td>${hanghoa.masp}</td>
-            <td class="size">Tổng</td>
-            ${sizeArr.map(s => `<td class="size">${s}</td>`).join("")}
-        </tr>
-        <tr>
-            <td class="label">Tên hàng</td>
-            <td>${hanghoa.tensp}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-        <tr>
-            <td class="label">Vị trí kệ hàng CS1</td>
-            <td>${hanghoa.vitrikho1 || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-        <tr>
-            <td class="label">Vị trí kệ hàng CS2</td>
-            <td>${hanghoa.vitrikho2 || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-        <tr>
-            <td class="label">Giá lẻ</td>
-            <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-        <tr>
-            <td class="label">Nhà cung cấp</td>
-            <td>${hanghoa.nhacc || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-        <tr>
-            <td class="label">Nhập cuối</td>
-            <td>${ngay_nhapcuoi || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-        <tr>
-            <td class="label">Nhập đầu</td>
-            <td>${ngay_nhapdau || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>
-    `;
+    <tr>
+        <td class="title label">Mã hàng</td>
+        <td>${hanghoa.masp}</td>
+        <td class="size">Tổng</td>
+        ${sizeArr.map(s => `<td class="size">${s}</td>`).join("")}
+    </tr>
+    <tr>
+        <td class="label">Tên hàng</td>
+        <td>${hanghoa.tensp}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+    <tr>
+        <td class="label">Vị trí (Kệ hàng)</td>
+        <td>${hanghoa.vitrikho1 || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+    <tr>
+        <td class="label">Vị trí (Kệ hàng) CS2</td>
+        <td>${hanghoa.vitrikho2 || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+    <tr>
+        <td class="label">Giá lẻ</td>
+        <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+    <tr>
+        <td class="label">Nhà cung cấp</td>
+        <td>${hanghoa.nhacc || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+    <tr>
+        <td class="label">Nhập cuối</td>
+        <td>${ngay_nhapcuoi || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+    <tr>
+        <td class="label">Nhập đầu</td>
+        <td>${ngay_nhapdau || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>
+`;
+
+    // Dòng n1, n2, n3...
     for (let i = 1; i < nhapList.length - 1; i++) {
         html += `<tr>
-            <td class="label">n${i}</td>
-            <td>${nhapList[i].ngay || ""}</td>
-            <td colspan="${sizeArr.length + 1}"></td>
-        </tr>`;
+        <td class="label">n${i}</td>
+        <td>${nhapList[i].ngay || ""}</td>
+        <td colspan="${sizeArr.length + 1}"></td>
+    </tr>`;
     }
-    // ==== Tổng nhập/xuất/tồn hệ thống
-    html += `<tr>
-        <td class="title label" rowspan="3" style="vertical-align:middle;">Tổng XNT</td>
-        <td class="blue">Tổng nhập</td>
-        <td class="number">${totalRow.tongnhap || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap || 0}</td>`).join("")}
-    </tr>
-    <tr>
-        <td class="blue">Tổng bán</td>
-        <td class="number">${totalRow.tongban || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban || 0}</td>`).join("")}
-    </tr>
-    <tr>
-        <td class="blue">Tổng tồn</td>
-        <td class="number">${totalRow.tongton || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton || 0}</td>`).join("")}
-    </tr>`;
 
-    // ==== Nhập/Xuất/Tồn CƠ SỞ 1
+    // Tổng XNT
     html += `<tr>
-        <td class="title label" rowspan="3" style="vertical-align:middle;">CS1</td>
-        <td class="blue">Nhập CS1</td>
-        <td class="number">${totalRow.tongnhap_cs1 || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap_cs1 || 0}</td>`).join("")}
-    </tr>
-    <tr>
-        <td class="blue">Bán CS1</td>
-        <td class="number">${totalRow.tongban_cs1 || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban_cs1 || 0}</td>`).join("")}
-    </tr>
-    <tr>
-        <td class="blue">Tồn CS1</td>
-        <td class="number">${totalRow.tongton_cs1 || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton_cs1 || 0}</td>`).join("")}
-    </tr>`;
+    <td class="title label" rowspan="3" style="vertical-align:middle;">Tổng XNT</td>
+    <td class="blue">Tổng nhập</td>
+    <td class="number">${totalRow.tongnhap || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap || 0}</td>`).join("")}
+</tr>
+<tr>
+    <td class="blue">Tổng bán</td>
+    <td class="number">${totalRow.tongban || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban || 0}</td>`).join("")}
+</tr>
+<tr>
+    <td class="blue">Tổng tồn</td>
+    <td class="number">${totalRow.tongton || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton || 0}</td>`).join("")}
+</tr>`;
 
-    // ==== Nhập/Xuất/Tồn CƠ SỞ 2
+    // CS1
     html += `<tr>
-        <td class="title label" rowspan="3" style="vertical-align:middle;">CS2</td>
-        <td class="blue">Nhập CS2</td>
-        <td class="number">${totalRow.tongnhap_cs2 || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap_cs2 || 0}</td>`).join("")}
-    </tr>
-    <tr>
-        <td class="blue">Bán CS2</td>
-        <td class="number">${totalRow.tongban_cs2 || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban_cs2 || 0}</td>`).join("")}
-    </tr>
-    <tr>
-        <td class="blue">Tồn CS2</td>
-        <td class="number">${totalRow.tongton_cs2 || 0}</td>
-        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton_cs2 || 0}</td>`).join("")}
-    </tr>`;
+    <td class="title label" rowspan="2" style="vertical-align:middle;">cs1</td>
+    <td class="blue">ban cs1</td>
+    <td class="number">${totalRow.ban_cs1 || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ban_cs1 || 0}</td>`).join("")}
+</tr>
+<tr>
+    <td class="blue">ton cs1</td>
+    <td class="number">${totalRow.ton_cs1 || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ton_cs1 || 0}</td>`).join("")}
+</tr>`;
+
+    // CS2
+    html += `<tr>
+    <td class="title label" rowspan="2" style="vertical-align:middle;">cs2</td>
+    <td class="blue">ton cs2</td>
+    <td class="number">${totalRow.ton_cs2 || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ton_cs2 || 0}</td>`).join("")}
+</tr>
+<tr>
+    <td class="blue">ban cs2</td>
+    <td class="number">${totalRow.ban_cs2 || 0}</td>
+    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ban_cs2 || 0}</td>`).join("")}
+</tr>`;
 
 
     // (Tuỳ ý, có thể mở rộng: bán CS1, tồn CS1, bán CS2, tồn CS2 nếu tách riêng từng trường CS)
