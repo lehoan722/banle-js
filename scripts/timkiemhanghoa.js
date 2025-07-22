@@ -1,5 +1,39 @@
 import { supabase } from "./supabaseClient.js";
 
+// ==== 1. ĐĂNG NHẬP SUPABASE ====
+window.dangNhap = async function () {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const status = document.getElementById("authStatus");
+    status.textContent = "";
+
+    if (!email || !password) {
+        status.textContent = "Nhập đầy đủ email và mật khẩu!";
+        return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        status.textContent = "Sai email hoặc mật khẩu!";
+        return;
+    }
+    status.style.color = "green";
+    status.textContent = "Đăng nhập thành công!";
+    document.getElementById("authBox").style.display = "none";
+};
+
+// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ====
+window.onload = async function () {
+    // Tự động ẩn/hiện box đăng nhập nếu đã đăng nhập
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        document.getElementById("authBox").style.display = "none";
+    } else {
+        document.getElementById("authBox").style.display = "block";
+    }
+};
+
+
 // ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
 window.openPopupSearch = async function (type) {
     window.currentPopupType = type;
