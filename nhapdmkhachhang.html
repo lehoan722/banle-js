@@ -1,205 +1,248 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Nhập Danh Mục Khách Hàng</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button { margin: 5px 8px 5px 0; }
-    #hot { margin-top: 20px; }
-    #preview { margin-top: 20px; }
+    body { font-family: Arial,sans-serif; background: #f9f9fb; padding:40px; }
+    .form-container {
+      width: 450px;
+      margin: 40px auto 0 auto;
+      padding: 32px 32px 18px 32px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 3px 18px #d6e3ef44;
+      border: 1.5px solid #e3e9f1;
+    }
+    .form-title {
+      font-size: 1.35em;
+      font-weight: bold;
+      letter-spacing: .5px;
+      margin-bottom: 24px;
+      color: #1a3357;
+      text-align:center;
+    }
+    .row { display: flex; align-items: center; margin-bottom: 18px; }
+    .row label { width: 125px; font-size: 1em; }
+    .row input, .row select {
+      flex:1;
+      padding: 7px 10px;
+      font-size: 1em;
+      border-radius: 7px;
+      border: 1.2px solid #b5bed5;
+      transition: border-color .2s;
+      background: #fcfcfe;
+      outline: none;
+    }
+    .row input:focus { border-color: #1164be; }
+    .required { color: #e23a1b; font-weight:bold; }
+    .actions {
+      display: flex; gap:16px; justify-content:center;
+      margin-top:22px; margin-bottom:7px;
+    }
+    .actions button {
+      font-size:1em; padding:8px 22px; border-radius:7px;
+      border: none; box-shadow: 0 2px 6px #dee6ff33;
+      cursor: pointer; transition:.13s; font-weight:500;
+    }
+    .actions button.save { background: #18804f; color:#fff; }
+    .actions button.new { background: #eaeaec; }
+    .actions button.back { background: #dde2ea; }
+    .actions button:hover { opacity:.87; }
+    .msg { text-align:center; padding:10px 0; }
+    .msg.error { color:#fff; background:#c44736; border-radius:6px; }
+    .msg.success { color:#18804f; background:#e6f4e7; border-radius:6px; }
   </style>
+  <script src="supabaseClient.js"></script>
 </head>
 <body>
-  <h2>📋 Cập nhật Danh Mục Khách Hàng từ Excel/CSV</h2>
-  <input type="file" id="fileInput" accept=".csv" />
-  <button onclick="loadCSV()">📂 Đọc dữ liệu từ file</button>
-  <button onclick="uploadToSupabase()">📤 Ghi vào Supabase</button>
-  <button onclick="kiemTraTuSupabase()">🔍 Kiểm tra dữ liệu</button>
-  <select id="modeSelect">
-    <option value="">-- Chọn cách ghi dữ liệu --</option>
-    <option value="overwrite">📝 Ghi đè tất cả</option>
-    <option value="update">✏️ Chỉ cập nhật dữ liệu</option>
-  </select>
-  <div id="hot"></div>
-  <div id="preview"></div>
+  <div class="form-container">
+    <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
+    <div class="row">
+      <label class="required">Mã KH *</label>
+      <input id="makh" maxlength="20" autocomplete="off" onblur="fetchKH()" placeholder="Nhập mã khách hàng...">
+    </div>
+    <div class="row">
+      <label class="required">Tên KH *</label>
+      <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
+    </div>
+    <div class="row">
+      <label class="required">Điện thoại *</label>
+      <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
+    </div>
+    <div class="row">
+      <label>Ngày sinh</label>
+      <input id="ngaysinh" type="date" maxlength="12">
+    </div>
+    <div class="row">
+      <label>Địa chỉ</label>
+      <input id="diachi" maxlength="100">
+    </div>
+    <div class="row">
+      <label>Email</label>
+      <input id="email" maxlength="60">
+    </div>
+    <div class="row">
+      <label>Tài khoản NH</label>
+      <input id="taikhoan" maxlength="40">
+    </div>
+    <div class="row">
+      <label>Mã số thuế</label>
+      <input id="mst" maxlength="20">
+    </div>
+    <div class="row">
+      <label>CCCD/CMND</label>
+      <input id="cccd" maxlength="20">
+    </div>
+    <div class="row">
+      <label>Là nhà cung cấp</label>
+      <select id="la_ncc">
+        <option value="">Không</option>
+        <option value="true">Có</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
+      <button class="new" onclick="resetForm()">Thêm mới</button>
+      <button class="back" onclick="window.history.back()">Trở về</button>
+    </div>
+    <div id="msgBox" class="msg"></div>
+  </div>
+
   <script>
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
-    const TABLE_NAME = 'dmkhachhang';
+    // === Cài đặt thông tin Supabase của bạn (đã có trong supabaseClient.js) ===
+    const TABLE = "dmkhachhang";
+    let currentToken = null, currentUser = null, editingOld = false;
 
-    const columns = [
-      { data: 'makh', type: 'text' },
-      { data: 'tenkh', type: 'text' },
-      { data: 'ngaysinh', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true },
-      { data: 'diachi', type: 'text' },
-      { data: 'dienthoai', type: 'text' },
-      { data: 'email', type: 'text' },
-      { data: 'taikhoan', type: 'text' },
-      { data: 'mst', type: 'text' },
-      { data: 'cccd', type: 'text' },
-      { data: 'la_ncc', type: 'checkbox' }
-    ];
+    // === Validate trường bắt buộc ===
+    function validateForm() {
+      let makh = getVal("makh").trim().toUpperCase();
+      let tenkh = getVal("tenkh").trim();
+      let dienthoai = getVal("dienthoai").trim();
+      if (!makh) return "Mã khách hàng không được bỏ trống!";
+      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+      if (!/^\d{8,13}$/.test(dienthoai.replace(/[^\d]/g,""))) return "SĐT phải là số, 8-13 ký tự!";
+      return null;
+    }
+    function getVal(id){ return document.getElementById(id).value||""; }
+    function setVal(id,val){ document.getElementById(id).value=val||""; }
 
-    const hot = new Handsontable(document.getElementById('hot'), {
-      data: Array.from({ length: 100 }, () => ({})),
-      columns,
-      colHeaders: columns.map(c => c.data),
-      rowHeaders: true,
-      minSpareRows: 1,
-      width: '100%',
-      height: 500,
-      stretchH: 'all',
-      licenseKey: 'non-commercial-and-evaluation'
-    });
-
-    function parseDate(val) {
-      if (!val) return null;
-      if (typeof val === 'string' && val.includes('/')) {
-        const [d, m, y] = val.split('/');
-        if (d && m && y) return `${y.padStart(4, '20')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-      }
-      const d = new Date(val);
-      return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
+    // === Reset form về trạng thái thêm mới ===
+    function resetForm() {
+      ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id,""));
+      setVal("la_ncc","");
+      editingOld = false;
+      document.getElementById("makh").readOnly = false;
+      showMsg("");
     }
 
-    function cleanRow(row, full = true) {
-      const fields = {
-        makh: "text", tenkh: "text", ngaysinh: "date",
-        diachi: "text", dienthoai: "text", email: "text",
-        taikhoan: "text", mst: "text", cccd: "text",
-        la_ncc: "boolean"
+    // === Hiển thị thông báo (success/error) ===
+    function showMsg(msg, type) {
+      const box = document.getElementById("msgBox");
+      box.textContent = msg || "";
+      box.className = "msg" + (type ? " "+type : "");
+      if(msg && type!=="error") setTimeout(()=>{box.textContent="";},2200);
+    }
+
+    // === Đăng nhập Supabase tự động nếu chưa có token ===
+    async function requireLogin() {
+      if(currentToken) return true;
+      // Dùng thông tin bạn đã gửi
+      const email = "khohangcs1@gmail.com";
+      const password = "123123";
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if(error) { showMsg("Lỗi đăng nhập: "+error.message,"error"); return false; }
+        currentToken = data.session.access_token;
+        currentUser = data.user;
+        return true;
+      } catch(e) {
+        showMsg("Lỗi đăng nhập Supabase: "+e.message,"error");
+        return false;
+      }
+    }
+
+    // === Khi blur ô mã KH: tự động kiểm tra/mở chế độ sửa nếu có ===
+    async function fetchKH() {
+      let makh = getVal("makh").trim().toUpperCase();
+      if(!makh) return;
+      if(!await requireLogin()) return;
+      showMsg("Đang kiểm tra...", "");
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select("*").eq("makh", makh).single();
+      if(data) {
+        setVal("tenkh", data.tenkh);
+        setVal("dienthoai", data.dienthoai);
+        setVal("ngaysinh", data.ngaysinh ? data.ngaysinh.slice(0,10) : "");
+        setVal("diachi", data.diachi);
+        setVal("email", data.email);
+        setVal("taikhoan", data.taikhoan);
+        setVal("mst", data.mst);
+        setVal("cccd", data.cccd);
+        setVal("la_ncc", data.la_ncc ? "true" : "");
+        document.getElementById("makh").readOnly = true;
+        editingOld = true;
+        showMsg("Đã nạp dữ liệu khách hàng, sửa và nhấn Lưu để cập nhật.","success");
+      } else {
+        editingOld = false;
+        document.getElementById("makh").readOnly = false;
+        ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id=>setVal(id,""));
+        showMsg("Đây là mã mới, hãy nhập đủ thông tin và Lưu!","");
+      }
+    }
+
+    // === Lưu dữ liệu (insert/update Supabase) ===
+    async function saveKH() {
+      const err = validateForm();
+      if(err) { showMsg(err, "error"); return; }
+      if(!await requireLogin()) return;
+
+      let obj = {
+        makh: getVal("makh").trim().toUpperCase(),
+        tenkh: getVal("tenkh").trim(),
+        dienthoai: getVal("dienthoai").trim(),
+        ngaysinh: getVal("ngaysinh") || null,
+        diachi: getVal("diachi"),
+        email: getVal("email"),
+        taikhoan: getVal("taikhoan"),
+        mst: getVal("mst"),
+        cccd: getVal("cccd"),
+        la_ncc: getVal("la_ncc") === "true"
       };
-      const cleaned = {};
-      for (const key in fields) {
-        let val = row[key];
-        if (val === "" || val == null || (typeof val === "string" && val.trim() === "")) {
-          if (full) cleaned[key] = null;
-          continue;
-        }
-        if (fields[key] === "numeric") {
-          cleaned[key] = isNaN(Number(val)) ? null : Number(val);
-        } else if (fields[key] === "boolean") {
-          const v = val.toString().toLowerCase();
-          cleaned[key] = (v === "true" || v === "1" || v === "x" || v === "yes");
-        } else if (fields[key] === "date") {
-          cleaned[key] = parseDate(val);
-        } else {
-          let textVal = val.toString();
-          if (key === "makh") textVal = textVal.toUpperCase();
-          cleaned[key] = textVal;
-        }
+      let res, error;
+      if(editingOld) {
+        // update
+        ({ error } = await supabase.from(TABLE)
+          .update(obj).eq("makh", obj.makh));
+      } else {
+        // insert
+        ({ error } = await supabase.from(TABLE)
+          .insert(obj));
       }
-      return cleaned;
+      if(!error) {
+        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!","success");
+        setTimeout(resetForm, 1200);
+      } else {
+        showMsg("Lỗi: " + error.message, "error");
+      }
     }
 
-    function loadCSV() {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) return alert('Vui lòng chọn file CSV.');
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: function (results) {
-          const data = results.data.map(row => {
-            const normalized = {};
-            for (const key in row) {
-              normalized[key.toLowerCase()] = row[key];
-            }
-            return normalized;
-          });
-          hot.loadData(data);
+    // === Tự động focus, bôi đen text khi tab/enter chuyển trường ===
+    document.querySelectorAll("input,select").forEach(e=>{
+      e.addEventListener("focus", function(){ this.select && this.select(); });
+      e.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter") {
+          ev.preventDefault();
+          let fields = ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"];
+          let idx = fields.indexOf(this.id);
+          if(idx >= 0 && idx < fields.length-1) document.getElementById(fields[idx+1]).focus();
+          else if(idx===fields.length-1) document.getElementById("makh").focus();
         }
       });
-    }
-
-    async function uploadToSupabase() {
-      const rawData = hot.getData();
-      const headers = columns.map(c => c.data);
-      const data = rawData.map(row => {
-        const obj = {};
-        headers.forEach((key, i) => obj[key] = row[i]);
-        return obj;
-      }).filter(r => r.makh && r.makh.toString().trim() !== "");
-
-      if (!data.length) return alert("Không có dòng hợp lệ.");
-      if (!confirm("Bạn có chắc muốn ghi dữ liệu vào Supabase?")) return;
-
-      let inserted = 0, updated = 0, failed = 0, errors = [];
-      const mode = document.getElementById("modeSelect").value;
-      if (!mode) return alert("❗ Vui lòng chọn cách ghi dữ liệu.");
-
-      for (let i = 0; i < data.length; i += 1000) {
-        const batch = data.slice(i, i + 1000).map(row => cleanRow(row, mode !== "update"));
-        try {
-          const res = await fetch(SUPABASE_URL + "/rest/v1/" + TABLE_NAME, {
-            method: "POST",
-            headers: {
-              apikey: SUPABASE_KEY,
-              Authorization: "Bearer " + SUPABASE_KEY,
-              "Content-Type": "application/json",
-              Prefer: "resolution=merge-duplicates,return=representation"
-            },
-            body: JSON.stringify(batch)
-          });
-          const result = await res.json();
-          if (!res.ok) {
-            failed += batch.length;
-            errors.push("❌ Batch lỗi: " + JSON.stringify(result));
-          } else {
-            result.forEach(r => {
-              if (r.updated_at) updated++; else inserted++;
-            });
-          }
-        } catch (e) {
-          failed += batch.length;
-          errors.push(`⚠️ Lỗi kết nối batch ${i + 1}: ${e.message}`);
-        }
-      }
-
-      document.getElementById("preview").innerHTML = `
-        <h3>Kết quả:</h3>
-        <ul>
-          <li>🆕 Thêm mới: ${inserted}</li>
-          <li>♻️ Ghi đè: ${updated}</li>
-          <li>❌ Lỗi: ${failed}</li>
-        </ul>
-        ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
-      `;
-    }
-
-    async function kiemTraTuSupabase() {
-      const allData = hot.getData();
-      const makhIndex = columns.findIndex(c => c.data === 'makh');
-      const makhList = Array.from(new Set(allData.map(row => row[makhIndex]).filter(m => m && typeof m === 'string' && m.trim() !== '').map(m => m.trim().toUpperCase())));
-      if (makhList.length === 0) return alert("Không có mã khách hàng hợp lệ.");
-
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const { data: serverData, error } = await client.from(TABLE_NAME).select(columns.map(c => c.data).join(",")).in('makh', makhList);
-      if (error) return alert("❌ Lỗi truy vấn Supabase.");
-
-      const dataMap = {};
-      serverData.forEach(item => dataMap[item.makh.toUpperCase()] = item);
-
-      hot.batch(() => {
-        allData.forEach((row, rowIndex) => {
-          const makh = row[makhIndex];
-          if (!makh) return;
-          const fresh = dataMap[makh.toUpperCase()];
-          if (!fresh) return;
-          columns.forEach((col, colIndex) => {
-            if (col.data === 'makh') return;
-            hot.setDataAtCell(rowIndex, colIndex, fresh[col.data] ?? null);
-          });
-        });
-      });
-
-      alert("✅ Đã cập nhật dữ liệu từ Supabase.");
-    }
+    });
+    window.onload = ()=>{ setTimeout(()=>document.getElementById("makh").focus(), 100);}
   </script>
 </body>
 </html>
