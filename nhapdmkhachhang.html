@@ -1,291 +1,543 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Nhập Danh Mục Khách Hàng</title>
-  <meta name="viewport" content="width=450">
-  <style>
-    body { font-family: Arial, sans-serif; background: #f9f9fb; padding:32px; }
-    .center-box { width: 420px; margin: 40px auto 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 3px 18px #d6e3ef44; border: 1.5px solid #e3e9f1; padding:28px 24px 18px 24px;}
-    .form-title { font-size: 1.18em; font-weight: bold; letter-spacing: .4px; margin-bottom: 22px; color: #163163; text-align:center;}
-    .row { display: flex; align-items: center; margin-bottom: 15px; }
-    .row label { width: 120px; font-size: 1em; }
-    .row input, .row select {
-      flex:1;
-      padding: 7px 10px;
-      font-size: 1em;
-      border-radius: 7px;
-      border: 1.2px solid #b5bed5;
-      background: #fcfcfe;
-      outline: none;
-      transition: border-color .18s;
-    }
-    .row input:focus { border-color: #1164be; }
-    .required { color: #e23a1b; font-weight:bold;}
-    .actions {
-      display: flex; gap:13px; justify-content:center;
-      margin-top:20px; margin-bottom:8px;
-    }
-    .actions button {
-      font-size:1em; padding:8px 22px; border-radius:7px;
-      border: none; box-shadow: 0 2px 6px #dee6ff33;
-      cursor: pointer; transition:.13s; font-weight:500;
-    }
-    .actions button.save { background: #18804f; color:#fff; }
-    .actions button.new { background: #eaeaec; }
-    .actions button.logout { background: #efebfa; color:#45427b;}
-    .actions button:hover { opacity:.87; }
-    .msg { text-align:center; padding:10px 0 5px 0; min-height:26px;}
-    .msg.error { color:#fff; background:#c44736; border-radius:6px; }
-    .msg.success { color:#18804f; background:#e6f4e7; border-radius:6px; }
-    .loginbox { width:320px; margin:90px auto 0 auto; padding:26px 30px 18px 30px; border-radius:14px; background:#fff; box-shadow:0 3px 14px #d7e2f633; border:1.5px solid #e6eaf1;}
-    .loginbox h2 { text-align:center; margin-bottom:16px; font-weight:700; color:#17305c;}
-    .loginrow { margin-bottom:15px;}
-    .loginrow label { display:block; margin-bottom:6px; color:#234;}
-    .loginrow input {
-      width:100%; font-size:1em; padding:7px 10px;
-      border-radius:6px; border:1.2px solid #b5bed5;
-      background:#fcfcfe; outline:none;
-    }
-    .loginrow input:focus { border-color:#1164be;}
-    .loginbox .msg { min-height:22px; }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script>
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-    const TABLE = "dmkhachhang";
-    let supabase = null, session = null, editingOld = false;
+    <meta charset="UTF-8">
+    <title>Nhập Danh Mục Khách Hàng</title>
+    <meta name="viewport" content="width=450">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f9f9fb;
+            padding: 32px;
+        }
 
-    function showLogin() {
-      document.getElementById("loginbox").style.display = "";
-      document.getElementById("mainform").style.display = "none";
-      document.getElementById("msgLogin").textContent = "";
-    }
-    function showMain() {
-      document.getElementById("loginbox").style.display = "none";
-      document.getElementById("mainform").style.display = "";
-      document.getElementById("msgBox").textContent = "";
-      document.getElementById("makh").focus();
-    }
-    function setSession(ses) {
-      session = ses;
-      if (ses) {
-        localStorage.setItem("sb_kh_session", JSON.stringify(ses));
-        showMain();
-      } else {
-        localStorage.removeItem("sb_kh_session");
-        showLogin();
-      }
-    }
+        .center-box {
+            width: 420px;
+            margin: 40px auto 0 auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 3px 18px #d6e3ef44;
+            border: 1.5px solid #e3e9f1;
+            padding: 28px 24px 18px 24px;
+        }
 
-    window.onload = function() {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      let save = localStorage.getItem("sb_kh_session");
-      if (save) {
-        try {
-          const ses = JSON.parse(save);
-          if(ses?.access_token) {
-            supabase.auth.setSession(ses);
-            setSession(ses);
-            return;
-          }
-        } catch (e) { /* ignore */ }
-      }
-      showLogin();
-    };
+        .form-title {
+            font-size: 1.18em;
+            font-weight: bold;
+            letter-spacing: .4px;
+            margin-bottom: 22px;
+            color: #163163;
+            text-align: center;
+        }
 
-    async function doLogin() {
-      const email = document.getElementById("loginEmail").value.trim();
-      const pass = document.getElementById("loginPass").value;
-      if (!email || !pass) { showMsgLogin("Nhập email & mật khẩu!","error"); return; }
-      showMsgLogin("Đang đăng nhập...");
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-        if (error) { showMsgLogin("Sai email hoặc mật khẩu!","error"); return; }
-        setSession(data.session);
-      } catch (e) {
-        showMsgLogin("Lỗi đăng nhập: "+e.message,"error");
-      }
-    }
-    function doLogout() {
-      setSession(null);
-      supabase.auth.signOut();
-      resetForm();
-    }
+        .row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
 
-    function showMsgLogin(msg,type){ let box=document.getElementById("msgLogin"); box.textContent=msg; box.className="msg"+(type?" "+type:""); }
-    function showMsg(msg, type) {
-      let box=document.getElementById("msgBox"); box.textContent=msg||""; box.className="msg"+(type?" "+type:""); if(msg && type!=="error") setTimeout(()=>{box.textContent="";},2500);
-    }
-    function getVal(id){ return document.getElementById(id).value||""; }
-    function setVal(id,val){ document.getElementById(id).value=val||""; }
+        .row label {
+            width: 120px;
+            font-size: 1em;
+        }
 
-    // ==== Validate bắt buộc ====
-    function validateForm() {
-      let makh = getVal("makh").trim().toUpperCase();
-      let tenkh = getVal("tenkh").trim();
-      let dienthoai = getVal("dienthoai").trim();
-      if (!makh) return "Mã khách hàng không được bỏ trống!";
-      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
-      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
-      if (!/^\d{8,13}$/.test(dienthoai.replace(/[^\d]/g,""))) return "SĐT phải là số, 8-13 ký tự!";
-      return null;
-    }
+        .row input,
+        .row select {
+            flex: 1;
+            padding: 7px 10px;
+            font-size: 1em;
+            border-radius: 7px;
+            border: 1.2px solid #b5bed5;
+            background: #fcfcfe;
+            outline: none;
+            transition: border-color .18s;
+        }
 
-    // ==== Reset Form ====
-    function resetForm() {
-      ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id,""));
-      setVal("la_ncc","");
-      editingOld = false;
-      document.getElementById("makh").readOnly = false;
-      showMsg("");
-      document.getElementById("makh").focus();
-    }
+        .row input:focus {
+            border-color: #1164be;
+        }
 
-    // ==== Tự fill thông tin khi nhập mã khách hàng ====
-    async function fetchKH() {
-      let makh = getVal("makh").trim().toUpperCase();
-      if (!makh) return;
-      showMsg("Đang kiểm tra...", "");
-      const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
-      if (data && data.makh) {
-        setVal("tenkh", data.tenkh);
-        setVal("dienthoai", data.dienthoai);
-        setVal("ngaysinh", data.ngaysinh ? data.ngaysinh.slice(0,10) : "");
-        setVal("diachi", data.diachi);
-        setVal("email", data.email);
-        setVal("taikhoan", data.taikhoan);
-        setVal("mst", data.mst);
-        setVal("cccd", data.cccd);
-        setVal("la_ncc", data.la_ncc ? "true" : "");
-        document.getElementById("makh").readOnly = true;
-        editingOld = true;
-        showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.","success");
-      } else {
-        editingOld = false;
-        document.getElementById("makh").readOnly = false;
-        ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id=>setVal(id,""));
-        showMsg("Mã mới, nhập đủ thông tin để lưu!","");
-      }
-    }
+        .required {
+            color: #e23a1b;
+            font-weight: bold;
+        }
 
-    // ==== Lưu khách hàng (insert/update) ====
-    async function saveKH() {
-      const err = validateForm();
-      if(err) { showMsg(err,"error"); return; }
-      let obj = {
-        makh: getVal("makh").trim().toUpperCase(),
-        tenkh: getVal("tenkh").trim(),
-        dienthoai: getVal("dienthoai").trim(),
-        ngaysinh: getVal("ngaysinh")||null,
-        diachi: getVal("diachi"),
-        email: getVal("email"),
-        taikhoan: getVal("taikhoan"),
-        mst: getVal("mst"),
-        cccd: getVal("cccd"),
-        la_ncc: getVal("la_ncc")==="true"
-      };
-      let error;
-      if(editingOld) {
-        ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
-      } else {
-        ({ error } = await supabase.from(TABLE).insert(obj));
-      }
-      if(!error) {
-        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!","success");
-        setTimeout(resetForm, 1200);
-      } else {
-        showMsg("Lỗi: " + error.message, "error");
-      }
-    }
+        .actions {
+            display: flex;
+            gap: 13px;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
 
-    // ==== Tự động focus/enter chuyển trường ====
-    document.addEventListener("DOMContentLoaded", function(){
-      document.querySelectorAll("#mainform input, #mainform select").forEach(e=>{
-        e.addEventListener("focus", function(){ this.select && this.select(); });
-        e.addEventListener("keydown", function(ev){
-          if(ev.key==="Enter") {
-            ev.preventDefault();
-            let fields=["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"];
-            let idx = fields.indexOf(this.id);
-            if(idx >= 0 && idx < fields.length-1) document.getElementById(fields[idx+1]).focus();
-            else if(idx===fields.length-1) document.getElementById("makh").focus();
-          }
+        .actions button {
+            font-size: 1em;
+            padding: 8px 22px;
+            border-radius: 7px;
+            border: none;
+            box-shadow: 0 2px 6px #dee6ff33;
+            cursor: pointer;
+            transition: .13s;
+            font-weight: 500;
+        }
+
+        .actions button.save {
+            background: #18804f;
+            color: #fff;
+        }
+
+        .actions button.new {
+            background: #eaeaec;
+        }
+
+        .actions button.logout {
+            background: #efebfa;
+            color: #45427b;
+        }
+
+        .actions button:hover {
+            opacity: .87;
+        }
+
+        .msg {
+            text-align: center;
+            padding: 10px 0 5px 0;
+            min-height: 26px;
+        }
+
+        .msg.error {
+            color: #fff;
+            background: #c44736;
+            border-radius: 6px;
+        }
+
+        .msg.success {
+            color: #18804f;
+            background: #e6f4e7;
+            border-radius: 6px;
+        }
+
+        .loginbox {
+            width: 320px;
+            margin: 90px auto 0 auto;
+            padding: 26px 30px 18px 30px;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 3px 14px #d7e2f633;
+            border: 1.5px solid #e6eaf1;
+        }
+
+        .loginbox h2 {
+            text-align: center;
+            margin-bottom: 16px;
+            font-weight: 700;
+            color: #17305c;
+        }
+
+        .loginrow {
+            margin-bottom: 15px;
+        }
+
+        .loginrow label {
+            display: block;
+            margin-bottom: 6px;
+            color: #234;
+        }
+
+        .loginrow input {
+            width: 100%;
+            font-size: 1em;
+            padding: 7px 10px;
+            border-radius: 6px;
+            border: 1.2px solid #b5bed5;
+            background: #fcfcfe;
+            outline: none;
+        }
+
+        .loginrow input:focus {
+            border-color: #1164be;
+        }
+
+        .loginbox .msg {
+            min-height: 22px;
+        }
+
+        #makhSuggestList {
+            background: #fff;
+            box-shadow: 0 3px 18px #c3d3f655;
+            border: 1.2px solid #b5bed5;
+            border-radius: 8px;
+            max-height: 220px;
+            overflow: auto;
+            font-size: .99em;
+        }
+
+        .suggest-item {
+            padding: 7px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .suggest-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggest-item.active,
+        .suggest-item:hover {
+            background: #f3f8ff;
+            color: #1164be;
+        }
+
+        .suggest-makh {
+            font-weight: 600;
+            width: 80px;
+            color: #18408d;
+        }
+
+        .suggest-tenkh {
+            color: #333;
+            flex: 1;
+        }
+
+        .suggest-note {
+            font-size: 12px;
+            color: #b0b;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+        const TABLE = "dmkhachhang";
+        let supabase = null, session = null, editingOld = false;
+
+        function showLogin() {
+            document.getElementById("loginbox").style.display = "";
+            document.getElementById("mainform").style.display = "none";
+            document.getElementById("msgLogin").textContent = "";
+        }
+        function showMain() {
+            document.getElementById("loginbox").style.display = "none";
+            document.getElementById("mainform").style.display = "";
+            document.getElementById("msgBox").textContent = "";
+            document.getElementById("makh").focus();
+        }
+        function setSession(ses) {
+            session = ses;
+            if (ses) {
+                localStorage.setItem("sb_kh_session", JSON.stringify(ses));
+                showMain();
+            } else {
+                localStorage.removeItem("sb_kh_session");
+                showLogin();
+            }
+        }
+
+        window.onload = function () {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            let save = localStorage.getItem("sb_kh_session");
+            if (save) {
+                try {
+                    const ses = JSON.parse(save);
+                    if (ses?.access_token) {
+                        supabase.auth.setSession(ses);
+                        setSession(ses);
+                        return;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            showLogin();
+        };
+
+        async function doLogin() {
+            const email = document.getElementById("loginEmail").value.trim();
+            const pass = document.getElementById("loginPass").value;
+            if (!email || !pass) { showMsgLogin("Nhập email & mật khẩu!", "error"); return; }
+            showMsgLogin("Đang đăng nhập...");
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+                if (error) { showMsgLogin("Sai email hoặc mật khẩu!", "error"); return; }
+                setSession(data.session);
+            } catch (e) {
+                showMsgLogin("Lỗi đăng nhập: " + e.message, "error");
+            }
+        }
+        function doLogout() {
+            setSession(null);
+            supabase.auth.signOut();
+            resetForm();
+        }
+
+        function showMsgLogin(msg, type) { let box = document.getElementById("msgLogin"); box.textContent = msg; box.className = "msg" + (type ? " " + type : ""); }
+        function showMsg(msg, type) {
+            let box = document.getElementById("msgBox"); box.textContent = msg || ""; box.className = "msg" + (type ? " " + type : ""); if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
+        }
+        function getVal(id) { return document.getElementById(id).value || ""; }
+        function setVal(id, val) { document.getElementById(id).value = val || ""; }
+
+        // ==== Validate bắt buộc ====
+        function validateForm() {
+            let makh = getVal("makh").trim().toUpperCase();
+            let tenkh = getVal("tenkh").trim();
+            let dienthoai = getVal("dienthoai").trim();
+            if (!makh) return "Mã khách hàng không được bỏ trống!";
+            if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+            if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+            if (!/^\d{8,13}$/.test(dienthoai.replace(/[^\d]/g, ""))) return "SĐT phải là số, 8-13 ký tự!";
+            return null;
+        }
+
+        // ==== Reset Form ====
+        function resetForm() {
+            ["makh", "tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd"].forEach(id => setVal(id, ""));
+            setVal("la_ncc", "");
+            editingOld = false;
+            document.getElementById("makh").readOnly = false;
+            showMsg("");
+            document.getElementById("makh").focus();
+        }
+
+        // ==== Tự fill thông tin khi nhập mã khách hàng ====
+        async function fetchKH() {
+            let makh = getVal("makh").trim().toUpperCase();
+            if (!makh) return;
+            showMsg("Đang kiểm tra...", "");
+            const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
+            if (data && data.makh) {
+                setVal("tenkh", data.tenkh);
+                setVal("dienthoai", data.dienthoai);
+                setVal("ngaysinh", data.ngaysinh ? data.ngaysinh.slice(0, 10) : "");
+                setVal("diachi", data.diachi);
+                setVal("email", data.email);
+                setVal("taikhoan", data.taikhoan);
+                setVal("mst", data.mst);
+                setVal("cccd", data.cccd);
+                setVal("la_ncc", data.la_ncc ? "true" : "");
+                document.getElementById("makh").readOnly = true;
+                editingOld = true;
+                showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
+            } else {
+                editingOld = false;
+                document.getElementById("makh").readOnly = false;
+                ["tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd", "la_ncc"].forEach(id => setVal(id, ""));
+                showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
+            }
+        }
+
+        // ==== Lưu khách hàng (insert/update) ====
+        async function saveKH() {
+            const err = validateForm();
+            if (err) { showMsg(err, "error"); return; }
+            let obj = {
+                makh: getVal("makh").trim().toUpperCase(),
+                tenkh: getVal("tenkh").trim(),
+                dienthoai: getVal("dienthoai").trim(),
+                ngaysinh: getVal("ngaysinh") || null,
+                diachi: getVal("diachi"),
+                email: getVal("email"),
+                taikhoan: getVal("taikhoan"),
+                mst: getVal("mst"),
+                cccd: getVal("cccd"),
+                la_ncc: getVal("la_ncc") === "true"
+            };
+            let error;
+            if (editingOld) {
+                ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
+            } else {
+                ({ error } = await supabase.from(TABLE).insert(obj));
+            }
+            if (!error) {
+                showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
+                setTimeout(resetForm, 1200);
+            } else {
+                showMsg("Lỗi: " + error.message, "error");
+            }
+        }
+
+        // ==== Tự động focus/enter chuyển trường ====
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll("#mainform input, #mainform select").forEach(e => {
+                e.addEventListener("focus", function () { this.select && this.select(); });
+                e.addEventListener("keydown", function (ev) {
+                    if (ev.key === "Enter") {
+                        ev.preventDefault();
+                        let fields = ["makh", "tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd", "la_ncc"];
+                        let idx = fields.indexOf(this.id);
+                        if (idx >= 0 && idx < fields.length - 1) document.getElementById(fields[idx + 1]).focus();
+                        else if (idx === fields.length - 1) document.getElementById("makh").focus();
+                    }
+                });
+            });
         });
-      });
-    });
-  </script>
+
+        let khSuggestList = [];
+        let suggestIndex = -1; // dùng cho điều hướng bàn phím
+
+        async function suggestKH() {
+            let inp = document.getElementById('makh');
+            let txt = inp.value.trim().toUpperCase();
+            let popup = document.getElementById('makhSuggestList');
+            if (txt.length === 0) { popup.style.display = "none"; return; }
+            // Tránh gọi lại nếu nhập giống lần trước
+            if (khSuggestList.lastTxt === txt) { popup.style.display = khSuggestList.length ? "" : "none"; return; }
+            khSuggestList = [];
+            suggestIndex = -1;
+            // Lọc theo makh hoặc tenkh chứa txt
+            const { data, error } = await supabase
+                .from("dmkhachhang")
+                .select("makh, tenkh, dienthoai")
+                .or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`)
+                .order("makh", { ascending: true })
+                .limit(30);
+            if (error || !data || !data.length) { popup.style.display = "none"; return; }
+            khSuggestList = data;
+            khSuggestList.lastTxt = txt;
+            // Vẽ popup
+            popup.innerHTML = data.map((r, i) =>
+                `<div class="suggest-item${i === 0 ? ' active' : ''}" data-idx="${i}" onclick="chooseKHFromSuggest(${i})">
+      <span class="suggest-makh">${r.makh}</span>
+      <span class="suggest-tenkh">${r.tenkh || ''}</span>
+      <span class="suggest-note">${r.dienthoai || ''}</span>
+    </div>`
+            ).join("");
+            popup.style.display = "";
+            suggestIndex = 0;
+        }
+
+        // Chọn dòng từ popup (bằng chuột)
+        function chooseKHFromSuggest(idx) {
+            let r = khSuggestList[idx];
+            if (!r) return;
+            document.getElementById("makh").value = r.makh;
+            document.getElementById("makhSuggestList").style.display = "none";
+            fetchKH(); // Tự động fill info KH
+            setTimeout(() => document.getElementById("tenkh").focus(), 60);
+        }
+
+        // Bắt phím lên/xuống/Enter khi focus ô makh
+        document.addEventListener("keydown", function (ev) {
+            let inp = document.activeElement;
+            if (inp && inp.id === "makh") {
+                let popup = document.getElementById("makhSuggestList");
+                if (popup.style.display !== "none" && khSuggestList.length > 0) {
+                    if (ev.key === "ArrowDown" || ev.key === "Tab") {
+                        ev.preventDefault();
+                        suggestIndex = (suggestIndex + 1) % khSuggestList.length;
+                        updateSuggestActive();
+                    } else if (ev.key === "ArrowUp") {
+                        ev.preventDefault();
+                        suggestIndex = (suggestIndex - 1 + khSuggestList.length) % khSuggestList.length;
+                        updateSuggestActive();
+                    } else if (ev.key === "Enter") {
+                        if (suggestIndex >= 0 && khSuggestList[suggestIndex]) {
+                            chooseKHFromSuggest(suggestIndex);
+                            ev.preventDefault();
+                        }
+                    } else if (ev.key === "Escape") {
+                        popup.style.display = "none";
+                    }
+                }
+            }
+        });
+        function updateSuggestActive() {
+            let popup = document.getElementById("makhSuggestList");
+            popup.querySelectorAll(".suggest-item").forEach((it, i) => {
+                it.classList.toggle("active", i === suggestIndex);
+                if (i === suggestIndex) it.scrollIntoView({ block: "nearest" });
+            });
+        }
+
+        // Ẩn popup khi click ra ngoài hoặc chuyển trường
+        document.addEventListener("mousedown", function (ev) {
+            if (!document.getElementById("makhSuggestList").contains(ev.target) &&
+                ev.target.id !== "makh") {
+                document.getElementById("makhSuggestList").style.display = "none";
+            }
+        });
+
+    </script>
 </head>
+
 <body>
-  <!-- Login Box -->
-  <div id="loginbox" class="loginbox" style="display:none">
-    <h2>Đăng nhập Supabase</h2>
-    <div class="loginrow">
-      <label>Email</label>
-      <input id="loginEmail" type="email" autocomplete="username" placeholder="Email Supabase...">
+    <!-- Login Box -->
+    <div id="loginbox" class="loginbox" style="display:none">
+        <h2>Đăng nhập Supabase</h2>
+        <div class="loginrow">
+            <label>Email</label>
+            <input id="loginEmail" type="email" autocomplete="username" placeholder="Email Supabase...">
+        </div>
+        <div class="loginrow">
+            <label>Mật khẩu</label>
+            <input id="loginPass" type="password" autocomplete="current-password" placeholder="Mật khẩu...">
+        </div>
+        <div class="actions" style="margin-top:14px;">
+            <button class="save" style="width:100%;" onclick="doLogin()">Đăng nhập</button>
+        </div>
+        <div id="msgLogin" class="msg"></div>
     </div>
-    <div class="loginrow">
-      <label>Mật khẩu</label>
-      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Mật khẩu...">
+    <!-- Main Form -->
+    <div id="mainform" class="center-box" style="display:none">
+        <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
+
+        <div class="row" style="position:relative;">
+            <label class="required">Mã KH *</label>
+            <input id="makh" maxlength="20" autocomplete="off" oninput="suggestKH()" onfocus="suggestKH()"
+                placeholder="Nhập mã khách hàng...">
+            <div id="makhSuggestList"
+                style="position:absolute;left:124px;top:37px;width:calc(100% - 124px);z-index:11;display:none;"></div>
+        </div>
+
+
+        <div class="row">
+            <label class="required">Tên KH *</label>
+            <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
+        </div>
+        <div class="row">
+            <label class="required">Điện thoại *</label>
+            <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
+        </div>
+        <div class="row">
+            <label>Ngày sinh</label>
+            <input id="ngaysinh" type="date" maxlength="12">
+        </div>
+        <div class="row">
+            <label>Địa chỉ</label>
+            <input id="diachi" maxlength="100">
+        </div>
+        <div class="row">
+            <label>Email</label>
+            <input id="email" maxlength="60">
+        </div>
+        <div class="row">
+            <label>Tài khoản NH</label>
+            <input id="taikhoan" maxlength="40">
+        </div>
+        <div class="row">
+            <label>Mã số thuế</label>
+            <input id="mst" maxlength="20">
+        </div>
+        <div class="row">
+            <label>CCCD/CMND</label>
+            <input id="cccd" maxlength="20">
+        </div>
+        <div class="row">
+            <label>Là nhà cung cấp</label>
+            <select id="la_ncc">
+                <option value="">Không</option>
+                <option value="true">Có</option>
+            </select>
+        </div>
+        <div class="actions">
+            <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
+            <button class="new" onclick="resetForm()">Thêm mới</button>
+            <button class="logout" onclick="doLogout()">Đăng xuất</button>
+        </div>
+        <div id="msgBox" class="msg"></div>
     </div>
-    <div class="actions" style="margin-top:14px;">
-      <button class="save" style="width:100%;" onclick="doLogin()">Đăng nhập</button>
-    </div>
-    <div id="msgLogin" class="msg"></div>
-  </div>
-  <!-- Main Form -->
-  <div id="mainform" class="center-box" style="display:none">
-    <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
-    <div class="row">
-      <label class="required">Mã KH *</label>
-      <input id="makh" maxlength="20" autocomplete="off" onblur="fetchKH()" placeholder="Nhập mã khách hàng...">
-    </div>
-    <div class="row">
-      <label class="required">Tên KH *</label>
-      <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
-    </div>
-    <div class="row">
-      <label class="required">Điện thoại *</label>
-      <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
-    </div>
-    <div class="row">
-      <label>Ngày sinh</label>
-      <input id="ngaysinh" type="date" maxlength="12">
-    </div>
-    <div class="row">
-      <label>Địa chỉ</label>
-      <input id="diachi" maxlength="100">
-    </div>
-    <div class="row">
-      <label>Email</label>
-      <input id="email" maxlength="60">
-    </div>
-    <div class="row">
-      <label>Tài khoản NH</label>
-      <input id="taikhoan" maxlength="40">
-    </div>
-    <div class="row">
-      <label>Mã số thuế</label>
-      <input id="mst" maxlength="20">
-    </div>
-    <div class="row">
-      <label>CCCD/CMND</label>
-      <input id="cccd" maxlength="20">
-    </div>
-    <div class="row">
-      <label>Là nhà cung cấp</label>
-      <select id="la_ncc">
-        <option value="">Không</option>
-        <option value="true">Có</option>
-      </select>
-    </div>
-    <div class="actions">
-      <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
-      <button class="new" onclick="resetForm()">Thêm mới</button>
-      <button class="logout" onclick="doLogout()">Đăng xuất</button>
-    </div>
-    <div id="msgBox" class="msg"></div>
-  </div>
 </body>
+
 </html>
