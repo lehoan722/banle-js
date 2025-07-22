@@ -132,7 +132,7 @@ async function triggerSearch() {
     // Lấy danh sách size, tổng nhập/xuất/tồn
 
     // Gọi function mới
-    let { data: xntdata, error: err2 } = await supabase.rpc("timkiemhanghoa_v2", { masp_query: masp });
+    let { data: xntdata, error: err2 } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
     if (err2 || !xntdata || !xntdata.length) {
         msg.textContent = "Không có dữ liệu xuất nhập tồn!";
         return;
