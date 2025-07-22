@@ -130,19 +130,16 @@ async function triggerSearch() {
 
     // ==== Chuẩn bị bảng dữ liệu ====
     // Lấy danh sách size, tổng nhập/xuất/tồn
+
     let sizeArr = xntdata.map(r => r.size).filter(s => !!s && s !== 'Tổng');
     if (sizeArr.length === 0) sizeArr = ["38", "39", "40", "41", "42", "43", "44", "45"]; // fallback nếu dữ liệu trống
     let bySize = {};
     xntdata.forEach(row => {
         bySize[row.size] = row;
     });
-    let sum = (arr, key) => arr.reduce((a, b) => a + (b[key] || 0), 0);
-
-    // Tách riêng dữ liệu tổng (size = 'Tổng')
     let totalRow = xntdata.find(r => r.size === 'Tổng');
-    if (!totalRow) totalRow = { tongnhap: sum(xntdata, 'tongnhap'), tongban: sum(xntdata, 'tongban'), tongton: sum(xntdata, 'tongton') };
 
-    // Hiển thị bảng đúng layout mẫu
+    // === Bắt đầu HTML ===
     let html = `
         <tr>
             <td class="title label">Mã hàng</td>
@@ -156,8 +153,13 @@ async function triggerSearch() {
             <td colspan="${sizeArr.length + 1}"></td>
         </tr>
         <tr>
-            <td class="label">Vị trí (Kệ hàng)</td>
+            <td class="label">Vị trí kệ hàng CS1</td>
             <td>${hanghoa.vitrikho1 || ""}</td>
+            <td colspan="${sizeArr.length + 1}"></td>
+        </tr>
+        <tr>
+            <td class="label">Vị trí kệ hàng CS2</td>
+            <td>${hanghoa.vitrikho2 || ""}</td>
             <td colspan="${sizeArr.length + 1}"></td>
         </tr>
         <tr>
@@ -181,8 +183,6 @@ async function triggerSearch() {
             <td colspan="${sizeArr.length + 1}"></td>
         </tr>
     `;
-
-    // Thêm các dòng nhập tiếp theo nếu muốn (n2, n3, ...)
     for (let i = 1; i < nhapList.length - 1; i++) {
         html += `<tr>
             <td class="label">n${i}</td>
@@ -190,8 +190,7 @@ async function triggerSearch() {
             <td colspan="${sizeArr.length + 1}"></td>
         </tr>`;
     }
-
-    // Dòng tiêu đề tổng xuất nhập tồn
+    // ==== Tổng nhập/xuất/tồn hệ thống
     html += `<tr>
         <td class="title label" rowspan="3" style="vertical-align:middle;">Tổng XNT</td>
         <td class="blue">Tổng nhập</td>
@@ -207,8 +206,44 @@ async function triggerSearch() {
         <td class="blue">Tổng tồn</td>
         <td class="number">${totalRow.tongton || 0}</td>
         ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton || 0}</td>`).join("")}
+    </tr>`;
+
+    // ==== Nhập/Xuất/Tồn CƠ SỞ 1
+    html += `<tr>
+        <td class="title label" rowspan="3" style="vertical-align:middle;">CS1</td>
+        <td class="blue">Nhập CS1</td>
+        <td class="number">${totalRow.tongnhap_cs1 || 0}</td>
+        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap_cs1 || 0}</td>`).join("")}
     </tr>
-    `;
+    <tr>
+        <td class="blue">Bán CS1</td>
+        <td class="number">${totalRow.tongban_cs1 || 0}</td>
+        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban_cs1 || 0}</td>`).join("")}
+    </tr>
+    <tr>
+        <td class="blue">Tồn CS1</td>
+        <td class="number">${totalRow.tongton_cs1 || 0}</td>
+        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton_cs1 || 0}</td>`).join("")}
+    </tr>`;
+
+    // ==== Nhập/Xuất/Tồn CƠ SỞ 2
+    html += `<tr>
+        <td class="title label" rowspan="3" style="vertical-align:middle;">CS2</td>
+        <td class="blue">Nhập CS2</td>
+        <td class="number">${totalRow.tongnhap_cs2 || 0}</td>
+        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap_cs2 || 0}</td>`).join("")}
+    </tr>
+    <tr>
+        <td class="blue">Bán CS2</td>
+        <td class="number">${totalRow.tongban_cs2 || 0}</td>
+        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban_cs2 || 0}</td>`).join("")}
+    </tr>
+    <tr>
+        <td class="blue">Tồn CS2</td>
+        <td class="number">${totalRow.tongton_cs2 || 0}</td>
+        ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton_cs2 || 0}</td>`).join("")}
+    </tr>`;
+
 
     // (Tuỳ ý, có thể mở rộng: bán CS1, tồn CS1, bán CS2, tồn CS2 nếu tách riêng từng trường CS)
     // Bạn có thể thêm vào đây nếu muốn lấy chi tiết bán/tồn từng cơ sở, chỉ cần lấy thêm trường ở SQL.
