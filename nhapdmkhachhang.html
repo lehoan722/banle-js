@@ -3,42 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <title>Nhập Danh Mục Khách Hàng</title>
+  <meta name="viewport" content="width=450">
   <style>
-    body { font-family: Arial,sans-serif; background: #f9f9fb; padding:40px; }
-    .form-container {
-      width: 450px;
-      margin: 40px auto 0 auto;
-      padding: 32px 32px 18px 32px;
-      background: #fff;
-      border-radius: 18px;
-      box-shadow: 0 3px 18px #d6e3ef44;
-      border: 1.5px solid #e3e9f1;
-    }
-    .form-title {
-      font-size: 1.35em;
-      font-weight: bold;
-      letter-spacing: .5px;
-      margin-bottom: 24px;
-      color: #1a3357;
-      text-align:center;
-    }
-    .row { display: flex; align-items: center; margin-bottom: 18px; }
-    .row label { width: 125px; font-size: 1em; }
+    body { font-family: Arial, sans-serif; background: #f9f9fb; padding:32px; }
+    .center-box { width: 420px; margin: 40px auto 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 3px 18px #d6e3ef44; border: 1.5px solid #e3e9f1; padding:28px 24px 18px 24px;}
+    .form-title { font-size: 1.18em; font-weight: bold; letter-spacing: .4px; margin-bottom: 22px; color: #163163; text-align:center;}
+    .row { display: flex; align-items: center; margin-bottom: 15px; }
+    .row label { width: 120px; font-size: 1em; }
     .row input, .row select {
       flex:1;
       padding: 7px 10px;
       font-size: 1em;
       border-radius: 7px;
       border: 1.2px solid #b5bed5;
-      transition: border-color .2s;
       background: #fcfcfe;
       outline: none;
+      transition: border-color .18s;
     }
     .row input:focus { border-color: #1164be; }
-    .required { color: #e23a1b; font-weight:bold; }
+    .required { color: #e23a1b; font-weight:bold;}
     .actions {
-      display: flex; gap:16px; justify-content:center;
-      margin-top:22px; margin-bottom:7px;
+      display: flex; gap:13px; justify-content:center;
+      margin-top:20px; margin-bottom:8px;
     }
     .actions button {
       font-size:1em; padding:8px 22px; border-radius:7px;
@@ -47,16 +33,209 @@
     }
     .actions button.save { background: #18804f; color:#fff; }
     .actions button.new { background: #eaeaec; }
-    .actions button.back { background: #dde2ea; }
+    .actions button.logout { background: #efebfa; color:#45427b;}
     .actions button:hover { opacity:.87; }
-    .msg { text-align:center; padding:10px 0; }
+    .msg { text-align:center; padding:10px 0 5px 0; min-height:26px;}
     .msg.error { color:#fff; background:#c44736; border-radius:6px; }
     .msg.success { color:#18804f; background:#e6f4e7; border-radius:6px; }
+    .loginbox { width:320px; margin:90px auto 0 auto; padding:26px 30px 18px 30px; border-radius:14px; background:#fff; box-shadow:0 3px 14px #d7e2f633; border:1.5px solid #e6eaf1;}
+    .loginbox h2 { text-align:center; margin-bottom:16px; font-weight:700; color:#17305c;}
+    .loginrow { margin-bottom:15px;}
+    .loginrow label { display:block; margin-bottom:6px; color:#234;}
+    .loginrow input {
+      width:100%; font-size:1em; padding:7px 10px;
+      border-radius:6px; border:1.2px solid #b5bed5;
+      background:#fcfcfe; outline:none;
+    }
+    .loginrow input:focus { border-color:#1164be;}
+    .loginbox .msg { min-height:22px; }
   </style>
-  <script src="/scripts/supabaseClient.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+    const TABLE = "dmkhachhang";
+    let supabase = null, session = null, editingOld = false;
+
+    function showLogin() {
+      document.getElementById("loginbox").style.display = "";
+      document.getElementById("mainform").style.display = "none";
+      document.getElementById("msgLogin").textContent = "";
+    }
+    function showMain() {
+      document.getElementById("loginbox").style.display = "none";
+      document.getElementById("mainform").style.display = "";
+      document.getElementById("msgBox").textContent = "";
+      document.getElementById("makh").focus();
+    }
+    function setSession(ses) {
+      session = ses;
+      if (ses) {
+        localStorage.setItem("sb_kh_session", JSON.stringify(ses));
+        showMain();
+      } else {
+        localStorage.removeItem("sb_kh_session");
+        showLogin();
+      }
+    }
+
+    window.onload = function() {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      let save = localStorage.getItem("sb_kh_session");
+      if (save) {
+        try {
+          const ses = JSON.parse(save);
+          if(ses?.access_token) {
+            supabase.auth.setSession(ses);
+            setSession(ses);
+            return;
+          }
+        } catch (e) { /* ignore */ }
+      }
+      showLogin();
+    };
+
+    async function doLogin() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPass").value;
+      if (!email || !pass) { showMsgLogin("Nhập email & mật khẩu!","error"); return; }
+      showMsgLogin("Đang đăng nhập...");
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) { showMsgLogin("Sai email hoặc mật khẩu!","error"); return; }
+        setSession(data.session);
+      } catch (e) {
+        showMsgLogin("Lỗi đăng nhập: "+e.message,"error");
+      }
+    }
+    function doLogout() {
+      setSession(null);
+      supabase.auth.signOut();
+      resetForm();
+    }
+
+    function showMsgLogin(msg,type){ let box=document.getElementById("msgLogin"); box.textContent=msg; box.className="msg"+(type?" "+type:""); }
+    function showMsg(msg, type) {
+      let box=document.getElementById("msgBox"); box.textContent=msg||""; box.className="msg"+(type?" "+type:""); if(msg && type!=="error") setTimeout(()=>{box.textContent="";},2500);
+    }
+    function getVal(id){ return document.getElementById(id).value||""; }
+    function setVal(id,val){ document.getElementById(id).value=val||""; }
+
+    // ==== Validate bắt buộc ====
+    function validateForm() {
+      let makh = getVal("makh").trim().toUpperCase();
+      let tenkh = getVal("tenkh").trim();
+      let dienthoai = getVal("dienthoai").trim();
+      if (!makh) return "Mã khách hàng không được bỏ trống!";
+      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+      if (!/^\d{8,13}$/.test(dienthoai.replace(/[^\d]/g,""))) return "SĐT phải là số, 8-13 ký tự!";
+      return null;
+    }
+
+    // ==== Reset Form ====
+    function resetForm() {
+      ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id,""));
+      setVal("la_ncc","");
+      editingOld = false;
+      document.getElementById("makh").readOnly = false;
+      showMsg("");
+      document.getElementById("makh").focus();
+    }
+
+    // ==== Tự fill thông tin khi nhập mã khách hàng ====
+    async function fetchKH() {
+      let makh = getVal("makh").trim().toUpperCase();
+      if (!makh) return;
+      showMsg("Đang kiểm tra...", "");
+      const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
+      if (data && data.makh) {
+        setVal("tenkh", data.tenkh);
+        setVal("dienthoai", data.dienthoai);
+        setVal("ngaysinh", data.ngaysinh ? data.ngaysinh.slice(0,10) : "");
+        setVal("diachi", data.diachi);
+        setVal("email", data.email);
+        setVal("taikhoan", data.taikhoan);
+        setVal("mst", data.mst);
+        setVal("cccd", data.cccd);
+        setVal("la_ncc", data.la_ncc ? "true" : "");
+        document.getElementById("makh").readOnly = true;
+        editingOld = true;
+        showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.","success");
+      } else {
+        editingOld = false;
+        document.getElementById("makh").readOnly = false;
+        ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id=>setVal(id,""));
+        showMsg("Mã mới, nhập đủ thông tin để lưu!","");
+      }
+    }
+
+    // ==== Lưu khách hàng (insert/update) ====
+    async function saveKH() {
+      const err = validateForm();
+      if(err) { showMsg(err,"error"); return; }
+      let obj = {
+        makh: getVal("makh").trim().toUpperCase(),
+        tenkh: getVal("tenkh").trim(),
+        dienthoai: getVal("dienthoai").trim(),
+        ngaysinh: getVal("ngaysinh")||null,
+        diachi: getVal("diachi"),
+        email: getVal("email"),
+        taikhoan: getVal("taikhoan"),
+        mst: getVal("mst"),
+        cccd: getVal("cccd"),
+        la_ncc: getVal("la_ncc")==="true"
+      };
+      let error;
+      if(editingOld) {
+        ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
+      } else {
+        ({ error } = await supabase.from(TABLE).insert(obj));
+      }
+      if(!error) {
+        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!","success");
+        setTimeout(resetForm, 1200);
+      } else {
+        showMsg("Lỗi: " + error.message, "error");
+      }
+    }
+
+    // ==== Tự động focus/enter chuyển trường ====
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll("#mainform input, #mainform select").forEach(e=>{
+        e.addEventListener("focus", function(){ this.select && this.select(); });
+        e.addEventListener("keydown", function(ev){
+          if(ev.key==="Enter") {
+            ev.preventDefault();
+            let fields=["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"];
+            let idx = fields.indexOf(this.id);
+            if(idx >= 0 && idx < fields.length-1) document.getElementById(fields[idx+1]).focus();
+            else if(idx===fields.length-1) document.getElementById("makh").focus();
+          }
+        });
+      });
+    });
+  </script>
 </head>
 <body>
-  <div class="form-container">
+  <!-- Login Box -->
+  <div id="loginbox" class="loginbox" style="display:none">
+    <h2>Đăng nhập Supabase</h2>
+    <div class="loginrow">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="Email Supabase...">
+    </div>
+    <div class="loginrow">
+      <label>Mật khẩu</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Mật khẩu...">
+    </div>
+    <div class="actions" style="margin-top:14px;">
+      <button class="save" style="width:100%;" onclick="doLogin()">Đăng nhập</button>
+    </div>
+    <div id="msgLogin" class="msg"></div>
+  </div>
+  <!-- Main Form -->
+  <div id="mainform" class="center-box" style="display:none">
     <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
     <div class="row">
       <label class="required">Mã KH *</label>
@@ -104,145 +283,9 @@
     <div class="actions">
       <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
       <button class="new" onclick="resetForm()">Thêm mới</button>
-      <button class="back" onclick="window.history.back()">Trở về</button>
+      <button class="logout" onclick="doLogout()">Đăng xuất</button>
     </div>
     <div id="msgBox" class="msg"></div>
   </div>
-
-  <script>
-    // === Cài đặt thông tin Supabase của bạn (đã có trong supabaseClient.js) ===
-    const TABLE = "dmkhachhang";
-    let currentToken = null, currentUser = null, editingOld = false;
-
-    // === Validate trường bắt buộc ===
-    function validateForm() {
-      let makh = getVal("makh").trim().toUpperCase();
-      let tenkh = getVal("tenkh").trim();
-      let dienthoai = getVal("dienthoai").trim();
-      if (!makh) return "Mã khách hàng không được bỏ trống!";
-      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
-      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
-      if (!/^\d{8,13}$/.test(dienthoai.replace(/[^\d]/g,""))) return "SĐT phải là số, 8-13 ký tự!";
-      return null;
-    }
-    function getVal(id){ return document.getElementById(id).value||""; }
-    function setVal(id,val){ document.getElementById(id).value=val||""; }
-
-    // === Reset form về trạng thái thêm mới ===
-    function resetForm() {
-      ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id,""));
-      setVal("la_ncc","");
-      editingOld = false;
-      document.getElementById("makh").readOnly = false;
-      showMsg("");
-    }
-
-    // === Hiển thị thông báo (success/error) ===
-    function showMsg(msg, type) {
-      const box = document.getElementById("msgBox");
-      box.textContent = msg || "";
-      box.className = "msg" + (type ? " "+type : "");
-      if(msg && type!=="error") setTimeout(()=>{box.textContent="";},2200);
-    }
-
-    // === Đăng nhập Supabase tự động nếu chưa có token ===
-    async function requireLogin() {
-      if(currentToken) return true;
-      // Dùng thông tin bạn đã gửi
-      const email = "khohangcs1@gmail.com";
-      const password = "123123";
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if(error) { showMsg("Lỗi đăng nhập: "+error.message,"error"); return false; }
-        currentToken = data.session.access_token;
-        currentUser = data.user;
-        return true;
-      } catch(e) {
-        showMsg("Lỗi đăng nhập Supabase: "+e.message,"error");
-        return false;
-      }
-    }
-
-    // === Khi blur ô mã KH: tự động kiểm tra/mở chế độ sửa nếu có ===
-    async function fetchKH() {
-      let makh = getVal("makh").trim().toUpperCase();
-      if(!makh) return;
-      if(!await requireLogin()) return;
-      showMsg("Đang kiểm tra...", "");
-      const { data, error } = await supabase
-        .from(TABLE)
-        .select("*").eq("makh", makh).single();
-      if(data) {
-        setVal("tenkh", data.tenkh);
-        setVal("dienthoai", data.dienthoai);
-        setVal("ngaysinh", data.ngaysinh ? data.ngaysinh.slice(0,10) : "");
-        setVal("diachi", data.diachi);
-        setVal("email", data.email);
-        setVal("taikhoan", data.taikhoan);
-        setVal("mst", data.mst);
-        setVal("cccd", data.cccd);
-        setVal("la_ncc", data.la_ncc ? "true" : "");
-        document.getElementById("makh").readOnly = true;
-        editingOld = true;
-        showMsg("Đã nạp dữ liệu khách hàng, sửa và nhấn Lưu để cập nhật.","success");
-      } else {
-        editingOld = false;
-        document.getElementById("makh").readOnly = false;
-        ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id=>setVal(id,""));
-        showMsg("Đây là mã mới, hãy nhập đủ thông tin và Lưu!","");
-      }
-    }
-
-    // === Lưu dữ liệu (insert/update Supabase) ===
-    async function saveKH() {
-      const err = validateForm();
-      if(err) { showMsg(err, "error"); return; }
-      if(!await requireLogin()) return;
-
-      let obj = {
-        makh: getVal("makh").trim().toUpperCase(),
-        tenkh: getVal("tenkh").trim(),
-        dienthoai: getVal("dienthoai").trim(),
-        ngaysinh: getVal("ngaysinh") || null,
-        diachi: getVal("diachi"),
-        email: getVal("email"),
-        taikhoan: getVal("taikhoan"),
-        mst: getVal("mst"),
-        cccd: getVal("cccd"),
-        la_ncc: getVal("la_ncc") === "true"
-      };
-      let res, error;
-      if(editingOld) {
-        // update
-        ({ error } = await supabase.from(TABLE)
-          .update(obj).eq("makh", obj.makh));
-      } else {
-        // insert
-        ({ error } = await supabase.from(TABLE)
-          .insert(obj));
-      }
-      if(!error) {
-        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!","success");
-        setTimeout(resetForm, 1200);
-      } else {
-        showMsg("Lỗi: " + error.message, "error");
-      }
-    }
-
-    // === Tự động focus, bôi đen text khi tab/enter chuyển trường ===
-    document.querySelectorAll("input,select").forEach(e=>{
-      e.addEventListener("focus", function(){ this.select && this.select(); });
-      e.addEventListener("keydown", function(ev){
-        if(ev.key==="Enter") {
-          ev.preventDefault();
-          let fields = ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"];
-          let idx = fields.indexOf(this.id);
-          if(idx >= 0 && idx < fields.length-1) document.getElementById(fields[idx+1]).focus();
-          else if(idx===fields.length-1) document.getElementById("makh").focus();
-        }
-      });
-    });
-    window.onload = ()=>{ setTimeout(()=>document.getElementById("makh").focus(), 100);}
-  </script>
 </body>
 </html>
