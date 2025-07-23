@@ -133,20 +133,26 @@ async function triggerSearch() {
     // Duyệt mảng size, chuẩn hóa dữ liệu
     // Lấy size list, map dữ liệu
     let htmlLeft = "";
-htmlLeft += `<tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td></tr>`;
-htmlLeft += `<tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td></tr>`;
-htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td></tr>`;
-htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td></tr>`;
-htmlLeft += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td></tr>`;
-htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
-htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td></tr>`;
-htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td></tr>`;
-for (let i = 1; i < nhapList.length - 1; i++) {
-    htmlLeft += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td></tr>`;
-}
-document.getElementById('infoTableLeft').innerHTML = htmlLeft;
+    htmlLeft += `<tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td></tr>`;
+    for (let i = 1; i < nhapList.length - 1; i++) {
+        htmlLeft += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td></tr>`;
+    }
+    document.getElementById('infoTableLeft').innerHTML = htmlLeft;    
+    
 
-let htmlRight = `
+    // ===== THÊM 2 DÒNG NÀY NGAY SAU =====
+    let totalRow = xntdata.find(row => row.size === 'Tổng') || {};
+    let sizeRows = xntdata.filter(row => row.size !== 'Tổng');
+
+    // ... Tiếp tục render bảng như bạn đang làm
+    let htmlRight = `
     <tr>
         <th class="size">Size</th>
         <th class="blue">Tổng nhập</th>
@@ -158,8 +164,8 @@ let htmlRight = `
         <th class="red">Bán CS2</th>
     </tr>
 `;
-// Dòng tổng
-htmlRight += `
+    // Dòng tổng
+    htmlRight += `
 <tr>
     <td class="size">Tổng</td>
     <td class="number">${totalRow.tongnhap || 0}</td>
@@ -171,9 +177,9 @@ htmlRight += `
     <td class="number">${totalRow.ban_cs2 || 0}</td>
 </tr>
 `;
-// Dòng từng size
-sizeRows.forEach(row => {
-    htmlRight += `
+    // Dòng từng size
+    sizeRows.forEach(row => {
+        htmlRight += `
     <tr>
         <td class="size">${row.size}</td>
         <td class="number">${row.tongnhap || 0}</td>
@@ -185,8 +191,9 @@ sizeRows.forEach(row => {
         <td class="number">${row.ban_cs2 || 0}</td>
     </tr>
     `;
-});
-document.getElementById('infoTableRight').innerHTML = htmlRight;
+    });
+    document.getElementById('infoTableRight').innerHTML = htmlRight;
+
 
     document.getElementById('maspInput').select();
 }
