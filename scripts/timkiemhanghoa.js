@@ -155,7 +155,7 @@ async function triggerSearch() {
     let htmlRight = `
     <tr>
         <th class="size">Size</th>
-        <th class="blue">Tổng nhập</th>
+        <th class="blue">Tổng mua</th>
         <th class="blue">Tổng bán</th>
         <th class="blue">Tổng tồn</th>
         <th class="red">Bán CS1</th>
