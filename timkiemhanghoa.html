@@ -198,6 +198,34 @@
         #popupSearchList div:hover {
             background: #e3f0ff;
         }
+
+        .flex-wrap {
+            display: flex;
+            gap: 24px;
+        }
+
+        .left-info {
+            width: 30%;
+            min-width: 200px;
+        }
+
+        .right-xnt {
+            width: 70%;
+            min-width: 420px;
+            overflow-x: auto;
+        }
+
+        @media (max-width: 900px) {
+            .flex-wrap {
+                flex-direction: column;
+            }
+
+            .left-info,
+            .right-xnt {
+                width: 100%;
+                min-width: unset;
+            }
+        }
     </style>
 </head>
 
@@ -229,9 +257,16 @@
                 kiếm</button>
         </div>
         <div id="statusMsg" style="color: #c62828; font-weight:bold; min-height:30px;"></div>
-        <div class="table-wrap">
-            <table id="infoTable" class="info-table"></table>
+
+        <div class="flex-wrap">
+            <div class="left-info">
+                <table id="infoTableLeft" class="info-table"></table>
+            </div>
+            <div class="right-xnt">
+                <table id="infoTableRight" class="info-table"></table>
+            </div>
         </div>
+
     </div>
     <!-- Popup tìm kiếm dùng chung -->
     <div id="popupSearch">
