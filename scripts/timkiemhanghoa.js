@@ -168,9 +168,9 @@ async function triggerSearch() {
     htmlRight += `
 <tr>
     <td class="size">Tổng</td>
-    <td class="number">${totalRow.tongnhap || 0}</td>
-    <td class="number">${totalRow.tongban || 0}</td>
-    <td class="number">${totalRow.tongton || 0}</td>
+    <td class="number">${totalRow.nhapmua || 0}</td>
+    <td class="number">${totalRow.xuatban || 0}</td>
+    <td class="number">${totalRow.toncuoi || 0}</td>
     <td class="number">${totalRow.ban_cs1 || 0}</td>
     <td class="number">${totalRow.ton_cs1 || 0}</td>
     <td class="number">${totalRow.ton_cs2 || 0}</td>
