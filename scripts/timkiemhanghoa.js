@@ -144,11 +144,17 @@ async function triggerSearch() {
     for (let i = 1; i < nhapList.length - 1; i++) {
         htmlLeft += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td></tr>`;
     }
-    document.getElementById('infoTableLeft').innerHTML = htmlLeft;    
-    
+    document.getElementById('infoTableLeft').innerHTML = htmlLeft;
+
 
     // ===== THÊM 2 DÒNG NÀY NGAY SAU =====
-    let totalRow = xntdata.find(row => row.size === 'Tổng') || {};
+    // Tổng từng cột theo size (size khác null/0)
+    let fields = ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"];
+    let totalRow = {};
+    fields.forEach(f => {
+        totalRow[f] = sizeRows.reduce((sum, row) => sum + (Number(row[f]) || 0), 0);
+    });
+
     let sizeRows = xntdata.filter(row => row.size !== 'Tổng');
 
     // ... Tiếp tục render bảng như bạn đang làm
