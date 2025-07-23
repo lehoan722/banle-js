@@ -133,115 +133,83 @@ async function triggerSearch() {
     }
 
     // Duyệt mảng size, chuẩn hóa dữ liệu
-    let sizeArr = xntdata.filter(r => r.size !== 'Tổng').map(r => r.size);
-    let bySize = {};
-    xntdata.forEach(row => { bySize[row.size] = row; });
-    let totalRow = xntdata.find(r => r.size === 'Tổng');
+    // Lấy size list, map dữ liệu
+    let sizeRows = [];
+    let totalRow = null;
+    xntdata.forEach(row => {
+        if (row.size === "Tổng") totalRow = row;
+        else sizeRows.push(row);
+    });
 
-    // Render bảng đúng mẫu
+    // Header
     let html = `
     <tr>
-        <td class="title label">Mã hàng</td>
-        <td>${hanghoa.masp}</td>
-        <td class="size">Tổng</td>
-        ${sizeArr.map(s => `<td class="size">${s}</td>`).join("")}
+        <th class="label" rowspan="2">Thông tin HH</th>
+        <th class="label" rowspan="2">Giá trị</th>
+        <th class="size" rowspan="2">size</th>
+        <th class="blue" colspan="3">Tổng XNT</th>
+        <th class="red" colspan="2">cs1</th>
+        <th class="red" colspan="2">cs2</th>
     </tr>
     <tr>
-        <td class="label">Tên hàng</td>
-        <td>${hanghoa.tensp}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>
-    <tr>
-        <td class="label">Vị trí (Kệ hàng)</td>
-        <td>${hanghoa.vitrikho1 || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>
-    <tr>
-        <td class="label">Vị trí (Kệ hàng) CS2</td>
-        <td>${hanghoa.vitrikho2 || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>
-    <tr>
-        <td class="label">Giá lẻ</td>
-        <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>
-    <tr>
-        <td class="label">Nhà cung cấp</td>
-        <td>${hanghoa.nhacc || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>
-    <tr>
-        <td class="label">Nhập cuối</td>
-        <td>${ngay_nhapcuoi || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>
-    <tr>
-        <td class="label">Nhập đầu</td>
-        <td>${ngay_nhapdau || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
+        <th class="blue">Tổng nhập</th>
+        <th class="blue">Tổng bán</th>
+        <th class="blue">Tổng tồn</th>
+        <th class="red">ban cs1</th>
+        <th class="red">ton cs1</th>
+        <th class="red">ton cs2</th>
+        <th class="red">ban cs2</th>
     </tr>
 `;
 
-    // Dòng n1, n2, n3...
+    // Các dòng thông tin tĩnh
+    html += `<tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td><td></td><td colspan="8"></td></tr>`;
+    html += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td><td></td><td colspan="8"></td></tr>`;
     for (let i = 1; i < nhapList.length - 1; i++) {
-        html += `<tr>
-        <td class="label">n${i}</td>
-        <td>${nhapList[i].ngay || ""}</td>
-        <td colspan="${sizeArr.length + 1}"></td>
-    </tr>`;
+        html += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td><td></td><td colspan="8"></td></tr>`;
     }
 
-    // Tổng XNT
-    html += `<tr>
-    <td class="title label" rowspan="3" style="vertical-align:middle;">Tổng XNT</td>
-    <td class="blue">Tổng nhập</td>
+    // Dòng tổng
+    html += `
+<tr>
+    <td class="label" style="font-weight:bold;color:#1976d2">Tổng</td>
+    <td></td>
+    <td class="size">Tổng</td>
     <td class="number">${totalRow.tongnhap || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongnhap || 0}</td>`).join("")}
-</tr>
-<tr>
-    <td class="blue">Tổng bán</td>
     <td class="number">${totalRow.tongban || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongban || 0}</td>`).join("")}
-</tr>
-<tr>
-    <td class="blue">Tổng tồn</td>
     <td class="number">${totalRow.tongton || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.tongton || 0}</td>`).join("")}
-</tr>`;
-
-    // CS1
-    html += `<tr>
-    <td class="title label" rowspan="2" style="vertical-align:middle;">cs1</td>
-    <td class="blue">ban cs1</td>
     <td class="number">${totalRow.ban_cs1 || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ban_cs1 || 0}</td>`).join("")}
-</tr>
-<tr>
-    <td class="blue">ton cs1</td>
     <td class="number">${totalRow.ton_cs1 || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ton_cs1 || 0}</td>`).join("")}
-</tr>`;
-
-    // CS2
-    html += `<tr>
-    <td class="title label" rowspan="2" style="vertical-align:middle;">cs2</td>
-    <td class="blue">ton cs2</td>
     <td class="number">${totalRow.ton_cs2 || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ton_cs2 || 0}</td>`).join("")}
-</tr>
-<tr>
-    <td class="blue">ban cs2</td>
     <td class="number">${totalRow.ban_cs2 || 0}</td>
-    ${sizeArr.map(s => `<td class="number">${bySize[s]?.ban_cs2 || 0}</td>`).join("")}
-</tr>`;
+</tr>
+`;
 
-
-    // (Tuỳ ý, có thể mở rộng: bán CS1, tồn CS1, bán CS2, tồn CS2 nếu tách riêng từng trường CS)
-    // Bạn có thể thêm vào đây nếu muốn lấy chi tiết bán/tồn từng cơ sở, chỉ cần lấy thêm trường ở SQL.
+    // Dòng từng size
+    sizeRows.forEach(row => {
+        html += `
+    <tr>
+        <td></td>
+        <td></td>
+        <td class="size">${row.size}</td>
+        <td class="number">${row.tongnhap || 0}</td>
+        <td class="number">${row.tongban || 0}</td>
+        <td class="number">${row.tongton || 0}</td>
+        <td class="number">${row.ban_cs1 || 0}</td>
+        <td class="number">${row.ton_cs1 || 0}</td>
+        <td class="number">${row.ton_cs2 || 0}</td>
+        <td class="number">${row.ban_cs2 || 0}</td>
+    </tr>
+    `;
+    });
 
     table.innerHTML = html;
-
-    // Sau khi render bảng xong, bôi đen toàn bộ ô nhập mã sản phẩm
     document.getElementById('maspInput').select();
+
 }
