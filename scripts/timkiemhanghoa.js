@@ -134,52 +134,35 @@ async function triggerSearch() {
 
     // Duyệt mảng size, chuẩn hóa dữ liệu
     // Lấy size list, map dữ liệu
-    let sizeRows = [];
-    let totalRow = null;
-    xntdata.forEach(row => {
-        if (row.size === "Tổng") totalRow = row;
-        else sizeRows.push(row);
-    });
+    let htmlLeft = "";
+htmlLeft += `<tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td></tr>`;
+htmlLeft += `<tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td></tr>`;
+htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td></tr>`;
+htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td></tr>`;
+htmlLeft += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td></tr>`;
+htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
+htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td></tr>`;
+htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td></tr>`;
+for (let i = 1; i < nhapList.length - 1; i++) {
+    htmlLeft += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td></tr>`;
+}
+document.getElementById('infoTableLeft').innerHTML = htmlLeft;
 
-    // Header
-    let html = `
+let htmlRight = `
     <tr>
-        <th class="label" rowspan="2">Thông tin HH</th>
-        <th class="label" rowspan="2">Giá trị</th>
-        <th class="size" rowspan="2">size</th>
-        <th class="blue" colspan="3">Tổng XNT</th>
-        <th class="red" colspan="2">cs1</th>
-        <th class="red" colspan="2">cs2</th>
-    </tr>
-    <tr>
+        <th class="size">Size</th>
         <th class="blue">Tổng nhập</th>
         <th class="blue">Tổng bán</th>
         <th class="blue">Tổng tồn</th>
-        <th class="red">ban cs1</th>
-        <th class="red">ton cs1</th>
-        <th class="red">ton cs2</th>
-        <th class="red">ban cs2</th>
+        <th class="red">Bán CS1</th>
+        <th class="red">Tồn CS1</th>
+        <th class="red">Tồn CS2</th>
+        <th class="red">Bán CS2</th>
     </tr>
 `;
-
-    // Các dòng thông tin tĩnh
-    html += `<tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td><td></td><td colspan="8"></td></tr>`;
-    html += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td><td></td><td colspan="8"></td></tr>`;
-    for (let i = 1; i < nhapList.length - 1; i++) {
-        html += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td><td></td><td colspan="8"></td></tr>`;
-    }
-
-    // Dòng tổng
-    html += `
+// Dòng tổng
+htmlRight += `
 <tr>
-    <td class="label" style="font-weight:bold;color:#1976d2">Tổng</td>
-    <td></td>
     <td class="size">Tổng</td>
     <td class="number">${totalRow.tongnhap || 0}</td>
     <td class="number">${totalRow.tongban || 0}</td>
@@ -190,13 +173,10 @@ async function triggerSearch() {
     <td class="number">${totalRow.ban_cs2 || 0}</td>
 </tr>
 `;
-
-    // Dòng từng size
-    sizeRows.forEach(row => {
-        html += `
+// Dòng từng size
+sizeRows.forEach(row => {
+    htmlRight += `
     <tr>
-        <td></td>
-        <td></td>
         <td class="size">${row.size}</td>
         <td class="number">${row.tongnhap || 0}</td>
         <td class="number">${row.tongban || 0}</td>
@@ -207,9 +187,8 @@ async function triggerSearch() {
         <td class="number">${row.ban_cs2 || 0}</td>
     </tr>
     `;
-    });
+});
+document.getElementById('infoTableRight').innerHTML = htmlRight;
 
-    table.innerHTML = html;
     document.getElementById('maspInput').select();
-
 }
