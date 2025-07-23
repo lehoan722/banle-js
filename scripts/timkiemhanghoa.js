@@ -149,13 +149,14 @@ async function triggerSearch() {
 
     // ===== THÊM 2 DÒNG NÀY NGAY SAU =====
     // Tổng từng cột theo size (size khác null/0)
+
+    let sizeRows = xntdata.filter(row => row.size !== 'Tổng');
+
     let fields = ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"];
     let totalRow = {};
     fields.forEach(f => {
         totalRow[f] = sizeRows.reduce((sum, row) => sum + (Number(row[f]) || 0), 0);
-    });
-
-    let sizeRows = xntdata.filter(row => row.size !== 'Tổng');
+    });    
 
     // ... Tiếp tục render bảng như bạn đang làm
     let htmlRight = `
