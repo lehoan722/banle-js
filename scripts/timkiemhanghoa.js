@@ -92,9 +92,7 @@ document.getElementById('searchBtn').onclick = triggerSearch;
 // ==== Hàm chính lấy và render dữ liệu ====
 async function triggerSearch() {
     const masp = document.getElementById('maspInput').value.trim().toUpperCase();
-    const table = document.getElementById('infoTable');
     const msg = document.getElementById('statusMsg');
-    table.innerHTML = "";
     msg.textContent = "";
 
     if (!masp) {
