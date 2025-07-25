@@ -647,7 +647,8 @@ export async function luuHoaDonccn1v2() {
     try {
       let sohdBaseDoiUng = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
       const arrDoiUng = sohdBaseDoiUng.split('_');
-      const loaiGoc = arrDoiUng.slice(0, -1).join('_');
+      const loaiDoiUng = hoadon.diadiem === 'cs1' ? 'ncncs2' : 'ncncs1';
+
       let sohdDoiUng = sohdBaseDoiUng + '_IN';
 
       // XÁC ĐỊNH ĐỊA ĐIỂM ĐỐI ỨNG: NGƯỢC LẠI VỚI ĐỊA ĐIỂM GỐC
@@ -690,11 +691,13 @@ export async function luuHoaDonccn1v2() {
             .select("so_hientai")
             .eq("loai", loaiGoc)
             .single();
-          if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {
+          if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {.
+
             await supabase
               .from("sochungtu")
               .update({ so_hientai: soMoiDoiUng })
-              .eq("loai", loaiGoc);
+              .eq("loai", loaiDoiUng);
+
           }
           // === KẾT THÚC CẬP NHẬT SỐ HIỆN TẠI CHO ĐỐI ỨNG ===
         }
