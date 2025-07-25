@@ -557,6 +557,10 @@ export async function luuHoaDonccn1v2() {
 
   // Lấy cơ sở từ localStorage, không lấy từ input
   const diadiem = localStorage.getItem("diadiem");
+  if (!diadiem || (diadiem !== 'cs1' && diadiem !== 'cs2')) {
+    alert("❌ Không xác định được địa điểm chi nhánh (cs1 hoặc cs2). Hãy kiểm tra lại!");
+    return;
+  }
 
   const { data: tonTai } = await supabase
     .from("hoadon_banle")
