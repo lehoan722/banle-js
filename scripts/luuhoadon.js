@@ -655,15 +655,28 @@ export async function luuHoaDonccn1v2() {
     // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
     // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
     try {
-      let sohdBaseDoiUng = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
-      const arrDoiUng = sohdBaseDoiUng.split('_');
-      const so = arrDoiUng[arrDoiUng.length - 1];
+      // TÁCH LOẠI & SỐ từ số chứng từ gốc (VD: xcncs1_00031)
+      const arr = sohd.split('_');
+      const sohdSo = arr[1];  // "00031"
+      const loaiGoc = arr[0]; // "xcncs1"
 
-      const diadiemGoc = hoadon.diadiem;
-      const diadiemDoiUng = diadiemGoc === 'cs1' ? 'cs2' : 'cs1';
-      const loaiDoiUng = diadiemDoiUng === 'cs1' ? 'ncncs1' : 'ncncs2';
-      const sohdDoiUng = loaiDoiUng + '_' + so;  // Không còn _IN
+      // Xác định loại đối ứng và chi nhánh đối ứng
+      let loaiDoiUng = "";
+      let diadiemDoiUng = "";
+      if (loaiGoc === "xcncs1") {
+        loaiDoiUng = "ncncs2";
+        diadiemDoiUng = "cs2";
+      } else if (loaiGoc === "xcncs2") {
+        loaiDoiUng = "ncncs1";
+        diadiemDoiUng = "cs1";
+      } else {
+        console.warn("Không xác định được loại chứng từ đối ứng từ: " + loaiGoc);
+        return;
+      }
 
+      const sohdDoiUng = `${loaiDoiUng}_${sohdSo}`;
+
+      // Kiểm tra đã có hóa đơn đối ứng chưa
       const { data: doiUngDaCo } = await supabase
         .from("hoadon_banle")
         .select("sohd")
@@ -671,7 +684,6 @@ export async function luuHoaDonccn1v2() {
         .maybeSingle();
 
       if (!doiUngDaCo) {
-        // Tạo hóa đơn đối ứng
         const hoadonDoiUng = {
           ...hoadon,
           sohd: sohdDoiUng,
@@ -690,22 +702,24 @@ export async function luuHoaDonccn1v2() {
         await supabase.from("hoadon_banle").insert([hoadonDoiUng]);
         await supabase.from("ct_hoadon_banle").insert(chitietDoiUng);
 
-        const soMoiDoiUng = parseInt(so, 10);
+        // Cập nhật bảng sochungtu cho loại chứng từ đối ứng
+        const soMoi = parseInt(sohdSo, 10);
         const { data: currSoChungTuDoiUng } = await supabase
           .from("sochungtu")
           .select("so_hientai")
           .eq("loai", loaiDoiUng)
           .single();
 
-        if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {
+        if (!currSoChungTuDoiUng || soMoi > currSoChungTuDoiUng.so_hientai) {
           await supabase
             .from("sochungtu")
-            .upsert([{ loai: loaiDoiUng, so_hientai: soMoiDoiUng }], { onConflict: 'loai' });
+            .upsert([{ loai: loaiDoiUng, so_hientai: soMoi }], { onConflict: 'loai' });
         }
       }
     } catch (e) {
       console.error("Lỗi khi phát sinh chứng từ đối ứng:", e);
     }
+
     // === KẾT THÚC CHỨNG TỪ ĐỐI ỨNG ===
 
     // === KẾT THÚC ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
