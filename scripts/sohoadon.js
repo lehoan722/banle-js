@@ -31,9 +31,9 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("xuathuy")) {
             loai = diadiem === "cs1" ? "xuathuycs1" : "xuathuycs2";
         } else if (pathname.includes("ccn1v2")) {
-            loai = "ccn1v2";
+            loai = "xcncs1";
         } else if (pathname.includes("ccn2v1")) {
-            loai = "ccn2v1";
+            loai = "xcncs2";
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
             loai = isTang ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
