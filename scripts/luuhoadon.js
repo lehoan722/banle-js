@@ -536,6 +536,11 @@ function inHoaDon(hoadon, chitiet) {
 }
 
 export async function luuHoaDonccn1v2() {
+  const pathname = window.location.pathname;
+  let loaihd_thucte = "";
+  if (pathname.includes("ccn1v2")) loaihd_thucte = "xcncs1";
+  else if (pathname.includes("ccn2v1")) loaihd_thucte = "xcncs2";
+
   capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
   // BỔ SUNG CHẶN LƯU Ở ĐÂY:
   const maspChuaNhap = document.getElementById("masp")?.value.trim();
@@ -589,7 +594,7 @@ export async function luuHoaDonccn1v2() {
     created_at: createdAt,
     loai: "",
     dvt: "",
-    loaihd: sohd.split("_")[0],   // <-- CHỈNH ĐOẠN NÀY!
+    loaihd: loaihd_thucte,   // <-- CHỈNH ĐOẠN NÀY!
     nhacc: ""
   };
 
@@ -668,6 +673,7 @@ export async function luuHoaDonccn1v2() {
           const hoadonDoiUng = {
             ...hoadon,
             sohd: sohdDoiUng,
+            loaihd: loaiDoiUng, 
             diadiem: diadiemDoiUng,
             //ghichu: "Đối ứng chuyển chi nhánh tự động cho " + sohdBaseDoiUng,
             created_at: new Date().toISOString(),
@@ -689,14 +695,13 @@ export async function luuHoaDonccn1v2() {
           const { data: currSoChungTuDoiUng } = await supabase
             .from("sochungtu")
             .select("so_hientai")
-            .eq("loai", loaiGoc)
+            .eq("loai", loaiDoiUng)
             .single();
           if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {
 
             await supabase
               .from("sochungtu")
-              .update({ so_hientai: soMoiDoiUng })
-              .eq("loai", loaiDoiUng);
+              .upsert([{ loai: loaiDoiUng, so_hientai: soMoiDoiUng }], { onConflict: 'loai' });
 
           }
           // === KẾT THÚC CẬP NHẬT SỐ HIỆN TẠI CHO ĐỐI ỨNG ===
