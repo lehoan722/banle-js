@@ -691,7 +691,7 @@ export async function luuHoaDonccn1v2() {
             .select("so_hientai")
             .eq("loai", loaiGoc)
             .single();
-          if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {.
+          if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {
 
             await supabase
               .from("sochungtu")
