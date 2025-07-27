@@ -1,308 +1,213 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Nhập Danh Mục Nhân Viên</title>
-    <meta name="viewport" content="width=450">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f9f9fb;
-            padding: 32px;
-        }
+  <meta charset="UTF-8">
+  <title>Nhập Danh Mục Nhân Viên</title>
+  <meta name="viewport" content="width=450">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9fb; padding: 32px; }
+    .center-box { width: 420px; margin: 40px auto; background: #fff; border-radius: 18px; box-shadow: 0 3px 18px #d6e3ef44; border: 1.5px solid #e3e9f1; padding: 28px 24px 18px 24px; }
+    .form-title { font-size: 1.18em; font-weight: bold; text-align: center; margin-bottom: 22px; color: #163163; }
+    .row { display: flex; align-items: center; margin-bottom: 15px; }
+    .row label { width: 120px; font-size: 1em; }
+    .row input, .row select, .row textarea { flex: 1; padding: 7px 10px; font-size: 1em; border-radius: 7px; border: 1.2px solid #b5bed5; background: #fcfcfe; }
+    .row input:focus, .row select:focus, .row textarea:focus { border-color: #1164be; outline: none; }
+    .required { color: #e23a1b; font-weight: bold; }
+    .actions { display: flex; gap: 13px; justify-content: center; margin-top: 20px; margin-bottom: 8px; flex-wrap: wrap; }
+    .actions button { font-size: 1em; padding: 8px 22px; border-radius: 7px; border: none; cursor: pointer; font-weight: 500; box-shadow: 0 2px 6px #dee6ff33; }
+    .actions button.save { background: #18804f; color: #fff; }
+    .actions button.new { background: #eaeaec; }
+    .actions button.delete { background: #d13f3f; color: #fff; }
+    .actions button.logout { background: #efebfa; color: #45427b; }
+    .actions button:hover { opacity: .87; }
+    .msg { text-align: center; padding: 10px 0 5px 0; min-height: 26px; }
+    .msg.error { color: #fff; background: #c44736; border-radius: 6px; }
+    .msg.success { color: #18804f; background: #e6f4e7; border-radius: 6px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_ANON_KEY = 'ey...';
+    const TABLE = "dmnhanvien";
+    let supabase = null, session = null, editingOld = false;
 
-        .center-box {
-            width: 420px;
-            margin: 40px auto;
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 3px 18px #d6e3ef44;
-            border: 1.5px solid #e3e9f1;
-            padding: 28px 24px 18px 24px;
-        }
+    function showLogin() {
+      document.getElementById("loginbox").style.display = "";
+      document.getElementById("mainform").style.display = "none";
+      document.getElementById("msgLogin").textContent = "";
+    }
+    function showMain() {
+      document.getElementById("loginbox").style.display = "none";
+      document.getElementById("mainform").style.display = "";
+      document.getElementById("msgBox").textContent = "";
+      document.getElementById("manv").focus();
+    }
+    function setSession(ses) {
+      session = ses;
+      if (ses) {
+        localStorage.setItem("sb_nv_session", JSON.stringify(ses));
+        showMain();
+      } else {
+        localStorage.removeItem("sb_nv_session");
+        showLogin();
+      }
+    }
 
-        .form-title {
-            font-size: 1.18em;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 22px;
-            color: #163163;
-        }
+    window.onload = function () {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      let save = localStorage.getItem("sb_nv_session");
+      if (save) {
+        try {
+          const ses = JSON.parse(save);
+          if (ses?.access_token) {
+            supabase.auth.setSession(ses);
+            setSession(ses);
+            return;
+          }
+        } catch (e) {}
+      }
+      showLogin();
+    };
 
-        .row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+    async function doLogin() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPass").value;
+      if (!email || !pass) { showMsgLogin("Nhập email & mật khẩu!", "error"); return; }
+      showMsgLogin("Đang đăng nhập...");
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) { showMsgLogin("Sai email hoặc mật khẩu!", "error"); return; }
+        setSession(data.session);
+      } catch (e) {
+        showMsgLogin("Lỗi đăng nhập: " + e.message, "error");
+      }
+    }
 
-        .row label {
-            width: 120px;
-            font-size: 1em;
-        }
+    function doLogout() {
+      setSession(null);
+      supabase.auth.signOut();
+      resetForm();
+    }
 
-        .row input,
-        .row select,
-        .row textarea {
-            flex: 1;
-            padding: 7px 10px;
-            font-size: 1em;
-            border-radius: 7px;
-            border: 1.2px solid #b5bed5;
-            background: #fcfcfe;
-        }
+    function showMsgLogin(msg, type) {
+      let box = document.getElementById("msgLogin");
+      box.textContent = msg;
+      box.className = "msg" + (type ? " " + type : "");
+    }
 
-        .row input:focus,
-        .row select:focus,
-        .row textarea:focus {
-            border-color: #1164be;
-            outline: none;
-        }
+    function getVal(id) { return document.getElementById(id).value; }
+    function setVal(id, val) { document.getElementById(id).value = val || ""; }
 
-        .required {
-            color: #e23a1b;
-            font-weight: bold;
-        }
+    function resetForm() {
+      ["manv", "tennv", "matkhau", "email", "loai_duoc_sua"].forEach(id => setVal(id, ""));
+      ["trangthai", "sua_hoadon", "xoa_hoadon"].forEach(id => document.getElementById(id).value = "true");
+      editingOld = false;
+      document.getElementById("manv").readOnly = false;
+      showMsg("");
+      document.getElementById("manv").focus();
+    }
 
-        .actions {
-            display: flex;
-            gap: 13px;
-            justify-content: center;
-            margin-top: 20px;
-            margin-bottom: 8px;
-        }
+    function showMsg(msg, type) {
+      let box = document.getElementById("msgBox");
+      box.textContent = msg || "";
+      box.className = "msg" + (type ? " " + type : "");
+      if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
+    }
 
-        .actions button {
-            font-size: 1em;
-            padding: 8px 22px;
-            border-radius: 7px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            box-shadow: 0 2px 6px #dee6ff33;
-        }
+    async function fetchNV() {
+      let manv = getVal("manv").trim().toUpperCase();
+      if (!manv) return;
+      const { data, error } = await supabase.from(TABLE).select("*").eq("manv", manv).maybeSingle();
+      if (data && data.manv) {
+        setVal("tennv", data.tennv);
+        setVal("matkhau", data.matkhau);
+        setVal("email", data.email);
+        setVal("loai_duoc_sua", data.loai_duoc_sua?.join(", "));
+        document.getElementById("trangthai").value = data.trangthai ? "true" : "false";
+        document.getElementById("sua_hoadon").value = data.sua_hoadon ? "true" : "false";
+        document.getElementById("xoa_hoadon").value = data.xoa_hoadon ? "true" : "false";
+        editingOld = true;
+        document.getElementById("manv").readOnly = true;
+        showMsg("Đã tải dữ liệu nhân viên.", "success");
+      } else {
+        editingOld = false;
+        document.getElementById("manv").readOnly = false;
+        showMsg("Mã mới, hãy nhập thông tin để lưu!");
+      }
+    }
 
-        .actions button.save {
-            background: #18804f;
-            color: #fff;
-        }
+    async function saveNV() {
+      let manv = getVal("manv").trim().toUpperCase();
+      let tennv = getVal("tennv").trim();
+      if (!manv) return showMsg("Mã nhân viên không được bỏ trống!", "error");
+      if (!tennv) return showMsg("Tên nhân viên không được bỏ trống!", "error");
 
-        .actions button.new {
-            background: #eaeaec;
-        }
+      let obj = {
+        manv, tennv,
+        trangthai: getVal("trangthai") === "true",
+        matkhau: getVal("matkhau") || null,
+        sua_hoadon: getVal("sua_hoadon") === "true",
+        xoa_hoadon: getVal("xoa_hoadon") === "true",
+        email: getVal("email") || null,
+        loai_duoc_sua: getVal("loai_duoc_sua").split(',').map(s => s.trim()).filter(Boolean)
+      };
 
-        .actions button.logout {
-            background: #efebfa;
-            color: #45427b;
-        }
+      let error;
+      if (editingOld) {
+        ({ error } = await supabase.from(TABLE).update(obj).eq("manv", manv));
+      } else {
+        ({ error } = await supabase.from(TABLE).insert(obj));
+      }
+      if (!error) {
+        showMsg(editingOld ? "Đã cập nhật nhân viên!" : "Đã thêm nhân viên mới!", "success");
+        setTimeout(resetForm, 1000);
+      } else {
+        showMsg("Lỗi: " + error.message, "error");
+      }
+    }
 
-        .actions button:hover {
-            opacity: .87;
-        }
-
-        .msg {
-            text-align: center;
-            padding: 10px 0 5px 0;
-            min-height: 26px;
-        }
-
-        .msg.error {
-            color: #fff;
-            background: #c44736;
-            border-radius: 6px;
-        }
-
-        .msg.success {
-            color: #18804f;
-            background: #e6f4e7;
-            border-radius: 6px;
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-
-        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-
-        const TABLE = "dmnhanvien";
-        let supabase = null, session = null, editingOld = false;
-
-        function showLogin() {
-            document.getElementById("loginbox").style.display = "";
-            document.getElementById("mainform").style.display = "none";
-            document.getElementById("msgLogin").textContent = "";
-        }
-        function showMain() {
-            document.getElementById("loginbox").style.display = "none";
-            document.getElementById("mainform").style.display = "";
-            document.getElementById("msgBox").textContent = "";
-            document.getElementById("manv").focus();
-        }
-        function setSession(ses) {
-            session = ses;
-            if (ses) {
-                localStorage.setItem("sb_nv_session", JSON.stringify(ses));
-                showMain();
-            } else {
-                localStorage.removeItem("sb_nv_session");
-                showLogin();
-            }
-        }
-
-        window.onload = function () {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            let save = localStorage.getItem("sb_nv_session");
-            if (save) {
-                try {
-                    const ses = JSON.parse(save);
-                    if (ses?.access_token) {
-                        supabase.auth.setSession(ses);
-                        setSession(ses);
-                        return;
-                    }
-                } catch (e) { }
-            }
-            showLogin();
-        };
-
-        async function doLogin() {
-            const email = document.getElementById("loginEmail").value.trim();
-            const pass = document.getElementById("loginPass").value;
-            if (!email || !pass) { showMsgLogin("Nhập email & mật khẩu!", "error"); return; }
-            showMsgLogin("Đang đăng nhập...");
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-                if (error) { showMsgLogin("Sai email hoặc mật khẩu!", "error"); return; }
-                setSession(data.session);
-            } catch (e) {
-                showMsgLogin("Lỗi đăng nhập: " + e.message, "error");
-            }
-        }
-
-        function doLogout() {
-            setSession(null);
-            supabase.auth.signOut();
-            resetForm();
-        }
-
-        function showMsgLogin(msg, type) {
-            let box = document.getElementById("msgLogin");
-            box.textContent = msg;
-            box.className = "msg" + (type ? " " + type : "");
-        }
-
-        function getVal(id) { return document.getElementById(id).value; }
-        function setVal(id, val) { document.getElementById(id).value = val || ""; }
-
-        function resetForm() {
-            ["manv", "tennv", "matkhau", "email", "loai_duoc_sua"].forEach(id => setVal(id, ""));
-            ["trangthai", "sua_hoadon", "xoa_hoadon"].forEach(id => document.getElementById(id).value = "true");
-            editingOld = false;
-            document.getElementById("manv").readOnly = false;
-            showMsg("");
-            document.getElementById("manv").focus();
-        }
-
-        function showMsg(msg, type) {
-            let box = document.getElementById("msgBox");
-            box.textContent = msg || "";
-            box.className = "msg" + (type ? " " + type : "");
-            if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
-        }
-
-        async function fetchNV() {
-            let manv = getVal("manv").trim().toUpperCase();
-            if (!manv) return;
-            const { data, error } = await supabase.from(TABLE).select("*").eq("manv", manv).maybeSingle();
-            if (data && data.manv) {
-                setVal("tennv", data.tennv);
-                setVal("matkhau", data.matkhau);
-                setVal("email", data.email);
-                setVal("loai_duoc_sua", data.loai_duoc_sua?.join(", "));
-                document.getElementById("trangthai").value = data.trangthai ? "true" : "false";
-                document.getElementById("sua_hoadon").value = data.sua_hoadon ? "true" : "false";
-                document.getElementById("xoa_hoadon").value = data.xoa_hoadon ? "true" : "false";
-                editingOld = true;
-                document.getElementById("manv").readOnly = true;
-                showMsg("Đã tải dữ liệu nhân viên.", "success");
-            } else {
-                editingOld = false;
-                document.getElementById("manv").readOnly = false;
-                showMsg("Mã mới, hãy nhập thông tin để lưu!");
-            }
-
-        }
-
-        async function saveNV() {
-            let manv = getVal("manv").trim().toUpperCase();
-            let tennv = getVal("tennv").trim();
-            if (!manv) return showMsg("Mã nhân viên không được bỏ trống!", "error");
-            if (!tennv) return showMsg("Tên nhân viên không được bỏ trống!", "error");
-
-            let obj = {
-                manv, tennv,
-                trangthai: getVal("trangthai") === "true",
-                matkhau: getVal("matkhau") || null,
-                sua_hoadon: getVal("sua_hoadon") === "true",
-                xoa_hoadon: getVal("xoa_hoadon") === "true",
-                email: getVal("email") || null,
-                loai_duoc_sua: getVal("loai_duoc_sua").split(',').map(s => s.trim()).filter(Boolean)
-            };
-
-            let error;
-            if (editingOld) {
-                ({ error } = await supabase.from(TABLE).update(obj).eq("manv", manv));
-            } else {
-                ({ error } = await supabase.from(TABLE).insert(obj));
-            }
-            if (!error) {
-                showMsg(editingOld ? "Đã cập nhật nhân viên!" : "Đã thêm nhân viên mới!", "success");
-                setTimeout(resetForm, 1000);
-            } else {
-                showMsg("Lỗi: " + error.message, "error");
-            }
-        }
-    </script>
+    async function deleteNV() {
+      let manv = getVal("manv").trim().toUpperCase();
+      if (!manv || !editingOld) return showMsg("Không có nhân viên để xóa!", "error");
+      if (!confirm(`Bạn có chắc chắn muốn xoá nhân viên "${manv}" không?`)) return;
+      const { error } = await supabase.from(TABLE).delete().eq("manv", manv);
+      if (!error) {
+        showMsg("Đã xoá nhân viên thành công!", "success");
+        setTimeout(resetForm, 1000);
+      } else {
+        showMsg("Lỗi xoá: " + error.message, "error");
+      }
+    }
+  </script>
 </head>
-
 <body>
-    <div id="loginbox" class="center-box" style="display:none">
-        <div class="form-title">ĐĂNG NHẬP SUPABASE</div>
-        <div class="row"><label>Email</label><input id="loginEmail" type="email" autocomplete="username"></div>
-        <div class="row"><label>Mật khẩu</label><input id="loginPass" type="password" autocomplete="current-password">
-        </div>
-        <div class="actions">
-            <button class="save" style="width:100%;" onclick="doLogin()">Đăng nhập</button>
-        </div>
-        <div id="msgLogin" class="msg"></div>
+  <div id="loginbox" class="center-box" style="display:none">
+    <div class="form-title">ĐĂNG NHẬP SUPABASE</div>
+    <div class="row"><label>Email</label><input id="loginEmail" type="email" autocomplete="username"></div>
+    <div class="row"><label>Mật khẩu</label><input id="loginPass" type="password" autocomplete="current-password"></div>
+    <div class="actions">
+      <button class="save" style="width:100%;" onclick="doLogin()">Đăng nhập</button>
     </div>
+    <div id="msgLogin" class="msg"></div>
+  </div>
 
-    <div id="mainform" class="center-box" style="display:none">
-        <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
-        <div class="row"><label class="required">Mã NV *</label><input id="manv" onblur="fetchNV()"></div>
-        <div class="row"><label class="required">Tên NV *</label><input id="tennv"></div>
-        <div class="row"><label>Trạng thái</label><select id="trangthai">
-                <option value="true">Đang hoạt động</option>
-                <option value="false">Ngừng hoạt động</option>
-            </select></div>
-        <div class="row"><label>Mật khẩu</label><input id="matkhau" type="password"></div>
-        <div class="row"><label>Sửa hóa đơn</label><select id="sua_hoadon">
-                <option value="true">Có</option>
-                <option value="false">Không</option>
-            </select></div>
-        <div class="row"><label>Xóa hóa đơn</label><select id="xoa_hoadon">
-                <option value="true">Có</option>
-                <option value="false">Không</option>
-            </select></div>
-        <div class="row"><label>Email</label><input id="email"></div>
-        <div class="row"><label>Loại được sửa</label><textarea id="loai_duoc_sua" rows="2"></textarea></div>
-        <div class="actions">
-            <button class="save" onclick="saveNV()">Lưu dữ liệu</button>
-            <button class="new" onclick="resetForm()">Thêm mới</button>
-            <button class="logout" onclick="doLogout()">Đăng xuất</button>
-        </div>
-        <div id="msgBox" class="msg"></div>
+  <div id="mainform" class="center-box" style="display:none">
+    <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
+    <div class="row"><label class="required">Mã NV *</label><input id="manv" onblur="fetchNV()"></div>
+    <div class="row"><label class="required">Tên NV *</label><input id="tennv"></div>
+    <div class="row"><label>Trạng thái</label><select id="trangthai"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select></div>
+    <div class="row"><label>Mật khẩu</label><input id="matkhau" type="password"></div>
+    <div class="row"><label>Sửa hóa đơn</label><select id="sua_hoadon"><option value="true">Có</option><option value="false">Không</option></select></div>
+    <div class="row"><label>Xóa hóa đơn</label><select id="xoa_hoadon"><option value="true">Có</option><option value="false">Không</option></select></div>
+    <div class="row"><label>Email</label><input id="email"></div>
+    <div class="row"><label>Loại được sửa</label><textarea id="loai_duoc_sua" rows="2"></textarea></div>
+    <div class="actions">
+      <button class="save" onclick="saveNV()">Lưu dữ liệu</button>
+      <button class="new" onclick="resetForm()">Thêm mới</button>
+      <button class="delete" onclick="deleteNV()">Xoá nhân viên</button>
+      <button class="logout" onclick="doLogout()">Đăng xuất</button>
     </div>
+    <div id="msgBox" class="msg"></div>
+  </div>
 </body>
-
 </html>
