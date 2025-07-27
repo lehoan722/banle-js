@@ -10,8 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/handsontable@12.3.1/dist/handsontable.min.js"></script>
   <style>
     body { font-family: Arial; padding: 16px; background: #f9f9f9; }
-    h2 { margin-bottom: 10px; }
     label { margin-right: 10px; }
+    .filter-box { margin: 10px 0; }
+    .input-mini { width: 120px; }
   </style>
 </head>
 <body>
@@ -23,9 +24,10 @@
   </div>
 
   <h2>📊 Báo cáo Xuất Nhập Tồn 12</h2>
-  <div>
-    <label>Từ ngày: <input type="date" id="tuNgay"></label>
-    <label>Đến ngày: <input type="date" id="denNgay"></label>
+
+  <div class="filter-box">
+    <label>Từ ngày: <input type="date" id="tuNgay" class="input-mini"></label>
+    <label>Đến ngày: <input type="date" id="denNgay" class="input-mini"></label>
     <label>Địa điểm:
       <select id="diadiemSelect">
         <option value="">Tất cả</option>
@@ -33,6 +35,23 @@
         <option value="cs2">Cơ sở 2</option>
       </select>
     </label>
+    <label>Khách hàng: <input type="text" id="khachhangInput" class="input-mini"></label>
+    <label>Nhân viên: <input type="text" id="nhanvienInput" class="input-mini"></label>
+    <label>Nhóm hàng: <input type="text" id="nhomhangInput" class="input-mini"></label>
+    <label>Chủng loại: <input type="text" id="chungloaiInput" class="input-mini"></label>
+    <label>Màu sắc: <input type="text" id="mausacInput" class="input-mini"></label>
+    <label>Kích cỡ: <input type="text" id="sizeInput" class="input-mini"></label>
+    <label>Giá từ: <input type="number" id="tuGiaInput" class="input-mini"></label>
+    <label>Đến: <input type="number" id="denGiaInput" class="input-mini"></label>
+  </div>
+
+  <div class="filter-box">
+    <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
+    <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
+    <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
+    <label><input type="checkbox" id="locPhatsinhNhap"> Phát sinh mua trong kỳ</label>
+    <label><input type="checkbox" id="locPhatsinhXuat"> Phát sinh bán trong kỳ</label>
+    <label><input type="checkbox" id="tonghopSize"> Tổng hợp size</label>
     <button onclick="taiBaoCaoXNT()">Xem báo cáo</button>
   </div>
 
