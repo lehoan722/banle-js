@@ -27,7 +27,7 @@
         }
 
         .left {
-            width: 270px;
+            width: 320px;
         }
 
         .right {
@@ -198,6 +198,14 @@
             z-index: 9999 !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
+
+        #deleteProductBtn {
+            background-color: #cc3333 !important;
+        }
+
+        #deleteProductBtn:hover {
+            background-color: #a60000 !important;
+        }
     </style>
 </head>
 
@@ -271,11 +279,21 @@
                             <input name="chungloai" id="chungloaiInput" list="chungloaiList" autocomplete="off" />
                             <datalist id="chungloaiList"></datalist>
                         </div>
+
                     </div>
+
+                    <div class="form-row">
+                        <label><input type="checkbox" id="quanlykichcoCheckbox" /> Quản lý kích cỡ</label>
+                    </div>
+
+
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
                         <button type="button" id="resetFormBtn" class="btn" style="flex: 1;">Thêm mới</button>
                         <button type="submit" id="saveFormBtn" class="btn" style="flex: 1;">Lưu</button>
+                        <button type="button" id="deleteProductBtn" class="btn"
+                            style="flex: 1; background: #cc3333;">Xóa</button>
                     </div>
+
                     <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
                 </form>
 
@@ -351,7 +369,7 @@
         ];
         const columns = [
             { data: 0, type: 'numeric' }, // STT  { data: 0, type: 'numeric', readOnly: true },
-            { data: 1, type: 'text'  },    // Mã hàng
+            { data: 1, type: 'text' },    // Mã hàng
             { data: 2, type: 'text' },    // Tên hàng
             { data: 3, type: 'text' },                    // Kích cỡ (Size)
             { data: 4, type: 'numeric' },                 // Số lượng
@@ -782,6 +800,7 @@
                 document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                 document.getElementById('nhaccInput').value = data.nhacc || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
+                document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
                 // Không fill gì cả, không reset
@@ -867,6 +886,7 @@
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
                 nhacc: document.getElementById('nhaccInput').value.trim(),
                 chungloai: document.getElementById('chungloaiInput').value.trim(),
+                quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
 
 
@@ -924,6 +944,43 @@
         };
 
         loadDropdownOptions();
+
+        // Xử lý nút XÓA sản phẩm
+
+        document.getElementById('deleteProductBtn').addEventListener('click', async () => {
+            const masp = document.getElementById('maspInput').value.trim().toUpperCase();
+            if (!masp) return alert('❌ Bạn chưa nhập mã sản phẩm cần xóa.');
+
+            const { data: ct1, error: err1 } = await supabase
+                .from('ct_hoadon_banle')
+                .select('masp')
+                .eq('masp', masp)
+                .limit(1);
+            const { data: ct2, error: err2 } = await supabase
+                .from('ct_hoadon_banleT')
+                .select('masp')
+                .eq('masp', masp)
+                .limit(1);
+
+            if ((ct1 && ct1.length > 0) || (ct2 && ct2.length > 0)) {
+                alert(`⚠️ Mã sản phẩm "${masp}" đã có giao dịch, không thể xóa.`);
+                return;
+            }
+
+            const confirmDel = confirm(`⚠️ Bạn có chắc chắn muốn xóa mã sản phẩm "${masp}" không?`);
+            if (!confirmDel) return;
+
+            const { error: deleteError } = await supabase.from('dmhanghoa').delete().eq('masp', masp);
+            if (deleteError) {
+                alert('❌ Xóa thất bại: ' + deleteError.message);
+            } else {
+                alert(`✅ Đã xóa mã sản phẩm "${masp}" khỏi danh mục.`);
+                resetForm();
+                document.getElementById('search').value = masp;
+                searchProducts(masp); // Reload danh sách
+            }
+        });
+
 
         // === GỢI Ý MÃ SẢN PHẨM GIỐNG TÌM KIẾM SẢN PHẨM ===
 
