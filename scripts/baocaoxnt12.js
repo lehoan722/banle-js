@@ -160,18 +160,22 @@ window.taiBaoCaoXNT = async function () {
   const hotData = data.map((row, idx) => ({ stt: idx + 1, ...row }));
 
   hotInstance = new Handsontable(container, {
-    data: hotData,
-    columns: columns,
-    colHeaders: columns.map(col => col.title),
-    rowHeaders: true,
-    width: '100%',
-    height: 550,
-    licenseKey: 'non-commercial-and-evaluation',
-    stretchH: 'all',
-    manualColumnResize: true,
-    readOnly: true,
-    hiddenColumns: { columns: [15], indicators: false }
-  });
+  data: hotData,
+  columns: columns,
+  colHeaders: columns.map(col => col.title),
+  rowHeaders: true,
+  width: '100%',
+  height: 550,
+  licenseKey: 'non-commercial-and-evaluation',
+  stretchH: 'all',
+  manualColumnResize: true,
+  readOnly: true,
+  hiddenColumns: { columns: [15], indicators: false },
+  columnSorting: true,        // ✅ Thêm sắp xếp
+  filters: true,              // ✅ Thêm lọc
+  dropdownMenu: true          // ✅ Thêm menu filter dropdown
+});
+  
 };
 
 
