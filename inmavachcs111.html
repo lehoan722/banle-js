@@ -460,12 +460,25 @@
         });
 
 
+        function updateTongTien() {
+            const data = hot.getData();
+            let tongSL = 0, tongTien = 0;
+            for (const row of data) {
+                const sl = parseFloat(row[4]) || 0;
+                const tien = parseFloat(row[9]) || 0;
+                tongSL += sl;
+                tongTien += tien;
+            }
+            tongDiv.innerHTML = `&#x1f4b0; <span>Tổng SL: ${tongSL.toLocaleString('vi-VN')}</span> &nbsp;&nbsp; <span>Tổng tiền: ${tongTien.toLocaleString('vi-VN')}</span>`;
+        }
+
         // Gọi khi dữ liệu thay đổi
         hot.updateSettings({
             afterChange: function () {
                 updateTongTien();
             }
         });
+
 
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
