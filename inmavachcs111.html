@@ -421,13 +421,20 @@
                 stretchH: 'all',
 
                 afterChange: function (changes, source) {
-                    if (source === 'edit' || source === 'auto') {
-                        updateTongTien();
+                    if (source === 'edit' || source === 'loadData') {
+                        // Chặn vòng lặp vô hạn: không tự gọi lại nếu đang update
+                        setTimeout(() => updateTongTien(), 0);
                     }
+
                     if (typeof syncHandsontableToSelected === 'function') {
-                        syncHandsontableToSelected();
+                        try {
+                            syncHandsontableToSelected();
+                        } catch (e) {
+                            console.warn("Lỗi khi gọi syncHandsontableToSelected:", e);
+                        }
                     }
                 },
+
 
                 beforeChange: function (changes, source) {
                     if (source === 'edit') {
@@ -442,21 +449,30 @@
             });
         });
 
-
-
-
-
         function updateTongTien() {
+            if (!hot) return;
+
             const data = hot.getData();
             let tongSL = 0, tongTien = 0;
-            for (const row of data) {
+
+            // Không cập nhật vào hot trực tiếp (sẽ gây vòng lặp)
+            const newData = data.map((row) => {
+                const newRow = [...row];
                 const sl = parseFloat(row[4]) || 0;
-                const tien = parseFloat(row[9]) || 0;
+                const gia = parseFloat(row[6]) || 0;
+                const tt = sl * gia;
+                newRow[9] = tt;
                 tongSL += sl;
-                tongTien += tien;
-            }
-            tongDiv.innerHTML = `&#x1f4b0; <span>Tổng SL: ${tongSL.toLocaleString('vi-VN')}</span> &nbsp;&nbsp; <span>Tổng tiền: ${tongTien.toLocaleString('vi-VN')}</span>`;
+                tongTien += tt;
+                return newRow;
+            });
+
+            // Gán lại toàn bộ để tránh sửa trực tiếp gây lặp
+            hot.loadData(newData);
+
+            document.getElementById("tongTienDiv").innerHTML = `🧾 <b>Tổng SL:</b> ${tongSL.toLocaleString('vi-VN')} &nbsp; | &nbsp; <b>Tổng tiền:</b> ${tongTien.toLocaleString('vi-VN')} ₫`;
         }
+
 
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
