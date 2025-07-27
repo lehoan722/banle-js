@@ -10,6 +10,8 @@
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/xlsx.full.min.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -277,6 +279,14 @@
                 <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
                 <!-- Nút xem báo cáo -->
                 <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
+
+                <button onclick="chonXuatExcel()">📤 Xuất Excel</button>
+                <div id="excelOptions" style="display: none; margin-top: 8px;">
+                    <button onclick="xuatExcelTrangHienTai()">✅ Trang hiện tại</button>
+                    <button onclick="xuatExcelToanBo()">📦 Toàn bộ dữ liệu</button>
+                </div>
+
+
                 <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
 
                 <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
