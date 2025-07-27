@@ -1,302 +1,41 @@
+
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Báo cáo Xuất Nhập Tồn Hàng Hóa (Phiên bản mới)</title>
-    <!-- Liên kết Supabase và JS mới -->
-    <script type="module" src="scripts/supabaseClient.js"></script>
-    <script type="module" src="scripts/baocaoxnt1.js"></script>
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 18px;
-            background: #fcfcfd;
-        }
-
-        h2 {
-            margin-bottom: 18px;
-        }
-
-        .filters-row {
-            display: flex;
-            width: 100%;
-            gap: 0;
-            align-items: flex-start;
-            margin-bottom: 7px;
-            /* giảm margin-bottom */
-        }
-
-        .filters-left {
-            flex: 0 0 87%;
-            max-width: 87%;
-            box-sizing: border-box;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 10px 22px;
-        }
-
-        .filters-right {
-            flex: 0 0 13%;
-            max-width: 13%;
-            min-width: 130px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            height: 100%;
-            background: #f5f6fa;
-            padding: 6px 4px 6px 6px;
-            /* giảm padding */
-            border-radius: 8px;
-            border: 1px solid #d4e0f7;
-            margin-left: 6px;
-            /* giảm khoảng cách sang trái */
-        }
-
-        .filters-right label {
-            margin-bottom: 7px;
-            color: #1976d2;
-            font-weight: bold;
-        }
-
-        .filters-right textarea {
-            width: 100%;
-            min-width: 110px;
-            max-width: 220px;
-            resize: vertical;
-            font-size: 15px;
-            border-radius: 6px;
-            border: 1px solid #bbb;
-            padding: 7px;
-            margin: 0;
-            height: 100%;
-            /* giúp nó kéo cao hết phần trên */
-            box-sizing: border-box;
-        }
-
-        .filters {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 10px 22px;
-            margin-bottom: 0;
-        }
-
-        .input-popup-group {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-            margin-right: 8px;
-        }
-
-        .input-popup-group input {
-            width: 130px;
-            padding: 6px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-
-        .input-popup-group button {
-            background: #eee;
-            color: #222;
-            border: 1px solid #bbb;
-            padding: 0 8px;
-            font-size: 15px;
-            border-radius: 3px;
-            cursor: pointer;
-            height: 32px;
-        }
-
-        .input-popup-group button:hover {
-            background: #ddd;
-        }
-
-        .filters label {
-            margin-bottom: 0;
-        }
-
-        .filters select,
-        .filters input[type="date"],
-        .filters input[type="number"] {
-            padding: 6px 8px;
-            border-radius: 3px;
-            border: 1px solid #ccc;
-        }
-
-        button.main {
-            background: #2196f3;
-            color: #fff;
-            border: none;
-            font-weight: bold;
-            padding: 8px 22px;
-            border-radius: 5px;
-            margin-right: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        button.main:hover {
-            background: #1769aa;
-        }
-
-        #authBox {
-            background: #f6f8fa;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 8px #eee;
-        }
-
-        /* Popup tìm kiếm */
-        #popupSearch {
-            display: none;
-            position: fixed;
-            top: 16%;
-            left: 50%;
-            transform: translate(-50%, 0);
-            background: #fff;
-            z-index: 2000;
-            border: 1px solid #ccc;
-            min-width: 340px;
-            max-width: 98vw;
-            box-shadow: 0 0 12px #888;
-            border-radius: 8px;
-        }
-
-        #popupSearch input {
-            width: 94%;
-            margin-bottom: 5px;
-        }
-
-        #popupSearchList {
-            max-height: 260px;
-            overflow: auto;
-            font-size: 15px;
-        }
-
-        #popupSearchList div {
-            padding: 5px 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        #popupSearchList div:hover {
-            background: #e3f0ff;
-        }
-
-        .filters-right {
-            height: auto;
-            align-self: stretch;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Báo cáo Xuất Nhập Tồn 12</title>
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script type="module" src="scripts/baocaoxnt12.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+  <style>
+    body { font-family: Arial; padding: 16px; background: #f9f9f9; }
+    h2 { margin-bottom: 10px; }
+    label { margin-right: 10px; }
+  </style>
 </head>
-
 <body>
-    <div id="authBox">
-        <label>Email: <input type="email" id="email"></label>
-        <label>Mật khẩu: <input type="password" id="password"></label>
-        <button onclick="dangNhap()">Đăng nhập</button>
-        <span id="authStatus" style="color: red; margin-left: 10px"></span>
-    </div>
+  <div id="authBox">
+    <label>Email: <input type="email" id="email"></label>
+    <label>Mật khẩu: <input type="password" id="password"></label>
+    <button onclick="dangNhap()">Đăng nhập</button>
+    <span id="authStatus" style="color:red;"></span>
+  </div>
 
-    <h2>📦 BÁO CÁO XUẤT NHẬP TỒN HÀNG HÓA <span style="color:#1976d2">(Phiên bản nâng cấp)</span></h2>
+  <h2>📊 Báo cáo Xuất Nhập Tồn 12</h2>
+  <div>
+    <label>Từ ngày: <input type="date" id="tuNgay"></label>
+    <label>Đến ngày: <input type="date" id="denNgay"></label>
+    <label>Địa điểm:
+      <select id="diadiemSelect">
+        <option value="">Tất cả</option>
+        <option value="cs1">Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+    </label>
+    <button onclick="taiBaoCaoXNT()">Xem báo cáo</button>
+  </div>
 
-    <div class="filters-row">
-        <div class="filters-left">
-            <div class="filters">
-                <label>
-                    Phương pháp:
-                    <select id="selectFunction">
-                        <option value="baocaoxnt1">Chuẩn mới (Tổng hợp size, cột nhập mua/xuất bán)</option>
-                    </select>
-                </label>
-                <label>
-                    Địa điểm:
-                    <select id="diadiemSelect">
-                        <option value="">Tất cả</option>
-                        <option value="cs1">Cơ sở 1</option>
-                        <option value="cs2">Cơ sở 2</option>
-                    </select>
-                </label>
-                <label>Từ ngày: <input type="date" id="tuNgay"></label>
-                <label>Đến ngày: <input type="date" id="denNgay"></label>
-                <!-- Các input popup tìm kiếm -->
-                <span class="input-popup-group">
-                    <input id="khachhangInput" placeholder="Khách hàng">
-                    <button onclick="openPopupSearch('khachhang')">🔍</button>
-                    <button onclick="clearInput('khachhangInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="nhanvienInput" placeholder="Nhân viên">
-                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
-                    <button onclick="clearInput('nhanvienInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="nhomhangInput" placeholder="Nhóm hàng">
-                    <button onclick="openPopupSearch('nhomhang')">🔍</button>
-                    <button onclick="clearInput('nhomhangInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="chungloaiInput" placeholder="Chủng loại">
-                    <button onclick="openPopupSearch('chungloai')">🔍</button>
-                    <button onclick="clearInput('chungloaiInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="mausacInput" placeholder="Màu sắc">
-                    <button onclick="openPopupSearch('mausac')">🔍</button>
-                    <button onclick="clearInput('mausacInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="sizeInput" placeholder="Kích cỡ">
-                    <button onclick="openPopupSearch('size')">🔍</button>
-                    <button onclick="clearInput('sizeInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="maspInput" placeholder="Mã hàng">
-                    <button onclick="openPopupSearch('mahang')">🔍</button>
-                    <button onclick="clearInput('maspInput')">✖</button>
-                </span>
-                <label>Từ giá:
-                    <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
-                </label>
-                <label>Đến giá:
-                    <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
-                </label>
-                <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
-                <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
-                <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
-                <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
-                <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
-                <!-- CHECKBOX TỔNG HỢP SIZE -->
-                <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
-                <!-- Nút xem báo cáo -->
-                <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
-                <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
-            </div>
-        </div>
-
-        <div class="filters-right">
-            <textarea id="maspList" rows="13" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
-                style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
-
-        </div>
-    </div>
-
-    <div id="hot" style="margin-top: 16px;"></div>
-    <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch">
-        <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
-            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
-        </div>
-        <div id="popupSearchList"></div>
-    </div>
+  <div id="hot" style="margin-top:20px;"></div>
 </body>
-
 </html>
