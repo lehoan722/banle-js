@@ -38,7 +38,8 @@ window.taiBaoCaoXNT = async function () {
     }
 
     // Lấy filter từ giao diện
-    const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt13";
+    const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt13_paged";
+
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
