@@ -30,6 +30,9 @@ window.dangNhap = async function () {
 
 // ==== 2. LẤY DỮ LIỆU & HIỂN THỊ HANDSONTABLE ====
 window.taiBaoCaoXNT = async function () {
+    const loadingMsg = document.getElementById("loadingMsg");
+    if (loadingMsg) loadingMsg.textContent = "⏳ Đang tải trang...";
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
         alert("Bạn cần đăng nhập trước khi xem báo cáo!");
@@ -184,6 +187,7 @@ window.taiBaoCaoXNT = async function () {
     });
 
     updatePageInfo();
+    if (loadingMsg) loadingMsg.textContent = "";  // Ẩn thông báo "Đang tải..."
 
 };
 
