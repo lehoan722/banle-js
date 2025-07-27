@@ -447,14 +447,6 @@
             tongDiv.innerHTML = `&#x1f4b0; <span>Tổng SL: ${tongSL.toLocaleString('vi-VN')}</span> &nbsp;&nbsp; <span>Tổng tiền: ${tongTien.toLocaleString('vi-VN')}</span>`;
         }
 
-        // Gọi khi dữ liệu thay đổi
-        hot.updateSettings({
-            afterChange: function () {
-                updateTongTien();
-            }
-        });
-
-
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
         const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
