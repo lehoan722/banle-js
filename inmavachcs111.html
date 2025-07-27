@@ -27,7 +27,7 @@
         }
 
         .left {
-            width: 350px;
+            width: 320px;
         }
 
         .right {
@@ -365,28 +365,33 @@
         // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
         let hot;
         const colHeaders = [
-            "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"
+            "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ", "Thành tiền"
         ];
         const columns = [
-            { data: 0, type: 'numeric' }, // STT  { data: 0, type: 'numeric', readOnly: true },
-            { data: 1, type: 'text' },    // Mã hàng
-            { data: 2, type: 'text' },    // Tên hàng
-            { data: 3, type: 'text' },                    // Kích cỡ (Size)
-            { data: 4, type: 'numeric' },                 // Số lượng
-            { data: 5, type: 'text' },                    // ĐVT
+            { data: 0, type: 'numeric' },
+            { data: 1, type: 'text' },
+            { data: 2, type: 'text' },
+            { data: 3, type: 'text' },
+            { data: 4, type: 'numeric' },
+            { data: 5, type: 'text' },
             {
                 data: 6,
                 type: 'numeric',
                 numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            },                                            // Giá nhập
-            { data: 7, type: 'checkbox' },                // In
+            },
+            { data: 7, type: 'checkbox' },
             {
                 data: 8,
                 type: 'numeric',
                 numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            }                                             // Giá lẻ
+            },
+            {
+                data: 9,
+                type: 'numeric',
+                readOnly: true,
+                numericFormat: { pattern: "0,0", culture: 'vi-VN' }
+            }
         ];
-
 
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -419,7 +424,29 @@
             });
         });
 
+        const tongDiv = document.createElement('div');
+        tongDiv.id = 'tongTienDiv';
+        tongDiv.style = 'margin-top: 4px; font-weight: bold;';
+        container.parentElement.appendChild(tongDiv);
 
+        function updateTongTien() {
+            const data = hot.getData();
+            let tongSL = 0, tongTien = 0;
+            for (const row of data) {
+                const sl = parseFloat(row[4]) || 0;
+                const tien = parseFloat(row[9]) || 0;
+                tongSL += sl;
+                tongTien += tien;
+            }
+            tongDiv.innerHTML = `&#x1f4b0; <span>Tổng SL: ${tongSL.toLocaleString('vi-VN')}</span> &nbsp;&nbsp; <span>Tổng tiền: ${tongTien.toLocaleString('vi-VN')}</span>`;
+        }
+
+        // Gọi khi dữ liệu thay đổi
+        hot.updateSettings({
+            afterChange: function () {
+                updateTongTien();
+            }
+        });
 
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
@@ -525,6 +552,17 @@
         function syncHandsontableToSelected() {
             if (!hot) return;
             const data = hot.getData().filter(row => row[1] && row[2]);
+
+            // Tính lại cột "Thành tiền"
+            let updated = hot.getData().map(row => {
+                const sl = parseFloat(row[4]) || 0;
+                const gia = parseFloat(row[6]) || 0;
+                row[9] = sl * gia;
+                return row;
+            });
+            hot.loadData(updated);
+
+
             selected = data.map(row => ({
                 stt: row[0],         // STT
                 masp: row[1],        // Mã hàng
