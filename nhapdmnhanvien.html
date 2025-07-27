@@ -25,15 +25,76 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_ANON_KEY = 'ey...'; // nhập key của bạn
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+        
     const TABLE = "dmnhanvien";
     let supabase = null, session = null, editingOld = false;
 
-    window.onload = async function () {
+    function showLogin() {
+      document.getElementById("loginbox").style.display = "";
+      document.getElementById("mainform").style.display = "none";
+      document.getElementById("msgLogin").textContent = "";
+    }
+    function showMain() {
+      document.getElementById("loginbox").style.display = "none";
+      document.getElementById("mainform").style.display = "";
+      document.getElementById("msgBox").textContent = "";
+      document.getElementById("manv").focus();
+    }
+    function setSession(ses) {
+      session = ses;
+      if (ses) {
+        localStorage.setItem("sb_nv_session", JSON.stringify(ses));
+        showMain();
+      } else {
+        localStorage.removeItem("sb_nv_session");
+        showLogin();
+      }
+    }
+
+    window.onload = function () {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      showMain();
+      let save = localStorage.getItem("sb_nv_session");
+      if (save) {
+        try {
+          const ses = JSON.parse(save);
+          if (ses?.access_token) {
+            supabase.auth.setSession(ses);
+            setSession(ses);
+            return;
+          }
+        } catch (e) {}
+      }
+      showLogin();
     };
+
+    async function doLogin() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPass").value;
+      if (!email || !pass) { showMsgLogin("Nhập email & mật khẩu!", "error"); return; }
+      showMsgLogin("Đang đăng nhập...");
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) { showMsgLogin("Sai email hoặc mật khẩu!", "error"); return; }
+        setSession(data.session);
+      } catch (e) {
+        showMsgLogin("Lỗi đăng nhập: " + e.message, "error");
+      }
+    }
+
+    function doLogout() {
+      setSession(null);
+      supabase.auth.signOut();
+      resetForm();
+    }
+
+    function showMsgLogin(msg, type) {
+      let box = document.getElementById("msgLogin");
+      box.textContent = msg;
+      box.className = "msg" + (type ? " " + type : "");
+    }
 
     function getVal(id) { return document.getElementById(id).value; }
     function setVal(id, val) { document.getElementById(id).value = val || ""; }
@@ -105,43 +166,33 @@
         showMsg("Lỗi: " + error.message, "error");
       }
     }
-
-    function showMain() {
-      document.getElementById("mainform").style.display = "";
-    }
   </script>
 </head>
 <body>
-  <div id="mainform" class="center-box">
-    <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
+  <div id="loginbox" class="center-box" style="display:none">
+    <div class="form-title">ĐĂNG NHẬP SUPABASE</div>
+    <div class="row"><label>Email</label><input id="loginEmail" type="email" autocomplete="username"></div>
+    <div class="row"><label>Mật khẩu</label><input id="loginPass" type="password" autocomplete="current-password"></div>
+    <div class="actions">
+      <button class="save" style="width:100%;" onclick="doLogin()">Đăng nhập</button>
+    </div>
+    <div id="msgLogin" class="msg"></div>
+  </div>
 
+  <div id="mainform" class="center-box" style="display:none">
+    <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
     <div class="row"><label class="required">Mã NV *</label><input id="manv" onblur="fetchNV()"></div>
     <div class="row"><label class="required">Tên NV *</label><input id="tennv"></div>
-    <div class="row"><label>Trạng thái</label>
-      <select id="trangthai">
-        <option value="true">Đang hoạt động</option>
-        <option value="false">Ngừng hoạt động</option>
-      </select>
-    </div>
+    <div class="row"><label>Trạng thái</label><select id="trangthai"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select></div>
     <div class="row"><label>Mật khẩu</label><input id="matkhau" type="password"></div>
-    <div class="row"><label>Sửa hóa đơn</label>
-      <select id="sua_hoadon">
-        <option value="true">Có</option>
-        <option value="false">Không</option>
-      </select>
-    </div>
-    <div class="row"><label>Xóa hóa đơn</label>
-      <select id="xoa_hoadon">
-        <option value="true">Có</option>
-        <option value="false">Không</option>
-      </select>
-    </div>
+    <div class="row"><label>Sửa hóa đơn</label><select id="sua_hoadon"><option value="true">Có</option><option value="false">Không</option></select></div>
+    <div class="row"><label>Xóa hóa đơn</label><select id="xoa_hoadon"><option value="true">Có</option><option value="false">Không</option></select></div>
     <div class="row"><label>Email</label><input id="email"></div>
     <div class="row"><label>Loại được sửa</label><textarea id="loai_duoc_sua" rows="2"></textarea></div>
-
     <div class="actions">
       <button class="save" onclick="saveNV()">Lưu dữ liệu</button>
       <button class="new" onclick="resetForm()">Thêm mới</button>
+      <button class="logout" onclick="doLogout()">Đăng xuất</button>
     </div>
     <div id="msgBox" class="msg"></div>
   </div>
