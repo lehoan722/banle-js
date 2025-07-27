@@ -414,12 +414,15 @@
                 manualColumnResize: true,
                 manualRowResize: true,
                 stretchH: 'all',
-                afterChange: function () {
-                    updateTongTien();
+                afterChange: function (changes, source) {
+                    if (source === 'edit' || source === 'loadData') {
+                        updateTongTien();
+                    }
                     if (typeof syncHandsontableToSelected === 'function') {
                         syncHandsontableToSelected();
                     }
                 },
+
                 beforeChange: function (changes, source) {
                     if (source === 'edit') {
                         const readOnlyColumns = [1, 2, 6, 8];
