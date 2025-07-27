@@ -1,4 +1,4 @@
-
+import { supabase } from "./supabaseClient.js";
 let hotInstance;
 let currentPage = 1;
 let pageSize = 1000;
