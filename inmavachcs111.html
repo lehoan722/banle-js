@@ -368,35 +368,30 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             const container = document.getElementById('hot');
-
-            // Tạo khối hiển thị tổng tiền
             const tongDiv = document.createElement('div');
             tongDiv.id = 'tongTienDiv';
             tongDiv.style = 'margin-top: 4px; font-weight: bold;';
             container.parentElement.appendChild(tongDiv);
 
-            // Cờ tránh vòng lặp afterChange → update → afterChange
             let isSyncing = false;
 
             function updateTongTien() {
-                if (!hot || isSyncing) return;
-                isSyncing = true;
+                if (!window.hot) return;
                 const data = hot.getData();
                 let tongSL = 0, tongTien = 0;
-                for (let r = 0; r < data.length; r++) {
-                    const row = data[r];
+                for (const row of data) {
                     const sl = parseFloat(row[4]) || 0;
-                    const giaNhap = parseFloat(row[6]) || 0;
-                    const thanhTien = sl * giaNhap;
-                    hot.setDataAtCell(r, 9, thanhTien, 'auto'); // Gán lại ô "thành tiền"
+                    const gia = parseFloat(row[6]) || 0;
+                    const tt = sl * gia;
+                    row[9] = tt;
                     tongSL += sl;
-                    tongTien += thanhTien;
+                    tongTien += tt;
                 }
+                setTimeout(() => hot.render(), 10); // tránh lỗi offsetWidth
                 tongDiv.innerHTML = `🧾 <b>Tổng SL:</b> ${tongSL.toLocaleString('vi-VN')} &nbsp; | &nbsp; <b>Tổng tiền:</b> ${tongTien.toLocaleString('vi-VN')} ₫`;
-                isSyncing = false;
             }
 
-            hot = new Handsontable(container, {
+            window.hot = new Handsontable(container, {
                 data: [],
                 colHeaders: ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ", "Thành tiền"],
                 columns: [
@@ -419,23 +414,17 @@
                 manualColumnResize: true,
                 manualRowResize: true,
                 stretchH: 'all',
-
                 afterChange: function (changes, source) {
+                    if (isSyncing) return;
                     if (source === 'edit' || source === 'loadData') {
-                        // Chặn vòng lặp vô hạn: không tự gọi lại nếu đang update
-                        setTimeout(() => updateTongTien(), 0);
+                        updateTongTien();
                     }
-
                     if (typeof syncHandsontableToSelected === 'function') {
-                        try {
-                            syncHandsontableToSelected();
-                        } catch (e) {
-                            console.warn("Lỗi khi gọi syncHandsontableToSelected:", e);
-                        }
+                        isSyncing = true;
+                        syncHandsontableToSelected();
+                        isSyncing = false;
                     }
                 },
-
-
                 beforeChange: function (changes, source) {
                     if (source === 'edit') {
                         const readOnlyColumns = [1, 2, 6, 8];
@@ -448,6 +437,7 @@
                 }
             });
         });
+
 
         function updateTongTien() {
             if (!hot) return;
