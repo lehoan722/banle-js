@@ -369,26 +369,31 @@
         document.addEventListener("DOMContentLoaded", function () {
             const container = document.getElementById('hot');
 
-            // Khối hiển thị tổng
+            // Tạo khối hiển thị tổng tiền
             const tongDiv = document.createElement('div');
             tongDiv.id = 'tongTienDiv';
             tongDiv.style = 'margin-top: 4px; font-weight: bold;';
             container.parentElement.appendChild(tongDiv);
 
+            // Cờ tránh vòng lặp afterChange → update → afterChange
+            let isSyncing = false;
+
             function updateTongTien() {
-                if (!hot) return;
+                if (!hot || isSyncing) return;
+                isSyncing = true;
                 const data = hot.getData();
                 let tongSL = 0, tongTien = 0;
-                for (const row of data) {
+                for (let r = 0; r < data.length; r++) {
+                    const row = data[r];
                     const sl = parseFloat(row[4]) || 0;
-                    const gia = parseFloat(row[6]) || 0;
-                    const tt = sl * gia;
-                    row[9] = tt;
+                    const giaNhap = parseFloat(row[6]) || 0;
+                    const thanhTien = sl * giaNhap;
+                    hot.setDataAtCell(r, 9, thanhTien, 'auto'); // Gán lại ô "thành tiền"
                     tongSL += sl;
-                    tongTien += tt;
+                    tongTien += thanhTien;
                 }
-                hot.render();
                 tongDiv.innerHTML = `🧾 <b>Tổng SL:</b> ${tongSL.toLocaleString('vi-VN')} &nbsp; | &nbsp; <b>Tổng tiền:</b> ${tongTien.toLocaleString('vi-VN')} ₫`;
+                isSyncing = false;
             }
 
             hot = new Handsontable(container, {
@@ -414,8 +419,9 @@
                 manualColumnResize: true,
                 manualRowResize: true,
                 stretchH: 'all',
+
                 afterChange: function (changes, source) {
-                    if (source === 'edit' || source === 'loadData') {
+                    if (source === 'edit' || source === 'auto') {
                         updateTongTien();
                     }
                     if (typeof syncHandsontableToSelected === 'function') {
@@ -435,6 +441,8 @@
                 }
             });
         });
+
+
 
 
 
