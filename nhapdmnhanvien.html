@@ -153,7 +153,7 @@
             }
         }
 
-        window.onload = function () {
+        window.onload = async function () {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             let save = localStorage.getItem("sb_nv_session");
             if (save) {
@@ -172,6 +172,7 @@
             }
             showLogin();
         };
+
 
         async function doLogin() {
             const email = document.getElementById("loginEmail").value.trim();
