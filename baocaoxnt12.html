@@ -1,20 +1,35 @@
-
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <title>Báo cáo Xuất Nhập Tồn 12</title>
   <script type="module" src="scripts/supabaseClient.js"></script>
   <script type="module" src="scripts/baocaoxnt12.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@12.3.1/dist/handsontable.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@12.3.1/dist/handsontable.min.js"></script>
+  href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+
   <style>
-    body { font-family: Arial; padding: 16px; background: #f9f9f9; }
-    label { margin-right: 10px; }
-    .filter-box { margin: 10px 0; }
-    .input-mini { width: 120px; }
+    body {
+      font-family: Arial;
+      padding: 16px;
+      background: #f9f9f9;
+    }
+
+    label {
+      margin-right: 10px;
+    }
+
+    .filter-box {
+      margin: 10px 0;
+    }
+
+    .input-mini {
+      width: 120px;
+    }
   </style>
 </head>
+
 <body>
   <div id="authBox">
     <label>Email: <input type="email" id="email"></label>
@@ -57,4 +72,5 @@
 
   <div id="hot" style="margin-top:20px;"></div>
 </body>
+
 </html>
