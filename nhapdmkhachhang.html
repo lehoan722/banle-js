@@ -459,6 +459,28 @@
             }
         });
 
+        // ==== XÓA KHÁCH HÀNG ====
+        async function deleteKH() {
+            let makh = getVal("makh").trim().toUpperCase();
+            if (!makh) {
+                showMsg("Không có mã khách hàng để xóa!", "error");
+                return;
+            }
+            if (!editingOld) {
+                showMsg("Chưa có khách hàng để xóa!", "error");
+                return;
+            }
+            if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
+            let { error } = await supabase.from(TABLE).delete().eq("makh", makh);
+            if (!error) {
+                showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
+                resetForm();
+            } else {
+                showMsg("❌ Lỗi khi xóa: " + error.message, "error");
+            }
+        }
+
+
     </script>
 </head>
 
@@ -535,7 +557,9 @@
             <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
             <button class="new" onclick="resetForm()">Thêm mới</button>
             <button class="logout" onclick="doLogout()">Đăng xuất</button>
+            <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
         </div>
+
         <div id="msgBox" class="msg"></div>
     </div>
 </body>
