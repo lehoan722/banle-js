@@ -36,11 +36,18 @@ window.taiBaoCaoXNT = async function () {
   const denNgay = document.getElementById("denNgay").value;
   if (!tuNgay || !denNgay) return alert("Chọn đủ từ ngày và đến ngày!");
 
+  const textareaMasp = document.getElementById("maspList");
+  const p_dsmsp = textareaMasp?.value.trim()
+    ? textareaMasp.value.trim().split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
+    : null;
+
+  const funcName = document.getElementById("selectFunction")?.value || "baocaoxnt12";
+
   const params = {
     tu_ngay: tuNgay,
     den_ngay: denNgay,
-    p_dsmsp: null,
-    p_diadiem_filter: document.getElementById("diadiemSelect").value || null,
+    p_dsmsp,
+    p_diadiem_filter: document.getElementById("diadiemSelect")?.value || null,
     p_khachhang_filter: document.getElementById("khachhangInput")?.value.trim() || null,
     p_nhanvien_filter: document.getElementById("nhanvienInput")?.value.trim() || null,
     p_nhomhang_filter: document.getElementById("nhomhangInput")?.value.trim() || null,
@@ -57,13 +64,9 @@ window.taiBaoCaoXNT = async function () {
     p_tonghop_size: document.getElementById("tonghopSize")?.checked || false
   };
 
-  const { data, error } = await supabase.rpc("baocaoxnt12", params);
-
+  const { data, error } = await supabase.rpc(funcName, params);
   const container = document.getElementById("hot");
-  if (hotInstance) {
-    hotInstance.destroy();
-    hotInstance = null;
-  }
+  if (hotInstance) hotInstance.destroy();
 
   if (error) {
     container.innerHTML = `<div style="color:red;">Lỗi: ${error.message}</div>`;
@@ -109,6 +112,11 @@ window.taiBaoCaoXNT = async function () {
     readOnly: true,
     hiddenColumns: { columns: [15], indicators: false }
   });
+};
+
+window.clearInput = function (id) {
+  const el = document.getElementById(id);
+  if (el) el.value = "";
 };
 
 window.onload = () => {
