@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 let hotInstance;
 let currentPage = 1;
-let pageSize = 1000;
+let pageSize = 10000;
 
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
@@ -383,7 +383,7 @@ window.xuatExcelTrangHienTai = function () {
 
 window.xuatExcelToanBo = async function () {
     const totalData = [];
-    const pageSize = 1000;
+    const pageSize = 10000;
     let currentOffset = 0;
     let hasMore = true;
     let page = 1;
