@@ -396,10 +396,44 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             const container = document.getElementById('hot');
+
+            // Tạo khối hiển thị tổng
+            const tongDiv = document.createElement('div');
+            tongDiv.id = 'tongTienDiv';
+            tongDiv.style = 'margin-top: 4px; font-weight: bold;';
+            container.parentElement.appendChild(tongDiv);
+
+            // Hàm cập nhật dòng tổng
+            function updateTongTien() {
+                const data = hot.getData();
+                let tongSL = 0, tongTien = 0;
+                for (const row of data) {
+                    const sl = parseFloat(row[4]) || 0;
+                    const tien = parseFloat(row[9]) || 0;
+                    tongSL += sl;
+                    tongTien += tien;
+                }
+                tongDiv.innerHTML = `🧾 <b>Tổng SL:</b> ${tongSL.toLocaleString('vi-VN')} &nbsp; | &nbsp; <b>Tổng tiền:</b> ${tongTien.toLocaleString('vi-VN')} ₫`;
+            }
+
+            // Tạo bảng
             hot = new Handsontable(container, {
                 data: [],
-                colHeaders: colHeaders,
-                columns: columns,
+                colHeaders: [
+                    "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ", "Thành tiền"
+                ],
+                columns: [
+                    { data: 0, type: 'numeric' },
+                    { data: 1, type: 'text' },
+                    { data: 2, type: 'text' },
+                    { data: 3, type: 'text' },
+                    { data: 4, type: 'numeric' },
+                    { data: 5, type: 'text' },
+                    { data: 6, type: 'numeric', numericFormat: { pattern: "0,0", culture: 'vi-VN' } },
+                    { data: 7, type: 'checkbox' },
+                    { data: 8, type: 'numeric', numericFormat: { pattern: "0,0", culture: 'vi-VN' } },
+                    { data: 9, type: 'numeric', readOnly: true, numericFormat: { pattern: "0,0", culture: 'vi-VN' } }
+                ],
                 rowHeaders: true,
                 minSpareRows: 1,
                 licenseKey: 'non-commercial-and-evaluation',
@@ -408,38 +442,23 @@
                 manualColumnResize: true,
                 manualRowResize: true,
                 stretchH: 'all',
-                afterChange: syncHandsontableToSelected,
-                beforeChange: function (changes, source) {  //Thêm event beforeChange để chặn chỉnh sửa thủ công các cột "chỉ đọc"
+                afterChange: function () {
+                    updateTongTien();
+                    syncHandsontableToSelected();
+                },
+                beforeChange: function (changes, source) {
                     if (source === 'edit') {
-                        // Không cho chỉnh sửa trực tiếp các cột mã hàng, tên hàng, dvt, giá lẻ, giá nhập
                         const readOnlyColumns = [1, 2, 6, 8];
                         for (let i = changes.length - 1; i >= 0; i--) {
                             if (readOnlyColumns.includes(changes[i][1])) {
-                                changes.splice(i, 1); // Hủy thay đổi trên cột chỉ đọc nếu là thao tác nhập tay
+                                changes.splice(i, 1);
                             }
                         }
                     }
-                    // Nếu là paste thì không chặn gì cả!
                 }
             });
         });
 
-        const tongDiv = document.createElement('div');
-        tongDiv.id = 'tongTienDiv';
-        tongDiv.style = 'margin-top: 4px; font-weight: bold;';
-        container.parentElement.appendChild(tongDiv);
-
-        function updateTongTien() {
-            const data = hot.getData();
-            let tongSL = 0, tongTien = 0;
-            for (const row of data) {
-                const sl = parseFloat(row[4]) || 0;
-                const tien = parseFloat(row[9]) || 0;
-                tongSL += sl;
-                tongTien += tien;
-            }
-            tongDiv.innerHTML = `&#x1f4b0; <span>Tổng SL: ${tongSL.toLocaleString('vi-VN')}</span> &nbsp;&nbsp; <span>Tổng tiền: ${tongTien.toLocaleString('vi-VN')}</span>`;
-        }
 
         // Gọi khi dữ liệu thay đổi
         hot.updateSettings({
