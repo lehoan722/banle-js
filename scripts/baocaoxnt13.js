@@ -186,6 +186,8 @@ window.taiBaoCaoXNT = async function () {
         dropdownMenu: true          // ✅ Thêm menu filter dropdown
     });
 
+    window.hotInstance = hotInstance;
+
     updatePageInfo();
     window.lastParams = { ...params }; // Ghi nhớ điều kiện lọc cho xuất toàn bộ
 
