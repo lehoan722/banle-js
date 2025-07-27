@@ -96,8 +96,9 @@ window.taiBaoCaoXNT = async function () {
         loc_phatsinh_xuat: locPhatSinhXuat,
         p_dsmsp: finalMaspList,
         p_tonghop_size: tonghopSize,
-        offset: (currentPage - 1) * pageSize,
-        limit: pageSize
+        p_limit: pageSize,
+        p_offset: (currentPage - 1) * pageSize
+
     };
 
     // Gọi function SQL mới
