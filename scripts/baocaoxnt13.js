@@ -367,7 +367,7 @@ window.chonXuatExcel = function () {
 };
 
 window.xuatExcelTrangHienTai = function () {
-    if (!hotInstance) return alert("❌ Chưa có dữ liệu để xuất!");
+    if (!window.hotInstance) return alert("❌ Chưa có dữ liệu để xuất!");
     const data = hotInstance.getData();
     const headers = hotInstance.getColHeader();
     const exportData = [headers, ...data];
@@ -391,7 +391,7 @@ window.xuatExcelToanBo = async function () {
 
     while (hasMore) {
         const { data, error } = await supabase.rpc("baocaoxnt13_paged", {
-            ...lastParams,
+            ...window.lastParams,
             p_limit: pageSize,
             p_offset: currentOffset,
         });
@@ -425,4 +425,3 @@ window.xuatExcelToanBo = async function () {
 
     XLSX.writeFile(wb, "baocaoxnt_toanbo.xlsx");
 };
-
