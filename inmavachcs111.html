@@ -363,65 +363,37 @@
             : createClient(supabaseUrl, supabaseKey);
 
         // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
-        let hot;
-        const colHeaders = [
-            "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ", "Thành tiền"
-        ];
-        const columns = [
-            { data: 0, type: 'numeric' },
-            { data: 1, type: 'text' },
-            { data: 2, type: 'text' },
-            { data: 3, type: 'text' },
-            { data: 4, type: 'numeric' },
-            { data: 5, type: 'text' },
-            {
-                data: 6,
-                type: 'numeric',
-                numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            },
-            { data: 7, type: 'checkbox' },
-            {
-                data: 8,
-                type: 'numeric',
-                numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            },
-            {
-                data: 9,
-                type: 'numeric',
-                readOnly: true,
-                numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            }
-        ];
 
+        let hot;
 
         document.addEventListener("DOMContentLoaded", function () {
             const container = document.getElementById('hot');
 
-            // Tạo khối hiển thị tổng
+            // Khối hiển thị tổng
             const tongDiv = document.createElement('div');
             tongDiv.id = 'tongTienDiv';
             tongDiv.style = 'margin-top: 4px; font-weight: bold;';
             container.parentElement.appendChild(tongDiv);
 
-            // Hàm cập nhật dòng tổng
             function updateTongTien() {
+                if (!hot) return;
                 const data = hot.getData();
                 let tongSL = 0, tongTien = 0;
                 for (const row of data) {
                     const sl = parseFloat(row[4]) || 0;
-                    const tien = parseFloat(row[9]) || 0;
+                    const gia = parseFloat(row[6]) || 0;
+                    const tt = sl * gia;
+                    row[9] = tt;
                     tongSL += sl;
-                    tongTien += tien;
+                    tongTien += tt;
                 }
+                hot.render();
                 tongDiv.innerHTML = `🧾 <b>Tổng SL:</b> ${tongSL.toLocaleString('vi-VN')} &nbsp; | &nbsp; <b>Tổng tiền:</b> ${tongTien.toLocaleString('vi-VN')} ₫`;
             }
 
-            // Tạo bảng
             hot = new Handsontable(container, {
                 data: [],
-                colHeaders: [
-                    "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ", "Thành tiền"
-                ],
+                colHeaders: ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ", "Thành tiền"],
                 columns: [
                     { data: 0, type: 'numeric' },
                     { data: 1, type: 'text' },
@@ -444,7 +416,9 @@
                 stretchH: 'all',
                 afterChange: function () {
                     updateTongTien();
-                    syncHandsontableToSelected();
+                    if (typeof syncHandsontableToSelected === 'function') {
+                        syncHandsontableToSelected();
+                    }
                 },
                 beforeChange: function (changes, source) {
                     if (source === 'edit') {
@@ -458,6 +432,7 @@
                 }
             });
         });
+
 
 
         function updateTongTien() {
