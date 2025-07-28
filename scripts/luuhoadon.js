@@ -16,7 +16,13 @@ async function handleSpecialSoHoaDon(sohd) {
   const num = parseInt(parts[1], 10);
 
   // Xác định cơ sở và điều kiện chia hết
-  const diadiem = localStorage.getItem("diadiem");
+  //const diadiem = localStorage.getItem("diadiem");
+
+   const prefix = sohd.split("_")[0] || "";
+  let diadiem = "cs1";
+  if (prefix.includes("cs2")) diadiem = "cs2";
+  else if (prefix.includes("cs1")) diadiem = "cs1";
+
   let modulus = 6; // Mặc định cho cs2
   if (diadiem === "cs1") modulus = 4;
 
@@ -355,7 +361,13 @@ export async function luuHoaDonCaHaiBan() {
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
   // Lấy địa điểm từ localStorage (không lấy từ input)
-  const diadiem = localStorage.getItem("diadiem");
+  //const diadiem = localStorage.getItem("diadiem");
+
+  const prefix = sohd.split("_")[0] || "";
+  let diadiem = "cs1";
+  if (prefix.includes("cs2")) diadiem = "cs2";
+  else if (prefix.includes("cs1")) diadiem = "cs1";
+
   const createdAt = new Date().toISOString();
   const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
 
