@@ -104,6 +104,7 @@ async function triggerSearch() {
     let { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) {
         msg.textContent = "Không tìm thấy mã sản phẩm!";
+        document.getElementById('maspInput').select();
         return;
     }
 
