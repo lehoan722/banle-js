@@ -15,7 +15,9 @@ async function kiemTraSoHoaDonDaTonTai(loai, so) {
 export async function capNhatSoHoaDonTuDong() {
     try {
         // 1. Lấy địa điểm từ localStorage
-        const diadiem = localStorage.getItem("diadiem") || "cs1";
+        const diadiem = window.diadiem || localStorage.getItem("diadiem") || "cs1";
+
+        //const diadiem = localStorage.getItem("diadiem") || "cs1";
 
         // 2. Xác định loại chứng từ như cũ
         const pathname = window.location.pathname;
