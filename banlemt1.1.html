@@ -469,7 +469,7 @@
         <div class="menu-item">
             <span class="menu-link">📦 GIAO DICH</span>
             <div class="dropdown-content">
-                <a href="banlemt.html" target="_blank">HOA DON BAN LE</a>
+                <a href="banlemtt.html" target="_blank">HOA DON BAN LE</a>
                 <a href="nhapmoimt.html" target="_blank">HOA DON NHAP MOI</a>
                 <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
                 <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
@@ -488,8 +488,23 @@
                 <a href="baocaotonghop.html" target="_blank">bao cao tong hop cac loai</a>
                 <a href="baocaoxnt1.html" target="_blank">bao cao xuat, nhap, ton cac loai</a>
                 <a href="xemhoadon.html" target="_blank">bao cao theo hoa don cac loai</a>
+                <a href="timkiemhanghoa.html" target="_blank">TÌM KIẾM THÔNG TIN HÀNG HÓA</a>
+
             </div>
         </div>
+
+        <div class="menu-item">
+            <span class="menu-link">📦 Danh Muc</span>
+            <div class="dropdown-content">
+                <a href="nhapdmnhanvien.html" target="_blank">nhap dm nhan vien</a>
+                <a href="nhapdmkhachhang.html" target="_blank">nhap dm khach hang</a>
+                <a href="nhapdmkhuyenmai.html" target="_blank">nhap dm khuyen mai</a>
+                <a href=".html" target="_blank">chua co</a>
+                <a href="html" target="_blank">chua co</a>
+
+            </div>
+        </div>
+
         <label><input id="size45" type="checkbox" />QL SIZE</label>
 
     </div>
@@ -861,7 +876,13 @@
             const nv = nvArr[0];
 
             // Lưu thông tin vào localStorage
-            localStorage.setItem("diadiem", cs);
+            ocalStorage.setItem("diadiem", cs);
+            if (!sessionStorage.getItem("diadiem_locked")) {
+                localStorage.setItem("diadiem", cs);
+                sessionStorage.setItem("diadiem_locked", "true");
+                sessionStorage.setItem("diadiem_value", cs);
+            };
+
             localStorage.setItem('supabase_access_token', data.session.access_token);
             localStorage.setItem("manv", nv.manv);
             localStorage.setItem("tennv", nv.tennv);
@@ -884,7 +905,7 @@
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
             // ======= Thêm vào đây =========
-            switchTab("tacvu");
+            switchTab("thongtin");
             document.getElementById("size45").checked = true;
             // ==============================
         };
@@ -917,12 +938,14 @@
             });
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem("diadiem_locked");
+            sessionStorage.removeItem("diadiem_value");
 
             document.getElementById('login-manv').focus();
         };
 
         function capNhatQuyenGiaoDien() {
-            // Lấy quyền từ localStorage
+            // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
             // Nút quay lại
             document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
@@ -1104,6 +1127,19 @@
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
+
+    <script>
+        // ✅ Khóa localStorage.diadiem khi giao diện đã khởi động
+        if (!sessionStorage.getItem("diadiem_locked")) {
+            const currentDiaDiem = localStorage.getItem("diadiem");
+            sessionStorage.setItem("diadiem_locked", "true");
+            sessionStorage.setItem("diadiem_value", currentDiaDiem);
+        } else {
+            const lockedValue = sessionStorage.getItem("diadiem_value");
+            if (lockedValue) localStorage.setItem("diadiem", lockedValue);
+        }
+    </script>
+
 
 </body>
 
