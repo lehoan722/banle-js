@@ -756,7 +756,9 @@
             <h2>Đăng nhập hệ thống</h2>
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
+
                 <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly style="background:#eee;" />
+
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
@@ -793,7 +795,7 @@
             if (!email) return "";
             email = email.trim().toLowerCase();
             if (email === "khohangcs1@gmail.com") return "cs1";
-            if (email === "khohangcs2@gmail.com") return "cs1";
+            if (email === "khohangcs2@gmail.com") return "cs2";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
         }
@@ -875,7 +877,13 @@
             const nv = nvArr[0];
 
             // Lưu thông tin vào localStorage
-            localStorage.setItem("diadiem", cs);
+
+            if (!sessionStorage.getItem("diadiem_locked")) {
+                localStorage.setItem("diadiem", cs);
+                sessionStorage.setItem("diadiem_locked", "true");
+                sessionStorage.setItem("diadiem_value", cs);
+            };
+
             localStorage.setItem('supabase_access_token', data.session.access_token);
             localStorage.setItem("manv", nv.manv);
             localStorage.setItem("tennv", nv.tennv);
@@ -931,6 +939,8 @@
             });
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem("diadiem_locked");
+            sessionStorage.removeItem("diadiem_value");
 
             document.getElementById('login-manv').focus();
         };
@@ -1118,6 +1128,19 @@
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
+
+    <script>
+        // ✅ Khóa localStorage.diadiem khi giao diện đã khởi động
+        if (!sessionStorage.getItem("diadiem_locked")) {
+            const currentDiaDiem = localStorage.getItem("diadiem");
+            sessionStorage.setItem("diadiem_locked", "true");
+            sessionStorage.setItem("diadiem_value", currentDiaDiem);
+        } else {
+            const lockedValue = sessionStorage.getItem("diadiem_value");
+            if (lockedValue) localStorage.setItem("diadiem", lockedValue);
+        }
+    </script>
+
 
 </body>
 
