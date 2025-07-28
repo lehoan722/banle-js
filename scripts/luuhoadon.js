@@ -562,6 +562,14 @@ export async function luuHoaDonccn1v2() {
     return;
   }
 
+  // ✅ Kiểm tra logic chi nhánh khớp với loại chứng từ
+  const loaihd = sohd.split("_")[0];  // xcncs1 hoặc xcncs2
+
+  if ((loaihd === "xcncs1" && diadiem !== "cs1") || (loaihd === "xcncs2" && diadiem !== "cs2")) {
+    alert("🚫 Bạn đang tạo hóa đơn không đúng với chi nhánh đang đăng nhập.\nVui lòng kiểm tra lại!");
+    return;
+  }
+
   const { data: tonTai } = await supabase
     .from("hoadon_banle")
     .select("sohd")
