@@ -876,13 +876,7 @@
             const nv = nvArr[0];
 
             // Lưu thông tin vào localStorage
-            
-            if (!sessionStorage.getItem("diadiem_locked")) {
-                localStorage.setItem("diadiem", cs);
-                sessionStorage.setItem("diadiem_locked", "true");
-                sessionStorage.setItem("diadiem_value", cs);
-            };
-
+            localStorage.setItem("diadiem", cs);
             localStorage.setItem('supabase_access_token', data.session.access_token);
             localStorage.setItem("manv", nv.manv);
             localStorage.setItem("tennv", nv.tennv);
@@ -938,8 +932,6 @@
             });
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem("diadiem_locked");
-            sessionStorage.removeItem("diadiem_value");
 
             document.getElementById('login-manv').focus();
         };
@@ -1127,19 +1119,6 @@
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
-
-    <script>
-        // ✅ Khóa localStorage.diadiem khi giao diện đã khởi động
-        if (!sessionStorage.getItem("diadiem_locked")) {
-            const currentDiaDiem = localStorage.getItem("diadiem");
-            sessionStorage.setItem("diadiem_locked", "true");
-            sessionStorage.setItem("diadiem_value", currentDiaDiem);
-        } else {
-            const lockedValue = sessionStorage.getItem("diadiem_value");
-            if (lockedValue) localStorage.setItem("diadiem", lockedValue);
-        }
-    </script>
-
 
 </body>
 
