@@ -756,14 +756,15 @@
             <h2>Đăng nhập hệ thống</h2>
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
-                <input type="email" id="login-email" ...><br />
+
+                <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly style="background:#eee;" />
+
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
-                <select id="login-cs" style="width:200px; padding:6px;">
-                    <option value="">-- Chọn cơ sở --</option>
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select><br /><br />
+                <select id="login-cs" style="width:200px; padding:6px;" disabled>
+                    <option value="cs2" selected>Cơ sở 2</option>
+                </select>
+
                 <div class="login-field">
                     <label for="login-manv">Mã nhân viên</label><br />
                     <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
@@ -782,7 +783,8 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-         window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
+        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
+
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
