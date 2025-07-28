@@ -17,8 +17,7 @@ async function handleSpecialSoHoaDon(sohd) {
 
   // Xác định cơ sở và điều kiện chia hết
   //const diadiem = localStorage.getItem("diadiem");
-
-   const prefix = sohd.split("_")[0] || "";
+  const prefix = sohd.split("_")[0] || "";
   let diadiem = "cs1";
   if (prefix.includes("cs2")) diadiem = "cs2";
   else if (prefix.includes("cs1")) diadiem = "cs1";
@@ -82,7 +81,11 @@ export async function luuHoaDonQuaAPI() {
   const tennv = document.getElementById("tennv").value.trim();
   if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-  const diadiem = localStorage.getItem("diadiem");
+  //const diadiem = localStorage.getItem("diadiem");
+  const prefix = sohd.split("_")[0] || "";
+  let diadiem = "cs1";
+  if (prefix.includes("cs2")) diadiem = "cs2";
+  else if (prefix.includes("cs1")) diadiem = "cs1";
 
   // ---- CHỈ GỌI CHO HÓA ĐƠN MỚI, KHÔNG PHẢI SỬA ----
   const { data: tonTai } = await supabase
@@ -204,7 +207,11 @@ export async function luuHoaDonNhapQuaAPI() {
   if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
   // Lấy cơ sở từ localStorage, không lấy từ input
-  const diadiem = localStorage.getItem("diadiem");
+  //const diadiem = localStorage.getItem("diadiem");
+  const prefix = sohd.split("_")[0] || "";
+  let diadiem = "cs1";
+  if (prefix.includes("cs2")) diadiem = "cs2";
+  else if (prefix.includes("cs1")) diadiem = "cs1";
 
   const { data: tonTai } = await supabase
     .from("hoadon_banle")
@@ -362,7 +369,6 @@ export async function luuHoaDonCaHaiBan() {
 
   // Lấy địa điểm từ localStorage (không lấy từ input)
   //const diadiem = localStorage.getItem("diadiem");
-
   const prefix = sohd.split("_")[0] || "";
   let diadiem = "cs1";
   if (prefix.includes("cs2")) diadiem = "cs2";
@@ -568,7 +574,11 @@ export async function luuHoaDonccn1v2() {
   if (!tennv) return alert("❌1v2/2v1 Bạn chưa nhập tên nhân viên bán hàng.");
 
   // Lấy cơ sở từ localStorage, không lấy từ input
-  const diadiem = localStorage.getItem("diadiem");
+  //const diadiem = localStorage.getItem("diadiem");
+  const prefix = sohd.split("_")[0] || "";
+  let diadiem = "cs1";
+  if (prefix.includes("cs2")) diadiem = "cs2";
+  else if (prefix.includes("cs1")) diadiem = "cs1";
   if (!diadiem || (diadiem !== 'cs1' && diadiem !== 'cs2')) {
     alert("❌ Không xác định được địa điểm chi nhánh (cs1 hoặc cs2). Hãy kiểm tra lại!");
     return;
