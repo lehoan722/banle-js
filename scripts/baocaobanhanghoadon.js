@@ -2,6 +2,11 @@ let hot;
 let currentPage = 0;
 let pageSize = 1000;
 
+function getLoaiHDFilters() {
+  const checkboxes = document.querySelectorAll(".loaihd-filter:checked");
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
 function readFilter() {
   return {
     tu_ngay: document.getElementById("tu_ngay").value,
@@ -9,9 +14,10 @@ function readFilter() {
     khachhang: document.getElementById("khachhang").value || null,
     nhanvien: document.getElementById("nhanvien").value || null,
     diadiem: document.getElementById("diadiem").value || null,
-    loaihd: document.getElementById("loaihd").value || null,
     masp: document.getElementById("masp").value || null,
+    sohd: document.getElementById("sohd").value || null,
     tonghop_ngay: document.getElementById("tonghop_ngay").checked,
+    loaihd_filters: getLoaiHDFilters(),
     page_index: currentPage,
     page_size: pageSize
   };
@@ -44,7 +50,11 @@ function initTable() {
       { data: "gia", type: "numeric" }, { data: "thanhtien", type: "numeric" },
       { data: "km", type: "numeric" }
     ],
-    licenseKey: 'non-commercial-and-evaluation'
+    licenseKey: 'non-commercial-and-evaluation',
+    stretchH: 'all',
+    width: '100%',
+    height: 500,
+    selectionMode: 'single'
   });
 }
 
@@ -63,7 +73,7 @@ function nextPage() {
 async function xuatExcelToanBo() {
   const filter = readFilter();
   filter.page_index = 0;
-  filter.page_size = 100000; // lấy hết tối đa 100k dòng
+  filter.page_size = 100000;
 
   const { data, error } = await supabase.rpc('baocaobanhanghoadon_paged', filter);
   if (error) return alert("❌ Lỗi xuất Excel: " + error.message);
@@ -75,7 +85,23 @@ async function xuatExcelToanBo() {
   XLSX.writeFile(wb, "baocaobanhang.xlsx");
 }
 
-// Khởi tạo ngày mặc định khi tải trang
+async function xoaHoaDon() {
+  const selection = hot.getSelected();
+  if (!selection || selection.length === 0) return alert("❌ Chưa chọn hóa đơn nào");
+
+  const rowIndex = selection[0][0];
+  const row = hot.getSourceDataAtRow(rowIndex);
+  if (!row || !row.sohd) return alert("❌ Dữ liệu không hợp lệ");
+
+  if (!confirm(`Bạn có chắc chắn muốn xóa hóa đơn ${row.sohd}?`)) return;
+
+  await supabase.from('ct_hoadon_banle').delete().eq('sohd', row.sohd);
+  await supabase.from('hoadon_banle').delete().eq('sohd', row.sohd);
+
+  alert("✅ Đã xóa hóa đơn " + row.sohd);
+  taiDuLieu();
+}
+
 window.onload = () => {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById("tu_ngay").value = today;
