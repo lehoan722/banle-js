@@ -16,7 +16,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       sellerTaxCode: "4600370592",
       sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, Tỉnh Thái Nguyên, Việt Nam",
       sellerPhoneNumber: "0916747401",
-      sellerEmail: "huel31@viettel.com.vn",
+      sellerEmail: "lehoan722@gmail.com",
       sellerBankAccount: "",
       sellerBankName: ""
     },
@@ -24,8 +24,8 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       sellerLegalName: "NGUYỄN ÁNH TUYẾT",
       sellerTaxCode: "4600960665",
       sellerAddressLine: "Số 561, Tổ 23, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
-      sellerPhoneNumber: "0916747401",
-      sellerEmail: "cskh.viettelhue@gmail.com",
+      sellerPhoneNumber: "0763424342",
+      sellerEmail: "nguyenanhtuyet140175@gmail.com",
       sellerBankAccount: "",
       sellerBankName: ""
     }
