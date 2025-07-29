@@ -4,11 +4,6 @@ let hot;
 let currentPage = 0;
 let pageSize = 1000;
 
-export const supabaseUrl = "https://rddjrmbyftlcvrgzlyby.supabase.co";
-export const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
-
-export const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
 
 function getLoaiHDFilters() {
     const checkboxes = document.querySelectorAll(".loaihd-filter:checked");
@@ -143,5 +138,12 @@ export async function dangNhap() {
     document.getElementById("authBox").style.display = "none";
     taiDuLieu();
 }
+
+window.dangNhap = dangNhap;
+window.taiDuLieu = taiDuLieu;
+window.prevPage = prevPage;
+window.nextPage = nextPage;
+window.xuatExcelToanBo = xuatExcelToanBo;
+window.xoaHoaDon = xoaHoaDon;
 
 
