@@ -336,7 +336,9 @@
       if (loaiTongHop !== "chitiet") {
         const groupMap = new Map();
         filtered.forEach(hd => {
-          const d = new Date(hd.created_at);
+          const utcDate = new Date(hd.created_at);
+          const d = new Date(utcDate.getTime() + (utcDate.getTimezoneOffset() * -60000));
+
           let key = "";
           if (loaiTongHop === "ngay") {
             key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
