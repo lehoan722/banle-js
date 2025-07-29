@@ -201,16 +201,7 @@
       // 1. Lấy các giá trị lọc từ giao diện
       const tuNgay = document.getElementById("tuNgay").value;
       let denNgay = document.getElementById("denNgay").value;
-      if (denNgay) {
-        const tmp = new Date(denNgay);
-        tmp.setHours(23, 59, 59, 999);
-        denNgay = tmp.toISOString(); // ISO chuẩn nhưng theo giờ local
-      }
-
-      console.log("Tu ngay:", tuNgay);
-      console.log("Den ngay:", denNgay);
-
-
+      if (denNgay) denNgay = denNgay + "T23:59:59.999";
 
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
@@ -336,15 +327,9 @@
       if (loaiTongHop !== "chitiet") {
         const groupMap = new Map();
         filtered.forEach(hd => {
-          const utcDate = new Date(hd.created_at);
-          const d = new Date(utcDate.getTime() + (utcDate.getTimezoneOffset() * -60000));
-
+          const d = new Date(hd.created_at);
           let key = "";
-          if (loaiTongHop === "ngay") {
-            key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-          }
-
-
+          if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
           if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
           if (loaiTongHop === "nam") key = d.getFullYear() + "";
           if (!groupMap.has(key)) {
