@@ -1,6 +1,14 @@
+import { supabase } from './supabaseClient.js';
+
 let hot;
 let currentPage = 0;
 let pageSize = 1000;
+
+export const supabaseUrl = "https://rddjrmbyftlcvrgzlyby.supabase.co";
+export const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
+
+export const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 
 function getLoaiHDFilters() {
     const checkboxes = document.querySelectorAll(".loaihd-filter:checked");
@@ -120,16 +128,20 @@ async function kiemTraDangNhap() {
     }
 }
 
-async function dangNhap() {
-    const email = document.getElementById("email").value.trim();
+export async function dangNhap() {
+    const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    document.getElementById("authStatus").innerText = "⏳ Đang đăng nhập...";
 
-    const status = document.getElementById("authStatus");
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
-        status.innerText = "❌ Đăng nhập thất bại!";
-    } else {
-        status.innerText = "";
-        location.reload(); // Tải lại trang sau khi đăng nhập thành công
+        document.getElementById("authStatus").innerText = "❌ " + error.message;
+        return;
     }
+
+    document.getElementById("authBox").style.display = "none";
+    taiDuLieu();
 }
+
+
