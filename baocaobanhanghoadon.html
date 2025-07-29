@@ -32,6 +32,15 @@
 </head>
 
 <body>
+
+    <div id="authBox">
+        <label>Email: <input type="email" id="email"></label>
+        <label>Mật khẩu: <input type="password" id="password"></label>
+        <button onclick="dangNhap()">Đăng nhập</button>
+        <span id="authStatus" style="color: red; margin-left: 10px"></span>
+    </div>
+
+
     <h2>BÁO CÁO BÁN HÀNG THEO HÓA ĐƠN</h2>
 
     <div class="filter-group">
@@ -72,12 +81,31 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
     <script>
-        
-        const supabase = supabase.createClient(
-            'https://rddjrmbyftlcvrgzlyby.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-        );
+        let supabase;
+
+        async function dangNhap() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            document.getElementById("authStatus").innerText = "⏳ Đang đăng nhập...";
+
+            const client = window.supabase.createClient(
+                "https://rddjrmbyftlcvrgzlyby.supabase.co",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM"
+            );
+
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                document.getElementById("authStatus").innerText = "❌ " + error.message;
+                return;
+            }
+
+            supabase = client;
+            document.getElementById("authBox").style.display = "none";
+            taiDuLieu(); // sau khi đăng nhập thì tải dữ liệu luôn
+        }
     </script>
+
 
     <script src="scripts/baocaobanhanghoadon.js"></script>
 </body>
