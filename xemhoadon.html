@@ -201,7 +201,16 @@
       // 1. Lấy các giá trị lọc từ giao diện
       const tuNgay = document.getElementById("tuNgay").value;
       let denNgay = document.getElementById("denNgay").value;
-      if (denNgay) denNgay = denNgay + "T23:59:59.999";
+      if (denNgay) {
+        const tmp = new Date(denNgay);
+        tmp.setHours(23, 59, 59, 999);
+        denNgay = tmp.toISOString(); // ISO chuẩn nhưng theo giờ local
+      }
+
+      console.log("Tu ngay:", tuNgay);
+      console.log("Den ngay:", denNgay);
+
+
 
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
