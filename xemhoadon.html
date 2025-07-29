@@ -198,267 +198,257 @@
 
 
     async function taiDanhSachHoaDon() {
-      // 1. Lấy các giá trị lọc từ giao diện
-      const tuNgay = document.getElementById("tuNgay").value;
-      let denNgay = document.getElementById("denNgay").value;
-      if (denNgay) denNgay = denNgay + "T23:59:59.999";
+  // 1. Lấy các giá trị lọc từ giao diện
+  const tuNgay = document.getElementById("tuNgay").value;
+  let denNgay = document.getElementById("denNgay").value;
+  if (denNgay) denNgay = denNgay + "T23:59:59.999";
 
-      const nv = document.getElementById("locNV").value.trim().toUpperCase();
-      const sohd = document.getElementById("locSoHD").value.trim();
-      const khach = document.getElementById("locKhach").value.trim();
-      const tienTu = Number(document.getElementById("tienTu").value);
-      const tienDen = Number(document.getElementById("tienDen").value);
+  const nv = document.getElementById("locNV").value.trim().toUpperCase();
+  const sohd = document.getElementById("locSoHD").value.trim();
+  const khach = document.getElementById("locKhach").value.trim();
+  const tienTu = Number(document.getElementById("tienTu").value);
+  const tienDen = Number(document.getElementById("tienDen").value);
 
-      const selectLoai = document.getElementById("loaiChungTu");
-      const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+  const selectLoai = document.getElementById("loaiChungTu");
+  const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
 
-      const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+  const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
 
-      // ----- Xóa bảng cũ nếu có -----
-      if (hoaDonHot) {
-        hoaDonHot.destroy();
-        hoaDonHot = null;
-      }
+  // ----- Xóa bảng cũ nếu có -----
+  if (hoaDonHot) {
+    hoaDonHot.destroy();
+    hoaDonHot = null;
+  }
 
-      let filtered = [];
+  let filtered = [];
 
-      // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
-      if (loaiChungTuArr.length > 0) {
-        const queries = loaiChungTuArr.map(loai => {
-          let query = supabase
-            .from('hoadon_banle')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .ilike('sohd', `${loai}_%`);
+  // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
+  if (loaiChungTuArr.length > 0) {
+    const queries = loaiChungTuArr.map(loai => {
+      let query = supabase
+        .from('hoadon_banle')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .ilike('sohd', `${loai}_%`);
 
-          if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
-          else if (tuNgay) query = query.gte('created_at', tuNgay);
-          else if (denNgay) query = query.lte('created_at', denNgay);
+      if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+      else if (tuNgay) query = query.gte('created_at', tuNgay);
+      else if (denNgay) query = query.lte('created_at', denNgay);
 
-          if (nv) query = query.ilike('tennv', `%${nv}%`);
-          if (sohd) query = query.ilike('sohd', `%${sohd}%`);
-          if (khach) query = query.ilike('khachhang', `%${khach}%`);
-          if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
-          if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+      if (nv) query = query.ilike('tennv', `%${nv}%`);
+      if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+      if (khach) query = query.ilike('khachhang', `%${khach}%`);
+      if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+      if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-          return query;
-        });
+      return query;
+    });
 
-        // Chạy song song các truy vấn
-        const results = await Promise.all(queries.map(q => q));
-        let arr = [];
-        for (const { data, error } of results) {
-          if (error) {
-            alert("❌ Lỗi tải hóa đơn: " + error.message);
-            return;
-          }
-          arr = arr.concat(data || []);
-        }
-        // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
-        const hash = {};
-        filtered = arr.filter(hd => {
-          if (hash[hd.sohd]) return false;
-          hash[hd.sohd] = true;
-          return true;
-        });
-      } else {
-        // Không chọn loại, lấy toàn bộ
-        let query = supabase
-          .from('hoadon_banle')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
-        else if (tuNgay) query = query.gte('created_at', tuNgay);
-        else if (denNgay) query = query.lte('created_at', denNgay);
-
-        if (nv) query = query.ilike('tennv', `%${nv}%`);
-        if (sohd) query = query.ilike('sohd', `%${sohd}%`);
-        if (khach) query = query.ilike('khachhang', `%${khach}%`);
-        if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
-        if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
-
-        const { data, error } = await query;
-        if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
-        filtered = data || [];
-      }
-
-      // Nếu không có dữ liệu, hiển thị bảng trống
-      if (!filtered.length) {
-        hoaDonData = [];
-        document.getElementById('tongSoLuong2').textContent = "0";
-        document.getElementById('tongTien2').textContent = "0";
-        // Tạo Handsontable bảng rỗng vẫn hiển thị header
-        hoaDonHot = new Handsontable(document.getElementById('hoaDonGrid'), {
-          data: [],
-          colHeaders: [
-            'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
-          ],
-          columns: [
-            { data: 'stt', readOnly: true, width: 40 },
-            { data: 'chon', type: 'checkbox', width: 45 },
-            { data: 'sohd', readOnly: true, width: 150 },
-            { data: 'ngay', readOnly: true, width: 240 },
-            { data: 'tennv', readOnly: true },
-            { data: 'khachhang', readOnly: true },
-            { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
-            {
-              data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
-              renderer: function (instance, td, row, col, prop, value) {
-                td.innerHTML = value?.toLocaleString();
-              }
-            },
-            { data: 'ghichu', readOnly: true }
-          ],
-          rowHeaders: false,
-          filters: true,
-          dropdownMenu: true,
-          manualColumnResize: true,
-          columnSorting: true,
-          licenseKey: 'non-commercial-and-evaluation',
-          width: '100%',
-          height: 420
-        });
+    // Chạy song song các truy vấn
+    const results = await Promise.all(queries.map(q => q));
+    let arr = [];
+    for (const { data, error } of results) {
+      if (error) {
+        alert("❌ Lỗi tải hóa đơn: " + error.message);
         return;
       }
-
-      // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
-      let hienThiData = filtered;
-      if (loaiTongHop !== "chitiet") {
-        const groupMap = new Map();
-        filtered.forEach(hd => {
-          const d = new Date(hd.created_at);
-          let key = "";
-          if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
-          if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
-          if (loaiTongHop === "nam") key = d.getFullYear() + "";
-          if (!groupMap.has(key)) {
-            groupMap.set(key, {
-              sohd: 1,
-              created_at: hd.created_at,
-              tongsl: Number(hd.tongsl || 0),
-              thanhtoan: Number(hd.thanhtoan || 0)
-            });
-          } else {
-            let obj = groupMap.get(key);
-            obj.sohd += 1;
-            obj.tongsl += Number(hd.tongsl || 0);
-            obj.thanhtoan += Number(hd.thanhtoan || 0);
-          }
-        });
-        hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
-          // Định dạng lại ngày/tháng/năm để hiển thị
-          if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
-          if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
-          if (loaiTongHop === "nam") val.created_at = key;
-          return val;
-        });
-      }
-
-      // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
-      function dinhDangNgayGio(ngayStr) {
-        if (!ngayStr) return "";
-        if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
-        const d = new Date(ngayStr);
-        const ngay = d.getDate().toString().padStart(2, "0");
-        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
-        const nam = d.getFullYear();
-        const gio = d.getHours().toString().padStart(2, "0");
-        const phut = d.getMinutes().toString().padStart(2, "0");
-        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
-      }
-
-      // ----------- CHUẨN HÓA DỮ LIỆU ĐỂ ĐƯA VÀO HANDSONTABLE ----------
-      hoaDonData = hienThiData.map((hd, idx) => ({
-        stt: idx + 1,
-        chon: false,
-        sohd: hd.sohd || "",
-        ngay: dinhDangNgayGio(hd.created_at),
-        tennv: hd.tennv || "",
-        khachhang: hd.khachhang || "",
-        tongsl: hd.tongsl || 0,
-        thanhtoan: hd.thanhtoan || 0,
-        ghichu: hd.ghichu || ""
-      }));
-
-      // ---------- TÍNH TỔNG SỐ LƯỢNG, TỔNG TIỀN ----------
-      let tongSL = 0, tongTien = 0;
-      hoaDonData.forEach(hd => {
-        tongSL += Number(hd.tongsl || 0);
-        tongTien += Number(hd.thanhtoan || 0);
-      });
-      document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
-      document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
-
-      // ------------- RENDER HANDSONTABLE -------------
-      const container = document.getElementById('hoaDonGrid');
-      hoaDonHot = new Handsontable(container, {
-        data: hoaDonData,
-        rowHeaders: function (index) { return index + 1; },
-        colHeaders: [
-          'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
-        ],
-        columns: [
-          { data: 'chon', type: 'checkbox', width: 55 },
-          { data: 'sohd', readOnly: true },
-          { data: 'ngay', readOnly: true },
-          { data: 'tennv', readOnly: true },
-          { data: 'khachhang', readOnly: true },
-          { data: 'tongsl', readOnly: true, type: 'numeric' },
-          {
-            data: 'thanhtoan', readOnly: true, type: 'numeric',
-            renderer: function (instance, td, row, col, prop, value) {
-              td.innerHTML = value?.toLocaleString();
-            }
-          },
-          { data: 'ghichu', readOnly: true }
-        ],
-        width: '100%',
-        stretchH: 'all',
-        height: Math.min(window.innerHeight - 240, 650),
-
-        afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
-          // Khi click vào row header, highlight toàn bộ dòng đó
-          let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
-          trs.forEach((tr, idx) => {
-            tr.style.backgroundColor = (idx === row) ? "#ffe066" : "";
-          });
-        },
-        afterOnCellMouseOver: function (e, coords, td) {
-          // Hover cũng highlight dòng
-          let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
-          trs.forEach((tr, idx) => {
-            tr.style.backgroundColor = (idx === coords.row) ? "#ffe066" : "";
-          });
-        },
-        afterOnCellMouseOut: function (e, coords, td) {
-          // Khi rời chuột bỏ highlight
-          let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
-          trs.forEach(tr => tr.style.backgroundColor = "");
-        }
-      });
-
-
-      // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
-      setTimeout(function () {
-        let tbody = document.querySelector("#hoaDonGrid .ht_master tbody");
-        if (tbody) {
-          tbody.ondblclick = function (e) {
-            let rowEl = e.target.closest("tr");
-            if (!rowEl) return;
-            let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-            if (hoaDonData[rowIdx] && loaiTongHop === "chitiet") {
-              xemChiTiet(hoaDonData[rowIdx].sohd);
-            }
-          };
-        }
-      }, 150); // Để chắc chắn DOM Handsontable đã render xong
-
-      window.addEventListener('resize', function () {
-        if (hoaDonHot) hoaDonHot.render();
-      });
-
+      arr = arr.concat(data || []);
     }
+    // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
+    const hash = {};
+    filtered = arr.filter(hd => {
+      if (hash[hd.sohd]) return false;
+      hash[hd.sohd] = true;
+      return true;
+    });
+  } else {
+    // Không chọn loại, lấy toàn bộ
+    let query = supabase
+      .from('hoadon_banle')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+    else if (tuNgay) query = query.gte('created_at', tuNgay);
+    else if (denNgay) query = query.lte('created_at', denNgay);
+
+    if (nv) query = query.ilike('tennv', `%${nv}%`);
+    if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+    if (khach) query = query.ilike('khachhang', `%${khach}%`);
+    if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+    if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+    const { data, error } = await query;
+    if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+    filtered = data || [];
+  }
+
+  // Nếu không có dữ liệu, hiển thị bảng trống
+  if (!filtered.length) {
+    hoaDonData = [];
+    document.getElementById('tongSoLuong2').textContent = "0";
+    document.getElementById('tongTien2').textContent = "0";
+    // Tạo Handsontable bảng rỗng vẫn hiển thị header
+    hoaDonHot = new Handsontable(document.getElementById('hoaDonGrid'), {
+      data: [],
+      colHeaders: [
+        'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+      ],
+      columns: [
+        { data: 'stt', readOnly: true, width: 40 },
+        { data: 'chon', type: 'checkbox', width: 45 },
+        { data: 'sohd', readOnly: true, width: 150 },
+        { data: 'ngay', readOnly: true, width: 240 },
+        { data: 'tennv', readOnly: true },
+        { data: 'khachhang', readOnly: true },
+        { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
+        {
+          data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
+          renderer: function (instance, td, row, col, prop, value) {
+            td.innerHTML = value?.toLocaleString();
+          }
+        },
+        { data: 'ghichu', readOnly: true }
+      ],
+      rowHeaders: false,
+      filters: true,
+      dropdownMenu: true,
+      manualColumnResize: true,
+      columnSorting: true,
+      licenseKey: 'non-commercial-and-evaluation',
+      width: '100%',
+      height: 420
+    });
+    return;
+  }
+
+  // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
+  let hienThiData = filtered;
+  if (loaiTongHop !== "chitiet") {
+    const groupMap = new Map();
+    filtered.forEach(hd => {
+      const d = new Date(hd.created_at);
+      let key = "";
+      if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+      if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+      if (loaiTongHop === "nam") key = d.getFullYear() + "";
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          sohd: 1,
+          created_at: hd.created_at,
+          tongsl: Number(hd.tongsl || 0),
+          thanhtoan: Number(hd.thanhtoan || 0)
+        });
+      } else {
+        let obj = groupMap.get(key);
+        obj.sohd += 1;
+        obj.tongsl += Number(hd.tongsl || 0);
+        obj.thanhtoan += Number(hd.thanhtoan || 0);
+      }
+    });
+    hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
+      // Định dạng lại ngày/tháng/năm để hiển thị
+      if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+      if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
+      if (loaiTongHop === "nam") val.created_at = key;
+      return val;
+    });
+  }
+
+  // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
+  function dinhDangNgayGio(ngayStr) {
+    if (!ngayStr) return "";
+    if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
+    const d = new Date(ngayStr);
+    const ngay = d.getDate().toString().padStart(2, "0");
+    const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+    const nam = d.getFullYear();
+    const gio = d.getHours().toString().padStart(2, "0");
+    const phut = d.getMinutes().toString().padStart(2, "0");
+    return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+  }
+
+  // ----------- CHUẨN HÓA DỮ LIỆU ĐỂ ĐƯA VÀO HANDSONTABLE ----------
+  hoaDonData = hienThiData.map((hd, idx) => ({
+    stt: idx + 1,
+    chon: false,
+    sohd: hd.sohd || "",
+    ngay: dinhDangNgayGio(hd.created_at),
+    tennv: hd.tennv || "",
+    khachhang: hd.khachhang || "",
+    tongsl: hd.tongsl || 0,
+    thanhtoan: hd.thanhtoan || 0,
+    ghichu: hd.ghichu || ""
+  }));
+
+  // ---------- TÍNH TỔNG SỐ LƯỢNG, TỔNG TIỀN ----------
+  let tongSL = 0, tongTien = 0;
+  hoaDonData.forEach(hd => {
+    tongSL += Number(hd.tongsl || 0);
+    tongTien += Number(hd.thanhtoan || 0);
+  });
+  document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
+  document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
+
+  // ------------- RENDER HANDSONTABLE -------------
+  const container = document.getElementById('hoaDonGrid');
+  hoaDonHot = new Handsontable(container, {
+    data: hoaDonData,
+    rowHeaders: function (index) { return index + 1; },
+    colHeaders: [
+      'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+    ],
+    columns: [
+      { data: 'chon', type: 'checkbox', width: 55 },
+      { data: 'sohd', readOnly: true },
+      { data: 'ngay', readOnly: true },
+      { data: 'tennv', readOnly: true },
+      { data: 'khachhang', readOnly: true },
+      { data: 'tongsl', readOnly: true, type: 'numeric' },
+      {
+        data: 'thanhtoan', readOnly: true, type: 'numeric',
+        renderer: function (instance, td, row, col, prop, value) {
+          td.innerHTML = value?.toLocaleString();
+        }
+      },
+      { data: 'ghichu', readOnly: true }
+    ],
+    width: '100%',
+    stretchH: 'all',
+    height: Math.min(window.innerHeight - 240, 650),
+
+    afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
+      // Khi click vào row header, highlight toàn bộ dòng đó
+      let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+      trs.forEach((tr, idx) => {
+        tr.style.backgroundColor = (idx === row) ? "#ffe066" : "";
+      });
+    },
+    afterOnCellMouseOver: function (e, coords, td) {
+      // Hover cũng highlight dòng
+      let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+      trs.forEach((tr, idx) => {
+        tr.style.backgroundColor = (idx === coords.row) ? "#ffe066" : "";
+      });
+    },
+    afterOnCellMouseOut: function (e, coords, td) {
+      // Khi rời chuột bỏ highlight
+      let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+      trs.forEach(tr => tr.style.backgroundColor = "");
+    },
+    afterOnCellDblClick: function (row, col, e) {
+      if (hoaDonData[row] && loaiTongHop === "chitiet") {
+        xemChiTiet(hoaDonData[row].sohd);
+      }
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    if (hoaDonHot) hoaDonHot.render();
+  });
+
+}
+
 
 
     async function xemChiTiet(sohd) {
