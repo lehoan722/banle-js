@@ -30,10 +30,10 @@ async function handleSpecialSoHoaDon(sohd) {
 
   // Giới hạn tiền theo cơ sở
   const ngay = document.getElementById("ngay").value;
-  let hanMuc = 6000000;
+  let hanMuc = 6500000;
   let loaiT = "bancs2T";
   if (diadiem === "cs1") {
-    hanMuc = 1700000;
+    hanMuc = 1900000;
     loaiT = "bancs1T";
   }
 
