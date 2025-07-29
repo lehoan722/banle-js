@@ -105,9 +105,13 @@
             taiDuLieu(); // sau khi đăng nhập thì tải dữ liệu luôn
         }
     </script>
-   
-    <script type="module" src="scripts/supabaseClient.js"></script>
-    <script type="module" src="scripts/baocaobanhanghoadon.js"></script>
+
+    <script>
+        var supabase; // phải để global để file .js bên ngoài có thể dùng được
+    </script>
+
+
+    <script src="scripts/baocaobanhanghoadon.js"></script>
 
 </body>
 
