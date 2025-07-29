@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+const supabase = window.supabase;
 
 let hot;
 let currentPage = 0;
