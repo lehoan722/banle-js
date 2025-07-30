@@ -303,38 +303,49 @@
             // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
             hot.loadData(uniqueRows);
 
-            // Tiếp tục truy vấn như cũ
+            // Truy vấn Supabase để lấy cả mã tồn tại và vị trí kho
             const sb = getSupabaseClient();
-            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho2').in('masp', uniqueMasps);
+            const { data: found, error } = await sb
+                .from(TABLE_NAME)
+                .select('masp,vitrikho2')
+                .in('masp', uniqueMasps);
+
             if (error) return alert('Lỗi kết nối Supabase!');
 
+            // Tạo map: mã tồn tại => vị trí kho
             const maspMap = {};
             found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho2; });
 
             hot.batch(() => {
                 for (let r = 0; r < hot.countRows(); r++) {
                     const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
-                    // Cập nhật lại mã sản phẩm thành in hoa luôn trên UI (dù dán thường hay in hoa)
-                    hot.setDataAtCell(r, 0, masp);
+                    hot.setDataAtCell(r, 0, masp); // Đảm bảo in hoa
 
                     if (!masp) {
                         hot.setDataAtCell(r, 1, null);
                         hot.setDataAtCell(r, 2, null);
                         continue;
                     }
-                    if (maspMap[masp]) {
+                    if (typeof maspMap[masp] === "undefined") {
+                        // Không tồn tại trong danh mục
+                        hot.setDataAtCell(r, 1, null);
+                        hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI");
+                    } else if (maspMap[masp]) {
+                        // Đã có vị trí kho
                         hot.setDataAtCell(r, 1, maspMap[masp]);
                         hot.setDataAtCell(r, 2, "BỎ QUA");
                     } else {
+                        // Có mã, chưa có vị trí
                         hot.setDataAtCell(r, 1, null);
-                        hot.setDataAtCell(r, 2, null);
+                        hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ");
                     }
                 }
             });
 
-            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, toàn bộ mã SP được chuyển thành IN HOA và loại bỏ trùng lặp.</span>`;
+            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
 
         // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
