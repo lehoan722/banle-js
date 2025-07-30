@@ -278,49 +278,64 @@
 
         // Kiểm tra vị trí kho
         async function kiemTraViTri() {
-            window.editableMASP = false; // Khóa nhập mã sản phẩm
-            window.editableVITRI = false; // Chưa cho nhập vị trí
-            hot.updateSettings({ cells: hot.getSettings().cells }); // update lại readOnly
+            window.editableMASP = false;
+            window.editableVITRI = false;
+            hot.updateSettings({ cells: hot.getSettings().cells });
 
-            // Lấy danh sách mã sản phẩm
-            let allData = hot.getData().map(r => (r[0] || "").toString().trim().toUpperCase()).filter(m => m);
-            // Loại mã trùng, trống
-            allData = [...new Set(allData)];
-            if (allData.length === 0) {
+            // Lấy dữ liệu, chuẩn hóa mã sản phẩm thành in hoa, loại trùng
+            let allRows = hot.getSourceData();
+            let uniqueMasps = [];
+            let uniqueRows = [];
+            let seen = {};
+            for (let row of allRows) {
+                let masp = (row.masp || "").toString().trim().toUpperCase();
+                if (masp && !seen[masp]) {
+                    seen[masp] = true;
+                    uniqueMasps.push(masp);
+                    uniqueRows.push({ masp, vitrikhocs1: null, trangthai: null });
+                }
+            }
+            if (uniqueMasps.length === 0) {
                 alert("Nhập mã sản phẩm để kiểm tra!");
                 return;
             }
 
+            // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
+            hot.loadData(uniqueRows);
+
+            // Tiếp tục truy vấn như cũ
             const sb = getSupabaseClient();
-            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', allData);
+            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikhocs1').in('masp', uniqueMasps);
             if (error) return alert('Lỗi kết nối Supabase!');
 
-            // Map kết quả theo mã sản phẩm
             const maspMap = {};
-            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
+            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikhocs1; });
 
-            // Update lại dữ liệu bảng, hiển thị vị trí và trạng thái
             hot.batch(() => {
                 for (let r = 0; r < hot.countRows(); r++) {
                     const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
+                    // Cập nhật lại mã sản phẩm thành in hoa luôn trên UI (dù dán thường hay in hoa)
+                    hot.setDataAtCell(r, 0, masp);
+
                     if (!masp) {
                         hot.setDataAtCell(r, 1, null);
                         hot.setDataAtCell(r, 2, null);
                         continue;
                     }
                     if (maspMap[masp]) {
-                        hot.setDataAtCell(r, 1, maspMap[masp]); // Ghi vị trí đã có
+                        hot.setDataAtCell(r, 1, maspMap[masp]);
                         hot.setDataAtCell(r, 2, "BỎ QUA");
                     } else {
-                        hot.setDataAtCell(r, 1, null); // Chưa có vị trí
+                        hot.setDataAtCell(r, 1, null);
                         hot.setDataAtCell(r, 2, null);
                     }
                 }
             });
 
-            document.getElementById('preview').innerHTML = `<span>✅ Kiểm tra xong, bạn bấm <b>Xóa sản phẩm đã có vị trí</b> để dọn bảng.</span>`;
-            hot.updateSettings({ cells: hot.getSettings().cells }); // refresh lại readOnly/cell style
+            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, toàn bộ mã SP được chuyển thành IN HOA và loại bỏ trùng lặp.</span>`;
+            hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
         // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
         function xoaDaCoViTri() {
