@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Xem Hóa Đơn Bán Lẻ</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    tr:hover { background-color: #f1f1f1; cursor: pointer; }
+    input, select { margin: 4px; padding: 6px; }
+    #popup { display: none; position: fixed; top: 10%; left: 10%; width: 80%; height: 70%; background: #fff; border: 1px solid #888; overflow: auto; padding: 20px; z-index: 9999; }
+  </style>
+</head>
+<body>
+  <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
+  <label>Ngày: <input type="date" id="locNgay"></label>
+  <label>Nhân viên: <input type="text" id="locNV"></label>
+  <label>Số HĐ: <input type="text" id="locSoHD"></label>
+  <button onclick="taiDanhSachHoaDon()">🔍 Lọc</button>
+
+  <table>
+    <thead>
+      <tr><th>Số HĐ</th><th>Ngày</th><th>NV</th><th>Khách</th><th>TT</th><th>Ghi chú</th></tr>
+    </thead>
+    <tbody id="dsHoaDon"></tbody>
+  </table>
+
+  <div id="popup">
+    <h3>Chi tiết hóa đơn: <span id="sohdCT"></span></h3>
+    <table>
+      <thead>
+        <tr><th>Mã SP</th><th>Tên SP</th><th>Size</th><th>SL</th><th>Giá</th><th>KM</th><th>Thành tiền</th></tr>
+      </thead>
+      <tbody id="ctHoaDon"></tbody>
+    </table>
+    <button onclick="dongPopup()">Đóng</button>
+  </div>
+
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://rddjrmbyftlcvrgzlyby.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+    );
+
+    async function taiDanhSachHoaDon() {
+      const ngay = document.getElementById("locNgay").value;
+      const nv = document.getElementById("locNV").value.trim().toUpperCase();
+      const sohd = document.getElementById("locSoHD").value.trim();
+
+      let query = supabase.from('hoadon_banle').select('*').order('ngay', { ascending: false }).limit(100);
+
+      if (ngay) query = query.eq('ngay', ngay);
+      if (nv) query = query.ilike('manv', `%${nv}%`);
+      if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+
+      const { data, error } = await query;
+
+      const tbody = document.getElementById("dsHoaDon");
+      tbody.innerHTML = "";
+
+      if (error) return alert("Lỗi tải hóa đơn: " + error.message);
+
+      data.forEach(hd => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${hd.sohd}</td><td>${hd.ngay}</td><td>${hd.tennv}</td><td>${hd.khachhang}</td><td>${hd.thanhtoan?.toLocaleString()}</td><td>${hd.ghichu || ""}</td>`;
+        tr.onclick = () => xemChiTiet(hd.sohd);
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function xemChiTiet(sohd) {
+      document.getElementById("popup").style.display = "block";
+      document.getElementById("sohdCT").textContent = sohd;
+      const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+      const tbody = document.getElementById("ctHoaDon");
+      tbody.innerHTML = "";
+      if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+      data.forEach(row => {
+        const tt = (row.gia - row.km) * row.soluong;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    window.onload = taiDanhSachHoaDon;
+  </script>
+</body>
+</html>
