@@ -355,6 +355,7 @@
         }
 
         // Lưu dữ liệu mới
+        // Lưu dữ liệu mới
         async function luuDuLieu() {
             // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
             let rows = hot.getSourceData().filter(r =>
@@ -365,28 +366,39 @@
             if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
             const sb = getSupabaseClient();
 
-            let success = 0, fail = 0;
-            await Promise.all(rows.map(async (row, idx) => {
-                // Chỉ insert vị trí nếu chưa có (đảm bảo nghiệp vụ)
-                const { error } = await sb.from(TABLE_NAME).update({ vitrikho1: row.vitrikho1 }).eq('masp', row.masp).is('vitrikho1', null);
-                if (!error) {
+            let success = 0, fail = 0, errorMsg = [];
+            // Dùng for...of tuần tự để đánh đúng dòng
+            for (let idx = 0; idx < rows.length; idx++) {
+                let row = rows[idx];
+                // Chỉ update vị trí nếu chưa có (nghiệp vụ)
+                const { data, error } = await sb.from(TABLE_NAME)
+                    .update({ vitrikho1: row.vitrikho1 })
+                    .eq('masp', row.masp)
+                    .is('vitrikho1', null)
+                    .select(); // dùng select để lấy dòng bị ảnh hưởng!
+
+                if (!error && data && data.length === 1) {
                     // Đánh dấu OK
-                    const physicalRow = hot.toPhysicalRow(idx);
-                    hot.setDataAtCell(physicalRow, 2, "OK");
+                    hot.setDataAtCell(idx, 2, "OK");
                     success++;
                 } else {
-                    const physicalRow = hot.toPhysicalRow(idx);
-                    hot.setDataAtCell(physicalRow, 2, "LỖI");
+                    // Có lỗi hoặc không có dòng nào update được
+                    hot.setDataAtCell(idx, 2, "LỖI");
                     fail++;
+                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)';
+                    errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
                 }
-            }));
+            }
 
-            document.getElementById('preview').innerHTML = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+            let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+            if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+            document.getElementById('preview').innerHTML = html;
             // Sau lưu lại khóa cột vị trí
             window.editableMASP = false;
             window.editableVITRI = false;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
     </script>
 </body>
 
