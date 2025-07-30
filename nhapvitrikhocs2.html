@@ -142,6 +142,17 @@
             color: orange !important;
         }
 
+        .trangthai-khongtontai {
+            color: #e53935 !important;
+            font-weight: bold;
+        }
+
+        .trangthai-chuacovitri {
+            color: #e67e22 !important;
+            font-weight: bold;
+        }
+
+
         @media (max-width: 500px) {
             h2 {
                 font-size: 1.04rem;
@@ -242,7 +253,10 @@
                         if (val === "OK") cellProperties.className = "trangthai-ok";
                         if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
                         if (val === "LỖI") cellProperties.className = "trangthai-loi";
+                        if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
+                        if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
                     }
+
                     return cellProperties;
                 }
             });
