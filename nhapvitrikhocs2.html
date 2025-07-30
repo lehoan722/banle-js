@@ -373,7 +373,7 @@
                 // Chỉ update vị trí nếu chưa có (nghiệp vụ)
                 const { data, error } = await sb.from(TABLE_NAME)
                     .update({ vitrikho2: row.vitrikho2 })
-                    .eq('masp', row.masp)
+                    .eq('masp', row.masp.toString().trim().toUpperCase())
                     .is('vitrikho2', null)
                     .select(); // dùng select để lấy dòng bị ảnh hưởng!
 
