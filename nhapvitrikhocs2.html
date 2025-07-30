@@ -384,7 +384,9 @@
         async function luuDuLieu() {
             // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
             let rows = hot.getSourceData().filter(r =>
-                r.masp && r.vitrikho2 && !r.trangthai
+                r.masp &&
+                r.vitrikho2 &&
+                r.trangthai === "CHƯA CÓ VỊ TRÍ"
             );
             if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
