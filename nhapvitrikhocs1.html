@@ -142,6 +142,17 @@
             color: orange !important;
         }
 
+        .trangthai-khongtontai {
+            color: #e53935 !important;
+            font-weight: bold;
+        }
+
+        .trangthai-chuacovitri {
+            color: #e67e22 !important;
+            font-weight: bold;
+        }
+
+
         @media (max-width: 500px) {
             h2 {
                 font-size: 1.04rem;
@@ -169,10 +180,10 @@
 </head>
 
 <body>
-    <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
+    <h2>🏷️ NHẬP VỊ TRÍ KHO CS2</h2>
     <div id="loginModule">
         <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
-        <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
+        <input id="login-email" type="email" value="khohangcs2@gmail.com" style="display:none">
         <input id="login-password" type="password" placeholder="Mật khẩu">
         <button id="login-submit">Đăng nhập</button>
         <span id="login-status"></span>
@@ -208,10 +219,10 @@
 
         // Cấu hình bảng
         let hot;
-        let colHeaders = ['Mã sản phẩm', 'Vị trí kho CS1', 'Trạng thái'];
+        let colHeaders = ['Mã sản phẩm', 'Vị trí kho CS2', 'Trạng thái'];
         let columns = [
-            { data: 'masp', type: 'text', width: 160 },
-            { data: 'vitrikho1', type: 'text', width: 200, readOnly: true },
+            { data: 'masp', type: 'text', width: 150 },
+            { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
             { data: 'trangthai', type: 'text', width: 110, readOnly: true }
         ];
 
@@ -242,7 +253,10 @@
                         if (val === "OK") cellProperties.className = "trangthai-ok";
                         if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
                         if (val === "LỖI") cellProperties.className = "trangthai-loi";
+                        if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
+                        if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
                     }
+
                     return cellProperties;
                 }
             });
@@ -303,45 +317,56 @@
             // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
             hot.loadData(uniqueRows);
 
-            // Tiếp tục truy vấn như cũ
+            // Truy vấn Supabase để lấy cả mã tồn tại và vị trí kho
             const sb = getSupabaseClient();
-            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', uniqueMasps);
+            const { data: found, error } = await sb
+                .from(TABLE_NAME)
+                .select('masp,vitrikho1')
+                .in('masp', uniqueMasps);
+
             if (error) return alert('Lỗi kết nối Supabase!');
 
+            // Tạo map: mã tồn tại => vị trí kho
             const maspMap = {};
             found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
 
             hot.batch(() => {
                 for (let r = 0; r < hot.countRows(); r++) {
                     const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
-                    // Cập nhật lại mã sản phẩm thành in hoa luôn trên UI (dù dán thường hay in hoa)
-                    hot.setDataAtCell(r, 0, masp);
+                    hot.setDataAtCell(r, 0, masp); // Đảm bảo in hoa
 
                     if (!masp) {
                         hot.setDataAtCell(r, 1, null);
                         hot.setDataAtCell(r, 2, null);
                         continue;
                     }
-                    if (maspMap[masp]) {
+                    if (typeof maspMap[masp] === "undefined") {
+                        // Không tồn tại trong danh mục
+                        hot.setDataAtCell(r, 1, null);
+                        hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI");
+                    } else if (maspMap[masp]) {
+                        // Đã có vị trí kho
                         hot.setDataAtCell(r, 1, maspMap[masp]);
                         hot.setDataAtCell(r, 2, "BỎ QUA");
                     } else {
+                        // Có mã, chưa có vị trí
                         hot.setDataAtCell(r, 1, null);
-                        hot.setDataAtCell(r, 2, null);
+                        hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ");
                     }
                 }
             });
 
-            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, toàn bộ mã SP được chuyển thành IN HOA và loại bỏ trùng lặp.</span>`;
+            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
 
         // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
         function xoaDaCoViTri() {
             let tableData = hot.getSourceData();
             tableData = tableData.filter(row =>
-                (row.masp && !row.trangthai) // giữ dòng chưa có vị trí & mã sản phẩm có giá trị
+                row.masp && row.trangthai !== "BỎ QUA" // chi xoa dong bo qua
             );
             // Nếu không còn dòng nào, thêm dòng trống mới
             if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
@@ -359,7 +384,9 @@
         async function luuDuLieu() {
             // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
             let rows = hot.getSourceData().filter(r =>
-                r.masp && r.vitrikho1 && !r.trangthai
+                r.masp &&
+                r.vitrikho1 &&
+                r.trangthai === "CHƯA CÓ VỊ TRÍ"
             );
             if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
@@ -373,7 +400,7 @@
                 // Chỉ update vị trí nếu chưa có (nghiệp vụ)
                 const { data, error } = await sb.from(TABLE_NAME)
                     .update({ vitrikho1: row.vitrikho1 })
-                    .eq('masp', row.masp)
+                    .eq('masp', row.masp.toString().trim().toUpperCase())
                     .is('vitrikho1', null)
                     .select(); // dùng select để lấy dòng bị ảnh hưởng!
 
