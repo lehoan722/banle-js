@@ -58,7 +58,7 @@
     let colHeaders = ['Mã sản phẩm', 'Vị trí kho CS1', 'Trạng thái'];
     let columns = [
       { data: 'masp', type: 'text', width: 160 },
-      { data: 'vitrikhocs1', type: 'text', width: 200, readOnly: true },
+      { data: 'vitrikho1', type: 'text', width: 200, readOnly: true },
       { data: 'trangthai', type: 'text', width: 110, readOnly: true }
     ];
 
@@ -66,7 +66,7 @@
       const container = document.getElementById('hot');
       if (hot) hot.destroy();
       hot = new Handsontable(container, {
-        data: Array.from({ length: 30 }, () => ({ masp: null, vitrikhocs1: null, trangthai: null })),
+        data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
         columns,
         colHeaders,
         rowHeaders: true,
@@ -139,12 +139,12 @@
       }
 
       const sb = getSupabaseClient();
-      const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikhocs1').in('masp', allData);
+      const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', allData);
       if (error) return alert('Lỗi kết nối Supabase!');
 
       // Map kết quả theo mã sản phẩm
       const maspMap = {};
-      found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikhocs1; });
+      found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
 
       // Update lại dữ liệu bảng, hiển thị vị trí và trạng thái
       hot.batch(() => {
@@ -176,7 +176,7 @@
         (row.masp && !row.trangthai) // giữ dòng chưa có vị trí & mã sản phẩm có giá trị
       );
       // Nếu không còn dòng nào, thêm dòng trống mới
-      if (tableData.length === 0) tableData.push({ masp: null, vitrikhocs1: null, trangthai: null });
+      if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
       hot.loadData(tableData);
 
       // Cho phép nhập cột mã và cột vị trí
@@ -190,7 +190,7 @@
     async function luuDuLieu() {
       // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
       let rows = hot.getSourceData().filter(r =>
-        r.masp && r.vitrikhocs1 && !r.trangthai
+        r.masp && r.vitrikho1 && !r.trangthai
       );
       if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
@@ -200,7 +200,7 @@
       let success = 0, fail = 0;
       await Promise.all(rows.map(async (row, idx) => {
         // Chỉ insert vị trí nếu chưa có (đảm bảo nghiệp vụ)
-        const { error } = await sb.from(TABLE_NAME).update({ vitrikhocs1: row.vitrikhocs1 }).eq('masp', row.masp).is('vitrikhocs1', null);
+        const { error } = await sb.from(TABLE_NAME).update({ vitrikho1: row.vitrikho1 }).eq('masp', row.masp).is('vitrikho1', null);
         if (!error) {
           // Đánh dấu OK
           const physicalRow = hot.toPhysicalRow(idx);
