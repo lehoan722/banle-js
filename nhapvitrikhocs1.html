@@ -292,7 +292,7 @@
                 if (masp && !seen[masp]) {
                     seen[masp] = true;
                     uniqueMasps.push(masp);
-                    uniqueRows.push({ masp, vitrikhocs1: null, trangthai: null });
+                    uniqueRows.push({ masp, vitrikho1: null, trangthai: null });
                 }
             }
             if (uniqueMasps.length === 0) {
@@ -305,11 +305,11 @@
 
             // Tiếp tục truy vấn như cũ
             const sb = getSupabaseClient();
-            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikhocs1').in('masp', uniqueMasps);
+            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', uniqueMasps);
             if (error) return alert('Lỗi kết nối Supabase!');
 
             const maspMap = {};
-            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikhocs1; });
+            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
 
             hot.batch(() => {
                 for (let r = 0; r < hot.countRows(); r++) {
