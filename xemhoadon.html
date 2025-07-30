@@ -447,12 +447,15 @@
             let rowEl = e.target.closest("tr");
             if (!rowEl) return;
             let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-            if (hoaDonData[rowIdx] && loaiTongHop === "chitiet") {
-              xemChiTiet(hoaDonData[rowIdx].sohd);
+
+            // Sửa ở đây:
+            const data = hoaDonHot.getSourceDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
+            if (data && data.sohd && loaiTongHop === "chitiet") {
+              xemChiTiet(data.sohd);
             }
           };
         }
-      }, 150); // Để chắc chắn DOM Handsontable đã render xong
+      }, 150);      // Để chắc chắn DOM Handsontable đã render xong
 
       window.addEventListener('resize', function () {
         if (hoaDonHot) hoaDonHot.render();
