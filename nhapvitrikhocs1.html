@@ -169,13 +169,15 @@
 </head>
 
 <body>
-    <h2>🏷️ NHẬP VỊ TRÍ KHO HÀNG HÓA</h2>
+    <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
     <div id="loginModule">
-        <input id="login-email" type="email" placeholder="Email Supabase">
+        <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
+        <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
         <input id="login-password" type="password" placeholder="Mật khẩu">
         <button id="login-submit">Đăng nhập</button>
         <span id="login-status"></span>
     </div>
+
     <div style="display:flex;justify-content:center;margin-bottom:7px;">
         <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
         <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
