@@ -2,223 +2,375 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <title>Nhập vị trí kho cho hàng hóa</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 24px; }
-    button { margin: 0 8px 8px 0; }
-    #hot { margin-top: 18px; }
-    .hot-col-trangthai { font-weight: bold; }
-    .trangthai-ok { color: #e53935; }
-    .trangthai-boqua { color: #039be5; }
-    .trangthai-loi { color: orange; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nhập vị trí kho hàng hóa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'SF Pro Display', 'Roboto', Arial, sans-serif;
+            background: #f7fafc;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin: 18px 0 8px 0;
+            font-size: 1.25rem;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        #loginModule {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            max-width: 460px;
+            margin: 6px 0 10px 0;
+            gap: 7px;
+        }
+
+        #loginModule input {
+            border-radius: 12px;
+            padding: 7px 11px;
+            border: 1px solid #dedede;
+            font-size: 1rem;
+            background: #fff;
+            width: 44vw;
+            max-width: 160px;
+        }
+
+        #login-submit {
+            background: linear-gradient(90deg, #ff5858 0%, #f857a6 100%);
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            padding: 7px 16px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(255, 87, 166, 0.11);
+            cursor: pointer;
+            transition: 0.18s;
+        }
+
+        #login-submit:active {
+            filter: brightness(0.93);
+            transform: scale(0.97);
+        }
+
+        .main-btn {
+            display: inline-block;
+            margin: 5px 7px 5px 0;
+            font-size: 1.08rem;
+            padding: 10px 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(72, 52, 212, 0.07);
+            color: #fff;
+            background: linear-gradient(100deg, #56ccf2 0%, #2f80ed 100%);
+            cursor: pointer;
+            outline: none;
+            transition: background 0.23s, transform 0.18s;
+        }
+
+        .main-btn:active {
+            background: linear-gradient(100deg, #4a95ff 0%, #395985 100%);
+            transform: scale(0.97);
+        }
+
+        .main-btn:nth-child(3) {
+            /* nút xóa */
+            background: linear-gradient(100deg, #f7971e 0%, #ffd200 100%);
+            color: #4a3a08;
+            box-shadow: 0 2px 10px rgba(255, 215, 0, 0.09);
+        }
+
+        .main-btn:nth-child(4) {
+            /* nút lưu */
+            background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+            color: #134a2d;
+            box-shadow: 0 2px 10px rgba(67, 233, 123, 0.13);
+        }
+
+        #hot {
+            width: 99vw;
+            max-width: 480px;
+            margin: 0 auto 8px auto;
+            touch-action: auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 2px 18px rgba(70, 130, 180, 0.07);
+            overflow-x: auto;
+        }
+
+        .ht_master table {
+            font-size: 1.05rem;
+        }
+
+        #preview {
+            min-height: 36px;
+            font-size: 1.06rem;
+            text-align: center;
+            color: #2f80ed;
+            margin: 7px 0 0 0;
+        }
+
+        /* Trangthai màu */
+        .trangthai-ok {
+            color: #e53935 !important;
+        }
+
+        .trangthai-boqua {
+            color: #039be5 !important;
+        }
+
+        .trangthai-loi {
+            color: orange !important;
+        }
+
+        @media (max-width: 500px) {
+            h2 {
+                font-size: 1.04rem;
+            }
+
+            #hot {
+                max-width: 99vw;
+            }
+
+            #loginModule input {
+                font-size: .98rem;
+                width: 42vw;
+            }
+
+            .main-btn {
+                font-size: .99rem;
+                padding: 9px 10px;
+            }
+
+            #preview {
+                font-size: .95rem;
+            }
+        }
+    </style>
 </head>
+
 <body>
-  <h2>🏷️ NHẬP VỊ TRÍ KHO HÀNG HÓA</h2>
+    <h2>🏷️ NHẬP VỊ TRÍ KHO HÀNG HÓA</h2>
+    <div id="loginModule">
+        <input id="login-email" type="email" placeholder="Email Supabase">
+        <input id="login-password" type="password" placeholder="Mật khẩu">
+        <button id="login-submit">Đăng nhập</button>
+        <span id="login-status"></span>
+    </div>
+    <div style="display:flex;justify-content:center;margin-bottom:7px;">
+        <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
+        <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
+        <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
+        <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
+    </div>
 
-  <div id="loginModule" style="display:inline-block; margin-bottom:12px;">
-    <input id="login-email" type="email" placeholder="Email Supabase" style="width:130px;">
-    <input id="login-password" type="password" placeholder="Mật khẩu" style="width:110px;">
-    <button id="login-submit">Đăng nhập</button>
-    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b"></span>
-  </div>
-  <br>
+    <div id="preview"></div>
 
-  <button onclick="resetTable()">🔁 Làm lại</button>
-  <button onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
-  <button onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
-  <button onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
+    <div id="hot"></div>
 
-  <div id="hot"></div>
-  <div id="preview" style="margin-top:16px;"></div>
+    <script>
+        // Thông tin Supabase
+        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
-  <script>
-    // Thông tin Supabase
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+        const TABLE_NAME = 'dmhanghoa';
 
-    const TABLE_NAME = 'dmhanghoa';
-
-    // Khởi tạo Supabase client (token đăng nhập)
-    function getSupabaseClient() {
-      const token = localStorage.getItem('supabase_access_token');
-      return window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY,
-        token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}
-      );
-    }
-
-    // Cấu hình bảng
-    let hot;
-    let colHeaders = ['Mã sản phẩm', 'Vị trí kho CS1', 'Trạng thái'];
-    let columns = [
-      { data: 'masp', type: 'text', width: 160 },
-      { data: 'vitrikho1', type: 'text', width: 200, readOnly: true },
-      { data: 'trangthai', type: 'text', width: 110, readOnly: true }
-    ];
-
-    function initTable() {
-      const container = document.getElementById('hot');
-      if (hot) hot.destroy();
-      hot = new Handsontable(container, {
-        data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
-        columns,
-        colHeaders,
-        rowHeaders: true,
-        minSpareRows: 1,
-        width: '100%',
-        height: 420,
-        stretchH: 'all',
-        manualColumnResize: true,
-        licenseKey: 'non-commercial-and-evaluation',
-        cells: function (row, col) {
-          const cellProperties = {};
-          // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
-          if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
-          if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
-          if (col === 2) cellProperties.readOnly = true;
-
-          // Màu cho trạng thái
-          if (col === 2) {
-            const val = this.instance.getDataAtCell(row, col);
-            if (val === "OK") cellProperties.className = "trangthai-ok";
-            if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
-            if (val === "LỖI") cellProperties.className = "trangthai-loi";
-          }
-          return cellProperties;
+        // Khởi tạo Supabase client (token đăng nhập)
+        function getSupabaseClient() {
+            const token = localStorage.getItem('supabase_access_token');
+            return window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_KEY,
+                token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}
+            );
         }
-      });
-      // Ban đầu chỉ nhập mã sản phẩm
-      window.editableMASP = true;
-      window.editableVITRI = false;
-    }
-    initTable();
 
-    // Đăng nhập Supabase (bắt buộc)
-    document.getElementById('login-submit').onclick = async function () {
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value.trim();
-      const sb = getSupabaseClient();
-      document.getElementById('login-status').textContent = 'Đang đăng nhập...';
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) {
-        document.getElementById('login-status').textContent = 'Sai tài khoản hoặc mật khẩu!';
-      } else {
-        document.getElementById('login-status').textContent = 'Đăng nhập thành công!';
-        localStorage.setItem('supabase_access_token', data.session.access_token);
-        setTimeout(() => window.location.reload(), 1000);
-      }
-    };
+        // Cấu hình bảng
+        let hot;
+        let colHeaders = ['Mã sản phẩm', 'Vị trí kho CS1', 'Trạng thái'];
+        let columns = [
+            { data: 'masp', type: 'text', width: 160 },
+            { data: 'vitrikho1', type: 'text', width: 200, readOnly: true },
+            { data: 'trangthai', type: 'text', width: 110, readOnly: true }
+        ];
 
-    // Làm lại bảng
-    function resetTable() {
-      window.editableMASP = true;
-      window.editableVITRI = false;
-      initTable();
-      document.getElementById('preview').innerHTML = "";
-    }
+        function initTable() {
+            const container = document.getElementById('hot');
+            if (hot) hot.destroy();
+            hot = new Handsontable(container, {
+                data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
+                columns,
+                colHeaders,
+                rowHeaders: true,
+                minSpareRows: 1,
+                width: '100%',
+                height: 420,
+                stretchH: 'all',
+                manualColumnResize: true,
+                licenseKey: 'non-commercial-and-evaluation',
+                cells: function (row, col) {
+                    const cellProperties = {};
+                    // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
+                    if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
+                    if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
+                    if (col === 2) cellProperties.readOnly = true;
 
-    // Kiểm tra vị trí kho
-    async function kiemTraViTri() {
-      window.editableMASP = false; // Khóa nhập mã sản phẩm
-      window.editableVITRI = false; // Chưa cho nhập vị trí
-      hot.updateSettings({ cells: hot.getSettings().cells }); // update lại readOnly
-
-      // Lấy danh sách mã sản phẩm
-      let allData = hot.getData().map(r => (r[0] || "").toString().trim().toUpperCase()).filter(m => m);
-      // Loại mã trùng, trống
-      allData = [...new Set(allData)];
-      if (allData.length === 0) {
-        alert("Nhập mã sản phẩm để kiểm tra!");
-        return;
-      }
-
-      const sb = getSupabaseClient();
-      const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', allData);
-      if (error) return alert('Lỗi kết nối Supabase!');
-
-      // Map kết quả theo mã sản phẩm
-      const maspMap = {};
-      found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
-
-      // Update lại dữ liệu bảng, hiển thị vị trí và trạng thái
-      hot.batch(() => {
-        for (let r = 0; r < hot.countRows(); r++) {
-          const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
-          if (!masp) {
-            hot.setDataAtCell(r, 1, null);
-            hot.setDataAtCell(r, 2, null);
-            continue;
-          }
-          if (maspMap[masp]) {
-            hot.setDataAtCell(r, 1, maspMap[masp]); // Ghi vị trí đã có
-            hot.setDataAtCell(r, 2, "BỎ QUA");
-          } else {
-            hot.setDataAtCell(r, 1, null); // Chưa có vị trí
-            hot.setDataAtCell(r, 2, null);
-          }
+                    // Màu cho trạng thái
+                    if (col === 2) {
+                        const val = this.instance.getDataAtCell(row, col);
+                        if (val === "OK") cellProperties.className = "trangthai-ok";
+                        if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
+                        if (val === "LỖI") cellProperties.className = "trangthai-loi";
+                    }
+                    return cellProperties;
+                }
+            });
+            // Ban đầu chỉ nhập mã sản phẩm
+            window.editableMASP = true;
+            window.editableVITRI = false;
         }
-      });
+        initTable();
 
-      document.getElementById('preview').innerHTML = `<span>✅ Kiểm tra xong, bạn bấm <b>Xóa sản phẩm đã có vị trí</b> để dọn bảng.</span>`;
-      hot.updateSettings({ cells: hot.getSettings().cells }); // refresh lại readOnly/cell style
-    }
+        // Đăng nhập Supabase (bắt buộc)
+        document.getElementById('login-submit').onclick = async function () {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const sb = getSupabaseClient();
+            document.getElementById('login-status').textContent = 'Đang đăng nhập...';
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+                document.getElementById('login-status').textContent = 'Sai tài khoản hoặc mật khẩu!';
+            } else {
+                document.getElementById('login-status').textContent = 'Đăng nhập thành công!';
+                localStorage.setItem('supabase_access_token', data.session.access_token);
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        };
 
-    // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
-    function xoaDaCoViTri() {
-      let tableData = hot.getSourceData();
-      tableData = tableData.filter(row =>
-        (row.masp && !row.trangthai) // giữ dòng chưa có vị trí & mã sản phẩm có giá trị
-      );
-      // Nếu không còn dòng nào, thêm dòng trống mới
-      if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
-      hot.loadData(tableData);
-
-      // Cho phép nhập cột mã và cột vị trí
-      window.editableMASP = true;
-      window.editableVITRI = true;
-      hot.updateSettings({ cells: hot.getSettings().cells });
-      document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
-    }
-
-    // Lưu dữ liệu mới
-    async function luuDuLieu() {
-      // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
-      let rows = hot.getSourceData().filter(r =>
-        r.masp && r.vitrikho1 && !r.trangthai
-      );
-      if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
-
-      if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
-      const sb = getSupabaseClient();
-
-      let success = 0, fail = 0;
-      await Promise.all(rows.map(async (row, idx) => {
-        // Chỉ insert vị trí nếu chưa có (đảm bảo nghiệp vụ)
-        const { error } = await sb.from(TABLE_NAME).update({ vitrikho1: row.vitrikho1 }).eq('masp', row.masp).is('vitrikho1', null);
-        if (!error) {
-          // Đánh dấu OK
-          const physicalRow = hot.toPhysicalRow(idx);
-          hot.setDataAtCell(physicalRow, 2, "OK");
-          success++;
-        } else {
-          const physicalRow = hot.toPhysicalRow(idx);
-          hot.setDataAtCell(physicalRow, 2, "LỖI");
-          fail++;
+        // Làm lại bảng
+        function resetTable() {
+            window.editableMASP = true;
+            window.editableVITRI = false;
+            initTable();
+            document.getElementById('preview').innerHTML = "";
         }
-      }));
 
-      document.getElementById('preview').innerHTML = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
-      // Sau lưu lại khóa cột vị trí
-      window.editableMASP = false;
-      window.editableVITRI = false;
-      hot.updateSettings({ cells: hot.getSettings().cells });
-    }
-  </script>
+        // Kiểm tra vị trí kho
+        async function kiemTraViTri() {
+            window.editableMASP = false; // Khóa nhập mã sản phẩm
+            window.editableVITRI = false; // Chưa cho nhập vị trí
+            hot.updateSettings({ cells: hot.getSettings().cells }); // update lại readOnly
+
+            // Lấy danh sách mã sản phẩm
+            let allData = hot.getData().map(r => (r[0] || "").toString().trim().toUpperCase()).filter(m => m);
+            // Loại mã trùng, trống
+            allData = [...new Set(allData)];
+            if (allData.length === 0) {
+                alert("Nhập mã sản phẩm để kiểm tra!");
+                return;
+            }
+
+            const sb = getSupabaseClient();
+            const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', allData);
+            if (error) return alert('Lỗi kết nối Supabase!');
+
+            // Map kết quả theo mã sản phẩm
+            const maspMap = {};
+            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
+
+            // Update lại dữ liệu bảng, hiển thị vị trí và trạng thái
+            hot.batch(() => {
+                for (let r = 0; r < hot.countRows(); r++) {
+                    const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
+                    if (!masp) {
+                        hot.setDataAtCell(r, 1, null);
+                        hot.setDataAtCell(r, 2, null);
+                        continue;
+                    }
+                    if (maspMap[masp]) {
+                        hot.setDataAtCell(r, 1, maspMap[masp]); // Ghi vị trí đã có
+                        hot.setDataAtCell(r, 2, "BỎ QUA");
+                    } else {
+                        hot.setDataAtCell(r, 1, null); // Chưa có vị trí
+                        hot.setDataAtCell(r, 2, null);
+                    }
+                }
+            });
+
+            document.getElementById('preview').innerHTML = `<span>✅ Kiểm tra xong, bạn bấm <b>Xóa sản phẩm đã có vị trí</b> để dọn bảng.</span>`;
+            hot.updateSettings({ cells: hot.getSettings().cells }); // refresh lại readOnly/cell style
+        }
+
+        // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
+        function xoaDaCoViTri() {
+            let tableData = hot.getSourceData();
+            tableData = tableData.filter(row =>
+                (row.masp && !row.trangthai) // giữ dòng chưa có vị trí & mã sản phẩm có giá trị
+            );
+            // Nếu không còn dòng nào, thêm dòng trống mới
+            if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
+            hot.loadData(tableData);
+
+            // Cho phép nhập cột mã và cột vị trí
+            window.editableMASP = true;
+            window.editableVITRI = true;
+            hot.updateSettings({ cells: hot.getSettings().cells });
+            document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
+        }
+
+        // Lưu dữ liệu mới
+        async function luuDuLieu() {
+            // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
+            let rows = hot.getSourceData().filter(r =>
+                r.masp && r.vitrikho1 && !r.trangthai
+            );
+            if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
+
+            if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
+            const sb = getSupabaseClient();
+
+            let success = 0, fail = 0;
+            await Promise.all(rows.map(async (row, idx) => {
+                // Chỉ insert vị trí nếu chưa có (đảm bảo nghiệp vụ)
+                const { error } = await sb.from(TABLE_NAME).update({ vitrikho1: row.vitrikho1 }).eq('masp', row.masp).is('vitrikho1', null);
+                if (!error) {
+                    // Đánh dấu OK
+                    const physicalRow = hot.toPhysicalRow(idx);
+                    hot.setDataAtCell(physicalRow, 2, "OK");
+                    success++;
+                } else {
+                    const physicalRow = hot.toPhysicalRow(idx);
+                    hot.setDataAtCell(physicalRow, 2, "LỖI");
+                    fail++;
+                }
+            }));
+
+            document.getElementById('preview').innerHTML = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+            // Sau lưu lại khóa cột vị trí
+            window.editableMASP = false;
+            window.editableVITRI = false;
+            hot.updateSettings({ cells: hot.getSettings().cells });
+        }
+    </script>
 </body>
+
 </html>
