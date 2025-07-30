@@ -366,7 +366,7 @@
         function xoaDaCoViTri() {
             let tableData = hot.getSourceData();
             tableData = tableData.filter(row =>
-                (row.masp && !row.trangthai) // giữ dòng chưa có vị trí & mã sản phẩm có giá trị
+                row.masp && row.trangthai !== "BỎ QUA" // chi xoa dong bo qua
             );
             // Nếu không còn dòng nào, thêm dòng trống mới
             if (tableData.length === 0) tableData.push({ masp: null, vitrikho2: null, trangthai: null });
