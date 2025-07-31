@@ -196,6 +196,28 @@
     );
     let rowDangChon = null;
 
+    // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
+    async function getAllHoaDon(query, pageSize = 1000) {
+      let from = 0;
+      let allData = [];
+      while (true) {
+        let { data, error } = await query.range(from, from + pageSize - 1);
+        if (error) {
+          alert("❌ Lỗi tải hóa đơn: " + error.message);
+          break;
+        }
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          if (data.length < pageSize) break; // Trang cuối cùng
+          from += pageSize;
+        } else {
+          break;
+        }
+      }
+      return allData;
+    }
+
+
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
       const tuNgay = document.getElementById("tuNgay").value;
@@ -220,7 +242,8 @@
 
       // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
       if (loaiChungTuArr.length > 0) {
-        const queries = loaiChungTuArr.map(loai => {
+        let arr = [];
+        for (const loai of loaiChungTuArr) {
           let query = supabase
             .from('hoadon_banle')
             .select('*')
@@ -237,18 +260,8 @@
           if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
           if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-          return query;
-        });
-
-        // Chạy song song các truy vấn
-        const results = await Promise.all(queries.map(q => q));
-        let arr = [];
-        for (const { data, error } of results) {
-          if (error) {
-            alert("❌ Lỗi tải hóa đơn: " + error.message);
-            return;
-          }
-          arr = arr.concat(data || []);
+          let data = await getAllHoaDon(query, 1000);
+          arr = arr.concat(data);
         }
         // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
         const hash = {};
@@ -262,7 +275,7 @@
         let query = supabase
           .from('hoadon_banle')
           .select('*')
-          .order('created_at', { ascending: false }); // Không limit
+          .order('created_at', { ascending: false });
 
         if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
         else if (tuNgay) query = query.gte('created_at', tuNgay);
@@ -274,9 +287,9 @@
         if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
         if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-        const { data, error } = await query;
-        if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+        let data = await getAllHoaDon(query, 1000);
         filtered = data || [];
+
       }
 
       if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
@@ -404,7 +417,7 @@
       // Gọi xác thực và chỉ xóa nếu xác thực thành công
       kiemTraNhanVienTruocKhiXoa(async function () {
         if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
-      // het doan  xác thực và chỉ xóa nếu xác thực thành công
+        // het doan  xác thực và chỉ xóa nếu xác thực thành công
 
         // Xóa khỏi ct_hoadon_banle trước
         const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
