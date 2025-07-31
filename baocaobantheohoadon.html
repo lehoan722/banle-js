@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Xem Hóa Đơn Bán Lẻ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <!-- Handsontable 7 Community bản miễn phí, đủ tính năng lọc/sắp xếp -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+            cursor: pointer;
+        }
+
+        input,
+        select {
+            margin: 4px;
+            padding: 6px;
+        }
+
+        #popup {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 10%;
+            width: 500px;
+            min-width: 350px;
+            min-height: 200px;
+            height: 400px;
+            background: #fff;
+            border: 2px solid #4884ce;
+            overflow: auto;
+            padding: 20px;
+            z-index: 9999;
+            box-shadow: 0 2px 18px rgba(0, 0, 0, 0.2);
+            border-radius: 7px;
+            resize: both;
+            /* Cho phép thay đổi kích thước */
+        }
+
+        #popup .drag-header {
+            cursor: move;
+            background: #f3f7fa;
+            font-weight: bold;
+            padding: 8px 10px;
+            margin: -20px -20px 15px -20px;
+            border-bottom: 1px solid #4884ce;
+            border-radius: 7px 7px 0 0;
+            user-select: none;
+        }
+
+        thead tr th {
+            position: sticky;
+            top: 0;
+            background: #f9f9f9;
+            z-index: 2;
+        }
+
+        button.loc-btn {
+            background: #2196f3;
+            color: #fff;
+            border: none;
+            font-weight: bold;
+            padding: 7px 18px;
+            border-radius: 4px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        button.loc-btn:hover {
+            background: #1769aa;
+        }
+
+        button.xoa-btn {
+            background: #ffe066;
+            color: #555;
+            border: none;
+            font-weight: bold;
+            padding: 7px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button.xoa-btn:hover {
+            background: #ffe599;
+        }
+
+        @media (max-width: 700px) {
+            #hoaDonGrid {
+                font-size: 0.93em;
+                min-height: 300px;
+                padding: 0;
+            }
+
+            .handsontable th,
+            .handsontable td {
+                padding: 5px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
+
+
+    <label>Từ ngày: <input type="date" id="tuNgay"></label>
+    <label>Đến ngày: <input type="date" id="denNgay"></label>
+    <label>Nhân viên: <input type="text" id="locNV"></label>
+    <label>Khách hàng: <input type="text" id="locKhach"></label>
+    <label>Tiền từ: <input type="number" id="tienTu" style="width:80px"></label>
+    <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
+    <label>Số HĐ: <input type="text" id="locSoHD"></label>
+    <label>Loại chứng từ:</label>
+    <select id="loaiChungTu" multiple style="min-width:140px;">
+        <option value="bancs1">bancs1</option>
+        <option value="bancs2">bancs2</option>
+        <option value="nmcs1">nmcs1</option>
+        <option value="nmcs2">nmcs2</option>
+        <option value="ccn1v2">ccn1v2</option>
+        <option value="ccn2v1">ccn2v1</option>
+    </select>
+
+    <label>
+        Xem tổng hợp:
+        <select id="loaiTongHop" style="min-width:120px">
+            <option value="chitiet">Chi tiết từng hóa đơn</option>
+            <option value="ngay">Tổng hợp theo ngày</option>
+            <option value="thang">Tổng hợp theo tháng</option>
+            <option value="nam">Tổng hợp theo năm</option>
+        </select>
+    </label>
+
+
+    <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
+    <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+    <br />
+
+    <div id="tongHopNhanh" style="font-size:1.1em;margin:12px 0;color:#0066cc;font-weight:bold;">
+        Tổng số lượng hóa đơn: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
+    </div>
+
+    <div id="hoaDonGrid" style="width:100vw; min-height:360px; margin:16px 0; max-width:100vw; overflow-x:auto;"></div>
+
+
+    <div id="popup">
+        <div class="drag-header" id="popupHeader">
+            Chi tiết hóa đơn: <span id="sohdCT"></span>
+            <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã SP</th>
+                    <th>Tên SP</th>
+                    <th>Size</th>
+                    <th>SL</th>
+                    <th>Giá</th>
+                    <th>KM</th>
+                    <th>Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody id="ctHoaDon"></tbody>
+        </table>
+        <button onclick="dongPopup()">Đóng</button>
+    </div>
+
+
+    <script>
+        const supabase = window.supabase.createClient(
+            'https://rddjrmbyftlcvrgzlyby.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+        );
+        let rowDangChon = null;
+        let hoaDonHot = null; // Biến toàn cục bảng Handsontable
+        let hoaDonData = []; // Lưu dữ liệu hóa đơn đang hiển thị
+
+
+        async function taiDanhSachHoaDon() {
+            // 1. Lấy các giá trị lọc từ giao diện
+            const tuNgay = document.getElementById("tuNgay").value;
+            let denNgay = document.getElementById("denNgay").value;
+            if (denNgay) denNgay = denNgay + "T23:59:59.999";
+
+            const nv = document.getElementById("locNV").value.trim().toUpperCase();
+            const sohd = document.getElementById("locSoHD").value.trim();
+            const khach = document.getElementById("locKhach").value.trim();
+            const tienTu = Number(document.getElementById("tienTu").value);
+            const tienDen = Number(document.getElementById("tienDen").value);
+
+            const selectLoai = document.getElementById("loaiChungTu");
+            const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+
+            const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+
+            // ----- Xóa bảng cũ nếu có -----
+            if (hoaDonHot) {
+                hoaDonHot.destroy();
+                hoaDonHot = null;
+            }
+
+            let filtered = [];
+
+            // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
+            if (loaiChungTuArr.length > 0) {
+                const queries = loaiChungTuArr.map(loai => {
+                    let query = supabase
+                        .from('hoadon_banle')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .ilike('sohd', `${loai}_%`);
+
+                    if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+                    else if (tuNgay) query = query.gte('created_at', tuNgay);
+                    else if (denNgay) query = query.lte('created_at', denNgay);
+
+                    if (nv) query = query.ilike('tennv', `%${nv}%`);
+                    if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+                    if (khach) query = query.ilike('khachhang', `%${khach}%`);
+                    if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+                    if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+                    return query;
+                });
+
+                // Chạy song song các truy vấn
+                const results = await Promise.all(queries.map(q => q));
+                let arr = [];
+                for (const { data, error } of results) {
+                    if (error) {
+                        alert("❌ Lỗi tải hóa đơn: " + error.message);
+                        return;
+                    }
+                    arr = arr.concat(data || []);
+                }
+                // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
+                const hash = {};
+                filtered = arr.filter(hd => {
+                    if (hash[hd.sohd]) return false;
+                    hash[hd.sohd] = true;
+                    return true;
+                });
+            } else {
+                // Không chọn loại, lấy toàn bộ
+                let query = supabase
+                    .from('hoadon_banle')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+                else if (tuNgay) query = query.gte('created_at', tuNgay);
+                else if (denNgay) query = query.lte('created_at', denNgay);
+
+                if (nv) query = query.ilike('tennv', `%${nv}%`);
+                if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+                if (khach) query = query.ilike('khachhang', `%${khach}%`);
+                if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+                if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+                const { data, error } = await query;
+                if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+                filtered = data || [];
+            }
+
+            // Nếu không có dữ liệu, hiển thị bảng trống
+            if (!filtered.length) {
+                hoaDonData = [];
+                document.getElementById('tongSoLuong2').textContent = "0";
+                document.getElementById('tongTien2').textContent = "0";
+                // Tạo Handsontable bảng rỗng vẫn hiển thị header
+                hoaDonHot = new Handsontable(document.getElementById('hoaDonGrid'), {
+                    data: [],
+                    colHeaders: [
+                        'STT', 'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+                    ],
+                    columns: [
+                        { data: 'stt', readOnly: true, width: 40 },
+                        { data: 'chon', type: 'checkbox', width: 45 },
+                        { data: 'sohd', readOnly: true, width: 150 },
+                        { data: 'ngay', readOnly: true, width: 240 },
+                        { data: 'tennv', readOnly: true },
+                        { data: 'khachhang', readOnly: true },
+                        { data: 'tongsl', readOnly: true, type: 'numeric', width: 120 },
+                        {
+                            data: 'thanhtoan', readOnly: true, type: 'numeric', width: 120,
+                            renderer: function (instance, td, row, col, prop, value) {
+                                td.innerHTML = value?.toLocaleString();
+                            }
+                        },
+                        { data: 'ghichu', readOnly: true }
+                    ],
+                    rowHeaders: false,
+                    filters: true,
+                    dropdownMenu: true,
+                    manualColumnResize: true,
+                    columnSorting: true,
+                    licenseKey: 'non-commercial-and-evaluation',
+                    width: '100%',
+                    height: 420
+                });
+                return;
+            }
+
+            // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
+            // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM (dùng trường ngày thực tế) ----------
+            let hienThiData = filtered;
+            if (loaiTongHop !== "chitiet") {
+                const groupMap = new Map();
+                filtered.forEach(hd => {
+                    // Dùng trường 'ngay' (ngày thực tế của hóa đơn)
+                    const d = new Date(hd.ngay);
+                    let key = "";
+                    if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+                    if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+                    if (loaiTongHop === "nam") key = d.getFullYear() + "";
+                    if (!groupMap.has(key)) {
+                        groupMap.set(key, {
+                            sohd: 1,
+                            ngay: hd.ngay, // Dùng 'ngay' để hiển thị
+                            tongsl: Number(hd.tongsl || 0),
+                            thanhtoan: Number(hd.thanhtoan || 0)
+                        });
+                    } else {
+                        let obj = groupMap.get(key);
+                        obj.sohd += 1;
+                        obj.tongsl += Number(hd.tongsl || 0);
+                        obj.thanhtoan += Number(hd.thanhtoan || 0);
+                    }
+                });
+                hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
+                    // Định dạng lại ngày/tháng/năm để hiển thị
+                    if (loaiTongHop === "ngay") val.ngay = key.split('-').reverse().join('/');
+                    if (loaiTongHop === "thang") val.ngay = key.slice(5, 7) + "/" + key.slice(0, 4);
+                    if (loaiTongHop === "nam") val.ngay = key;
+                    return val;
+                });
+            }
+
+
+            // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
+            function dinhDangNgayGio(ngayStr) {
+                if (!ngayStr) return "";
+                if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
+                const d = new Date(ngayStr);
+                const ngay = d.getDate().toString().padStart(2, "0");
+                const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+                const nam = d.getFullYear();
+                const gio = d.getHours().toString().padStart(2, "0");
+                const phut = d.getMinutes().toString().padStart(2, "0");
+                return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+            }
+
+            // ----------- CHUẨN HÓA DỮ LIỆU ĐỂ ĐƯA VÀO HANDSONTABLE ----------
+            hoaDonData = hienThiData.map((hd, idx) => ({
+                stt: idx + 1,
+                chon: false,
+                sohd: hd.sohd || "",
+                ngay: dinhDangNgayGio(hd.created_at),
+                tennv: hd.tennv || "",
+                khachhang: hd.khachhang || "",
+                tongsl: hd.tongsl || 0,
+                thanhtoan: hd.thanhtoan || 0,
+                ghichu: hd.ghichu || ""
+            }));
+
+            // ---------- TÍNH TỔNG SỐ LƯỢNG, TỔNG TIỀN ----------
+            let tongSL = 0, tongTien = 0;
+            hoaDonData.forEach(hd => {
+                tongSL += Number(hd.tongsl || 0);
+                tongTien += Number(hd.thanhtoan || 0);
+            });
+            document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
+            document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
+
+            // ------------- RENDER HANDSONTABLE -------------
+            const container = document.getElementById('hoaDonGrid');
+            hoaDonHot = new Handsontable(container, {
+                data: hoaDonData,
+                rowHeaders: function (index) { return index + 1; },
+                colHeaders: [
+                    'Chọn', 'Số HĐ', 'Ngày', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
+                ],
+                columns: [
+                    { data: 'chon', type: 'checkbox', width: 55 },
+                    { data: 'sohd', readOnly: true },
+                    { data: 'ngay', readOnly: true },
+                    { data: 'tennv', readOnly: true },
+                    { data: 'khachhang', readOnly: true },
+                    { data: 'tongsl', readOnly: true, type: 'numeric' },
+                    {
+                        data: 'thanhtoan', readOnly: true, type: 'numeric',
+                        renderer: function (instance, td, row, col, prop, value) {
+                            td.innerHTML = value?.toLocaleString();
+                        }
+                    },
+                    { data: 'ghichu', readOnly: true }
+                ],
+                width: '100%',
+                stretchH: 'all',
+                height: Math.min(window.innerHeight - 240, 650),
+
+                afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
+                    // Khi click vào row header, highlight toàn bộ dòng đó
+                    let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+                    trs.forEach((tr, idx) => {
+                        tr.style.backgroundColor = (idx === row) ? "#ffe066" : "";
+                    });
+                },
+                afterOnCellMouseOver: function (e, coords, td) {
+                    // Hover cũng highlight dòng
+                    let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+                    trs.forEach((tr, idx) => {
+                        tr.style.backgroundColor = (idx === coords.row) ? "#ffe066" : "";
+                    });
+                },
+                afterOnCellMouseOut: function (e, coords, td) {
+                    // Khi rời chuột bỏ highlight
+                    let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+                    trs.forEach(tr => tr.style.backgroundColor = "");
+                }
+            });
+
+
+            // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
+            setTimeout(function () {
+                let tbody = document.querySelector("#hoaDonGrid .ht_master tbody");
+                if (tbody) {
+                    tbody.ondblclick = function (e) {
+                        let rowEl = e.target.closest("tr");
+                        if (!rowEl) return;
+                        let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
+
+                        // Sửa ở đây:
+                        const data = hoaDonHot.getSourceDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
+                        if (data && data.sohd && loaiTongHop === "chitiet") {
+                            xemChiTiet(data.sohd);
+                        }
+                    };
+                }
+            }, 150);      // Để chắc chắn DOM Handsontable đã render xong
+
+            window.addEventListener('resize', function () {
+                if (hoaDonHot) hoaDonHot.render();
+            });
+
+        }
+
+
+        async function xemChiTiet(sohd) {
+            document.getElementById("popup").style.display = "block";
+            document.getElementById("sohdCT").textContent = sohd;
+            const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+            const tbody = document.getElementById("ctHoaDon");
+            tbody.innerHTML = "";
+            if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+            let tongSL = 0, tongTT = 0;
+            data.forEach(row => {
+                const tt = (row.gia - row.km) * row.soluong;
+                tongSL += Number(row.soluong);
+                tongTT += Number(tt);
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+                tbody.appendChild(tr);
+            });
+            // Thêm dòng tổng cuối bảng
+            const trTong = document.createElement("tr");
+            trTong.style.fontWeight = "bold";
+            trTong.innerHTML = `<td colspan="3" style="text-align:right">TỔNG</td>
+    <td>${tongSL}</td><td></td><td></td><td>${tongTT.toLocaleString()}</td>`;
+            tbody.appendChild(trTong);
+        }
+
+
+        function dongPopup() {
+            document.getElementById("popup").style.display = "none";
+        }
+
+        async function xoaHoaDonDaChon() {
+            const sohdList = hoaDonData.filter(r => r.chon).map(r => r.sohd);
+            if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+            // Gọi xác thực và chỉ xóa nếu xác thực thành công
+            kiemTraNhanVienTruocKhiXoa(async function () {
+                if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
+                // het doan  xác thực và chỉ xóa nếu xác thực thành công
+
+                // Xóa khỏi ct_hoadon_banle trước
+                const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
+                if (errCT) {
+                    alert("Không thể xóa chi tiết hóa đơn.");
+                    return;
+                }
+
+                // Sau đó xóa khỏi hoadon_banle
+                const { error: errHD } = await supabase.from('hoadon_banle').delete().in('sohd', sohdList);
+                if (errHD) {
+                    alert("Không thể xóa hóa đơn.");
+                    return;
+                }
+
+                alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
+                taiDanhSachHoaDon();
+            });
+        }
+
+
+
+        window.onload = function () {
+            // Set ngày mặc định là hôm nay
+            const today = new Date().toISOString().slice(0, 10);
+            document.getElementById('tuNgay').value = today;
+            document.getElementById('denNgay').value = today;
+            taiDanhSachHoaDon();
+        };
+        document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
+
+        // DRAG POPUP (kéo popup)
+        (function dragPopup() {
+            let popup = document.getElementById('popup');
+            let header = document.getElementById('popupHeader');
+            let offsetX, offsetY, isDragging = false;
+            if (header) {
+                header.onmousedown = function (e) {
+                    isDragging = true;
+                    let rect = popup.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    document.onmousemove = function (ev) {
+                        if (isDragging) {
+                            popup.style.left = (ev.clientX - offsetX) + 'px';
+                            popup.style.top = (ev.clientY - offsetY) + 'px';
+                        }
+                    };
+                    document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
+                };
+            }
+        })();
+
+        // Đóng popup bằng phím ESC
+        document.addEventListener('keydown', function (e) {
+            if (e.key === "Escape") dongPopup();
+        });
+
+
+
+    </script>
+
+    <script>
+        // Supabase project của bạn (dùng anon key)  xax nhan sua hoa don
+        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+        // Hàm xác thực nhân viên, gọi ở bất kỳ đâu!
+        async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+            document.getElementById('maNVCheck').value = '';
+            document.getElementById('matkhauNVCheck').value = '';
+            document.getElementById('msgCheckNV').textContent = '';
+            document.getElementById('popupXacThucNV').style.display = 'block';
+
+            // Đặt lại màu báo lỗi
+            document.getElementById('msgCheckNV').style.color = '#ad3a2b';
+
+            // Xử lý khi bấm nút kiểm tra
+            document.getElementById('btnKiemTraNV').onclick = async function () {
+                const manv = document.getElementById('maNVCheck').value.trim();
+                const mk = document.getElementById('matkhauNVCheck').value.trim();
+                const msg = document.getElementById('msgCheckNV');
+                msg.style.color = '#ad3a2b';
+                msg.textContent = '';
+
+                if (!manv || !mk) {
+                    msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
+                    return;
+                }
+
+                // Import SDK Supabase
+                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+                const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const { data, error } = await supabase
+                    .from('dmnhanvien')
+                    .select('*')
+                    .eq('manv', manv)
+                    .single();
+
+                if (error || !data) {
+                    msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
+                    return;
+                }
+                if (data.matkhau !== mk) {
+                    msg.textContent = "❌ Mật khẩu không đúng!";
+                    return;
+                }
+                if (!data.xoa_hoadon) { // Nếu cần phân quyền khác thì đổi tên trường này
+                    msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
+                    return;
+                }
+                // Thành công!
+                msg.style.color = 'green';
+                msg.textContent = "✅ Đã xác thực, đang xử lý...";
+                setTimeout(() => {
+                    document.getElementById('popupXacThucNV').style.display = 'none';
+                    msg.textContent = '';
+                    if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data); // Truyền data nếu cần
+                }, 450);
+            };
+        }
+    </script>
+
+
+    <!-- Popup xác thực nhân viên -->
+    <div id="popupXacThucNV"
+        style="display:none;position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #2196f3;box-shadow:0 2px 18px #2196f322;padding:24px;z-index:10000;border-radius:8px;min-width:300px;">
+        <h3 style="color:#1976d2;margin:0 0 10px 0;">Xác thực nhân viên</h3>
+        <div style="margin-bottom:10px;">
+            <label>Mã NV: <input type="password" id="maNVCheck" style="width:120px"></label>
+        </div>
+        <div style="margin-bottom:10px;">
+            <label>Mật khẩu: <input type="password" id="matkhauNVCheck" style="width:120px"></label>
+        </div>
+        <div id="msgCheckNV" style="color:#ad3a2b;margin:8px 0;min-height:18px;font-size:0.97em"></div>
+        <button id="btnKiemTraNV"
+            style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm
+            tra</button>
+        <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
+            style="margin-left:8px;">Hủy</button>
+    </div>
+
+
+</body>
+
+</html>
