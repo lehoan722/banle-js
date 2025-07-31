@@ -89,6 +89,11 @@ document.getElementById('maspInput').addEventListener('blur', function () {
 });
 document.getElementById('searchBtn').onclick = triggerSearch;
 
+// ==== Hàm hiển thị rỗng nếu giá trị là 0 ====
+function showEmptyIfZero(val) {
+    return (val && Number(val) !== 0) ? val : "";
+}
+
 // ==== Hàm chính lấy và render dữ liệu ====
 async function triggerSearch() {
     const masp = document.getElementById('maspInput').value.trim().toUpperCase();
@@ -176,13 +181,13 @@ async function triggerSearch() {
     htmlRight += `
 <tr>
     <td class="size">Tổng</td>
-    <td class="number">${totalRow.nhapmua || 0}</td>
-    <td class="number">${totalRow.xuatban || 0}</td>
-    <td class="number">${totalRow.toncuoi || 0}</td>
-    <td class="number">${totalRow.ban_cs1 || 0}</td>
-    <td class="number">${totalRow.ton_cs1 || 0}</td>
-    <td class="number">${totalRow.ton_cs2 || 0}</td>
-    <td class="number">${totalRow.ban_cs2 || 0}</td>
+    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
 </tr>
 `;
     // Dòng từng size
@@ -190,13 +195,13 @@ async function triggerSearch() {
         htmlRight += `
     <tr>
         <td class="size">${row.size}</td>
-        <td class="number">${row.nhapmua || 0}</td>
-        <td class="number">${row.xuatban || 0}</td>
-        <td class="number">${row.toncuoi || 0}</td>
-        <td class="number">${row.ban_cs1 || 0}</td>
-        <td class="number">${row.ton_cs1 || 0}</td>
-        <td class="number">${row.ton_cs2 || 0}</td>
-        <td class="number">${row.ban_cs2 || 0}</td>
+        <td class="number">${showEmptyIfZero(row.nhapmua)}</td>
+        <td class="number">${showEmptyIfZero(row.xuatban)}</td>
+        <td class="number">${showEmptyIfZero(row.toncuoi)}</td>
+        <td class="number">${showEmptyIfZero(row.ban_cs1)}</td>
+        <td class="number">${showEmptyIfZero(row.ton_cs1)}</td>
+        <td class="number">${showEmptyIfZero(row.ton_cs2)}</td>
+        <td class="number">${showEmptyIfZero(row.ban_cs2)}</td>
     </tr>
     `;
     });
