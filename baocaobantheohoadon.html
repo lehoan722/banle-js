@@ -448,10 +448,11 @@
                         let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
 
                         // Sửa ở đây:
-                        const data = hoaDonHot.getSourceDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
+                        const data = hoaDonHot.getDataAtRow(rowIdx);
                         if (data && data.sohd && loaiTongHop === "chitiet") {
                             xemChiTiet(data.sohd);
                         }
+
                     };
                 }
             }, 150);      // Để chắc chắn DOM Handsontable đã render xong
