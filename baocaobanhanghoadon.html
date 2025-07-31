@@ -430,6 +430,7 @@
                 width: '100%',
                 stretchH: 'all',
                 height: Math.min(window.innerHeight - 240, 650),
+                licenseKey: 'non-commercial-and-evaluation',                
 
                 afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
                     // Khi click vào row header, highlight toàn bộ dòng đó
@@ -450,6 +451,7 @@
                     let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
                     trs.forEach(tr => tr.style.backgroundColor = "");
                 }
+                
             });
 
 
