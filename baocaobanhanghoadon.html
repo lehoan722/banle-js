@@ -314,6 +314,18 @@
                 return;
             }
 
+            hoaDonHot.updateSettings({
+                afterOnCellDblClick: function (row, col, e) {
+                    const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                    if (loaiTongHop !== "chitiet") return;
+                    const data = hoaDonHot.getDataAtRow(row);
+                    if (data && data.sohd) {
+                        xemChiTiet(data.sohd);
+                    }
+                }
+            });
+
+
             // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
             // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM (dùng trường ngày thực tế) ----------
             let hienThiData = filtered;
@@ -439,24 +451,17 @@
 
 
             // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
-            setTimeout(function () {
-                let tbody = document.querySelector("#hoaDonGrid .ht_master tbody");
-                if (tbody) {
-                    tbody.ondblclick = function (e) {
-                        let rowEl = e.target.closest("tr");
-                        if (!rowEl) return;
-                        let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-
-                        // Sửa ở đây:
-                        const data = hoaDonHot.getDataAtRow(rowIdx);
-                        if (data && data.sohd && loaiTongHop === "chitiet") {
-                            xemChiTiet(data.sohd);
-                        }
-
-                    };
+            hoaDonHot.updateSettings({
+                afterOnCellDblClick: function (row, col, e) {
+                    const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                    if (loaiTongHop !== "chitiet") return;
+                    const data = hoaDonHot.getDataAtRow(row);
+                    if (data && data.sohd) {
+                        xemChiTiet(data.sohd);
+                    }
                 }
-            }, 150);
-            // Để chắc chắn DOM Handsontable đã render xong
+            });
+
 
             window.addEventListener('resize', function () {
                 if (hoaDonHot) hoaDonHot.render();
