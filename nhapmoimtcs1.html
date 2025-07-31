@@ -57,7 +57,7 @@
 
         #masp {
             width: 250px;
-            background: cyan;
+             background: yellow;
         }
 
         #soluong {
@@ -68,11 +68,13 @@
 
         #dvt {
             width: 60px;
+             background: yellow;
         }
 
         #size {
             width: 60px;
             text-align: center;
+             background: yellow;
         }
 
         #gia,
@@ -80,10 +82,12 @@
         #thanhtien {
             width: 150px;
             text-align: right;
+             background: yellow;
         }
 
         #ghichu {
             flex: 1;
+             background: yellow;
         }
 
         .main {
@@ -433,81 +437,7 @@
             margin-left: 2px;
         }
     </style>
-
-    <div class="menu-bar">
-        <div class="tennv">
-
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-
-            <label> <input id="ngay" type="date" /></label>
-            <!-- <label>Giờ <input id="gio" /></label> -->
-            <input id="manv" type="password" placeholder="Mã NV" />
-            <input id="tennv" placeholder="Tên NV" readonly />
-
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-
-        </div>
-        <div class="menu-item">
-
-            <span class="menu-link">📁 Báo cáo hóa đơn</span>
-            <div class="dropdown-content">
-
-                <a href="xemhoadonT.html" target="_blank">Xem hóa đơn bct</a>
-                <a href="baocaochitietT.html" target="_blank">Xem chi tiet bct</a>
-
-                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
-                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
-                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
-                <a href="baocaohoadon.html" target="_blank">Báo cáo tổng hợp</a>
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 GIAO DICH</span>
-            <div class="dropdown-content">
-                <a href="banlemtt.html" target="_blank">HOA DON BAN LE</a>
-                <a href="nhapmoimt.html" target="_blank">HOA DON NHAP MOI</a>
-                <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
-                <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
-                <a href="nhapdoikh.html" target="_blank">NHAP DOI TU KHACH</a>
-                <a href="tralaincc.html" target="_blank">TRA LAI NHA CC</a>
-                <a href="xuathuy.html" target="_blank">XUAT HUY HANG HONG</a>
-                <a href="kiemkho.html" target="_blank">PHIEU KIEM KHO</a>
-
-
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 BAO CAO</span>
-            <div class="dropdown-content">
-                <a href="baocaochitiet.html" target="_blank">bao cao Chi tiết cac loai</a>
-                <a href="baocaotonghop.html" target="_blank">bao cao tong hop cac loai</a>
-                <a href="baocaoxnt13.html" target="_blank">bao cao xuat, nhap, ton cac loai</a>
-                <a href="xemhoadon.html" target="_blank">bao cao theo hoa don cac loai</a>
-                <a href="timkiemhanghoa.html" target="_blank">TÌM KIẾM THÔNG TIN HÀNG HÓA</a>
-
-            </div>
-        </div>
-
-        <div class="menu-item">
-            <span class="menu-link">📦 Danh Muc</span>
-            <div class="dropdown-content">
-                <a href="nhapdmnhanvien.html" target="_blank">nhap dm nhan vien</a>
-                <a href="nhapdmkhachhang.html" target="_blank">nhap dm khach hang</a>
-                <a href="nhapdmkhuyenmai.html" target="_blank">nhap dm khuyen mai</a>
-                <a href=".html" target="_blank">chua co</a>
-                <a href="html" target="_blank">chua co</a>
-
-            </div>
-        </div>
-
-        <label><input id="size45" type="checkbox" />QL SIZE</label>
-
-    </div>
+    
 
 
     <div id="app-container" style="display:none;">
@@ -515,7 +445,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <input id="masp" placeholder="NHAP MOI CS1" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
