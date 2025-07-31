@@ -153,6 +153,7 @@
           <th>chon</th>
           <th>Số HĐ</th>
           <th>Ngày</th>
+          <th>Ngày sửa</th>
           <th>NV</th>
           <th>Khách</th>
           <th>Tổng SL</th>
@@ -275,11 +276,12 @@
         let query = supabase
           .from('hoadon_banle')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('ngay', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
 
-        if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
-        else if (tuNgay) query = query.gte('created_at', tuNgay);
-        else if (denNgay) query = query.lte('created_at', denNgay);
+        if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
+        else if (tuNgay) query = query.gte('ngay', tuNgay);
+        else if (denNgay) query = query.lte('ngay', denNgay);
+
 
         if (nv) query = query.ilike('tennv', `%${nv}%`);
         if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -327,6 +329,18 @@
         });
       }
 
+      // ------------- HÀM ĐỊNH DẠNG NGÀY  -------------
+
+      function dinhDangNgay(ngayStr) {
+        if (!ngayStr) return "";
+        const d = new Date(ngayStr);
+        const ngay = d.getDate().toString().padStart(2, "0");
+        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+        const nam = d.getFullYear();
+        return `${ngay}/${thang}/${nam}`;
+      }
+
+
       // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
@@ -345,16 +359,17 @@
       hienThiData.forEach((hd, idx) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-      <td>${hd.sohd || ""}</td>
-      <td>${dinhDangNgayGio(hd.created_at)}</td>
-      <td>${hd.tennv || ""}</td>
-      <td>${hd.khachhang || ""}</td>
-      <td>${hd.tongsl || 0}</td>
-      <td>${hd.thanhtoan?.toLocaleString()}</td>
-      <td>${hd.ghichu || ""}</td>
-    `;
+  <td>${idx + 1}</td>
+  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+  <td>${hd.sohd || ""}</td>
+  <td>${dinhDangNgay(hd.ngay)}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
+  <td>${hd.tennv || ""}</td>
+  <td>${hd.khachhang || ""}</td>
+  <td>${hd.tongsl || 0}</td>
+  <td>${hd.thanhtoan?.toLocaleString()}</td>
+  <td>${hd.ghichu || ""}</td>
+`;
         tr.onclick = (e) => {
           if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
             document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
