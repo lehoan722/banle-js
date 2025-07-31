@@ -224,16 +224,17 @@
 
             // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
             if (loaiChungTuArr.length > 0) {
-                const queries = loaiChungTuArr.map(loai => {
+                let arr = [];
+                for (const loai of loaiChungTuArr) {
                     let query = supabase
                         .from('hoadon_banle')
                         .select('*')
-                        .order('created_at', { ascending: false })
+                        .order('ngay', { ascending: true }) // Ưu tiên order theo ngày thực tế
                         .ilike('sohd', `${loai}_%`);
 
                     if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
-                    else if (tuNgay) query = query.gte('created_at', tuNgay);
-                    else if (denNgay) query = query.lte('created_at', denNgay);
+                    else if (tuNgay) query = query.gte('ngay', tuNgay); // sửa về 'ngay' thay vì 'created_at'
+                    else if (denNgay) query = query.lte('ngay', denNgay);
 
                     if (nv) query = query.ilike('tennv', `%${nv}%`);
                     if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -241,18 +242,8 @@
                     if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
                     if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-                    return query;
-                });
-
-                // Chạy song song các truy vấn
-                const results = await Promise.all(queries.map(q => q));
-                let arr = [];
-                for (const { data, error } of results) {
-                    if (error) {
-                        alert("❌ Lỗi tải hóa đơn: " + error.message);
-                        return;
-                    }
-                    arr = arr.concat(data || []);
+                    let data = await getAllHoaDon(query, 1000);
+                    arr = arr.concat(data);
                 }
                 // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
                 const hash = {};
@@ -261,16 +252,17 @@
                     hash[hd.sohd] = true;
                     return true;
                 });
-            } else {
+            }
+            else {
                 // Không chọn loại, lấy toàn bộ
                 let query = supabase
                     .from('hoadon_banle')
                     .select('*')
-                    .order('created_at', { ascending: false });
+                    .order('ngay', { ascending: true });
 
                 if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
-                else if (tuNgay) query = query.gte('created_at', tuNgay);
-                else if (denNgay) query = query.lte('created_at', denNgay);
+                else if (tuNgay) query = query.gte('ngay', tuNgay);
+                else if (denNgay) query = query.lte('ngay', denNgay);
 
                 if (nv) query = query.ilike('tennv', `%${nv}%`);
                 if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -278,10 +270,10 @@
                 if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
                 if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
 
-                const { data, error } = await query;
-                if (error) return alert("❌ Lỗi tải hóa đơn: " + error.message);
+                let data = await getAllHoaDon(query, 1000);
                 filtered = data || [];
             }
+
 
             // Nếu không có dữ liệu, hiển thị bảng trống
             if (!filtered.length) {
@@ -466,6 +458,28 @@
             });
 
         }
+
+        // Hàm lấy đủ dữ liệu Supabase phân trang không giới hạn
+        async function getAllHoaDon(query, pageSize = 1000) {
+            let from = 0;
+            let allData = [];
+            while (true) {
+                let { data, error } = await query.range(from, from + pageSize - 1);
+                if (error) {
+                    alert("❌ Lỗi tải hóa đơn: " + error.message);
+                    break;
+                }
+                if (data && data.length > 0) {
+                    allData = allData.concat(data);
+                    if (data.length < pageSize) break; // Trang cuối cùng
+                    from += pageSize;
+                } else {
+                    break;
+                }
+            }
+            return allData;
+        }
+
 
 
         async function xemChiTiet(sohd) {
