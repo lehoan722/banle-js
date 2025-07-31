@@ -315,13 +315,17 @@
                 hoaDonHot.updateSettings({
                     afterOnCellDblClick: function (row, col, e) {
                         const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                        console.log('afterOnCellDblClick', { row, col, data: hoaDonHot.getDataAtRow(row) });
                         if (loaiTongHop !== "chitiet") return;
                         const data = hoaDonHot.getDataAtRow(row);
                         if (data && data.sohd) {
                             xemChiTiet(data.sohd);
+                        } else {
+                            alert('Không lấy được số hóa đơn từ dòng này! (data.sohd undefined)');
                         }
                     }
                 });
+
 
                 return;
             }
@@ -407,7 +411,7 @@
             const container = document.getElementById('hoaDonGrid');
             hoaDonHot = new Handsontable(container, {
                 data: hoaDonData,
-                 rowHeaders: true,
+                rowHeaders: true,
                 colHeaders: [
                     'Chọn', 'Số HĐ', 'Ngày', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
                 ],
@@ -430,7 +434,7 @@
                 width: '100%',
                 stretchH: 'all',
                 height: Math.min(window.innerHeight - 240, 650),
-                licenseKey: 'non-commercial-and-evaluation',                
+                licenseKey: 'non-commercial-and-evaluation',
 
                 afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
                     // Khi click vào row header, highlight toàn bộ dòng đó
@@ -451,7 +455,7 @@
                     let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
                     trs.forEach(tr => tr.style.backgroundColor = "");
                 }
-                
+
             });
 
 
@@ -459,13 +463,17 @@
             hoaDonHot.updateSettings({
                 afterOnCellDblClick: function (row, col, e) {
                     const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                    console.log('afterOnCellDblClick', { row, col, data: hoaDonHot.getDataAtRow(row) });
                     if (loaiTongHop !== "chitiet") return;
                     const data = hoaDonHot.getDataAtRow(row);
                     if (data && data.sohd) {
                         xemChiTiet(data.sohd);
+                    } else {
+                        alert('Không lấy được số hóa đơn từ dòng này! (data.sohd undefined)');
                     }
                 }
             });
+
 
 
             window.addEventListener('resize', function () {
