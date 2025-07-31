@@ -407,7 +407,7 @@
             const container = document.getElementById('hoaDonGrid');
             hoaDonHot = new Handsontable(container, {
                 data: hoaDonData,
-                rowHeaders: function (index) { return index + 1; },
+                 rowHeaders: true,
                 colHeaders: [
                     'Chọn', 'Số HĐ', 'Ngày', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
                 ],
