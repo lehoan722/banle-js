@@ -311,8 +311,25 @@
                     width: '100%',
                     height: 420
                 });
+
+                hoaDonHot.updateSettings({
+                    afterOnCellDblClick: function (row, col, e) {
+                        const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                        console.log('afterOnCellDblClick', { row, col, data: hoaDonHot.getDataAtRow(row) });
+                        if (loaiTongHop !== "chitiet") return;
+                        const data = hoaDonHot.getDataAtRow(row);
+                        if (data && data.sohd) {
+                            xemChiTiet(data.sohd);
+                        } else {
+                            alert('Không lấy được số hóa đơn từ dòng này! (data.sohd undefined)');
+                        }
+                    }
+                });
+
+
                 return;
             }
+
 
             // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
             // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM (dùng trường ngày thực tế) ----------
@@ -348,6 +365,8 @@
                     return val;
                 });
             }
+
+
 
 
             // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
@@ -392,7 +411,7 @@
             const container = document.getElementById('hoaDonGrid');
             hoaDonHot = new Handsontable(container, {
                 data: hoaDonData,
-                rowHeaders: function (index) { return index + 1; },
+                rowHeaders: true,
                 colHeaders: [
                     'Chọn', 'Số HĐ', 'Ngày', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'TT', 'Ghi chú'
                 ],
@@ -415,6 +434,7 @@
                 width: '100%',
                 stretchH: 'all',
                 height: Math.min(window.innerHeight - 240, 650),
+                licenseKey: 'non-commercial-and-evaluation',
 
                 afterSelection: function (row, col, row2, col2, preventScrolling, selectionLayerLevel) {
                     // Khi click vào row header, highlight toàn bộ dòng đó
@@ -435,27 +455,26 @@
                     let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
                     trs.forEach(tr => tr.style.backgroundColor = "");
                 }
+
             });
 
 
             // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
-            setTimeout(function () {
-                let tbody = document.querySelector("#hoaDonGrid .ht_master tbody");
-                if (tbody) {
-                    tbody.ondblclick = function (e) {
-                        let rowEl = e.target.closest("tr");
-                        if (!rowEl) return;
-                        let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
-
-                        // Sửa ở đây:
-                        const data = hoaDonHot.getSourceDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
-                        if (data && data.sohd && loaiTongHop === "chitiet") {
-                            xemChiTiet(data.sohd);
-                        }
-                    };
+            hoaDonHot.updateSettings({
+                afterOnCellDblClick: function (row, col, e) {
+                    const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                    console.log('afterOnCellDblClick', { row, col, data: hoaDonHot.getDataAtRow(row) });
+                    if (loaiTongHop !== "chitiet") return;
+                    const data = hoaDonHot.getDataAtRow(row);
+                    if (data && data.sohd) {
+                        xemChiTiet(data.sohd);
+                    } else {
+                        alert('Không lấy được số hóa đơn từ dòng này! (data.sohd undefined)');
+                    }
                 }
-            }, 150);
-            // Để chắc chắn DOM Handsontable đã render xong
+            });
+
+
 
             window.addEventListener('resize', function () {
                 if (hoaDonHot) hoaDonHot.render();
