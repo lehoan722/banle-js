@@ -195,7 +195,6 @@
         let rowDangChon = null;
         let hoaDonHot = null; // Biến toàn cục bảng Handsontable
         let hoaDonData = []; // Lưu dữ liệu hóa đơn đang hiển thị
-        let loaiTongHop = "chitiet";
 
 
         async function taiDanhSachHoaDon() {
@@ -213,7 +212,7 @@
             const selectLoai = document.getElementById("loaiChungTu");
             const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
 
-            loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";           
+            const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
 
             // ----- Xóa bảng cũ nếu có -----
             if (hoaDonHot) {
@@ -350,30 +349,6 @@
                 });
             }
 
-            async function xemChiTiet(sohd) {
-            document.getElementById("popup").style.display = "block";
-            document.getElementById("sohdCT").textContent = sohd;
-            const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
-            const tbody = document.getElementById("ctHoaDon");
-            tbody.innerHTML = "";
-            if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
-            let tongSL = 0, tongTT = 0;
-            data.forEach(row => {
-                const tt = (row.gia - row.km) * row.soluong;
-                tongSL += Number(row.soluong);
-                tongTT += Number(tt);
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
-                tbody.appendChild(tr);
-            });
-            // Thêm dòng tổng cuối bảng
-            const trTong = document.createElement("tr");
-            trTong.style.fontWeight = "bold";
-            trTong.innerHTML = `<td colspan="3" style="text-align:right">TỔNG</td>
-    <td>${tongSL}</td><td></td><td></td><td>${tongTT.toLocaleString()}</td>`;
-            tbody.appendChild(trTong);
-        }
-
 
             // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
             function dinhDangNgayGio(ngayStr) {
@@ -464,17 +439,23 @@
 
 
             // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
-            // BẮT SỰ KIỆN DOUBLE CLICK DÒNG TRÊN HANDSONTABLE (ổn định kể cả khi lọc/sort)
-            hoaDonHot.updateSettings({
-                afterOnCellDblClick: function (row, col, e) {
-                    console.log(row, col, hoaDonHot.getDataAtRow(row));
-                    if (loaiTongHop !== "chitiet") return; // Chỉ cho xem chi tiết khi ở chế độ chi tiết
-                    const data = hoaDonHot.getDataAtRow(row);
-                    if (data && data.sohd) {
-                        xemChiTiet(data.sohd);
-                    }
+            setTimeout(function () {
+                let tbody = document.querySelector("#hoaDonGrid .ht_master tbody");
+                if (tbody) {
+                    tbody.ondblclick = function (e) {
+                        let rowEl = e.target.closest("tr");
+                        if (!rowEl) return;
+                        let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
+
+                        // Sửa ở đây:
+                        const data = hoaDonHot.getSourceDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
+                        if (data && data.sohd && loaiTongHop === "chitiet") {
+                            xemChiTiet(data.sohd);
+                        }
+                    };
                 }
-            });           
+            }, 150);
+            // Để chắc chắn DOM Handsontable đã render xong
 
             window.addEventListener('resize', function () {
                 if (hoaDonHot) hoaDonHot.render();
@@ -505,7 +486,29 @@
 
 
 
-        
+        async function xemChiTiet(sohd) {
+            document.getElementById("popup").style.display = "block";
+            document.getElementById("sohdCT").textContent = sohd;
+            const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+            const tbody = document.getElementById("ctHoaDon");
+            tbody.innerHTML = "";
+            if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
+            let tongSL = 0, tongTT = 0;
+            data.forEach(row => {
+                const tt = (row.gia - row.km) * row.soluong;
+                tongSL += Number(row.soluong);
+                tongTT += Number(tt);
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+                tbody.appendChild(tr);
+            });
+            // Thêm dòng tổng cuối bảng
+            const trTong = document.createElement("tr");
+            trTong.style.fontWeight = "bold";
+            trTong.innerHTML = `<td colspan="3" style="text-align:right">TỔNG</td>
+    <td>${tongSL}</td><td></td><td></td><td>${tongTT.toLocaleString()}</td>`;
+            tbody.appendChild(trTong);
+        }
 
 
         function dongPopup() {
