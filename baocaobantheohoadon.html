@@ -439,23 +439,17 @@
 
 
             // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
-            setTimeout(function () {
-                let tbody = document.querySelector("#hoaDonGrid .ht_master tbody");
-                if (tbody) {
-                    tbody.ondblclick = function (e) {
-                        let rowEl = e.target.closest("tr");
-                        if (!rowEl) return;
-
-                        let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
-                        let rowIdx = Array.from(trs).indexOf(rowEl);
-                        const data = hoaDonHot.getDataAtRow(rowIdx); // Lấy từ view, không phải source
-                        
-                        if (data && data.sohd && loaiTongHop === "chitiet") {
-                            xemChiTiet(data.sohd);
-                        }
-                    };
+            // BẮT SỰ KIỆN DOUBLE CLICK DÒNG TRÊN HANDSONTABLE (ổn định kể cả khi lọc/sort)
+            hoaDonHot.updateSettings({
+                afterOnCellDblClick: function (row, col, e) {
+                    if (loaiTongHop !== "chitiet") return; // Chỉ cho xem chi tiết khi ở chế độ chi tiết
+                    const data = hoaDonHot.getDataAtRow(row);
+                    if (data && data.sohd) {
+                        xemChiTiet(data.sohd);
+                    }
                 }
-            }, 150);
+            });
+
             // Để chắc chắn DOM Handsontable đã render xong
 
             window.addEventListener('resize', function () {
