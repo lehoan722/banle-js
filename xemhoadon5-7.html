@@ -248,12 +248,12 @@
           let query = supabase
             .from('hoadon_banle')
             .select('*')
-            .order('created_at', { ascending: false })
+            .order('ngay', { ascending: true })    // SỬA: dùng 'ngay'
             .ilike('sohd', `${loai}_%`);
 
-          if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
-          else if (tuNgay) query = query.gte('created_at', tuNgay);
-          else if (denNgay) query = query.lte('created_at', denNgay);
+          if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);   // SỬA: dùng 'ngay'
+          else if (tuNgay) query = query.gte('ngay', tuNgay);
+          else if (denNgay) query = query.lte('ngay', denNgay);
 
           if (nv) query = query.ilike('tennv', `%${nv}%`);
           if (sohd) query = query.ilike('sohd', `%${sohd}%`);
