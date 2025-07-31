@@ -195,6 +195,7 @@
         let rowDangChon = null;
         let hoaDonHot = null; // Biến toàn cục bảng Handsontable
         let hoaDonData = []; // Lưu dữ liệu hóa đơn đang hiển thị
+        let loaiTongHop = "chitiet";
 
 
         async function taiDanhSachHoaDon() {
@@ -212,7 +213,7 @@
             const selectLoai = document.getElementById("loaiChungTu");
             const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
 
-            const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+            loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";           
 
             // ----- Xóa bảng cũ nếu có -----
             if (hoaDonHot) {
@@ -448,9 +449,7 @@
                         xemChiTiet(data.sohd);
                     }
                 }
-            });
-
-            // Để chắc chắn DOM Handsontable đã render xong
+            });           
 
             window.addEventListener('resize', function () {
                 if (hoaDonHot) hoaDonHot.render();
