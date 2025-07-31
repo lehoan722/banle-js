@@ -231,7 +231,7 @@
                         .order('created_at', { ascending: false })
                         .ilike('sohd', `${loai}_%`);
 
-                    if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+                    if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
                     else if (tuNgay) query = query.gte('created_at', tuNgay);
                     else if (denNgay) query = query.lte('created_at', denNgay);
 
@@ -268,7 +268,7 @@
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+                if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
                 else if (tuNgay) query = query.gte('created_at', tuNgay);
                 else if (denNgay) query = query.lte('created_at', denNgay);
 
@@ -376,13 +376,14 @@
                 stt: idx + 1,
                 chon: false,
                 sohd: hd.sohd || "",
-                ngay: dinhDangNgayGio(hd.created_at),
+                ngay: dinhDangNgayGio(hd.ngay), // Dùng trường ngay thay vì created_at
                 tennv: hd.tennv || "",
                 khachhang: hd.khachhang || "",
                 tongsl: hd.tongsl || 0,
                 thanhtoan: hd.thanhtoan || 0,
                 ghichu: hd.ghichu || ""
             }));
+
 
             // ---------- TÍNH TỔNG SỐ LƯỢNG, TỔNG TIỀN ----------
             let tongSL = 0, tongTien = 0;
