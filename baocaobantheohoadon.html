@@ -445,17 +445,18 @@
                     tbody.ondblclick = function (e) {
                         let rowEl = e.target.closest("tr");
                         if (!rowEl) return;
-                        let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
 
-                        // Sửa ở đây:
-                        const data = hoaDonHot.getDataAtRow(rowIdx);
+                        let trs = document.querySelectorAll("#hoaDonGrid .ht_master tr");
+                        let rowIdx = Array.from(trs).indexOf(rowEl);
+                        const data = hoaDonHot.getDataAtRow(rowIdx); // Lấy từ view, không phải source
+                        
                         if (data && data.sohd && loaiTongHop === "chitiet") {
                             xemChiTiet(data.sohd);
                         }
-
                     };
                 }
-            }, 150);      // Để chắc chắn DOM Handsontable đã render xong
+            }, 150);
+            // Để chắc chắn DOM Handsontable đã render xong
 
             window.addEventListener('resize', function () {
                 if (hoaDonHot) hoaDonHot.render();
