@@ -311,6 +311,21 @@
                     width: '100%',
                     height: 420
                 });
+
+                hoaDonHot.updateSettings({
+                    afterOnCellDblClick: function (visualRow, col, event) {
+                        // chỉ xử lý ở chế độ chi tiết
+                        const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                        if (loaiTongHop !== "chitiet") return;
+                        // lấy đúng data dòng đang hiển thị
+                        const data = hoaDonHot.getDataAtRow(visualRow);
+                        if (data && data.sohd) {
+                            xemChiTiet(data.sohd);
+                        }
+                    }
+                });
+
+
                 return;
             }
 
@@ -438,6 +453,19 @@
                 }
             });
 
+            hoaDonHot.updateSettings({
+                afterOnCellDblClick: function (visualRow, col, event) {
+                    // chỉ xử lý ở chế độ chi tiết
+                    const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+                    if (loaiTongHop !== "chitiet") return;
+                    // lấy đúng data dòng đang hiển thị
+                    const data = hoaDonHot.getDataAtRow(visualRow);
+                    if (data && data.sohd) {
+                        xemChiTiet(data.sohd);
+                    }
+                }
+            });
+
 
             // BẮT SỰ KIỆN KÍCH ĐÔI (double click) mở popup chi tiết hóa đơn
             setTimeout(function () {
@@ -449,7 +477,7 @@
                         let rowIdx = Array.from(rowEl.parentNode.children).indexOf(rowEl);
 
                         // Sửa ở đây:
-                        const data = hoaDonHot.getDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
+                        const data = hoaDonHot.getSourceDataAtRow(rowIdx); // Lấy đúng data dòng đang hiển thị!
                         if (data && data.sohd && loaiTongHop === "chitiet") {
                             xemChiTiet(data.sohd);
                         }
