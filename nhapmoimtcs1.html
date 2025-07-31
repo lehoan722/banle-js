@@ -437,7 +437,30 @@
             margin-left: 2px;
         }
     </style>
-    
+
+    <div class="menu-bar">
+        <div class="tennv">
+
+            <label>
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+
+            <label> <input id="ngay" type="date" /></label>
+            <!-- <label>Giờ <input id="gio" /></label> -->
+            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+
+        </div>
+        
+
+        <label><input id="size45" type="checkbox" />QL SIZE</label>
+
+    </div>
 
 
     <div id="app-container" style="display:none;">
