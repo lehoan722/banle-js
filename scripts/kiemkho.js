@@ -124,22 +124,39 @@ function onTextareaTab(e) {
 function parseTextareaData() {
     const lines = document.getElementById('danhsachTextarea').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
     const validSizes = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    const items = [];
+    const itemsMap = {}; // Dùng object để gộp mã trùng
     let current = null;
     for (let line of lines) {
-        if (/^[\w\-]+$/i.test(line) && !validSizes.includes(line)) { // là mã sp, không phải số size
-            if (current) items.push(current);
+        if (/^[\w\-]+$/i.test(line) && !validSizes.includes(line)) { // là mã sp
+            if (current) {
+                // Gộp mã nếu đã có
+                const key = current.masp.toUpperCase();
+                if (!itemsMap[key]) {
+                    itemsMap[key] = { ...current };
+                } else {
+                    SIZE_FIELDS.forEach(s => itemsMap[key]['size' + s] += current['size' + s]);
+                }
+            }
             current = { masp: line.toUpperCase() };
             SIZE_FIELDS.forEach(s => current['size' + s] = 0);
-        } else if (validSizes.includes(line)) { // là size
+        } else if (validSizes.includes(line)) {
             if (current) current['size' + line] = (current['size' + line] || 0) + 1;
         }
     }
-    if (current) items.push(current);
-    // Tính tổng
+    if (current) {
+        const key = current.masp.toUpperCase();
+        if (!itemsMap[key]) {
+            itemsMap[key] = { ...current };
+        } else {
+            SIZE_FIELDS.forEach(s => itemsMap[key]['size' + s] += current['size' + s]);
+        }
+    }
+    // Convert object về mảng và tính tổng
+    const items = Object.values(itemsMap);
     items.forEach(it => { it.tong = SIZE_FIELDS.reduce((sum, s) => sum + (Number(it['size' + s]) || 0), 0); });
     return items;
 }
+
 
 
 // Xử lý nút "Kiểm tra" – đẩy dữ liệu từ textarea xuống bảng kiểm kho
@@ -176,30 +193,37 @@ async function onKiemTon() {
     window.xoaKiemTon();
     if (!hot) return;
     const rows = hot.getSourceData().filter(r => r.masp);
-    // Lấy tồn kho từng mã
     const resultRows = [];
     for (let row of rows) {
         resultRows.push({ ...row, type: "Kiểm thực tế" });
-        // Gọi function SQL lấy tồn kho hệ thống từng size
+        // 1. Lấy tồn kho hệ thống
         const { data: xnt, error } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
-        // Mapping tồn kho theo từng size, tìm đúng cơ sở
         let rowSys = { masp: row.masp, type: "Tồn hệ thống", vitri: row.vitri, ghichu: "tồn hệ thống" };
         SIZE_FIELDS.forEach(s => rowSys['size' + s] = 0);
         if (xnt && xnt.length) {
             for (const item of xnt) {
                 if (item.size && SIZE_FIELDS.includes(item.size)) {
-                    // Tồn kho đúng cơ sở
                     let field = (coSo === 'cs1') ? 'ton_cs1' : 'ton_cs2';
                     rowSys['size' + item.size] = Number(item[field] || 0);
                 }
             }
-            rowSys.tong = SIZE_FIELDS.reduce((sum, s) => sum + (Number(rowSys['size' + s]) || 0), 0);
         }
+        rowSys.tong = SIZE_FIELDS.reduce((sum, s) => sum + (Number(rowSys['size' + s]) || 0), 0);
         resultRows.push(rowSys);
+
+        // 2. Chèn dòng nhập/xuất: kiểm thực tế - tồn hệ thống
+        let rowDiff = { masp: row.masp, type: "Chênh lệch", vitri: row.vitri, ghichu: "nhập / xuất" };
+        SIZE_FIELDS.forEach(s => {
+            const val = (Number(row['size' + s]) || 0) - (Number(rowSys['size' + s]) || 0);
+            rowDiff['size' + s] = val;
+        });
+        rowDiff.tong = SIZE_FIELDS.reduce((sum, s) => sum + (Number(rowDiff['size' + s]) || 0), 0);
+        resultRows.push(rowDiff);
     }
     createHotTable(resultRows, true);
-    showMsg("Đã chèn dòng tồn kho hệ thống để đối chiếu.");
+    showMsg("Đã chèn dòng tồn kho hệ thống và dòng nhập/xuất để đối chiếu.");
 }
+
 
 // Hàm hiển thị bảng kiểm kho với Handsontable
 function createHotTable(data, readonlySysRows = false) {
@@ -220,6 +244,8 @@ function createHotTable(data, readonlySysRows = false) {
             const d = this.instance.getSourceDataAtRow(row);
             if (d && d.type === "Tồn hệ thống")
                 return { readOnly: true, className: "kiemton-hethong" };
+            if (d && d.type === "Chênh lệch")
+                return { readOnly: true, className: "kiemton-chenhlech" };
         },
 
         afterChange: function (changes, source) {
