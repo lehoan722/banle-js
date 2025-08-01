@@ -1,22 +1,16 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
     <title>KIỂM KHO CS1 & CS2</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <!-- Kết nối JS Supabase và code nghiệp vụ kiểm kho -->
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/kiemkho.js"></script>
     <style>
-        body {
-            background: #f8fafc;
-            font-family: Segoe UI, Arial, sans-serif;
-        }
-
+        body { background: #f8fafc; font-family: Segoe UI, Arial, sans-serif; }
         .container {
             max-width: 990px;
             background: #fff;
@@ -25,170 +19,36 @@
             box-shadow: 0 3px 16px #dbe2ef;
             padding: 22px 24px 24px 24px;
         }
-
-        h2 {
-            text-align: center;
-            color: #1976d2;
-            margin-bottom: 18px;
+        h2 { text-align: center; color: #1976d2; margin-bottom: 18px; }
+        .row { display: flex; gap: 18px; margin-bottom: 14px; align-items: center; }
+        .label { font-weight: 600; min-width: 86px; }
+        select, input[type="text"], input[type="number"], textarea {
+            font-size: 1.08rem; border-radius: 5px; border: 1px solid #b5c7e6; padding: 5px 9px;
         }
-
-        .row {
-            display: flex;
-            gap: 18px;
-            margin-bottom: 14px;
-            align-items: center;
-        }
-
-        .label {
-            font-weight: 600;
-            min-width: 86px;
-        }
-
-        select,
-        input[type="text"],
-        input[type="number"],
-        input[type="password"],
-        textarea {
-            font-size: 1.08rem;
-            border-radius: 5px;
-            border: 1px solid #b5c7e6;
-            padding: 5px 9px;
-        }
-
-        textarea {
-            min-height: 68px;
-            min-width: 320px;
-            font-family: inherit;
-        }
-
-        .input-short {
-            width: 72px;
-        }
-
-        .input-mid {
-            width: 136px;
-        }
-
+        textarea { min-height: 68px; min-width: 320px; font-family: inherit; }
+        .input-short { width: 72px; }
+        .input-mid { width: 136px; }
         .popup-btn {
-            background: #e3f0ff;
-            border: 1px solid #1976d2;
-            color: #1976d2;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 4px;
-            margin-left: 3px;
-            cursor: pointer;
-            font-size: 16px;
+            background: #e3f0ff; border: 1px solid #1976d2; color: #1976d2; font-weight: 600;
+            padding: 3px 10px; border-radius: 4px; margin-left: 3px; cursor: pointer; font-size: 16px;
         }
-
-        .popup-btn:hover {
-            background: #bbdefb;
-        }
-
-        .hot-table {
-            margin-top: 10px;
-        }
-
-        .action-btn {
-            font-weight: bold;
-            background: #1976d2;
-            color: #fff;
-            border: none;
-            border-radius: 7px;
-            padding: 8px 26px;
-            cursor: pointer;
-            margin-right: 8px;
-            min-width: 80px;
-        }
-
-        .action-btn:disabled {
-            background: #c3c3c3;
-            color: #fff;
-            cursor: not-allowed;
-        }
-
-        #statusMsg {
-            color: #c62828;
-            font-weight: bold;
-            min-height: 30px;
-            margin-bottom: 10px;
-        }
-
-        .info-note {
-            color: #2b3f6c;
-            font-size: 0.97rem;
-            margin-bottom: 6px;
-        }
-
-        .handsontable th,
-        .handsontable td {
-            text-align: center !important;
-        }
-
-        /* Màu cho dòng tồn hệ thống */
-        .kiemton-hethong {
-            background-color: #ffeded !important;
-            color: #d00 !important;
-            font-weight: bold;
-        }
-
+        .popup-btn:hover { background: #bbdefb; }
+        .hot-table { margin-top: 10px; }
+        .action-btn { font-weight: bold; background: #1976d2; color: #fff; border: none; border-radius: 7px;
+            padding: 8px 26px; cursor: pointer; margin-right: 8px; min-width: 80px; }
+        .action-btn:disabled { background: #c3c3c3; color: #fff; cursor: not-allowed; }
+        #statusMsg { color: #c62828; font-weight:bold; min-height:30px; margin-bottom:10px;}
+        .info-note { color: #2b3f6c; font-size: 0.97rem; margin-bottom: 6px; }
+        .handsontable th, .handsontable td { text-align: center !important; }
         @media (max-width: 680px) {
-            .container {
-                padding: 8px;
-            }
-
-            .row {
-                flex-direction: column;
-                gap: 5px;
-            }
-
-            textarea {
-                min-width: 98%;
-            }
-        }
-
-        #loginBox {
-            max-width: 350px;
-            margin: 48px auto;
-            padding: 32px 28px 20px 28px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 16px #b7c7e6;
-            text-align: center;
-        }
-
-        #loginBox input {
-            margin-bottom: 14px;
-            width: 90%;
-        }
-
-        #loginBox button {
-            margin-top: 8px;
-            padding: 7px 32px;
-            font-size: 1.06rem;
-            background: #1976d2;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
+            .container { padding: 8px; }
+            .row { flex-direction: column; gap: 5px; }
+            textarea { min-width: 98%; }
         }
     </style>
 </head>
-
 <body>
-    <!-- Form đăng nhập -->
-    <div id="loginBox" style="display:none">...</div>
-    <div class="container" id="mainApp" style="display:none">...</div>
-
-    <h3>Đăng nhập để sử dụng kiểm kho</h3>
-    <input type="email" id="email" placeholder="Email" autocomplete="username" />
-    <input type="password" id="password" placeholder="Mật khẩu" autocomplete="current-password" />
-    <button onclick="onLogin()">Đăng nhập</button>
-    <div style="margin-top:10px;color:#888;font-size:14px;">Vui lòng đăng nhập bằng tài khoản đã cấp để sử dụng kiểm
-        kho!</div>
-    </div>
-
-    <!-- App kiểm kho -->
-    <div class="container" id="mainApp" style="display:none">
+    <div class="container">
         <h2>KIỂM KHO CS1 &amp; CS2</h2>
         <!-- Dòng chọn cơ sở và nhân viên -->
         <div class="row">
@@ -198,17 +58,15 @@
                 <option value="cs2">Cơ sở 2</option>
             </select>
             <span class="label">Mã nhân viên:</span>
-            <input type="password" id="manvInput" class="input-short" placeholder="2233" maxlength="10"
-                autocomplete="off" />
+            <input type="text" id="manvInput" class="input-short" placeholder="2233" maxlength="10" autocomplete="off" />
             <span id="tennvDisplay" style="font-weight:bold;color:#1769aa;margin-left:7px;"></span>
-            <!-- Bỏ nút tìm kiếm nhân viên ở đây -->
+            <!-- <button class="popup-btn" onclick="openPopupSearch('nhanvien')">🔍</button> -->
         </div>
 
         <!-- Dòng nhập mã + size -->
         <div class="row">
             <span class="label">Mã sản phẩm + Size:</span>
-            <input type="text" id="maspInput" class="input-mid" placeholder="Nhập mã + size, Enter..."
-                autocomplete="off" />
+            <input type="text" id="maspInput" class="input-mid" placeholder="Nhập mã + size, Enter..." autocomplete="off" />
             <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
         </div>
 
@@ -227,7 +85,7 @@
         <!-- Nút thao tác -->
         <div class="row" style="margin-bottom: 8px;">
             <button id="kiemtraBtn" class="action-btn">Kiểm tra</button>
-            <button id="btnXoaKiemTon" class="action-btn" style="background:#f64747;">Xóa kiểm tồn</button>
+            <button id="themmoiBtn" class="action-btn" style="background:#388e3c;">Thêm mới</button>
             <button id="kiemtontBtn" class="action-btn" style="background:#0288d1;">Kiểm tồn</button>
             <button id="luuBtn" class="action-btn" style="background:#d32f2f;">Lưu</button>
         </div>
@@ -239,41 +97,13 @@
     </div>
 
     <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch"
-        style="display:none; position:fixed; top:16%; left:50%; transform:translate(-50%,0);
+    <div id="popupSearch" style="display:none; position:fixed; top:16%; left:50%; transform:translate(-50%,0);
         background:#fff; z-index:2000; border:1px solid #ccc; min-width:340px; max-width:96vw; box-shadow:0 0 12px #888; border-radius:8px;">
         <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus
-                style="width:92%;">
+            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus style="width:92%;">
             <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
         </div>
         <div id="popupSearchList"></div>
     </div>
-    <script type="module">
-        import { supabase } from './scripts/supabaseClient.js';
-
-        // Đăng nhập với Supabase Auth
-        async function checkLogin() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                document.getElementById('loginBox').style.display = 'block';
-                document.getElementById('mainApp').style.display = 'none';
-            } else {
-                document.getElementById('loginBox').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'block';
-            }
-        }
-        window.checkLogin = checkLogin;
-        window.onload = checkLogin;
-
-        window.onLogin = async function () {
-            let email = document.getElementById('email').value.trim();
-            let pass = document.getElementById('password').value;
-            let { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-            if (error) alert("Đăng nhập thất bại: " + error.message);
-            else location.reload();
-        }
-    </script>
 </body>
-
 </html>
