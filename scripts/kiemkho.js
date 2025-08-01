@@ -291,15 +291,33 @@ async function onLuu() {
 }
 
 // Sinh số chứng từ tự động theo loại phiếu
+// Sinh số chứng từ đồng bộ với bảng sochungtu (dùng trường loai và so_hientai)
 async function genSohd(loaihd) {
-    let prefix = loaihd + '_';
-    // Gọi function SQL kiemkho_next_sohd trên Supabase để lấy số mới nhất
-    const { data, error } = await supabase.rpc('kiemkho_next_sohd', { prefix });
+    // B1: Lấy số hiện tại
+    let { data, error } = await supabase
+        .from('sochungtu')
+        .select('so_hientai')
+        .eq('loai', loaihd)
+        .maybeSingle();
     if (error || !data) {
-        showMsg("❌ Lỗi sinh số chứng từ: " + (error?.message || "Không lấy được số chứng từ"));
-        throw new Error("Không lấy được số chứng từ mới");
+        showMsg("❌ Không lấy được số chứng từ hiện tại cho loại: " + loaihd);
+        throw new Error("Không lấy được số chứng từ hiện tại");
     }
-    return data;
+    let num = (data.so_hientai || 0) + 1;
+
+    // B2: Update số mới vào bảng (nhớ kiểm tra lỗi cập nhật)
+    let { error: updateError } = await supabase
+        .from('sochungtu')
+        .update({ so_hientai: num })
+        .eq('loai', loaihd);
+    if (updateError) {
+        showMsg("❌ Lỗi cập nhật số chứng từ mới: " + updateError.message);
+        throw new Error("Không cập nhật được số chứng từ mới");
+    }
+
+    // B3: Ghép số hóa đơn chuẩn
+    let sohd = loaihd + '_' + String(num).padStart(5, '0');
+    return sohd;
 }
 
 
