@@ -272,19 +272,19 @@ async function onLuu() {
         for (let i = 0; i < allRows.length; i += 2) {
             const rowKiem = allRows[i], rowTon = allRows[i + 1];
             if (!rowKiem || !rowTon || rowKiem.masp !== rowTon.masp) continue;
+            let sohd_nhap = null, sohd_xuat = null;
             for (let sz of SIZE_FIELDS) {
                 const k = Number(rowKiem['size' + sz] || 0), t = Number(rowTon['size' + sz] || 0);
                 if (k > t) {
-                    // Phát sinh phiếu nhập kiểm kho
-                    let sohd_nhap = await genSohd('nhapkiem' + coSo);
+                    if (!sohd_nhap) sohd_nhap = await genSohd('nhapkiem' + coSo);
                     await taoPhieuKiem('nhap', coSo, rowKiem.masp, sz, k - t, sohd_nhap, manv, ngaygio);
                 }
                 if (k < t) {
-                    // Phát sinh phiếu xuất kiểm kho
-                    let sohd_xuat = await genSohd('xuatkiem' + coSo);
+                    if (!sohd_xuat) sohd_xuat = await genSohd('xuatkiem' + coSo);
                     await taoPhieuKiem('xuat', coSo, rowKiem.masp, sz, t - k, sohd_xuat, manv, ngaygio);
                 }
             }
+
         }
     }
     showMsg(errorMsg ? errorMsg : "✔️ Lưu dữ liệu thành công!");
@@ -293,16 +293,23 @@ async function onLuu() {
 // Sinh số chứng từ tự động theo loại phiếu
 async function genSohd(loaihd) {
     let prefix = loaihd + '_';
-    let { data } = await supabase.from('sochungtu').select('sohd').ilike('sohd', prefix + '%').order('sohd', { ascending: false }).limit(1);
+    // Tìm số chứng từ lớn nhất với tiền tố này
+    let { data, error } = await supabase.from('sochungtu').select('sohd').order('sohd', { ascending: false });
     let num = 1;
-    if (data && data.length && /\d+$/.test(data[0].sohd)) {
-        num = parseInt(data[0].sohd.match(/\d+$/)[0], 10) + 1;
+    if (data && data.length) {
+        let max = data.filter(x => x.sohd && x.sohd.startsWith(prefix));
+        if (max.length) {
+            max.sort((a, b) => (a.sohd < b.sohd ? 1 : -1));
+            let m = max[0].sohd.match(/\d+$/);
+            if (m) num = parseInt(m[0], 10) + 1;
+        }
     }
     let sohd = prefix + String(num).padStart(5, '0');
     // Lưu lại số chứng từ vừa tạo
     await supabase.from('sochungtu').insert([{ sohd, loai: loaihd, created_at: new Date().toISOString() }]);
     return sohd;
 }
+
 
 // Tạo phiếu kiểm kho (nhập/xuất)
 // Thay thế toàn bộ hàm này vào đúng vị trí cũ
