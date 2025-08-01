@@ -160,8 +160,19 @@ function onThemMoi() {
     hot.alter('insert_row');
 }
 
+window.xoaKiemTon = function () {
+    if (!hot) return;
+    let data = hot.getSourceData();
+    // Xóa các dòng có ghi chú hoặc type là 'Tồn hệ thống'
+    data = data.filter(r => r.type !== "Tồn hệ thống" && (r.ghichu !== "tồn hệ thống"));
+    createHotTable(data);
+};
+document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
+
+
 // Nút "Kiểm tồn" – chèn dòng tồn kho hệ thống dưới từng mã đang kiểm
 async function onKiemTon() {
+    window.xoaKiemTon();
     if (!hot) return;
     const rows = hot.getSourceData().filter(r => r.masp);
     // Lấy tồn kho từng mã
@@ -171,7 +182,7 @@ async function onKiemTon() {
         // Gọi function SQL lấy tồn kho hệ thống từng size
         const { data: xnt, error } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
         // Mapping tồn kho theo từng size, tìm đúng cơ sở
-        let rowSys = { masp: row.masp, type: "Tồn hệ thống", vitri: row.vitri };
+        let rowSys = { masp: row.masp, type: "Tồn hệ thống", vitri: row.vitri, ghichu: "tồn hệ thống" };
         SIZE_FIELDS.forEach(s => rowSys['size' + s] = 0);
         if (xnt && xnt.length) {
             for (const item of xnt) {
@@ -205,11 +216,11 @@ function createHotTable(data, readonlySysRows = false) {
         manualColumnResize: true,
         contextMenu: true,
         cells: function (row, col) {
-            // Disable edit dòng tồn hệ thống
             const d = this.instance.getSourceDataAtRow(row);
-            if (readonlySysRows && d && d.type === "Tồn hệ thống") return { readOnly: true, className: "bg-tontt" };
-            if (d && d.type === "Tồn hệ thống") return { className: "bg-tontt" };
+            if (d && d.type === "Tồn hệ thống")
+                return { readOnly: true, className: "kiemton-hethong" };
         },
+
         afterChange: function (changes, source) {
             // Tự động tính Tổng
             if (!changes) return;
