@@ -145,7 +145,7 @@ async function onKiemTra() {
     // Lấy vị trí từng mã
     for (let row of rows) {
         const { data } = await supabase.from('dmhanghoa').select(coSo==='cs1'?'vitrikho1':'vitrikho2').eq('masp', row.masp).maybeSingle();
-        row.vitri = data ? (coSo==='cs1'?data.vitri_cs1:data.vitri_cs2) : "";
+        row.vitri = data ? (coSo==='cs1'?data.vitrikho1:data.vitrikho2) : "";
     }
     createHotTable(rows);
     showMsg("");
