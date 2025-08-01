@@ -22,7 +22,7 @@
         h2 { text-align: center; color: #1976d2; margin-bottom: 18px; }
         .row { display: flex; gap: 18px; margin-bottom: 14px; align-items: center; }
         .label { font-weight: 600; min-width: 86px; }
-        select, input[type="text"], input[type="number"], textarea {
+        select, input[type="text"], input[type="number"], input[type="password"], textarea {
             font-size: 1.08rem; border-radius: 5px; border: 1px solid #b5c7e6; padding: 5px 9px;
         }
         textarea { min-height: 68px; min-width: 320px; font-family: inherit; }
@@ -40,15 +40,38 @@
         #statusMsg { color: #c62828; font-weight:bold; min-height:30px; margin-bottom:10px;}
         .info-note { color: #2b3f6c; font-size: 0.97rem; margin-bottom: 6px; }
         .handsontable th, .handsontable td { text-align: center !important; }
+        /* Màu cho dòng tồn hệ thống */
+        .kiemton-hethong { background-color: #ffeded !important; color: #d00 !important; font-weight:bold; }
         @media (max-width: 680px) {
             .container { padding: 8px; }
             .row { flex-direction: column; gap: 5px; }
             textarea { min-width: 98%; }
         }
+        #loginBox {
+            max-width:350px;
+            margin:48px auto;
+            padding:32px 28px 20px 28px;
+            background:#fff;
+            border-radius:10px;
+            box-shadow:0 2px 16px #b7c7e6;
+            text-align:center;
+        }
+        #loginBox input { margin-bottom:14px; width: 90%; }
+        #loginBox button { margin-top:8px; padding:7px 32px; font-size:1.06rem; background:#1976d2;color:#fff;border:none;border-radius:5px;}
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Form đăng nhập -->
+    <div id="loginBox" style="display:none">
+      <h3>Đăng nhập để sử dụng kiểm kho</h3>
+      <input type="email" id="email" placeholder="Email" autocomplete="username" />
+      <input type="password" id="password" placeholder="Mật khẩu" autocomplete="current-password" />
+      <button onclick="onLogin()">Đăng nhập</button>
+      <div style="margin-top:10px;color:#888;font-size:14px;">Vui lòng đăng nhập bằng tài khoản đã cấp để sử dụng kiểm kho!</div>
+    </div>
+
+    <!-- App kiểm kho -->
+    <div class="container" id="mainApp" style="display:none">
         <h2>KIỂM KHO CS1 &amp; CS2</h2>
         <!-- Dòng chọn cơ sở và nhân viên -->
         <div class="row">
@@ -58,9 +81,9 @@
                 <option value="cs2">Cơ sở 2</option>
             </select>
             <span class="label">Mã nhân viên:</span>
-            <input type="text" id="manvInput" class="input-short" placeholder="2233" maxlength="10" autocomplete="off" />
+            <input type="password" id="manvInput" class="input-short" placeholder="2233" maxlength="10" autocomplete="off" />
             <span id="tennvDisplay" style="font-weight:bold;color:#1769aa;margin-left:7px;"></span>
-            <button class="popup-btn" onclick="openPopupSearch('nhanvien')">🔍</button>
+            <!-- Bỏ nút tìm kiếm nhân viên ở đây -->
         </div>
 
         <!-- Dòng nhập mã + size -->
@@ -85,7 +108,7 @@
         <!-- Nút thao tác -->
         <div class="row" style="margin-bottom: 8px;">
             <button id="kiemtraBtn" class="action-btn">Kiểm tra</button>
-            <button id="themmoiBtn" class="action-btn" style="background:#388e3c;">Thêm mới</button>
+            <button id="btnXoaKiemTon" class="action-btn" style="background:#f64747;">Xóa kiểm tồn</button>
             <button id="kiemtontBtn" class="action-btn" style="background:#0288d1;">Kiểm tồn</button>
             <button id="luuBtn" class="action-btn" style="background:#d32f2f;">Lưu</button>
         </div>
@@ -105,5 +128,30 @@
         </div>
         <div id="popupSearchList"></div>
     </div>
+    <script type="module">
+        import { supabase } from './scripts/supabaseClient.js';
+
+        // Đăng nhập với Supabase Auth
+        async function checkLogin() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                document.getElementById('loginBox').style.display = 'block';
+                document.getElementById('mainApp').style.display = 'none';
+            } else {
+                document.getElementById('loginBox').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+            }
+        }
+        window.checkLogin = checkLogin;
+        window.onload = checkLogin;
+
+        window.onLogin = async function() {
+            let email = document.getElementById('email').value.trim();
+            let pass = document.getElementById('password').value;
+            let { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+            if (error) alert("Đăng nhập thất bại: " + error.message);
+            else location.reload();
+        }
+    </script>
 </body>
 </html>
