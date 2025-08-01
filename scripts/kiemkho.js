@@ -144,7 +144,7 @@ async function onKiemTra() {
     if (!rows.length) { showMsg("Chưa có dữ liệu kiểm!"); return; }
     // Lấy vị trí từng mã
     for (let row of rows) {
-        const { data } = await supabase.from('dmhanghoa').select(coSo==='cs1'?'vitri_cs1':'vitri_cs2').eq('masp', row.masp).maybeSingle();
+        const { data } = await supabase.from('dmhanghoa').select(coSo==='cs1'?'vitrikho1':'vitrikho2').eq('masp', row.masp).maybeSingle();
         row.vitri = data ? (coSo==='cs1'?data.vitri_cs1:data.vitri_cs2) : "";
     }
     createHotTable(rows);
