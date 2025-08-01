@@ -185,6 +185,7 @@ window.xoaKiemTon = function () {
     data = data.filter(r => r.type !== "Tồn hệ thống" && (r.ghichu !== "tồn hệ thống"));
     createHotTable(data);
 };
+
 document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
 
 
