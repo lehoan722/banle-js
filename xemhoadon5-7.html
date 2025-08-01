@@ -40,10 +40,10 @@
       position: fixed;
       top: 10%;
       left: 10%;
-      width: 500px;
+      width: 600px;
       min-width: 350px;
       min-height: 200px;
-      height: 400px;
+      height: 300px;
       background: #fff;
       border: 2px solid #4884ce;
       overflow: auto;
@@ -123,6 +123,8 @@
     <option value="nmcs2">nmcs2</option>
     <option value="ccn1v2">ccn1v2</option>
     <option value="ccn2v1">ccn2v1</option>
+    <option value="kiemkhocs1">kiemkho</option>
+    <option value="kiemkhocs2">kiemkho</option>
   </select>
 
   <label>
@@ -138,10 +140,12 @@
 
   <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
   <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+  <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
+
   <br />
 
   <div id="tongHopNhanh" style="font-size:1.1em;margin:12px 0;color:#0066cc;font-weight:bold;">
-    Tổng số lượng hóa đơn: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
+    Tổng số lượng SP: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
   </div>
 
 
@@ -172,6 +176,7 @@
       Chi tiết hóa đơn: <span id="sohdCT"></span>
       <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
     </div>
+    <button id="btnCopyHD" style="float:right; margin-bottom: 8px;">Copy</button>
     <table>
       <thead>
         <tr>
@@ -188,6 +193,7 @@
     </table>
     <button onclick="dongPopup()">Đóng</button>
   </div>
+
 
 
   <script>
@@ -248,7 +254,7 @@
           let query = supabase
             .from('hoadon_banle')
             .select('*')
-            .order('ngay', { ascending: true })    // SỬA: dùng 'ngay'
+            .order('created_at', { ascending: true })    // SỬA: dùng 'ngay'
             .ilike('sohd', `${loai}_%`);
 
           if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);   // SỬA: dùng 'ngay'
@@ -276,7 +282,7 @@
         let query = supabase
           .from('hoadon_banle')
           .select('*')
-          .order('ngay', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
+          .order('created_at', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
 
         if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
         else if (tuNgay) query = query.gte('ngay', tuNgay);
@@ -491,6 +497,49 @@
       if (e.key === "Escape") dongPopup();
     });
 
+
+    document.getElementById('btnCopyHD').onclick = function () {
+      // Lấy bảng chi tiết hóa đơn
+      let table = document.querySelector("#popup table");
+      let rows = Array.from(table.rows);
+      let text = rows.map(row =>
+        Array.from(row.cells).map(cell => cell.innerText).join("\t")
+      ).join("\n");
+      // Copy vào clipboard
+      navigator.clipboard.writeText(text).then(() => {
+        alert("✅ Đã copy dữ liệu vào clipboard, bạn chỉ cần Ctrl+V vào Excel!");
+      });
+    };
+
+    document.getElementById('btnCopyTable').onclick = function () {
+      let table = document.querySelector("table");
+      if (!table) return alert("Không tìm thấy bảng dữ liệu!");
+
+      // Xác định vị trí cột checkbox
+      let ths = Array.from(table.querySelectorAll("thead tr th"));
+      let colChon = ths.findIndex(th => th.innerText.toLowerCase().includes("chon"));
+
+      // Lấy tiêu đề (bỏ cột chon nếu có)
+      let headers = ths.map((th, i) => i !== colChon ? th.innerText.replace(/\n/g, " ") : null)
+        .filter(x => x !== null).join('\t');
+
+      // Lấy từng dòng dữ liệu
+      let rows = Array.from(table.querySelectorAll("tbody#dsHoaDon tr"));
+      if (!rows.length) return alert("Không có dữ liệu để copy!");
+
+      let lines = rows
+        .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
+        .map(tr => Array.from(tr.cells)
+          .map((td, i) => i !== colChon ? td.innerText.replace(/\n/g, " ") : null)
+          .filter(x => x !== null).join('\t')
+        );
+
+      let all = [headers].concat(lines).join('\n');
+
+      navigator.clipboard.writeText(all).then(() => {
+        alert("✅ Đã copy toàn bộ bảng dữ liệu! Ctrl+V để dán vào Excel.");
+      });
+    };
 
 
   </script>
