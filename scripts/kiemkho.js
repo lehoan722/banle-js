@@ -25,6 +25,7 @@ function initUI() {
     document.getElementById('kiemtraBtn').onclick = onKiemTra;
     document.getElementById('themmoiBtn').onclick = onThemMoi;
     document.getElementById('kiemtontBtn').onclick = onKiemTon;
+    document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
     document.getElementById('luuBtn').onclick = onLuu;
     document.getElementById('maspInput').addEventListener('keydown', onMaspInputEnter);
     document.getElementById('danhsachTextarea').addEventListener('keydown', onTextareaTab);
