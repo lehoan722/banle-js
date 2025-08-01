@@ -1,5 +1,27 @@
 import { supabase } from "./supabaseClient.js";
 
+window.onload = function () {
+    checkLogin();
+};
+async function checkLogin() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        document.getElementById('loginBox').style.display = 'block';
+        document.getElementById('mainApp').style.display = 'none';
+    } else {
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        initUI(); // Khởi động UI khi đã login
+    }
+}
+window.onLogin = async function () {
+    let email = document.getElementById('email').value.trim();
+    let pass = document.getElementById('password').value;
+    let { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) alert("Đăng nhập thất bại: " + error.message);
+    else location.reload();
+}
+
 let hot; // Handsontable instance
 let maNhanVien = '';
 let tenNhanVien = '';
@@ -154,14 +176,20 @@ async function onKiemTra() {
     showMsg("");
 }
 
-// Thêm mới dòng rỗng
-function onThemMoi() {
+// xoaKiemTon 
+window.xoaKiemTon = function () {
     if (!hot) return;
-    hot.alter('insert_row');
-}
+    let data = hot.getSourceData();
+    // Xóa các dòng có ghi chú hoặc type là 'Tồn hệ thống'
+    data = data.filter(r => r.type !== "Tồn hệ thống" && (r.ghichu !== "tồn hệ thống"));
+    createHotTable(data);
+};
+document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
+
 
 // Nút "Kiểm tồn" – chèn dòng tồn kho hệ thống dưới từng mã đang kiểm
 async function onKiemTon() {
+    window.xoaKiemTon();
     if (!hot) return;
     const rows = hot.getSourceData().filter(r => r.masp);
     // Lấy tồn kho từng mã
@@ -171,7 +199,7 @@ async function onKiemTon() {
         // Gọi function SQL lấy tồn kho hệ thống từng size
         const { data: xnt, error } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
         // Mapping tồn kho theo từng size, tìm đúng cơ sở
-        let rowSys = { masp: row.masp, type: "Tồn hệ thống", vitri: row.vitri };
+        let rowSys = { masp: row.masp, type: "Tồn hệ thống", vitri: row.vitri, ghichu: "tồn hệ thống" };
         SIZE_FIELDS.forEach(s => rowSys['size' + s] = 0);
         if (xnt && xnt.length) {
             for (const item of xnt) {
@@ -204,12 +232,13 @@ function createHotTable(data, readonlySysRows = false) {
         manualRowMove: true,
         manualColumnResize: true,
         contextMenu: true,
+
         cells: function (row, col) {
-            // Disable edit dòng tồn hệ thống
             const d = this.instance.getSourceDataAtRow(row);
-            if (readonlySysRows && d && d.type === "Tồn hệ thống") return { readOnly: true, className: "bg-tontt" };
-            if (d && d.type === "Tồn hệ thống") return { className: "bg-tontt" };
+            if (d && d.type === "Tồn hệ thống")
+                return { readOnly: true, className: "kiemton-hethong" };
         },
+
         afterChange: function (changes, source) {
             // Tự động tính Tổng
             if (!changes) return;
