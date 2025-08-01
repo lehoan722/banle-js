@@ -37,15 +37,14 @@ const COLS = [
 ];
 const COL_HEADERS = ['Mã SP', 'Tổng', ...SIZE_FIELDS, 'Vị trí', 'Ghi chú'];
 
-window.onload = function () {
-    initUI();
-};
+
 
 function initUI() {
     document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
     document.getElementById('kiemtraBtn').onclick = onKiemTra;
-    document.getElementById('themmoiBtn').onclick = onThemMoi;
+    document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
+
     document.getElementById('kiemtontBtn').onclick = onKiemTon;
     document.getElementById('luuBtn').onclick = onLuu;
     document.getElementById('maspInput').addEventListener('keydown', onMaspInputEnter);
