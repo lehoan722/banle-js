@@ -92,7 +92,7 @@ async function onManvBlur() {
     const manv = document.getElementById('manvInput').value.trim();
     if (!manv) { document.getElementById('tennvDisplay').innerText = ""; return; }
     const { data, error } = await supabase.from('dmnhanvien').select('tennv').eq('manv', manv).maybeSingle();
-    
+
     if (!data) { document.getElementById('tennvDisplay').innerText = "Mã không hợp lệ!"; return; }
     maNhanVien = manv; tenNhanVien = data.tennv;
     document.getElementById('tennvDisplay').innerHTML = "Tên: <b style='color:blue'>" + data.tennv + "</b>";
@@ -305,18 +305,30 @@ async function genSohd(loaihd) {
 }
 
 // Tạo phiếu kiểm kho (nhập/xuất)
+// Thay thế toàn bộ hàm này vào đúng vị trí cũ
 async function taoPhieuKiem(loai, coSo, masp, sz, sl, sohd, manv, ngaygio) {
     let loaihd = (loai === 'nhap' ? 'nhapkiem' : 'xuatkiem') + coSo;
-    // Ghi hoadon_banle
-    let r1 = await supabase.from('hoadon_banle').insert([{
-        sohd, loaihd, diadiem: coSo, ngay: ngaygio, manv
-    }]);
-    // Ghi ct_hoadon_banle
-    let r2 = await supabase.from('ct_hoadon_banle').insert([{
-        sohd, masp, size: sz, soluong: sl, ngay: ngaygio
-    }]);
-    // Có thể bổ sung log/error nếu cần
+    // Tạo hóa đơn nếu chưa tồn tại
+    let { data: exists } = await supabase.from('hoadon_banle').select('sohd').eq('sohd', sohd);
+    if (!exists || !exists.length) {
+        await supabase.from('hoadon_banle').insert([{
+            sohd, loaihd, diadiem: coSo, ngay: ngaygio, manv
+        }]);
+    }
+    // Ghi từng size riêng biệt (chỉ ghi khi sl khác 0)
+    if (sl !== 0) {
+        await supabase.from('ct_hoadon_banle').insert([{
+            sohd: sohd,
+            masp: masp,
+            size: sz,
+            soluong: sl,
+            diadiem: coSo,
+            ngay: ngaygio,
+            created_at: ngaygio
+        }]);
+    }
 }
+
 
 // Hiển thị thông báo trạng thái
 function showMsg(msg) {
