@@ -293,21 +293,13 @@ async function onLuu() {
 // Sinh số chứng từ tự động theo loại phiếu
 async function genSohd(loaihd) {
     let prefix = loaihd + '_';
-    // Tìm số chứng từ lớn nhất với tiền tố này
-    let { data, error } = await supabase.from('sochungtu').select('sohd').order('sohd', { ascending: false });
-    let num = 1;
-    if (data && data.length) {
-        let max = data.filter(x => x.sohd && x.sohd.startsWith(prefix));
-        if (max.length) {
-            max.sort((a, b) => (a.sohd < b.sohd ? 1 : -1));
-            let m = max[0].sohd.match(/\d+$/);
-            if (m) num = parseInt(m[0], 10) + 1;
-        }
+    // Gọi function SQL kiemkho_next_sohd trên Supabase để lấy số mới nhất
+    const { data, error } = await supabase.rpc('kiemkho_next_sohd', { prefix });
+    if (error || !data) {
+        showMsg("❌ Lỗi sinh số chứng từ: " + (error?.message || "Không lấy được số chứng từ"));
+        throw new Error("Không lấy được số chứng từ mới");
     }
-    let sohd = prefix + String(num).padStart(5, '0');
-    // Lưu lại số chứng từ vừa tạo
-    await supabase.from('sochungtu').insert([{ sohd, loai: loaihd, created_at: new Date().toISOString() }]);
-    return sohd;
+    return data;
 }
 
 
