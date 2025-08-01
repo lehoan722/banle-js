@@ -181,10 +181,16 @@ function onThemMoi() {
 window.xoaKiemTon = function () {
     if (!hot) return;
     let data = hot.getSourceData();
-    // Xóa các dòng có ghi chú hoặc type là 'Tồn hệ thống'
-    data = data.filter(r => r.type !== "Tồn hệ thống" && (r.ghichu !== "tồn hệ thống"));
+    // Xóa tất cả các dòng có type là 'Tồn hệ thống' HOẶC 'Chênh lệch'
+    // hoặc ghi chú là 'tồn hệ thống' HOẶC 'nhập / xuất'
+    data = data.filter(
+        r =>
+            (r.type !== "Tồn hệ thống" && r.type !== "Chênh lệch") &&
+            (r.ghichu !== "tồn hệ thống" && r.ghichu !== "nhập / xuất")
+    );
     createHotTable(data);
 };
+
 
 document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
 
