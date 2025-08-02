@@ -20,7 +20,7 @@ window.onload = function () {
 };
 
 function initUI() {
-    document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
+    //document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
     document.getElementById('kiemtraBtn').onclick = onKiemTra;
     document.getElementById('themmoiBtn').onclick = onThemMoi;
