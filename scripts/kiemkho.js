@@ -3,7 +3,8 @@ import { supabase } from "./supabaseClient.js";
 let hot; // Handsontable instance
 let maNhanVien = '';
 let tenNhanVien = '';
-let coSo = 'cs1'; // cs1 hoặc cs2
+let coSo = window.coSo || 'cs1'; // Lấy từ HTML truyền vào
+//let coSo = 'cs1'; // cs1 hoặc cs2
 
 const SIZE_FIELDS = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
 const COLS = [
@@ -20,7 +21,7 @@ window.onload = function () {
 };
 
 function initUI() {
-    //document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
+    document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
     document.getElementById('kiemtraBtn').onclick = onKiemTra;
     document.getElementById('themmoiBtn').onclick = onThemMoi;
