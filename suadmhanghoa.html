@@ -222,8 +222,8 @@
         let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
         let columns = [
             { data: 'masp', type: 'text', width: 150 },
-            { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
-            { data: 'trangthai', type: 'text', width: 110, readOnly: true }
+            { data: 'vitrikho1', type: 'text', width: 150 },
+            { data: 'trangthai', type: 'text', width: 110 }
         ];
 
         function initTable() {
@@ -245,7 +245,7 @@
                     // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
                     //if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
                     //if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
-                    if (col === 2) cellProperties.readOnly = true;
+                    //if (col === 2) cellProperties.readOnly = true;
 
                     // Màu cho trạng thái
                     if (col === 2) {
