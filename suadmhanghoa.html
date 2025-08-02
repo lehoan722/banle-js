@@ -261,8 +261,8 @@
                 }
             });
             // Ban đầu chỉ nhập mã sản phẩm
-            window.editableMASP = true;
-            window.editableVITRI = false;
+            //window.editableMASP = true;
+            //window.editableVITRI = false;
         }
         initTable();
 
@@ -284,8 +284,8 @@
 
         // Làm lại bảng
         function resetTable() {
-            window.editableMASP = true;
-            window.editableVITRI = false;
+           // window.editableMASP = true;
+           // window.editableVITRI = false;
             initTable();
             document.getElementById('preview').innerHTML = "";
         }
@@ -373,8 +373,8 @@
             hot.loadData(tableData);
 
             // Cho phép nhập cột mã và cột vị trí
-            window.editableMASP = true;
-            window.editableVITRI = true;
+           // window.editableMASP = true;
+           // window.editableVITRI = true;
             hot.updateSettings({ cells: hot.getSettings().cells });
             document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
         }
