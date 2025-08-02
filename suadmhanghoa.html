@@ -424,7 +424,7 @@
                 r[colname] &&
                 r.trangthai === "CHƯA CÓ GIÁ TRỊ"
             );
-            if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
+            //if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
             if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} giá trị mới vào cột ${colname}?`)) return;
             const sb = getSupabaseClient();
