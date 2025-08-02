@@ -420,23 +420,25 @@
         async function luuDuLieu() {
             const colname = document.getElementById('col-select').value;
             let rows = hot.getSourceData().filter(r =>
-                r.masp &&
-                r[colname] &&
-                r.trangthai === "CHƯA CÓ GIÁ TRỊ"
+                r.masp && r[colname]
             );
-            //if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
+            if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
-            if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} giá trị mới vào cột ${colname}?`)) return;
+            // Hỏi xác nhận ghi đè
+            if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè toàn bộ dữ liệu cũ của cột "${colname}" không? Nhấn OK để ghi đè, hoặc Cancel để quay lại!`)) {
+                document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
+                return;
+            }
+
             const sb = getSupabaseClient();
-
             let success = 0, fail = 0, errorMsg = [];
+
             for (let idx = 0; idx < rows.length; idx++) {
                 let row = rows[idx];
-                // Chỉ update nếu cột đang null
+                // Update luôn, không kiểm tra null nữa!
                 const { data, error } = await sb.from(TABLE_NAME)
                     .update({ [colname]: row[colname] })
                     .eq('masp', row.masp.toString().trim().toUpperCase())
-                    .is(colname, null)
                     .select();
 
                 if (!error && data && data.length === 1) {
@@ -445,7 +447,7 @@
                 } else {
                     hot.setDataAtCell(idx, 2, "LỖI");
                     fail++;
-                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có giá trị)';
+                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại)';
                     errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
                 }
             }
@@ -455,6 +457,7 @@
             document.getElementById('preview').innerHTML = html;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
     </script>
 </body>
