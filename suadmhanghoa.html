@@ -190,8 +190,13 @@
     </div>
 
     <div style="display:flex;justify-content:center;margin-bottom:7px;">
+
+        <select id="col-select" style="margin-right:10px;padding:7px 14px;border-radius:12px;font-size:1rem;">
+            <!-- Options sẽ được JS render -->
+        </select>
+
         <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
-        <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
+        <button class="main-btn" onclick="kiemTraDuLieu()">🔍 Kiểm tra du lieu dmhh</button>
         <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
         <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
     </div>
@@ -201,11 +206,44 @@
     <div id="hot"></div>
 
     <script>
+
+
         // Thông tin Supabase
         const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
         const TABLE_NAME = 'dmhanghoa';
+
+        const COLS = [
+            { name: "masp", label: "Mã sản phẩm" },
+            { name: "tensp", label: "Tên sản phẩm" },
+            { name: "gianhap", label: "Giá nhập" },
+            { name: "giale", label: "Giá lẻ" },
+            { name: "giasi", label: "Giá sỉ" },
+            { name: "mangan", label: "Mã ngắn" },
+            { name: "nhomhang", label: "Nhóm hàng" },
+            { name: "nhacc", label: "Nhà CC" },
+            { name: "chungloai", label: "Chủng loại" },
+            { name: "vitrikho1", label: "Vị trí kho 1" },
+            { name: "vitrikho2", label: "Vị trí kho 2" },
+            { name: "mausac", label: "Màu sắc" },
+            { name: "khuyenmai", label: "Khuyến mãi" },
+            { name: "quanlykichco", label: "Quản lý kích cỡ" },
+            { name: "active", label: "Đang dùng?" },
+            { name: "ngaysua", label: "Ngày sửa" },
+            { name: "ngaykiem", label: "Ngày kiểm" },
+            { name: "dvt", label: "ĐVT" },
+            { name: "nhapdau", label: "Ngày nhập đầu" },
+            { name: "vitrikho3", label: "Vị trí kho 3" },
+        ];
+        window.COLS = COLS; // global cho tiện
+        // Hàm khởi tạo dropdown:
+        function renderColSelect() {
+            let html = COLS.filter(c => c.name !== "masp") // không cho sửa mã sp
+                .map(c => `<option value="${c.name}">${c.label}</option>`).join("");
+            document.getElementById('col-select').innerHTML = html;
+        }
+        renderColSelect();
 
         // Khởi tạo Supabase client (token đăng nhập)
         function getSupabaseClient() {
@@ -226,11 +264,22 @@
             { data: 'trangthai', type: 'text', width: 110 }
         ];
 
-        function initTable() {
+        function initTable(colname = 'vitrikho1') {
+            // Lấy label từ COLS
+            let colInfo = COLS.find(c => c.name === colname);
+            let colLabel = colInfo ? colInfo.label : colname;
+
+            let colHeaders = ['Mã sản phẩm', colLabel, 'Trạng thái'];
+            let columns = [
+                { data: 'masp', type: 'text', width: 150 },
+                { data: colname, type: 'text', width: 150 },
+                { data: 'trangthai', type: 'text', width: 110 }
+            ];
+
             const container = document.getElementById('hot');
             if (hot) hot.destroy();
             hot = new Handsontable(container, {
-                data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
+                data: Array.from({ length: 30 }, () => ({ masp: null, [colname]: null, trangthai: null })),
                 columns,
                 colHeaders,
                 rowHeaders: true,
@@ -242,28 +291,26 @@
                 licenseKey: 'non-commercial-and-evaluation',
                 cells: function (row, col) {
                     const cellProperties = {};
-                    // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
-                    //if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
-                    //if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
-                    //if (col === 2) cellProperties.readOnly = true;
-
-                    // Màu cho trạng thái
+                    // Đổi trạng thái màu cho trạng thái
                     if (col === 2) {
                         const val = this.instance.getDataAtCell(row, col);
                         if (val === "OK") cellProperties.className = "trangthai-ok";
                         if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
                         if (val === "LỖI") cellProperties.className = "trangthai-loi";
                         if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
-                        if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
+                        if (val === "CHƯA CÓ GIÁ TRỊ") cellProperties.className = "trangthai-chuacovitri";
                     }
-
                     return cellProperties;
                 }
             });
-            // Ban đầu chỉ nhập mã sản phẩm
-            //window.editableMASP = true;
-            //window.editableVITRI = false;
         }
+
+        document.getElementById('col-select').onchange = function () {
+            initTable(this.value);
+            document.getElementById('preview').innerHTML = "";
+        };
+
+
         initTable();
 
         // Đăng nhập Supabase (bắt buộc)
@@ -284,19 +331,17 @@
 
         // Làm lại bảng
         function resetTable() {
-           // window.editableMASP = true;
-           // window.editableVITRI = false;
+            // window.editableMASP = true;
+            // window.editableVITRI = false;
             initTable();
             document.getElementById('preview').innerHTML = "";
         }
 
         // Kiểm tra vị trí kho
-        async function kiemTraViTri() {
-            //window.editableMASP = false;
-            //window.editableVITRI = false;
+        async function kiemTraDuLieu() {
+            const colname = document.getElementById('col-select').value;
             hot.updateSettings({ cells: hot.getSettings().cells });
 
-            // Lấy dữ liệu, chuẩn hóa mã sản phẩm thành in hoa, loại trùng
             let allRows = hot.getSourceData();
             let uniqueMasps = [];
             let uniqueRows = [];
@@ -306,34 +351,30 @@
                 if (masp && !seen[masp]) {
                     seen[masp] = true;
                     uniqueMasps.push(masp);
-                    uniqueRows.push({ masp, vitrikho1: null, trangthai: null });
+                    uniqueRows.push({ masp, [colname]: null, trangthai: null });
                 }
             }
             if (uniqueMasps.length === 0) {
                 alert("Nhập mã sản phẩm để kiểm tra!");
                 return;
             }
-
-            // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
             hot.loadData(uniqueRows);
 
-            // Truy vấn Supabase để lấy cả mã tồn tại và vị trí kho
+            // Lấy cả cột cần kiểm tra
             const sb = getSupabaseClient();
             const { data: found, error } = await sb
                 .from(TABLE_NAME)
-                .select('masp,vitrikho1')
+                .select(`masp,${colname}`)
                 .in('masp', uniqueMasps);
 
             if (error) return alert('Lỗi kết nối Supabase!');
-
-            // Tạo map: mã tồn tại => vị trí kho
             const maspMap = {};
-            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
+            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row[colname]; });
 
             hot.batch(() => {
                 for (let r = 0; r < hot.countRows(); r++) {
                     const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
-                    hot.setDataAtCell(r, 0, masp); // Đảm bảo in hoa
+                    hot.setDataAtCell(r, 0, masp);
 
                     if (!masp) {
                         hot.setDataAtCell(r, 1, null);
@@ -341,25 +382,20 @@
                         continue;
                     }
                     if (typeof maspMap[masp] === "undefined") {
-                        // Không tồn tại trong danh mục
                         hot.setDataAtCell(r, 1, null);
                         hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI");
                     } else if (maspMap[masp]) {
-                        // Đã có vị trí kho
                         hot.setDataAtCell(r, 1, maspMap[masp]);
                         hot.setDataAtCell(r, 2, "BỎ QUA");
                     } else {
-                        // Có mã, chưa có vị trí
                         hot.setDataAtCell(r, 1, null);
-                        hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ");
+                        hot.setDataAtCell(r, 2, "CHƯA CÓ GIÁ TRỊ");
                     }
                 }
             });
-
-            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
+            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có giá trị hoặc đã có giá trị.</span>`;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
-
 
 
         // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
@@ -373,8 +409,8 @@
             hot.loadData(tableData);
 
             // Cho phép nhập cột mã và cột vị trí
-           // window.editableMASP = true;
-           // window.editableVITRI = true;
+            // window.editableMASP = true;
+            // window.editableVITRI = true;
             hot.updateSettings({ cells: hot.getSettings().cells });
             document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
         }
@@ -382,37 +418,34 @@
         // Lưu dữ liệu mới
         // Lưu dữ liệu mới
         async function luuDuLieu() {
-            // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
+            const colname = document.getElementById('col-select').value;
             let rows = hot.getSourceData().filter(r =>
                 r.masp &&
-                r.vitrikho1 &&
-                r.trangthai === "CHƯA CÓ VỊ TRÍ"
+                r[colname] &&
+                r.trangthai === "CHƯA CÓ GIÁ TRỊ"
             );
             if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
-            if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
+            if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} giá trị mới vào cột ${colname}?`)) return;
             const sb = getSupabaseClient();
 
             let success = 0, fail = 0, errorMsg = [];
-            // Dùng for...of tuần tự để đánh đúng dòng
             for (let idx = 0; idx < rows.length; idx++) {
                 let row = rows[idx];
-                // Chỉ update vị trí nếu chưa có (nghiệp vụ)
+                // Chỉ update nếu cột đang null
                 const { data, error } = await sb.from(TABLE_NAME)
-                    .update({ vitrikho1: row.vitrikho1 })
+                    .update({ [colname]: row[colname] })
                     .eq('masp', row.masp.toString().trim().toUpperCase())
-                    .is('vitrikho1', null)
-                    .select(); // dùng select để lấy dòng bị ảnh hưởng!
+                    .is(colname, null)
+                    .select();
 
                 if (!error && data && data.length === 1) {
-                    // Đánh dấu OK
                     hot.setDataAtCell(idx, 2, "OK");
                     success++;
                 } else {
-                    // Có lỗi hoặc không có dòng nào update được
                     hot.setDataAtCell(idx, 2, "LỖI");
                     fail++;
-                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)';
+                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có giá trị)';
                     errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
                 }
             }
@@ -420,9 +453,6 @@
             let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
             if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
             document.getElementById('preview').innerHTML = html;
-            // Sau lưu lại khóa cột vị trí
-           // window.editableMASP = false;
-           // window.editableVITRI = false;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
 
