@@ -162,6 +162,7 @@
                     <th>Ngày sửa</th>
                     <th>NV</th>
                     <th>Mã SP</th>
+                    <th>Tổng SL</th>
                     <th>Size0</th>
                     <th>38</th>
                     <th>39</th>
@@ -171,11 +172,11 @@
                     <th>43</th>
                     <th>44</th>
                     <th>45</th>
-                    <th>Tổng SL</th>
                     <th>TT</th>
                     <th>Ghi chú</th>
                 </tr>
             </thead>
+
 
         </thead>
         <tbody id="dsHoaDon"></tbody>
@@ -375,14 +376,27 @@
             // ------------- HIỂN THỊ RA BẢNG -------------
             hienThiData.forEach((hd, idx) => {
                 const tr = document.createElement("tr");
+                const sizes = [
+                    Number(hd.size0 || 0),
+                    Number(hd.size38 || 0),
+                    Number(hd.size39 || 0),
+                    Number(hd.size40 || 0),
+                    Number(hd.size41 || 0),
+                    Number(hd.size42 || 0),
+                    Number(hd.size43 || 0),
+                    Number(hd.size44 || 0),
+                    Number(hd.size45 || 0)
+                ];
+                const tongSL = sizes.reduce((a, b) => a + b, 0);
                 tr.innerHTML = `
   <td>${idx + 1}</td>
   <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-  <td>${hd.sohd || ""}</td>  
+  <td>${hd.sohd || ""}</td>
   <td>${dinhDangNgay(hd.ngaygio)}</td>
   <td>${dinhDangNgayGio(hd.created_at)}</td>
   <td>${hd.tennv || ""}</td>
   <td>${hd.masp || ""}</td>
+  <td>${tongSL || 0}</td>
   <td>${hd.size0 ?? ""}</td>
   <td>${hd.size38 ?? ""}</td>
   <td>${hd.size39 ?? ""}</td>
@@ -392,10 +406,10 @@
   <td>${hd.size43 ?? ""}</td>
   <td>${hd.size44 ?? ""}</td>
   <td>${hd.size45 ?? ""}</td>
-  <td>${hd.tongsl || 0}</td>
   <td>${hd.thanhtoan?.toLocaleString()}</td>
   <td>${hd.ghichu || ""}</td>
 `;
+
 
                 tr.onclick = (e) => {
                     if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
@@ -534,34 +548,26 @@
         };
 
         document.getElementById('btnCopyTable').onclick = function () {
-            let table = document.querySelector("table");
-            if (!table) return alert("Không tìm thấy bảng dữ liệu!");
-
-            // Xác định vị trí cột checkbox
-            let ths = Array.from(table.querySelectorAll("thead tr th"));
-            let colChon = ths.findIndex(th => th.innerText.toLowerCase().includes("chon"));
-
-            // Lấy tiêu đề (bỏ cột chon nếu có)
-            let headers = ths.map((th, i) => i !== colChon ? th.innerText.replace(/\n/g, " ") : null)
-                .filter(x => x !== null).join('\t');
-
-            // Lấy từng dòng dữ liệu
-            let rows = Array.from(table.querySelectorAll("tbody#dsHoaDon tr"));
+            let rows = Array.from(document.querySelectorAll("tbody#dsHoaDon tr"));
             if (!rows.length) return alert("Không có dữ liệu để copy!");
 
+            // Vị trí các cột:  0-stt 1-chọn 2-số HĐ 3-ngày 4-ngày sửa 5-nv 6-masp 7-tổngsl 8-size0 ... 16-45
             let lines = rows
                 .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
-                .map(tr => Array.from(tr.cells)
-                    .map((td, i) => i !== colChon ? td.innerText.replace(/\n/g, " ") : null)
-                    .filter(x => x !== null).join('\t')
-                );
+                .map(tr => {
+                    let tds = Array.from(tr.cells);
+                    // Lấy từ cột masp (6) đến 45 (16), tương ứng index 6 đến 16
+                    // Bạn có thể mở rộng nếu có thêm cột khác
+                    return tds.slice(6, 17).map(td => td.innerText).join('\t');
+                });
 
-            let all = [headers].concat(lines).join('\n');
+            let all = lines.join('\n');
 
             navigator.clipboard.writeText(all).then(() => {
-                alert("✅ Đã copy toàn bộ bảng dữ liệu! Ctrl+V để dán vào Excel.");
+                alert("✅ Đã copy dải dữ liệu từ Mã SP đến 45! Ctrl+V để dán vào Excel.");
             });
         };
+
 
 
     </script>
