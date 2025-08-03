@@ -764,21 +764,30 @@
         }
 
         // Hàm tạo phiếu kiểm kho (1 lần/1 số chứng từ/1 loại/1 địa điểm)
+        // Thêm hàm này trên đầu
+        function getLoaihd(loai, diadiem) {
+            // loai: 'nhapkiem' hoặc 'xuatkiem'
+            // diadiem: 'cs1', 'cs2'
+            return loai + diadiem; // vd: 'nhapkiemcs2'
+        }
+
+        // Sửa lại hàm tạo phiếu kiểm kho chuẩn:
         async function taoPhieuKiemKhoAuto(loai, diadiem, arrChiTiet) {
-            let loaihd = (loai == 'nhapkiem' ? 'nhapkiem' : 'xuatkiem') + diadiem;
-            let sohd = await genSohd(loaihd);
+            diadiem = diadiem.toLowerCase();
+            if (diadiem !== 'cs1' && diadiem !== 'cs2') diadiem = 'cs1';
+            let loaihd = getLoaihd(loai, diadiem); // 'nhapkiemcs2'
+            let sohd = await genSohd(loaihd);      // 'nhapkiemcs2_00023'
             let ngay = new Date().toISOString();
-            // Tạo hóa đơn nếu chưa có
             await supabase.from('hoadon_banle').upsert([{
                 sohd, loaihd, diadiem, ngay
             }]);
-            // Tạo chi tiết hóa đơn cho từng dòng
             for (const ct of arrChiTiet) {
                 await supabase.from('ct_hoadon_banle').insert([{
                     sohd, masp: ct.masp, size: ct.size, soluong: ct.sl, diadiem, ngay, created_at: ngay
                 }]);
             }
         }
+
 
 
 
