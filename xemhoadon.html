@@ -154,7 +154,7 @@
       <thead>
         <tr>
           <th>stt</th>
-          <th>chon</th>
+          <th><input type="checkbox" id="chonTatCaHD"></th>
           <th>Số HĐ</th>
           <th>Ngày</th>
           <th>Ngày sửa</th>
@@ -406,6 +406,18 @@
     <td></td>
   `;
       tbody.appendChild(trTong);
+
+      // GẮN SỰ KIỆN CHỌN TẤT CẢ
+      setTimeout(() => {
+        const chonTatCa = document.getElementById('chonTatCaHD');
+        if (chonTatCa) {
+          chonTatCa.onclick = function () {
+            const checkboxes = document.querySelectorAll('.chonHD');
+            checkboxes.forEach(cb => { cb.checked = chonTatCa.checked; });
+          };
+        }
+      }, 10);
+
     }
 
 
