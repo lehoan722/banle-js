@@ -674,7 +674,11 @@
                 });
 
             // 2. Bỏ dòng đã kiểm
-            let chuaKiem = rows.filter(row => !((row.ghichu || "").includes("đã kiểm")));
+            let chuaKiem = rows.filter(row =>
+                !((row.ghichu || "").includes("đã kiểm")) &&
+                row.masp && row.masp !== "undefined" && row.masp.trim() !== ""
+            );
+
 
             // 3. Kiểm tra trùng mã + địa điểm
             let checkMap = {};
@@ -695,11 +699,11 @@
             // 4. Bắt đầu kiểm kho từng dòng
             for (const row of chuaKiem) {
                 let masp = row.masp;
-                let diadiem = row.diadiem || 'cs1'; // default nếu thiếu
-                const sizeLabels = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+                if (!masp || masp === "undefined" || masp.length === 0) continue; // bỏ dòng không có mã
+                let diadiem = row.diadiem || 'cs1';
                 // Lấy tồn kho hệ thống từng size
                 let { data: tonList, error } = await supabase
-                    .rpc('timkiemhanghoa', { masp_query: masp }); // hoặc RPC/tự viết hàm SQL lấy tồn kho theo size
+                    .rpc('timkiemhanghoa', { masp_query: masp });
                 if (error || !tonList) {
                     alert("Lỗi lấy tồn kho cho mã: " + masp);
                     continue;
