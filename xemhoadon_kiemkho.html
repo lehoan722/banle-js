@@ -674,7 +674,7 @@
                 });
 
             // 2. Bỏ dòng đã kiểm
-            let chuaKiem = rows.filter(row => !row.ghichu.includes("đã kiểm"));
+            let chuaKiem = rows.filter(row => !((row.ghichu || "").includes("đã kiểm")));
 
             // 3. Kiểm tra trùng mã + địa điểm
             let checkMap = {};
