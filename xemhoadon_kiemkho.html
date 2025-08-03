@@ -156,7 +156,7 @@
             <thead>
                 <tr>
                     <th>stt</th>
-                    <th>chon</th>
+                    <th><input type="checkbox" id="chonTatCaHD" /></th>
                     <th>Số HĐ</th>
                     <th>Ngày</th>
                     <th>Ngày sửa</th>
@@ -391,7 +391,7 @@
                 const tongSL = sizes.reduce((a, b) => a + b, 0);
                 tr.innerHTML = `
   <td>${idx + 1}</td>
-  <th><input type="checkbox" id="chonTatCaHD" /></th>
+  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>  
   <td>${hd.sohd || ""}</td>
   <td>${dinhDangNgay(hd.ngaygio)}</td>
   <td>${dinhDangNgayGio(hd.created_at)}</td>
@@ -407,9 +407,20 @@
   <td>${hd.size43 ?? ""}</td>
   <td>${hd.size44 ?? ""}</td>
   <td>${hd.size45 ?? ""}</td>
-   <td>${hd.diadiem || ""}</td>   // Thay cho TT
+   <td>${hd.diadiem || ""}</td> 
   <td>${hd.ghichu || ""}</td>
 `;
+
+                // GẮN SỰ KIỆN "CHỌN TẤT CẢ"
+                setTimeout(() => {
+                    const chonTatCa = document.getElementById('chonTatCaHD');
+                    if (chonTatCa) {
+                        chonTatCa.onclick = function () {
+                            const checkboxes = document.querySelectorAll('.chonHD');
+                            checkboxes.forEach(cb => { cb.checked = chonTatCa.checked; });
+                        };
+                    }
+                }, 10);
 
 
 
@@ -634,17 +645,6 @@
             };
         }
 
-
-        // Đặt sau khi đã append xong các dòng vào tbody:
-        setTimeout(() => {
-            const chonTatCa = document.getElementById('chonTatCaHD');
-            if (chonTatCa) {
-                chonTatCa.onclick = function () {
-                    const checkboxes = document.querySelectorAll('.chonHD');
-                    checkboxes.forEach(cb => { cb.checked = chonTatCa.checked; });
-                };
-            }
-        }, 10);
 
     </script>
 
