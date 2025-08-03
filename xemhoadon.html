@@ -376,7 +376,7 @@
   <td>${hd.thanhtoan?.toLocaleString()}</td>
   <td>${hd.ghichu || ""}</td>
 `;
-        tr.ondblclick = (e) => {
+        tr.onclick = (e) => {
           if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
             document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
             tr.style.backgroundColor = "#ffe066";
