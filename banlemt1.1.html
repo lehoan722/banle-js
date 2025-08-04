@@ -1113,9 +1113,7 @@
         import { backupAllTablesToZip } from './scripts/backup.js';
 
         document.getElementById('btn-logout').onclick = async function () {
-            if (!confirm("Bạn có muốn backup toàn bộ dữ liệu trước khi thoát phần mềm?")) {
-                return await dangXuatApp();
-            }
+            
             document.getElementById('backup-overlay').style.display = "block";
             try {
                 await backupAllTablesToZip();
