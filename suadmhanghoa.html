@@ -448,106 +448,80 @@
             return result;
         }
 
-        function cleanRowPartial(row) {
-            // Định nghĩa các cột và kiểu dữ liệu tương ứng
-            const fields = {
-                masp: "text", tensp: "text", dvt: "text", chungloai: "text",
-                giale: "numeric", giasi: "numeric", mangan: "text", nhomhang: "text",
-                mausac: "text", gianhap: "numeric", nhacc: "text",
-                quanlykichco: "boolean", nhapdau: "date", ngaysua: "date",
-                vitrikho1: "text", vitrikho2: "text", vitrikho3: "text",
-                khuyenmai: "text"
-            };
-
-            function parseDate(val) {
-                if (!val) return null;
-                if (typeof val === 'string' && val.includes('/')) {
-                    const [d, m, y] = val.split('/');
-                    if (d && m && y) return `${y.padStart(4, '20')}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                }
-                const d = new Date(val);
-                return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
-            }
-
-            const cleaned = {};
-            for (const key in fields) {
-                let val = row[key];
-                if (val === "" || val == null || (typeof val === "string" && val.trim() === "")) continue;
-
-                if (fields[key] === "numeric") {
-                    const num = Number(val);
-                    if (!isNaN(num)) cleaned[key] = num;
-                } else if (fields[key] === "boolean") {
-                    const v = val.toString().toLowerCase();
-                    cleaned[key] = (v === "true" || v === "1" || v === "x" || v === "yes");
-                } else if (fields[key] === "date") {
-                    const d = parseDate(val);
-                    if (d) cleaned[key] = d;
-                } else {
-                    let textVal = val.toString();
-                    if (key === "masp") textVal = textVal.toUpperCase();
-                    cleaned[key] = textVal;
-                }
-            }
-            return cleaned;
-        }
 
 
         // Lưu dữ liệu mới
         async function luuDuLieu() {
-            // Lấy toàn bộ dữ liệu từ bảng
-            const allRows = hot.getSourceData();
-            // Chỉ giữ dòng có mã sản phẩm hợp lệ
-            const data = allRows.filter(r => r.masp && r.masp.toString().trim() !== "")
-                .map(cleanRowPartial);
+            const colname = document.getElementById('col-select').value;
+            if (!colname) {
+                alert("Bạn cần chọn mục cần ghi vào trước khi thực hiện thao tác này!");
+                return;
+            }
+            const colLabel = COLS.find(c => c.name === colname)?.label || colname;
 
-            if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
+            let rows = hot.getSourceData().filter(r =>
+                r.masp && r[colname]
+            );
+            if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
-            if (!confirm(`Bạn có chắc muốn ghi các dòng này vào Supabase (có thể ghi đè)?`)) return;
-
-            let inserted = 0, updated = 0, failed = 0, errors = [];
-            const batchSize = 1000;
-            for (let i = 0; i < data.length; i += batchSize) {
-                let batch = data.slice(i, i + batchSize);
-
-                try {
-                    const res = await fetch(SUPABASE_URL + "/rest/v1/" + TABLE_NAME, {
-                        method: "POST",
-                        headers: {
-                            apikey: SUPABASE_KEY,
-                            Authorization: "Bearer " + SUPABASE_KEY,
-                            "Content-Type": "application/json",
-                            Prefer: "resolution=merge-duplicates,return=representation"
-                        },
-                        body: JSON.stringify(batch)
-                    });
-
-                    const result = await res.json();
-                    if (!res.ok) {
-                        const errText = JSON.stringify(result);
-                        failed += batch.length;
-                        errors.push(`❌ Batch ${i + 1}: ${errText}`);
-                    } else {
-                        result.forEach(r => {
-                            if (r.updated_at) updated++; else inserted++;
-                        });
-                    }
-                } catch (e) {
-                    failed += batch.length;
-                    errors.push(`⚠️ Lỗi kết nối tại batch ${i + 1}: ${e.message}`);
-                }
+            if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè toàn bộ dữ liệu cũ của cột "${colLabel}" không? Nhấn OK để ghi đè, hoặc Cancel để quay lại!`)) {
+                document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
+                return;
             }
 
-            document.getElementById("preview").innerHTML = `
-      <h3>Kết quả ghi dữ liệu:</h3>
-      <ul>
-        <li>🆕 Thêm mới: ${inserted}</li>
-        <li>♻️ Ghi đè: ${updated}</li>
-        <li>❌ Lỗi: ${failed}</li>
-      </ul>
-      ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
-    `;
+            const sb = getSupabaseClient();
+
+            // CHUNK SIZE: Nên để 50–100, test thử với số lượng phù hợp mạng/máy bạn
+            const chunkSize = 50;
+            const chunks = chunkArray(rows, chunkSize);
+
+            let success = 0, fail = 0, errorMsg = [];
+
+            for (let i = 0; i < chunks.length; i++) {
+                // Hiển thị trạng thái để người dùng biết đang xử lý đến đâu
+                document.getElementById('preview').innerHTML = `<span>⏳ Đang ghi nhóm ${i + 1}/${chunks.length}...</span>`;
+
+                // Tạo batch promises cho từng chunk nhỏ
+                let promises = chunks[i].map((row, idx) => {
+                    let updateObj = { [colname]: row[colname] };
+                    if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
+                        updateObj[colname] = normalizeDate(row[colname]);
+                    }
+                    return sb.from(TABLE_NAME)
+                        .update(updateObj)
+                        .eq('masp', row.masp.toString().trim().toUpperCase())
+                        .select()
+                        .then(({ data, error }) => ({
+                            idx: i * chunkSize + idx,
+                            masp: row.masp,
+                            success: !error && data && data.length === 1,
+                            error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
+                        }));
+                });
+
+                // Đợi xong chunk hiện tại mới chạy chunk tiếp
+                let results = await Promise.all(promises);
+
+                results.forEach(res => {
+                    if (res.success) {
+                        hot.setDataAtCell(res.idx, 2, "OK");
+                        success++;
+                    } else {
+                        hot.setDataAtCell(res.idx, 2, "LỖI");
+                        fail++;
+                        errorMsg.push(`Dòng ${res.idx + 1} (${res.masp}): ${res.error}`);
+                    }
+                });
+            }
+
+            let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+            if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+            document.getElementById('preview').innerHTML = html;
+            hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
+
+
 
 
     </script>
