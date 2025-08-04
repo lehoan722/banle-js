@@ -1117,7 +1117,7 @@
             document.getElementById('backup-overlay').style.display = "block";
             try {
                 await backupAllTablesToZip();
-                alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
+                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
             } catch (err) {
                 alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
             }
