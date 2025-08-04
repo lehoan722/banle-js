@@ -61,12 +61,31 @@
         }
 
         .gallery img {
-            width: 60%;
-            height: auto;
+            display: block;
             object-fit: contain;
+            background: #fff;
             border: 1px solid #ccc;
             border-radius: 6px;
+            margin: 0 auto;
+            max-width: 100%;
+            max-height: 320px;
+            min-width: 0;
+            min-height: 0;
         }
+
+        .gallery-item {
+            width: 320px;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f8f8;
+            border-radius: 8px;
+            box-shadow: 0 1px 6px #eee;
+            margin: 0 auto;
+            flex-direction: column;
+        }
+
 
         .dropdown {
             position: relative;
@@ -367,7 +386,7 @@
             const url = window.location.href;
             const ipMatch = url.match(/^(https?:\/\/[^\/]+)/);
             return ipMatch ? ipMatch[1] : null;
-        }      
+        }
 
 
         //---------------------lenh--hien thi anh -------------------------------
@@ -1012,7 +1031,7 @@
             alert("da tai xong bay mau cs2.");
 
         }
-       
+
 
         function resetPage() {
             hot.loadData(Handsontable.helper.createEmptySpreadsheetData(400, 1));
