@@ -439,6 +439,16 @@
             return null;
         }
 
+        // Chia mảng thành các nhóm nhỏ
+        function chunkArray(array, size) {
+            const result = [];
+            for (let i = 0; i < array.length; i += size) {
+                result.push(array.slice(i, i + size));
+            }
+            return result;
+        }
+
+
 
         // Lưu dữ liệu mới
         async function luuDuLieu() {
@@ -460,50 +470,56 @@
             }
 
             const sb = getSupabaseClient();
-            let promises = rows.map((row, idx) => {
 
-                let updateObj = { [colname]: row[colname] };
-                if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
-                    updateObj[colname] = normalizeDate(row[colname]);
-                }
+            // CHUNK SIZE: Nên để 50–100, test thử với số lượng phù hợp mạng/máy bạn
+            const chunkSize = 50;
+            const chunks = chunkArray(rows, chunkSize);
 
-                // Nếu là cột ngày thì chuẩn hóa
-                if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
-                    updateObj[colname] = normalizeDate(row[colname]);
-                }
-                return sb.from(TABLE_NAME)
-                    .update(updateObj)
-                    .eq('masp', row.masp.toString().trim().toUpperCase())
-                    .select()
-                    .then(({ data, error }) => ({
-                        idx,
-                        masp: row.masp,
-                        success: !error && data && data.length === 1,
-                        error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
-                    }));
-            });
-
-            // Đợi tất cả kết quả trả về song song
-            let results = await Promise.all(promises);
-
-            // Ghi trạng thái vào bảng
             let success = 0, fail = 0, errorMsg = [];
-            results.forEach(res => {
-                if (res.success) {
-                    hot.setDataAtCell(res.idx, 2, "OK");
-                    success++;
-                } else {
-                    hot.setDataAtCell(res.idx, 2, "LỖI");
-                    fail++;
-                    errorMsg.push(`Dòng ${res.idx + 1} (${res.masp}): ${res.error}`);
-                }
-            });
+
+            for (let i = 0; i < chunks.length; i++) {
+                // Hiển thị trạng thái để người dùng biết đang xử lý đến đâu
+                document.getElementById('preview').innerHTML = `<span>⏳ Đang ghi nhóm ${i + 1}/${chunks.length}...</span>`;
+
+                // Tạo batch promises cho từng chunk nhỏ
+                let promises = chunks[i].map((row, idx) => {
+                    let updateObj = { [colname]: row[colname] };
+                    if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
+                        updateObj[colname] = normalizeDate(row[colname]);
+                    }
+                    return sb.from(TABLE_NAME)
+                        .update(updateObj)
+                        .eq('masp', row.masp.toString().trim().toUpperCase())
+                        .select()
+                        .then(({ data, error }) => ({
+                            idx: i * chunkSize + idx,
+                            masp: row.masp,
+                            success: !error && data && data.length === 1,
+                            error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
+                        }));
+                });
+
+                // Đợi xong chunk hiện tại mới chạy chunk tiếp
+                let results = await Promise.all(promises);
+
+                results.forEach(res => {
+                    if (res.success) {
+                        hot.setDataAtCell(res.idx, 2, "OK");
+                        success++;
+                    } else {
+                        hot.setDataAtCell(res.idx, 2, "LỖI");
+                        fail++;
+                        errorMsg.push(`Dòng ${res.idx + 1} (${res.masp}): ${res.error}`);
+                    }
+                });
+            }
 
             let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
             if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
             document.getElementById('preview').innerHTML = html;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
 
 
