@@ -173,20 +173,38 @@ document.getElementById('btn-xoa').onclick = function () {
 document.getElementById('btn-backup').onclick = backupDanhMucHangHoa;
 async function backupDanhMucHangHoa() {
     if (!confirm("Bạn có muốn backup danh mục hàng hóa trước khi ghi?")) return;
-    // Gọi function đã tạo trên Supabase, trả về array object
-    const { data, error } = await supabase.rpc('get_dmhanghoa_full');
-    if (error) return alert("Không thể lấy dữ liệu backup: " + error.message);
-    if (!data || !data.length) return alert("Không có dữ liệu để backup!");
+
+    let allData = [];
+    let limit = 1000;
+    let offset = 0;
+    let done = false;
+
+    while (!done) {
+        // Lấy 1000 dòng mỗi lần
+        const { data, error, count } = await supabase
+            .from('dmhanghoa')
+            .select('*', { count: 'exact' })
+            .range(offset, offset + limit - 1);
+        if (error) return alert("Không thể lấy dữ liệu backup: " + error.message);
+        if (!data || data.length === 0) break;
+        allData = allData.concat(data);
+        offset += data.length;
+        // Nếu số dòng trả về < limit thì đã lấy hết
+        if (data.length < limit) done = true;
+    }
+    if (!allData.length) return alert("Không có dữ liệu để backup!");
+
     // Convert to CSV
-    const csv = toCSV(data);
+    const csv = toCSV(allData);
     // Nén file zip
     const zip = new JSZip();
     zip.file("dmhanghoa_backup.csv", csv);
     const content = await zip.generateAsync({ type: "blob" });
     const now = new Date();
-    const name = `dmhanghoa_backup_${now.getFullYear()}${(now.getMonth()+1+"").padStart(2,"0")}${(now.getDate()+"").padStart(2,"0")}_${(now.getHours()+"").padStart(2,"0")}${(now.getMinutes()+"").padStart(2,"0")}.zip`;
+    const name = `dmhanghoa_backup_${now.getFullYear()}${(now.getMonth() + 1 + "").padStart(2, "0")}${(now.getDate() + "").padStart(2, "0")}_${(now.getHours() + "").padStart(2, "0")}${(now.getMinutes() + "").padStart(2, "0")}.zip`;
     saveAs(content, name);
 }
+
 
 // ==== Lưu dữ liệu (PATCH từng dòng, chia chunk 100 dòng) ====
 document.getElementById('btn-luu').onclick = luuDuLieu;
