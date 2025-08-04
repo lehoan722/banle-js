@@ -427,7 +427,7 @@
             const supabaseDomain = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
             const matchedImages = searchNames.map(({ name, index }) => ({
                 name,
-                url: supabaseDomain + name + '.jpg',
+                url: supabaseDomain + name + '.JPG',
                 date: new Date(),
                 notFound: false,
                 index
@@ -453,8 +453,8 @@
                 const img = document.createElement('img');
                 img.src = image.url || '';
                 img.onerror = function () {
-                    if (img.src.endsWith('.jpg')) {
-                        img.src = img.src.replace('.jpg', '.png');
+                    if (img.src.endsWith('.JPG')) {
+                        img.src = img.src.replace('.JPG', '.png');
                     } else if (img.src.endsWith('.png')) {
                         img.alt = 'Không có ảnh';
                     }
@@ -462,8 +462,8 @@
 
                 img.alt = image.name || 'Không có ảnh';
                 img.onerror = function () {
-                    if (img.src.endsWith('.jpg')) {
-                        img.src = img.src.replace('.jpg', '.png');
+                    if (img.src.endsWith('.JPG')) {
+                        img.src = img.src.replace('.JPG', '.png');
                     } else if (img.src.endsWith('.png')) {
                         img.alt = 'Không có ảnh';
                     }
