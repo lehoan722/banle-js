@@ -416,7 +416,6 @@
         }
 
         // Lưu dữ liệu mới
-        // Lưu dữ liệu mới
         async function luuDuLieu() {
             const colname = document.getElementById('col-select').value;
             let rows = hot.getSourceData().filter(r =>
@@ -424,39 +423,47 @@
             );
             if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
-            // Hỏi xác nhận ghi đè
             if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè toàn bộ dữ liệu cũ của cột "${colname}" không? Nhấn OK để ghi đè, hoặc Cancel để quay lại!`)) {
                 document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
                 return;
             }
 
             const sb = getSupabaseClient();
-            let success = 0, fail = 0, errorMsg = [];
-
-            for (let idx = 0; idx < rows.length; idx++) {
-                let row = rows[idx];
-                // Update luôn, không kiểm tra null nữa!
-                const { data, error } = await sb.from(TABLE_NAME)
+            let promises = rows.map((row, idx) => {
+                return sb.from(TABLE_NAME)
                     .update({ [colname]: row[colname] })
                     .eq('masp', row.masp.toString().trim().toUpperCase())
-                    .select();
+                    .select()
+                    .then(({ data, error }) => ({
+                        idx,
+                        masp: row.masp,
+                        success: !error && data && data.length === 1,
+                        error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
+                    }));
+            });
 
-                if (!error && data && data.length === 1) {
-                    hot.setDataAtCell(idx, 2, "OK");
+            // Đợi tất cả kết quả trả về song song
+            let results = await Promise.all(promises);
+
+            // Ghi trạng thái vào bảng
+            let success = 0, fail = 0, errorMsg = [];
+            results.forEach(res => {
+                if (res.success) {
+                    hot.setDataAtCell(res.idx, 2, "OK");
                     success++;
                 } else {
-                    hot.setDataAtCell(idx, 2, "LỖI");
+                    hot.setDataAtCell(res.idx, 2, "LỖI");
                     fail++;
-                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại)';
-                    errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
+                    errorMsg.push(`Dòng ${res.idx + 1} (${res.masp}): ${res.error}`);
                 }
-            }
+            });
 
             let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
             if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
             document.getElementById('preview').innerHTML = html;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
 
     </script>
