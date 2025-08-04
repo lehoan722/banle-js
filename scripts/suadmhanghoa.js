@@ -174,14 +174,28 @@ document.getElementById('btn-xoa').onclick = function () {
 // ==== Backup danh mục ====
 
 
-document.getElementById('btn-backup').onclick = async function() {
+document.getElementById('btn-backup').onclick = async function () {
     if (!confirm("Bạn muốn backup toàn bộ dữ liệu các bảng chính trước khi ghi?")) return;
-    // Backup toàn bộ về ZIP, bạn có thể chọn backupAllTablesToExcel nếu muốn xuất file Excel
-    await backupAllTablesToZip();
-    // Nếu muốn xuất Excel, dùng:
-    // await backupAllTablesToExcel();
-    alert("Đã backup toàn bộ các bảng quan trọng!");
+    // Hiển thị overlay + khóa giao diện
+    document.getElementById('backup-overlay').style.display = "block";
+    try {
+        await backupAllTablesToZip();
+        alert("Đã backup toàn bộ các bảng quan trọng!");
+    } catch (err) {
+        alert("Lỗi backup: " + err.message);
+    } finally {
+        document.getElementById('backup-overlay').style.display = "none";
+    }
 };
+
+function formatDateForFile(date) {
+    return `${date.getFullYear()}-${(date.getMonth() + 1 + "").padStart(2, "0")}-${(date.getDate() + "").padStart(2, "0")}_${(date.getHours() + "").padStart(2, "0")}-${(date.getMinutes() + "").padStart(2, "0")}`;
+}
+
+const name = `backup_${formatDateForFile(now)}.zip`; // hoặc .xlsx cho Excel
+
+alert("Đã backup xong. Hãy di chuyển file vừa tải về vào thư mục D:\\backup để đảm bảo an toàn!");
+
 
 async function backupDanhMucHangHoa() {
     if (!confirm("Bạn có muốn backup danh mục hàng hóa trước khi ghi?")) return;
