@@ -490,54 +490,55 @@
                 }
             }
             return cleaned;
+        }
 
 
-            // Lưu dữ liệu mới
-            async function luuDuLieu() {
-                // Lấy toàn bộ dữ liệu từ bảng
-                const allRows = hot.getSourceData();
-                // Chỉ giữ dòng có mã sản phẩm hợp lệ
-                const data = allRows.filter(r => r.masp && r.masp.toString().trim() !== "")
-                    .map(cleanRowPartial);
+        // Lưu dữ liệu mới
+        async function luuDuLieu() {
+            // Lấy toàn bộ dữ liệu từ bảng
+            const allRows = hot.getSourceData();
+            // Chỉ giữ dòng có mã sản phẩm hợp lệ
+            const data = allRows.filter(r => r.masp && r.masp.toString().trim() !== "")
+                .map(cleanRowPartial);
 
-                if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
+            if (data.length === 0) return alert("Không có dòng hợp lệ để ghi.");
 
-                if (!confirm(`Bạn có chắc muốn ghi các dòng này vào Supabase (có thể ghi đè)?`)) return;
+            if (!confirm(`Bạn có chắc muốn ghi các dòng này vào Supabase (có thể ghi đè)?`)) return;
 
-                let inserted = 0, updated = 0, failed = 0, errors = [];
-                const batchSize = 1000;
-                for (let i = 0; i < data.length; i += batchSize) {
-                    let batch = data.slice(i, i + batchSize);
+            let inserted = 0, updated = 0, failed = 0, errors = [];
+            const batchSize = 1000;
+            for (let i = 0; i < data.length; i += batchSize) {
+                let batch = data.slice(i, i + batchSize);
 
-                    try {
-                        const res = await fetch(SUPABASE_URL + "/rest/v1/" + TABLE_NAME, {
-                            method: "POST",
-                            headers: {
-                                apikey: SUPABASE_KEY,
-                                Authorization: "Bearer " + SUPABASE_KEY,
-                                "Content-Type": "application/json",
-                                Prefer: "resolution=merge-duplicates,return=representation"
-                            },
-                            body: JSON.stringify(batch)
-                        });
+                try {
+                    const res = await fetch(SUPABASE_URL + "/rest/v1/" + TABLE_NAME, {
+                        method: "POST",
+                        headers: {
+                            apikey: SUPABASE_KEY,
+                            Authorization: "Bearer " + SUPABASE_KEY,
+                            "Content-Type": "application/json",
+                            Prefer: "resolution=merge-duplicates,return=representation"
+                        },
+                        body: JSON.stringify(batch)
+                    });
 
-                        const result = await res.json();
-                        if (!res.ok) {
-                            const errText = JSON.stringify(result);
-                            failed += batch.length;
-                            errors.push(`❌ Batch ${i + 1}: ${errText}`);
-                        } else {
-                            result.forEach(r => {
-                                if (r.updated_at) updated++; else inserted++;
-                            });
-                        }
-                    } catch (e) {
+                    const result = await res.json();
+                    if (!res.ok) {
+                        const errText = JSON.stringify(result);
                         failed += batch.length;
-                        errors.push(`⚠️ Lỗi kết nối tại batch ${i + 1}: ${e.message}`);
+                        errors.push(`❌ Batch ${i + 1}: ${errText}`);
+                    } else {
+                        result.forEach(r => {
+                            if (r.updated_at) updated++; else inserted++;
+                        });
                     }
+                } catch (e) {
+                    failed += batch.length;
+                    errors.push(`⚠️ Lỗi kết nối tại batch ${i + 1}: ${e.message}`);
                 }
+            }
 
-                document.getElementById("preview").innerHTML = `
+            document.getElementById("preview").innerHTML = `
       <h3>Kết quả ghi dữ liệu:</h3>
       <ul>
         <li>🆕 Thêm mới: ${inserted}</li>
@@ -546,7 +547,7 @@
       </ul>
       ${errors.length ? `<details><summary>Chi tiết lỗi</summary><pre>${errors.join('\n')}</pre></details>` : ""}
     `;
-            }
+        }
 
 
     </script>
