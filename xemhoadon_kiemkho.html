@@ -151,6 +151,17 @@
         Tổng số lượng SP: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
     </div>
 
+    <div id="overlayLoading"
+        style="display:none;position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:rgba(60,80,150,0.17);backdrop-filter:blur(1.2px);align-items:center;justify-content:center;font-size:1.7em;color:#1769aa;font-weight:bold;">
+        <div
+            style="background:#fff;padding:40px 50px 32px 50px;border-radius:13px;box-shadow:0 2px 12px #2569c111;min-width:320px;text-align:center;">
+            <span id="msgLoading">Đang thực hiện tạo chứng từ kiểm kho...</span>
+            <br><br>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Hourglass.gif" width="36" alt="loading" />
+        </div>
+    </div>
+
+
 
     <table>
         <thead>
@@ -647,104 +658,148 @@
         }
 
         async function kiemKhoTuDong() {
-            // 1. Lấy dữ liệu trên bảng (bỏ dòng tổng cuối nếu có)
-            let rows = Array.from(document.querySelectorAll("#dsHoaDon tr"))
-                .filter(tr => tr.querySelectorAll("td").length > 0)
-                .map(tr => {
-                    let tds = Array.from(tr.cells);
-                    return {
-                        stt: tds[0]?.innerText,
-                        sohd: tds[2]?.innerText,
-                        masp: tds[6]?.innerText.trim().toUpperCase(),
-                        diadiem: tds[17]?.innerText.trim(),
-                        ghichu: tds[18]?.innerText.trim(),
-                        sizes: [
-                            Number(tds[8]?.innerText || 0),  // size0
-                            Number(tds[9]?.innerText || 0),  // 38
-                            Number(tds[10]?.innerText || 0), // 39
-                            Number(tds[11]?.innerText || 0), // 40
-                            Number(tds[12]?.innerText || 0), // 41
-                            Number(tds[13]?.innerText || 0), // 42
-                            Number(tds[14]?.innerText || 0), // 43
-                            Number(tds[15]?.innerText || 0), // 44
-                            Number(tds[16]?.innerText || 0), // 45
-                        ]
-                    };
+            // 1. Hiện overlay loading, khóa màn hình
+            document.getElementById('overlayLoading').style.display = 'flex';
+            document.getElementById('msgLoading').textContent = 'Đang thực hiện tạo chứng từ kiểm kho tự động... Vui lòng đợi!';
+
+            try {
+                // 2. Lấy dữ liệu bảng chưa kiểm (như cũ)
+                let rows = Array.from(document.querySelectorAll("#dsHoaDon tr"))
+                    .filter(tr => tr.querySelectorAll("td").length > 0)
+                    .map(tr => {
+                        let tds = Array.from(tr.cells);
+                        return {
+                            stt: tds[0]?.innerText,
+                            sohd: tds[2]?.innerText,
+                            masp: tds[6]?.innerText.trim().toUpperCase(),
+                            diadiem: tds[17]?.innerText.trim(),
+                            ghichu: tds[18]?.innerText.trim(),
+                            sizes: [
+                                Number(tds[8]?.innerText || 0),  // size0
+                                Number(tds[9]?.innerText || 0),  // 38
+                                Number(tds[10]?.innerText || 0), // 39
+                                Number(tds[11]?.innerText || 0), // 40
+                                Number(tds[12]?.innerText || 0), // 41
+                                Number(tds[13]?.innerText || 0), // 42
+                                Number(tds[14]?.innerText || 0), // 43
+                                Number(tds[15]?.innerText || 0), // 44
+                                Number(tds[16]?.innerText || 0), // 45
+                            ]
+                        };
+                    });
+
+                let chuaKiem = rows.filter(row =>
+                    !((row.ghichu || "").includes("đã kiểm")) &&
+                    row.masp && row.masp !== "undefined" && row.masp.trim() !== ""
+                );
+
+                // Kiểm tra trùng mã + địa điểm như cũ...
+                let checkMap = {};
+                let trung = [];
+                chuaKiem.forEach(row => {
+                    let key = row.masp + "::" + row.diadiem;
+                    if (!checkMap[key]) checkMap[key] = [];
+                    checkMap[key].push(row.stt);
                 });
-
-            // 2. Bỏ dòng đã kiểm
-            let chuaKiem = rows.filter(row =>
-                !((row.ghichu || "").includes("đã kiểm")) &&
-                row.masp && row.masp !== "undefined" && row.masp.trim() !== ""
-            );
-
-            // 3. Kiểm tra trùng mã + địa điểm
-            let checkMap = {};
-            let trung = [];
-            chuaKiem.forEach(row => {
-                let key = row.masp + "::" + row.diadiem;
-                if (!checkMap[key]) checkMap[key] = [];
-                checkMap[key].push(row.stt);
-            });
-            for (let key in checkMap) {
-                if (checkMap[key].length > 1)
-                    trung.push(key + " (dòng: " + checkMap[key].join(", ") + ")");
-            }
-            if (trung.length > 0) {
-                alert("❌ Có mã sản phẩm trùng kiểm kho tại cùng địa điểm chưa được kiểm. Vui lòng kiểm tra:\n" + trung.join("\n"));
-                return;
-            }
-
-            // 4. Gom các chi tiết phát sinh nhập/xuất theo từng loại phiếu (cho mỗi địa điểm)
-            const sizeLabels = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-            let nhapKiem = {}; // key: diadiem, value: [{masp, size, sl}]
-            let xuatKiem = {};
-
-            for (const row of chuaKiem) {
-                let masp = row.masp;
-                if (!masp || masp === "undefined" || masp.length === 0) continue;
-                let diadiem = row.diadiem || 'cs1';
-                // Lấy tồn kho hệ thống từng size (chỉnh lại theo function lấy tồn kho của bạn!)
-                let { data: tonList, error } = await supabase.rpc('timkiemhanghoa', { masp_query: masp });
-                if (error || !tonList) {
-                    alert("Lỗi lấy tồn kho cho mã: " + masp);
-                    continue;
+                for (let key in checkMap) {
+                    if (checkMap[key].length > 1)
+                        trung.push(key + " (dòng: " + checkMap[key].join(", ") + ")");
                 }
-                // Map tồn kho từng size
-                let tonSize = {};
-                tonList.forEach(item => {
-                    if (!item.size) return;
-                    tonSize[item.size] = diadiem == 'cs1' ? Number(item.ton_cs1 || 0) : Number(item.ton_cs2 || 0);
-                });
+                if (trung.length > 0) {
+                    document.getElementById('overlayLoading').style.display = 'none';
+                    alert("❌ Có mã sản phẩm trùng kiểm kho tại cùng địa điểm chưa được kiểm. Vui lòng kiểm tra:\n" + trung.join("\n"));
+                    return;
+                }
 
-                for (let i = 0; i < sizeLabels.length; i++) {
-                    let sz = sizeLabels[i];
-                    let thucTe = row.sizes[i] || 0;
-                    let tonHT = tonSize[sz] || 0;
-                    if (thucTe > tonHT) {
-                        if (!nhapKiem[diadiem]) nhapKiem[diadiem] = [];
-                        nhapKiem[diadiem].push({ masp, size: sz, sl: thucTe - tonHT });
-                    } else if (thucTe < tonHT) {
-                        if (!xuatKiem[diadiem]) xuatKiem[diadiem] = [];
-                        xuatKiem[diadiem].push({ masp, size: sz, sl: tonHT - thucTe });
+                // 3. Gom tất cả mã cần kiểm để gọi function tồn kho hàng loạt (tăng tốc)
+                const sizeLabels = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+                let arrAllMasp = [...new Set(chuaKiem.map(r => r.masp))];
+                // Gọi nhiều promise song song để lấy tồn kho từng mã
+                let maspTonMap = {}; // {masp: [tonList]}
+                await Promise.all(arrAllMasp.map(async masp => {
+                    let { data: tonList, error } = await supabase.rpc('timkiemhanghoa', { masp_query: masp });
+                    if (error || !tonList) throw new Error("Lỗi lấy tồn kho cho mã: " + masp);
+                    maspTonMap[masp] = tonList;
+                }));
+
+                // Gom phát sinh nhập/xuất kiểm kho như cũ, nhưng dùng dữ liệu đã lấy hàng loạt!
+                let nhapKiem = {}, xuatKiem = {};
+                let ghiChuUpdates = []; // Gom batch update ghi chú
+
+                for (const row of chuaKiem) {
+                    let masp = row.masp;
+                    if (!masp || masp === "undefined" || masp.length === 0) continue;
+                    let diadiem = row.diadiem || 'cs1';
+                    let tonList = maspTonMap[masp] || [];
+                    // Map tồn kho từng size
+                    let tonSize = {};
+                    tonList.forEach(item => {
+                        if (!item.size) return;
+                        tonSize[item.size] = diadiem == 'cs1' ? Number(item.ton_cs1 || 0) : Number(item.ton_cs2 || 0);
+                    });
+
+                    for (let i = 0; i < sizeLabels.length; i++) {
+                        let sz = sizeLabels[i];
+                        let thucTe = row.sizes[i] || 0;
+                        let tonHT = tonSize[sz] || 0;
+                        if (thucTe > tonHT) {
+                            if (!nhapKiem[diadiem]) nhapKiem[diadiem] = [];
+                            nhapKiem[diadiem].push({ masp, size: sz, sl: thucTe - tonHT });
+                        } else if (thucTe < tonHT) {
+                            if (!xuatKiem[diadiem]) xuatKiem[diadiem] = [];
+                            xuatKiem[diadiem].push({ masp, size: sz, sl: tonHT - thucTe });
+                        }
+                    }
+                    // Gom để lát nữa update ghi chú 1 mẻ
+                    ghiChuUpdates.push({ sohd: row.sohd, masp });
+                }
+
+                // 4. Tạo hóa đơn nhập/xuất kho tự động, gom từng địa điểm
+                let errorDetails = [];
+                for (const diadiem in nhapKiem) {
+                    if (nhapKiem[diadiem].length > 0) {
+                        try {
+                            await taoPhieuKiemKhoAuto('nhapkiem', diadiem, nhapKiem[diadiem]);
+                        } catch (err) {
+                            errorDetails.push(`Lỗi nhập kiểm tại ${diadiem}: ${err.message || err}`);
+                        }
+                    }
+                }
+                for (const diadiem in xuatKiem) {
+                    if (xuatKiem[diadiem].length > 0) {
+                        try {
+                            await taoPhieuKiemKhoAuto('xuatkiem', diadiem, xuatKiem[diadiem]);
+                        } catch (err) {
+                            errorDetails.push(`Lỗi xuất kiểm tại ${diadiem}: ${err.message || err}`);
+                        }
                     }
                 }
 
-                // Cập nhật ghi chú "đã kiểm"
-                await supabase.from('kiemkho').update({ ghichu: "đã kiểm" }).eq('sohd', row.sohd).eq('masp', masp);
-            }
+                // 5. Nếu không lỗi mới update ghi chú, thực hiện batch (song song 20 dòng 1 lần)
+                if (errorDetails.length === 0 && ghiChuUpdates.length > 0) {
+                    for (let i = 0; i < ghiChuUpdates.length; i += 20) {
+                        let batch = ghiChuUpdates.slice(i, i + 20);
+                        await Promise.all(batch.map(row =>
+                            supabase.from('kiemkho').update({ ghichu: "đã kiểm" }).eq('sohd', row.sohd).eq('masp', row.masp)
+                        ));
+                    }
+                }
 
-            // 5. PHÁT SINH PHIẾU THEO CHUẨN SỐ CHỨNG TỪ
-            for (const diadiem in nhapKiem) {
-                if (nhapKiem[diadiem].length > 0) await taoPhieuKiemKhoAuto('nhapkiem', diadiem, nhapKiem[diadiem]);
-            }
-            for (const diadiem in xuatKiem) {
-                if (xuatKiem[diadiem].length > 0) await taoPhieuKiemKhoAuto('xuatkiem', diadiem, xuatKiem[diadiem]);
-            }
+                document.getElementById('overlayLoading').style.display = 'none';
 
-            alert("✅ Đã thực hiện kiểm kho tự động!");
-            if (typeof taiDanhSachHoaDon === 'function') taiDanhSachHoaDon();
+                if (errorDetails.length === 0) {
+                    alert("✅ Đã thực hiện kiểm kho tự động thành công!");
+                    if (typeof taiDanhSachHoaDon === 'function') taiDanhSachHoaDon();
+                } else {
+                    alert("Có lỗi xảy ra khi tạo chứng từ:\n" + errorDetails.join("\n"));
+                }
+
+            } catch (err) {
+                document.getElementById('overlayLoading').style.display = 'none';
+                alert("❌ Lỗi kiểm kho tự động: " + (err.message || err));
+            }
         }
+
 
         // Hàm phát sinh số hóa đơn CHUẨN (dùng bảng sochungtu)
         async function genSohd(loaihd) {
