@@ -245,6 +245,7 @@
             document.getElementById('col-select').innerHTML = html;
         }
 
+
         renderColSelect();
 
         // Khởi tạo Supabase client (token đăng nhập)
@@ -423,36 +424,55 @@
             document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
         }
 
+        function normalizeDate(val) {
+            if (!val) return null;
+            let m = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?/);
+            if (m) {
+                let dd = m[1].padStart(2, '0');
+                let mm = m[2].padStart(2, '0');
+                let yyyy = m[3];
+                let h = m[4] || '00', mi = m[5] || '00';
+                return `${yyyy}-${mm}-${dd} ${h.padStart(2, '0')}:${mi.padStart(2, '0')}:00`;
+            }
+            if (["null", "NULL", "NaN", "undefined"].includes(val.toString().trim())) return null;
+            if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val;
+            return null;
+        }
+
+
         // Lưu dữ liệu mới
         async function luuDuLieu() {
-            const colLabel = COLS.find(c => c.name === colname)?.label || colname;
-            if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè toàn bộ dữ liệu cũ của cột "${colLabel}" không? Nhấn OK để ghi đè, hoặc Cancel để quay lại!`)) {
-                document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
-                return;
-            }
-
-
             const colname = document.getElementById('col-select').value;
             if (!colname) {
                 alert("Bạn cần chọn mục cần ghi vào trước khi thực hiện thao tác này!");
                 return;
             }
-
+            const colLabel = COLS.find(c => c.name === colname)?.label || colname;
 
             let rows = hot.getSourceData().filter(r =>
                 r.masp && r[colname]
             );
             if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
 
-            if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè toàn bộ dữ liệu cũ của cột "${colname}" không? Nhấn OK để ghi đè, hoặc Cancel để quay lại!`)) {
+            if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè toàn bộ dữ liệu cũ của cột "${colLabel}" không? Nhấn OK để ghi đè, hoặc Cancel để quay lại!`)) {
                 document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
                 return;
             }
 
             const sb = getSupabaseClient();
             let promises = rows.map((row, idx) => {
+
+                let updateObj = { [colname]: row[colname] };
+                if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
+                    updateObj[colname] = normalizeDate(row[colname]);
+                }
+
+                // Nếu là cột ngày thì chuẩn hóa
+                if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
+                    updateObj[colname] = normalizeDate(row[colname]);
+                }
                 return sb.from(TABLE_NAME)
-                    .update({ [colname]: row[colname] })
+                    .update(updateObj)
                     .eq('masp', row.masp.toString().trim().toUpperCase())
                     .select()
                     .then(({ data, error }) => ({
@@ -484,6 +504,7 @@
             document.getElementById('preview').innerHTML = html;
             hot.updateSettings({ cells: hot.getSettings().cells });
         }
+
 
 
 
