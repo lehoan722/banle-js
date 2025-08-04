@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <title>Sửa Danh Mục Hàng Hóa</title>
@@ -11,6 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script type="module" src="scripts/suadmhanghoa.js"></script>
 </head>
+
 <body>
     <h2>🛠️ Sửa Danh Mục Hàng Hóa</h2>
     <div id="loginModule">
@@ -29,6 +31,20 @@
         <button id="btn-restore">⏫ Phục hồi từ backup</button>
     </div>
     <div id="preview"></div>
+
+    <!-- Thêm vào gần cuối body -->
+    <div id="backup-overlay" style="
+    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:9999;
+    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
+            </div>
+        </div>
+    </div>
+
+
     <div id="hot"></div>
 </body>
+
 </html>
