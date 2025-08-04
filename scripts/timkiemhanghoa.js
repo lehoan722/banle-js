@@ -117,14 +117,61 @@ async function triggerSearch() {
 
 
     // 3. Lấy lịch sử nhập (5 lần gần nhất, hoặc tất cả, phân biệt nhập đầu/cuối...)
+    // 3. Lấy ngày nhập đầu/cuối từ các phiếu nhập mới (nmcs1, nmcs2)
+
     let { data: nhapList, error: err3 } = await supabase
-        .from("ct_hoadon_banle")
-        .select("ngay")
-        .eq("masp", masp)
-        .order("ngay", { ascending: false })
-        .limit(5);
-    let ngay_nhapcuoi = nhapList && nhapList.length ? nhapList[0].ngay : "";
-    let ngay_nhapdau = nhapList && nhapList.length ? nhapList[nhapList.length - 1].ngay : "";
+        .from("hoadon_banle")
+        .select("ngay, sohd")
+        .in("loaihd", ["nmcs1", "nmcs2"])
+        .order("ngay", { ascending: true }); // order asc để lấy nhập đầu ở đầu
+
+    // Lọc các chứng từ chứa mã sản phẩm này
+    let ngay_nhapdau = "";
+    let ngay_nhapcuoi = "";
+    if (nhapList && nhapList.length) {
+        // Lọc theo mã sản phẩm xuất hiện trong ct_hoadon_banle
+        let sohdArr = nhapList.map(e => e.sohd);
+        let { data: cts, error: ctErr } = await supabase
+            .from("ct_hoadon_banle")
+            .select("sohd, masp")
+            .in("sohd", sohdArr)
+            .eq("masp", masp);
+
+        let sohdHasMasp = new Set(cts.map(e => e.sohd));
+        // Lấy các phiếu nhập có mã sản phẩm này
+        let filtered = nhapList.filter(e => sohdHasMasp.has(e.sohd));
+        if (filtered.length > 0) {
+            ngay_nhapdau = filtered[0].ngay;
+            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
+        }
+    }
+
+    // 4. Lấy ngày kiểm kho gần nhất tại CS1 và CS2 từ bảng kiemkho
+    let ngay_kiem_cs1 = "";
+    let ngay_kiem_cs2 = "";
+    {
+        // Kiểm kho CS1
+        let { data: kiem1 } = await supabase
+            .from("kiemkho")
+            .select("ngaygio")
+            .eq("masp", masp)
+            .eq("diadiem", "cs1")
+            .order("ngaygio", { ascending: false })
+            .limit(1);
+        if (kiem1 && kiem1.length) ngay_kiem_cs1 = kiem1[0].ngaygio;
+
+        // Kiểm kho CS2
+        let { data: kiem2 } = await supabase
+            .from("kiemkho")
+            .select("ngaygio")
+            .eq("masp", masp)
+            .eq("diadiem", "cs2")
+            .order("ngaygio", { ascending: false })
+            .limit(1);
+        if (kiem2 && kiem2.length) ngay_kiem_cs2 = kiem2[0].ngaygio;
+    }
+
+
 
     // ==== Chuẩn bị bảng dữ liệu ====
     // Lấy danh sách size, tổng nhập/xuất/tồn
@@ -147,9 +194,8 @@ async function triggerSearch() {
     htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td></tr>`;
-    for (let i = 1; i < nhapList.length - 1; i++) {
-        htmlLeft += `<tr><td class="label">n${i}</td><td>${nhapList[i].ngay || ""}</td></tr>`;
-    }
+    htmlLeft += `<tr><td class="label">Kiểm CS1</td><td>${ngay_kiem_cs1 || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Kiểm CS2</td><td>${ngay_kiem_cs2 || ""}</td></tr>`;
     document.getElementById('infoTableLeft').innerHTML = htmlLeft;
 
 
@@ -162,7 +208,7 @@ async function triggerSearch() {
     let totalRow = {};
     fields.forEach(f => {
         totalRow[f] = sizeRows.reduce((sum, row) => sum + (Number(row[f]) || 0), 0);
-    });    
+    });
 
     // ... Tiếp tục render bảng như bạn đang làm
     let htmlRight = `
