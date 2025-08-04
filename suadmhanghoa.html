@@ -472,7 +472,7 @@
             const sb = getSupabaseClient();
 
             // CHUNK SIZE: Nên để 50–100, test thử với số lượng phù hợp mạng/máy bạn
-            const chunkSize = 50;
+            const chunkSize = 200;
             const chunks = chunkArray(rows, chunkSize);
 
             let success = 0, fail = 0, errorMsg = [];
