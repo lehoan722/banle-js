@@ -1,4 +1,6 @@
 import { supabase } from './supabaseClient.js';
+import { backupAllTablesToZip, backupAllTablesToExcel } from './backup.js';
+
 
 // ==== Khai báo các trường bảng danh mục hàng hóa (giống bảng SQL) ====
 const COLS = [
@@ -170,7 +172,17 @@ document.getElementById('btn-xoa').onclick = function () {
 };
 
 // ==== Backup danh mục ====
-document.getElementById('btn-backup').onclick = backupDanhMucHangHoa;
+
+
+document.getElementById('btn-backup').onclick = async function() {
+    if (!confirm("Bạn muốn backup toàn bộ dữ liệu các bảng chính trước khi ghi?")) return;
+    // Backup toàn bộ về ZIP, bạn có thể chọn backupAllTablesToExcel nếu muốn xuất file Excel
+    await backupAllTablesToZip();
+    // Nếu muốn xuất Excel, dùng:
+    // await backupAllTablesToExcel();
+    alert("Đã backup toàn bộ các bảng quan trọng!");
+};
+
 async function backupDanhMucHangHoa() {
     if (!confirm("Bạn có muốn backup danh mục hàng hóa trước khi ghi?")) return;
 
