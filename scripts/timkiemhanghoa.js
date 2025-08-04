@@ -192,10 +192,12 @@ async function triggerSearch() {
     htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${ngay_nhapcuoi || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${ngay_nhapdau || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Kiểm CS1</td><td>${ngay_kiem_cs1 || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Kiểm CS2</td><td>${ngay_kiem_cs2 || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${formatDateOnly(ngay_nhapdau) || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td></tr>`;
+    
+    htmlLeft += `<tr><td class="label">Kiểm CS1</td><td>${formatDateOnly(ngay_kiem_cs1) || ""}</td></tr>`;
+    htmlLeft += `<tr><td class="label">Kiểm CS2</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td></tr>`;
+
     document.getElementById('infoTableLeft').innerHTML = htmlLeft;
 
 
@@ -255,4 +257,14 @@ async function triggerSearch() {
 
 
     document.getElementById('maspInput').select();
+}
+
+function formatDateOnly(val) {
+    if (!val) return "";
+    // Xử lý cho cả dạng string ISO hoặc Date object
+    let d = new Date(val);
+    if (isNaN(d)) return val;
+    return d.toISOString().slice(0, 10); // yyyy-mm-dd
+    // Hoặc nếu muốn dd/mm/yyyy:
+    // return d.getDate().toString().padStart(2, "0") + "/" + (d.getMonth()+1).toString().padStart(2, "0") + "/" + d.getFullYear();
 }
