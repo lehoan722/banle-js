@@ -176,60 +176,16 @@ document.getElementById('btn-xoa').onclick = function () {
 
 document.getElementById('btn-backup').onclick = async function () {
     if (!confirm("Bạn muốn backup toàn bộ dữ liệu các bảng chính trước khi ghi?")) return;
-    // Hiển thị overlay + khóa giao diện
     document.getElementById('backup-overlay').style.display = "block";
     try {
         await backupAllTablesToZip();
-        alert("Đã backup toàn bộ các bảng quan trọng!");
+        alert("Đã backup toàn bộ các bảng quan trọng!\nHãy di chuyển file vừa tải về vào thư mục D:\\backup để đảm bảo an toàn!");
     } catch (err) {
         alert("Lỗi backup: " + err.message);
     } finally {
         document.getElementById('backup-overlay').style.display = "none";
     }
 };
-
-function formatDateForFile(date) {
-    return `${date.getFullYear()}-${(date.getMonth() + 1 + "").padStart(2, "0")}-${(date.getDate() + "").padStart(2, "0")}_${(date.getHours() + "").padStart(2, "0")}-${(date.getMinutes() + "").padStart(2, "0")}`;
-}
-
-const name = `backup_${formatDateForFile(now)}.zip`; // hoặc .xlsx cho Excel
-
-alert("Đã backup xong. Hãy di chuyển file vừa tải về vào thư mục D:\\backup để đảm bảo an toàn!");
-
-
-async function backupDanhMucHangHoa() {
-    if (!confirm("Bạn có muốn backup danh mục hàng hóa trước khi ghi?")) return;
-
-    let allData = [];
-    let limit = 1000;
-    let offset = 0;
-    let done = false;
-
-    while (!done) {
-        // Lấy 1000 dòng mỗi lần
-        const { data, error, count } = await supabase
-            .from('dmhanghoa')
-            .select('*', { count: 'exact' })
-            .range(offset, offset + limit - 1);
-        if (error) return alert("Không thể lấy dữ liệu backup: " + error.message);
-        if (!data || data.length === 0) break;
-        allData = allData.concat(data);
-        offset += data.length;
-        // Nếu số dòng trả về < limit thì đã lấy hết
-        if (data.length < limit) done = true;
-    }
-    if (!allData.length) return alert("Không có dữ liệu để backup!");
-
-    // Convert to CSV
-    const csv = toCSV(allData);
-    // Nén file zip
-    const zip = new JSZip();
-    zip.file("dmhanghoa_backup.csv", csv);
-    const content = await zip.generateAsync({ type: "blob" });
-    const now = new Date();
-    const name = `dmhanghoa_backup_${now.getFullYear()}${(now.getMonth() + 1 + "").padStart(2, "0")}${(now.getDate() + "").padStart(2, "0")}_${(now.getHours() + "").padStart(2, "0")}${(now.getMinutes() + "").padStart(2, "0")}.zip`;
-    saveAs(content, name);
-}
 
 
 // ==== Lưu dữ liệu (PATCH từng dòng, chia chunk 100 dòng) ====
