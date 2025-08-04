@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Sửa Danh Mục Hàng Hóa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Handsontable, JSZip, FileSaver, Supabase -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
+    <link rel="stylesheet" href="suadmhanghoa.css">
+</head>
+<body>
+    <h2>🛠️ Sửa Danh Mục Hàng Hóa</h2>
+    <div id="loginModule">
+        <input id="login-email" type="email" placeholder="Email Supabase" style="width:130px;margin-right:2px;">
+        <input id="login-password" type="password" placeholder="Mật khẩu" style="width:110px;margin-right:2px;">
+        <button id="login-submit">Đăng nhập</button>
+        <span id="login-status"></span>
+    </div>
+    <div style="margin-bottom: 10px;">
+        <select id="col-select"></select>
+        <button id="btn-reset">🔁 Làm lại</button>
+        <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
+        <button id="btn-xoa">🧹 Xóa sản phẩm đã có vị trí</button>
+        <button id="btn-backup">💾 Backup trước khi ghi</button>
+        <button id="btn-luu">💾 Lưu dữ liệu</button>
+        <button id="btn-restore">⏫ Phục hồi từ backup</button>
+    </div>
+    <div id="preview"></div>
+    <div id="hot"></div>
+    <script src="suadmhanghoa.js"></script>
+</body>
+</html>
