@@ -9,8 +9,8 @@ export const BACKUP_TABLES = [
   'sochungtu',
   'hoadon_banle',
   'ct_hoadon_banle',
-  'hoadon_banle_t',
-  'ct_hoadon_banle_t',
+  'hoadon_banleT',
+  'ct_hoadon_banleT',
   'kiemkho'
   // Thêm các bảng khác nếu cần
 ];
