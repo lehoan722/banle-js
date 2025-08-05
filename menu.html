@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MENU (Đăng nhập nhân viên)</title>
+    <title>MENU Google Sheet - Đăng nhập bằng mã nhân viên</title>
     <style>
         body {
             background: #f8f8f8;
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
+            padding: 0;
         }
 
         .menu-container {
@@ -58,6 +59,63 @@
             color: #c62828;
         }
 
+        /* LOGIN MODAL */
+        .login-modal {
+            position: fixed; z-index: 9999;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.13);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-box {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 30px 0 #aaa8;
+            padding: 35px 28px 28px 28px;
+            min-width: 285px;
+            max-width: 95vw;
+            text-align: center;
+            position: relative;
+        }
+        .login-title {
+            color: #d32f2f;
+            font-size: 1.21rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            letter-spacing: 2px;
+        }
+        .login-label {
+            text-align: left;
+            margin-bottom: 4px;
+            color: #333;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .login-input {
+            width: 100%;
+            padding: 9px 10px;
+            font-size: 1.04rem;
+            margin-bottom: 14px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #f7f7ff;
+            box-sizing: border-box;
+            transition: border 0.2s;
+        }
+        .login-input:focus { border-color: #ffc107; outline: none;}
+        .login-btn {
+            width: 100%;
+            padding: 11px;
+            font-size: 1.08rem;
+            border: none;
+            border-radius: 8px;
+            background: #ffd54f;
+            color: #c62828;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 7px;
+        }
+        .login-btn:hover { background: #ffc107; }
+        .login-error { color: #d32f2f; font-size: 0.98rem; margin-bottom: 7px; min-height: 22px;}
         .logout-btn {
             float: right;
             margin: 9px 18px 0 0;
@@ -70,236 +128,119 @@
             cursor: pointer;
             font-weight: 600;
             box-shadow: 0 1px 4px #ffe08233;
+            display: none;
         }
-
-        .logout-btn:hover {
-            background: #ffc107;
-        }
-
-        /* LOGIN MODAL */
-        .login-modal {
-            position: fixed;
-            z-index: 9999;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.13);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .login-box {
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 4px 30px 0 #aaa8;
-            padding: 35px 28px 28px 28px;
-            min-width: 285px;
-            max-width: 95vw;
-            text-align: center;
-            position: relative;
-        }
-
-        .login-title {
-            color: #d32f2f;
-            font-size: 1.34rem;
-            font-weight: 700;
-            margin-bottom: 22px;
-            letter-spacing: 2px;
-        }
-
-        .login-label {
-            text-align: left;
-            margin-bottom: 4px;
-            color: #333;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .login-input {
-            width: 100%;
-            padding: 9px 10px;
-            font-size: 1.04rem;
-            margin-bottom: 14px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            background: #f7f7ff;
-            box-sizing: border-box;
-            transition: border 0.2s;
-        }
-
-        .login-input:focus {
-            border-color: #ffc107;
-            outline: none;
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 11px;
-            font-size: 1.1rem;
-            border: none;
-            border-radius: 8px;
-            background: #ffd54f;
-            color: #c62828;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 7px;
-        }
-
-        .login-btn:hover {
-            background: #ffc107;
-        }
-
-        .login-error {
-            color: #d32f2f;
-            font-size: 0.98rem;
-            margin-bottom: 7px;
-            min-height: 22px;
-        }
-
+        .logout-btn.show { display: block; }
         @media (max-width: 600px) {
-            .menu-container {
-                max-width: 99vw;
-                margin: 5px auto;
-                border-radius: 0;
-                box-shadow: none;
-            }
-
-            .menu-title {
-                font-size: 1.12rem;
-                padding: 12px 0 7px 0;
-            }
-
-            .menu-item {
-                font-size: 0.98rem;
-                padding: 10px 9vw;
-            }
+            .menu-container { max-width: 99vw; margin: 5px auto; border-radius: 0; box-shadow: none; }
+            .menu-title { font-size: 1.12rem; padding: 12px 0 7px 0; }
+            .menu-item { font-size: 0.98rem; padding: 10px 9vw; }
         }
     </style>
-    <!-- Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
-
 </head>
-
 <body>
     <div class="menu-container">
-        <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Đăng xuất</button>
+        <button class="logout-btn" id="logoutBtn" onclick="logout()">Đăng xuất</button>
         <div class="menu-title">MENU</div>
         <ul class="menu-list" id="menuList">
             <li style="text-align:center;color:#aaa;padding:20px 0;" id="loadingMenu">Đang tải menu...</li>
         </ul>
     </div>
-
-    <!-- Đăng nhập Modal -->
-    <div class="login-modal" id="loginModal" style="display:none">
+    <!-- Login Modal -->
+    <div class="login-modal" id="loginModal">
         <form class="login-box" id="loginForm" autocomplete="off">
             <div class="login-title">ĐĂNG NHẬP</div>
             <div class="login-error" id="loginError"></div>
-            <div class="login-label">Mã nhân viên</div>
-            <input class="login-input" id="manvInput" required autocomplete="username" maxlength="24" autofocus>
-            <div class="login-label">Mật khẩu</div>
-            <input class="login-input" id="matkhauInput" type="password" required autocomplete="current-password"
-                maxlength="32">
+            <div class="login-label">Nhập mã nhân viên</div>
+            <input class="login-input" id="manvInput" type="password" required autocomplete="off" maxlength="32" autofocus placeholder="Mã nhân viên">
             <button class="login-btn" type="submit">Đăng nhập</button>
         </form>
     </div>
-
     <script>
-        // === CẤU HÌNH SUPABASE ===  
-    
-        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // (key đầy đủ như bạn đã có)
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_NAME = 'MENU'; // tên sheet
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
-        // ==== CẤU HÌNH GOOGLE SHEET (menu) ====
-        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk/pub?gid=0&single=true&output=csv';
+        let menuData = [];
+        let manvList = [];
 
-        // ==== ĐĂNG NHẬP ====
-        let currentUser = null;
+        // Đọc sheet + lấy mã NV
+        async function fetchSheet() {
+            try {
+                const res = await fetch(SHEET_URL);
+                if (!res.ok) throw new Error('Không thể đọc Google Sheet');
+                const csv = await res.text();
+                const rows = csv.trim().split('\n').map(row => row.split(','));
+                // Nếu dòng đầu là tiêu đề, bỏ qua
+                let data = rows;
+                if (rows[0][0].toLowerCase().includes('menu')) data = rows.slice(1);
+                menuData = data;
+                // Lấy danh sách mã NV (cột C, tức là row[2])
+                manvList = data.map(row => (row[2]||"").trim()).filter(s => s);
+            } catch (e) {
+                document.getElementById('menuList').innerHTML = '<li style="color:#d32f2f;text-align:center;padding:20px 0;">Lỗi tải dữ liệu!<br>' + e.message + '</li>';
+            }
+        }
 
+        // Kiểm tra trạng thái đăng nhập
         async function checkLogin() {
+            await fetchSheet();
             const manv = localStorage.getItem('dmnv');
-            if (manv) {
-                currentUser = manv;
+            if (manv && manvList.includes(manv)) {
                 document.getElementById('loginModal').style.display = 'none';
-                document.getElementById('logoutBtn').style.display = '';
+                document.getElementById('logoutBtn').classList.add('show');
                 loadMenu();
             } else {
                 document.getElementById('loginModal').style.display = 'flex';
-                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('logoutBtn').classList.remove('show');
                 document.getElementById('menuList').innerHTML = '<li style="text-align:center;color:#aaa;padding:20px 0;">Bạn cần đăng nhập để xem menu</li>';
             }
         }
 
-        document.getElementById('loginForm').onsubmit = async function (e) {
+        document.getElementById('loginForm').onsubmit = function(e) {
             e.preventDefault();
             const manv = document.getElementById('manvInput').value.trim();
-            const matkhau = document.getElementById('matkhauInput').value;
             document.getElementById('loginError').textContent = '';
-            if (!manv || !matkhau) return;
-            // Truy vấn Supabase kiểm tra manv và mật khẩu
-            const { data, error } = await supabase
-                .from('dmnhanvien')
-                .select('manv, tennv, matkhau, trangthai')
-                .eq('manv', manv)
-                .eq('trangthai', true)
-                .single();
-
-            if (error || !data) {
-                document.getElementById('loginError').textContent = 'Sai mã nhân viên hoặc chưa được kích hoạt!';
-                return;
-            }
-            if (data.matkhau !== matkhau) {
-                document.getElementById('loginError').textContent = 'Sai mật khẩu!';
+            if (!manv) return;
+            if (!manvList.includes(manv)) {
+                document.getElementById('loginError').textContent = 'Mã nhân viên không đúng!';
                 return;
             }
             // Đúng, lưu trạng thái đăng nhập
             localStorage.setItem('dmnv', manv);
-            currentUser = manv;
             document.getElementById('loginModal').style.display = 'none';
-            document.getElementById('logoutBtn').style.display = '';
+            document.getElementById('logoutBtn').classList.add('show');
             loadMenu();
         };
 
         function logout() {
             localStorage.removeItem('dmnv');
-            currentUser = null;
-            location.reload();
+            document.getElementById('logoutBtn').classList.remove('show');
+            document.getElementById('loginModal').style.display = 'flex';
+            document.getElementById('menuList').innerHTML = '<li style="text-align:center;color:#aaa;padding:20px 0;">Bạn cần đăng nhập để xem menu</li>';
         }
 
-        // ==== LOAD MENU ====
-        async function loadMenu() {
+        // Hiển thị menu
+        function loadMenu() {
             const menuList = document.getElementById('menuList');
-            menuList.innerHTML = '<li style="text-align:center;color:#aaa;padding:20px 0;">Đang tải menu...</li>';
-            try {
-                const res = await fetch(SHEET_CSV_URL);
-                if (!res.ok) throw new Error('Không thể đọc Google Sheet');
-                const csv = await res.text();
-                const rows = csv.trim().split('\n').map(row => row.split(','));
-                let data = rows;
-                if (rows[0][0].toLowerCase().includes('menu')) data = rows.slice(1);
-                menuList.innerHTML = '';
-                data.forEach((row, i) => {
-                    const [name, url] = row;
-                    if (!name || !url || name.trim() == '' || url.trim() == '') return;
-                    const li = document.createElement('li');
-                    li.className = 'menu-item';
-                    li.textContent = name.replace(/^"+|"+$/g, '');
-                    const urlFixed = url.replace(/^"+|"+$/g, '');
-                    li.onclick = () => window.open(urlFixed, '_blank');
-                    menuList.appendChild(li);
-                });
-                if (!menuList.children.length) {
-                    menuList.innerHTML = '<li style="text-align:center;color:#888;padding:18px;">Không có dữ liệu menu!</li>';
-                }
-            } catch (e) {
-                menuList.innerHTML = '<li style="color:#d32f2f;text-align:center;padding:20px 0;">Lỗi tải menu!<br>' + e.message + '</li>';
+            menuList.innerHTML = '';
+            menuData.forEach((row, i) => {
+                const [name, url] = row;
+                if (!name || !url || name.trim()=='' || url.trim()=='') return;
+                const li = document.createElement('li');
+                li.className = 'menu-item';
+                li.textContent = name.replace(/^"+|"+$/g, '');
+                const urlFixed = url.replace(/^"+|"+$/g, '');
+                li.onclick = () => window.open(urlFixed, '_blank');
+                menuList.appendChild(li);
+            });
+            if (!menuList.children.length) {
+                menuList.innerHTML = '<li style="text-align:center;color:#888;padding:18px;">Không có dữ liệu menu!</li>';
             }
         }
 
+        // Tải lần đầu
         checkLogin();
     </script>
 </body>
-
 </html>
