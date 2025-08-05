@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MENU Google Sheet</title>
+  <style>
+    body {
+      background: #f8f8f8;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0; padding: 0;
+    }
+    .menu-container {
+      max-width: 450px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px 0 rgba(90,100,120,0.08);
+      padding: 0 0 18px 0;
+    }
+    .menu-title {
+      background: #fff;
+      color: #e53935;
+      font-size: 1.38rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 18px 0 10px 0;
+      border-bottom: 2px solid #ffd54f;
+      text-align: center;
+    }
+    .menu-list {
+      list-style: none;
+      margin: 0; padding: 0;
+    }
+    .menu-item {
+      cursor: pointer;
+      font-size: 1.11rem;
+      padding: 11px 20px;
+      border-bottom: 1px solid #f0eee5;
+      background: #fff;
+      transition: background 0.18s;
+      color: #34495e;
+    }
+    .menu-item:nth-child(even) {
+      background: #fffbe7;
+    }
+    .menu-item:hover, .menu-item:active {
+      background: #ffe082;
+      color: #c62828;
+    }
+    @media (max-width: 600px) {
+      .menu-container {
+        max-width: 99vw;
+        margin: 5px auto;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .menu-title {
+        font-size: 1.12rem;
+        padding: 12px 0 7px 0;
+      }
+      .menu-item {
+        font-size: 0.98rem;
+        padding: 10px 9vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="menu-container">
+    <div class="menu-title">MENU</div>
+    <ul class="menu-list" id="menuList">
+      <li style="text-align:center;color:#aaa;padding:20px 0;" id="loadingMenu">Đang tải menu...</li>
+    </ul>
+  </div>
+<script>
+const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+const SHEET_NAME = 'MENU'; // tên sheet, nếu khác hãy thay
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
+
+async function loadMenu() {
+  const menuList = document.getElementById('menuList');
+  menuList.innerHTML = '<li style="text-align:center;color:#aaa;padding:20px 0;">Đang tải menu...</li>';
+  try {
+    const res = await fetch(SHEET_URL);
+    if (!res.ok) throw new Error('Không thể đọc Google Sheet');
+    const csv = await res.text();
+    const rows = csv.trim().split('\n').map(row => row.split(','));
+    // Nếu dòng đầu là tiêu đề, bỏ qua
+    let data = rows;
+    if (rows[0][0].toLowerCase().includes('menu')) data = rows.slice(1);
+    menuList.innerHTML = '';
+    data.forEach((row, i) => {
+      const [name, url] = row;
+      if (!name || !url || name.trim()=='' || url.trim()=='') return;
+      const li = document.createElement('li');
+      li.className = 'menu-item';
+      li.textContent = name;
+      li.onclick = () => window.open(url, '_blank');
+      menuList.appendChild(li);
+    });
+    if (!menuList.children.length) {
+      menuList.innerHTML = '<li style="text-align:center;color:#888;padding:18px;">Không có dữ liệu menu!</li>';
+    }
+  } catch (e) {
+    menuList.innerHTML = '<li style="color:#d32f2f;text-align:center;padding:20px 0;">Lỗi tải menu!<br>' + e.message + '</li>';
+  }
+}
+loadMenu();
+</script>
+</body>
+</html>
