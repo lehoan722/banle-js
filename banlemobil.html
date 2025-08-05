@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BÁN LẺ - MOBILE</title>
     <style>
@@ -9,12 +11,14 @@
             --main-color: #0088cc;
             --action-color: #006699;
         }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             margin: 0;
             padding: 0;
             background: #f6fafd;
         }
+
         .topbar {
             display: flex;
             align-items: center;
@@ -24,6 +28,7 @@
             height: 56px;
             padding: 0 10px;
         }
+
         .topbar-title {
             flex: 1;
             text-align: center;
@@ -31,6 +36,7 @@
             font-weight: bold;
             letter-spacing: 1px;
         }
+
         .topbar-icon {
             font-size: 24px;
             background: none;
@@ -39,21 +45,25 @@
             cursor: pointer;
             margin: 0 5px;
         }
+
         .qr-box {
             width: 100vw;
             height: 210px;
             background: #222;
             color: white;
-            display: none; /* bật lên khi nhấn QR */
+            display: none;
+            /* bật lên khi nhấn QR */
             align-items: center;
             justify-content: center;
             position: relative;
         }
+
         .input-group {
             display: flex;
             align-items: center;
             margin: 14px 12px 4px 12px;
         }
+
         .input-group input {
             flex: 1;
             font-size: 18px;
@@ -63,6 +73,7 @@
             background: #fff;
             margin-right: 7px;
         }
+
         .input-group .btn-voice {
             background: none;
             border: none;
@@ -72,6 +83,7 @@
             margin-left: -40px;
             z-index: 2;
         }
+
         .input-group .btn-search {
             background: var(--main-color);
             color: #fff;
@@ -82,13 +94,17 @@
             margin-left: 7px;
             font-size: 20px;
             cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         .info-fields {
             display: flex;
             gap: 7px;
             margin: 2px 12px 0 12px;
         }
+
         .info-fields input {
             width: 32%;
             font-size: 17px;
@@ -96,6 +112,7 @@
             border-radius: 7px;
             padding: 7px 7px;
         }
+
         .btn-add {
             width: 97%;
             margin: 8px 0 2px 1.5%;
@@ -109,6 +126,7 @@
             cursor: pointer;
             box-shadow: 0 2px 8px #0088cc14;
         }
+
         .product-table {
             width: 98%;
             margin: 10px 1%;
@@ -116,20 +134,25 @@
             border-radius: 10px;
             box-shadow: 0 1px 7px #0088cc0e;
         }
+
         .product-table table {
             width: 100%;
             border-collapse: collapse;
         }
-        .product-table th, .product-table td {
+
+        .product-table th,
+        .product-table td {
             padding: 9px 2px;
             border-bottom: 1px solid #ebebeb;
             text-align: center;
             font-size: 17px;
         }
+
         .product-table th {
             background: #e5f3fa;
             font-weight: bold;
         }
+
         .btn-delete-row {
             background: none;
             border: none;
@@ -137,23 +160,27 @@
             font-size: 19px;
             cursor: pointer;
         }
+
         .summary-block {
             margin: 8px 1%;
             background: #e5f8f1;
             border-radius: 10px;
             padding: 11px;
         }
+
         .summary-block label {
             display: flex;
             justify-content: space-between;
             font-size: 18px;
             margin: 2px 0;
         }
+
         .customer-fields {
             margin: 10px 1% 7px 1%;
             display: flex;
             gap: 8px;
         }
+
         .customer-fields input {
             flex: 1;
             padding: 9px 10px;
@@ -161,6 +188,7 @@
             border-radius: 7px;
             border: 1px solid #b5c3d1;
         }
+
         .customer-fields button {
             font-size: 17px;
             padding: 0 7px;
@@ -170,12 +198,14 @@
             border-radius: 50%;
             cursor: pointer;
         }
+
         .pay-fields {
             margin: 7px 1%;
             display: flex;
             align-items: center;
             gap: 10px;
         }
+
         .pay-fields select {
             flex: 1;
             font-size: 17px;
@@ -184,11 +214,13 @@
             border: 1px solid #bbb;
             background: #fff;
         }
+
         .bottom-actions {
             display: flex;
             gap: 8px;
             margin: 13px 1.5% 14px 1.5%;
         }
+
         .bottom-actions button {
             flex: 1;
             padding: 15px 0;
@@ -201,15 +233,37 @@
             cursor: pointer;
             box-shadow: 0 2px 7px #0088cc1d;
         }
+
         .bottom-actions .btn-bluetooth {
             background: #12bb68;
         }
+
         @media (max-width: 450px) {
-            .product-table th, .product-table td { font-size: 15px; }
-            .summary-block label { font-size: 16px;}
+
+            .product-table th,
+            .product-table td {
+                font-size: 15px;
+            }
+
+            .summary-block label {
+                font-size: 16px;
+            }
+        }
+
+        .input-group.input-khach,
+        .input-group.input-nv {
+            margin: 8px 12px 2px 12px;
+            width: calc(100% - 24px);
+        }
+
+        .input-group.input-khach input,
+        .input-group.input-nv input {
+            width: 100%;
+            margin-right: 7px;
         }
     </style>
 </head>
+
 <body>
     <!-- Top bar -->
     <div class="topbar">
@@ -222,7 +276,8 @@
     <div class="qr-box" id="qr-box">
         <!-- Camera, khung quét, sẽ render bằng js/html5-qrcode -->
         <span>Đang mở camera quét mã...</span>
-        <button class="topbar-icon" style="position:absolute;top:7px;right:12px;" onclick="document.getElementById('qr-box').style.display='none'">✕</button>
+        <button class="topbar-icon" style="position:absolute;top:7px;right:12px;"
+            onclick="document.getElementById('qr-box').style.display='none'">✕</button>
     </div>
 
     <!-- Nhập sản phẩm -->
@@ -264,11 +319,13 @@
         <label>Phải trả <span id="phaithanhtoan">0</span></label>
     </div>
     <!-- Thông tin khách và nhân viên -->
-    <div class="customer-fields">
-        <input id="makh" placeholder="Mã KH" autocomplete="off">
-        <button id="btn-kh">🔍</button>
-        <input id="manv" placeholder="Mã NV" autocomplete="off">
-        <button id="btn-nv">🔍</button>
+    <div class="input-group input-khach">
+        <input id="makh" placeholder="Mã KH" autocomplete="off" />
+        <button class="btn-search" id="btn-kh">🔍</button>
+    </div>
+    <div class="input-group input-nv">
+        <input id="manv" placeholder="Mã NV" autocomplete="off" />
+        <button class="btn-search" id="btn-nv">🔍</button>
     </div>
     <!-- Thanh toán -->
     <div class="pay-fields">
@@ -301,4 +358,5 @@
         };
     </script>
 </body>
+
 </html>
