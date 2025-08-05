@@ -183,7 +183,7 @@ document.getElementById('btn-luu').onclick = async function() {
         .insert([{
             sohd, ngay, created_at: now, manv, tennv, diadiem, khachhang: makh,
             tongsl, tongkm, chietkhau, thanhtoan: tongtien, hinhthuctt,
-            loai: currentLoai, loaihd: currentLoai // hoặc loại khác tùy setup
+            loaihd: currentLoai // hoặc loại khác tùy setup
         }])
         .select()
         .single();
