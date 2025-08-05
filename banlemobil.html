@@ -288,10 +288,16 @@
         <button class="btn-search" title="Tìm sản phẩm" id="btn-search">🔍</button>
     </div>
     <div class="info-fields">
-        <input id="tensp" placeholder="Tên SP" readonly>
+        <input id="size" placeholder="Size" style="display:none">
         <input id="soluong" placeholder="SL" value="1" type="number" min="1">
         <input id="gia" placeholder="Giá" readonly>
     </div>
+
+    <div class="input-group">
+        <input id="sohd" placeholder="Số hóa đơn" readonly style="font-weight:bold; background:#eee;">
+    </div>
+
+
     <button class="btn-add" id="btn-add">➕ Thêm sản phẩm</button>
 
     <!-- Bảng kết quả -->
@@ -300,9 +306,9 @@
             <thead>
                 <tr>
                     <th>Mã</th>
-                    <th>Tên</th>
                     <th>Giá</th>
                     <th>SL</th>
+                    <th>Size</th>
                     <th>Tiền</th>
                     <th></th>
                 </tr>
@@ -360,7 +366,7 @@
     </script>
 
     <script src="banlemobil.js"></script>
-    
+
 </body>
 
 </html>
