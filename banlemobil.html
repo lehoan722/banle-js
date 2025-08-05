@@ -1,245 +1,372 @@
-// ===== 1. Khởi tạo Supabase Client =====
-const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+<!DOCTYPE html>
+<html lang="vi">
 
-// ===== 2. Biến toàn cục =====
-let dsSanPham = [];
-let currentLoai = 'bancs1'; // Có thể cấu hình nếu chuyển cơ sở
-let currentCoso = 'cs1';
-let currentSoHD = '';
-let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
-
-// ===== 3. Hàm sinh số hóa đơn tự động =====
-async function genSoHoaDon() {
-    let { data, error } = await _supabase
-        .from('sochungtu')
-        .select('so_hientai')
-        .eq('loai', currentLoai)
-        .eq('coso', currentCoso)
-        .order('so_hientai', { ascending: false })
-        .limit(1)
-        .single();
-    let next = (data?.so_hientai || 0) + 1;
-    currentSoHD = currentLoai + '_' + String(next).padStart(5, '0');
-    document.getElementById('sohd').value = currentSoHD;
-    return currentSoHD;
-}
-
-// ===== 4. Hàm tìm sản phẩm và xác định loại quản lý size =====
-async function timSanPhamTheoMa(masp) {
-    masp = (masp || '').toUpperCase();
-    let { data, error } = await _supabase
-        .from('dmhanghoa')
-        .select('masp, tensp, giale, chungloai')
-        .eq('masp', masp)
-        .limit(1)
-        .single();
-    if (error || !data) return null;
-    return data;
-}
-
-// ===== 5. Sự kiện nhập mã sản phẩm (enter hoặc sau khi quét QR) =====
-document.getElementById('masp').addEventListener('keydown', async function(e) {
-    if (e.key === 'Enter') {
-        await xuLyNhapMaSP();
-    }
-});
-// Nếu dùng quét QR thì khi quét xong cũng gọi lại hàm này!
-async function xuLyNhapMaSP() {
-    let masp = document.getElementById('masp').value.trim().toUpperCase();
-    if (!masp) return;
-    let sp = await timSanPhamTheoMa(masp);
-    if (!sp) {
-        alert('Không tìm thấy mã sản phẩm!');
-        resetInputSanPham();
-        return;
-    }
-    document.getElementById('gia').value = sp.giale || 0;
-    document.getElementById('soluong').value = 1;
-    // Nếu là giày dép (chungloai = GD) thì show ô size và focus vào đó
-    let chungloai = (sp.chungloai || '').toUpperCase();
-    if (chungloai === 'GD') {
-        document.getElementById('size').style.display = '';
-        document.getElementById('size').focus();
-    } else {
-        document.getElementById('size').style.display = 'none';
-        themSanPhamVaoBang(masp, '', sp.giale, 1); // không cần nhập size
-    }
-}
-
-// ===== 6. Sự kiện nhập size xong enter thì đẩy vào bảng =====
-document.getElementById('size').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        let masp = document.getElementById('masp').value.trim().toUpperCase();
-        let gia = Number(document.getElementById('gia').value);
-        let soluong = Number(document.getElementById('soluong').value) || 1;
-        let size = document.getElementById('size').value.trim().toUpperCase();
-        if (!masp || !gia || !size) {
-            alert('Thiếu mã SP, size hoặc giá!');
-            return;
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BÁN LẺ - MOBILE</title>
+    <style>
+        :root {
+            --main-color: #0088cc;
+            --action-color: #006699;
         }
-        themSanPhamVaoBang(masp, size, gia, soluong);
-    }
-});
 
-// ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
-function themSanPhamVaoBang(masp, size, gia, soluong) {
-    // Không cho thêm thiếu thông tin
-    if (!masp || !gia || !soluong) return;
-    // Kiểm tra trùng mã+size, nếu trùng thì cộng dồn số lượng
-    let idx = dsSanPham.findIndex(x => x.masp === masp && (x.size || '') === (size || ''));
-    if (idx >= 0) {
-        dsSanPham[idx].soluong += soluong;
-        dsSanPham[idx].thanhtien = dsSanPham[idx].gia * dsSanPham[idx].soluong;
-    } else {
-        dsSanPham.push({
-            masp, size, gia, soluong,
-            thanhtien: gia * soluong
-        });
-    }
-    renderBangSanPham();
-    resetInputSanPham();
-}
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f6fafd;
+        }
 
-// ===== 8. Reset input nhập sản phẩm =====
-function resetInputSanPham() {
-    document.getElementById('masp').value = '';
-    document.getElementById('size').value = '';
-    document.getElementById('gia').value = '';
-    document.getElementById('soluong').value = 1;
-    document.getElementById('size').style.display = 'none';
-    document.getElementById('masp').focus();
-}
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--main-color);
+            color: white;
+            height: 56px;
+            padding: 0 10px;
+        }
 
-// ===== 9. Render bảng sản phẩm: mã, size, giá, sl, tiền =====
-function renderBangSanPham() {
-    const tbody = document.querySelector('#bangketqua tbody');
-    tbody.innerHTML = '';
-    dsSanPham.forEach((sp, idx) => {
-        let tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${sp.masp}</td>
-            <td>${sp.size || ''}</td>
-            <td>${sp.gia}</td>
-            <td>${sp.soluong}</td>
-            <td>${sp.thanhtien}</td>
-            <td><button class="btn-delete-row" onclick="xoaDongSanPham(${idx})">🗑️</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
-    capNhatTongKet();
-}
+        .topbar-title {
+            flex: 1;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
 
-// ===== 10. Tính tổng & cập nhật giao diện =====
-function capNhatTongKet() {
-    let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
-    let tongsl = dsSanPham.reduce((sum, x) => sum + Number(x.soluong), 0);
-    document.getElementById('tongtien').textContent = tongtien.toLocaleString();
-    document.getElementById('phaithanhtoan').textContent = tongtien.toLocaleString();
-    document.getElementById('tongkm').textContent = '0';
-    document.getElementById('chietkhau').textContent = '0';
-    // Bạn có thể cập nhật thêm trường tổng số lượng ở đây nếu muốn
-}
+        .topbar-icon {
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin: 0 5px;
+        }
 
-// ===== 11. Xóa sản phẩm khỏi bảng kết quả =====
-window.xoaDongSanPham = function(idx) {
-    dsSanPham.splice(idx, 1);
-    renderBangSanPham();
-};
+        .qr-box {
+            width: 100vw;
+            height: 210px;
+            background: #222;
+            color: white;
+            display: none;
+            /* bật lên khi nhấn QR */
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
 
-// ===== 12. Sự kiện "Thêm mới" (reset form) =====
-document.getElementById('btn-them-moi').onclick = function() {
-    dsSanPham = [];
-    renderBangSanPham();
-    document.getElementById('makh').value = '';
-    document.getElementById('manv').value = '';
-    genSoHoaDon();
-    document.getElementById('masp').focus();
-};
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin: 14px 12px 4px 12px;
+        }
 
-// ===== 13. Sự kiện lưu hóa đơn =====
-document.getElementById('btn-luu').onclick = async function() {
-    if (dsSanPham.length === 0) {
-        alert('Chưa có sản phẩm nào!');
-        return;
-    }
-    let sohd = document.getElementById('sohd').value.trim();
-    let makh = document.getElementById('makh').value.trim();
-    let manv = document.getElementById('manv').value.trim();
-    let tennv = ''; // Nếu bạn tra tên nhân viên từ mã thì bổ sung ở đây
-    let diadiem = currentCoso;
-    let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
-    let tongsl = dsSanPham.reduce((sum, x) => sum + Number(x.soluong), 0);
-    let hinhthuctt = document.getElementById('hinhthuctt').value;
-    let ngay = new Date().toISOString().slice(0,10);
-    let now = new Date().toISOString();
-    let tongkm = 0; // Nếu có tính khuyến mại thì bổ sung logic
-    let chietkhau = 0; // Nếu có logic thì bổ sung
+        .input-group input {
+            flex: 1;
+            font-size: 18px;
+            padding: 11px 44px 11px 14px;
+            border: 1.5px solid #b5c3d1;
+            border-radius: 8px;
+            background: #fff;
+            margin-right: 7px;
+        }
 
-    // 1. Lưu hoadon_banle
-    let { data: hd, error: errHD } = await _supabase
-        .from('hoadon_banle')
-        .insert([{
-            sohd, ngay, created_at: now, manv, tennv, diadiem, khachhang: makh,
-            tongsl, tongkm, chietkhau, thanhtoan: tongtien, hinhthuctt,
-            loai: currentLoai, loaihd: currentLoai // hoặc loại khác tùy setup
-        }])
-        .select()
-        .single();
-    if (errHD || !hd) {
-        alert('Lỗi lưu hóa đơn: ' + (errHD?.message || ''));
-        return;
-    }
+        .input-group .btn-voice {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: var(--main-color);
+            cursor: pointer;
+            margin-left: -40px;
+            z-index: 2;
+        }
 
-    // 2. Lưu ct_hoadon_banle
-    let chitiet = dsSanPham.map(sp => ({
-        sohd,
-        masp: sp.masp,
-        tensp: '', // Nếu muốn lấy tên thì tra lại bảng dmhanghoa, hoặc bổ sung trong dsSanPham ở bước thêm
-        size: sp.size || '',
-        soluong: sp.soluong,
-        gia: sp.gia,
-        km: 0, // Nếu có khuyến mại thì cập nhật
-        thanhtien: sp.thanhtien,
-        dvt: '', // Nếu có đơn vị tính lấy theo mã SP
-        diadiem,
-        created_at: now,
-        ngay
-    }));
-    let { error: errCT } = await _supabase
-        .from('ct_hoadon_banle')
-        .insert(chitiet);
-    if (errCT) {
-        alert('Lỗi lưu chi tiết: ' + errCT.message);
-        return;
-    }
+        .input-group .btn-search {
+            background: var(--main-color);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            margin-left: 7px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)
-    await _supabase
-        .from('sochungtu')
-        .update({ so_hientai: parseInt(sohd.split('_')[1]) })
-        .eq('loai', currentLoai)
-        .eq('coso', currentCoso);
+        .info-fields {
+            display: flex;
+            gap: 7px;
+            margin: 2px 12px 0 12px;
+        }
 
-    alert('Đã lưu hóa đơn thành công!');
-    dsSanPham = [];
-    renderBangSanPham();
-    document.getElementById('makh').value = '';
-    document.getElementById('manv').value = '';
-    genSoHoaDon();
-    document.getElementById('masp').focus();
-};
+        .info-fields input {
+            width: 32%;
+            font-size: 17px;
+            border: 1px solid #bbb;
+            border-radius: 7px;
+            padding: 7px 7px;
+        }
 
-// ===== 14. Khi load trang, sinh số hóa đơn mới =====
-window.addEventListener('DOMContentLoaded', function() {
-    genSoHoaDon();
-    document.getElementById('size').style.display = 'none';
-    document.getElementById('masp').focus();
-});
+        .btn-add {
+            width: 97%;
+            margin: 8px 0 2px 1.5%;
+            padding: 12px;
+            background: var(--action-color);
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #0088cc14;
+        }
 
-// ===== 15. Bổ sung: Khi chọn mã sản phẩm từ popup tìm kiếm, hoặc quét QR xong, hãy gọi xuLyNhapMaSP() =====
+        .product-table {
+            width: 98%;
+            margin: 10px 1%;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 7px #0088cc0e;
+        }
 
-// Nếu bạn có popup chọn sp, khi chọn xong, gán mã vào ô #masp rồi gọi xuLyNhapMaSP()
+        .product-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-// ====== KẾT THÚC ======
+        .product-table th,
+        .product-table td {
+            padding: 9px 2px;
+            border-bottom: 1px solid #ebebeb;
+            text-align: center;
+            font-size: 17px;
+        }
+
+        .product-table th {
+            background: #e5f3fa;
+            font-weight: bold;
+        }
+
+        .btn-delete-row {
+            background: none;
+            border: none;
+            color: #c22;
+            font-size: 19px;
+            cursor: pointer;
+        }
+
+        .summary-block {
+            margin: 8px 1%;
+            background: #e5f8f1;
+            border-radius: 10px;
+            padding: 11px;
+        }
+
+        .summary-block label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            margin: 2px 0;
+        }
+
+        .customer-fields {
+            margin: 10px 1% 7px 1%;
+            display: flex;
+            gap: 8px;
+        }
+
+        .customer-fields input {
+            flex: 1;
+            padding: 9px 10px;
+            font-size: 16px;
+            border-radius: 7px;
+            border: 1px solid #b5c3d1;
+        }
+
+        .customer-fields button {
+            font-size: 17px;
+            padding: 0 7px;
+            border: none;
+            background: var(--main-color);
+            color: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .pay-fields {
+            margin: 7px 1%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pay-fields select {
+            flex: 1;
+            font-size: 17px;
+            padding: 8px 8px;
+            border-radius: 6px;
+            border: 1px solid #bbb;
+            background: #fff;
+        }
+
+        .bottom-actions {
+            display: flex;
+            gap: 8px;
+            margin: 13px 1.5% 14px 1.5%;
+        }
+
+        .bottom-actions button {
+            flex: 1;
+            padding: 15px 0;
+            font-size: 18px;
+            border-radius: 10px;
+            font-weight: bold;
+            border: none;
+            background: var(--main-color);
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 7px #0088cc1d;
+        }
+
+        .bottom-actions .btn-bluetooth {
+            background: #12bb68;
+        }
+
+        @media (max-width: 450px) {
+
+            .product-table th,
+            .product-table td {
+                font-size: 15px;
+            }
+
+            .summary-block label {
+                font-size: 16px;
+            }
+        }
+
+        .input-group.input-khach,
+        .input-group.input-nv {
+            margin: 8px 12px 2px 12px;
+            width: calc(100% - 24px);
+        }
+
+        .input-group.input-khach input,
+        .input-group.input-nv input {
+            width: 100%;
+            margin-right: 7px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top bar -->
+    <div class="topbar">
+        <button class="topbar-icon" id="btn-menu" title="Menu">☰</button>
+        <div class="topbar-title">BÁN LẺ</div>
+        <button class="topbar-icon" id="btn-qr" title="Quét mã vạch">📷</button>
+    </div>
+
+    <!-- QR code scanner area -->
+    <div class="qr-box" id="qr-box">
+        <!-- Camera, khung quét, sẽ render bằng js/html5-qrcode -->
+        <span>Đang mở camera quét mã...</span>
+        <button class="topbar-icon" style="position:absolute;top:7px;right:12px;"
+            onclick="document.getElementById('qr-box').style.display='none'">✕</button>
+    </div>
+
+    <!-- Nhập sản phẩm -->
+    <div class="input-group">
+        <input id="masp" placeholder="Nhập mã SP hoặc quét..." autocomplete="off" />
+        <button class="btn-voice" title="Nhập bằng giọng nói" id="btn-voice">🎤</button>
+        <button class="btn-search" title="Tìm sản phẩm" id="btn-search">🔍</button>
+    </div>
+    <div class="info-fields">
+        <input id="size" placeholder="Size" style="display:none">
+        <input id="soluong" placeholder="SL" value="1" type="number" min="1">
+        <input id="gia" placeholder="Giá" readonly>
+    </div>
+
+    <div class="input-group">
+        <input id="sohd" placeholder="Số hóa đơn" readonly style="font-weight:bold; background:#eee;">
+    </div>
+
+
+    <button class="btn-add" id="btn-add">➕ Thêm sản phẩm</button>
+
+    <!-- Bảng kết quả -->
+    <div class="product-table">
+        <table id="bangketqua">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Giá</th>
+                    <th>SL</th>
+                    <th>Size</th>
+                    <th>Tiền</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dòng mẫu sẽ render JS -->
+            </tbody>
+        </table>
+    </div>
+    <!-- Tổng kết -->
+    <div class="summary-block">
+        <label>Tổng tiền <span id="tongtien">0</span></label>
+        <label>Khuyến mại <span id="tongkm">0</span></label>
+        <label>Chiết khấu <span id="chietkhau">0</span></label>
+        <label>Phải trả <span id="phaithanhtoan">0</span></label>
+    </div>
+    <!-- Thông tin khách và nhân viên -->
+    <div class="input-group input-khach">
+        <input id="makh" placeholder="Mã KH" autocomplete="off" />
+        <button class="btn-search" id="btn-kh">🔍</button>
+    </div>
+    <div class="input-group input-nv">
+        <input id="manv" placeholder="Mã NV" autocomplete="off" />
+        <button class="btn-search" id="btn-nv">🔍</button>
+    </div>
+    <!-- Thanh toán -->
+    <div class="pay-fields">
+        <select id="hinhthuctt">
+            <option value="tm">Tiền mặt</option>
+            <option value="ck">Chuyển khoản</option>
+        </select>
+    </div>
+    <!-- Nút thao tác -->
+    <div class="bottom-actions">
+        <button id="btn-luu">💾 Lưu</button>
+        <button id="btn-them-moi">🆕 Thêm mới</button>
+        <button class="btn-bluetooth" id="btn-bluetooth">🖨️ In Bluetooth</button>
+    </div>
+    <!-- Popup tìm khách, NV, sản phẩm sẽ bổ sung sau -->
+
+    <script>
+        // Placeholder js cho các nút: sẽ gắn logic sau
+        document.getElementById('btn-qr').onclick = () => {
+            document.getElementById('qr-box').style.display = 'flex';
+        };
+        document.getElementById('btn-menu').onclick = () => {
+            window.location.href = 'menu.html';
+        };
+        document.getElementById('btn-voice').onclick = () => {
+            alert('Chức năng nhập giọng nói đang phát triển...');
+        };
+        document.getElementById('btn-bluetooth').onclick = () => {
+            alert('Sẽ tích hợp in Bluetooth ở bản tới!');
+        };
+    </script>
+
+    <script src="banlemobil.js"></script>
+
+</body>
+
+</html>
