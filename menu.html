@@ -61,11 +61,18 @@
 
         /* LOGIN MODAL */
         .login-modal {
-            position: fixed; z-index: 9999;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.13);
-            display: flex; align-items: center; justify-content: center;
+            position: fixed;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.13);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         .login-box {
             background: #fff;
             border-radius: 14px;
@@ -76,6 +83,7 @@
             text-align: center;
             position: relative;
         }
+
         .login-title {
             color: #d32f2f;
             font-size: 1.21rem;
@@ -83,6 +91,7 @@
             margin-bottom: 18px;
             letter-spacing: 2px;
         }
+
         .login-label {
             text-align: left;
             margin-bottom: 4px;
@@ -90,6 +99,7 @@
             font-size: 1rem;
             font-weight: 600;
         }
+
         .login-input {
             width: 100%;
             padding: 9px 10px;
@@ -101,7 +111,12 @@
             box-sizing: border-box;
             transition: border 0.2s;
         }
-        .login-input:focus { border-color: #ffc107; outline: none;}
+
+        .login-input:focus {
+            border-color: #ffc107;
+            outline: none;
+        }
+
         .login-btn {
             width: 100%;
             padding: 11px;
@@ -114,8 +129,18 @@
             cursor: pointer;
             margin-top: 7px;
         }
-        .login-btn:hover { background: #ffc107; }
-        .login-error { color: #d32f2f; font-size: 0.98rem; margin-bottom: 7px; min-height: 22px;}
+
+        .login-btn:hover {
+            background: #ffc107;
+        }
+
+        .login-error {
+            color: #d32f2f;
+            font-size: 0.98rem;
+            margin-bottom: 7px;
+            min-height: 22px;
+        }
+
         .logout-btn {
             float: right;
             margin: 9px 18px 0 0;
@@ -130,14 +155,32 @@
             box-shadow: 0 1px 4px #ffe08233;
             display: none;
         }
-        .logout-btn.show { display: block; }
+
+        .logout-btn.show {
+            display: block;
+        }
+
         @media (max-width: 600px) {
-            .menu-container { max-width: 99vw; margin: 5px auto; border-radius: 0; box-shadow: none; }
-            .menu-title { font-size: 1.12rem; padding: 12px 0 7px 0; }
-            .menu-item { font-size: 0.98rem; padding: 10px 9vw; }
+            .menu-container {
+                max-width: 99vw;
+                margin: 5px auto;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .menu-title {
+                font-size: 1.12rem;
+                padding: 12px 0 7px 0;
+            }
+
+            .menu-item {
+                font-size: 0.98rem;
+                padding: 10px 9vw;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="menu-container">
         <button class="logout-btn" id="logoutBtn" onclick="logout()">Đăng xuất</button>
@@ -152,7 +195,8 @@
             <div class="login-title">ĐĂNG NHẬP</div>
             <div class="login-error" id="loginError"></div>
             <div class="login-label">Nhập mã nhân viên</div>
-            <input class="login-input" id="manvInput" type="password" required autocomplete="off" maxlength="32" autofocus placeholder="Mã nhân viên">
+            <input class="login-input" id="manvInput" type="password" required autocomplete="off" maxlength="32"
+                autofocus placeholder="Mã nhân viên">
             <button class="login-btn" type="submit">Đăng nhập</button>
         </form>
     </div>
@@ -165,22 +209,37 @@
         let manvList = [];
 
         // Đọc sheet + lấy mã NV
+        // ... giữ nguyên các phần trên ...
+
         async function fetchSheet() {
             try {
                 const res = await fetch(SHEET_URL);
                 if (!res.ok) throw new Error('Không thể đọc Google Sheet');
                 const csv = await res.text();
-                const rows = csv.trim().split('\n').map(row => row.split(','));
+                const rows = csv.trim().split('\n').map(row => {
+                    // Xử lý dòng bị tách dấu phẩy trong ô
+                    let cols = [], insideQuote = false, cur = '';
+                    for (let c of row) {
+                        if (c === '"') insideQuote = !insideQuote;
+                        else if (c === ',' && !insideQuote) {
+                            cols.push(cur); cur = '';
+                        } else cur += c;
+                    }
+                    cols.push(cur);
+                    return cols;
+                });
                 // Nếu dòng đầu là tiêu đề, bỏ qua
                 let data = rows;
                 if (rows[0][0].toLowerCase().includes('menu')) data = rows.slice(1);
                 menuData = data;
-                // Lấy danh sách mã NV (cột C, tức là row[2])
-                manvList = data.map(row => (row[2]||"").trim()).filter(s => s);
+
+                // Lấy toàn bộ mã nhân viên cột C (index 2) bất kể cột A/B có dữ liệu không
+                manvList = data.map(row => (row[2] || "").replace(/^"+|"+$/g, '').trim()).filter(Boolean);
             } catch (e) {
                 document.getElementById('menuList').innerHTML = '<li style="color:#d32f2f;text-align:center;padding:20px 0;">Lỗi tải dữ liệu!<br>' + e.message + '</li>';
             }
         }
+
 
         // Kiểm tra trạng thái đăng nhập
         async function checkLogin() {
@@ -197,7 +256,7 @@
             }
         }
 
-        document.getElementById('loginForm').onsubmit = function(e) {
+        document.getElementById('loginForm').onsubmit = function (e) {
             e.preventDefault();
             const manv = document.getElementById('manvInput').value.trim();
             document.getElementById('loginError').textContent = '';
@@ -226,7 +285,7 @@
             menuList.innerHTML = '';
             menuData.forEach((row, i) => {
                 const [name, url] = row;
-                if (!name || !url || name.trim()=='' || url.trim()=='') return;
+                if (!name || !url || name.trim() == '' || url.trim() == '') return;
                 const li = document.createElement('li');
                 li.className = 'menu-item';
                 li.textContent = name.replace(/^"+|"+$/g, '');
@@ -243,4 +302,5 @@
         checkLogin();
     </script>
 </body>
+
 </html>
