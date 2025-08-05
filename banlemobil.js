@@ -3,7 +3,7 @@
 // ====== 1. Khởi tạo Supabase Client ======
 const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const supabase = window.supabase || supabase.createClient(supabaseUrl, supabaseKey);
+const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // ====== 2. Biến toàn cục ======
 let dsSanPham = [];
@@ -11,7 +11,7 @@ let dsSanPham = [];
 // ====== 3. Tìm sản phẩm theo mã ======
 async function timSanPhamTheoMa(masp) {
     masp = (masp || '').toUpperCase();
-    let { data, error } = await supabase
+    let { data, error } = await _supabase
         .from('dmhanghoa')
         .select('masp, tensp, giale')
         .eq('masp', masp)
@@ -116,7 +116,7 @@ document.getElementById('btn-luu').onclick = async function() {
     let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
 
     // Thêm hóa đơn
-    let { data: hd, error: errHD } = await supabase
+    let { data: hd, error: errHD } = await _supabase
         .from('hoadon_banle')
         .insert([{
             makh, manv, hinhthuctt, tongtien, ngay: new Date().toISOString().slice(0,10)
@@ -137,7 +137,7 @@ document.getElementById('btn-luu').onclick = async function() {
         soluong: sp.soluong,
         thanhtien: sp.thanhtien
     }));
-    let { error: errCT } = await supabase
+    let { error: errCT } = await _supabase
         .from('ct_hoadon_banle')
         .insert(chitiet);
     if (errCT) {
