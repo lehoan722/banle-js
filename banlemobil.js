@@ -111,6 +111,7 @@ document.getElementById('size').addEventListener('keydown', function (e) {
             if (!SIZE_HOP_LE.includes(size)) {
                 alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
                 document.getElementById('size').focus();
+                document.getElementById('size').select();
                 return;
             }
             themSanPhamVaoBang(masp, size, gia, soluong);
