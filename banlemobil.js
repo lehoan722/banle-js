@@ -40,9 +40,36 @@ async function timSanPhamTheoMa(masp) {
 }
 
 // ===== 5. Sự kiện nhập mã sản phẩm (enter hoặc sau khi quét QR) =====
-document.getElementById('masp').addEventListener('keydown', async function(e) {
+const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+
+// Xử lý nhập mã sản phẩm (enter hoặc sau khi quét QR)
+document.getElementById('masp').addEventListener('keydown', async function (e) {
     if (e.key === 'Enter') {
-        await xuLyNhapMaSP();
+        let masp = document.getElementById('masp').value.trim().toUpperCase();
+        if (!masp) return;
+        let sp = await timSanPhamTheoMa(masp);
+        if (!sp) {
+            alert('Không tìm thấy mã sản phẩm!');
+            resetInputSanPham();
+            return;
+        }
+        document.getElementById('gia').value = sp.giale || 0;
+        document.getElementById('soluong').value = 1;
+
+        let chungloai = (sp.chungloai || '').toUpperCase();
+        if (chungloai === 'GD') {
+            // Quản lý size → focus vào size, bắt nhập size mới thêm vào bảng
+            document.getElementById('size').focus();
+            // Lưu loại này vào input để sự kiện ở ô size biết đang là mã quản lý size
+            document.getElementById('size').dataset.isGD = '1';
+        } else {
+            // Không quản lý size → thêm luôn vào bảng, size mặc định 0
+            document.getElementById('size').value = '0';
+            document.getElementById('size').dataset.isGD = '';
+            let gia = Number(document.getElementById('gia').value);
+            let soluong = Number(document.getElementById('soluong').value) || 1;
+            themSanPhamVaoBang(masp, '0', gia, soluong);
+        }
     }
 });
 // Nếu dùng quét QR thì khi quét xong cũng gọi lại hàm này!
@@ -69,24 +96,41 @@ async function xuLyNhapMaSP() {
 }
 
 // ===== 6. Sự kiện nhập size xong enter thì đẩy vào bảng =====
-document.getElementById('size').addEventListener('keydown', function(e) {
+// Sự kiện nhập size (enter hoặc chọn size)
+document.getElementById('size').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
-        let masp = document.getElementById('masp').value.trim().toUpperCase();
-        let gia = Number(document.getElementById('gia').value);
-        let soluong = Number(document.getElementById('soluong').value) || 1;
-        let size = document.getElementById('size').value.trim().toUpperCase();
-        if (!masp || !gia || !size) {
-            alert('Thiếu mã SP, size hoặc giá!');
-            return;
+        // Chỉ xử lý thêm vào bảng nếu đang là mã quản lý size (chungloai = GD)
+        if (this.dataset.isGD === '1') {
+            let masp = document.getElementById('masp').value.trim().toUpperCase();
+            let gia = Number(document.getElementById('gia').value);
+            let soluong = Number(document.getElementById('soluong').value) || 1;
+            let size = document.getElementById('size').value.trim();
+
+            // Validate size hợp lệ
+            const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+            if (!SIZE_HOP_LE.includes(size)) {
+                alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
+                document.getElementById('size').focus();
+                return;
+            }
+            themSanPhamVaoBang(masp, size, gia, soluong);
         }
-        themSanPhamVaoBang(masp, size, gia, soluong);
     }
 });
 
+
 // ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
 function themSanPhamVaoBang(masp, size, gia, soluong) {
-    // Không cho thêm thiếu thông tin
+    if (!size) size = "0";
     if (!masp || !gia || !soluong) return;
+
+    // Check lại size 1 lần cuối trước khi thêm
+    if (!SIZE_HOP_LE.includes(size)) {
+        alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
+        document.getElementById('size').focus();
+        return;
+    }
+
     // Kiểm tra trùng mã+size, nếu trùng thì cộng dồn số lượng
     let idx = dsSanPham.findIndex(x => x.masp === masp && (x.size || '') === (size || ''));
     if (idx >= 0) {
@@ -106,9 +150,9 @@ function themSanPhamVaoBang(masp, size, gia, soluong) {
 function resetInputSanPham() {
     document.getElementById('masp').value = '';
     document.getElementById('size').value = '';
+    document.getElementById('size').dataset.isGD = '';
     document.getElementById('gia').value = '';
     document.getElementById('soluong').value = 1;
-    document.getElementById('size').style.display = 'none';
     document.getElementById('masp').focus();
 }
 
@@ -143,13 +187,13 @@ function capNhatTongKet() {
 }
 
 // ===== 11. Xóa sản phẩm khỏi bảng kết quả =====
-window.xoaDongSanPham = function(idx) {
+window.xoaDongSanPham = function (idx) {
     dsSanPham.splice(idx, 1);
     renderBangSanPham();
 };
 
 // ===== 12. Sự kiện "Thêm mới" (reset form) =====
-document.getElementById('btn-them-moi').onclick = function() {
+document.getElementById('btn-them-moi').onclick = function () {
     dsSanPham = [];
     renderBangSanPham();
     document.getElementById('makh').value = '';
@@ -159,7 +203,7 @@ document.getElementById('btn-them-moi').onclick = function() {
 };
 
 // ===== 13. Sự kiện lưu hóa đơn =====
-document.getElementById('btn-luu').onclick = async function() {
+document.getElementById('btn-luu').onclick = async function () {
     if (dsSanPham.length === 0) {
         alert('Chưa có sản phẩm nào!');
         return;
@@ -172,7 +216,7 @@ document.getElementById('btn-luu').onclick = async function() {
     let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
     let tongsl = dsSanPham.reduce((sum, x) => sum + Number(x.soluong), 0);
     let hinhthuctt = document.getElementById('hinhthuctt').value;
-    let ngay = new Date().toISOString().slice(0,10);
+    let ngay = new Date().toISOString().slice(0, 10);
     let now = new Date().toISOString();
     let tongkm = 0; // Nếu có tính khuyến mại thì bổ sung logic
     let chietkhau = 0; // Nếu có logic thì bổ sung
@@ -232,8 +276,8 @@ document.getElementById('btn-luu').onclick = async function() {
 };
 
 // ===== 14. Khi load trang, sinh số hóa đơn mới =====
-window.addEventListener('DOMContentLoaded', function() {
-    genSoHoaDon();    
+window.addEventListener('DOMContentLoaded', function () {
+    genSoHoaDon();
     document.getElementById('masp').focus();
 });
 
