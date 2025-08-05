@@ -233,8 +233,7 @@ document.getElementById('btn-luu').onclick = async function() {
 
 // ===== 14. Khi load trang, sinh số hóa đơn mới =====
 window.addEventListener('DOMContentLoaded', function() {
-    genSoHoaDon();
-    document.getElementById('size').style.display = 'none';
+    genSoHoaDon();    
     document.getElementById('masp').focus();
 });
 
