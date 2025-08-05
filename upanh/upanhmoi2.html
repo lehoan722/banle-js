@@ -89,8 +89,7 @@
 
     <div class="upload-form">
         <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" id="imageFiles" name="imageFiles[]" accept="image/*" multiple>
-            onchange="generateNameFields()">
+            <input type="file" id="imageFiles" name="imageFiles[]" accept="image/*" multiple>            
             <div class="image-names-container">
                 <table class="image-names-table">
                     <thead>
@@ -252,7 +251,7 @@
                             ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
 
                             canvas.toBlob(blob => {
-                                const newName = renameCheckbox && code ? `${code}.jpg` : file.name;
+                                const newName = renameCheckbox && code ? `${code}.JPG` : file.name;
 
                                 resizedImages.push({ blob, name: newName });
 
