@@ -32,6 +32,7 @@
   </style>
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+  <script src="scripts/supabaseClient.js"></script>
 </head>
 <body>
   <div class="menu-container">
@@ -56,11 +57,6 @@
   </div>
 
 <script>
-  // === CẤU HÌNH SUPABASE ===  
-  const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co'; // <-- Thay bằng URL project của bạn
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay bằng Anon Key project
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
   // ==== CẤU HÌNH GOOGLE SHEET (menu) ====
   const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk/pub?gid=0&single=true&output=csv';
 
@@ -70,7 +66,6 @@
   async function checkLogin() {
     const manv = localStorage.getItem('dmnv');
     if (manv) {
-      // Kiểm tra mã NV có còn hợp lệ không (nếu muốn, hoặc tự cho pass luôn)
       currentUser = manv;
       document.getElementById('loginModal').style.display = 'none';
       document.getElementById('logoutBtn').style.display = '';
@@ -89,7 +84,7 @@
     document.getElementById('loginError').textContent = '';
     if (!manv || !matkhau) return;
     // Truy vấn Supabase kiểm tra manv và mật khẩu
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('dmnhanvien')
       .select('manv, tennv, matkhau, trangthai')
       .eq('manv', manv)
@@ -127,7 +122,6 @@
       if (!res.ok) throw new Error('Không thể đọc Google Sheet');
       const csv = await res.text();
       const rows = csv.trim().split('\n').map(row => row.split(','));
-      // Nếu dòng đầu là tiêu đề, bỏ qua
       let data = rows;
       if (rows[0][0].toLowerCase().includes('menu')) data = rows.slice(1);
       menuList.innerHTML = '';
