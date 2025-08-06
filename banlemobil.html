@@ -286,28 +286,28 @@
         <input id="masp" placeholder="Nhập mã SP hoặc quét..." autocomplete="off" />
         <button class="btn-voice" title="Nhập bằng giọng nói" id="btn-voice">🎤</button>
         <button class="btn-search" title="Tìm sản phẩm" id="btn-search">🔍</button>
-    </div>    
+    </div>
 
     <div class="info-fields">
-        <input id="size" placeholder="Size" >
+        <input id="size" placeholder="Size">
         <input id="soluong" placeholder="SL" value="1" type="number" min="1">
         <input id="gia" placeholder="Giá" readonly>
     </div>
 
     <div class="input-group">
         <input id="sohd" placeholder="Số hóa đơn" readonly style="font-weight:bold; background:#eee;">
-    </div>  
+    </div>
 
     <!-- Bảng kết quả -->
     <div class="product-table">
         <table id="bangketqua">
             <thead>
-                <tr>                   
+                <tr>
 
                     <th>Mã</th>
                     <th>Size</th>
                     <th>Giá</th>
-                    <th>SL</th>                  
+                    <th>SL</th>
                     <th>T Tiền</th>
                     <th></th>
                 </tr>
@@ -318,12 +318,18 @@
         </table>
     </div>
     <!-- Tổng kết -->
+
     <div class="summary-block">
         <label>Tổng tiền <span id="tongtien">0</span></label>
         <label>Khuyến mại <span id="tongkm">0</span></label>
-        <label>Chiết khấu <span id="chietkhau">0</span></label>
+        <label>
+            Chiết khấu
+            <input id="chietkhau_input" value="0"
+                style="width:100px; text-align:right; font-size: 18px; border: 1px solid #b5c3d1; border-radius: 5px; padding:2px 7px; margin-left:7px" />
+        </label>
         <label>Phải trả <span id="phaithanhtoan">0</span></label>
     </div>
+
     <!-- Thông tin khách và nhân viên -->
     <div class="input-group input-khach">
         <input id="makh" placeholder="Mã KH" autocomplete="off" />
