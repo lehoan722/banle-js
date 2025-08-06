@@ -87,7 +87,7 @@ document.getElementById('masp').addEventListener('keydown', async function (e) {
             document.getElementById('size').dataset.isGD = '';
             let gia = Number(document.getElementById('gia').value);
             let soluong = Number(document.getElementById('soluong').value) || 1;
-            themSanPhamVaoBang(masp, '0', gia, soluong);
+            themSanPhamVaoBang(sp, '0', gia, soluong); // truyền sp là object sản phẩm đã lấy ở trên!
         }
     }
 });
@@ -149,7 +149,7 @@ function themSanPhamVaoBang(masp, size, gia, soluong) {
     let khuyenmai = 0;
     if (typeof tinhKhuyenMai === 'function') {
         // Có thể cần truyền thêm thông tin sản phẩm, ở đây chỉ có masp/gia
-        khuyenmai = tinhKhuyenMai(masp, gia) || 0;
+        khuyenmai = tinhKhuyenMai(sp, gia) || 0;
     }
 
     // Check lại size hợp lệ...
@@ -161,13 +161,16 @@ function themSanPhamVaoBang(masp, size, gia, soluong) {
     }
 
     // Kiểm tra trùng mã+size
-    let idx = dsSanPham.findIndex(x => x.masp === masp && (x.size || '') === (size || ''));
+    let idx = dsSanPham.findIndex(x => x.masp === sp.masp && (x.size || '') === (size || ''));
     if (idx >= 0) {
         dsSanPham[idx].soluong += soluong;
         dsSanPham[idx].thanhtien = (dsSanPham[idx].gia - dsSanPham[idx].khuyenmai) * dsSanPham[idx].soluong;
     } else {
         dsSanPham.push({
-            masp, size, gia, soluong,
+            masp: sp.masp,
+            size,
+            gia,
+            soluong,
             khuyenmai,
             thanhtien: (gia - khuyenmai) * soluong
         });
@@ -243,6 +246,7 @@ document.getElementById('btn-them-moi').onclick = function () {
     document.getElementById('manv').value = '';
     genSoHoaDon();
     document.getElementById('masp').focus();
+    document.getElementById('chietkhau_input').value = 0;
 };
 
 // ===== 13. Sự kiện lưu hóa đơn =====
@@ -319,6 +323,7 @@ document.getElementById('btn-luu').onclick = async function () {
     document.getElementById('manv').value = '';
     genSoHoaDon();
     document.getElementById('masp').focus();
+    document.getElementById('chietkhau_input').value = 0;
 };
 
 // ===== 14. Khi load trang, sinh số hóa đơn mới =====
