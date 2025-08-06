@@ -12,10 +12,11 @@ let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 
 // ===== 3. Hàm sinh số hóa đơn tự động =====
 async function genSoHoaDon() {
-    let prefix = 'bancs1_'; // có thể động theo cơ sở/loại hóa đơn
-    let { data, error } = await _supabase.rpc('kiemkho_next_sohd', { prefix });
-    if(error || !data) {
+    let prefix = 'bancs1_'; // Hoặc động lấy theo currentLoai, currentCoso nếu nhiều cơ sở
+    let { data, error } = await _supabase.rpc('next_sohd', { prefix });
+    if (error || !data) {
         alert('Lỗi lấy số hóa đơn: ' + (error?.message || ''));
+        document.getElementById('sohd').value = '';
         return '';
     }
     document.getElementById('sohd').value = data;
@@ -257,12 +258,7 @@ document.getElementById('btn-luu').onclick = async function () {
         return;
     }
 
-    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)
-    await _supabase
-        .from('sochungtu')
-        .update({ so_hientai: parseInt(sohd.split('_')[1]) })
-        .eq('loai', currentLoai)
-        .eq('coso', currentCoso);
+    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)   
 
     alert('Đã lưu hóa đơn thành công!');
     dsSanPham = [];
