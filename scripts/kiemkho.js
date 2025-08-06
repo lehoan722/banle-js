@@ -273,6 +273,8 @@ function createHotTable(data, readonlySysRows = false) {
 
 // Xử lý nút Lưu
 async function onLuu() {
+    // 1. Gọi kiểm tồn trước
+    await onKiemTon();
     if (!hot) return;
     // Phân quyền user (kiểm tra trên dmnhanvien, quyền = "sua" thì mới được phát sinh phiếu)
     const manv = document.getElementById('manvInput').value.trim();
@@ -355,7 +357,9 @@ async function onLuu() {
         }
     }
 
-    showMsg(errorMsg ? errorMsg : "✔️ Lưu dữ liệu thành công!");
+    // 3. Thông báo và reload
+    showMsg((errorMsg ? errorMsg : "✔️ Lưu dữ liệu thành công!") + "<br><span style='color:red'>Trang sẽ tự động tải lại để làm mới dữ liệu!</span>");
+    setTimeout(() => location.reload(), 3000); // 3s
 }
 
 // Sinh số chứng từ tự động theo loại phiếu
