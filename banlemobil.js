@@ -144,27 +144,38 @@ function themSanPhamVaoBang(masp, size, gia, soluong) {
     if (!size) size = "0";
     if (!masp || !gia || !soluong) return;
 
-    // Check lại size 1 lần cuối trước khi thêm
+    // Lấy thông tin khuyến mại từ danh mục/khuyenmai.js
+    // Tùy logic của bạn, có thể cần lấy thêm từ bảng dmhanghoa hoặc truyền sp
+    let khuyenmai = 0;
+    if (typeof tinhKhuyenMai === 'function') {
+        // Có thể cần truyền thêm thông tin sản phẩm, ở đây chỉ có masp/gia
+        khuyenmai = tinhKhuyenMai(masp, gia) || 0;
+    }
+
+    // Check lại size hợp lệ...
+    const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
     if (!SIZE_HOP_LE.includes(size)) {
         alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
         document.getElementById('size').focus();
         return;
     }
 
-    // Kiểm tra trùng mã+size, nếu trùng thì cộng dồn số lượng
+    // Kiểm tra trùng mã+size
     let idx = dsSanPham.findIndex(x => x.masp === masp && (x.size || '') === (size || ''));
     if (idx >= 0) {
         dsSanPham[idx].soluong += soluong;
-        dsSanPham[idx].thanhtien = dsSanPham[idx].gia * dsSanPham[idx].soluong;
+        dsSanPham[idx].thanhtien = (dsSanPham[idx].gia - dsSanPham[idx].khuyenmai) * dsSanPham[idx].soluong;
     } else {
         dsSanPham.push({
             masp, size, gia, soluong,
-            thanhtien: gia * soluong
+            khuyenmai,
+            thanhtien: (gia - khuyenmai) * soluong
         });
     }
     renderBangSanPham();
     resetInputSanPham();
 }
+
 
 // ===== 8. Reset input nhập sản phẩm =====
 function resetInputSanPham() {
@@ -185,9 +196,9 @@ function renderBangSanPham() {
         tr.innerHTML = `
             <td>${sp.masp}</td>
             <td>${sp.size || ''}</td>
-            <td>${sp.gia}</td>
+            <td>${Number(sp.gia).toLocaleString('vi-VN')}</td>
             <td>${sp.soluong}</td>
-            <td>${sp.thanhtien}</td>
+            <td>${Number(sp.thanhtien).toLocaleString('vi-VN')}</td>
             <td><button class="btn-delete-row" onclick="xoaDongSanPham(${idx})">🗑️</button></td>
         `;
         tbody.appendChild(tr);
@@ -195,16 +206,28 @@ function renderBangSanPham() {
     capNhatTongKet();
 }
 
+
 // ===== 10. Tính tổng & cập nhật giao diện =====
 function capNhatTongKet() {
+    let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
     let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
-    let tongsl = dsSanPham.reduce((sum, x) => sum + Number(x.soluong), 0);
-    document.getElementById('tongtien').textContent = tongtien.toLocaleString();
-    document.getElementById('phaithanhtoan').textContent = tongtien.toLocaleString();
-    document.getElementById('tongkm').textContent = '0';
-    document.getElementById('chietkhau').textContent = '0';
-    // Bạn có thể cập nhật thêm trường tổng số lượng ở đây nếu muốn
+
+    // Đọc chiết khấu, chuẩn hóa số
+    let chietkhau_raw = document.getElementById('chietkhau_input') ? document.getElementById('chietkhau_input').value : "0";
+    let chietkhau = Number(chietkhau_raw.toString().replace(/\D/g, '') || 0);
+
+    // Format lại input chiết khấu sau mỗi lần render
+    if (document.getElementById('chietkhau_input')) {
+        document.getElementById('chietkhau_input').value = chietkhau.toLocaleString('vi-VN');
+    }
+
+    let phaitra = tongtien - chietkhau;
+
+    document.getElementById('tongkm').textContent = tongkm.toLocaleString('vi-VN');
+    document.getElementById('phaithanhtoan').textContent = phaitra.toLocaleString('vi-VN');
+    // Bạn có thể lưu tổng tiền, tổng km, chietkhau cho mục ghi hóa đơn ở đây nếu cần
 }
+
 
 // ===== 11. Xóa sản phẩm khỏi bảng kết quả =====
 window.xoaDongSanPham = function (idx) {
@@ -239,7 +262,8 @@ document.getElementById('btn-luu').onclick = async function () {
     let ngay = new Date().toISOString().slice(0, 10);
     let now = new Date().toISOString();
     let tongkm = 0; // Nếu có tính khuyến mại thì bổ sung logic
-    let chietkhau = 0; // Nếu có logic thì bổ sung
+    let chietkhau = Number(document.getElementById('chietkhau_input').value.replace(/\D/g, '') || 0);
+
 
     // 1. Lưu hoadon_banle
     let { data: hd, error: errHD } = await _supabase
@@ -302,6 +326,19 @@ window.addEventListener('DOMContentLoaded', function () {
     genSoHoaDon();
     document.getElementById('masp').focus();
 });
+
+window.addEventListener('DOMContentLoaded', function () {
+    genSoHoaDon();
+    document.getElementById('masp').focus();
+
+    // ==== Thêm đoạn này để tự tính lại tổng khi nhập chiết khấu ====
+    if (document.getElementById('chietkhau_input')) {
+        document.getElementById('chietkhau_input').addEventListener('input', function () {
+            capNhatTongKet();
+        });
+    }
+});
+
 
 // ===== 15. Bổ sung: Khi chọn mã sản phẩm từ popup tìm kiếm, hoặc quét QR xong, hãy gọi xuLyNhapMaSP() =====
 
