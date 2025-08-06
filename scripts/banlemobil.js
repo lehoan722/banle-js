@@ -81,6 +81,7 @@ document.getElementById('masp').addEventListener('keydown', async function (e) {
         document.getElementById('soluong').value = 1;
 
         let chungloai = (sp.chungloai || '').toUpperCase();
+        spHienTai = sp; // <- Gán lại để ô size dùng!
         if (chungloai === 'GD') {
             // Quản lý size → focus vào size, bắt nhập size mới thêm vào bảng
             document.getElementById('size').focus();
@@ -279,6 +280,9 @@ document.getElementById('btn-luu').onclick = async function () {
     let now = new Date().toISOString();
     let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
     let chietkhau = Number(document.getElementById('chietkhau_input').value.replace(/\D/g, '') || 0);
+    let phaitra = tongtien - tongkm - chietkhau;
+    if (phaitra < 0) phaitra = 0;
+
 
 
     // 1. Lưu hoadon_banle
@@ -286,11 +290,12 @@ document.getElementById('btn-luu').onclick = async function () {
         .from('hoadon_banle')
         .insert([{
             sohd, ngay, created_at: now, manv, tennv, diadiem, khachhang: makh,
-            tongsl, tongkm, chietkhau, thanhtoan: tongtien, hinhthuctt,
+            tongsl, tongkm, chietkhau, thanhtoan: phaitra, hinhthuctt,
             loaihd: currentLoai // hoặc loại khác tùy setup
         }])
         .select()
         .single();
+
     if (errHD || !hd) {
         alert('Lỗi lưu hóa đơn: ' + (errHD?.message || ''));
         return;
