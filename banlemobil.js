@@ -12,19 +12,16 @@ let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 
 // ===== 3. Hàm sinh số hóa đơn tự động =====
 async function genSoHoaDon() {
-    let { data, error } = await _supabase
-        .from('sochungtu')
-        .select('so_hientai')
-        .eq('loai', currentLoai)
-        .eq('coso', currentCoso)
-        .order('so_hientai', { ascending: false })
-        .limit(1)
-        .single();
-    let next = (data?.so_hientai || 0) + 1;
-    currentSoHD = currentLoai + '_' + String(next).padStart(5, '0');
-    document.getElementById('sohd').value = currentSoHD;
-    return currentSoHD;
+    let prefix = 'bancs1_'; // có thể động theo cơ sở/loại hóa đơn
+    let { data, error } = await _supabase.rpc('kiemkho_next_sohd', { prefix });
+    if(error || !data) {
+        alert('Lỗi lấy số hóa đơn: ' + (error?.message || ''));
+        return '';
+    }
+    document.getElementById('sohd').value = data;
+    return data;
 }
+
 
 // ===== 4. Hàm tìm sản phẩm và xác định loại quản lý size =====
 async function timSanPhamTheoMa(masp) {
