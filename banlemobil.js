@@ -12,15 +12,36 @@ let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 
 // ===== 3. Hàm sinh số hóa đơn tự động =====
 async function genSoHoaDon() {
-    let prefix = 'bancs1_'; // Hoặc động lấy theo currentLoai, currentCoso nếu nhiều cơ sở
-    let { data, error } = await _supabase.rpc('next_sohd', { prefix });
-    if (error || !data) {
-        alert('Lỗi lấy số hóa đơn: ' + (error?.message || ''));
-        document.getElementById('sohd').value = '';
-        return '';
+    // Lấy số lớn nhất trong hoadon_banle đã có (sohd bắt đầu bằng bancs1_)
+    let { data: hdmax } = await _supabase
+        .from('hoadon_banle')
+        .select('sohd')
+        .like('sohd', 'bancs1_%')
+        .order('sohd', { ascending: false })
+        .limit(1);
+    let maxHD = 0;
+    if (hdmax && hdmax.length) {
+        let so = Number(hdmax[0].sohd.split('_')[1]);
+        if (!isNaN(so)) maxHD = so;
     }
-    document.getElementById('sohd').value = data;
-    return data;
+
+    // Lấy số hiện tại trong bảng sochungtu
+    let { data: st } = await _supabase
+        .from('sochungtu')
+        .select('so_hientai')
+        .eq('loai', 'bancs1')
+        .eq('coso', 'cs1')
+        .limit(1);
+    let maxCT = 0;
+    if (st && st.length) {
+        maxCT = st[0].so_hientai;
+    }
+
+    // Lấy số lớn hơn giữa hoadon_banle và sochungtu
+    let next = Math.max(maxHD, maxCT) + 1;
+    let sohd = 'bancs1_' + String(next).padStart(5, '0');
+    document.getElementById('sohd').value = sohd;
+    return sohd;
 }
 
 
@@ -258,7 +279,14 @@ document.getElementById('btn-luu').onclick = async function () {
         return;
     }
 
-    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)   
+    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)
+    // Sau khi lưu hóa đơn thành công:
+    await _supabase
+        .from('sochungtu')
+        .update({ so_hientai: parseInt(sohd.split('_')[1]) })
+        .eq('loai', 'bancs1')
+        .eq('coso', 'cs1');
+
 
     alert('Đã lưu hóa đơn thành công!');
     dsSanPham = [];
