@@ -1,19 +1,56 @@
-// banlemobil.js
-
-// ====== 1. Khởi tạo Supabase Client ======
+// ===== 1. Khởi tạo Supabase Client =====
 const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const supabase = window.supabase = window.supabase || supabaseJs?.createClient?.(supabaseUrl, supabaseKey) || createClient(supabaseUrl, supabaseKey);
+const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-// ====== 2. Biến toàn cục ======
+// ===== 2. Biến toàn cục =====
 let dsSanPham = [];
+let currentLoai = 'bancs1'; // Có thể cấu hình nếu chuyển cơ sở
+let currentCoso = 'cs1';
+let currentSoHD = '';
+let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 
-// ====== 3. Tìm sản phẩm theo mã ======
+// ===== 3. Hàm sinh số hóa đơn tự động =====
+async function genSoHoaDon() {
+    // Lấy số lớn nhất trong hoadon_banle đã có (sohd bắt đầu bằng bancs1_)
+    let { data: hdmax } = await _supabase
+        .from('hoadon_banle')
+        .select('sohd')
+        .like('sohd', 'bancs1_%')
+        .order('sohd', { ascending: false })
+        .limit(1);
+    let maxHD = 0;
+    if (hdmax && hdmax.length) {
+        let so = Number(hdmax[0].sohd.split('_')[1]);
+        if (!isNaN(so)) maxHD = so;
+    }
+
+    // Lấy số hiện tại trong bảng sochungtu
+    let { data: st } = await _supabase
+        .from('sochungtu')
+        .select('so_hientai')
+        .eq('loai', 'bancs1')
+        .eq('coso', 'cs1')
+        .limit(1);
+    let maxCT = 0;
+    if (st && st.length) {
+        maxCT = st[0].so_hientai;
+    }
+
+    // Lấy số lớn hơn giữa hoadon_banle và sochungtu
+    let next = Math.max(maxHD, maxCT) + 1;
+    let sohd = 'bancs1_' + String(next).padStart(5, '0');
+    document.getElementById('sohd').value = sohd;
+    return sohd;
+}
+
+
+// ===== 4. Hàm tìm sản phẩm và xác định loại quản lý size =====
 async function timSanPhamTheoMa(masp) {
     masp = (masp || '').toUpperCase();
-    let { data, error } = await supabase
+    let { data, error } = await _supabase
         .from('dmhanghoa')
-        .select('masp, tensp, giale')
+        .select('masp, tensp, giale, chungloai')
         .eq('masp', masp)
         .limit(1)
         .single();
@@ -21,61 +58,139 @@ async function timSanPhamTheoMa(masp) {
     return data;
 }
 
-// ====== 4. Xử lý nhập mã sản phẩm ======
-document.getElementById('masp').addEventListener('keydown', async function(e) {
+// ===== 5. Sự kiện nhập mã sản phẩm (enter hoặc sau khi quét QR) =====
+const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+
+// Xử lý nhập mã sản phẩm (enter hoặc sau khi quét QR)
+document.getElementById('masp').addEventListener('keydown', async function (e) {
     if (e.key === 'Enter') {
-        let masp = this.value.trim();
+        let masp = document.getElementById('masp').value.trim().toUpperCase();
         if (!masp) return;
         let sp = await timSanPhamTheoMa(masp);
         if (!sp) {
             alert('Không tìm thấy mã sản phẩm!');
-            document.getElementById('tensp').value = '';
-            document.getElementById('gia').value = '';
+            resetInputSanPham();
             return;
         }
-        document.getElementById('tensp').value = sp.tensp;
         document.getElementById('gia').value = sp.giale || 0;
-        document.getElementById('soluong').focus();
+        document.getElementById('soluong').value = 1;
+
+        let chungloai = (sp.chungloai || '').toUpperCase();
+        if (chungloai === 'GD') {
+            // Quản lý size → focus vào size, bắt nhập size mới thêm vào bảng
+            document.getElementById('size').focus();
+            // Lưu loại này vào input để sự kiện ở ô size biết đang là mã quản lý size
+            document.getElementById('size').dataset.isGD = '1';
+        } else {
+            // Không quản lý size → thêm luôn vào bảng, size mặc định 0
+            document.getElementById('size').value = '0';
+            document.getElementById('size').dataset.isGD = '';
+            let gia = Number(document.getElementById('gia').value);
+            let soluong = Number(document.getElementById('soluong').value) || 1;
+            themSanPhamVaoBang(sp, '0', gia, soluong); // truyền sp là object sản phẩm đã lấy ở trên!
+        }
+    }
+});
+// Nếu dùng quét QR thì khi quét xong cũng gọi lại hàm này!
+async function xuLyNhapMaSP() {
+    let masp = document.getElementById('masp').value.trim().toUpperCase();
+    if (!masp) return;
+    let sp = await timSanPhamTheoMa(masp);
+    if (!sp) {
+        alert('Không tìm thấy mã sản phẩm!');
+        resetInputSanPham();
+        return;
+    }
+    document.getElementById('gia').value = sp.giale || 0;
+    document.getElementById('soluong').value = 1;
+    // Nếu là giày dép (chungloai = GD) thì show ô size và focus vào đó
+    let chungloai = (sp.chungloai || '').toUpperCase();
+    if (chungloai === 'GD') {
+        document.getElementById('size').style.display = '';
+        document.getElementById('size').focus();
+    } else {
+        document.getElementById('size').style.display = 'none';
+        themSanPhamVaoBang(masp, '', sp.giale, 1); // không cần nhập size
+    }
+}
+
+// ===== 6. Sự kiện nhập size xong enter thì đẩy vào bảng =====
+// Sự kiện nhập size (enter hoặc chọn size)
+document.getElementById('size').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        // Chỉ xử lý thêm vào bảng nếu đang là mã quản lý size (chungloai = GD)
+        if (this.dataset.isGD === '1') {
+            let masp = document.getElementById('masp').value.trim().toUpperCase();
+            let gia = Number(document.getElementById('gia').value);
+            let soluong = Number(document.getElementById('soluong').value) || 1;
+            let size = document.getElementById('size').value.trim();
+
+            // Validate size hợp lệ
+            const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+            if (!SIZE_HOP_LE.includes(size)) {
+                alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
+                document.getElementById('size').focus();
+                document.getElementById('size').select();
+                return;
+            }
+            themSanPhamVaoBang(masp, size, gia, soluong);
+        }
     }
 });
 
-// ====== 5. Thêm sản phẩm vào bảng kết quả ======
-document.getElementById('btn-add').onclick = function() {
-    let masp = document.getElementById('masp').value.trim().toUpperCase();
-    let tensp = document.getElementById('tensp').value.trim();
-    let gia = Number(document.getElementById('gia').value);
-    let soluong = Number(document.getElementById('soluong').value) || 1;
-    if (!masp || !tensp || !gia) {
-        alert('Phải nhập mã sản phẩm hợp lệ!');
+
+// ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
+function themSanPhamVaoBang(masp, size, gia, soluong) {
+    if (!size) size = "0";
+    if (!masp || !gia || !soluong) return;
+
+    // Lấy thông tin khuyến mại từ danh mục/khuyenmai.js
+    // Tùy logic của bạn, có thể cần lấy thêm từ bảng dmhanghoa hoặc truyền sp
+    let khuyenmai = 0;
+    if (typeof tinhKhuyenMai === 'function') {
+        // Có thể cần truyền thêm thông tin sản phẩm, ở đây chỉ có masp/gia
+        khuyenmai = tinhKhuyenMai(sp, gia) || 0;
+    }
+
+    // Check lại size hợp lệ...
+    const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+    if (!SIZE_HOP_LE.includes(size)) {
+        alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
+        document.getElementById('size').focus();
         return;
     }
-    // Check trùng mã -> cộng dồn số lượng
-    let idx = dsSanPham.findIndex(x => x.masp === masp);
+
+    // Kiểm tra trùng mã+size
+    let idx = dsSanPham.findIndex(x => x.masp === sp.masp && (x.size || '') === (size || ''));
     if (idx >= 0) {
         dsSanPham[idx].soluong += soluong;
-        dsSanPham[idx].thanhtien = dsSanPham[idx].gia * dsSanPham[idx].soluong;
+        dsSanPham[idx].thanhtien = (dsSanPham[idx].gia - dsSanPham[idx].khuyenmai) * dsSanPham[idx].soluong;
     } else {
         dsSanPham.push({
-            masp, tensp, gia, soluong,
-            thanhtien: gia * soluong
+            masp: sp.masp,
+            size,
+            gia,
+            soluong,
+            khuyenmai,
+            thanhtien: (gia - khuyenmai) * soluong
         });
     }
     renderBangSanPham();
-    // Reset input nhập sản phẩm
+    resetInputSanPham();
+}
+
+
+// ===== 8. Reset input nhập sản phẩm =====
+function resetInputSanPham() {
     document.getElementById('masp').value = '';
-    document.getElementById('tensp').value = '';
+    document.getElementById('size').value = '';
+    document.getElementById('size').dataset.isGD = '';
     document.getElementById('gia').value = '';
     document.getElementById('soluong').value = 1;
     document.getElementById('masp').focus();
-};
+}
 
-// ====== 6. Xóa sản phẩm khỏi bảng kết quả ======
-window.xoaDongSanPham = function(idx) {
-    dsSanPham.splice(idx, 1);
-    renderBangSanPham();
-};
-
-// ====== 7. Render bảng sản phẩm ======
+// ===== 9. Render bảng sản phẩm: mã, size, giá, sl, tiền =====
 function renderBangSanPham() {
     const tbody = document.querySelector('#bangketqua tbody');
     tbody.innerHTML = '';
@@ -83,10 +198,10 @@ function renderBangSanPham() {
         let tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${sp.masp}</td>
-            <td>${sp.tensp}</td>
-            <td>${sp.gia}</td>
+            <td>${sp.size || ''}</td>
+            <td>${Number(sp.gia).toLocaleString('vi-VN')}</td>
             <td>${sp.soluong}</td>
-            <td>${sp.thanhtien}</td>
+            <td>${Number(sp.thanhtien).toLocaleString('vi-VN')}</td>
             <td><button class="btn-delete-row" onclick="xoaDongSanPham(${idx})">🗑️</button></td>
         `;
         tbody.appendChild(tr);
@@ -94,32 +209,73 @@ function renderBangSanPham() {
     capNhatTongKet();
 }
 
-// ====== 8. Tính tổng & cập nhật giao diện ======
+
+// ===== 10. Tính tổng & cập nhật giao diện =====
 function capNhatTongKet() {
+    let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
     let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
-    document.getElementById('tongtien').textContent = tongtien.toLocaleString();
-    document.getElementById('phaithanhtoan').textContent = tongtien.toLocaleString();
-    // Khuyến mại, chiết khấu nếu cần tính tiếp (bổ sung sau)
-    document.getElementById('tongkm').textContent = '0';
-    document.getElementById('chietkhau').textContent = '0';
+
+    // Đọc chiết khấu, chuẩn hóa số
+    let chietkhau_raw = document.getElementById('chietkhau_input') ? document.getElementById('chietkhau_input').value : "0";
+    let chietkhau = Number(chietkhau_raw.toString().replace(/\D/g, '') || 0);
+
+    // Format lại input chiết khấu sau mỗi lần render
+    if (document.getElementById('chietkhau_input')) {
+        document.getElementById('chietkhau_input').value = chietkhau.toLocaleString('vi-VN');
+    }
+
+    let phaitra = tongtien - chietkhau;
+
+    document.getElementById('tongkm').textContent = tongkm.toLocaleString('vi-VN');
+    document.getElementById('phaithanhtoan').textContent = phaitra.toLocaleString('vi-VN');
+    // Bạn có thể lưu tổng tiền, tổng km, chietkhau cho mục ghi hóa đơn ở đây nếu cần
 }
 
-// ====== 9. Lưu hóa đơn lên Supabase ======
-document.getElementById('btn-luu').onclick = async function() {
+
+// ===== 11. Xóa sản phẩm khỏi bảng kết quả =====
+window.xoaDongSanPham = function (idx) {
+    dsSanPham.splice(idx, 1);
+    renderBangSanPham();
+};
+
+// ===== 12. Sự kiện "Thêm mới" (reset form) =====
+document.getElementById('btn-them-moi').onclick = function () {
+    dsSanPham = [];
+    renderBangSanPham();
+    document.getElementById('makh').value = '';
+    document.getElementById('manv').value = '';
+    genSoHoaDon();
+    document.getElementById('masp').focus();
+    document.getElementById('chietkhau_input').value = 0;
+};
+
+// ===== 13. Sự kiện lưu hóa đơn =====
+document.getElementById('btn-luu').onclick = async function () {
     if (dsSanPham.length === 0) {
         alert('Chưa có sản phẩm nào!');
         return;
     }
+    let sohd = document.getElementById('sohd').value.trim();
     let makh = document.getElementById('makh').value.trim();
     let manv = document.getElementById('manv').value.trim();
-    let hinhthuctt = document.getElementById('hinhthuctt').value;
+    let tennv = ''; // Nếu bạn tra tên nhân viên từ mã thì bổ sung ở đây
+    let diadiem = currentCoso;
     let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
+    let tongsl = dsSanPham.reduce((sum, x) => sum + Number(x.soluong), 0);
+    let hinhthuctt = document.getElementById('hinhthuctt').value;
+    let ngay = new Date().toISOString().slice(0, 10);
+    let now = new Date().toISOString();
+    let tongkm = 0; // Nếu có tính khuyến mại thì bổ sung logic
+    let chietkhau = Number(document.getElementById('chietkhau_input').value.replace(/\D/g, '') || 0);
 
-    // Thêm hóa đơn
-    let { data: hd, error: errHD } = await supabase
+
+    // 1. Lưu hoadon_banle
+    let { data: hd, error: errHD } = await _supabase
         .from('hoadon_banle')
         .insert([{
-            makh, manv, hinhthuctt, tongtien, ngay: new Date().toISOString().slice(0,10)
+            sohd, ngay, created_at: now, manv, tennv, diadiem, khachhang: makh,
+            tongsl, tongkm, chietkhau, thanhtoan: tongtien, hinhthuctt,
+            loaihd: currentLoai // hoặc loại khác tùy setup
         }])
         .select()
         .single();
@@ -128,37 +284,69 @@ document.getElementById('btn-luu').onclick = async function() {
         return;
     }
 
-    // Thêm chi tiết hóa đơn
+    // 2. Lưu ct_hoadon_banle
     let chitiet = dsSanPham.map(sp => ({
-        sohd: hd.sohd,
+        sohd,
         masp: sp.masp,
-        tensp: sp.tensp,
-        gia: sp.gia,
+        tensp: '', // Nếu muốn lấy tên thì tra lại bảng dmhanghoa, hoặc bổ sung trong dsSanPham ở bước thêm
+        size: sp.size || '',
         soluong: sp.soluong,
-        thanhtien: sp.thanhtien
+        gia: sp.gia,
+        km: 0, // Nếu có khuyến mại thì cập nhật
+        thanhtien: sp.thanhtien,
+        dvt: '', // Nếu có đơn vị tính lấy theo mã SP
+        diadiem,
+        created_at: now,
+        ngay
     }));
-    let { error: errCT } = await supabase
+    let { error: errCT } = await _supabase
         .from('ct_hoadon_banle')
         .insert(chitiet);
     if (errCT) {
         alert('Lỗi lưu chi tiết: ' + errCT.message);
         return;
     }
+
+    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)
+    // Sau khi lưu hóa đơn thành công:
+    await _supabase
+        .from('sochungtu')
+        .update({ so_hientai: parseInt(sohd.split('_')[1]) })
+        .eq('loai', 'bancs1')
+        .eq('coso', 'cs1');
+
+
     alert('Đã lưu hóa đơn thành công!');
     dsSanPham = [];
     renderBangSanPham();
-    // Xóa các ô nhập thông tin
     document.getElementById('makh').value = '';
     document.getElementById('manv').value = '';
-};
-
-// ====== 10. Thêm sự kiện cho nút "Thêm mới" (reset form) ======
-document.getElementById('btn-them-moi').onclick = function() {
-    dsSanPham = [];
-    renderBangSanPham();
-    document.getElementById('makh').value = '';
-    document.getElementById('manv').value = '';
+    genSoHoaDon();
     document.getElementById('masp').focus();
+    document.getElementById('chietkhau_input').value = 0;
 };
 
-// ====== 11. Có thể bổ sung popup tìm kiếm khách hàng, nhân viên... sau ======
+// ===== 14. Khi load trang, sinh số hóa đơn mới =====
+window.addEventListener('DOMContentLoaded', function () {
+    genSoHoaDon();
+    document.getElementById('masp').focus();
+});
+
+window.addEventListener('DOMContentLoaded', function () {
+    genSoHoaDon();
+    document.getElementById('masp').focus();
+
+    // ==== Thêm đoạn này để tự tính lại tổng khi nhập chiết khấu ====
+    if (document.getElementById('chietkhau_input')) {
+        document.getElementById('chietkhau_input').addEventListener('input', function () {
+            capNhatTongKet();
+        });
+    }
+});
+
+
+// ===== 15. Bổ sung: Khi chọn mã sản phẩm từ popup tìm kiếm, hoặc quét QR xong, hãy gọi xuLyNhapMaSP() =====
+
+// Nếu bạn có popup chọn sp, khi chọn xong, gán mã vào ô #masp rồi gọi xuLyNhapMaSP()
+
+// ====== KẾT THÚC ======
