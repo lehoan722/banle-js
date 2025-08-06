@@ -8,6 +8,7 @@ const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // ===== 2. Biến toàn cục =====
 let dsSanPham = [];
+let spHienTai = null; // Lưu tạm object sản phẩm vừa tìm được
 let currentLoai = 'bancs1'; // Có thể cấu hình nếu chuyển cơ sở
 let currentCoso = 'cs1';
 let currentSoHD = '';
@@ -71,6 +72,7 @@ document.getElementById('masp').addEventListener('keydown', async function (e) {
         if (!masp) return;
         let sp = await timSanPhamTheoMa(masp);
         if (!sp) {
+            spHienTai = sp; // Lưu lại
             alert('Không tìm thấy mã sản phẩm!');
             resetInputSanPham();
             return;
@@ -91,6 +93,7 @@ document.getElementById('masp').addEventListener('keydown', async function (e) {
             let gia = Number(document.getElementById('gia').value);
             let soluong = Number(document.getElementById('soluong').value) || 1;
             themSanPhamVaoBang(sp, '0', gia, soluong); // truyền sp là object sản phẩm đã lấy ở trên!
+            spHienTai = null;
         }
     }
 });
@@ -113,7 +116,7 @@ async function xuLyNhapMaSP() {
         document.getElementById('size').focus();
     } else {
         document.getElementById('size').style.display = 'none';
-        themSanPhamVaoBang(masp, '', sp.giale, 1); // không cần nhập size
+        themSanPhamVaoBang(sp, '', sp.giale, 1); // không cần nhập size
     }
 }
 
@@ -136,14 +139,16 @@ document.getElementById('size').addEventListener('keydown', function (e) {
                 document.getElementById('size').select();
                 return;
             }
-            themSanPhamVaoBang(masp, size, gia, soluong);
+            themSanPhamVaoBang(spHienTai, size, gia, soluong);
+            spHienTai = null;
         }
     }
 });
 
 
 // ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
-function themSanPhamVaoBang(masp, size, gia, soluong) {
+function themSanPhamVaoBang(sp, size, gia, soluong) {
+    if (!sp || !sp.masp || !gia || !soluong) return;
     if (!size) size = "0";
     if (!masp || !gia || !soluong) return;
 
