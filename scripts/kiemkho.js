@@ -307,6 +307,7 @@ async function onLuu() {
         ghichu: row.ghichu || '',
         created_at: ngaygio
     }));
+    let taoPhieuThanhCong = true; // <--- Thêm biến trạng thái
     let errorMsg = "";
     let res = await supabase.from('kiemkho').insert(insertKiemKho);
     if (res.error) errorMsg += "- Lỗi lưu kiểm kho: " + res.error.message + "<br>";
@@ -316,11 +317,8 @@ async function onLuu() {
     // Sửa lại: tìm đúng từng mã và loại, không lệch nếu bảng thay đổi thứ tự
     if (canEdit) {
         let allRows = hot.getSourceData();
-
-        // Lấy toàn bộ các dòng kiểm thực tế
         let rowKiemList = allRows.filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế"));
         for (let rowKiem of rowKiemList) {
-            // Tìm đúng dòng tồn hệ thống theo masp
             let rowTon = allRows.find(r =>
                 r.masp === rowKiem.masp && r.type === "Tồn hệ thống"
             );
@@ -329,28 +327,33 @@ async function onLuu() {
             let chenhlechSizes = [];
             for (let sz of SIZE_FIELDS) {
                 const k = Number(rowKiem['size' + sz] || 0), t = Number(rowTon['size' + sz] || 0);
-                if (k > t) {
-                    chenhlechSizes.push({ type: 'nhap', sz, sl: k - t });
-                }
-                if (k < t) {
-                    chenhlechSizes.push({ type: 'xuat', sz, sl: t - k });
-                }
+                if (k > t) chenhlechSizes.push({ type: 'nhap', sz, sl: k - t });
+                if (k < t) chenhlechSizes.push({ type: 'xuat', sz, sl: t - k });
             }
-            // Gộp theo phiếu nhập/xuất mỗi mã 1 phiếu
             let sohd_nhap = null, sohd_xuat = null;
             for (let ch of chenhlechSizes) {
-                if (ch.type === 'nhap') {
-                    if (!sohd_nhap) sohd_nhap = await genSohd('nhapkiem' + coSo);
-                    await taoPhieuKiem('nhap', coSo, rowKiem.masp, ch.sz, ch.sl, sohd_nhap, manv, ngaygio);
-                }
-                if (ch.type === 'xuat') {
-                    if (!sohd_xuat) sohd_xuat = await genSohd('xuatkiem' + coSo);
-                    await taoPhieuKiem('xuat', coSo, rowKiem.masp, ch.sz, ch.sl, sohd_xuat, manv, ngaygio);
+                try {
+                    if (ch.type === 'nhap') {
+                        if (!sohd_nhap) sohd_nhap = await genSohd('nhapkiem' + coSo);
+                        await taoPhieuKiem('nhap', coSo, rowKiem.masp, ch.sz, ch.sl, sohd_nhap, manv, ngaygio);
+                    }
+                    if (ch.type === 'xuat') {
+                        if (!sohd_xuat) sohd_xuat = await genSohd('xuatkiem' + coSo);
+                        await taoPhieuKiem('xuat', coSo, rowKiem.masp, ch.sz, ch.sl, sohd_xuat, manv, ngaygio);
+                    }
+                } catch (err) {
+                    taoPhieuThanhCong = false;
+                    errorMsg += "- Lỗi tạo phiếu: " + (err.message || err) + "<br>";
                 }
             }
         }
-    }
 
+        if (taoPhieuThanhCong) {
+            await supabase.from('kiemkho')
+                .update({ ghichu: 'đã kiểm' })
+                .eq('sohd', sohd_kiem);
+        }
+    }
 
     showMsg(errorMsg ? errorMsg : "✔️ Lưu dữ liệu thành công!");
 }
