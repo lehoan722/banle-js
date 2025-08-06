@@ -255,6 +255,10 @@ document.getElementById('btn-them-moi').onclick = function () {
     genSoHoaDon();
     document.getElementById('masp').focus();
     document.getElementById('chietkhau_input').value = 0;
+    document.getElementById('tongkm').textContent = '0';
+    document.getElementById('phaithanhtoan').textContent = '0';
+    document.getElementById('tongtien').textContent = '0';
+
 };
 
 // ===== 13. Sự kiện lưu hóa đơn =====
@@ -273,7 +277,7 @@ document.getElementById('btn-luu').onclick = async function () {
     let hinhthuctt = document.getElementById('hinhthuctt').value;
     let ngay = new Date().toISOString().slice(0, 10);
     let now = new Date().toISOString();
-    let tongkm = 0; // Nếu có tính khuyến mại thì bổ sung logic
+    let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
     let chietkhau = Number(document.getElementById('chietkhau_input').value.replace(/\D/g, '') || 0);
 
 
@@ -300,7 +304,7 @@ document.getElementById('btn-luu').onclick = async function () {
         size: sp.size || '',
         soluong: sp.soluong,
         gia: sp.gia,
-        km: 0, // Nếu có khuyến mại thì cập nhật
+        km: sp.khuyenmai || 0,
         thanhtien: sp.thanhtien,
         dvt: '', // Nếu có đơn vị tính lấy theo mã SP
         diadiem,
