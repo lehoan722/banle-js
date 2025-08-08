@@ -5,13 +5,13 @@
     <meta charset="UTF-8">
     <title>Báo cáo Xuất Nhập Tồn Hàng Hóa (Phiên bản mới)</title>
     <!-- Liên kết Supabase và JS mới -->
-     <script src="https://cdn.sheetjs.com/xlsx-latest/package/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/xlsx.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/baocaoxnt13.js"></script>
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-    
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -277,6 +277,10 @@
                 <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
                 <!-- CHECKBOX TỔNG HỢP SIZE -->
                 <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
+                <label style="font-weight:normal;">
+                    <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
+                </label>
+
                 <!-- Nút xem báo cáo -->
                 <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
 
