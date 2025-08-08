@@ -468,7 +468,7 @@
                 <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
                 <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
                 <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
-                
+
             </div>
         </div>
         <div class="menu-item">
@@ -512,7 +512,12 @@
             </div>
         </div>
 
-        <label><input id="size45" type="checkbox" />QL SIZE</label>
+        
+        <label>
+            <input type="checkbox" id="quanlysizetheogia" />
+            QL SIZE>=170,GD
+        </label>
+
 
     </div>
 
@@ -600,7 +605,7 @@
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
-
+                            <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
@@ -908,9 +913,11 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-            // ======= Thêm vào đây =========
+            // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
-            document.getElementById("size45").checked = true;
+            document.getElementById("size45").checked = false;
+            document.getElementById("quanlysizetheogia").checked = true;
+
             // ==============================
         };
 
@@ -1115,7 +1122,7 @@
         import { backupAllTablesToZip } from './scripts/backup.js';
 
         document.getElementById('btn-logout').onclick = async function () {
-            
+
             document.getElementById('backup-overlay').style.display = "block";
             try {
                 await backupAllTablesToZip();
