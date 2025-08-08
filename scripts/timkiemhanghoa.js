@@ -174,7 +174,7 @@ async function triggerSearch() {
 
 
     // ==== Chuẩn bị bảng dữ liệu ====
-    // Lấy danh sách size, tổng nhập/xuất/tồn
+    // Lấy danh sách size, tổng nhập/xuất/tồn 
 
     // Gọi function mới
     let { data: xntdata, error: err2 } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
@@ -194,7 +194,7 @@ async function triggerSearch() {
     htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${formatDateOnly(ngay_nhapdau) || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td></tr>`;
-    
+
     htmlLeft += `<tr><td class="label">Kiểm CS1</td><td>${formatDateOnly(ngay_kiem_cs1) || ""}</td></tr>`;
     htmlLeft += `<tr><td class="label">Kiểm CS2</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td></tr>`;
 
@@ -204,53 +204,43 @@ async function triggerSearch() {
     // ===== THÊM 2 DÒNG NÀY NGAY SAU =====
     // Tổng từng cột theo size (size khác null/0)
 
-    let sizeRows = xntdata.filter(row => row.size !== 'Tổng');
+    // 1. Danh sách size cố định và dòng Tổng
+    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
 
-    let fields = ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"];
-    let totalRow = {};
-    fields.forEach(f => {
-        totalRow[f] = sizeRows.reduce((sum, row) => sum + (Number(row[f]) || 0), 0);
+    // 2. Đưa dữ liệu về dạng map cho từng size
+    let rowMap = {};
+    xntdata.forEach(row => {
+        rowMap[row.size === null ? '' : row.size] = row;
     });
 
-    // ... Tiếp tục render bảng như bạn đang làm
+    // 3. Render bảng theo thứ tự cố định
     let htmlRight = `
-    <tr>
-        <th class="size">Size</th>
-        <th class="blue">Tổng mua</th>
-        <th class="blue">Tổng bán</th>
-        <th class="blue">Tổng tồn</th>
-        <th class="red">Bán CS1</th>
-        <th class="red">Tồn CS1</th>
-        <th class="red">Tồn CS2</th>
-        <th class="red">Bán CS2</th>
-    </tr>
-`;
-    // Dòng tổng
-    htmlRight += `
 <tr>
-    <td class="size">Tổng</td>
-    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+    <th class="size">Size</th>
+    <th class="blue">Tổng mua</th>
+    <th class="blue">Tổng bán</th>
+    <th class="blue">Tổng tồn</th>
+    <th class="red">Bán CS1</th>
+    <th class="red">Tồn CS1</th>
+    <th class="red">Tồn CS2</th>
+    <th class="red">Bán CS2</th>
 </tr>
 `;
-    // Dòng từng size
-    sizeRows.forEach(row => {
+
+    // Duyệt theo SIZE_LIST, nếu có dữ liệu thì hiện, không thì hiện trống
+    SIZE_LIST.forEach(sz => {
+        let row = rowMap[sz];
         htmlRight += `
-    <tr>
-        <td class="size">${row.size}</td>
-        <td class="number">${showEmptyIfZero(row.nhapmua)}</td>
-        <td class="number">${showEmptyIfZero(row.xuatban)}</td>
-        <td class="number">${showEmptyIfZero(row.toncuoi)}</td>
-        <td class="number">${showEmptyIfZero(row.ban_cs1)}</td>
-        <td class="number">${showEmptyIfZero(row.ton_cs1)}</td>
-        <td class="number">${showEmptyIfZero(row.ton_cs2)}</td>
-        <td class="number">${showEmptyIfZero(row.ban_cs2)}</td>
-    </tr>
+<tr>
+    <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
+    <td class="number">${showEmptyIfZero(row?.nhapmua)}</td>
+    <td class="number">${showEmptyIfZero(row?.xuatban)}</td>
+    <td class="number">${showEmptyIfZero(row?.toncuoi)}</td>
+    <td class="number">${showEmptyIfZero(row?.ban_cs1)}</td>
+    <td class="number">${showEmptyIfZero(row?.ton_cs1)}</td>
+    <td class="number">${showEmptyIfZero(row?.ton_cs2)}</td>
+    <td class="number">${showEmptyIfZero(row?.ban_cs2)}</td>
+</tr>
     `;
     });
     document.getElementById('infoTableRight').innerHTML = htmlRight;
