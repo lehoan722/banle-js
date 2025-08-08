@@ -101,7 +101,8 @@ async function triggerSearch(_masp = null) {
     document.getElementById('multiDetailBox').innerHTML = "";
     document.getElementById('multiDetailBox').style.display = "none";
     document.getElementById('singleDetailBox').style.display = "";
-
+    document.getElementById('maspInput').select();
+    
     let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
     if (!masp || masp.length < 3) {
         msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
