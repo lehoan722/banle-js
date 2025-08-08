@@ -25,18 +25,61 @@ export async function chuyenFocus(e) {
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-    const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
-
-    // Nếu không thành công, mới mở popup tìm mã
+    // Lấy luôn spData để xử lý focus động!
+    let spData = window.sanPhamData?.[maspVal];
+    if (!spData) {
+      // Nếu chưa có cache, fetch trước để lấy dữ liệu cần thiết
+      const { data } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", maspVal)
+        .single();
+      spData = data;
+      if (data) window.sanPhamData[maspVal] = data;
+    }
+    const thanhCong = !!spData;
     if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
       moPopupTimMaSanPham();
+      return;
+    }
+
+    const nhapNhanh = document.getElementById("nhapnhanh").checked;
+    if (nhapNhanh && spData) {
+      const giaSP = Number(spData.giale) || 0;
+      const laGiayDep = spData.chungloai && spData.chungloai.toLowerCase() === "gd";
+      if (laGiayDep || giaSP >= 170000) {
+        // Focus vào size để bắt buộc nhập size
+        document.getElementById("size").focus();
+        document.getElementById("size").select();
+      } else {
+        // Gán size = 0, soluong = 1 và tự động thêm vào bảng
+        document.getElementById("size").value = "0";
+        document.getElementById("soluong").value = "1";
+        themVaoBang();
+        // Reset form và focus lại vào masp
+        document.getElementById("masp").focus();
+        document.getElementById("masp").select();
+      }
+    } else {
+      // Quy trình cũ
+      document.getElementById("soluong").focus();
+      document.getElementById("soluong").select();
     }
   } else if (e.target.id === "soluong") {
     document.getElementById("size").focus();
+    document.getElementById("size").select();
   } else if (e.target.id === "size") {
-    themVaoBang();
+    const nhapNhanh = document.getElementById("nhapnhanh").checked;
+    if (nhapNhanh) {
+      themVaoBang();
+      document.getElementById("masp").focus();
+      document.getElementById("masp").select();
+    } else {
+      themVaoBang();
+    }
   }
 }
+
 
 async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   maspVal = maspVal.toUpperCase().trim();
@@ -119,8 +162,36 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
 export function themVaoBang(forcedSize = null) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
-  const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
-  const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
+  const nhapNhanh = document.getElementById("nhapnhanh")?.checked;
+  let size, soluong;
+
+  if (nhapNhanh) {
+    // Lấy thông tin sản phẩm
+    let sp = window.sanPhamData?.[masp];
+    if (!sp) {
+      const { data } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", masp)
+        .single();
+      sp = data;
+    }
+    const giaSP = Number(sp?.giale) || 0;
+    const laGiayDep = sp?.chungloai && sp.chungloai.toLowerCase() === "gd";
+    if (laGiayDep || giaSP >= 170000) {
+      // Bắt buộc phải lấy size thực tế do user nhập
+      size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
+      soluong = 1;
+    } else {
+      // Các trường hợp khác, auto size=0, soluong=1
+      size = "0";
+      soluong = 1;
+    }
+  } else {
+    size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
+    soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
+  }
+
 
   const sp = window.sanPhamData?.[masp];
 
