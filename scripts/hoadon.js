@@ -53,8 +53,8 @@ export async function chuyenFocus(e) {
       // Sản phẩm không cần size, tự động thêm vào bảng với size=0, soluong=1
       document.getElementById("size").value = "0";
       document.getElementById("soluong").value = "1";
-      themVaoBang(); // nhớ là themVaoBang phải là async
       document.getElementById("gia").value = spData.giale || "0";
+      themVaoBang(); // nhớ là themVaoBang phải là async
       document.getElementById("masp").focus();
       document.getElementById("masp").select();
     }
