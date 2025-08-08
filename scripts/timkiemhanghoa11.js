@@ -98,13 +98,11 @@ function showEmptyIfZero(val) {
 async function triggerSearch(_masp = null) {
     const msg = document.getElementById('statusMsg');
     msg.textContent = "Đang tìm kiếm mã sản phẩm...";
-
-    let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
-    msg.textContent = "";
     document.getElementById('multiDetailBox').innerHTML = "";
     document.getElementById('multiDetailBox').style.display = "none";
     document.getElementById('singleDetailBox').style.display = "";
 
+    let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
     if (!masp || masp.length < 3) {
         msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
         return;
@@ -142,23 +140,25 @@ async function triggerSearch(_masp = null) {
         return;
     }
 
-    // Nếu chỉ 1 mã -> hiện chi tiết như cũ
-    if (list.length === 1) {
+    // Nếu chỉ 1 mã, hiển thị như cũ
+    if (productWithXNT.length === 1) {
         document.getElementById('singleDetailBox').style.display = "";
-        await renderOneProductDetail(list[0].masp);
+        await renderOneProductDetail(productWithXNT[0]);
+        msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
         return;
     }
 
-    // Nhiều mã -> ẩn khung cũ, hiện nhiều bản kết quả
+    // Nếu nhiều mã, hiển thị tất cả
     document.getElementById('singleDetailBox').style.display = "none";
     let html = "";
-    for (const row of list) {
-        html += `<div style="margin-bottom:32px; border-bottom:1px dashed #90caf9;">` + await renderProductDetailHTML(row.masp) + `</div>`;
+    for (const masp of productWithXNT) {
+        html += `<div style="margin-bottom:32px; border-bottom:1px dashed #90caf9;">${await renderProductDetailHTML(masp)}</div>`;
     }
     document.getElementById('multiDetailBox').innerHTML = html;
     document.getElementById('multiDetailBox').style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
+
 
 // Hàm render detail cho 1 mã, chèn trực tiếp vào DOM (giữ nguyên khung trái/phải)
 async function renderOneProductDetail(masp) {
