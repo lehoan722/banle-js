@@ -46,7 +46,7 @@ export async function chuyenFocus(e) {
     const nhapNhanh = document.getElementById("nhapnhanh").checked;
     if (nhapNhanh && spData) {
       const giaSP = Number(spData.giale) || 0;
-      const laGiayDep = spData.chungloai && spData.chungloai.toLowerCase() === "gd";
+      const laGiayDep = spData.chungloai && spData.chungloai.toLowerCase() === "GD";
       if (laGiayDep || giaSP >= 170000) {
         // Focus vào size để bắt buộc nhập size
         document.getElementById("size").focus();
@@ -55,7 +55,7 @@ export async function chuyenFocus(e) {
         // Gán size = 0, soluong = 1 và tự động thêm vào bảng
         document.getElementById("size").value = "0";
         document.getElementById("soluong").value = "1";
-        themVaoBang();
+        await themVaoBang();
         // Reset form và focus lại vào masp
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
@@ -71,102 +71,99 @@ export async function chuyenFocus(e) {
   } else if (e.target.id === "size") {
     const nhapNhanh = document.getElementById("nhapnhanh").checked;
     if (nhapNhanh) {
-      themVaoBang();
+      await themVaoBang();
       document.getElementById("masp").focus();
       document.getElementById("masp").select();
     } else {
-      themVaoBang();
-    }
-  }
-}
-
-
-async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
-  maspVal = maspVal.toUpperCase().trim();
-  let spData = window.sanPhamData?.[maspVal];
-
-  // Nếu không có trong cache, gọi Supabase để tìm chính xác
-  if (!spData) {
-    const { data, error } = await supabase
-      .from("dmhanghoa")
-      .select("*")
-      .eq("masp", maspVal)
-      .single();
-
-    if (data) {
-      spData = data;
-      window.sanPhamData[maspVal] = data; // cache lại
+      await themVaoBang();
     }
   }
 
-  // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
-  if (!spData) {
-    if (typeof moBangDanhMucHangHoa === "function") {
-      moBangDanhMucHangHoa(maspVal);
+
+  async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
+    maspVal = maspVal.toUpperCase().trim();
+    let spData = window.sanPhamData?.[maspVal];
+
+    // Nếu không có trong cache, gọi Supabase để tìm chính xác
+    if (!spData) {
+      const { data, error } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", maspVal)
+        .single();
+
+      if (data) {
+        spData = data;
+        window.sanPhamData[maspVal] = data; // cache lại
+      }
     }
-    return false;
-  }
 
-  // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
-  document.getElementById("gia").value = spData.giale || "";
-  document.getElementById("khuyenmai").value = spData.khuyenmai || "";
-
-  const cs = document.getElementById("diadiem").value;
-  const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
-  document.getElementById("vitri").value = vitri || "";
-
-  // ==== ⚡️ THÊM XỬ LÝ BÁN SIÊU NHANH Ở ĐÂY ====
-  const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
-  if (banSieuNhanh) {
-    document.getElementById("soluong").value = "1";
-    document.getElementById("size").value = "0"; // size rỗng
-    themVaoBang(""); // Bỏ qua kiểm tra size, số lượng
-    document.getElementById("masp").focus();
-    document.getElementById("masp").select();
-    return true; // Không chạy các logic kiểm tra khác nữa!
-  }
-  // ==== ⚡️ END ====
-
-  // ... Các xử lý logic size45, nhập nhanh cũ giữ nguyên ...
-  // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
-
-  if (
-    size45 &&
-    spData.chungloai &&
-    spData.chungloai.toLowerCase() === "gd"
-  ) {
-    const sizeInput = document.getElementById("size");
-    if (!sizeInput.value.trim()) {
-      sizeInput.focus();
-      return true; // Dừng lại, không tự thêm vào bảng
+    // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
+    if (!spData) {
+      if (typeof moBangDanhMucHangHoa === "function") {
+        moBangDanhMucHangHoa(maspVal);
+      }
+      return false;
     }
-    document.getElementById("soluong").value = "1";
-    themVaoBang(sizeInput.value.trim());
+
+    // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
+    document.getElementById("gia").value = spData.giale || "";
+    document.getElementById("khuyenmai").value = spData.khuyenmai || "";
+
+    const cs = document.getElementById("diadiem").value;
+    const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
+    document.getElementById("vitri").value = vitri || "";
+
+    // ==== ⚡️ THÊM XỬ LÝ BÁN SIÊU NHANH Ở ĐÂY ====
+    const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
+    if (banSieuNhanh) {
+      document.getElementById("soluong").value = "1";
+      document.getElementById("size").value = "0"; // size rỗng
+      themVaoBang(""); // Bỏ qua kiểm tra size, số lượng
+      document.getElementById("masp").focus();
+      document.getElementById("masp").select();
+      return true; // Không chạy các logic kiểm tra khác nữa!
+    }
+    // ==== ⚡️ END ====
+
+    // ... Các xử lý logic size45, nhập nhanh cũ giữ nguyên ...
+    // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
+
+    if (
+      size45 &&
+      spData.chungloai &&
+      spData.chungloai.toLowerCase() === "GD"
+    ) {
+      const sizeInput = document.getElementById("size");
+      if (!sizeInput.value.trim()) {
+        sizeInput.focus();
+        return true; // Dừng lại, không tự thêm vào bảng
+      }
+      document.getElementById("soluong").value = "1";
+      themVaoBang(sizeInput.value.trim());
+      return true;
+    }
+
+    // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
+    if (size45) {
+      document.getElementById("soluong").value = "1";
+      themVaoBang("0");
+    } else {
+      const nextId = nhapNhanh ? "size" : "soluong";
+      const nextInput = document.getElementById(nextId);
+      nextInput.focus();
+      if (nextId === "soluong") nextInput.select();
+    }
+
     return true;
   }
 
-  // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
-  if (size45) {
-    document.getElementById("soluong").value = "1";
-    themVaoBang("0");
-  } else {
-    const nextId = nhapNhanh ? "size" : "soluong";
-    const nextInput = document.getElementById(nextId);
-    nextInput.focus();
-    if (nextId === "soluong") nextInput.select();
-  }
 
-  return true;
-}
+  export async function themVaoBang(forcedSize = null) {
+    const masp = document.getElementById("masp").value.trim().toUpperCase();
+    const nhapNhanh = document.getElementById("nhapnhanh")?.checked;
+    let size, soluong;
 
-
-export function themVaoBang(forcedSize = null) {
-  const masp = document.getElementById("masp").value.trim().toUpperCase();
-  const nhapNhanh = document.getElementById("nhapnhanh")?.checked;
-  let size, soluong;
-
-  if (nhapNhanh) {
-    // Lấy thông tin sản phẩm
     let sp = window.sanPhamData?.[masp];
     if (!sp) {
       const { data } = await supabase
@@ -175,192 +172,193 @@ export function themVaoBang(forcedSize = null) {
         .eq("masp", masp)
         .single();
       sp = data;
+      if (data) window.sanPhamData[masp] = data; // cache lại
     }
-    const giaSP = Number(sp?.giale) || 0;
-    const laGiayDep = sp?.chungloai && sp.chungloai.toLowerCase() === "gd";
-    if (laGiayDep || giaSP >= 170000) {
-      // Bắt buộc phải lấy size thực tế do user nhập
-      size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
-      soluong = 1;
+
+    if (nhapNhanh) {
+      const giaSP = Number(sp?.giale) || 0;
+      const laGiayDep = sp?.chungloai && sp.chungloai.toLowerCase() === "gd";
+      if (laGiayDep || giaSP >= 170000) {
+        size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
+        soluong = 1;
+      } else {
+        size = "0";
+        soluong = 1;
+      }
     } else {
-      // Các trường hợp khác, auto size=0, soluong=1
-      size = "0";
-      soluong = 1;
+      size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
+      soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
     }
-  } else {
-    size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
-    soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
-  }
 
 
-  const sp = window.sanPhamData?.[masp];
+    const sp = window.sanPhamData?.[masp];
 
-  // --- Kiểm tra trạng thái bán siêu nhanh ---
-  const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
+    // --- Kiểm tra trạng thái bán siêu nhanh ---
+    const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
 
-  // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
-  if (!banSieuNhanh) {
-    if (!masp || !size || !sp) {
-      alert("Phải nhập size hợp lệ cho sản phẩm.");
-      document.getElementById("size").focus();
-      document.getElementById("size").select();
-      return;
+    // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
+    if (!banSieuNhanh) {
+      if (!masp || !size || !sp) {
+        alert("Phải nhập size hợp lệ cho sản phẩm.");
+        document.getElementById("size").focus();
+        document.getElementById("size").select();
+        return;
+      }
+      if (Array.isArray(window.danhMucSize) && !window.danhMucSize.includes(size)) {
+        alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
+        document.getElementById("size").focus();
+        document.getElementById("size").select();
+        return;
+      }
     }
-    if (Array.isArray(window.danhMucSize) && !window.danhMucSize.includes(size)) {
-      alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
-      document.getElementById("size").focus();
-      document.getElementById("size").select();
-      return;
+    // ==== END KIỂM TRA ====
+    const gia = parseFloat(document.getElementById("gia").value) || 0;
+    let km = tinhKhuyenMai(sp, gia);
+
+    const key = masp;
+    const bang = bangKetQua[key] || {
+      masp,
+      tensp: sp.tensp,
+      sizes: [],
+      soluongs: [],
+      tong: 0,
+      gia,
+      km,
+      dvt: ""
+    };
+
+    // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
+    const normSize = String(size).trim();
+    const index = bang.sizes.findIndex(sz => String(sz).trim() === normSize);
+    if (index !== -1) {
+      bang.soluongs[index] += soluong;
+    } else {
+      bang.sizes.push(normSize);
+      bang.soluongs.push(soluong);
     }
-  }
-  // ==== END KIỂM TRA ====
-  const gia = parseFloat(document.getElementById("gia").value) || 0;
-  let km = tinhKhuyenMai(sp, gia);
 
-  const key = masp;
-  const bang = bangKetQua[key] || {
-    masp,
-    tensp: sp.tensp,
-    sizes: [],
-    soluongs: [],
-    tong: 0,
-    gia,
-    km,
-    dvt: ""
-  };
+    bang.tong += soluong;
+    bangKetQua[key] = bang;
 
-  // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
-  const normSize = String(size).trim();
-  const index = bang.sizes.findIndex(sz => String(sz).trim() === normSize);
-  if (index !== -1) {
-    bang.soluongs[index] += soluong;
-  } else {
-    bang.sizes.push(normSize);
-    bang.soluongs.push(soluong);
+    capNhatBangHTML(bangKetQua);
+    resetFormBang();
   }
 
-  bang.tong += soluong;
-  bangKetQua[key] = bang;
 
-  capNhatBangHTML(bangKetQua);
-  resetFormBang();
-}
-
-
-export function getBangKetQua() {
-  if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
-    return window.bangKetQua;
-  }
-  return bangKetQua;
-}
-
-export function resetBangKetQua() {
-  bangKetQua = {};
-  if (window.bangKetQua) window.bangKetQua = {};
-  capNhatBangHTML(bangKetQua);
-}
-
-
-export function ganTenNV() {
-  const manv = document.getElementById("manv").value.trim();
-  document.getElementById("tennv").value = window.nhanVienData?.[manv] || "";
-}
-
-export function xoaDongDangChon() {
-  if (!maspDangChon) {
-    alert("Vui lòng chọn dòng cần xóa.");
-    return;
+  export function getBangKetQua() {
+    if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
+      return window.bangKetQua;
+    }
+    return bangKetQua;
   }
 
-  if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
-    delete bangKetQua[maspDangChon];
-    maspDangChon = null;
+  export function resetBangKetQua() {
+    bangKetQua = {};
+    if (window.bangKetQua) window.bangKetQua = {};
     capNhatBangHTML(bangKetQua);
   }
-}
 
-export function suaDongDangChon() {
-  const dangChon = getMaspspDangChon();
-  if (!dangChon) {
-    alert("Vui lòng chọn dòng muốn sửa.");
-    return;
-  }
-  const { masp, size } = dangChon;
-  const item = bangKetQua[masp];
-  if (!item) {
-    alert("Không tìm thấy dòng để sửa.");
-    return;
-  }
-  const idx = item.sizes.findIndex(s => s == size);
 
-  if (idx === -1) {
-    alert("Không tìm thấy size để sửa.");
-    return;
+  export function ganTenNV() {
+    const manv = document.getElementById("manv").value.trim();
+    document.getElementById("tennv").value = window.nhanVienData?.[manv] || "";
   }
 
-  // Đưa thông tin về form nhập
-  document.getElementById("masp").value = item.masp || "";
-  document.getElementById("size").value = item.sizes[idx] || "";
-  document.getElementById("soluong").value = item.soluongs[idx] || "1";
-  document.getElementById("dvt").value = item.dvt || "";
-  document.getElementById("gia").value = item.gia || "";
-  document.getElementById("khuyenmai").value = item.km || "";
-
-  // Xóa đúng dòng đang chọn (đúng size) khỏi bảng
-  item.sizes.splice(idx, 1);
-  item.soluongs.splice(idx, 1);
-  item.tong -= parseInt(document.getElementById("soluong").value) || 0;
-  if (item.sizes.length === 0) delete bangKetQua[masp];
-
-  maspDangChon = null;
-  capNhatBangHTML(bangKetQua);
-
-  // Focus lại vào ô nhập liệu đầu vào để sửa
-  document.getElementById("masp").focus();
-}
-
-
-export async function napLaiChiTietHoaDon(sohd) {
-  // Lấy chi tiết từ bảng ct_hoadon_banle
-  const { data: chitiet, error } = await supabase
-    .from("ct_hoadon_banle")
-    .select("*")
-    .eq("sohd", sohd);
-
-  if (error || !chitiet || chitiet.length === 0) {
-    alert("❌ Không tìm thấy chi tiết hóa đơn để sửa.");
-    return;
-  }
-
-  // Reset lại bảng tạm
-  resetBangKetQua();
-
-  // Ghép lại đúng cấu trúc của bangKetQua
-  chitiet.forEach(ct => {
-    const masp = ct.masp;
-    if (!bangKetQua[masp]) {
-      bangKetQua[masp] = {
-        masp: ct.masp,
-        tensp: ct.tensp,
-        sizes: [],
-        soluongs: [],
-        tong: 0,
-        gia: ct.gia,
-        km: ct.km,
-        dvt: ct.dvt || ""
-      };
+  export function xoaDongDangChon() {
+    if (!maspDangChon) {
+      alert("Vui lòng chọn dòng cần xóa.");
+      return;
     }
-    const index = bangKetQua[masp].sizes.indexOf(ct.size);
-    if (index === -1) {
-      bangKetQua[masp].sizes.push(String(ct.size)); // luôn lưu về kiểu string
 
-      bangKetQua[masp].soluongs.push(ct.soluong);
-    } else {
-      bangKetQua[masp].soluongs[index] += ct.soluong;
+    if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
+      delete bangKetQua[maspDangChon];
+      maspDangChon = null;
+      capNhatBangHTML(bangKetQua);
     }
-    bangKetQua[masp].tong += ct.soluong;
-  });
+  }
 
-  capNhatBangHTML(bangKetQua);
-}
+  export function suaDongDangChon() {
+    const dangChon = getMaspspDangChon();
+    if (!dangChon) {
+      alert("Vui lòng chọn dòng muốn sửa.");
+      return;
+    }
+    const { masp, size } = dangChon;
+    const item = bangKetQua[masp];
+    if (!item) {
+      alert("Không tìm thấy dòng để sửa.");
+      return;
+    }
+    const idx = item.sizes.findIndex(s => s == size);
+
+    if (idx === -1) {
+      alert("Không tìm thấy size để sửa.");
+      return;
+    }
+
+    // Đưa thông tin về form nhập
+    document.getElementById("masp").value = item.masp || "";
+    document.getElementById("size").value = item.sizes[idx] || "";
+    document.getElementById("soluong").value = item.soluongs[idx] || "1";
+    document.getElementById("dvt").value = item.dvt || "";
+    document.getElementById("gia").value = item.gia || "";
+    document.getElementById("khuyenmai").value = item.km || "";
+
+    // Xóa đúng dòng đang chọn (đúng size) khỏi bảng
+    item.sizes.splice(idx, 1);
+    item.soluongs.splice(idx, 1);
+    item.tong -= parseInt(document.getElementById("soluong").value) || 0;
+    if (item.sizes.length === 0) delete bangKetQua[masp];
+
+    maspDangChon = null;
+    capNhatBangHTML(bangKetQua);
+
+    // Focus lại vào ô nhập liệu đầu vào để sửa
+    document.getElementById("masp").focus();
+  }
+
+
+  export async function napLaiChiTietHoaDon(sohd) {
+    // Lấy chi tiết từ bảng ct_hoadon_banle
+    const { data: chitiet, error } = await supabase
+      .from("ct_hoadon_banle")
+      .select("*")
+      .eq("sohd", sohd);
+
+    if (error || !chitiet || chitiet.length === 0) {
+      alert("❌ Không tìm thấy chi tiết hóa đơn để sửa.");
+      return;
+    }
+
+    // Reset lại bảng tạm
+    resetBangKetQua();
+
+    // Ghép lại đúng cấu trúc của bangKetQua
+    chitiet.forEach(ct => {
+      const masp = ct.masp;
+      if (!bangKetQua[masp]) {
+        bangKetQua[masp] = {
+          masp: ct.masp,
+          tensp: ct.tensp,
+          sizes: [],
+          soluongs: [],
+          tong: 0,
+          gia: ct.gia,
+          km: ct.km,
+          dvt: ct.dvt || ""
+        };
+      }
+      const index = bangKetQua[masp].sizes.indexOf(ct.size);
+      if (index === -1) {
+        bangKetQua[masp].sizes.push(String(ct.size)); // luôn lưu về kiểu string
+
+        bangKetQua[masp].soluongs.push(ct.soluong);
+      } else {
+        bangKetQua[masp].soluongs[index] += ct.soluong;
+      }
+      bangKetQua[masp].tong += ct.soluong;
+    });
+
+    capNhatBangHTML(bangKetQua);
+  }
 
