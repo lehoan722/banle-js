@@ -96,9 +96,10 @@ function showEmptyIfZero(val) {
 
 // ==== Hàm chính lấy và render dữ liệu ====
 async function triggerSearch(_masp = null) {
-    msg.textContent = "Dang tìm mã sản phẩm!";
-    let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
     const msg = document.getElementById('statusMsg');
+    msg.textContent = "Đang tìm kiếm mã sản phẩm...";
+
+    let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
     msg.textContent = "";
     document.getElementById('multiDetailBox').innerHTML = "";
     document.getElementById('multiDetailBox').style.display = "none";
@@ -122,6 +123,25 @@ async function triggerSearch(_masp = null) {
         return;
     }
 
+    // Mảng chứa các mã thực sự có phát sinh xuất nhập tồn
+    let productWithXNT = [];
+
+    // Lặp từng mã sản phẩm, chỉ giữ lại mã có phát sinh XNT
+    for (const row of list) {
+        let { data: xntdata, error: xntErr } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
+        if (xntErr) continue;
+        if (xntdata && xntdata.length > 0) {
+            productWithXNT.push(row.masp);
+        }
+    }
+
+    if (productWithXNT.length === 0) {
+        msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
+        document.getElementById('singleDetailBox').style.display = "none";
+        document.getElementById('multiDetailBox').style.display = "none";
+        return;
+    }
+
     // Nếu chỉ 1 mã -> hiện chi tiết như cũ
     if (list.length === 1) {
         document.getElementById('singleDetailBox').style.display = "";
@@ -137,7 +157,7 @@ async function triggerSearch(_masp = null) {
     }
     document.getElementById('multiDetailBox').innerHTML = html;
     document.getElementById('multiDetailBox').style.display = "";
-    msg.textContent = "Hoan thanh tim kiem.";
+    msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
 
 // Hàm render detail cho 1 mã, chèn trực tiếp vào DOM (giữ nguyên khung trái/phải)
