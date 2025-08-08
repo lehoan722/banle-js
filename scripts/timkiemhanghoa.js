@@ -204,16 +204,23 @@ async function triggerSearch() {
     // ===== THÊM 2 DÒNG NÀY NGAY SAU =====
     // Tổng từng cột theo size (size khác null/0)
 
-    // 1. Danh sách size cố định và dòng Tổng
+    // Danh sách size cố định và dòng Tổng
     const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
 
-    // 2. Đưa dữ liệu về dạng map cho từng size
+    // Đưa dữ liệu về dạng map cho từng size
     let rowMap = {};
     xntdata.forEach(row => {
         rowMap[row.size === null ? '' : row.size] = row;
     });
 
-    // 3. Render bảng theo thứ tự cố định
+    // Tính tổng theo các trường, bỏ qua dòng Tổng (chỉ cộng từ các size thực sự)
+    let totalRow = {};
+    let fieldList = ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"];
+    fieldList.forEach(field => {
+        totalRow[field] = SIZE_LIST.slice(1).reduce((sum, sz) => sum + (Number(rowMap[sz]?.[field]) || 0), 0);
+    });
+
+    // Render bảng theo thứ tự cố định
     let htmlRight = `
 <tr>
     <th class="size">Size</th>
@@ -227,8 +234,22 @@ async function triggerSearch() {
 </tr>
 `;
 
-    // Duyệt theo SIZE_LIST, nếu có dữ liệu thì hiện, không thì hiện trống
-    SIZE_LIST.forEach(sz => {
+    // Dòng tổng
+    htmlRight += `
+<tr>
+    <td class="size">Tổng</td>
+    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+</tr>
+`;
+
+    // Dòng từng size
+    SIZE_LIST.slice(1).forEach(sz => {
         let row = rowMap[sz];
         htmlRight += `
 <tr>
@@ -243,6 +264,7 @@ async function triggerSearch() {
 </tr>
     `;
     });
+
     document.getElementById('infoTableRight').innerHTML = htmlRight;
 
 
