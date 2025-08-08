@@ -4,7 +4,7 @@ let currentPage = 1;
 let pageSize = 10000;
 
 
-// ==== 1. ĐĂNG NHẬP SUPABASE ==== 
+// ==== 1. ĐĂNG NHẬP SUPABASE ====
 window.dangNhap = async function () {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
@@ -77,38 +77,8 @@ window.taiBaoCaoXNT = async function () {
     const locPhatSinhNhap = document.getElementById('locPhatSinhNhap').checked;
     const locPhatSinhXuat = document.getElementById('locPhatSinhXuat').checked;
     const tonghopSize = document.getElementById('tonghopSizeCheckbox').checked;
-    const locNCC = document.getElementById("locNCCCheckbox").checked;
-    const khInput = document.getElementById("khachhangInput");
-    if (locNCC) {
-        khInput.placeholder = "Mã nhà cung cấp";
-    } else {
-        khInput.placeholder = "Khách hàng";
-    }
 
-
-
-    // Gửi filter xuống function SQL    
-
-    if (locNCC && khachhang) {
-        // Nếu tích lọc theo nhà cung cấp thì lấy toàn bộ mã hàng có nhacc = khachhang
-        const { data: dsmaspNCC, error: errNCC } = await supabase
-            .from('dmhanghoa')
-            .select('masp')
-            .eq('nhacc', khachhang);
-
-        if (errNCC) {
-            alert("Lỗi truy vấn nhà cung cấp: " + errNCC.message);
-            return;
-        }
-        if (!dsmaspNCC || dsmaspNCC.length === 0) {
-            alert("Không có sản phẩm nào thuộc nhà cung cấp này!");
-            return;
-        }
-        // Gán danh sách mã sản phẩm thuộc NCC
-        finalMaspList = dsmaspNCC.map(x => x.masp.toUpperCase());
-    }
-
-
+    // Gửi filter xuống function SQL
     const params = {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
