@@ -96,6 +96,7 @@ function showEmptyIfZero(val) {
 
 // ==== Hàm chính lấy và render dữ liệu ====
 async function triggerSearch(_masp = null) {
+    msg.textContent = "Dang tìm mã sản phẩm!";
     let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
     const msg = document.getElementById('statusMsg');
     msg.textContent = "";
@@ -136,6 +137,7 @@ async function triggerSearch(_masp = null) {
     }
     document.getElementById('multiDetailBox').innerHTML = html;
     document.getElementById('multiDetailBox').style.display = "";
+    msg.textContent = "Hoan thanh tim kiem.";
 }
 
 // Hàm render detail cho 1 mã, chèn trực tiếp vào DOM (giữ nguyên khung trái/phải)
@@ -190,6 +192,12 @@ async function renderOneProductDetail(masp) {
 
     // Gọi function SQL lấy xuất nhập tồn
     let { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    if (!xntdata || !xntdata.length) {
+        document.getElementById('infoTableLeft').innerHTML = "";
+        document.getElementById('infoTableRight').innerHTML = "";
+        document.getElementById('statusMsg').textContent = "Không có dữ liệu xuất nhập tồn!";
+        return false;
+    }
 
     // Map dữ liệu từng size, tính tổng dòng đầu
     const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
@@ -247,7 +255,7 @@ async function renderOneProductDetail(masp) {
         let row = rowMap[sz];
         htmlRight += `
         <tr>
-            <td class="size">${sz === '0' ? '0' : sz}</td>
+            <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
             <td class="number">${showEmptyIfZero(row?.nhapmua)}</td>
             <td class="number">${showEmptyIfZero(row?.xuatban)}</td>
             <td class="number">${showEmptyIfZero(row?.toncuoi)}</td>
@@ -259,6 +267,7 @@ async function renderOneProductDetail(masp) {
         `;
     });
     document.getElementById('infoTableRight').innerHTML = htmlRight;
+    document.getElementById('maspInput').select();
 }
 
 // Hàm render 1 bản kết quả chi tiết trả về HTML (để dùng trong trường hợp nhiều mã)
@@ -313,6 +322,12 @@ async function renderProductDetailHTML(masp) {
 
     // Gọi function SQL lấy xuất nhập tồn
     let { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    if (!xntdata || !xntdata.length) {
+        document.getElementById('infoTableLeft').innerHTML = "";
+        document.getElementById('infoTableRight').innerHTML = "";
+        document.getElementById('statusMsg').textContent = "Không có dữ liệu xuất nhập tồn!";
+        return false;
+    }
 
     // Map dữ liệu từng size, tính tổng dòng đầu
     const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
