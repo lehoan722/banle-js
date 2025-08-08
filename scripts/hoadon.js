@@ -87,7 +87,7 @@ export async function chuyenFocus(e) {
       const laGiayDep = spData?.chungloai && spData.chungloai.toLowerCase() === "gd";
       if (giaSP >= 170000 || laGiayDep) {
         // Bắt buộc có size
-        themVaoBang(); // Nên thêm await, hoặc giữ nguyên cũng được
+       themVaoBang(); // Nên thêm await, hoặc giữ nguyên cũng được
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
         return;
