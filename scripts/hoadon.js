@@ -210,7 +210,28 @@ export function themVaoBang(forcedSize = null) {
   }
   // ==== END KIỂM TRA ====
   const gia = parseFloat(document.getElementById("gia").value) || 0;
-  let km = tinhKhuyenMai(sp, gia);
+  let khuyenMaiNhapTay = document.getElementById("khuyenmai")?.value;
+  let km = 0;
+
+  if (khuyenMaiNhapTay !== undefined && khuyenMaiNhapTay !== null && khuyenMaiNhapTay !== "") {
+    let soKM = Number(khuyenMaiNhapTay);
+    if (!isNaN(soKM) && soKM > 0) {
+      if (soKM > 100) {
+        // Trừ trực tiếp số tiền nhập vào
+        km = soKM;
+      } else {
+        // Trừ phần trăm giá
+        km = Math.round((gia * soKM) / 100);
+      }
+    } else {
+      // Nếu người dùng nhập linh tinh, vẫn dùng logic cũ
+      km = tinhKhuyenMai(sp, gia);
+    }
+  } else {
+    // Không nhập gì, dùng khuyến mại mặc định
+    km = tinhKhuyenMai(sp, gia);
+  }
+
 
   const key = masp;
   const bang = bangKetQua[key] || {
