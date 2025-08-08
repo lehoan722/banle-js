@@ -25,7 +25,8 @@ export async function chuyenFocus(e) {
 
   if (e.target.id === "masp") {
     const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-    const thanhCong = await xuLyMaSanPham(maspVal, size45, nhapNhanh);
+    const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked;
+    const thanhCong = await xuLyMaSanPham(quanLySizeTheoGia, maspVal, size45, nhapNhanh);
 
     // Nếu không thành công, mới mở popup tìm mã
     if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
@@ -38,7 +39,7 @@ export async function chuyenFocus(e) {
   }
 }
 
-async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
+async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
   maspVal = maspVal.toUpperCase().trim();
   let spData = window.sanPhamData?.[maspVal];
 
@@ -88,7 +89,7 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
   // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
 
   if (
-    size45 &&
+    quanlysizetheogia &&
     (
       (spData.chungloai && spData.chungloai.toLowerCase() === "gd")
       ||
@@ -105,6 +106,20 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
     return true;
   }
 
+  if (
+    size45 &&
+    spData.chungloai &&
+    spData.chungloai.toLowerCase() === "gd"
+  ) {
+    const sizeInput = document.getElementById("size");
+    if (!sizeInput.value.trim()) {
+      sizeInput.focus();
+      return true; // Dừng lại, không tự thêm vào bảng
+    }
+    document.getElementById("soluong").value = "1";
+    themVaoBang(sizeInput.value.trim());
+    return true;
+  }
 
   // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
   if (size45) {
@@ -119,7 +134,6 @@ async function xuLyMaSanPham(maspVal, size45, nhapNhanh) {
 
   return true;
 }
-
 
 export function themVaoBang(forcedSize = null) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
