@@ -50,11 +50,14 @@ export async function chuyenFocus(e) {
       document.getElementById("size").focus();
       document.getElementById("size").select();
     } else {
-      // Không thuộc diện bắt buộc quản lý size: cho luồng cũ tự xử lý (focus sang số lượng như mặc định)
-      document.getElementById("soluong").focus();
-      document.getElementById("soluong").select();
+      // Sản phẩm không cần size, tự động thêm vào bảng với size=0, soluong=1
+      document.getElementById("size").value = "0";
+      document.getElementById("soluong").value = "1";
+      themVaoBang(); // nhớ là themVaoBang phải là async
+      document.getElementById("masp").focus();
+      document.getElementById("masp").select();
     }
-    return; // Đảm bảo dừng lại không chạy các nhánh khác
+    return;  // Đảm bảo dừng lại không chạy các nhánh khác
   }
 
 
