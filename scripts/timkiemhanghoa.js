@@ -253,7 +253,7 @@ async function triggerSearch() {
         let row = rowMap[sz];
         htmlRight += `
 <tr>
-    <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
+    <td class="size">${sz === '0' ? '0' : sz}</td>
     <td class="number">${showEmptyIfZero(row?.nhapmua)}</td>
     <td class="number">${showEmptyIfZero(row?.xuatban)}</td>
     <td class="number">${showEmptyIfZero(row?.toncuoi)}</td>
