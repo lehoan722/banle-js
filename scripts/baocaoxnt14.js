@@ -270,15 +270,18 @@ document.addEventListener('keydown', (e) => {
 // Đóng popup khi click ra ngoài khung content
 document.addEventListener('click', (e) => {
     const overlay = document.getElementById('popupSearch');
-    const box = document.getElementById('popupSearchContent');
     if (!overlay || overlay.style.display !== 'block') return;
-    if (!box) { // nếu chưa có box riêng thì click overlay sẽ đóng
-        if (e.target === overlay) window.closePopupSearch();
-        return;
+    // nếu click không nằm trong overlay (list/input là con của overlay) thì bỏ
+    if (!overlay.contains(e.target)) return;
+
+    // nếu click chính overlay (không phải click vào input/list bên trong) thì đóng
+    const input = document.getElementById('popupSearchInput');
+    const list = document.getElementById('popupSearchList');
+    if (e.target !== input && e.target !== list && !list.contains(e.target)) {
+        window.closePopupSearch();
     }
-    // nếu click đúng overlay (không phải trong box) → đóng
-    if (e.target === overlay) window.closePopupSearch();
 });
+
 
 // Ngăn sự kiện click bên trong box lan ra overlay
 const box = document.getElementById('popupSearchContent');
@@ -337,11 +340,11 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
     let table = '', field = '', extraFields = '';
     if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
     else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
-    else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
-    else if (type === 'mausac') { table = 'dmhanghoa'; field = 'mausac'; }
+    else if (type === 'nhomhang') { table = 'dmnhomhang'; field = 'manhom'; extraFields = ', tennhom'; }
+    else if (type === 'chungloai') { table = 'dmchungloai'; field = 'machungloai'; extraFields = ', tenchungloai'; }
+    else if (type === 'mausac') { table = 'dmmausac'; field = 'mausac'; extraFields = ', tenmau'; }
     else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else if (type === 'size') { table = 'dmhanghoa'; field = 'size'; }
+    else if (type === 'size') { table = 'dmsize'; field = 'size'; extraFields = ', mota'; }
     else return;
 
     let { data, error } = await supabase
@@ -474,7 +477,7 @@ async function searchPopup(keyword) {
     }
     // Lọc unique cho các field không unique
     let uniqueData = data;
-    if (['nhomhang', 'chungloai', 'mausac', 'size'].includes(field)) {
+    if (['manhom', 'machungloai', 'mausac', 'size'].includes(field)) {
         const seen = new Set();
         uniqueData = data.filter(row => {
             const val = row[field];
@@ -490,6 +493,8 @@ async function searchPopup(keyword) {
       ${row.tensp ? " - " + row.tensp : ""}
       ${row.tenkh ? " - " + row.tenkh : ""}
       ${row.tennv ? " - " + row.tennv : ""}
+       ${row.tennhom ? " - " + row.tennhom : ""}           <!-- ⬅️ THÊM -->
+      ${row.tenchungloai ? " - " + row.tenchungloai : ""} <!-- ⬅️ THÊM -->
     </div>
   `).join('');
 }
