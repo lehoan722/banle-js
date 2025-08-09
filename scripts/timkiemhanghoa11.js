@@ -87,7 +87,11 @@ document.getElementById('maspInput').addEventListener('keydown', function (e) {
 document.getElementById('maspInput').addEventListener('blur', function () {
     // triggerSearch();
 });
-document.getElementById('searchBtn').onclick = triggerSearch;
+document.getElementById('searchBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    triggerSearch();          // gọi KHÔNG truyền tham số
+});
+
 
 // ==== Hàm hiển thị rỗng nếu giá trị là 0 ====
 function showEmptyIfZero(val) {
@@ -102,7 +106,7 @@ async function triggerSearch(_masp = null) {
     document.getElementById('multiDetailBox').style.display = "none";
     document.getElementById('singleDetailBox').style.display = "";
     document.getElementById('maspInput').select();
-    
+
     let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
     if (!masp || masp.length < 3) {
         msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
