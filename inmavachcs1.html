@@ -247,7 +247,7 @@
                             <input name="gianhap" id="gianhapInput" type="text" />
                         </div>
                     </div>
-                    <div class="form-row">                        
+                    <div class="form-row">
                         <label for="gialeInput">Giá lẻ <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="giale" id="gialeInput" type="text" required />
@@ -761,15 +761,55 @@
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
+        // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         async function loadDropdownOptions() {
-            const fields = ['mausac', 'nhacc', 'chungloai'];
-            for (const field of fields) {
-                const { data } = await supabase.from('dmhanghoa').select(`${field}`);
-                const unique = [...new Set((data || []).map(r => r[field]).filter(Boolean))];
-                const list = document.getElementById(field + 'List');
-                list.innerHTML = unique.map(val => `<option value="${val}"></option>`).join('');
+            // 1) NHÀ CUNG CẤP: lấy từ dmkhachhang (la_ncc = true)
+            {
+                const { data, error } = await supabase
+                    .from('dmkhachhang')
+                    .select('makh, tenkh, la_ncc')
+                    .eq('la_ncc', true)
+                    .order('makh', { ascending: true });
+                if (error) console.error('Load NCC error:', error);
+
+                const html = (data || [])
+                    .filter(r => r.makh)
+                    .map(r => `<option value="${(r.makh || '').toUpperCase()}" label="${(r.makh || '').toUpperCase()} - ${r.tenkh || ''}"></option>`)
+                    .join('');
+                document.getElementById('nhaccList').innerHTML = html;
+            }
+
+            // 2) CHỦNG LOẠI: lấy từ dmchungloai (machungloai, tenchungloai)
+            {
+                const { data, error } = await supabase
+                    .from('dmchungloai')
+                    .select('machungloai, tenchungloai')
+                    .order('machungloai', { ascending: true });
+                if (error) console.error('Load Chủng loại error:', error);
+
+                const html = (data || [])
+                    .filter(r => r.machungloai)
+                    .map(r => `<option value="${(r.machungloai || '').toUpperCase()}" label="${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}"></option>`)
+                    .join('');
+                document.getElementById('chungloaiList').innerHTML = html;
+            }
+
+            // 3) MÀU SẮC: lấy từ dmmausac (mamau, tenmau)
+            {
+                const { data, error } = await supabase
+                    .from('dmmausac')
+                    .select('mamau, tenmau')
+                    .order('mamau', { ascending: true });
+                if (error) console.error('Load Màu sắc error:', error);
+
+                const html = (data || [])
+                    .filter(r => r.mamau)
+                    .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
+                    .join('');
+                document.getElementById('mausacList').innerHTML = html;
             }
         }
+
 
         // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
         document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
@@ -800,6 +840,7 @@
                 document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                 document.getElementById('nhaccInput').value = data.nhacc || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
+                document.getElementById('mausacInput').value = data.mausac || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
@@ -810,6 +851,29 @@
                 // Giữ nguyên các trường, để người dùng nhập tiếp tục
             }
         }
+
+        async function resolveNCC(val) {
+            if (!val) return '';
+            // nếu đã trông giống mã (không có khoảng trắng/ký tự tiếng Việt), cho qua
+            if (/^[A-Z0-9\-_]+$/.test(val)) return val.toUpperCase();
+
+            // ngược lại, thử tìm theo tên
+            const { data } = await supabase
+                .from('dmkhachhang')
+                .select('makh, tenkh')
+                .eq('la_ncc', true)
+                .ilike('tenkh', val)
+                .limit(2);
+            if (data && data.length === 1) return (data[0].makh || '').toUpperCase();
+            return ''; // mơ hồ -> để validate báo thiếu
+        }
+
+        // ... trong onsubmit, trước khi tạo object data:
+        let nhaccCode = nhaccVal;
+        if (!/^[A-Z0-9\-_]+$/.test(nhaccCode)) nhaccCode = await resolveNCC(nhaccVal);
+        if (!nhaccCode) { alert('Không xác định được MÃ nhà cung cấp từ giá trị nhập.'); return; }
+        // dùng nhaccCode thay cho nhaccVal
+
 
 
         // ==== Nút Thêm mới ====
@@ -861,6 +925,21 @@
             return { valid, msg: msg.join(', ') };
         }
 
+        const nhaccVal = document.getElementById('nhaccInput').value.trim().toUpperCase();
+        const chungloaiVal = document.getElementById('chungloaiInput').value.trim().toUpperCase();
+        const mausacVal = document.getElementById('mausacInput').value.trim().toUpperCase();
+
+        const data = {
+            masp: document.getElementById('maspInput').value.trim().toUpperCase(),
+            tensp: document.getElementById('tenspInput').value.trim(),
+            gianhap: parseInt(gianhapVal) || 1,
+            giale: parseInt(gialeVal) || 0,
+            mausac: mausacVal,                // <-- dùng mã màu
+            khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
+            nhacc: nhaccVal,                  // <-- dùng mã NCC
+            chungloai: chungloaiVal,          // <-- dùng mã chủng loại
+            quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
+        };
 
 
         // ==== Nút Lưu (submit form) ====
