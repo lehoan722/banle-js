@@ -258,6 +258,34 @@ window.openPopupSearch = function (type, keyword = "") {
 window.closePopupSearch = function () {
     document.getElementById('popupSearch').style.display = 'none';
 };
+
+// Đóng popup bằng phím ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const p = document.getElementById('popupSearch');
+        if (p && p.style.display === 'block') window.closePopupSearch();
+    }
+});
+
+// Đóng popup khi click ra ngoài khung content
+document.addEventListener('click', (e) => {
+    const overlay = document.getElementById('popupSearch');
+    const box = document.getElementById('popupSearchContent');
+    if (!overlay || overlay.style.display !== 'block') return;
+    if (!box) { // nếu chưa có box riêng thì click overlay sẽ đóng
+        if (e.target === overlay) window.closePopupSearch();
+        return;
+    }
+    // nếu click đúng overlay (không phải trong box) → đóng
+    if (e.target === overlay) window.closePopupSearch();
+});
+
+// Ngăn sự kiện click bên trong box lan ra overlay
+const box = document.getElementById('popupSearchContent');
+if (box) {
+    box.addEventListener('click', (e) => e.stopPropagation());
+}
+
 window.clearInput = function (inputId) {
     document.getElementById(inputId).value = '';
 };
@@ -393,7 +421,7 @@ async function searchPopup(keyword) {
             .eq('la_ncc', true)
             .limit(500);
 
-        if (keyword && keyword.length >= 2) {
+        if (keyword && keyword.length >= 1) {
             query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
         }
 
@@ -416,17 +444,27 @@ async function searchPopup(keyword) {
 
 
     let table = '', field = '', extraFields = '';
-    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'tenkh'; extraFields = ', tenkh'; }
-    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhomhang') { table = 'dmhanghoa'; field = 'nhomhang'; }
-    else if (type === 'chungloai') { table = 'dmhanghoa'; field = 'chungloai'; }
-    else if (type === 'mausac') { table = 'dmhanghoa'; field = 'mausac'; }
-    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'tennv'; extraFields = ', tennv'; }
-    else if (type === 'size') { table = 'dmhanghoa'; field = 'size'; }
-    else return;
+    if (type === 'khachhang') {
+        table = 'dmkhachhang'; field = 'tenkh'; extraFields = ', tenkh';
+    } else if (type === 'mahang') {
+        table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp';
+    } else if (type === 'nhomhang') {
+        // ĐỔI NGUỒN → BẢNG DANH MỤC NHÓM HÀNG
+        table = 'dmnhomhang'; field = 'manhom'; extraFields = ', tennhom';
+    } else if (type === 'chungloai') {
+        // ĐỔI NGUỒN → BẢNG DANH MỤC CHỦNG LOẠI
+        table = 'dmchungloai'; field = 'machungloai'; extraFields = ', tenchungloai';
+    } else if (type === 'mausac') {
+        table = 'dmhanghoa'; field = 'mausac';
+    } else if (type === 'nhanvien') {
+        table = 'dmnhanvien'; field = 'tennv'; extraFields = ', tennv';
+    } else if (type === 'size') {
+        table = 'dmhanghoa'; field = 'size';
+    } else return;
+
 
     let query = supabase.from(table).select(`${field}${extraFields}`).limit(500);
-    if (keyword && keyword.length >= 2) {
+    if (keyword && keyword.length >= 1) {
         query = query.ilike(field, `%${keyword}%`);
     }
     const { data, error } = await query;
