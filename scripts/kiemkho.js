@@ -180,19 +180,36 @@ async function onKiemTra() {
     showMsg("");
 }
 
+// Gọi 1 RPC để lấy XNT cho nhiều mã cùng lúc
 async function fetchXNTBatch(masps) {
-    // Gọi 1 RPC duy nhất trả về tất cả mã
-    const { data, error } = await supabase.rpc('timkiemhanghoa_multi', { masps });
-    if (error) return {};
-    // Gom về dạng { MASP: [rows] }
+    // chuẩn hóa: UPPER + loại trùng + loại rỗng
+    const cleaned = Array.from(
+        new Set((masps || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean))
+    );
+    if (!cleaned.length) return {};
+
+    // Supabase có giới hạn payload → chia lô (ví dụ 200 mã/lô)
+    const chunkSize = 200;
+    const chunks = [];
+    for (let i = 0; i < cleaned.length; i += chunkSize) {
+        chunks.push(cleaned.slice(i, i + chunkSize));
+    }
+
     const map = {};
-    (data || []).forEach(r => {
-        if (!map[r.masp]) map[r.masp] = [];
-        map[r.masp].push(r);
-    });
+    for (const c of chunks) {
+        const { data, error } = await supabase.rpc('timkiemhanghoa_multi', { masps: c });
+        if (error) {
+            console.error('timkiemhanghoa_multi error:', error);
+            continue;
+        }
+        (data || []).forEach(r => {
+            const key = r.masp.toUpperCase();
+            if (!map[key]) map[key] = [];
+            map[key].push(r); // r = { masp, size, nhapmua, xuatban, toncuoi, ban_cs1, ton_cs1, ton_cs2, ban_cs2 }
+        });
+    }
     return map;
 }
-
 
 
 // Thêm mới dòng rỗng
