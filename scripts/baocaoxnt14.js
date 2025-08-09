@@ -271,12 +271,10 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('click', (e) => {
     const overlay = document.getElementById('popupSearch');
     if (!overlay || overlay.style.display !== 'block') return;
-
-    // Nếu click BÊN NGOÀI popup → đóng
-    if (!overlay.contains(e.target)) {
-        window.closePopupSearch();
-        return;
-    }
+    // Bỏ qua cú click vừa mở popup
+    if (window._skipDocClickOnce) { window._skipDocClickOnce = false; return; }
+    // Chỉ đóng khi click đúng overlay (vùng nền), không đóng khi click trong khung nội dung
+    if (e.target === overlay) window.closePopupSearch();
 });
 
 
@@ -467,11 +465,11 @@ async function searchPopup(keyword) {
         // ĐỔI NGUỒN → BẢNG DANH MỤC CHỦNG LOẠI
         table = 'dmchungloai'; field = 'machungloai'; extraFields = ', tenchungloai';
     } else if (type === 'mausac') {
-        table = 'dmhanghoa'; field = 'mausac';
+        table = 'dmmausac'; field = 'mamau'; extraFields = ', tenmau';
     } else if (type === 'nhanvien') {
         table = 'dmnhanvien'; field = 'tennv'; extraFields = ', tennv';
     } else if (type === 'size') {
-        table = 'dmhanghoa'; field = 'size';
+        table = 'dm_size'; field = 'size'; extraFields = ', mota';
     } else return;
 
 
