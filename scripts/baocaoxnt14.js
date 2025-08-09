@@ -217,7 +217,11 @@ window.taiBaoCaoXNT = async function () {
         rowHeaders: true,
         width: '100%',
         height: 550,
-        copyHeaders: true,  // <-- Bật copy kèm tiêu đề
+        copyPaste: {
+            copyColumnHeaders: true,   // bật copy kèm tiêu đề cột
+            // (tuỳ chọn) rowsLimit: 100000,
+            // (tuỳ chọn) columnsLimit: 1000
+        },
         licenseKey: 'non-commercial-and-evaluation',
         stretchH: 'all',
         manualColumnResize: true,
