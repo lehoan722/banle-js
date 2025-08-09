@@ -761,53 +761,47 @@
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
-        // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
+        // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
         async function loadDropdownOptions() {
-            // 1) NHÀ CUNG CẤP: lấy từ dmkhachhang (la_ncc = true)
-            {
-                const { data, error } = await supabase
+            // 1) NHÀ CUNG CẤP: dmkhachhang (la_ncc = true) → value = MÃ NCC, label = "MÃ - TÊN"
+            try {
+                const { data: ncc, error: errNcc } = await supabase
                     .from('dmkhachhang')
                     .select('makh, tenkh, la_ncc')
                     .eq('la_ncc', true)
                     .order('makh', { ascending: true });
-                if (error) console.error('Load NCC error:', error);
-
-                const html = (data || [])
+                if (errNcc) console.error('Load NCC error:', errNcc);
+                document.getElementById('nhaccList').innerHTML = (ncc || [])
                     .filter(r => r.makh)
                     .map(r => `<option value="${(r.makh || '').toUpperCase()}" label="${(r.makh || '').toUpperCase()} - ${r.tenkh || ''}"></option>`)
                     .join('');
-                document.getElementById('nhaccList').innerHTML = html;
-            }
+            } catch (e) { console.error(e); }
 
-            // 2) CHỦNG LOẠI: lấy từ dmchungloai (machungloai, tenchungloai)
-            {
-                const { data, error } = await supabase
+            // 2) CHỦNG LOẠI: dmchungloai → value = MÃ, label = "MÃ - TÊN"
+            try {
+                const { data: cl, error: errCl } = await supabase
                     .from('dmchungloai')
                     .select('machungloai, tenchungloai')
                     .order('machungloai', { ascending: true });
-                if (error) console.error('Load Chủng loại error:', error);
-
-                const html = (data || [])
+                if (errCl) console.error('Load Chủng loại error:', errCl);
+                document.getElementById('chungloaiList').innerHTML = (cl || [])
                     .filter(r => r.machungloai)
                     .map(r => `<option value="${(r.machungloai || '').toUpperCase()}" label="${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}"></option>`)
                     .join('');
-                document.getElementById('chungloaiList').innerHTML = html;
-            }
+            } catch (e) { console.error(e); }
 
-            // 3) MÀU SẮC: lấy từ dmmausac (mamau, tenmau)
-            {
-                const { data, error } = await supabase
+            // 3) MÀU SẮC: dmmausac → value = MÃ MÀU, label = "MÃ - TÊN"
+            try {
+                const { data: ms, error: errMs } = await supabase
                     .from('dmmausac')
                     .select('mamau, tenmau')
                     .order('mamau', { ascending: true });
-                if (error) console.error('Load Màu sắc error:', error);
-
-                const html = (data || [])
+                if (errMs) console.error('Load Màu sắc error:', errMs);
+                document.getElementById('mausacList').innerHTML = (ms || [])
                     .filter(r => r.mamau)
                     .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
                     .join('');
-                document.getElementById('mausacList').innerHTML = html;
-            }
+            } catch (e) { console.error(e); }
         }
 
 
@@ -840,7 +834,6 @@
                 document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                 document.getElementById('nhaccInput').value = data.nhacc || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
-                document.getElementById('mausacInput').value = data.mausac || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
@@ -851,29 +844,6 @@
                 // Giữ nguyên các trường, để người dùng nhập tiếp tục
             }
         }
-
-        async function resolveNCC(val) {
-            if (!val) return '';
-            // nếu đã trông giống mã (không có khoảng trắng/ký tự tiếng Việt), cho qua
-            if (/^[A-Z0-9\-_]+$/.test(val)) return val.toUpperCase();
-
-            // ngược lại, thử tìm theo tên
-            const { data } = await supabase
-                .from('dmkhachhang')
-                .select('makh, tenkh')
-                .eq('la_ncc', true)
-                .ilike('tenkh', val)
-                .limit(2);
-            if (data && data.length === 1) return (data[0].makh || '').toUpperCase();
-            return ''; // mơ hồ -> để validate báo thiếu
-        }
-
-        // ... trong onsubmit, trước khi tạo object data:
-        let nhaccCode = nhaccVal;
-        if (!/^[A-Z0-9\-_]+$/.test(nhaccCode)) nhaccCode = await resolveNCC(nhaccVal);
-        if (!nhaccCode) { alert('Không xác định được MÃ nhà cung cấp từ giá trị nhập.'); return; }
-        // dùng nhaccCode thay cho nhaccVal
-
 
 
         // ==== Nút Thêm mới ====
@@ -925,21 +895,6 @@
             return { valid, msg: msg.join(', ') };
         }
 
-        const nhaccVal = document.getElementById('nhaccInput').value.trim().toUpperCase();
-        const chungloaiVal = document.getElementById('chungloaiInput').value.trim().toUpperCase();
-        const mausacVal = document.getElementById('mausacInput').value.trim().toUpperCase();
-
-        const data = {
-            masp: document.getElementById('maspInput').value.trim().toUpperCase(),
-            tensp: document.getElementById('tenspInput').value.trim(),
-            gianhap: parseInt(gianhapVal) || 1,
-            giale: parseInt(gialeVal) || 0,
-            mausac: mausacVal,                // <-- dùng mã màu
-            khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
-            nhacc: nhaccVal,                  // <-- dùng mã NCC
-            chungloai: chungloaiVal,          // <-- dùng mã chủng loại
-            quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
-        };
 
 
         // ==== Nút Lưu (submit form) ====
@@ -961,10 +916,10 @@
                 tensp: document.getElementById('tenspInput').value.trim(),
                 gianhap: parseInt(gianhapVal) || 1,
                 giale: parseInt(gialeVal) || 0,
-                mausac: document.getElementById('mausacInput').value.trim(),
+                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // ← HOA
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
-                nhacc: document.getElementById('nhaccInput').value.trim(),
-                chungloai: document.getElementById('chungloaiInput').value.trim(),
+                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA
+                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // ← HOA
                 quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
 
