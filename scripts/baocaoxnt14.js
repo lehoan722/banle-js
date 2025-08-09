@@ -28,7 +28,7 @@ window.dangNhap = async function () {
 };
 
 
-// ==== 2. LẤY DỮ LIỆU & HIỂN THỊ HANDSONTABLE ====
+// ==== 2. LẤY DỮ LIỆU & HIỂN THỊ HANDSONTABLE ==== 
 window.taiBaoCaoXNT = async function () {
     const loadingMsg = document.getElementById("loadingMsg");
     if (loadingMsg) loadingMsg.textContent = "⏳ Đang tải trang...";
@@ -271,35 +271,40 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
     let type = window.currentPopupType;
 
     // ⬇️ ĐOẠN MỚI (nhánh NCC cho popup gõ phím)
+    // NHÁNH NCC: tìm trong dmkhachhang, lọc la_ncc = true, hiển thị MÃ - TÊN
     if (type === 'khachhang' && document.getElementById('locNCCCheckbox')?.checked) {
         const keyword = document.getElementById('popupSearchInput').value.trim();
-        let query = supabase.from('dmhanghoa')
-            .select('nhacc')
-            .not('nhacc', 'is', null);
+
+        // Tìm theo mã hoặc tên NCC
+        let query = supabase
+            .from('dmkhachhang')
+            .select('makh, tenkh')
+            .eq('la_ncc', true)
+            .limit(200);
+
         if (keyword) {
-            query = query.ilike('nhacc', `%${keyword}%`);
+            // tìm gần đúng trên cả mã và tên
+            query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
         }
-        const { data, error } = await query.limit(200);
-        if (error) {
-            document.getElementById('popupSearchList').innerHTML = '<i>Lỗi tải NCC</i>';
+
+        const { data, error } = await query;
+        if (error || !data || data.length === 0) {
+            document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy NCC</i>';
             return;
         }
 
-        // Lọc unique & chuẩn hoá in hoa (nếu bạn lưu nhacc in hoa)
-        const rows = Array.from(new Set((data || [])
-            .map(r => (r.nhacc || '').toUpperCase())))
-            .filter(x => x);
-
-        // Render giống phần KH hiện tại
-        document.getElementById('popupSearchList').innerHTML = rows.map(val => `
+        // render MÃ - TÊN; click trả về MÃ (để lọc theo mã chuẩn)
+        document.getElementById('popupSearchList').innerHTML = data.map(row => `
     <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('khachhang', '${val.replace(/'/g, "\\'")}', this)">
-      ${val}
+         onclick="selectPopupValue('khachhang', '${(row.makh || '').replace(/'/g, "\\'")}', this)"
+         title="${row.tenkh ? row.tenkh.replace(/"/g, '\\"') : ''}">
+      ${row.makh || ''}${row.tenkh ? ' - ' + row.tenkh : ''}
     </div>
   `).join('');
 
-        return; // 🚪 QUAN TRỌNG: chặn luồng mặc định
+        return; // chặn luồng mặc định (khách hàng)
     }
+
 
     let table = '', field = '', extraFields = '';
     if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
@@ -380,14 +385,16 @@ async function searchPopup(keyword) {
     let type = window.currentPopupType;
 
     // ⬇️ ĐOẠN MỚI (nhánh NCC cho lần mở popup/bắn search mặc định)
+    // NHÁNH NCC khi vừa mở popup (hoặc chạy search mặc định)
     if (type === 'khachhang' && document.getElementById('locNCCCheckbox')?.checked) {
-        let query = supabase.from('dmhanghoa')
-            .select('nhacc')
-            .not('nhacc', 'is', null)
+        let query = supabase
+            .from('dmkhachhang')
+            .select('makh, tenkh')
+            .eq('la_ncc', true)
             .limit(500);
 
         if (keyword && keyword.length >= 2) {
-            query = query.ilike('nhacc', `%${keyword}%`);
+            query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
         }
 
         const { data, error } = await query;
@@ -396,17 +403,17 @@ async function searchPopup(keyword) {
             return;
         }
 
-        const rows = Array.from(new Set(data.map(r => (r.nhacc || '').toUpperCase()))).filter(x => x);
-
-        document.getElementById('popupSearchList').innerHTML = rows.map(val => `
+        document.getElementById('popupSearchList').innerHTML = data.map(row => `
     <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('khachhang', '${val.replace(/'/g, "\\'")}', this)">
-      ${val}
+         onclick="selectPopupValue('khachhang', '${(row.makh || '').replace(/'/g, "\\'")}', this)"
+         title="${row.tenkh ? row.tenkh.replace(/"/g, '\\"') : ''}">
+      ${row.makh || ''}${row.tenkh ? ' - ' + row.tenkh : ''}
     </div>
   `).join('');
 
-        return; // 🚪 QUAN TRỌNG
+        return; // chặn luồng mặc định
     }
+
 
     let table = '', field = '', extraFields = '';
     if (type === 'khachhang') { table = 'dmkhachhang'; field = 'tenkh'; extraFields = ', tenkh'; }
