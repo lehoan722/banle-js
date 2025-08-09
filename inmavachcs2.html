@@ -761,15 +761,49 @@
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
+        // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
         async function loadDropdownOptions() {
-            const fields = ['mausac', 'nhacc', 'chungloai'];
-            for (const field of fields) {
-                const { data } = await supabase.from('dmhanghoa').select(`${field}`);
-                const unique = [...new Set((data || []).map(r => r[field]).filter(Boolean))];
-                const list = document.getElementById(field + 'List');
-                list.innerHTML = unique.map(val => `<option value="${val}"></option>`).join('');
-            }
+            // 1) NHÀ CUNG CẤP: dmkhachhang (la_ncc = true) → value = MÃ NCC, label = "MÃ - TÊN"
+            try {
+                const { data: ncc, error: errNcc } = await supabase
+                    .from('dmkhachhang')
+                    .select('makh, tenkh, la_ncc')
+                    .eq('la_ncc', true)
+                    .order('makh', { ascending: true });
+                if (errNcc) console.error('Load NCC error:', errNcc);
+                document.getElementById('nhaccList').innerHTML = (ncc || [])
+                    .filter(r => r.makh)
+                    .map(r => `<option value="${(r.makh || '').toUpperCase()}" label="${(r.makh || '').toUpperCase()} - ${r.tenkh || ''}"></option>`)
+                    .join('');
+            } catch (e) { console.error(e); }
+
+            // 2) CHỦNG LOẠI: dmchungloai → value = MÃ, label = "MÃ - TÊN"
+            try {
+                const { data: cl, error: errCl } = await supabase
+                    .from('dmchungloai')
+                    .select('machungloai, tenchungloai')
+                    .order('machungloai', { ascending: true });
+                if (errCl) console.error('Load Chủng loại error:', errCl);
+                document.getElementById('chungloaiList').innerHTML = (cl || [])
+                    .filter(r => r.machungloai)
+                    .map(r => `<option value="${(r.machungloai || '').toUpperCase()}" label="${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}"></option>`)
+                    .join('');
+            } catch (e) { console.error(e); }
+
+            // 3) MÀU SẮC: dmmausac → value = MÃ MÀU, label = "MÃ - TÊN"
+            try {
+                const { data: ms, error: errMs } = await supabase
+                    .from('dmmausac')
+                    .select('mamau, tenmau')
+                    .order('mamau', { ascending: true });
+                if (errMs) console.error('Load Màu sắc error:', errMs);
+                document.getElementById('mausacList').innerHTML = (ms || [])
+                    .filter(r => r.mamau)
+                    .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
+                    .join('');
+            } catch (e) { console.error(e); }
         }
+
 
         // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
         document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
@@ -882,10 +916,10 @@
                 tensp: document.getElementById('tenspInput').value.trim(),
                 gianhap: parseInt(gianhapVal) || 1,
                 giale: parseInt(gialeVal) || 0,
-                mausac: document.getElementById('mausacInput').value.trim(),
+                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // ← HOA
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
-                nhacc: document.getElementById('nhaccInput').value.trim(),
-                chungloai: document.getElementById('chungloaiInput').value.trim(),
+                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA
+                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // ← HOA
                 quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
 
