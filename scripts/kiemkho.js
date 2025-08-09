@@ -415,10 +415,11 @@ async function onLuu() {
 
 // Sinh số chứng từ tự động theo loại phiếu
 // Sinh số chứng từ đồng bộ với bảng sochungtu (dùng trường loai và so_hientai)
+// genSohd trong kiemkho.js
 async function genSohd(loaihd) {
-    const { data, error } = await supabase.rpc('next_sochungtu', { loai: loaihd });
+    const { data, error } = await supabase.rpc('next_sochungtu', { p_loai: loaihd });
     if (error || !data) throw new Error('Không lấy được số chứng từ: ' + loaihd);
-    return data; // đã là "loaihd_00001"
+    return data;
 }
 
 
