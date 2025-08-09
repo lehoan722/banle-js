@@ -271,16 +271,14 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('click', (e) => {
     const overlay = document.getElementById('popupSearch');
     if (!overlay || overlay.style.display !== 'block') return;
-    // nếu click không nằm trong overlay (list/input là con của overlay) thì bỏ
-    if (!overlay.contains(e.target)) return;
 
-    // nếu click chính overlay (không phải click vào input/list bên trong) thì đóng
-    const input = document.getElementById('popupSearchInput');
-    const list = document.getElementById('popupSearchList');
-    if (e.target !== input && e.target !== list && !list.contains(e.target)) {
+    // Nếu click BÊN NGOÀI popup → đóng
+    if (!overlay.contains(e.target)) {
         window.closePopupSearch();
+        return;
     }
 });
+
 
 
 // Ngăn sự kiện click bên trong box lan ra overlay
@@ -342,9 +340,11 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
     else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
     else if (type === 'nhomhang') { table = 'dmnhomhang'; field = 'manhom'; extraFields = ', tennhom'; }
     else if (type === 'chungloai') { table = 'dmchungloai'; field = 'machungloai'; extraFields = ', tenchungloai'; }
-    else if (type === 'mausac') { table = 'dmmausac'; field = 'mausac'; extraFields = ', tenmau'; }
+
+    else if (type === 'mausac') { table = 'dmmausac'; field = 'mamau'; extraFields = ', tenmau'; }
+
     else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else if (type === 'size') { table = 'dmsize'; field = 'size'; extraFields = ', mota'; }
+    else if (type === 'size') { table = 'dm_size'; field = 'size'; extraFields = ', mota'; }
     else return;
 
     let { data, error } = await supabase
@@ -359,8 +359,17 @@ document.getElementById('popupSearchInput').addEventListener('input', async func
     }
     document.getElementById('popupSearchList').innerHTML = data.map(row => `
     <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-      ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
+         onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">      
+
+       ${row[field]}
+ ${row.tensp ? " - " + row.tensp : ""}
+ ${row.tenkh ? " - " + row.tenkh : ""}
+ ${row.tennv ? " - " + row.tennv : ""}
+ ${row.tennhom ? " - " + row.tennhom : ""}
+ ${row.tenchungloai ? " - " + row.tenchungloai : ""}
+ ${row.tenmau ? " - " + row.tenmau : ""}
+ ${row.mota ? " - " + row.mota : ""}
+
     </div>
   `).join('');
 });
@@ -477,7 +486,7 @@ async function searchPopup(keyword) {
     }
     // Lọc unique cho các field không unique
     let uniqueData = data;
-    if (['manhom', 'machungloai', 'mausac', 'size'].includes(field)) {
+    if (['manhom', 'machungloai', 'mamau', 'size'].includes(field)) {
         const seen = new Set();
         uniqueData = data.filter(row => {
             const val = row[field];
@@ -495,6 +504,8 @@ async function searchPopup(keyword) {
       ${row.tennv ? " - " + row.tennv : ""}
        ${row.tennhom ? " - " + row.tennhom : ""}           <!-- ⬅️ THÊM -->
       ${row.tenchungloai ? " - " + row.tenchungloai : ""} <!-- ⬅️ THÊM -->
+      ${row.tenmau ? " - " + row.tenmau : ""}
+      ${row.mota ? " - " + row.mota : ""}
     </div>
   `).join('');
 }
