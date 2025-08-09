@@ -252,7 +252,7 @@ window.openPopupSearch = function (type, keyword = "") {
     } else if (keyword.trim().length >= 1) {
         searchPopup(keyword.trim());
     } else {
-        list.innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+        list.innerHTML = '<i>Nhập từ khóa (≥0 ký tự)...</i>';
     }
 };
 window.closePopupSearch = function () {
