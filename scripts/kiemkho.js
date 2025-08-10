@@ -20,6 +20,11 @@ window.onload = function () {
     initUI();
 };
 
+function normMasp(v) {
+    return (v == null ? '' : String(v)).trim().toUpperCase();
+}
+
+
 function initUI() {
     //document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
@@ -104,6 +109,7 @@ async function onManvBlur() {
 function onMaspInputEnter(e) {
     if (e.key === "Enter") {
         const val = e.target.value.trim();
+        inp.value = normMasp(inp.value);   // ép in hoa ngay tại ô
         if (!val) return;
         document.getElementById('danhsachTextarea').value += (document.getElementById('danhsachTextarea').value ? '\n' : '') + val;
         e.target.value = "";
@@ -294,6 +300,27 @@ function createHotTable(data) {
         manualRowMove: true,
         manualColumnResize: true,
         contextMenu: true,
+        beforeChange(changes, source) {
+            if (!changes) return;
+            for (let i = 0; i < changes.length; i++) {
+                const [row, prop, oldVal, newVal] = changes[i];
+                if (prop === 'masp' && newVal != null) {
+                    changes[i][3] = normMasp(newVal); // ép in hoa trước khi ghi vào bảng
+                }
+            }
+        },
+        beforePaste(data, coords) {
+            // Nếu user paste bảng có cột masp là cột đầu tiên của hot (prop 'masp')
+            // thì ép in hoa cột đó ngay lúc paste.
+            // data: mảng 2D của clipboard
+            const startColProp = this.colToProp(coords[0].startCol);
+            for (let r = 0; r < data.length; r++) {
+                for (let c = 0; c < data[r].length; c++) {
+                    const prop = this.colToProp(coords[0].startCol + c);
+                    if (prop === 'masp') data[r][c] = normMasp(data[r][c]);
+                }
+            }
+        },
         cells(row, col) { /* giữ nguyên logic tô màu */ }
         // afterChange: dùng phiên bản đã tối ưu ở trên
     });
