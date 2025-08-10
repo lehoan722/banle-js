@@ -20,11 +20,6 @@ window.onload = function () {
     initUI();
 };
 
-function normMasp(v) {
-    return (v == null ? '' : String(v)).trim().toUpperCase();
-}
-
-
 function initUI() {
     //document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
@@ -109,7 +104,6 @@ async function onManvBlur() {
 function onMaspInputEnter(e) {
     if (e.key === "Enter") {
         const val = e.target.value.trim();
-        inp.value = normMasp(inp.value);   // ép in hoa ngay tại ô
         if (!val) return;
         document.getElementById('danhsachTextarea').value += (document.getElementById('danhsachTextarea').value ? '\n' : '') + val;
         e.target.value = "";
