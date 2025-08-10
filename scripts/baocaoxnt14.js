@@ -594,3 +594,50 @@ window.xuatExcelToanBo = async function () {
 
     XLSX.writeFile(wb, "baocaoxnt_toanbo.xlsx");
 };
+
+// ==== 7b. COPY TOÀN BỘ BẢNG (KỂ CẢ TIÊU ĐỀ) ====
+window.copyBang = async function () {
+    if (!window.hotInstance) {
+        alert("❌ Chưa có dữ liệu để copy!");
+        return;
+    }
+
+    // Lấy tiêu đề cột theo đúng header đang hiển thị
+    const headers = hotInstance.getColHeader();
+
+    // Lấy toàn bộ data đang hiển thị (đã sắp xếp/lọc theo Handsontable)
+    // getData() trả về ma trận dữ liệu theo thứ tự các cột hiển thị
+    const data = hotInstance.getData();
+
+    // Ghép tiêu đề + dữ liệu thành TSV (tab-separated) để dán thẳng vào Excel/Google Sheets
+    const rows = [headers, ...data].map(row =>
+        row.map(v => {
+            if (v === null || v === undefined) return "";
+            // Chuẩn hóa về text phẳng, tránh xuống dòng/tab phá định dạng khi dán
+            return String(v).replace(/\t/g, " ").replace(/\r?\n/g, " ");
+        }).join("\t")
+    );
+    const tsv = rows.join("\n");
+
+    // Copy vào clipboard (ưu tiên Clipboard API, fallback textarea nếu bị chặn)
+    try {
+        await navigator.clipboard.writeText(tsv);
+        alert("✅ Đã copy toàn bộ bảng (kể cả tiêu đề) vào clipboard!");
+    } catch (e) {
+        // Fallback
+        const ta = document.createElement("textarea");
+        ta.value = tsv;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand("copy");
+            alert("✅ Đã copy toàn bộ bảng (kể cả tiêu đề) vào clipboard!");
+        } catch (err) {
+            alert("❌ Trình duyệt chặn copy. Hãy dán thủ công từ file Excel xuất ra.");
+        }
+        document.body.removeChild(ta);
+    }
+};
