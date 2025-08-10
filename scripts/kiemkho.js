@@ -20,6 +20,12 @@ window.onload = function () {
     initUI();
 };
 
+// Chuẩn hoá mã sản phẩm về IN HOA, bỏ khoảng trắng
+function normMasp(v) {
+    return (v == null ? '' : String(v)).trim().toUpperCase();
+}
+
+
 function initUI() {
     //document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
@@ -103,13 +109,15 @@ async function onManvBlur() {
 // Nhập mã + size vào ô input, enter sẽ đẩy xuống textarea
 function onMaspInputEnter(e) {
     if (e.key === "Enter") {
-        const val = e.target.value.trim();
+        const val = normMasp(e.target.value);
         if (!val) return;
-        document.getElementById('danhsachTextarea').value += (document.getElementById('danhsachTextarea').value ? '\n' : '') + val;
+        const ta = document.getElementById('danhsachTextarea');
+        ta.value += (ta.value ? '\n' : '') + val;
         e.target.value = "";
-        document.getElementById('danhsachTextarea').focus();
+        ta.focus();
     }
 }
+
 
 // Hỗ trợ tab để xuống dòng trong textarea
 function onTextareaTab(e) {
