@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BÁO CÁO XNT — Mini (SQL riêng)</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@12.4.0/dist/handsontable.full.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@12.4.0/dist/handsontable.full.min.js"></script>
+
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:1280px;margin:14px auto;padding:0 12px}
+    .toolbar{display:flex;gap:8px;align-items:center;margin:10px 0}
+    .btn{padding:8px 12px;border:1px solid #d0d0d0;border-radius:8px;background:#fff;cursor:pointer}
+    .btn.main{background:#1570ef;color:#fff;border-color:#1570ef}
+    .small{color:#666;font-size:12px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📊 Báo cáo XNT — Bản rút gọn (SQL riêng)</h1>
+
+  <div class="toolbar">
+    <label>Từ ngày <input type="date" id="tuNgay"></label>
+    <label>Đến ngày <input type="date" id="denNgay"></label>
+    <label>Địa điểm
+      <select id="diadiem">
+        <option value="all">Tất cả</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+    </label>
+    <input id="nhacc" placeholder="Mã NCC">
+    <input id="khach" placeholder="Mã KH">
+    <input id="nhom" placeholder="Mã nhóm">
+    <input id="chungloai" placeholder="Mã chủng loại">
+    <input id="mausac" placeholder="Mã màu">
+    <input id="size" placeholder="Size">
+    <input id="tuGia" type="number" placeholder="Từ giá" style="width:90px">
+    <input id="denGia" type="number" placeholder="Đến giá" style="width:90px">
+    <button class="btn main" id="btnRun">Xem báo cáo</button>
+    <button class="btn" id="btnCopy">📋 Copy bảng</button>
+    <div class="small" id="status"></div>
+  </div>
+
+  <textarea id="maspList" rows="6" style="width:100%;"
+    placeholder="Nhập/dán mã sản phẩm (UPPER), mỗi dòng 1 mã..."></textarea>
+
+  <div id="hot" style="margin-top:10px;"></div>
+</div>
+
+<script type="module" src="./supabaseClient.js"></script>
+<script type="module" src="./baocaoxntmini.js"></script>
+</body>
+</html>
