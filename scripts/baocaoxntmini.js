@@ -1,5 +1,5 @@
 // baocaoxntmini.js (gọi RPC SQL mới)
-import { supabase } from "./supabaseClient.js";
+import { supabase } from "scripts/supabaseClient.js";
 
 let hot;
 
