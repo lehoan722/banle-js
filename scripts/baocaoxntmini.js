@@ -22,6 +22,7 @@ function buildParams(){
   return {
     tu_ngay, den_ngay,
     p_dsmsp: getMaspList(),
+    p_diadiem: document.querySelector('#diadiem').value || 'all',
     p_nhacc_filter: toUpper($("#nhacc").value),
     p_khachhang_filter: toUpper($("#khach").value),
     p_nhanvien_filter: null, // nếu cần, thêm input riêng
