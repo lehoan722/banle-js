@@ -7,9 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <!-- Kết nối JS Supabase và code nghiệp vụ kiểm kho -->
-     <script>window.coSo = "cs2";</script>
     <script type="module" src="scripts/supabaseClient.js"></script>
-    
     <script type="module" src="scripts/kiemkho.js"></script>
     <style>
         body { background: #f8fafc; font-family: Segoe UI, Arial, sans-serif; }
@@ -19,7 +17,7 @@
             margin: 26px auto 0 auto;
             border-radius: 12px;
             box-shadow: 0 3px 16px #dbe2ef;
-            padding: 22px 24px 24px 24px;
+            padding: 22px 24px 24px 24px; 
         }
         h2 { text-align: center; color: #1976d2; margin-bottom: 18px; }
         .row { display: flex; gap: 18px; margin-bottom: 14px; align-items: center; }
@@ -55,13 +53,13 @@
 </head>
 <body>
     <div class="container">
-        <h2>KIỂM KHO CS2</h2>
+        <h2>KIỂM KHO CS2 &amp; CS2</h2>
         <!-- Dòng chọn cơ sở và nhân viên -->
         <div class="row">
-            <!-- <span class="label">Chọn Cơ sở:</span>
+            <span class="label">Chọn Cơ sở:</span>
             <select id="cosoSelect" class="input-mid">
-               <option value="cs1">Cơ sở 1</option>
-                <option value="cs2">Cơ sở 2</option>-->
+                <option value="cs2">Cơ sở 2</option>
+                <!-- <option value="cs2">Cơ sở 2</option>-->
             </select>
             <span class="label">Mã nhân viên:</span>
             <input type="password" id="manvInput" class="input-short" placeholder=" " maxlength="10" autocomplete="off" />
