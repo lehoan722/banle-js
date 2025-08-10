@@ -118,6 +118,55 @@ function onMaspInputEnter(e) {
     }
 }
 
+// Trả về { ok: boolean, missing: [{ masp, rowIdx, line }] }
+// - rowIdx: chỉ số source-row trong HOT
+// - line: số dòng hiển thị (row header), tính từ 1
+async function validateMaspsExistInDM(rows, hot) {
+    // Lấy toàn bộ mã (đã chuẩn hoá in hoa theo normMasp nếu bạn dùng)
+    const masps = rows
+        .map((r, i) => ({ masp: (r.masp || '').toString().trim().toUpperCase(), rowIdx: i }))
+        .filter(x => x.masp);
+
+    if (!masps.length) return { ok: true, missing: [] };
+
+    // Lấy danh sách duy nhất để gọi DB gọn
+    const uniqueMasps = Array.from(new Set(masps.map(x => x.masp)));
+
+    // Hỏi danh mục hàng hoá
+    const { data, error } = await supabase
+        .from('dmhanghoa')
+        .select('masp')
+        .in('masp', uniqueMasps);
+
+    if (error) {
+        console.error('validateMaspsExistInDM error:', error);
+        // Không chặn nếu lỗi mạng: cho qua, hoặc tuỳ bạn muốn chặn luôn
+        return { ok: true, missing: [] };
+    }
+
+    const exist = new Set((data || []).map(d => (d.masp || '').toUpperCase()));
+    const missing = [];
+
+    // Xác định các dòng nào chưa có trong DM
+    for (const item of masps) {
+        if (!exist.has(item.masp)) {
+            // Tính số dòng hiển thị (nếu bạn bật rowHeaders = true)
+            // Chuyển source row -> visual row để khớp UI
+            const visualRow = typeof hot?.toVisualRow === 'function'
+                ? hot.toVisualRow(item.rowIdx)
+                : item.rowIdx;
+            missing.push({
+                masp: item.masp,
+                rowIdx: item.rowIdx,
+                line: Number(visualRow) + 1 // hiển thị tính từ 1
+            });
+        }
+    }
+
+    return { ok: missing.length === 0, missing };
+}
+
+
 
 // Hỗ trợ tab để xuống dòng trong textarea
 function onTextareaTab(e) {
@@ -246,6 +295,34 @@ document.getElementById('btnXoaKiemTon').onclick = window.xoaKiemTon;
 // Nút "Kiểm tồn" – chèn dòng tồn kho hệ thống dưới từng mã đang kiểm
 async function onKiemTon() {
     window.xoaKiemTon();
+    const sourceRows = hot.getSourceData().filter(r => r.masp); // các dòng người dùng nhập
+    if (!sourceRows.length) { showMsg("Chưa có dữ liệu để kiểm tồn!"); return; }
+
+    // 1) Kiểm tra mã có trong danh mục không
+    const check = await validateMaspsExistInDM(sourceRows, hot);
+
+    // Xoá highlight cũ (nếu có)
+    try {
+        const maspCol = hot.propToCol ? hot.propToCol('masp') : 0;
+        for (let i = 0; i < sourceRows.length; i++) {
+            hot.setCellMeta(i, maspCol, 'className', '');
+        }
+    } catch { }
+
+    if (!check.ok) {
+        // Tô màu những ô lỗi + báo vị trí
+        const maspCol = hot.propToCol ? hot.propToCol('masp') : 0;
+        check.missing.forEach(m => {
+            try { hot.setCellMeta(m.rowIdx, maspCol, 'className', 'masp-error'); } catch { }
+        });
+        hot.render();
+
+        const list = check.missing
+            .slice(0, 50)  // tránh quá dài
+            .map(x => `${x.masp} (dòng ${x.line})`).join(', ');
+        showMsg(`Có ${check.missing.length} mã không phù hợp trong danh mục: ${list}. Hãy sửa rồi thử lại.`);
+        return; // NGỪNG xử lý
+    }
     if (!hot) return;
     const rows = hot.getSourceData().filter(r => r.masp);
     const masps = rows.map(r => r.masp);
