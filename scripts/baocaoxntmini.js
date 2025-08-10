@@ -162,20 +162,27 @@ async function loadPage(pageNo) {
 
     hotInstance = new Handsontable(container, {
         data: hotData,
-        columns,
-        colHeaders: columns.map(c => c.title),
-        rowHeaders: false,
+        columns,                                  // columns[0] là cột STT
+        colHeaders: columns.map(c => c.title),    // tiêu đề theo thứ tự columns
+        rowHeaders: false,                        // KHÔNG dùng chỉ số dòng mặc định
         width: '100%',
         height: 560,
-        copyPaste: { copyColumnHeaders: true },
+        copyPaste: {
+            copyColumnHeaders: true,                // copy kèm dòng tiêu đề
+            rowsLimit: 100000,                      // để Ctrl+C không bị cắt
+            columnsLimit: 1000
+        },
         licenseKey: 'non-commercial-and-evaluation',
         stretchH: 'all',
         manualColumnResize: true,
         readOnly: true,
         columnSorting: true,
         filters: true,
-        dropdownMenu: true
+        dropdownMenu: true,
+        // (tuỳ chọn) ẩn cột nào đó:
+        // hiddenColumns: { columns: [15], indicators: false },
     });
+
 
     updatePagerUI(currentPage > 1, hasNextPage, hotData.length);
 }
@@ -333,20 +340,27 @@ window.xuatExcelToanBo_Mini = async function () {
 };
 
 // copy toàn bảng (kèm tiêu đề)
-window.copyBang = async function () {
-    if (!window.hotInstance) return alert("❌ Chưa có dữ liệu để copy!");
-    const headers = hotInstance.getColHeader();
-    const data = hotInstance.getData();
-    const rows = [headers, ...data].map(r => r.map(v => v == null ? "" : String(v).replace(/\t/g, " ").replace(/\r?\n/g, " ")).join("\t"));
-    try {
-        await navigator.clipboard.writeText(rows.join("\n"));
-        alert("✅ Đã copy toàn bộ bảng (kể cả tiêu đề)!");
-    } catch (e) {
-        const ta = document.createElement("textarea");
-        ta.value = rows.join("\n"); ta.style.position = "fixed"; ta.style.left = "-9999px";
-        document.body.appendChild(ta); ta.focus(); ta.select();
-        try { document.execCommand("copy"); alert("✅ Đã copy toàn bộ bảng!"); }
-        catch (err) { alert("❌ Trình duyệt chặn copy."); }
-        document.body.removeChild(ta);
-    }
+window.copyBang = async function(){
+  if (!window.hotInstance) return alert("❌ Chưa có dữ liệu để copy!");
+
+  const headers = hotInstance.getColHeader();    // tiêu đề cột
+  const data = hotInstance.getData();            // toàn bộ dữ liệu hiển thị
+  const rows = [headers, ...data].map(r =>
+    r.map(v => (v==null ? "" : String(v).replace(/\t/g," ").replace(/\r?\n/g," "))).join("\t")
+  );
+  const tsv = rows.join("\n");
+
+  try {
+    await navigator.clipboard.writeText(tsv);
+    alert("✅ Đã copy toàn bộ bảng (kể cả tiêu đề)!");
+  } catch {
+    // fallback cho trình duyệt chặn clipboard
+    const ta = document.createElement("textarea");
+    ta.value = tsv; ta.style.position = "fixed"; ta.style.left = "-9999px";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    alert("✅ Đã copy toàn bộ bảng!");
+  }
 };
+
