@@ -1,117 +1,98 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>KIỂM KHO CS2</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-    <!-- Kết nối JS Supabase và code nghiệp vụ kiểm kho -->
-     <script>window.coSo = "cs2";</script>
-    <script type="module" src="scripts/supabaseClient.js"></script>
-    
-    <script type="module" src="scripts/kiemkho.js"></script>
-    <style>
-        body { background: #f8fafc; font-family: Segoe UI, Arial, sans-serif; }
-        .container {
-            max-width: 990px;
-            background: #fff;
-            margin: 26px auto 0 auto;
-            border-radius: 12px;
-            box-shadow: 0 3px 16px #dbe2ef;
-            padding: 22px 24px 24px 24px;
-        }
-        h2 { text-align: center; color: #1976d2; margin-bottom: 18px; }
-        .row { display: flex; gap: 18px; margin-bottom: 14px; align-items: center; }
-        .label { font-weight: 600; min-width: 86px; }
-        select, input[type="text"], input[type="number"], textarea {
-            font-size: 1.08rem; border-radius: 5px; border: 1px solid #b5c7e6; padding: 5px 9px;
-        }
-        textarea { min-height: 68px; min-width: 320px; font-family: inherit; }
-        .input-short { width: 72px; }
-        .input-mid { width: 136px; }
-        .popup-btn {
-            background: #e3f0ff; border: 1px solid #1976d2; color: #1976d2; font-weight: 600;
-            padding: 3px 10px; border-radius: 4px; margin-left: 3px; cursor: pointer; font-size: 16px;
-        }
-        .popup-btn:hover { background: #bbdefb; }
-        .hot-table { margin-top: 10px; }
-        .action-btn { font-weight: bold; background: #1976d2; color: #fff; border: none; border-radius: 7px;
-            padding: 8px 26px; cursor: pointer; margin-right: 8px; min-width: 80px; }
-        .action-btn:disabled { background: #c3c3c3; color: #fff; cursor: not-allowed; }
-        #statusMsg { color: #c62828; font-weight:bold; min-height:30px; margin-bottom:10px;}
-        .info-note { color: #2b3f6c; font-size: 0.97rem; margin-bottom: 6px; }
-        .handsontable th, .handsontable td { text-align: center !important; }
-        @media (max-width: 680px) {
-            .container { padding: 8px; }
-            .row { flex-direction: column; gap: 5px; }
-            textarea { min-width: 98%; }
-        }
-        .kiemton-hethong { background-color: #ffeded !important; color: rgb(14, 24, 168) !important; font-weight:bold; }
-        .kiemton-chenhlech { background-color: #e6f9ff !important; color: #c62828 !important; font-weight:bold; }
+  <meta charset="UTF-8" />
+  <title>KIỂM KHO CS2</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
 
+  <!-- QUAN TRỌNG: đặt biến coSo=cs2 trước khi nạp kiemkho.js -->
+  <script>
+    window.coSo = 'cs2';
+  </script>
 
-    </style>
+  <!-- Supabase + code nghiệp vụ -->
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script type="module" src="scripts/kiemkho.js"></script>
+
+  <style>
+    /* (giữ nguyên style như CS1) */
+    body { background:#f8fafc; font-family: Segoe UI, Arial, sans-serif; }
+    .container { max-width: 990px; background:#fff; margin:26px auto 0; border-radius:12px;
+      box-shadow:0 3px 16px #dbe2ef; padding:22px 24px 24px; }
+    h2 { text-align:center; color:#1976d2; margin-bottom:18px; }
+    .row { display:flex; gap:18px; margin-bottom:14px; align-items:center; }
+    .label { font-weight:600; min-width:86px; }
+    select,input[type="text"],input[type="number"],textarea{
+      font-size:1.08rem; border-radius:5px; border:1px solid #b5c7e6; padding:5px 9px;
+    }
+    textarea{ min-height:68px; min-width:320px; font-family:inherit; }
+    .input-short{ width:72px; } .input-mid{ width:136px; }
+    .popup-btn{ background:#e3f0ff; border:1px solid #1976d2; color:#1976d2; font-weight:600;
+      padding:3px 10px; border-radius:4px; margin-left:3px; cursor:pointer; font-size:16px; }
+    .popup-btn:hover{ background:#bbdefb; }
+    .hot-table{ margin-top:10px; }
+    .action-btn{ font-weight:bold; background:#1976d2; color:#fff; border:none; border-radius:7px;
+      padding:8px 26px; cursor:pointer; margin-right:8px; min-width:80px; }
+    .action-btn:disabled{ background:#c3c3c3; color:#fff; cursor:not-allowed; }
+    #statusMsg{ color:#c62828; font-weight:bold; min-height:30px; margin-bottom:10px; }
+    .info-note{ color:#2b3f6c; font-size:0.97rem; margin-bottom:6px; }
+    .handsontable th, .handsontable td { text-align:center !important; }
+    @media (max-width:680px){ .container{padding:8px} .row{flex-direction:column; gap:5px} textarea{min-width:98%} }
+    .kiemton-hethong{ background:#ffeded !important; color:rgb(14,24,168) !important; font-weight:bold; }
+    .kiemton-chenhlech{ background:#e6f9ff !important; color:#c62828 !important; font-weight:bold; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>KIỂM KHO CS2</h2>
-        <!-- Dòng chọn cơ sở và nhân viên -->
-        <div class="row">
-            <!-- <span class="label">Chọn Cơ sở:</span>
-            <select id="cosoSelect" class="input-mid">
-               <option value="cs1">Cơ sở 1</option>
-                <option value="cs2">Cơ sở 2</option>-->
-            </select>
-            <span class="label">Mã nhân viên:</span>
-            <input type="password" id="manvInput" class="input-short" placeholder=" " maxlength="10" autocomplete="off" />
-            
-            <span id="tennvDisplay" style="font-weight:bold;color:#1769aa;margin-left:7px;"></span>
-            <!-- <button class="popup-btn" onclick="openPopupSearch('nhanvien')">🔍</button> -->
-        </div>
+  <div class="container">
+    <h2>KIỂM KHO CS2</h2>
 
-        <!-- Dòng nhập mã + size -->
-        <div class="row">
-            <span class="label">Mã sản phẩm + Size:</span>
-            <input type="text" id="maspInput" class="input-mid" placeholder="Nhập mã + size, Enter..." autocomplete="off" />
-            <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
-        </div>
-
-        <!-- Textarea danh sách sản phẩm nhập nhanh -->
-        <div class="row">
-            <span class="label" style="align-self: flex-start;">Danh sách sản phẩm:</span>
-            <textarea id="danhsachTextarea" placeholder="Nhập/dán mã sản phẩm + size theo từng dòng..."></textarea>
-        </div>
-
-        <div class="info-note">
-            * Quy ước: Các dòng là mã sản phẩm, tiếp theo là các dòng size (0, 38...45) thuộc về mã phía trên.<br>
-            * Nhập nhanh: Quét mã, gõ mã rồi Enter sẽ đẩy xuống dưới. Paste nhiều dòng cho nhập hàng loạt.<br>
-            * Có thể dán trực tiếp dữ liệu từ Excel vào bảng kiểm kho dưới đây.<br>
-        </div>
-
-        <!-- Nút thao tác -->
-        <div class="row" style="margin-bottom: 8px;">
-            <button id="kiemtraBtn" class="action-btn">Kiểm tra</button>
-            <button id="themmoiBtn" class="action-btn" style="background:#388e3c;">Thêm mới</button>
-            <button id="kiemtontBtn" class="action-btn" style="background:#0288d1;">Kiểm tồn</button>
-            <button id="btnXoaKiemTon" class="action-btn" style="background:#b9cb71;">xoa Kiểm tồn</button>
-            <button id="luuBtn" class="action-btn" style="background:#d32f2f;">Lưu</button>
-        </div>
-        <!-- Vùng thông báo trạng thái -->
-        <div id="statusMsg"></div>
-
-        <!-- Bảng kết quả kiểm kho -->
-        <div id="hotTable" class="hot-table"></div>
+    <!-- Ẩn chọn cơ sở: cố định CS2 để tránh nhầm -->
+    <div class="row">
+      <span class="label">Cơ sở:</span>
+      <input class="input-mid" value="Cơ sở 2" disabled />
+      <span class="label">Mã nhân viên:</span>
+      <input type="password" id="manvInput" class="input-short" maxlength="10" autocomplete="off" />
+      <span id="tennvDisplay" style="font-weight:bold;color:#1769aa;margin-left:7px;"></span>
     </div>
 
-    <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch" style="display:none; position:fixed; top:16%; left:50%; transform:translate(-50%,0);
-        background:#fff; z-index:2000; border:1px solid #ccc; min-width:340px; max-width:96vw; box-shadow:0 0 12px #888; border-radius:8px;">
-        <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus style="width:92%;">
-            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
-        </div>
-        <div id="popupSearchList"></div>
+    <div class="row">
+      <span class="label">Mã sản phẩm + Size:</span>
+      <input type="text" id="maspInput" class="input-mid" placeholder="Nhập mã + size, Enter..." autocomplete="off" />
+      <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
     </div>
+
+    <div class="row">
+      <span class="label" style="align-self:flex-start;">Danh sách sản phẩm:</span>
+      <textarea id="danhsachTextarea" placeholder="Nhập/dán mã sản phẩm + size theo từng dòng..."></textarea>
+    </div>
+
+    <div class="info-note">
+      * Quy ước như CS1. Dán trực tiếp Excel vào bảng bên dưới.<br/>
+      * Trang này mặc định lấy vị trí từ <b>vitrikho2</b> và tồn từ <b>ton_cs2</b>.
+    </div>
+
+    <div class="row" style="margin-bottom:8px;">
+      <button id="kiemtraBtn" class="action-btn">Kiểm tra</button>
+      <button id="themmoiBtn" class="action-btn" style="background:#388e3c;">Thêm mới</button>
+      <button id="kiemtontBtn" class="action-btn" style="background:#0288d1;">Kiểm tồn</button>
+      <button id="btnXoaKiemTon" class="action-btn" style="background:#b9cb71;">xóa Kiểm tồn</button>
+      <button id="luuBtn" class="action-btn" style="background:#d32f2f;">Lưu</button>
+    </div>
+
+    <div id="statusMsg"></div>
+    <div id="hotTable" class="hot-table"></div>
+  </div>
+
+  <!-- Popup tìm kiếm -->
+  <div id="popupSearch" style="display:none; position:fixed; top:16%; left:50%; transform:translate(-50%,0);
+    background:#fff; z-index:2000; border:1px solid #ccc; min-width:340px; max-width:96vw; box-shadow:0 0 12px #888; border-radius:8px;">
+    <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+      <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus style="width:92%;">
+      <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+    </div>
+    <div id="popupSearchList"></div>
+  </div>
 </body>
 </html>
