@@ -1,167 +1,133 @@
-// baocaoxntmini.js (gọi RPC SQL mới)
-import { supabase } from "./supabaseClient.js";
+<!doctype html>
+<html lang="vi">
 
-let hot;
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BÁO CÁO XNT — Mini (SQL riêng)</title>
 
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@12.4.0/dist/handsontable.full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@12.4.0/dist/handsontable.full.min.js"></script>
 
-function toUpper(v) { return (v || "").toString().trim().toUpperCase() || null; }
-function num(v) { return v === "" || v == null ? null : Number(v); }
-function getMaspList() {
-    const raw = $("#maspList")?.value || "";
-    const arr = raw.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean);
-    return arr.length ? Array.from(new Set(arr)) : null;
-}
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif
+        }
 
-function buildParams() {
-    const tu_ngay = $("#tuNgay").value;
-    const den_ngay = $("#denNgay").value;
-    if (!tu_ngay || !den_ngay) throw new Error("Chọn đủ từ ngày/đến ngày!");
+        .wrap {
+            max-width: 1280px;
+            margin: 14px auto;
+            padding: 0 12px
+        }
 
-    return {
-        tu_ngay, den_ngay,
-        p_dsmsp: getMaspList(),
-        p_diadiem: document.querySelector('#diadiem').value || 'all',
-        p_nhacc_filter: toUpper($("#nhacc").value),
-        p_khachhang_filter: toUpper($("#khach").value),
-        p_nhanvien_filter: null, // nếu cần, thêm input riêng
-        p_nhomhang_filter: toUpper($("#nhom").value),
-        p_chungloai_filter: toUpper($("#chungloai").value),
-        p_mausac_filter: toUpper($("#mausac").value),
-        p_size_filter: toUpper($("#size").value),
-        p_tu_gia: num($("#tuGia").value),
-        p_den_gia: num($("#denGia").value),
-        p_limit: 10000,
-        p_offset: 0
-    };
-}
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 10px 0
+        }
 
-async function run() {
-    $("#status").textContent = "⏳ Đang tải...";
-    let params;
-    try { params = buildParams(); }
-    catch (e) { $("#status").textContent = ""; return alert(e.message); }
+        .btn {
+            padding: 8px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer
+        }
 
-    const { data, error } = await supabase.rpc("baocaoxntmini_paged", params);
-    if (error) { $("#status").textContent = ""; return alert("Lỗi: " + error.message); }
+        .btn.main {
+            background: #1570ef;
+            color: #fff;
+            border-color: #1570ef
+        }
 
-    const rows = (data || []).map((r, i) => ({
-        stt: i + 1,
-        tensp: r.tensp,
-        masp: r.masp,
-        size: r.size,
-        ban_cs1: r.ban_cs1 || 0,
-        ban_cs2: r.ban_cs2 || 0,
-        ton_cs1: r.ton_cs1 || 0,
-        ton_cs2: r.ton_cs2 || 0,
-        cuoiky: r.cuoiky || 0,
-        tongban: r.tongban || 0,
-        dauky: r.dauky || 0,
-        nhapmua: r.nhapmua || 0,
-        giale: r.giale || 0
-    }));
+        .small {
+            color: #666;
+            font-size: 12px
+        }
 
-    // Mặc định sắp xếp: Tổng bán ↓ rồi Cuối kỳ ↓
-    rows.sort((a, b) => (b.tongban - a.tongban) || (b.cuoiky - a.cuoiky));
+        .toolbar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 12px 0
+        }
 
-    renderHot(rows);
-    $("#status").textContent = `Hoàn thành: ${rows.length.toLocaleString('vi-VN')} dòng.`;
-}
+        .toolbar .grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(140px, 1fr));
+            gap: 8px;
+        }
 
-// Hiển thị box đăng nhập nếu chưa có session
-async function ensureSignedIn() {
-    const { data: { session } } = await supabase.auth.getSession();
-    const box = document.getElementById('authBox');
-    if (!session) {
-        if (box) box.style.display = 'block';
-        return false;
-    }
-    if (box) box.style.display = 'none';
-    return true;
-}
+        .toolbar .grid input,
+        .toolbar .grid select {
+            width: 100%;
+            padding: 6px 8px;
+        }
 
-// Hàm đăng nhập
-window.dangNhap = async function () {
-    const email = document.getElementById('email')?.value?.trim();
-    const password = document.getElementById('password')?.value;
-    const status = document.getElementById('authStatus');
-    status.textContent = 'Đang đăng nhập...';
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        status.textContent = 'Sai email/mật khẩu hoặc RLS chặn: ' + error.message;
-    } else {
-        status.textContent = 'Đăng nhập thành công.';
-        document.getElementById('authBox').style.display = 'none';
-    }
-};
+        .toolbar .actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-// Kiểm tra session khi mở trang
-ensureSignedIn();
+        @media (max-width: 900px) {
+            .toolbar .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
 
-// Chặn “Xem báo cáo” nếu chưa đăng nhập
-const oldRun = run;
-run = async function () {
-    const ok = await ensureSignedIn();
-    if (!ok) {
-        alert('Vui lòng đăng nhập trước khi xem báo cáo.');
-        return;
-    }
-    return oldRun();
-};
+<body>
+
+    <div id="authBox" style="display:none; margin:12px 0; padding:10px; border:1px solid #eee; border-radius:8px;">
+        <label>Email: <input type="email" id="email" value="khohangcs1@gmail.com"></label>
+        <label style="margin-left:8px;">Mật khẩu: <input type="password" id="password"></label>
+        <button class="btn" onclick="dangNhap()">Đăng nhập</button>
+        <span id="authStatus" style="margin-left:8px;color:#d00;"></span>
+    </div>
 
 
-function renderHot(rows) {
-    const container = $("#hot");
-    if (hot) { hot.destroy(); hot = null; }
+    <div class="wrap">
+        <h1>📊 Báo cáo XNT — Bản rút gọn (SQL riêng)</h1>
 
-    const columns = [
-        { data: 'stt', title: '#', width: 40, readOnly: true },
-        { data: 'tensp', title: 'Tên hàng', readOnly: true },
-        { data: 'masp', title: 'Mã hàng', readOnly: true },
-        { data: 'size', title: 'Kích cỡ', width: 70, readOnly: true },
-        { data: 'ban_cs1', title: 'Bán cs1', type: 'numeric', readOnly: true },
-        { data: 'ban_cs2', title: 'Bán cs2', type: 'numeric', readOnly: true },
-        { data: 'ton_cs1', title: 'Tồn CS1', type: 'numeric', readOnly: true },
-        { data: 'ton_cs2', title: 'Tồn CS2', type: 'numeric', readOnly: true },
-        { data: 'cuoiky', title: 'Cuối kỳ', type: 'numeric', readOnly: true },
-        { data: 'tongban', title: 'Tổng bán', type: 'numeric', readOnly: true },
-        { data: 'dauky', title: 'Đầu kỳ', type: 'numeric', readOnly: true },
-        { data: 'nhapmua', title: 'Nhập mua', type: 'numeric', readOnly: true },
-        { data: 'giale', title: 'Giá lẻ', type: 'numeric', readOnly: true }
-    ];
+        <div class="toolbar">
+            <div class="grid">
+                <label>Từ ngày <input type="date" id="tuNgay"></label>
+                <label>Đến ngày <input type="date" id="denNgay"></label>
+                <label>Địa điểm
+                    <select id="diadiem">
+                        <option value="all">Tất cả</option>
+                        <option value="cs1">CS1</option>
+                        <option value="cs2">CS2</option>
+                    </select>
+                </label>
+                <input id="nhacc" placeholder="Mã NCC">
+                <input id="khach" placeholder="Mã KH">
+                <input id="nhom" placeholder="Mã nhóm">
+                <input id="chungloai" placeholder="Mã chủng loại">
+                <input id="mausac" placeholder="Mã màu">
+                <input id="size" placeholder="Size">
+                <input id="tuGia" type="number" placeholder="Từ giá">
+                <input id="denGia" type="number" placeholder="Đến giá">
+            </div>
+            <div class="actions">
+                <button class="btn main" id="btnRun">Xem báo cáo</button>
+                <button class="btn" id="btnCopy">📋 Copy bảng</button>
+                <span class="small" id="status"></span>
+            </div>
+        </div>
 
-    hot = new Handsontable(container, {
-        data: rows,
-        columns,
-        colHeaders: columns.map(c => c.title),
-        rowHeaders: true,
-        height: 560,
-        stretchH: 'all',
-        columnSorting: true,
-        dropdownMenu: true,
-        filters: true,
-        copyPaste: { copyColumnHeaders: true },
-        licenseKey: 'non-commercial-and-evaluation'
-    });
-}
 
-function copyBang() {
-    if (!hot) return alert("Chưa có dữ liệu!");
-    const headers = hot.getColHeader();
-    const data = hot.getData();
-    const rows = [headers, ...data].map(r => r.map(v => (v == null ? '' : String(v).replace(/\t/g, ' ').replace(/\r?\n/g, ' '))).join('\t'));
-    navigator.clipboard.writeText(rows.join('\n'))
-        .then(() => $("#status").textContent = "✅ Đã copy bảng vào clipboard.")
-        .catch(() => $("#status").textContent = "❌ Trình duyệt chặn copy.");
-}
+        <textarea id="maspList" rows="6" style="width:100%;"
+            placeholder="Nhập/dán mã sản phẩm (UPPER), mỗi dòng 1 mã..."></textarea>
 
-$("#btnRun").addEventListener("click", run);
-$("#btnCopy").addEventListener("click", copyBang);
+        <div id="hot" style="margin-top:10px;"></div>
+    </div>
 
-// Ngày mặc định = hôm nay
-(function initDates() {
-    const today = new Date().toISOString().slice(0, 10);
-    if (!$("#tuNgay").value) $("#tuNgay").value = today;
-    if (!$("#denNgay").value) $("#denNgay").value = today;
-})();
+    <script type="module" src="scripts/supabaseClient.js"></script>
+    <script type="module" src="scripts/baocaoxntmini.js"></script>
+</body>
+
+</html>
