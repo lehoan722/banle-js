@@ -162,14 +162,17 @@ async function loadPage(pageNo) {
 
     hotInstance = new Handsontable(container, {
         data: hotData,
-        columns,                                  // columns[0] là cột STT
-        colHeaders: columns.map(c => c.title),    // tiêu đề theo thứ tự columns
-        rowHeaders: false,                        // KHÔNG dùng chỉ số dòng mặc định
+        columns,
+        colHeaders: columns.map(c => c.title),
+
+        // ✅ giống XNT14: có cột row header (để click chọn cả dòng)
+        rowHeaders: true,
+
         width: '100%',
         height: 560,
         copyPaste: {
-            copyColumnHeaders: true,                // copy kèm dòng tiêu đề
-            rowsLimit: 100000,                      // để Ctrl+C không bị cắt
+            copyColumnHeaders: true,
+            rowsLimit: 100000,
             columnsLimit: 1000
         },
         licenseKey: 'non-commercial-and-evaluation',
@@ -179,9 +182,22 @@ async function loadPage(pageNo) {
         columnSorting: true,
         filters: true,
         dropdownMenu: true,
-        // (tuỳ chọn) ẩn cột nào đó:
-        // hiddenColumns: { columns: [15], indicators: false },
+
+        // ✅ bôi đậm cả hàng khi chọn
+        currentRowClassName: 'row-selected'
     });
+
+    // ✅ gán ra global để nút Copy đọc được
+    window.hotInstance = hotInstance;
+
+    // ✅ nếu click vào cột STT (cột 0) thì chọn cả hàng
+    hotInstance.addHook('beforeOnCellMouseDown', (evt, coords) => {
+        if (coords.row >= 0 && coords.col === 0) {
+            hotInstance.selectCell(coords.row, 0, coords.row, hotInstance.countCols() - 1, true);
+            evt.stopPropagation();
+        }
+    });
+
 
 
     updatePagerUI(currentPage > 1, hasNextPage, hotData.length);
@@ -340,27 +356,27 @@ window.xuatExcelToanBo_Mini = async function () {
 };
 
 // copy toàn bảng (kèm tiêu đề)
-window.copyBang = async function(){
-  if (!window.hotInstance) return alert("❌ Chưa có dữ liệu để copy!");
+window.copyBang = async function () {
+    if (!window.hotInstance) return alert("❌ Chưa có dữ liệu để copy!");
 
-  const headers = hotInstance.getColHeader();    // tiêu đề cột
-  const data = hotInstance.getData();            // toàn bộ dữ liệu hiển thị
-  const rows = [headers, ...data].map(r =>
-    r.map(v => (v==null ? "" : String(v).replace(/\t/g," ").replace(/\r?\n/g," "))).join("\t")
-  );
-  const tsv = rows.join("\n");
+    const headers = hotInstance.getColHeader();    // tiêu đề cột
+    const data = hotInstance.getData();            // toàn bộ dữ liệu hiển thị
+    const rows = [headers, ...data].map(r =>
+        r.map(v => (v == null ? "" : String(v).replace(/\t/g, " ").replace(/\r?\n/g, " "))).join("\t")
+    );
+    const tsv = rows.join("\n");
 
-  try {
-    await navigator.clipboard.writeText(tsv);
-    alert("✅ Đã copy toàn bộ bảng (kể cả tiêu đề)!");
-  } catch {
-    // fallback cho trình duyệt chặn clipboard
-    const ta = document.createElement("textarea");
-    ta.value = tsv; ta.style.position = "fixed"; ta.style.left = "-9999px";
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-    alert("✅ Đã copy toàn bộ bảng!");
-  }
+    try {
+        await navigator.clipboard.writeText(tsv);
+        alert("✅ Đã copy toàn bộ bảng (kể cả tiêu đề)!");
+    } catch {
+        // fallback cho trình duyệt chặn clipboard
+        const ta = document.createElement("textarea");
+        ta.value = tsv; ta.style.position = "fixed"; ta.style.left = "-9999px";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        alert("✅ Đã copy toàn bộ bảng!");
+    }
 };
 
