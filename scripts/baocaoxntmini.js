@@ -40,7 +40,7 @@ function uniqueListFromTextarea(id) {
 }
 
 // ====== Lấy dữ liệu & hiển thị ======
-window.taiBaoCaoXNT_Mini = async function () {
+window.taiBaoCaoXNT_Mini = async function taiBaoCaoXNT_Mini() {
     const loadingMsg = $("#loadingMsg");
     if (loadingMsg) loadingMsg.textContent = "⏳ Đang tải...";
 
@@ -48,33 +48,42 @@ window.taiBaoCaoXNT_Mini = async function () {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
         alert("Bạn cần đăng nhập trước khi xem báo cáo!");
-        $("#authBox").style.display = "block";
+        const box = $("#authBox"); if (box) box.style.display = "block";
         if (loadingMsg) loadingMsg.textContent = "";
         return;
     }
 
     // đọc input
-    const diadiem = $("#diadiemSelect").value || 'all';
-    const tuNgay = $("#tuNgay").value;
-    const denNgay = $("#denNgay").value;
-    if (!tuNgay || !denNgay) { alert("Chọn đủ Từ ngày / Đến ngày!"); return; }
+    const diadiem = $("#diadiemSelect")?.value || "all";
+    const tuNgay = $("#tuNgay")?.value;
+    const denNgay = $("#denNgay")?.value;
+    if (!tuNgay || !denNgay) { alert("Chọn đủ Từ ngày / Đến ngày!"); if (loadingMsg) loadingMsg.textContent = ""; return; }
 
-    const nhacc = $("#khachhangInput").value.trim() || null;
-    const nhanvien = $("#nhanvienInput").value.trim() || null;
-    const nhomhang = $("#nhomhangInput").value.trim() || null;
-    const chungloai = $("#chungloaiInput").value.trim() || null;
-    const mausac = $("#mausacInput").value.trim() || null;
-    const size = $("#sizeInput").value.trim() || null;
+    const nhacc = $("#khachhangInput")?.value.trim() || null;  // dùng cho lọc nhà cung cấp (cột nhacc)
+    const nhanvien = $("#nhanvienInput")?.value.trim() || null;
+    const nhomhang = $("#nhomhangInput")?.value.trim() || null;
+    const chungloai = $("#chungloaiInput")?.value.trim() || null;
+    const mausac = $("#mausacInput")?.value.trim() || null;
+    const size = $("#sizeInput")?.value.trim() || null;
 
-    // danh sách mã
+    // danh sách mã: ưu tiên textarea, nếu trống lấy ô 1 mã
     let maspList = uniqueListFromTextarea("#maspList");
-    const maspSingle = $("#maspInput").value.trim().toUpperCase();
+    const maspSingle = $("#maspInput")?.value.trim().toUpperCase();
     if (!maspList && maspSingle) maspList = [maspSingle];
 
-    const tuGia = $("#tuGia").value || null;
-    const denGia = $("#denGia").value || null;
+    // giá
+    const tuGia = num($("#tuGia")?.value);
+    const denGia = num($("#denGia")?.value);
 
-    // build params & lưu lại để chuyển trang
+    // checkbox mới
+    const locDuong = $("#locDuong")?.checked || false;
+    const locAm = $("#locAm")?.checked || false;
+    const locHet = $("#locHet")?.checked || false;
+    const locPhatSinhNhap = $("#locPhatSinhNhap")?.checked || false;
+    const locPhatSinhXuat = $("#locPhatSinhXuat")?.checked || false;
+    const tonghopSize = $("#tonghopSizeCheckbox")?.checked || false;
+
+    // ghim tham số để phân trang dùng lại
     lastParams = {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
@@ -86,12 +95,21 @@ window.taiBaoCaoXNT_Mini = async function () {
         p_chungloai_filter: toUpper(chungloai),
         p_mausac_filter: toUpper(mausac),
         p_size_filter: toUpper(size),
-        p_tu_gia: num(tuGia),
-        p_den_gia: num(denGia),
-        p_dsmsp: maspList
+        p_tu_gia: tuGia,
+        p_den_gia: denGia,
+        p_dsmsp: maspList || null,
+
+        // các cờ lọc mới
+        loc_duong: locDuong,
+        loc_am: locAm,
+        loc_het: locHet,
+        loc_phatsinh_nhap: locPhatSinhNhap,
+        loc_phatsinh_xuat: locPhatSinhXuat,
+        p_tonghop_size: tonghopSize
     };
 
-    await loadPage(1); // luôn quay về trang 1 khi bấm "Xem báo cáo"
+    currentPage = 1;
+    await loadPage(currentPage);
     if (loadingMsg) loadingMsg.textContent = "";
 };
 
@@ -336,8 +354,17 @@ window.xuatExcelToanBo_Mini = async function () {
         p_size_filter: toUpper($("#sizeInput").value),
         p_tu_gia: num($("#tuGia").value),
         p_den_gia: num($("#denGia").value),
-        p_dsmsp: uniqueListFromTextarea("#maspList")
+        p_dsmsp: uniqueListFromTextarea("#maspList"),
+
+        // ⚠️ thêm 6 cờ mới
+        loc_duong: document.getElementById('locDuong')?.checked || false,
+        loc_am: document.getElementById('locAm')?.checked || false,
+        loc_het: document.getElementById('locHet')?.checked || false,
+        loc_phatsinh_nhap: document.getElementById('locPhatSinhNhap')?.checked || false,
+        loc_phatsinh_xuat: document.getElementById('locPhatSinhXuat')?.checked || false,
+        p_tonghop_size: document.getElementById('tonghopSizeCheckbox')?.checked || false
     };
+
     while (more) {
         const { data, error } = await supabase.rpc("baocaoxntmini_paged", { ...paramsBase, p_limit: pz, p_offset: off });
         if (error) { alert("❌ Lỗi tải trang " + page + ": " + error.message); break; }
