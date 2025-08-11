@@ -1,92 +1,180 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8" />
-  <title>Ảnh sản phẩm (từ XNT14)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body{margin:0;font-family:Arial,sans-serif;background:#fafafa}
-    header{display:flex;justify-content:space-between;align-items:center;
-           padding:10px 14px;background:#111;color:#fff;position:sticky;top:0}
-    header .right small{opacity:.8}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-          gap:14px;padding:14px;max-width:1400px;margin:0 auto}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;
-          box-shadow:0 1px 4px rgba(0,0,0,.04)}
-    .imgwrap{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#f7f7f7}
-    img{max-width:100%;max-height:100%;display:block;object-fit:contain}
-    .cap{padding:8px 10px;border-top:1px dashed #e5e7eb;font-weight:600}
-    .cap small{font-weight:400;opacity:.8;margin-left:6px}
-    .empty{padding:32px;text-align:center;color:#666}
-    a{color:inherit;text-decoration:none}
-    @media (max-width:640px){header{padding:8px 10px}}
-  </style>
+    <meta charset="UTF-8" />
+    <title>Ảnh sản phẩm (từ XNT14)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #fafafa
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: #111;
+            color: #fff;
+            position: sticky;
+            top: 0
+        }
+
+        header .right small {
+            opacity: .8
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+            padding: 14px;
+            max-width: 1400px;
+            margin: 0 auto
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .04)
+        }
+
+        .imgwrap {
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f7f7f7
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+            object-fit: contain
+        }
+
+        .cap {
+            padding: 8px 10px;
+            border-top: 1px dashed #e5e7eb;
+            font-weight: 600
+        }
+
+        .cap small {
+            font-weight: 400;
+            opacity: .8;
+            margin-left: 6px
+        }
+
+        .empty {
+            padding: 32px;
+            text-align: center;
+            color: #666
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none
+        }
+
+        @media (max-width:640px) {
+            header {
+                padding: 8px 10px
+            }
+        }
+
+        .cap a.cap-link {
+            display: block;
+            text-decoration: none;
+            color: #111;
+        }
+
+        .cap a.cap-link:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
+
 <body>
-  <header>
-    <div>🖼️ Xem ảnh sản phẩm</div>
-    <div class="right">
-      <button onclick="history.back()" style="margin-right:8px">⬅ Quay lại</button>
-      <small id="count"></small>
+    <header>
+        <div>🖼️ Xem ảnh sản phẩm</div>
+        <div class="right">
+            <button onclick="history.back()" style="margin-right:8px">⬅ Quay lại</button>
+            <small id="count"></small>
+        </div>
+    </header>
+
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" style="display:none">
+        Không tìm thấy danh sách mã từ XNT14. Hãy quay lại và bấm “Hiển thị ảnh”.
     </div>
-  </header>
 
-  <div id="grid" class="grid"></div>
-  <div id="empty" class="empty" style="display:none">
-    Không tìm thấy danh sách mã từ XNT14. Hãy quay lại và bấm “Hiển thị ảnh”.
-  </div>
+    <script>
+        // Base lưu ảnh (giống file 4cotdathangMT.html)
+        const BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/"; // .JPG -> .png nếu lỗi
 
-  <script>
-    // Base lưu ảnh (giống file 4cotdathangMT.html)
-    const BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/"; // .JPG -> .png nếu lỗi
+        function fmtVND(n) {
+            if (n == null || isNaN(n)) return "";
+            return Number(n).toLocaleString("vi-VN");
+        }
 
-    function fmtVND(n){
-      if (n==null || isNaN(n)) return "";
-      return Number(n).toLocaleString("vi-VN");
-    }
+        const grid = document.getElementById("grid");
+        const list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
+        document.getElementById("count").textContent = list.length ? `Tổng: ${list.length}` : "";
 
-    const grid = document.getElementById("grid");
-    const list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
-    document.getElementById("count").textContent = list.length ? `Tổng: ${list.length}` : "";
+        if (!list.length) {
+            document.getElementById("empty").style.display = "block";
+        } else {
+            list.forEach(({ masp, giale }) => {
+                const card = document.createElement("div");
+                card.className = "card";
 
-    if (!list.length){
-      document.getElementById("empty").style.display = "block";
-    } else {
-      list.forEach(({masp, giale})=>{
-        const card = document.createElement("div");
-        card.className = "card";
+                const a = document.createElement("a");
+                a.href = BASE + masp + ".JPG";
+                a.target = "_blank";
 
-        const a = document.createElement("a");
-        a.href = BASE + masp + ".JPG";
-        a.target = "_blank";
+                const imgwrap = document.createElement("div");
+                imgwrap.className = "imgwrap";
 
-        const imgwrap = document.createElement("div");
-        imgwrap.className = "imgwrap";
+                const img = document.createElement("img");
+                img.loading = "lazy";
+                img.alt = masp;
+                img.src = BASE + masp + ".JPG";
+                img.onerror = function () {
+                    if (img.src.endsWith(".JPG")) {
+                        img.src = BASE + masp + ".png";
+                    } else {
+                        imgwrap.textContent = "Không có ảnh";
+                    }
+                };
 
-        const img = document.createElement("img");
-        img.loading = "lazy";
-        img.alt = masp;
-        img.src = BASE + masp + ".JPG";
-        img.onerror = function(){
-          if (img.src.endsWith(".JPG")) {
-            img.src = BASE + masp + ".png";
-          } else {
-            imgwrap.textContent = "Không có ảnh";
-          }
-        };
+                imgwrap.appendChild(img);
+                a.appendChild(imgwrap);
 
-        imgwrap.appendChild(img);
-        a.appendChild(imgwrap);
+                const cap = document.createElement("div");
+                cap.className = "cap";
+                const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa111.html";
+                
+                cap.className = "cap";
+                cap.innerHTML =
+                    `<a class="cap-link" href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" 
+      target="_blank" rel="noopener">
+      ${masp} / ${fmtVND(giale)}
+    </a>`;
 
-        const cap = document.createElement("div");
-        cap.className = "cap";
-        cap.textContent = masp + " / " + fmtVND(giale);
 
-        card.appendChild(a);
-        card.appendChild(cap);
-        grid.appendChild(card);
-      });
-    }
-  </script>
+                card.appendChild(a);
+                card.appendChild(cap);
+                grid.appendChild(card);
+            });
+        }
+    </script>
 </body>
+
 </html>
