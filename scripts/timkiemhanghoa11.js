@@ -438,3 +438,29 @@ function formatDateOnly(val) {
     // Hoặc nếu muốn dd/mm/yyyy:
     // return d.getDate().toString().padStart(2, "0") + "/" + (d.getMonth()+1).toString().padStart(2, "0") + "/" + d.getFullYear();
 }
+
+function getQuery(name) {
+    const p = new URLSearchParams(window.location.search);
+    const v = p.get(name);
+    return v ? v.trim() : "";
+}
+
+// Gộp cùng onload hiện có:
+const _oldOnload = window.onload;
+window.onload = async function () {
+    // giữ hành vi cũ: kiểm tra session và ẩn/hiện box đăng nhập
+    if (typeof _oldOnload === "function") await _oldOnload();
+
+    // nhận mã từ URL và tìm kiếm luôn
+    const q = getQuery("masp");
+    if (q && q.length >= 3) {
+        const masp = q.toUpperCase();
+        const ip = document.getElementById("maspInput");
+        if (ip) ip.value = masp;
+        // nếu chưa đăng nhập RLS có thể chặn; vẫn cứ gọi,
+        // user có thể đăng nhập rồi bấm tìm lại nếu cần
+        try {
+            await triggerSearch(masp);
+        } catch (e) { /* bỏ qua lỗi */ }
+    }
+};
