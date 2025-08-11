@@ -229,7 +229,7 @@ window.taiBaoCaoXNT = async function () {
         hiddenColumns: { columns: [15], indicators: false },
         columnSorting: true,        // ✅ Thêm sắp xếp
         filters: true,              // ✅ Thêm lọc
-        dropdownMenu: true          // ✅ Thêm menu filter dropdown
+        dropdownMenu: true          // ✅ Thêm menu filter dropdown 
     });
 
     window.hotInstance = hotInstance;
@@ -240,6 +240,31 @@ window.taiBaoCaoXNT = async function () {
     if (loadingMsg) loadingMsg.textContent = "";  // Ẩn thông báo "Đang tải..."
 
 };
+
+// ==== HIỂN THỊ ẢNH TỪ DANH SÁCH ĐANG CÓ TRÊN XNT14 ====
+window.moTrangAnh = function () {
+    if (!window.hotInstance) {
+        alert("Chưa có dữ liệu để hiển thị ảnh.");
+        return;
+    }
+    // Lấy toàn bộ data đang nạp vào bảng (object có khóa masp, giale, ...)
+    const src = hotInstance.getSourceData(); // mảng object
+    const list = src
+        .map(r => ({
+            masp: String(r.masp || "").trim().toUpperCase(),
+            giale: Number(r.giale || 0) // giá lẻ nằm trong kết quả RPC và cột của bảng
+        }))
+        .filter(x => x.masp);
+
+    if (!list.length) {
+        alert("Không có mã hàng hợp lệ trong bảng.");
+        return;
+    }
+    // Truyền sang trang ảnh
+    sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
+    window.open("xemanhxnt14.html", "_blank");
+};
+
 
 
 // ==== 3. POPUP TÌM KIẾM (DÙNG CHUNG CHO TẤT CẢ INPUT) ====
