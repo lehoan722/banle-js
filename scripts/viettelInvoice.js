@@ -92,79 +92,135 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
 }
 
 
+// ===== Retry helpers & flags =====
+const RETRY_LIMIT = 3;                        // số lần thử tối đa
+const RETRY_BACKOFF_MS = [0, 800, 1600];      // độ trễ mỗi lần thử (ms)
+const ENABLE_MANUAL_RETRY_POPUP = true;       // bật/tắt popup gửi lại thủ công
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-// Hàm gửi hóa đơn từ Web (giữ nguyên logic lỗi/thành công)
+// Hàm gửi hóa đơn từ Web (có retry tối đa 3 lần, giữ popup gửi lại)
 export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
+  let json; // payload gửi Viettel
   try {
-    let hoadon, chitiet, json;
+    // 1) Chuẩn bị dữ liệu (dùng lại duLieuHoaDonCu nếu có)
     if (duLieuHoaDonCu) {
-      // Nếu là lần gửi lại, dùng dữ liệu cũ
       json = duLieuHoaDonCu;
     } else {
-      // Lấy từ DB (bình thường)
-      const { data: hoadonData } = await supabase
+      const { data: hoadonData, error: e1 } = await supabase
         .from('hoadon_banleT')
         .select('*')
         .eq('sohd', mahoadon)
         .single();
 
-      const { data: chitietData } = await supabase
+      const { data: chitietData, error: e2 } = await supabase
         .from('ct_hoadon_banleT')
         .select('*')
         .eq('sohd', mahoadon);
 
-      if (!hoadonData || !chitietData || chitietData.length === 0) {
-        alert("❌ Không tìm thấy dữ liệu hóa đơn\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
+      if (e1 || e2 || !hoadonData || !Array.isArray(chitietData) || chitietData.length === 0) {
+        alert("❌ Không tìm thấy dữ liệu hóa đơn.\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
         return;
       }
-      hoadon = hoadonData;
-      chitiet = chitietData;
-      json = taoDuLieuHoaDon(hoadon, chitiet);
+      json = taoDuLieuHoaDon(hoadonData, chitietData);
     }
 
-    // Gửi lên API backend
-    const response = await fetch('/api/guiHDDT', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: json })
-    });
+    // 2) Gửi với retry
+    let lastErrorText = "";
+    for (let attempt = 1; attempt <= RETRY_LIMIT; attempt++) {
+      try {
+        if (attempt > 1) {
+          await sleep(RETRY_BACKOFF_MS[attempt - 1] || 0);
+        }
 
-    let result;
-    try {
-      result = await response.json();
-    } catch (err) {
-      hienThiThongBaoLoiVoiGuiLai("❌ Lỗi khi đọc phản hồi từ server trung gian.", json, mahoadon);
+        // Gợi ý backend refresh token ở các lần thử > 1 (nếu backend hỗ trợ)
+        const body = { data: json };
+        if (attempt > 1) body.forceRefreshToken = true;
+
+        const response = await fetch('/api/guiHDDT', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
+        const raw = await response.text();
+        let result;
+        try { result = JSON.parse(raw); } catch (_) {}
+
+        if (response.ok) {
+          await supabase
+            .from('hoadon_banleT')
+            .update({ trang_thai_gui: 'Đã gửi' })
+            .eq('sohd', mahoadon);
+
+          alert("✅ Gửi hóa đơn thành công!");
+          return;
+        }
+
+        // Không ok -> lưu thông tin lỗi để hiển thị sau cùng và thử lại
+        lastErrorText = (result?.message || raw || response.statusText || "Không rõ lỗi");
+        // Tiếp tục vòng lặp để thử lại
+      } catch (err) {
+        lastErrorText = err?.message || String(err) || "Không rõ lỗi";
+        // Tiếp tục vòng lặp để thử lại
+      }
+    }
+
+    // 3) Nếu chạy tới đây nghĩa là cả 3 lần đều thất bại
+    const errorMsg = lastErrorText || "Không rõ";
+    await supabase
+      .from('hoadon_banleT')
+      .update({ trang_thai_gui: 'Lỗi: ' + errorMsg })
+      .eq('sohd', mahoadon);
+
+    if (ENABLE_MANUAL_RETRY_POPUP && typeof hienThiThongBaoLoiVoiGuiLai === 'function') {
+      // Gọi popup cho phép người dùng chủ động bấm "Gửi lại"
+      // Truyền luôn JSON đã build sẵn để không phải build lại lần nữa
+      hienThiThongBaoLoiVoiGuiLai(
+        "❌ Không gửi được hóa đơn sau 3 lần thử.\nLý do gần nhất: " + errorMsg +
+        "\nBạn có thể bấm 'Gửi lại' để thử thêm.",
+        json,     // duLieuHoaDonCu
+        mahoadon, // số hóa đơn
+        errorMsg  // cho mục đích hiển thị/log nếu cần
+      );
       return;
     }
 
-    if (!response.ok) {
-      hienThiThongBaoLoiVoiGuiLai(result?.message || '❌ Gửi hóa đơn thất bại!', json, mahoadon);
-      return;
+    // Nếu không bật popup thì mới báo lỗi như cũ
+    alert(
+      "❌ Không gửi được hóa đơn sau 3 lần thử.\n" +
+      "Lý do gần nhất: " + errorMsg + "\n" +
+      "Bạn có thể vào 'xemhoadonT.html' để gửi lại."
+    );
+
+  } catch (outerError) {
+    await supabase
+      .from('hoadon_banleT')
+      .update({ trang_thai_gui: 'Lỗi: ' + (outerError?.message || 'Không rõ') })
+      .eq('sohd', mahoadon);
+
+    // Giữ nguyên hành vi cũ: hiện popup gửi lại tay
+    if (ENABLE_MANUAL_RETRY_POPUP && typeof hienThiThongBaoLoiVoiGuiLai === 'function') {
+      hienThiThongBaoLoiVoiGuiLai(
+        "❌ Gửi hóa đơn điện tử thất bại: " + (outerError?.message || 'Không rõ') +
+        "\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.",
+        duLieuHoaDonCu || json,
+        mahoadon,
+        outerError?.message || 'Không rõ'
+      );
+    } else {
+      alert("❌ Gửi hóa đơn điện tử thất bại: " + (outerError?.message || 'Không rõ'));
     }
-
-    // Cập nhật trạng thái thành công
-    await supabase
-      .from('hoadon_banleT')
-      .update({ trang_thai_gui: 'Đã gửi' })
-      .eq('sohd', mahoadon);
-
-    alert("✅ Gửi hóa đơn thành công!");
-
-  } catch (error) {
-    hienThiThongBaoLoiVoiGuiLai(`❌ Gửi hóa đơn điện tử thất bại: ${error.message}\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.`, duLieuHoaDonCu, mahoadon);
-
-    await supabase
-      .from('hoadon_banleT')
-      .update({ trang_thai_gui: 'Lỗi: ' + error.message })
-      .eq('sohd', mahoadon);
   }
 }
 
-function hienThiThongBaoLoiVoiGuiLai(message, duLieuHoaDonCu, mahoadon) {
+// Giữ nguyên hàm popup gửi lại; có thể nhận thêm tham số nhưng không bắt buộc
+function hienThiThongBaoLoiVoiGuiLai(message, duLieuHoaDonCu, mahoadon /*, errorText */) {
   if (confirm(`${message}\n\nBạn muốn gửi lại hóa đơn này không?`)) {
     // Khi người dùng chọn OK thì gọi lại đúng hàm gửi, dùng lại dữ liệu cũ
     guiHoaDonViettel(mahoadon, duLieuHoaDonCu);
   }
 }
-
