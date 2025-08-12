@@ -190,8 +190,8 @@ window.taiBaoCaoXNT = async function () {
 
     // Định nghĩa cột cho Handsontable (ẩn hoàn toàn dvt, nhomhang, mausac)
     const columns = [
-        { data: 'masp', title: 'Mã hàng', width: 95 },
-        { data: 'size', title: 'Kích cỡ', width: 54, className: 'htCenter' },
+        { data: 'masp', title: 'Mã hàng', width: 110 },
+        { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
         { data: 'xuatban', title: 'Xuất bán', width: 70, className: 'htRight' },
         { data: 'ton_cs1', title: 'Tồn CS1', width: 70, className: 'htRight' },
         { data: 'ton_cs2', title: 'Tồn CS2', width: 70, className: 'htRight' },
@@ -203,7 +203,7 @@ window.taiBaoCaoXNT = async function () {
         { data: 'tongxuat', title: 'Tổng xuất', width: 76, className: 'htRight' },
         { data: 'nhapkhac', title: 'Nhập khác', width: 76, className: 'htRight' },
         { data: 'tongnhap', title: 'Tổng nhập', width: 76, className: 'htRight' },
-        { data: 'tensp', title: 'Tên hàng', width: 160 },
+        { data: 'tensp', title: 'Tên hàng', width: 110 },
         // Nếu cần cột "Ẩn - Giá nhập" để debug:
         // { data: 'gianhap', title: 'Ẩn - Giá nhập', width: 90 }
     ];
@@ -253,6 +253,7 @@ function resizeHotHeight() {
 
     const newH = Math.max(260, vh - rectTop - pagH - gap);
     hotEl.style.height = newH + 'px';
+    hotEl.style.paddingBottom = (pagH + 4) + 'px'; // chừa chỗ tránh bị che
 
     // Nếu bạn khởi tạo HOT với height: '100%', sau khi đổi container height,
     // cần thông báo layout lại:
