@@ -216,7 +216,7 @@ window.taiBaoCaoXNT = async function () {
         colHeaders: columns.map(col => col.title),
         rowHeaders: true,
         width: '100%',
-        height: 450,
+        height: 150,
         copyPaste: {
             copyColumnHeaders: true,   // bật copy kèm tiêu đề cột
             // (tuỳ chọn) rowsLimit: 100000,
