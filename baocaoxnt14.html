@@ -264,6 +264,18 @@
             text-align: center;
             padding: 4px 6px;
         }
+
+        /* Popup ảnh sản phẩm */
+#imgModal{position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.55); z-index:3000;}
+#imgModal .box{position:relative; background:#fff; border-radius:12px; padding:10px;
+  max-width:90vw; max-height:90vh; box-shadow:0 8px 24px rgba(0,0,0,.2);}
+#imgModal img{max-width:86vw; max-height:80vh; object-fit:contain; display:block;}
+#imgModal .cap{margin-top:6px; text-align:center; font-weight:600}
+#imgModal .close{position:absolute; top:6px; right:8px; border:0; background:#fff; 
+  border-radius:8px; padding:4px 8px; cursor:pointer}
+.masp-link{ color:#1d4ed8; text-decoration:underline; cursor:pointer }
+
     </style>
 </head>
 
@@ -391,6 +403,16 @@
         </div>
         <div id="popupSearchList"></div>
     </div>
+
+    <!-- Modal ảnh -->
+<div id="imgModal" role="dialog" aria-hidden="true">
+  <div class="box">
+    <button class="close" id="imgClose">Đóng ✕</button>
+    <img id="prodImg" alt="Ảnh sản phẩm">
+    <div class="cap" id="imgCaption"></div>
+  </div>
+</div>
+
 </body>
 
 </html>
