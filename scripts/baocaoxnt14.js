@@ -748,3 +748,12 @@ window.copyBang = async function () {
         document.body.removeChild(ta);
     }
 };
+
+// Ủy quyền click cho link mã hàng
+document.getElementById('hot').addEventListener('click', function (e) {
+    const a = e.target.closest('a.masp-link');
+    if (a) {
+        e.preventDefault();
+        showProdImage(a.dataset.masp);
+    }
+});
