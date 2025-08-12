@@ -213,7 +213,7 @@ window.taiBaoCaoXNT = async function () {
     hotInstance = new Handsontable(container, {
         data: hotData,
         columns: columns,
-        colHeaders: columns.map(col => col.title),
+        colHeaders: columns.map(col => (col.title || '').replace(/\s+/g, '\n')),
         rowHeaders: true,
         width: '100%',
         height: 550,
