@@ -237,7 +237,7 @@ window.taiBaoCaoXNT = async function () {
 
     // Định nghĩa cột cho Handsontable (ẩn hoàn toàn dvt, nhomhang, mausac)
     const columns = [
-        { data: 'masp', title: 'Mã hàng', width: 110 },
+        { data: 'masp', title: 'Mã hàng', width: 110, renderer: maspRenderer },
         { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
         { data: 'xuatban', title: 'Xuất bán', width: 70, className: 'htRight' },
         { data: 'ton_cs1', title: 'Tồn CS1', width: 70, className: 'htRight' },
