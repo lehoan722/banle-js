@@ -282,6 +282,23 @@
         #hot {
             padding-bottom: 56px;
         }
+
+        /* Cho vùng lưới HOT có thể cuộn ngang khi quá rộng */
+        #hot .ht_master .wtHolder {
+            overflow: auto !important;
+            /* rất quan trọng để lộ scrollbar ngang */
+        }
+
+        /* Cho phép header xuống dòng, gọn khoảng cách */
+        #hot .handsontable thead th,
+        #hot .handsontable thead th .colHeader {
+            white-space: normal !important;
+            line-height: 1.1;
+            text-align: center;
+            /* gọn gàng hơn, có thể bỏ nếu không thích */
+            padding: 4px 6px;
+            /* giảm padding để tiêu đề thấp */
+        }
     </style>
 </head>
 
@@ -387,7 +404,7 @@
         </div>
 
         <div class="filters-right">
-            <textarea id="maspList" rows="9" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
+            <textarea id="maspList" rows="8" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
                 style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
 
         </div>
