@@ -216,15 +216,19 @@ window.taiBaoCaoXNT = async function () {
         colHeaders: columns.map(col => col.title),
         rowHeaders: true,
         width: '100%',
-        height: 550,
+
         copyPaste: {
             copyColumnHeaders: true,   // bật copy kèm tiêu đề cột
             // (tuỳ chọn) rowsLimit: 100000,
             // (tuỳ chọn) columnsLimit: 1000
         },
         licenseKey: 'non-commercial-and-evaluation',
-        
-        stretchH: 'all',
+
+
+        height: '100%',            // cho phép resizeHotHeight() điều khiển
+        stretchH: 'none',          // khi rộng hơn sẽ có scrollbar ngang        
+
+
         manualColumnResize: true,
         readOnly: true,
         hiddenColumns: { columns: [15], indicators: false },
@@ -249,21 +253,18 @@ function resizeHotHeight() {
     const pagEl = document.getElementById('pagination');
     if (!hotEl) return;
 
-    const rectTop = hotEl.getBoundingClientRect().top;  // px từ đỉnh viewport
+    const rectTop = hotEl.getBoundingClientRect().top;
     const vh = window.innerHeight;
     const pagH = pagEl ? pagEl.offsetHeight : 0;
-    const gap = 8;                                      // khoảng cách an toàn
+    const gap = 0; // trước là 8
 
     const newH = Math.max(260, vh - rectTop - pagH - gap);
     hotEl.style.height = newH + 'px';
-    hotEl.style.paddingBottom = (pagH + 4) + 'px'; // chừa chỗ tránh bị che
+    hotEl.style.paddingBottom = (pagH + 2) + 'px'; // chừa đúng chỗ cho thanh trang
 
-    // Nếu bạn khởi tạo HOT với height: '100%', sau khi đổi container height,
-    // cần thông báo layout lại:
-    if (window.hotInstance && typeof window.hotInstance.render === 'function') {
-        window.hotInstance.render();
-    }
+    if (window.hotInstance?.render) window.hotInstance.render();
 }
+
 
 window.addEventListener('resize', resizeHotHeight);
 window.addEventListener('orientationchange', resizeHotHeight);
