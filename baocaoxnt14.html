@@ -13,10 +13,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
 
     <style>
+        /* Body không cuộn; bảng cuộn trong vùng của nó */
+        html,
         body {
-            font-family: Arial, sans-serif;
-            padding: 18px;
-            background: #fcfcfd;
+            height: 100%;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            /* mobile */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* không cuộn toàn trang */
         }
 
         h2 {
@@ -216,12 +226,18 @@
             /* tránh bounce trên mobile */
         }
 
-        /* Cho #hot chiếm toàn bộ phần còn lại và tự cuộn */
+        /* Vùng bảng tự cuộn theo chiều dọc & ngang */
         #hot {
             flex: 1 1 auto;
             min-height: 0;
             overflow: auto;
-            /* cuộn trong vùng bảng */
+            padding-bottom: 56px;
+            /* tránh bị thanh phân trang che; có thể giảm sau */
+        }
+
+        /* Scroll ngang khi bảng rộng */
+        #hot .ht_master .wtHolder {
+            overflow: auto !important;
         }
 
         /* Thanh phân trang vẫn giữ kích thước tự nhiên */
@@ -287,6 +303,14 @@
         #hot .ht_master .wtHolder {
             overflow: auto !important;
             /* rất quan trọng để lộ scrollbar ngang */
+        }
+
+        #hot .handsontable thead th,
+        #hot .handsontable thead th .colHeader {
+            white-space: normal !important;
+            line-height: 1.1;
+            text-align: center;
+            padding: 4px 6px;
         }
     </style>
 </head>
