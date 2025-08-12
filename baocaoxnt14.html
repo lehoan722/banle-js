@@ -256,6 +256,32 @@
         #hot .handsontable thead th {
             padding: 4px 6px;
         }
+
+        /* Ẩn cụm cũ phòng khi bạn chưa xóa */
+        #pager {
+            display: none !important;
+        }
+
+        /* Cụm phân trang hoạt động: cố định cuối màn hình, luôn thấy được */
+        #pagination {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: env(safe-area-inset-bottom);
+            background: #fff;
+            border-top: 1px solid #e5e7eb;
+            padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        /* Chừa khoảng tránh che phần cuối bảng */
+        #hot {
+            padding-bottom: 56px;
+        }
     </style>
 </head>
 
@@ -369,13 +395,6 @@
 
     <div id="hot" style="margin-top: 16px;"></div>
     <!-- Thanh phân trang giống XNT14 -->
-    <div id="pager" style="display:flex;gap:8px;align-items:center;margin:10px 0;">
-        <button id="btnPrev" onclick="prevPage()" disabled>← Trang trước</button>
-        <span>Trang <b id="pageIndex">1</b></span>
-        <button id="btnNext" onclick="nextPage()" disabled>Trang sau →</button>
-        <span id="pageInfo" style="color:#666;margin-left:8px"></span>
-    </div>
-
 
     <div id="pagination" style="margin-top:10px; text-align:center;">
         <button onclick="prevPage()">⬅ Trang trước</button>
