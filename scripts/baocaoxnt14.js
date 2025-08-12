@@ -213,20 +213,17 @@ window.taiBaoCaoXNT = async function () {
     hotInstance = new Handsontable(container, {
         data: hotData,
         columns: columns,
+        colHeaders: columns.map(col => col.title),
         rowHeaders: true,
         width: '100%',
+        height: 540,
         copyPaste: {
             copyColumnHeaders: true,   // bật copy kèm tiêu đề cột
             // (tuỳ chọn) rowsLimit: 100000,
             // (tuỳ chọn) columnsLimit: 1000
         },
-        licenseKey: 'non-commercial-and-evaluation',
-        height: '100%',            // cho phép resizeHotHeight() điều khiển
+        licenseKey: 'non-commercial-and-evaluation',        
         stretchH: 'none',          // khi rộng hơn sẽ có scrollbar ngang
-        colHeaders(index) {         // (nếu muốn 2 dòng) vẫn giữ header 2 dòng
-            const t = (columns[index]?.title || '').trim();
-            return t.replace(/\s+/g, '<br>');
-        },
         manualColumnResize: true,
         readOnly: true,
         hiddenColumns: { columns: [15], indicators: false },
