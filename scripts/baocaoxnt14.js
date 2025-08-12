@@ -212,25 +212,30 @@ window.taiBaoCaoXNT = async function () {
 
     hotInstance = new Handsontable(container, {
         data: hotData,
-        columns: columns,
-        colHeaders: columns.map(col => col.title),
+        columns,
+        // Header 2 dòng
+        colHeaders(index) {
+            const t = (columns[index]?.title || '').trim();
+            return t.replace(/\s+/g, '<br>');
+        },
+
         rowHeaders: true,
         width: '100%',
-        height: 150,
-        copyPaste: {
-            copyColumnHeaders: true,   // bật copy kèm tiêu đề cột
-            // (tuỳ chọn) rowsLimit: 100000,
-            // (tuỳ chọn) columnsLimit: 1000
-        },
-        licenseKey: 'non-commercial-and-evaluation',
-        stretchH: 'all',
-        manualColumnResize: true,
+
+        height: 100,            // ✅ chỉ tạm thời; sẽ cập nhật ngay sau bằng resizeHotHeight()
+        stretchH: 'none',       // ✅ để có thanh trượt ngang khi bảng rộng
+
         readOnly: true,
+        manualColumnResize: true,
+        columnSorting: true,
+        filters: true,
+        dropdownMenu: true,
+
+        copyPaste: { copyColumnHeaders: true },
         hiddenColumns: { columns: [15], indicators: false },
-        columnSorting: true,        // ✅ Thêm sắp xếp
-        filters: true,              // ✅ Thêm lọc
-        dropdownMenu: true          // ✅ Thêm menu filter dropdown 
+        licenseKey: 'non-commercial-and-evaluation',
     });
+
 
     window.hotInstance = hotInstance;
 
@@ -248,21 +253,24 @@ function resizeHotHeight() {
     const pagEl = document.getElementById('pagination');
     if (!hotEl) return;
 
-    const rectTop = hotEl.getBoundingClientRect().top;  // px từ đỉnh viewport
+    const rectTop = hotEl.getBoundingClientRect().top;   // vị trí đỉnh bảng so với viewport
     const vh = window.innerHeight;
     const pagH = pagEl ? pagEl.offsetHeight : 0;
-    const gap = 8;                                      // khoảng cách an toàn
+    const gap = 4;                                      // sát hơn để không mất chỗ
 
-    const newH = Math.max(260, vh - rectTop - pagH - gap);
-    hotEl.style.height = newH + 'px';
-    hotEl.style.paddingBottom = (pagH + 4) + 'px'; // chừa chỗ tránh bị che
+    // Chiều cao phù hợp với viewport, trừ thanh phân trang
+    const newH = Math.max(220, vh - rectTop - pagH - gap);
 
-    // Nếu bạn khởi tạo HOT với height: '100%', sau khi đổi container height,
-    // cần thông báo layout lại:
-    if (window.hotInstance && typeof window.hotInstance.render === 'function') {
-        window.hotInstance.render();
+    // ✅ cập nhật chiều cao THỰC của Handsontable
+    if (window.hotInstance) {
+        hotInstance.updateSettings({ height: newH });
     }
+
+    // ✅ chừa padding đáy ngay trên vùng cuộn thực tế (.wtHolder) để không bị che
+    const holder = document.querySelector('#hot .ht_master .wtHolder');
+    if (holder) holder.style.paddingBottom = (pagH + 6) + 'px';
 }
+
 
 window.addEventListener('resize', resizeHotHeight);
 window.addEventListener('orientationchange', resizeHotHeight);
