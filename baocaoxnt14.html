@@ -284,7 +284,6 @@
             left: 0;
             right: 0;
             bottom: env(safe-area-inset-bottom);
-            background: #fff;
             border-top: 1px solid #e5e7eb;
             padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
             display: flex;
@@ -292,12 +291,10 @@
             align-items: center;
             gap: 10px;
             z-index: 1000;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(2px);
         }
 
-        /* Chừa khoảng tránh che phần cuối bảng */
-        #hot {
-            padding-bottom: 56px;
-        }
 
         /* Cho vùng lưới HOT có thể cuộn ngang khi quá rộng */
         #hot .ht_master .wtHolder {
