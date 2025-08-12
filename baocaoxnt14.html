@@ -27,7 +27,7 @@
             flex-direction: column;
             overflow: hidden;
             /* không cuộn toàn trang */
-        }        
+        }
 
         .filters-row {
             display: flex;
@@ -48,45 +48,12 @@
             gap: 10px 22px;
         }
 
-        .filters-right {
-            flex: 0 0 13%;
-            max-width: 13%;
-            min-width: 130px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            height: 80%;
-            background: #f5f6fa;
-            padding: 6px 4px 6px 6px;
-            /* giảm padding */
-            border-radius: 8px;
-            border: 1px solid #d4e0f7;
-            margin-left: 6px;
-            /* giảm khoảng cách sang trái */
-        }
-
         .filters-right label {
             margin-bottom: 7px;
             color: #1976d2;
             font-weight: bold;
         }
 
-        .filters-right textarea {
-            width: 100%;
-            min-width: 110px;
-            max-width: 220px;
-            resize: vertical;
-            font-size: 15px;
-            border-radius: 6px;
-            border: 1px solid #bbb;
-            padding: 7px;
-            margin: 0;
-            height: 80%;
-            /* giúp nó kéo cao hết phần trên */
-            box-sizing: border-box;
-        }
 
         .filters {
             display: flex;
@@ -197,7 +164,7 @@
         #popupSearchList div:hover {
             background: #e3f0ff;
         }
-       
+
 
         /* Trang cao đúng màn hình, không cuộn body */
         html,
@@ -243,9 +210,8 @@
             height: calc(1.4em * 10 + 10px);
             max-height: calc(1.4em * 10 + 10px);
             resize: vertical;
-            /* nếu muốn cố định luôn thì dùng: resize: none; */
         }
-        
+
 
         /* ghi đè rule cũ "height:100%" */
 
@@ -307,7 +273,7 @@
         <label>Mật khẩu: <input type="password" id="password"></label>
         <button onclick="dangNhap()">Đăng nhập</button>
         <span id="authStatus" style="color: red; margin-left: 10px"></span>
-    </div>  
+    </div>
 
     <div class="filters-row">
         <div class="filters-left">
