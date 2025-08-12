@@ -196,6 +196,66 @@
             height: auto;
             align-self: stretch;
         }
+
+        /* Trang cao đúng màn hình, không cuộn body */
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            min-height: 100vh;
+            /* desktop */
+            min-height: 100dvh;
+            /* mobile an toàn thanh địa chỉ */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* chặn cuộn toàn trang */
+            overscroll-behavior: none;
+            /* tránh bounce trên mobile */
+        }
+
+        /* Cho #hot chiếm toàn bộ phần còn lại và tự cuộn */
+        #hot {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            /* cuộn trong vùng bảng */
+        }
+
+        /* Thanh phân trang vẫn giữ kích thước tự nhiên */
+        #pager {
+            flex: 0 0 auto;
+        }
+
+        /* Khóa chiều cao 10 dòng cho ô mã sản phẩm */
+        #maspList {
+            line-height: 1.4;
+            height: calc(1.4em * 10 + 10px);
+            max-height: calc(1.4em * 10 + 10px);
+            resize: vertical;
+            /* nếu muốn cố định luôn thì dùng: resize: none; */
+        }
+
+        .filters-right textarea {
+            height: auto;
+        }
+
+        /* ghi đè rule cũ "height:100%" */
+
+        /* Cho phép tiêu đề cột xuống dòng theo \n */
+        #hot .handsontable .colHeader {
+            white-space: pre-line !important;
+            line-height: 1.15;
+            word-break: keep-all;
+            /* xuống tại khoảng trắng, không cắt chữ */
+        }
+
+        /* Giảm padding tiêu đề để gọn hơn */
+        #hot .handsontable thead th {
+            padding: 4px 6px;
+        }
     </style>
 </head>
 
@@ -301,7 +361,7 @@
         </div>
 
         <div class="filters-right">
-            <textarea id="maspList" rows="13" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
+            <textarea id="maspList" rows="10" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
                 style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
 
         </div>
