@@ -445,6 +445,168 @@ function getQuery(name) {
     return v ? v.trim() : "";
 }
 
+// ==== QUÉT MÃ VẠCH / QR BẰNG CAMERA (hỗ trợ iPhone) ====
+let ZXING = null, codeReader = null, scanControls = null;
+let torchOn = false;
+
+async function ensureZXing() {
+    if (ZXING) return;
+    // load ESM từ CDN khi cần
+    ZXING = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm');
+}
+
+// Chọn camera "sau" nếu có
+async function pickBackCamera() {
+    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+    if (!devices || !devices.length) return undefined;
+    // iOS thường chỉ trả 1-2 camera, cố gắng chọn 'back' hoặc 'rear'
+    const back = devices.find(d => /back|rear|environment/i.test(d.label));
+    return (back || devices[0]).deviceId;
+}
+
+async function startScanner(deviceId) {
+    await ensureZXing();
+    const videoEl = document.getElementById('scannerVideo');
+    const status = document.getElementById('scannerStatus');
+
+    // Tập định dạng phổ biến bán lẻ (1D) + QR
+    const hints = new ZXING.Hints();
+    hints.set(ZXING.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXING.BarcodeFormat.QR_CODE,
+        ZXING.BarcodeFormat.CODE_128,
+        ZXING.BarcodeFormat.CODE_39,
+        ZXING.BarcodeFormat.EAN_13,
+        ZXING.BarcodeFormat.EAN_8,
+        ZXING.BarcodeFormat.ITF,
+        ZXING.BarcodeFormat.UPC_A,
+        ZXING.BarcodeFormat.UPC_E
+    ]);
+
+    codeReader = new ZXING.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
+
+    // Nếu có deviceId => dùng thiết bị đó. Không thì dùng facingMode: environment
+    if (deviceId) {
+        scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
+    } else {
+        scanControls = await codeReader.decodeFromConstraints(
+            { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+            videoEl,
+            onScanResult
+        );
+    }
+
+    status.textContent = 'Đang quét... đưa mã vào khung.';
+    await populateCameraList(); // hiển thị danh sách camera (nếu có)
+}
+
+function onScanResult(result, err, controls) {
+    if (result) {
+        const text = result.getText ? result.getText() : (result.rawValue || '');
+        if (text) {
+            try { navigator.vibrate?.(80); } catch (_) { }
+            // đưa kết quả vào ô nhập & tìm
+            const ip = document.getElementById('maspInput');
+            ip.value = text.trim().toUpperCase();
+            closeScanner();
+            // gọi search như bình thường
+            triggerSearch();
+        }
+    }
+    // lỗi decode vặt thì bỏ qua để tiếp tục quét
+}
+
+async function stopScanner() {
+    try { scanControls?.stop(); } catch (_) { }
+    const v = document.getElementById('scannerVideo');
+    const track = v?.srcObject?.getVideoTracks?.()[0];
+    try { track?.stop(); } catch (_) { }
+    if (v) v.srcObject = null;
+    codeReader = null; scanControls = null; torchOn = false;
+}
+
+async function populateCameraList() {
+    const sel = document.getElementById('cameraSelect');
+    sel.innerHTML = '';
+    try {
+        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+        devices.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Camera ${sel.length + 1}`;
+            sel.appendChild(opt);
+        });
+    } catch (_) { /* iOS đôi khi không trả label cho đến khi cấp quyền */ }
+}
+
+async function switchCamera(deviceId) {
+    await stopScanner();
+    await startScanner(deviceId);
+}
+
+async function toggleTorch() {
+    const v = document.getElementById('scannerVideo');
+    const track = v?.srcObject?.getVideoTracks?.[0];
+    if (!track) return;
+
+    try {
+        torchOn = !torchOn;
+        // iOS 17.4+ có thể hỗ trợ; không phải máy nào cũng được → bọc try/catch
+        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+        document.getElementById('flashBtn').textContent = torchOn ? '🔦 Tắt đèn' : '🔦 Đèn';
+    } catch (e) {
+        document.getElementById('scannerStatus').textContent = 'Thiết bị không hỗ trợ bật đèn.';
+        torchOn = false;
+    }
+}
+
+async function decodeFromFile(file) {
+    if (!file) return;
+    await ensureZXing();
+    const reader = codeReader || new ZXING.BrowserMultiFormatReader();
+    try {
+        const res = await reader.decodeFromImageUrl(URL.createObjectURL(file));
+        const text = res.getText ? res.getText() : (res.rawValue || '');
+        if (text) {
+            document.getElementById('maspInput').value = text.trim().toUpperCase();
+            closeScanner();
+            triggerSearch();
+        } else {
+            document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+        }
+    } catch (e) {
+        document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+    }
+}
+
+// ==== Open/Close modal
+window.openScanner = async function () {
+    document.getElementById('scannerModal').style.display = 'block';
+    await startScanner(await pickBackCamera());
+};
+window.closeScanner = async function () {
+    document.getElementById('scannerModal').style.display = 'none';
+    await stopScanner();
+};
+
+// === Gắn sự kiện sau khi trang load (gộp vào onload cũ)
+const _oldOnload_scan = window.onload;
+window.onload = async function () {
+    if (typeof _oldOnload_scan === 'function') await _oldOnload_scan();
+
+    const btn = document.getElementById('scanBtn');
+    const btnClose = document.getElementById('closeScanner');
+    const btnFlash = document.getElementById('flashBtn');
+    const selCam = document.getElementById('cameraSelect');
+    const filePick = document.getElementById('filePicker');
+
+    btn?.addEventListener('click', () => openScanner());
+    btnClose?.addEventListener('click', () => closeScanner());
+    btnFlash?.addEventListener('click', () => toggleTorch());
+    selCam?.addEventListener('change', (e) => switchCamera(e.target.value));
+    filePick?.addEventListener('change', (e) => decodeFromFile(e.target.files?.[0]));
+};
+
+
 // Gộp cùng onload hiện có:
 const _oldOnload = window.onload;
 window.onload = async function () {
