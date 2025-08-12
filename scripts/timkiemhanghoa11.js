@@ -474,39 +474,27 @@ async function startScanner(deviceId) {
     const videoEl = document.getElementById('scannerVideo');
     const status = document.getElementById('scannerStatus');
 
-    // Tập định dạng phổ biến bán lẻ (1D) + QR
-    // const hints = new ZXING.Hints();  // ❌ bỏ
-    const hints = new Map();              // ✅ đúng
-    hints.set(ZXING.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXING.BarcodeFormat.QR_CODE,
-        ZXING.BarcodeFormat.CODE_128,
-        ZXING.BarcodeFormat.CODE_39,
-        ZXING.BarcodeFormat.EAN_13,
-        ZXING.BarcodeFormat.EAN_8,
-        ZXING.BarcodeFormat.ITF,
-        ZXING.BarcodeFormat.UPC_A,
-        ZXING.BarcodeFormat.UPC_E
-    ]);
+    // KHÔNG dùng hints/DecodeHintType/BarcodeFormat nữa
+    codeReader = new ZXING.BrowserMultiFormatReader();
 
-    codeReader = new ZXING.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
-
-
-    codeReader = new ZXING.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
-
-    // Nếu có deviceId => dùng thiết bị đó. Không thì dùng facingMode: environment
-    if (deviceId) {
-        scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
-    } else {
-        scanControls = await codeReader.decodeFromConstraints(
-            { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
-            videoEl,
-            onScanResult
-        );
+    try {
+        if (deviceId) {
+            scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
+        } else {
+            scanControls = await codeReader.decodeFromConstraints(
+                { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+                videoEl,
+                onScanResult
+            );
+        }
+        status.textContent = 'Đang quét... đưa mã vào khung.';
+        await populateCameraList();
+    } catch (err) {
+        console.error('startScanner error:', err);
+        status.textContent = 'Không mở được camera. Kiểm tra quyền camera và đóng Live Text nếu đang bật.';
     }
-
-    status.textContent = 'Đang quét... đưa mã vào khung.';
-    await populateCameraList(); // hiển thị danh sách camera (nếu có)
 }
+
 
 function onScanResult(result, err, controls) {
     if (result) {
@@ -572,24 +560,11 @@ async function toggleTorch() {
 
 async function decodeFromFile(file) {
     if (!file) return;
-
     await ensureZXing();
-    // const hints = new ZXING.Hints();  // ❌ bỏ
-    const hints = new Map();              // ✅ đúng
-    hints.set(ZXING.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXING.BarcodeFormat.QR_CODE,
-        ZXING.BarcodeFormat.CODE_128,
-        ZXING.BarcodeFormat.CODE_39,
-        ZXING.BarcodeFormat.EAN_13,
-        ZXING.BarcodeFormat.EAN_8,
-        ZXING.BarcodeFormat.ITF,
-        ZXING.BarcodeFormat.UPC_A,
-        ZXING.BarcodeFormat.UPC_E
-    ]);
 
-    const reader = new ZXING.BrowserMultiFormatReader(hints);
-
+    const reader = new ZXING.BrowserMultiFormatReader(); // không dùng hints
     const url = URL.createObjectURL(file);
+
     try {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
@@ -601,11 +576,13 @@ async function decodeFromFile(file) {
         }
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } catch (e) {
+        console.error('decodeFromFile error:', e);
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } finally {
         URL.revokeObjectURL(url);
     }
 }
+
 
 // ==== Open/Close modal
 window.openScanner = async function () {
