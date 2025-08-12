@@ -241,6 +241,33 @@ window.taiBaoCaoXNT = async function () {
 
 };
 
+function resizeHotHeight() {
+    const hotEl = document.getElementById('hot');
+    const pagEl = document.getElementById('pagination');
+    if (!hotEl) return;
+
+    const rectTop = hotEl.getBoundingClientRect().top;  // px từ đỉnh viewport
+    const vh = window.innerHeight;
+    const pagH = pagEl ? pagEl.offsetHeight : 0;
+    const gap = 8;                                      // khoảng cách an toàn
+
+    const newH = Math.max(260, vh - rectTop - pagH - gap);
+    hotEl.style.height = newH + 'px';
+
+    // Nếu bạn khởi tạo HOT với height: '100%', sau khi đổi container height,
+    // cần thông báo layout lại:
+    if (window.hotInstance && typeof window.hotInstance.render === 'function') {
+        window.hotInstance.render();
+    }
+}
+
+window.addEventListener('resize', resizeHotHeight);
+window.addEventListener('orientationchange', resizeHotHeight);
+document.addEventListener('DOMContentLoaded', resizeHotHeight);
+// Gọi thêm 1 lần sau khi dữ liệu/pagination hiện ra:
+setTimeout(resizeHotHeight, 100);
+
+
 // ==== HIỂN THỊ ẢNH TỪ DANH SÁCH ĐANG CÓ TRÊN XNT14 ====
 window.moTrangAnh = function () {
     if (!window.hotInstance) {
