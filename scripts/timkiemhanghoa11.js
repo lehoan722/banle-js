@@ -457,16 +457,14 @@ async function ensureZXing() {
 
 // Chọn camera "sau" nếu có
 async function pickBackCamera() {
-    await ensureZXing(); // <- thêm dòng này
-    try {
-        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-        if (!devices || !devices.length) return undefined;
-        const back = devices.find(d => /back|rear|environment/i.test(d.label));
-        return (back || devices[0]).deviceId;
-    } catch (_) {
-        return undefined; // iOS đôi khi chưa cấp quyền → cho start bằng facingMode
-    }
+    await ensureZXing();
+    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+    if (!devices || !devices.length) return undefined;
+    // cố gắng chọn camera sau
+    const back = devices.find(d => /back|rear|environment/i.test(d.label));
+    return (back || devices[0]).deviceId;
 }
+
 
 
 async function startScanner(deviceId) {
@@ -474,26 +472,49 @@ async function startScanner(deviceId) {
     const videoEl = document.getElementById('scannerVideo');
     const status = document.getElementById('scannerStatus');
 
-    // KHÔNG dùng hints/DecodeHintType/BarcodeFormat nữa
-    codeReader = new ZXING.BrowserMultiFormatReader();
+    codeReader = new ZXING.BrowserMultiFormatReader(); // KHÔNG dùng hints
+
+    // Ưu tiên dùng camera sau 1080p
+    const constraintsBack = {
+        video: {
+            facingMode: { exact: 'environment' },   // ép back camera
+            width: { ideal: 1920 }, height: { ideal: 1080 },
+            frameRate: { ideal: 30 }
+        }
+    };
+    const constraintsFallback = {
+        video: {
+            facingMode: { ideal: 'environment' },   // nếu exact fail thì dùng ideal
+            width: { ideal: 1280 }, height: { ideal: 720 }
+        }
+    };
 
     try {
         if (deviceId) {
             scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
         } else {
-            scanControls = await codeReader.decodeFromConstraints(
-                { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
-                videoEl,
-                onScanResult
-            );
+            try {
+                scanControls = await codeReader.decodeFromConstraints(constraintsBack, videoEl, onScanResult);
+            } catch (_) {
+                scanControls = await codeReader.decodeFromConstraints(constraintsFallback, videoEl, onScanResult);
+            }
         }
         status.textContent = 'Đang quét... đưa mã vào khung.';
         await populateCameraList();
+
+        // Chọn sẵn back camera trong dropdown (nếu có)
+        try {
+            const sel = document.getElementById('cameraSelect');
+            const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+            const back = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
+            if (sel && back) sel.value = back.deviceId;
+        } catch (_) { }
     } catch (err) {
         console.error('startScanner error:', err);
-        status.textContent = 'Không mở được camera. Kiểm tra quyền camera và đóng Live Text nếu đang bật.';
+        status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
     }
 }
+
 
 
 function onScanResult(result, err, controls) {
@@ -522,7 +543,7 @@ async function stopScanner() {
 }
 
 async function populateCameraList() {
-    await ensureZXing(); // <- thêm
+    await ensureZXing();
     const sel = document.getElementById('cameraSelect');
     sel.innerHTML = '';
     try {
@@ -533,8 +554,9 @@ async function populateCameraList() {
             opt.textContent = d.label || `Camera ${i + 1}`;
             sel.appendChild(opt);
         });
-    } catch (_) { /* iOS chỉ hiện sau khi cấp quyền, không sao */ }
+    } catch (_) { }
 }
+
 
 
 async function switchCamera(deviceId) {
@@ -561,10 +583,8 @@ async function toggleTorch() {
 async function decodeFromFile(file) {
     if (!file) return;
     await ensureZXing();
-
-    const reader = new ZXING.BrowserMultiFormatReader(); // không dùng hints
+    const reader = new ZXING.BrowserMultiFormatReader();
     const url = URL.createObjectURL(file);
-
     try {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
@@ -584,11 +604,10 @@ async function decodeFromFile(file) {
 }
 
 
+
 // ==== Open/Close modal
 window.openScanner = async function () {
-    // iOS Live Text đang chiếm camera nếu input đang focus → bỏ focus trước
-    try { document.activeElement?.blur(); } catch (_) { }
-
+    try { document.activeElement?.blur(); } catch (_) { }        // tránh Live Text chiếm camera
     document.getElementById('scannerModal').style.display = 'block';
     const status = document.getElementById('scannerStatus');
     status.textContent = 'Đang chuẩn bị camera...';
@@ -596,21 +615,29 @@ window.openScanner = async function () {
     try {
         await ensureZXing();
 
-        // “Mồi” getUserMedia để iOS cấp quyền & lộ device labels rồi thả ngay
+        // "Mồi" getUserMedia để iOS cấp quyền & lộ device labels
         try {
             const pre = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: 'environment' } }
+                video: { facingMode: { exact: 'environment' } }
             });
             pre.getTracks().forEach(t => t.stop());
-        } catch (_) { /* nếu user Deny, phần dưới sẽ catch lỗi */ }
+        } catch (_) {
+            try {
+                const pre = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } }
+                });
+                pre.getTracks().forEach(t => t.stop());
+            } catch (_) { }
+        }
 
-        const deviceId = await pickBackCamera(); // có thể undefined (OK)
-        await startScanner(deviceId);
+        const backId = await pickBackCamera();
+        await startScanner(backId || null);
     } catch (e) {
         console.error('openScanner error:', e);
-        status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng tính năng "Scan Text" của iOS nếu đang mở.';
+        status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
     }
 };
+
 
 
 window.closeScanner = async function () {
