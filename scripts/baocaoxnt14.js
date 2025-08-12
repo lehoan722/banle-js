@@ -27,6 +27,42 @@ window.dangNhap = async function () {
     document.getElementById("authBox").style.display = "none";
 };
 
+// Ảnh sản phẩm: .JPG -> .png nếu lỗi
+const BASE_IMG = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+
+function showProdImage(masp) {
+    const modal = document.getElementById('imgModal');
+    const img = document.getElementById('prodImg');
+    const cap = document.getElementById('imgCaption');
+
+    const code = String(masp || '').trim().toUpperCase();
+    cap.textContent = code;
+
+    img.onerror = null;
+    img.src = BASE_IMG + encodeURIComponent(code) + ".JPG";
+    img.onerror = () => {
+        if (img.src.endsWith(".JPG")) {
+            img.src = BASE_IMG + encodeURIComponent(code) + ".png";
+        } else {
+            cap.textContent = code + " (không có ảnh)";
+        }
+    };
+
+    modal.style.display = 'flex';
+}
+// đóng modal
+(function attachModalHandlers() {
+    const modal = document.getElementById('imgModal');
+    const btn = document.getElementById('imgClose');
+    if (!modal || !btn) return;
+    btn.addEventListener('click', () => modal.style.display = 'none');
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none'; // click nền để đóng
+    });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.style.display = 'none'; });
+})();
+
+
 
 // ==== 2. LẤY DỮ LIỆU & HIỂN THỊ HANDSONTABLE ==== 
 window.taiBaoCaoXNT = async function () {
@@ -187,6 +223,17 @@ window.taiBaoCaoXNT = async function () {
     &nbsp;|&nbsp; Cuối kỳ: <b>${tongCuoiKy.toLocaleString()}</b>
   </span>
   `;
+
+    const maspRenderer = function (instance, td, row, col, prop, value) {
+        const code = (value ?? '').toString();
+        td.innerHTML = '';
+        const a = document.createElement('a');
+        a.className = 'masp-link';
+        a.textContent = code;
+        a.href = '#';
+        a.dataset.masp = code;
+        td.appendChild(a);
+    };
 
     // Định nghĩa cột cho Handsontable (ẩn hoàn toàn dvt, nhomhang, mausac)
     const columns = [
