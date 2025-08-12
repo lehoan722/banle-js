@@ -455,16 +455,24 @@ async function ensureZXing() {
     ZXING = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm');
 }
 
-// Chọn camera "sau" nếu có
-async function pickBackCamera() {
+function scoreCameraLabel(label = '') {
+    const s = label.toLowerCase();
+    let score = 0;
+    if (/(back|rear|mặt sau|environment)/.test(s)) score += 100; // camera sau
+    if (/(tele|chụp xa|zoom)/.test(s)) score += 40;               // tele tốt cho barcode
+    if (/(kép|triple|ba camera)/.test(s)) score += 10;
+    if (/(cực rộng|ultra wide)/.test(s)) score -= 30;              // tránh ultra-wide
+    if (/(front|trước|mặt trước)/.test(s)) score -= 100;           // tránh camera trước
+    return score;
+}
+
+async function pickBestBackCamera() {
     await ensureZXing();
     const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
     if (!devices || !devices.length) return undefined;
-    // cố gắng chọn camera sau
-    const back = devices.find(d => /back|rear|environment/i.test(d.label));
-    return (back || devices[0]).deviceId;
+    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+    return devices[0].deviceId;
 }
-
 
 
 async function startScanner(deviceId) {
@@ -472,48 +480,67 @@ async function startScanner(deviceId) {
     const videoEl = document.getElementById('scannerVideo');
     const status = document.getElementById('scannerStatus');
 
-    codeReader = new ZXING.BrowserMultiFormatReader(); // KHÔNG dùng hints
+    // giảm trễ giữa các lần decode để phản hồi nhanh hơn
+    codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
 
-    // Ưu tiên dùng camera sau 1080p
-    const constraintsBack = {
+    const constraintsBack1080p = {
         video: {
-            facingMode: { exact: 'environment' },   // ép back camera
+            facingMode: { exact: 'environment' },
             width: { ideal: 1920 }, height: { ideal: 1080 },
             frameRate: { ideal: 30 }
         }
     };
     const constraintsFallback = {
         video: {
-            facingMode: { ideal: 'environment' },   // nếu exact fail thì dùng ideal
+            facingMode: { ideal: 'environment' },
             width: { ideal: 1280 }, height: { ideal: 720 }
         }
     };
 
     try {
         if (deviceId) {
+            // mở thẳng bằng deviceId tốt nhất
             scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
         } else {
+            // ép back → nếu fail thì rơi xuống ideal
             try {
-                scanControls = await codeReader.decodeFromConstraints(constraintsBack, videoEl, onScanResult);
+                scanControls = await codeReader.decodeFromConstraints(constraintsBack1080p, videoEl, onScanResult);
             } catch (_) {
                 scanControls = await codeReader.decodeFromConstraints(constraintsFallback, videoEl, onScanResult);
             }
         }
+
+        // cố gắng bật continuous-focus / exposure / WB (nếu hỗ trợ)
+        try {
+            const track = getVideoTrack();
+            await track?.applyConstraints({
+                advanced: [
+                    { focusMode: 'continuous' },
+                    { exposureMode: 'continuous' },
+                    { whiteBalanceMode: 'continuous' }
+                ]
+            });
+        } catch (_) { }
+
         status.textContent = 'Đang quét... đưa mã vào khung.';
         await populateCameraList();
 
-        // Chọn sẵn back camera trong dropdown (nếu có)
+        // set dropdown trỏ ngay về camera tốt nhất
         try {
             const sel = document.getElementById('cameraSelect');
-            const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-            const back = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[0];
-            if (sel && back) sel.value = back.deviceId;
+            const bestId = deviceId || await pickBestBackCamera();
+            if (sel && bestId) sel.value = bestId;
         } catch (_) { }
+
+        // khởi tạo UI zoom (nếu máy hỗ trợ)
+        await initZoomUI();
+
     } catch (err) {
         console.error('startScanner error:', err);
         status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
     }
 }
+
 
 
 
@@ -548,6 +575,8 @@ async function populateCameraList() {
     sel.innerHTML = '';
     try {
         const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+        // sắp xếp để “camera tốt” đứng đầu
+        devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
         devices.forEach((d, i) => {
             const opt = document.createElement('option');
             opt.value = d.deviceId;
@@ -555,6 +584,34 @@ async function populateCameraList() {
             sel.appendChild(opt);
         });
     } catch (_) { }
+}
+
+function getVideoTrack() {
+    const v = document.getElementById('scannerVideo');
+    return v?.srcObject?.getVideoTracks?.()[0];
+}
+
+async function initZoomUI() {
+    const wrap = document.getElementById('zoomWrap');
+    const range = document.getElementById('zoomRange');
+    const track = getVideoTrack();
+    if (!wrap || !range || !track || !track.getCapabilities) { wrap.style.display = 'none'; return; }
+    const caps = track.getCapabilities();
+    if (caps.zoom) {
+        range.min = caps.zoom.min ?? 1;
+        range.max = caps.zoom.max ?? 6;
+        range.step = caps.zoom.step ?? 0.1;
+        // set mức zoom nhẹ giúp đọc barcode tốt hơn
+        const initZoom = Math.min(Math.max(1.5, range.min), range.max);
+        try { await track.applyConstraints({ advanced: [{ zoom: initZoom }] }); } catch { }
+        range.value = initZoom;
+        range.oninput = async (e) => {
+            try { await track.applyConstraints({ advanced: [{ zoom: parseFloat(e.target.value) }] }); } catch { }
+        };
+        wrap.style.display = 'flex';
+    } else {
+        wrap.style.display = 'none';
+    }
 }
 
 
@@ -607,7 +664,7 @@ async function decodeFromFile(file) {
 
 // ==== Open/Close modal
 window.openScanner = async function () {
-    try { document.activeElement?.blur(); } catch (_) { }        // tránh Live Text chiếm camera
+    try { document.activeElement?.blur(); } catch (_) { }  // tránh Live Text
     document.getElementById('scannerModal').style.display = 'block';
     const status = document.getElementById('scannerStatus');
     status.textContent = 'Đang chuẩn bị camera...';
@@ -615,29 +672,25 @@ window.openScanner = async function () {
     try {
         await ensureZXing();
 
-        // "Mồi" getUserMedia để iOS cấp quyền & lộ device labels
+        // mồi quyền + lộ labels
         try {
-            const pre = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { exact: 'environment' } }
-            });
+            const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } } });
             pre.getTracks().forEach(t => t.stop());
         } catch (_) {
             try {
-                const pre = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: 'environment' } }
-                });
+                const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
                 pre.getTracks().forEach(t => t.stop());
             } catch (_) { }
         }
 
-        const backId = await pickBackCamera();
-        await startScanner(backId || null);
+        const bestId = await pickBestBackCamera();
+        await startScanner(bestId || null);
+
     } catch (e) {
         console.error('openScanner error:', e);
         status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
     }
 };
-
 
 
 window.closeScanner = async function () {
