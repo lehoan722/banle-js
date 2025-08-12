@@ -214,16 +214,13 @@ window.taiBaoCaoXNT = async function () {
         data: hotData,
         columns,
         // Header 2 dòng
-        colHeaders(index) {
-            const t = (columns[index]?.title || '').trim();
-            return t.replace(/\s+/g, '<br>');
-        },
+        colHeaders: columns.map(col => col.title),
 
         rowHeaders: true,
         width: '100%',
 
         height: 100,            // ✅ chỉ tạm thời; sẽ cập nhật ngay sau bằng resizeHotHeight()
-        stretchH: 'none',       // ✅ để có thanh trượt ngang khi bảng rộng
+        stretchH: 'all',
 
         readOnly: true,
         manualColumnResize: true,
