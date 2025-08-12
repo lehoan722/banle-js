@@ -475,7 +475,8 @@ async function startScanner(deviceId) {
     const status = document.getElementById('scannerStatus');
 
     // Tập định dạng phổ biến bán lẻ (1D) + QR
-    const hints = new ZXING.Hints();
+    // const hints = new ZXING.Hints();  // ❌ bỏ
+    const hints = new Map();              // ✅ đúng
     hints.set(ZXING.DecodeHintType.POSSIBLE_FORMATS, [
         ZXING.BarcodeFormat.QR_CODE,
         ZXING.BarcodeFormat.CODE_128,
@@ -486,6 +487,9 @@ async function startScanner(deviceId) {
         ZXING.BarcodeFormat.UPC_A,
         ZXING.BarcodeFormat.UPC_E
     ]);
+
+    codeReader = new ZXING.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
+
 
     codeReader = new ZXING.BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
 
@@ -568,9 +572,10 @@ async function toggleTorch() {
 
 async function decodeFromFile(file) {
     if (!file) return;
-    await ensureZXing();
 
-    const hints = new ZXING.Hints();
+    await ensureZXing();
+    // const hints = new ZXING.Hints();  // ❌ bỏ
+    const hints = new Map();              // ✅ đúng
     hints.set(ZXING.DecodeHintType.POSSIBLE_FORMATS, [
         ZXING.BarcodeFormat.QR_CODE,
         ZXING.BarcodeFormat.CODE_128,
@@ -581,6 +586,7 @@ async function decodeFromFile(file) {
         ZXING.BarcodeFormat.UPC_A,
         ZXING.BarcodeFormat.UPC_E
     ]);
+
     const reader = new ZXING.BrowserMultiFormatReader(hints);
 
     const url = URL.createObjectURL(file);
@@ -603,16 +609,32 @@ async function decodeFromFile(file) {
 
 // ==== Open/Close modal
 window.openScanner = async function () {
+    // iOS Live Text đang chiếm camera nếu input đang focus → bỏ focus trước
+    try { document.activeElement?.blur(); } catch (_) { }
+
     document.getElementById('scannerModal').style.display = 'block';
+    const status = document.getElementById('scannerStatus');
+    status.textContent = 'Đang chuẩn bị camera...';
+
     try {
-        await ensureZXing();                          // <- load thư viện trước
-        const deviceId = await pickBackCamera();      // <- có thể undefined (OK)
-        await startScanner(deviceId);                 // <- nếu undefined sẽ dùng facingMode
+        await ensureZXing();
+
+        // “Mồi” getUserMedia để iOS cấp quyền & lộ device labels rồi thả ngay
+        try {
+            const pre = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } }
+            });
+            pre.getTracks().forEach(t => t.stop());
+        } catch (_) { /* nếu user Deny, phần dưới sẽ catch lỗi */ }
+
+        const deviceId = await pickBackCamera(); // có thể undefined (OK)
+        await startScanner(deviceId);
     } catch (e) {
-        document.getElementById('scannerStatus').textContent =
-            'Không mở được camera. Hãy kiểm tra quyền truy cập camera cho trang này.';
+        console.error('openScanner error:', e);
+        status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng tính năng "Scan Text" của iOS nếu đang mở.';
     }
 };
+
 
 window.closeScanner = async function () {
     document.getElementById('scannerModal').style.display = 'none';
