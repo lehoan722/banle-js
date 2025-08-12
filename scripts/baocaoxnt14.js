@@ -208,29 +208,12 @@ window.taiBaoCaoXNT = async function () {
         // { data: 'gianhap', title: 'Ẩn - Giá nhập', width: 90 }
     ];
 
-
-    const colHeaders = columns.map(c => c.title || '');
-
     const hotData = data.map((row, idx) => ({ stt: idx + 1, ...row }));
 
     hotInstance = new Handsontable(container, {
         data: hotData,
         columns: columns,
-        colHeaders: columns.map(col => (col.title || '').replace(/\s+/g, '\n')),
-
-        afterGetColHeader(col, TH) {
-            if (col < 0) return; // bỏ rowHeader
-            const title = (columns[col].title || '').trim();
-            const span = TH.querySelector('.colHeader');
-            if (span) {
-                // ép xuống dòng theo khoảng trắng
-                span.innerHTML = title.replace(/\s+/g, '<br>');
-            }
-            // đảm bảo cell header cho phép wrap
-            TH.style.whiteSpace = 'normal';
-            TH.style.lineHeight = '1.1';
-        },
-
+        colHeaders: columns.map(col => col.title),
         rowHeaders: true,
         width: '100%',
         height: 550,
@@ -240,10 +223,11 @@ window.taiBaoCaoXNT = async function () {
             // (tuỳ chọn) columnsLimit: 1000
         },
         licenseKey: 'non-commercial-and-evaluation',
+        stretchH: 'all',
         manualColumnResize: true,
-        //readOnly: true,
+        readOnly: true,
         hiddenColumns: { columns: [15], indicators: false },
-        stretchH: 'none',        // ✅ Thêm sắp xếp
+        columnSorting: true,        // ✅ Thêm sắp xếp
         filters: true,              // ✅ Thêm lọc
         dropdownMenu: true          // ✅ Thêm menu filter dropdown 
     });
