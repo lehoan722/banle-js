@@ -190,23 +190,26 @@ window.taiBaoCaoXNT = async function () {
 
     // Định nghĩa cột cho Handsontable (ẩn hoàn toàn dvt, nhomhang, mausac)
     const columns = [
-        { data: 'stt', title: '#', readOnly: true, width: 40 },
-        { data: 'masp', title: 'Mã hàng', readOnly: true },
-        { data: 'tensp', title: 'Tên hàng', readOnly: true },
-        { data: 'size', title: 'Kích cỡ', readOnly: true },
-        { data: 'dauky', title: 'Đầu kỳ', type: 'numeric', readOnly: true },
-        { data: 'nhapmua', title: 'Nhập mua', type: 'numeric', readOnly: true },
-        { data: 'nhapkhac', title: 'Nhập khác', type: 'numeric', readOnly: true },
-        { data: 'tongnhap', title: 'Tổng nhập', type: 'numeric', readOnly: true },
-        { data: 'xuatban', title: 'Xuất bán', type: 'numeric', readOnly: true },
-        { data: 'xuatkhac', title: 'Xuất khác', type: 'numeric', readOnly: true },
-        { data: 'tongxuat', title: 'Tổng xuất', type: 'numeric', readOnly: true },
-        { data: 'cuoiky', title: 'Cuối kỳ', type: 'numeric', readOnly: true },
-        { data: 'ton_cs1', title: 'Tồn CS1', type: 'numeric', readOnly: true },
-        { data: 'ton_cs2', title: 'Tồn CS2', type: 'numeric', readOnly: true },
-        { data: 'giale', title: 'Giá lẻ', type: 'numeric', readOnly: true },
-        { data: 'gianhap', title: 'Ẩn - Giá nhập', readOnly: true, visible: false }
+        { data: 'masp', title: 'Mã hàng', width: 95 },
+        { data: 'size', title: 'Kích cỡ', width: 54, className: 'htCenter' },
+        { data: 'xuatban', title: 'Xuất bán', width: 70, className: 'htRight' },
+        { data: 'ton_cs1', title: 'Tồn CS1', width: 70, className: 'htRight' },
+        { data: 'ton_cs2', title: 'Tồn CS2', width: 70, className: 'htRight' },
+        { data: 'nhapmua', title: 'Nhập mua', width: 72, className: 'htRight' },
+        { data: 'cuoiky', title: 'Cuối kỳ', width: 70, className: 'htRight' },
+        { data: 'giale', title: 'Giá lẻ', width: 78, className: 'htRight' },
+        { data: 'dauky', title: 'Đầu kỳ', width: 70, className: 'htRight' },
+        { data: 'xuatkhac', title: 'Xuất khác', width: 76, className: 'htRight' },
+        { data: 'tongxuat', title: 'Tổng xuất', width: 76, className: 'htRight' },
+        { data: 'nhapkhac', title: 'Nhập khác', width: 76, className: 'htRight' },
+        { data: 'tongnhap', title: 'Tổng nhập', width: 76, className: 'htRight' },
+        { data: 'tensp', title: 'Tên hàng', width: 160 },
+        // Nếu cần cột "Ẩn - Giá nhập" để debug:
+        // { data: 'gianhap', title: 'Ẩn - Giá nhập', width: 90 }
     ];
+
+
+    const colHeaders = columns.map(c => c.title || '');
 
     const hotData = data.map((row, idx) => ({ stt: idx + 1, ...row }));
 
@@ -214,6 +217,20 @@ window.taiBaoCaoXNT = async function () {
         data: hotData,
         columns: columns,
         colHeaders: columns.map(col => (col.title || '').replace(/\s+/g, '\n')),
+
+        afterGetColHeader(col, TH) {
+            if (col < 0) return; // bỏ rowHeader
+            const title = (columns[col].title || '').trim();
+            const span = TH.querySelector('.colHeader');
+            if (span) {
+                // ép xuống dòng theo khoảng trắng
+                span.innerHTML = title.replace(/\s+/g, '<br>');
+            }
+            // đảm bảo cell header cho phép wrap
+            TH.style.whiteSpace = 'normal';
+            TH.style.lineHeight = '1.1';
+        },
+
         rowHeaders: true,
         width: '100%',
         height: 550,
@@ -223,11 +240,10 @@ window.taiBaoCaoXNT = async function () {
             // (tuỳ chọn) columnsLimit: 1000
         },
         licenseKey: 'non-commercial-and-evaluation',
-        stretchH: 'all',
         manualColumnResize: true,
-        readOnly: true,
+        //readOnly: true,
         hiddenColumns: { columns: [15], indicators: false },
-        columnSorting: true,        // ✅ Thêm sắp xếp
+        stretchH: 'none',        // ✅ Thêm sắp xếp
         filters: true,              // ✅ Thêm lọc
         dropdownMenu: true          // ✅ Thêm menu filter dropdown 
     });
