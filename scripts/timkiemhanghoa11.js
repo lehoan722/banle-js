@@ -457,12 +457,17 @@ async function ensureZXing() {
 
 // Chọn camera "sau" nếu có
 async function pickBackCamera() {
-    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-    if (!devices || !devices.length) return undefined;
-    // iOS thường chỉ trả 1-2 camera, cố gắng chọn 'back' hoặc 'rear'
-    const back = devices.find(d => /back|rear|environment/i.test(d.label));
-    return (back || devices[0]).deviceId;
+    await ensureZXing(); // <- thêm dòng này
+    try {
+        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+        if (!devices || !devices.length) return undefined;
+        const back = devices.find(d => /back|rear|environment/i.test(d.label));
+        return (back || devices[0]).deviceId;
+    } catch (_) {
+        return undefined; // iOS đôi khi chưa cấp quyền → cho start bằng facingMode
+    }
 }
+
 
 async function startScanner(deviceId) {
     await ensureZXing();
@@ -525,18 +530,20 @@ async function stopScanner() {
 }
 
 async function populateCameraList() {
+    await ensureZXing(); // <- thêm
     const sel = document.getElementById('cameraSelect');
     sel.innerHTML = '';
     try {
         const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-        devices.forEach(d => {
+        devices.forEach((d, i) => {
             const opt = document.createElement('option');
             opt.value = d.deviceId;
-            opt.textContent = d.label || `Camera ${sel.length + 1}`;
+            opt.textContent = d.label || `Camera ${i + 1}`;
             sel.appendChild(opt);
         });
-    } catch (_) { /* iOS đôi khi không trả label cho đến khi cấp quyền */ }
+    } catch (_) { /* iOS chỉ hiện sau khi cấp quyền, không sao */ }
 }
+
 
 async function switchCamera(deviceId) {
     await stopScanner();
@@ -562,27 +569,51 @@ async function toggleTorch() {
 async function decodeFromFile(file) {
     if (!file) return;
     await ensureZXing();
-    const reader = codeReader || new ZXING.BrowserMultiFormatReader();
+
+    const hints = new ZXING.Hints();
+    hints.set(ZXING.DecodeHintType.POSSIBLE_FORMATS, [
+        ZXING.BarcodeFormat.QR_CODE,
+        ZXING.BarcodeFormat.CODE_128,
+        ZXING.BarcodeFormat.CODE_39,
+        ZXING.BarcodeFormat.EAN_13,
+        ZXING.BarcodeFormat.EAN_8,
+        ZXING.BarcodeFormat.ITF,
+        ZXING.BarcodeFormat.UPC_A,
+        ZXING.BarcodeFormat.UPC_E
+    ]);
+    const reader = new ZXING.BrowserMultiFormatReader(hints);
+
+    const url = URL.createObjectURL(file);
     try {
-        const res = await reader.decodeFromImageUrl(URL.createObjectURL(file));
+        const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
         if (text) {
             document.getElementById('maspInput').value = text.trim().toUpperCase();
             closeScanner();
             triggerSearch();
-        } else {
-            document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+            return;
         }
+        document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } catch (e) {
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+    } finally {
+        URL.revokeObjectURL(url);
     }
 }
 
 // ==== Open/Close modal
 window.openScanner = async function () {
     document.getElementById('scannerModal').style.display = 'block';
-    await startScanner(await pickBackCamera());
+    try {
+        await ensureZXing();                          // <- load thư viện trước
+        const deviceId = await pickBackCamera();      // <- có thể undefined (OK)
+        await startScanner(deviceId);                 // <- nếu undefined sẽ dùng facingMode
+    } catch (e) {
+        document.getElementById('scannerStatus').textContent =
+            'Không mở được camera. Hãy kiểm tra quyền truy cập camera cho trang này.';
+    }
 };
+
 window.closeScanner = async function () {
     document.getElementById('scannerModal').style.display = 'none';
     await stopScanner();
