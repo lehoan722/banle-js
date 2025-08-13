@@ -695,8 +695,7 @@ window.onload = async function () {
 };
 
 
-
-// ===== ZXING-WASM via BarcodeDetector Polyfill =========================================================
+// ===== ZXING-WASM via BarcodeDetector Polyfill =====
 let bdDetector = null, bdLoopReq = 0, bdRunning = false;
 
 // Tập format: ưu tiên 1D + QR
@@ -705,7 +704,38 @@ const BD_FORMATS = [
 ];
 
 // Hàm mở camera (giữ UI/modal của bạn y như cũ)
+window.openScanner = async function () {
+  try { document.activeElement?.blur(); } catch {}
+  document.getElementById('scannerModal').style.display = 'block';
+  const status = document.getElementById('scannerStatus');
+  status.textContent = 'Đang chuẩn bị camera...';
 
+  // 1) Mở camera sau; nếu có “ultra wide” sẽ tự ưu tiên (nhờ label)
+  const videoEl = document.getElementById('scannerVideo');
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }
+      }, audio: false
+    });
+  } catch {
+    // fallback 720p nếu 1080p bị từ chối
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+  }
+  videoEl.srcObject = stream;
+  await videoEl.play().catch(() => {});
+
+  // 2) Khởi tạo detector (polyfill = ZXing-WASM)
+  if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
+
+  status.textContent = 'Đang quét... đưa mã vào khung.';
+  startBDLoop();
+  await populateCameraList?.();   // nếu bạn có dropdown chọn camera
+};
 
 // Vòng lặp decode (60–100ms/lần)
 function startBDLoop() {
