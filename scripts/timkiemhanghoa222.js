@@ -449,11 +449,6 @@ function getQuery(name) {
 let ZXING = null, codeReader = null, scanControls = null;
 let torchOn = false;
 
-async function ensureZXing() {
-    if (ZXING) return;
-    // load ESM từ CDN khi cần
-    ZXING = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm');
-}
 
 function scoreCameraLabel(label = '') {
     const s = label.toLowerCase();
@@ -516,27 +511,6 @@ async function stopScanner() {
     codeReader = null; scanControls = null; torchOn = false;
 }
 
-async function populateCameraList() {
-    await ensureZXing();
-    const sel = document.getElementById('cameraSelect');
-    sel.innerHTML = '';
-    try {
-        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-        devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-        devices.forEach((d, i) => {
-            const opt = document.createElement('option');
-            opt.value = d.deviceId;
-            opt.textContent = d.label || `Camera ${i + 1}`;
-            sel.appendChild(opt);
-        });
-    } catch (_) { }
-}
-
-
-window.closeScanner = async function () {
-    document.getElementById('scannerModal').style.display = 'none';
-    await stopScanner();
-};
 
 // === Gắn sự kiện sau khi trang load (gộp vào onload cũ)
 const _oldOnload_scan = window.onload;
@@ -577,9 +551,49 @@ window.onload = async function () {
     }
 };
 
+// --- BẮT BUỘC đảm bảo BarcodeDetector (native hoặc polyfill) khả dụng ---
+async function ensureBarcodeDetectorReady() {
+    // 1) Nếu có native, thử khởi tạo — nếu OK thì dùng luôn
+    if (typeof window.BarcodeDetector === 'function') {
+        try {
+            // test minimal init
+            const test = new window.BarcodeDetector({ formats: ['qr_code'] });
+            return; // constructible => OK
+        } catch (e) {
+            // có nhưng không constructible (một số Safari/Chrome bản lạ) => fallback polyfill
+        }
+    }
+
+    // 2) Tải polyfill động nếu chưa có
+    await new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-bd-polyfill="1"]');
+        if (existing) return existing.onload ? existing.onload() : resolve();
+
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@1.3.8/dist/barcode-detector-polyfill.min.js';
+        s.async = true;
+        s.defer = true;
+        s.dataset.bdPolyfill = "1";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Không tải được polyfill BarcodeDetector'));
+        document.head.appendChild(s);
+    });
+
+    // 3) Gán polyfill vào window
+    if (window.BarcodeDetectorPolyfill) {
+        window.BarcodeDetector = window.BarcodeDetectorPolyfill;
+    }
+
+    // 4) Kiểm tra lại lần nữa
+    if (typeof window.BarcodeDetector !== 'function') {
+        throw new Error('BarcodeDetector polyfill chưa sẵn sàng');
+    }
+}
+
+
 
 // ===== ZXING-CPP WASM qua BarcodeDetector Polyfill (độc lập, không dùng @zxing/browser) =====
-const BD_FORMATS = ['code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e', 'qr_code'];
+
 
 let bdDetector = null;
 let bdRunning = false, bdLoopRaf = 0;
@@ -677,7 +691,13 @@ window.openScanner = async function () {
 
     // BẮT BUỘC dùng polyfill
     if (window.BarcodeDetectorPolyfill) window.BarcodeDetector = window.BarcodeDetectorPolyfill;
-    if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
+    // BẮT BUỘC dùng/chuẩn bị BarcodeDetector (native hoặc polyfill)
+    await ensureBarcodeDetectorReady();
+    if (!bdDetector) {
+        bdDetector = new window.BarcodeDetector({
+            formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e', 'qr_code']
+        });
+    }
 
     // Kiểm tra có camera không (tránh NotFoundError trên PC)
     const inputs = await listVideoInputs();
@@ -743,6 +763,13 @@ window.toggleTorch = async function () {
     }
 };
 window.decodeFromFile = async function (file) {
+    await ensureBarcodeDetectorReady();
+    if (!bdDetector) {
+        bdDetector = new window.BarcodeDetector({
+            formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e', 'qr_code']
+        });
+    }
+
     if (!file) return;
     if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
 
