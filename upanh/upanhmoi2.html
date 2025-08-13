@@ -251,10 +251,13 @@
                             ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
 
                             canvas.toBlob(blob => {
-                                const newName = renameCheckbox && code ? `${code}.JPG` : file.name;
 
-                                resizedImages.push({ blob, name: newName });
+// Luôn in hoa toàn bộ tên file trước khi lưu
+const newName = (renameCheckbox && code ? `${code}.JPG` : file.name).toUpperCase();
 
+resizedImages.push({ blob, name: newName });
+
+                              
                                 const container = document.createElement('div');
                                 container.className = 'image-preview';
                                 container.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Preview"><p>${newName}</p>`;
