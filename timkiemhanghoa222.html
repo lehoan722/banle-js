@@ -19,7 +19,7 @@
         }
 
         .main-container {
-            max-width: 980px; 
+            max-width: 980px;
             background: #fff;
             margin: 32px auto 0 auto;
             border-radius: 16px;
@@ -313,15 +313,14 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@1.3.8/dist/barcode-detector-polyfill.min.js"></script>
-<script>
-  // Nếu trình duyệt chưa có BarcodeDetector native → gán polyfill
-  if (!('BarcodeDetector' in window) && window.BarcodeDetectorPolyfill) {
-    window.BarcodeDetector = window.BarcodeDetectorPolyfill;
-  }
-</script>
-
-
+    <script
+        src="https://cdn.jsdelivr.net/npm/@undecaf/barcode-detector-polyfill@1.3.8/dist/barcode-detector-polyfill.min.js"></script>
+    <script>
+        // Luôn dùng WASM polyfill thay cho native để bảo đảm độ nhạy
+        if (window.BarcodeDetectorPolyfill) {
+            window.BarcodeDetector = window.BarcodeDetectorPolyfill;
+        }
+    </script>
 
 </body>
 
