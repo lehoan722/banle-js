@@ -693,3 +693,123 @@ window.onload = async function () {
         } catch (e) { /* bỏ qua lỗi */ }
     }
 };
+
+
+
+// ===== ZXING-WASM via BarcodeDetector Polyfill =========================================================
+let bdDetector = null, bdLoopReq = 0, bdRunning = false;
+
+// Tập format: ưu tiên 1D + QR
+const BD_FORMATS = [
+  'code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e', 'qr_code'
+];
+
+// Hàm mở camera (giữ UI/modal của bạn y như cũ)
+
+
+// Vòng lặp decode (60–100ms/lần)
+function startBDLoop() {
+  if (bdRunning) return;
+  bdRunning = true;
+
+  const videoEl = document.getElementById('scannerVideo');
+  const status = document.getElementById('scannerStatus');
+
+  // Canvas nội bộ để lấy frame
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const tick = async () => {
+    if (!bdRunning) return;
+    try {
+      const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+      if (vw && vh) {
+        // Giữ tỷ lệ, scale nhỏ xuống ~720p để tốc độ tốt + vẫn đủ nét
+        const targetW = 1280, scale = Math.min(1, targetW / vw);
+        canvas.width = Math.floor(vw * scale);
+        canvas.height = Math.floor(vh * scale);
+
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+        const results = await bdDetector.detect(canvas); // polyfill dùng WASM ở đây
+
+        if (results && results.length) {
+          const text = (results[0].rawValue || results[0].rawValueText || '').trim();
+          if (text) {
+            try { navigator.vibrate?.(60); } catch {}
+            document.getElementById('maspInput').value = text.toUpperCase();
+            closeScanner();       // đóng modal + dừng loop
+            triggerSearch();      // gọi tìm kiếm như cũ
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      status.textContent = 'Đang quét... (WASM)';
+      // tiếp tục lặp, tránh dừng vì lỗi lẻ
+    }
+    bdLoopReq = requestAnimationFrame(tick);
+  };
+
+  bdLoopReq = requestAnimationFrame(tick);
+}
+
+// Đóng scanner
+window.closeScanner = function () {
+  bdRunning = false;
+  if (bdLoopReq) cancelAnimationFrame(bdLoopReq);
+  const v = document.getElementById('scannerVideo');
+  try { v?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
+  v.srcObject = null;
+  document.getElementById('scannerModal').style.display = 'none';
+};
+
+// (Tùy chọn) Bật đèn flash nếu hỗ trợ
+window.toggleTorch = async function () {
+  const v = document.getElementById('scannerVideo');
+  const track = v?.srcObject?.getVideoTracks?.()[0];
+  if (!track) return;
+  try {
+    const c = track.getConstraints();
+    const on = !c.advanced?.[0]?.torch;
+    await track.applyConstraints({ advanced: [{ torch: on }] });
+    document.getElementById('flashBtn').textContent = on ? '🔦 Tắt đèn' : '🔦 Đèn';
+  } catch {
+    document.getElementById('scannerStatus').textContent = 'Thiết bị không hỗ trợ bật đèn.';
+  }
+};
+
+// Đọc từ “Ảnh có sẵn” (cũng dùng WASM qua polyfill)
+window.decodeFromFile = async function (file) {
+  if (!file) return;
+  if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
+
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    try {
+      const res = await bdDetector.detect(canvas);
+      if (res && res.length) {
+        const text = (res[0].rawValue || res[0].rawValueText || '').trim();
+        if (text) {
+          document.getElementById('maspInput').value = text.toUpperCase();
+          closeScanner();
+          triggerSearch();
+          return;
+        }
+      }
+      document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+  };
+  img.src = url;
+};
+
