@@ -157,7 +157,12 @@
                     codeInput.placeholder = `Mã sản phẩm ${i + 1}`;
                     codeInput.className = 'image-name-input product-code-input';
                     codeInput.addEventListener('keydown', (event) => handleEnterKey(event, i));
-                    codeCell.appendChild(codeInput);
+                    codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.toUpperCase();
+});
+
+
+codeCell.appendChild(codeInput);
                     row.appendChild(codeCell);
 
                     // Cột tên ảnh
