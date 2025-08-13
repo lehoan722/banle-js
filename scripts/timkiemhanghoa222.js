@@ -476,60 +476,16 @@ function scoreCameraLabel(label = '') {
 
 
 async function pickBestBackCamera() {
-  await ensureZXing();
-  const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-  if (!devices || !devices.length) return undefined;
-  // Sắp xếp để “cực rộng” đứng đầu
-  devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-  return devices[0].deviceId;
+    await ensureZXing();
+    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+    if (!devices || !devices.length) return undefined;
+    // Sắp xếp để “cực rộng” đứng đầu
+    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+    return devices[0].deviceId;
 }
 
 
-async function startScanner(deviceId) {
-  await ensureZXing();
-  const videoEl = document.getElementById('scannerVideo');
-  const status  = document.getElementById('scannerStatus');
 
-  // giảm trễ giữa các lần decode để phản hồi nhanh
-  codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
-
-  // dùng 720p cho tốc độ cao (thường đủ nét để quét nhanh hơn 1080p)
-  const fastConstraints = {
-    video: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 1280 }, height: { ideal: 720 },
-      frameRate: { ideal: 30 }
-    }
-  };
-
-  try {
-    if (deviceId) {
-      // mở trực tiếp theo deviceId đã chọn (cực rộng)
-      scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
-    } else {
-      scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
-    }
-
-    // cố gắng bật continuous-focus (nếu hỗ trợ)
-    try {
-      
-      await track?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] });
-    } catch(_) {}
-
-    status.textContent = 'Đang quét... đưa mã vào khung.';
-    await populateCameraList();
-
-    // set dropdown trỏ ngay camera tốt nhất (cực rộng)
-    try {
-      const sel = document.getElementById('cameraSelect');
-      const bestId = deviceId || await pickBestBackCamera();
-      if (sel && bestId) sel.value = bestId;
-    } catch(_) {}
-  } catch (err) {
-    console.error('startScanner error:', err);
-    status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
-  }
-}
 
 
 
@@ -554,100 +510,27 @@ function onScanResult(result, err, controls) {
 async function stopScanner() {
     try { scanControls?.stop(); } catch (_) { }
     const v = document.getElementById('scannerVideo');
-    
+
     try { track?.stop(); } catch (_) { }
     if (v) v.srcObject = null;
     codeReader = null; scanControls = null; torchOn = false;
 }
 
 async function populateCameraList() {
-  await ensureZXing();
-  const sel = document.getElementById('cameraSelect');
-  sel.innerHTML = '';
-  try {
-    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-    devices.forEach((d, i) => {
-      const opt = document.createElement('option');
-      opt.value = d.deviceId;
-      opt.textContent = d.label || `Camera ${i + 1}`;
-      sel.appendChild(opt);
-    });
-  } catch (_) {}
-}
-
-
-
-async function switchCamera(deviceId) {
-    await stopScanner();
-    await startScanner(deviceId);
-}
-
-async function toggleTorch() {
-    const v = document.getElementById('scannerVideo');
-    
-    if (!track) return;
-
-    try {
-        torchOn = !torchOn;
-        // iOS 17.4+ có thể hỗ trợ; không phải máy nào cũng được → bọc try/catch
-        await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-        document.getElementById('flashBtn').textContent = torchOn ? '🔦 Tắt đèn' : '🔦 Đèn';
-    } catch (e) {
-        document.getElementById('scannerStatus').textContent = 'Thiết bị không hỗ trợ bật đèn.';
-        torchOn = false;
-    }
-}
-
-async function decodeFromFile(file) {
-    if (!file) return;
     await ensureZXing();
-    const reader = new ZXING.BrowserMultiFormatReader();
-    const url = URL.createObjectURL(file);
+    const sel = document.getElementById('cameraSelect');
+    sel.innerHTML = '';
     try {
-        const res = await reader.decodeFromImageUrl(url);
-        const text = res.getText ? res.getText() : (res.rawValue || '');
-        if (text) {
-            document.getElementById('maspInput').value = text.trim().toUpperCase();
-            closeScanner();
-            triggerSearch();
-            return;
-        }
-        document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
-    } catch (e) {
-        console.error('decodeFromFile error:', e);
-        document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
-    } finally {
-        URL.revokeObjectURL(url);
-    }
+        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+        devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+        devices.forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Camera ${i + 1}`;
+            sel.appendChild(opt);
+        });
+    } catch (_) { }
 }
-
-
-
-// ==== Open/Close modal
-window.openScanner = async function () {
-  try { document.activeElement?.blur(); } catch (_) {} // tránh Live Text chiếm camera
-  document.getElementById('scannerModal').style.display = 'block';
-  const status = document.getElementById('scannerStatus');
-  status.textContent = 'Đang chuẩn bị camera...';
-
-  try {
-    await ensureZXing();
-
-    // mồi quyền & lộ labels (để thấy “cực rộng”)
-    try {
-      const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-      pre.getTracks().forEach(t => t.stop());
-    } catch (_) {}
-
-    const bestId = await pickBestBackCamera();     // → sẽ ưu tiên “cực rộng”
-    await startScanner(bestId || null);
-  } catch (e) {
-    console.error('openScanner error:', e);
-    status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
-  }
-};
-
 
 
 window.closeScanner = async function () {
@@ -695,151 +578,201 @@ window.onload = async function () {
 };
 
 
-// ===== ZXING-WASM via BarcodeDetector Polyfill =====
-let bdDetector = null, bdLoopReq = 0, bdRunning = false;
+// ===== ZXING-CPP WASM qua BarcodeDetector Polyfill (độc lập, không dùng @zxing/browser) =====
+const BD_FORMATS = ['code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e', 'qr_code'];
 
-// Tập format: ưu tiên 1D + QR
-const BD_FORMATS = [
-  'code_128', 'code_39', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e', 'qr_code'
-];
+let bdDetector = null;
+let bdRunning = false, bdLoopRaf = 0;
+let currentStream = null;
 
-// Hàm mở camera (giữ UI/modal của bạn y như cũ)
-window.openScanner = async function () {
-  try { document.activeElement?.blur(); } catch {}
-  document.getElementById('scannerModal').style.display = 'block';
-  const status = document.getElementById('scannerStatus');
-  status.textContent = 'Đang chuẩn bị camera...';
-
-  // 1) Mở camera sau; nếu có “ultra wide” sẽ tự ưu tiên (nhờ label)
-  const videoEl = document.getElementById('scannerVideo');
-  let stream = null;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 }
-      }, audio: false
+// --- Tiện ích thiết bị ---
+async function listVideoInputs() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(d => d.kind === 'videoinput');
+}
+function scoreLabel(label = '') {
+    const s = label.toLowerCase();
+    let sc = 0;
+    if (/(ultra\s*wide|cực rộng|siêu rộng|0\.5x|0,5x)/.test(s)) sc += 300; // ưu tiên cực rộng
+    if (/(tele|chụp xa|zoom|2x|3x)/.test(s)) sc += 120;                    // ưu tiên tele nếu không có ultra-wide
+    if (/(back|rear|mặt sau|environment)/.test(s)) sc += 80;               // sau > trước
+    if (/(front|trước|mặt trước)/.test(s)) sc -= 500;
+    return sc;
+}
+async function getStream(deviceId) {
+    const primary = deviceId
+        ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, audio: false }
+        : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, audio: false };
+    const fallback = deviceId
+        ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
+        : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+    try { return await navigator.mediaDevices.getUserMedia(primary); }
+    catch { return await navigator.mediaDevices.getUserMedia(fallback); }
+}
+async function populateCameraListWASM() {
+    const sel = document.getElementById('cameraSelect');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const list = await listVideoInputs();
+    list.sort((a, b) => scoreLabel(b.label) - scoreLabel(a.label));
+    list.forEach((d, i) => {
+        const opt = document.createElement('option');
+        opt.value = d.deviceId;
+        opt.textContent = d.label || `Camera ${i + 1}`;
+        sel.appendChild(opt);
     });
-  } catch {
-    // fallback 720p nếu 1080p bị từ chối
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
-  }
-  videoEl.srcObject = stream;
-  await videoEl.play().catch(() => {});
-
-  // 2) Khởi tạo detector (polyfill = ZXing-WASM)
-  if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
-
-  status.textContent = 'Đang quét... đưa mã vào khung.';
-  startBDLoop();
-  await populateCameraList?.();   // nếu bạn có dropdown chọn camera
-};
-
-// Vòng lặp decode (60–100ms/lần)
-function startBDLoop() {
-  if (bdRunning) return;
-  bdRunning = true;
-
-  const videoEl = document.getElementById('scannerVideo');
-  const status = document.getElementById('scannerStatus');
-
-  // Canvas nội bộ để lấy frame
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-  const tick = async () => {
-    if (!bdRunning) return;
-    try {
-      const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-      if (vw && vh) {
-        // Giữ tỷ lệ, scale nhỏ xuống ~720p để tốc độ tốt + vẫn đủ nét
-        const targetW = 1280, scale = Math.min(1, targetW / vw);
-        canvas.width = Math.floor(vw * scale);
-        canvas.height = Math.floor(vh * scale);
-
-        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-        const results = await bdDetector.detect(canvas); // polyfill dùng WASM ở đây
-
-        if (results && results.length) {
-          const text = (results[0].rawValue || results[0].rawValueText || '').trim();
-          if (text) {
-            try { navigator.vibrate?.(60); } catch {}
-            document.getElementById('maspInput').value = text.toUpperCase();
-            closeScanner();       // đóng modal + dừng loop
-            triggerSearch();      // gọi tìm kiếm như cũ
-            return;
-          }
-        }
-      }
-    } catch (err) {
-      status.textContent = 'Đang quét... (WASM)';
-      // tiếp tục lặp, tránh dừng vì lỗi lẻ
-    }
-    bdLoopReq = requestAnimationFrame(tick);
-  };
-
-  bdLoopReq = requestAnimationFrame(tick);
+    // Nếu chỉ có 1 thiết bị thì ẩn dropdown
+    sel.parentElement.style.display = list.length > 1 ? 'flex' : 'none';
 }
 
-// Đóng scanner
-window.closeScanner = function () {
-  bdRunning = false;
-  if (bdLoopReq) cancelAnimationFrame(bdLoopReq);
-  const v = document.getElementById('scannerVideo');
-  try { v?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
-  v.srcObject = null;
-  document.getElementById('scannerModal').style.display = 'none';
-};
+// --- Loop decode ---
+function startBDLoop() {
+    if (bdRunning) return;
+    bdRunning = true;
 
-// (Tùy chọn) Bật đèn flash nếu hỗ trợ
-window.toggleTorch = async function () {
-  const v = document.getElementById('scannerVideo');
-  const track = v?.srcObject?.getVideoTracks?.()[0];
-  if (!track) return;
-  try {
-    const c = track.getConstraints();
-    const on = !c.advanced?.[0]?.torch;
-    await track.applyConstraints({ advanced: [{ torch: on }] });
-    document.getElementById('flashBtn').textContent = on ? '🔦 Tắt đèn' : '🔦 Đèn';
-  } catch {
-    document.getElementById('scannerStatus').textContent = 'Thiết bị không hỗ trợ bật đèn.';
-  }
-};
+    const videoEl = document.getElementById('scannerVideo');
+    const status = document.getElementById('scannerStatus');
 
-// Đọc từ “Ảnh có sẵn” (cũng dùng WASM qua polyfill)
-window.decodeFromFile = async function (file) {
-  if (!file) return;
-  if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
-
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = async () => {
     const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    try {
-      const res = await bdDetector.detect(canvas);
-      if (res && res.length) {
-        const text = (res[0].rawValue || res[0].rawValueText || '').trim();
-        if (text) {
-          document.getElementById('maspInput').value = text.toUpperCase();
-          closeScanner();
-          triggerSearch();
-          return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    const tick = async () => {
+        if (!bdRunning) return;
+        const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+        if (vw && vh) {
+            // Scale về ~720p để vừa nhanh vừa đủ nét
+            const targetW = 1280, scale = Math.min(1, targetW / vw);
+            canvas.width = Math.floor(vw * scale);
+            canvas.height = Math.floor(vh * scale);
+            ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+            try {
+                const res = await bdDetector.detect(canvas);
+                if (res && res.length) {
+                    const text = (res[0].rawValue || res[0].rawValueText || '').trim();
+                    if (text) {
+                        try { navigator.vibrate?.(60); } catch { }
+                        document.getElementById('maspInput').value = text.toUpperCase();
+                        closeScanner();
+                        triggerSearch();
+                        return;
+                    }
+                }
+            } catch {
+                status.textContent = 'Đang quét... (WASM)';
+            }
         }
-      }
-      document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
-    } finally {
-      URL.revokeObjectURL(url);
+        bdLoopRaf = requestAnimationFrame(tick);
+    };
+    bdLoopRaf = requestAnimationFrame(tick);
+}
+
+// --- Mở/đổi/đóng camera ---
+window.openScanner = async function () {
+    try { document.activeElement?.blur(); } catch { }
+    document.getElementById('scannerModal').style.display = 'block';
+    const status = document.getElementById('scannerStatus');
+    const videoEl = document.getElementById('scannerVideo');
+    status.textContent = 'Đang chuẩn bị camera...';
+
+    // BẮT BUỘC dùng polyfill
+    if (window.BarcodeDetectorPolyfill) window.BarcodeDetector = window.BarcodeDetectorPolyfill;
+    if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
+
+    // Kiểm tra có camera không (tránh NotFoundError trên PC)
+    const inputs = await listVideoInputs();
+    if (!inputs.length) {
+        status.textContent = 'Thiết bị không có camera. Vui lòng dùng "Ảnh có sẵn".';
+        await populateCameraListWASM();
+        return;
     }
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
-  };
-  img.src = url;
+
+    // Chọn thiết bị tốt nhất: ultra-wide > tele > back
+    inputs.sort((a, b) => scoreLabel(b.label) - scoreLabel(a.label));
+    const best = inputs[0];
+
+    // Mở stream
+    try {
+        if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+        currentStream = await getStream(best.deviceId);
+        videoEl.srcObject = currentStream;
+        await videoEl.play().catch(() => { });
+    } catch (e) {
+        status.textContent = 'Không mở được camera. Kiểm tra quyền và đóng Live Text nếu đang bật.';
+        return;
+    }
+
+    await populateCameraListWASM();
+    const sel = document.getElementById('cameraSelect');
+    if (sel) sel.value = best.deviceId;
+
+    status.textContent = 'Đang quét... (WASM)';
+    startBDLoop();
 };
+
+async function switchCamera(deviceId) {
+    // dừng loop + đổi stream
+    bdRunning = false; if (bdLoopRaf) cancelAnimationFrame(bdLoopRaf);
+    const videoEl = document.getElementById('scannerVideo');
+    try { currentStream?.getTracks()?.forEach(t => t.stop()); } catch { }
+    currentStream = await getStream(deviceId);
+    videoEl.srcObject = currentStream;
+    await videoEl.play().catch(() => { });
+    startBDLoop();
+}
+window.closeScanner = function () {
+    bdRunning = false;
+    if (bdLoopRaf) cancelAnimationFrame(bdLoopRaf);
+    const v = document.getElementById('scannerVideo');
+    try { currentStream?.getTracks()?.forEach(t => t.stop()); } catch { }
+    v.srcObject = null;
+    document.getElementById('scannerModal').style.display = 'none';
+};
+
+// --- Đèn pin & Ảnh có sẵn ---
+window.toggleTorch = async function () {
+    const v = document.getElementById('scannerVideo');
+    const track = v?.srcObject?.getVideoTracks?.()[0];
+    if (!track) return;
+    try {
+        const on = !(track.getConstraints().advanced?.[0]?.torch);
+        await track.applyConstraints({ advanced: [{ torch: on }] });
+        document.getElementById('flashBtn').textContent = on ? '🔦 Tắt đèn' : '🔦 Đèn';
+    } catch {
+        document.getElementById('scannerStatus').textContent = 'Thiết bị không hỗ trợ bật đèn.';
+    }
+};
+window.decodeFromFile = async function (file) {
+    if (!file) return;
+    if (!bdDetector) bdDetector = new window.BarcodeDetector({ formats: BD_FORMATS });
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const cx = c.getContext('2d', { willReadFrequently: true });
+        cx.drawImage(img, 0, 0);
+        try {
+            const res = await bdDetector.detect(c);
+            if (res && res.length) {
+                const text = (res[0].rawValue || res[0].rawValueText || '').trim();
+                if (text) {
+                    document.getElementById('maspInput').value = text.toUpperCase();
+                    closeScanner();
+                    triggerSearch();
+                    return;
+                }
+            }
+            document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+        } finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
+    };
+    img.src = url;
+};
+
+
 
