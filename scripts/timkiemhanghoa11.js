@@ -10,7 +10,7 @@ window.dangNhap = async function () {
     if (!email || !password) {
         status.textContent = "Nhập đầy đủ email và mật khẩu!";
         return;
-    }
+    } 
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -122,7 +122,7 @@ async function triggerSearch(_masp = null) {
         .limit(20);
 
     if (error || !list || !list.length) {
-        msg.textContent = "Không tìm thấy mã sản phẩm!";
+        msg.textContent = "SAI MÃ";
         return;
     }
 
