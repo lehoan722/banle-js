@@ -642,12 +642,6 @@ window.onload = async function () {
 };
 
 
-
-
-import { supabase } from "./supabaseClient.js";
-
-/* ... GIỮ NGUYÊN PHẦN ĐĂNG NHẬP, POPUP, QUÉT MÃ, v.v. ... */
-
 /* ====== TIỆN ÍCH ====== */
 function showEmptyIfZero(val){ return (val && Number(val)!==0)? val : ""; }
 function formatDateOnly(val){
