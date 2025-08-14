@@ -265,7 +265,7 @@ async function renderOneProductDetail(masp) {
         const r = rowMap[sz];
         htmlRight += `
     <tr>
-      <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
+      <td class="size">${sz === '0' ? '0' : sz}</td>
       <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
       <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
       <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
@@ -372,7 +372,7 @@ async function renderProductDetailHTML(masp) {
         const r = rowMap[sz];
         html += `
       <tr>
-        <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
+        <td class="size">${sz === '0' ? '0' : sz}</td>
         <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
         <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
         <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
