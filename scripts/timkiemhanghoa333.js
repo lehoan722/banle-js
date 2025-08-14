@@ -698,4 +698,25 @@ function parseBulkMasp() {
     return out.slice(0, 50);
 }
 
+document.getElementById('clearBulkBtn')?.addEventListener('click', () => {
+  const ta = document.getElementById('bulkTextarea');
+  if (ta) { ta.value = ''; ta.focus(); }
+
+  // Dọn trạng thái hiển thị kết quả
+  const msg = document.getElementById('statusMsg'); if (msg) msg.textContent = '';
+  const multi = document.getElementById('multiDetailBox');
+  if (multi) { multi.innerHTML = ''; multi.style.display = 'none'; }
+  const top = document.getElementById('infoTopTable'); if (top) top.innerHTML = '';
+  const right = document.getElementById('infoTableRight'); if (right) right.innerHTML = '';
+  const img = document.getElementById('productImage'); if (img) img.src = '';
+  // đảm bảo khối đơn hiển thị rỗng
+  const single = document.getElementById('singleDetailBox'); if (single) single.style.display = '';
+});
+
+document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+    e.preventDefault();
+    document.getElementById('clearBulkBtn')?.click();
+  }
+});
 
