@@ -244,65 +244,119 @@
         }
 
         @media (max-width:600px) {
-            
+
             .bulk-box {
                 max-width: 30%
             }
         }
 
         /* --- TOP BAR: 2 cột (trái: nút/quét/tìm; phải: textarea 1/3) --- */
-.topbar{
-  display:grid;
-  grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr); /* 2/3 : 1/3 */
-  gap:16px;
-  align-items:start;
-}
-.input-row{ flex-wrap:wrap; gap:12px; margin-bottom:0; }
-.bulk-box{ min-width:160px; max-width:100%; }  /* để theo ô lưới */
-#bulkTextarea{ width:100%; }
+        .topbar {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+            /* 2/3 : 1/3 */
+            gap: 16px;
+            align-items: start;
+        }
 
-/* Giữ 2 cột cả trên mobile để textarea không bị đẩy xuống */
-@media (max-width:600px){
-  .topbar{ grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr); }
-}
+        .input-row {
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 0;
+        }
 
-/* --- VÙNG CHI TIẾT: 2 cột song song trên desktop, xếp dọc trên mobile --- */
-#singleDetailBox{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows:min-content;
-  gap:16px;
-}
-/* 2 bảng thông tin xếp chồng ở cột trái */
-.top-info{ grid-column:1 / 2; }
-.right-xnt{ grid-column:1 / 2; }
-/* Ảnh chiếm cột phải, thẳng hàng trên cùng */
-.img-wrap{ grid-column:2 / 3; grid-row:1 / span 2; align-self:start; }
+        .bulk-box {
+            min-width: 160px;
+            max-width: 100%;
+        }
 
-/* Ảnh co giãn theo cột, không giới hạn 380px nữa */
-#productImage{ width:100%; max-width:none; height:auto; }
+        /* để theo ô lưới */
+        #bulkTextarea {
+            width: 100%;
+        }
 
-/* Màn nhỏ: chuyển về 1 cột, ảnh xuống dưới */
-@media (max-width:900px){
-  #singleDetailBox{ grid-template-columns:1fr; }
-  .img-wrap{ grid-column:1 / 2; grid-row:auto; }
-}
+        /* Giữ 2 cột cả trên mobile để textarea không bị đẩy xuống */
+        @media (max-width:600px) {
+            .topbar {
+                grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+            }
+        }
 
-/* Áp dụng layout 2 cột cho từng khối khi hiển thị NHIỀU mã */
-.detail-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  grid-auto-rows:min-content;
-  gap:16px;
-}
-.detail-grid .top-info{ grid-column:1; }
-.detail-grid .right-xnt{ grid-column:1; }
-.detail-grid .img-wrap{ grid-column:2; grid-row:1 / span 2; align-self:start; }
-@media (max-width:900px){
-  .detail-grid{ grid-template-columns:1fr; }
-  .detail-grid .img-wrap{ grid-column:1; grid-row:auto; }
-}
+        /* --- VÙNG CHI TIẾT: 2 cột song song trên desktop, xếp dọc trên mobile --- */
+        #singleDetailBox {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 16px;
+        }
 
+        /* 2 bảng thông tin xếp chồng ở cột trái */
+        .top-info {
+            grid-column: 1 / 2;
+        }
+
+        .right-xnt {
+            grid-column: 1 / 2;
+        }
+
+        /* Ảnh chiếm cột phải, thẳng hàng trên cùng */
+        .img-wrap {
+            grid-column: 2 / 3;
+            grid-row: 1 / span 2;
+            align-self: start;
+        }
+
+        /* Ảnh co giãn theo cột, không giới hạn 380px nữa */
+        #productImage {
+            width: 100%;
+            max-width: none;
+            height: auto;
+        }
+
+        /* Màn nhỏ: chuyển về 1 cột, ảnh xuống dưới */
+        @media (max-width:900px) {
+            #singleDetailBox {
+                grid-template-columns: 1fr;
+            }
+
+            .img-wrap {
+                grid-column: 1 / 2;
+                grid-row: auto;
+            }
+        }
+
+        /* Áp dụng layout 2 cột cho từng khối khi hiển thị NHIỀU mã */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 16px;
+        }
+
+        .detail-grid .top-info {
+            grid-column: 1;
+        }
+
+        .detail-grid .right-xnt {
+            grid-column: 1;
+        }
+
+        .detail-grid .img-wrap {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            align-self: start;
+        }
+
+        @media (max-width:900px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-grid .img-wrap {
+                grid-column: 1;
+                grid-row: auto;
+            }
+        }
     </style>
 </head>
 
@@ -328,9 +382,9 @@
                 <div class="input-group">
 
                     <button id="searchBtn"
-                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
-                    Tìm kiếm
-                </button>
+                        style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
+                        Tìm kiếm
+                    </button>
 
                     <button class="popup-btn" id="scanBtn">📷 Quét</button>
 
@@ -339,7 +393,7 @@
                     <div>
                         <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
 
-                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />                        
+                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
 
                     </div>
                 </div>
@@ -349,9 +403,14 @@
                 <div class="bulk-box">
                     <textarea id="bulkTextarea"
                         placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
+                    <button id="clearBulkBtn" class="popup-btn"
+                        style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
+                        🧹 Xoá danh sách
+                    </button>
+
                 </div>
 
-                
+
             </div>
 
 
