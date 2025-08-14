@@ -241,41 +241,42 @@ async function renderOneProductDetail(masp) {
 
     // Bảng XNT
     let htmlRight = `
-    <tr>
-      <th class="size">Size</th>
-      <th class="blue">Tổng mua</th>
-      <th class="blue">Tổng bán</th>
-      <th class="blue">Tổng tồn</th>
-      <th class="red">Bán CS1</th>
-      <th class="red">Tồn CS1</th>
-      <th class="red">Tồn CS2</th>
-      <th class="red">Bán CS2</th>
-    </tr>
-    <tr>
-      <td class="size">Tổng</td>
-      <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-      <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-      <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-      <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-      <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-      <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-      <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-    </tr>`;
+  <tr>
+    <th class="size">Size</th>
+    <th class="red">Tồn CS1</th>
+    <th class="red">Tồn CS2</th>
+    <th class="red">Bán CS1</th>
+    <th class="red">Bán CS2</th>
+    <th class="blue">Tổng mua</th>
+    <th class="blue">Tổng bán</th>
+    <th class="blue">Tổng tồn</th>
+  </tr>
+  <tr>
+    <td class="size">Tổng</td>
+    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
+    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
+  </tr>`;
     SIZE_LIST.slice(1).forEach(sz => {
         const r = rowMap[sz];
         htmlRight += `
-      <tr>
-        <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
-        <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-        <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-        <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-        <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-        <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-        <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-        <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-      </tr>`;
+    <tr>
+      <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
+      <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
+      <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
+      <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
+      <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
+      <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
+      <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
+      <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
+    </tr>`;
     });
     document.getElementById("infoTableRight").innerHTML = htmlRight;
+
 
     // Ảnh sản phẩm dưới bảng
     setProductImageByMasp(hanghoa.masp);
@@ -345,40 +346,40 @@ async function renderProductDetailHTML(masp) {
       </table>
     </div>
     <div class="right-xnt">
-      <table class="info-table">
-        <tr>
-          <th class="size">Size</th>
-          <th class="blue">Tổng mua</th>
-          <th class="blue">Tổng bán</th>
-          <th class="blue">Tổng tồn</th>
-          <th class="red">Bán CS1</th>
-          <th class="red">Tồn CS1</th>
-          <th class="red">Tồn CS2</th>
-          <th class="red">Bán CS2</th>
-        </tr>
-        <tr>
-          <td class="size">Tổng</td>
-          <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-        </tr>`;
+    <table class="info-table">
+      <tr>
+        <th class="size">Size</th>
+        <th class="red">Tồn CS1</th>
+        <th class="red">Tồn CS2</th>
+        <th class="red">Bán CS1</th>
+        <th class="red">Bán CS2</th>
+        <th class="blue">Tổng mua</th>
+        <th class="blue">Tổng bán</th>
+        <th class="blue">Tổng tồn</th>
+      </tr>
+      <tr>
+        <td class="size">Tổng</td>
+        <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
+        <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
+        <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
+        <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+        <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
+        <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
+        <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
+      </tr>`;
     SIZE_LIST.slice(1).forEach(sz => {
         const r = rowMap[sz];
         html += `
-        <tr>
-          <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
-          <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-          <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-          <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-          <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-          <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-          <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-          <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-        </tr>`;
+      <tr>
+        <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
+        <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
+        <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
+        <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
+        <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
+        <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
+        <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
+        <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
+      </tr>`;
     });
     html += `
       </table>
