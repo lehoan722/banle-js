@@ -321,6 +321,7 @@ async function renderProductDetailHTML(masp) {
     });
 
     let html = `
+  <div class="detail-grid">
     <div class="top-info">
       <table class="info-table">
         <tr>
@@ -390,6 +391,7 @@ async function renderProductDetailHTML(masp) {
     </div>`;
     return html;
 }
+
 
 
 function formatDateOnly(val) {
