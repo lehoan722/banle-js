@@ -218,7 +218,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 24px
+            gap: 24px;
         }
 
         .bulk-box {
@@ -226,34 +226,24 @@
             max-width: 320px
         }
 
-        .bulk-box h3 {
-            margin: 0 0 6px;
-            text-align: center;
-            border: 1px solid #cfd8dc;
-            border-bottom: none;
-            padding: 6px 8px;
-            background: #fafbfc
-        }
-
         #bulkTextarea {
             width: 100%;
             height: 7.5em;
+            /* ~5 dòng + thanh cuộn */
             overflow: auto;
             resize: vertical;
+            /* cho phép kéo cao nếu cần */
             border: 1px solid #cfd8dc;
+            border-radius: 8px;
+            /* bo tròn nhẹ */
+            padding: 8px 10px;
             font-family: Consolas, monospace;
-            border-top: none;
-            padding: 8px 10px
+            box-shadow: none;
+            background: #fff;
+            /* nền trắng đơn giản */
         }
 
-        .bulk-hint {
-            font-size: 12px;
-            color: #607d8b;
-            margin-top: 6px;
-            text-align: center
-        }
-
-        @media(max-width:600px) {
+        @media (max-width:600px) {
             .topbar {
                 flex-direction: column
             }
@@ -299,12 +289,12 @@
             </div>
 
             <!-- Bên phải: textarea nhiều mã -->
+            <!-- Bên phải: chỉ 1 ô textarea -->
             <div class="bulk-box">
-                <h3>Textarea</h3>
                 <textarea id="bulkTextarea"
-                    placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;Ví dụ:&#10;11376-GDM&#10;60252-GDE"></textarea>
-                <div class="bulk-hint">Nếu có dữ liệu ở đây, tìm theo danh sách này trước (tối đa 50 mã).</div>
+                    placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
             </div>
+
         </div>
 
 
