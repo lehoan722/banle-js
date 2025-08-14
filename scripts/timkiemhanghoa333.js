@@ -10,7 +10,7 @@ window.dangNhap = async function () {
     if (!email || !password) {
         status.textContent = "Nhập đầy đủ email và mật khẩu!";
         return;
-    } 
+    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -99,109 +99,154 @@ function showEmptyIfZero(val) {
 }
 
 // ==== Hàm chính lấy và render dữ liệu ====
-async function triggerSearch(_masp=null){
-  const msg = document.getElementById("statusMsg");
-  msg.textContent = "Đang tìm kiếm mã sản phẩm...";
-  document.getElementById("multiDetailBox").innerHTML = "";
-  document.getElementById("multiDetailBox").style.display = "none";
-  document.getElementById("singleDetailBox").style.display = "";
+async function triggerSearch(_masp = null) {
+    const msg = document.getElementById("statusMsg");
+    msg.textContent = "Đang tìm kiếm mã sản phẩm...";
+    document.getElementById("multiDetailBox").innerHTML = "";
+    document.getElementById("multiDetailBox").style.display = "none";
+    document.getElementById("singleDetailBox").style.display = "";
 
-  // clear vùng hiển thị
-  const tTop = document.getElementById("infoTopTable");
-  const tRight = document.getElementById("infoTableRight");
-  if(tTop) tTop.innerHTML = "";
-  if(tRight) tRight.innerHTML = "";
-  const img = document.getElementById("productImage");
-  if(img) img.src = "";
+    // clear vùng hiển thị
+    const tTop = document.getElementById("infoTopTable");
+    const tRight = document.getElementById("infoTableRight");
+    if (tTop) tTop.innerHTML = "";
+    if (tRight) tRight.innerHTML = "";
+    const img = document.getElementById("productImage");
+    if (img) img.src = "";
 
-  document.getElementById("maspInput").select();
+    document.getElementById("maspInput").select();
 
-  let masp = _masp || document.getElementById("maspInput").value.trim().toUpperCase();
-  if(!masp || masp.length < 3){ msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!"; return; }
+    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên
+    const bulkCodes = parseBulkMasp(); // [ '11376-GDM', ... ]
+    let candidates = [];
 
-  // Lấy danh sách mã phù hợp, rồi lọc mã thực sự có XNT
-  let { data:list, error } = await supabase.from("dmhanghoa").select("*").ilike("masp", `%${masp}%`).order("masp").limit(20);
-  if(error || !list || !list.length){ msg.textContent = "SAI MÃ"; return; }
+    if (bulkCodes.length > 0) {
+        candidates = bulkCodes;
+        msg.textContent = `Đang tìm ${candidates.length} mã từ Textarea...`;
+    } else {
+        // 2) nếu textarea trống → chạy như cũ (từ ô maspInput)
+        let masp = _masp || document.getElementById("maspInput").value.trim().toUpperCase();
+        if (!masp || masp.length < 3) {
+            msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
+            return;
+        }
+        let { data: list, error } = await supabase.from("dmhanghoa")
+            .select("*").ilike("masp", `%${masp}%`).order("masp").limit(50);
+        if (error || !list || !list.length) { msg.textContent = "SAI MÃ"; return; }
+        candidates = list.map(r => r.masp);
+    }
 
-  const productWithXNT = [];
-  for(const row of list){
-    const { data:xntdata, error:xntErr } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
-    if(!xntErr && xntdata && xntdata.length>0) productWithXNT.push(row.masp);
-  }
+    // Lọc những mã thật sự có XNT qua RPC
+    const productWithXNT = [];
+    for (const code of candidates) {
+        const { data: xntdata, error: xErr } = await supabase.rpc("timkiemhanghoa", { masp_query: code });
+        if (!xErr && xntdata && xntdata.length > 0) productWithXNT.push(code);
+    }
 
-  if(productWithXNT.length === 0){
+    if (productWithXNT.length === 0) {
+        msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
+        document.getElementById("singleDetailBox").style.display = "none";
+        return;
+    }
+
+    if (productWithXNT.length === 1) {
+        document.getElementById("singleDetailBox").style.display = "";
+        await renderOneProductDetail(productWithXNT[0]);
+        msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
+        return;
+    }
+
+    // nhiều mã
+    document.getElementById("singleDetailBox").style.display = "none";
+    let html = "";
+    for (const m of productWithXNT) {
+        html += `<div style="margin-bottom:32px;border-bottom:1px dashed #90caf9;">${await renderProductDetailHTML(m)}</div>`;
+    }
+    const multi = document.getElementById("multiDetailBox");
+    multi.innerHTML = html;
+    multi.style.display = "";
+    msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
+}
+
+const productWithXNT = [];
+for (const row of list) {
+    const { data: xntdata, error: xntErr } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
+    if (!xntErr && xntdata && xntdata.length > 0) productWithXNT.push(row.masp);
+}
+
+if (productWithXNT.length === 0) {
     msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
     document.getElementById("singleDetailBox").style.display = "none";
     return;
-  }
+}
 
-  if(productWithXNT.length === 1){
+if (productWithXNT.length === 1) {
     document.getElementById("singleDetailBox").style.display = "";
     await renderOneProductDetail(productWithXNT[0]);
     msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
     return;
-  }
+}
 
-  // nhiều mã
-  document.getElementById("singleDetailBox").style.display = "none";
-  let html = "";
-  for(const m of productWithXNT){
+// nhiều mã
+document.getElementById("singleDetailBox").style.display = "none";
+let html = "";
+for (const m of productWithXNT) {
     html += `<div style="margin-bottom:32px;border-bottom:1px dashed #90caf9;">${await renderProductDetailHTML(m)}</div>`;
-  }
-  const multi = document.getElementById("multiDetailBox");
-  multi.innerHTML = html;
-  multi.style.display = "";
-  msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
+}
+const multi = document.getElementById("multiDetailBox");
+multi.innerHTML = html;
+multi.style.display = "";
+msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
 
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
-async function renderOneProductDetail(masp){
-  // thông tin hàng hóa
-  const { data:hanghoa, error:err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-  if(err1 || !hanghoa) return;
+async function renderOneProductDetail(masp) {
+    // thông tin hàng hóa
+    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+    if (err1 || !hanghoa) return;
 
-  // ngày nhập đầu/cuối (chỉ khi sản phẩm có trong hóa đơn nhập)
-  const { data:nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1","nmcs2"]).order("ngay", { ascending:true });
-  let ngay_nhapdau="", ngay_nhapcuoi="";
-  if(nhapList && nhapList.length){
-    const sohdArr = nhapList.map(e=>e.sohd);
-    const { data:cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
-    const setSohd = new Set(cts.map(e=>e.sohd));
-    const filtered = nhapList.filter(e=>setSohd.has(e.sohd));
-    if(filtered.length){ ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length-1].ngay; }
-  }
+    // ngày nhập đầu/cuối (chỉ khi sản phẩm có trong hóa đơn nhập)
+    const { data: nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1", "nmcs2"]).order("ngay", { ascending: true });
+    let ngay_nhapdau = "", ngay_nhapcuoi = "";
+    if (nhapList && nhapList.length) {
+        const sohdArr = nhapList.map(e => e.sohd);
+        const { data: cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
+        const setSohd = new Set(cts.map(e => e.sohd));
+        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
+    }
 
-  // ngày kiểm gần nhất CS1/CS2
-  let ngay_kiem_cs1="", ngay_kiem_cs2="";
-  {
-    const { data:k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio",{ascending:false}).limit(1);
-    if(k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-    const { data:k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio",{ascending:false}).limit(1);
-    if(k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-  }
+    // ngày kiểm gần nhất CS1/CS2
+    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
+    {
+        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
+        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
+        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
+        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
+    }
 
-  // xuất nhập tồn
-  const { data:xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-  if(!xntdata || !xntdata.length){
-    document.getElementById("infoTopTable").innerHTML = "";
-    document.getElementById("infoTableRight").innerHTML = "";
-    document.getElementById("statusMsg").textContent = "Không có dữ liệu xuất nhập tồn!";
-    return false;
-  }
+    // xuất nhập tồn
+    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    if (!xntdata || !xntdata.length) {
+        document.getElementById("infoTopTable").innerHTML = "";
+        document.getElementById("infoTableRight").innerHTML = "";
+        document.getElementById("statusMsg").textContent = "Không có dữ liệu xuất nhập tồn!";
+        return false;
+    }
 
-  // map size & tổng dòng đầu
-  const SIZE_LIST = ['Tổng','0','38','39','40','41','42','43','44','45'];
-  const rowMap = {};
-  xntdata.forEach(r => { rowMap[r.size===null?'':r.size] = r; });
-  const totalRow = {};
-  ["nhapmua","xuatban","toncuoi","ban_cs1","ton_cs1","ton_cs2","ban_cs2"].forEach(f=>{
-    totalRow[f] = SIZE_LIST.slice(1).reduce((s,sz)=> s + (Number(rowMap[sz]?.[f])||0), 0);
-  });
+    // map size & tổng dòng đầu
+    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
+    const rowMap = {};
+    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+    const totalRow = {};
+    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
+        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
+    });
 
-  // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
-  const top = document.getElementById("infoTopTable");
-  top.innerHTML = `
+    // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
+    const top = document.getElementById("infoTopTable");
+    top.innerHTML = `
     <tr>
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
@@ -213,19 +258,19 @@ async function renderOneProductDetail(masp){
       <th class="red">Kiểm CS2</th>
     </tr>
     <tr>
-      <td>${hanghoa.masp||""}</td>
-      <td>${hanghoa.vitrikho1||""}</td>
-      <td>${hanghoa.vitrikho2||""}</td>
-      <td>${hanghoa.giale?.toLocaleString()||""}</td>
-      <td>${formatDateOnly(ngay_nhapdau)||""}</td>
-      <td>${formatDateOnly(ngay_nhapcuoi)||""}</td>
-      <td>${formatDateOnly(ngay_kiem_cs1)||""}</td>
-      <td>${formatDateOnly(ngay_kiem_cs2)||""}</td>
+      <td>${hanghoa.masp || ""}</td>
+      <td>${hanghoa.vitrikho1 || ""}</td>
+      <td>${hanghoa.vitrikho2 || ""}</td>
+      <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+      <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+      <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+      <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+      <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
     </tr>
   `;
 
-  // Bảng XNT
-  let htmlRight = `
+    // Bảng XNT
+    let htmlRight = `
     <tr>
       <th class="size">Size</th>
       <th class="blue">Tổng mua</th>
@@ -246,11 +291,11 @@ async function renderOneProductDetail(masp){
       <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
       <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
     </tr>`;
-  SIZE_LIST.slice(1).forEach(sz=>{
-    const r = rowMap[sz];
-    htmlRight += `
+    SIZE_LIST.slice(1).forEach(sz => {
+        const r = rowMap[sz];
+        htmlRight += `
       <tr>
-        <td class="size">${sz==='0'?'Sai không':sz}</td>
+        <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
         <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
         <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
         <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
@@ -259,52 +304,52 @@ async function renderOneProductDetail(masp){
         <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
         <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
       </tr>`;
-  });
-  document.getElementById("infoTableRight").innerHTML = htmlRight;
+    });
+    document.getElementById("infoTableRight").innerHTML = htmlRight;
 
-  // Ảnh sản phẩm dưới bảng
-  setProductImageByMasp(hanghoa.masp);
-  document.getElementById("maspInput").select();
+    // Ảnh sản phẩm dưới bảng
+    setProductImageByMasp(hanghoa.masp);
+    document.getElementById("maspInput").select();
 }
 
 /* ====== KHỐI HTML CHO NHIỀU MÃ (dùng cùng layout mới) ====== */
-async function renderProductDetailHTML(masp){
-  const { data:hanghoa, error:err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-  if(err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
+async function renderProductDetailHTML(masp) {
+    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+    if (err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
 
-  // ngày nhập đầu/cuối
-  const { data:nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1","nmcs2"]).order("ngay",{ascending:true});
-  let ngay_nhapdau="", ngay_nhapcuoi="";
-  if(nhapList?.length){
-    const sohdArr = nhapList.map(e=>e.sohd);
-    const { data:cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
-    const setSohd = new Set(cts.map(e=>e.sohd));
-    const filtered = nhapList.filter(e=>setSohd.has(e.sohd));
-    if(filtered.length){ ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length-1].ngay; }
-  }
+    // ngày nhập đầu/cuối
+    const { data: nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1", "nmcs2"]).order("ngay", { ascending: true });
+    let ngay_nhapdau = "", ngay_nhapcuoi = "";
+    if (nhapList?.length) {
+        const sohdArr = nhapList.map(e => e.sohd);
+        const { data: cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
+        const setSohd = new Set(cts.map(e => e.sohd));
+        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
+    }
 
-  // ngày kiểm gần nhất
-  let ngay_kiem_cs1="", ngay_kiem_cs2="";
-  {
-    const { data:k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem","cs1").order("ngaygio",{ascending:false}).limit(1);
-    if(k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-    const { data:k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem","cs2").order("ngaygio",{ascending:false}).limit(1);
-    if(k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-  }
+    // ngày kiểm gần nhất
+    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
+    {
+        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
+        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
+        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
+        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
+    }
 
-  // XNT
-  const { data:xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-  if(!xntdata || !xntdata.length) return `<div style="color:#c62828">Không có dữ liệu xuất nhập tồn!</div>`;
+    // XNT
+    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    if (!xntdata || !xntdata.length) return `<div style="color:#c62828">Không có dữ liệu xuất nhập tồn!</div>`;
 
-  const SIZE_LIST = ['Tổng','0','38','39','40','41','42','43','44','45'];
-  const rowMap = {};
-  xntdata.forEach(r=>{ rowMap[r.size===null?'':r.size] = r; });
-  const totalRow = {};
-  ["nhapmua","xuatban","toncuoi","ban_cs1","ton_cs1","ton_cs2","ban_cs2"].forEach(f=>{
-    totalRow[f] = SIZE_LIST.slice(1).reduce((s,sz)=> s + (Number(rowMap[sz]?.[f])||0), 0);
-  });
+    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
+    const rowMap = {};
+    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+    const totalRow = {};
+    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
+        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
+    });
 
-  let html = `
+    let html = `
     <div class="top-info">
       <table class="info-table">
         <tr>
@@ -318,14 +363,14 @@ async function renderProductDetailHTML(masp){
           <th class="red">Kiểm CS2</th>
         </tr>
         <tr>
-          <td>${hanghoa.masp||""}</td>
-          <td>${hanghoa.vitrikho1||""}</td>
-          <td>${hanghoa.vitrikho2||""}</td>
-          <td>${hanghoa.giale?.toLocaleString()||""}</td>
-          <td>${formatDateOnly(ngay_nhapdau)||""}</td>
-          <td>${formatDateOnly(ngay_nhapcuoi)||""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs1)||""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs2)||""}</td>
+          <td>${hanghoa.masp || ""}</td>
+          <td>${hanghoa.vitrikho1 || ""}</td>
+          <td>${hanghoa.vitrikho2 || ""}</td>
+          <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+          <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+          <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+          <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+          <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
         </tr>
       </table>
     </div>
@@ -351,11 +396,11 @@ async function renderProductDetailHTML(masp){
           <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
           <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
         </tr>`;
-  SIZE_LIST.slice(1).forEach(sz=>{
-    const r = rowMap[sz];
-    html += `
+    SIZE_LIST.slice(1).forEach(sz => {
+        const r = rowMap[sz];
+        html += `
         <tr>
-          <td class="size">${sz==='0'?'Sai không':sz}</td>
+          <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
           <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
           <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
           <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
@@ -364,15 +409,15 @@ async function renderProductDetailHTML(masp){
           <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
           <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
         </tr>`;
-  });
-  html += `
+    });
+    html += `
       </table>
     </div>
     <div class="img-wrap">
       <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
            onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
     </div>`;
-  return html;
+    return html;
 }
 
 
@@ -423,59 +468,59 @@ function scoreCameraLabel(label = '') {
 
 
 async function pickBestBackCamera() {
-  await ensureZXing();
-  const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-  if (!devices || !devices.length) return undefined;
-  // Sắp xếp để “cực rộng” đứng đầu
-  devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-  return devices[0].deviceId;
+    await ensureZXing();
+    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+    if (!devices || !devices.length) return undefined;
+    // Sắp xếp để “cực rộng” đứng đầu
+    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+    return devices[0].deviceId;
 }
 
 
 async function startScanner(deviceId) {
-  await ensureZXing();
-  const videoEl = document.getElementById('scannerVideo');
-  const status  = document.getElementById('scannerStatus');
+    await ensureZXing();
+    const videoEl = document.getElementById('scannerVideo');
+    const status = document.getElementById('scannerStatus');
 
-  // giảm trễ giữa các lần decode để phản hồi nhanh
-  codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
+    // giảm trễ giữa các lần decode để phản hồi nhanh
+    codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
 
-  // dùng 720p cho tốc độ cao (thường đủ nét để quét nhanh hơn 1080p)
-  const fastConstraints = {
-    video: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 1280 }, height: { ideal: 720 },
-      frameRate: { ideal: 30 }
-    }
-  };
+    // dùng 720p cho tốc độ cao (thường đủ nét để quét nhanh hơn 1080p)
+    const fastConstraints = {
+        video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 }, height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+        }
+    };
 
-  try {
-    if (deviceId) {
-      // mở trực tiếp theo deviceId đã chọn (cực rộng)
-      scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
-    } else {
-      scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
-    }
-
-    // cố gắng bật continuous-focus (nếu hỗ trợ)
     try {
-      
-      await track?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] });
-    } catch(_) {}
+        if (deviceId) {
+            // mở trực tiếp theo deviceId đã chọn (cực rộng)
+            scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
+        } else {
+            scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
+        }
 
-    status.textContent = 'Đang quét... đưa mã vào khung.';
-    await populateCameraList();
+        // cố gắng bật continuous-focus (nếu hỗ trợ)
+        try {
 
-    // set dropdown trỏ ngay camera tốt nhất (cực rộng)
-    try {
-      const sel = document.getElementById('cameraSelect');
-      const bestId = deviceId || await pickBestBackCamera();
-      if (sel && bestId) sel.value = bestId;
-    } catch(_) {}
-  } catch (err) {
-    console.error('startScanner error:', err);
-    status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
-  }
+            await track?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] });
+        } catch (_) { }
+
+        status.textContent = 'Đang quét... đưa mã vào khung.';
+        await populateCameraList();
+
+        // set dropdown trỏ ngay camera tốt nhất (cực rộng)
+        try {
+            const sel = document.getElementById('cameraSelect');
+            const bestId = deviceId || await pickBestBackCamera();
+            if (sel && bestId) sel.value = bestId;
+        } catch (_) { }
+    } catch (err) {
+        console.error('startScanner error:', err);
+        status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
+    }
 }
 
 
@@ -501,26 +546,26 @@ function onScanResult(result, err, controls) {
 async function stopScanner() {
     try { scanControls?.stop(); } catch (_) { }
     const v = document.getElementById('scannerVideo');
-    
+
     try { track?.stop(); } catch (_) { }
     if (v) v.srcObject = null;
     codeReader = null; scanControls = null; torchOn = false;
 }
 
 async function populateCameraList() {
-  await ensureZXing();
-  const sel = document.getElementById('cameraSelect');
-  sel.innerHTML = '';
-  try {
-    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-    devices.forEach((d, i) => {
-      const opt = document.createElement('option');
-      opt.value = d.deviceId;
-      opt.textContent = d.label || `Camera ${i + 1}`;
-      sel.appendChild(opt);
-    });
-  } catch (_) {}
+    await ensureZXing();
+    const sel = document.getElementById('cameraSelect');
+    sel.innerHTML = '';
+    try {
+        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+        devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+        devices.forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Camera ${i + 1}`;
+            sel.appendChild(opt);
+        });
+    } catch (_) { }
 }
 
 
@@ -532,7 +577,7 @@ async function switchCamera(deviceId) {
 
 async function toggleTorch() {
     const v = document.getElementById('scannerVideo');
-    
+
     if (!track) return;
 
     try {
@@ -573,26 +618,26 @@ async function decodeFromFile(file) {
 
 // ==== Open/Close modal
 window.openScanner = async function () {
-  try { document.activeElement?.blur(); } catch (_) {} // tránh Live Text chiếm camera
-  document.getElementById('scannerModal').style.display = 'block';
-  const status = document.getElementById('scannerStatus');
-  status.textContent = 'Đang chuẩn bị camera...';
+    try { document.activeElement?.blur(); } catch (_) { } // tránh Live Text chiếm camera
+    document.getElementById('scannerModal').style.display = 'block';
+    const status = document.getElementById('scannerStatus');
+    status.textContent = 'Đang chuẩn bị camera...';
 
-  try {
-    await ensureZXing();
-
-    // mồi quyền & lộ labels (để thấy “cực rộng”)
     try {
-      const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-      pre.getTracks().forEach(t => t.stop());
-    } catch (_) {}
+        await ensureZXing();
 
-    const bestId = await pickBestBackCamera();     // → sẽ ưu tiên “cực rộng”
-    await startScanner(bestId || null);
-  } catch (e) {
-    console.error('openScanner error:', e);
-    status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
-  }
+        // mồi quyền & lộ labels (để thấy “cực rộng”)
+        try {
+            const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+            pre.getTracks().forEach(t => t.stop());
+        } catch (_) { }
+
+        const bestId = await pickBestBackCamera();     // → sẽ ưu tiên “cực rộng”
+        await startScanner(bestId || null);
+    } catch (e) {
+        console.error('openScanner error:', e);
+        status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
+    }
 };
 
 
@@ -651,17 +696,36 @@ window.onload = async function () {
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
 // Thử .JPG → .jpg → .PNG → .png
-function setProductImageByMasp(masp){
-  const img = document.getElementById("productImage");
-  if(!img) return;
-  const m = encodeURIComponent(masp);
-  const candidates = [`${IMG_BASE}${m}.JPG`, `${IMG_BASE}${m}.jpg`, `${IMG_BASE}${m}.PNG`, `${IMG_BASE}${m}.png`];
-  let i = 0;
-  const tryNext = () => {
-    if(i >= candidates.length) return;
-    img.onerror = () => { i++; tryNext(); };
-    img.src = candidates[i];
-  };
-  tryNext();
+function setProductImageByMasp(masp) {
+    const img = document.getElementById("productImage");
+    if (!img) return;
+    const m = encodeURIComponent(masp);
+    const candidates = [`${IMG_BASE}${m}.JPG`, `${IMG_BASE}${m}.jpg`, `${IMG_BASE}${m}.PNG`, `${IMG_BASE}${m}.png`];
+    let i = 0;
+    const tryNext = () => {
+        if (i >= candidates.length) return;
+        img.onerror = () => { i++; tryNext(); };
+        img.src = candidates[i];
+    };
+    tryNext();
 }
+
+function parseBulkMasp() {
+    const ta = document.getElementById('bulkTextarea');
+    if (!ta) return [];
+    const raw = ta.value || "";
+    if (!raw.trim()) return [];
+    // tách theo xuống dòng, tab, dấu phẩy/chấm phẩy → chuẩn hóa UPPERCASE
+    const arr = raw.split(/[\r\n,;\t]+/)
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+    // loại trùng, giữ thứ tự; giới hạn 50 mã để tránh quá nhiều RPC
+    const seen = new Set(), out = [];
+    for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
+    return out.slice(0, 50);
+}
+
+document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') triggerSearch();
+});
 
