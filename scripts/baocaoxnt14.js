@@ -235,25 +235,49 @@ window.taiBaoCaoXNT = async function () {
         td.appendChild(a);
     };
 
+    // Renderer hiển thị trống nếu giá trị = 0
+    const zeroBlankRenderer = function (instance, td, row, col, prop, value) {
+        const v = value;
+        // Xóa nội dung mặc định
+        td.innerHTML = '';
+
+        // Trống nếu 0 / "0" / null / undefined
+        if (v === 0 || v === '0' || v === null || v === undefined) {
+            return;
+        }
+
+        // Nếu là số thì format, còn lại thì hiển thị nguyên văn
+        const num = typeof v === 'number' ? v : parseFloat(v);
+        if (!Number.isNaN(num) && Number.isFinite(num)) {
+            td.textContent = num.toLocaleString();
+            td.classList.add('htRight');
+        } else {
+            td.textContent = v ?? '';
+        }
+    };
+
+
     // Định nghĩa cột cho Handsontable (ẩn hoàn toàn dvt, nhomhang, mausac)
     const columns = [
         { data: 'masp', title: 'Mã hàng', width: 110, renderer: maspRenderer },
         { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
-        { data: 'xuatban', title: 'Xuất bán', width: 70, className: 'htRight' },
-        { data: 'ton_cs1', title: 'Tồn CS1', width: 70, className: 'htRight' },
-        { data: 'ton_cs2', title: 'Tồn CS2', width: 70, className: 'htRight' },
-        { data: 'nhapmua', title: 'Nhập mua', width: 72, className: 'htRight' },
-        { data: 'cuoiky', title: 'Cuối kỳ', width: 70, className: 'htRight' },
-        { data: 'giale', title: 'Giá lẻ', width: 78, className: 'htRight' },
-        { data: 'dauky', title: 'Đầu kỳ', width: 70, className: 'htRight' },
-        { data: 'xuatkhac', title: 'Xuất khác', width: 76, className: 'htRight' },
-        { data: 'tongxuat', title: 'Tổng xuất', width: 76, className: 'htRight' },
-        { data: 'nhapkhac', title: 'Nhập khác', width: 76, className: 'htRight' },
-        { data: 'tongnhap', title: 'Tổng nhập', width: 76, className: 'htRight' },
+
+        { data: 'xuatban', title: 'Xuất bán', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs1', title: 'Tồn CS1', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs2', title: 'Tồn CS2', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapmua', title: 'Nhập mua', width: 72, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'cuoiky', title: 'Cuối kỳ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'giale', title: 'Giá lẻ', width: 78, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'dauky', title: 'Đầu kỳ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatkhac', title: 'Xuất khác', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'tongxuat', title: 'Tổng xuất', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapkhac', title: 'Nhập khác', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'tongnhap', title: 'Tổng nhập', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+
         { data: 'tensp', title: 'Tên hàng', width: 110 },
-        // Nếu cần cột "Ẩn - Giá nhập" để debug:
         // { data: 'gianhap', title: 'Ẩn - Giá nhập', width: 90 }
     ];
+
 
     const hotData = data.map((row, idx) => ({ stt: idx + 1, ...row }));
 
