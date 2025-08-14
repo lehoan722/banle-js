@@ -168,36 +168,6 @@ async function triggerSearch(_masp = null) {
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
 
-const productWithXNT = [];
-for (const row of list) {
-    const { data: xntdata, error: xntErr } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
-    if (!xntErr && xntdata && xntdata.length > 0) productWithXNT.push(row.masp);
-}
-
-if (productWithXNT.length === 0) {
-    msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
-    document.getElementById("singleDetailBox").style.display = "none";
-    return;
-}
-
-if (productWithXNT.length === 1) {
-    document.getElementById("singleDetailBox").style.display = "";
-    await renderOneProductDetail(productWithXNT[0]);
-    msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
-    return;
-}
-
-// nhiều mã
-document.getElementById("singleDetailBox").style.display = "none";
-let html = "";
-for (const m of productWithXNT) {
-    html += `<div style="margin-bottom:32px;border-bottom:1px dashed #90caf9;">${await renderProductDetailHTML(m)}</div>`;
-}
-const multi = document.getElementById("multiDetailBox");
-multi.innerHTML = html;
-multi.style.display = "";
-msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
-}
 
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
@@ -725,7 +695,4 @@ function parseBulkMasp() {
     return out.slice(0, 50);
 }
 
-document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') triggerSearch();
-});
 
