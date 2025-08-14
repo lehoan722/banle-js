@@ -205,7 +205,7 @@
             }
 
             .input-group input {
-                width: 100%
+                width: 70%
             }
 
             #productImage {
@@ -249,7 +249,7 @@
             }
 
             .bulk-box {
-                max-width: 100%
+                max-width: 30%
             }
         }
     </style>
@@ -275,25 +275,34 @@
             <!-- Bên trái: form nhập mã như cũ -->
             <div class="input-row">
                 <div class="input-group">
-                    <button class="popup-btn" id="scanBtn">📷 Quét</button>
-                    <label for="maspInput">Nhập mã hàng</label>
-                    <div>
-                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
-                        <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
-                    </div>
-                </div>
-                <button id="searchBtn"
+
+                    <button id="searchBtn"
                     style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
                     Tìm kiếm
                 </button>
+
+                    <button class="popup-btn" id="scanBtn">📷 Quét</button>
+
+                    <label for="maspInput">Nhập mã hàng</label>
+
+                    <div>
+                        <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
+
+                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />                        
+
+                    </div>
+                </div>
+
+                <!-- Bên phải: textarea nhiều mã -->
+                <!-- Bên phải: chỉ 1 ô textarea -->
+                <div class="bulk-box">
+                    <textarea id="bulkTextarea"
+                        placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
+                </div>
+
+                
             </div>
 
-            <!-- Bên phải: textarea nhiều mã -->
-            <!-- Bên phải: chỉ 1 ô textarea -->
-            <div class="bulk-box">
-                <textarea id="bulkTextarea"
-                    placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
-            </div>
 
         </div>
 
