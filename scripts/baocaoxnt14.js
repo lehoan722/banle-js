@@ -238,10 +238,7 @@ window.taiBaoCaoXNT = async function () {
         a.rel = 'noopener noreferrer';
 
         // Nếu muốn hiện nguyên URL trong ô:
-        a.textContent = url;
-
-        // Nếu bạn muốn gọn (chỉ hiện mã nhưng vẫn là link), dùng dòng này thay dòng trên:
-        // a.textContent = code;
+        a.textContent = code;
 
         td.appendChild(a);
     };
@@ -785,11 +782,3 @@ window.copyBang = async function () {
     }
 };
 
-// Ủy quyền click cho link mã hàng
-document.getElementById('hot').addEventListener('click', function (e) {
-    const a = e.target.closest('a.masp-link');
-    if (a) {
-        e.preventDefault();
-        showProdImage(a.dataset.masp);
-    }
-});
