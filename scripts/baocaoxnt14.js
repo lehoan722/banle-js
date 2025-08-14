@@ -224,16 +224,28 @@ window.taiBaoCaoXNT = async function () {
   </span>
   `;
 
+    // Hiển thị LINK sang trang tìm kiếm, mở tab mới
     const maspRenderer = function (instance, td, row, col, prop, value) {
-        const code = (value ?? '').toString();
+        const code = (value ?? '').toString().trim().toUpperCase();
         td.innerHTML = '';
+        if (!code) return;
+
+        const url = `https://banle-js.vercel.app/timkiemhanghoa111.html?masp=${encodeURIComponent(code)}`;
         const a = document.createElement('a');
         a.className = 'masp-link';
-        a.textContent = code;
-        a.href = '#';
-        a.dataset.masp = code;
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+
+        // Nếu muốn hiện nguyên URL trong ô:
+        a.textContent = url;
+
+        // Nếu bạn muốn gọn (chỉ hiện mã nhưng vẫn là link), dùng dòng này thay dòng trên:
+        // a.textContent = code;
+
         td.appendChild(a);
     };
+
 
     // Renderer hiển thị trống nếu giá trị = 0
     const zeroBlankRenderer = function (instance, td, row, col, prop, value) {
