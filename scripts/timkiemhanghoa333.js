@@ -643,14 +643,9 @@ window.onload = async function () {
 
 
 /* ====== TIỆN ÍCH ====== */
-function showEmptyIfZero(val){ return (val && Number(val)!==0)? val : ""; }
-function formatDateOnly(val){
-  if(!val) return "";
-  const d = new Date(val);
-  if(isNaN(d)) return val;
-  return d.toISOString().slice(0,10);
-}
-function getQuery(name){ const p=new URLSearchParams(window.location.search); const v=p.get(name); return v? v.trim() : ""; }
+
+
+
 
 // Base ảnh sản phẩm
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
