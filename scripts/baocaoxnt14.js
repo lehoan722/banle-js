@@ -230,7 +230,7 @@ window.taiBaoCaoXNT = async function () {
         td.innerHTML = '';
         if (!code) return;
 
-        const url = `https://banle-js.vercel.app/timkiemhanghoa111.html?masp=${encodeURIComponent(code)}`;
+        const url = `https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(code)}`;
         const a = document.createElement('a');
         a.className = 'masp-link';
         a.href = url;
