@@ -212,6 +212,56 @@
                 max-width: 100%
             }
         }
+
+        /* thanh trên gồm form tìm kiếm (trái) + textarea (phải) */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px
+        }
+
+        .bulk-box {
+            min-width: 260px;
+            max-width: 320px
+        }
+
+        .bulk-box h3 {
+            margin: 0 0 6px;
+            text-align: center;
+            border: 1px solid #cfd8dc;
+            border-bottom: none;
+            padding: 6px 8px;
+            background: #fafbfc
+        }
+
+        #bulkTextarea {
+            width: 100%;
+            height: 7.5em;
+            overflow: auto;
+            resize: vertical;
+            border: 1px solid #cfd8dc;
+            font-family: Consolas, monospace;
+            border-top: none;
+            padding: 8px 10px
+        }
+
+        .bulk-hint {
+            font-size: 12px;
+            color: #607d8b;
+            margin-top: 6px;
+            text-align: center
+        }
+
+        @media(max-width:600px) {
+            .topbar {
+                flex-direction: column
+            }
+
+            .bulk-box {
+                max-width: 100%
+            }
+        }
     </style>
 </head>
 
@@ -231,19 +281,32 @@
     <div class="main-container">
         <h2>🔍 TÌM KIẾM THÔNG TIN HÀNG HÓA</h2>
 
-        <div class="input-row">
-            <div class="input-group">
-                <button class="popup-btn" id="scanBtn">📷 Quét</button>
-                <label for="maspInput">Nhập mã hàng</label>
-                <div>
-                    <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
-                    <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
+        <div class="topbar">
+            <!-- Bên trái: form nhập mã như cũ -->
+            <div class="input-row">
+                <div class="input-group">
+                    <button class="popup-btn" id="scanBtn">📷 Quét</button>
+                    <label for="maspInput">Nhập mã hàng</label>
+                    <div>
+                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
+                        <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
+                    </div>
                 </div>
+                <button id="searchBtn"
+                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
+                    Tìm kiếm
+                </button>
             </div>
-            <button id="searchBtn"
-                style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">Tìm
-                kiếm</button>
+
+            <!-- Bên phải: textarea nhiều mã -->
+            <div class="bulk-box">
+                <h3>Textarea</h3>
+                <textarea id="bulkTextarea"
+                    placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;Ví dụ:&#10;11376-GDM&#10;60252-GDE"></textarea>
+                <div class="bulk-hint">Nếu có dữ liệu ở đây, tìm theo danh sách này trước (tối đa 50 mã).</div>
+            </div>
         </div>
+
 
         <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
