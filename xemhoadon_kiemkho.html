@@ -115,17 +115,17 @@
     <label>Tiền từ: <input type="number" id="tienTu" style="width:80px"></label>
     <label>Tiền đến: <input type="number" id="tienDen" style="width:80px"></label>
     <label>Số HĐ: <input type="text" id="locSoHD"></label>
+
+    <label>Mã SP chứa:
+        <input type="text" id="locMasp" placeholder="VD: dp1304" style="width:120px;text-transform:uppercase">
+    </label>
+
+
     <label>Loại chứng từ:</label>
     <select id="loaiChungTu" multiple style="min-width:140px;">
-        <option value="bancs1">bancs1</option>
-        <option value="bancs2">bancs2</option>
-        <option value="nmcs1">nmcs1</option>
-        <option value="nmcs2">nmcs2</option>
-        <option value="ccn1v2">ccn1v2</option>
-        <option value="ccn2v1">ccn2v1</option>
-        <option value="nhapkiem">nhapkiem</option>
-        <option value="xuatkiem">xuatkiem</option>
-        <option value="kiemkho">kiemkho</option>
+
+        <option value="kiemkhocs1">kiemkho cs1</option>
+        <option value="kiemkhocs2">kiemkho cs2</option>
 
     </select>
 
@@ -261,6 +261,8 @@
             const khach = document.getElementById("locKhach").value.trim();
             const tienTu = Number(document.getElementById("tienTu").value);
             const tienDen = Number(document.getElementById("tienDen").value);
+            const maspTK = (document.getElementById("locMasp")?.value || "").trim().toUpperCase();
+
 
             const selectLoai = document.getElementById("loaiChungTu");
             const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
@@ -286,6 +288,7 @@
                     else if (tuNgay) query = query.gte('ngaygio', tuNgay);
                     else if (denNgay) query = query.lte('ngaygio', denNgay);
 
+                    if (maspTK) query = query.ilike('masp', `%${maspTK}%`);
 
                     if (nv) query = query.ilike('tennv', `%${nv}%`);
                     if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -313,6 +316,8 @@
                 if (tuNgay && denNgay) query = query.gte('ngaygio', tuNgay).lte('ngaygio', denNgay);
                 else if (tuNgay) query = query.gte('ngaygio', tuNgay);
                 else if (denNgay) query = query.lte('ngaygio', denNgay);
+
+                if (maspTK) query = query.ilike('masp', `%${maspTK}%`);
 
                 if (nv) query = query.ilike('tennv', `%${nv}%`);
                 if (sohd) query = query.ilike('sohd', `%${sohd}%`);
@@ -529,6 +534,17 @@
             document.getElementById('denNgay').value = today;
             taiDanhSachHoaDon();
         };
+
+        const ipMasp = document.getElementById('locMasp');
+        if (ipMasp) {
+            ipMasp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') taiDanhSachHoaDon();
+            });
+            ipMasp.addEventListener('input', () => {
+                ipMasp.value = ipMasp.value.toUpperCase();
+            });
+        }
+
         document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
 
         // DRAG POPUP (kéo popup)
