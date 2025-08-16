@@ -309,91 +309,90 @@ function updatePagingBar() {
 }
 
 // Xuất Excel toàn bộ cho báo cáo XNT15 (lặp theo trang rồi ghép)
+// Nhanh hơn: Xuất XLSX với tải song song & ít xử lý
 window.xuatExcelToanBoXNT15 = async function () {
-    // Kiểm tra có bộ lọc/báo cáo chưa chạy
-    if (!window.lastParams) {
-        alert("Hãy bấm 'Xem báo cáo' để tải dữ liệu trước khi xuất Excel.");
-        return;
+  if (typeof XLSX === "undefined") {
+    alert("Thiếu thư viện XLSX.");
+    return;
+  }
+  if (!window.lastParams) {
+    alert("Hãy bấm 'Xem báo cáo' trước khi xuất.");
+    return;
+  }
+  const psEl = document.getElementById("pageSize");
+  const ps = psEl ? Number(psEl.value) || 1000 : (window.pageSize || 1000);
+  const fn = document.getElementById("selectFunction")?.value || "baocaoxnt15_paged";
+
+  const ok = confirm(`Xuất XLSX nhanh (song song 3 luồng, ${ps}/trang). Tiếp tục?`);
+  if (!ok) return;
+
+  // 1) Lấy trang 1 để khởi tạo; sau đó tải song song các trang tiếp theo
+  async function fetchPage(p) {
+    const offset = (p - 1) * ps;
+    const params = { ...window.lastParams, p_limit: ps, p_offset: offset };
+    const { data, error } = await supabase.rpc(fn, params);
+    if (error) throw error;
+    return data || [];
+  }
+
+  const all = [];
+  let page = 1;
+  // lấy trang 1
+  let first = await fetchPage(page);
+  if (!first.length) { alert("Không có dữ liệu để xuất."); return; }
+  all.push(first);
+
+  // Ước lượng có bao nhiêu trang (nếu đã biết totalRows) để chạy song song, nếu không biết thì chạy dần
+  const concurrency = 3; // 3 luồng mạng
+  const workers = [];
+  let nextPage = 2;
+  let ended = false;
+
+  async function worker() {
+    while (!ended) {
+      const myPage = nextPage++;
+      const rows = await fetchPage(myPage);
+      if (!rows.length) { ended = true; break; }
+      all[myPage - 1] = rows; // giữ thứ tự
+      if (rows.length < ps) { ended = true; break; }
     }
+  }
+  for (let i = 0; i < concurrency; i++) workers.push(worker());
+  await Promise.all(workers);
 
-    // Lấy pageSize hiện tại để đồng bộ với phân trang
-    const psEl = document.getElementById("pageSize");
-    const ps = psEl ? Number(psEl.value) || 1000 : (window.pageSize || 1000);
+  // 2) Dồn AOA và ghi file (tắt nén để nhanh hơn)
+  const headers = [
+    "STT","Mã hàng","Kích cỡ","Xuất bán","Tồn CS1","Tồn CS2",
+    "Nhập mua","Cuối kỳ","Giá lẻ","Đầu kỳ","Xuất khác","Tổng xuất",
+    "Nhập khác","Tổng nhập","Tên hàng"
+  ];
+  const aoa = [headers];
 
-    // Hỏi xác nhận (đề phòng dữ liệu rất lớn)
-    const ok = confirm(`Sẽ tải lần lượt dữ liệu theo trang (≈ ${ps} dòng/trang) rồi ghép thành 1 file Excel. Tiếp tục?`);
-    if (!ok) return;
-
-    // Helper gọi 1 trang
-    async function fetchPage(p) {
-        const offset = (p - 1) * ps;
-        const params = { ...window.lastParams, p_limit: ps, p_offset: offset };
-        const fn = document.getElementById("selectFunction")?.value || "baocaoxnt15_paged";
-        const { data, error } = await supabase.rpc(fn, params);
-        if (error) throw error;
-        return data || [];
+  let sttOffset = 0;
+  for (let p = 0; p < all.length; p++) {
+    const pageRows = all[p];
+    if (!pageRows) break;
+    for (let i = 0; i < pageRows.length; i++) {
+      const r = pageRows[i];
+      aoa.push([
+        sttOffset + i + 1,
+        r.masp ?? "", r.size ?? "",
+        r.xuatban ?? 0, r.ton_cs1 ?? 0, r.ton_cs2 ?? 0,
+        r.nhapmua ?? 0, r.cuoiky ?? 0, r.giale ?? 0,
+        r.dauky ?? 0, r.xuatkhac ?? 0, r.tongxuat ?? 0,
+        r.nhapkhac ?? 0, r.tongnhap ?? 0, r.tensp ?? ""
+      ]);
     }
+    sttOffset += pageRows.length;
+  }
 
-    const all = [];
-    let page = 1;
-    while (true) {
-        const rows = await fetchPage(page);
-        if (!rows.length) break;
-
-        // Thêm STT + đẩy vào mảng tổng
-        const offset = (page - 1) * ps;
-        rows.forEach((r, i) => all.push({ stt: offset + i + 1, ...r }));
-
-        // Nếu trang hiện tại < pageSize -> đã hết
-        if (rows.length < ps) break;
-        page++;
-    }
-
-    if (!all.length) {
-        alert("Không có dữ liệu để xuất.");
-        return;
-    }
-
-    // Chuẩn bị dữ liệu Excel (giống cột đang hiển thị trong bảng)
-    const headers = [
-        "STT", "Mã hàng", "Kích cỡ", "Xuất bán", "Tồn CS1", "Tồn CS2",
-        "Nhập mua", "Cuối kỳ", "Giá lẻ", "Đầu kỳ", "Xuất khác", "Tổng xuất",
-        "Nhập khác", "Tổng nhập", "Tên hàng"
-    ];
-
-    const aoa = [headers];
-    for (const r of all) {
-        aoa.push([
-            r.stt,
-            r.masp ?? "",
-            r.size ?? "",
-            r.xuatban ?? 0,
-            r.ton_cs1 ?? 0,
-            r.ton_cs2 ?? 0,
-            r.nhapmua ?? 0,
-            r.cuoiky ?? 0,
-            r.giale ?? 0,
-            r.dauky ?? 0,
-            r.xuatkhac ?? 0,
-            r.tongxuat ?? 0,
-            r.nhapkhac ?? 0,
-            r.tongnhap ?? 0,
-            r.tensp ?? ""
-        ]);
-    }
-
-    // Bảo đảm có SheetJS
-    if (typeof XLSX === "undefined") {
-        alert("Thiếu thư viện XLSX (SheetJS). Hãy chắc chắn bạn đã load script XLSX trước khi xuất.");
-        return;
-    }
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    // Định dạng số dạng text/number tuỳ ý: ở đây giữ nguyên, Excel sẽ tự nhận
-    XLSX.utils.book_append_sheet(wb, ws, "XNT15");
-    XLSX.writeFile(wb, "baocao_xnt15_ALL.xlsx");
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, ws, "XNT15");
+  // compression: false để ghi nhanh; cellDates:false; WTF:false (mặc định) giúp nhanh hơn chút
+  XLSX.writeFile(wb, "baocao_xnt15_ALL.xlsx", { compression: false });
 };
+
 
 
 // Nút điều hướng
