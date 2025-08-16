@@ -219,19 +219,14 @@ async function fetchPaged(params) {
 
 window.taiBaoCaoXNT = async function () {
   const loading = document.getElementById("loadingMsg");
+  loading.textContent = "Đang tải dữ liệu...";
+
   try {
+    // Cập nhật pageSize và tham số gọi RPC
     pageSize = Number(document.getElementById("pageSize")?.value || 1000);
     const params = buildParams(currentPage);
 
-    loading.textContent = "Đang tải dữ liệu...";
-    // lấy totalRows trước (để cập nhật phân trang)
-    totalRows = await fetchCount({ **{k: v for k, v in { } }** });
-  } catch (e) {
-    // Do not use Python-like dict; we correct below
-  }
-  try {
-    const params = buildParams(currentPage);
-    // Count
+    // Đếm tổng số dòng để cập nhật phân trang
     totalRows = await fetchCount({
       tu_ngay: params.tu_ngay,
       den_ngay: params.den_ngay,
@@ -254,7 +249,10 @@ window.taiBaoCaoXNT = async function () {
       p_tonghop_size: params.p_tonghop_size
     });
 
+    // Lấy dữ liệu trang hiện tại
     const rows = await fetchPaged(params);
+
+    // Render
     renderTable(rows);
     renderSummary(rows);
     updatePagingBar();
