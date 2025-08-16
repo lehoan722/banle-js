@@ -402,11 +402,22 @@
                 <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
                 <div class="upload-row"
                     style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
-                    <label for="imgFileInput" id="chooseImgBtn" class="popup-btn">Chọn tệp</label>
-                    <button id="saveImgBtn" class="popup-btn">💾 Lưu ảnh</button>
-                    <input id="imgFileInput" type="file" accept="image/*;capture=camera" capture="environment"
-                        style="position:absolute;left:-9999px;width:0;height:0;opacity:0;" />
-                    <span id="uploadStatus" style="font-weight:600;margin-left:8px;color:#444"></span>                  
+                    <label class="popup-btn" style="cursor:pointer">
+                        Chọn tệp
+                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
+                    </label>
+
+                    <button id="saveImgBtn" class="popup-btn"
+                        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
+                        💾 Lưu ảnh
+                    </button>
+
+                    <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:#1976d2">
+                        <input id="resizeCheckbox" type="checkbox" checked>
+                        Chuẩn hoá kích thước (khuyên dùng)
+                    </label>
+
+                    <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
                 </div>
 
 
