@@ -173,9 +173,11 @@ async function triggerSearch(_masp = null) {
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
 
-    CURRENT_MASP = masp;          // <— thêm dòng này
-    _pendingBlob = null;          // reset blob chờ upload
-    uploadStatus.textContent = ''; // nếu có
+    CURRENT_MASP = (masp || '').toUpperCase();   // luôn IN HOA để đặt tên file .JPG
+    _pendingBlob = null;                          // reset blob chờ upload
+    const sts = document.getElementById('uploadStatus');
+    if (sts) sts.textContent = '';
+
     // thông tin hàng hóa
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return;
@@ -507,22 +509,19 @@ const resizeCheckbox = document.getElementById('resizeCheckbox');
 const uploadStatus = document.getElementById('uploadStatus');
 
 fileInput?.addEventListener('change', async (e) => {
-    uploadStatus.textContent = '';
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // xem trước ngay ở khu vực ảnh
     const imgEl = document.getElementById('productImage');
 
-    // Nếu cần chuẩn hoá kích thước giống upanhmoi2.html
-    if (resizeCheckbox?.checked) {
-        _pendingBlob = await resizeToStandardBlob(file); // → Blob JPEG
-        imgEl.src = URL.createObjectURL(_pendingBlob);   // xem trước
-    } else {
-        _pendingBlob = file;                             // dùng file gốc
-        imgEl.src = URL.createObjectURL(file);
-    }
+    // luôn chuẩn hoá kích thước trước khi upload
+    _pendingBlob = await resizeToStandardBlob(file);   // → Blob JPEG 640x480 or 480x640
+    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob); // xem trước đè lên ảnh cũ
+
+    const sts = document.getElementById('uploadStatus');
+    if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
 });
+
 
 saveImgBtn?.addEventListener('click', async () => {
     try {
@@ -545,6 +544,13 @@ saveImgBtn?.addEventListener('click', async () => {
 
         uploadStatus.style.color = 'green';
         uploadStatus.textContent = 'Đã lưu ảnh thành công!';
+        // NEW: dọn trạng thái + focus & bôi đen ô nhập mã để nhập tiếp
+        const fi = document.getElementById('imgFileInput');
+        if (fi) fi.value = '';
+        _pendingBlob = null;
+
+        const ip = document.getElementById('maspInput');
+        if (ip) { ip.focus(); ip.select(); }   // <<< bôi đen để gõ mã tiếp
     } catch (e) {
         console.error(e);
         uploadStatus.style.color = '#c62828';
