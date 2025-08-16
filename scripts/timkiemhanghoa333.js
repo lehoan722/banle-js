@@ -172,6 +172,9 @@ async function triggerSearch(_masp = null) {
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
+    CURRENT_MASP = masp;          // <— thêm dòng này
+    _pendingBlob = null;          // reset blob chờ upload
+    uploadStatus.textContent = ''; // nếu có
     // thông tin hàng hóa
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return;
@@ -668,6 +671,100 @@ window.onload = async function () {
 // Base ảnh sản phẩm
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
+// === ẢNH SẢN PHẨM ===
+const STORAGE_BUCKET = 'anhsanpham';
+let CURRENT_MASP = null;        // đang hiển thị 1 sản phẩm nào
+let _pendingBlob = null;        // blob đã resize (để upload)
+
+// === SỰ KIỆN UPLOAD ẢNH ===
+const fileInput = document.getElementById('imgFileInput');
+const saveImgBtn = document.getElementById('saveImgBtn');
+const resizeCheckbox = document.getElementById('resizeCheckbox');
+const uploadStatus = document.getElementById('uploadStatus');
+
+fileInput?.addEventListener('change', async (e) => {
+    uploadStatus.textContent = '';
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // xem trước ngay ở khu vực ảnh
+    const imgEl = document.getElementById('productImage');
+
+    // Nếu cần chuẩn hoá kích thước giống upanhmoi2.html
+    if (resizeCheckbox?.checked) {
+        _pendingBlob = await resizeToStandardBlob(file); // → Blob JPEG
+        imgEl.src = URL.createObjectURL(_pendingBlob);   // xem trước
+    } else {
+        _pendingBlob = file;                             // dùng file gốc
+        imgEl.src = URL.createObjectURL(file);
+    }
+});
+
+saveImgBtn?.addEventListener('click', async () => {
+    try {
+        uploadStatus.style.color = '#c62828';
+        if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
+        if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
+
+        const fileName = `${CURRENT_MASP}.JPG`; // luôn in hoa
+        uploadStatus.textContent = 'Đang lưu ảnh...';
+
+        const { error } = await supabase
+            .storage.from(STORAGE_BUCKET)
+            .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
+
+        if (error) throw error;
+
+        // refresh ảnh với cache-busting
+        const imgEl = document.getElementById('productImage');
+        imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
+
+        uploadStatus.style.color = 'green';
+        uploadStatus.textContent = 'Đã lưu ảnh thành công!';
+    } catch (e) {
+        console.error(e);
+        uploadStatus.style.color = '#c62828';
+        uploadStatus.textContent = 'Lưu ảnh thất bại!';
+    }
+});
+
+async function resizeToStandardBlob(file) {
+    // đọc file → Image
+    const dataUrl = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(file);
+    });
+    const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = rej;
+        i.src = dataUrl;
+    });
+
+    // chọn size đích theo hướng ảnh
+    const isLandscape = img.width > img.height;
+    const targetW = isLandscape ? 640 : 480;
+    const targetH = isLandscape ? 480 : 640;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW; canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+
+    const scale = Math.min(targetW / img.width, targetH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const offX = (targetW - drawW) / 2;
+    const offY = (targetH - drawH) / 2;
+    ctx.drawImage(img, offX, offY, drawW, drawH);
+
+    return await new Promise((res) => canvas.toBlob(
+        (blob) => res(blob), 'image/jpeg'
+    ));
+}
+
+
 // Thử .JPG → .jpg → .PNG → .png
 function setProductImageByMasp(masp) {
     const img = document.getElementById("productImage");
@@ -699,24 +796,24 @@ function parseBulkMasp() {
 }
 
 document.getElementById('clearBulkBtn')?.addEventListener('click', () => {
-  const ta = document.getElementById('bulkTextarea');
-  if (ta) { ta.value = ''; ta.focus(); }
+    const ta = document.getElementById('bulkTextarea');
+    if (ta) { ta.value = ''; ta.focus(); }
 
-  // Dọn trạng thái hiển thị kết quả
-  const msg = document.getElementById('statusMsg'); if (msg) msg.textContent = '';
-  const multi = document.getElementById('multiDetailBox');
-  if (multi) { multi.innerHTML = ''; multi.style.display = 'none'; }
-  const top = document.getElementById('infoTopTable'); if (top) top.innerHTML = '';
-  const right = document.getElementById('infoTableRight'); if (right) right.innerHTML = '';
-  const img = document.getElementById('productImage'); if (img) img.src = '';
-  // đảm bảo khối đơn hiển thị rỗng
-  const single = document.getElementById('singleDetailBox'); if (single) single.style.display = '';
+    // Dọn trạng thái hiển thị kết quả
+    const msg = document.getElementById('statusMsg'); if (msg) msg.textContent = '';
+    const multi = document.getElementById('multiDetailBox');
+    if (multi) { multi.innerHTML = ''; multi.style.display = 'none'; }
+    const top = document.getElementById('infoTopTable'); if (top) top.innerHTML = '';
+    const right = document.getElementById('infoTableRight'); if (right) right.innerHTML = '';
+    const img = document.getElementById('productImage'); if (img) img.src = '';
+    // đảm bảo khối đơn hiển thị rỗng
+    const single = document.getElementById('singleDetailBox'); if (single) single.style.display = '';
 });
 
 document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
-    e.preventDefault();
-    document.getElementById('clearBulkBtn')?.click();
-  }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        document.getElementById('clearBulkBtn')?.click();
+    }
 });
 
