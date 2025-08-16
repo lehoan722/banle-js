@@ -684,8 +684,12 @@ let _pendingBlob = null;        // blob đã resize (để upload)
 // === SỰ KIỆN UPLOAD ẢNH ===
 const fileInput = document.getElementById('imgFileInput');
 const saveImgBtn = document.getElementById('saveImgBtn');
-
 const uploadStatus = document.getElementById('uploadStatus');
+// mở picker/camera khi bấm "Chọn tệp"
+document.getElementById('chooseImgBtn')?.addEventListener('click', () => {
+    document.getElementById('imgFileInput')?.click();
+});
+
 
 fileInput?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
