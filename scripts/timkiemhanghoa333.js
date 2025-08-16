@@ -594,27 +594,6 @@ async function resizeToStandardBlob(file) {
     ));
 }
 
-async function overwriteImage(maspUpper, blob) {
-  const pathJPG = `${maspUpper}.JPG`;
-  // 1) thử thay thế trực tiếp (update)
-  let { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .update(pathJPG, blob, { contentType: 'image/jpeg', cacheControl: '0' });
-
-  // 2) nếu update lỗi (chưa có file…), fallback upload + upsert
-  if (error) {
-    ({ error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(pathJPG, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '0' }));
-  }
-
-  // 3) dọn các biến thể tên file khác đuôi (nếu tồn tại)
-  await supabase.storage.from(STORAGE_BUCKET)
-    .remove([`${maspUpper}.jpg`, `${maspUpper}.PNG`, `${maspUpper}.png`])
-    .catch(() => {}); // không sao nếu không tồn tại
-
-  return { error };
-}
 
 
 
@@ -845,51 +824,3 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
     }
 });
 
-
-document.addEventListener('DOMContentLoaded', () => {
-  const fileInput = document.getElementById('imgFileInput');
-  const saveBtn   = document.getElementById('saveImgBtn');
-  const statusEl  = document.getElementById('uploadStatus');
-  const imgEl     = document.getElementById('productImage');
-  const maspInput = document.getElementById('maspInput');
-
-  // Mở picker/camera
-  document.getElementById('chooseImgBtn')?.addEventListener('click', () => fileInput?.click());
-
-  // Chọn/chụp xong → resize + xem trước đè lên ảnh cũ
-  fileInput?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const masp = (CURRENT_MASP || maspInput?.value || '').toUpperCase().trim();
-    if (!masp) { alert('Chưa có mã sản phẩm.'); return; }
-
-    _pendingBlob = await resizeToStandardBlob(file);
-    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob);
-    if (statusEl) { statusEl.style.color = '#444'; statusEl.textContent = 'Đã chọn ảnh (chưa lưu)'; }
-  });
-
-  // Lưu → **ghi đè** + refresh ảnh + focus & bôi đen ô mã
-  saveBtn?.addEventListener('click', async () => {
-    const masp = (CURRENT_MASP || maspInput?.value || '').toUpperCase().trim();
-    if (!masp) { statusEl && (statusEl.textContent='Chưa có mã sản phẩm!'); return; }
-    if (!_pendingBlob) { statusEl && (statusEl.textContent='Chưa chọn ảnh!'); return; }
-
-    statusEl && (statusEl.style.color='#c62828', statusEl.textContent='Đang lưu ảnh...');
-    const { error } = await overwriteImage(masp, _pendingBlob);
-
-    if (error) {
-      console.error(error);
-      statusEl && (statusEl.textContent='Lưu ảnh thất bại!');
-      return;
-    }
-
-    // Cache-busting để không thấy ảnh cũ do CDN cache
-    if (imgEl) imgEl.src = `${IMG_BASE}${encodeURIComponent(masp)}.JPG?v=${Date.now()}`;
-
-    // dọn & focus để nhập tiếp
-    _pendingBlob = null;
-    if (fileInput) fileInput.value = '';
-    statusEl && (statusEl.style.color='green', statusEl.textContent='Đã lưu ảnh thành công!');
-    if (maspInput) { maspInput.focus(); maspInput.select(); }
-  });
-});
