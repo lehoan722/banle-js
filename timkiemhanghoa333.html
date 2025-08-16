@@ -227,20 +227,42 @@
         }
 
         /* Trái = 2 hàng điều khiển, Phải = textarea */
-.left-controls { display:flex; flex-direction:column; gap:10px; }
-.control-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .left-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
 
-/* Nút tìm kiếm màu xanh như hiện tại */
-.btn-primary {
-  height:40px; background:#1976d2; color:#fff; font-weight:bold;
-  border:none; border-radius:7px; padding:0 32px; cursor:pointer;
-}
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-/* Trên màn nhỏ: xếp dọc hợp lý (đã có media query), chỉ tinh chỉnh thêm */
-@media (max-width:600px){
-  .left-controls { width:100%; }
-  .control-row input { flex:1; min-width: 160px; }
-}
+        /* Nút tìm kiếm màu xanh như hiện tại */
+        .btn-primary {
+            height: 40px;
+            background: #1976d2;
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            border-radius: 7px;
+            padding: 0 32px;
+            cursor: pointer;
+        }
+
+        /* Trên màn nhỏ: xếp dọc hợp lý (đã có media query), chỉ tinh chỉnh thêm */
+        @media (max-width:600px) {
+            .left-controls {
+                width: 100%;
+            }
+
+            .control-row input {
+                flex: 1;
+                min-width: 160px;
+            }
+        }
 
 
         #bulkTextarea {
@@ -406,10 +428,12 @@
 
                 <!-- Hàng 2: Chọn tệp & Lưu ảnh -->
                 <div class="control-row">
-                    <button id="chooseImgBtn" class="popup-btn">Chọn tệp</button>
+                    <label for="imgFileInput" id="chooseImgBtn" class="popup-btn">Chọn tệp</label>
+                    <input id="imgFileInput" type="file" accept="image/*;capture=camera" capture="environment"
+                        style="position:absolute;left:-9999px;width:0;height:0;opacity:0;" />
+
                     <button id="saveImgBtn" class="popup-btn">💾 Lưu ảnh</button>
-                    <!-- input file ẩn -->
-                    <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden />
+
                     <span id="uploadStatus" style="font-weight:600;margin-left:8px;color:#444"></span>
                 </div>
             </div>
