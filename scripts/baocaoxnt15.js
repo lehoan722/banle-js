@@ -2,7 +2,7 @@ import { supabase } from "./supabaseClient.js";
 let hotInstance;
 let currentPage = 1;
 let pageSize = 10000;
-let totalRows = 0;
+let totalRows = null;
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ==== 
 window.dangNhap = async function () {
@@ -311,25 +311,23 @@ function updatePagingBar() {
 
 // Nút điều hướng
 window.prevPage = function () {
-    if (currentPage > 1) loadXNTPage(currentPage - 1);
+  if (currentPage > 1) loadXNTPage(currentPage - 1);
 };
-
 window.nextPage = function () {
-    // nếu chưa biết tổng -> luôn cho đi tiếp
-    if (totalRows == null) return loadXNTPage(currentPage + 1);
+  if (totalRows == null) return loadXNTPage(currentPage + 1); // chưa biết tổng -> cứ đi tiếp
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  if (currentPage < totalPages) loadXNTPage(currentPage + 1);
+};
+window.gotoPage = function () {
+  const n = Number(document.getElementById("gotoPage").value);
+  if (!n || n < 1) return alert("Số trang không hợp lệ");
+  if (totalRows != null) {
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-    if (currentPage < totalPages) loadXNTPage(currentPage + 1);
+    if (n > totalPages) return alert("Vượt quá số trang");
+  }
+  loadXNTPage(n);
 };
 
-window.gotoPage = function () {
-    const n = Number(document.getElementById("gotoPage").value);
-    if (!n || n < 1) return alert("Số trang không hợp lệ");
-    if (totalRows != null) {
-        const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-        if (n > totalPages) return alert("Vượt quá số trang");
-    }
-    loadXNTPage(n);
-};
 
 
 // Đổi số dòng/trang → quay về trang 1
