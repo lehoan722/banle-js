@@ -156,8 +156,7 @@ window.taiBaoCaoXNT = async function () {
     currentPage = 1;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
 
-    // 3) Đếm tổng
-    // đổi sang (fallback):
+    // 3) Đếm tổng (có fallback khi timeout)
     let totalUnknown = false;
     let cnt = 0;
     try {
@@ -166,21 +165,19 @@ window.taiBaoCaoXNT = async function () {
         cnt = Number(res.data || 0);
     } catch (e) {
         if (String(e.code) === '57014') {
-            totalUnknown = true; // đếm timeout -> chuyển sang chế độ không biết tổng
+            totalUnknown = true;              // đếm bị cắt thời gian -> không biết tổng
         } else {
             alert("Lỗi đếm dữ liệu: " + (e.message || e));
             return;
         }
     }
-    
+    totalRows = totalUnknown ? null : cnt;
 
+    // 4) Tải trang đầu tiên
     currentPage = 1;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
     await loadXNTPage(currentPage);
-    totalRows = Number(cnt || 0);
 
-    // 4) Tải trang đầu
-    await loadXNTPage(currentPage);
     if (loadingMsg) loadingMsg.textContent = "";
 };
 
@@ -313,17 +310,27 @@ function updatePagingBar() {
 
 
 // Nút điều hướng
-window.prevPage = function () { if (currentPage > 1) loadXNTPage(currentPage - 1); };
+window.prevPage = function () {
+    if (currentPage > 1) loadXNTPage(currentPage - 1);
+};
+
 window.nextPage = function () {
+    // nếu chưa biết tổng -> luôn cho đi tiếp
+    if (totalRows == null) return loadXNTPage(currentPage + 1);
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
     if (currentPage < totalPages) loadXNTPage(currentPage + 1);
 };
+
 window.gotoPage = function () {
-    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
     const n = Number(document.getElementById("gotoPage").value);
-    if (!n || n < 1 || n > totalPages) return alert("Số trang không hợp lệ");
+    if (!n || n < 1) return alert("Số trang không hợp lệ");
+    if (totalRows != null) {
+        const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+        if (n > totalPages) return alert("Vượt quá số trang");
+    }
     loadXNTPage(n);
 };
+
 
 // Đổi số dòng/trang → quay về trang 1
 document.getElementById("pageSize").addEventListener("change", function () {
@@ -659,21 +666,6 @@ async function searchPopup(keyword) {
     </div>
   `).join('');
 }
-
-window.prevPage = function () {
-    if (currentPage > 1) {
-        currentPage--;
-        taiBaoCaoXNT();
-    }
-};
-
-window.nextPage = function () {
-    // nếu chưa biết tổng -> luôn cho đi tiếp
-    if (totalRows == null) return loadXNTPage(currentPage + 1);
-
-    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-    if (currentPage < totalPages) loadXNTPage(currentPage + 1);
-};
 
 
 function updatePageInfo() {
