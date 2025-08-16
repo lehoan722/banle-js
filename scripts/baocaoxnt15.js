@@ -172,7 +172,7 @@ window.taiBaoCaoXNT = async function () {
             return;
         }
     }
-    totalRows = totalUnknown ? null : cnt;
+    
 
     currentPage = 1;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
