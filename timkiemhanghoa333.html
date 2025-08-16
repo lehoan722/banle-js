@@ -388,16 +388,38 @@
 
                         <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
 
-                    </div>                   
-                    
+                    </div>
+
                 </div>
 
-                 <button id="searchBtn"
-                        style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
-                        Tìm kiếm
+                <button id="searchBtn"
+                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
+                    Tìm kiếm
+                </button>
+
+                <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
+                <div class="upload-row"
+                    style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
+                    <label class="popup-btn" style="cursor:pointer">
+                        Chọn tệp
+                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
+                    </label>
+
+                    <button id="saveImgBtn" class="popup-btn"
+                        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
+                        💾 Lưu ảnh
                     </button>
 
-                    <button class="popup-btn" id="scanBtn">📷 Quét</button>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:#1976d2">
+                        <input id="resizeCheckbox" type="checkbox" checked>
+                        Chuẩn hoá kích thước (khuyên dùng)
+                    </label>
+
+                    <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
+                </div>
+
+
+                <button class="popup-btn" id="scanBtn">📷 Quét</button>
 
                 <!-- Bên phải: textarea nhiều mã -->
                 <!-- Bên phải: chỉ 1 ô textarea -->
