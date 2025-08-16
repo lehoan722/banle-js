@@ -218,28 +218,31 @@
                 <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;" placeholder="Đến"></label>
                 <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
                 <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
+
+                <!-- thêm cụm phân trang -->
+                <div id="pagingBar" style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <label>Số dòng/trang:
+                        <select id="pageSize" style="padding:4px 6px;">
+                            <option value="500">500</option>
+                            <option value="1000" selected>1000</option>
+                            <option value="2000">2000</option>
+                        </select>
+                    </label>
+
+                    <button class="main-btn" onclick="window.trangTruoc()" …>⬅ Trang trước</button>
+                    <button class="main-btn" onclick="window.trangSau()" …>Trang sau ➡</button>
+
+                    <span id="pageInfo" style="color:#444">Trang 0/0 (Tổng: 0)</span>
+                    <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+                    <button class="main-btn" onclick="window.toiTrang()">Đi</button>
+
+                    <!-- nút xuất toàn bộ -->
+                    <button class="main-btn" onclick="xuatExcelToanBo()">Xuất toàn bộ</button>
+                </div>
+
+
             </div>
 
-            <!-- thêm cụm phân trang -->
-            <div id="pagingBar" style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <label>Số dòng/trang:
-                    <select id="pageSize" style="padding:4px 6px;">
-                        <option value="500">500</option>
-                        <option value="1000" selected>1000</option>
-                        <option value="2000">2000</option>
-                    </select>
-                </label>
-
-                <button class="main-btn" id="btnPrev" onclick="trangTruoc()" disabled>⬅ Trang trước</button>
-                <button class="main-btn" id="btnNext" onclick="trangSau()" disabled>Trang sau ➡</button>
-
-                <span id="pageInfo" style="color:#444">Trang 0/0 (Tổng: 0)</span>
-                <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
-                <button class="main-btn" onclick="toiTrang()">Đi</button>
-
-                <!-- nút xuất toàn bộ -->
-                <button class="main-btn" onclick="xuatExcelToanBo()">Xuất toàn bộ</button>
-            </div>
 
 
             <div class="filters-right">
