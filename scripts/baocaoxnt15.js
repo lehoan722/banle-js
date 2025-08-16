@@ -308,24 +308,111 @@ function updatePagingBar() {
     if (next) next.disabled = currentPage >= totalPages;
 }
 
+// Xuất Excel toàn bộ cho báo cáo XNT15 (lặp theo trang rồi ghép)
+window.xuatExcelToanBoXNT15 = async function () {
+    // Kiểm tra có bộ lọc/báo cáo chưa chạy
+    if (!window.lastParams) {
+        alert("Hãy bấm 'Xem báo cáo' để tải dữ liệu trước khi xuất Excel.");
+        return;
+    }
+
+    // Lấy pageSize hiện tại để đồng bộ với phân trang
+    const psEl = document.getElementById("pageSize");
+    const ps = psEl ? Number(psEl.value) || 1000 : (window.pageSize || 1000);
+
+    // Hỏi xác nhận (đề phòng dữ liệu rất lớn)
+    const ok = confirm(`Sẽ tải lần lượt dữ liệu theo trang (≈ ${ps} dòng/trang) rồi ghép thành 1 file Excel. Tiếp tục?`);
+    if (!ok) return;
+
+    // Helper gọi 1 trang
+    async function fetchPage(p) {
+        const offset = (p - 1) * ps;
+        const params = { ...window.lastParams, p_limit: ps, p_offset: offset };
+        const fn = document.getElementById("selectFunction")?.value || "baocaoxnt15_paged";
+        const { data, error } = await supabase.rpc(fn, params);
+        if (error) throw error;
+        return data || [];
+    }
+
+    const all = [];
+    let page = 1;
+    while (true) {
+        const rows = await fetchPage(page);
+        if (!rows.length) break;
+
+        // Thêm STT + đẩy vào mảng tổng
+        const offset = (page - 1) * ps;
+        rows.forEach((r, i) => all.push({ stt: offset + i + 1, ...r }));
+
+        // Nếu trang hiện tại < pageSize -> đã hết
+        if (rows.length < ps) break;
+        page++;
+    }
+
+    if (!all.length) {
+        alert("Không có dữ liệu để xuất.");
+        return;
+    }
+
+    // Chuẩn bị dữ liệu Excel (giống cột đang hiển thị trong bảng)
+    const headers = [
+        "STT", "Mã hàng", "Kích cỡ", "Xuất bán", "Tồn CS1", "Tồn CS2",
+        "Nhập mua", "Cuối kỳ", "Giá lẻ", "Đầu kỳ", "Xuất khác", "Tổng xuất",
+        "Nhập khác", "Tổng nhập", "Tên hàng"
+    ];
+
+    const aoa = [headers];
+    for (const r of all) {
+        aoa.push([
+            r.stt,
+            r.masp ?? "",
+            r.size ?? "",
+            r.xuatban ?? 0,
+            r.ton_cs1 ?? 0,
+            r.ton_cs2 ?? 0,
+            r.nhapmua ?? 0,
+            r.cuoiky ?? 0,
+            r.giale ?? 0,
+            r.dauky ?? 0,
+            r.xuatkhac ?? 0,
+            r.tongxuat ?? 0,
+            r.nhapkhac ?? 0,
+            r.tongnhap ?? 0,
+            r.tensp ?? ""
+        ]);
+    }
+
+    // Bảo đảm có SheetJS
+    if (typeof XLSX === "undefined") {
+        alert("Thiếu thư viện XLSX (SheetJS). Hãy chắc chắn bạn đã load script XLSX trước khi xuất.");
+        return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    // Định dạng số dạng text/number tuỳ ý: ở đây giữ nguyên, Excel sẽ tự nhận
+    XLSX.utils.book_append_sheet(wb, ws, "XNT15");
+    XLSX.writeFile(wb, "baocao_xnt15_ALL.xlsx");
+};
+
 
 // Nút điều hướng
 window.prevPage = function () {
-  if (currentPage > 1) loadXNTPage(currentPage - 1);
+    if (currentPage > 1) loadXNTPage(currentPage - 1);
 };
 window.nextPage = function () {
-  if (totalRows == null) return loadXNTPage(currentPage + 1); // chưa biết tổng -> cứ đi tiếp
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  if (currentPage < totalPages) loadXNTPage(currentPage + 1);
+    if (totalRows == null) return loadXNTPage(currentPage + 1); // chưa biết tổng -> cứ đi tiếp
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (currentPage < totalPages) loadXNTPage(currentPage + 1);
 };
 window.gotoPage = function () {
-  const n = Number(document.getElementById("gotoPage").value);
-  if (!n || n < 1) return alert("Số trang không hợp lệ");
-  if (totalRows != null) {
-    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-    if (n > totalPages) return alert("Vượt quá số trang");
-  }
-  loadXNTPage(n);
+    const n = Number(document.getElementById("gotoPage").value);
+    if (!n || n < 1) return alert("Số trang không hợp lệ");
+    if (totalRows != null) {
+        const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+        if (n > totalPages) return alert("Vượt quá số trang");
+    }
+    loadXNTPage(n);
 };
 
 
@@ -670,71 +757,7 @@ function updatePageInfo() {
     document.getElementById("pageInfo").textContent = `Trang ${currentPage}`;
 }
 
-// ==== 7. CHỨC NĂNG XUẤT EXCEL ====
-window.chonXuatExcel = function () {
-    const box = document.getElementById("excelOptions");
-    box.style.display = box.style.display === "none" ? "block" : "none";
-};
 
-window.xuatExcelTrangHienTai = function () {
-    if (!window.hotInstance) return alert("❌ Chưa có dữ liệu để xuất!");
-    const data = hotInstance.getData();
-    const headers = hotInstance.getColHeader();
-    const exportData = [headers, ...data];
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(wb, ws, "Trang hien tai");
-
-    XLSX.writeFile(wb, "baocaoxnt_tranghientai.xlsx");
-};
-
-window.xuatExcelToanBo = async function () {
-    const totalData = [];
-    const pageSize = 10000;
-    let currentOffset = 0;
-    let hasMore = true;
-    let page = 1;
-
-    const loadingMsg = document.getElementById("loadingMsg");
-    if (loadingMsg) loadingMsg.textContent = "⏳ Đang tải toàn bộ dữ liệu để xuất Excel...";
-
-    while (hasMore) {
-        const { data, error } = await supabase.rpc("baocaoxnt15_paged", {
-            ...window.lastParams,
-            p_limit: pageSize,
-            p_offset: currentOffset,
-        });
-
-        if (error) {
-            alert("❌ Lỗi tải trang " + page + ": " + error.message);
-            break;
-        }
-
-        if (data && data.length > 0) {
-            totalData.push(...data);
-            currentOffset += pageSize;
-            page++;
-            if (data.length < pageSize) hasMore = false;
-        } else {
-            hasMore = false;
-        }
-    }
-
-    if (loadingMsg) loadingMsg.textContent = "";
-
-    if (totalData.length === 0) return alert("❌ Không có dữ liệu để xuất!");
-
-    const headers = Object.keys(totalData[0]);
-    const rows = totalData.map(obj => headers.map(key => obj[key]));
-    const exportData = [headers, ...rows];
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(wb, ws, "Toan bo du lieu");
-
-    XLSX.writeFile(wb, "baocaoxnt_toanbo.xlsx");
-};
 
 // ==== 7b. COPY TOÀN BỘ BẢNG (KỂ CẢ TIÊU ĐỀ) ====
 window.copyBang = async function () {
