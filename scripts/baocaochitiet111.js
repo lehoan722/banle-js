@@ -43,6 +43,22 @@ function getFiltersFromUI() {
     };
 }
 
+function safeDestroyHot() {
+    if (!hotInstance) return;
+    try {
+        if (typeof hotInstance.isDestroyed === 'function') {
+            if (!hotInstance.isDestroyed()) hotInstance.destroy();
+        } else {
+            // một số bản Handsontable không có isDestroyed()
+            hotInstance.destroy();
+        }
+    } catch (e) {
+        // bỏ qua nếu instance đã bị huỷ trước đó
+    } finally {
+        hotInstance = null;
+    }
+}
+
 
 // ========== HÀM CHÍNH LẤY BÁO CÁO =============
 window.taiBaoCaoChiTiet = async function () {
@@ -77,9 +93,7 @@ window.taiBaoCaoChiTiet = async function () {
 
     // 3) Đóng bảng cũ nếu có và hiển thị trạng thái
     const container = document.getElementById("hot");
-    if (typeof hotInstance !== "undefined" && hotInstance) {
-        hotInstance.destroy();
-    }
+    safeDestroyHot();
     container.innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
 
     // 4) Lưu filter & state phân trang
@@ -116,8 +130,9 @@ window.taiBaoCaoChiTiet = async function () {
 
 async function taiTrang(page) {
     const container = document.getElementById("hot");
-    if (hotInstance) { hotInstance.destroy(); hotInstance = null; }
+    safeDestroyHot();
     container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
+
 
     const offset = (page - 1) * pageSize;
     const params = {
