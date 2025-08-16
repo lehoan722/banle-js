@@ -145,17 +145,16 @@ async function taiTrang(page) {
     currentPage = page;
 }
 
-// ham moi
 function updatePagingBar() {
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
     document.getElementById("pageInfo").innerText =
         `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
-
     const prev = document.getElementById("btnPrev");
     const next = document.getElementById("btnNext");
-    prev.disabled = currentPage <= 1;
-    next.disabled = currentPage >= totalPages;
+    if (prev) prev.disabled = currentPage <= 1;
+    if (next) next.disabled = currentPage >= totalPages;
 }
+
 
 // hook cho nút
 window.trangTruoc = function () {
