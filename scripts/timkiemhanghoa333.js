@@ -172,13 +172,9 @@ async function triggerSearch(_masp = null) {
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
-
-    CURRENT_MASP = masp;
-    _pendingBlob = null;
-    const sts = document.getElementById('uploadStatus');   // NEW
-    if (sts) sts.textContent = '';                         // NEW
-
-
+    CURRENT_MASP = masp;          // <— thêm dòng này
+    _pendingBlob = null;          // reset blob chờ upload
+    uploadStatus.textContent = ''; // nếu có
     // thông tin hàng hóa
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return;
@@ -557,7 +553,6 @@ async function switchCamera(deviceId) {
 
 async function toggleTorch() {
     const v = document.getElementById('scannerVideo');
-    const track = v?.srcObject?.getVideoTracks?.()[0];
 
     if (!track) return;
 
@@ -684,58 +679,57 @@ let _pendingBlob = null;        // blob đã resize (để upload)
 // === SỰ KIỆN UPLOAD ẢNH ===
 const fileInput = document.getElementById('imgFileInput');
 const saveImgBtn = document.getElementById('saveImgBtn');
+const resizeCheckbox = document.getElementById('resizeCheckbox');
 const uploadStatus = document.getElementById('uploadStatus');
-// mở picker/camera khi bấm "Chọn tệp"
-document.getElementById('chooseImgBtn')?.addEventListener('click', () => {
-    document.getElementById('imgFileInput')?.click();
-});
-
 
 fileInput?.addEventListener('change', async (e) => {
+    uploadStatus.textContent = '';
     const file = e.target.files?.[0];
-    const sts = document.getElementById('uploadStatus');
     if (!file) return;
 
+    // xem trước ngay ở khu vực ảnh
     const imgEl = document.getElementById('productImage');
 
-    // luôn chuẩn hoá kích thước
-    _pendingBlob = await resizeToStandardBlob(file);
-    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob);
-
-    if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
+    // Nếu cần chuẩn hoá kích thước giống upanhmoi2.html
+    if (resizeCheckbox?.checked) {
+        _pendingBlob = await resizeToStandardBlob(file); // → Blob JPEG
+        imgEl.src = URL.createObjectURL(_pendingBlob);   // xem trước
+    } else {
+        _pendingBlob = file;                             // dùng file gốc
+        imgEl.src = URL.createObjectURL(file);
+    }
 });
 
 saveImgBtn?.addEventListener('click', async () => {
     try {
-        const sts = document.getElementById('uploadStatus');
-        if (sts) { sts.style.color = '#c62828'; sts.textContent = ''; }
+        uploadStatus.style.color = '#c62828';
+        if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
+        if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
 
-        if (!CURRENT_MASP) { if (sts) sts.textContent = 'Chưa có mã sản phẩm!'; return; }
-        if (!_pendingBlob) { if (sts) sts.textContent = 'Chưa chọn ảnh!'; return; }
-
-        const fileName = `${CURRENT_MASP}.JPG`;
-        if (sts) sts.textContent = 'Đang lưu ảnh...';
+        const fileName = `${CURRENT_MASP}.JPG`; // luôn in hoa
+        uploadStatus.textContent = 'Đang lưu ảnh...';
+        input.focus();
+        input.value = "";
 
         const { error } = await supabase
-            .storage.from('anhsanpham')
+            .storage.from(STORAGE_BUCKET)
             .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
 
         if (error) throw error;
 
+        // refresh ảnh với cache-busting
         const imgEl = document.getElementById('productImage');
-        if (imgEl) imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
+        imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
 
-        if (fileInput) fileInput.value = '';
-        _pendingBlob = null;
-
-        if (sts) { sts.style.color = 'green'; sts.textContent = 'Đã lưu ảnh thành công!'; }
+        uploadStatus.style.color = 'green';
+        uploadStatus.textContent = 'Đã lưu ảnh thành công!';       
+        
     } catch (e) {
         console.error(e);
-        const sts = document.getElementById('uploadStatus');
-        if (sts) { sts.style.color = '#c62828'; sts.textContent = 'Lưu ảnh thất bại!'; }
+        uploadStatus.style.color = '#c62828';
+        uploadStatus.textContent = 'Lưu ảnh thất bại!';
     }
 });
-
 
 async function resizeToStandardBlob(file) {
     // đọc file → Image
