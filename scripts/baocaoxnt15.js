@@ -4,7 +4,7 @@ let currentPage = 1;
 let pageSize = 10000;
 let totalRows = 0;
 
-// ==== 1. ĐĂNG NHẬP SUPABASE ====  
+// ==== 1. ĐĂNG NHẬP SUPABASE ==== 
 window.dangNhap = async function () {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
@@ -71,141 +71,154 @@ function showProdImage(masp) {
 
 // Gom filter UI thành 1 hàm
 function getFiltersFromUI() {
-  const diadiem   = document.getElementById("diadiemSelect").value || null;
-  const tuNgay    = document.getElementById("tuNgay").value;
-  const denNgay   = document.getElementById("denNgay").value;
-  const khachhang = document.getElementById("khachhangInput").value.trim() || null;
-  const nhanvien  = document.getElementById("nhanvienInput").value.trim() || null;
-  const nhomhang  = document.getElementById("nhomhangInput").value.trim() || null;
-  const chungloai = document.getElementById("chungloaiInput").value.trim() || null;
-  const mausac    = document.getElementById("mausacInput").value.trim() || null;
-  const size      = document.getElementById("sizeInput").value.trim() || null;
-  const masp      = (document.getElementById("maspInput").value || "").trim().toUpperCase();
+    const diadiem = document.getElementById("diadiemSelect").value || null;
+    const tuNgay = document.getElementById("tuNgay").value;
+    const denNgay = document.getElementById("denNgay").value;
+    const khachhang = document.getElementById("khachhangInput").value.trim() || null;
+    const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
+    const nhomhang = document.getElementById("nhomhangInput").value.trim() || null;
+    const chungloai = document.getElementById("chungloaiInput").value.trim() || null;
+    const mausac = document.getElementById("mausacInput").value.trim() || null;
+    const size = document.getElementById("sizeInput").value.trim() || null;
+    const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
 
-  const maspListRaw = document.getElementById("maspList").value || "";
-  let maspListArr = maspListRaw.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
-  maspListArr = Array.from(new Set(maspListArr));
-  const finalMaspList = maspListArr.length ? maspListArr : (masp ? [masp] : null);
+    const maspListRaw = document.getElementById("maspList").value || "";
+    let maspListArr = maspListRaw.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
+    maspListArr = Array.from(new Set(maspListArr));
+    const finalMaspList = maspListArr.length ? maspListArr : (masp ? [masp] : null);
 
-  const tuGia = document.getElementById("tuGia").value || null;
-  const denGia = document.getElementById("denGia").value || null;
+    const tuGia = document.getElementById("tuGia").value || null;
+    const denGia = document.getElementById("denGia").value || null;
 
-  const locDuong = document.getElementById('locDuong').checked;
-  const locAm    = document.getElementById('locAm').checked;
-  const locHet   = document.getElementById('locHet').checked;
-  const locPhatSinhNhap = document.getElementById('locPhatSinhNhap').checked;
-  const locPhatSinhXuat = document.getElementById('locPhatSinhXuat').checked;
-  const tonghopSize = document.getElementById('tonghopSizeCheckbox').checked;
+    const locDuong = document.getElementById('locDuong').checked;
+    const locAm = document.getElementById('locAm').checked;
+    const locHet = document.getElementById('locHet').checked;
+    const locPhatSinhNhap = document.getElementById('locPhatSinhNhap').checked;
+    const locPhatSinhXuat = document.getElementById('locPhatSinhXuat').checked;
+    const tonghopSize = document.getElementById('tonghopSizeCheckbox').checked;
 
-  // Lọc NCC (giữ logic như bạn đang dùng)
-  const locNCC = document.getElementById("locNCCCheckbox").checked;
-  let nhaccFilter = null;
-  let khachhangFilter = (khachhang && khachhang.trim()) ? khachhang.trim() : null;
-  return {
-    tu_ngay: tuNgay, den_ngay: denNgay,
-    p_diadiem_filter: diadiem,
-    p_nhomhang_filter: nhomhang,
-    p_chungloai_filter: chungloai,
-    p_mausac_filter: mausac,
-    p_size_filter: size,
-    p_nhacc_filter: locNCC ? (khachhang ? khachhang.trim().toUpperCase() : null) : nhaccFilter,
-    p_khachhang_filter: locNCC ? null : khachhangFilter,
-    p_nhanvien_filter: nhanvien,
-    p_tu_gia: tuGia ? Number(tuGia) : null,
-    p_den_gia: denGia ? Number(denGia) : null,
-    loc_duong: locDuong, loc_am: locAm, loc_het: locHet,
-    loc_phatsinh_nhap: locPhatSinhNhap,
-    loc_phatsinh_xuat: locPhatSinhXuat,
-    p_dsmsp: finalMaspList,
-    p_tonghop_size: tonghopSize
-  };
+    // Lọc NCC (giữ logic như bạn đang dùng)
+    const locNCC = document.getElementById("locNCCCheckbox").checked;
+    let nhaccFilter = null;
+    let khachhangFilter = (khachhang && khachhang.trim()) ? khachhang.trim() : null;
+    return {
+        tu_ngay: tuNgay, den_ngay: denNgay,
+        p_diadiem_filter: diadiem,
+        p_nhomhang_filter: nhomhang,
+        p_chungloai_filter: chungloai,
+        p_mausac_filter: mausac,
+        p_size_filter: size,
+        p_nhacc_filter: locNCC ? (khachhang ? khachhang.trim().toUpperCase() : null) : nhaccFilter,
+        p_khachhang_filter: locNCC ? null : khachhangFilter,
+        p_nhanvien_filter: nhanvien,
+        p_tu_gia: tuGia ? Number(tuGia) : null,
+        p_den_gia: denGia ? Number(denGia) : null,
+        loc_duong: locDuong, loc_am: locAm, loc_het: locHet,
+        loc_phatsinh_nhap: locPhatSinhNhap,
+        loc_phatsinh_xuat: locPhatSinhXuat,
+        p_dsmsp: finalMaspList,
+        p_tonghop_size: tonghopSize
+    };
 }
 
 
 // ==== 2. LẤY DỮ LIỆU & HIỂN THỊ HANDSONTABLE ==== 
 window.taiBaoCaoXNT = async function () {
-  const loadingMsg = document.getElementById("loadingMsg");
-  if (loadingMsg) loadingMsg.textContent = "⏳ Đang đếm dữ liệu...";
+    const loadingMsg = document.getElementById("loadingMsg");
+    if (loadingMsg) loadingMsg.textContent = "⏳ Đang đếm dữ liệu...";
 
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    alert("Bạn cần đăng nhập trước khi xem báo cáo!");
-    document.getElementById("authBox").style.display = "block";
-    return;
-  }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        alert("Bạn cần đăng nhập trước khi xem báo cáo!");
+        document.getElementById("authBox").style.display = "block";
+        return;
+    }
 
-  // 1) Gom filter + kiểm tra ngày
-  const base = getFiltersFromUI();
-  if (!base.tu_ngay || !base.den_ngay) return alert("Chọn đủ từ ngày và đến ngày!");
+    // 1) Gom filter + kiểm tra ngày
+    const base = getFiltersFromUI();
+    if (!base.tu_ngay || !base.den_ngay) return alert("Chọn đủ từ ngày và đến ngày!");
 
-  // 2) Nếu tích lọc theo NCC → lấy danh sách masp theo đúng logic hiện tại
-  if (document.getElementById('locNCCCheckbox').checked && (document.getElementById("khachhangInput").value || "").trim()) {
-    const keyNCC = (document.getElementById("khachhangInput").value || "").trim().toUpperCase();
-    const { data: dsmaspNCC, error: errNCC } = await supabase.from('dmhanghoa').select('masp').eq('nhacc', keyNCC);
-    if (errNCC) return alert("Lỗi truy vấn nhà cung cấp: " + errNCC.message);
-    if (!dsmaspNCC || !dsmaspNCC.length) return alert("Không có sản phẩm nào thuộc nhà cung cấp này!");
-    base.p_dsmsp = dsmaspNCC.map(x => (x.masp || '').toUpperCase());
-  }
+    // 2) Nếu tích lọc theo NCC → lấy danh sách masp theo đúng logic hiện tại
+    if (document.getElementById('locNCCCheckbox').checked && (document.getElementById("khachhangInput").value || "").trim()) {
+        const keyNCC = (document.getElementById("khachhangInput").value || "").trim().toUpperCase();
+        const { data: dsmaspNCC, error: errNCC } = await supabase.from('dmhanghoa').select('masp').eq('nhacc', keyNCC);
+        if (errNCC) return alert("Lỗi truy vấn nhà cung cấp: " + errNCC.message);
+        if (!dsmaspNCC || !dsmaspNCC.length) return alert("Không có sản phẩm nào thuộc nhà cung cấp này!");
+        base.p_dsmsp = dsmaspNCC.map(x => (x.masp || '').toUpperCase());
+    }
 
-  // Reset bảng + state
-  safeDestroyHot();
-  document.getElementById('hot').innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
+    // Reset bảng + state
+    safeDestroyHot();
+    document.getElementById('hot').innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
 
-  // Lưu state & page size
-  window.lastParams = { ...base };   // dùng lại cho Export Toàn bộ
-  currentPage = 1;
-  pageSize = Number(document.getElementById("pageSize").value) || 1000;
+    // Lưu state & page size
+    window.lastParams = { ...base };   // dùng lại cho Export Toàn bộ
+    currentPage = 1;
+    pageSize = Number(document.getElementById("pageSize").value) || 1000;
 
-  // 3) Đếm tổng
-  const { data: cnt, error: errCnt } = await supabase.rpc("baocaoxnt15_count", base);
-  if (errCnt) {
-    console.error("baocaoxnt15_count error:", errCnt);
-    alert("Lỗi đếm dữ liệu!");
+    // 3) Đếm tổng
+    // đổi sang (fallback):
+    let totalUnknown = false;
+    let cnt = 0;
+    try {
+        const res = await supabase.rpc("baocaoxnt15_count", base);
+        if (res.error) throw res.error;
+        cnt = Number(res.data || 0);
+    } catch (e) {
+        if (String(e.code) === '57014') {
+            totalUnknown = true; // đếm timeout -> chuyển sang chế độ không biết tổng
+        } else {
+            alert("Lỗi đếm dữ liệu: " + (e.message || e));
+            return;
+        }
+    }
+    totalRows = totalUnknown ? null : cnt;
+
+    currentPage = 1;
+    pageSize = Number(document.getElementById("pageSize").value) || 1000;
+    await loadXNTPage(currentPage);
+    totalRows = Number(cnt || 0);
+
+    // 4) Tải trang đầu
+    await loadXNTPage(currentPage);
     if (loadingMsg) loadingMsg.textContent = "";
-    return;
-  }
-  totalRows = Number(cnt || 0);
-
-  // 4) Tải trang đầu
-  await loadXNTPage(currentPage);
-  if (loadingMsg) loadingMsg.textContent = "";
 };
 
 async function loadXNTPage(page) {
-  const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt15_paged";
-  const container = document.getElementById('hot');
+    const functionName = document.getElementById("selectFunction")?.value || "baocaoxnt15_paged";
+    const container = document.getElementById('hot');
 
-  safeDestroyHot();
-  container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
+    safeDestroyHot();
+    container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
 
-  const offset = (page - 1) * pageSize;
-  const params = { ...window.lastParams, p_limit: pageSize, p_offset: offset };
+    const offset = (page - 1) * pageSize;
+    const params = { ...window.lastParams, p_limit: pageSize, p_offset: offset };
 
-  const { data, error } = await supabase.rpc(functionName, params);
-  if (error) {
-    container.innerHTML = `<div style="color:red">Lỗi: ${error.message}</div>`;
-    document.getElementById('xntSummary').innerHTML = "";
-    return;
-  }
+    const { data, error } = await supabase.rpc(functionName, params);
+    if (error) {
+        container.innerHTML = `<div style="color:red">Lỗi: ${error.message}</div>`;
+        document.getElementById('xntSummary').innerHTML = "";
+        return;
+    }
 
-  if (!data || !data.length) {
-    container.innerHTML = `<div style="color:orange">Không có dữ liệu</div>`;
-    document.getElementById('xntSummary').innerHTML = "";
-    currentPage = page; updatePagingBar(); return;
-  }
+    if (!data || !data.length) {
+        container.innerHTML = `<div style="color:orange">Không có dữ liệu</div>`;
+        document.getElementById('xntSummary').innerHTML = "";
+        currentPage = page; updatePagingBar(); return;
+    }
 
-  // Tổng hợp nhanh (giữ nguyên công thức bạn đang dùng)
-  let tong = { dauky:0, nhapmua:0, tongnhap:0, xuatban:0, tongxuat:0, cuoiky:0 };
-  data.forEach(r => {
-    tong.dauky   += r.dauky   || 0;
-    tong.nhapmua += r.nhapmua || 0;
-    tong.tongnhap+= r.tongnhap|| 0;
-    tong.xuatban += r.xuatban || 0;
-    tong.tongxuat+= r.tongxuat|| 0;
-    tong.cuoiky  += r.cuoiky  || 0;
-  });
-  document.getElementById('xntSummary').innerHTML =
-    `<span style="background:#e3f2fd;padding:7px 16px;border-radius:7px;">
+    // Tổng hợp nhanh (giữ nguyên công thức bạn đang dùng)
+    let tong = { dauky: 0, nhapmua: 0, tongnhap: 0, xuatban: 0, tongxuat: 0, cuoiky: 0 };
+    data.forEach(r => {
+        tong.dauky += r.dauky || 0;
+        tong.nhapmua += r.nhapmua || 0;
+        tong.tongnhap += r.tongnhap || 0;
+        tong.xuatban += r.xuatban || 0;
+        tong.tongxuat += r.tongxuat || 0;
+        tong.cuoiky += r.cuoiky || 0;
+    });
+    document.getElementById('xntSummary').innerHTML =
+        `<span style="background:#e3f2fd;padding:7px 16px;border-radius:7px;">
       <b>TỔNG:</b> Đầu kỳ: <b>${tong.dauky.toLocaleString()}</b> |
       Nhập mua: <b>${tong.nhapmua.toLocaleString()}</b> |
       Tổng nhập: <b>${tong.tongnhap.toLocaleString()}</b> |
@@ -214,89 +227,108 @@ async function loadXNTPage(page) {
       Cuối kỳ: <b>${tong.cuoiky.toLocaleString()}</b>
      </span>`;
 
-  // renderer & columns: GIỮ NGUYÊN như bạn đang dùng
-  const zeroBlankRenderer = function (instance, td, row, col, prop, value) {
-    td.innerHTML='';
-    if (value===0 || value==='0' || value==null) return;
-    const num = typeof value==='number' ? value : parseFloat(value);
-    if (!Number.isNaN(num) && Number.isFinite(num)) { td.textContent = num.toLocaleString(); td.classList.add('htRight'); }
-    else { td.textContent = value ?? ''; }
-  };
-  const maspRenderer = function (instance, td, row, col, prop, value) {
-    const code = (value ?? '').toString().trim().toUpperCase();
-    td.innerHTML=''; if (!code) return;
-    const url = `https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(code)}`;
-    const a = document.createElement('a'); a.className='masp-link'; a.href=url; a.target='_blank'; a.rel='noopener'; a.textContent=code; td.appendChild(a);
-  };
+    // renderer & columns: GIỮ NGUYÊN như bạn đang dùng
+    const zeroBlankRenderer = function (instance, td, row, col, prop, value) {
+        td.innerHTML = '';
+        if (value === 0 || value === '0' || value == null) return;
+        const num = typeof value === 'number' ? value : parseFloat(value);
+        if (!Number.isNaN(num) && Number.isFinite(num)) { td.textContent = num.toLocaleString(); td.classList.add('htRight'); }
+        else { td.textContent = value ?? ''; }
+    };
+    const maspRenderer = function (instance, td, row, col, prop, value) {
+        const code = (value ?? '').toString().trim().toUpperCase();
+        td.innerHTML = ''; if (!code) return;
+        const url = `https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(code)}`;
+        const a = document.createElement('a'); a.className = 'masp-link'; a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = code; td.appendChild(a);
+    };
 
-  const columns = [
-    { data:'masp', title:'Mã hàng', width:110, renderer:maspRenderer },
-    { data:'size', title:'Kích cỡ', width:50, className:'htCenter' },
-    { data:'xuatban',  title:'Xuất bán',  width:70,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'ton_cs1',  title:'Tồn CS1',   width:70,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'ton_cs2',  title:'Tồn CS2',   width:70,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'nhapmua',  title:'Nhập mua',  width:72,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'cuoiky',   title:'Cuối kỳ',   width:70,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'giale',    title:'Giá lẻ',    width:78,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'dauky',    title:'Đầu kỳ',    width:70,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'xuatkhac', title:'Xuất khác', width:76,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'tongxuat', title:'Tổng xuất', width:76,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'nhapkhac', title:'Nhập khác', width:76,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'tongnhap', title:'Tổng nhập', width:76,  className:'htRight', renderer:zeroBlankRenderer },
-    { data:'tensp',    title:'Tên hàng',  width:110 }
-  ];
+    const columns = [
+        { data: 'masp', title: 'Mã hàng', width: 110, renderer: maspRenderer },
+        { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
+        { data: 'xuatban', title: 'Xuất bán', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs1', title: 'Tồn CS1', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs2', title: 'Tồn CS2', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapmua', title: 'Nhập mua', width: 72, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'cuoiky', title: 'Cuối kỳ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'giale', title: 'Giá lẻ', width: 78, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'dauky', title: 'Đầu kỳ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatkhac', title: 'Xuất khác', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'tongxuat', title: 'Tổng xuất', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapkhac', title: 'Nhập khác', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'tongnhap', title: 'Tổng nhập', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'tensp', title: 'Tên hàng', width: 110 }
+    ];
 
-  const hotData = data.map((row, idx) => ({ stt: offset + idx + 1, ...row }));
-  hotInstance = new Handsontable(container, {
-    data: hotData,
-    columns,
-    colHeaders: columns.map(c => c.title),
-    rowHeaders: true,
-    width: '100%',
-    height: 100, // sẽ set lại ngay sau
-    stretchH: 'all',
-    readOnly: true,
-    manualColumnResize: true,
-    columnSorting: true,
-    filters: true,
-    dropdownMenu: true,
-    copyPaste: { copyColumnHeaders:true },
-    licenseKey: 'non-commercial-and-evaluation',
-  });
-  window.hotInstance = hotInstance;
+    const hotData = data.map((row, idx) => ({ stt: offset + idx + 1, ...row }));
+    hotInstance = new Handsontable(container, {
+        data: hotData,
+        columns,
+        colHeaders: columns.map(c => c.title),
+        rowHeaders: true,
+        width: '100%',
+        height: 100, // sẽ set lại ngay sau
+        stretchH: 'all',
+        readOnly: true,
+        manualColumnResize: true,
+        columnSorting: true,
+        filters: true,
+        dropdownMenu: true,
+        copyPaste: { copyColumnHeaders: true },
+        licenseKey: 'non-commercial-and-evaluation',
+    });
+    window.hotInstance = hotInstance;
 
-  currentPage = page;
-  updatePagingBar();
-  resizeHotHeight();
+    // Sau khi có const data = ...;
+    if (totalRows == null) {
+        // đang ở chế độ không biết tổng
+        if ((data?.length || 0) < pageSize) {
+            // tới trang cuối -> biết tổng rồi
+            totalRows = (page - 1) * pageSize + (data?.length || 0);
+        }
+    }
+
+    currentPage = page;
+    updatePagingBar();
+    resizeHotHeight();
 }
 
 function updatePagingBar() {
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const info = document.getElementById("pageInfo");
-  if (info) info.textContent = `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
-  const prev = document.getElementById("btnPrev");
-  const next = document.getElementById("btnNext");
-  if (prev) prev.disabled = currentPage <= 1;
-  if (next) next.disabled = currentPage >= totalPages;
+    const info = document.getElementById("pageInfo");
+    const prev = document.getElementById("btnPrev");
+    const next = document.getElementById("btnNext");
+
+    if (totalRows == null) {
+        // chưa biết tổng
+        if (info) info.textContent = `Trang ${currentPage}/? (Tổng: ?)`;
+        if (prev) prev.disabled = currentPage <= 1;
+        if (next) next.disabled = false; // luôn cho đi tiếp
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (info) info.textContent = `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
+    if (prev) prev.disabled = currentPage <= 1;
+    if (next) next.disabled = currentPage >= totalPages;
 }
 
+
 // Nút điều hướng
-window.prevPage = function(){ if (currentPage>1) loadXNTPage(currentPage-1); };
-window.nextPage = function(){
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  if (currentPage < totalPages) loadXNTPage(currentPage+1);
+window.prevPage = function () { if (currentPage > 1) loadXNTPage(currentPage - 1); };
+window.nextPage = function () {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (currentPage < totalPages) loadXNTPage(currentPage + 1);
 };
-window.gotoPage = function(){
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const n = Number(document.getElementById("gotoPage").value);
-  if (!n || n<1 || n>totalPages) return alert("Số trang không hợp lệ");
-  loadXNTPage(n);
+window.gotoPage = function () {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    const n = Number(document.getElementById("gotoPage").value);
+    if (!n || n < 1 || n > totalPages) return alert("Số trang không hợp lệ");
+    loadXNTPage(n);
 };
 
 // Đổi số dòng/trang → quay về trang 1
-document.getElementById("pageSize").addEventListener("change", function(){
-  pageSize = Number(this.value) || 1000;
-  if (window.lastParams) loadXNTPage(1);
+document.getElementById("pageSize").addEventListener("change", function () {
+    pageSize = Number(this.value) || 1000;
+    if (window.lastParams) loadXNTPage(1);
 });
 
 
@@ -636,9 +668,13 @@ window.prevPage = function () {
 };
 
 window.nextPage = function () {
-    currentPage++;
-    taiBaoCaoXNT();
+    // nếu chưa biết tổng -> luôn cho đi tiếp
+    if (totalRows == null) return loadXNTPage(currentPage + 1);
+
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (currentPage < totalPages) loadXNTPage(currentPage + 1);
 };
+
 
 function updatePageInfo() {
     document.getElementById("pageInfo").textContent = `Trang ${currentPage}`;
