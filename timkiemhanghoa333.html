@@ -377,42 +377,66 @@
         <h2>🔍 TÌM KIẾM THÔNG TIN HÀNG HÓA</h2>
 
         <div class="topbar">
-            <!-- Cột trái: ô nhập + các nút thành 2 hàng -->
-            <div class="left-controls">
-                <!-- Hàng 1: Tìm kiếm & Quét -->
-                <div class="control-row">
-                    <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
-                    <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
-                    <button id="searchBtn" class="btn-primary">Tìm kiếm</button>
-                    <button id="scanBtn" class="popup-btn">📷 Quét</button>
+            <!-- Bên trái: form nhập mã như cũ -->
+            <div class="input-row">
+                <div class="input-group">
+
+                    <label for="maspInput">Nhập mã hàng</label>
+
+                    <div>
+                        <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
+
+                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
+
+                    </div>
+
                 </div>
 
-                <!-- Hàng 2: Chọn tệp & Lưu ảnh -->
-                <div class="control-row">
-                    <button id="chooseImgBtn" class="popup-btn">Chọn tệp</button>
-                    <button id="saveImgBtn" class="popup-btn">💾 Lưu ảnh</button>
-                    <!-- input file ẩn -->
-                    <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden />
-                </div>
-            </div>
-            <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:#1976d2">
-                        <input id="resizeCheckbox" type="checkbox" checked>
-                        
+                <button id="searchBtn"
+                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
+                    Tìm kiếm
+                </button>
+                <button class="popup-btn" id="scanBtn">📷 Quét</button>
+
+                <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
+                <div class="upload-row"
+                    style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
+                    <label class="popup-btn" style="cursor:pointer">
+                        Chọn tệp
+                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
                     </label>
 
-            <!-- Cột phải: chỉ 1 textarea + Xoá danh sách -->
-            <div class="bulk-box">
-                <textarea id="bulkTextarea"
-                    placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
-                <button id="clearBulkBtn" class="popup-btn"
-                    style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
-                    🧹 Xoá danh sách
-                </button>
+                    <button id="saveImgBtn" class="popup-btn"
+                        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
+                        💾 Lưu ảnh
+                    </button>
+
+                    <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:#1976d2">
+                        <input id="resizeCheckbox" type="checkbox" checked>
+                       
+                    </label>
+
+                    <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
+                </div>
+                
+
+                <!-- Bên phải: textarea nhiều mã -->
+                <!-- Bên phải: chỉ 1 ô textarea -->
+                <div class="bulk-box">
+                    <textarea id="bulkTextarea"
+                        placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
+                    <button id="clearBulkBtn" class="popup-btn"
+                        style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
+                        🧹 Xoá danh sách
+                    </button>
+
+                </div>
+
+
             </div>
+
+
         </div>
-
-
-
 
 
         <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
