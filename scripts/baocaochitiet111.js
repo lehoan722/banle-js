@@ -1,32 +1,34 @@
 // baocaochitiet.js
 import { supabase } from "./supabaseClient.js";
 let hotInstance = null;
+let currentFilters = null;
+let totalRows = 0;
+let pageSize = 1000;
+let currentPage = 1;
 
-// ========== HÀM CHÍNH LẤY BÁO CÁO =============
-window.taiBaoCaoChiTiet = async function () {
-    // 1. Lấy filter từ giao diện
+// ở CUỐI FILE, thêm:
+window.trangTruoc = window.trangTruoc;
+window.trangSau = window.trangSau;
+window.toiTrang = window.toiTrang;
+
+function getFiltersFromUI() {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = document.getElementById("khachhangInput").value.trim() || null;
     const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
-    const masp = document.getElementById("maspInput").value.trim().toUpperCase() || null;
+
+    // chuẩn hoá mã SP sang UPPER và hỗ trợ danh sách nếu bạn đã có từ UI
+    const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
+    const finalMaspList = masp ? masp.split(/[,\s]+/).map(x => x.trim()).filter(Boolean) : null;
+
     const tensp = document.getElementById("tenspInput").value.trim() || null;
     const size = document.getElementById("sizeInput").value.trim() || null;
     const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
     const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
 
-    // Lấy nhiều mã sp từ textarea (ưu tiên nếu có nhập)
-    let maspListRaw = document.getElementById("maspList").value;
-    let maspListArr = maspListRaw
-        ? maspListRaw.split('\n').map(s => s.trim().toUpperCase()).filter(s => !!s)
-        : [];
-    maspListArr = Array.from(new Set(maspListArr)); // Loại trùng
-
-    let finalMaspList = maspListArr.length > 0 ? maspListArr : (masp ? [masp] : null);
-
-    console.log({
+    return {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
         p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
@@ -38,29 +40,53 @@ window.taiBaoCaoChiTiet = async function () {
         p_size: size,
         p_tu_gia: tuGia,
         p_den_gia: denGia
-    });
+    };
+}
 
 
-    // 2. Kiểm tra đủ ngày
+// ========== HÀM CHÍNH LẤY BÁO CÁO =============
+window.taiBaoCaoChiTiet = async function () {
+    // 1) Lấy filter từ giao diện
+    const tuNgay = document.getElementById("tuNgay").value;
+    const denNgay = document.getElementById("denNgay").value;
+    const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    const diadiem = document.getElementById("diadiemSelect").value || null;
+    const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
+    const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
+    const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
+    const tensp = (document.getElementById("tenspInput").value || "").trim() || null;
+    const size = (document.getElementById("sizeInput").value || "").trim() || null;
+    const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
+    const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
+
+    // Lấy nhiều mã SP từ textarea (nếu có) -> ưu tiên hơn ô mã đơn
+    const maspListRaw = document.getElementById("maspList").value || "";
+    let maspListArr = maspListRaw
+        .split("\n")
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+    maspListArr = Array.from(new Set(maspListArr)); // loại trùng
+
+    const finalMaspList = maspListArr.length > 0 ? maspListArr : (masp ? [masp] : null);
+
+    // 2) Kiểm tra đủ ngày
     if (!tuNgay || !denNgay) {
         alert("Vui lòng chọn đủ Từ ngày và Đến ngày!");
         return;
     }
 
-    // 3. Đóng bảng cũ nếu có
+    // 3) Đóng bảng cũ nếu có và hiển thị trạng thái
     const container = document.getElementById("hot");
-    if (hotInstance) {
+    if (typeof hotInstance !== "undefined" && hotInstance) {
         hotInstance.destroy();
-        hotInstance = null;
     }
-    container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
+    container.innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
 
-    // 4. Gọi function SQL (tên ví dụ: baocaochitiet_bh)
-    // --- Thay function name bên dưới cho đúng tên function SQL bạn tạo
-    const { data, error } = await supabase.rpc("baocaochitiet_bh", {
+    // 4) Lưu filter & state phân trang
+    const f = {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
-        p_loaihd_arr: loaihdArr.length ? loaihdArr : null, // array
+        p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
         p_diadiem: diadiem,
         p_khachhang: khachhang,
         p_nhanvien: nhanvien,
@@ -69,37 +95,94 @@ window.taiBaoCaoChiTiet = async function () {
         p_size: size,
         p_tu_gia: tuGia,
         p_den_gia: denGia
-    });
+    };
+    currentFilters = f;
+    pageSize = Number(document.getElementById("pageSize").value) || 1000;
+    currentPage = 1;
 
+    // 5) Gọi RPC đếm tổng dòng
+    const { data: cnt, error: errCnt } = await supabase.rpc("baocaochitiet_bh_count", currentFilters);
+    if (errCnt) {
+        console.error("baocaochitiet_bh_count error:", errCnt);
+        alert("Lỗi đếm dữ liệu!");
+        return;
+    }
+    totalRows = Number(cnt || 0);
+
+    // 6) Tải trang đầu tiên
+    await taiTrang(currentPage);
+};
+
+
+async function taiTrang(page) {
+    const container = document.getElementById("hot");
+    if (hotInstance) { hotInstance.destroy(); hotInstance = null; }
+    container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
+
+    const offset = (page - 1) * pageSize;
+    const params = {
+        ...currentFilters,
+        p_limit: pageSize,
+        p_offset: offset
+    };
+
+    const { data, error } = await supabase.rpc("baocaochitiet_bh_page", params);
     if (error) {
-        container.innerHTML = `<div style="color:red">Lỗi: ${error.message}</div>`;
-        return;
-    }
-    if (!data || !data.length) {
-        container.innerHTML = "<div style='color:orange'>Không có dữ liệu</div>";
+        console.error(error);
+        alert("Lỗi tải dữ liệu trang!");
         return;
     }
 
-    // 5. Chuẩn hóa dữ liệu đưa vào bảng (Handsontable)
-    const hotData = data.map((row, idx) => ({
-        stt: idx + 1,
-        ngay: row.ngay,
-        sohd: row.sohd,
-        loaihd: row.loaihd,
-        diadiem: row.diadiem,
-        khachhang: row.khachhang,
-        nhanvien: row.nhanvien,
-        masp: row.masp,
-        tensp: row.tensp,
-        size: row.size,
-        soluong: row.soluong,
-        dvt: row.dvt,
-        gia: row.gia,
-        km: row.km,
-        thanhtien: row.thanhtien
+    // ánh xạ thêm cột STT như cũ
+    const startIndex = offset + 1;
+    const hotData = (data || []).map((r, idx) => ({
+        stt: startIndex + idx,
+        ...r
     }));
 
-    // 6. Render bảng Handsontable
+    renderTable(hotData);      // dùng lại cấu hình Handsontable y như cũ
+    updatePagingBar();         // cập nhật nút/nhãn
+    currentPage = page;
+}
+
+// ham moi
+function updatePagingBar() {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    document.getElementById("pageInfo").innerText =
+        `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
+
+    const prev = document.getElementById("btnPrev");
+    const next = document.getElementById("btnNext");
+    prev.disabled = currentPage <= 1;
+    next.disabled = currentPage >= totalPages;
+}
+
+// hook cho nút
+window.trangTruoc = function () {
+    if (currentPage > 1) taiTrang(currentPage - 1);
+};
+window.trangSau = function () {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (currentPage < totalPages) taiTrang(currentPage + 1);
+};
+window.toiTrang = function () {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    const n = Number(document.getElementById("gotoPage").value);
+    if (!n || n < 1 || n > totalPages) return alert("Số trang không hợp lệ");
+    taiTrang(n);
+};
+
+// khi đổi “số dòng/trang”
+document.getElementById("pageSize").addEventListener("change", async function () {
+    if (!currentFilters) return;
+    pageSize = Number(this.value) || 1000;
+    currentPage = 1;
+    await taiTrang(currentPage);
+});
+
+function renderTable(hotData) {
+    const container = document.getElementById("hot");
+    // columns: **giữ nguyên** danh sách cột bạn đang dùng
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
         { data: "ngay", title: "Ngày", readOnly: true, width: 105 },
@@ -120,7 +203,7 @@ window.taiBaoCaoChiTiet = async function () {
 
     hotInstance = new Handsontable(container, {
         data: hotData,
-        columns: columns,
+        columns,
         colHeaders: columns.map(c => c.title || c.data),
         rowHeaders: true,
         width: '100%',
@@ -130,27 +213,50 @@ window.taiBaoCaoChiTiet = async function () {
         manualColumnResize: true,
         filters: true,
         dropdownMenu: true,
-        columnSorting: true,
-        readOnly: true,
     });
+}
 
-    // TÍNH TỔNG VÀ HIỂN THỊ DÒNG TỔNG HỢP DƯỚI CÁC FILTER, TRÊN BẢNG
-    let sumSL = 0, sumTT = 0;
-    hotData.forEach(r => {
-        sumSL += Number(r.soluong) || 0;
-        sumTT += Number(r.thanhtien) || 0;
-    });
-    let tonghopDiv = document.getElementById("tonghop");
-    if (tonghopDiv) {
-        tonghopDiv.innerHTML = `Tổng số lượng: <b>${sumSL.toLocaleString()}</b> &nbsp;|&nbsp; Tổng thành tiền: <b>${sumTT.toLocaleString()}</b>`;
+function formatNumberCell(instance, td, row, col, prop, value, cellProperties) {
+    const v = (value == null || value === '') ? '' : Number(value).toLocaleString('vi-VN');
+    td.textContent = v;
+}
+
+window.xuatExcelToanBo = async function () {
+    if (!currentFilters) return alert("Hãy chạy báo cáo trước đã!");
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (totalRows === 0) return alert("Không có dữ liệu!");
+
+    const confirmAll = confirm(`Sẽ tải ${totalRows.toLocaleString('vi-VN')} dòng (≈ ${totalPages} trang) rồi xuất Excel. Tiếp tục?`);
+    if (!confirmAll) return;
+
+    const allRows = [];
+    for (let p = 1; p <= totalPages; p++) {
+        const offset = (p - 1) * pageSize;
+        const params = { ...currentFilters, p_limit: pageSize, p_offset: offset };
+        const { data, error } = await supabase.rpc("baocaochitiet_bh_page", params);
+        if (error) { console.error(error); alert("Lỗi tải dữ liệu khi xuất!"); return; }
+        (data || []).forEach((r, idx) => allRows.push({
+            stt: offset + idx + 1, ...r
+        }));
     }
 
+    // Xuất như xuatExcel() hiện tại, nhưng dùng allRows
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
+    const aoa = [headers];
+    allRows.forEach(r => {
+        aoa.push([
+            r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
+            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
+        ]);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, "ChiTietBanHang");
+    XLSX.writeFile(wb, "baocao_chitiet_banhang_ALL.xlsx");
 };
 
-// ========== FORMAT SỐ ==========
-function formatNumberCell(instance, td, row, col, prop, value, cellProps) {
-    td.innerHTML = value ? Number(value).toLocaleString() : '';
-}
+
 
 // ========== XUẤT EXCEL ==========
 window.xuatExcel = function () {
