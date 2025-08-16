@@ -707,9 +707,7 @@ saveImgBtn?.addEventListener('click', async () => {
         if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
 
         const fileName = `${CURRENT_MASP}.JPG`; // luôn in hoa
-        uploadStatus.textContent = 'Đang lưu ảnh...';
-        input.focus();
-        input.value = "";
+        uploadStatus.textContent = 'Đang lưu ảnh...';       
 
         const { error } = await supabase
             .storage.from(STORAGE_BUCKET)
