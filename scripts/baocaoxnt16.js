@@ -193,17 +193,16 @@ window.gotoPage = async function () {
 };
 
 // ===================== LOAD DATA =====================
-async function fetchCount(params) {
-  // Thử tên 16 trước; nếu lỗi, fallback tên 15
-  const { data, error } = await supabase.rpc("baocaoxnt16_count", params);
-  if (!error) return data;
-  const fb = await supabase.rpc("baocaoxnt15_count", params);
-  if (fb.error) throw fb.error;
-  return fb.data;
+async function fetchPaged(params) {
+  const fn = "baocaoxnt16_paged";
+  const { data, error } = await supabase.rpc(fn, params);
+  if (error) throw error;
+  return data || [];
 }
 
+
 async function fetchPaged(params) {
-  const fn = document.getElementById("selectFunction")?.value || "baocaoxnt16_paged";
+  const fn = "baocaoxnt16_paged";
   const { data, error } = await supabase.rpc(fn, params);
   if (error) {
     // fallback qua 15 nếu 16 chưa có
@@ -268,7 +267,7 @@ window.xuatExcelToanBoXNT16 = async function () {
   if (typeof XLSX === "undefined") { alert("Thiếu thư viện XLSX."); return; }
   const psEl = document.getElementById("pageSize");
   const ps = psEl ? Number(psEl.value) || 1000 : 1000;
-  const fn = document.getElementById("selectFunction")?.value || "baocaoxnt16_paged";
+  const fn = "baocaoxnt16_paged";
   const ok = confirm(`Xuất XLSX nhanh (song song 3 luồng, ${ps}/trang). Tiếp tục?`);
   if (!ok) return;
 
@@ -276,10 +275,13 @@ window.xuatExcelToanBoXNT16 = async function () {
     const par = buildParams(p);
     const { data, error } = await supabase.rpc(fn, par);
     if (error) {
-      // fallback 15
-      const fb = await supabase.rpc("baocaoxnt15_paged", par);
-      if (fb.error) throw fb.error;
-      return fb.data || [];
+      const msg = error?.message || String(error || "");
+      // PostgREST 404 / PGRST202: hàm chưa có trong schema cache
+      if (msg.includes("PGRST202") || msg.includes("Not Found")) {
+        alert("Không tìm thấy RPC 'baocaoxnt16_paged'. Hãy tạo hàm và cấp quyền EXECUTE.");
+        throw error;
+      }
+      throw error;
     }
     return data || [];
   }
