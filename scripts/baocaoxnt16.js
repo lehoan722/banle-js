@@ -33,9 +33,13 @@ function bool(id) { return document.getElementById(id)?.checked ?? false; }
 function normMasp(s) { return (s || "").trim().toUpperCase(); }
 
 function getDSMasp() {
-  const raw = document.getElementById("maspList").value || "";
-  const arr = raw.split(/\r?\n/).map(normMasp).filter(x => x.length > 0);
-  return arr.length ? arr : null;
+  const rawList = document.getElementById("maspList")?.value || "";
+  const listArr = rawList.split(/\r?\n/).map(normMasp).filter(x => x.length > 0);
+
+  if (listArr.length) return listArr;               // ưu tiên danh sách dán nhiều mã
+
+  const single = normMasp(document.getElementById("maspInput")?.value);
+  return single ? [single] : null;                  // gõ 1 mã -> trả về mảng 1 phần tử
 }
 
 
