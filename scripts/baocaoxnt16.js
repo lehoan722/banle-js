@@ -301,7 +301,7 @@ window.xuatExcelToanBoXNT16 = async function () {
   await Promise.all(workers);
 
   const headers = [
-    "STT", "Mã hàng", "Kích cỡ",
+    "Mã hàng", "Kích cỡ",
     "Xuất bán CS1", "Xuất bán CS2", "Xuất bán (gộp)",
     "Tồn CS1", "Tồn CS2",
     "Nhập mua", "Cuối kỳ", "Giá lẻ", "Đầu kỳ", "Xuất khác", "Tổng xuất",
