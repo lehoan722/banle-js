@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Nhap doi cs2</title>
+    <title>Nhap moi cs2</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -67,7 +67,7 @@
 
         #soluong {
             width: 60px;
-           background: cyan;
+            background: cyan;
             text-align: center;
         }
 
@@ -460,9 +460,8 @@
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
-        </div>
-        
-       
+        </div>         
+
         
         <label>
             <input type="checkbox" id="quanlysizetheogia" />
@@ -478,7 +477,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="nhap doi cs2" autocomplete="off" />
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -759,7 +758,7 @@
         function getDiaDiemFromEmail(email) {
             if (!email) return "";
             email = email.trim().toLowerCase();
-            if (email === "khohangcs1@gmail.com") return "cs1";
+            //if (email === "khohangcs1@gmail.com") return "cs1";
             if (email === "khohangcs2@gmail.com") return "cs2";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
@@ -867,7 +866,7 @@
             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
-            document.getElementById("quanlysizetheogia").checked = true;
+           // document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
         };
