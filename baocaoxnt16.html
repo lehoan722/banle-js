@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>Báo cáo Xuất Nhập Tồn Hàng Hóa (Phiên bản mới)</title>
     <!-- Liên kết Supabase và JS mới -->
-     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>  
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/baocaoxnt16.js"></script>
     <link rel="stylesheet"
@@ -315,6 +315,38 @@
             text-decoration: underline;
             cursor: pointer
         }
+
+        /* Cho lưới chiếm hết phần còn lại của màn hình */
+        #hot {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        /* Nút mũi tên thu gọn/hiện tiêu đề */
+        #headerToggle {
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1201;
+            width: 28px;
+            height: 28px;
+            border-radius: 9999px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* Khi thu gọn: ẩn khối đăng nhập + khối bộ lọc */
+        body.header-collapsed #authBox,
+        body.header-collapsed .filters-row {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -404,8 +436,9 @@
 
                 <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
 
-                <button class="main" onclick="window.xuatExcelToanBoXNT16()">Xuất Excel</button>       
-
+                <button class="main" onclick="window.xuatExcelToanBoXNT16()">Xuất Excel</button>
+                <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề"
+                    onclick="toggleHeader()">⮜</button>
 
                 <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
 
@@ -462,6 +495,28 @@
             <div class="cap" id="imgCaption"></div>
         </div>
     </div>
+
+    <script>
+        (function initHeaderToggle() {
+            const btn = document.getElementById('headerToggle');
+            if (!btn) return;
+
+            // Khôi phục trạng thái lần trước
+            const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
+            if (saved) document.body.classList.add('header-collapsed');
+            btn.textContent = saved ? '⮞' : '⮜';
+            btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+
+            window.toggleHeader = function () {
+                const collapsed = document.body.classList.toggle('header-collapsed');
+                btn.textContent = collapsed ? '⮞' : '⮜';
+                btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+                localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
+                // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
+            };
+        })();
+    </script>
+
 
 </body>
 
