@@ -93,7 +93,7 @@ function attachMaspLinkHandler(container) {
     if (!el) return;
     const masp = el.dataset.masp;
     if (!masp) return;
-    const url = `https://banle-js.vercel.app/timkiemhanghoa111.html?masp=${encodeURIComponent(masp)}`;
+    const url = `https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(masp)}`;
     window.open(url, "_blank");
   });
 }
@@ -160,7 +160,7 @@ function renderSummary(rows) {
     a.tongxuat += r.tongxuat || 0;
     a.cuoiky += r.cuoiky || 0;
     return a;
-  }, { dauky:0, nhapmua:0, tongnhap:0, xuatban_cs1:0, xuatban_cs2:0, xuatban:0, tongxuat:0, cuoiky:0 });
+  }, { dauky: 0, nhapmua: 0, tongnhap: 0, xuatban_cs1: 0, xuatban_cs2: 0, xuatban: 0, tongxuat: 0, cuoiky: 0 });
 
   el.innerHTML = `<span style="background:#e3f2fd;padding:7px 14px;border-radius:8px;">
     <b>TỔNG:</b>
@@ -307,11 +307,11 @@ window.xuatExcelToanBoXNT16 = async function () {
   await Promise.all(workers);
 
   const headers = [
-    "STT","Mã hàng","Kích cỡ",
-    "Xuất bán CS1","Xuất bán CS2","Xuất bán (gộp)",
-    "Tồn CS1","Tồn CS2",
-    "Nhập mua","Cuối kỳ","Giá lẻ","Đầu kỳ","Xuất khác","Tổng xuất",
-    "Nhập khác","Tổng nhập","Tên hàng"
+    "STT", "Mã hàng", "Kích cỡ",
+    "Xuất bán CS1", "Xuất bán CS2", "Xuất bán (gộp)",
+    "Tồn CS1", "Tồn CS2",
+    "Nhập mua", "Cuối kỳ", "Giá lẻ", "Đầu kỳ", "Xuất khác", "Tổng xuất",
+    "Nhập khác", "Tổng nhập", "Tên hàng"
   ];
   const aoa = [headers];
 
@@ -354,25 +354,64 @@ window.copyBang = function () {
 };
 
 // ===================== POPUP tìm kiếm (stubs, bạn nối API sau) =====================
-window.openPopupSearch = function(kind) {
+window.openPopupSearch = function (kind) {
   const el = document.getElementById("popupSearch");
   el.style.display = "block";
 };
-window.closePopupSearch = function() {
+window.closePopupSearch = function () {
   document.getElementById("popupSearch").style.display = "none";
 };
-window.clearInput = function(id) {
+window.clearInput = function (id) {
   const el = document.getElementById(id); if (el) el.value = "";
 };
-window.moTrangAnh = function() {
-  alert("Tính năng ảnh sẽ bổ sung sau.");
+
+// Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
+window.moTrangAnh = function () {
+  if (!hotInstance) {
+    alert("Chưa có dữ liệu để hiển thị ảnh.");
+    return;
+  }
+
+  // Lấy nguồn dữ liệu gốc của Handsontable (đúng theo thứ tự/đang có trong trang)
+  const src = hotInstance.getSourceData() || [];
+
+  // Gom theo mã sản phẩm, ưu tiên giữ bản ghi có giale khác 0 nếu có
+  const map = new Map(); // key = MASP, value = { masp, giale }
+  for (const r of src) {
+    const code = String(r?.masp || "").trim().toUpperCase();
+    if (!code) continue;
+    const price = Number(r?.giale || 0) || 0;
+
+    if (!map.has(code)) {
+      map.set(code, { masp: code, giale: price });
+    } else {
+      // nếu đã có rồi nhưng giale đang 0, mà bản mới có giá > 0 → ưu tiên bản có giá
+      const cur = map.get(code);
+      if ((cur.giale || 0) === 0 && price > 0) {
+        map.set(code, { masp: code, giale: price });
+      }
+    }
+  }
+
+  const list = Array.from(map.values());
+  if (!list.length) {
+    alert("Không có mã hàng hợp lệ trong bảng.");
+    return;
+  }
+
+  // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
+  sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
+
+  // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới
+  window.open("xemanhxnt14.html", "_blank");
 };
+
 
 // ===================== INIT =====================
 window.addEventListener("DOMContentLoaded", () => {
   // giá trị mặc định ngày
   const d = new Date();
-  const toISO = (dt) => dt.toISOString().slice(0,10);
+  const toISO = (dt) => dt.toISOString().slice(0, 10);
   const den = toISO(d);
   const tu = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
   if (document.getElementById("tuNgay")) document.getElementById("tuNgay").value = tu;
