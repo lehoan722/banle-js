@@ -26,7 +26,7 @@ export async function capNhatSoHoaDonTuDong() {
             loai = diadiem === "cs1" ? "bancs1" : "bancs2";
         } else if (pathname.includes("nhapmoi")) {
             loai = diadiem === "cs1" ? "nmcs1" : "nmcs2";
-        } else if (pathname.includes("nhapdoikh")) {
+        } else if (pathname.includes("nhapdoi")) {
             loai = diadiem === "cs1" ? "ndoics1" : "ndoics2";
         } else if (pathname.includes("tralaincc")) {
             loai = diadiem === "cs1" ? "tralaincccs1" : "tralaincccs2";
@@ -37,8 +37,9 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("ccn2v1")) {
             loai = "xcncs2";
 
-        } else if (pathname.includes("nhaptamcs1")) {
-            loai = "nhaptamcs1";
+        } else if (pathname.includes("nhaptam")) {
+            loai = diadiem === "cs1" ? "nhaptamcs1" : "nhaptamcs1";
+            
 
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
