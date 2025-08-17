@@ -351,6 +351,8 @@
 </head>
 
 <body>
+
+
     <div id="authBox">
         <label>Email: <input type="email" id="email"></label>
         <label>Mật khẩu: <input type="password" id="password"></label>
@@ -437,8 +439,7 @@
                 <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
 
                 <button class="main" onclick="window.xuatExcelToanBoXNT16()">Xuất Excel</button>
-                <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề"
-                    onclick="toggleHeader()">⮜</button>
+
 
                 <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
 
@@ -452,6 +453,11 @@
 
         </div>
     </div>
+    <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề" onclick="toggleHeader()">⮜</button>
+
+    <div id="authBox"> ... </div>
+    <div class="filters-row"> ... </div>
+    <div id="hot"></div>
 
     <div id="hot" style="margin-top: 4px;"></div>
     <!-- Thanh phân trang giống XNT14 -->
