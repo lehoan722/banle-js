@@ -356,16 +356,182 @@ window.copyBang = function () {
 };
 
 // ===================== POPUP tìm kiếm (stubs, bạn nối API sau) =====================
-window.openPopupSearch = function (kind) {
-  const el = document.getElementById("popupSearch");
-  el.style.display = "block";
+// ===================== POPUP TÌM KIẾM (PORT từ XNT15, đã tinh gọn) =====================
+window.currentPopupType = null;
+
+// Mở popup + nạp danh sách (trống => show ~100-500 dòng đầu)
+window.openPopupSearch = function (type, keyword = "") {
+  window.currentPopupType = type;
+  const popup = document.getElementById('popupSearch');
+  const input = document.getElementById('popupSearchInput');
+  const list  = document.getElementById('popupSearchList');
+  if (!popup || !input || !list) return alert("Thiếu phần tử popupSearch trong HTML!");
+
+  popup.style.display = 'block';
+  input.value = keyword || "";
+  input.focus();
+
+  // Nếu không có keyword -> hiện nhanh danh sách đầu tiên
+  searchPopup(keyword || "");
 };
+
 window.closePopupSearch = function () {
-  document.getElementById("popupSearch").style.display = "none";
+  const popup = document.getElementById('popupSearch');
+  if (popup) popup.style.display = 'none';
 };
-window.clearInput = function (id) {
-  const el = document.getElementById(id); if (el) el.value = "";
+
+// ESC để đóng
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') window.closePopupSearch();
+});
+
+// Click nền để đóng
+document.addEventListener('click', (e) => {
+  const overlay = document.getElementById('popupSearch');
+  const content = document.getElementById('popupSearchContent');
+  if (!overlay || overlay.style.display !== 'block') return;
+  if (content && content.contains(e.target)) return; // click trong khung -> không đóng
+  if (e.target === overlay) window.closePopupSearch();
+});
+
+// Gõ trong ô tìm -> nạp danh sách
+document.getElementById('popupSearchInput')?.addEventListener('input', () => {
+  const keyword = document.getElementById('popupSearchInput').value.trim();
+  // Cho phép trống để hiển thị danh sách đầu
+  searchPopup(keyword);
+});
+
+// Gán phím Enter trên các input ngoài trang để mở popup
+[
+  { id: "khachhangInput", type: "khachhang" },
+  { id: "nhanvienInput",  type: "nhanvien"  },
+  { id: "nhomhangInput",  type: "nhomhang"  },
+  { id: "chungloaiInput", type: "chungloai" },
+  { id: "mausacInput",    type: "mausac"    },
+  { id: "sizeInput",      type: "size"      },
+  { id: "maspInput",      type: "mahang"    },
+].forEach(({id, type}) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') window.openPopupSearch(type, el.value);
+  });
+});
+
+// Render helper
+function renderPopupList(rows, type, field, extra) {
+  const list = document.getElementById('popupSearchList');
+  if (!rows?.length) {
+    list.innerHTML = '<i>Không có dữ liệu</i>';
+    return;
+  }
+  // Unique nhẹ cho các trường có thể trùng (nhóm, chủng loại, màu, size)
+  const needUniq = ['manhom','machungloai','mamau','size'].includes(field);
+  let data = rows;
+  if (needUniq) {
+    const seen = new Set();
+    data = rows.filter(r => {
+      const v = r[field];
+      if (!v || seen.has(v)) return false;
+      seen.add(v);
+      return true;
+    });
+  }
+
+  list.innerHTML = data.map(row => {
+    const val = row[field] ?? "";
+    const more =
+      row.tenkh ? " - " + row.tenkh :
+      row.tennv ? " - " + row.tennv :
+      row.tennhom ? " - " + row.tennhom :
+      row.tenchungloai ? " - " + row.tenchungloai :
+      row.tenmau ? " - " + row.tenmau :
+      row.tensp ? " - " + row.tensp :
+      row.mota ? " - " + row.mota : "";
+    const safe = String(val).replace(/'/g, "\\'");
+    return `
+      <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+           onclick="selectPopupValue('${type}','${safe}',this)">
+        ${val}${more}
+      </div>`;
+  }).join('');
+}
+
+// Hàm tìm kiếm chính cho popup
+async function searchPopup(keyword) {
+  const type = window.currentPopupType;
+  const list = document.getElementById('popupSearchList');
+  if (!type || !list) return;
+
+  // Nhánh NCC (lọc trong dmkhachhang, chỉ NCC)
+  if (type === 'khachhang' && document.getElementById('locNCCCheckbox')?.checked) {
+    let q = supabase.from('dmkhachhang').select('makh, tenkh').eq('la_ncc', true).limit(500);
+    if (keyword) q = q.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+    const { data, error } = await q;
+    if (error) { list.innerHTML = `<i>Lỗi: ${error.message}</i>`; return; }
+    renderPopupList(data, 'khachhang', 'makh', ', tenkh');
+    return;
+  }
+
+  // Bản đồ loại → bảng/field
+  let table='', field='', extra='';
+  if (type === 'khachhang') { table='dmkhachhang'; field='makh'; extra=', tenkh'; }
+  else if (type === 'nhanvien') { table='dmnhanvien'; field='manv'; extra=', tennv'; }
+  else if (type === 'nhomhang') { table='dmnhomhang'; field='manhom'; extra=', tennhom'; }
+  else if (type === 'chungloai') { table='dmchungloai'; field='machungloai'; extra=', tenchungloai'; }
+  else if (type === 'mausac')   { table='dmmausac'; field='mamau'; extra=', tenmau'; }
+  else if (type === 'size')     { table='dm_size'; field='size'; extra=', mota'; }
+  else if (type === 'mahang')   { table='dmhanghoa'; field='masp'; extra=', tensp'; }
+  else { list.innerHTML = '<i>Loại tìm chưa hỗ trợ</i>'; return; }
+
+  // Truy vấn (trống keyword -> trả về danh sách đầu)
+  let query = supabase.from(table).select(`${field}${extra}`).limit(500);
+  if (keyword) {
+    // Tìm linh hoạt: nếu có cột tên thì tìm trên cả mã + tên
+    const hasName =
+      extra.includes('tenkh') || extra.includes('tennv') ||
+      extra.includes('tennhom') || extra.includes('tenchungloai') ||
+      extra.includes('tenmau') || extra.includes('tensp');
+    if (hasName) {
+      const nameCol =
+        extra.includes('tenkh') ? 'tenkh' :
+        extra.includes('tennv') ? 'tennv' :
+        extra.includes('tennhom') ? 'tennhom' :
+        extra.includes('tenchungloai') ? 'tenchungloai' :
+        extra.includes('tenmau') ? 'tenmau' :
+        extra.includes('tensp') ? 'tensp' : field;
+      query = query.or(`${field}.ilike.%${keyword}%,${nameCol}.ilike.%${keyword}%`);
+    } else {
+      query = query.ilike(field, `%${keyword}%`);
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) { list.innerHTML = `<i>Lỗi: ${error.message}</i>`; return; }
+  renderPopupList(data, type, field, extra);
+}
+
+// Người dùng chọn 1 giá trị
+window.selectPopupValue = function (type, value) {
+  const map = {
+    khachhang: 'khachhangInput',
+    nhanvien:  'nhanvienInput',
+    nhomhang:  'nhomhangInput',
+    chungloai: 'chungloaiInput',
+    mausac:    'mausacInput',
+    size:      'sizeInput',
+    mahang:    'maspInput',
+  };
+  const id = map[type];
+  if (id && document.getElementById(id)) document.getElementById(id).value = value;
+  window.closePopupSearch();
 };
+
+// Xoá nhanh 1 input bất kỳ
+window.clearInput = function (id) { const el = document.getElementById(id); if (el) el.value = ''; };
+
+
+
 
 // Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
 window.moTrangAnh = function () {
