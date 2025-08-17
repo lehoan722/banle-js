@@ -11,33 +11,30 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 let choPhepSua = false;
 
 async function handleSpecialSoHoaDon(sohd) {
-  const parts = sohd.split('_');
+  // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
+  const prefixFull = (sohd.split("_")[0] || "").toLowerCase();
+  if (prefixFull !== "bancs1" && prefixFull !== "bancs2") {
+    // Không phải hóa đơn bán lẻ → không kích hoạt nhánh 2 bản
+    return false;
+  }
+
+  // Lấy số thứ tự
+  const parts = sohd.split("_");
   if (parts.length < 2) return false;
   const num = parseInt(parts[1], 10);
 
   // Xác định cơ sở và điều kiện chia hết
-  //const diadiem = localStorage.getItem("diadiem");
-  const prefix = sohd.split("_")[0] || "";
-  let diadiem = "cs1";
-  if (prefix.includes("cs2")) diadiem = "cs2";
-  else if (prefix.includes("cs1")) diadiem = "cs1";
+  const diadiem = (prefixFull === "bancs2") ? "cs2" : "cs1";
+  const modulus = (diadiem === "cs1") ? 4 : 6;
 
-  let modulus = 6; // Mặc định cho cs2
-  if (diadiem === "cs1") modulus = 4;
-
-  // Kiểm tra có phải hóa đơn đặc biệt không
-  if (num % modulus !== 0) return false;
+  // Không phải số đặc biệt → thôi
+  if (Number.isNaN(num) || num % modulus !== 0) return false;
 
   // Giới hạn tiền theo cơ sở
   const ngay = document.getElementById("ngay").value;
-  let hanMuc = 6500000;
-  let loaiT = "bancs2T";
-  if (diadiem === "cs1") {
-    hanMuc = 1900000;
-    loaiT = "bancs1T";
-  }
+  let hanMuc = (diadiem === "cs1") ? 1900000 : 6500000;
 
-  // Truy vấn tổng số tiền đã lưu qua hai bản trong ngày và cơ sở này
+  // Tổng đã lưu trong ngày của bảng T tại cơ sở này
   const { data, error } = await supabase
     .from("hoadon_banleT")
     .select("thanhtoan")
@@ -49,17 +46,16 @@ async function handleSpecialSoHoaDon(sohd) {
     tongTien = data.reduce((sum, hd) => sum + (Number(hd.thanhtoan) || 0), 0);
   }
 
-  // Lấy số tiền hóa đơn chuẩn bị lưu
   const getIntValue = (id) =>
     parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
   const tienHoaDon = getIntValue("phaithanhtoan");
 
   if (tongTien + tienHoaDon > hanMuc) {
-    //alert(`🚫 Đã đạt hạn mức ${hanMuc.toLocaleString()}₫ cho cơ sở này trong ngày!\nChỉ cho phép lưu thường.`);
+    // Vượt hạn mức → chỉ lưu bản thường
     return false;
   }
 
-  // Nếu chưa vượt hạn mức thì gọi lưu hai bản
+  // ✅ Đủ điều kiện → lưu 2 bản và gọi Viettel (logic nằm trong luuHoaDonCaHaiBan)
   await luuHoaDonCaHaiBan();
   return true;
 }
