@@ -364,7 +364,7 @@ window.openPopupSearch = function (type, keyword = "") {
   window.currentPopupType = type;
   const popup = document.getElementById('popupSearch');
   const input = document.getElementById('popupSearchInput');
-  const list  = document.getElementById('popupSearchList');
+  const list = document.getElementById('popupSearchList');
   if (!popup || !input || !list) return alert("Thiếu phần tử popupSearch trong HTML!");
 
   popup.style.display = 'block';
@@ -404,13 +404,13 @@ document.getElementById('popupSearchInput')?.addEventListener('input', () => {
 // Gán phím Enter trên các input ngoài trang để mở popup
 [
   { id: "khachhangInput", type: "khachhang" },
-  { id: "nhanvienInput",  type: "nhanvien"  },
-  { id: "nhomhangInput",  type: "nhomhang"  },
+  { id: "nhanvienInput", type: "nhanvien" },
+  { id: "nhomhangInput", type: "nhomhang" },
   { id: "chungloaiInput", type: "chungloai" },
-  { id: "mausacInput",    type: "mausac"    },
-  { id: "sizeInput",      type: "size"      },
-  { id: "maspInput",      type: "mahang"    },
-].forEach(({id, type}) => {
+  { id: "mausacInput", type: "mausac" },
+  { id: "sizeInput", type: "size" },
+  { id: "maspInput", type: "mahang" },
+].forEach(({ id, type }) => {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('keydown', (e) => {
@@ -426,7 +426,7 @@ function renderPopupList(rows, type, field, extra) {
     return;
   }
   // Unique nhẹ cho các trường có thể trùng (nhóm, chủng loại, màu, size)
-  const needUniq = ['manhom','machungloai','mamau','size'].includes(field);
+  const needUniq = ['manhom', 'machungloai', 'mamau', 'size'].includes(field);
   let data = rows;
   if (needUniq) {
     const seen = new Set();
@@ -442,12 +442,12 @@ function renderPopupList(rows, type, field, extra) {
     const val = row[field] ?? "";
     const more =
       row.tenkh ? " - " + row.tenkh :
-      row.tennv ? " - " + row.tennv :
-      row.tennhom ? " - " + row.tennhom :
-      row.tenchungloai ? " - " + row.tenchungloai :
-      row.tenmau ? " - " + row.tenmau :
-      row.tensp ? " - " + row.tensp :
-      row.mota ? " - " + row.mota : "";
+        row.tennv ? " - " + row.tennv :
+          row.tennhom ? " - " + row.tennhom :
+            row.tenchungloai ? " - " + row.tenchungloai :
+              row.tenmau ? " - " + row.tenmau :
+                row.tensp ? " - " + row.tensp :
+                  row.mota ? " - " + row.mota : "";
     const safe = String(val).replace(/'/g, "\\'");
     return `
       <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
@@ -457,7 +457,27 @@ function renderPopupList(rows, type, field, extra) {
   }).join('');
 }
 
+// Render riêng cho nhân viên: chỉ hiển thị tên, nhưng giữ lại manv để trả về input
+function renderNhanvienList(rows) {
+  const list = document.getElementById('popupSearchList');
+  if (!rows?.length) {
+    list.innerHTML = '<i>Không có dữ liệu</i>';
+    return;
+  }
+  list.innerHTML = rows.map(r => {
+    const manv = (r.manv ?? '').replace(/'/g, "\\'");
+    const tennv = (r.tennv ?? '').replace(/'/g, "\\'");
+    return `
+      <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+           onclick="selectPopupValue('nhanvien','${manv}','${tennv}')">
+        ${r.tennv ?? ''}
+      </div>`;
+  }).join('');
+}
+
+
 // Hàm tìm kiếm chính cho popup
+
 async function searchPopup(keyword) {
   const type = window.currentPopupType;
   const list = document.getElementById('popupSearchList');
@@ -474,9 +494,9 @@ async function searchPopup(keyword) {
   }
 
   // Bản đồ loại → bảng/field
-  let table='', field='', extra='';
+  let table = '', field = '', extra = '';
   if (type === 'khachhang') { table='dmkhachhang'; field='makh'; extra=', tenkh'; }
-  else if (type === 'nhanvien') { table='dmnhanvien'; field='manv'; extra=', tennv'; }
+  else if (type === 'nhanvien') { table='dmnhanvien'; field='manv'; extra=', tennv'; }  // sẽ chỉ HIỂN THỊ tennv
   else if (type === 'nhomhang') { table='dmnhomhang'; field='manhom'; extra=', tennhom'; }
   else if (type === 'chungloai') { table='dmchungloai'; field='machungloai'; extra=', tenchungloai'; }
   else if (type === 'mausac')   { table='dmmausac'; field='mamau'; extra=', tenmau'; }
@@ -508,24 +528,53 @@ async function searchPopup(keyword) {
 
   const { data, error } = await query;
   if (error) { list.innerHTML = `<i>Lỗi: ${error.message}</i>`; return; }
+
+  // ---- CHỈ áp dụng riêng cho Nhân viên: hiển thị TÊN, không lộ mã ----
+  if (type === 'nhanvien') {
+    if (!data?.length) { list.innerHTML = '<i>Không có dữ liệu</i>'; return; }
+    list.innerHTML = data.map(r => {
+      const manv  = String(r.manv ?? '').replace(/'/g, "\\'");
+      const tennv = String(r.tennv ?? '');
+      return `
+        <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+             onclick="selectPopupValue('nhanvien','${manv}')">
+          ${tennv}
+        </div>`;
+    }).join('');
+    return;
+  }
+
+  // Các loại khác dùng renderer chung
   renderPopupList(data, type, field, extra);
 }
 
+
 // Người dùng chọn 1 giá trị
-window.selectPopupValue = function (type, value) {
+window.selectPopupValue = function (type, value, label = '') {
   const map = {
     khachhang: 'khachhangInput',
-    nhanvien:  'nhanvienInput',
-    nhomhang:  'nhomhangInput',
+    nhanvien: 'nhanvienInput',
+    nhomhang: 'nhomhangInput',
     chungloai: 'chungloaiInput',
-    mausac:    'mausacInput',
-    size:      'sizeInput',
-    mahang:    'maspInput',
+    mausac: 'mausacInput',
+    size: 'sizeInput',
+    mahang: 'maspInput',
   };
   const id = map[type];
-  if (id && document.getElementById(id)) document.getElementById(id).value = value;
+  if (id && document.getElementById(id)) {
+    // Giá trị trả về cho bộ lọc vẫn là "mã" để truy vấn chính xác
+    document.getElementById(id).value = value;
+  }
+
+  // Nếu có ô hiển thị tên nhân viên riêng, điền thêm cho đẹp (không bắt buộc)
+  if (type === 'nhanvien') {
+    const nameBox = document.getElementById('nhanvienNameInput') || document.getElementById('nhanvienLabel');
+    if (nameBox) nameBox.value = label || '';
+  }
+
   window.closePopupSearch();
 };
+
 
 // Xoá nhanh 1 input bất kỳ
 window.clearInput = function (id) { const el = document.getElementById(id); if (el) el.value = ''; };
