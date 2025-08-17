@@ -53,8 +53,10 @@ function buildParams(page = 1) {
     p_chungloai_filter: val("chungloaiInput") || null,
     p_mausac_filter: val("mausacInput") || null,
     p_size_filter: val("sizeInput") || null,
-    p_nhacc_filter: bool("locNCCCheckbox") ? (null) : null, // placeholder nếu sau này bạn lọc NCC theo input riêng
-    p_khachhang_filter: val("khachhangInput") || null,
+
+    p_nhacc_filter: (bool("locNCCCheckbox") ? (val("khachhangInput").trim() || null) : null),
+    p_khachhang_filter: (!bool("locNCCCheckbox") ? (val("khachhangInput").trim() || null) : null),
+
     p_nhanvien_filter: val("nhanvienInput") || null,
     p_tu_gia: val("tuGia") ? Number(val("tuGia")) : null,
     p_den_gia: val("denGia") ? Number(val("denGia")) : null,
@@ -161,11 +163,14 @@ function renderTable(rows) {
       contextMenu: true,
       columnSorting: true,
       renderAllRows: false,
+      filters: true,
+      dropdownMenu: true,
       autoColumnSize: { samplingRatio: 23 },
       afterRender() {
         // nothing
       }
     });
+
 
     attachMaspLinkHandler(container);
   } else {
@@ -495,13 +500,13 @@ async function searchPopup(keyword) {
 
   // Bản đồ loại → bảng/field
   let table = '', field = '', extra = '';
-  if (type === 'khachhang') { table='dmkhachhang'; field='makh'; extra=', tenkh'; }
-  else if (type === 'nhanvien') { table='dmnhanvien'; field='manv'; extra=', tennv'; }  // sẽ chỉ HIỂN THỊ tennv
-  else if (type === 'nhomhang') { table='dmnhomhang'; field='manhom'; extra=', tennhom'; }
-  else if (type === 'chungloai') { table='dmchungloai'; field='machungloai'; extra=', tenchungloai'; }
-  else if (type === 'mausac')   { table='dmmausac'; field='mamau'; extra=', tenmau'; }
-  else if (type === 'size')     { table='dm_size'; field='size'; extra=', mota'; }
-  else if (type === 'mahang')   { table='dmhanghoa'; field='masp'; extra=', tensp'; }
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extra = ', tenkh'; }
+  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extra = ', tennv'; }  // sẽ chỉ HIỂN THỊ tennv
+  else if (type === 'nhomhang') { table = 'dmnhomhang'; field = 'manhom'; extra = ', tennhom'; }
+  else if (type === 'chungloai') { table = 'dmchungloai'; field = 'machungloai'; extra = ', tenchungloai'; }
+  else if (type === 'mausac') { table = 'dmmausac'; field = 'mamau'; extra = ', tenmau'; }
+  else if (type === 'size') { table = 'dm_size'; field = 'size'; extra = ', mota'; }
+  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extra = ', tensp'; }
   else { list.innerHTML = '<i>Loại tìm chưa hỗ trợ</i>'; return; }
 
   // Truy vấn (trống keyword -> trả về danh sách đầu)
@@ -515,11 +520,11 @@ async function searchPopup(keyword) {
     if (hasName) {
       const nameCol =
         extra.includes('tenkh') ? 'tenkh' :
-        extra.includes('tennv') ? 'tennv' :
-        extra.includes('tennhom') ? 'tennhom' :
-        extra.includes('tenchungloai') ? 'tenchungloai' :
-        extra.includes('tenmau') ? 'tenmau' :
-        extra.includes('tensp') ? 'tensp' : field;
+          extra.includes('tennv') ? 'tennv' :
+            extra.includes('tennhom') ? 'tennhom' :
+              extra.includes('tenchungloai') ? 'tenchungloai' :
+                extra.includes('tenmau') ? 'tenmau' :
+                  extra.includes('tensp') ? 'tensp' : field;
       query = query.or(`${field}.ilike.%${keyword}%,${nameCol}.ilike.%${keyword}%`);
     } else {
       query = query.ilike(field, `%${keyword}%`);
@@ -533,7 +538,7 @@ async function searchPopup(keyword) {
   if (type === 'nhanvien') {
     if (!data?.length) { list.innerHTML = '<i>Không có dữ liệu</i>'; return; }
     list.innerHTML = data.map(r => {
-      const manv  = String(r.manv ?? '').replace(/'/g, "\\'");
+      const manv = String(r.manv ?? '').replace(/'/g, "\\'");
       const tennv = String(r.tennv ?? '');
       return `
         <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
