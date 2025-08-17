@@ -193,6 +193,13 @@ window.gotoPage = async function () {
 };
 
 // ===================== LOAD DATA =====================
+async function fetchCount(params) {
+  const { data, error } = await supabase.rpc("baocaoxnt16_count", params);
+  if (error) throw error;
+  return data;
+}
+
+
 async function fetchPaged(params) {
   const fn = "baocaoxnt16_paged";
   const { data, error } = await supabase.rpc(fn, params);
@@ -200,21 +207,6 @@ async function fetchPaged(params) {
   return data || [];
 }
 
-
-async function fetchPaged(params) {
-  const fn = "baocaoxnt16_paged";
-  const { data, error } = await supabase.rpc(fn, params);
-  if (error) {
-    // fallback qua 15 nếu 16 chưa có
-    if (fn === "baocaoxnt16_paged") {
-      const fb = await supabase.rpc("baocaoxnt15_paged", params);
-      if (fb.error) throw fb.error;
-      return fb.data || [];
-    }
-    throw error;
-  }
-  return data || [];
-}
 
 window.taiBaoCaoXNT = async function () {
   const loading = document.getElementById("loadingMsg");
