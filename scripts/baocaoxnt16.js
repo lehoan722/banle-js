@@ -38,6 +38,7 @@ function getDSMasp() {
   return arr.length ? arr : null;
 }
 
+
 function buildParams(page = 1) {
   const tuNgay = val("tuNgay") || null;
   const denNgay = val("denNgay") || null;
@@ -68,6 +69,32 @@ function buildParams(page = 1) {
   };
   return params;
 }
+
+// chỉ giữ đúng tham số mà baocaoxnt16_count cần (KHÔNG có p_limit, p_offset)
+function buildCountParams(params) {
+  const {
+    tu_ngay, den_ngay, p_dsmsp,
+    p_diadiem_filter, p_nhomhang_filter, p_chungloai_filter,
+    p_mausac_filter, p_size_filter, p_nhacc_filter,
+    p_khachhang_filter, p_nhanvien_filter,
+    p_tu_gia, p_den_gia,
+    loc_duong, loc_am, loc_het,
+    loc_phatsinh_nhap, loc_phatsinh_xuat,
+    p_tonghop_size
+  } = params;
+
+  return {
+    tu_ngay, den_ngay, p_dsmsp,
+    p_diadiem_filter, p_nhomhang_filter, p_chungloai_filter,
+    p_mausac_filter, p_size_filter, p_nhacc_filter,
+    p_khachhang_filter, p_nhanvien_filter,
+    p_tu_gia, p_den_gia,
+    loc_duong, loc_am, loc_het,
+    loc_phatsinh_nhap, loc_phatsinh_xuat,
+    p_tonghop_size
+  };
+}
+
 
 function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -194,10 +221,11 @@ window.gotoPage = async function () {
 
 // ===================== LOAD DATA =====================
 async function fetchCount(params) {
-  const { data, error } = await supabase.rpc("baocaoxnt16_count", params);
+  const { data, error } = await supabase.rpc("baocaoxnt16_count", buildCountParams(params));
   if (error) throw error;
   return data;
 }
+
 
 
 async function fetchPaged(params) {
@@ -218,27 +246,7 @@ window.taiBaoCaoXNT = async function () {
     const params = buildParams(currentPage);
 
     // Đếm tổng số dòng để cập nhật phân trang
-    totalRows = await fetchCount({
-      tu_ngay: params.tu_ngay,
-      den_ngay: params.den_ngay,
-      p_dsmsp: params.p_dsmsp,
-      p_diadiem_filter: params.p_diadiem_filter,
-      p_nhomhang_filter: params.p_nhomhang_filter,
-      p_chungloai_filter: params.p_chungloai_filter,
-      p_mausac_filter: params.p_mausac_filter,
-      p_size_filter: params.p_size_filter,
-      p_nhacc_filter: params.p_nhacc_filter,
-      p_khachhang_filter: params.p_khachhang_filter,
-      p_nhanvien_filter: params.p_nhanvien_filter,
-      p_tu_gia: params.p_tu_gia,
-      p_den_gia: params.p_den_gia,
-      loc_duong: params.loc_duong,
-      loc_am: params.loc_am,
-      loc_het: params.loc_het,
-      loc_phatsinh_nhap: params.loc_phatsinh_nhap,
-      loc_phatsinh_xuat: params.loc_phatsinh_xuat,
-      p_tonghop_size: params.p_tonghop_size
-    });
+    totalRows = await fetchCount(params);
 
     // Lấy dữ liệu trang hiện tại
     const rows = await fetchPaged(params);
