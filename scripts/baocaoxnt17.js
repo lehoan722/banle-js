@@ -151,7 +151,7 @@ function renderTable(rows) {
         { data: 'giale', title: 'Giá lẻ', width: 86, className: 'htRight', renderer: zeroBlankRenderer },
     ];
     if (!hotInstance) {
-        hot = new Handsontable(container, {
+        hotInstance = new Handsontable(container, {
 
             data: rows,
             columns,
