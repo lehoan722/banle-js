@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Báo cáo XNT17</title>
+    <!-- Liên kết Supabase và JS mới -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script type="module" src="scripts/supabaseClient.js"></script>
+    <script type="module" src="scripts/baocaoxnt17.js"></script>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+
+    <style>
+        /* Body không cuộn; bảng cuộn trong vùng của nó */ 
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            /* mobile */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* không cuộn toàn trang */
+        }
+
+        .filters-row {
+            display: flex;
+            width: 100%;
+            gap: 0;
+            align-items: flex-start;
+            margin-bottom: 7px;
+            /* giảm margin-bottom */
+        }
+
+        .filters-left {
+            flex: 0 0 87%;
+            max-width: 87%;
+            box-sizing: border-box;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 10px 22px;
+        }
+
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 10px 22px;
+            margin-bottom: 0;
+        }
+
+        .input-popup-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            margin-right: 8px;
+        }
+
+        .input-popup-group input {
+            width: 130px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        .input-popup-group button {
+            background: #eee;
+            color: #222;
+            border: 1px solid #bbb;
+            padding: 0 8px;
+            font-size: 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            height: 32px;
+        }
+
+        .input-popup-group button:hover {
+            background: #ddd;
+        }
+
+        .filters label {
+            margin-bottom: 0;
+        }
+
+        .filters select,
+        .filters input[type="date"],
+        .filters input[type="number"] {
+            padding: 6px 8px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+        button.main {
+            background: #2196f3;
+            color: #fff;
+            border: none;
+            font-weight: bold;
+            padding: 8px 22px;
+            border-radius: 5px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button.main:hover {
+            background: #1769aa;
+        }
+
+        #authBox {
+            background: #f6f8fa;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px #eee;
+        }
+
+        /* Popup tìm kiếm */
+        #popupSearch {
+            display: none;
+            position: fixed;
+            top: 16%;
+            left: 50%;
+            transform: translate(-50%, 0);
+            background: #fff;
+            z-index: 2000;
+            border: 1px solid #ccc;
+            min-width: 340px;
+            max-width: 98vw;
+            box-shadow: 0 0 12px #888;
+            border-radius: 8px;
+        }
+
+        #popupSearch input {
+            width: 94%;
+            margin-bottom: 5px;
+        }
+
+        #popupSearchList {
+            max-height: 260px;
+            overflow: auto;
+            font-size: 15px;
+        }
+
+        #popupSearchList div {
+            padding: 5px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        #popupSearchList div:hover {
+            background: #e3f0ff;
+        }
+
+
+        /* Trang cao đúng màn hình, không cuộn body */
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            min-height: 100vh;
+            /* desktop */
+            min-height: 100dvh;
+            /* mobile an toàn thanh địa chỉ */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* chặn cuộn toàn trang */
+            overscroll-behavior: none;
+            /* tránh bounce trên mobile */
+        }
+
+
+        /* Scroll ngang khi bảng rộng */
+        #hot .ht_master .wtHolder {
+            overflow: auto !important;
+        }
+
+        /* Thanh phân trang vẫn giữ kích thước tự nhiên */
+        #pager {
+            flex: 0 0 auto;
+        }
+
+        /* Khóa chiều cao 10 dòng cho ô mã sản phẩm */
+        #maspList {
+            line-height: 1.4;
+            height: calc(1.4em * 10 + 10px);
+            max-height: calc(1.4em * 10 + 10px);
+            resize: vertical;
+        }
+
+        .filters-right textarea {
+            width: 100%;
+            min-width: 110px;
+            max-width: 220px;
+            resize: vertical;
+            font-size: 15px;
+            border-radius: 6px;
+            border: 1px solid #bbb;
+            padding: 2px;
+            margin: 0;
+            height: 110px;
+            /* giúp nó kéo cao hết phần trên */
+            box-sizing: border-box;
+        }
+
+        /* ghi đè rule cũ "height:100%" */
+
+        /* Cho phép tiêu đề cột xuống dòng theo \n */
+        #hot .handsontable .colHeader {
+            white-space: pre-line !important;
+            line-height: 1.15;
+            word-break: keep-all;
+            /* xuống tại khoảng trắng, không cắt chữ */
+        }
+
+        /* Giảm padding tiêu đề để gọn hơn */
+        #hot .handsontable thead th {
+            padding: 4px 6px;
+        }
+
+        /* Ẩn cụm cũ phòng khi bạn chưa xóa */
+        #pager {
+            display: none !important;
+        }
+
+        /* Cụm phân trang hoạt động: cố định cuối màn hình, luôn thấy được */
+        #pagination {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: env(safe-area-inset-bottom);
+            border-top: 1px solid #e5e7eb;
+            padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(2px);
+        }
+
+
+        /* Cho vùng lưới HOT có thể cuộn ngang khi quá rộng */
+        #hot .ht_master .wtHolder {
+            overflow: auto !important;
+            /* rất quan trọng để lộ scrollbar ngang */
+        }
+
+        #hot .handsontable thead th,
+        #hot .handsontable thead th .colHeader {
+            white-space: normal !important;
+            line-height: 1.1;
+            text-align: center;
+            padding: 4px 6px;
+        }
+
+        /* Popup ảnh sản phẩm */
+        #imgModal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .55);
+            z-index: 3000;
+        }
+
+        #imgModal .box {
+            position: relative;
+            background: #fff;
+            border-radius: 12px;
+            padding: 10px;
+            max-width: 90vw;
+            max-height: 90vh;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+        }
+
+        #imgModal img {
+            max-width: 86vw;
+            max-height: 80vh;
+            object-fit: contain;
+            display: block;
+        }
+
+        #imgModal .cap {
+            margin-top: 6px;
+            text-align: center;
+            font-weight: 600
+        }
+
+        #imgModal .close {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            border: 0;
+            background: #fff;
+            border-radius: 8px;
+            padding: 4px 8px;
+            cursor: pointer
+        }
+
+        .masp-link {
+            color: #1d4ed8;
+            text-decoration: underline;
+            cursor: pointer
+        }
+
+        /* Cho lưới chiếm hết phần còn lại của màn hình */
+        #hot {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        /* Nút mũi tên thu gọn/hiện tiêu đề */
+        #headerToggle {
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1201;
+            width: 28px;
+            height: 28px;
+            border-radius: 9999px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* Khi thu gọn: ẩn khối đăng nhập + khối bộ lọc */
+        body.header-collapsed #authBox,
+        body.header-collapsed .filters-row {
+            display: none !important;
+        }
+
+        /* Lưới 60/40 */
+  .main-grid { display:flex; gap:10px; height: calc(100vh - 140px); }
+  .grid-left  { flex: 0 0 60%; min-width: 0; display:flex; flex-direction: column; }
+  .grid-right { flex: 0 0 40%; min-width: 0; display:flex; flex-direction: column; }
+  #hot { flex:1 1 auto; min-height:0; } /* giữ như XNT16 */ /* :contentReference[oaicite:4]{index=4} */
+  #previewTitle { font-weight:700; margin:6px 0; }
+  #previewGrid { overflow:auto; display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:10px; }
+  #previewGrid img { width:100%; height:190px; object-fit:cover; border-radius:8px; }
+
+    </style>
+</head>
+
+<body>
+    <div id="authBox">
+        <label>Email: <input type="email" id="email"></label>
+        <label>Mật khẩu: <input type="password" id="password"></label>
+        <button onclick="dangNhap()">Đăng nhập</button>
+        <span id="authStatus" style="color: red; margin-left: 10px"></span>
+    </div>
+
+    <div class="filters-row">
+        <div class="filters-left">
+            <div class="filters">
+                <label>
+                    Phương pháp:
+                    <select id="selectFunction">
+                        <option value="baocaoxnt17_paged">Chuẩn mới (Tổng hợp size, cột nhập mua/xuất bán)</option>
+                    </select>
+                </label>
+                <label>
+                    Địa điểm:
+                    <select id="diadiemSelect">
+                        <option value="">Tất cả</option>
+                        <option value="cs1">Cơ sở 1</option>
+                        <option value="cs2">Cơ sở 2</option>
+                    </select>
+                </label>
+                <label>Từ ngày: <input type="date" id="tuNgay"></label>
+                <label>Đến ngày: <input type="date" id="denNgay"></label>
+                <!-- Các input popup tìm kiếm -->
+                <span class="input-popup-group">
+                    <input id="khachhangInput" placeholder="Khách hàng">
+                    <button onclick="openPopupSearch('khachhang')">🔍</button>
+                    <button onclick="clearInput('khachhangInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="nhanvienInput" placeholder="Nhân viên">
+                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
+                    <button onclick="clearInput('nhanvienInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="nhomhangInput" placeholder="Nhóm hàng">
+                    <button onclick="openPopupSearch('nhomhang')">🔍</button>
+                    <button onclick="clearInput('nhomhangInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="chungloaiInput" placeholder="Chủng loại">
+                    <button onclick="openPopupSearch('chungloai')">🔍</button>
+                    <button onclick="clearInput('chungloaiInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="mausacInput" placeholder="Màu sắc">
+                    <button onclick="openPopupSearch('mausac')">🔍</button>
+                    <button onclick="clearInput('mausacInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="sizeInput" placeholder="Kích cỡ">
+                    <button onclick="openPopupSearch('size')">🔍</button>
+                    <button onclick="clearInput('sizeInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="maspInput" placeholder="Mã hàng">
+                    <button onclick="openPopupSearch('mahang')">🔍</button>
+                    <button onclick="clearInput('maspInput')">✖</button>
+                </span>
+                <label>Từ giá:
+                    <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
+                </label>
+                <label>Đến giá:
+                    <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
+                </label>
+                <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
+                <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
+                <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
+                <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
+                <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
+                <!-- CHECKBOX TỔNG HỢP SIZE -->
+                <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
+                <label style="font-weight:normal;">
+                    <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
+                </label>
+
+                <!-- Nút xem báo cáo -->
+                <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
+                <button id="btnShowImages" onclick="moTrangAnh()">🖼️ Hiển thị ảnh</button>
+
+                <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
+
+                <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuất Excel</button>               
+                
+
+                <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
+
+                <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
+            </div>
+        </div>
+
+        <div class="filters-right">
+            <textarea id="maspList" rows="8" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
+                style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
+
+        </div>
+    </div>
+
+    <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề"
+                    onclick="toggleHeader()">⮜</button>
+
+        <div class="main-grid">
+    <div class="grid-left">
+      <div id="xntSummary"></div>            
+
+    <div id="hot" style="margin-top: 4px;"></div>
+    <!-- Thanh phân trang giống XNT14 -->
+
+    <div id="pagination" style="margin-top:10px; text-align:center;">
+        <label style="margin-right:8px;">
+            Số dòng/trang:
+            <select id="pageSize" style="padding:4px 6px;">
+                <option value="500">500</option>
+                <option value="1000" selected>1000</option>
+                <option value="2000">2000</option>
+                <option value="5000">5000</option>
+                <option value="10000">10000</option>
+            </select>
+        </label>
+
+        <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
+        <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
+
+        <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
+        <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+        <button class="main" onclick="window.gotoPage()">Đi</button>
+    </div>
+
+     <div class="grid-right">
+      <div id="previewTitle">Ảnh nhanh</div>
+      <div id="previewGrid"></div>
+    </div>
+  </div>
+
+
+    <!-- Popup tìm kiếm dùng chung -->
+    <div id="popupSearch">
+        <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+        </div>
+        <div id="popupSearchList"></div>
+    </div>
+
+    <!-- Modal ảnh -->
+    <div id="imgModal" role="dialog" aria-hidden="true">
+        <div class="box">
+            <button class="close" id="imgClose">Đóng ✕</button>
+            <img id="prodImg" alt="Ảnh sản phẩm">
+            <div class="cap" id="imgCaption"></div>
+        </div>
+    </div>
+
+    <script>
+        (function initHeaderToggle() {
+            const btn = document.getElementById('headerToggle');
+            if (!btn) return;
+
+            // Khôi phục trạng thái lần trước
+            const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
+            if (saved) document.body.classList.add('header-collapsed');
+            btn.textContent = saved ? '⮞' : '⮜';
+            btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+
+            window.toggleHeader = function () {
+                const collapsed = document.body.classList.toggle('header-collapsed');
+                btn.textContent = collapsed ? '⮞' : '⮜';
+                btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+                localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
+                // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
+            };
+        })();
+    </script>
+
+
+</body>
+
+</html>
