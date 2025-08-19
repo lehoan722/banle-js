@@ -35,16 +35,16 @@ function normMasp(s) { return (s || "").trim().toUpperCase(); }
 function getDSMasp() {
     const ss = sessionStorage.getItem("XNT17_MASPS");
     if (ss) {
-        const arr = JSON.parse(ss).map(x => norm(x?.masp || x)); // nhận cả dạng {masp}
+        const arr = JSON.parse(ss).map(x => normMasp(x?.masp || x)); // nhận cả dạng {masp}
         // đổ về textarea để user nhìn thấy & có thể lọc lại
         const ta = document.getElementById("maspList");
         if (ta) ta.value = arr.join("\n");
         sessionStorage.removeItem("XNT17_MASPS");
     }
     const raw = document.getElementById("maspList")?.value || "";
-    const list = raw.split(/\r?\n/).map(norm).filter(Boolean);
+    const list = raw.split(/\r?\n/).map(normMasp).filter(Boolean);
     if (list.length) return list;
-    const one = norm(document.getElementById("maspInput")?.value);
+    const one = normMasp(document.getElementById("maspInput")?.value);
     return one ? [one] : null;
 }
 
@@ -118,6 +118,11 @@ function maspRenderer(instance, td, row, col, prop, value, cellProperties) {
         ? `<span class="masp-link" data-masp="${v}">${v}</span>`
         : "";
 }
+function maspTextRenderer(instance, td, row, col, prop, value) {
+  Handsontable.renderers.TextRenderer.apply(this, arguments);
+  td.textContent = value ?? "";
+}
+
 
 function attachMaspLinkHandler(container) {
     container.addEventListener("click", (e) => {
@@ -145,7 +150,7 @@ function renderTable(rows) {
         { data: 'cuoiky', title: 'Cuối kỳ', width: 80, className: 'htRight', renderer: zeroBlankRenderer },
         { data: 'giale', title: 'Giá lẻ', width: 86, className: 'htRight', renderer: zeroBlankRenderer },
     ];
-    if (!hot) {
+    if (!hotInstance) {
         hot = new Handsontable(container, {
 
             data: rows,
@@ -659,7 +664,7 @@ function renderPreviewForMasps(list){
   }).join("");
 }
 function showPreviewForRow(r){
-  const src = hot?.getSourceData() || [];
+  const src = hotInstance?.getSourceData() || [];
   if (!src.length) return;
   // Hiển thị lưới ảnh theo thứ tự MÃ của toàn bảng (đúng yêu cầu)
   const masps = Array.from(new Map(src.map(x=>[String(x.masp||"").toUpperCase(),1])).keys());
