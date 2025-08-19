@@ -636,10 +636,10 @@ window.moTrangAnh = function () {
 
 // ===================== INIT =====================
 window.addEventListener("DOMContentLoaded", () => {
-  const d = new Date(); const toISO = dt => dt.toISOString().slice(0,10);
-  if (document.getElementById("denNgay")) document.getElementById("denNgay").value = toISO(d);
-  if (document.getElementById("tuNgay"))  document.getElementById("tuNgay").value  = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
-  taiBaoCaoXNT();
+    const d = new Date(); const toISO = dt => dt.toISOString().slice(0, 10);
+    if (document.getElementById("denNgay")) document.getElementById("denNgay").value = toISO(d);
+    if (document.getElementById("tuNgay")) document.getElementById("tuNgay").value = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
+    taiBaoCaoXNT();
 });
 
 
@@ -647,29 +647,52 @@ window.addEventListener("DOMContentLoaded", () => {
  * Bạn nối nguồn ảnh của hệ thống tại hàm getImageUrl(masp).
  * Tạm thời: dựng URL theo quy ước hiện có hoặc dùng API lấy ảnh đầu tiên.
  */
-function getImageUrl(masp) {
-    // TODO: đổi sang logic thật bạn đang dùng cho xem ảnh (xemanhxnt14 / Storage Supabase)
-    // Ví dụ placeholder:
-    return `https://banle-js.vercel.app/xemanhxnt14.html?masp=${encodeURIComponent(masp)}`;
+
+// ====== ẢNH SẢN PHẨM ======
+const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG", "WEBP"];
+
+const PLACEHOLDER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360">' +
+    '<rect width="100%" height="100%" fill="#f3f4f6"/>' +
+    '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-size="18">Chưa có ảnh</text></svg>'
+);
+
+// onerror: thử lần lượt các đuôi ảnh theo IMG_EXTS; hết thì đặt placeholder
+window.handleImageError = function (img, masp) {
+    const next = (parseInt(img.dataset.try || "0", 10) + 1);
+    if (next < IMG_EXTS.length) {
+        img.dataset.try = String(next);
+        img.src = IMG_BASE + encodeURIComponent(masp) + "." + IMG_EXTS[next];
+    } else {
+        img.onerror = null;
+        img.src = PLACEHOLDER_SVG;
+    }
+};
+
+function getImageUrl(masp){
+  // Ảnh mặc định thử với .jpg trước; các đuôi khác sẽ được thử trong onerror
+  return IMG_BASE + encodeURIComponent(masp) + ".JPG";
 }
+
 
 function renderPreviewForMasps(list){
   const box = document.getElementById("previewGrid");
   const title = document.getElementById("previewTitle");
   title.textContent = `Ảnh nhanh (${list.length.toLocaleString('vi-VN')} mã)`;
 
-  const placeholder = "data:image/svg+xml;utf8," +
-    encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360">' +
-      '<rect width="100%" height="100%" fill="#f3f4f6"/>' +
-      '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-size="18">Chưa có ảnh</text></svg>');
-
   box.innerHTML = list.map(m => {
-    const u = getImageUrl(m); // TODO: thay bằng URL ảnh thật
-    return `<a href="https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(m)}" target="_blank" title="${m}">
-              <img loading="lazy" src="${u}" onerror="this.onerror=null;this.src='${placeholder}'">
+    const first = getImageUrl(m); // trả về .jpg; nếu lỗi sẽ thử jpeg/png/webp
+    return `<a href="https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(m)}"
+              target="_blank" title="${m}">
+              <img loading="lazy"
+                   src="${first}"
+                   data-try="0"
+                   onerror="handleImageError(this,'${m}')">
             </a>`;
   }).join("");
 }
+
 
 function showPreviewForRow(r) {
     const src = hotInstance?.getSourceData() || [];
