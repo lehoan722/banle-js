@@ -119,8 +119,8 @@ function maspRenderer(instance, td, row, col, prop, value, cellProperties) {
         : "";
 }
 function maspTextRenderer(instance, td, row, col, prop, value) {
-  Handsontable.renderers.TextRenderer.apply(this, arguments);
-  td.textContent = value ?? "";
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.textContent = value ?? "";
 }
 
 
@@ -170,7 +170,8 @@ function renderTable(rows) {
             autoColumnSize: { samplingRatio: 23 },
             afterRender() {
                 // nothing
-            }
+            },
+            afterSelectionEnd(r) { showPreviewForRow(r); }
         });
 
 
@@ -208,6 +209,8 @@ function renderSummary(rows) {
     Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b>
   </span>`;
 }
+
+showPreviewForRow(0);
 
 // ===================== PAGINATION BAR =====================
 function updatePagingBar() {
@@ -633,74 +636,72 @@ window.moTrangAnh = function () {
 
 // ===================== INIT =====================
 window.addEventListener("DOMContentLoaded", () => {
-    // giá trị mặc định ngày
-    const d = new Date();
-    const toISO = (dt) => dt.toISOString().slice(0, 10);
-    const den = toISO(d);
-    const tu = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
-    if (document.getElementById("tuNgay")) document.getElementById("tuNgay").value = tu;
-    if (document.getElementById("denNgay")) document.getElementById("denNgay").value = den;
+  const d = new Date(); const toISO = dt => dt.toISOString().slice(0,10);
+  if (document.getElementById("denNgay")) document.getElementById("denNgay").value = toISO(d);
+  if (document.getElementById("tuNgay"))  document.getElementById("tuNgay").value  = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
+  taiBaoCaoXNT();
 });
+
 
 /* ===== PREVIEW ẢNH (40%) =====
  * Bạn nối nguồn ảnh của hệ thống tại hàm getImageUrl(masp).
  * Tạm thời: dựng URL theo quy ước hiện có hoặc dùng API lấy ảnh đầu tiên.
  */
-function getImageUrl(masp){
-  // TODO: đổi sang logic thật bạn đang dùng cho xem ảnh (xemanhxnt14 / Storage Supabase)
-  // Ví dụ placeholder:
-  return `https://banle-js.vercel.app/xemanhxnt14.html?masp=${encodeURIComponent(masp)}`;
+function getImageUrl(masp) {
+    // TODO: đổi sang logic thật bạn đang dùng cho xem ảnh (xemanhxnt14 / Storage Supabase)
+    // Ví dụ placeholder:
+    return `https://banle-js.vercel.app/xemanhxnt14.html?masp=${encodeURIComponent(masp)}`;
 }
 
 function renderPreviewForMasps(list){
   const box = document.getElementById("previewGrid");
   const title = document.getElementById("previewTitle");
   title.textContent = `Ảnh nhanh (${list.length.toLocaleString('vi-VN')} mã)`;
+
+  const placeholder = "data:image/svg+xml;utf8," +
+    encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360">' +
+      '<rect width="100%" height="100%" fill="#f3f4f6"/>' +
+      '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-size="18">Chưa có ảnh</text></svg>');
+
   box.innerHTML = list.map(m => {
-    const u = getImageUrl(m);
+    const u = getImageUrl(m); // TODO: thay bằng URL ảnh thật
     return `<a href="https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(m)}" target="_blank" title="${m}">
-              <img loading="lazy" src="${u}">
+              <img loading="lazy" src="${u}" onerror="this.onerror=null;this.src='${placeholder}'">
             </a>`;
   }).join("");
 }
-function showPreviewForRow(r){
-  const src = hotInstance?.getSourceData() || [];
-  if (!src.length) return;
-  // Hiển thị lưới ảnh theo thứ tự MÃ của toàn bảng (đúng yêu cầu)
-  const masps = Array.from(new Map(src.map(x=>[String(x.masp||"").toUpperCase(),1])).keys());
-  renderPreviewForMasps(masps);
+
+function showPreviewForRow(r) {
+    const src = hotInstance?.getSourceData() || [];
+    if (!src.length) return;
+    // Hiển thị lưới ảnh theo thứ tự MÃ của toàn bảng (đúng yêu cầu)
+    const masps = Array.from(new Map(src.map(x => [String(x.masp || "").toUpperCase(), 1])).keys());
+    renderPreviewForMasps(masps);
 }
 
 /* ===== LOAD & PAGINATION ===== */
-async function taiBaoCao(){
-  const p = buildParams(currentPage);
-  totalRows = await fetchCount(p);
-  const rows = await fetchPaged(p);
-  renderTable(rows);
-  showPreviewForRow(0);
-  updatePaging();
+async function taiBaoCao() {
+    const p = buildParams(currentPage);
+    totalRows = await fetchCount(p);
+    const rows = await fetchPaged(p);
+    renderTable(rows);
+    showPreviewForRow(0);
+    updatePaging();
 }
-function updatePaging(){
-  const psEl = document.getElementById("pageSize");
-  pageSize = Number(psEl?.value || pageSize || 1000);
-  const totalPages = Math.max(1, Math.ceil((totalRows||0)/pageSize));
-  document.getElementById("pageInfo").textContent =
-    `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
-  document.getElementById("btnPrev").disabled = currentPage<=1;
-  document.getElementById("btnNext").disabled = currentPage>=totalPages;
+function updatePaging() {
+    const psEl = document.getElementById("pageSize");
+    pageSize = Number(psEl?.value || pageSize || 1000);
+    const totalPages = Math.max(1, Math.ceil((totalRows || 0) / pageSize));
+    document.getElementById("pageInfo").textContent =
+        `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
+    document.getElementById("btnPrev").disabled = currentPage <= 1;
+    document.getElementById("btnNext").disabled = currentPage >= totalPages;
 }
-window.prevPage = async ()=>{ if(currentPage>1){ currentPage--; await taiBaoCao(); } };
-window.nextPage = async ()=>{ const max=Math.max(1,Math.ceil(totalRows/pageSize)); if(currentPage<max){ currentPage++; await taiBaoCao(); } };
-window.gotoPage = async ()=>{
-  const n = Number(document.getElementById("gotoPage").value||"1");
-  const max = Math.max(1, Math.ceil(totalRows/pageSize));
-  if (n>=1 && n<=max){ currentPage=n; await taiBaoCao(); }
+window.prevPage = async () => { if (currentPage > 1) { currentPage--; await taiBaoCao(); } };
+window.nextPage = async () => { const max = Math.max(1, Math.ceil(totalRows / pageSize)); if (currentPage < max) { currentPage++; await taiBaoCao(); } };
+window.gotoPage = async () => {
+    const n = Number(document.getElementById("gotoPage").value || "1");
+    const max = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (n >= 1 && n <= max) { currentPage = n; await taiBaoCao(); }
 };
 
-window.addEventListener("DOMContentLoaded", ()=>{
-  const d = new Date(); const toISO = dt => dt.toISOString().slice(0,10);
-  document.getElementById("denNgay").value = toISO(d);
-  document.getElementById("tuNgay").value  = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
-  // tự tải
-  taiBaoCao();
-});
