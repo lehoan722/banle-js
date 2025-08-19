@@ -450,8 +450,7 @@
                 
 
                 <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
-
-                <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
+                
             </div>
         </div>
 
@@ -465,38 +464,39 @@
     <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề"
                     onclick="toggleHeader()">⮜</button>
 
-        <div class="main-grid">
-    <div class="grid-left">
-      <div id="xntSummary"></div>            
+       <!-- NÚT THU GỌN HEADER giữ nguyên -->
 
+<div class="main-grid">
+  <!-- Cột trái: Bảng (60%) -->
+  <div class="grid-left">
+    <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
     <div id="hot" style="margin-top: 4px;"></div>
-    <!-- Thanh phân trang giống XNT14 -->
 
     <div id="pagination" style="margin-top:10px; text-align:center;">
-        <label style="margin-right:8px;">
-            Số dòng/trang:
-            <select id="pageSize" style="padding:4px 6px;">
-                <option value="500">500</option>
-                <option value="1000" selected>1000</option>
-                <option value="2000">2000</option>
-                <option value="5000">5000</option>
-                <option value="10000">10000</option>
-            </select>
-        </label>
-
-        <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
-        <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
-
-        <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
-        <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
-        <button class="main" onclick="window.gotoPage()">Đi</button>
-    </div>
-
-     <div class="grid-right">
-      <div id="previewTitle">Ảnh nhanh</div>
-      <div id="previewGrid"></div>
+      <label style="margin-right:8px;">
+        Số dòng/trang:
+        <select id="pageSize" style="padding:4px 6px;">
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+          <option value="2000">2000</option>
+          <option value="5000">5000</option>
+          <option value="10000">10000</option>
+        </select>
+      </label>
+      <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
+      <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
+      <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
+      <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+      <button class="main" onclick="window.gotoPage()">Đi</button>
     </div>
   </div>
+
+  <!-- Cột phải: Ảnh (40%) -->
+  <div class="grid-right">
+    <div id="previewTitle">Ảnh nhanh</div>
+    <div id="previewGrid"></div>
+  </div>
+</div>
 
 
     <!-- Popup tìm kiếm dùng chung -->
