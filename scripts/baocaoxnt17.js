@@ -670,7 +670,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 // ====== ẢNH SẢN PHẨM ======
 // ====== CẤU HÌNH LƯỚI ẢNH ======
-const IMAGES_PER_ROW = 1;  // ← đổi 1/2/3... là xong
+const IMAGES_PER_ROW = 2;  // ← đổi 1/2/3... là xong
 
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG", "WEBP"];
