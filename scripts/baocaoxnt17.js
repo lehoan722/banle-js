@@ -8,6 +8,17 @@ let pageSize = 1000;
 let totalRows = 0;
 
 // ===================== AUTH =====================
+(function injectQuickViewCss() {
+    const css = `
+    #previewGrid { display:grid; gap:10px; overflow:auto; }
+    .preview-card { border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
+    .preview-card.selected { box-shadow:0 0 0 2px #3b82f6 inset; }
+    .preview-card img { width:100%; height:auto; aspect-ratio: 4/3; object-fit: cover; border-radius:8px; display:block; }
+    .preview-cap { margin-top:6px; font-size:13px; color:#374151; font-weight:600; text-align:center;}
+  `;
+    const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+})();
+
 window.dangNhap = async function () {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
@@ -260,10 +271,19 @@ window.taiBaoCaoXNT = async function () {
 
         // Lấy dữ liệu trang hiện tại
         const rows = await fetchPaged(params);
+        // Lấy danh sách mã theo thứ tự trang hiện tại rồi render ảnh
+        const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
+        renderPreviewForMasps(masps);
+
 
         // Render
         renderTable(rows);
         renderSummary(rows);
+        // focus ảnh của hàng đầu tiên (nếu có)
+        if (rows && rows.length) {
+            focusPreview(String(rows[0].masp || '').toUpperCase());
+        }
+
         updatePagingBar();
         loading.textContent = "";
     } catch (err) {
@@ -639,7 +659,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const d = new Date(); const toISO = dt => dt.toISOString().slice(0, 10);
     if (document.getElementById("denNgay")) document.getElementById("denNgay").value = toISO(d);
     if (document.getElementById("tuNgay")) document.getElementById("tuNgay").value = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
-    taiBaoCaoXNT();
+    //taiBaoCaoXNT(); 
 });
 
 
@@ -649,6 +669,9 @@ window.addEventListener("DOMContentLoaded", () => {
  */
 
 // ====== ẢNH SẢN PHẨM ======
+// ====== CẤU HÌNH LƯỚI ẢNH ======
+const IMAGES_PER_ROW = 1;  // ← đổi 1/2/3... là xong
+
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG", "WEBP"];
 
@@ -670,37 +693,69 @@ window.handleImageError = function (img, masp) {
     }
 };
 
-function getImageUrl(masp){
-  // Ảnh mặc định thử với .jpg trước; các đuôi khác sẽ được thử trong onerror
-  return IMG_BASE + encodeURIComponent(masp) + ".JPG";
+function getImageUrl(masp) {
+    // Ảnh mặc định thử với .jpg trước; các đuôi khác sẽ được thử trong onerror
+    return IMG_BASE + encodeURIComponent(masp) + ".JPG";
 }
 
 
-function renderPreviewForMasps(list){
-  const box = document.getElementById("previewGrid");
-  const title = document.getElementById("previewTitle");
-  title.textContent = `Ảnh nhanh (${list.length.toLocaleString('vi-VN')} mã)`;
+// Lưu danh sách hiện tại để không render lại khi chỉ đổi selection
+let currentMaspsList = [];
 
-  box.innerHTML = list.map(m => {
-    const first = getImageUrl(m); // trả về .jpg; nếu lỗi sẽ thử jpeg/png/webp
-    return `<a href="https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(m)}"
-              target="_blank" title="${m}">
-              <img loading="lazy"
-                   src="${first}"
-                   data-try="0"
-                   onerror="handleImageError(this,'${m}')">
-            </a>`;
-  }).join("");
+function renderPreviewForMasps(list) {
+    currentMaspsList = list || [];
+    const box = document.getElementById("previewGrid");
+    const title = document.getElementById("previewTitle");
+    if (!box) return;
+
+    // set số cột theo cấu hình
+    box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+
+    title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
+
+    const offset = (currentPage - 1) * pageSize; // STT toàn bộ kết quả
+    box.innerHTML = currentMaspsList.map((m, i) => {
+        const stt = offset + i + 1;                   // số thứ tự đang hiển thị
+        const first = getImageUrl(m);
+        // mỗi khối có id để cuộn tới được
+        return `
+      <figure id="img-${m}" class="preview-card" data-masp="${m}">
+        <img loading="lazy"
+             src="${first}"
+             data-try="0"
+             onerror="handleImageError(this,'${m}')"
+             alt="${m}">
+        <figcaption class="preview-cap">${stt}. ${m}</figcaption>
+      </figure>`;
+    }).join("");
 }
+
+function focusPreview(masp) {
+    const box = document.getElementById('previewGrid');
+    if (!box || !masp) return;
+    // bỏ chọn cũ
+    const old = box.querySelector('.preview-card.selected');
+    if (old) old.classList.remove('selected');
+    // tìm thẻ tương ứng và cuộn tới
+    const el = document.getElementById(`img-${masp}`);
+    if (el) {
+        el.classList.add('selected');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+}
+
 
 
 function showPreviewForRow(r) {
-    const src = hotInstance?.getSourceData() || [];
-    if (!src.length) return;
-    // Hiển thị lưới ảnh theo thứ tự MÃ của toàn bảng (đúng yêu cầu)
-    const masps = Array.from(new Map(src.map(x => [String(x.masp || "").toUpperCase(), 1])).keys());
-    renderPreviewForMasps(masps);
+    if (!hotInstance) return;
+    const row = hotInstance.getSourceDataAtRow(r);
+    if (!row) return;
+    const masp = String(row.masp || "").toUpperCase();
+    if (!masp) return;
+    // chỉ focus ảnh tương ứng, KHÔNG render lại lưới (tránh nhảy cuộn)
+    focusPreview(masp);
 }
+
 
 /* ===== LOAD & PAGINATION ===== */
 async function taiBaoCao() {
