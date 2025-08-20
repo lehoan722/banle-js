@@ -13,11 +13,45 @@ let totalRows = 0;
     #previewGrid { display:grid; gap:10px; overflow:auto; }
     .preview-card { border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
     .preview-card.selected { box-shadow:0 0 0 2px #3b82f6 inset; }
-    .preview-card img { width:100%; height:auto; aspect-ratio: 4/3; object-fit: cover; border-radius:8px; display:block; }
-    .preview-cap { margin-top:6px; font-size:13px; color:#374151; font-weight:600; text-align:center;}
+    .preview-card img { width:100%; height:auto; aspect-ratio: 4/3; object-fit: cover; border-radius:8px; display:block; cursor: zoom-in; }
+    .preview-cap { margin-top:6px; font-size:13px; color:#374151; text-align:center; }
+    .preview-cap .cap-link { font-weight:700; color:#111; text-decoration:none; cursor:pointer; }
+    .preview-cap .cap-link:hover { text-decoration:underline; }
+
+    /* Lightbox */
+    .lb-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      display:none; align-items:center; justify-content:center; z-index: 9999;
+    }
+    .lb-backdrop.show { display:flex; }
+    .lb-wrap { max-width: 92vw; max-height: 92vh; }
+    .lb-wrap img { width:100%; height:100%; object-fit:contain; }
+    .lb-close { position:absolute; top:14px; right:18px; font-size:22px; color:#fff; cursor:pointer; }
   `;
     const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+
+    // Lightbox DOM
+    const lb = document.createElement('div');
+    lb.className = 'lb-backdrop';
+    lb.innerHTML = `
+    <div class="lb-close" title="Đóng">✕</div>
+    <div class="lb-wrap"><img alt="Ảnh lớn"></div>
+  `;
+    document.body.appendChild(lb);
+
+    lb.addEventListener('click', (e) => {
+        if (e.target.classList.contains('lb-backdrop') || e.target.classList.contains('lb-close')) {
+            lb.classList.remove('show');
+        }
+    });
+
+    window.openLightbox = (src) => {
+        const img = lb.querySelector('.lb-wrap img');
+        img.src = src;
+        lb.classList.add('show');
+    };
 })();
+
 
 window.dangNhap = async function () {
     const email = document.getElementById("email").value.trim();
@@ -702,59 +736,70 @@ function getImageUrl(masp) {
 // Lưu danh sách hiện tại để không render lại khi chỉ đổi selection
 let currentMaspsList = [];
 
-function renderPreviewForMasps(list) {
-    currentMaspsList = list || [];
-    const box = document.getElementById("previewGrid");
-    const title = document.getElementById("previewTitle");
-    if (!box) return;
+let currentMaspsList = [];
 
-    // set số cột theo cấu hình
-    box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+function renderPreviewForMasps(list){
+  currentMaspsList = (list || []).map(x => String(x||"").toUpperCase());
+  const box = document.getElementById("previewGrid");
+  const title = document.getElementById("previewTitle");
+  if (!box) return;
 
-    title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
+  box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+  title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
 
-    const offset = (currentPage - 1) * pageSize; // STT toàn bộ kết quả
-    box.innerHTML = currentMaspsList.map((m, i) => {
-        const stt = offset + i + 1;                   // số thứ tự đang hiển thị
-        const first = getImageUrl(m);
-        // mỗi khối có id để cuộn tới được
-        return `
+  const offset = (currentPage - 1) * pageSize; // STT toàn bộ; đổi =0 nếu muốn STT theo trang
+  const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa111.html";
+
+  box.innerHTML = currentMaspsList.map((m, i) => {
+    const stt = offset + i + 1;
+    const src = getImageUrl(m);
+    return `
       <figure id="img-${m}" class="preview-card" data-masp="${m}">
         <img loading="lazy"
-             src="${first}"
+             src="${src}"
              data-try="0"
-             onerror="handleImageError(this,'${m}')"
-             alt="${m}">
-        <figcaption class="preview-cap">${stt}. ${m}</figcaption>
+             alt="${m}"
+             onclick="openLightbox(this.src)"
+             onerror="handleImageError(this,'${m}')">
+        <figcaption class="preview-cap">
+          <span class="cap-link" onclick="window.open('${DETAIL_URL}?masp=${encodeURIComponent(m)}','_blank')">
+            ${stt}. ${m}
+          </span>
+        </figcaption>
       </figure>`;
-    }).join("");
+  }).join("");
 }
 
-function focusPreview(masp) {
-    const box = document.getElementById('previewGrid');
-    if (!box || !masp) return;
-    // bỏ chọn cũ
-    const old = box.querySelector('.preview-card.selected');
-    if (old) old.classList.remove('selected');
-    // tìm thẻ tương ứng và cuộn tới
-    const el = document.getElementById(`img-${masp}`);
-    if (el) {
-        el.classList.add('selected');
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-    }
+
+function focusPreview(masp){
+  const box = document.getElementById('previewGrid');
+  if (!box || !masp) return;
+  const old = box.querySelector('.preview-card.selected');
+  if (old) old.classList.remove('selected');
+  const el = document.getElementById(`img-${masp}`);
+  if (el) {
+    el.classList.add('selected');
+    el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'nearest' });
+  }
 }
+
 
 
 
 function showPreviewForRow(r) {
-    if (!hotInstance) return;
-    const row = hotInstance.getSourceDataAtRow(r);
-    if (!row) return;
-    const masp = String(row.masp || "").toUpperCase();
+    const masp = getMaspAtVisualRow(r);
     if (!masp) return;
-    // chỉ focus ảnh tương ứng, KHÔNG render lại lưới (tránh nhảy cuộn)
-    focusPreview(masp);
+    focusPreview(masp);   // chỉ focus/scroll tới ảnh mã này (không re-render)
 }
+
+function getMaspAtVisualRow(r) {
+    if (!hotInstance || r == null || r < 0) return "";
+    const COL_MASP = 0; // cột 'Mã hàng' là cột 0 trong bảng của bạn
+    // Lấy trực tiếp từ lưới (visual cell), không cần map physical
+    const v = hotInstance.getDataAtCell(r, COL_MASP);
+    return String(v || "").toUpperCase().trim();
+}
+
 
 
 /* ===== LOAD & PAGINATION ===== */
