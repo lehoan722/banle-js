@@ -182,16 +182,32 @@ async function renderOneProductDetail(masp) {
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return;
 
-    // ngày nhập đầu/cuối (chỉ khi sản phẩm có trong hóa đơn nhập)
-    const { data: nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1", "nmcs2"]).order("ngay", { ascending: true });
-    let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList && nhapList.length) {
-        const sohdArr = nhapList.map(e => e.sohd);
-        const { data: cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
-        const setSohd = new Set(cts.map(e => e.sohd));
-        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
+    // ND lấy từ dmhanghoa.nhapdau; fallback tính từ hóa đơn nếu thiếu
+    let ngay_nhapdau = hanghoa.nhapdau || "";
+    let ngay_nhapcuoi = "";
+
+    if (!ngay_nhapdau || !ngay_nhapcuoi) {
+        const { data: nhapList } = await supabase
+            .from("hoadon_banle")
+            .select("ngay,sohd")
+            .in("loaihd", ["nmcs1", "nmcs2"])
+            .order("ngay", { ascending: true });
+        if (nhapList?.length) {
+            const sohdArr = nhapList.map(e => e.sohd);
+            const { data: cts } = await supabase
+                .from("ct_hoadon_banle")
+                .select("sohd,masp")
+                .in("sohd", sohdArr)
+                .eq("masp", masp);
+            const setSohd = new Set(cts.map(e => e.sohd));
+            const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+            if (filtered.length) {
+                if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;  // fallback nếu thiếu
+                ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
+            }
+        }
     }
+
 
     // ngày kiểm gần nhất CS1/CS2
     let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
@@ -227,7 +243,7 @@ async function renderOneProductDetail(masp) {
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
       <th>Vị trí CS2</th>
-      <th>Giá lẻ</th>
+      <th>${hanghoa.nhacc || ""}</th>
       <th class="red">ND</th>
       <th class="red">NC</th>
       <th class="red">Kiểm CS1</th>
@@ -334,7 +350,7 @@ async function renderProductDetailHTML(masp) {
           <th>Mã hàng</th>
           <th>Vị trí CS1</th>
           <th>Vị trí CS2</th>
-          <th>Giá lẻ</th>
+          <th>${hanghoa.nhacc || ""}</th>
           <th class="red">ND</th>
           <th class="red">NC</th>
           <th class="red">Kiểm CS1</th>
