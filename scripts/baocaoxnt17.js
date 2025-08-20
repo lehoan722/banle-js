@@ -736,8 +736,6 @@ function getImageUrl(masp) {
 // Lưu danh sách hiện tại để không render lại khi chỉ đổi selection
 let currentMaspsList = [];
 
-let currentMaspsList = [];
-
 function renderPreviewForMasps(list){
   currentMaspsList = (list || []).map(x => String(x||"").toUpperCase());
   const box = document.getElementById("previewGrid");
