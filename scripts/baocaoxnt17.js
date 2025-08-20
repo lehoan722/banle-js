@@ -746,7 +746,7 @@ function renderPreviewForMasps(list){
   title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
 
   const offset = (currentPage - 1) * pageSize; // STT toàn bộ; đổi =0 nếu muốn STT theo trang
-  const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa111.html";
+  const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
 
   box.innerHTML = currentMaspsList.map((m, i) => {
     const stt = offset + i + 1;
