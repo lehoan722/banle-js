@@ -53,24 +53,28 @@ let totalRows = 0;
 })();
 
 
-window.dangNhap = async function () {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const status = document.getElementById("authStatus");
-    status.textContent = "";
-
-    if (!email || !password) {
-        status.textContent = "Nhập đầy đủ email và mật khẩu!";
-        return;
+document.addEventListener("DOMContentLoaded", async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        document.getElementById("loginBox").style.display = "none";
+    } else {
+        document.getElementById("loginBox").style.display = "block";
     }
+});
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-        status.textContent = "Đăng nhập thất bại: " + error.message;
-        return;
+        alert("Sai mật khẩu, vui lòng nhập lại");
+    } else {
+        document.getElementById("loginBox").style.display = "none";
+        location.reload(); // refresh lại để lấy session
     }
-    status.style.color = "green";
-    status.textContent = "Đăng nhập thành công!";
-};
+});
+
 
 // ===================== HELPERS =====================
 function val(id) { return document.getElementById(id)?.value ?? ""; }
@@ -184,16 +188,21 @@ function attachMaspLinkHandler(container) {
 function renderTable(rows) {
     const container = document.getElementById("hot");
     const columns = [
-        { data: 'masp', title: 'Mã hàng', width: 110, renderer: maspTextRenderer },
-        { data: 'size', title: 'Kích cỡ', width: 60, className: 'htCenter' },
-        { data: 'xuatban_cs1', title: 'Xuất bán CS1', width: 90, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'xuatban_cs2', title: 'Xuất bán CS2', width: 90, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'xuatban', title: 'Xuất bán (gộp)', width: 96, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'ton_cs1', title: 'Tồn CS1', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'ton_cs2', title: 'Tồn CS2', width: 76, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'nhapmua', title: 'Nhập mua', width: 80, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'cuoiky', title: 'Cuối kỳ', width: 80, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'giale', title: 'Giá lẻ', width: 86, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'masp', title: 'Mã hàng', width: 120, renderer: maspTextRenderer },
+        { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
+        { data: 'xuatban_cs1', title: 'Xuất bán CS1', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatchinhanh_cs1', title: 'Xuất CN CS1', width: 60, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
+
+        { data: 'xuatban_cs2', title: 'Xuất bán CS2', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatchinhanh_cs2', title: 'Xuất CN CS2', width: 60, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
+
+
+        { data: 'xuatban', title: 'Xuất bán (gộp)', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs1', title: 'Tồn CS1', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs2', title: 'Tồn CS2', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapmua', title: 'Nhập mua', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'cuoiky', title: 'Cuối kỳ', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'giale', title: 'Giá lẻ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
     ];
     if (!hotInstance) {
         hotInstance = new Handsontable(container, {
@@ -235,24 +244,29 @@ function renderSummary(rows) {
         a.nhapmua += r.nhapmua || 0;
         a.tongnhap += r.tongnhap || 0;
         a.xuatban_cs1 += r.xuatban_cs1 || 0;
+        a.xuatchi_cs1 += r.xuatchinhanh_cs1 || 0;   // ⬅️ MỚI
         a.xuatban_cs2 += r.xuatban_cs2 || 0;
+        a.xuatchi_cs2 += r.xuatchinhanh_cs2 || 0;   // ⬅️ MỚI
         a.xuatban += r.xuatban || 0;
         a.tongxuat += r.tongxuat || 0;
         a.cuoiky += r.cuoiky || 0;
         return a;
-    }, { dauky: 0, nhapmua: 0, tongnhap: 0, xuatban_cs1: 0, xuatban_cs2: 0, xuatban: 0, tongxuat: 0, cuoiky: 0 });
+    }, { dauky: 0, nhapmua: 0, tongnhap: 0, xuatban_cs1: 0, xuatchi_cs1: 0, xuatban_cs2: 0, xuatchi_cs2: 0, xuatban: 0, tongxuat: 0, cuoiky: 0 });
 
     el.innerHTML = `<span style="background:#e3f2fd;padding:7px 14px;border-radius:8px;">
-    <b>TỔNG:</b>
-    Đầu kỳ: <b>${s.dauky.toLocaleString('vi-VN')}</b> |
-    Nhập mua: <b>${s.nhapmua.toLocaleString('vi-VN')}</b> |
-    Tổng nhập: <b>${s.tongnhap.toLocaleString('vi-VN')}</b> |
-    Xuất bán CS1: <b>${s.xuatban_cs1.toLocaleString('vi-VN')}</b> |
-    Xuất bán CS2: <b>${s.xuatban_cs2.toLocaleString('vi-VN')}</b> |
-    Xuất bán (gộp): <b>${s.xuatban.toLocaleString('vi-VN')}</b> |
-    Tổng xuất: <b>${s.tongxuat.toLocaleString('vi-VN')}</b> |
-    Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b>
-  </span>`;
+  <b>TỔNG:</b>
+  Đầu kỳ: <b>${s.dauky.toLocaleString('vi-VN')}</b> |
+  Nhập mua: <b>${s.nhapmua.toLocaleString('vi-VN')}</b> |
+  Tổng nhập: <b>${s.tongnhap.toLocaleString('vi-VN')}</b> |
+  Xuất bán CS1: <b>${s.xuatban_cs1.toLocaleString('vi-VN')}</b> |
+  Xuất CN CS1: <b>${s.xuatchi_cs1.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
+  Xuất bán CS2: <b>${s.xuatban_cs2.toLocaleString('vi-VN')}</b> |
+  Xuất CN CS2: <b>${s.xuatchi_cs2.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
+  Xuất bán (gộp): <b>${s.xuatban.toLocaleString('vi-VN')}</b> |
+  Tổng xuất: <b>${s.tongxuat.toLocaleString('vi-VN')}</b> |
+  Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b>
+</span>`;
+
 }
 
 showPreviewForRow(0);
@@ -374,11 +388,15 @@ window.xuatExcelToanBoXNT17 = async function () {
 
     const headers = [
         "STT", "Mã hàng", "Kích cỡ",
-        "Xuất bán CS1", "Xuất bán CS2", "Xuất bán (gộp)",
+        "Xuất bán CS1", "Xuất CN CS1",     // ⬅️ MỚI
+        "Xuất bán CS2", "Xuất CN CS2",     // ⬅️ MỚI
+        "Xuất bán (gộp)",
         "Tồn CS1", "Tồn CS2",
-        "Nhập mua", "Cuối kỳ", "Giá lẻ", "Đầu kỳ", "Xuất khác", "Tổng xuất",
+        "Nhập mua", "Cuối kỳ", "Giá lẻ",
+        "Đầu kỳ", "Xuất khác", "Tổng xuất",
         "Nhập khác", "Tổng nhập", "Tên hàng"
     ];
+
     const aoa = [headers];
 
     let sttOffset = 0;
@@ -390,12 +408,17 @@ window.xuatExcelToanBoXNT17 = async function () {
             aoa.push([
                 sttOffset + i + 1,
                 r.masp ?? "", r.size ?? "",
-                r.xuatban_cs1 ?? 0, r.xuatban_cs2 ?? 0, r.xuatban ?? 0,
+
+                r.xuatban_cs1 ?? 0, r.xuatchinhanh_cs1 ?? 0,   // ⬅️ MỚI
+                r.xuatban_cs2 ?? 0, r.xuatchinhanh_cs2 ?? 0,   // ⬅️ MỚI
+
+                r.xuatban ?? 0,
                 r.ton_cs1 ?? 0, r.ton_cs2 ?? 0,
                 r.nhapmua ?? 0, r.cuoiky ?? 0, r.giale ?? 0,
                 r.dauky ?? 0, r.xuatkhac ?? 0, r.tongxuat ?? 0,
                 r.nhapkhac ?? 0, r.tongnhap ?? 0, r.tensp ?? ""
             ]);
+
         }
         sttOffset += pageRows.length;
     }
@@ -736,22 +759,22 @@ function getImageUrl(masp) {
 // Lưu danh sách hiện tại để không render lại khi chỉ đổi selection
 let currentMaspsList = [];
 
-function renderPreviewForMasps(list){
-  currentMaspsList = (list || []).map(x => String(x||"").toUpperCase());
-  const box = document.getElementById("previewGrid");
-  const title = document.getElementById("previewTitle");
-  if (!box) return;
+function renderPreviewForMasps(list) {
+    currentMaspsList = (list || []).map(x => String(x || "").toUpperCase());
+    const box = document.getElementById("previewGrid");
+    const title = document.getElementById("previewTitle");
+    if (!box) return;
 
-  box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
-  title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
+    box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+    title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
 
-  const offset = (currentPage - 1) * pageSize; // STT toàn bộ; đổi =0 nếu muốn STT theo trang
-  const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+    const offset = (currentPage - 1) * pageSize; // STT toàn bộ; đổi =0 nếu muốn STT theo trang
+    const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
 
-  box.innerHTML = currentMaspsList.map((m, i) => {
-    const stt = offset + i + 1;
-    const src = getImageUrl(m);
-    return `
+    box.innerHTML = currentMaspsList.map((m, i) => {
+        const stt = offset + i + 1;
+        const src = getImageUrl(m);
+        return `
       <figure id="img-${m}" class="preview-card" data-masp="${m}">
         <img loading="lazy"
              src="${src}"
@@ -765,20 +788,20 @@ function renderPreviewForMasps(list){
           </span>
         </figcaption>
       </figure>`;
-  }).join("");
+    }).join("");
 }
 
 
-function focusPreview(masp){
-  const box = document.getElementById('previewGrid');
-  if (!box || !masp) return;
-  const old = box.querySelector('.preview-card.selected');
-  if (old) old.classList.remove('selected');
-  const el = document.getElementById(`img-${masp}`);
-  if (el) {
-    el.classList.add('selected');
-    el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'nearest' });
-  }
+function focusPreview(masp) {
+    const box = document.getElementById('previewGrid');
+    if (!box || !masp) return;
+    const old = box.querySelector('.preview-card.selected');
+    if (old) old.classList.remove('selected');
+    const el = document.getElementById(`img-${masp}`);
+    if (el) {
+        el.classList.add('selected');
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
 }
 
 
