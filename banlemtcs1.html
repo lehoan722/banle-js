@@ -17,7 +17,7 @@
 
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial; 
             margin: 0;
             height: 100%;
         }
@@ -440,7 +440,83 @@
     </style>
     <div id="app-menu" class="menu-bar"></div>
 
+    <div class="menu-bar">
+        <div class="tennv">
 
+            <label>
+                <select id="diadiem">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </label>
+
+            <label> <input id="ngay" type="date" /></label>
+            <!-- <label>Giờ <input id="gio" /></label> -->
+            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+
+        </div>
+        <div class="menu-item">
+
+            <span class="menu-link">📁 Báo cáo hóa đơn</span>
+            <div class="dropdown-content">
+
+                <a href="xemhoadonT.html" target="_blank">Xem hóa đơn bct</a>
+                <a href="baocaochitietT.html" target="_blank">Xem chi tiet bct</a>
+
+                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
+                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
+                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
+
+            </div>
+        </div>
+        <div class="menu-item">
+            <span class="menu-link">📦 GIAO DICH</span>
+            <div class="dropdown-content">
+                <a href="banlemtt.html" target="_blank">HOA DON BAN LE</a>
+                <a href="nhapmoimtcs1.html" target="_blank">HOA DON NHAP MOI CS1</a>
+                <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
+                <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
+                <a href="nhapdoimtcs1.html" target="_blank">NHAP DOI TU KHACH CS1</a>
+                <a href="tralaincccs1.html" target="_blank">TRA LAI NHA CC CS1</a>
+                <a href="xuathuycs1.html" target="_blank">XUAT HUY HANG HONG CS1</a>
+                <a href="kiemkhocs1.html" target="_blank">PHIEU KIEM KHO CS1</a>
+
+
+            </div>
+        </div>
+        <div class="menu-item">
+            <span class="menu-link">📦 BAO CAO</span>
+            <div class="dropdown-content">
+                <a href="baocaochitiet111.html" target="_blank">bao cao Chi tiết cac loai</a>
+                <a href="baocaotonghop.html" target="_blank">bao cao tong hop cac loai</a>
+                <a href="baocaoxnt16.html" target="_blank">bao cao xuat, nhap, ton cac loai</a>
+                <a href="xemhoadon111.html" target="_blank">bao cao theo hoa don cac loai</a>
+                <a href="timkiemhanghoa333.html" target="_blank">TÌM KIẾM THÔNG TIN HÀNG HÓA</a>
+
+            </div>
+        </div>
+
+        <div class="menu-item">
+            <span class="menu-link">📦 Danh Muc</span>
+            <div class="dropdown-content">
+                <a href="nhapdmnhanvien.html" target="_blank">nhap dm nhan vien</a>
+                <a href="nhapdmkhachhang.html" target="_blank">nhap dm khach hang</a>
+                <a href="nhapdmkhuyenmai.html" target="_blank">nhap dm khuyen mai</a>
+                <a href="nhapvitrikhocs1.html" target="_blank">nhap vi tri kho cs1</a>
+                <a href="suadmhanghoa.html" target="_blank">sua dm hang hoa</a>
+                <a href="upanh/4cotdathangMT.html" target="_blank">4cotdathangMT</a>
+                <a href="menu.html" target="_blank">MENU</a>
+
+            </div>
+        </div>
+
+         <!-- <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->     
+
+
+    </div>
 
 
     <div id="app-container" style="display:none;">
