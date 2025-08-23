@@ -190,18 +190,18 @@ function renderTable(rows) {
     const columns = [
         { data: 'masp', title: 'Mã hàng', width: 120, renderer: maspTextRenderer },
         { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
-        { data: 'xuatban_cs1', title: 'Xuất bán CS1', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'xuatchinhanh_cs1', title: 'Xuất CN CS1', width: 60, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
+        { data: 'xuatban_cs1', title: 'Xuất bán CS1', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatchinhanh_cs2', title: 'Xuất CN 2v1', width: 50, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
 
-        { data: 'xuatban_cs2', title: 'Xuất bán CS2', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'xuatchinhanh_cs2', title: 'Xuất CN CS2', width: 60, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
+        { data: 'xuatban_cs2', title: 'Xuất bán CS2', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatchinhanh_cs1', title: 'Xuất CN 1v2', width: 50, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
 
 
-        { data: 'xuatban', title: 'Xuất bán (gộp)', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'ton_cs1', title: 'Tồn CS1', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'ton_cs2', title: 'Tồn CS2', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'nhapmua', title: 'Nhập mua', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
-        { data: 'cuoiky', title: 'Cuối kỳ', width: 60, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatban', title: 'Xuất bán (gộp)', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs1', title: 'Tồn CS1', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs2', title: 'Tồn CS2', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapmua', title: 'Nhập mua', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'cuoiky', title: 'Cuối kỳ', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
         { data: 'giale', title: 'Giá lẻ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
     ];
     if (!hotInstance) {
@@ -259,9 +259,9 @@ function renderSummary(rows) {
   Nhập mua: <b>${s.nhapmua.toLocaleString('vi-VN')}</b> |
   Tổng nhập: <b>${s.tongnhap.toLocaleString('vi-VN')}</b> |
   Xuất bán CS1: <b>${s.xuatban_cs1.toLocaleString('vi-VN')}</b> |
-  Xuất CN CS1: <b>${s.xuatchi_cs1.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
+  Xuất CN CS2: <b>${s.xuatchi_cs1.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
   Xuất bán CS2: <b>${s.xuatban_cs2.toLocaleString('vi-VN')}</b> |
-  Xuất CN CS2: <b>${s.xuatchi_cs2.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
+  Xuất CN CS1: <b>${s.xuatchi_cs2.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
   Xuất bán (gộp): <b>${s.xuatban.toLocaleString('vi-VN')}</b> |
   Tổng xuất: <b>${s.tongxuat.toLocaleString('vi-VN')}</b> |
   Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b>
@@ -338,6 +338,7 @@ window.taiBaoCaoXNT = async function () {
         console.error(err);
         loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
     }
+    toggleHeader();
 };
 
 // ===================== EXCEL EXPORT (song song) =====================
@@ -388,8 +389,8 @@ window.xuatExcelToanBoXNT17 = async function () {
 
     const headers = [
         "STT", "Mã hàng", "Kích cỡ",
-        "Xuất bán CS1", "Xuất CN CS1",     // ⬅️ MỚI
-        "Xuất bán CS2", "Xuất CN CS2",     // ⬅️ MỚI
+        "Xuất bán CS1", "Xuất CN 2v1",     // ⬅️ MỚI
+        "Xuất bán CS2", "Xuất CN 1v2",     // ⬅️ MỚI
         "Xuất bán (gộp)",
         "Tồn CS1", "Tồn CS2",
         "Nhập mua", "Cuối kỳ", "Giá lẻ",
@@ -409,8 +410,8 @@ window.xuatExcelToanBoXNT17 = async function () {
                 sttOffset + i + 1,
                 r.masp ?? "", r.size ?? "",
 
-                r.xuatban_cs1 ?? 0, r.xuatchinhanh_cs1 ?? 0,   // ⬅️ MỚI
-                r.xuatban_cs2 ?? 0, r.xuatchinhanh_cs2 ?? 0,   // ⬅️ MỚI
+                r.xuatban_cs1 ?? 0, r.xuatchinhanh_cs2 ?? 0,   // ⬅️ MỚI
+                r.xuatban_cs2 ?? 0, r.xuatchinhanh_cs1 ?? 0,   // ⬅️ MỚI
 
                 r.xuatban ?? 0,
                 r.ton_cs1 ?? 0, r.ton_cs2 ?? 0,
@@ -712,12 +713,30 @@ window.moTrangAnh = function () {
 
 
 // ===================== INIT =====================
+function toLocalISO(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
 window.addEventListener("DOMContentLoaded", () => {
-    const d = new Date(); const toISO = dt => dt.toISOString().slice(0, 10);
-    if (document.getElementById("denNgay")) document.getElementById("denNgay").value = toISO(d);
-    if (document.getElementById("tuNgay")) document.getElementById("tuNgay").value = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
-    //taiBaoCaoXNT(); 
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);   // hôm qua
+
+  const den = document.getElementById("denNgay");
+  const tu  = document.getElementById("tuNgay");
+  if (den) den.value = toLocalISO(now);        // hôm nay
+  if (tu)  tu.value  = toLocalISO(yesterday);  // hôm qua
+
+  // Tự động tick "Phát sinh bán trong kỳ"
+  const cb = document.getElementById("locPhatSinhXuat");
+  if (cb) cb.checked = true;
+
+  // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
+   taiBaoCaoXNT();
 });
+
+
 
 
 /* ===== PREVIEW ẢNH (40%) =====
