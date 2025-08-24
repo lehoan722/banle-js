@@ -450,8 +450,8 @@
             </label>
 
             <label> <input id="ngay" type="date" /></label>
-             <label>Giờ <input id="gio" /></label>
-                         <input id="manv" type="password" placeholder="Mã NV" />
+             
+                        
             <input id="tennv" placeholder="Tên NV" readonly />
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
@@ -461,7 +461,11 @@
         <div id="app-menu" class="menu-bar"></div>       
 
         
-         <!-- <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->     
+         <!--
+        <label>Giờ <input id="gio" /></label>
+         <input id="manv" type="password" placeholder="Mã NV" />
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->     
 
 
     </div>
@@ -1107,10 +1111,7 @@
 <script src="scripts/menu-component.js"></script>
 
     <script>
-        // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
-        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
-
+       
         // Bạn đã cung cấp:
         const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
         const SHEET_NAME = 'menubanlemt';
