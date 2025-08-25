@@ -228,17 +228,7 @@
       left.appendChild(g);
     });
 
-    // Ô tìm nhanh
-    const search = el("input", { class: "mc-search", placeholder: "Tìm menu nhanh (gõ để lọc…)" });
-    search.addEventListener("input", () => {
-      const q = search.value.trim().toLowerCase();
-      // Ẩn/hiện item theo label
-      hostEl.querySelectorAll(".mc-dd .mc-item").forEach(a => {
-        const text = a.textContent.toLowerCase();
-        a.style.display = text.includes(q) ? "" : "none";
-      });
-    });
-
+    
     // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
     refresh.addEventListener("click", async () => {
@@ -255,7 +245,6 @@
       }
     });
 
-    right.appendChild(search);
     right.appendChild(refresh);
 
     wrap.appendChild(left);
@@ -264,11 +253,11 @@
     hostEl.appendChild(wrap);
 
     // Thêm banner nhỏ hiển thị cơ sở hiện tại
-    if (ctx.cs) {
-      const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
-      banner.style.marginTop = "4px";
-      hostEl.appendChild(banner);
-    }
+    //if (ctx.cs) {
+      //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
+      //banner.style.marginTop = "4px";
+      //hostEl.appendChild(banner);
+   // }
   }
 
   function showError(msg, host) {
