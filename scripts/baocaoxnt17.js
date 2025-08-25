@@ -222,6 +222,15 @@ function renderTable(rows) {
             filters: true,
             dropdownMenu: true,
             autoColumnSize: { samplingRatio: 23 },
+            cells: (row, col) => {
+                const props = {};
+                // Bỏ qua các hàng header ảo của Handsontable (row < 0) nếu có
+                if (row >= 0) {
+                    props.className = (row % 2 === 0) ? 'row-even' : 'row-odd';
+                }
+                return props;
+            },
+
             afterRender() {
                 // nothing
             },
@@ -714,26 +723,26 @@ window.moTrangAnh = function () {
 
 // ===================== INIT =====================
 function toLocalISO(d) {
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);   // hôm qua
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);   // hôm qua
 
-  const den = document.getElementById("denNgay");
-  const tu  = document.getElementById("tuNgay");
-  if (den) den.value = toLocalISO(now);        // hôm nay
-  if (tu)  tu.value  = toLocalISO(yesterday);  // hôm qua
+    const den = document.getElementById("denNgay");
+    const tu = document.getElementById("tuNgay");
+    if (den) den.value = toLocalISO(now);        // hôm nay
+    if (tu) tu.value = toLocalISO(yesterday);  // hôm qua
 
-  // Tự động tick "Phát sinh bán trong kỳ"
-  const cb = document.getElementById("locPhatSinhXuat");
-  if (cb) cb.checked = true;
+    // Tự động tick "Phát sinh bán trong kỳ"
+    const cb = document.getElementById("locPhatSinhXuat");
+    if (cb) cb.checked = true;
 
-  // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
-   taiBaoCaoXNT();
+    // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
+    taiBaoCaoXNT();
 });
 
 
