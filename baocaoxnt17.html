@@ -348,14 +348,50 @@
             display: none !important;
         }
 
-        /* Lưới 60/40 */
-  .main-grid { display:flex; gap:10px; height: calc(100vh - 140px); }
-  .grid-left  { flex: 0 0 60%; min-width: 0; display:flex; flex-direction: column; }
-  .grid-right { flex: 0 0 40%; min-width: 0; display:flex; flex-direction: column; }
-  #hot { flex:1 1 auto; min-height:0; } /* giữ như XNT16 */ /* :contentReference[oaicite:4]{index=4} */
-  #previewTitle { font-weight:700; margin:6px 0; }
-  #previewGrid { overflow:auto; display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:10px; }
-  #previewGrid img { width:100%; height:190px; object-fit:cover; border-radius:8px; }
+        /* Lưới 60/40 – giảm gap giữa 2 cột để rộng chỗ cho ảnh */
+.main-grid { display:flex; gap:6px; height: calc(100vh - 140px); }
+
+/* Giữ 60/40, nhưng bỏ mọi padding/margin thừa ở cột phải */
+.grid-left  { flex: 0 0 60%; min-width: 0; display:flex; flex-direction: column; }
+.grid-right { flex: 0 0 40%; min-width: 0; display:flex; flex-direction: column; padding:0; margin:0; }
+
+#hot { flex:1 1 auto; min-height:0; }
+
+/* Tiêu đề khu ảnh – gom gọn */
+#previewTitle { font-weight:700; margin:2px 0 4px 0; line-height:1.2; }
+
+/* Grid ảnh: sát nhau tối đa, bỏ khoảng đệm */
+#previewGrid {
+  overflow:auto;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));  /* 2 cột đều */
+  gap:2px;                        /* gần như sát nhau */
+  padding:0;                      /* bỏ mọi padding */
+}
+
+/* Ảnh: full chiều ngang, giữ tỉ lệ, không bo tròn, auto cao theo nội dung */
+#previewGrid img {
+  width:100%;
+  height:auto;                    /* cho phép tự cao theo tỉ lệ */
+  aspect-ratio: 3 / 4;            /* giữ khung đứng đồng đều; có thể chuyển 1/1 nếu muốn vuông */
+  object-fit:cover;
+  border-radius:0;                /* bỏ bo góc để nhìn sát */
+  display:block;
+}
+
+
+  /* Xen kẽ màu dòng cho Handsontable */
+#hot .handsontable td.row-even {
+  background: #fafafa;           /* màu nhạt */
+}
+#hot .handsontable td.row-odd {
+  background: #ffffff;           /* trắng */
+}
+/* Khi hover vẫn thấy rõ */
+#hot .handsontable tbody tr:hover td {
+  filter: brightness(0.98);
+}
+
 
     </style>
 </head>
