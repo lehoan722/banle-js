@@ -124,7 +124,6 @@ function xuLyKhiChonMaSanPham(masp) {
     window.moPopupNhapHangHoa("them", { masp });
   }
 }
-window.xuLyKhiChonMaSanPham = xuLyKhiChonMaSanPham;
 
 
 export function hienThiFormMaMoi() {
