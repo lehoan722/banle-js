@@ -19,7 +19,7 @@ const truongHangHoa = [
   { id: "mausac", label: "Màu sắc" },
   { id: "khuyenmai", label: "Khuyến mãi" },
   { id: "quanlykhicoc", label: "Quản lý khi cọc", loai: "boolean" }
-  // không hiển thị nhapcuoi, nhapdau sẽ tự động gán 
+  // không hiển thị nhapcuoi, nhapdau sẽ tự động gán
 ];
 
 export function khoiTaoTimMaSP(sanPhamData) {
@@ -124,7 +124,6 @@ function xuLyKhiChonMaSanPham(masp) {
     window.moPopupNhapHangHoa("them", { masp });
   }
 }
-window.xuLyKhiChonMaSanPham = xuLyKhiChonMaSanPham;
 
 
 export function hienThiFormMaMoi() {
