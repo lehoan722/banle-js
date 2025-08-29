@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="vi">
 
 <head>
@@ -113,54 +113,42 @@
             renderAllRows: false,
             filters: true,
             dropdownMenu: true,
-            autoColumnSize: { samplingRatio: 23 },
-            cells: (row, col) => {
-                const props = {};
-                // Bỏ qua các hàng header ảo của Handsontable (row < 0) nếu có
-                if (row >= 0) {
-                    props.className = (row % 2 === 0) ? 'row-even' : 'row-odd';
-                }
-                return props;
-            },
-
-            afterRender() {
-                // nothing
-            },
-            afterSelectionEnd(r) { if (typeof showPreviewForRow === 'function') showPreviewForRow(r); }
-
+            autoColumnSize: { samplingRatio: 23 }
+            
         });
 
+        
+/* ... các khai báo trên ... */
 
+function showPreviewForRow(r) {
+  try {
+    if (!window.hot) return;
+    // Handsontable gọi afterSelectionEnd(row, col, row2, col2)
+    const rowIndex = Array.isArray(r) ? r[0] : r; // phòng trường hợp truyền nhầm
+    const rowObj = hot.getSourceDataAtRow(rowIndex);
+    const previewEl = document.getElementById('preview');
+    if (!rowObj) { previewEl.innerHTML = ''; return; }
 
-        function showPreviewForRow(r) {
-            try {
-                if (!window.hot) return;
-                // Handsontable gọi afterSelectionEnd(row, col, row2, col2)
-                const rowIndex = Array.isArray(r) ? r[0] : r; // phòng trường hợp truyền nhầm
-                const rowObj = hot.getSourceDataAtRow(rowIndex);
-                const previewEl = document.getElementById('preview');
-                if (!rowObj) { previewEl.innerHTML = ''; return; }
+    const fields = [
+      'masp','tensp','giale','giasi','gianhap',
+      'nhacc','nhomhang','chungloai','vitrikho1','vitrikho2','created_at'
+    ];
 
-                const fields = [
-                    'masp', 'tensp', 'giale', 'giasi', 'gianhap',
-                    'nhacc', 'nhomhang', 'chungloai', 'vitrikho1', 'vitrikho2', 'created_at'
-                ];
-
-                const tableRows = fields.map(f => `
+    const tableRows = fields.map(f => `
       <tr>
         <td style="padding:2px 8px;color:#666">${f}</td>
         <td style="padding:2px 8px">${rowObj[f] ?? ''}</td>
       </tr>`).join('');
 
-                previewEl.innerHTML = `
+    previewEl.innerHTML = `
       <div style="padding:8px;border:1px solid #eee;border-radius:6px;background:#fafafa">
         <b>Xem nhanh:</b>
         <table style="margin-top:6px;font-size:13px">${tableRows}</table>
       </div>`;
-            } catch (e) {
-                console.warn('showPreviewForRow error:', e);
-            }
-        }
+  } catch (e) {
+    console.warn('showPreviewForRow error:', e);
+  }
+}
 
 
 
