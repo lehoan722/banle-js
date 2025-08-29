@@ -53,6 +53,8 @@
         <option value="update">✏️ Chỉ cập nhật dữ liệu</option>
     </select>
     <button onclick="kiemTraTuSupabase()">🔍 Kiểm tra dữ liệu</button>
+    <button onclick="taiDanhMucLenTrang()">⬇️ xem danh mục hàng hóa</button>
+
     <button onclick="downloadDanhMuc()">⬇️ Tải danh mục hàng hóa</button>
 
     <div id="loginModule" style="display:inline-block; margin-left:16px;">
@@ -358,6 +360,71 @@
                 window.location.reload(); // Đăng nhập thành công reload lại trang để các API dùng token mới
             }
         });
+
+        async function taiDanhMucLenTrang() {
+            try {
+                const supabase = getSupabaseClient();
+                const pageSize = 1000;
+                let from = 0, to = pageSize - 1;
+                const fieldOrder = columns.map(c => c.data); // gồm cả created_at
+                const all = [];
+
+                // Phân trang lấy hết, ORDER BY created_at DESC để mới nhất lên đầu
+                for (; ;) {
+                    const { data, error } = await supabase
+                        .from(TABLE_NAME)                       // ví dụ: 'dmhanghoa'
+                        .select(fieldOrder.join(', '))
+                        .order('created_at', { ascending: false })
+                        .range(from, to);
+
+                    if (error) throw error;
+
+                    if (data && data.length) all.push(...data);
+                    if (!data || data.length < pageSize) break;
+
+                    from += pageSize;
+                    to += pageSize;
+                }
+
+                // Chuẩn hóa theo đúng thứ tự cột của bảng
+                const rows = all.map(r => {
+                    const obj = {};
+                    fieldOrder.forEach(k => obj[k] = (r[k] ?? ''));
+                    return obj;
+                });
+
+                // Nạp vào Handsontable
+                if (window.hot) {
+                    // Nếu đã có instance, chỉ cần load lại data
+                    hot.updateSettings({
+                        columns: columns,
+                        colHeaders: columns.map(c => c.data)
+                    });
+                    hot.loadData(rows);
+                } else {
+                    // Nếu trang của bạn khởi tạo HOT ở chỗ khác, có thể không cần nhánh này
+                    const container = document.getElementById('hot');
+                    window.hot = new Handsontable(container, {
+                        data: rows,
+                        columns: columns,
+                        colHeaders: columns.map(c => c.data),
+                        rowHeaders: true,
+                        stretchH: 'all',
+                        height: 'auto',
+                        licenseKey: 'non-commercial-and-evaluation'
+                    });
+                }
+
+                alert(`✅ Đã tải ${rows.length} dòng dmhanghoa lên bảng (mới nhất ở trên cùng).`);
+            } catch (e) {
+                console.error('Lỗi tải danh mục lên trang:', e);
+                alert('❌ Không thể tải danh mục hàng hóa lên trang. Kiểm tra console để xem chi tiết.');
+            }
+        }
+
+        // GỌI ĐƯỢC TỪ HTML:
+        window.taiDanhMucLenTrang = taiDanhMucLenTrang;
+
 
         async function downloadDanhMuc() {
             try {
