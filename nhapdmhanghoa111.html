@@ -447,52 +447,54 @@
         async function downloadDanhMuc() {
             try {
                 const supabase = getSupabaseClient();
-                const fieldList = columns.map(c => c.data).join(', '); // gồm cả created_at
-                const pageSize = 1000;
-                let from = 0, to = pageSize - 1;
-                const all = [];
+                const fieldOrder = columns.map(c => c.data);
 
-                for (; ;) {
-                    // lấy theo trang, sắp xếp created_at mới nhất lên đầu
-                    const { data, error } = await supabase
-                        .from(TABLE_NAME)
-                        .select(fieldList)
-                        .order('created_at', { ascending: false })
-                        .range(from, to);
+                // Lấy tổng số dòng trước
+                const { count, error: countErr } = await supabase
+                    .from(TABLE_NAME)
+                    .select('*', { count: 'exact', head: true });
+                if (countErr) throw countErr;
+                const totalCount = count || 0;
 
-                    if (error) throw error;
-
-                    if (data && data.length) {
-                        all.push(...data);
-                    }
-                    // nếu ít hơn pageSize => đã hết
-                    if (!data || data.length < pageSize) break;
-
-                    from += pageSize;
-                    to += pageSize;
-                }
-
-                if (all.length === 0) {
-                    alert('Không có dữ liệu để tải.');
+                if (totalCount === 0) {
+                    alert("❌ Không có dữ liệu trong danh mục.");
                     return;
                 }
 
-                // Chuẩn hóa thứ tự cột và xuất CSV
-                const headerOrder = columns.map(c => c.data);
-                const rows = all.map(rec => {
-                    const o = {};
-                    headerOrder.forEach(h => { o[h] = (rec[h] ?? ''); });
-                    return o;
+                // Chia nhỏ song song
+                const batchSize = 5000;
+                const tasks = [];
+                for (let from = 0; from < totalCount; from += batchSize) {
+                    const to = Math.min(from + batchSize - 1, totalCount - 1);
+                    tasks.push(
+                        supabase
+                            .from(TABLE_NAME)
+                            .select(fieldOrder.join(', '))
+                            .order('created_at', { ascending: false })
+                            .range(from, to)
+                    );
+                }
+
+                const results = await Promise.all(tasks);
+                let all = [];
+                results.forEach(({ data, error }) => {
+                    if (error) console.error(error);
+                    else if (data) all.push(...data);
                 });
 
-                const csv = Papa.unparse(rows, { columns: headerOrder });
+                // Chuẩn hóa theo đúng cột
+                const rows = all.map(r => {
+                    const obj = {};
+                    fieldOrder.forEach(k => obj[k] = (r[k] ?? ''));
+                    return obj;
+                });
+
+                // Xuất CSV
+                const csv = Papa.unparse(rows, { columns: fieldOrder });
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-
-                // Tạo tên file kèm ngày
                 const today = new Date().toISOString().slice(0, 10);
-                const filename = `dmhanghoa_${today}.csv`;
+                const filename = `dmhanghoa_full_${today}.csv`;
 
-                // Trigger tải file
                 const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 link.href = url;
@@ -502,12 +504,13 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
-                alert(`✅ Đã xuất ${all.length} dòng ra file ${filename}`);
+                alert(`✅ Đã tải về ${rows.length} dòng dmhanghoa thành file ${filename}`);
             } catch (e) {
-                console.error('Lỗi tải danh mục:', e);
-                alert('❌ Không thể tải danh mục hàng hóa. Kiểm tra console để xem chi tiết.');
+                console.error("Lỗi download danh mục:", e);
+                alert("❌ Không thể download danh mục. Kiểm tra console để xem chi tiết.");
             }
         }
+
 
         // thêm dòng này ngay sau khi khai báo hàm
         window.downloadDanhMuc = downloadDanhMuc;
