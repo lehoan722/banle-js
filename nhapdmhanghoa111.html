@@ -369,7 +369,8 @@
 
         async function taiDanhMucLenTrang() {
             try {
-                const full = confirm("Bạn muốn tải toàn bộ (OK) hay chỉ 1000 dòng đầu tiên (Cancel)?");
+                const full = confirm("Bạn muốn tải toàn bộ (~50.000 dòng, có thể chậm)?\n\nChọn OK = tải toàn bộ\nChọn Cancel = chỉ tải 1000 dòng đầu tiên");
+
                 const supabase = getSupabaseClient();
                 const fieldOrder = columns.map(c => c.data);
                 let all = [];
