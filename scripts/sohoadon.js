@@ -19,7 +19,7 @@ export async function capNhatSoHoaDonTuDong() {
 
         //const diadiem = localStorage.getItem("diadiem") || "cs1";
 
-        // 2. Xác định loại chứng từ như cũ
+        // 2. Xác định loại chứng từ như cũ 
         const pathname = window.location.pathname;
         let loai = "";
         if (pathname.includes("banle")) {
@@ -39,7 +39,7 @@ export async function capNhatSoHoaDonTuDong() {
 
         } else if (pathname.includes("nhaptam")) {
             loai = diadiem === "cs1" ? "nhaptamcs1" : "nhaptamcs1";
-            
+
 
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
@@ -69,11 +69,14 @@ export async function capNhatSoHoaDonTuDong() {
         // 5. Ghép số hóa đơn đúng chuẩn
         const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
 
-        // 6. Cập nhật lên giao diện
-        document.getElementById("sohd").value = sohd;
-        document.getElementById("diadiem").value = diadiem;
+        // 6. Cập nhật lên giao diện (có kiểm tra tồn tại phần tử)
+        const sohdEl = document.getElementById("sohd");
+        if (sohdEl) sohdEl.value = sohd;
+        const ddEl = document.getElementById("diadiem");
+        if (ddEl) ddEl.value = diadiem;
 
         return sohd;
+
     } catch (err) {
         console.error("Lỗi phát sinh số hóa đơn:", err);
         alert("Không thể phát sinh số hóa đơn.");
