@@ -1,4 +1,4 @@
-// ===== 1. Khởi tạo Supabase Client =====
+// ===== 1. Khởi tạo Supabase Client ===== 
 
 import { tinhKhuyenMai } from './khuyenmai.js';
 
@@ -15,37 +15,23 @@ let currentSoHD = '';
 let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 
 // ===== 3. Hàm sinh số hóa đơn tự động =====
+// ===== REPLACE: genSoHoaDon dùng RPC atomic =====
 async function genSoHoaDon() {
-    // Lấy số lớn nhất trong hoadon_banle đã có (sohd bắt đầu bằng bancs1_)
-    let { data: hdmax } = await _supabase
-        .from('hoadon_banle')
-        .select('sohd')
-        .like('sohd', 'bancs1_%')
-        .order('sohd', { ascending: false })
-        .limit(1);
-    let maxHD = 0;
-    if (hdmax && hdmax.length) {
-        let so = Number(hdmax[0].sohd.split('_')[1]);
-        if (!isNaN(so)) maxHD = so;
-    }
-
-    // Lấy số hiện tại trong bảng sochungtu
-    let { data: st } = await _supabase
-        .from('sochungtu')
-        .select('so_hientai')
-        .eq('loai', 'bancs1')
-        .eq('coso', 'cs1')
-        .limit(1);
-    let maxCT = 0;
-    if (st && st.length) {
-        maxCT = st[0].so_hientai;
-    }
-
-    // Lấy số lớn hơn giữa hoadon_banle và sochungtu
-    let next = Math.max(maxHD, maxCT) + 1;
-    let sohd = 'bancs1_' + String(next).padStart(5, '0');
+    const loai = 'bancs1';   // hoặc suy ra theo cơ sở
+    const coso = 'cs1';      // hiện tại mobile đang cố định cs1
+    // Lấy số mới từ RPC (atomic)
+    const so_moi = await getNextSoHDTuRPC(loai, coso);   // 👈 dùng RPC
+    const sohd = `${loai}_${String(so_moi).padStart(5, '0')}`;
     document.getElementById('sohd').value = sohd;
     return sohd;
+}
+
+
+// ===== NEW (khuyến nghị): RPC tăng số HĐ atomic =====
+async function getNextSoHDTuRPC(loai, coso) {
+    const { data, error } = await _supabase.rpc('next_sohd', { p_loai: loai, p_coso: coso });
+    if (error) throw new Error('RPC next_sohd lỗi: ' + error.message);
+    return data; // data = số mới (INT)
 }
 
 
@@ -324,15 +310,7 @@ document.getElementById('btn-luu').onclick = async function () {
         return;
     }
 
-    // 3. Cập nhật lại bảng số chứng từ (tăng số hóa đơn lên)
-    // Sau khi lưu hóa đơn thành công:
-    await _supabase
-        .from('sochungtu')
-        .update({ so_hientai: parseInt(sohd.split('_')[1]) })
-        .eq('loai', 'bancs1')
-        .eq('coso', 'cs1');
-
-
+    
     alert('Đã lưu hóa đơn thành công!');
     dsSanPham = [];
     renderBangSanPham();
@@ -367,3 +345,4 @@ window.addEventListener('DOMContentLoaded', function () {
 // Nếu bạn có popup chọn sp, khi chọn xong, gán mã vào ô #masp rồi gọi xuLyNhapMaSP()
 
 // ====== KẾT THÚC ======
+s
