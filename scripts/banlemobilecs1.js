@@ -306,16 +306,22 @@ document.getElementById('btn-luu').onclick = async function () {
         alert('Lỗi lưu chi tiết: ' + errCT.message);
         return;
     }
+    // === Cập nhật số chứng từ CHỈ SAU KHI LƯU THÀNH CÔNG ===
+    const sohdStr = document.getElementById('sohd').value.trim();
+    const [loai, soStr] = sohdStr.split('_');         // ví dụ: "bancs1_00031" -> ["bancs1","00031"]
+    const soMoi = parseInt(soStr, 10);
+
+    // Update theo 'loai'; nếu chưa có thì insert
     let { data: upd, error: errUpd } = await _supabase
         .from("sochungtu")
         .update({ so_hientai: soMoi })
         .eq("loai", loai)
-        .select('loai');
+        .select("loai");
 
     if (errUpd || !upd || upd.length === 0) {
-        // nếu chưa có dòng cho 'loai' này thì tạo mới
         await _supabase.from("sochungtu").insert([{ loai, so_hientai: soMoi }]);
     }
+
 
 
     alert('Đã lưu hóa đơn thành công!');
