@@ -262,7 +262,9 @@ document.getElementById('btn-luu').onclick = async function () {
     let ngay = new Date().toISOString().slice(0, 10);
     let now = new Date().toISOString();
     let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
-    let chietkhau = Number(document.getElementById('chietkhau_input').value.replace(/\D/g, '') || 0);
+    const ckEl = document.getElementById('chietkhau_input') || document.getElementById('chietkhau');
+    let chietkhau = Number((ckEl?.value || '0').toString().replace(/\D/g, '') || 0);
+
     let phaitra = tongtien - tongkm - chietkhau;
     if (phaitra < 0) phaitra = 0;
 
