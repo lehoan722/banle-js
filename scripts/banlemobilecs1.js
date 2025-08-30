@@ -32,12 +32,10 @@ async function genSoHoaDon() {
 
 // ===== RPC mới: next_sohd_mobile(prefix text, pad int default 5) =====
 async function getNextSoHDTuRPCMobile(prefix, pad = 5) {
-  const { data, error } = await _supabase.rpc('next_sohd_mobile', { prefix: 'bancs1_', pad: 5 });
-
+  const { data, error } = await _supabase.rpc('next_sohd_mobile', { p_prefix: prefix, p_pad: pad });
   if (error) throw new Error('RPC next_sohd_mobile lỗi: ' + error.message);
-  return data; // trả về chuỗi đã ghép sẵn, vd: "bancs1_00012"
+  return data; // ví dụ "bancs1_00012"
 }
-
 
 
 // ===== 4. Hàm tìm sản phẩm và xác định loại quản lý size =====
