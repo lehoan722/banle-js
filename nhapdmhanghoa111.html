@@ -449,7 +449,7 @@
                 const supabase = getSupabaseClient();
                 const fieldOrder = columns.map(c => c.data);
 
-                // Lấy tổng số dòng trước
+                // Lấy tổng số dòng
                 const { count, error: countErr } = await supabase
                     .from(TABLE_NAME)
                     .select('*', { count: 'exact', head: true });
@@ -461,8 +461,8 @@
                     return;
                 }
 
-                // Chia nhỏ song song
-                const batchSize = 5000;
+                // Supabase giới hạn mỗi query tối đa 1000 → batchSize=1000
+                const batchSize = 1000;
                 const tasks = [];
                 for (let from = 0; from < totalCount; from += batchSize) {
                     const to = Math.min(from + batchSize - 1, totalCount - 1);
@@ -475,11 +475,15 @@
                     );
                 }
 
+                // Chạy song song
                 const results = await Promise.all(tasks);
                 let all = [];
-                results.forEach(({ data, error }) => {
-                    if (error) console.error(error);
-                    else if (data) all.push(...data);
+                results.forEach(({ data, error }, idx) => {
+                    if (error) {
+                        console.error("Batch error:", idx, error);
+                    } else if (data) {
+                        all.push(...data);
+                    }
                 });
 
                 // Chuẩn hóa theo đúng cột
@@ -504,7 +508,7 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
-                alert(`✅ Đã tải về ${rows.length} dòng dmhanghoa thành file ${filename}`);
+                alert(`✅ Đã tải về ${rows.length} dòng (tổng: ${totalCount}) thành file ${filename}`);
             } catch (e) {
                 console.error("Lỗi download danh mục:", e);
                 alert("❌ Không thể download danh mục. Kiểm tra console để xem chi tiết.");
