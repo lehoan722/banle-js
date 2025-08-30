@@ -16,23 +16,27 @@ let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 
 // ===== 3. Hàm sinh số hóa đơn tự động =====
 // ===== REPLACE: genSoHoaDon dùng RPC atomic =====
+// ===== genSoHoaDon: gọi RPC mới next_sohd_mobile(prefix, pad) =====
 async function genSoHoaDon() {
-    const loai = 'bancs1';   // hoặc suy ra theo cơ sở
-    const coso = 'cs1';      // hiện tại mobile đang cố định cs1
-    // Lấy số mới từ RPC (atomic)
-    const so_moi = await getNextSoHDTuRPC(loai, coso);   // 👈 dùng RPC
-    const sohd = `${loai}_${String(so_moi).padStart(5, '0')}`;
-    document.getElementById('sohd').value = sohd;
-    return sohd;
+  // tiền tố cho CS1 bán lẻ: nhớ có dấu gạch dưới
+  const prefix = 'bancs1_';
+  const pad = 5; // độ dài padding số (00001)
+
+  const sohd_full = await getNextSoHDTuRPCMobile(prefix, pad);
+  const ip = document.getElementById('sohd');
+  if (ip) ip.value = sohd_full;
+  return sohd_full;
 }
 
 
-// ===== NEW (khuyến nghị): RPC tăng số HĐ atomic =====
-async function getNextSoHDTuRPC(loai, coso) {
-    const { data, error } = await _supabase.rpc('next_sohd', { p_loai: loai, p_coso: coso });
-    if (error) throw new Error('RPC next_sohd lỗi: ' + error.message);
-    return data; // data = số mới (INT)
+
+// ===== RPC mới: next_sohd_mobile(prefix text, pad int default 5) =====
+async function getNextSoHDTuRPCMobile(prefix, pad = 5) {
+  const { data, error } = await _supabase.rpc('next_sohd_mobile', { prefix, pad });
+  if (error) throw new Error('RPC next_sohd_mobile lỗi: ' + error.message);
+  return data; // trả về chuỗi đã ghép sẵn, vd: "bancs1_00012"
 }
+
 
 
 // ===== 4. Hàm tìm sản phẩm và xác định loại quản lý size =====
@@ -136,8 +140,7 @@ document.getElementById('size').addEventListener('keydown', function (e) {
 // ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
 function themSanPhamVaoBang(sp, size, gia, soluong) {
     if (!sp || !sp.masp || !gia || !soluong) return;
-    if (!size) size = "0";
-    if (!masp || !gia || !soluong) return;
+    if (!size) size = "0";    
 
     // Lấy thông tin khuyến mại từ danh mục/khuyenmai.js
     // Tùy logic của bạn, có thể cần lấy thêm từ bảng dmhanghoa hoặc truyền sp
@@ -322,10 +325,6 @@ document.getElementById('btn-luu').onclick = async function () {
 };
 
 // ===== 14. Khi load trang, sinh số hóa đơn mới =====
-window.addEventListener('DOMContentLoaded', function () {
-    genSoHoaDon();
-    document.getElementById('masp').focus();
-});
 
 window.addEventListener('DOMContentLoaded', function () {
     genSoHoaDon();
@@ -345,4 +344,3 @@ window.addEventListener('DOMContentLoaded', function () {
 // Nếu bạn có popup chọn sp, khi chọn xong, gán mã vào ô #masp rồi gọi xuLyNhapMaSP()
 
 // ====== KẾT THÚC ======
-s
