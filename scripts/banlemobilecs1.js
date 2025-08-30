@@ -306,16 +306,16 @@ document.getElementById('btn-luu').onclick = async function () {
         alert('Lỗi lưu chi tiết: ' + errCT.message);
         return;
     }
-
-    // Sau khi insert hoadon_banle và chi tiết thành công
-    const [loai, soStr] = document.getElementById("sohd").value.split("_");
-    const soMoi = parseInt(soStr, 10);
-
-    await _supabase
+    let { data: upd, error: errUpd } = await _supabase
         .from("sochungtu")
         .update({ so_hientai: soMoi })
         .eq("loai", loai)
-        .eq("coso", localStorage.getItem("diadiem") || "cs1");
+        .select('loai');
+
+    if (errUpd || !upd || upd.length === 0) {
+        // nếu chưa có dòng cho 'loai' này thì tạo mới
+        await _supabase.from("sochungtu").insert([{ loai, so_hientai: soMoi }]);
+    }
 
 
     alert('Đã lưu hóa đơn thành công!');
