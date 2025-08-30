@@ -17,24 +17,19 @@ let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
 // ===== 3. Hàm sinh số hóa đơn tự động =====
 // ===== REPLACE: genSoHoaDon dùng RPC atomic =====
 // ===== genSoHoaDon: gọi RPC mới next_sohd_mobile(prefix, pad) =====
+// Gọi phát sinh số HĐ theo chuẩn MT
 async function genSoHoaDon() {
-  // tiền tố cho CS1 bán lẻ: nhớ có dấu gạch dưới
-  const prefix = 'bancs1_';
-  const pad = 5; // độ dài padding số (00001)
-
-  const sohd_full = await getNextSoHDTuRPCMobile(prefix, pad);
-  const ip = document.getElementById('sohd');
-  if (ip) ip.value = sohd_full;
-  return sohd_full;
+    return await window.capNhatSoHoaDonTuDong();
 }
+
 
 
 
 // ===== RPC mới: next_sohd_mobile(prefix text, pad int default 5) =====
 async function getNextSoHDTuRPCMobile(prefix, pad = 5) {
-  const { data, error } = await _supabase.rpc('next_sohd_mobile', { p_prefix: prefix, p_pad: pad });
-  if (error) throw new Error('RPC next_sohd_mobile lỗi: ' + error.message);
-  return data; // ví dụ "bancs1_00012"
+    const { data, error } = await _supabase.rpc('next_sohd_mobile', { p_prefix: prefix, p_pad: pad });
+    if (error) throw new Error('RPC next_sohd_mobile lỗi: ' + error.message);
+    return data; // ví dụ "bancs1_00012"
 }
 
 
@@ -139,7 +134,7 @@ document.getElementById('size').addEventListener('keydown', function (e) {
 // ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
 function themSanPhamVaoBang(sp, size, gia, soluong) {
     if (!sp || !sp.masp || !gia || !soluong) return;
-    if (!size) size = "0";    
+    if (!size) size = "0";
 
     // Lấy thông tin khuyến mại từ danh mục/khuyenmai.js
     // Tùy logic của bạn, có thể cần lấy thêm từ bảng dmhanghoa hoặc truyền sp
@@ -312,7 +307,17 @@ document.getElementById('btn-luu').onclick = async function () {
         return;
     }
 
-    
+    // Sau khi insert hoadon_banle và chi tiết thành công
+    const [loai, soStr] = document.getElementById("sohd").value.split("_");
+    const soMoi = parseInt(soStr, 10);
+
+    await _supabase
+        .from("sochungtu")
+        .update({ so_hientai: soMoi })
+        .eq("loai", loai)
+        .eq("coso", localStorage.getItem("diadiem") || "cs1");
+
+
     alert('Đã lưu hóa đơn thành công!');
     dsSanPham = [];
     renderBangSanPham();
