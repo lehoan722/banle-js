@@ -55,7 +55,7 @@
     <button onclick="kiemTraTuSupabase()">🔍 Kiểm tra dữ liệu</button>
     <button onclick="taiDanhMucLenTrang()">⬇️ xem danh mục hàng hóa</button>
 
-    <button onclick="downloadDanhMuc()">⬇️ Tải danh mục hàng hóa</button>
+    <button onclick="downloadDanhMuc()">⬇️ download DanhMuc hàng hóa</button>
 
     <div id="loginModule" style="display:inline-block; margin-left:16px;">
         <input id="login-email" type="email" placeholder="Email Supabase" style="width:130px;margin-right:2px;">
@@ -107,8 +107,8 @@
             licenseKey: 'non-commercial-and-evaluation',
             manualColumnResize: true,
             manualRowResize: true,
-           
-            columnSorting: true,            
+
+            columnSorting: true,
             filters: true,
             dropdownMenu: true
         });
@@ -369,65 +369,76 @@
 
         async function taiDanhMucLenTrang() {
             try {
-                const supabase = getSupabaseClient();
-                const pageSize = 1000;
-                let from = 0, to = pageSize - 1;
-                const fieldOrder = columns.map(c => c.data); // gồm cả created_at
-                const all = [];
+                // Hỏi người dùng
+                const full = confirm("Bạn muốn tải toàn bộ (~50.000 dòng, có thể chậm)?\n\nChọn OK = tải toàn bộ\nChọn Cancel = chỉ tải 1000 dòng đầu tiên");
 
-                // Phân trang lấy hết, ORDER BY created_at DESC để mới nhất lên đầu
-                for (; ;) {
+                const supabase = getSupabaseClient();
+                const fieldOrder = columns.map(c => c.data);
+
+                let all = [];
+                if (!full) {
+                    // Trường hợp tải nhanh 1000 dòng
                     const { data, error } = await supabase
-                        .from(TABLE_NAME)                       // ví dụ: 'dmhanghoa'
+                        .from(TABLE_NAME)
                         .select(fieldOrder.join(', '))
                         .order('created_at', { ascending: false })
-                        .range(from, to);
+                        .range(0, 999);
 
                     if (error) throw error;
-
-                    if (data && data.length) all.push(...data);
-                    if (!data || data.length < pageSize) break;
-
-                    from += pageSize;
-                    to += pageSize;
+                    all = data || [];
+                } else {
+                    // Trường hợp tải toàn bộ → dùng chia nhỏ song song
+                    const totalCount = 50000; // nếu bạn biết chính xác, có thể query count trước
+                    const batchSize = 5000;
+                    const tasks = [];
+                    for (let from = 0; from < totalCount; from += batchSize) {
+                        const to = from + batchSize - 1;
+                        tasks.push(
+                            supabase
+                                .from(TABLE_NAME)
+                                .select(fieldOrder.join(', '))
+                                .order('created_at', { ascending: false })
+                                .range(from, to)
+                        );
+                    }
+                    const results = await Promise.all(tasks);
+                    results.forEach(({ data, error }) => {
+                        if (error) console.error(error);
+                        else if (data) all.push(...data);
+                    });
                 }
 
-                // Chuẩn hóa theo đúng thứ tự cột của bảng
+                // Chuẩn hóa
                 const rows = all.map(r => {
-                    const obj = {};
-                    fieldOrder.forEach(k => obj[k] = (r[k] ?? ''));
-                    return obj;
+                    const o = {};
+                    fieldOrder.forEach(k => o[k] = (r[k] ?? ''));
+                    return o;
                 });
 
-                // Nạp vào Handsontable
+                // Nạp vào HOT
                 if (window.hot) {
-                    // Nếu đã có instance, chỉ cần load lại data
-                    hot.updateSettings({
-                        columns: columns,
-                        colHeaders: columns.map(c => c.data)
-                    });
+                    hot.updateSettings({ columns, colHeaders: columns.map(c => c.data) });
                     hot.loadData(rows);
                 } else {
-                    // Nếu trang của bạn khởi tạo HOT ở chỗ khác, có thể không cần nhánh này
                     const container = document.getElementById('hot');
                     window.hot = new Handsontable(container, {
                         data: rows,
-                        columns: columns,
+                        columns,
                         colHeaders: columns.map(c => c.data),
                         rowHeaders: true,
                         stretchH: 'all',
                         height: 'auto',
                         licenseKey: 'non-commercial-and-evaluation'
-
                     });
                 }
 
-                alert(`✅ Đã tải ${rows.length} dòng dmhanghoa lên bảng (mới nhất ở trên cùng).`);
+                alert(`✅ Đã tải ${rows.length} dòng dmhanghoa lên bảng`);
             } catch (e) {
-                console.error('Lỗi tải danh mục lên trang:', e);
-                alert('❌ Không thể tải danh mục hàng hóa lên trang. Kiểm tra console để xem chi tiết.');
+                console.error('Lỗi tải danh mục:', e);
+                alert('❌ Không thể tải danh mục. Xem console để biết chi tiết.');
             }
         }
+
 
         // GỌI ĐƯỢC TỪ HTML:
         window.taiDanhMucLenTrang = taiDanhMucLenTrang;
