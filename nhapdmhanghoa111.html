@@ -369,15 +369,13 @@
 
         async function taiDanhMucLenTrang() {
             try {
-                // Hỏi người dùng
-                const full = confirm("Bạn muốn tải toàn bộ (~50.000 dòng, có thể chậm)?\n\nChọn OK = tải toàn bộ\nChọn Cancel = chỉ tải 1000 dòng đầu tiên");
-
+                const full = confirm("Bạn muốn tải toàn bộ (OK) hay chỉ 1000 dòng đầu tiên (Cancel)?");
                 const supabase = getSupabaseClient();
                 const fieldOrder = columns.map(c => c.data);
-
                 let all = [];
+
                 if (!full) {
-                    // Trường hợp tải nhanh 1000 dòng
+                    // ✅ chỉ lấy 1000 dòng nhanh
                     const { data, error } = await supabase
                         .from(TABLE_NAME)
                         .select(fieldOrder.join(', '))
@@ -387,12 +385,17 @@
                     if (error) throw error;
                     all = data || [];
                 } else {
-                    // Trường hợp tải toàn bộ → dùng chia nhỏ song song
-                    const totalCount = 50000; // nếu bạn biết chính xác, có thể query count trước
-                    const batchSize = 5000;
+                    // ✅ lấy toàn bộ
+                    const { count, error: countErr } = await supabase
+                        .from(TABLE_NAME)
+                        .select('*', { count: 'exact', head: true });
+                    if (countErr) throw countErr;
+                    const totalCount = count || 0;
+
+                    const batchSize = 1000;
                     const tasks = [];
                     for (let from = 0; from < totalCount; from += batchSize) {
-                        const to = from + batchSize - 1;
+                        const to = Math.min(from + batchSize - 1, totalCount - 1);
                         tasks.push(
                             supabase
                                 .from(TABLE_NAME)
@@ -402,20 +405,20 @@
                         );
                     }
                     const results = await Promise.all(tasks);
-                    results.forEach(({ data, error }) => {
-                        if (error) console.error(error);
+                    results.forEach(({ data, error }, idx) => {
+                        if (error) console.error("Batch error:", idx, error);
                         else if (data) all.push(...data);
                     });
                 }
 
                 // Chuẩn hóa
                 const rows = all.map(r => {
-                    const o = {};
-                    fieldOrder.forEach(k => o[k] = (r[k] ?? ''));
-                    return o;
+                    const obj = {};
+                    fieldOrder.forEach(k => obj[k] = (r[k] ?? ''));
+                    return obj;
                 });
 
-                // Nạp vào HOT
+                // Nạp vào Handsontable
                 if (window.hot) {
                     hot.updateSettings({ columns, colHeaders: columns.map(c => c.data) });
                     hot.loadData(rows);
@@ -434,8 +437,8 @@
 
                 alert(`✅ Đã tải ${rows.length} dòng dmhanghoa lên bảng`);
             } catch (e) {
-                console.error('Lỗi tải danh mục:', e);
-                alert('❌ Không thể tải danh mục. Xem console để biết chi tiết.');
+                console.error('Lỗi tải danh mục lên trang:', e);
+                alert('❌ Không thể tải danh mục. Kiểm tra console để xem chi tiết.');
             }
         }
 
