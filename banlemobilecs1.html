@@ -541,7 +541,8 @@
     <footer class="footer">
       <div class="btns">
         <button id="them" class="btn new" type="button">Thêm mới</button>
-        <button id="btn-luu" class="btn save" type="button">Lưu</button>
+        <button id="luu" class="btn save" type="button">Lưu</button>
+
         <button id="sua" class="btn edit" type="button">SỬA</button>
         <button id="quaylai" class="btn back" type="button">Quay lại</button>
       </div>
@@ -664,6 +665,33 @@
       }
     });
   </script>
+  <script>
+(function(){
+  const ensure = (id, forwardFromId) => {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('button');
+      el.id = id;
+      el.type = 'button';
+      el.style.display = 'none';
+      document.body.appendChild(el);
+    }
+    if (forwardFromId) {
+      const vis = document.getElementById(forwardFromId);
+      if (vis && !vis.dataset._forwardBound) {
+        vis.dataset._forwardBound = '1';
+        vis.addEventListener('click', ()=> el.click());
+      }
+    }
+  };
+  // các id mà main.js thường gán sự kiện
+  ['them','luu','sua','quaylai','tieptuc','xemin','copy','xuatExcel','thoatpm','in_khong_hoi','in_sau_khi_luu']
+    .forEach(id => ensure(id));
+
+  // nếu bạn vẫn giữ nút save là id khác, có thể forward như sau:
+  // ensure('luu', 'btn-luu');
+})();
+</script>
 
 </body>
 
