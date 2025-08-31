@@ -1,378 +1,313 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-
 <head>
-    <meta charset="UTF-8">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BÁN LẺ - MOBILE</title>
-    <style>
-        :root {
-            --main-color: #0088cc;
-            --action-color: #006699;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>BÁN LẺ CS1 — Mobile</title>
+  <style>
+    :root{
+      --bg:#0b6aa1; --fg:#fff;
+      --ink:#111; --muted:#6b7280;
+      --line:#e5e7eb; --accent:#10b981;
+      --danger:#ef4444; --warn:#f59e0b;
+      --pad:12px; --radius:12px;
+      --btn-h:48px; --inp-h:44px;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:var(--font);background:#f7f7f8;color:var(--ink)}
+    /* khóa UX dọc: chỉ cảnh báo, không chặn cứng được trên Safari */
+    #orientation-guard{position:fixed;inset:0;background:#0008;color:#fff;
+      display:none;align-items:center;justify-content:center;text-align:center;padding:24px;z-index:9999}
+    @media screen and (orientation:landscape){
+      #orientation-guard{display:flex}
+    }
 
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: #f6fafd;
-        }
+    /* Header */
+    header{position:sticky;top:0;z-index:20;background:var(--bg);color:var(--fg);padding:10px env(safe-area-inset-right) 10px env(safe-area-inset-left)}
+    header .title{font-weight:700;text-align:center;letter-spacing:.5px}
+    header .sub{font-size:12px;opacity:.9;text-align:center}
 
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--main-color);
-            color: white;
-            height: 56px;
-            padding: 0 10px;
-        }
+    /* Layout chính */
+    .app{display:flex;flex-direction:column;height:100dvh}
+    .content{flex:1;overflow:auto;scroll-padding-bottom:100px;padding:8px 10px 0}
 
-        .topbar-title {
-            flex: 1;
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
+    /* thanh chips thông tin nhanh */
+    .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .chip{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px}
+    .chip label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+    .chip input,.chip select{width:100%;height:var(--inp-h);border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:16px;background:#fff}
 
-        .topbar-icon {
-            font-size: 24px;
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            margin: 0 5px;
-        }
+    .toggles{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .toggles label{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:14px}
 
-        .qr-box {
-            width: 100vw;
-            height: 210px;
-            background: #222;
-            color: white;
-            display: none;
-            /* bật lên khi nhấn QR */
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
+    /* Khối nhập nhanh */
+    .quick{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;grid-template-columns:1.2fr .6fr .6fr .8fr;gap:8px;align-items:end;margin-bottom:10px}
+    .quick label{font-size:12px;color:var(--muted);display:block;margin:0 0 4px}
+    .quick input{height:var(--inp-h);border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:16px}
+    .quick .sohd{grid-column:1 / -1}
+    .quick .ghichu{grid-column:1 / -1}
 
-        .input-group {
-            display: flex;
-            align-items: center;
-            margin: 14px 12px 4px 12px;
-        }
+    /* Bảng hàng */
+    .table-wrap{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead th{position:sticky;top:0;background:#f3f4f6;border-bottom:1px solid var(--line);font-weight:600;padding:10px 8px;font-size:14px}
+    tbody td{border-top:1px solid var(--line);padding:10px 8px;font-size:15px}
+    tbody tr:active{background:#f9fafb}
+    /* Ẩn các cột phụ để giữ tương thích logic cũ (nếu code đọc theo chỉ số cột, hãy để chúng trong DOM) */
+    .col-hidden{display:none}
 
-        .input-group input {
-            flex: 1;
-            font-size: 18px;
-            padding: 11px 44px 11px 14px;
-            border: 1.5px solid #b5c3d1;
-            border-radius: 8px;
-            background: #fff;
-            margin-right: 7px;
-        }
+    /* Khối tổng & khách thanh toán */
+    .totals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
+    .card .lbl{font-size:12px;color:var(--muted)}
+    .card .val{font-size:18px;font-weight:700;margin-top:6px}
+    .card input{width:100%;height:var(--inp-h);border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:16px}
 
-        .input-group .btn-voice {
-            background: none;
-            border: none;
-            font-size: 22px;
-            color: var(--main-color);
-            cursor: pointer;
-            margin-left: -40px;
-            z-index: 2;
-        }
+    /* Thông tin hóa đơn */
+    .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
+    .panel h3{margin:2px 0 10px;font-size:14px;color:#374151}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .grid .cell label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+    .grid .cell input,.grid .cell select{width:100%;height:var(--inp-h);border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:16px}
 
-        .input-group .btn-search {
-            background: var(--main-color);
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 34px;
-            height: 34px;
-            margin-left: 7px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    /* Footer nút lệnh */
+    .footer{position:sticky;bottom:0;z-index:20;background:#fff;padding:10px env(safe-area-inset-right) calc(10px + env(safe-area-inset-bottom)) env(safe-area-inset-left);border-top:1px solid var(--line)}
+    .btns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+    .btn{height:var(--btn-h);border:none;border-radius:12px;font-weight:700;font-size:15px}
+    .btn.save{background:var(--accent);color:#fff}
+    .btn.new{background:#0ea5e9;color:#fff}
+    .btn.edit{background:#8b5cf6;color:#fff}
+    .btn.back{background:#e5e7eb}
 
-        .info-fields {
-            display: flex;
-            gap: 7px;
-            margin: 2px 12px 0 12px;
-        }
-
-        .info-fields input {
-            width: 32%;
-            font-size: 17px;
-            border: 1px solid #bbb;
-            border-radius: 7px;
-            padding: 7px 7px;
-        }
-
-        .btn-add {
-            width: 97%;
-            margin: 8px 0 2px 1.5%;
-            padding: 12px;
-            background: var(--action-color);
-            color: white;
-            border: none;
-            border-radius: 7px;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 2px 8px #0088cc14;
-        }
-
-        .product-table {
-            width: 98%;
-            margin: 10px 1%;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 1px 7px #0088cc0e;
-        }
-
-        .product-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .product-table th,
-        .product-table td {
-            padding: 9px 2px;
-            border-bottom: 1px solid #ebebeb;
-            text-align: center;
-            font-size: 17px;
-        }
-
-        .product-table th {
-            background: #e5f3fa;
-            font-weight: bold;
-        }
-
-        .btn-delete-row {
-            background: none;
-            border: none;
-            color: #c22;
-            font-size: 19px;
-            cursor: pointer;
-        }
-
-        .summary-block {
-            margin: 8px 1%;
-            background: #e5f8f1;
-            border-radius: 10px;
-            padding: 11px;
-        }
-
-        .summary-block label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 18px;
-            margin: 2px 0;
-        }
-
-        .customer-fields {
-            margin: 10px 1% 7px 1%;
-            display: flex;
-            gap: 8px;
-        }
-
-        .customer-fields input {
-            flex: 1;
-            padding: 9px 10px;
-            font-size: 16px;
-            border-radius: 7px;
-            border: 1px solid #b5c3d1;
-        }
-
-        .customer-fields button {
-            font-size: 17px;
-            padding: 0 7px;
-            border: none;
-            background: var(--main-color);
-            color: #fff;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .pay-fields {
-            margin: 7px 1%;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .pay-fields select {
-            flex: 1;
-            font-size: 17px;
-            padding: 8px 8px;
-            border-radius: 6px;
-            border: 1px solid #bbb;
-            background: #fff;
-        }
-
-        .bottom-actions {
-            display: flex;
-            gap: 8px;
-            margin: 13px 1.5% 14px 1.5%;
-        }
-
-        .bottom-actions button {
-            flex: 1;
-            padding: 15px 0;
-            font-size: 18px;
-            border-radius: 10px;
-            font-weight: bold;
-            border: none;
-            background: var(--main-color);
-            color: #fff;
-            cursor: pointer;
-            box-shadow: 0 2px 7px #0088cc1d;
-        }
-
-        .bottom-actions .btn-bluetooth {
-            background: #12bb68;
-        }
-
-        @media (max-width: 450px) {
-
-            .product-table th,
-            .product-table td {
-                font-size: 15px;
-            }
-
-            .summary-block label {
-                font-size: 16px;
-            }
-        }
-
-        .input-group.input-khach,
-        .input-group.input-nv {
-            margin: 8px 12px 2px 12px;
-            width: calc(100% - 24px);
-        }
-
-        .input-group.input-khach input,
-        .input-group.input-nv input {
-            width: 100%;
-            margin-right: 7px;
-        }
-    </style>
+    /* Login overlay */
+    #login-overlay{position:fixed;inset:0;background:#fff;z-index:9998;display:flex;align-items:center;justify-content:center;padding:24px}
+    .login-card{width:min(520px,92vw);background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 16px 20px;box-shadow:0 10px 30px #00000014}
+    .login-card h2{margin:6px 0 12px}
+    .login-grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .login-card input,.login-card select{height:var(--inp-h);border:1px solid var(--line);border-radius:10px;padding:0 12px;font-size:16px}
+    .login-card button{height:var(--btn-h);border:none;border-radius:12px;background:var(--bg);color:#fff;font-weight:700}
+    .login-foot{margin-top:6px;font-size:12px;color:var(--muted)}
+  </style>
 </head>
-
 <body>
-    <!-- Top bar -->
-    <div class="topbar">
-        <button class="topbar-icon" id="btn-menu" title="Menu">☰</button>
-        <div class="topbar-title">BÁN LẺ CS3</div>
-        <button class="topbar-icon" id="btn-qr" title="Quét mã vạch">📷</button>
-    </div>
+<div id="orientation-guard">Vui lòng xoay dọc để sử dụng giao diện bán lẻ.</div>
 
-    <!-- QR code scanner area -->
-    <div class="qr-box" id="qr-box">
-        <!-- Camera, khung quét, sẽ render bằng js/html5-qrcode -->
-        <span>Đang mở camera quét mã...</span>
-        <button class="topbar-icon" style="position:absolute;top:7px;right:12px;"
-            onclick="document.getElementById('qr-box').style.display='none'">✕</button>
-    </div>
+<div class="app" id="app-root" aria-busy="true">
+  <header>
+    <div class="title">BÁN LẺ CS1 — Mobile</div>
+    <div class="sub" id="login-status">Chưa đăng nhập</div>
+  </header>
 
-    <!-- Nhập sản phẩm -->
-    <div class="input-group">
-        <input id="masp" placeholder="Nhập mã SP hoặc quét..." autocomplete="off" />
-        <button class="btn-voice" title="Nhập bằng giọng nói" id="btn-voice">🎤</button>
-        <button class="btn-search" title="Tìm sản phẩm" id="btn-search">🔍</button>
-    </div>
-
-    <div class="info-fields">
-        <input id="size" placeholder="Size">
-        <input id="soluong" placeholder="SL" value="1" type="number" min="1">
-        <input id="gia" placeholder="Giá" readonly>
-    </div>
-
-    <div class="input-group">
-        <input id="sohd" placeholder="Số hóa đơn" readonly style="font-weight:bold; background:#eee;">
-    </div>
-
-    <!-- Bảng kết quả -->
-    <div class="product-table">
-        <table id="bangketqua">
-            <thead>
-                <tr>
-
-                    <th>Mã</th>
-                    <th>Size</th>
-                    <th>Giá</th>
-                    <th>SL</th>
-                    <th>T Tiền</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Dòng mẫu sẽ render JS -->
-            </tbody>
-        </table>
-    </div>
-    <!-- Tổng kết -->
-
-    <div class="summary-block">
-        <label>Tổng tiền <span id="tongtien">0</span></label>
-        <label>Khuyến mại <span id="tongkm">0</span></label>
-        <label>
-            Chiết khấu
-            <input id="chietkhau_input" value="0"
-                style="width:100px; text-align:right; font-size: 18px; border: 1px solid #b5c3d1; border-radius: 5px; padding:2px 7px; margin-left:7px" />
-        </label>
-        <label>Phải trả <span id="phaithanhtoan">0</span></label>
-    </div>
-
-    <!-- Thông tin khách và nhân viên -->
-    <div class="input-group input-khach">
-        <input id="makh" placeholder="Mã KH" autocomplete="off" />
-        <button class="btn-search" id="btn-kh">🔍</button>
-    </div>
-    <div class="input-group input-nv">
-        <input id="manv" placeholder="Mã NV" autocomplete="off" />
-        <button class="btn-search" id="btn-nv">🔍</button>
-    </div>
-    <!-- Thanh toán -->
-    <div class="pay-fields">
-        <select id="hinhthuctt">
-            <option value="tm">Tiền mặt</option>
-            <option value="ck">Chuyển khoản</option>
+  <main class="content" id="app">
+    <!-- CHIPS: địa điểm / ngày / nhân viên / hình thức / checkbox -->
+    <section class="chips" id="chips-info">
+      <div class="chip">
+        <label for="diadiem">Địa điểm</label>
+        <select id="diadiem">
+          <option value="cs1" selected>cơ sở 1</option>
+          <option value="cs2">cơ sở 2</option>
         </select>
+      </div>
+      <div class="chip">
+        <label for="ngay">Ngày</label>
+        <input id="ngay" type="date" />
+      </div>
+      <div class="chip">
+        <label for="manv">Mã nhân viên</label>
+        <input id="manv" type="password" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="chip">
+        <label for="tennv">Tên nhân viên</label>
+        <input id="tennv" type="text" readonly />
+      </div>
+      <div class="toggles" style="grid-column:1/-1">
+        <label><input type="checkbox" id="size45" /> QL size</label>
+        <label><input type="checkbox" id="bansieunhanh" /> Bán siêu nhanh</label>
+        <label style="margin-left:auto;gap:8px">
+          <span>Hình thức TT</span>
+          <select id="hinhthuctt">
+            <option value="tm" selected>Tiền mặt</option>
+            <option value="ck">Chuyển khoản</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <!-- NHẬP NHANH -->
+    <section class="quick" id="quick-inputs">
+      <div>
+        <label for="masp">Mã SP</label>
+        <input id="masp" placeholder="Nhập mã SP hoặc quét..." autocomplete="off" />
+      </div>
+      <div>
+        <label for="soluong">SL</label>
+        <input id="soluong" inputmode="numeric" value="1" />
+      </div>
+      <div>
+        <label for="size">Size</label>
+        <input id="size" inputmode="numeric" />
+      </div>
+      <div>
+        <label for="gia">Giá SP</label>
+        <input id="gia" inputmode="numeric" />
+      </div>
+
+      <div class="sohd">
+        <label for="sohd">Số hóa đơn</label>
+        <input id="sohd" placeholder="bancs1_00000" />
+      </div>
+      <div class="ghichu">
+        <label for="ghichuHH">Ghi chú HH</label>
+        <input id="ghichuHH" placeholder="ghi chú hàng hóa (nếu có)" />
+      </div>
+    </section>
+
+    <!-- BẢNG DỮ LIỆU -->
+    <section class="table-wrap" aria-label="Bảng hàng hóa">
+      <table id="bangketqua">
+        <thead>
+          <tr>
+            <th>Mã hàng</th>
+            <th class="col-hidden">Tên hàng</th>
+            <th>Size</th>
+            <th class="col-hidden">ĐVT</th>
+            <th>Đơn giá</th>
+            <th class="col-hidden">Khuyến mại</th>
+            <th>SL</th>
+            <th>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dòng sẽ được thêm động bởi module hiện có -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- TỔNG SỐ & KHÁCH TRẢ -->
+    <section class="totals">
+      <div class="card">
+        <div class="lbl">Tổng phải trả</div>
+        <div class="val" id="phaithanhtoan">0</div>
+      </div>
+      <div class="card">
+        <label class="lbl" for="khachtra">Khách thanh toán</label>
+        <input id="khachtra" inputmode="numeric" placeholder="0" />
+      </div>
+      <div class="card">
+        <div class="lbl">Còn lại</div>
+        <div class="val" id="conlai">0</div>
+      </div>
+    </section>
+
+    <!-- THÔNG TIN HÓA ĐƠN -->
+    <section class="panel">
+      <h3>Thông tin hóa đơn</h3>
+      <div class="grid">
+        <div class="cell">
+          <label for="chietkhau">Chiết khấu</label>
+          <input id="chietkhau" inputmode="numeric" placeholder="0" />
+        </div>
+        <div class="cell">
+          <label for="tongkm">Tổng KM</label>
+          <input id="tongkm" inputmode="numeric" placeholder="0" />
+        </div>
+        <div class="cell">
+          <label for="mathang">Mặt hàng</label>
+          <input id="mathang" readonly />
+        </div>
+        <div class="cell">
+          <label for="tongsl">Tổng SL</label>
+          <input id="tongsl" readonly />
+        </div>
+        <div class="cell">
+          <label for="vitri">Vị trí SP</label>
+          <input id="vitri" />
+        </div>
+        <div class="cell">
+          <label for="makh">Mã khách</label>
+          <input id="makh" placeholder="mã khách" />
+        </div>
+        <div class="cell" style="grid-column:1/-1">
+          <label for="tenkh">Khách hàng</label>
+          <input id="tenkh" placeholder="Tên khách hàng" />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- NÚT LỆNH -->
+  <footer class="footer">
+    <div class="btns">
+      <button id="them" class="btn new" type="button">Thêm mới</button>
+      <button id="btn-luu" class="btn save" type="button">Lưu</button>
+      <button id="sua" class="btn edit" type="button">SỬA</button>
+      <button id="quaylai" class="btn back" type="button">Quay lại</button>
     </div>
-    <!-- Nút thao tác -->
-    <div class="bottom-actions">
-        <button id="btn-luu">💾 Lưu</button>
-        <button id="btn-them-moi">🆕 Thêm mới</button>
-        <button class="btn-bluetooth" id="btn-bluetooth">🖨️ In Bluetooth</button>
+  </footer>
+</div>
+
+<!-- OVERLAY ĐĂNG NHẬP (tận dụng module login hiện có: login-email/password/submit/status) -->
+<div id="login-overlay">
+  <div class="login-card">
+    <h2>Đăng nhập hệ thống</h2>
+    <div class="login-grid">
+      <input id="login-email" type="email" placeholder="Email đăng nhập" autocomplete="username" />
+      <select id="login-diadiem">
+        <option value="cs1" selected>Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+      <input id="login-manv" type="password" placeholder="Mã nhân viên" inputmode="numeric" />
+      <input id="login-password" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+      <button id="login-submit" type="button">Đăng nhập</button>
+      <div class="login-foot" id="login-note">Vui lòng đăng nhập để tiếp tục.</div>
     </div>
-    <!-- Popup tìm khách, NV, sản phẩm sẽ bổ sung sau -->
+  </div>
+</div>
 
-    <script>
-        // Placeholder js cho các nút: sẽ gắn logic sau
-        document.getElementById('btn-qr').onclick = () => {
-            document.getElementById('qr-box').style.display = 'flex';
-        };
-        document.getElementById('btn-menu').onclick = () => {
-            window.location.href = 'menu.html';
-        };
-        document.getElementById('btn-voice').onclick = () => {
-            alert('Chức năng nhập giọng nói đang phát triển...');
-        };
-        document.getElementById('btn-bluetooth').onclick = () => {
-            alert('Sẽ tích hợp in Bluetooth ở bản tới!');
-        };
-    </script>
-    <script type="module" src="scripts/sohoadon.js"></script>
+<!-- KHỞI TẠO SUPABASE (đặt TRƯỚC khi import các module khác) -->
+<script type="module">
+  // Nếu dự án của bạn đã có scripts/supabaseClient.js gán window.supabase,
+  // đoạn dưới đây sẽ bỏ qua (tránh double init).
+  if (!window.supabase) {
+    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+    // 👉 TODO: thay URL & anon key của bạn, hoặc để supabaseClient.js xử lý
+    const url = 'https://YOUR-PROJECT.supabase.co';
+    const key = 'YOUR-ANON-KEY';
+    window.supabase = createClient(url, key);
+  }
+</script>
 
-    <script type="module" src="scripts/banlemobilecs1.js"></script>
+<!-- IMPORT MODULE HIỆN CÓ (giữ đúng thứ tự, bạn chỉnh đường dẫn theo dự án) -->
+<script type="module" src="./scripts/supabaseClient.js"></script>
+<script type="module" src="./scripts/loginSupabaseModule.js"></script>
 
+<!-- Nghiệp vụ dùng lại từ bản MT (điều chỉnh đường dẫn theo repo của bạn) -->
+<script type="module" src="./scripts/utils.js"></script>
+<script type="module" src="./scripts/sohoadon.js"></script>
+<script type="module" src="./scripts/sanpham.js"></script>
+<script type="module" src="./scripts/autocompleteSPRealtime.js"></script>
+<script type="module" src="./scripts/bangketqua.js"></script>
+<script type="module" src="./scripts/hoadon.js"></script>
+<script type="module" src="./scripts/luuhoadon.js"></script>
+<script type="module" src="./scripts/shortcut.js"></script>
+<script type="module" src="./scripts/nutLenh.js"></script>
+<script type="module" src="./scripts/viettelInvoice.js"></script>
+<script type="module" src="./scripts/main.js"></script>
+
+<!-- Adapter cực mỏng cho mobile: ẩn/hiện login, cập nhật sub header -->
+<script>
+  (function(){
+    // Login overlay điều khiển bởi module login; ở đây chỉ lắng nghe sự kiện tùy chọn
+    document.addEventListener('login:success', (e)=>{
+      document.getElementById('login-overlay').style.display='none';
+      const tennv = document.getElementById('tennv')?.value || 'Đã đăng nhập';
+      document.getElementById('login-status').textContent = tennv;
+      document.getElementById('app-root').setAttribute('aria-busy','false');
+    });
+  })();
+</script>
 </body>
-
 </html>
