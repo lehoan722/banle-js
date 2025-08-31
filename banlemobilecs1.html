@@ -569,42 +569,44 @@
 
   <script>
     (function () {
-      const ensure = (id, forwardFromId) => {
-        let el = document.getElementById(id);
-        if (!el) {
-          el = document.createElement('button');
+      // Tạo phần tử ẩn nếu thiếu
+      const ensureBtn = (id) => {
+        if (!document.getElementById(id)) {
+          const el = document.createElement('button');
           el.id = id;
           el.type = 'button';
           el.style.display = 'none';
           document.body.appendChild(el);
         }
-        if (forwardFromId) {
-          const vis = document.getElementById(forwardFromId);
-          if (vis && !vis.dataset._forwardBound) {
-            vis.dataset._forwardBound = '1';
-            vis.addEventListener('click', () => el.click());
-          }
-        }
       };
-      // Các ID mà main.js thường bind:
-      ['them', 'luu', 'sua', 'quaylai', 'tieptuc', 'xemin', 'copy', 'xuatExcel', 'thoatpm', 'in_khong_hoi', 'in_sau_khi_luu']
-        .forEach(id => ensure(id));
+
+      // Các ID mà main.js bind sự kiện (giữ như cũ) + bổ sung btnReloadSP
+      ['them', 'luu', 'sua', 'quaylai', 'tieptuc', 'xemin', 'copy', 'xuatExcel', 'thoatpm', 'in_khong_hoi', 'in_sau_khi_luu', 'btnReloadSP']
+        .forEach(ensureBtn);
+
+      // Bridge: bản mobile dùng #bansieunhanh, code cũ đọc #nhapnhanh
+      if (!document.getElementById('nhapnhanh')) {
+        const hidden = document.createElement('input');
+        hidden.type = 'checkbox';
+        hidden.id = 'nhapnhanh';
+        hidden.style.display = 'none';
+        document.body.appendChild(hidden);
+      }
+      const mobileQuick = document.getElementById('bansieunhanh');
+      const legacyQuick = document.getElementById('nhapnhanh');
+      if (mobileQuick && legacyQuick) {
+        // trạng thái ban đầu
+        legacyQuick.checked = mobileQuick.checked;
+        // đồng bộ 2 chiều (ít nhất chiều từ mobile → legacy cho các listener cũ)
+        mobileQuick.addEventListener('change', () => {
+          legacyQuick.checked = mobileQuick.checked;
+          legacyQuick.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      }
     })();
   </script>
 
 
-  <!-- KHỞI TẠO SUPABASE (đặt TRƯỚC khi import các module khác) -->
-  <script type="module">
-    // Nếu dự án của bạn đã có scripts/supabaseClient.js gán window.supabase,
-    // đoạn dưới đây sẽ bỏ qua (tránh double init).
-    if (!window.supabase) {
-      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-      // 👉 TODO: thay URL & anon key của bạn, hoặc để supabaseClient.js xử lý
-      const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
-      window.supabase = createClient(supabaseUrl, supabaseKey);
-    }
-  </script>
 
   <!-- IMPORT MODULE HIỆN CÓ (giữ đúng thứ tự, bạn chỉnh đường dẫn theo dự án) -->
   <script type="module" src="./scripts/supabaseClient.js"></script>
