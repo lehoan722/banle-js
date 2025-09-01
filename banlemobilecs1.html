@@ -436,8 +436,8 @@
       </section>
 
       <!-- NHẬP NHANH -->
-       
-        
+
+
       <section class="quick" id="quick-inputs">
         <div class="sohd">
 
@@ -461,7 +461,7 @@
           <input id="gia" placeholder="gia" inputmode="numeric" />
         </div>
 
-        
+
         <div class="ghichu">
 
           <input id="ghichuHH" placeholder="ghi chú hàng hóa (nếu có)" style="display:none" />
@@ -475,12 +475,12 @@
           style="width:64px;height:64px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb">
         <small style="color:#6b7280"></small>
 
-        
-            <label for="vitri">Vị trí SP</label>
-            <input id="vitri" />
-         
+
+        <label for="vitri">Vị trí SP</label>
+        <input id="vitri" />
+
       </div>
-      
+
 
 
       <!-- BẢNG DỮ LIỆU -->
@@ -541,12 +541,12 @@
             <label for="tongsl">Tổng SL</label>
             <input id="tongsl" readonly />
           </div>
-          
+
           <div class="cell">
             <label for="makh">Mã khách</label>
             <input id="makh" placeholder="mã khách" />
           </div>
-          <div class="cell" >
+          <div class="cell">
             <label for="tenkh">Khách hàng</label>
             <input id="tenkh" placeholder="Tên khách hàng" />
           </div>
@@ -586,7 +586,7 @@
       <div class="login-grid">
         <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly style="background:#eee;" />
 
-       
+
         <select id="login-diadiem">
           <option value="cs1" selected>Cơ sở 1</option>
           <option value="cs2">Cơ sở 2</option>
@@ -715,7 +715,20 @@
       // Gán các trường cơ bản rồi khởi tạo app
       $('diadiem').value = csEl.value || 'cs1';
       $('manv').value = manvEl.value || '';
+      // Kích hoạt lại logic cũ để fill tên NV
+      $('manv').dispatchEvent(new Event('change', { bubbles: true }));
+      window.ganTenNV?.(); // nếu dự án có hàm này
+
       $('ngay').value = new Date().toISOString().slice(0, 10);
+
+      // 1) Ép địa điểm về đúng chọn lựa & ghi vào localStorage cho module số HĐ dùng
+      localStorage.setItem('diadiem', csEl.value || 'cs1');
+      document.getElementById('diadiem').value = csEl.value || 'cs1';
+
+      // 2) Nếu code cũ đang đọc theo text hiển thị, giữ đúng label (cơ sở 1/2) – bạn đã có.
+
+      // 3) Sau khi init xong, gọi lại hàm sinh số HĐ (nếu export) để chắc chắn prefix đúng
+
 
       try {
         await khoiTaoUngDung();                // 👉 gọi init toàn bộ module hiện có
@@ -729,6 +742,47 @@
         console.error('Init error:', e);
       }
     });
+
+    // Gọi lại tự sinh số HĐ nếu có (không lỗi nếu không tồn tại)
+    window.capNhatSoHoaDonTuDong?.();
+    window.phatSinhSoHDTMoi?.();  // nếu dự án bạn dùng tên này
+
+    document.getElementById('diadiem').addEventListener('change', e => {
+      localStorage.setItem('diadiem', e.target.value || 'cs1');
+      window.capNhatSoHoaDonTuDong?.();
+      window.phatSinhSoHDTMoi?.();
+    });
+
+
+    document.getElementById('sua')?.addEventListener('click', () => {
+      // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+      const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+      document.dispatchEvent(ev);
+    });
+
+    // Tìm hàm mở popup khách theo các tên quen thuộc trong dự án
+    const openPopupKhach =
+      window.moPopupKhachHang || window.moPopupKhach || window.openDMKhach ||
+      window.moBangDMKhach || window.timKhachHang;
+
+    // Bấm vào ô mã khách để mở popup khách
+    const makhEl = document.getElementById('makh');
+    if (makhEl) {
+      makhEl.addEventListener('focus', () => openPopupKhach?.());
+      makhEl.addEventListener('click', () => openPopupKhach?.());
+    }
+
+    // Khi popup chọn xong, module cũ sẽ tự gán #makh và #tenkh.
+    // Nếu module cũ phát sự kiện tùy biến, bạn không cần thêm gì.
+    // Nếu muốn chủ động đồng bộ alias:
+    const khachhangAlias = document.getElementById('khachhang');
+    const tenkhEl = document.getElementById('tenkh');
+    if (khachhangAlias && tenkhEl) {
+      const syncTen = () => khachhangAlias.value = tenkhEl.value;
+      tenkhEl.addEventListener('input', syncTen);
+      syncTen();
+    }
+
   </script>
 
   <!-- Popup Danh mục hàng hóa -->
