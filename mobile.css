@@ -1,235 +1,88 @@
-/* ===== Giao diện di động cho banlemtcs1.html (clone tuyệt đối) ===== */
+/* ========= BẢN DI ĐỘNG – bố cục theo hàng, không phụ thuộc 12 cột cũ ========= */
 @media (max-width: 480px) {
 
-  /* 1) Header + thông tin trên cùng */
-  .menu-bar { position: sticky; top: 0; z-index: 1000; padding: 8px 10px; }
-  .menu-item { display: none !important; }              /* Ẩn các nút menu phụ */
-  .tennv { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .tennv select, .tennv input, .tennv button { height: 40px; font-size: 15px; }
+  /* --- Reset nhỏ để chống width cứng của bản desktop --- */
+  input, select, button, textarea { font-size: 16px !important; height: 44px !important; }
+  input, select, textarea { width: auto !important; }
+  .hidden-mobile { display: none !important; } /* tiện dùng nếu cần */
 
-  /* 2) Khối nhập nhanh (giữ nguyên ID, chỉ bố cục lại) */
+  /* ================== NHÓM 1: Thanh thông tin trên cùng ================== */
+  .menu-bar { position: sticky; top: 0; z-index: 1000; padding: 8px 10px; }
+  .menu-item { display: none !important; }           /* Ẩn menu phụ, giữ phần chọn cơ sở/ngày/NV */
+  .tennv { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tennv select, .tennv input, .tennv button { height: 40px !important; }
+  /* chia 48%/48% cho từng “cụm” trên hàng */
+  .tennv .block { flex: 1 1 48%; min-width: 160px; } /* nếu markup có .block; nếu không, bỏ qua */
+
+  /* ================== NHÓM 2: Cụm NHẬP NHANH ================== */
+  /* Container của cụm nhập nhanh – tên thường thấy là .top-inputs (giữ nguyên DOM) */
   .top-inputs {
     display: flex; flex-wrap: wrap; gap: 8px;
     padding: 8px; background: #f6f7f9;
   }
-  /* Ẩn trường ít dùng – GIỮ DOM để không vỡ JS */
+  /* Ẩn ô không dùng nhưng GIỮ DOM để JS không vỡ */
   #dvt, #khuyenmai, #thanhtien { display: none !important; }
 
-  /* Gỡ width cứng, để flex quản lý */
-  #masp, #soluong, #size, #gia, #sohd, #ghichu { width: auto !important; }
+  /* Hàng Q1: Mã SP 60% | SL 20% | Size 20% */
+  #masp    { flex: 1 1 60%; min-width: 220px; }
+  #soluong { flex: 1 1 20%; max-width: 32%; text-align: center; }
+  #size    { flex: 1 1 20%; max-width: 32%; text-align: center; }
 
-  /* Tỷ lệ: SL/Size bằng 1/2 ô thường; Số HĐ & Ghi chú xuống dòng riêng */
-  #masp  { flex: 1 1 40%; min-width: 120px; }
-  #soluong, #size { flex: 1 1 22%; max-width: 32%; text-align: center; }
-  #gia   { flex: 1 1 45%; min-width: 160px; text-align: right; }
-  #sohd  { flex: 1 1 60%; min-width: 220px; }
-  #ghichu{ flex: 1 1 100%; }
+  /* Hàng Q2: Giá 40% | Số HĐ 60% */
+  #gia     { flex: 1 1 40%; min-width: 160px; text-align: right; }
+  #sohd    { flex: 1 1 60%; min-width: 220px; }
 
-  /* 3) Main chuyển sang cột; bảng co giãn */
-  .main { display: flex; flex-direction: column; gap: 8px; }
+  /* Nếu có ghi chú HH: cho xuống dòng riêng */
+  #ghichu  { flex: 1 1 100%; }
+
+  /* Ảnh sản phẩm: nếu muốn hiển thị, thu nhỏ; còn chật thì ẩn dòng dưới */
+  .product-image { width: 110px !important; height: 110px !important; border-radius: 10px; object-fit: cover; }
+  /* .product-image { display:none !important; } */
+
+  /* ================== NHÓM 3: Bảng hàng ================== */
   .table-area { max-height: 48vh; overflow: auto; background: #fff; }
-  .sidebar { width: 100%; border-left: 0; }
+  #bangketqua { table-layout: fixed; width: 100%; }
+  #bangketqua th, #bangketqua td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* 4) Ẩn bớt cột bảng – GIỮ DOM để JS vẫn chạy (chỉ hiển thị 5 cột cần) */
-  /* Giữ: Mã | size | Đơn giá | SL | Thành tiền
-     Ẩn: Tên (2), ĐVT (5), KM (7) – chỉnh thứ tự nếu bảng của bạn khác */
+  /* Ẩn cột: Tên (2), ĐVT (5), KM (7). GIỮ DOM để JS không ảnh hưởng */
   #bangketqua thead th:nth-child(2),
   #bangketqua tbody td:nth-child(2),
   #bangketqua thead th:nth-child(5),
   #bangketqua tbody td:nth-child(5),
   #bangketqua thead th:nth-child(7),
-  #bangketqua tbody td:nth-child(7) { display: none; }
+  #bangketqua tbody td:nth-child(7) { display: none !important; }
 
-  /* 5) Tổng tiền/Khách trả/Còn lại */
-  #phaithanhtoan, #khachtra, #conlai { height: 44px !important; font-size: 16px !important; }
+  /* Set % cho 5 cột còn lại: 1=Mã, 3=Size, 4=SL, 6=Đơn giá, 8=Thành tiền */
+  #bangketqua thead th:nth-child(1), #bangketqua tbody td:nth-child(1) { width: 30%; }
+  #bangketqua thead th:nth-child(3), #bangketqua tbody td:nth-child(3) { width: 14%; text-align:center;}
+  #bangketqua thead th:nth-child(4), #bangketqua tbody td:nth-child(4) { width: 14%; text-align:center;}
+  #bangketqua thead th:nth-child(6), #bangketqua tbody td:nth-child(6) { width: 20%; text-align:right; }
+  #bangketqua thead th:nth-child(8), #bangketqua tbody td:nth-child(8) { width: 22%; text-align:right; }
 
-  /* 6) Ảnh sản phẩm */
-  .product-image { width: 120px !important; height: 120px !important; border-radius: 10px; object-fit: cover; }
+  /* ================== NHÓM 4: Tổng tiền ================== */
+  /* 3 ô đều nhau; nếu ô là input, chúng sẽ rộng bằng nhau */
+  #phaithanhtoan, #khachtra, #conlai { width: 100% !important; }
+  .tongtien-wrap { display:flex; gap:8px; }
+  .tongtien-wrap > * { flex:1 1 33%; }
 
-  /* 7) Footer nút lớn sticky; ẩn nút phụ */
+  /* ================== NHÓM 5: Thông tin hóa đơn ================== */
+  /* Không đổi DOM; ép các input chính về 50% hàng */
+  .tab-content { padding: 8px; }
+  /* set 2 cột 50/50 cho các trường chính (nếu chúng là input/select mang id dưới) */
+  #chietkhau, #tongkm, #mathang, #tongsl, #vitri, #makh, #khachhang {
+    display: inline-block; width: calc(50% - 6px) !important; margin: 4px 3px;
+  }
+  /* Mã khách & Khách hàng thường đi cùng 1 hàng */
+  #makh { vertical-align: top; }
+  #khachhang { vertical-align: top; }
+
+  /* ================== NHÓM 6: Footer ================== */
   .footer-buttons {
     position: sticky; bottom: 0; left: 0; right: 0;
     padding: 8px; gap: 8px; background: #dce9f9;
     display: grid; grid-template-columns: repeat(3, 1fr);
   }
+  /* Ẩn nút phụ trên mobile */
   #tieptuc, #xemin, #btnCopy, #xuatexcel, #btn-logout { display: none !important; }
-  .footer-buttons button { height: 44px; font-size: 16px; font-weight: 700; }
-
-  /* 8) Ẩn các dải “gạch phân cách” phía sau footer nếu có */
-  .footer-buttons ~ .top-inputs { display: none !important; }
-
-  /* 9) Tabs bên phải gọn hơn */
-  .tabs button { padding: 10px; font-size: 15px; }
-  .tab-content { padding: 10px; font-size: 14px; }
-}
-
-/* === Sửa layout theo ảnh & yêu cầu (dùng grid 12 cột) === */
-@media (max-width:480px){
-
-  /* Hàng 1: CS – Ngày – Tên NV – Tải (ẩn mã NV) */
-  .tennv{
-    display:grid !important;
-    grid-template-columns: auto auto minmax(0,1fr) auto; /* CS | Ngày | Tên NV co dãn | Tải */
-    gap:6px; align-items:center;
-  }
-  #manv{ display:none !important; }
-  #tennv{
-    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  #btnReloadSP{ height:40px; padding:0 12px; }
-
-  /* Cụm nhập nhanh: grid 12 cột để chia % linh hoạt */
-  .top-inputs{
-    display:grid !important;
-    grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows:auto; gap:8px; padding:8px; background:#f6f7f9;
-  }
-
-  /* Ẩn phần không dùng */
-  #dvt, #khuyenmai, #thanhtien, #ghichu, #ghichuHH, #masp-search{
-    display:none !important;
-  }
-  #masp,#soluong,#size,#gia,#sohd{ width:auto !important; }
-
-  /* Hàng 2: Mã SP 60% | SL ~16.7% | Size ~25% */
-  #masp   { grid-column: 1 / span 7; }   /* ~58% */
-  #soluong{ grid-column: 8 / span 2; text-align:center; }   /* ~16.7% */
-  #size   { grid-column:10 / span 3; text-align:center; }   /* ~25% */
-
-  
-
-  /* Đặt bảng ở trên, không bị phần dưới che */
-  .main{ display:flex; flex-direction:column; }
-  .table-area{ order:1; max-height:46vh; overflow:auto; z-index:0; margin-top:6px; }
-  .sidebar{ order:2; margin-top:10px; }
-  .tabs{ position:static !important; margin-top:8px !important; }
-
-  /* Thông tin hóa đơn: chỉ giữ 6 trường, chia 2 dòng:
-     Dòng 1 = 3 phần bằng nhau; Dòng 2 = 50% | 25% | 25%  */
-  #thongtin{
-    display:grid !important;
-    grid-template-columns: repeat(12, 1fr);
-    gap:8px; align-items:end;
-  }
-  /* Ẩn phần không dùng */
-  #thongtin label:has(#chietkhau),
-  #thongtin label:has(#tongkm){ display:none !important; }
-
-  /* Dòng 1: Hình thức TT | Mặt hàng | Tổng SL (mỗi phần 4/12) */
-  #thongtin label:has(#hinhthuctt){ grid-column: 1 / span 4; }
-  #thongtin label:has(#mathang)   { grid-column: 5 / span 4; }
-  #thongtin label:has(#tongsl)    { grid-column: 9 / span 4; }
-
-  /* Dòng 2: Vị trí 6/12 | Mã KH 3/12 | Khách hàng 3/12 */
-  #thongtin label:has(#vitri) { grid-column: 1 / span 6; }
-  #thongtin > div:has(#makh)  { grid-column: 7 / span 3; } /* container có #makh + icon */
-  #thongtin label:has(#khachhang){ grid-column: 10 / span 3; }
-
-  /* Input fill đầy ô để tránh chồng chéo */
-  #thongtin input, #thongtin select{
-    width:100%; box-sizing:border-box;
-  }
-}
-
-/* === Fix chọn sai phần tử + chia lại đúng tỉ lệ, đặt lên WRAPPER === */
-@media (max-width:480px){
-
-  /* 0) Reset mọi width/float cứng của wrapper + control bên trong */
-  .top-inputs > * { display:block; width:auto !important; min-width:0; margin:0; }
-  .top-inputs input, .top-inputs select, .top-inputs button { 
-    width:100%; box-sizing:border-box; float:none;
-  }
-
-  /* Giảm gap cho gọn */
-  .top-inputs{ gap:6px !important; }
-
-  /* 1) HÀNG 2: Mã SP 50% | SL ~16.7% | Size ~33.3% 
-        -> đặt lên WRAPPER chứa các control đó */
-  .top-inputs :is(label,div):has(#masp){      grid-column: 1 / span 6 !important; }
-  .top-inputs :is(label,div):has(#soluong){   grid-column: 7 / span 2 !important; }
-  .top-inputs :is(label,div):has(#size),
-  .top-inputs :is(label,div):has(#size45){    grid-column: 9 / span 4 !important; }
-
-  /* 2) HÀNG 3: Giá ~25% | Số HĐ ~75%  */
-  .top-inputs :is(label,div):has(#gia){       grid-column: 1 / span 3 !important; }
-  .top-inputs :is(label,div):has(#sohd){      grid-column: 4 / span 9 !important; }
-
-  /* 3) THÔNG TIN HÓA ĐƠN – reset để grid chia đều */
-  #thongtin { 
-    display:grid !important; grid-template-columns: repeat(12, 1fr);
-    gap:6px !important; align-items:end;
-  }
-  #thongtin > *{ min-width:0; margin:0; } 
-  #thongtin input, #thongtin select{ width:100%; box-sizing:border-box; }
-
-  /* Dòng 1: 3 phần bằng nhau (mỗi phần 4/12) – đặt lên WRAPPER */
-  #thongtin :is(label,div):has(#hinhthuctt){  grid-column: 1 / span 4 !important; }
-  #thongtin :is(label,div):has(#mathang){     grid-column: 5 / span 4 !important; }
-  #thongtin :is(label,div):has(#tongsl){      grid-column: 9 / span 4 !important; }
-
-  /* Dòng 2: Vị trí 50% | Mã KH 16.7% | Khách hàng 33.3%  */
-  #thongtin :is(label,div):has(#vitri){       grid-column: 1 / span 6 !important; }
-  #thongtin :is(label,div):has(#makh){        grid-column: 7 / span 2 !important; overflow:hidden; }
-  #thongtin :is(label,div):has(#khachhang){   grid-column: 9 / span 4 !important; }
-
-  /* Chừa chỗ cho icon kính lúp trong "Mã KH" để không đè cột kế bên */
-  #makh{ padding-right:28px; }
-}
-
-/* ==== FIX QUYẾT LIỆT: đặt rule lên WRAPPER + bỏ <br> + reset width/float ==== */
-@media (max-width:480px){
-
-  /* 0) Ẩn <br> chen giữa các ô khiến vỡ hàng */
-  .top-inputs br, #thongtin br { display:none !important; }
-
-  /* 1) Reset wrapper & control để grid điều khiển đúng */
-  .top-inputs{ 
-    display:grid !important; grid-template-columns:repeat(12,1fr);
-    gap:6px !important; padding:8px; background:#f6f7f9;
-  }
-  .top-inputs > *{ display:block; width:auto !important; min-width:0; margin:0; float:none !important; }
-  .top-inputs input, .top-inputs select, .top-inputs button{ width:100%; box-sizing:border-box; float:none !important; }
-
-  /* Hàng 2: Mã SP 50% | SL 16.7% | Size 33.3%  (đặt LÊN WRAPPER) */
-  .top-inputs :is(label,div):has(#masp){    grid-column:1 / span 6 !important; }
-  .top-inputs :is(label,div):has(#soluong){ grid-column:7 / span 2 !important; }
-  .top-inputs :is(label,div):has(#size),
-  .top-inputs :is(label,div):has(#size45){  grid-column:9 / span 4 !important; }
-
-  /* Hàng 3: Giá 25% | Số HĐ 75% */
-  .top-inputs :is(label,div):has(#gia){     grid-column:1 / span 3 !important; }
-  .top-inputs :is(label,div):has(#sohd){    grid-column:4 / span 9 !important; }
-  /* Bảo đảm control co gọn trong ô */
-  #masp,#soluong,#size,#gia,#sohd{ width:100% !important; min-width:0; }
-
-  /* 2) Khu Thông tin hóa đơn: grid 12 cột, các ô co đều */
-  #thongtin{
-    display:grid !important; grid-template-columns:repeat(12,1fr);
-    gap:6px !important; align-items:end;
-  }
-  #thongtin > *{ min-width:0; margin:0; float:none !important; }
-  #thongtin input, #thongtin select{ width:100%; box-sizing:border-box; }
-
-  /* Ẩn mục không dùng */
-  #thongtin label:has(#chietkhau),
-  #thongtin label:has(#tongkm){ display:none !important; }
-
-  /* DÒNG 1: 3 phần bằng nhau */
-  #thongtin :is(label,div):has(#hinhthuctt){ grid-column:1 / span 4 !important; }
-  #thongtin :is(label,div):has(#mathang){    grid-column:5 / span 4 !important; }
-  #thongtin :is(label,div):has(#tongsl){     grid-column:9 / span 4 !important; }
-
-  /* DÒNG 2: Vị trí 50% | Mã KH 16.7% | Khách hàng 33.3% */
-  #thongtin :is(label,div):has(#vitri){      grid-column:1 / span 6 !important; }
-  #thongtin :is(label,div):has(#makh){       grid-column:7 / span 2 !important; overflow:hidden; }
-  #thongtin :is(label,div):has(#khachhang){  grid-column:9 / span 4 !important; }
-
-  /* Icon 🔍 trong Mã KH không làm nở ô */
-  #thongtin :is(label,div):has(#makh){ display:grid; grid-template-columns:1fr 28px; gap:4px; }
-  #thongtin :is(label,div):has(#makh) input#makh{ grid-column:1; padding-right:8px; }
-  #thongtin :is(label,div):has(#makh) :is(button,svg,img){ grid-column:2; width:28px; height:28px; }
-
-  /* 3) Bảng trên – sidebar dưới */
-  .table-area{ order:1; max-height:46vh; overflow:auto; }
-  .sidebar{ order:2; }
+  .footer-buttons button { height: 44px !important; font-size: 16px !important; font-weight: 700; }
 }
