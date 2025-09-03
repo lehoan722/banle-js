@@ -146,7 +146,7 @@
 
   /* Hàng 3: Giá 25% | Số HĐ 75%  */
   #gia  { grid-column: 1 / span 3 !important; text-align:right; min-width:0; }
-  #sohd { grid-column: 4 / span 9 !important; min-width:0; }
+  #sohd { grid-column: 3 / span 9 !important; min-width:0; }
 
   /* Bảng ở trên, sidebar ở dưới như cũ */
   .table-area{ order:1; max-height:46vh; overflow:auto; }
