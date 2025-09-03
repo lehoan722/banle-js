@@ -34,6 +34,7 @@
 
   /* Nếu có ghi chú HH: cho xuống dòng riêng */
   #ghichu  {display: none; flex: 1 1 100%; }
+  #masp-search  {display: none; flex: 1 1 100%; }
 
   /* Ảnh sản phẩm: nếu muốn hiển thị, thu nhỏ; còn chật thì ẩn dòng dưới */
   .product-image { width: 110px !important; height: 110px !important; border-radius: 10px; object-fit: cover; }
