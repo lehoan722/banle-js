@@ -64,61 +64,73 @@
 }
 
 /* ===== Bố cục tinh chỉnh theo yêu cầu (mobile) ===== */
+/* === Sửa layout theo ảnh & yêu cầu (dùng grid 12 cột) === */
 @media (max-width:480px){
 
-  /* Hàng 1: CS – Ngày – Tên NV – Tải  (ẩn Mã NV) */
+  /* Hàng 1: CS – Ngày – Tên NV – Tải (ẩn mã NV) */
   .tennv{
-    display:grid;
-    grid-template-columns: 0.9fr 1fr 1.3fr auto; /* CS | Ngày | Tên NV | Tải */
-    gap:8px; align-items:center;
+    display:grid !important;
+    grid-template-columns: auto auto minmax(0,1fr) auto; /* CS | Ngày | Tên NV co dãn | Tải */
+    gap:6px; align-items:center;
   }
   #manv{ display:none !important; }
+  #tennv{
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
   #btnReloadSP{ height:40px; padding:0 12px; }
 
-  /* NHẬP NHANH -> dùng grid 3 cột để kiểm soát phần trăm */
+  /* Cụm nhập nhanh: grid 12 cột để chia % linh hoạt */
   .top-inputs{
-    display:grid;
-    grid-template-columns: 60% 20% 20%;
+    display:grid !important;
+    grid-template-columns: repeat(12, 1fr);
     grid-auto-rows:auto; gap:8px; padding:8px; background:#f6f7f9;
   }
 
-  /* Hàng 2: Mã SP (60) | SL (20) | Size (20) */
-  #masp{ grid-column:1; width:auto !important; }
-  #soluong{ grid-column:2; text-align:center; }
-  #size{ grid-column:3; text-align:center; }
+  /* Ẩn phần không dùng */
+  #dvt, #khuyenmai, #thanhtien, #ghichu, #ghichuHH, #masp-search{
+    display:none !important;
+  }
+  #masp,#soluong,#size,#gia,#sohd{ width:auto !important; }
 
-  /* Hàng 3: Giá (30) | Số HĐ (70)  -> đặt lại cột riêng */
-  #gia{ grid-column:1; }
-  #sohd{ grid-column:2 / span 2; }
+  /* Hàng 2: Mã SP 60% | SL ~16.7% | Size ~25% */
+  #masp   { grid-column: 1 / span 7; }   /* ~58% */
+  #soluong{ grid-column: 8 / span 2; text-align:center; }   /* ~16.7% */
+  #size   { grid-column:10 / span 3; text-align:center; }   /* ~25% */
 
-  /* Ẩn Ghi chú HH và nút tìm cạnh nó */
-  #ghichu, #ghichuHH, #masp-search{ display:none !important; }
+  /* Hàng 3: Giá ~33% | Số HĐ ~67% */
+  #gia  { grid-column: 1 / span 4; text-align:right; }  /* ~33% */
+  #sohd { grid-column: 5 / span 8; }                    /* ~67% */
 
-  /* Đảm bảo bảng nằm TRÊN phần thông tin hoá đơn, không bị che */
+  /* Đặt bảng ở trên, không bị phần dưới che */
   .main{ display:flex; flex-direction:column; }
-  .table-area{ order:1; max-height:46vh; overflow:auto; z-index:0; }
+  .table-area{ order:1; max-height:46vh; overflow:auto; z-index:0; margin-top:6px; }
   .sidebar{ order:2; margin-top:10px; }
   .tabs{ position:static !important; margin-top:8px !important; }
 
-  /* Thông tin hoá đơn: chỉ giữ 6 trường, chia 2 dòng như yêu cầu */
+  /* Thông tin hóa đơn: chỉ giữ 6 trường, chia 2 dòng:
+     Dòng 1 = 3 phần bằng nhau; Dòng 2 = 50% | 25% | 25%  */
   #thongtin{
-    display:grid;
-    grid-template-columns: 50% 25% 25%; /* cho dòng 2: Vị trí | Mã KH | KH */
+    display:grid !important;
+    grid-template-columns: repeat(12, 1fr);
     gap:8px; align-items:end;
   }
-
-  /* Ẩn các trường không dùng */
+  /* Ẩn phần không dùng */
   #thongtin label:has(#chietkhau),
   #thongtin label:has(#tongkm){ display:none !important; }
 
-  /* Dòng 1: Hình thức TT | Mặt hàng | Tổng SL */
-  #thongtin label:has(#hinhthuctt){ grid-column:1; }
-  #thongtin label:has(#mathang){ grid-column:2; }
-  #thongtin label:has(#tongsl){ grid-column:3; }
+  /* Dòng 1: Hình thức TT | Mặt hàng | Tổng SL (mỗi phần 4/12) */
+  #thongtin label:has(#hinhthuctt){ grid-column: 1 / span 4; }
+  #thongtin label:has(#mathang)   { grid-column: 5 / span 4; }
+  #thongtin label:has(#tongsl)    { grid-column: 9 / span 4; }
 
-  /* Dòng 2: Vị trí(50) | Mã KH(25) | Khách hàng(25)  */
-  #thongtin label:has(#vitri){ grid-column:1; }
-  /* Mã KH trong MT là một <div> đặc biệt bọc #makh + nút kính lúp */
-  #thongtin > div:has(#makh){ grid-column:2; }
-  #thongtin label:has(#khachhang){ grid-column:3; }
+  /* Dòng 2: Vị trí 6/12 | Mã KH 3/12 | Khách hàng 3/12 */
+  #thongtin label:has(#vitri) { grid-column: 1 / span 6; }
+  #thongtin > div:has(#makh)  { grid-column: 7 / span 3; } /* container có #makh + icon */
+  #thongtin label:has(#khachhang){ grid-column: 10 / span 3; }
+
+  /* Input fill đầy ô để tránh chồng chéo */
+  #thongtin input, #thongtin select{
+    width:100%; box-sizing:border-box;
+  }
 }
+
