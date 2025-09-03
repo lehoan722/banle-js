@@ -96,9 +96,7 @@
   #soluong{ grid-column: 8 / span 2; text-align:center; }   /* ~16.7% */
   #size   { grid-column:10 / span 3; text-align:center; }   /* ~25% */
 
-  /* Hàng 3: Giá ~33% | Số HĐ ~67% */
-  #gia  { grid-column: 1 / span 4; text-align:right; }  /* ~33% */
-  #sohd { grid-column: 5 / span 8; }                    /* ~67% */
+  
 
   /* Đặt bảng ở trên, không bị phần dưới che */
   .main{ display:flex; flex-direction:column; }
@@ -145,7 +143,7 @@
   #size   { grid-column: 9 / span 4 !important; text-align:center; min-width:0; }
 
   /* Hàng 3: Giá 25% | Số HĐ 75%  */
-  #gia  { grid-column: 1 / span 3 !important; text-align:right; min-width:0; }
+  #gia  { grid-column: 1 / span 2 !important; min-width:0; }
   #sohd { grid-column: 3 / span 9 !important; min-width:0; }
 
   /* Bảng ở trên, sidebar ở dưới như cũ */
