@@ -11,9 +11,8 @@
   .menu-item { display: none !important; }           /* Ẩn menu phụ, giữ phần chọn cơ sở/ngày/NV */
   .tennv { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .tennv select, .tennv input, .tennv button { height: 40px !important; }
-  .manv { display: none !important; } 
   /* chia 48%/48% cho từng “cụm” trên hàng */
-  .tennv .block { flex: 1 1 28%; min-width: 80px; } /* nếu markup có .block; nếu không, bỏ qua */
+  .tennv .block { flex: 1 1 48%; min-width: 160px; } /* nếu markup có .block; nếu không, bỏ qua */
 
   /* ================== NHÓM 2: Cụm NHẬP NHANH ================== */
   /* Container của cụm nhập nhanh – tên thường thấy là .top-inputs (giữ nguyên DOM) */
@@ -25,7 +24,7 @@
   #dvt, #khuyenmai, #thanhtien { display: none !important; }
 
   /* Hàng Q1: Mã SP 60% | SL 20% | Size 20% */
-  #masp    { flex: 1 1 60%; min-width: 150px; }
+  #masp    { flex: 1 1 68%; min-width: 150px; }
   #soluong { flex: 1 1 10%; max-width: 70px; text-align: center; }
   #size    { flex: 1 1 20%; max-width: 80px; text-align: center; }
 
