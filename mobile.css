@@ -1,5 +1,5 @@
 /* ========= BẢN DI ĐỘNG – bố cục theo hàng, không phụ thuộc 12 cột cũ ========= */
-@media (max-width: 460px) {
+@media (max-width: 480px) {
 
   /* --- Reset nhỏ để chống width cứng của bản desktop --- */
   input, select, button, textarea { font-size: 16px !important; height: 44px !important; }
@@ -11,8 +11,9 @@
   .menu-item { display: none !important; }           /* Ẩn menu phụ, giữ phần chọn cơ sở/ngày/NV */
   .tennv { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .tennv select, .tennv input, .tennv button { height: 40px !important; }
+  .manv { display: none !important; } 
   /* chia 48%/48% cho từng “cụm” trên hàng */
-  .tennv .block { flex: 1 1 48%; min-width: 160px; } /* nếu markup có .block; nếu không, bỏ qua */
+  .tennv .block { flex: 1 1 28%; min-width: 80px; } /* nếu markup có .block; nếu không, bỏ qua */
 
   /* ================== NHÓM 2: Cụm NHẬP NHANH ================== */
   /* Container của cụm nhập nhanh – tên thường thấy là .top-inputs (giữ nguyên DOM) */
