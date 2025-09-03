@@ -101,12 +101,7 @@
 
 
 /* ===== NHÓM 1 — dồn 1 hàng, nút Tải không tràn ===== */
-.tennv{
-  display:flex !important;
-  align-items:center;
-  gap:3px;                /* giảm gap để đủ chỗ */
-  flex-wrap:nowrap !important;
-}
+
 #manv{ display:none !important; }   /* ẩn mã NV trên mobile */
 
 #diadiem{ flex:0 1 22%; min-width:72px; }
