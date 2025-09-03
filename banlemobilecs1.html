@@ -360,6 +360,13 @@
             document.getElementById('popupDanhMuc').style.display = 'none';
         }
     </script>
+
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
+  <link rel="stylesheet" href="mobile.css">
+
 </head>
 
 <body>
@@ -437,78 +444,7 @@
             font-size: 15px;
             margin-left: 2px;
         }
-
-        /* ===== Bản mobile cho banlemtcs1.html ===== */
-@media (max-width: 480px) {
-
-  /* 1) Header & Menu */
-  .menu-bar { 
-    position: sticky; top: 0; z-index: 1000;
-    padding: 8px 10px;
-  }
-  .menu-item { display: none !important; }        /* Ẩn các menu thả xuống, giữ .tennv */
-  .tennv { gap: 8px; justify-content: space-between; flex-wrap: wrap; }
-  #diadiem, #ngay, #manv, #tennv, #btnReloadSP { height: 40px; font-size: 15px; }
-
-  /* 2) Khối nhập nhanh */
-  .top-inputs { 
-    display: flex; flex-wrap: wrap; gap: 8px; 
-    padding: 8px; background: #f6f7f9;
-  }
-  /* Ẩn trường không cần (giữ DOM tránh vỡ JS) */
-  #dvt, #khuyenmai, #thanhtien { display: none !important; }
-  /* Gỡ width cứng ở CSS gốc */
-  #masp, #soluong, #size, #gia, #sohd, #ghichu { width: auto !important; }
-
-  /* Tỷ lệ: Mã SP to; SL/Size = 1/2 ô thường; Giá vừa; Số HĐ & Ghi chú xuống dòng */
-  #masp  { flex: 1 1 60%; min-width: 220px; }
-  #soluong, #size { flex: 1 1 22%; max-width: 32%; text-align: center; }
-  #gia   { flex: 1 1 45%; min-width: 160px; text-align: right; }
-  #sohd  { flex: 1 1 60%; min-width: 220px; }
-  #ghichu{ flex: 1 1 100%; }
-
-  /* Ẩn các .top-inputs nằm SAU footer (hai dòng gạch) */
-  .footer-buttons ~ .top-inputs { display: none !important; }
-
-  /* 3) Main chuyển cột; bảng co giãn */
-  .main { flex-direction: column; height: auto; min-height: 0; }
-  .table-area { max-height: 48vh; background: #fff; }
-  .sidebar { width: 100%; border-left: 0; }
-
-  /* 4) Ẩn bớt cột bảng theo thứ tự */
-  #bangketqua thead th:nth-child(2),
-  #bangketqua tbody td:nth-child(2),
-  #bangketqua thead th:nth-child(5),
-  #bangketqua tbody td:nth-child(5),
-  #bangketqua thead th:nth-child(7),
-  #bangketqua tbody td:nth-child(7) { display: none; }
-
-  /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
-  .btn-big { width: 100%; font-size: 18px; }
-  #phaithanhtoan, #khachtra, #conlai { width: 120px !important; }
-
-  /* 6) Ảnh sản phẩm */
-  .product-image { width: 120px !important; height: 120px !important; border-radius: 10px; }
-
-  /* 7) Footer nút lớn sticky */
-  .footer-buttons {
-    position: sticky; bottom: 0; left: 0; right: 0;
-    padding: 8px; gap: 8px; background: #dce9f9;
-    display: grid; grid-template-columns: repeat(3, 1fr);
-  }
-  /* Ẩn nút phụ */
-  #tieptuc, #xemin, #btnCopy, #xuatexcel, #btn-logout { display: none !important; }
-  .footer-buttons button { height: 44px; font-size: 16px; font-weight: 700; }
-
-  /* 8) Tabs bên phải */
-  .tabs button { padding: 10px; font-size: 15px; }
-  .tab-content { padding: 10px; font-size: 14px; }
-}
-
     </style>
-
-    <link rel="stylesheet" href="mobile.css">
-
 
     <div class="menu-bar">
         <div class="tennv">
