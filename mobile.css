@@ -41,7 +41,7 @@
   /* .product-image { display:none !important; } */
 
   /* ================== NHÓM 3: Bảng hàng ================== */
-  .table-area { max-height: 48vh; overflow: auto; background: #fff; }
+  .table-area { max-height: 68vh; overflow: auto; background: #fff; }
   #bangketqua { table-layout: fixed; width: 100%; }
   #bangketqua th, #bangketqua td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
