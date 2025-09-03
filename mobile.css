@@ -24,9 +24,9 @@
   #dvt, #khuyenmai, #thanhtien { display: none !important; }
 
   /* Hàng Q1: Mã SP 60% | SL 20% | Size 20% */
-  #masp    { flex: 1 1 60%; min-width: 220px; }
-  #soluong { flex: 1 1 10%; max-width: 32%; text-align: center; }
-  #size    { flex: 1 1 20%; max-width: 32%; text-align: center; }
+  #masp    { flex: 1 1 30%; }
+  #soluong { flex: 1 1 10%; text-align: center; }
+  #size    { flex: 1 1 20%;  text-align: center; }
 
   /* Hàng Q2: Giá 40% | Số HĐ 60% */
   #gia     { flex: 1 1 35%; min-width: 160px; text-align: right; }
