@@ -143,8 +143,8 @@
   #size   { grid-column: 9 / span 4 !important; text-align:center; min-width:0; }
 
   /* Hàng 3: Giá 25% | Số HĐ 75%  */
-  #gia  { grid-column: 1 / span 2 !important; min-width:0; }
-  #sohd { grid-column: 3 / span 9 !important; min-width:0; }
+  #gia  { grid-column: 1 / span 1 !important; min-width:0; }
+  #sohd { grid-column: 2 / span 11 !important; min-width:0; }
 
   /* Bảng ở trên, sidebar ở dưới như cũ */
   .table-area{ order:1; max-height:46vh; overflow:auto; }
