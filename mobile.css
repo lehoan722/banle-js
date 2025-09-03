@@ -1,5 +1,5 @@
 /* ========= BẢN DI ĐỘNG – bố cục theo hàng, không phụ thuộc 12 cột cũ ========= */
-@media (max-width: 480px) {
+@media (max-width: 460px) {
 
   /* --- Reset nhỏ để chống width cứng của bản desktop --- */
   input, select, button, textarea { font-size: 16px !important; height: 44px !important; }
