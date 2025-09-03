@@ -1,0 +1,64 @@
+/* ===== Giao diện di động cho banlemtcs1.html (clone tuyệt đối) ===== */
+@media (max-width: 480px) {
+
+  /* 1) Header + thông tin trên cùng */
+  .menu-bar { position: sticky; top: 0; z-index: 1000; padding: 8px 10px; }
+  .menu-item { display: none !important; }              /* Ẩn các nút menu phụ */
+  .tennv { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .tennv select, .tennv input, .tennv button { height: 40px; font-size: 15px; }
+
+  /* 2) Khối nhập nhanh (giữ nguyên ID, chỉ bố cục lại) */
+  .top-inputs {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 8px; background: #f6f7f9;
+  }
+  /* Ẩn trường ít dùng – GIỮ DOM để không vỡ JS */
+  #dvt, #khuyenmai, #thanhtien { display: none !important; }
+
+  /* Gỡ width cứng, để flex quản lý */
+  #masp, #soluong, #size, #gia, #sohd, #ghichu { width: auto !important; }
+
+  /* Tỷ lệ: SL/Size bằng 1/2 ô thường; Số HĐ & Ghi chú xuống dòng riêng */
+  #masp  { flex: 1 1 60%; min-width: 220px; }
+  #soluong, #size { flex: 1 1 22%; max-width: 32%; text-align: center; }
+  #gia   { flex: 1 1 45%; min-width: 160px; text-align: right; }
+  #sohd  { flex: 1 1 60%; min-width: 220px; }
+  #ghichu{ flex: 1 1 100%; }
+
+  /* 3) Main chuyển sang cột; bảng co giãn */
+  .main { display: flex; flex-direction: column; gap: 8px; }
+  .table-area { max-height: 48vh; overflow: auto; background: #fff; }
+  .sidebar { width: 100%; border-left: 0; }
+
+  /* 4) Ẩn bớt cột bảng – GIỮ DOM để JS vẫn chạy (chỉ hiển thị 5 cột cần) */
+  /* Giữ: Mã | size | Đơn giá | SL | Thành tiền
+     Ẩn: Tên (2), ĐVT (5), KM (7) – chỉnh thứ tự nếu bảng của bạn khác */
+  #bangketqua thead th:nth-child(2),
+  #bangketqua tbody td:nth-child(2),
+  #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),
+  #bangketqua thead th:nth-child(7),
+  #bangketqua tbody td:nth-child(7) { display: none; }
+
+  /* 5) Tổng tiền/Khách trả/Còn lại */
+  #phaithanhtoan, #khachtra, #conlai { height: 44px !important; font-size: 16px !important; }
+
+  /* 6) Ảnh sản phẩm */
+  .product-image { width: 120px !important; height: 120px !important; border-radius: 10px; object-fit: cover; }
+
+  /* 7) Footer nút lớn sticky; ẩn nút phụ */
+  .footer-buttons {
+    position: sticky; bottom: 0; left: 0; right: 0;
+    padding: 8px; gap: 8px; background: #dce9f9;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+  }
+  #tieptuc, #xemin, #btnCopy, #xuatexcel, #btn-logout { display: none !important; }
+  .footer-buttons button { height: 44px; font-size: 16px; font-weight: 700; }
+
+  /* 8) Ẩn các dải “gạch phân cách” phía sau footer nếu có */
+  .footer-buttons ~ .top-inputs { display: none !important; }
+
+  /* 9) Tabs bên phải gọn hơn */
+  .tabs button { padding: 10px; font-size: 15px; }
+  .tab-content { padding: 10px; font-size: 14px; }
+}
