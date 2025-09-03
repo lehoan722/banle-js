@@ -86,30 +86,37 @@
   /* Ẩn nút phụ trên mobile */
   #tieptuc, #xemin, #btnCopy, #xuatexcel, #btn-logout { display: none !important; }
   .footer-buttons button { height: 44px !important; font-size: 16px !important; font-weight: 700; }
+
+  /* ===== BẢNG HÀNG: 6 dòng + cuộn dọc ===== */
+#bangketqua thead th{ position: sticky; top: 0; z-index: 1; }
+#bangketqua tbody tr{ height: 44px; }                    /* chiều cao 1 dòng */
+.table-area, .table-wrap{
+  order:1;
+  width:100% !important;
+  max-height: 304px !important;  /* 40 (header) + 6*44 = 304px */
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  margin-bottom: 8px;
 }
+.sidebar{ order:2; width:100% !important; position:static !important; }
+
+}
+
 
 
 /* ===== NHÓM 1 — dồn 1 hàng, nút Tải không tràn ===== */
-.tennv{
-  display:flex !important;
-  align-items:center;
-  gap:6px;                /* giảm gap để đủ chỗ */
-  flex-wrap:nowrap !important;
-}
-#manv{ display:none !important; }   /* ẩn mã NV trên mobile */
-
+/* ===== HÀNG TRÊN CÙNG: fit nút Tải ===== */
+.tennv{ display:flex !important; align-items:center; gap:6px; flex-wrap:nowrap !important; }
+#manv{ display:none !important; }
 #diadiem{ flex:0 1 22%; min-width:72px; }
 #ngay{    flex:1 1 32%; min-width:120px; }
 #tennv{   flex:1 1 34%; min-width:110px; overflow:hidden; text-overflow:ellipsis; }
 #btnReloadSP{
-  flex:0 0 12%;
-  min-width:52px;
-  height:40px !important;
-  display:inline-flex; align-items:center; justify-content:center;
-  padding:0 8px;
+  flex:0 0 12%; min-width:52px; height:40px !important;
+  display:inline-flex; align-items:center; justify-content:center; padding:0 8px;
 }
-/* gỡ mọi width cứng còn sót */
-.tennv > *{ width:auto !important; }
+.tennv > *{ width:auto !important; }    /* gỡ width cứng còn sót */
+
 
 /* ===== NHÓM 3 / 4 — bảng trước, tổng sau; không chèn ===== */
 .main{
@@ -117,15 +124,6 @@
   flex-direction:column !important;
 }
 
-/* Bản MT dùng .table-area; bản mobile có thể là .table-wrap -> phủ cả hai */
-.table-area, .table-wrap{
-  order:1;
-  float:none !important;
-  width:100% !important;
-  max-height: none !important;   /* để bảng tự đẩy phần dưới */
-  overflow: visible !important;
-  margin-bottom:8px;
-}
 
 .sidebar, .panel, .totals{
   order:2;
@@ -135,32 +133,39 @@
   margin-top:8px;
 }
 
-/* ===== NHÓM 4 — Thông tin hóa đơn (2 hàng, 3 cột) ===== */
+/* ===== NHÓM 4: ẩn Chiết khấu + Tổng KM ===== */
+label[for="chietkhau"], #chietkhau,
+label[for="tongkm"],    #tongkm { display: none !important; }
 
-/* Ẩn Chiết khấu & Tổng KM (ẩn cả label bọc input như trong MT) */
-label:has(#chietkhau), #chietkhau,
-label:has(#tongkm),    #tongkm { display:none !important; }
-
-/* Hàng 1: Hình thức TT + Mặt hàng + Tổng SL */
-#hinhthuctt, #mathang, #tongsl{
-  display:inline-block;
-  width: calc(33.333% - 6px) !important;
-  margin: 4px 3px;
-  vertical-align: top;
+/* ===== NHÓM 4: mỗi ô 1 rule riêng (2 hàng, 3 cột) ===== */
+/* HÀNG 1 */
+#hinhthuctt{
+  display:inline-block; width: calc(33.333% - 8px) !important;
+  margin:4px; height:44px !important; vertical-align: top;
+}
+#mathang{
+  display:inline-block; width: calc(33.333% - 8px) !important;
+  margin:4px; height:44px !important; vertical-align: top;
+}
+#tongsl{
+  display:inline-block; width: calc(33.333% - 8px) !important;
+  margin:4px; height:44px !important; vertical-align: top; text-align: center;
 }
 
-/* Hàng 2: Vị trí + Mã khách + Khách hàng */
-#vitri, #makh, #khachhang{
-  display:inline-block;
-  width: calc(33.333% - 6px) !important;
-  margin: 4px 3px;
-  vertical-align: top;
+/* HÀNG 2 */
+#vitri{
+  display:inline-block; width: calc(33.333% - 8px) !important;
+  margin:4px; height:44px !important; vertical-align: top;
 }
-
-/* Ô mã khách trong MT có một wrapper inline-block width:220px -> ép wrapper rộng 1/3 hàng */
+/* Mã khách thường nằm trong 1 wrapper inline-block có icon kính lúp.
+   Ép wrapper chiếm 1/3 hàng, rồi cho #makh rộng 100% bên trong */
 div[style*="position: relative"][style*="inline-block"][style*="vertical-align: middle"]{
-  width: calc(33.333% - 6px) !important;
+  width: calc(33.333% - 8px) !important; margin:4px; vertical-align: top;
 }
-div[style*="position: relative"][style*="inline-block"][style*="vertical-align: middle"] > #makh{
-  width: 100% !important;           /* để #makh ăn theo 1/3 hàng */
+#makh{
+  width:100% !important; height:44px !important;
+}
+#khachhang{
+  display:inline-block; width: calc(33.333% - 8px) !important;
+  margin:4px; height:44px !important; vertical-align: top;
 }
