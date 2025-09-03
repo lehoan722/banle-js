@@ -58,10 +58,11 @@
 
   /* ================== NHÓM 4: Tổng tiền ================== */
   /* 3 ô đều nhau; nếu ô là input, chúng sẽ rộng bằng nhau */
-  #phaithanhtoan, #khachtra, #conlai { width: 49% !important; }
+  #phaithanhtoan { width: 49% !important; }
   .tongtien-wrap { display:flex; gap:8px; }
   .tongtien-wrap > * { flex:1 1 33%; }
-
+   #khachtra {display: none;  }
+   #conlai{display: none;  }
   /* ================== NHÓM 5: Thông tin hóa đơn ================== */
   /* Không đổi DOM; ép các input chính về 50% hàng */
   .tab-content { padding: 8px; }
