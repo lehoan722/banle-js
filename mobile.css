@@ -175,3 +175,61 @@
   /* Chừa chỗ cho icon kính lúp trong "Mã KH" để không đè cột kế bên */
   #makh{ padding-right:28px; }
 }
+
+/* ==== FIX QUYẾT LIỆT: đặt rule lên WRAPPER + bỏ <br> + reset width/float ==== */
+@media (max-width:480px){
+
+  /* 0) Ẩn <br> chen giữa các ô khiến vỡ hàng */
+  .top-inputs br, #thongtin br { display:none !important; }
+
+  /* 1) Reset wrapper & control để grid điều khiển đúng */
+  .top-inputs{ 
+    display:grid !important; grid-template-columns:repeat(12,1fr);
+    gap:6px !important; padding:8px; background:#f6f7f9;
+  }
+  .top-inputs > *{ display:block; width:auto !important; min-width:0; margin:0; float:none !important; }
+  .top-inputs input, .top-inputs select, .top-inputs button{ width:100%; box-sizing:border-box; float:none !important; }
+
+  /* Hàng 2: Mã SP 50% | SL 16.7% | Size 33.3%  (đặt LÊN WRAPPER) */
+  .top-inputs :is(label,div):has(#masp){    grid-column:1 / span 6 !important; }
+  .top-inputs :is(label,div):has(#soluong){ grid-column:7 / span 2 !important; }
+  .top-inputs :is(label,div):has(#size),
+  .top-inputs :is(label,div):has(#size45){  grid-column:9 / span 4 !important; }
+
+  /* Hàng 3: Giá 25% | Số HĐ 75% */
+  .top-inputs :is(label,div):has(#gia){     grid-column:1 / span 3 !important; }
+  .top-inputs :is(label,div):has(#sohd){    grid-column:4 / span 9 !important; }
+  /* Bảo đảm control co gọn trong ô */
+  #masp,#soluong,#size,#gia,#sohd{ width:100% !important; min-width:0; }
+
+  /* 2) Khu Thông tin hóa đơn: grid 12 cột, các ô co đều */
+  #thongtin{
+    display:grid !important; grid-template-columns:repeat(12,1fr);
+    gap:6px !important; align-items:end;
+  }
+  #thongtin > *{ min-width:0; margin:0; float:none !important; }
+  #thongtin input, #thongtin select{ width:100%; box-sizing:border-box; }
+
+  /* Ẩn mục không dùng */
+  #thongtin label:has(#chietkhau),
+  #thongtin label:has(#tongkm){ display:none !important; }
+
+  /* DÒNG 1: 3 phần bằng nhau */
+  #thongtin :is(label,div):has(#hinhthuctt){ grid-column:1 / span 4 !important; }
+  #thongtin :is(label,div):has(#mathang){    grid-column:5 / span 4 !important; }
+  #thongtin :is(label,div):has(#tongsl){     grid-column:9 / span 4 !important; }
+
+  /* DÒNG 2: Vị trí 50% | Mã KH 16.7% | Khách hàng 33.3% */
+  #thongtin :is(label,div):has(#vitri){      grid-column:1 / span 6 !important; }
+  #thongtin :is(label,div):has(#makh){       grid-column:7 / span 2 !important; overflow:hidden; }
+  #thongtin :is(label,div):has(#khachhang){  grid-column:9 / span 4 !important; }
+
+  /* Icon 🔍 trong Mã KH không làm nở ô */
+  #thongtin :is(label,div):has(#makh){ display:grid; grid-template-columns:1fr 28px; gap:4px; }
+  #thongtin :is(label,div):has(#makh) input#makh{ grid-column:1; padding-right:8px; }
+  #thongtin :is(label,div):has(#makh) :is(button,svg,img){ grid-column:2; width:28px; height:28px; }
+
+  /* 3) Bảng trên – sidebar dưới */
+  .table-area{ order:1; max-height:46vh; overflow:auto; }
+  .sidebar{ order:2; }
+}
