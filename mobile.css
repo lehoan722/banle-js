@@ -88,41 +88,46 @@
   .footer-buttons button { height: 44px !important; font-size: 16px !important; font-weight: 700; }
 }
 
-/* === NHÓM 1 — thanh trên cùng: 1 dòng gọn === */
+
+/* ===== NHÓM 1 — dồn 1 hàng, nút Tải không tràn ===== */
 .tennv{
   display:flex !important;
   align-items:center;
-  gap:8px;
-  flex-wrap:nowrap;                 /* ép cùng một hàng */
+  gap:6px;                /* giảm gap để đủ chỗ */
+  flex-wrap:nowrap !important;
 }
 #manv{ display:none !important; }   /* ẩn mã NV trên mobile */
 
-#diadiem{ flex:0 1 26%; min-width:78px; }
-#ngay{    flex:1 1 30%; min-width:120px; }
-#tennv{   flex:1 1 24%; min-width:70px; }  /* readonly tên NV */
+#diadiem{ flex:0 1 22%; min-width:72px; }
+#ngay{    flex:1 1 32%; min-width:120px; }
+#tennv{   flex:1 1 34%; min-width:110px; overflow:hidden; text-overflow:ellipsis; }
 #btnReloadSP{
-  flex:0 0 10%;
-  min-width:50px;
+  flex:0 0 12%;
+  min-width:52px;
   height:40px !important;
   display:inline-flex; align-items:center; justify-content:center;
   padding:0 8px;
 }
+/* gỡ mọi width cứng còn sót */
+.tennv > *{ width:auto !important; }
 
-/* phòng khi container của thanh trên dùng grid/float ở CSS gốc */
-.tennv > *{ width:auto !important; }     /* gỡ width cứng */
-
-/* === NHÓM 3/4 — đảm bảo thứ tự: bảng trước, tổng sau === */
+/* ===== NHÓM 3 / 4 — bảng trước, tổng sau; không chèn ===== */
 .main{
   display:flex !important;
   flex-direction:column !important;
 }
-.table-area{
-  order:1; 
+
+/* Bản MT dùng .table-area; bản mobile có thể là .table-wrap -> phủ cả hai */
+.table-area, .table-wrap{
+  order:1;
   float:none !important;
   width:100% !important;
-  max-height:48vh;     /* giữ vùng cuộn riêng cho bảng */
+  max-height: none !important;   /* để bảng tự đẩy phần dưới */
+  overflow: visible !important;
+  margin-bottom:8px;
 }
-.sidebar{
+
+.sidebar, .panel, .totals{
   order:2;
   float:none !important;
   width:100% !important;
@@ -130,9 +135,32 @@
   margin-top:8px;
 }
 
-/* tránh sticky/absolute lạc chỗ trong sidebar của CSS gốc */
-.sidebar *{ position:relative; }
+/* ===== NHÓM 4 — Thông tin hóa đơn (2 hàng, 3 cột) ===== */
 
-/* nếu vẫn thấy chèn, có thể bỏ giới hạn chiều cao bảng:
-.table-area{ max-height:none; } 
-*/
+/* Ẩn Chiết khấu & Tổng KM (ẩn cả label bọc input như trong MT) */
+label:has(#chietkhau), #chietkhau,
+label:has(#tongkm),    #tongkm { display:none !important; }
+
+/* Hàng 1: Hình thức TT + Mặt hàng + Tổng SL */
+#hinhthuctt, #mathang, #tongsl{
+  display:inline-block;
+  width: calc(33.333% - 6px) !important;
+  margin: 4px 3px;
+  vertical-align: top;
+}
+
+/* Hàng 2: Vị trí + Mã khách + Khách hàng */
+#vitri, #makh, #khachhang{
+  display:inline-block;
+  width: calc(33.333% - 6px) !important;
+  margin: 4px 3px;
+  vertical-align: top;
+}
+
+/* Ô mã khách trong MT có một wrapper inline-block width:220px -> ép wrapper rộng 1/3 hàng */
+div[style*="position: relative"][style*="inline-block"][style*="vertical-align: middle"]{
+  width: calc(33.333% - 6px) !important;
+}
+div[style*="position: relative"][style*="inline-block"][style*="vertical-align: middle"] > #makh{
+  width: 100% !important;           /* để #makh ăn theo 1/3 hàng */
+}
