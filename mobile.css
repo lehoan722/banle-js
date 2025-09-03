@@ -116,13 +116,6 @@
 }
 
 
-.sidebar, .panel, .totals{
-  order:2;
-  float:none !important;
-  width:100% !important;
-  position:static !important;
-  margin-top:8px;
-}
 
 /* ===== NHÓM 4 — Thông tin hóa đơn (2 hàng, 3 cột) ===== */
 
