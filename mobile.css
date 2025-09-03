@@ -29,8 +29,8 @@
   #size    { flex: 1 1 20%; max-width: 80px; text-align: center; }
 
   /* Hàng Q2: Giá 40% | Số HĐ 60% */
-  #sohd    { flex: 1 1 60%; min-width: 170px; }
-  #gia     { flex: 1 1 35%; min-width: 130px; text-align: right; }  
+  #sohd    { flex: 1 1 40%; min-width: 130px; }
+  #gia     { flex: 1 1 30%; min-width: 100px; text-align: right; }  
 
   /* Nếu có ghi chú HH: cho xuống dòng riêng */
   #ghichu  {display: none; flex: 1 1 100%; }
@@ -108,13 +108,13 @@
 .tennv{
   display:flex !important;
   align-items:center;
-  gap:6px;                /* giảm gap để đủ chỗ */
+  gap:3px;                /* giảm gap để đủ chỗ */
   flex-wrap:nowrap !important;
 }
 #manv{ display:none !important; }   /* ẩn mã NV trên mobile */
 
 #diadiem{ flex:0 1 22%; min-width:72px; }
-#ngay{    flex:1 1 32%; min-width:120px; }
+#ngay{    flex:1 1 22%; min-width:120px; }
 #tennv{   flex:1 1 22%; min-width:80px; overflow:hidden; text-overflow:ellipsis; }
 #btnReloadSP{
   flex:0 0 12%;
