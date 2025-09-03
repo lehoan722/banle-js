@@ -98,8 +98,8 @@
 #manv{ display:none !important; }   /* ẩn mã NV trên mobile */
 
 #diadiem{ flex:0 1 26%; min-width:78px; }
-#ngay{    flex:1 1 34%; min-width:120px; }
-#tennv{   flex:1 1 30%; min-width:120px; }  /* readonly tên NV */
+#ngay{    flex:1 1 30%; min-width:120px; }
+#tennv{   flex:1 1 24%; min-width:70px; }  /* readonly tên NV */
 #btnReloadSP{
   flex:0 0 10%;
   min-width:50px;
