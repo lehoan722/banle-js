@@ -146,3 +146,51 @@ div[style*="position: relative"][style*="inline-block"][style*="vertical-align: 
 div[style*="position: relative"][style*="inline-block"][style*="vertical-align: middle"] > #makh{
   width: 100% !important;           /* để #makh ăn theo 1/3 hàng */
 }
+
+/* ===== HÀNG TRÊN CÙNG: fit bề ngang ===== */
+.menu-bar{ padding:8px 6px; }
+.tennv{
+  display:flex !important; align-items:center;
+  gap:6px; flex-wrap:nowrap !important;
+}
+.tennv > *{ width:auto !important; min-width:0; } /* gỡ width cứng còn sót */
+#manv{ display:none !important; }                  /* ẩn mã NV trên mobile */
+
+/* tỉ lệ: Cơ sở 24% | Ngày 36% | Tên chiếm phần còn lại | Tải 56px */
+#diadiem{ flex:0 0 24%; min-width:70px; }
+#ngay{    flex:0 0 36%; min-width:120px; }
+#tennv{   flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+#btnReloadSP{
+  flex:0 0 56px; height:40px !important;
+  display:inline-flex !important; align-items:center; justify-content:center; padding:0 8px;
+}
+/* kết thúc HÀNG TRÊN CÙNG */
+
+/* ===== THÔNG TIN HÓA ĐƠN: 2 hàng * 3 ô, ẩn nhãn (label text) ===== */
+#thongtin{ display:flex; flex-wrap:wrap; gap:8px; }
+
+/* Ẩn hoàn toàn Chiết khấu & Tổng KM */
+label:has(#chietkhau), #chietkhau,
+label:has(#tongkm),    #tongkm { display:none !important; }
+
+/* Mặc định: mỗi label chiếm 1/3 hàng; ẩn phần chữ bằng font-size:0 */
+#thongtin label{
+  display:inline-block; width:calc(33.333% - 8px) !important; margin:4px;
+  font-size:0;                                  /* ẩn tiêu đề trong label */
+  vertical-align:top;
+}
+#thongtin label > input,
+#thongtin label > select{
+  font-size:16px; height:44px !important; width:100% !important;
+}
+
+/* Wrapper riêng của MÃ KH (có kính lúp) – ép rộng 1/3 hàng như các ô khác */
+#thongtin div[style*="position: relative"][style*="inline-block"][style*="vertical-align: middle"]{
+  width:calc(33.333% - 8px) !important; margin:4px; vertical-align:top;
+}
+#makh{ height:44px !important; width:100% !important; }
+#khachhang{ height:44px !important; }
+
+/* nếu muốn đổi tỉ lệ từng ô: override trực tiếp ô đó, ví dụ:
+#vitri{ width:calc(50% - 8px) !important; }  -> 2 cột hàng 2
+*/
