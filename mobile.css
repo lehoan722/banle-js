@@ -104,9 +104,9 @@
 
 #manv{ display:none !important; }   /* ẩn mã NV trên mobile */
 
-#diadiem{ flex:0 1 22%; min-width:72px; }
-#ngay{    flex:1 1 22%; min-width:120px; }
-#tennv{   flex:1 1 22%; min-width:80px; overflow:hidden; text-overflow:ellipsis; }
+#diadiem{ flex:0 1 22%; min-width:20px; }
+#ngay{    flex:1 1 22%; min-width:20px; }
+#tennv{   flex:1 1 22%; min-width:20px; overflow:hidden; text-overflow:ellipsis; }
 #btnReloadSP{
   flex:0 0 12%;
   min-width:40px;
