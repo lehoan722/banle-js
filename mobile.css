@@ -9,11 +9,7 @@
   /* ================== NHÓM 1: Thanh thông tin trên cùng ================== */
   .menu-bar { position: sticky; top: 0; z-index: 1000; padding: 8px 10px; }
   .menu-item { display: none !important; }           /* Ẩn menu phụ, giữ phần chọn cơ sở/ngày/NV */
-  .tennv { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .tennv select, .tennv input, .tennv button { height: 40px !important; }
-  /* chia 48%/48% cho từng “cụm” trên hàng */
-  .tennv .block { flex: 1 1 48%; min-width: 160px; } /* nếu markup có .block; nếu không, bỏ qua */
-
+  
   /* ================== NHÓM 2: Cụm NHẬP NHANH ================== */
   /* Container của cụm nhập nhanh – tên thường thấy là .top-inputs (giữ nguyên DOM) */
   .top-inputs {
