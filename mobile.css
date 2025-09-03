@@ -140,8 +140,8 @@
   .top-inputs{ gap:6px !important; }
 
   /* Hàng 2: Mã SP 50% | SL 16.7% | Size 33.3% */
-  #masp   { grid-column: 1 / span 6 !important; min-width:0; }
-  #soluong{ grid-column: 7 / span 2 !important; text-align:center; min-width:0; }
+  #masp   { grid-column: 1 / span 5 !important; min-width:0; }
+  #soluong{ grid-column: 6 / span 3 !important; text-align:center; min-width:0; }
   #size   { grid-column: 9 / span 4 !important; text-align:center; min-width:0; }
 
   /* Hàng 3: Giá 25% | Số HĐ 75%  */
