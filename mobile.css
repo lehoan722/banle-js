@@ -19,7 +19,7 @@
   #masp, #soluong, #size, #gia, #sohd, #ghichu { width: auto !important; }
 
   /* Tỷ lệ: SL/Size bằng 1/2 ô thường; Số HĐ & Ghi chú xuống dòng riêng */
-  #masp  { flex: 1 1 60%; min-width: 220px; }
+  #masp  { flex: 1 1 40%; min-width: 120px; }
   #soluong, #size { flex: 1 1 22%; max-width: 32%; text-align: center; }
   #gia   { flex: 1 1 45%; min-width: 160px; text-align: right; }
   #sohd  { flex: 1 1 60%; min-width: 220px; }
