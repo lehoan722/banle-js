@@ -7,18 +7,32 @@
     padding: 8px 10px;
   }
   .menu-item { display: none !important; }        /* Ẩn các menu thả xuống, giữ .tennv */
-  .tennv { gap: 8px; justify-content: space-between; flex-wrap: wrap; }
-  #diadiem, #ngay, #tennv, #btnReloadSP { height: 20px; font-size: 15px; }
-  /* Thiết lập riêng cho khối tennv */
-  #diadiem {    flex: 0 0 20%;     }
+  /* Khối tennv: luôn 1 dòng, bớt khoảng trống */
+.tennv {
+  display: flex;
+  flex-wrap: nowrap;              /* không cho xuống dòng */
+  justify-content: flex-start;    /* không chia khoảng trống 2 đầu */
+  gap: 4px;                       /* giảm khoảng cách giữa các ô */
+  width: 100%;
+  box-sizing: border-box;
+}
 
-  #ngay {    flex: 0 0 40%;     }
+/* Chiều cao + font + chống min-content của iOS */
+#diadiem, #ngay, #tennv {
+  height: 20px;
+  font-size: 15px;
+  min-width: 0;                   /* cho phép co nhỏ hơn min-content */
+  width: 100%;                    /* fill bên trong khung flex đã chia */
+}
 
-  #manv { display: none !important; }
+/* Tỉ lệ 20/40/40 rõ ràng */
+#diadiem { flex: 0 1 20%; max-width: 20%; }
+#ngay    { flex: 0 1 40%; max-width: 40%; }
+#tennv   { flex: 0 1 40%; max-width: 40%; }
 
-  #tennv {    flex: 0 0 30%;    }
+/* Ẩn các mục bạn không dùng */
+#manv, #btnReloadSP { display: none !important; }
 
-  #btnReloadSP { display: none !important; }
 
   /* 2) Khối nhập nhanh */
   .top-inputs { 
