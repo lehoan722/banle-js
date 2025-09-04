@@ -90,7 +90,7 @@
 #size    { flex: 0 1 20%; max-width: 15%; text-align: center; }
 #gia     { flex: 0 1 30%; max-width: 30%; text-align: right; }
 /* Vị trí mới: 30% sau Số HĐ */
-#vitri   { flex: 0 1 30%; max-width:60%; }
+#vitri   { flex: 0 1 30%; max-width:30%; }
 /* Ảnh sản phẩm đứng ngay sau #vitri */
 .top-inputs .product-image {
   flex: 0 0 auto;          /* theo nội dung, không chiếm % */
