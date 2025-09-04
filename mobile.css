@@ -8,7 +8,8 @@
   }
   .menu-item { display: none !important; }        /* Ẩn các menu thả xuống, giữ .tennv */
   .tennv { gap: 8px; justify-content: space-between; flex-wrap: wrap; }
-  #diadiem, #ngay, #manv, #tennv, #btnReloadSP { height: 30px; font-size: 15px; }
+  #diadiem, #ngay, #tennv, #btnReloadSP { height: 20px; font-size: 15px; }
+  .manv { display: none !important; } 
 
   /* 2) Khối nhập nhanh */
   .top-inputs { 
