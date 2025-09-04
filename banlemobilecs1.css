@@ -116,7 +116,7 @@
   #phaithanhtoan, #khachtra, #conlai { width: 120px !important; }
 
   /* 6) Ảnh sản phẩm */
-  .product-image { width: 120px !important; height: 120px !important; border-radius: 10px; }
+  .product-image { width: 50px !important; height: 50px !important; border-radius: 3px; }
 
   /* 7) Footer nút lớn sticky */
   .footer-buttons {
