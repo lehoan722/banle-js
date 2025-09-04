@@ -56,21 +56,45 @@
 
 
   /* 2) Khối nhập nhanh */
-  .top-inputs { 
-    display: flex; flex-wrap: wrap; gap: 8px; 
-    padding: 8px; background: #f6f7f9;
-  }
-  /* Ẩn trường không cần (giữ DOM tránh vỡ JS) */
-  #dvt, #khuyenmai, #thanhtien { display: none !important; }
-  /* Gỡ width cứng ở CSS gốc */
-  #masp, #soluong, #size, #gia, #sohd, #ghichu { width: auto !important; }
+.top-inputs {
+  display: flex;
+  flex-wrap: wrap;            /* cho phép tự xuống nhiều hàng */
+  gap: 6px;
+  padding: 8px;
+  background: #f6f7f9;
+  align-items: center;
+}
 
-  /* Tỷ lệ: Mã SP to; SL/Size = 1/2 ô thường; Giá vừa; Số HĐ & Ghi chú xuống dòng */
-  #masp  { flex: 1 1 60%; min-width: 220px; }
-  #soluong, #size { flex: 1 1 22%; max-width: 32%; text-align: center; }
-  #gia   { flex: 1 1 45%; min-width: 160px; text-align: right; }
-  #sohd  { flex: 1 1 60%; min-width: 220px; }
-  #ghichu{ flex: 1 1 100%; }
+/* Ẩn trường không dùng (giữ DOM để JS không lỗi) */
+#dvt, #khuyenmai, #thanhtien { display: none !important; }
+
+/* Reset width cũ (bỏ !important trước đó) + tránh iOS ép min-content */
+#masp, #soluong, #size, #gia, #sohd, #ghichu {
+  width: auto;
+  min-width: 0;
+}
+
+/* Mã SP nằm trong <div> wrapper -> chia % cho WRAPPER */
+.top-inputs > div:first-child,
+.top-inputs > div:has(#masp) {   /* :has là dự phòng, first-child đã đủ */
+  flex: 0 1 60%;
+  max-width: 60%;
+  min-width: 0;
+}
+
+/* Input #masp fill đủ bên trong wrapper */
+#masp { width: 100%; }
+
+/* Tỉ lệ bạn yêu cầu */
+#soluong { flex: 0 1 20%; max-width: 20%; text-align: center; }
+#size    { flex: 0 1 20%; max-width: 20%; text-align: center; }
+#gia     { flex: 0 1 30%; max-width: 30%; text-align: right; }
+#sohd    { flex: 0 1 40%; max-width: 40%; }
+#ghichu  { flex: 0 1 30%; max-width: 30%; }
+
+/* Nút kính lúp theo nội dung, không chiếm % */
+#masp-search { flex: 0 0 auto; }
+
 
   /* Ẩn các .top-inputs nằm SAU footer (hai dòng gạch) */
   .footer-buttons ~ .top-inputs { display: none !important; }
