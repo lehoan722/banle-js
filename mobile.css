@@ -10,13 +10,13 @@
   .tennv { gap: 8px; justify-content: space-between; flex-wrap: wrap; }
   #diadiem, #ngay, #tennv, #btnReloadSP { height: 20px; font-size: 15px; }
   /* Thiết lập riêng cho khối tennv */
-  #diadiem {    flex: 0 0 20%;    max-width: 30%;  }
+  #diadiem {    flex: 0 0 20%;     }
 
-  #ngay {    flex: 0 0 40%;    max-width: 30%;  }
+  #ngay {    flex: 0 0 40%;     }
 
   #manv { display: none !important; }
 
-  #tennv {    flex: 0 0 30%;    max-width: 30%;  }
+  #tennv {    flex: 0 0 30%;    }
 
   #btnReloadSP { display: none !important; }
 
