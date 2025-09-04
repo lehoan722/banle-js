@@ -24,8 +24,8 @@ export async function capNhatSoHoaDonTuDong() {
         let loai = "";
         if (pathname.includes("banle")) {
             loai = diadiem === "cs1" ? "bancs1" : "bancs2";
-        } else if (pathname.includes("banhangnv")) {
-            loai = diadiem === "cs1" ? "banhangnvcs1" : "banhangnvcs2";
+        } else if (pathname.includes("bannv")) {
+            loai = diadiem === "cs1" ? "bannvcs1" : "bannvcs2";
         } else if (pathname.includes("nhapmoi")) {
             loai = diadiem === "cs1" ? "nmcs1" : "nmcs2";
         } else if (pathname.includes("nhapdoi")) {
@@ -52,7 +52,7 @@ export async function capNhatSoHoaDonTuDong() {
             return;
         }
 
-        // 3. Lấy số hiện tại từ bảng sochungtu 
+        // 3. Lấy số hiện tại từ bảng sochungtu
         const { data } = await supabase
             .from("sochungtu")
             .select("so_hientai")
