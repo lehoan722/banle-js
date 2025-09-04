@@ -89,8 +89,22 @@
 #soluong { flex: 0 1 20%; max-width: 10%; text-align: center; }
 #size    { flex: 0 1 20%; max-width: 15%; text-align: center; }
 #gia     { flex: 0 1 30%; max-width: 30%; text-align: right; }
-/* Vị trí mới: 30% sau Số HĐ */
-#vitri   { flex: 0 1 30%; max-width:30%; }
+
+/* Vị trí: 30%, cho phép wrap nhiều dòng và tự cao lên theo nội dung */
+#vitri{
+  flex: 0 1 30%; max-width:30%;
+  min-width: 0;
+  width: 100%;
+  line-height: 1.25;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  white-space: pre-wrap;     /* xuống dòng theo nội dung */
+  word-break: break-word;    /* bẻ từ dài */
+  overflow: hidden;          /* không hiện scrollbar */
+  resize: none;              /* nếu muốn người dùng kéo cao, đổi thành: resize: vertical; */
+}
+
 /* Ảnh sản phẩm đứng ngay sau #vitri */
 .top-inputs .product-image {
   flex: 0 0 auto;          /* theo nội dung, không chiếm % */
