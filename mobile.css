@@ -2,36 +2,57 @@
 @media (max-width: 480px) {
 
   /* 1) Header & Menu */
-  .menu-bar { 
-    position: sticky; top: 0; z-index: 1000;
-    padding: 8px 10px;
-  }
-  .menu-item { display: none !important; }        /* Ẩn các menu thả xuống, giữ .tennv */
-  /* Khối tennv: luôn 1 dòng, bớt khoảng trống */
+.menu-bar { 
+  position: sticky; top: 0; z-index: 1000;
+  padding: 8px 10px;
+}
+.menu-item { display: none !important; } /* Ẩn menu thả xuống, giữ .tennv */
+
+/* Khối tennv: luôn 1 dòng, khoảng cách gọn */
 .tennv {
   display: flex;
-  flex-wrap: nowrap;              /* không cho xuống dòng */
-  justify-content: flex-start;    /* không chia khoảng trống 2 đầu */
-  gap: 4px;                       /* giảm khoảng cách giữa các ô */
+  flex-wrap: nowrap;             /* không cho xuống dòng */
+  justify-content: flex-start;   /* không dàn đều tạo khoảng trống lớn */
+  align-items: center;
+  gap: 4px;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Chiều cao + font + chống min-content của iOS */
-#diadiem, #ngay, #tennv {
+/* Label là flex-item thật, control bên trong fill 100% */
+.tennv > label {
+  display: flex;
+  flex: 0 1 auto;
+  margin: 0; padding: 0;
+  min-width: 0;                  /* tránh iOS ép min-content */
+}
+.tennv > label select,
+.tennv > label input {
+  width: 100%;
+  min-width: 0;
   height: 20px;
   font-size: 15px;
-  min-width: 0;                   /* cho phép co nhỏ hơn min-content */
-  width: 100%;                    /* fill bên trong khung flex đã chia */
 }
 
-/* Tỉ lệ 20/40/40 rõ ràng */
-#diadiem { flex: 0 1 20%; max-width: 20%; }
-#ngay    { flex: 0 1 40%; max-width: 40%; }
-#tennv   { flex: 0 1 40%; max-width: 40%; }
+/* Tỉ lệ 20/40/40 */
+.tennv > label:nth-of-type(1) { flex: 0 1 20%; max-width: 20%; } /* địa điểm */
+.tennv > label:nth-of-type(2) { flex: 0 1 40%; max-width: 40%; } /* ngày */
+/* (robust nếu đổi thứ tự phần tử) */
+.tennv > label:has(#diadiem) { flex: 0 1 20%; max-width: 20%; }
+.tennv > label:has(#ngay)    { flex: 0 1 40%; max-width: 40%; }
 
-/* Ẩn các mục bạn không dùng */
+/* Ô Tên NV là flex-item trực tiếp */
+#tennv {
+  flex: 0 1 40%;
+  max-width: 40%;
+  min-width: 0;
+  height: 20px;
+  font-size: 15px;
+}
+
+/* Ẩn các mục không dùng */
 #manv, #btnReloadSP { display: none !important; }
+
 
 
   /* 2) Khối nhập nhanh */
