@@ -26,9 +26,9 @@
 }
 
 /* Tỉ lệ 20/40/40 rõ ràng */
-#diadiem { flex: 0 1 20%; max-width: 20%; }
-#ngay    { flex: 0 1 40%; max-width: 40%; }
-#tennv   { flex: 0 1 40%; max-width: 40%; }
+#diadiem { flex: 0 0 20%; max-width: 30%; }
+#ngay    { flex: 0 0 40%; max-width: 40%; }
+#tennv   { flex: 0 1 40%; max-width: 30%; }
 
 /* Ẩn các mục bạn không dùng */
 #manv, #btnReloadSP { display: none !important; }
