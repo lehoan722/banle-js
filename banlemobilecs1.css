@@ -90,11 +90,10 @@
 #size    { flex: 0 1 20%; max-width: 15%; text-align: center; }
 #gia     { flex: 0 1 30%; max-width: 30%; text-align: right; }
 #sohd    { flex: 0 1 40%; max-width: 40%; }
-#ghichu  { flex: 0 1 30%; max-width: 30%; }
+#ghichu  { display: none !important; }
 
 /* Nút kính lúp theo nội dung, không chiếm % */
-#masp-search { flex: 0 0 auto; }
-
+#masp-search { display: none !important; }
 
   /* Ẩn các .top-inputs nằm SAU footer (hai dòng gạch) */
   .footer-buttons ~ .top-inputs { display: none !important; }
