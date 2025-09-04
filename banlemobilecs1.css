@@ -35,10 +35,10 @@
 }
 
 /* Tỉ lệ 20/40/40 */
-.tennv > label:nth-of-type(1) { flex: 0 1 25%; max-width: 20%; } /* địa điểm */
+.tennv > label:nth-of-type(1) { flex: 0 1 25%; max-width: 25%; } /* địa điểm */
 .tennv > label:nth-of-type(2) { flex: 0 1 40%; max-width: 40%; } /* ngày */
 /* (robust nếu đổi thứ tự phần tử) */
-.tennv > label:has(#diadiem) { flex: 0 1 25%; max-width: 20%; }
+.tennv > label:has(#diadiem) { flex: 0 1 25%; max-width: 25%; }
 .tennv > label:has(#ngay)    { flex: 0 1 40%; max-width: 40%; }
 
 /* Ô Tên NV là flex-item trực tiếp */
