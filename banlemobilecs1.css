@@ -127,51 +127,6 @@
   /* 6) Ảnh sản phẩm 
   .product-image { width: 50px !important; height: 50px !important; border-radius: 3px; } */
 
-  /* —— Bố cục linh hoạt cho tab Thông tin hóa đơn —— */
-#thongtin{
-  display: flex;
-  flex-wrap: wrap;       /* tự xuống hàng như khối nhập nhanh */
-  gap: 6px;
-}
-
-/* Mỗi <label> là 1 flex-item; control bên trong fill 100% */
-#thongtin > label{
-  display: flex;
-  align-items: center;
-  flex: 0 1 auto;
-  margin: 0; padding: 0;
-  min-width: 0;
-}
-#thongtin > label input,
-#thongtin > label select{
-  width: 100%;
-  min-width: 0;
-  height: 22px;
-  font-size: 14px;
-}
-
-/* Tỷ lệ đề xuất (có thể chỉnh số % tùy ý):
-   Hình thức TT 40%, Chiết khấu 30%, Tổng KM 30%  → đủ 100%
-   Mặt hàng 40%, Tổng SL 30%                      → 70% (dễ ghép cùng phần khác)
-   Ô mã khách (wrapper <div>) 40%, Khách hàng 60%
-*/
-#thongtin > label:has(#hinhthuctt){ flex:0 1 40%; max-width:40%; }
-#thongtin > label:has(#chietkhau) { flex:0 1 30%; max-width:30%; }
-#thongtin > label:has(#tongkm)    { flex:0 1 30%; max-width:30%; }
-
-#thongtin > label:has(#mathang)   { flex:0 1 40%; max-width:40%; }
-#thongtin > label:has(#tongsl)    { flex:0 1 30%; max-width:30%; }
-
-/* Ô tìm khách (div chứa #makh + nút kính lúp) */
-#thongtin > div:has(#makh){
-  flex:0 1 40%; max-width:40%;
-  min-width:0;
-}
-#thongtin > label:has(#khachhang){
-  flex:0 1 60%; max-width:60%;
-}
-
-
   /* 7) Footer nút lớn sticky */
   .footer-buttons {
     position: sticky; bottom: 0; left: 0; right: 0;
