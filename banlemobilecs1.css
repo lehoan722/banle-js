@@ -94,7 +94,7 @@
 /* Ảnh sản phẩm đứng ngay sau #vitri */
 .top-inputs .product-image {
   flex: 0 0 auto;          /* theo nội dung, không chiếm % */
-  width: 50px !important;
+  width: 70px !important;
   height: 50px !important;
   border-radius: 3px;
 }
