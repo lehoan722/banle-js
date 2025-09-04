@@ -43,8 +43,8 @@
 
 /* Ô Tên NV là flex-item trực tiếp */
 #tennv {
-  flex: 0 1 40%;
-  max-width: 40%;
+  flex: 0 1 30%;
+  max-width: 30%;
   min-width: 0;
   height: 20px;
   font-size: 15px;
