@@ -77,8 +77,8 @@
 /* Mã SP nằm trong <div> wrapper -> chia % cho WRAPPER */
 .top-inputs > div:first-child,
 .top-inputs > div:has(#masp) {   /* :has là dự phòng, first-child đã đủ */
-  flex: 0 1 60%;
-  max-width: 60%;
+  flex: 0 1 40%;
+  max-width: 40%;
   min-width: 0;
 }
 
@@ -86,8 +86,8 @@
 #masp { width: 100%; }
 
 /* Tỉ lệ bạn yêu cầu */
-#soluong { flex: 0 1 20%; max-width: 20%; text-align: center; }
-#size    { flex: 0 1 20%; max-width: 20%; text-align: center; }
+#soluong { flex: 0 1 20%; max-width: 10%; text-align: center; }
+#size    { flex: 0 1 20%; max-width: 15%; text-align: center; }
 #gia     { flex: 0 1 30%; max-width: 30%; text-align: right; }
 #sohd    { flex: 0 1 40%; max-width: 40%; }
 #ghichu  { flex: 0 1 30%; max-width: 30%; }
