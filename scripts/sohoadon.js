@@ -24,8 +24,8 @@ export async function capNhatSoHoaDonTuDong() {
         let loai = "";
         if (pathname.includes("banle")) {
             loai = diadiem === "cs1" ? "bancs1" : "bancs2";
-        } else if (pathname.includes("banlenv")) {
-            loai = diadiem === "cs1" ? "banlenvcs1" : "banlenvcs2";
+        } else if (pathname.includes("banhangnv")) {
+            loai = diadiem === "cs1" ? "banhangnvcs1" : "banhangnvcs2";
         } else if (pathname.includes("nhapmoi")) {
             loai = diadiem === "cs1" ? "nmcs1" : "nmcs2";
         } else if (pathname.includes("nhapdoi")) {
