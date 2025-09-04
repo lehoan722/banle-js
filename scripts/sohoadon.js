@@ -52,7 +52,7 @@ export async function capNhatSoHoaDonTuDong() {
             return;
         }
 
-        // 3. Lấy số hiện tại từ bảng sochungtu
+        // 3. Lấy số hiện tại từ bảng sochungtu 
         const { data } = await supabase
             .from("sochungtu")
             .select("so_hientai")
