@@ -143,9 +143,12 @@ async function taiTrang(page) {
 
     const { data, error } = await supabase.rpc("baocaochitiet_bh_page_v2", params);
 
-    console.error(error);
-    alert("Lỗi tải dữ liệu trang!");
-    return;
+     if (error) {
+        console.error(error);
+        alert("Lỗi tải dữ liệu trang!");
+        return;
+    }
+    
 }
 
 // ánh xạ thêm cột STT như cũ
@@ -200,7 +203,7 @@ function renderTable(hotData) {
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
         // ĐỔI: dùng ngay_gio + renderer giờ VN
-        
+        { data: "ngay_gio", title: "Ngày (VN)", readOnly: true, width: 150, renderer: formatDateCellVN },
         { data: "ngay_gio", title: "Ngày (VN)", readOnly: true, width: 150, renderer: formatDateCellVN },
         { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
         { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
