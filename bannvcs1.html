@@ -546,9 +546,7 @@
             <!-- thay input bằng textarea -->
             <textarea id="vitri" placeholder="Vị trí" readonly rows="2"></textarea>
 
-            <img alt="Ảnh sản phẩm" class="product-image"
-                src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
-
+            
             <input id="ghichu" placeholder="Ghi chú HH" />
 
 
@@ -604,6 +602,9 @@
                             </button>
                         </div>
                         <label>Khách hàng <input id="khachhang" readonly="" /></label>
+                        <img alt="Ảnh sản phẩm" class="product-image"
+                src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+
 
                         <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
@@ -973,14 +974,7 @@
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
-        // Nhấn F2 trong ô mã khách cũng bật popup
-        document.getElementById('makh').addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                showPopupTimKH();
-            }
-        });
-
+        
         // Hàm show popup
         function showPopupTimKH() {
             const popup = document.getElementById('popupTimKH');
