@@ -90,16 +90,13 @@
 #size    { flex: 0 1 20%; max-width: 15%; text-align: center; }
 #gia     { flex: 0 1 30%; max-width: 30%; text-align: right; }
 /* Vị trí mới: 30% sau Số HĐ */
-#vitri   { flex: 0 1 30%; max-width:30%; }
-/* Ảnh sản phẩm đứng ngay sau #vitri */
-.top-inputs .product-image {
-  flex: 0 0 auto;          /* theo nội dung, không chiếm % */
-  width: 70px !important;
-  height: 50px !important;
-  border-radius: 3px;
-}
+#vitri   { flex: 0 1 40%; max-width:40%; }
 #sohd    { flex: 0 1 40%; max-width: 40%; }
 #ghichu  { display: none !important; }
+
+#makh   { flex: 0 1 20%; max-width:20%; }
+#khachhang    { flex: 0 1 20%; max-width: 20%; }
+
 
 /* Nút kính lúp theo nội dung, không chiếm % */
 #masp-search { display: none !important; }
@@ -122,7 +119,7 @@
 
   /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
   .btn-big { width: 100%; font-size: 18px; }
-  #phaithanhtoan, #khachtra, #conlai { width: 120px !important; }
+  #phaithanhtoan, #khachtra, #conlai { width: 140px !important; }
 
   /* 6) Ảnh sản phẩm */
   .product-image { width: 50px !important; height: 50px !important; border-radius: 3px; } 
