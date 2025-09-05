@@ -143,24 +143,24 @@ async function taiTrang(page) {
 
     const { data, error } = await supabase.rpc("baocaochitiet_bh_page_v2", params);
 
-     if (error) {
+    if (error) {
         console.error(error);
         alert("Lỗi tải dữ liệu trang!");
         return;
     }
-    
-}
 
-// ánh xạ thêm cột STT như cũ
-const startIndex = offset + 1;
-const hotData = (data || []).map((r, idx) => ({
-    stt: startIndex + idx,
-    ...r
-}));
 
-renderTable(hotData);      // dùng lại cấu hình Handsontable y như cũ
-updatePagingBar();         // cập nhật nút/nhãn
-currentPage = page;
+
+    // ánh xạ thêm cột STT như cũ
+    const startIndex = offset + 1;
+    const hotData = (data || []).map((r, idx) => ({
+        stt: startIndex + idx,
+        ...r
+    }));
+
+    renderTable(hotData);      // dùng lại cấu hình Handsontable y như cũ
+    updatePagingBar();         // cập nhật nút/nhãn
+    currentPage = page;
 }
 
 function updatePagingBar() {
