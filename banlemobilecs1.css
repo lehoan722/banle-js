@@ -94,8 +94,8 @@
 #sohd    { flex: 0 1 40%; max-width: 40%; }
 #ghichu  { display: none !important; }
 
-#makh   { flex: 0 1 20%; max-width:20%; }
-#khachhang    { flex: 0 1 20%; max-width: 20%; }
+#mathang   { flex: 0 1 25%; max-width:25%; }
+#tongsl    { flex: 0 1 25%; max-width: 25%; }
 
 
 /* Nút kính lúp theo nội dung, không chiếm % */
