@@ -366,7 +366,7 @@
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
-    
+
 </head>
 
 <body>
@@ -542,8 +542,7 @@
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
-
-            <input id="ghichu" placeholder="Ghi chú HH" />
+            <label>Vị trí <input id="vitri" readonly="" /></label>            
             <button id="masp-search">🔍</button>
         </div>
 
@@ -585,7 +584,9 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label>Vị trí <input id="vitri" readonly="" /></label>
+                        <input id="ghichu" placeholder="Ghi chú HH" />
+
+                        
                         <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
