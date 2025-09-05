@@ -141,23 +141,23 @@ async function taiTrang(page) {
         p_offset: offset
     };
 
-    const { data, error } = await supabase.rpc("baocaochitiet_bh_page", params);
-    if (error) {
-        console.error(error);
-        alert("Lỗi tải dữ liệu trang!");
-        return;
-    }
+    const { data, error } = await supabase.rpc("baocaochitiet_bh_page_v2", params);
 
-    // ánh xạ thêm cột STT như cũ
-    const startIndex = offset + 1;
-    const hotData = (data || []).map((r, idx) => ({
-        stt: startIndex + idx,
-        ...r
-    }));
+    console.error(error);
+    alert("Lỗi tải dữ liệu trang!");
+    return;
+}
 
-    renderTable(hotData);      // dùng lại cấu hình Handsontable y như cũ
-    updatePagingBar();         // cập nhật nút/nhãn
-    currentPage = page;
+// ánh xạ thêm cột STT như cũ
+const startIndex = offset + 1;
+const hotData = (data || []).map((r, idx) => ({
+    stt: startIndex + idx,
+    ...r
+}));
+
+renderTable(hotData);      // dùng lại cấu hình Handsontable y như cũ
+updatePagingBar();         // cập nhật nút/nhãn
+currentPage = page;
 }
 
 function updatePagingBar() {
@@ -199,7 +199,9 @@ function renderTable(hotData) {
     // columns: **giữ nguyên** danh sách cột bạn đang dùng
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
-        { data: "ngay", title: "Ngày", readOnly: true, width: 105 },
+        // ĐỔI: dùng ngay_gio + renderer giờ VN
+        
+        { data: "ngay_gio", title: "Ngày (VN)", readOnly: true, width: 150, renderer: formatDateCellVN },
         { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
         { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
@@ -235,6 +237,24 @@ function formatNumberCell(instance, td, row, col, prop, value, cellProperties) {
     td.textContent = v;
 }
 
+function formatDateCellVN(instance, td, row, col, prop, value) {
+    if (!value) { td.textContent = ""; return; }
+    try {
+        const d = new Date(value);   // timestamptz -> UTC
+        d.setHours(d.getHours() + 7); // VN = UTC+7
+        const yy = String(d.getFullYear()).slice(-2);
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        td.textContent = `${yy}-${mm}-${dd} ${hh}-${mi}`;
+    } catch {
+        td.textContent = value;
+    }
+}
+
+
+
 window.xuatExcelToanBo = async function () {
     if (!currentFilters) return alert("Hãy chạy báo cáo trước đã!");
     const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
@@ -247,7 +267,8 @@ window.xuatExcelToanBo = async function () {
     for (let p = 1; p <= totalPages; p++) {
         const offset = (p - 1) * pageSize;
         const params = { ...currentFilters, p_limit: pageSize, p_offset: offset };
-        const { data, error } = await supabase.rpc("baocaochitiet_bh_page", params);
+        const { data, error } = await supabase.rpc("baocaochitiet_bh_page_v2", params);
+
         if (error) { console.error(error); alert("Lỗi tải dữ liệu khi xuất!"); return; }
         (data || []).forEach((r, idx) => allRows.push({
             stt: offset + idx + 1, ...r
@@ -300,6 +321,8 @@ window.xuatExcel = function () {
     const wb = XLSX.utils.table_to_book(table, { sheet: "ChiTietBanHang" });
     XLSX.writeFile(wb, "baocao_chitiet_banhang.xlsx");
 };
+
+
 
 // ========== POPUP TÌM KIẾM KHÁCH/MÃ HÀNG/NHÂN VIÊN ==========
 window.openPopupSearch = function (type, keyword = "") {
