@@ -203,8 +203,8 @@ function renderTable(hotData) {
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
         // ĐỔI: dùng ngay_gio + renderer giờ VN
-        { data: "ngay_gio", title: "Ngày (VN)", readOnly: true, width: 150, renderer: formatDateCellVN },
-        { data: "ngay_gio", title: "Ngày (VN)", readOnly: true, width: 150, renderer: formatDateCellVN },
+        { data: "ngay_gio", title: "Ngày Gio", readOnly: true, width: 150, renderer: formatDateCellVN },
+        
         { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
         { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
