@@ -124,8 +124,8 @@
   .btn-big { width: 100%; font-size: 18px; }
   #phaithanhtoan, #khachtra, #conlai { width: 120px !important; }
 
-  /* 6) Ảnh sản phẩm 
-  .product-image { width: 50px !important; height: 50px !important; border-radius: 3px; } */
+  /* 6) Ảnh sản phẩm */
+  .product-image { width: 50px !important; height: 50px !important; border-radius: 3px; } 
 
   /* 7) Footer nút lớn sticky */
   .footer-buttons {
