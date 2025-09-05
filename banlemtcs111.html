@@ -574,19 +574,6 @@
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
 
-                        <label>Hình thức TT <select id="hinhthuctt">
-                                <option value="tm">Tiền mặt</option>
-                                <option value="ck">Chuyển khoản</option>
-                            </select></label>
-
-                        <label>Chiết khấu <input id="chietkhau" /></label>
-                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
-
-                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
-                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <input id="ghichu" placeholder="Ghi chú HH" />
-
-                        
                         <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
@@ -605,6 +592,22 @@
                             <table id="tableKH" style="width:100%;font-size:15px"></table>
                         </div>
                         <!-- het khu vuc tìm khách hàng -->
+                         <input id="ghichu" placeholder="Ghi chú HH" /> 
+
+                        <label>Hình thức TT <select id="hinhthuctt">
+                                <option value="tm">Tiền mặt</option>
+                                <option value="ck">Chuyển khoản</option>
+                            </select></label>
+
+                        <label>Chiết khấu <input id="chietkhau" /></label>
+                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
+
+                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
+                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
+                         <img alt="Ảnh sản phẩm" class="product-image"
+                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+                                               
+                        
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
@@ -614,7 +617,6 @@
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-
 
                             <label><input type="checkbox" /> Cộng dồn số lượng</label>
                         </div>
@@ -637,11 +639,7 @@
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
                         readonly />
                 </div>
-
-
-
-                <img alt="Ảnh sản phẩm" class="product-image"
-                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+               
             </div>
         </div>
 
@@ -783,11 +781,11 @@
 
                 <div class="login-field">
                     <label for="login-manv">Mã nhân viên</label><br />
-                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
+                    <input type="password" id="login-manv" value="112233" autocomplete="off" placeholder="Nhập mã nhân viên"
                         required />
                 </div>
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
+                <input type="password" id="login-password" value="123123"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
