@@ -523,6 +523,14 @@
             <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
         </div>
         <div class="row">
+            <label>Là nhà cung cấp</label>
+            <select id="la_ncc">
+                <option value=""></option>
+                <option value="">Không</option>
+                <option value="true">Có</option>
+            </select>
+        </div>
+        <div class="row">
             <label>Ngày sinh</label>
             <input id="ngaysinh" type="date" maxlength="12">
         </div>
@@ -546,14 +554,7 @@
             <label>CCCD/CMND</label>
             <input id="cccd" maxlength="20">
         </div>
-        <div class="row">
-            <label>Là nhà cung cấp</label>
-            <select id="la_ncc">
-                <option value=""></option>
-                <option value="">Không</option>
-                <option value="true">Có</option>
-            </select>
-        </div>
+        
         <div class="actions">
             <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
             <button class="new" onclick="resetForm()">Thêm mới</button>
