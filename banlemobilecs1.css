@@ -97,6 +97,9 @@
 #mathang   { flex: 0 1 25%; max-width:25%; }
 #tongsl    { flex: 0 1 25%; max-width: 25%; }
 
+#makh   { flex: 0 1 35%; max-width:38%; }
+#khachhang    { flex: 0 1 60%; max-width: 60%; }
+
 
 /* Nút kính lúp theo nội dung, không chiếm % */
 #masp-search { display: none !important; }
