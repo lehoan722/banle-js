@@ -1097,7 +1097,7 @@
             this.innerText = "Đang lưu...";
 
             try {
-                await window.luuHoaDonCaHaiBan?.();
+                await window.luuHoaDonQuaAPI();
             } catch (e) {
                 alert("Lỗi lưu hóa đơn: " + e.message);
             }
