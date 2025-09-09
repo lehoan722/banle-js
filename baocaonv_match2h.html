@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>NV Match 2h - CS1</title>
+
+  <!-- Supabase + JS trang mới -->
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script type="module" src="scripts/baocaonv_match2h.js"></script>
+
+  <!-- Handsontable + SheetJS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body{font-family:Arial, sans-serif;background:#f8f8f8;padding:16px}
+    .container{max-width:1320px;margin:auto;background:#fff;border-radius:8px;box-shadow:0 1px 6px #e3e3e3;padding:22px 26px 40px}
+    h2{margin:0 0 10px 0;text-align:center;color:#1976d2}
+    .filters{display:flex;gap:14px 22px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 12px}
+    .filters label{font-weight:600}
+    .filters input[type="date"], .filters input[type="text"], .filters input[type="number"], .filters select{padding:6px 9px;border:1px solid #cfcfcf;border-radius:4px;font-size:14px}
+    .grow{flex:1}
+    .btn{background:#2196f3;border:none;color:#fff;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:#607d8b}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .tabs{display:flex;gap:8px;margin:10px 0 8px}
+    .tab-btn{background:#eee;border:1px solid #ddd;border-radius:6px;padding:6px 12px;cursor:pointer}
+    .tab-btn.active{background:#1976d2;color:#fff;border-color:#1976d2}
+    .kpi{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 8px}
+    .kpi .chip{background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px}
+    .row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+    .right{margin-left:auto}
+    .table-wrap{margin-top:8px}
+    .subfilters{display:flex;gap:10px;align-items:center;margin:6px 0}
+    .note{color:#666;font-size:12.5px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📊 Doanh số nhân viên (Match 2 giờ) — CS1</h2>
+
+    <!-- BỘ LỌC -->
+    <div class="filters">
+      <label>Từ ngày: <input type="date" id="tuNgay"></label>
+      <label>Đến ngày: <input type="date" id="denNgay"></label>
+      <label>Nhân viên: <input type="text" id="manvInput" placeholder="mã hoặc tên"></label>
+      <label>Mã SP: <input type="text" id="maspInput" placeholder="Mã đơn lẻ hoặc để trống"></label>
+      <label>Danh sách mã: <input class="grow" type="text" id="maspList" placeholder="Nhiều mã (cách nhau bằng dấu phẩy hoặc khoảng trắng)"></label>
+      <label>Size: <input type="text" id="sizeInput" placeholder="VD: 40"></label>
+      <label>Giá tối thiểu: <input type="number" id="minPrice" value="160000" min="0" step="1000" style="width:130px"></label>
+      <label>Địa điểm: 
+        <select id="diadiemSelect" disabled>
+          <option value="cs1" selected>CS1</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="chkMatch2h" checked> Tính doanh số theo ghép 2 giờ</label>
+      <button class="btn" id="btnView">Xem báo cáo</button>
+      <span class="note">Thời gian hiển thị theo VN: <b>yy-mm-dd hh-mm</b></span>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabSummaryBtn">Tổng hợp theo NV</button>
+      <button class="tab-btn" id="tabDetailsBtn">Ghép thành công</button>
+      <button class="tab-btn" id="tabUnmatchedBtn">Không ghép được</button>
+      <div class="right">
+        <button class="btn secondary" id="btnExport">Xuất Excel (tab hiện tại)</button>
+      </div>
+    </div>
+
+    <!-- KPI (chỉ cho tab Summary) -->
+    <div id="kpiRow" class="kpi" style="display:none;">
+      <div class="chip">Tổng doanh thu (giá B): <b id="kpiDoanhThuB">0</b></div>
+      <div class="chip">Tổng SL ghép: <b id="kpiSL">0</b></div>
+      <div class="chip">Tỷ lệ ghép: <b id="kpiTyLe">0%</b></div>
+      <div class="chip">% khác giá: <b id="kpiGiaKhac">0%</b></div>
+      <div class="chip">Δ trung bình: <b id="kpiDelta">0 phút</b></div>
+    </div>
+
+    <!-- SUB-FILTERS cho tab Details -->
+    <div id="subDetails" class="subfilters" style="display:none;">
+      <label>Lọc giá: 
+        <select id="priceMatchSelect">
+          <option value="unmatched" selected>KHÔNG KHỚP</option>
+          <option value="matched">KHỚP</option>
+          <option value="all">Tất cả</option>
+        </select>
+      </label>
+      <span class="note">Mặc định hiển thị các trường hợp <b>không khớp giá</b>.</span>
+    </div>
+
+    <!-- PHÂN TRANG -->
+    <div class="row" id="pager" style="display:none;">
+      <label>Số dòng/trang:
+        <select id="pageSize">
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+          <option value="2000">2000</option>
+        </select>
+      </label>
+      <button class="btn" id="btnPrev">⬅ Trang trước</button>
+      <button class="btn" id="btnNext">Trang sau ➡</button>
+      <span id="pageInfo" class="note">Trang 0/0 (Tổng: 0)</span>
+      <label>Đến trang: <input type="number" id="gotoPage" min="1" style="width:80px"></label>
+      <button class="btn" id="btnGo">Đi</button>
+    </div>
+
+    <!-- BẢNG -->
+    <div class="table-wrap"><div id="hotSummary"></div></div>
+    <div class="table-wrap" style="display:none;"><div id="hotDetails"></div></div>
+    <div class="table-wrap" style="display:none;"><div id="hotUnmatched"></div></div>
+  </div>
+</body>
+</html>
