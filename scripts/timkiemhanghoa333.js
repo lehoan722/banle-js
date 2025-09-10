@@ -820,7 +820,8 @@ function parseBulkMasp() {
 
 document.getElementById('clearBulkBtn')?.addEventListener('click', () => {
     const ta = document.getElementById('bulkTextarea');
-    if (ta) { ta.value = ''; ta.focus(); }
+    if (ta) { ta.value = ''; 
+        maspInput = ''; maspInput.focus();  }
 
     // Dọn trạng thái hiển thị kết quả
     const msg = document.getElementById('statusMsg'); if (msg) msg.textContent = '';
