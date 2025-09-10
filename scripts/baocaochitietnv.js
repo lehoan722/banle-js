@@ -244,13 +244,13 @@ function formatDateCellVN(instance, td, row, col, prop, value) {
     if (!value) { td.textContent = ""; return; }
     try {
         const d = new Date(value);   // timestamptz -> UTC
-        d.setHours(d.getHours() + 7); // VN = UTC+7
+        d.setHours(d.getHours() ); // VN = UTC+7
         const yy = String(d.getFullYear()).slice(-2);
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
         const hh = String(d.getHours()).padStart(2, '0');
         const mi = String(d.getMinutes()).padStart(2, '0');
-        td.textContent = `${yy}-${mm}-${dd} ${hh}-${mi}`;
+        td.textContent = `${dd}-${mm}-${yy}, ${hh}-${mi}`; 
     } catch {
         td.textContent = value;
     }
