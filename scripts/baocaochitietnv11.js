@@ -138,7 +138,7 @@ async function taiKPI_Match2h() {
         p_manv: currentFilters.p_nhanvien || null,
         p_masp_list: currentFilters.p_masp_list || null,
         p_size: currentFilters.p_size || null,
-        p_min_price: currentFilters.p_tu_gia || 160000,
+        p_min_price: currentFilters.p_tu_gia || 35000,
         p_diadiem: currentFilters.p_diadiem || 'cs1'
     };
     const { data, error } = await supabase.rpc("nv_match2h_summary", f);
@@ -474,3 +474,4 @@ window.searchPopup = async function (keyword) {
         </div>
     `).join('');
 };
+
