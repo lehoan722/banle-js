@@ -235,27 +235,27 @@ window.toiTrang = function () {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  const pgSizeEl = document.getElementById("pageSize");
-  if (pgSizeEl) {
-    pgSizeEl.addEventListener("change", async function () {
-      if (!currentFilters) return;
-      pageSize = Number(this.value) || 1000;
-      currentPage = 1;
-      await taiTrang(currentPage);
-    });
-  }
+    const pgSizeEl = document.getElementById("pageSize");
+    if (pgSizeEl) {
+        pgSizeEl.addEventListener("change", async function () {
+            if (!currentFilters) return;
+            pageSize = Number(this.value) || 1000;
+            currentPage = 1;
+            await taiTrang(currentPage);
+        });
+    }
 
-  const popupInput = document.getElementById('popupSearchInput');
-  if (popupInput) {
-    popupInput.addEventListener('input', async function () {
-      let keyword = this.value.trim();
-      if (keyword.length < 2) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
-        return;
-      }
-      await searchPopup(keyword);
-    });
-  }
+    const popupInput = document.getElementById('popupSearchInput');
+    if (popupInput) {
+        popupInput.addEventListener('input', async function () {
+            let keyword = this.value.trim();
+            if (keyword.length < 2) {
+                document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+                return;
+            }
+            await searchPopup(keyword);
+        });
+    }
 });
 
 
@@ -305,7 +305,7 @@ function formatDateCellVN(instance, td, row, col, prop, value) {
     if (!value) { td.textContent = ""; return; }
     try {
         const d = new Date(value);   // timestamptz -> UTC
-        d.setHours(d.getHours()); // VN = UTC+7
+        d.setHours(d.getHours()); // VN = UTC+7 khong +7 thi dung + 7 thi sai gio. 
         const yy = String(d.getFullYear()).slice(-2);
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
@@ -339,15 +339,16 @@ window.xuatExcelToanBo = async function () {
         }));
     }
 
-    // Xuất như xuatExcel() hiện tại, nhưng dùng allRows
-    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
+    // trong xuatExcelToanBo():
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả"];
     const aoa = [headers];
     allRows.forEach(r => {
         aoa.push([
-            r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
-            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
+            r.stt, r.ngay_gio, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
+            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien, r.ket_qua
         ]);
     });
+
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
