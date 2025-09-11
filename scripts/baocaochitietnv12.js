@@ -141,7 +141,7 @@ async function taiKPI_Match2h() {
         p_min_price: currentFilters.p_tu_gia || 35000,
         p_diadiem: currentFilters.p_diadiem || 'cs1'
     };
-    const { data, error } = await supabase.rpc("nv_match2h_summary", f);
+    const { data, error } = await supabase.rpc("nv_match2h_summary_all", f);
 
     if (error) { console.error(error); document.getElementById("tonghop").innerHTML = ""; return; }
 
@@ -475,6 +475,7 @@ window.searchPopup = async function (keyword) {
         </div>
     `).join('');
 };
+
 
 
 
