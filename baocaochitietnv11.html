@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>BÁO CÁO CHI TIẾT BÁN HÀNG</title>
+    <!-- Kết nối Supabase + Handsontable + SheetJS -->
+    <script type="module" src="scripts/supabaseClient.js"></script>
+    <script type="module" src="scripts/baocaochitietnv11.js"></script>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8f8f8;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 6px #e3e3e3;
+            padding: 24px 26px 48px 26px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #1976d2;
+            margin-top: 0;
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 0;
+            margin-bottom: 10px;
+        }
+
+        .filters-left {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 10px 22px;
+        }
+
+        .filters-right {
+            min-width: 120px;
+            max-width: 220px;
+            padding: 6px 10px;
+            background: #f7fafd;
+            border-radius: 7px;
+            border: 1px solid #e3e6f3;
+            margin-left: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filters-right textarea {
+            width: 100%;
+            border-radius: 5px;
+            padding: 7px;
+            min-height: 140px;
+            border: 1px solid #bbb;
+            font-size: 15px;
+        }
+
+        .filters label {
+            margin-bottom: 0;
+            font-weight: 600;
+        }
+
+        .filters select,
+        .filters input[type="date"],
+        .filters input[type="number"],
+        .filters input[type="text"] {
+            padding: 6px 9px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+
+        .main-btn {
+            background: #2196f3;
+            color: #fff;
+            border: none;
+            font-weight: bold;
+            padding: 8px 22px;
+            border-radius: 5px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .main-btn:hover {
+            background: #1769aa;
+        }
+
+        .input-popup-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            margin-right: 8px;
+        }
+
+        .input-popup-group input {
+            width: 130px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        .input-popup-group button {
+            background: #eee;
+            color: #222;
+            border: 1px solid #bbb;
+            padding: 0 8px;
+            font-size: 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            height: 32px;
+        }
+
+        .input-popup-group button:hover {
+            background: #ddd;
+        }
+
+        #hot {
+            margin-top: 16px;
+        }
+
+        /* Popup tìm kiếm */
+        #popupSearch {
+            display: none;
+            position: fixed;
+            top: 18%;
+            left: 50%;
+            transform: translate(-50%, 0);
+            background: #fff;
+            z-index: 2000;
+            border: 1px solid #ccc;
+            min-width: 320px;
+            max-width: 95vw;
+            box-shadow: 0 0 12px #888;
+            border-radius: 8px;
+        }
+
+        #popupSearch input {
+            width: 94%;
+            margin-bottom: 5px;
+        }
+
+        #popupSearchList {
+            max-height: 260px;
+            overflow: auto;
+            font-size: 15px;
+        }
+
+        #popupSearchList div {
+            padding: 5px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        #popupSearchList div:hover {
+            background: #e3f0ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>📊 BÁO CÁO CHI TIẾT BÁN HÀNG <span style="font-size:0.7em; color:#666;">(chuẩn hóa)</span></h2>
+        <div class="filters-row">
+            <div class="filters-left filters">
+                <label>Từ ngày: <input type="date" id="tuNgay"></label>
+                <label>Đến ngày: <input type="date" id="denNgay"></label>
+                <label>Loại hóa đơn:
+                    <select id="loaihdSelect" multiple style="min-width:140px; max-width:220px;">
+                        <option value="bancs1">ban cs1</option>
+                         <option value="bancs2">ban cs2</option>
+                         <option value="bannvcs1">ban nv cs1</option>
+                        <option value="bannvcs2">ban nv cs2</option>
+                        <option value="nmcs1">nm cs1</option>
+                        <option value="nmcs2">nm cs2</option>
+                        <option value="xcncs2">xuat cn</option>
+                        <option value="ncncs2">nhap cn</option>
+                        <option value="nhapkiem">nhap kiem</option>
+                        <option value="xuatkiem">xuat kiem</option>
+
+                        
+                    </select>
+                </label>
+                <label>Địa điểm:
+                    <select id="diadiemSelect" style="min-width:90px;">
+                        <option value="">Tất cả</option>
+                        <option value="cs1">Cơ sở 1</option>
+                        <option value="cs2">Cơ sở 2</option>
+                    </select>
+                </label>
+                <span class="input-popup-group">
+                    <input id="khachhangInput" placeholder="Khách hàng">
+                    <button onclick="openPopupSearch('khachhang')">🔍</button>
+                    <button onclick="clearInput('khachhangInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="nhanvienInput" placeholder="Nhân viên">
+                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
+                    <button onclick="clearInput('nhanvienInput')">✖</button>
+                </span>
+                <span class="input-popup-group">
+                    <input id="maspInput" placeholder="Mã hàng">
+                    <button onclick="openPopupSearch('mahang')">🔍</button>
+                    <button onclick="clearInput('maspInput')">✖</button>
+                </span>
+                <label>Tên hàng: <input id="tenspInput" type="text" placeholder="Tên sản phẩm"></label>
+                <label>Kích cỡ: <input id="sizeInput" type="text" style="width:60px" placeholder="Size"></label>
+                <label>Từ giá: <input type="number" id="tuGia" min="0" style="width:90px;" placeholder="Từ"></label>
+                <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;" placeholder="Đến"></label>
+                <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
+                <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
+
+                <!-- thêm cụm phân trang -->
+                <div id="pagingBar" style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <label>Số dòng/trang:
+                        <select id="pageSize" style="padding:4px 6px;">
+                            <option value="500">500</option>
+                            <option value="1000" selected>1000</option>
+                            <option value="2000">2000</option>
+                        </select>
+                    </label>
+
+                    <button class="main-btn" id="btnPrev" onclick="window.trangTruoc()">⬅ Trang trước</button>
+                    <button class="main-btn" id="btnNext" onclick="window.trangSau()">Trang sau ➡</button>
+
+
+                    <span id="pageInfo" style="color:#444">Trang 0/0 (Tổng: 0)</span>
+                    <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+                    <button class="main-btn" onclick="window.toiTrang()">Đi</button>
+
+                    <!-- nút xuất toàn bộ -->
+                    <button class="main-btn" onclick="xuatExcelToanBo()">Xuất toàn bộ</button>
+                </div>
+
+
+            </div>
+
+
+
+            <div class="filters-right">
+                <textarea id="maspList" rows="12" placeholder="Nhập/dán nhiều mã sản phẩm, mỗi mã 1 dòng..."></textarea>
+            </div>
+        </div>
+
+        <div id="tonghop" style="margin: 10px 0 5px 0; color: #1976d2; font-weight: bold; font-size: 17px;"></div>
+
+        <div id="hot"></div>
+    </div>
+    <!-- Popup tìm kiếm dùng chung -->
+    <div id="popupSearch">
+        <div style="padding:6px 10px; border-bottom:1px solid #eee; background:#f8fafd;">
+            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+        </div>
+        <div id="popupSearchList"></div>
+    </div>
+</body>
+
+</html>
+
+
