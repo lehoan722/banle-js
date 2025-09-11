@@ -117,7 +117,7 @@ window.taiBaoCaoChiTiet = async function () {
     // 5) Gọi RPC đếm tổng dòng
     const { data: cnt, error: errCnt } = await supabase.rpc("baocaochitietnv11_bh_count_v3", currentFilters);
     if (errCnt) {
-        console.error("baocaochitietnv11_bh_count_v3 error:", errCnt);
+        console.error("baocaochitietnv11_bh_count_v2 error:", errCnt);
         alert("Lỗi đếm dữ liệu!");
         return;
     }
