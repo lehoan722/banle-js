@@ -125,8 +125,53 @@ window.taiBaoCaoChiTiet = async function () {
 
     // 6) Tải trang đầu tiên
     await taiTrang(currentPage);
+    // (B) Sau khi đếm xong, gọi KPI match-2h và render vào #tonghop
+    await taiKPI_Match2h();
 };
 
+// (C) Thêm hàm render KPI
+async function taiKPI_Match2h() {
+    // map filter sang hàm summary của match-2h
+    const f = {
+        tu_ngay: currentFilters.tu_ngay,
+        den_ngay: currentFilters.den_ngay,
+        p_manv: currentFilters.p_nhanvien || null,
+        p_masp_list: currentFilters.p_masp_list || null,
+        p_size: currentFilters.p_size || null,
+        p_min_price: currentFilters.p_tu_gia || 160000,
+        p_diadiem: currentFilters.p_diadiem || 'cs1'
+    };
+    const { data, error } = await supabase.rpc("nv_match2h_summary", f);
+    if (error) { console.error(error); document.getElementById("tonghop").innerHTML = ""; return; }
+
+    // tổng hợp KPI
+    const rows = data || [];
+    const sumB = rows.reduce((s, r) => s + Number(r.doanh_thu_gia_b || 0), 0);
+    const slGhep = rows.reduce((s, r) => s + Number(r.tong_sl_ghep || 0), 0);
+    const slKhong = rows.reduce((s, r) => s + Number(r.sl_khong_ghep || 0), 0);
+    const tyle = (slGhep + slKhong) ? (slGhep / (slGhep + slKhong)) : 0;
+    const soGiaKhac = rows.reduce((s, r) => s + Number(r.so_sp_gia_khac || 0), 0);
+    const avgDelta = rows.length ? (rows.reduce((s, r) => s + Number(r.delta_tb_min || 0), 0) / rows.length) : 0;
+
+    document.getElementById("tonghop").innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
+        <b>Doanh thu (giá B):</b> ${sumB.toLocaleString('vi-VN')}
+      </div>
+      <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
+        <b>Tổng SL Web:</b> ${slGhep.toLocaleString('vi-VN')}
+      </div>
+      <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
+        <b>Tỷ lệ ghép:</b> ${(tyle * 100).toFixed(1)}%
+      </div>
+      <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
+        <b>Số SP khác giá:</b> ${soGiaKhac.toLocaleString('vi-VN')}
+      </div>
+      <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
+        <b>Δ trung bình:</b> ${(avgDelta || 0).toFixed(1)} phút
+      </div>
+    </div>`;
+}
 
 async function taiTrang(page) {
     const container = document.getElementById("hot");
@@ -189,22 +234,37 @@ window.toiTrang = function () {
     taiTrang(n);
 };
 
-// khi đổi “số dòng/trang”
-document.getElementById("pageSize").addEventListener("change", async function () {
-    if (!currentFilters) return;
-    pageSize = Number(this.value) || 1000;
-    currentPage = 1;
-    await taiTrang(currentPage);
+window.addEventListener('DOMContentLoaded', () => {
+  const pgSizeEl = document.getElementById("pageSize");
+  if (pgSizeEl) {
+    pgSizeEl.addEventListener("change", async function () {
+      if (!currentFilters) return;
+      pageSize = Number(this.value) || 1000;
+      currentPage = 1;
+      await taiTrang(currentPage);
+    });
+  }
+
+  const popupInput = document.getElementById('popupSearchInput');
+  if (popupInput) {
+    popupInput.addEventListener('input', async function () {
+      let keyword = this.value.trim();
+      if (keyword.length < 2) {
+        document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+        return;
+      }
+      await searchPopup(keyword);
+    });
+  }
 });
+
 
 function renderTable(hotData) {
     const container = document.getElementById("hot");
     // columns: **giữ nguyên** danh sách cột bạn đang dùng
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
-        // ĐỔI: dùng ngay_gio + renderer giờ VN
         { data: "ngay_gio", title: "Ngày Gio", readOnly: true, width: 150, renderer: formatDateCellVN },
-        
         { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
         { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
@@ -217,7 +277,8 @@ function renderTable(hotData) {
         { data: "dvt", title: "ĐVT", readOnly: true, width: 60 },
         { data: "gia", title: "Giá", readOnly: true, width: 100, type: 'numeric', renderer: formatNumberCell },
         { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
-        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
+        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell },
+        { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 }  // <— THÊM
     ];
 
     hotInstance = new Handsontable(container, {
@@ -244,13 +305,13 @@ function formatDateCellVN(instance, td, row, col, prop, value) {
     if (!value) { td.textContent = ""; return; }
     try {
         const d = new Date(value);   // timestamptz -> UTC
-        d.setHours(d.getHours() ); // VN = UTC+7
+        d.setHours(d.getHours()); // VN = UTC+7
         const yy = String(d.getFullYear()).slice(-2);
         const mm = String(d.getMonth() + 1).padStart(2, '0');
         const dd = String(d.getDate()).padStart(2, '0');
         const hh = String(d.getHours()).padStart(2, '0');
         const mi = String(d.getMinutes()).padStart(2, '0');
-        td.textContent = `${dd}-${mm}-${yy}, ${hh}-${mi}`; 
+        td.textContent = `${dd}-${mm}-${yy}, ${hh}-${mi}`;
     } catch {
         td.textContent = value;
     }
@@ -351,36 +412,7 @@ window.clearInput = function (inputId) {
     document.getElementById(inputId).value = '';
 };
 
-document.getElementById('popupSearchInput').addEventListener('input', async function () {
-    let keyword = this.value.trim();
-    if (keyword.length < 2) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
-        return;
-    }
-    let type = window.currentPopupType;
-    let table = '', field = '', extraFields = '';
-    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
-    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else return;
 
-    let { data, error } = await supabase
-        .from(table)
-        .select(`${field}${extraFields}`)
-        .ilike(field, `%${keyword}%`)
-        .limit(100);
-
-    if (error || !data || data.length === 0) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-        return;
-    }
-    document.getElementById('popupSearchList').innerHTML = data.map(row => `
-        <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
-        </div>
-    `).join('');
-});
 window.selectPopupValue = function (type, value, el) {
     let inputId = '';
     let ten = '';
