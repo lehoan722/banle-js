@@ -602,7 +602,20 @@ export async function luuHoaDonccn1v2() {
   if (tonTai && choPhepSua) {
     await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
     await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+
+    // ✅ THÊM MỚI: cũng xóa hóa đơn đối ứng cũ (nếu có)
+    const base = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+    const parts = base.split('_');
+    const so = parts[parts.length - 1];
+    const loaiGoc = parts.slice(0, -1).join('_'); // xcncs1 hoặc xcncs2
+    const loaiDoiUng = (loaiGoc === 'xcncs1') ? 'ncncs2' : 'ncncs1';
+    const sohdDoiUng = `${loaiDoiUng}_${so}`;
+
+    await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng);
+    await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng);
   }
+
+
   const createdAt = new Date().toISOString();
 
   const getIntValue = (id) =>
@@ -713,8 +726,18 @@ export async function luuHoaDonccn1v2() {
           created_at: new Date().toISOString(),
         }));
 
-        await supabase.from("hoadon_banle").insert([hoadonDoiUng]);
-        await supabase.from("ct_hoadon_banle").insert(chitietDoiUng);
+        const { error: errDU1 } = await supabase
+          .from("hoadon_banle")
+          .upsert([hoadonDoiUng], { onConflict: 'sohd' });
+
+        const { error: errDU2 } = await supabase
+          .from("ct_hoadon_banle")
+          .upsert(chitietDoiUng, { onConflict: 'id' /* nếu ct có PK id; nếu không có, bỏ onConflict */ });
+
+        if (errDU1 || errDU2) {
+          console.error("Lỗi tạo hóa đơn đối ứng:", errDU1 || errDU2);
+          alert("❗Không tạo được hóa đơn đối ứng. Có thể do quyền RLS theo chi nhánh. Hãy kiểm tra policy hoặc dùng RPC/Edge Function để tạo đối ứng.");
+        }
 
         const soMoiDoiUng = parseInt(so, 10);
         const { data: currSoChungTuDoiUng } = await supabase
