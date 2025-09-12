@@ -439,7 +439,7 @@
 
             <label>
                 <select id="diadiem">
-                    
+                    <option value="cs1">Cơ sở 1</option>
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
@@ -740,7 +740,6 @@
 
                 <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly style="background:#eee;" />
 
-
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
@@ -765,6 +764,7 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
@@ -879,7 +879,7 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-             // ======= Thêm vào đây ========= quanlysizetheogia
+            // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
@@ -948,6 +948,7 @@
             }
             // ===============================================
         }
+
 
 
     </script>
