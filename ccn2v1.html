@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>CCN2V1</title>
+    <title>CCN1V2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
@@ -408,7 +408,7 @@
         }
 
         .menu-item:hover .dropdown-content {
-            display: none;
+            display: block;
         }
 
         .footer-userinfo {
@@ -497,7 +497,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="CCN2V1" autocomplete="off" />
+                <input id="masp" placeholder="CCN1V2" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -738,12 +738,13 @@
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
 
-                <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly style="background:#eee;" />
+                <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly style="background:#eee;" />
+
 
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs2" selected>Cơ sở 2</option>
+                    <option value="cs1" selected>Cơ sở 1</option>
                 </select>
 
                 <div class="login-field">
@@ -764,7 +765,6 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
@@ -879,7 +879,7 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-            // ======= Thêm vào đây ========= quanlysizetheogia
+             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
@@ -948,7 +948,6 @@
             }
             // ===============================================
         }
-
 
 
     </script>
