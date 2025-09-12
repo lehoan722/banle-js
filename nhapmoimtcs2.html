@@ -1037,7 +1037,7 @@
     </script>
     <script>
 
-        // Sau khi DOMContentLoaded hoặc ở script type="module"
+        // Sau khi DOMContentLoaded hoặc ở script type="module" 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
             window.dangLuu = true;
@@ -1045,7 +1045,8 @@
             this.innerText = "Đang lưu...";
 
             try {
-                await window.luuHoaDonCaHaiBan?.();
+                await window.luuHoaDonQuaAPI(); // khi nhan nut luu goi luu hoa don thuong  
+                //await window.luuHoaDonCaHaiBan?.(); // khi nhan nut luu goi luu hoa don thue
             } catch (e) {
                 alert("Lỗi lưu hóa đơn: " + e.message);
             }
