@@ -674,16 +674,84 @@ export async function luuHoaDonccn1v2() {
     const arr = sohdBase.split('_');
     const loai = arr.slice(0, -1).join('_'); // Lấy tất cả các phần trước dấu _ cuối cùng
     const so = arr[arr.length - 1];
-    const soMoi = parseInt(so, 10);
+    const soMoiDoiUng = parseInt(soStrDoiUng, 10);
 
-    // Đọc số hiện tại của loại này từ bảng sochungtu
+    // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
+    // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG (có kiểm soát + rollback) ===
+    let doiUngOK = true;
+
+    // Tính thông tin đối ứng
+    const sohdBaseDoiUng = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+    const arrDoiUng = sohdBaseDoiUng.split('_');
+    const soStrDoiUng = arrDoiUng[arrDoiUng.length - 1];
+
+    const diadiemGoc = hoadon.diadiem;
+    const diadiemDoiUng = diadiemGoc === 'cs1' ? 'cs2' : 'cs1';
+    const loaiDoiUng = diadiemDoiUng === 'cs1' ? 'ncncs1' : 'ncncs2';
+
+    // 👉 chỉ KHAI BÁO MỘT LẦN, và để SAU khi đã có loaiDoiUng + soStrDoiUng
+    const sohdDoiUng = `${loaiDoiUng}_${soStrDoiUng}`;
+
+
+    // Kiểm tra đã có đối ứng chưa
+    const { data: doiUngDaCo, error: errCheckDU } = await supabase
+      .from("hoadon_banle")
+      .select("sohd")
+      .eq("sohd", sohdDoiUng)
+      .maybeSingle();
+
+    if (errCheckDU) {
+      doiUngOK = false;
+      alert("❗Lỗi kiểm tra hóa đơn đối ứng. Dừng lưu cặp chứng từ.");
+    }
+
+    if (doiUngOK && !doiUngDaCo) {
+      // Tạo payload đối ứng
+      const hoadonDoiUng = {
+        ...hoadon,
+        sohd: sohdDoiUng,
+        loaihd: loaiDoiUng,
+        diadiem: diadiemDoiUng,
+        created_at: new Date().toISOString(),
+      };
+
+      const chitietDoiUng = chitiet.map(ct => ({
+        ...ct,
+        sohd: sohdDoiUng,
+        diadiem: diadiemDoiUng,
+        created_at: new Date().toISOString(),
+      }));
+
+      // Tạo đối ứng: dùng upsert để tránh lỗi trùng
+      const { error: errDU1 } = await supabase
+        .from("hoadon_banle")
+        .upsert([hoadonDoiUng], { onConflict: 'sohd' });
+
+      const { error: errDU2 } = await supabase
+        .from("ct_hoadon_banle")
+        .upsert(chitietDoiUng); // KHÔNG truyền onConflict nếu không có unique phù hợp
+
+      if (errDU1 || errDU2) {
+        doiUngOK = false;
+        alert("❗Không tạo được hóa đơn đối ứng. Dừng lưu cặp chứng từ.");
+      }
+    }
+
+    if (!doiUngOK) {
+      // ROLLBACK hóa đơn xuất vừa lưu
+      await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+      await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+      return; // Không hiện alert "Đã lưu hóa đơn CCN !"
+    }
+
+    // === Tới đây là THÀNH CÔNG đủ cặp ===
+    // Cập nhật sochungtu cho LOẠI GỐC
     const { data: currSoChungTu } = await supabase
       .from("sochungtu")
       .select("so_hientai")
       .eq("loai", loai)
       .single();
 
-    // Chỉ update nếu số mới lớn hơn số hiện tại
     if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
       await supabase
         .from("sochungtu")
@@ -691,73 +759,27 @@ export async function luuHoaDonccn1v2() {
         .eq("loai", loai);
     }
 
-    // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
-    // === BẮT ĐẦU ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
-    try {
-      let sohdBaseDoiUng = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
-      const arrDoiUng = sohdBaseDoiUng.split('_');
-      const so = arrDoiUng[arrDoiUng.length - 1];
+    // Cập nhật sochungtu cho LOẠI ĐỐI ỨNG
+    const { data: currSoChungTuDoiUng } = await supabase
+      .from("sochungtu")
+      .select("so_hientai")
+      .eq("loai", loaiDoiUng)
+      .single();
 
-      const diadiemGoc = hoadon.diadiem;
-      const diadiemDoiUng = diadiemGoc === 'cs1' ? 'cs2' : 'cs1';
-      const loaiDoiUng = diadiemDoiUng === 'cs1' ? 'ncncs1' : 'ncncs2';
-      const sohdDoiUng = loaiDoiUng + '_' + so;  // Không còn _IN
-
-      const { data: doiUngDaCo } = await supabase
-        .from("hoadon_banle")
-        .select("sohd")
-        .eq("sohd", sohdDoiUng)
-        .maybeSingle();
-
-      if (!doiUngDaCo) {
-        // Tạo hóa đơn đối ứng
-        const hoadonDoiUng = {
-          ...hoadon,
-          sohd: sohdDoiUng,
-          loaihd: loaiDoiUng,
-          diadiem: diadiemDoiUng,
-          created_at: new Date().toISOString(),
-        };
-
-        const chitietDoiUng = chitiet.map(ct => ({
-          ...ct,
-          sohd: sohdDoiUng,
-          diadiem: diadiemDoiUng,
-          created_at: new Date().toISOString(),
-        }));
-
-        const { error: errDU1 } = await supabase
-          .from("hoadon_banle")
-          .upsert([hoadonDoiUng], { onConflict: 'sohd' });
-
-        const { error: errDU2 } = await supabase
-          .from("ct_hoadon_banle")
-          .upsert(chitietDoiUng, { onConflict: 'id' /* nếu ct có PK id; nếu không có, bỏ onConflict */ });
-
-        if (errDU1 || errDU2) {
-          console.error("Lỗi tạo hóa đơn đối ứng:", errDU1 || errDU2);
-          alert("❗Không tạo được hóa đơn đối ứng. Có thể do quyền RLS theo chi nhánh. Hãy kiểm tra policy hoặc dùng RPC/Edge Function để tạo đối ứng.");
-        }
-
-        const soMoiDoiUng = parseInt(so, 10);
-        const { data: currSoChungTuDoiUng } = await supabase
-          .from("sochungtu")
-          .select("so_hientai")
-          .eq("loai", loaiDoiUng)
-          .single();
-
-        if (!currSoChungTuDoiUng || soMoiDoiUng > currSoChungTuDoiUng.so_hientai) {
-          await supabase
-            .from("sochungtu")
-            .upsert([{ loai: loaiDoiUng, so_hientai: soMoiDoiUng }], { onConflict: 'loai' });
-        }
-      }
-    } catch (e) {
-      console.error("Lỗi khi phát sinh chứng từ đối ứng:", e);
+    if (!currSoChungTuDoiUng || soMoi > currSoChungTuDoiUng.so_hientai) {
+      await supabase
+        .from("sochungtu")
+        .update({ so_hientai: soMoi })
+        .eq("loai", loaiDoiUng);
     }
-    // === KẾT THÚC CHỨNG TỪ ĐỐI ỨNG ===
 
-    // === KẾT THÚC ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG ===
+    // Hoàn tất
+    alert("✅ Đã lưu hóa đơn CCN (đã tạo cả đối ứng)!");
+    inHoaDon(hoadon, chitiet);
+    await lamMoiSauKhiLuu();
+    choPhepSua = false;
+    return;
+    // === KẾT THÚC ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG (có kiểm soát + rollback) ===    
 
     alert("✅ Đã lưu hóa đơn CCN !");
     inHoaDon(hoadon, chitiet);
