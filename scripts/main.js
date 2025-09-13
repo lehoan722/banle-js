@@ -74,44 +74,27 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
   initAutocompleteRealtimeMasp();
 
-  function hienThiAnhSanPhamTuMasp(maspArg) {
-    try {
-      // Lấy mã SP: ưu tiên tham số, rồi tới #masp, rồi tới window.masp_last
-      let maspRaw = maspArg ?? document.getElementById('masp')?.value ?? window.masp_last ?? '';
-      maspRaw = String(maspRaw).trim();         // KHÔNG đổi hoa/thường, KHÔNG đổi dấu gạch
-      if (!maspRaw) return;
+  async function hienThiAnhSanPhamTuMasp() {
+    let masp = document.getElementById('masp').value.trim();
 
-      const fileKey = `${maspRaw}.JPG`;         // Chỉ nối .JPG (IN HOA) như yêu cầu
-      const imgEl = document.querySelector('.product-image') || document.getElementById('anhsanpham');
-      if (!imgEl) return;
-
-      // Tạo URL ảnh (ưu tiên qua Supabase client nếu có)
-      let url;
-      if (typeof supabase !== 'undefined' && supabase?.storage) {
-        url = supabase.storage.from('anhsanpham').getPublicUrl(fileKey).data.publicUrl;
-      } else {
-        const base = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
-        url = base + encodeURIComponent(fileKey);
-      }
-
-      imgEl.src = url;
-
-      // Fallback khi không tồn tại file
-      imgEl.onerror = () => {
-        imgEl.onerror = null; // tránh vòng lặp
-        let fb;
-        if (typeof supabase !== 'undefined' && supabase?.storage) {
-          fb = supabase.storage.from('anhsanpham').getPublicUrl('NO-IMAGE.JPG').data.publicUrl;
-        } else {
-          fb = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG';
-        }
-        imgEl.src = fb;
-      };
-    } catch (err) {
-      console.error('hienThiAnhSanPhamTuMasp error:', err);
+    // Nếu input trống, lấy từ masp_last (vừa nhập xong)
+    if (!masp && window.masp_last) {
+      masp = window.masp_last;
     }
-  }
+    if (!masp) return;
 
+    masp = masp.toUpperCase();
+    const extension = '.JPG';
+
+    const imgEl = document.querySelector('.product-image');
+    const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}${extension}`;
+
+    imgEl.src = url;
+
+    imgEl.onerror = () => {
+      imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG';
+    };
+  }
 
   // Đảm bảo cho biến global dùng được ở bangketqua.js
   window.hienThiAnhSanPhamTuMasp = hienThiAnhSanPhamTuMasp;
