@@ -602,6 +602,7 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
+             <button id="btn-luuf2">💾 Lưu</button>
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
             <button id="quaylai">Quay lại</button>
@@ -1148,7 +1149,7 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
+        document.getElementById('btn-luuf2')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
