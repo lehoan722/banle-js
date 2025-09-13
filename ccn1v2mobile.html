@@ -364,7 +364,7 @@
     
 </head>
 
-<body>
+<body> 
 
     <style>
         .menu-bar {
@@ -620,9 +620,11 @@
 
 
         <div class="footer-buttons">
-            <button id="them">Thêm mới</button>
-
+             <button id="them">Thêm mới</button>
+            <button id="btn-luu">💾 Lưu</button>
+            <button id="sua" class="btn edit" type="button">SỬA</button>
             <button id="quaylai">Quay lại</button>
+
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
@@ -1102,10 +1104,23 @@
     </script>
 
     <script>
+        // goi phím F2
         setTimeout(function () {
             window.LUU_HOADON_F2 = window.luuHoaDonccn1v2; 
 
         }, 1000);
+
+        document.getElementById('sua')?.addEventListener('click', () => {
+            // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            document.dispatchEvent(ev);
+        });
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            document.dispatchEvent(ev);
+        });
+
     </script>
 
     <script type="module" src="scripts/luuhoadon.js"></script>
