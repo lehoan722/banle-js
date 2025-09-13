@@ -6,7 +6,7 @@
   position: sticky; top: 0; z-index: 1000;
   padding: 8px 10px;
 }
-.menu-item { display: none !important; } /* Ẩn menu thả xuống, giữ .tennv */ 
+.menu-item { display: none !important; } /* Ẩn menu thả xuống, giữ .tennv */
 
 /* Khối tennv: luôn 1 dòng, khoảng cách gọn */
 .tennv {
@@ -130,7 +130,7 @@
     display: grid; grid-template-columns: repeat(4, 1fr);
   }
   /* Ẩn nút phụ */
-  #tieptuc, #xemin, #btnCopy, #btn-luu, #xuatexcel, #btn-logout { display: none !important; }
+  #tieptuc, #xemin, #btnCopy, #xuatexcel, #btn-logout { display: none !important; }
   .footer-buttons button { height: 44px; font-size: 16px; font-weight: 700; }
 
   /* 8) Tabs bên phải */
