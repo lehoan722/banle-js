@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 
 <html lang="vi">
 
@@ -1089,7 +1089,7 @@
     </script>
     <script>
 
-        
+
 
     </script>
 
@@ -1145,15 +1145,17 @@
             document.getElementById('login-manv').focus();
         }
 
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
+
         document.getElementById('sua')?.addEventListener('click', () => {
-            // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            document.dispatchEvent(ev);
+            dispatchTarget.dispatchEvent(ev);
         });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
-            // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            document.dispatchEvent(ev);
+            dispatchTarget.dispatchEvent(ev);
         });
 
     </script>
@@ -1165,4 +1167,3 @@
 </body>
 
 </html>
-
