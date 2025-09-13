@@ -87,7 +87,7 @@
 
         #ghichu {
             flex: 1;
-            background: #6fcdb9; 
+            background: #6fcdb9;
         }
 
         .main {
@@ -359,6 +359,15 @@
             document.getElementById('popupDanhMuc').style.display = 'none';
         }
     </script>
+
+    <!-- banlemobile -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
+    <link rel="stylesheet" href="banlemobilecs1.css">
+
+
 </head>
 
 <body>
@@ -456,7 +465,7 @@
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
-        
+
         <label><input id="size45" type="checkbox" />QL SIZE</label>
 
     </div>
@@ -709,12 +718,12 @@
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
 
-                <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly style="background:#eee;" />
+                <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly style="background:#eee;" />
 
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs1" selected>Cơ sở 1</option>
+                    <option value="cs2" selected>Cơ sở 2</option>
                 </select>
 
                 <div class="login-field">
@@ -735,7 +744,7 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        window.diadiem = "cs1"; // Không phụ thuộc localStorage nữa
+        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
 
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
@@ -1072,6 +1081,24 @@
         };
 
     </script>
+
+    <script>  //<!-- banlemobile -->
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
+
+        document.getElementById('sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });</script>
+
+
+
+    <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
