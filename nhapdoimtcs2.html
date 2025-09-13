@@ -364,6 +364,14 @@
             document.getElementById('popupDanhMuc').style.display = 'none';
         }
     </script>
+
+    <!-- banlemobile -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
+    <link rel="stylesheet" href="banlemobilecs1.css">
+
 </head>
 
 <body>
@@ -1111,7 +1119,21 @@
         }
     </script>
 
+    <script>  //<!-- banlemobile -->
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
 
+        document.getElementById('sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+    </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
