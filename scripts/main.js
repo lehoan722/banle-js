@@ -74,27 +74,87 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
   initAutocompleteRealtimeMasp();
 
-  async function hienThiAnhSanPhamTuMasp() {
-    let masp = document.getElementById('masp').value.trim();
-
-    // Nếu input trống, lấy từ masp_last (vừa nhập xong)
-    if (!masp && window.masp_last) {
-      masp = window.masp_last;
-    }
+  // Thay thế NGUYÊN hàm hienThiAnhSanPhamTuMasp hiện có bằng bản vá an toàn sau:
+async function hienThiAnhSanPhamTuMasp(maspArg) {
+  try {
+    // 1) Lấy masp từ tham số / #masp / masp_last, rồi chuẩn hóa in hoa
+    let masp = (maspArg ?? document.getElementById('masp')?.value ?? window.masp_last ?? '').trim();
     if (!masp) return;
-
     masp = masp.toUpperCase();
-    const extension = '.JPG';
 
-    const imgEl = document.querySelector('.product-image');
-    const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}${extension}`;
+    // 2) Xác định phần tử <img> để hiển thị
+    const imgEl = document.querySelector('.product-image') || document.getElementById('anhsanpham');
+    if (!imgEl) return;
 
-    imgEl.src = url;
+    // 3) Cache nhẹ để hạn chế HEAD lặp lại
+    window._anhSPCache = window._anhSPCache || {};
+    const bucket = 'anhsanpham';
 
-    imgEl.onerror = () => {
-      imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG';
+    // 4) Các biến thể tên file thử lần lượt (đủ .jpg/.jpeg/.png và -AP)
+    const candidates = [
+      `${masp}-AP.jpg`, `${masp}-AP.JPG`,
+      `${masp}.jpg`, `${masp}.JPG`,
+      `${masp}-AP.jpeg`, `${masp}.jpeg`,
+      `${masp}-AP.png`, `${masp}.png`,
+    ];
+
+    // 5) Fallback ảnh mặc định (thử vài biến thể tên)
+    const fallbacks = ['NO-IMAGE.JPG', 'no-image.jpg', 'no-image.png'];
+
+    // Helper: kiểm tra tồn tại URL bằng HEAD; nếu bucket private, thử signed URL
+    const checkUrl = async (key) => {
+      // Ưu tiên URL public
+      const pub = supabase.storage.from(bucket).getPublicUrl(key).data.publicUrl;
+      try {
+        const r = await fetch(pub, { method: 'HEAD' });
+        if (r.ok) return pub;
+
+        // Nếu private (401/403), thử tạo signed url (yêu cầu policy storage cho phép)
+        if ([401, 403].includes(r.status)) {
+          const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(key, 60);
+          if (signed?.signedUrl) {
+            const r2 = await fetch(signed.signedUrl, { method: 'HEAD' });
+            if (r2.ok) return signed.signedUrl;
+          }
+        }
+      } catch (_) { /* bỏ qua lỗi mạng tạm thời */ }
+      return null;
     };
+
+    // 6) Dùng cache nếu có
+    for (const key of candidates) {
+      if (window._anhSPCache[key]) {
+        imgEl.src = window._anhSPCache[key];
+        return;
+      }
+    }
+
+    // 7) Thử lần lượt các biến thể file
+    for (const key of candidates) {
+      const url = await checkUrl(key);
+      if (url) {
+        window._anhSPCache[key] = url;
+        imgEl.src = url;
+        return;
+      }
+    }
+
+    // 8) Không thấy → thử fallback mặc định
+    for (const fb of fallbacks) {
+      const url = await checkUrl(fb);
+      if (url) {
+        imgEl.src = url;
+        return;
+      }
+    }
+
+    // 9) Chốt hạ: nếu vẫn không có gì, thôi bỏ onerror để tránh vòng lặp
+    imgEl.onerror = null;
+  } catch (err) {
+    console.error('hienThiAnhSanPhamTuMasp error:', err);
   }
+}
+
 
   // Đảm bảo cho biến global dùng được ở bangketqua.js
   window.hienThiAnhSanPhamTuMasp = hienThiAnhSanPhamTuMasp;
