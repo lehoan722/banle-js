@@ -356,15 +356,15 @@
         }
     </script>
 
-     <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
-    
+
 </head>
 
-<body> 
+<body>
 
     <style>
         .menu-bar {
@@ -614,13 +614,13 @@
 
 
                 <img alt="Ảnh sản phẩm" class="product-image"
-                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG" />
             </div>
         </div>
 
 
         <div class="footer-buttons">
-             <button id="them">Thêm mới</button>
+            <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
             <button id="sua" class="btn edit" type="button">SỬA</button>
             <button id="quaylai">Quay lại</button>
@@ -888,7 +888,7 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-             // ======= Thêm vào đây ========= quanlysizetheogia
+            // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
@@ -1106,20 +1106,24 @@
     <script>
         // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2; 
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
 
         }, 1000);
 
+
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
+
         document.getElementById('sua')?.addEventListener('click', () => {
-            // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            document.dispatchEvent(ev);
+            dispatchTarget.dispatchEvent(ev);
         });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
-            // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            document.dispatchEvent(ev);
+            dispatchTarget.dispatchEvent(ev);
         });
+
 
     </script>
 
