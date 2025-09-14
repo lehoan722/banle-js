@@ -485,13 +485,9 @@
             <input id="gia" placeholder="Giá SP" />
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />           
-
-            <input id="vitri" placeholder="vi tri" readonly />
-            
-
-            
-            <button id="masp-search">🔍</button>
+            <input id="sohd" placeholder="Số HĐ" /> 
+            <input id="vitri" placeholder="vi tri" readonly />            
+            <button id="xemtonkho">🔍</button>
         </div>
 
 
@@ -620,7 +616,7 @@
         
 
         <div class="top-inputs">
-            ----------------------------------------------------------
+     F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size, F8: xem tồn kho nhanh,
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -739,7 +735,7 @@
                 </div>
                 
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
+                <input type="password" id="login-password" value="123123"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -1130,6 +1126,13 @@
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
