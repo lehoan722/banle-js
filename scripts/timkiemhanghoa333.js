@@ -770,6 +770,20 @@ window.onload = async function () {
             await triggerSearch(masp);
         } catch (e) { /* bỏ qua lỗi */ }
     }
+
+    // NHẬN DANH SÁCH MÃ TỪ localStorage (nếu được F8 truyền sang)
+    const bulk = localStorage.getItem("TKHH333_BULK");
+    if (bulk) {
+        const ta = document.getElementById("bulkTextarea");
+        if (ta) ta.value = bulk;
+        localStorage.removeItem("TKHH333_BULK"); // dọn key
+        try {
+            await triggerSearch(); // chạy tìm luôn
+        } catch (e) {
+            console.error("Lỗi auto triggerSearch từ F8:", e);
+        }
+    }
+
 };
 
 
