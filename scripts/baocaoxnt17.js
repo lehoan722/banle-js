@@ -7,7 +7,7 @@ let currentPage = 1;
 let pageSize = 1000;
 let totalRows = 0;
 
-// ===================== AUTH =====================
+// ===================== AUTH ===================== 
 (function injectQuickViewCss() {
     const css = `
     #previewGrid { display:grid; gap:10px; overflow:auto; }
@@ -82,20 +82,37 @@ function bool(id) { return document.getElementById(id)?.checked ?? false; }
 function normMasp(s) { return (s || "").trim().toUpperCase(); }
 
 function getDSMasp() {
+    // 1) Giữ nguyên: đọc từ sessionStorage (luồng cũ)
     const ss = sessionStorage.getItem("XNT17_MASPS");
     if (ss) {
-        const arr = JSON.parse(ss).map(x => normMasp(x?.masp || x)); // nhận cả dạng {masp}
-        // đổ về textarea để user nhìn thấy & có thể lọc lại
+        const arr = JSON.parse(ss).map(x => (x?.masp || x || "").toString().trim().toUpperCase());
         const ta = document.getElementById("maspList");
         if (ta) ta.value = arr.join("\n");
         sessionStorage.removeItem("XNT17_MASPS");
+    } else {
+        // 2) MỚI: đọc từ localStorage (khi mở TAB MỚI)
+        const ls = localStorage.getItem("XNT17_MASPS_LS");
+        if (ls) {
+            try {
+                const payload = JSON.parse(ls);
+                const arr = (payload?.list || []).map(x => (x || "").toString().trim().toUpperCase());
+                const ta = document.getElementById("maspList");
+                if (ta) ta.value = arr.join("\n");
+            } finally {
+                // Xoá khoá ngay để không bị dính dữ liệu cho lần refresh sau
+                localStorage.removeItem("XNT17_MASPS_LS");
+            }
+        }
     }
+
+    // phần còn lại giữ nguyên
     const raw = document.getElementById("maspList")?.value || "";
-    const list = raw.split(/\r?\n/).map(normMasp).filter(Boolean);
+    const list = raw.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean);
     if (list.length) return list;
-    const one = normMasp(document.getElementById("maspInput")?.value);
+    const one = (document.getElementById("maspInput")?.value || "").trim().toUpperCase();
     return one ? [one] : null;
 }
+
 
 
 function buildParams(page = 1) {
