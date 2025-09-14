@@ -450,12 +450,8 @@
     <div class="menu-bar">
         <div class="tennv">
 
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
+            
+            <input id="diadiem" placeholder="diadiem" readonly />
 
             <label> <input id="ngay" type="date" /></label>
 
@@ -628,8 +624,8 @@
         <div class="top-inputs">
             ----------------------------------------------------------
         </div>
-        <div class="footer-buttons">
-            <button id="btn-luuf2">💾 Lưu </button>
+        <div class="top-inputs">
+            ----------------------------------------------------------
         </div>
 
 
@@ -894,7 +890,7 @@
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
             // Nút lưu
-            document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
+            //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
             // ================= THÊM ĐOẠN SAU =================
             // Ô số hóa đơn
@@ -1046,27 +1042,7 @@
             }
         });
     </script>
-    <script>
-
-        // Sau khi DOMContentLoaded hoặc ở script type="module"
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-
-    </script>
+    
 
     <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
@@ -1151,7 +1127,7 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luuf2')?.addEventListener('click', () => {
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
