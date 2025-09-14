@@ -109,6 +109,30 @@ export function khoiTaoShortcut() {
       }
     }
 
+    // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền danh sách mã
+    if (e.key === "F7") {
+      e.preventDefault();
+
+      // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
+      const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
+      const set = new Set(
+        rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase())
+          .filter(Boolean)
+      );
+      if (set.size === 0) {
+        alert("❌ Không có mã hàng nào trên bảng để mở tìm kiếm.");
+        return;
+      }
+
+      // 2) Lưu payload vào localStorage (mỗi mã một dòng)
+      const bulkData = Array.from(set).join("\n");
+      localStorage.setItem("TKHH333_BULK", bulkData);
+
+      // 3) Mở trang timkiemhanghoa333 trong TAB MỚI
+      window.open("timkiemhanghoa333.html", "_blank");
+    }
+
+
     // F8: mở báo cáo XNT17 (TAB MỚI) với danh sách mã đang có trên bảng kết quả
     if (e.key === "F8") {
       e.preventDefault();
