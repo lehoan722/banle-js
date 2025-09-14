@@ -109,28 +109,25 @@ export function khoiTaoShortcut() {
       }
     }
 
-        // F8: mở báo cáo XNT17 với danh sách mã đang có trên bảng kết quả
+    // F8: mở báo cáo XNT17 (TAB MỚI) với danh sách mã đang có trên bảng kết quả
     if (e.key === "F8") {
       e.preventDefault();
 
-      // Lấy danh sách mã từ bảng kết quả trên DOM (cột 0 là Mã hàng)
       const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
       const set = new Set(
-        rows
-          .map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase())
-          .filter(Boolean)
+        rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase()).filter(Boolean)
       );
-
       if (set.size === 0) {
         alert("Không có mã hàng nào trên bảng để mở XNT17.");
         return;
       }
 
-      // Gửi sang XNT17 qua sessionStorage (cùng tab)
-      sessionStorage.setItem("XNT17_MASPS", JSON.stringify(Array.from(set)));
+      // Ghi vào localStorage (kèm timestamp để XNT17 xác định bản mới nhất)
+      const payload = { t: Date.now(), list: Array.from(set) };
+      localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
 
-      // Điều hướng trong cùng tab
-      window.location.href = "baocaoxnt17.html";
+      // Mở XNT17 trong TAB MỚI (để tab bán lẻ vẫn giữ đăng nhập, không bị mất phiên)
+      window.open("baocaoxnt17.html", "_blank");
     }
 
 
