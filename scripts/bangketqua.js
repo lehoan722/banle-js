@@ -3,6 +3,23 @@
 import { getMaspspDangChon, setMaspspDangChon } from './hoadon.js';
 import { capNhatThongTinTong } from './utils.js';
 
+function getVitriTheoKho(masp) {
+  if (!masp) return "";
+  const sp =
+    (window.sanPhamData && (window.sanPhamData[masp] || window.sanPhamData[masp.toUpperCase()])) || null;
+
+  // Xác định cơ sở từ input #diadiem (ưu tiên) hoặc localStorage
+  const diadiem = (document.getElementById('diadiem')?.value ||
+    localStorage.getItem('diadiem') || '').toLowerCase();
+
+  if (!sp) return "";
+  if (diadiem === 'cs1') return sp.vitrikho1 || "";
+  if (diadiem === 'cs2') return sp.vitrikho2 || "";
+  if (diadiem === 'cs3') return sp.vitrikho3 || "";
+  return sp.vitrikho1 || sp.vitrikho2 || sp.vitrikho3 || "";
+}
+
+
 export function capNhatBangHTML(bangKetQua) {
   const tbody = document.querySelector("#bangketqua tbody");
   if (!tbody) return;
@@ -37,17 +54,20 @@ export function capNhatBangHTML(bangKetQua) {
 
       const thanhtien = (gia - km) * z.soluong;
       const row = tbody.insertRow();
+
+      const vitri = getVitriTheoKho(item.masp);  // ✅ vị trí theo kho
       row.innerHTML = `
-        <td>${item.masp}</td>
-        <td>${item.tensp}</td>
-        <td>${z.size}</td>
-        <td>${z.soluong}</td>
-        <td>${z.soluong}</td>
-        <td>${gia}</td>
-        <td>${km}</td>
-        <td>${thanhtien.toLocaleString()}</td>
-        <td>${item.dvt}</td>
-      `;
+      <td>${item.masp}</td>
+      <td>${item.tensp}</td>
+      <td>${z.size}</td>
+      <td>${z.soluong}</td>
+      <td>${item.dvt || ""}</td>               <!-- ✅ ĐVT đúng chỗ (cột 5) -->
+      <td>${gia}</td>
+      <td>${km}</td>
+      <td>${thanhtien.toLocaleString()}</td>
+      <td>${vitri}</td>                        <!-- ✅ CỘT 9: Vị trí -->
+     `;
+
 
       // Lưu cả mã sản phẩm và size khi chọn dòng
       row.addEventListener("click", () => {
