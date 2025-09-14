@@ -99,6 +99,7 @@ function showEmptyIfZero(val) {
 }
 
 // ==== Hàm chính lấy và render dữ liệu ====
+// ==== Hàm chính lấy và render dữ liệu ==== 
 async function triggerSearch(_masp = null) {
     const msg = document.getElementById("statusMsg");
     msg.textContent = "Đang tìm kiếm mã sản phẩm...";
@@ -132,16 +133,31 @@ async function triggerSearch(_masp = null) {
         }
         let { data: list, error } = await supabase.from("dmhanghoa")
             .select("*").ilike("masp", `%${masp}%`).order("masp").limit(50);
-        if (error || !list || !list.length) { msg.textContent = "SAI MÃ"; return; }
+        if (error || !list || !list.length) {
+            msg.textContent = "SAI MÃ";
+            return;
+        }
         candidates = list.map(r => r.masp);
     }
 
-    // Lọc những mã thật sự có XNT qua RPC
-    const productWithXNT = [];
-    for (const code of candidates) {
-        const { data: xntdata, error: xErr } = await supabase.rpc("timkiemhanghoa", { masp_query: code });
-        if (!xErr && xntdata && xntdata.length > 0) productWithXNT.push(code);
+    if (candidates.length === 0) {
+        msg.textContent = "Không có mã hợp lệ để tìm!";
+        return;
     }
+
+    // === GỌI RPC BULK 1 LẦN ===
+    const { data: bulkData, error: bulkErr } = await supabase.rpc("timkiemhanghoa_bulk", {
+        masp_list: candidates
+    });
+
+    if (bulkErr || !bulkData) {
+        msg.textContent = "❌ Lỗi khi gọi RPC bulk!";
+        console.error(bulkErr);
+        return;
+    }
+
+    // Gom danh sách mã có dữ liệu XNT
+    const productWithXNT = Array.from(new Set(bulkData.map(r => r.masp)));
 
     if (productWithXNT.length === 0) {
         msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
@@ -167,6 +183,7 @@ async function triggerSearch(_masp = null) {
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
+
 
 
 
