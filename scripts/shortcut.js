@@ -109,7 +109,6 @@ export function khoiTaoShortcut() {
       }
     }
 
-    // F8: mở báo cáo XNT17 (TAB MỚI) với danh sách mã đang có trên bảng kết quả
     if (e.key === "F8") {
       e.preventDefault();
 
@@ -122,11 +121,23 @@ export function khoiTaoShortcut() {
         return;
       }
 
-      // Ghi vào localStorage (kèm timestamp để XNT17 xác định bản mới nhất)
+      // --- Ghi mã sản phẩm như hiện tại (localStorage vì mở tab mới)
       const payload = { t: Date.now(), list: Array.from(set) };
       localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
 
-      // Mở XNT17 trong TAB MỚI (để tab bán lẻ vẫn giữ đăng nhập, không bị mất phiên)
+      // --- THÊM MỚI: Ghi “từ ngày / đến ngày”
+      const tuNgay = "2025-06-01";
+      const todayLocal = (() => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      })();
+      localStorage.setItem("XNT17_TUNGAY", tuNgay);
+      localStorage.setItem("XNT17_DENNGAY", todayLocal);
+
+      // Mở XNT17 trong TAB MỚI
       window.open("baocaoxnt17.html", "_blank");
     }
 
