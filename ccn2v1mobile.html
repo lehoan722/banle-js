@@ -6,6 +6,11 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>CCN1V2</title>
+    <!-- Backup: các thư viện ngoài -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
@@ -35,7 +40,7 @@
         }
 
         .tennv {
-            display: flex;
+            display: auto;
             padding: 5px;
             gap: 5px;
             background: #0088cc;
@@ -57,12 +62,12 @@
 
         #masp {
             width: 250px;
-            background: rgb(208, 200, 94);
+            background: cyan;
         }
 
         #soluong {
             width: 60px;
-            background: rgb(153, 255, 0);
+            background: yellow;
             text-align: center;
         }
 
@@ -82,9 +87,7 @@
             text-align: right;
         }
 
-        #ghichu {
-            flex: 1;
-        }
+
 
         .main {
             display: flex;
@@ -356,6 +359,7 @@
         }
     </script>
 
+    <!-- banlemobile -->
     <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
@@ -372,7 +376,7 @@
             padding: 8px 20px;
             display: flex;
             gap: 30px;
-            color: white;
+            color: rgb(42, 11, 245);
             position: relative;
             z-index: 1000;
         }
@@ -444,59 +448,25 @@
     <div class="menu-bar">
         <div class="tennv">
 
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-
-            <label> <input id="ngay" type="date" /></label>
-            <!-- <label>Giờ <input id="gio" /></label> -->
-            <input id="manv" placeholder="Mã NV" />
+            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="ngay" type="date" readonly />
+            <input id="manv" type="password" placeholder="Mã NV" />
             <input id="tennv" placeholder="Tên NV" readonly />
-
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+
         </div>
-        <div class="menu-item">
 
-            <span class="menu-link">📁 Báo cáo hóa đơn</span>
-            <div class="dropdown-content">
+        <div id="app-menu" class="menu-item"></div>
 
-                <a href="xemhoadonT.html" target="_blank">Xem hóa đơn tạm</a>
-
-                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
-                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
-                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
-                <a href="baocaohoadon.html" target="_blank">Báo cáo tổng hợp</a>
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 Báo cáo nhập hàng</span>
-            <div class="dropdown-content">
-                <a href="banlemt.html" target="_blank">HOA DON BAN LE</a>
-                <a href="nhapmoimt.html" target="_blank">HOA DON NHAP MOI</a>
-                <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
-                <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
-                <a href="nhapdoikh.html" target="_blank">NHAP DOI TU KHACH</a>
-                <a href="tralaincc.html" target="_blank">TRA LAI NHA CC</a>
-                <a href="xuathuy.html" target="_blank">XUAT HUY HANG HONG</a>
-                <a href="kiemkho.html" target="_blank">PHIEU KIEM KHO</a>
-
-
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 Hóa đơn bán lẻ</span>
-            <div class="dropdown-content">
-                <a href="nhaphang1.html" target="_blank">Chi tiết nhập hàng CS1</a>
-                <a href="nhaphang2.html" target="_blank">Chi tiết nhập hàng CS2</a>
-                <a href="baocaonhap.html" target="_blank">Tổng hợp nhập theo ngày</a>
-            </div>
-        </div>
+        <!--
+        <label>Giờ <input id="gio" /></label>
+         
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
 
 
     </div>
+
 
 
     <div id="app-container" style="display:none;">
@@ -517,7 +487,10 @@
             <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
 
-            <input id="ghichu" placeholder="Ghi chú HH" />
+            <input id="vitri" placeholder="vi tri" readonly />
+
+
+
             <button id="masp-search">🔍</button>
         </div>
 
@@ -559,7 +532,8 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label>Vị trí <input id="vitri" readonly="" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+
                         <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
@@ -581,8 +555,8 @@
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
-                            <label><input id="nhapnhanh" type="checkbox" /> quan size all</label>
-                            <label><input id="size45" type="checkbox" />quan size GD</label>
+                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
+                            <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
@@ -622,17 +596,19 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
-            <button id="sua" class="btn edit" type="button">SỬA</button>
-            <button id="quaylai">Quay lại</button>
 
+            <button id="sua" class="btn edit" type="button">SỬA</button>
+
+            <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
 
+
             <!-- Popup tìm khách hàng
-             <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
+             
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
@@ -641,6 +617,7 @@
             -->
 
         </div>
+
 
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -749,7 +726,6 @@
 
                 <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly style="background:#eee;" />
 
-
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
@@ -774,10 +750,14 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
+
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
         window.supabase = createClient(supabaseUrl, supabaseKey);
+        // Đặt ở đầu file/script chính
+        window.dangLuu = false;
 
         // Ánh xạ email sang cơ sở bán hàng
         function getDiaDiemFromEmail(email) {
@@ -898,50 +878,18 @@
 
 
 
-        // dang xuat
-        document.getElementById('btn-logout').onclick = async function () {
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
 
-            }
-            //document.getElementById('login-email').value = "";
-            //document.getElementById('login-password').value = "";
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
-            // XÓA TRẮNG LƯỚI DỮ LIỆU HÓA ĐƠN SAU ĐĂNG XUẤT
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-
-            document.getElementById('login-manv').focus();
-        };
 
         function capNhatQuyenGiaoDien() {
-            // Lấy quyền từ localStorage
+            // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
-            // Nếu dùng kiểu số: const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "1";
             // Nút quay lại
             document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
-            // Nút tiếp tục
-            document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
+            // Nút lưu
+            //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
-            // Nếu muốn ẩn nút thay vì disable thì dùng:
-            // document.getElementById('quaylai').style.display = quyenSua ? "" : "none";
-            // document.getElementById('tieptuc').style.display = quyenSua ? "" : "none";
             // ================= THÊM ĐOẠN SAU =================
             // Ô số hóa đơn
             var sohd = document.getElementById('sohd');
@@ -1014,23 +962,12 @@
             });
         }
 
-        // Copy bảng sang clipboard, có cả dòng tiêu đề
+        // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
             let str = '';
 
-            // 1. Copy dòng tiêu đề (thead)
-            const thead = table.querySelector('thead');
-            if (thead) {
-                const headerCells = thead.rows[0].cells;
-                let headerLine = [];
-                for (let cell of headerCells) {
-                    headerLine.push(cell.innerText);
-                }
-                str += headerLine.join('\t') + '\n';
-            }
-
-            // 2. Copy từng dòng dữ liệu (tbody)
+            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
             for (let row of table.querySelectorAll('tbody tr')) {
                 let line = [];
                 for (let cell of row.cells) {
@@ -1040,8 +977,9 @@
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
         };
+
 
 
         // Dán từ clipboard (Excel) vào bảng web
@@ -1094,17 +1032,93 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const img = document.querySelector('.menu-bar');
+            const img = document.querySelector('.product-image');
             if (img) {
                 img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xembaocao.html', '_blank');
+                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
                 });
             }
         });
     </script>
 
+
+    <!-- Overlay loading khi backup -->
+    <div id="backup-overlay" style="
+    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
+    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { backupAllTablesToZip } from './scripts/backup.js';
+
+        document.getElementById('btn-logout').onclick = async function () {
+
+            document.getElementById('backup-overlay').style.display = "block";
+            try {
+                await backupAllTablesToZip();
+                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
+            } catch (err) {
+                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+            }
+            document.getElementById('backup-overlay').style.display = "none";
+            await dangXuatApp();
+        };
+
+        async function dangXuatApp() {
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+            }
+            document.getElementById('login-manv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+            document.getElementById('login-manv').focus();
+        }
+    </script>
+
+    <script src="scripts/menu-component.js"></script>
+
     <script>
-        // goi phím F2
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+
+        // Bạn đã cung cấp:
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_NAME = 'menubanlemt';
+
+        MenuComponent.mount({
+            el: '#app-menu',
+            sheetId: SHEET_ID,
+            sheetName: SHEET_NAME,
+            cs,
+            manv,
+            cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
+
+    <script>  //<!-- banlemobile -->
+
+        // goi phím F2 
         setTimeout(function () {
             window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
 
@@ -1124,10 +1138,7 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
-
     </script>
-
-    <script type="module" src="scripts/luuhoadon.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
