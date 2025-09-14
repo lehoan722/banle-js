@@ -54,13 +54,33 @@ let totalRows = 0;
 
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-        document.getElementById("loginBox").style.display = "none";
-    } else {
-        document.getElementById("loginBox").style.display = "block";
+    try {
+        // ... (giữ nguyên phần auth/init & getDSMasp() hiện có)
+
+        // LẤY KHOẢNG NGÀY TỪ localStorage (nếu có) VÀ GÁN VÀO INPUT
+        const tuNgayLS = localStorage.getItem("XNT17_TUNGAY");
+        const denNgayLS = localStorage.getItem("XNT17_DENNGAY");
+
+        if (tuNgayLS) {
+            const elTu = document.getElementById("tuNgay");
+            if (elTu) elTu.value = tuNgayLS;
+            localStorage.removeItem("XNT17_TUNGAY"); // dọn khoá tạm
+        }
+        if (denNgayLS) {
+            const elDen = document.getElementById("denNgay");
+            if (elDen) elDen.value = denNgayLS;
+            localStorage.removeItem("XNT17_DENNGAY"); // dọn khoá tạm
+        }
+
+        // ... (nếu bạn đã có logic: khi nhận được danh sách mã thì tự gọi taiBaoCaoXNT()
+        //      thì giữ nguyên; còn nếu chưa, bạn có thể gọi ở đây khi phát hiện đã có mã)
+        // if (Array.isArray(list) && list.length > 0) await taiBaoCaoXNT();
+
+    } catch (err) {
+        console.error("XNT17 init error:", err);
     }
 });
+
 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
