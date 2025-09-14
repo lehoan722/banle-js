@@ -40,7 +40,7 @@
         }
 
         .tennv {
-            display: flex;
+            display: auto;
             padding: 5px;
             gap: 5px;
             background: #0088cc;
@@ -87,9 +87,7 @@
             text-align: right;
         }
 
-        #ghichu {
-            flex: 1;
-        }
+        
 
         .main {
             display: flex;
@@ -361,6 +359,7 @@
         }
     </script>
 
+    <!-- banlemobile -->
     <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
@@ -377,10 +376,10 @@
             padding: 8px 20px;
             display: flex;
             gap: 30px;
-            color: white;
+            color: rgb(42, 11, 245);
             position: relative;
             z-index: 1000;
-        }
+        }       
 
         .menu-item {
             position: relative;
@@ -448,82 +447,27 @@
 
     <div class="menu-bar">
         <div class="tennv">
-
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-
-            <label> <input id="ngay" type="date" /></label>
-            <!-- <label>Giờ <input id="gio" /></label> -->
+            
+            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="ngay" type="date" readonly />
             <input id="manv" type="password" placeholder="Mã NV" />
             <input id="tennv" placeholder="Tên NV" readonly />
-
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
-        <div class="menu-item">
+        
+        <div id="app-menu" class="menu-item"></div>
 
-            <span class="menu-link">📁 Báo cáo hóa đơn</span>
-            <div class="dropdown-content">
-
-                <a href="xemhoadonT.html" target="_blank">Xem hóa đơn bct</a>
-                <a href="baocaochitietT.html" target="_blank">Xem chi tiet bct</a>
-
-                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
-                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
-                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
-
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 GIAO DICH</span>
-            <div class="dropdown-content">
-                <a href="banlemtt.html" target="_blank">HOA DON BAN LE</a>
-                <a href="nhapmoimtcs1.html" target="_blank">HOA DON NHAP MOI CS1</a>
-                <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
-                <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
-                <a href="nhapdoimtcs1.html" target="_blank">NHAP DOI TU KHACH CS1</a>
-                <a href="tralaincccs1.html" target="_blank">TRA LAI NHA CC CS1</a>
-                <a href="xuathuycs1.html" target="_blank">XUAT HUY HANG HONG CS1</a>
-                <a href="kiemkhocs1.html" target="_blank">PHIEU KIEM KHO CS1</a>
-
-
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 BAO CAO</span>
-            <div class="dropdown-content">
-                <a href="baocaochitiet111.html" target="_blank">bao cao Chi tiết cac loai</a>
-                <a href="baocaotonghop.html" target="_blank">bao cao tong hop cac loai</a>
-                <a href="baocaoxnt16.html" target="_blank">bao cao xuat, nhap, ton cac loai</a>
-                <a href="xemhoadon111.html" target="_blank">bao cao theo hoa don cac loai</a>
-                <a href="timkiemhanghoa333.html" target="_blank">TÌM KIẾM THÔNG TIN HÀNG HÓA</a>
-
-            </div>
-        </div>
-
-        <div class="menu-item">
-            <span class="menu-link">📦 Danh Muc</span>
-            <div class="dropdown-content">
-                <a href="nhapdmnhanvien.html" target="_blank">nhap dm nhan vien</a>
-                <a href="nhapdmkhachhang.html" target="_blank">nhap dm khach hang</a>
-                <a href="nhapdmkhuyenmai.html" target="_blank">nhap dm khuyen mai</a>
-                <a href="nhapvitrikhocs1.html" target="_blank">nhap vi tri kho cs1</a>
-                <a href="suadmhanghoa.html" target="_blank">sua dm hang hoa</a>
-                <a href="upanh/4cotdathangMT.html" target="_blank">4cotdathangMT</a>
-                <a href="menu.html" target="_blank">MENU</a>
-
-            </div>
-        </div>
-
-        <!-- <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
+        <!--
+        <label>Giờ <input id="gio" /></label>
+         
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
 
 
     </div>
 
+    
 
     <div id="app-container" style="display:none;">
 
@@ -541,17 +485,12 @@
             <input id="gia" placeholder="Giá SP" />
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />
+            <input id="sohd" placeholder="Số HĐ" />           
 
-            <!-- thay input bằng textarea -->
-            <textarea id="vitri" placeholder="Vị trí" readonly rows="2"></textarea>
+            <input id="vitri" placeholder="vi tri" readonly />
+            
 
-            <img alt="Ảnh sản phẩm" class="product-image"
-                src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
-
-            <input id="ghichu" placeholder="Ghi chú HH" />
-
-
+            
             <button id="masp-search">🔍</button>
         </div>
 
@@ -593,9 +532,10 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+                       
                         <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 150px; vertical-align: middle;">
+                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
                                 style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
                             <button id="btnPopupKH" type="button"
@@ -647,6 +587,8 @@
 
 
 
+                <img alt="Ảnh sản phẩm" class="product-image"
+                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
         </div>
 
@@ -654,15 +596,16 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
-            <button id="quaylai">Quay lại</button>
+             
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
+            <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
-
+            
 
             <!-- Popup tìm khách hàng
              
@@ -674,6 +617,7 @@
             -->
 
         </div>
+        
 
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -790,11 +734,12 @@
 
                 <div class="login-field">
                     <label for="login-manv">Mã nhân viên</label><br />
-                    <input type="password" id="login-manv" value="112233" autocomplete="off"
-                        placeholder="Nhập mã nhân viên" required />
+                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
+                        required />
                 </div>
+                
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" value="123123"><br /><br />
+                <input type="password" id="login-password" ...><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -901,7 +846,7 @@
 
             const nv = nvArr[0];
 
-            // Lưu thông tin vào localStorage 
+            // Lưu thông tin vào localStorage
             localStorage.setItem("diadiem", cs);
             localStorage.setItem('supabase_access_token', data.session.access_token);
             localStorage.setItem("manv", nv.manv);
@@ -944,7 +889,7 @@
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
             // Nút lưu
-            document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
+            //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
             // ================= THÊM ĐOẠN SAU =================
             // Ô số hóa đơn
@@ -961,11 +906,7 @@
             }
             // ===============================================
         }
-        document.getElementById('sua')?.addEventListener('click', () => {
-            // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            document.dispatchEvent(ev);
-        });
+
 
     </script>
 
@@ -1100,27 +1041,7 @@
             }
         });
     </script>
-    <script>
-
-        // Sau khi DOMContentLoaded hoặc ở script type="module"
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-
-    </script>
+    
 
     <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
@@ -1175,7 +1096,41 @@
         }
     </script>
 
+    <script src="scripts/menu-component.js"></script>
 
+    <script>
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+
+        // Bạn đã cung cấp:
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_NAME = 'menubanlemt';
+
+        MenuComponent.mount({
+            el: '#app-menu',
+            sheetId: SHEET_ID,
+            sheetName: SHEET_NAME,
+            cs,
+            manv,
+            cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
+
+    <script>  //<!-- banlemobile -->
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
+
+        document.getElementById('sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+    </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
