@@ -109,35 +109,39 @@ export function khoiTaoShortcut() {
       }
     }
 
+    // F8: mở báo cáo XNT17 (TAB MỚI) + truyền danh sách mã + khoảng ngày 01/06/2025 → hôm nay
     if (e.key === "F8") {
       e.preventDefault();
 
+      // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
       const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
       const set = new Set(
-        rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase()).filter(Boolean)
+        rows
+          .map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase())
+          .filter(Boolean)
       );
       if (set.size === 0) {
         alert("Không có mã hàng nào trên bảng để mở XNT17.");
         return;
       }
 
-      // --- Ghi mã sản phẩm như hiện tại (localStorage vì mở tab mới)
+      // 2) Lưu payload mã vào localStorage (vì mở TAB MỚI)
       const payload = { t: Date.now(), list: Array.from(set) };
       localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
 
-      // --- THÊM MỚI: Ghi “từ ngày / đến ngày”
+      // 3) Lưu khoảng ngày mong muốn
       const tuNgay = "2025-06-01";
       const todayLocal = (() => {
         const d = new Date();
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
+        return `${y}-${m}-${day}`; // YYYY-MM-DD
       })();
       localStorage.setItem("XNT17_TUNGAY", tuNgay);
       localStorage.setItem("XNT17_DENNGAY", todayLocal);
 
-      // Mở XNT17 trong TAB MỚI
+      // 4) Mở XNT17 trong TAB MỚI
       window.open("baocaoxnt17.html", "_blank");
     }
 
