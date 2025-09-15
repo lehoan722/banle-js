@@ -222,7 +222,7 @@ async function renderOneProductDetail(masp) {
             return;
         }
         // fallback tùy dự án (bạn thay đường dẫn thực tế của bạn)
-        imgEl.src = `/images/${mcode}.jpg`;
+        imgEl.src = `/images/${mcode}.JPG`;
         imgEl.loading = "lazy";
         imgEl.onerror = () => { imgEl.src = ""; };
     }
@@ -404,7 +404,7 @@ async function renderProductDetailHTML(masp) {
             const url = window.getProductImgUrl(code);
             return `<img class="product-img" src="${url}" loading="lazy" onerror="this.src='';" alt="${code}">`;
         }
-        return `<img class="product-img" src="/images/${code}.jpg" loading="lazy" onerror="this.src='';" alt="${code}">`;
+        return `<img class="product-img" src="/images/${code}.JPG" loading="lazy" onerror="this.src='';" alt="${code}">`;
     };
 
     if (!rows.length) {
