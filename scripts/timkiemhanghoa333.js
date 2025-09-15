@@ -197,25 +197,46 @@ async function triggerSearch(_masp = null) {
 
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
-/* ====== HIỂN THỊ 1 MÃ (giống giao diện cũ) ====== */
 async function renderOneProductDetail(masp) {
     const html = await renderProductDetailHTML(masp);
     if (!html) return;
-    document.getElementById("infoTopTable").innerHTML = "";
-    document.getElementById("infoTableRight").innerHTML = "";
-    document.getElementById("singleDetailBox").innerHTML = html;
-    document.getElementById("singleDetailBox").style.display = "";
-    CURRENT_MASP = masp.toUpperCase();
-    document.getElementById("maspInput").select();
+
+    // Dọn vùng top/right nếu có (tránh null)
+    const top = document.getElementById("infoTopTable");
+    if (top) top.innerHTML = "";
+    const right = document.getElementById("infoTableRight");
+    if (right) right.innerHTML = "";
+
+    // Hiển thị vào vùng single (có guard, fallback sang multi nếu thiếu)
+    const single = document.getElementById("singleDetailBox");
+    const multi = document.getElementById("multiDetailBox");
+    if (single) {
+        single.innerHTML = html;
+        single.style.display = "";
+        if (multi) { multi.innerHTML = ""; multi.style.display = "none"; }
+    } else if (multi) {
+        // Fallback an toàn nếu trang không có #singleDetailBox
+        multi.innerHTML = html;
+        multi.style.display = "";
+    }
+
+    // Trạng thái nhập tiếp
+    window.CURRENT_MASP = (masp || "").toUpperCase();
+    const ip = document.getElementById("maspInput");
+    if (ip) { ip.focus(); ip.select(); }
 }
 
-/* ====== KHỐI HTML CHO 1 MÃ (dùng chung cho nhiều mã) ====== */
+
+/* ====== KHỐI HTML CHO NHIỀU MÃ (giữ đúng layout cũ) ====== */
 async function renderProductDetailHTML(masp) {
+    const M = (masp || "").toUpperCase();
+
+    // 1) Thông tin hàng hoá (giữ nguyên như bản cũ)
     const { data: hanghoa, error: err1 } = await supabase
-        .from("dmhanghoa").select("*").eq("masp", masp).single();
+        .from("dmhanghoa").select("*").eq("masp", M).single();
     if (err1 || !hanghoa) return "";
 
-    // ngày nhập đầu/cuối
+    // 2) Ngày nhập đầu/cuối (ND/NC) như bản cũ
     let ngay_nhapdau = hanghoa.nhapdau || "";
     let ngay_nhapcuoi = "";
     if (!ngay_nhapdau || !ngay_nhapcuoi) {
@@ -229,8 +250,8 @@ async function renderProductDetailHTML(masp) {
             const { data: cts } = await supabase
                 .from("ct_hoadon_banle")
                 .select("sohd,masp")
-                .in("sohd", sohdArr).eq("masp", masp);
-            const setSohd = new Set(cts.map(e => e.sohd));
+                .in("sohd", sohdArr).eq("masp", M);
+            const setSohd = new Set((cts || []).map(e => e.sohd));
             const filtered = nhapList.filter(e => setSohd.has(e.sohd));
             if (filtered.length) {
                 if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;
@@ -239,99 +260,129 @@ async function renderProductDetailHTML(masp) {
         }
     }
 
-    // ngày kiểm gần nhất
+    // 3) Ngày kiểm gần nhất
     let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
     {
-        const { data: k1 } = await supabase.from("kiemkho")
-            .select("ngaygio").eq("masp", masp).eq("diadiem", "cs1")
+        const { data: k1 } = await supabase
+            .from("kiemkho").select("ngaygio")
+            .eq("masp", M).eq("diadiem", "cs1")
             .order("ngaygio", { ascending: false }).limit(1);
         if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho")
-            .select("ngaygio").eq("masp", masp).eq("diadiem", "cs2")
+
+        const { data: k2 } = await supabase
+            .from("kiemkho").select("ngaygio")
+            .eq("masp", M).eq("diadiem", "cs2")
             .order("ngaygio", { ascending: false }).limit(1);
         if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
     }
 
-    // xuất nhập tồn
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-    if (!xntdata || !xntdata.length) return "";
+    // 4) XNT: ƯU TIÊN dùng kết quả bulk đã cache; thiếu thì fallback RPC cũ
+    let xntRows = (window.TKHH_BULK_BY_MASP && window.TKHH_BULK_BY_MASP.get(M)) || null;
+    if (!xntRows) {
+        const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: M });
+        xntRows = xntdata || [];
+    }
+    if (!xntRows.length) return "";
 
     const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
     const rowMap = {};
-    xntdata.forEach(r => { rowMap[r.size ?? ''] = r; });
+    xntRows.forEach(r => { rowMap[r.size ?? ''] = r; });
+
+    // Tổng dòng “Tổng”
     const totalRow = {};
     ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
         totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
     });
 
-    // HTML tổng hợp
-    let html = `
-    <div class="product-block">
-      <table class="info-table">
-        <tr>
-          <th>Mã hàng</th>
-          <th>Vị trí CS1</th>
-          <th>Vị trí CS2</th>
-          <th>${hanghoa.nhacc || ""}</th>
-          <th class="red">ND</th>
-          <th class="red">NC</th>
-          <th class="red">Kiểm CS1</th>
-          <th class="red">Kiểm CS2</th>
-        </tr>
-        <tr>
-          <td>${hanghoa.masp || ""}</td>
-          <td>${hanghoa.vitrikho1 || ""}</td>
-          <td>${hanghoa.vitrikho2 || ""}</td>
-          <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-          <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
-          <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
-        </tr>
-      </table>
-      <table class="info-table">
-        <tr>
-          <th class="size">Size</th>
-          <th class="red">Tồn CS1</th>
-          <th class="red">Tồn CS2</th>
-          <th class="red">Bán CS1</th>
-          <th class="red">Bán CS2</th>
-          <th class="blue">Tổng mua</th>
-          <th class="blue">Tổng bán</th>
-          <th class="blue">Tổng tồn</th>
-        </tr>
-        <tr>
-          <td class="size">Tổng</td>
-          <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-          <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-        </tr>`;
-    SIZE_LIST.slice(1).forEach(sz => {
+    // 5) Bảng thông tin trên (2 dòng/8 cột) — header tĩnh như 1 mã
+    const tableTop = `
+    <table class="info-table">
+      <tr>
+        <th>Mã hàng</th>
+        <th>Vị trí CS1</th>
+        <th>Vị trí CS2</th>
+        <th>TUANHANG</th>
+        <th class="red">ND</th>
+        <th class="red">NC</th>
+        <th class="red">Kiểm CS1</th>
+        <th class="red">Kiểm CS2</th>
+      </tr>
+      <tr>
+        <td>${hanghoa.masp || ""}</td>
+        <td>${hanghoa.vitrikho1 || ""}</td>
+        <td>${hanghoa.vitrikho2 || ""}</td>
+        <td>${(hanghoa.giale || 0).toLocaleString()}</td>
+        <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+        <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+        <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+        <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
+      </tr>
+    </table>`;
+
+    // 6) Bảng XNT (đúng thứ tự cột) + dòng Tổng
+    const headerRight = `
+    <tr>
+      <th class="size">Size</th>
+      <th class="red">Tồn CS1</th>
+      <th class="red">Tồn CS2</th>
+      <th class="red">Bán CS1</th>
+      <th class="red">Bán CS2</th>
+      <th class="blue">Tổng mua</th>
+      <th class="blue">Tổng bán</th>
+      <th class="blue">Tổng tồn</th>
+    </tr>`;
+    const sumRow = `
+    <tr>
+      <td class="size">Tổng</td>
+      <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
+    </tr>`;
+    const bodyRight = SIZE_LIST.slice(1).map(sz => {
         const r = rowMap[sz];
-        html += `
-        <tr>
-          <td class="size">${sz}</td>
-          <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-          <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-          <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-          <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-          <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-          <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-          <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-        </tr>`;
-    });
-    html += `</table>
-      <div class="img-wrap">
-        <img src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
-             onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';"
-             alt="Ảnh sản phẩm"/>
+        return `
+      <tr>
+        <td class="size">${sz}</td>
+        <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
+        <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
+        <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
+        <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
+        <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
+        <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
+        <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
+      </tr>`;
+    }).join("");
+
+    const tableRight = `
+    <table class="info-table">
+      ${headerRight}
+      ${sumRow}
+      ${bodyRight}
+    </table>`;
+
+    // 7) Ảnh bên phải (dùng grid 2 cột nội bộ để luôn nằm cạnh bảng)
+    const imgHTML = `
+    <img style="width:100%;border-radius:8px"
+         src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
+         loading="lazy"
+         onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';"
+         alt="${hanghoa.masp}">`;
+
+    // 8) Khung 2 cột: bảng trái + ảnh phải (không cần sửa HTML gốc của trang)
+    return `
+    <div class="product-block" style="margin-bottom:28px;">
+      <div class="top-wrap" style="display:grid;grid-template-columns:minmax(360px,1fr) 340px;gap:16px;align-items:start;">
+        <div>${tableTop}</div>
+        <div>${imgHTML}</div>
+      </div>
+      <div class="detail-wrap" style="margin-top:10px;">
+        ${tableRight}
       </div>
     </div>`;
-    return html;
 }
 
 
