@@ -150,6 +150,16 @@ async function triggerSearch(_masp = null) {
         masp_list: candidates
     });
 
+    // --- Cache bulk theo mã để render không cần RPC phụ ---
+    window.TKHH_BULK = Array.isArray(bulkData) ? bulkData : [];
+    window.TKHH_BULK_BY_MASP = new Map();
+    for (const row of window.TKHH_BULK) {
+        const key = (row.masp || "").toUpperCase();
+        if (!window.TKHH_BULK_BY_MASP.has(key)) window.TKHH_BULK_BY_MASP.set(key, []);
+        window.TKHH_BULK_BY_MASP.get(key).push(row);
+    }
+
+
     if (bulkErr || !bulkData) {
         msg.textContent = "❌ Lỗi khi gọi RPC bulk!";
         console.error(bulkErr);
@@ -167,7 +177,8 @@ async function triggerSearch(_masp = null) {
 
     if (productWithXNT.length === 1) {
         document.getElementById("singleDetailBox").style.display = "";
-        await renderOneProductDetail(productWithXNT[0]);
+        await renderOneProductDetail(productWithXNT[0]); // (giữ nguyên chữ ký, nhưng giờ sẽ đọc từ cache)
+
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
         return;
     }
@@ -187,20 +198,23 @@ async function triggerSearch(_masp = null) {
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
-
-    CURRENT_MASP = (masp || '').toUpperCase();   // luôn IN HOA để đặt tên file .JPG
-    _pendingBlob = null;                          // reset blob chờ upload
+    const M = (masp || '').toUpperCase();         // luôn IN HOA để đặt tên file .JPG
+    CURRENT_MASP = M;
+    _pendingBlob = null;
     const sts = document.getElementById('uploadStatus');
     if (sts) sts.textContent = '';
 
-    // thông tin hàng hóa
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+    // ---- Lấy thông tin hàng hóa (giữ đúng như bản cũ) ----
+    const { data: hanghoa, error: err1 } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", M)
+        .single();
     if (err1 || !hanghoa) return;
 
-    // ND lấy từ dmhanghoa.nhapdau; fallback tính từ hóa đơn nếu thiếu
+    // ND/NC (nhập đầu/cuối) giống bản cũ: ưu tiên dmhanghoa.nhapdau, thiếu thì fallback từ hóa đơn
     let ngay_nhapdau = hanghoa.nhapdau || "";
     let ngay_nhapcuoi = "";
-
     if (!ngay_nhapdau || !ngay_nhapcuoi) {
         const { data: nhapList } = await supabase
             .from("hoadon_banle")
@@ -213,45 +227,56 @@ async function renderOneProductDetail(masp) {
                 .from("ct_hoadon_banle")
                 .select("sohd,masp")
                 .in("sohd", sohdArr)
-                .eq("masp", masp);
-            const setSohd = new Set(cts.map(e => e.sohd));
+                .eq("masp", M);
+            const setSohd = new Set((cts || []).map(e => e.sohd));
             const filtered = nhapList.filter(e => setSohd.has(e.sohd));
             if (filtered.length) {
-                if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;  // fallback nếu thiếu
+                if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;
                 ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
             }
         }
     }
 
-
-    // ngày kiểm gần nhất CS1/CS2
+    // Ngày kiểm gần nhất CS1/CS2 (giữ nguyên cách lấy)
     let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
     {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
+        const { data: k1 } = await supabase
+            .from("kiemkho").select("ngaygio")
+            .eq("masp", M).eq("diadiem", "cs1")
+            .order("ngaygio", { ascending: false }).limit(1);
         if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
+
+        const { data: k2 } = await supabase
+            .from("kiemkho").select("ngaygio")
+            .eq("masp", M).eq("diadiem", "cs2")
+            .order("ngaygio", { ascending: false }).limit(1);
         if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
     }
 
-    // xuất nhập tồn
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-    if (!xntdata || !xntdata.length) {
+    // ---- XNT: ƯU TIÊN lấy từ kết quả bulk đã cache; nếu chưa có thì fallback RPC cũ ----
+    let xntRows = getBulkRows(M);
+    if (!xntRows) {
+        const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: M });
+        xntRows = xntdata || [];
+    }
+    if (!xntRows.length) {
         document.getElementById("infoTopTable").innerHTML = "";
         document.getElementById("infoTableRight").innerHTML = "";
         document.getElementById("statusMsg").textContent = "Không có dữ liệu xuất nhập tồn!";
         return false;
     }
 
-    // map size & tổng dòng đầu
+    // map size & tổng dòng đầu (y như bản cũ)
     const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
     const rowMap = {};
-    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+    xntRows.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+
     const totalRow = {};
     ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
         totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
     });
 
-    // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
+    // ---- 2 dòng / 8 cột (giữ đúng layout cũ) ----
     const top = document.getElementById("infoTopTable");
     top.innerHTML = `
     <tr>
@@ -276,138 +301,31 @@ async function renderOneProductDetail(masp) {
     </tr>
   `;
 
-    // Bảng XNT
+    // ---- Bảng XNT (giữ nguyên cột & thứ tự như cũ) ----
     let htmlRight = `
-  <tr>
-    <th class="size">Size</th>
-    <th class="red">Tồn CS1</th>
-    <th class="red">Tồn CS2</th>
-    <th class="red">Bán CS1</th>
-    <th class="red">Bán CS2</th>
-    <th class="blue">Tổng mua</th>
-    <th class="blue">Tổng bán</th>
-    <th class="blue">Tổng tồn</th>
-  </tr>
-  <tr>
-    <td class="size">Tổng</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-  </tr>`;
+    <tr>
+      <th class="size">Size</th>
+      <th class="red">Tồn CS1</th>
+      <th class="red">Tồn CS2</th>
+      <th class="red">Bán CS1</th>
+      <th class="red">Bán CS2</th>
+      <th class="blue">Tổng mua</th>
+      <th class="blue">Tổng bán</th>
+      <th class="blue">Tổng tồn</th>
+    </tr>
+    <tr>
+      <td class="size">Tổng</td>
+      <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
+      <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
+    </tr>`;
     SIZE_LIST.slice(1).forEach(sz => {
         const r = rowMap[sz];
         htmlRight += `
-    <tr>
-      <td class="size">${sz === '0' ? '0' : sz}</td>
-      <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-      <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-      <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-      <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-      <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-      <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-      <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-    </tr>`;
-    });
-    document.getElementById("infoTableRight").innerHTML = htmlRight;
-
-
-    // Ảnh sản phẩm dưới bảng
-    setProductImageByMasp(hanghoa.masp);
-    document.getElementById("maspInput").select();
-}
-
-/* ====== KHỐI HTML CHO NHIỀU MÃ (dùng cùng layout mới) ====== */
-async function renderProductDetailHTML(masp) {
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-    if (err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
-
-    // ngày nhập đầu/cuối
-    const { data: nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1", "nmcs2"]).order("ngay", { ascending: true });
-    let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList?.length) {
-        const sohdArr = nhapList.map(e => e.sohd);
-        const { data: cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
-        const setSohd = new Set(cts.map(e => e.sohd));
-        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
-    }
-
-    // ngày kiểm gần nhất
-    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
-    {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
-        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
-        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-    }
-
-    // XNT
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-    if (!xntdata || !xntdata.length) return `<div style="color:#c62828">Không có dữ liệu xuất nhập tồn!</div>`;
-
-    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    const rowMap = {};
-    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
-    const totalRow = {};
-    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
-        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
-    });
-
-    let html = `
-  <div class="detail-grid">
-    <div class="top-info">
-      <table class="info-table">
-        <tr>
-          <th>Mã hàng</th>
-          <th>Vị trí CS1</th>
-          <th>Vị trí CS2</th>
-          <th>${hanghoa.nhacc || ""}</th>
-          <th class="red">ND</th>
-          <th class="red">NC</th>
-          <th class="red">Kiểm CS1</th>
-          <th class="red">Kiểm CS2</th>
-        </tr>
-        <tr>
-          <td>${hanghoa.masp || ""}</td>
-          <td>${hanghoa.vitrikho1 || ""}</td>
-          <td>${hanghoa.vitrikho2 || ""}</td>
-          <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-          <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
-          <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
-        </tr>
-      </table>
-    </div>
-    <div class="right-xnt">
-    <table class="info-table">
-      <tr>
-        <th class="size">Size</th>
-        <th class="red">Tồn CS1</th>
-        <th class="red">Tồn CS2</th>
-        <th class="red">Bán CS1</th>
-        <th class="red">Bán CS2</th>
-        <th class="blue">Tổng mua</th>
-        <th class="blue">Tổng bán</th>
-        <th class="blue">Tổng tồn</th>
-      </tr>
-      <tr>
-        <td class="size">Tổng</td>
-        <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-      </tr>`;
-    SIZE_LIST.slice(1).forEach(sz => {
-        const r = rowMap[sz];
-        html += `
       <tr>
         <td class="size">${sz === '0' ? '0' : sz}</td>
         <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
@@ -419,16 +337,170 @@ async function renderProductDetailHTML(masp) {
         <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
       </tr>`;
     });
-    html += `
-      </table>
-    </div>
-    <div class="img-wrap">
-      <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
-           onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
-    </div>`;
-    return html;
+    document.getElementById("infoTableRight").innerHTML = htmlRight;
+
+    // ---- Ảnh sản phẩm (đúng cơ chế cũ) ----
+    setProductImageByMasp(hanghoa.masp);
+    document.getElementById("maspInput").select();
 }
 
+
+/* ====== KHỐI HTML CHO NHIỀU MÃ (giữ đúng layout cũ) ====== */
+async function renderProductDetailHTML(masp) {
+    const M = (masp || "").toUpperCase();
+
+    // Thông tin mô tả giống bản cũ
+    const { data: hanghoa, error: err1 } = await supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", M)
+        .single();
+    if (err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
+
+    // ND/NC (như cũ)
+    let ngay_nhapdau = "", ngay_nhapcuoi = "";
+    const { data: nhapList } = await supabase
+        .from("hoadon_banle")
+        .select("ngay,sohd")
+        .in("loaihd", ["nmcs1", "nmcs2"])
+        .order("ngay", { ascending: true });
+    if (nhapList?.length) {
+        const sohdArr = nhapList.map(e => e.sohd);
+        const { data: cts } = await supabase
+            .from("ct_hoadon_banle")
+            .select("sohd,masp")
+            .in("sohd", sohdArr)
+            .eq("masp", M);
+        const setSohd = new Set((cts || []).map(e => e.sohd));
+        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+        if (filtered.length) {
+            ngay_nhapdau = filtered[0].ngay;
+            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
+        }
+    }
+
+    // Kiểm gần nhất
+    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
+    {
+        const { data: k1 } = await supabase
+            .from("kiemkho").select("ngaygio")
+            .eq("masp", M).eq("diadiem", "cs1")
+            .order("ngaygio", { ascending: false }).limit(1);
+        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
+
+        const { data: k2 } = await supabase
+            .from("kiemkho").select("ngaygio")
+            .eq("masp", M).eq("diadiem", "cs2")
+            .order("ngaygio", { ascending: false }).limit(1);
+        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
+    }
+
+    // XNT: ưu tiên từ bulk
+    let xntRows = getBulkRows(M);
+    if (!xntRows) {
+        const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: M });
+        xntRows = xntdata || [];
+    }
+    if (!xntRows.length) {
+        return `<div class="product-block"><div class="product-head"><strong>${M}</strong></div><div>Không có dữ liệu XNT.</div></div>`;
+    }
+
+    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
+    const rowMap = {};
+    xntRows.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+
+    const totals = {};
+    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
+        totals[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
+    });
+
+    // Bảng thông tin trên (hai dòng/8 cột) + ảnh (đúng bố cục cũ)
+    const tableTop = `
+    <table class="t-info-top">
+      <tr>
+        <th>Mã hàng</th>
+        <th>Vị trí CS1</th>
+        <th>Vị trí CS2</th>
+        <th>${hanghoa.nhacc || ""}</th>
+        <th class="red">ND</th>
+        <th class="red">NC</th>
+        <th class="red">Kiểm CS1</th>
+        <th class="red">Kiểm CS2</th>
+      </tr>
+      <tr>
+        <td>${hanghoa.masp || ""}</td>
+        <td>${hanghoa.vitrikho1 || ""}</td>
+        <td>${hanghoa.vitrikho2 || ""}</td>
+        <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+        <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+        <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+        <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+        <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
+      </tr>
+    </table>`;
+
+    const header = `
+    <tr>
+      <th class="size">Size</th>
+      <th class="red">Tồn CS1</th>
+      <th class="red">Tồn CS2</th>
+      <th class="red">Bán CS1</th>
+      <th class="red">Bán CS2</th>
+      <th class="blue">Tổng mua</th>
+      <th class="blue">Tổng bán</th>
+      <th class="blue">Tổng tồn</th>
+    </tr>`;
+    const body = SIZE_LIST.slice(1).map(sz => {
+        const r = rowMap[sz];
+        return `
+      <tr>
+        <td class="size">${sz}</td>
+        <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
+        <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
+        <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
+        <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
+        <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
+        <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
+        <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
+      </tr>`;
+    }).join("");
+
+    const tableRight = `
+    <table class="t-info-right">
+      ${header}
+      <tr class="row-sum">
+        <td><strong>Tổng</strong></td>
+        <td>${totals.ton_cs1}</td>
+        <td>${totals.ton_cs2}</td>
+        <td>${totals.ban_cs1}</td>
+        <td>${totals.ban_cs2}</td>
+        <td>${totals.nhapmua}</td>
+        <td>${totals.xuatban}</td>
+        <td>${totals.toncuoi}</td>
+      </tr>
+      ${body}
+    </table>`;
+
+    const imgHTML = `
+    <img class="product-img"
+         src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
+         loading="lazy"
+         onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';"
+         alt="${hanghoa.masp}">`;
+
+    return `
+    <div class="product-block">
+      <div class="product-head"><strong>${M}</strong></div>
+      <div class="product-top card-like">
+        <div class="left">${tableTop}</div>
+        <div class="right">${imgHTML}</div>
+      </div>
+      <div class="product-detail">
+        ${tableRight}
+      </div>
+    </div>
+  `;
+}
 
 
 function formatDateOnly(val) {
@@ -846,6 +918,12 @@ function parseBulkMasp() {
     for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
     return out.slice(0, 50);
 }
+
+function getBulkRows(masp) {
+    const k = (masp || "").toUpperCase();
+    return (window.TKHH_BULK_BY_MASP && window.TKHH_BULK_BY_MASP.get(k)) || null;
+}
+
 
 document.getElementById('clearBulkBtn')?.addEventListener('click', () => {
     const ta = document.getElementById('bulkTextarea');
