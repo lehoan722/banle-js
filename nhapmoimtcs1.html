@@ -364,6 +364,14 @@
             document.getElementById('popupDanhMuc').style.display = 'none';
         }
     </script>
+
+    <!-- banlemobile -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
+    <link rel="stylesheet" href="banlemobilecs1.css">
+
 </head>
 
 <body>
@@ -461,7 +469,7 @@
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
-        
+
         <label>
             <input type="checkbox" id="quanlysizetheogia" />
             QL170
@@ -490,7 +498,7 @@
             <input id="sohd" placeholder="Số HĐ" />
 
             <input id="ghichu" placeholder="Ghi chú HH" />
-            <button id="masp-search">🔍</button>
+            <button id="xemtonkho">🔍</button>
         </div>
 
 
@@ -882,7 +890,7 @@
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
             // Nút lưu
-            document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
+            //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
             // ================= THÊM ĐOẠN SAU =================
             // Ô số hóa đơn
@@ -1034,27 +1042,7 @@
             }
         });
     </script>
-    <script>
-
-        // Sau khi DOMContentLoaded hoặc ở script type="module"
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-
-    </script>
+    
 
     <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
@@ -1109,6 +1097,27 @@
         }
     </script>
 
+    <script>  //<!-- banlemobile -->
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
+
+        document.getElementById('sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+    </script>
 
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
