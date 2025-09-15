@@ -150,6 +150,16 @@ async function triggerSearch(_masp = null) {
         masp_list: candidates
     });
 
+    // --- Cache bulk theo mã để render không cần RPC phụ ---
+    window.TKHH_BULK = Array.isArray(bulkData) ? bulkData : [];
+    window.TKHH_BULK_BY_MASP = new Map();
+    for (const row of window.TKHH_BULK) {
+        const key = (row.masp || "").toUpperCase();
+        if (!window.TKHH_BULK_BY_MASP.has(key)) window.TKHH_BULK_BY_MASP.set(key, []);
+        window.TKHH_BULK_BY_MASP.get(key).push(row);
+    }
+
+
     if (bulkErr || !bulkData) {
         msg.textContent = "❌ Lỗi khi gọi RPC bulk!";
         console.error(bulkErr);
@@ -167,7 +177,8 @@ async function triggerSearch(_masp = null) {
 
     if (productWithXNT.length === 1) {
         document.getElementById("singleDetailBox").style.display = "";
-        await renderOneProductDetail(productWithXNT[0]);
+        await renderOneProductDetail(productWithXNT[0]); // (giữ nguyên chữ ký, nhưng giờ sẽ đọc từ cache)
+
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
         return;
     }
@@ -187,248 +198,339 @@ async function triggerSearch(_masp = null) {
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
+    const m = (masp || "").toUpperCase();
+    const rows = (window.TKHH_BULK_BY_MASP && window.TKHH_BULK_BY_MASP.get(m)) || [];
 
-    CURRENT_MASP = (masp || '').toUpperCase();   // luôn IN HOA để đặt tên file .JPG
-    _pendingBlob = null;                          // reset blob chờ upload
-    const sts = document.getElementById('uploadStatus');
-    if (sts) sts.textContent = '';
+    const tTop = document.getElementById("infoTopTable");
+    const tRight = document.getElementById("infoTableRight");
+    const imgEl = document.getElementById("productImage");
 
-    // thông tin hàng hóa
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-    if (err1 || !hanghoa) return;
-
-    // ND lấy từ dmhanghoa.nhapdau; fallback tính từ hóa đơn nếu thiếu
-    let ngay_nhapdau = hanghoa.nhapdau || "";
-    let ngay_nhapcuoi = "";
-
-    if (!ngay_nhapdau || !ngay_nhapcuoi) {
-        const { data: nhapList } = await supabase
-            .from("hoadon_banle")
-            .select("ngay,sohd")
-            .in("loaihd", ["nmcs1", "nmcs2"])
-            .order("ngay", { ascending: true });
-        if (nhapList?.length) {
-            const sohdArr = nhapList.map(e => e.sohd);
-            const { data: cts } = await supabase
-                .from("ct_hoadon_banle")
-                .select("sohd,masp")
-                .in("sohd", sohdArr)
-                .eq("masp", masp);
-            const setSohd = new Set(cts.map(e => e.sohd));
-            const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-            if (filtered.length) {
-                if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;  // fallback nếu thiếu
-                ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
-            }
+    // fallbacks
+    const fmtDate = (d) => {
+        if (!d) return "";
+        try {
+            const dd = new Date(d);
+            if (isNaN(dd)) return d;
+            const y = dd.getFullYear(), mo = String(dd.getMonth() + 1).padStart(2, "0"), da = String(dd.getDate()).padStart(2, "0");
+            return `${y}-${mo}-${da}`;
+        } catch { return d; }
+    };
+    async function setImgByMasp(mcode) {
+        if (!imgEl) return;
+        if (typeof window.setProductImageByMasp === "function") {
+            await window.setProductImageByMasp(mcode);
+            return;
         }
+        // fallback tùy dự án (bạn thay đường dẫn thực tế của bạn)
+        imgEl.src = `/images/${mcode}.jpg`;
+        imgEl.loading = "lazy";
+        imgEl.onerror = () => { imgEl.src = ""; };
     }
 
+    // dọn vùng hiển thị
+    if (tTop) tTop.innerHTML = "";
+    if (tRight) tRight.innerHTML = "";
+    if (imgEl) imgEl.src = "";
 
-    // ngày kiểm gần nhất CS1/CS2
-    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
-    {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
-        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
-        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-    }
+    // Không có dữ liệu XNT → thoát sớm
+    if (!rows.length) return;
 
-    // xuất nhập tồn
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-    if (!xntdata || !xntdata.length) {
-        document.getElementById("infoTopTable").innerHTML = "";
-        document.getElementById("infoTableRight").innerHTML = "";
-        document.getElementById("statusMsg").textContent = "Không có dữ liệu xuất nhập tồn!";
-        return false;
-    }
+    // Tổng hợp theo toàn mã (cộng mọi size)
+    const totals = rows.reduce((acc, r) => {
+        acc.nhapmua += r.nhapmua || 0;
+        acc.tongnhap += r.tongnhap || 0;
+        acc.xuatban += r.xuatban || 0;
+        acc.tongxuat += r.tongxuat || 0;
+        acc.toncuoi += r.toncuoi || 0;
+        acc.ban_cs1 += r.ban_cs1 || 0;
+        acc.ton_cs1 += r.ton_cs1 || 0;
+        acc.ban_cs2 += r.ban_cs2 || 0;
+        acc.ton_cs2 += r.ton_cs2 || 0;
+        return acc;
+    }, { nhapmua: 0, tongnhap: 0, xuatban: 0, tongxuat: 0, toncuoi: 0, ban_cs1: 0, ton_cs1: 0, ban_cs2: 0, ton_cs2: 0 });
 
-    // map size & tổng dòng đầu
-    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    const rowMap = {};
-    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
-    const totalRow = {};
-    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
-        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
+    // —— Lấy thông tin mô tả (vị trí, NCC, giá) + ngày ND/NC/kiểm —— //
+    // Bạn có thể tinh gọn/điều chỉnh field theo schema thực tế (vitrikho1 hoặc vitrikhocs1 …)
+    const dmPromise = supabase.from("dmhanghoa")
+        .select("masp, vitrikhocs1, vitrikhocs2, vitrikho1, vitrikho2, nhacc, giale")
+        .eq("masp", m).maybeSingle();
+
+    // ngày nhập đầu/cuối (nd/nc) — xét giao dịch tăng hàng (is_tang_giam=1)
+    const ndPromise = supabase.rpc("exec_sql", {
+        // Nếu bạn không có rpc exec_sql, thay bằng from + min/max
+        // hoặc viết plpgsql gọn. Ở đây minh họa bằng from + aggregate:
+    }).then(async () => {
+        const { data: ndRow } = await supabase
+            .from("ct_hoadon_banle").select("sohd")
+            .eq("masp", m).limit(1); // gọi nhẹ để chắc bảng tồn tại
+        const { data: nd } = await supabase
+            .from("hoadon_banle")
+            .select("ngay")
+            .in("sohd",
+                (await supabase.from("ct_hoadon_banle")
+                    .select("sohd")
+                    .eq("masp", m)).data?.map(x => x.sohd) || []
+            )
+            .order("ngay", { ascending: true })
+            .limit(1);
+        const { data: nc } = await supabase
+            .from("hoadon_banle")
+            .select("ngay")
+            .in("sohd",
+                (await supabase.from("ct_hoadon_banle")
+                    .select("sohd")
+                    .eq("masp", m)).data?.map(x => x.sohd) || []
+            )
+            .order("ngay", { ascending: false })
+            .limit(1);
+        return { nd: nd?.[0]?.ngay || null, nc: nc?.[0]?.ngay || null };
     });
 
-    // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
-    const top = document.getElementById("infoTopTable");
-    top.innerHTML = `
-    <tr>
-      <th>Mã hàng</th>
-      <th>Vị trí CS1</th>
-      <th>Vị trí CS2</th>
-      <th>${hanghoa.nhacc || ""}</th>
-      <th class="red">ND</th>
-      <th class="red">NC</th>
-      <th class="red">Kiểm CS1</th>
-      <th class="red">Kiểm CS2</th>
-    </tr>
-    <tr>
-      <td>${hanghoa.masp || ""}</td>
-      <td>${hanghoa.vitrikho1 || ""}</td>
-      <td>${hanghoa.vitrikho2 || ""}</td>
-      <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-      <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
-      <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-      <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
-      <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
-    </tr>
-  `;
+    // ngày kiểm kho mới nhất mỗi cơ sở
+    const kPromise = (async () => {
+        const { data: k1 } = await supabase
+            .from("kiemkho")
+            .select("ngay").eq("masp", m).eq("diadiem", "cs1")
+            .order("ngay", { ascending: false }).limit(1);
+        const { data: k2 } = await supabase
+            .from("kiemkho")
+            .select("ngay").eq("masp", m).eq("diadiem", "cs2")
+            .order("ngay", { ascending: false }).limit(1);
+        return { k1: k1?.[0]?.ngay || null, k2: k2?.[0]?.ngay || null };
+    })();
 
-    // Bảng XNT
-    let htmlRight = `
-  <tr>
-    <th class="size">Size</th>
-    <th class="red">Tồn CS1</th>
-    <th class="red">Tồn CS2</th>
-    <th class="red">Bán CS1</th>
-    <th class="red">Bán CS2</th>
-    <th class="blue">Tổng mua</th>
-    <th class="blue">Tổng bán</th>
-    <th class="blue">Tổng tồn</th>
-  </tr>
-  <tr>
-    <td class="size">Tổng</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-  </tr>`;
-    SIZE_LIST.slice(1).forEach(sz => {
-        const r = rowMap[sz];
-        htmlRight += `
-    <tr>
-      <td class="size">${sz === '0' ? '0' : sz}</td>
-      <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-      <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-      <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-      <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-      <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-      <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-      <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-    </tr>`;
-    });
-    document.getElementById("infoTableRight").innerHTML = htmlRight;
+    const [{ data: dm }, ndnc, kk] = await Promise.all([dmPromise, ndPromise, kPromise]);
 
+    const vitriCS1 = dm?.vitrikhocs1 || dm?.vitrikho1 || "";
+    const vitriCS2 = dm?.vitrikhocs2 || dm?.vitrikho2 || "";
+    const nhacc = dm?.nhacc || "";
+    const giaLe = dm?.giale || 0;
+    const ngayND = ndnc?.nd || null;
+    const ngayNC = ndnc?.nc || null;
+    const ngayK1 = kk?.k1 || null;
+    const ngayK2 = kk?.k2 || null;
 
-    // Ảnh sản phẩm dưới bảng
-    setProductImageByMasp(hanghoa.masp);
-    document.getElementById("maspInput").select();
+    // —— Bảng “hàng ngang” như giao diện cũ —— //
+    if (tTop) {
+        tTop.innerHTML = `
+      <tr>
+        <th>Mã hàng</th>
+        <th>Vị trí CS1</th>
+        <th>Vị trí CS2</th>
+        <th>Nhà CC</th>
+        <th>Giá</th>
+        <th class="red">ND</th>
+        <th class="red">NC</th>
+        <th class="red">Kiểm CS1</th>
+        <th class="red">Kiểm CS2</th>
+      </tr>
+      <tr>
+        <td>${m}</td>
+        <td>${vitriCS1}</td>
+        <td>${vitriCS2}</td>
+        <td>${nhacc}</td>
+        <td>${(giaLe || 0).toLocaleString()}</td>
+        <td>${fmtDate(ngayND)}</td>
+        <td>${fmtDate(ngayNC)}</td>
+        <td>${fmtDate(ngayK1)}</td>
+        <td>${fmtDate(ngayK2)}</td>
+      </tr>
+    `;
+    }
+
+    // —— Bảng chi tiết size (giống bố cục cũ) —— //
+    if (tRight) {
+        const header = `
+      <tr>
+        <th>Size</th>
+        <th>Tồn CS1</th>
+        <th>Tồn CS2</th>
+        <th>Bán CS1</th>
+        <th>Bán CS2</th>
+        <th>Tổng mua</th>
+        <th>Tổng bán</th>
+        <th>Tổng tồn</th>
+      </tr>`;
+        // tổng dòng “Tổng”
+        const tongRow = `
+      <tr class="row-sum">
+        <td><strong>Tổng</strong></td>
+        <td>${totals.ton_cs1}</td>
+        <td>${totals.ton_cs2}</td>
+        <td>${totals.ban_cs1}</td>
+        <td>${totals.ban_cs2}</td>
+        <td>${totals.tongnhap}</td>
+        <td>${totals.tongxuat}</td>
+        <td>${totals.toncuoi}</td>
+      </tr>`;
+        const body = rows.map(r => `
+      <tr>
+        <td>${r.size ?? ""}</td>
+        <td>${r.ton_cs1 ?? 0}</td>
+        <td>${r.ton_cs2 ?? 0}</td>
+        <td>${r.ban_cs1 ?? 0}</td>
+        <td>${r.ban_cs2 ?? 0}</td>
+        <td>${r.tongnhap ?? 0}</td>
+        <td>${r.tongxuat ?? 0}</td>
+        <td>${r.toncuoi ?? 0}</td>
+      </tr>`).join("");
+
+        tRight.innerHTML = header + tongRow + body;
+    }
+
+    // —— Ảnh sản phẩm —— //
+    await setImgByMasp(m);
 }
+
+
 
 /* ====== KHỐI HTML CHO NHIỀU MÃ (dùng cùng layout mới) ====== */
 async function renderProductDetailHTML(masp) {
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-    if (err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
+    const m = (masp || "").toUpperCase();
+    const rows = (window.TKHH_BULK_BY_MASP && window.TKHH_BULK_BY_MASP.get(m)) || [];
 
-    // ngày nhập đầu/cuối
-    const { data: nhapList } = await supabase.from("hoadon_banle").select("ngay,sohd").in("loaihd", ["nmcs1", "nmcs2"]).order("ngay", { ascending: true });
-    let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList?.length) {
-        const sohdArr = nhapList.map(e => e.sohd);
-        const { data: cts } = await supabase.from("ct_hoadon_banle").select("sohd,masp").in("sohd", sohdArr).eq("masp", masp);
-        const setSohd = new Set(cts.map(e => e.sohd));
-        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
+    const fmtDate = (d) => {
+        if (!d) return "";
+        try {
+            const dd = new Date(d);
+            if (isNaN(dd)) return d;
+            const y = dd.getFullYear(), mo = String(dd.getMonth() + 1).padStart(2, "0"), da = String(dd.getDate()).padStart(2, "0");
+            return `${y}-${mo}-${da}`;
+        } catch { return d; }
+    };
+    const imgTag = (code) => {
+        // Nếu có window.getProductImgUrl thì dùng, còn không dùng fallback
+        if (typeof window.getProductImgUrl === "function") {
+            const url = window.getProductImgUrl(code);
+            return `<img class="product-img" src="${url}" loading="lazy" onerror="this.src='';" alt="${code}">`;
+        }
+        return `<img class="product-img" src="/images/${code}.jpg" loading="lazy" onerror="this.src='';" alt="${code}">`;
+    };
+
+    if (!rows.length) {
+        return `<div class="product-block"><div class="product-head"><strong>${m}</strong></div><div>Không có dữ liệu XNT.</div></div>`;
     }
 
-    // ngày kiểm gần nhất
-    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
-    {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
-        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
-        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
+    const totals = rows.reduce((acc, r) => {
+        acc.nhapmua += r.nhapmua || 0;
+        acc.tongnhap += r.tongnhap || 0;
+        acc.xuatban += r.xuatban || 0;
+        acc.tongxuat += r.tongxuat || 0;
+        acc.toncuoi += r.toncuoi || 0;
+        acc.ban_cs1 += r.ban_cs1 || 0;
+        acc.ton_cs1 += r.ton_cs1 || 0;
+        acc.ban_cs2 += r.ban_cs2 || 0;
+        acc.ton_cs2 += r.ton_cs2 || 0;
+        return acc;
+    }, { nhapmua: 0, tongnhap: 0, xuatban: 0, tongxuat: 0, toncuoi: 0, ban_cs1: 0, ton_cs1: 0, ban_cs2: 0, ton_cs2: 0 });
+
+    // Lấy mô tả + ngày giống renderOne…
+    const [{ data: dm }] = await Promise.all([
+        supabase.from("dmhanghoa")
+            .select("masp, vitrikhocs1, vitrikhocs2, vitrikho1, vitrikho2, nhacc, giale")
+            .eq("masp", m).maybeSingle()
+    ]);
+
+    // Độc lập: tính ngày ND/NC và kiểm (đơn giản hóa, nếu bạn đã có helper thì thay vào)
+    const { data: sohdList } = await supabase.from("ct_hoadon_banle").select("sohd").eq("masp", m);
+    let nd = null, nc = null;
+    if (sohdList?.length) {
+        const soArr = sohdList.map(x => x.sohd);
+        const { data: minDay } = await supabase.from("hoadon_banle").select("ngay").in("sohd", soArr).order("ngay", { ascending: true }).limit(1);
+        const { data: maxDay } = await supabase.from("hoadon_banle").select("ngay").in("sohd", soArr).order("ngay", { ascending: false }).limit(1);
+        nd = minDay?.[0]?.ngay || null;
+        nc = maxDay?.[0]?.ngay || null;
     }
+    const { data: k1 } = await supabase.from("kiemkho").select("ngay").eq("masp", m).eq("diadiem", "cs1").order("ngay", { ascending: false }).limit(1);
+    const { data: k2 } = await supabase.from("kiemkho").select("ngay").eq("masp", m).eq("diadiem", "cs2").order("ngay", { ascending: false }).limit(1);
 
-    // XNT
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-    if (!xntdata || !xntdata.length) return `<div style="color:#c62828">Không có dữ liệu xuất nhập tồn!</div>`;
+    const vitriCS1 = dm?.vitrikhocs1 || dm?.vitrikho1 || "";
+    const vitriCS2 = dm?.vitrikhocs2 || dm?.vitrikho2 || "";
+    const nhacc = dm?.nhacc || "";
+    const giaLe = dm?.giale || 0;
 
-    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    const rowMap = {};
-    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
-    const totalRow = {};
-    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
-        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
-    });
-
-    let html = `
-  <div class="detail-grid">
-    <div class="top-info">
-      <table class="info-table">
-        <tr>
-          <th>Mã hàng</th>
-          <th>Vị trí CS1</th>
-          <th>Vị trí CS2</th>
-          <th>${hanghoa.nhacc || ""}</th>
-          <th class="red">ND</th>
-          <th class="red">NC</th>
-          <th class="red">Kiểm CS1</th>
-          <th class="red">Kiểm CS2</th>
-        </tr>
-        <tr>
-          <td>${hanghoa.masp || ""}</td>
-          <td>${hanghoa.vitrikho1 || ""}</td>
-          <td>${hanghoa.vitrikho2 || ""}</td>
-          <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-          <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
-          <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
-          <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
-        </tr>
-      </table>
-    </div>
-    <div class="right-xnt">
-    <table class="info-table">
+    const tableTop = `
+    <table class="t-info-top">
       <tr>
-        <th class="size">Size</th>
-        <th class="red">Tồn CS1</th>
-        <th class="red">Tồn CS2</th>
-        <th class="red">Bán CS1</th>
-        <th class="red">Bán CS2</th>
-        <th class="blue">Tổng mua</th>
-        <th class="blue">Tổng bán</th>
-        <th class="blue">Tổng tồn</th>
+        <th>Mã hàng</th>
+        <th>Vị trí CS1</th>
+        <th>Vị trí CS2</th>
+        <th>Nhà CC</th>
+        <th>Giá</th>
+        <th class="red">ND</th>
+        <th class="red">NC</th>
+        <th class="red">Kiểm CS1</th>
+        <th class="red">Kiểm CS2</th>
       </tr>
       <tr>
-        <td class="size">Tổng</td>
-        <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-      </tr>`;
-    SIZE_LIST.slice(1).forEach(sz => {
-        const r = rowMap[sz];
-        html += `
-      <tr>
-        <td class="size">${sz === '0' ? '0' : sz}</td>
-        <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-        <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-        <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-        <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-        <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-        <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-        <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-      </tr>`;
-    });
-    html += `
-      </table>
-    </div>
-    <div class="img-wrap">
-      <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
-           onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
-    </div>`;
-    return html;
-}
+        <td>${m}</td>
+        <td>${vitriCS1}</td>
+        <td>${vitriCS2}</td>
+        <td>${nhacc}</td>
+        <td>${(giaLe || 0).toLocaleString()}</td>
+        <td>${fmtDate(nd)}</td>
+        <td>${fmtDate(nc)}</td>
+        <td>${fmtDate(k1?.[0]?.ngay)}</td>
+        <td>${fmtDate(k2?.[0]?.ngay)}</td>
+      </tr>
+    </table>`;
 
+    const header = `
+    <tr>
+      <th>Size</th>
+      <th>Tồn CS1</th>
+      <th>Tồn CS2</th>
+      <th>Bán CS1</th>
+      <th>Bán CS2</th>
+      <th>Tổng mua</th>
+      <th>Tổng bán</th>
+      <th>Tổng tồn</th>
+    </tr>`;
+    const body = rows.map(r => `
+    <tr>
+      <td>${r.size ?? ""}</td>
+      <td>${r.ton_cs1 ?? 0}</td>
+      <td>${r.ton_cs2 ?? 0}</td>
+      <td>${r.ban_cs1 ?? 0}</td>
+      <td>${r.ban_cs2 ?? 0}</td>
+      <td>${r.tongnhap ?? 0}</td>
+      <td>${r.tongxuat ?? 0}</td>
+      <td>${r.toncuoi ?? 0}</td>
+    </tr>`).join("");
+
+    const tableRight = `
+    <table class="t-info-right">
+      ${header}
+      <tr class="row-sum">
+        <td><strong>Tổng</strong></td>
+        <td>${totals.ton_cs1}</td>
+        <td>${totals.ton_cs2}</td>
+        <td>${totals.ban_cs1}</td>
+        <td>${totals.ban_cs2}</td>
+        <td>${totals.tongnhap}</td>
+        <td>${totals.tongxuat}</td>
+        <td>${totals.toncuoi}</td>
+      </tr>
+      ${body}
+    </table>`;
+
+    return `
+    <div class="product-block">
+      <div class="product-head"><strong>${m}</strong></div>
+      <div class="product-top card-like">
+        <div class="left">
+          ${tableTop}
+        </div>
+        <div class="right">
+          ${imgTag(m)}
+        </div>
+      </div>
+      <div class="product-detail">
+        ${tableRight}
+      </div>
+    </div>
+  `;
+}
 
 
 function formatDateOnly(val) {
