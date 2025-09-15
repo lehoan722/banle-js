@@ -150,6 +150,7 @@
         .tab-pane {
             display: none;
         }
+        
 
         .tab-pane.active {
             display: block;
@@ -276,6 +277,10 @@
 
 
         #popupDanhMuc {
+            display: none !important;
+        }
+        
+        #login-password {
             display: none !important;
         }
 
@@ -740,8 +745,8 @@
                     <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
                         required />
                 </div>
-                <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
+                <!--<label>Mật khẩu:</label><br />-->
+                <input type="password" id="login-password" value="123123"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
