@@ -60,7 +60,7 @@ export async function chuyenFocus(e) {
         // 2) Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SẢN PHẨM MỚI
         if (val.length >= 3) {
             maspInput.value = layMaspGoc(val);   // ghi mã mới luôn là mã gốc
-           
+
             sizeInput.value = "";    // xóa size cũ
             // Giả lập Enter ở ô masp để tái sử dụng luồng cũ
             const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
@@ -84,7 +84,7 @@ function layMaspGoc(str) {
 async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     maspVal = layMaspGoc(maspVal);
-    
+
     let spData = window.sanPhamData?.[maspVal];
 
     // Nếu không có trong cache, gọi Supabase để tìm chính xác
@@ -186,7 +186,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
 export function themVaoBang(forcedSize = null, opts = {}) {
     const masp = layMaspGoc(document.getElementById("masp").value);
-    
+
     const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
     const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
@@ -257,6 +257,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     bangKetQua[key] = bang;
 
     capNhatBangHTML(bangKetQua);
+    // ✅ phát "tinh" báo thêm thành công
+    window.soundSuccess?.();
     if (opts.afterAdd === "keepMaspFocusSize") {
         // ✅ Tăng bộ đếm (xx) ngay trên ô #masp
         const maspEl = document.getElementById("masp");
