@@ -1,6 +1,7 @@
 
 // hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
-import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
+import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangketqua.js';
+
 import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
@@ -138,7 +139,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
             return true; // Dừng lại, không tự thêm vào bảng
         }
         document.getElementById("soluong").value = "1";
-        themVaoBang(sizeInput.value.trim());
+        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });  // ✅
         return true;
     }
 
@@ -154,7 +155,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
             return true; // Dừng lại, không tự thêm vào bảng
         }
         document.getElementById("soluong").value = "1";
-        themVaoBang(sizeInput.value.trim());
+        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });  // ✅
         return true;
     }
 
@@ -246,12 +247,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     capNhatBangHTML(bangKetQua);
     if (opts.afterAdd === "keepMaspFocusSize") {
-        // Giữ masp, tiếp tục nhập size cho cùng mã
-        if (typeof resetFormSauKhiNhapSize === "function") {
-            resetFormSauKhiNhapSize();
-        }
+        resetFormSauKhiNhapSize();   // gọi thẳng, KHÔNG dùng typeof
     } else {
-        // Luồng cũ: thêm xong thì xóa masp và focus về #masp
         resetFormBang();
     }
 
