@@ -3,23 +3,6 @@
 import { getMaspspDangChon, setMaspspDangChon } from './hoadon.js';
 import { capNhatThongTinTong } from './utils.js';
 
-function getVitriTheoKho(masp) {
-  if (!masp) return "";
-  const sp =
-    (window.sanPhamData && (window.sanPhamData[masp] || window.sanPhamData[masp.toUpperCase()])) || null;
-
-  // Xác định cơ sở từ input #diadiem (ưu tiên) hoặc localStorage
-  const diadiem = (document.getElementById('diadiem')?.value ||
-    localStorage.getItem('diadiem') || '').toLowerCase();
-
-  if (!sp) return "";
-  if (diadiem === 'cs1') return sp.vitrikho1 || "";
-  if (diadiem === 'cs2') return sp.vitrikho2 || "";
-  if (diadiem === 'cs3') return sp.vitrikho3 || "";
-  return sp.vitrikho1 || sp.vitrikho2 || sp.vitrikho3 || "";
-}
-
-
 export function capNhatBangHTML(bangKetQua) {
   const tbody = document.querySelector("#bangketqua tbody");
   if (!tbody) return;
@@ -34,7 +17,7 @@ export function capNhatBangHTML(bangKetQua) {
       size: parseInt(size),
       soluong: item.soluongs[i]
     }));
-    zipped.sort((a, b) => a.size - b.size);  // sắp xếp theo size tăng dần
+    zipped.sort((a, b) => a.size - b.size);  // sắp xếp theo size tăng dần 
 
     // Mỗi size là một dòng riêng
     zipped.forEach((z, idx) => {
@@ -54,20 +37,17 @@ export function capNhatBangHTML(bangKetQua) {
 
       const thanhtien = (gia - km) * z.soluong;
       const row = tbody.insertRow();
-
-      const vitri = getVitriTheoKho(item.masp);  // ✅ vị trí theo kho
       row.innerHTML = `
-      <td>${item.masp}</td>
-      <td>${item.tensp}</td>
-      <td>${z.size}</td>
-      <td>${z.soluong}</td>
-      <td>${item.dvt || ""}</td>               <!-- ✅ ĐVT đúng chỗ (cột 5) -->
-      <td>${gia}</td>
-      <td>${km}</td>
-      <td>${thanhtien.toLocaleString()}</td>
-      <td>${vitri}</td>                        <!-- ✅ CỘT 9: Vị trí -->
-     `;
-
+        <td>${item.masp}</td>
+        <td>${item.tensp}</td>
+        <td>${z.size}</td>
+        <td>${z.soluong}</td>
+        <td>${z.soluong}</td>
+        <td>${gia}</td>
+        <td>${km}</td>
+        <td>${thanhtien.toLocaleString()}</td>
+        <td>${item.dvt}</td>
+      `;
 
       // Lưu cả mã sản phẩm và size khi chọn dòng
       row.addEventListener("click", () => {
@@ -110,6 +90,25 @@ export function resetFormBang() {
   setTimeout(() => maspInput.focus(), 50);
 }
 
+export function resetFormSauKhiNhapSize() {
+  const maspInput = document.getElementById("masp");
+  const soluongInput = document.getElementById("soluong");
+  const sizeInput = document.getElementById("size");
+
+  // LƯU lại masp vừa dùng để hiển thị ảnh nếu cần
+  window.masp_last = maspInput.value || window.masp_last || "";
+
+  // KHÔNG xóa masp; chỉ reset size & số lượng
+  soluongInput.value = "1";
+  sizeInput.value = "";
+
+  // Cập nhật ảnh (ưu tiên masp hiện tại)
+  if (window.hienThiAnhSanPhamTuMasp) window.hienThiAnhSanPhamTuMasp();
+
+  // Tiếp tục nhập size cho cùng mã
+  sizeInput.focus();
+  sizeInput.select();
+}
 
 
 export function capNhatBangKetQuaTuDOM() {
