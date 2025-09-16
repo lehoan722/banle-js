@@ -134,6 +134,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     const sizeInput = document.getElementById("size");
     if (!sizeInput.value.trim()) {
       sizeInput.focus();
+      sizeInput.select();   // ✅ thêm dòng này
       return true; // Dừng lại, không tự thêm vào bảng
     }
     document.getElementById("soluong").value = "1";
@@ -149,6 +150,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     const sizeInput = document.getElementById("size");
     if (!sizeInput.value.trim()) {
       sizeInput.focus();
+      sizeInput.select();   // ✅ thêm dòng này
       return true; // Dừng lại, không tự thêm vào bảng
     }
     document.getElementById("soluong").value = "1";
