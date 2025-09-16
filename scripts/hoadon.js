@@ -35,8 +35,43 @@ export async function chuyenFocus(e) {
   } else if (e.target.id === "soluong") {
     document.getElementById("size").focus();
   } else if (e.target.id === "size") {
-    themVaoBang();
+    const sizeInput = document.getElementById("size");
+    const maspInput = document.getElementById("masp");
+    const raw = String(sizeInput.value || "").trim();
+    const val = raw.toUpperCase();
+
+    // Danh mục size hợp lệ
+    const dsSize = Array.isArray(window.danhMucSize)
+      ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+      : [];
+
+    const isValidSize = val && dsSize.includes(val);
+
+    // 1) Size hợp lệ -> thêm dòng, giữ nguyên #masp, focus + select() về #size
+    if (isValidSize) {
+      // đảm bảo số lượng = 1 cho luồng nhập nhanh size
+      document.getElementById("soluong").value = "1";
+      // Gọi với tùy chọn hậu xử lý để KHÔNG xóa masp và focus về size
+      themVaoBang(val, { afterAdd: "keepMaspFocusSize" });
+      return;
+    }
+
+    // 2) Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SẢN PHẨM MỚI
+    if (val.length >= 3) {
+      maspInput.value = val;   // ghi mã mới
+      sizeInput.value = "";    // xóa size cũ
+      // Giả lập Enter ở ô masp để tái sử dụng luồng cũ
+      const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+      maspInput.dispatchEvent(ev);
+      return;
+    }
+
+    // 3) Không hợp lệ và ≤ 2 ký tự -> cảnh báo theo yêu cầu
+    alert("Bạn phải nhập size hoặc mã sản phẩm hợp lệ.");
+    sizeInput.focus();
+    sizeInput.select();
   }
+
 }
 
 async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
@@ -135,7 +170,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
   return true;
 }
 
-export function themVaoBang(forcedSize = null) {
+export function themVaoBang(forcedSize = null, opts = {}) {
   const masp = document.getElementById("masp").value.trim().toUpperCase();
   const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
   const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
@@ -146,20 +181,37 @@ export function themVaoBang(forcedSize = null) {
   const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
 
   // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
+  
   if (!banSieuNhanh) {
-    if (!masp || !size || !sp) {
-      alert("Phải nhập size hợp lệ cho sản phẩm.");
-      document.getElementById("size").focus();
-      document.getElementById("size").select();
+    const dsSize = Array.isArray(window.danhMucSize)
+      ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+      : [];
+
+    const sizeUC = String(size || "").trim().toUpperCase();
+
+    // Thiếu masp hoặc không tìm thấy sản phẩm -> không thể thêm
+    if (!masp || !sp) {
+      alert("Phải nhập mã sản phẩm hợp lệ.");
+      document.getElementById("masp").focus();
+      document.getElementById("masp").select();
       return;
     }
-    if (Array.isArray(window.danhMucSize) && !window.danhMucSize.includes(size)) {
-      alert(`Bạn phải nhập đúng size theo quy định! Các size hợp lệ: ${window.danhMucSize.join(', ')}`);
-      document.getElementById("size").focus();
-      document.getElementById("size").select();
+
+    // Nếu đã vào được đây từ ô #size, ta chỉ chấp nhận khi size nằm trong danh mục
+    // (trường hợp không hợp lệ đã được điều hướng/cảnh báo ở chuyenFocus)
+    if (dsSize.length && !dsSize.includes(sizeUC)) {
+      // Không alert ở đây để tránh gián đoạn thao tác;
+      // chỉ quay lại #size nếu đang có trường này.
+      const sizeEl = document.getElementById("size");
+      if (sizeEl) {
+        sizeEl.focus();
+        sizeEl.select();
+      }
       return;
     }
   }
+
+
   // ==== END KIỂM TRA ====
   const gia = parseFloat(document.getElementById("gia").value) || 0;
   let km = tinhKhuyenMai(sp, gia);
@@ -190,7 +242,16 @@ export function themVaoBang(forcedSize = null) {
   bangKetQua[key] = bang;
 
   capNhatBangHTML(bangKetQua);
-  resetFormBang();
+  if (opts.afterAdd === "keepMaspFocusSize") {
+    // Giữ masp, tiếp tục nhập size cho cùng mã
+    if (typeof resetFormSauKhiNhapSize === "function") {
+      resetFormSauKhiNhapSize();
+    }
+  } else {
+    // Luồng cũ: thêm xong thì xóa masp và focus về #masp
+    resetFormBang();
+  }
+
 }
 
 
