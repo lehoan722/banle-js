@@ -13,6 +13,36 @@ import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './bangha
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
+// Khởi tạo âm thanh & tạo 2 helper toàn cục
+function initSounds() {
+  try {
+    const success = new Audio('/sounds/success.mp3');
+    const waitsize = new Audio('/sounds/waitsize.mp3');
+
+    success.preload = 'auto';
+    waitsize.preload = 'auto';
+
+    // Âm lượng gợi ý (0.0 - 1.0). Điều chỉnh theo thực tế cửa hàng.
+    success.volume = 0.7;
+    waitsize.volume = 0.6;
+
+    // Dùng clone để cho phép phát chồng nếu nhập rất nhanh
+    window.soundSuccess = () => {
+      const a = success.cloneNode(true);
+      a.volume = success.volume;
+      a.play().catch(() => { });
+    };
+    window.soundWaitSize = () => {
+      const a = waitsize.cloneNode(true);
+      a.volume = waitsize.volume;
+      a.play().catch(() => { });
+    };
+  } catch (e) {
+    console.warn('Không khởi tạo được âm thanh:', e);
+    window.soundSuccess = () => { };
+    window.soundWaitSize = () => { };
+  }
+}
 
 export async function khoiTaoUngDung() {
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
@@ -200,7 +230,7 @@ export async function khoiTaoUngDung() {
     window.danhMucSize = []; // fallback rỗng nếu có lỗi
   }
 
-
+  initSounds(); // ✅ khởi tạo âm thanh khi app sẵn sàng
 
 }
 
