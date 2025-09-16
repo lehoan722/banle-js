@@ -74,27 +74,41 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
   initAutocompleteRealtimeMasp();
 
+  // Helper: lấy mã gốc, bỏ hậu tố (xx) nếu có, chuẩn hoá IN HOA
+  function layMaspGoc(str) {
+    return String(str || "")
+      .toUpperCase()
+      .replace(/\(\d+\)\s*$/, "") // bỏ "(12)" ở cuối, nếu có
+      .trim();
+  }
+
   async function hienThiAnhSanPhamTuMasp() {
-    let masp = document.getElementById('masp').value.trim();
+    const imgEl = document.querySelector(".product-image");
+    if (!imgEl) return;
 
-    // Nếu input trống, lấy từ masp_last (vừa nhập xong)
-    if (!masp && window.masp_last) {
-      masp = window.masp_last;
+    // Ưu tiên lấy từ ô masp; nếu rỗng thì fallback masp_last
+    const rawInput = document.getElementById("masp")?.value || "";
+    const raw = rawInput.trim() || (window.masp_last || "");
+    if (!raw) return;
+
+    const masp = layMaspGoc(raw);       // ✅ dùng mã gốc, không dính (xx)
+    const extension = ".JPG";            // ✅ luôn IN HOA như quy ước của bạn
+    const base =
+      "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham";
+
+    const url = `${base}/${masp}${extension}`;
+
+    // Tránh reload ảnh không cần thiết nếu cùng URL
+    if (imgEl.getAttribute("src") !== url) {
+      imgEl.src = url;
     }
-    if (!masp) return;
-
-    masp = masp.toUpperCase();
-    const extension = '.JPG';
-
-    const imgEl = document.querySelector('.product-image');
-    const url = `https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/${masp}${extension}`;
-
-    imgEl.src = url;
 
     imgEl.onerror = () => {
-      imgEl.src = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/NO-IMAGE.JPG';
+      imgEl.onerror = null; // tránh vòng lặp nếu fallback cũng lỗi
+      imgEl.src = `${base}/NO-IMAGE.JPG`;
     };
   }
+
 
   // Đảm bảo cho biến global dùng được ở bangketqua.js
   window.hienThiAnhSanPhamTuMasp = hienThiAnhSanPhamTuMasp;
