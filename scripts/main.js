@@ -17,13 +17,13 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
 function initSounds() {
   try {
-    const success = new Audio('/scripts/success.wav');
-    const waitsize = new Audio('/scripts/waitsize.wav');
+    const success = new Audio('/scripts/canhbaothanhcong.wav');
+    const waitsize = new Audio('/scripts/canhbaosize.wav');
 
     // ⚠️ canh báo – ưu tiên wav, fallback wav nếu bạn dùng wav
-    let alertAudio = new Audio('/scripts/canhbao.wav');
+    let alertAudio = new Audio('/scripts/canhbaoloi.wav');
     alertAudio.addEventListener('error', () => {
-      alertAudio = new Audio('/scripts/canhbao.wav');
+      alertAudio = new Audio('/scripts/canhbaoloi.wav');
     });
 
     success.preload = 'auto';
