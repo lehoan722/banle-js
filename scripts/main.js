@@ -16,8 +16,8 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 // Khởi tạo âm thanh & tạo 2 helper toàn cục
 function initSounds() {
   try {
-    const success = new Audio('/sounds/success.mp3');
-    const waitsize = new Audio('/sounds/waitsize.mp3');
+    const success = new Audio('/scripts/success.wav'); 
+    const waitsize = new Audio('/scripts/waitsize.wav');
 
     success.preload = 'auto';
     waitsize.preload = 'auto';
