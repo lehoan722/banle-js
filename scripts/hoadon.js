@@ -144,6 +144,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         if (!sizeInput.value.trim()) {
             sizeInput.focus();
             sizeInput.select();
+            window.soundWaitSize?.();   // ✅ phát "tút" báo cần nhập size
             return true; // Dừng lại, không tự thêm vào bảng
         }
         document.getElementById("soluong").value = "1";
@@ -160,6 +161,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         if (!sizeInput.value.trim()) {
             sizeInput.focus();
             sizeInput.select();
+            window.soundWaitSize?.();   // ✅ phát "tút" báo cần nhập size
             return true; // Dừng lại, không tự thêm vào bảng
         }
         document.getElementById("soluong").value = "1";
