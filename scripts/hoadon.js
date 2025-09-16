@@ -51,7 +51,7 @@ export async function chuyenFocus(e) {
         // 1) Size hợp lệ -> thêm dòng, giữ nguyên #masp, focus + select() về #size
         if (isValidSize) {
             // đảm bảo số lượng = 1 cho luồng nhập nhanh size
-            document.getElementById("soluong").value = "1";
+            //document.getElementById("soluong").value = "1";
             // Gọi với tùy chọn hậu xử lý để KHÔNG xóa masp và focus về size
             themVaoBang(val, { afterAdd: "keepMaspFocusSize" });
             return;
