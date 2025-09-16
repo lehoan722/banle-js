@@ -233,11 +233,25 @@ export async function khoiTaoUngDung() {
   initSounds(); // ✅ khởi tạo âm thanh khi app sẵn sàng
 
   // Phát âm cảnh báo mỗi khi gọi alert()
+  // Phát âm cảnh báo TRƯỚC, rồi mới mở alert ở tick kế tiếp
   (function patchAlert() {
     const nativeAlert = window.alert;
+
     window.alert = function (message) {
-      try { window.soundAlert?.(); } catch { }
-      return nativeAlert.call(window, message);
+      try {
+        // 1) phát âm ngay
+        if (typeof window.soundAlert === "function") {
+          window.soundAlert();
+        }
+      } catch { }
+
+      // 2) đẩy alert sang tick sau để âm thanh kịp "nổ" trước khi bị block
+      setTimeout(() => {
+        nativeAlert.call(window, message);
+      }, 0);
+
+      // 3) giữ nguyên API: trả về undefined như alert gốc
+      return;
     };
   })();
 
