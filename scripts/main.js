@@ -248,7 +248,7 @@ export async function khoiTaoUngDung() {
       // 2) đẩy alert sang tick sau để âm thanh kịp "nổ" trước khi bị block
       setTimeout(() => {
         nativeAlert.call(window, message);
-      }, 0);
+      }, 500);
 
       // 3) giữ nguyên API: trả về undefined như alert gốc
       return;
