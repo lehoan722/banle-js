@@ -59,7 +59,8 @@ export async function chuyenFocus(e) {
 
         // 2) Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SẢN PHẨM MỚI
         if (val.length >= 3) {
-            maspInput.value = val;   // ghi mã mới
+            maspInput.value = layMaspGoc(val);   // ghi mã mới luôn là mã gốc
+           
             sizeInput.value = "";    // xóa size cũ
             // Giả lập Enter ở ô masp để tái sử dụng luồng cũ
             const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
@@ -75,8 +76,15 @@ export async function chuyenFocus(e) {
 
 }
 
+function layMaspGoc(str) {
+    return String(str || "").toUpperCase().replace(/\(\d+\)\s*$/, "").trim();
+}
+
+
 async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
-    maspVal = maspVal.toUpperCase().trim();
+
+    maspVal = layMaspGoc(maspVal);
+    
     let spData = window.sanPhamData?.[maspVal];
 
     // Nếu không có trong cache, gọi Supabase để tìm chính xác
@@ -175,7 +183,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 }
 
 export function themVaoBang(forcedSize = null, opts = {}) {
-    const masp = document.getElementById("masp").value.trim().toUpperCase();
+    const masp = layMaspGoc(document.getElementById("masp").value);
+    
     const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
     const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
@@ -247,8 +256,20 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     capNhatBangHTML(bangKetQua);
     if (opts.afterAdd === "keepMaspFocusSize") {
-        resetFormSauKhiNhapSize();   // gọi thẳng, KHÔNG dùng typeof
+        // ✅ Tăng bộ đếm (xx) ngay trên ô #masp
+        const maspEl = document.getElementById("masp");
+        const raw = String(maspEl.value || "").trim().toUpperCase();
+        const base = raw.replace(/\(\d+\)\s*$/, "");       // bỏ (xx) nếu có
+        const m = raw.match(/\((\d+)\)\s*$/);
+        const next = m ? (parseInt(m[1], 10) + 1) : 1;
+        maspEl.value = `${base}(${next})`;
+
+        // Rồi mới reset size + select để nhập tiếp
+        if (typeof resetFormSauKhiNhapSize === "function") {
+            resetFormSauKhiNhapSize();
+        }
     } else {
+        // Luồng cũ: thêm xong thì xóa masp và focus về #masp
         resetFormBang();
     }
 
