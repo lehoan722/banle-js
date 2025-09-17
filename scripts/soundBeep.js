@@ -39,12 +39,12 @@ function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) 
 
 // “tinh” — ngắn, sáng
 export function playSuccessBeep() {
-  beep(3000, 120, "sine", 0.7);
+  beep(2400, 120, "sine", 0.7);
 }
 
 // “tút” — dài, trầm hơn
 export function playWaitSizeBeep() {
-  beep(1500, 250, "sine", 0.7);
+  beep(1500, 200, "sine", 0.7);
 }
 
 // Tuỳ chọn: beep cảnh báo (âm vuông, hơi “gắt” hơn)
