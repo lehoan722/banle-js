@@ -20,66 +20,100 @@ function getVitriTheoKho(masp) {
 }
 
 
-export function capNhatBangHTML(bangKetQua) {
+export function capNhatBangHTML(bangKetQua, lastAdded = null) {
   const tbody = document.querySelector("#bangketqua tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Xác định có phải nghiệp vụ nhập mới không
+  // Giữ logic: trang "nhập mới" thì tính giá/khuyến mại khác
   const isNhap = window.location.pathname.includes("nhapmoi");
 
-  Object.values(bangKetQua).forEach(item => {
-    // Sắp xếp kích cỡ và số lượng tương ứng
-    const zipped = item.sizes.map((size, i) => ({
-      size: parseInt(size),
-      soluong: item.soluongs[i]
-    }));
-    zipped.sort((a, b) => a.size - b.size);  // sắp xếp theo size tăng dần 
+  // --- 1) Tạo thứ tự mã: nếu có lastAdded.masp thì đẩy mã đó lên đầu ---
+  const maspList = Object.keys(bangKetQua);
+  const orderedMasps = (lastAdded && lastAdded.masp && maspList.includes(lastAdded.masp))
+    ? [lastAdded.masp, ...maspList.filter(m => m !== lastAdded.masp)]
+    : maspList;
 
-    // Mỗi size là một dòng riêng
-    zipped.forEach((z, idx) => {
-      // Lấy giá trị chuẩn theo nghiệp vụ
-      let gia = item.gia;
-      let km = item.km;
+  // --- 2) Duyệt theo thứ tự đã xếp ---
+  orderedMasps.forEach(masp => {
+    const item = bangKetQua[masp];
 
+    // Sắp xếp size tăng dần theo danh mục; fallback numeric nếu không có trong danh mục
+    // Chuẩn hoá size về string
+    const sizes = item.sizes.map(s => String(s).trim());
+    const counts = item.soluongs.slice(); // song song với sizes
+
+    const toIndex = (sz) => {
+      if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
+        const idx = window.danhMucSize.findIndex(x => String(x).trim().toUpperCase() === sz.toUpperCase());
+        if (idx !== -1) return idx;
+      }
+      // fallback: parse số để so sánh tăng dần; nếu NaN thì đẩy về cuối
+      const n = parseFloat(sz);
+      return isNaN(n) ? Number.POSITIVE_INFINITY : n + 100000; // cộng offset để không đụng các index hợp lệ
+    };
+
+    // Tạo mảng index để sort ổn định sizes + counts cùng lúc
+    const idxArr = sizes.map((_, i) => i);
+    idxArr.sort((i, j) => {
+      const ai = toIndex(sizes[i]);
+      const aj = toIndex(sizes[j]);
+      return ai - aj;
+    });
+
+    // Render từng size theo thứ tự đã sắp
+    idxArr.forEach(i => {
+      const sz = sizes[i];
+      const sl = counts[i];
+
+      // Tính giá/km theo nghiệp vụ
+      let gia = item.gia || 0;
+      let km = item.km || 0;
       if (isNhap) {
-        // Lấy giá nhập từ danh mục hàng hóa nếu có
         if (window.sanPhamData && window.sanPhamData[item.masp]) {
           gia = window.sanPhamData[item.masp].gianhap || 0;
         } else {
           gia = 0;
         }
-        km = 0; // nhập mới không có khuyến mại
+        km = 0;
       }
+      const thanhtien = (gia - km) * sl;
 
-      const thanhtien = (gia - km) * z.soluong;
-      const row = tbody.insertRow();
-      const vitri = getVitriTheoKho(item.masp);  // ✅ vị trí theo kho
-      row.innerHTML = `
-      <td>${item.masp}</td>
-      <td>${item.tensp}</td>
-      <td>${z.size}</td>
-      <td>${z.soluong}</td>
-      <td>${item.dvt || ""}</td>               <!-- ✅ ĐVT đúng chỗ (cột 5) -->
-      <td>${gia}</td>
-      <td>${km}</td>
-      <td>${thanhtien.toLocaleString()}</td>
-      <td>${vitri}</td>                        <!-- ✅ CỘT 9: Vị trí -->
-     `;
+      const tr = tbody.insertRow();
+      const vitri = getVitriTheoKho(item.masp);
 
+      tr.innerHTML = `
+        <td>${item.masp}</td>
+        <td>${item.tensp}</td>
+        <td>${sz}</td>
+        <td>${sl}</td>
+        <td>${item.dvt || ""}</td>
+        <td>${gia}</td>
+        <td>${km}</td>
+        <td>${thanhtien.toLocaleString()}</td>
+        <td>${vitri}</td>
+      `;
 
-      // Lưu cả mã sản phẩm và size khi chọn dòng
-      row.addEventListener("click", () => {
-        setMaspspDangChon({ masp: item.masp, size: z.size });
-        highlightRow(row);
+      // Lưu chọn để sửa/xóa theo cặp (masp, size)
+      tr.addEventListener("click", () => {
+        setMaspspDangChon({ masp: item.masp, size: sz });
+        highlightRow(tr);
       });
+
+      // --- 3) Highlight dòng vừa thêm ---
+      if (
+        lastAdded &&
+        String(lastAdded.masp).toUpperCase() === String(item.masp).toUpperCase() &&
+        String(lastAdded.size).trim().toUpperCase() === String(sz).trim().toUpperCase()
+      ) {
+        tr.classList.add("highlight");
+      }
     });
   });
 
+  // Cập nhật tổng số liệu
   capNhatThongTinTong(bangKetQua);
 }
-
-
 
 
 function highlightRow(selectedRow) {
