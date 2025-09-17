@@ -337,8 +337,14 @@ export function getBangKetQua() {
 export function resetBangKetQua() {
     bangKetQua = {};
     if (window.bangKetQua) window.bangKetQua = {};
-    capNhatBangHTML(bangKetQua, window.lastAdded);
+
+    // ✅ reset luôn các state điều khiển thứ tự/hiển thị
+    window.groupOrder = [];
+    window.lastAdded = null;
+
+    capNhatBangHTML(bangKetQua, null);
 }
+
 
 
 export function ganTenNV() {
