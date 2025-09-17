@@ -93,9 +93,13 @@ export async function luuHoaDonQuaAPI() {
     if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
 
     if (tonTai && !choPhepSua) {
-        document.getElementById("popupXacThucSua").style.display = "block";
+        const p = document.getElementById("popupXacThucSua");
+        p.style.display = "block";
+        const manvEl = document.getElementById("xacmanv");
+        if (manvEl) { manvEl.focus(); manvEl.select(); }
         return;
     }
+
 
     if (tonTai && choPhepSua) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
@@ -218,9 +222,13 @@ export async function luuHoaDonNhapQuaAPI() {
         .maybeSingle();
 
     if (tonTai && !choPhepSua) {
-        document.getElementById("popupXacThucSua").style.display = "block";
+        const p = document.getElementById("popupXacThucSua");
+        p.style.display = "block";
+        const manvEl = document.getElementById("xacmanv");
+        if (manvEl) { manvEl.focus(); manvEl.select(); }
         return;
     }
+
 
     if (tonTai && choPhepSua) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
@@ -568,7 +576,7 @@ export async function luuHoaDonccn1v2() {
         document.getElementById("masp").focus();
         return;
     }
-    
+
     const bangKetQua = getBangKetQua();
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
@@ -601,9 +609,13 @@ export async function luuHoaDonccn1v2() {
         .maybeSingle();
 
     if (tonTai && !choPhepSua) {
-        document.getElementById("popupXacThucSua").style.display = "block";
+        const p = document.getElementById("popupXacThucSua");
+        p.style.display = "block";
+        const manvEl = document.getElementById("xacmanv");
+        if (manvEl) { manvEl.focus(); manvEl.select(); }
         return;
     }
+
 
     if (tonTai && choPhepSua) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
