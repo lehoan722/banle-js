@@ -32,25 +32,33 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
   // - Nếu vừa thêm NHÓM MỚI (lastAdded.isNewGroup === true) -> đẩy nhóm đó lên đầu
   // - Nếu thêm vào mã đã có -> giữ nguyên thứ tự hiện tại
   // 1) Thứ tự nhóm mã: dùng groupOrder (mới-trên-cùng)
+  // --- ngay sau khi có maspList ---
   const maspList = Object.keys(bangKetQua);
 
+  // xây orderedMasps từ groupOrder nhưng CHỈ lấy những mã còn tồn tại
   let orderedMasps = [];
   if (Array.isArray(window.groupOrder) && window.groupOrder.length) {
-    // lấy theo groupOrder, nhưng lọc chỉ những mã đang tồn tại
     orderedMasps = window.groupOrder.filter(m => maspList.includes(m));
-    // nếu có mã nào mới xuất hiện mà chưa kịp vào groupOrder -> nối thêm ở CUỐI
+    // nêu còn mã mới mà chưa có trong groupOrder thì nối thêm ở cuối
     orderedMasps.push(...maspList.filter(m => !orderedMasps.includes(m)));
   } else {
-    // chưa có groupOrder -> khởi tạo newest-first từ insertion order
     orderedMasps = maspList.slice().reverse();
     window.groupOrder = orderedMasps.slice();
   }
 
-  // (an toàn) nếu vừa thêm NHÓM MỚI mà vì lý do gì chưa đứng đầu -> đảm bảo đưa lên đầu & sync lại groupOrder
+  // đảm bảo nhóm mới đứng đầu nếu vừa thêm nhóm mới
   if (lastAdded && lastAdded.isNewGroup === true && lastAdded.masp) {
     orderedMasps = [lastAdded.masp, ...orderedMasps.filter(m => m !== lastAdded.masp)];
     window.groupOrder = orderedMasps.slice();
   }
+
+  // --- khi render từng nhóm ---
+  orderedMasps.forEach(masp => {
+    const item = bangKetQua[masp];
+    if (!item) return; // ⚠️ an toàn: bỏ qua mã không còn
+    // ... phần còn lại giữ nguyên (map sizes, sort theo size, render, v.v.)
+  });
+
 
   // 2) Render theo thứ tự đã xác định
   orderedMasps.forEach(masp => {
