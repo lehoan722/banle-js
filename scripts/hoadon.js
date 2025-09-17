@@ -30,6 +30,44 @@ function recalcThanhtienFromForm() {
     if (ttEl) ttEl.value = tt.toLocaleString();
 }
 
+// --- Helpers tiền/tỉ lệ & tính thành tiền ---
+function parseMoneyInt(v) {
+    if (v == null) return 0;
+    // cho phép nhập "7,5" -> 7.5; bỏ dấu . , khoảng trắng ngăn cách hàng nghìn
+    const s = String(v).trim().replace(/\s/g, '').replace(/\./g, '');
+    // Nếu có dấu phẩy, coi như thập phân
+    const n = parseFloat(s.replace(',', '.'));
+    if (Number.isNaN(n)) return 0;
+    return n; // CHÚ Ý: trả float tạm thời, sẽ làm tròn khi cần
+}
+
+// Quy đổi khuyến mại: >100 => TIỀN; <=100 => %
+function normalizeKmToMoney(giaInt, rawKm) {
+    const val = parseMoneyInt(rawKm);
+    if (val <= 100) {
+        // % khuyến mại
+        const kmTien = Math.round(giaInt * (val / 100));
+        return kmTien;
+    }
+    // tiền khuyến mại
+    return Math.round(val);
+}
+
+// Tính & hiển thị lại thanhtien từ form hiện tại
+function recalcThanhtienFromForm() {
+    const sl = Math.max(1, parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1);
+    const gia = Math.round(parseMoneyInt(document.getElementById("gia")?.value || 0));
+    const kmIn = document.getElementById("khuyenmai")?.value || 0;
+    const km = normalizeKmToMoney(gia, kmIn);
+    const tt = (gia - km) * sl;
+    const ttEl = document.getElementById("thanhtien");
+    if (ttEl) ttEl.value = (tt > 0 ? tt : 0).toLocaleString();
+    // đồng bộ lại #khuyenmai về dạng tiền tuyệt đối (để bảng hiểu đúng)
+    const kmEl = document.getElementById("khuyenmai");
+    if (kmEl) kmEl.value = km.toLocaleString();
+}
+
+
 export async function chuyenFocus(e) {
     if (e.key !== "Enter") return;
 
@@ -523,4 +561,55 @@ document.addEventListener("DOMContentLoaded", () => {
         kmEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
     });
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+
+    async function recalcAndAutoAdd(e) {
+        recalcThanhtienFromForm();
+
+        // Kiểm tra đủ dữ liệu để tự thêm vào bảng
+        const masp = (document.getElementById("masp")?.value || "").trim().toUpperCase();
+        const sizeRaw = (document.getElementById("size")?.value || "").trim();
+        const sl = parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1;
+
+        // Mã sản phẩm đã được validate ngay khi Enter ở #masp (xuLyMaSanPham), ở đây chỉ kiểm tra tối thiểu
+        if (!masp) return;
+
+        // Size phải hợp lệ theo danh mục
+        const dsSize = Array.isArray(window.danhMucSize)
+            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+            : [];
+        const size = sizeRaw.toUpperCase();
+        const isValidSize = size && dsSize.includes(size);
+        if (!isValidSize || sl <= 0) return;
+
+        // Đủ điều kiện -> thêm vào bảng
+        // Dùng đúng cơ chế hiện có: themVaoBang(forcedSize, opts)
+        // Với thao tác từ giá/khuyến mại, sau khi thêm mình cho focus về #masp để quét sp tiếp
+        try {
+            await themVaoBang(size, { afterAdd: "resetFormToMasp" });
+        } catch (err) {
+            console.error("Auto add after KM/Gia change failed:", err);
+        }
+    }
+
+    // Recalc khi blur/change
+    ["blur", "change"].forEach(evt => {
+        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
+        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
+    });
+
+    // Enter => recalc + nếu đủ dữ liệu thì tự thêm
+    const handleEnter = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            recalcAndAutoAdd(e);
+        }
+    };
+    giaEl?.addEventListener("keydown", handleEnter);
+    kmEl?.addEventListener("keydown", handleEnter);
+});
+
 
