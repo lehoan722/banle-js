@@ -25,48 +25,35 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Giữ logic: trang "nhập mới" thì tính giá/khuyến mại khác
   const isNhap = window.location.pathname.includes("nhapmoi");
 
-  // --- 1) Tạo thứ tự mã: nếu có lastAdded.masp thì đẩy mã đó lên đầu ---
+  // 1) Thứ tự mã: nếu có lastAdded.masp thì đẩy lên đầu
   const maspList = Object.keys(bangKetQua);
   const orderedMasps = (lastAdded && lastAdded.masp && maspList.includes(lastAdded.masp))
     ? [lastAdded.masp, ...maspList.filter(m => m !== lastAdded.masp)]
     : maspList;
 
-  // --- 2) Duyệt theo thứ tự đã xếp ---
   orderedMasps.forEach(masp => {
     const item = bangKetQua[masp];
 
-    // Sắp xếp size tăng dần theo danh mục; fallback numeric nếu không có trong danh mục
-    // Chuẩn hoá size về string
     const sizes = item.sizes.map(s => String(s).trim());
-    const counts = item.soluongs.slice(); // song song với sizes
+    const counts = item.soluongs.slice();
 
     const toIndex = (sz) => {
       if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
         const idx = window.danhMucSize.findIndex(x => String(x).trim().toUpperCase() === sz.toUpperCase());
         if (idx !== -1) return idx;
       }
-      // fallback: parse số để so sánh tăng dần; nếu NaN thì đẩy về cuối
       const n = parseFloat(sz);
-      return isNaN(n) ? Number.POSITIVE_INFINITY : n + 100000; // cộng offset để không đụng các index hợp lệ
+      return isNaN(n) ? Number.POSITIVE_INFINITY : n + 100000;
     };
 
-    // Tạo mảng index để sort ổn định sizes + counts cùng lúc
-    const idxArr = sizes.map((_, i) => i);
-    idxArr.sort((i, j) => {
-      const ai = toIndex(sizes[i]);
-      const aj = toIndex(sizes[j]);
-      return ai - aj;
-    });
+    const idxArr = sizes.map((_, i) => i).sort((i, j) => toIndex(sizes[i]) - toIndex(sizes[j]));
 
-    // Render từng size theo thứ tự đã sắp
     idxArr.forEach(i => {
       const sz = sizes[i];
       const sl = counts[i];
 
-      // Tính giá/km theo nghiệp vụ
       let gia = item.gia || 0;
       let km = item.km || 0;
       if (isNhap) {
@@ -94,13 +81,12 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         <td>${vitri}</td>
       `;
 
-      // Lưu chọn để sửa/xóa theo cặp (masp, size)
       tr.addEventListener("click", () => {
         setMaspspDangChon({ masp: item.masp, size: sz });
         highlightRow(tr);
       });
 
-      // --- 3) Highlight dòng vừa thêm ---
+      // 3) Highlight dòng vừa thêm
       if (
         lastAdded &&
         String(lastAdded.masp).toUpperCase() === String(item.masp).toUpperCase() &&
@@ -111,9 +97,9 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
     });
   });
 
-  // Cập nhật tổng số liệu
   capNhatThongTinTong(bangKetQua);
 }
+
 
 
 function highlightRow(selectedRow) {
