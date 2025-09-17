@@ -22,7 +22,6 @@ function toInt(v) {
     return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
 }
 
-
 // --- Helpers tiền/tỉ lệ & tính thành tiền ---
 function parseMoneyInt(v) {
     if (v == null) return 0;
@@ -531,30 +530,6 @@ export async function napLaiChiTietHoaDon(sohd) {
 }
 
 //Gắn handler Enter/blur cho #gia và #khuyenmai (một lần khi trang load)
-document.addEventListener("DOMContentLoaded", () => {
-    const giaEl = document.getElementById("gia");
-    const kmEl = document.getElementById("khuyenmai");
-
-    const recalcAndMaybeMove = (e) => {
-        recalcThanhtienFromForm();
-        if (e && e.type === "keydown" && e.key === "Enter") {
-            // sau khi người dùng Enter ở #khuyenmai/#gia, cho flow của bạn tiếp tục
-            // tuỳ quy trình: nếu muốn nhảy qua #size thì mở 2 dòng dưới:
-            // const sizeEl = document.getElementById("size");
-            // sizeEl?.focus();
-        }
-    };
-
-    ["blur", "change"].forEach(evt => {
-        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
-        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
-    });
-    ["keydown"].forEach(evt => {
-        giaEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
-        kmEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
-    });
-});
-
 document.addEventListener("DOMContentLoaded", () => {
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
