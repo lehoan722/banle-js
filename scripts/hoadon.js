@@ -278,6 +278,21 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     bang.tong += soluong;
     bangKetQua[key] = bang;
+    // Cập nhật thứ tự nhóm (mới nhất ở TRÊN CÙNG)
+    if (!Array.isArray(window.groupOrder)) {
+        // khởi tạo: newest-first từ trạng thái hiện có
+        window.groupOrder = Object.keys(bangKetQua).slice().reverse();
+    }
+
+    if (isNewGroup) {
+        // nhóm mới: đưa lên đầu
+        window.groupOrder = [masp, ...window.groupOrder.filter(m => m !== masp)];
+    } else {
+        // nhóm cũ: giữ nguyên vị trí; nhưng nếu vì lý do gì chưa có thì thêm vào cuối
+        if (!window.groupOrder.includes(masp)) {
+            window.groupOrder.push(masp);
+        }
+    }
 
     // ⚡️ Lưu lại thông tin dòng vừa thêm + cờ nhóm mới/cũ
     window.lastAdded = { masp, size: normSize, isNewGroup };
