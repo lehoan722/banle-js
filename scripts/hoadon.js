@@ -29,10 +29,17 @@ export async function chuyenFocus(e) {
         const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked;
         const thanhCong = await xuLyMaSanPham(quanLySizeTheoGia, maspVal, size45, nhapNhanh);
 
-        // Nếu không thành công, mới mở popup tìm mã
-        if (!thanhCong && typeof moPopupTimMaSanPham === "function") {
-            moPopupTimMaSanPham();
+        // Nếu không thành công → chỉ đưa con trỏ về lại ô MÃ SP (không mở popup)
+        if (!thanhCong) {
+            const maspInput = document.getElementById("masp");
+            if (maspInput) {
+                setTimeout(() => {
+                    maspInput.focus();
+                    maspInput.select();
+                }, 600);
+            }
         }
+
     } else if (e.target.id === "soluong") {
         document.getElementById("size").focus();
     } else if (e.target.id === "size") {
@@ -101,10 +108,16 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         }
     }
 
-    // Nếu vẫn không tìm thấy, mở popup danh mục hàng hóa
+    // Không tìm thấy → chỉ cảnh báo và đưa con trỏ về lại ô MÃ SP
     if (!spData) {
-        if (typeof moBangDanhMucHangHoa === "function") {
-            moBangDanhMucHangHoa(maspVal);
+        alert("❌ Mã sản phẩm không hợp lệ. Vui lòng nhập lại.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) {
+            // main.js có patch alert phát âm + delay 500ms; đặt 600ms để focus xảy ra ngay sau khi đóng alert
+            setTimeout(() => {
+                maspInput.focus();
+                maspInput.select();
+            }, 600);
         }
         return false;
     }
