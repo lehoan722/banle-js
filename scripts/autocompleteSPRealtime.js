@@ -3,6 +3,20 @@ import { supabase } from "./supabaseClient.js";
 export function initAutocompleteRealtimeMasp() {
   const input = document.getElementById("masp");
   const popup = document.getElementById("popup_masp");
+
+  function hidePopup() {
+    if (popup) popup.style.display = "none";
+  }
+  // Cho phép file khác gọi đóng popup
+  window.closePopupMasp = hidePopup;
+
+  // Không chọn item nào mà vẫn Enter -> đóng popup
+  hidePopup();
+
+  input.addEventListener("blur", () => {
+    hidePopup();
+  });
+
   if (!input || !popup) return;
 
   let cursor = -1; // vị trí item đang chọn bằng phím
