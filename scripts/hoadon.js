@@ -205,7 +205,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 }
 
 export function themVaoBang(forcedSize = null, opts = {}) {
-     // luôn đóng popup ngay khi bắt đầu thêm
+    // luôn đóng popup ngay khi bắt đầu thêm
     window.closePopupMasp && window.closePopupMasp();
     const masp = layMaspGoc(document.getElementById("masp").value);
 
@@ -277,6 +277,16 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     bang.tong += soluong;
     bangKetQua[key] = bang;
+
+    // ⚡️ Lưu lại thông tin dòng vừa thêm
+    window.lastAdded = { masp, size: normSize };
+
+    // Gọi render bảng, truyền thêm lastAdded
+    capNhatBangHTML(bangKetQua, window.lastAdded);
+
+    // ✅ phát "tinh" báo thêm thành công
+    window.soundSuccess?.();
+
 
     capNhatBangHTML(bangKetQua);
     // ✅ phát "tinh" báo thêm thành công
