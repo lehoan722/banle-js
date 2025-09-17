@@ -12,37 +12,9 @@ import { supabase } from './supabaseClient.js';
 import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './banghanghoa.js';
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
+import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep } from './soundBeep.js';
 
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
-
-function initSounds() {
-  try {
-    const success = new Audio('/scripts/canhbaothanhcong.wav');
-    const waitsize = new Audio('/scripts/canhbaosize.wav');
-
-    // ⚠️ canh báo – ưu tiên wav, fallback wav nếu bạn dùng wav
-    let alertAudio = new Audio('/scripts/canhbaoloi.wav');
-    alertAudio.addEventListener('error', () => {
-      alertAudio = new Audio('/scripts/canhbaoloi.wav');
-    });
-
-    success.preload = 'auto';
-    waitsize.preload = 'auto';
-    alertAudio.preload = 'auto';
-
-    success.volume = 0.9;
-    waitsize.volume = 0.9;
-    alertAudio.volume = 0.9;
-
-    // Helper phát chồng
-    window.soundSuccess = () => { const a = success.cloneNode(true); a.volume = success.volume; a.play().catch(() => { }); };
-    window.soundWaitSize = () => { const a = waitsize.cloneNode(true); a.volume = waitsize.volume; a.play().catch(() => { }); };
-    window.soundAlert = () => { const a = alertAudio.cloneNode(true); a.volume = alertAudio.volume; a.play().catch(() => { }); };
-  } catch (e) {
-    console.warn('Không khởi tạo được âm thanh:', e);
-    window.soundSuccess = window.soundWaitSize = window.soundAlert = () => { };
-  }
-}
 
 export async function khoiTaoUngDung() {
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
@@ -139,11 +111,8 @@ export async function khoiTaoUngDung() {
     };
   }
 
-
   // Đảm bảo cho biến global dùng được ở bangketqua.js
   window.hienThiAnhSanPhamTuMasp = hienThiAnhSanPhamTuMasp;
-
-
 
   // Gán sự kiện khi nhập xong
   const maspInput = document.getElementById("masp");
@@ -230,28 +199,23 @@ export async function khoiTaoUngDung() {
     window.danhMucSize = []; // fallback rỗng nếu có lỗi
   }
 
-  initSounds(); // ✅ khởi tạo âm thanh khi app sẵn sàng
+  // Mở khóa audio trên iOS sau tương tác đầu tiên
+  setupBeepUnlockOnce(document);
+
+  // Gán 3 hàm toàn cục để các module khác gọi như cũ
+  window.soundSuccess = playSuccessBeep;
+  window.soundWaitSize = playWaitSizeBeep;
+  window.soundAlert = playAlertBeep;
+
 
   // Phát âm cảnh báo mỗi khi gọi alert()
   // Phát âm cảnh báo TRƯỚC, rồi mới mở alert ở tick kế tiếp
   (function patchAlert() {
     const nativeAlert = window.alert;
-
     window.alert = function (message) {
-      try {
-        // 1) phát âm ngay
-        if (typeof window.soundAlert === "function") {
-          window.soundAlert();
-        }
-      } catch { }
-
-      // 2) đẩy alert sang tick sau để âm thanh kịp "nổ" trước khi bị block
-      setTimeout(() => {
-        nativeAlert.call(window, message);
-      }, 500);
-
-      // 3) giữ nguyên API: trả về undefined như alert gốc
-      return;
+      try { window.soundAlert?.(); } catch { }
+      setTimeout(() => nativeAlert.call(window, message), 0);
+      return; // giữ API như alert gốc
     };
   })();
 
