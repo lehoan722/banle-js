@@ -205,6 +205,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 }
 
 export function themVaoBang(forcedSize = null, opts = {}) {
+     // luôn đóng popup ngay khi bắt đầu thêm
+    window.closePopupMasp && window.closePopupMasp();
     const masp = layMaspGoc(document.getElementById("masp").value);
 
     const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
