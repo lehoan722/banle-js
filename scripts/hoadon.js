@@ -208,6 +208,7 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // luôn đóng popup ngay khi bắt đầu thêm
     window.closePopupMasp && window.closePopupMasp();
     const masp = layMaspGoc(document.getElementById("masp").value);
+    const isNewGroup = !bangKetQua[masp]; // 🔔 nhóm mới hay không
 
     const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
     const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
@@ -278,13 +279,13 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     bang.tong += soluong;
     bangKetQua[key] = bang;
 
-    // ⚡️ Lưu lại thông tin dòng vừa thêm
-    window.lastAdded = { masp, size: normSize };
+    // ⚡️ Lưu lại thông tin dòng vừa thêm + cờ nhóm mới/cũ
+    window.lastAdded = { masp, size: normSize, isNewGroup };
 
-    // Gọi render bảng, truyền thêm lastAdded
+    // Render bảng theo luật mới
     capNhatBangHTML(bangKetQua, window.lastAdded);
 
-    // ✅ phát "tinh" báo thêm thành công
+    // "Tinh" báo thêm thành công
     window.soundSuccess?.();
 
 
