@@ -16,7 +16,19 @@ export function getMaspspDangChon() {
     return maspDangChon;
 }
 
-
+//Thêm hàm tính lại thành tiền + gắn sự kiện cho #gia & #khuyenmai (hoadon.js)
+function toInt(v) {
+    if (v == null) return 0;
+    return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
+}
+function recalcThanhtienFromForm() {
+    const sl = toInt(document.getElementById("soluong")?.value || "1");
+    const gia = toInt(document.getElementById("gia")?.value || "0");
+    const km = toInt(document.getElementById("khuyenmai")?.value || "0");
+    const tt = (gia - km) * sl;
+    const ttEl = document.getElementById("thanhtien");
+    if (ttEl) ttEl.value = tt.toLocaleString();
+}
 
 export async function chuyenFocus(e) {
     if (e.key !== "Enter") return;
@@ -132,6 +144,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
     document.getElementById("gia").value = spData.giale || "";
     document.getElementById("khuyenmai").value = spData.khuyenmai || "";
+
+    // đảm bảo #soluong = 1 nếu đang trống
+    const slEl = document.getElementById("soluong");
+    if (!slEl.value || toInt(slEl.value) <= 0) slEl.value = "1";
+
+    // tính ngay thành tiền theo công thức: sl * (gia - km)
+    recalcThanhtienFromForm();
 
     const cs = document.getElementById("diadiem").value;
     const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
@@ -471,4 +490,29 @@ export async function napLaiChiTietHoaDon(sohd) {
 
     capNhatBangHTML(bangKetQua, window.lastAdded);
 }
+
+//Gắn handler Enter/blur cho #gia và #khuyenmai (một lần khi trang load)
+document.addEventListener("DOMContentLoaded", () => {
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+
+    const recalcAndMaybeMove = (e) => {
+        recalcThanhtienFromForm();
+        if (e && e.type === "keydown" && e.key === "Enter") {
+            // sau khi người dùng Enter ở #khuyenmai/#gia, cho flow của bạn tiếp tục
+            // tuỳ quy trình: nếu muốn nhảy qua #size thì mở 2 dòng dưới:
+            // const sizeEl = document.getElementById("size");
+            // sizeEl?.focus();
+        }
+    };
+
+    ["blur", "change"].forEach(evt => {
+        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
+        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
+    });
+    ["keydown"].forEach(evt => {
+        giaEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
+        kmEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
+    });
+});
 
