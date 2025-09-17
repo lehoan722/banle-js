@@ -17,7 +17,7 @@
 
     <style>
         body {
-            font-family: Arial; 
+            font-family: Arial;
             margin: 0;
             height: 100%;
         }
@@ -87,9 +87,7 @@
             text-align: right;
         }
 
-        #ghichu {
-            flex: 1;
-        }
+
 
         .main {
             display: flex;
@@ -277,8 +275,7 @@
 
         #popupDanhMuc {
             display: none !important;
-        }login-email
-        
+        }
 
         html,
         body {
@@ -342,6 +339,11 @@
                 size: 80mm auto;
             }
         }
+
+        tr.highlight {
+            background-color: #fff3cd !important;
+            /* vàng nhạt */
+        }
     </style>
 
 
@@ -368,7 +370,7 @@
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
-    
+
 </head>
 
 <body>
@@ -446,38 +448,30 @@
             font-size: 15px;
             margin-left: 2px;
         }
-    </style>    
+    </style>
 
     <div class="menu-bar">
         <div class="tennv">
 
-            <label>
-                <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
-
-            <label> <input id="ngay" type="date" /></label>
-             
-             <input id="manv" type="password" placeholder="Mã NV" />           
+            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="ngay" type="date" readonly />
+            <input id="manv" type="password" placeholder="Mã NV" />
             <input id="tennv" placeholder="Tên NV" readonly />
-
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
-        </div> 
-              
-        <div id="app-menu" class="menu-bar"></div>       
+        </div>
 
-        
-         <!--
+        <div id="app-menu" class="menu-item"></div>
+
+        <!--
         <label>Giờ <input id="gio" /></label>
          
         
-         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->     
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
 
 
     </div>
+
 
 
     <div id="app-container" style="display:none;">
@@ -487,7 +481,7 @@
             <div style="position: relative;">
                 <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
             </div>
             <input id="soluong" value="1" />
@@ -497,9 +491,8 @@
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
-
-            <input id="ghichu" placeholder="Ghi chú HH" />
-            <button id="masp-search">🔍</button>
+            <input id="vitri" placeholder="vi tri" readonly />
+            <button id="xemtonkho">🔍</button>
         </div>
 
 
@@ -517,7 +510,6 @@
                             <th>Khuyến mại</th>
                             <th>Thành tiền</th>
                             <th>Vị trí</th> <!-- ✅ THÊM MỚI -->
-
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -541,7 +533,8 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label>Vị trí <input id="vitri" readonly="" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+
                         <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
@@ -605,12 +598,15 @@
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
 
+            <button id="sua" class="btn edit" type="button">SỬA</button>
+
             <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
+
 
             <!-- Popup tìm khách hàng
              
@@ -623,8 +619,10 @@
 
         </div>
 
+
         <div class="top-inputs">
-            ----------------------------------------------------------
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
+            F7: xem tồn kho nhanh, F8: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -641,7 +639,7 @@
         </div>
         <!-- ✅ Popup xác thực sửa hóa đơn -->
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-  background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
             <h3>Xác thực sửa hóa đơn</h3>
             <input id="xacmanv" placeholder="Mã nhân viên" type="password"
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
@@ -653,7 +651,7 @@
 
         <!-- Popup xác nhận thêm mới -->
         <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
             <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
@@ -664,7 +662,7 @@
         <!-- Popup nhập mã sản phẩm mới -->
         <div id="popupNhapMaMoi" class="popup-confirm"
             style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
-  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
+     background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
             <h3>Thêm mã sản phẩm mới</h3>
             <div id="formFields"></div>
             <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
@@ -673,7 +671,7 @@
         </div>
 
         <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
-  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
+     background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
             <h3>Cấu hình trường hiển thị</h3>
             <div id="dsCauHinhTruong"></div>
             <div style="text-align:right; margin-top:10px;">
@@ -702,7 +700,7 @@
         <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
         <div id="popupNhapHangHoa"
             style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
             <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
 
             <div id="fieldsNhapHangHoa"></div>
@@ -741,8 +739,9 @@
                     <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
                         required />
                 </div>
+
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
+                <input type="password" id="login-password" value="123123"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -892,7 +891,7 @@
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
             // Nút lưu
-            document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
+            //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
             // ================= THÊM ĐOẠN SAU =================
             // Ô số hóa đơn
@@ -1044,27 +1043,7 @@
             }
         });
     </script>
-    <script>
 
-        // Sau khi DOMContentLoaded hoặc ở script type="module"
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-
-    </script>
 
     <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
@@ -1118,7 +1097,8 @@
             document.getElementById('login-manv').focus();
         }
     </script>
-<script src="scripts/menu-component.js"></script>
+
+    <script src="scripts/menu-component.js"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
@@ -1139,7 +1119,7 @@
         });
     </script>
 
-     <script>  //<!-- banlemobile -->
+    <script>  //<!-- banlemobile -->
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
@@ -1152,6 +1132,13 @@
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
