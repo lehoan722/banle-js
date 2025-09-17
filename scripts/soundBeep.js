@@ -39,17 +39,17 @@ function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) 
 
 // “tinh” — ngắn, sáng
 export function playSuccessBeep() {
-  beep(1000, 140, "sine", 0.25);
+  beep(1200, 140, "sine", 0.7);
 }
 
 // “tút” — dài, trầm hơn
 export function playWaitSizeBeep() {
-  beep(400, 520, "sine", 0.22);
+  beep(520, 300, "sine", 0.7);
 }
 
 // Tuỳ chọn: beep cảnh báo (âm vuông, hơi “gắt” hơn)
 export function playAlertBeep() {
-  beep(520, 350, "square", 0.22);
+  beep(800, 500, "square", 0.7);
 }
 
 // Gợi ý: gọi hàm này 1 lần sau tương tác người dùng (click/keydown) để “unlock” audio trên iOS
