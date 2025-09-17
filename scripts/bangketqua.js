@@ -25,19 +25,30 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
+  // Trang "nhập mới" thì cách tính giá/khuyến mại khác
   const isNhap = window.location.pathname.includes("nhapmoi");
 
-  // 1) Thứ tự mã: nếu có lastAdded.masp thì đẩy lên đầu
-  const maspList = Object.keys(bangKetQua);
-  const orderedMasps = (lastAdded && lastAdded.masp && maspList.includes(lastAdded.masp))
-    ? [lastAdded.masp, ...maspList.filter(m => m !== lastAdded.masp)]
-    : maspList;
+  // 1) Thứ tự nhóm mã:
+  // - Nếu vừa thêm NHÓM MỚI (lastAdded.isNewGroup === true) -> đẩy nhóm đó lên đầu
+  // - Nếu thêm vào mã đã có -> giữ nguyên thứ tự hiện tại
+  const maspList = Object.keys(bangKetQua); // giữ insertion order
+  let orderedMasps = maspList;
+  if (
+    lastAdded &&
+    lastAdded.isNewGroup === true &&
+    lastAdded.masp &&
+    maspList.includes(lastAdded.masp)
+  ) {
+    orderedMasps = [lastAdded.masp, ...maspList.filter(m => m !== lastAdded.masp)];
+  }
 
+  // 2) Render theo thứ tự đã xác định
   orderedMasps.forEach(masp => {
     const item = bangKetQua[masp];
 
+    // Sắp xếp size tăng dần theo danh mục; fallback numeric nếu không có trong danh mục
     const sizes = item.sizes.map(s => String(s).trim());
-    const counts = item.soluongs.slice();
+    const counts = item.soluongs.slice(); // song song với sizes
 
     const toIndex = (sz) => {
       if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
@@ -45,15 +56,16 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         if (idx !== -1) return idx;
       }
       const n = parseFloat(sz);
-      return isNaN(n) ? Number.POSITIVE_INFINITY : n + 100000;
+      return isNaN(n) ? Number.POSITIVE_INFINITY : n + 100000; // tránh va chạm index hợp lệ
     };
 
-    const idxArr = sizes.map((_, i) => i).sort((i, j) => toIndex(sizes[i]) - toIndex(sizes[j]));
+    const orderIdx = sizes.map((_, i) => i).sort((i, j) => toIndex(sizes[i]) - toIndex(sizes[j]));
 
-    idxArr.forEach(i => {
+    orderIdx.forEach(i => {
       const sz = sizes[i];
       const sl = counts[i];
 
+      // Tính giá/km theo nghiệp vụ
       let gia = item.gia || 0;
       let km = item.km || 0;
       if (isNhap) {
@@ -81,12 +93,13 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         <td>${vitri}</td>
       `;
 
+      // Chọn/sửa theo cặp (masp, size)
       tr.addEventListener("click", () => {
         setMaspspDangChon({ masp: item.masp, size: sz });
         highlightRow(tr);
       });
 
-      // 3) Highlight dòng vừa thêm
+      // 3) Highlight dòng vừa thêm (giữ tới lần thêm kế tiếp)
       if (
         lastAdded &&
         String(lastAdded.masp).toUpperCase() === String(item.masp).toUpperCase() &&
@@ -97,6 +110,7 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
     });
   });
 
+  // 4) Cập nhật tổng
   capNhatThongTinTong(bangKetQua);
 }
 
