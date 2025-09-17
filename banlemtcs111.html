@@ -270,7 +270,7 @@
         .tab-content {
             flex-grow: 0;
             /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
-        }        
+        }
 
         html,
         body {
@@ -354,7 +354,7 @@
             switchTab("thongtin");
         });
 
-        
+
     </script>
 
     <!-- banlemobile -->
@@ -620,7 +620,7 @@
         <div class="top-inputs">
             ----------------------------------------------------------
         </div>
-        
+
         <!-- ✅ Popup xác thực sửa hóa đơn -->
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
      background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
@@ -629,7 +629,8 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+
             <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
 
@@ -642,7 +643,7 @@
                 <button onclick="dongTatCaPopup()">❌ Không</button>
             </div>
         </div>
-                
+
     </div>
 
     <!-- Đăng nhập Supabase -->
@@ -1066,6 +1067,75 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
+    </script>
+
+    <script>
+        // Mở popup xác thực + focus ngay vào #xacmanv
+        function moPopupXacThucSua() {
+            const p = document.getElementById('popupXacThucSua');
+            p.style.display = 'block';
+            setTimeout(() => {
+                const manv = document.getElementById('xacmanv');
+                if (manv) { manv.focus(); manv.select(); }
+            }, 0);
+        }
+
+        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
+        document.addEventListener('DOMContentLoaded', () => {
+            const manv = document.getElementById('xacmanv');
+            const mk = document.getElementById('xacmatkhau');
+            const btn = document.getElementById('btnXacNhanSua');
+
+            if (manv) {
+                manv.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (mk) { mk.focus(); mk.select(); }
+                    }
+                });
+            }
+
+            if (mk) {
+                mk.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (btn) { btn.focus(); }
+                    }
+                });
+            }
+
+            if (btn) {
+                btn.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btn.click(); // = gọi xacNhanSuaHoaDon()
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
+                    moPopupXacThucSua();
+                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+                });
+            }
+
+            // Nếu bạn muốn cả nút "SỬA" cũng yêu cầu xác thực:
+            const btnSua = document.getElementById('sua');
+            if (btnSua) {
+                btnSua.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    moPopupXacThucSua();
+                });
+            }
+        });
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
