@@ -475,9 +475,7 @@
         <div class="top-inputs">
             <div style="position: relative;">
                 <input id="masp" placeholder="Mã SP" autocomplete="off" />
-                <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
-                </div>
+                
             </div>
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
@@ -616,7 +614,7 @@
         
 
         <div class="top-inputs">
-     F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size, F8: xem tồn kho nhanh,
+     F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size, F7: xem tồn kho nhanh, F8: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -633,7 +631,7 @@
         </div>
         <!-- ✅ Popup xác thực sửa hóa đơn -->
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-  background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
             <h3>Xác thực sửa hóa đơn</h3>
             <input id="xacmanv" placeholder="Mã nhân viên" type="password"
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
@@ -645,7 +643,7 @@
 
         <!-- Popup xác nhận thêm mới -->
         <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
             <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
@@ -656,7 +654,7 @@
         <!-- Popup nhập mã sản phẩm mới -->
         <div id="popupNhapMaMoi" class="popup-confirm"
             style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
-  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
+     background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
             <h3>Thêm mã sản phẩm mới</h3>
             <div id="formFields"></div>
             <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
@@ -665,7 +663,7 @@
         </div>
 
         <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
-  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
+     background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
             <h3>Cấu hình trường hiển thị</h3>
             <div id="dsCauHinhTruong"></div>
             <div style="text-align:right; margin-top:10px;">
@@ -694,7 +692,7 @@
         <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
         <div id="popupNhapHangHoa"
             style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
             <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
 
             <div id="fieldsNhapHangHoa"></div>
