@@ -30,9 +30,9 @@ function initSounds() {
     waitsize.preload = 'auto';
     alertAudio.preload = 'auto';
 
-    success.volume = 0.7;
-    waitsize.volume = 0.7;
-    alertAudio.volume = 0.7;
+    success.volume = 0.9;
+    waitsize.volume = 0.9;
+    alertAudio.volume = 0.9;
 
     // Helper phát chồng
     window.soundSuccess = () => { const a = success.cloneNode(true); a.volume = success.volume; a.play().catch(() => { }); };
@@ -248,7 +248,7 @@ export async function khoiTaoUngDung() {
       // 2) đẩy alert sang tick sau để âm thanh kịp "nổ" trước khi bị block
       setTimeout(() => {
         nativeAlert.call(window, message);
-      }, 200);
+      }, 300);
 
       // 3) giữ nguyên API: trả về undefined như alert gốc
       return;
