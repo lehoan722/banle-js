@@ -21,14 +21,7 @@ function toInt(v) {
     if (v == null) return 0;
     return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
 }
-function recalcThanhtienFromForm() {
-    const sl = toInt(document.getElementById("soluong")?.value || "1");
-    const gia = toInt(document.getElementById("gia")?.value || "0");
-    const km = toInt(document.getElementById("khuyenmai")?.value || "0");
-    const tt = (gia - km) * sl;
-    const ttEl = document.getElementById("thanhtien");
-    if (ttEl) ttEl.value = tt.toLocaleString();
-}
+
 
 // --- Helpers tiền/tỉ lệ & tính thành tiền ---
 function parseMoneyInt(v) {
