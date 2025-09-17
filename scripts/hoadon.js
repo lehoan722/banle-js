@@ -25,6 +25,8 @@ export async function chuyenFocus(e) {
     const size45 = document.getElementById("size45").checked;
 
     if (e.target.id === "masp") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
         const maspVal = document.getElementById("masp").value.trim().toUpperCase();
         const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked;
         const thanhCong = await xuLyMaSanPham(quanLySizeTheoGia, maspVal, size45, nhapNhanh);
@@ -41,8 +43,13 @@ export async function chuyenFocus(e) {
         }
 
     } else if (e.target.id === "soluong") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
+
         document.getElementById("size").focus();
     } else if (e.target.id === "size") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
         const sizeInput = document.getElementById("size");
         const maspInput = document.getElementById("masp");
         const raw = String(sizeInput.value || "").trim();
@@ -273,6 +280,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // ✅ phát "tinh" báo thêm thành công
     window.soundSuccess?.();
     if (opts.afterAdd === "keepMaspFocusSize") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
         // ✅ Tăng bộ đếm (xx) ngay trên ô #masp
         const maspEl = document.getElementById("masp");
         const raw = String(maspEl.value || "").trim().toUpperCase();
