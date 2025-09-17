@@ -288,9 +288,6 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     window.soundSuccess?.();
 
 
-    capNhatBangHTML(bangKetQua);
-    // ✅ phát "tinh" báo thêm thành công
-    window.soundSuccess?.();
     if (opts.afterAdd === "keepMaspFocusSize") {
         // Đóng gợi ý MASP ngay khi Enter ở #masp
         window.closePopupMasp && window.closePopupMasp();
@@ -324,7 +321,7 @@ export function getBangKetQua() {
 export function resetBangKetQua() {
     bangKetQua = {};
     if (window.bangKetQua) window.bangKetQua = {};
-    capNhatBangHTML(bangKetQua);
+    capNhatBangHTML(bangKetQua, window.lastAdded);
 }
 
 
@@ -342,7 +339,7 @@ export function xoaDongDangChon() {
     if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
         delete bangKetQua[maspDangChon];
         maspDangChon = null;
-        capNhatBangHTML(bangKetQua);
+        capNhatBangHTML(bangKetQua, window.lastAdded);
     }
 }
 
@@ -380,7 +377,7 @@ export function suaDongDangChon() {
     if (item.sizes.length === 0) delete bangKetQua[masp];
 
     maspDangChon = null;
-    capNhatBangHTML(bangKetQua);
+    capNhatBangHTML(bangKetQua, window.lastAdded);
 
     // Focus lại vào ô nhập liệu đầu vào để sửa
     document.getElementById("masp").focus();
@@ -428,6 +425,6 @@ export async function napLaiChiTietHoaDon(sohd) {
         bangKetQua[masp].tong += ct.soluong;
     });
 
-    capNhatBangHTML(bangKetQua);
+    capNhatBangHTML(bangKetQua, window.lastAdded);
 }
 
