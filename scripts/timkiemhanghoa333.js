@@ -904,15 +904,6 @@ function initXntHot(containerEl, rowMap) {
 }
 
 
-// Hiển thị rỗng nếu = 0, còn dữ liệu nguồn vẫn là số
-function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
-    const v = (value === null || value === undefined || value === '') ? '' : Number(value);
-    // dùng TextRenderer mặc định trước
-    Handsontable.renderers.TextRenderer.apply(this, arguments);
-    // Nếu là số 0 -> hiển thị rỗng
-    td.textContent = (v === 0) ? '' : (Number.isFinite(v) ? String(v) : '');
-}
-
 
 /* ====== TIỆN ÍCH ====== */
 
