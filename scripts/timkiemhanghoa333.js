@@ -786,7 +786,6 @@ window.onload = async function () {
 // ====== XNT HOT (Handsontable) ======
 let xntHot = null;
 
-// Thứ tự cột và key dữ liệu tương ứng
 const XNT_COLS = [
     { header: 'Size', key: 'size' },
     { header: 'Tồn CS1', key: 'ton_cs1' },
@@ -798,16 +797,28 @@ const XNT_COLS = [
     { header: 'Tổng tồn', key: 'toncuoi' },
 ];
 
-// Tạo dữ liệu cho HOT theo rowMap (size → record)
+// 0 -> hiển thị rỗng (dữ liệu vẫn là số)
+function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
+    const v = (value === '' || value == null) ? '' : Number(value);
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.textContent = (v === 0) ? '' : (Number.isFinite(v) ? String(v) : '');
+}
+
+// Tổng từ các hàng size (index 1..n) vào hàng 0
+function recalcXntTotals(rows) {
+    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
+    for (let i = 1; i < rows.length; i++) {
+        for (const k of Object.keys(total)) total[k] += Number(rows[i][k]) || 0;
+    }
+    Object.assign(rows[0], total);
+}
+
+// Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
 function buildXntRows(rowMap) {
     const SIZE_LIST = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    // Hàng tổng nằm ở index 0
     const rows = [{
-        size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0,
-        nhapmua: 0, xuatban: 0, toncuoi: 0, __readonly: true
+        size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0
     }];
-
-    // Các size chuẩn; nếu thiếu dữ liệu thì điền 0
     for (const sz of SIZE_LIST) {
         const r = rowMap[sz] || {};
         rows.push({
@@ -818,42 +829,27 @@ function buildXntRows(rowMap) {
             ban_cs2: Number(r.ban_cs2) || 0,
             nhapmua: Number(r.nhapmua) || 0,
             xuatban: Number(r.xuatban) || 0,
-            toncuoi: Number(r.toncuoi) || 0
+            toncuoi: Number(r.toncuoi) || 0,
         });
     }
-
-    // Tính tổng ban đầu
     recalcXntTotals(rows);
     return rows;
 }
 
-// Cộng lại hàng Tổng (index 0) từ các size (index 1..n)
-function recalcXntTotals(rows) {
-    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
-    for (let i = 1; i < rows.length; i++) {
-        for (const k of Object.keys(total)) total[k] += Number(rows[i][k]) || 0;
-    }
-    Object.assign(rows[0], total);
-}
-
-// Khởi tạo (hoặc re-init) Handsontable cho bảng XNT
 function initXntHot(containerEl, rowMap) {
     const data = buildXntRows(rowMap);
 
-    const columns = XNT_COLS.map((c) => {
-        if (c.key === 'size') {
-            return { data: c.key, readOnly: true, className: 'htCenter htBold' };
-        }
+    const columns = XNT_COLS.map(c => {
+        if (c.key === 'size') return { data: c.key, readOnly: true, className: 'htCenter htBold' };
         return {
             data: c.key,
             type: 'numeric',
-            numericFormat: { pattern: '0' },   // data vẫn là số
+            numericFormat: { pattern: '0' },
             allowInvalid: false,
-            renderer: zeroBlankRenderer        // <-- HIỂN THỊ rỗng nếu 0
+            renderer: zeroBlankRenderer,
         };
     });
 
-    // Nếu đã tồn tại -> destroy để tạo lại sạch
     if (xntHot) { try { xntHot.destroy(); } catch (_) { } xntHot = null; }
 
     xntHot = new Handsontable(containerEl, {
@@ -865,19 +861,12 @@ function initXntHot(containerEl, rowMap) {
         stretchH: 'all',
         height: 'auto',
         manualColumnResize: true,
-        contextMenu: ['row_above', 'row_below', 'remove_row', 'sep1', 'undo', 'redo'], // cho thao tác cơ bản
-        cells: (row, col) => {
-            const cellMeta = {};
-            if (row === 0) { // hàng Tổng
-                cellMeta.readOnly = true;
-                cellMeta.className = 'htCenter htBold';
-            } else if (col === 0) { // cột Size
-                cellMeta.readOnly = true;
-                cellMeta.className = 'htCenter htBold';
-            } else {
-                cellMeta.className = 'htRight';
-            }
-            return cellMeta;
+        contextMenu: ['row_above', 'row_below', 'remove_row', 'sep1', 'undo', 'redo'],
+        cells: (row, col, prop) => {
+            const meta = {};
+            if (row === 0 || prop === 'size') { meta.readOnly = true; meta.className = 'htCenter htBold'; }
+            else { meta.className = 'htRight'; }
+            return meta;
         },
         afterChange: (changes, source) => {
             if (!changes || ['loadData', 'recalc', 'coerce'].includes(source)) return;
@@ -885,39 +874,35 @@ function initXntHot(containerEl, rowMap) {
             let needRecalc = false;
 
             for (const [r, c, oldVal, newVal] of changes) {
-                // chỉ xử lý ô dữ liệu số (bỏ hàng Tổng r=0, bỏ cột Size c=0)
-                if (r > 0 && c > 0) {
-                    const coerced = (newVal === '' || newVal === null || newVal === undefined)
-                        ? 0
-                        : Number(newVal);
-                    // Nếu khác với input ban đầu, set lại bằng 'coerce' để tránh vòng lặp
+                // c ở đây là 'prop' (tên key) vì data là object
+                if (r > 0 && c !== 'size') {
+                    const coerced = (newVal === '' || newVal == null) ? 0 : Number(newVal);
                     if (!Number.isFinite(coerced)) {
-                        xntHot.setDataAtCell(r, c, 0, 'coerce');
+                        xntHot.setSourceDataAtCell(r, c, 0, 'coerce');
                     } else if (String(coerced) !== String(newVal)) {
-                        xntHot.setDataAtCell(r, c, coerced, 'coerce');
+                        xntHot.setSourceDataAtCell(r, c, coerced, 'coerce');
                     }
                     needRecalc = true;
                 }
             }
 
             if (needRecalc) {
-                const curr = xntHot.getSourceData();
+                const curr = xntHot.getSourceData();   // array of objects
                 recalcXntTotals(curr);
-                // Cập nhật hàng Tổng (row 0) trực tiếp vào source data (theo prop)
-                XNT_COLS.forEach((colDef) => {
+                // bơm lại hàng Tổng theo PROP (không dùng index cột!)
+                for (const colDef of XNT_COLS) {
                     if (colDef.key !== 'size') {
                         xntHot.setSourceDataAtCell(0, colDef.key, curr[0][colDef.key], 'recalc');
                     }
-                });
+                }
                 xntHot.render();
-
             }
         }
-
     });
 
     return xntHot;
 }
+
 
 // Hiển thị rỗng nếu = 0, còn dữ liệu nguồn vẫn là số
 function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
