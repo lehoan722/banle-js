@@ -91,18 +91,7 @@ export async function chuyenFocus(e) {
             // Gọi với tùy chọn hậu xử lý để KHÔNG xóa masp và focus về size
             themVaoBang(val, { afterAdd: "keepMaspFocusSize" });
             return;
-        }
-
-        // 2) Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SẢN PHẨM MỚI
-        if (val.length >= 3) {
-            maspInput.value = layMaspGoc(val);   // ghi mã mới luôn là mã gốc
-
-            sizeInput.value = "";    // xóa size cũ
-            // Giả lập Enter ở ô masp để tái sử dụng luồng cũ
-            const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
-            maspInput.dispatchEvent(ev);
-            return;
-        }
+        }        
 
         // 3) Không hợp lệ và ≤ 2 ký tự -> cảnh báo theo yêu cầu
         alert("Bạn phải nhập size hoặc mã sản phẩm hợp lệ.");
