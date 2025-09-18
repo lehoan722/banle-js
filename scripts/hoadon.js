@@ -124,8 +124,61 @@ export async function chuyenFocus(e) {
             sizeInput.select();
             return;
         }
-    }
+    } else if (e.target.id === "khuyenmai") {
+        // Chuẩn hoá khuyến mại: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien
+        const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
+        let km = parseFloat(String(document.getElementById("khuyenmai").value).replace(/\./g, "").replace(/,/g, "."));
+        if (!isFinite(km)) km = 0;
+        // <=100 -> %, >100 -> tiền
+        km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
+        document.getElementById("khuyenmai").value = km.toLocaleString();
 
+        // tính lại #thanhtien
+        recalcThanhtienFromForm();
+
+        // Nếu đủ dữ liệu (masp hợp lệ, size hợp lệ, sl > 0) -> tự thêm
+        const masp = (document.getElementById("masp")?.value || "").trim();
+        const size = (document.getElementById("size")?.value || "").trim();
+        const sl = parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1;
+
+        const dsSize = Array.isArray(window.danhMucSize)
+            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+            : [];
+        const isValidSize = size && dsSize.includes(size.toUpperCase());
+
+        if (masp && isValidSize && sl > 0) {
+            themVaoBang(size, { afterAdd: "resetFormToMasp" });
+        }
+        return;
+    } else if (e.target.id === "gia") {
+        // Chuẩn hoá giá & tính lại thanhtien
+        const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
+        document.getElementById("gia").value = gia.toLocaleString();
+
+        // km có thể đang là % người dùng vừa gõ trước đó → convert như nhánh trên
+        let kmIn = String(document.getElementById("khuyenmai").value).trim();
+        let km = parseFloat(kmIn.replace(/\./g, "").replace(/,/g, "."));
+        if (!isFinite(km)) km = 0;
+        km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
+        document.getElementById("khuyenmai").value = km.toLocaleString();
+
+        recalcThanhtienFromForm();
+
+        const masp = (document.getElementById("masp")?.value || "").trim();
+        const size = (document.getElementById("size")?.value || "").trim();
+        const sl = parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1;
+
+        const dsSize = Array.isArray(window.danhMucSize)
+            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+            : [];
+        const isValidSize = size && dsSize.includes(size.toUpperCase());
+
+        if (masp && isValidSize && sl > 0) {
+            themVaoBang(size, { afterAdd: "resetFormToMasp" });
+        }
+        return;
+    }
+    
 }
 
 function layMaspGoc(str) {
@@ -466,12 +519,13 @@ export function suaDongDangChon() {
     document.getElementById("dvt").value = item.dvt || "";
     document.getElementById("gia").value = item.gia || "";
     document.getElementById("khuyenmai").value = item.km || "";
-    document.getElementById("thanhtien").value = item.km || "";
-
+    // ✅ tính lại thành tiền đưa lên form
+    recalcThanhtienFromForm();   // <— THÊM DÒNG NÀY
     // Gán mã & BÔI ĐEN ngay để người dùng có thể nhấn Delete là xoá toàn bộ mã 🔴
     maspEl.value = item.masp || "";
     maspEl.focus();        // 🔴
     maspEl.select();       // 🔴
+    setTimeout(() => { maspEl.focus(); maspEl.select(); }, 0);
 
     // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
     item.sizes.splice(idx, 1);
