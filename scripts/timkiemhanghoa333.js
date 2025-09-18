@@ -190,22 +190,19 @@ async function triggerSearch(_masp = null) {
     const multi = document.getElementById("multiDetailBox");
     multi.innerHTML = "";
 
+    multi.innerHTML = "";
     for (const m of productWithXNT) {
-        // 1) xin HTML (đã tính rowMap và lưu window.XNT_ROW_MAPS[m])
         const html = await renderProductDetailHTML_Editable(m);
-
-        // 2) tạo wrapper + gán HTML
         const wrap = document.createElement("div");
         wrap.style.marginBottom = "32px";
         wrap.style.borderBottom = "1px dashed #90caf9";
         wrap.innerHTML = html;
         multi.appendChild(wrap);
 
-        // 3) khởi tạo HOT trên placeholder của block hiện tại
         const safeId = _safeIdFromMasp(m);
         const el = wrap.querySelector(`#xntHot_${safeId}`);
         const rowMap = window.XNT_ROW_MAPS[m];
-        if (el && rowMap) initXntHot(el, rowMap);
+        if (el && rowMap) initXntHot(el, rowMap, m);
     }
 
     multi.style.display = "";
@@ -427,7 +424,7 @@ async function renderProductDetailHTML_Editable(masp) {
 }
 
 /* ====== KHỐI HTML CHO NHIỀU MÃ (dùng cùng layout mới) ====== */
-async function renderProductDetailHTML(masp) {
+async function renderProductDetailHTML_Editable(masp) {
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
 
@@ -906,7 +903,7 @@ window.onload = async function () {
 };
 
 // ====== XNT HOT (Handsontable) ======
-let xntHot = null;
+const xntHotInstances = {};  // thay vì let xntHot = null
 
 const XNT_COLS = [
     { header: 'Size', key: 'size' },
@@ -958,7 +955,7 @@ function buildXntRows(rowMap) {
     return rows;
 }
 
-function initXntHot(containerEl, rowMap) {
+function initXntHot(containerEl, rowMap, masp) {
     const data = buildXntRows(rowMap);
 
     const columns = XNT_COLS.map(c => {
@@ -972,9 +969,13 @@ function initXntHot(containerEl, rowMap) {
         };
     });
 
-    if (xntHot) { try { xntHot.destroy(); } catch (_) { } xntHot = null; }
+    // nếu đã có instance cho masp thì destroy trước
+    if (xntHotInstances[masp]) {
+        try { xntHotInstances[masp].destroy(); } catch (_) { }
+        delete xntHotInstances[masp];
+    }
 
-    xntHot = new Handsontable(containerEl, {
+    const hot = new Handsontable(containerEl, {
         data,
         columns,
         rowHeaders: true,
@@ -992,39 +993,31 @@ function initXntHot(containerEl, rowMap) {
         },
         afterChange: (changes, source) => {
             if (!changes || ['loadData', 'recalc', 'coerce'].includes(source)) return;
-
             let needRecalc = false;
-
             for (const [r, c, oldVal, newVal] of changes) {
-                // c ở đây là 'prop' (tên key) vì data là object
                 if (r > 0 && c !== 'size') {
                     const coerced = (newVal === '' || newVal == null) ? 0 : Number(newVal);
-                    if (!Number.isFinite(coerced)) {
-                        xntHot.setSourceDataAtCell(r, c, 0, 'coerce');
-                    } else if (String(coerced) !== String(newVal)) {
-                        xntHot.setSourceDataAtCell(r, c, coerced, 'coerce');
-                    }
+                    if (!Number.isFinite(coerced)) hot.setSourceDataAtCell(r, c, 0, 'coerce');
+                    else if (String(coerced) !== String(newVal)) hot.setSourceDataAtCell(r, c, coerced, 'coerce');
                     needRecalc = true;
                 }
             }
-
             if (needRecalc) {
-                const curr = xntHot.getSourceData();   // array of objects
+                const curr = hot.getSourceData();
                 recalcXntTotals(curr);
-                // bơm lại hàng Tổng theo PROP (không dùng index cột!)
                 for (const colDef of XNT_COLS) {
                     if (colDef.key !== 'size') {
-                        xntHot.setSourceDataAtCell(0, colDef.key, curr[0][colDef.key], 'recalc');
+                        hot.setSourceDataAtCell(0, colDef.key, curr[0][colDef.key], 'recalc');
                     }
                 }
-                xntHot.render();
+                hot.render();
             }
         }
     });
 
-    return xntHot;
+    xntHotInstances[masp] = hot;  // lưu lại
+    return hot;
 }
-
 
 
 /* ====== TIỆN ÍCH ====== */
@@ -1112,4 +1105,5 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
         document.getElementById('clearBulkBtn')?.click();
     }
 });
+
 
