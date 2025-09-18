@@ -179,7 +179,6 @@ export async function chuyenFocus(e) {
         return;
     }
 
-
 }
 
 function layMaspGoc(str) {
