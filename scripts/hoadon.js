@@ -72,6 +72,7 @@ export async function chuyenFocus(e) {
     } else if (e.target.id === "size") {
         // Đóng gợi ý MASP ngay khi Enter ở #masp
         window.closePopupMasp && window.closePopupMasp();
+
         const sizeInput = document.getElementById("size");
         const maspInput = document.getElementById("masp");
         const raw = String(sizeInput.value || "").trim();
@@ -83,31 +84,46 @@ export async function chuyenFocus(e) {
             : [];
 
         const isValidSize = val && dsSize.includes(val);
+        const nhapSizeMode = document.getElementById("nhapsize")?.checked === true; // 🔴 CHẾ ĐỘ NHẬP SIZE LIÊN TIẾP
 
-        // 1) Size hợp lệ -> thêm dòng, giữ nguyên #masp, focus + select() về #size
-        if (isValidSize) {
-            // đảm bảo số lượng = 1 cho luồng nhập nhanh size
-            //document.getElementById("soluong").value = "1";
-            // Gọi với tùy chọn hậu xử lý để KHÔNG xóa masp và focus về size
-            themVaoBang(val, { afterAdd: "keepMaspFocusSize" });
+        if (nhapSizeMode) {
+            // ====== MODE A: Đang bật nhập size liên tiếp ======
+            if (isValidSize) {
+                // Thêm dòng, GIỮ MÃ SP, focus + select về #size để nhập liên tiếp
+                themVaoBang(val, { afterAdd: "keepMaspFocusSize" });
+                return;
+            }
+
+            // Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SP MỚI
+            if (val.length >= 3) {
+                maspInput.value = layMaspGoc(val);   // ghi thẳng sang #masp (mã gốc, bỏ hậu tố)
+                sizeInput.value = "";                 // xóa size vừa gõ
+                // Giả lập Enter ở ô masp để tái sử dụng luồng xử lý mã
+                const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+                maspInput.dispatchEvent(ev);
+                return;
+            }
+
+            // Không hợp lệ và < 3 ký tự -> báo lỗi + focus lại #size
+            alert("Bạn phải nhập size hợp lệ hoặc gõ một mã sản phẩm (từ 3 ký tự).");
+            sizeInput.focus();
+            sizeInput.select();
+            return;
+
+        } else {
+            // ====== MODE B: Không bật nhập size liên tiếp (an toàn) ======
+            if (isValidSize) {
+                // Thêm dòng, SAU ĐÓ focus + select về #masp để nhập mã mới
+                themVaoBang(val); // dùng luồng mặc định -> resetFormBang() sẽ focus #masp
+                return;
+            }
+
+            // Không hợp lệ (dài hay ngắn đều coi là sai) -> chỉ báo lỗi + ở lại #size
+            alert("Bạn phải nhập size hợp lệ.");
+            sizeInput.focus();
+            sizeInput.select();
             return;
         }
-
-        // 2) Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SẢN PHẨM MỚI
-        if (val.length >= 3) {
-            maspInput.value = layMaspGoc(val);   // ghi mã mới luôn là mã gốc
-
-            sizeInput.value = "";    // xóa size cũ
-            // Giả lập Enter ở ô masp để tái sử dụng luồng cũ
-            const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
-            maspInput.dispatchEvent(ev);
-            return;
-        }
-
-        // 3) Không hợp lệ và ≤ 2 ký tự -> cảnh báo theo yêu cầu
-        alert("Bạn phải nhập size hoặc mã sản phẩm hợp lệ.");
-        sizeInput.focus();
-        sizeInput.select();
     }
 
 }
