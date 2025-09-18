@@ -100,7 +100,6 @@ export async function luuHoaDonQuaAPI() {
         return;
     }
 
-
     if (tonTai && choPhepSua) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
@@ -228,7 +227,6 @@ export async function luuHoaDonNhapQuaAPI() {
         if (manvEl) { manvEl.focus(); manvEl.select(); }
         return;
     }
-
 
     if (tonTai && choPhepSua) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
@@ -615,7 +613,6 @@ export async function luuHoaDonccn1v2() {
         if (manvEl) { manvEl.focus(); manvEl.select(); }
         return;
     }
-
 
     if (tonTai && choPhepSua) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
