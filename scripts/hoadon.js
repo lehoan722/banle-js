@@ -275,11 +275,15 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     }
 
     // ==== END KIỂM TRA ====
+    // Lấy giá & khuyến mại từ form
+    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
+    const giaForm = toInt(document.getElementById("gia")?.value || "0");
+    let kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
 
-    // LẤY GIÁ & KM TỪ FORM (CHUẨN HOÁ % → TIỀN)
-    const giaForm = Math.round(parseMoneyInt(document.getElementById("gia")?.value || 0));
-    const kmInput = document.getElementById("khuyenmai")?.value || 0;
-    const kmForm = normalizeKmToMoney(giaForm, kmInput); // <= 100 => %, > 100 => tiền
+    // Nếu nhập khuyến mại < 100 → coi là %
+    if (kmForm > 0 && kmForm < 100) {
+        kmForm = Math.round((giaForm * kmForm) / 100);
+    }
 
     const key = masp;
     const bang = bangKetQua[key] || {
@@ -290,12 +294,13 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         tong: 0,
         gia: giaForm,
         km: kmForm,
-        dvt: ""
+        dvt: sp.dvt || ""
     };
 
-    // Nếu nhóm đã tồn tại: cập nhật giá/KM hiện tại để size mới dùng đúng
+    // Nếu nhóm đã tồn tại → cập nhật giá/km theo form (ưu tiên người dùng nhập tay)
     bang.gia = giaForm;
     bang.km = kmForm;
+
 
     // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
     const normSize = String(size).trim();
