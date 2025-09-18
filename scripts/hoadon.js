@@ -16,6 +16,18 @@ export function getMaspspDangChon() {
     return maspDangChon;
 }
 
+function toInt(v) {
+    if (v == null) return 0;
+    return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
+}
+function recalcThanhtienFromForm() {
+    const sl = toInt(document.getElementById("soluong")?.value || "1");
+    const gia = toInt(document.getElementById("gia")?.value || "0");
+    const km = toInt(document.getElementById("khuyenmai")?.value || "0");
+    const tt = (gia - km) * sl;
+    const ttEl = document.getElementById("thanhtien");
+    if (ttEl) ttEl.value = tt.toLocaleString();
+}
 
 
 export async function chuyenFocus(e) {
@@ -133,6 +145,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     document.getElementById("gia").value = spData.giale || "";
     document.getElementById("khuyenmai").value = spData.khuyenmai || "";
 
+    // đảm bảo #soluong = 1 nếu đang trống
+    const slEl = document.getElementById("soluong");
+    if (!slEl.value || toInt(slEl.value) <= 0) slEl.value = "1";
+
+    // tính ngay thành tiền theo công thức: sl * (gia - km)
+    recalcThanhtienFromForm();
+
     const cs = document.getElementById("diadiem").value;
     const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
     document.getElementById("vitri").value = vitri || "";
@@ -249,10 +268,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     }
 
-
     // ==== END KIỂM TRA ====
-    const gia = parseFloat(document.getElementById("gia").value) || 0;
-    let km = tinhKhuyenMai(sp, gia);
+    // LẤY GIÁ & KM TỪ FORM HIỆN TẠI
+    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
+    const giaForm = toInt(document.getElementById("gia")?.value || "0");
+    const kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
 
     const key = masp;
     const bang = bangKetQua[key] || {
@@ -261,10 +281,15 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         sizes: [],
         soluongs: [],
         tong: 0,
-        gia,
-        km,
+        gia: giaForm,  // GIỮ theo giá bạn vừa xem/chỉnh trên form
+        km: kmForm,   // GIỮ theo khuyến mại bạn vừa nhập
         dvt: ""
     };
+
+    // Nếu nhóm đã tồn tại và bạn muốn dùng GIÁ/KM mới cho các size thêm vào sau → cập nhật luôn:
+    bang.gia = giaForm;
+    bang.km = kmForm;
+
 
     // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
     const normSize = String(size).trim();
@@ -469,4 +494,29 @@ export async function napLaiChiTietHoaDon(sohd) {
 
     capNhatBangHTML(bangKetQua, window.lastAdded);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+
+    const recalcAndMaybeMove = (e) => {
+        recalcThanhtienFromForm();
+        if (e && e.type === "keydown" && e.key === "Enter") {
+            // sau khi người dùng Enter ở #khuyenmai/#gia, cho flow của bạn tiếp tục
+            // tuỳ quy trình: nếu muốn nhảy qua #size thì mở 2 dòng dưới:
+            // const sizeEl = document.getElementById("size");
+            // sizeEl?.focus();
+        }
+    };
+
+    ["blur", "change"].forEach(evt => {
+        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
+        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
+    });
+    ["keydown"].forEach(evt => {
+        giaEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
+        kmEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
+    });
+});
+
 
