@@ -185,26 +185,14 @@ async function triggerSearch(_masp = null) {
         return;
     }
 
-    // nhiều mã → render từng block + HOT editable
+    // nhiều mã
     document.getElementById("singleDetailBox").style.display = "none";
-    const multi = document.getElementById("multiDetailBox");
-    multi.innerHTML = "";
-
-    multi.innerHTML = "";
+    let html = "";
     for (const m of productWithXNT) {
-        const html = await renderProductDetailHTML_Editable(m);
-        const wrap = document.createElement("div");
-        wrap.style.marginBottom = "32px";
-        wrap.style.borderBottom = "1px dashed #90caf9";
-        wrap.innerHTML = html;
-        multi.appendChild(wrap);
-
-        const safeId = _safeIdFromMasp(m);
-        const el = wrap.querySelector(`#xntHot_${safeId}`);
-        const rowMap = window.XNT_ROW_MAPS[m];
-        if (el && rowMap) initXntHot(el, rowMap, m);
+        html += `<div style="margin-bottom:32px;border-bottom:1px dashed #90caf9;">${await renderProductDetailHTML(m)}</div>`;
     }
-
+    const multi = document.getElementById("multiDetailBox");
+    multi.innerHTML = html;
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
@@ -315,116 +303,9 @@ async function renderOneProductDetail(masp) {
     setProductImageByMasp(hanghoa.masp);
     document.getElementById("maspInput").select();
 }
-// Lưu rowMap tạm để khởi tạo HOT sau khi gán HTML vào DOM
-window.XNT_ROW_MAPS = window.XNT_ROW_MAPS || {};
-
-function _safeIdFromMasp(masp) {
-    // id an toàn cho DOM (#xntHot_<id>)
-    return String(masp || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
-}
-
-/**
- * Tạo block HTML cho 1 sản phẩm (dùng trong chế độ nhiều mã)
- * - Trả về string HTML (chưa khởi tạo HOT)
- * - Lưu rowMap vào window.XNT_ROW_MAPS[masp] để lát nữa init HOT
- */
-async function renderProductDetailHTML_Editable(masp) {
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-    if (err1 || !hanghoa) {
-        return `<div style="color:red">Không lấy được thông tin sản phẩm ${masp}</div>`;
-    }
-
-    // ngày nhập đầu/cuối (giữ nguyên logic gọn)
-    const { data: nhapList } = await supabase
-        .from("hoadon_banle").select("ngay,sohd")
-        .in("loaihd", ["nmcs1", "nmcs2"])
-        .order("ngay", { ascending: true });
-    let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList?.length) {
-        const sohdArr = nhapList.map(e => e.sohd);
-        const { data: cts } = await supabase
-            .from("ct_hoadon_banle").select("sohd,masp")
-            .in("sohd", sohdArr).eq("masp", masp);
-        const setSohd = new Set((cts || []).map(e => e.sohd));
-        const filtered = (nhapList || []).filter(e => setSohd.has(e.sohd));
-        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
-    }
-
-    // ngày kiểm
-    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
-    {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
-        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
-        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-    }
-
-    // XNT của 1 mã
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
-    if (!xntdata || !xntdata.length) {
-        return `
-      <div class="detail-grid">
-        <div class="top-info">
-          <table class="info-table">
-            <tr>
-              <th>Mã hàng</th><th>Vị trí CS1</th><th>Vị trí CS2</th><th>${hanghoa.nhacc || ""}</th>
-              <th class="red">ND</th><th class="red">NC</th><th class="red">Kiểm CS1</th><th class="red">Kiểm CS2</th>
-            </tr>
-            <tr>
-              <td>${hanghoa.masp || ""}</td><td>${hanghoa.vitrikho1 || ""}</td><td>${hanghoa.vitrikho2 || ""}</td>
-              <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-              <td>${formatDateOnly(ngay_nhapdau) || ""}</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-              <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
-            </tr>
-          </table>
-        </div>
-        <div class="right-xnt"><i>Không có dữ liệu xuất nhập tồn!</i></div>
-        <div class="img-wrap">
-          <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
-               onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
-        </div>
-      </div>`;
-    }
-
-    // rowMap + id placeholder HOT
-    const rowMap = {};
-    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
-    window.XNT_ROW_MAPS[masp] = rowMap;
-
-    const safeId = _safeIdFromMasp(masp);
-    return `
-    <div class="detail-grid">
-      <div class="top-info">
-        <table class="info-table">
-          <tr>
-            <th>Mã hàng</th><th>Vị trí CS1</th><th>Vị trí CS2</th><th>${hanghoa.nhacc || ""}</th>
-            <th class="red">ND</th><th class="red">NC</th><th class="red">Kiểm CS1</th><th class="red">Kiểm CS2</th>
-          </tr>
-          <tr>
-            <td>${hanghoa.masp || ""}</td>
-            <td>${hanghoa.vitrikho1 || ""}</td>
-            <td>${hanghoa.vitrikho2 || ""}</td>
-            <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-            <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
-            <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-            <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
-            <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
-          </tr>
-        </table>
-      </div>
-      <div class="right-xnt">
-        <div id="xntHot_${safeId}" style="max-width:100%;"></div>
-      </div>
-      <div class="img-wrap">
-        <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
-             onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
-      </div>
-    </div>
-  `;
-}
 
 /* ====== KHỐI HTML CHO NHIỀU MÃ (dùng cùng layout mới) ====== */
-async function renderProductDetailHTML_Editable(masp) {
+async function renderProductDetailHTML(masp) {
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return `<div style="color:red">Không lấy được thông tin sản phẩm</div>`;
 
@@ -903,7 +784,7 @@ window.onload = async function () {
 };
 
 // ====== XNT HOT (Handsontable) ======
-const xntHotInstances = {};  // thay vì let xntHot = null
+let xntHot = null;
 
 const XNT_COLS = [
     { header: 'Size', key: 'size' },
@@ -955,7 +836,7 @@ function buildXntRows(rowMap) {
     return rows;
 }
 
-function initXntHot(containerEl, rowMap, masp) {
+function initXntHot(containerEl, rowMap) {
     const data = buildXntRows(rowMap);
 
     const columns = XNT_COLS.map(c => {
@@ -969,13 +850,9 @@ function initXntHot(containerEl, rowMap, masp) {
         };
     });
 
-    // nếu đã có instance cho masp thì destroy trước
-    if (xntHotInstances[masp]) {
-        try { xntHotInstances[masp].destroy(); } catch (_) { }
-        delete xntHotInstances[masp];
-    }
+    if (xntHot) { try { xntHot.destroy(); } catch (_) { } xntHot = null; }
 
-    const hot = new Handsontable(containerEl, {
+    xntHot = new Handsontable(containerEl, {
         data,
         columns,
         rowHeaders: true,
@@ -993,30 +870,37 @@ function initXntHot(containerEl, rowMap, masp) {
         },
         afterChange: (changes, source) => {
             if (!changes || ['loadData', 'recalc', 'coerce'].includes(source)) return;
+
             let needRecalc = false;
+
             for (const [r, c, oldVal, newVal] of changes) {
+                // c ở đây là 'prop' (tên key) vì data là object
                 if (r > 0 && c !== 'size') {
                     const coerced = (newVal === '' || newVal == null) ? 0 : Number(newVal);
-                    if (!Number.isFinite(coerced)) hot.setSourceDataAtCell(r, c, 0, 'coerce');
-                    else if (String(coerced) !== String(newVal)) hot.setSourceDataAtCell(r, c, coerced, 'coerce');
+                    if (!Number.isFinite(coerced)) {
+                        xntHot.setSourceDataAtCell(r, c, 0, 'coerce');
+                    } else if (String(coerced) !== String(newVal)) {
+                        xntHot.setSourceDataAtCell(r, c, coerced, 'coerce');
+                    }
                     needRecalc = true;
                 }
             }
+
             if (needRecalc) {
-                const curr = hot.getSourceData();
+                const curr = xntHot.getSourceData();   // array of objects
                 recalcXntTotals(curr);
+                // bơm lại hàng Tổng theo PROP (không dùng index cột!)
                 for (const colDef of XNT_COLS) {
                     if (colDef.key !== 'size') {
-                        hot.setSourceDataAtCell(0, colDef.key, curr[0][colDef.key], 'recalc');
+                        xntHot.setSourceDataAtCell(0, colDef.key, curr[0][colDef.key], 'recalc');
                     }
                 }
-                hot.render();
+                xntHot.render();
             }
         }
     });
 
-    xntHotInstances[masp] = hot;  // lưu lại
-    return hot;
+    return xntHot;
 }
 
 
