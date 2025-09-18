@@ -141,16 +141,22 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
 
-    // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
-    document.getElementById("gia").value = spData.giale || "";
-    document.getElementById("khuyenmai").value = spData.khuyenmai || "";
+    // Sau khi bạn có spData và đã gán #gia:
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
 
-    // đảm bảo #soluong = 1 nếu đang trống
+    const giaInt = Math.round(parseMoneyInt(spData.giale || 0));
+    giaEl.value = giaInt.toLocaleString();
+
+    // LẤY KM MẶC ĐỊNH THEO QUY ĐỊNH
+    const kmDef = tinhKhuyenMai(spData, giaInt);   // có cả rule 20k nếu giá > 500k
+    kmEl.value = (kmDef || 0).toLocaleString();
+
+    // đảm bảo số lượng mặc định & tính ngay thành tiền
     const slEl = document.getElementById("soluong");
-    if (!slEl.value || toInt(slEl.value) <= 0) slEl.value = "1";
-
-    // tính ngay thành tiền theo công thức: sl * (gia - km)
+    if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
     recalcThanhtienFromForm();
+
 
     const cs = document.getElementById("diadiem").value;
     const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
@@ -269,10 +275,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     }
 
     // ==== END KIỂM TRA ====
-    // LẤY GIÁ & KM TỪ FORM HIỆN TẠI
-    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
-    const giaForm = toInt(document.getElementById("gia")?.value || "0");
-    const kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
+
+    // LẤY GIÁ & KM TỪ FORM (CHUẨN HOÁ % → TIỀN)
+    const giaForm = Math.round(parseMoneyInt(document.getElementById("gia")?.value || 0));
+    const kmInput = document.getElementById("khuyenmai")?.value || 0;
+    const kmForm = normalizeKmToMoney(giaForm, kmInput); // <= 100 => %, > 100 => tiền
 
     const key = masp;
     const bang = bangKetQua[key] || {
@@ -281,15 +288,14 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         sizes: [],
         soluongs: [],
         tong: 0,
-        gia: giaForm,  // GIỮ theo giá bạn vừa xem/chỉnh trên form
-        km: kmForm,   // GIỮ theo khuyến mại bạn vừa nhập
+        gia: giaForm,
+        km: kmForm,
         dvt: ""
     };
 
-    // Nếu nhóm đã tồn tại và bạn muốn dùng GIÁ/KM mới cho các size thêm vào sau → cập nhật luôn:
+    // Nếu nhóm đã tồn tại: cập nhật giá/KM hiện tại để size mới dùng đúng
     bang.gia = giaForm;
     bang.km = kmForm;
-
 
     // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
     const normSize = String(size).trim();
