@@ -295,7 +295,7 @@ async function renderOneProductDetail(masp) {
     if (rightBox) {
         rightBox.innerHTML = '<div id="xntHot" style="max-width:100%;"></div>';
         const el = document.getElementById('xntHot');
-        initXntHot(el, rowMap);  // ← khởi tạo HOT với dữ liệu size
+        initXntHot(el, rowMap);
     }
 
 
