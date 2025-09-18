@@ -903,12 +903,13 @@ function initXntHot(containerEl, rowMap) {
             if (needRecalc) {
                 const curr = xntHot.getSourceData();
                 recalcXntTotals(curr);
-                // Cập nhật hàng Tổng (row 0) hàng loạt
+                // Cập nhật hàng Tổng (row 0) trực tiếp vào source data
                 XNT_COLS.forEach((colDef, colIdx) => {
                     if (colDef.key !== 'size') {
-                        xntHot.setDataAtCell(0, colIdx, curr[0][colDef.key], 'recalc');
+                        xntHot.setSourceDataAtCell(0, colIdx, curr[0][colDef.key], 'recalc');
                     }
                 });
+                xntHot.render();
             }
         }
 
