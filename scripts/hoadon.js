@@ -129,14 +129,13 @@ export async function chuyenFocus(e) {
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         let km = parseFloat(String(document.getElementById("khuyenmai").value).replace(/\./g, "").replace(/,/g, "."));
         if (!isFinite(km)) km = 0;
-        // <=100 -> %, >100 -> tiền
         km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
         document.getElementById("khuyenmai").value = km.toLocaleString();
 
         // tính lại #thanhtien
         recalcThanhtienFromForm();
 
-        // Nếu đủ dữ liệu (masp hợp lệ, size hợp lệ, sl > 0) -> tự thêm
+        // Nếu đủ dữ liệu -> tự thêm vào bảng
         const masp = (document.getElementById("masp")?.value || "").trim();
         const size = (document.getElementById("size")?.value || "").trim();
         const sl = parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1;
@@ -150,12 +149,13 @@ export async function chuyenFocus(e) {
             themVaoBang(size, { afterAdd: "resetFormToMasp" });
         }
         return;
+
     } else if (e.target.id === "gia") {
         // Chuẩn hoá giá & tính lại thanhtien
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         document.getElementById("gia").value = gia.toLocaleString();
 
-        // km có thể đang là % người dùng vừa gõ trước đó → convert như nhánh trên
+        // km có thể là % người dùng vừa gõ → convert như trên
         let kmIn = String(document.getElementById("khuyenmai").value).trim();
         let km = parseFloat(kmIn.replace(/\./g, "").replace(/,/g, "."));
         if (!isFinite(km)) km = 0;
@@ -178,7 +178,8 @@ export async function chuyenFocus(e) {
         }
         return;
     }
-    
+
+
 }
 
 function layMaspGoc(str) {
