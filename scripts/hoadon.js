@@ -365,59 +365,65 @@ export function xoaDongDangChon() {
 }
 
 export function suaDongDangChon() {
-  let dangChon = getMaspspDangChon();
+    let dangChon = getMaspspDangChon();
 
-  // ✅ Nếu CHƯA chọn dòng nào: tự chọn dòng đầu tiên trong bảng kết quả
-  if (!dangChon) {
-    const firstRow = document.querySelector("#bangketqua tbody tr");
-    if (!firstRow) {
-      alert("Không có dòng nào để sửa.");
-      return;
+    // Nếu chưa chọn dòng nào -> tự lấy dòng đầu
+    if (!dangChon) {
+        const firstRow = document.querySelector("#bangketqua tbody tr");
+        if (!firstRow) {
+            alert("Không có dòng nào để sửa.");
+            return;
+        }
+        const tds = firstRow.querySelectorAll("td");
+        const masp = (tds[0]?.textContent || "").trim();
+        const size = (tds[2]?.textContent || "").trim();
+        if (!masp || !size) {
+            alert("Không đọc được dữ liệu dòng đầu tiên để sửa.");
+            return;
+        }
+        setMaspspDangChon({ masp, size });
+        dangChon = { masp, size };
     }
-    // Cột 1 = Mã SP, cột 3 = Size (theo cấu trúc bảng hiện tại)
-    const tds = firstRow.querySelectorAll("td");
-    const masp = (tds[0]?.textContent || "").trim();
-    const size = (tds[2]?.textContent || "").trim();
-    if (!masp || !size) {
-      alert("Không đọc được dữ liệu dòng đầu tiên để sửa.");
-      return;
+
+    const { masp, size } = dangChon;
+    const item = bangKetQua[masp];
+    if (!item) {
+        alert("Không tìm thấy dòng để sửa.");
+        return;
     }
-    // Ghi nhận lựa chọn ảo, để tái dùng logic hiện có
-    setMaspspDangChon({ masp, size });
-    dangChon = { masp, size };
-  }
+    const idx = item.sizes.findIndex(s => s == size);
+    if (idx === -1) {
+        alert("Không tìm thấy size để sửa.");
+        return;
+    }
 
-  const { masp, size } = dangChon;
-  const item = bangKetQua[masp];
-  if (!item) {
-    alert("Không tìm thấy dòng để sửa.");
-    return;
-  }
-  const idx = item.sizes.findIndex(s => s == size);
-  if (idx === -1) {
-    alert("Không tìm thấy size để sửa.");
-    return;
-  }
+    // Đưa thông tin về form nhập
+    const maspEl = document.getElementById("masp");
+    document.getElementById("size").value = item.sizes[idx] || "";
+    document.getElementById("soluong").value = item.soluongs[idx] || "1";
+    document.getElementById("dvt").value = item.dvt || "";
+    document.getElementById("gia").value = item.gia || "";
+    document.getElementById("khuyenmai").value = item.km || "";
 
-  // Đưa thông tin về form nhập
-  document.getElementById("masp").value = item.masp || "";
-  document.getElementById("size").value = item.sizes[idx] || "";
-  document.getElementById("soluong").value = item.soluongs[idx] || "1";
-  document.getElementById("dvt").value = item.dvt || "";
-  document.getElementById("gia").value = item.gia || "";
-  document.getElementById("khuyenmai").value = item.km || "";
+    // Gán mã & BÔI ĐEN ngay để người dùng có thể nhấn Delete là xoá toàn bộ mã 🔴
+    maspEl.value = item.masp || "";
+    maspEl.focus();        // 🔴
+    maspEl.select();       // 🔴
 
-  // Xóa đúng dòng đang chọn (đúng size) khỏi bảng
-  item.sizes.splice(idx, 1);
-  item.soluongs.splice(idx, 1);
-  item.tong -= parseInt(document.getElementById("soluong").value) || 0;
-  if (item.sizes.length === 0) delete bangKetQua[masp];
+    // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
+    item.sizes.splice(idx, 1);
+    item.soluongs.splice(idx, 1);
+    item.tong -= parseInt(document.getElementById("soluong").value) || 0;
+    if (item.sizes.length === 0) delete bangKetQua[masp];
 
-  // Xóa trạng thái chọn, render lại, focus về MASP để bạn sửa/nhập
-  setMaspspDangChon(null);
-  capNhatBangHTML(bangKetQua, window.lastAdded);
-  document.getElementById("masp").focus();
+    // Clear trạng thái chọn + render lại bảng
+    setMaspspDangChon(null);
+    capNhatBangHTML(bangKetQua, window.lastAdded);
+
+    // Phòng khi render cướp focus, re-focus + select thêm lần nữa sau 1 tick 🔴
+    setTimeout(() => { maspEl.focus(); maspEl.select(); }, 0); // 🔴
 }
+
 
 
 export async function napLaiChiTietHoaDon(sohd) {
