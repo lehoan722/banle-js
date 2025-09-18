@@ -587,36 +587,55 @@ export async function napLaiChiTietHoaDon(sohd) {
     capNhatBangHTML(bangKetQua, window.lastAdded);
 }
 
+
+// === Gắn sự kiện cho #gia và #khuyenmai ===
 document.addEventListener("DOMContentLoaded", () => {
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
 
-    const recalcAndMaybeMove = (e) => {
-        recalcThanhtienFromForm();
-        if (e && e.type === "keydown" && e.key === "Enter") {
-            // sau khi người dùng Enter ở #khuyenmai/#gia, cho flow của bạn tiếp tục
-            // tuỳ quy trình: nếu muốn nhảy qua #size thì mở 2 dòng dưới:
-            // const sizeEl = document.getElementById("size");
-            // sizeEl?.focus();
+    // Hàm tiện ích
+    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
+
+    // Hàm kiểm tra và thêm vào bảng nếu đủ dữ liệu
+    function tryAddToBang() {
+        const masp = (document.getElementById("masp")?.value || "").trim();
+        const size = (document.getElementById("size")?.value || "").trim();
+        const sl = toInt(document.getElementById("soluong")?.value || "1");
+
+        const dsSize = Array.isArray(window.danhMucSize)
+            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+            : [];
+        const isValidSize = size && dsSize.includes(size.toUpperCase());
+
+        if (masp && isValidSize && sl > 0) {
+            themVaoBang(size, { afterAdd: "resetFormToMasp" });
         }
-    };
+    }
 
+    // Hàm xử lý khi Enter/blur/change
+    function recalcAndMaybeAdd(e) {
+        recalcThanhtienFromForm(); // luôn tính lại thành tiền
+
+        if (e && e.type === "keydown" && e.key === "Enter") {
+            e.preventDefault();
+            tryAddToBang(); // nếu đủ dữ liệu thì thêm vào bảng
+        }
+    }
+
+    // Gắn sự kiện
     ["blur", "change"].forEach(evt => {
-        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
-        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
+        giaEl?.addEventListener(evt, recalcAndMaybeAdd);
+        kmEl?.addEventListener(evt, recalcAndMaybeAdd);
     });
+
     ["keydown"].forEach(evt => {
-        giaEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
-        kmEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
+        giaEl?.addEventListener(evt, recalcAndMaybeAdd);
+        kmEl?.addEventListener(evt, recalcAndMaybeAdd);
     });
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  ["masp","soluong","size","khuyenmai","gia"].forEach(id => {
-    const el = document.getElementById(id);
-    el && el.addEventListener("keydown", chuyenFocus);
-  });
-});
+
+
 
 
 
