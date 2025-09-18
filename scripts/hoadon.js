@@ -571,23 +571,52 @@ export async function napLaiChiTietHoaDon(sohd) {
 }
 
 
-// ===== Chuyển focus về #size khi Enter ở #gia hoặc #khuyenmai =====
+// ==== FORCE ROUTE: Enter ở #gia/#khuyenmai -> tính tiền + giả lập Enter #size ====
 document.addEventListener("DOMContentLoaded", () => {
-    ["gia", "khuyenmai"].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                const sizeEl = document.getElementById("size");
-                if (sizeEl) {
-                    sizeEl.focus();
-                    sizeEl.select();
-                }
-            }
-        });
-    });
+  const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
+
+  // Quy đổi khuyến mại: <=100 => % (đổi sang tiền), >100 => tiền
+  const kmToMoney = (giaInt, rawKm) => {
+    let s = String(rawKm ?? "0").trim().replace(/\./g, "").replace(/,/g, ".");
+    let n = parseFloat(s); if (!isFinite(n)) n = 0;
+    return n <= 100 ? Math.round(giaInt * (n / 100)) : Math.round(n);
+  };
+
+  ["gia", "khuyenmai"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+
+      // ⚠️ ƯU TIÊN CAO: chặn luôn sự kiện xuống dưới (tránh handler cũ can thiệp)
+      e.preventDefault();
+      e.stopPropagation();
+
+      // 1) TÍNH LẠI THÀNH TIỀN
+      const gia = toInt(document.getElementById("gia")?.value || "0");
+      const kmMoney = kmToMoney(gia, document.getElementById("khuyenmai")?.value || 0);
+      // đồng bộ ô khuyến mại về TIỀN
+      const kmEl = document.getElementById("khuyenmai");
+      if (kmEl) kmEl.value = kmMoney.toLocaleString();
+
+      const sl = toInt(document.getElementById("soluong")?.value || "1");
+      const tt = (gia - kmMoney) * (sl > 0 ? sl : 1);
+      const ttEl = document.getElementById("thanhtien");
+      if (ttEl) ttEl.value = (tt > 0 ? tt : 0).toLocaleString();
+
+      // 2) GIẢ LẬP ENTER #size (tận dụng luồng có sẵn của bạn)
+      const sizeInput = document.getElementById("size");
+      if (sizeInput) {
+        const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+        sizeInput.dispatchEvent(ev);
+      } else {
+        console.warn("[FORCE] Không tìm thấy #size để giả lập Enter");
+      }
+    }, { capture: true }); // <= gắn ở CAPTURE PHASE
+  });
 });
+
 
 
 
