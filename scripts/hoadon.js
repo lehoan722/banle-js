@@ -589,36 +589,89 @@ export async function napLaiChiTietHoaDon(sohd) {
 
 
 // === Gắn sự kiện cho #gia và #khuyenmai ===
+// === Gắn sự kiện cho #gia và #khuyenmai (Enter -> tính lại + auto-add nếu đủ) ===
 document.addEventListener("DOMContentLoaded", () => {
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
 
-    // Hàm tiện ích
     const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
 
-    // Hàm kiểm tra và thêm vào bảng nếu đủ dữ liệu
+    // Quy đổi khuyến mại: <=100 => % (đổi sang tiền), >100 => tiền tuyệt đối
+    function normalizeKmToMoney(giaInt, rawKm) {
+        let km = 0;
+        if (rawKm != null) {
+            // cho phép nhập "7,5" => 7.5
+            const s = String(rawKm).trim().replace(/\./g, "").replace(/,/g, ".");
+            const n = parseFloat(s);
+            if (isFinite(n)) km = n;
+        }
+        return km <= 100 ? Math.round(giaInt * (km / 100)) : Math.round(km);
+    }
+
+    // Xác định có bắt buộc size hay không (giống xử lý ở xuLyMaSanPham)
+    function isSizeRequiredFor(masp) {
+        const sp = window.sanPhamData?.[masp];
+        if (!sp) return false;
+        const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked;
+        const size45 = document.getElementById("size45")?.checked;
+        const isGD = sp.chungloai && String(sp.chungloai).toLowerCase() === "gd";
+        const giaInt = toInt(sp.giale);
+
+        if (quanLySizeTheoGia && (isGD || giaInt >= 170000)) return true;
+        if (size45 && isGD) return true;
+        return false;
+    }
+
+    // Cho phép thêm vào bảng nếu đủ điều kiện
     function tryAddToBang() {
-        const masp = (document.getElementById("masp")?.value || "").trim();
-        const size = (document.getElementById("size")?.value || "").trim();
+        const masp = (document.getElementById("masp")?.value || "").trim().toUpperCase();
+        if (!masp) return;
+
+        const sp = window.sanPhamData?.[masp];
+        if (!sp) return; // chưa có dữ liệu sản phẩm -> không thêm
+
+        const sizeRaw = (document.getElementById("size")?.value || "").trim();
         const sl = toInt(document.getElementById("soluong")?.value || "1");
+        if (sl <= 0) return;
 
         const dsSize = Array.isArray(window.danhMucSize)
             ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
             : [];
-        const isValidSize = size && dsSize.includes(size.toUpperCase());
+        const sizeUC = sizeRaw.toUpperCase();
 
-        if (masp && isValidSize && sl > 0) {
-            themVaoBang(size, { afterAdd: "resetFormToMasp" });
+        const requireSize = isSizeRequiredFor(masp);
+
+        // Nếu bắt buộc size: phải là size hợp lệ
+        if (requireSize) {
+            if (!sizeUC || !dsSize.includes(sizeUC)) return;
+            // đủ -> thêm theo size đang nhập
+            themVaoBang(sizeUC, { afterAdd: "resetFormToMasp" });
+            return;
         }
+
+        // Không bắt buộc size: cho phép size trống/0
+        const sizeUse = sizeRaw ? sizeRaw : "0";
+        themVaoBang(sizeUse, { afterAdd: "resetFormToMasp" });
     }
 
-    // Hàm xử lý khi Enter/blur/change
+    // Tính lại thanhtien và (nếu Enter) thử thêm vào bảng
     function recalcAndMaybeAdd(e) {
-        recalcThanhtienFromForm(); // luôn tính lại thành tiền
+        const sl = toInt(document.getElementById("soluong")?.value || "1");
+        const gia = toInt(document.getElementById("gia")?.value || "0");
 
+        // Quy đổi km (hỗ trợ người dùng gõ %) rồi ghi lại vào ô #khuyenmai
+        const kmMoney = normalizeKmToMoney(gia, document.getElementById("khuyenmai")?.value || 0);
+        document.getElementById("khuyenmai").value = kmMoney.toLocaleString();
+
+        // Tính lại thành tiền
+        const tt = (gia - kmMoney) * (sl > 0 ? sl : 1);
+        const ttEl = document.getElementById("thanhtien");
+        if (ttEl) ttEl.value = (tt > 0 ? tt : 0).toLocaleString();
+
+        // Nếu là Enter -> auto-add khi đủ điều kiện
         if (e && e.type === "keydown" && e.key === "Enter") {
             e.preventDefault();
-            tryAddToBang(); // nếu đủ dữ liệu thì thêm vào bảng
+            tryAddToBang();
         }
     }
 
@@ -627,7 +680,6 @@ document.addEventListener("DOMContentLoaded", () => {
         giaEl?.addEventListener(evt, recalcAndMaybeAdd);
         kmEl?.addEventListener(evt, recalcAndMaybeAdd);
     });
-
     ["keydown"].forEach(evt => {
         giaEl?.addEventListener(evt, recalcAndMaybeAdd);
         kmEl?.addEventListener(evt, recalcAndMaybeAdd);
