@@ -1,7 +1,8 @@
 // nutLenh.js
 import {
   resetBangKetQua,
-  getBangKetQua  
+  getBangKetQua,
+  xoaDongDangChon
 } from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { luuHoaDonQuaAPI } from './luuhoadon.js';
@@ -103,7 +104,10 @@ export function ganSuKienNutLenh() {
     window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
   });
 
-  
+  document.getElementById("xoa")?.addEventListener("click", () => {
+    xoaDongDangChon();
+  });
+
   document.getElementById("btnThemMoiCo")?.addEventListener("click", () => {
     document.getElementById("popupThemMoi").style.display = "none";
     document.getElementById("them").click();
