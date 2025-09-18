@@ -290,42 +290,13 @@ async function renderOneProductDetail(masp) {
   `;
 
     // Bảng XNT
-    let htmlRight = `
-  <tr>
-    <th class="size">Size</th>
-    <th class="red">Tồn CS1</th>
-    <th class="red">Tồn CS2</th>
-    <th class="red">Bán CS1</th>
-    <th class="red">Bán CS2</th>
-    <th class="blue">Tổng mua</th>
-    <th class="blue">Tổng bán</th>
-    <th class="blue">Tổng tồn</th>
-  </tr>
-  <tr>
-    <td class="size">Tổng</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-  </tr>`;
-    SIZE_LIST.slice(1).forEach(sz => {
-        const r = rowMap[sz];
-        htmlRight += `
-    <tr>
-      <td class="size">${sz === '0' ? '0' : sz}</td>
-      <td class="number">${showEmptyIfZero(r?.ton_cs1)}</td>
-      <td class="number">${showEmptyIfZero(r?.ton_cs2)}</td>
-      <td class="number">${showEmptyIfZero(r?.ban_cs1)}</td>
-      <td class="number">${showEmptyIfZero(r?.ban_cs2)}</td>
-      <td class="number">${showEmptyIfZero(r?.nhapmua)}</td>
-      <td class="number">${showEmptyIfZero(r?.xuatban)}</td>
-      <td class="number">${showEmptyIfZero(r?.toncuoi)}</td>
-    </tr>`;
-    });
-    document.getElementById("infoTableRight").innerHTML = htmlRight;
+    // Bảng XNT (Editable)
+    const rightBox = document.querySelector('.right-xnt');
+    if (rightBox) {
+        rightBox.innerHTML = '<div id="xntHot" style="max-width:100%;"></div>';
+        const el = document.getElementById('xntHot');
+        initXntHot(el, rowMap);  // ← khởi tạo HOT với dữ liệu size
+    }
 
 
     // Ảnh sản phẩm dưới bảng
@@ -812,11 +783,126 @@ window.onload = async function () {
 
 };
 
+// ====== XNT HOT (Handsontable) ======
+let xntHot = null;
+
+// Thứ tự cột và key dữ liệu tương ứng
+const XNT_COLS = [
+    { header: 'Size', key: 'size' },
+    { header: 'Tồn CS1', key: 'ton_cs1' },
+    { header: 'Tồn CS2', key: 'ton_cs2' },
+    { header: 'Bán CS1', key: 'ban_cs1' },
+    { header: 'Bán CS2', key: 'ban_cs2' },
+    { header: 'Tổng mua', key: 'nhapmua' },
+    { header: 'Tổng bán', key: 'xuatban' },
+    { header: 'Tổng tồn', key: 'toncuoi' },
+];
+
+// Tạo dữ liệu cho HOT theo rowMap (size → record)
+function buildXntRows(rowMap) {
+    const SIZE_LIST = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+    // Hàng tổng nằm ở index 0
+    const rows = [{
+        size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0,
+        nhapmua: 0, xuatban: 0, toncuoi: 0, __readonly: true
+    }];
+
+    // Các size chuẩn; nếu thiếu dữ liệu thì điền 0
+    for (const sz of SIZE_LIST) {
+        const r = rowMap[sz] || {};
+        rows.push({
+            size: sz,
+            ton_cs1: Number(r.ton_cs1) || 0,
+            ton_cs2: Number(r.ton_cs2) || 0,
+            ban_cs1: Number(r.ban_cs1) || 0,
+            ban_cs2: Number(r.ban_cs2) || 0,
+            nhapmua: Number(r.nhapmua) || 0,
+            xuatban: Number(r.xuatban) || 0,
+            toncuoi: Number(r.toncuoi) || 0
+        });
+    }
+
+    // Tính tổng ban đầu
+    recalcXntTotals(rows);
+    return rows;
+}
+
+// Cộng lại hàng Tổng (index 0) từ các size (index 1..n)
+function recalcXntTotals(rows) {
+    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
+    for (let i = 1; i < rows.length; i++) {
+        for (const k of Object.keys(total)) total[k] += Number(rows[i][k]) || 0;
+    }
+    Object.assign(rows[0], total);
+}
+
+// Khởi tạo (hoặc re-init) Handsontable cho bảng XNT
+function initXntHot(containerEl, rowMap) {
+    const data = buildXntRows(rowMap);
+
+    const columns = XNT_COLS.map((c, idx) => {
+        if (c.key === 'size') {
+            return {
+                data: c.key,
+                readOnly: true,
+                className: 'htCenter htBold',
+            };
+        }
+        return {
+            data: c.key,
+            type: 'numeric',
+            numericFormat: { pattern: '0' },
+            allowInvalid: false,
+        };
+    });
+
+    // Nếu đã tồn tại -> destroy để tạo lại sạch
+    if (xntHot) { try { xntHot.destroy(); } catch (_) { } xntHot = null; }
+
+    xntHot = new Handsontable(containerEl, {
+        data,
+        columns,
+        rowHeaders: true,
+        colHeaders: XNT_COLS.map(c => c.header),
+        licenseKey: 'non-commercial-and-evaluation',
+        stretchH: 'all',
+        height: 'auto',
+        manualColumnResize: true,
+        contextMenu: ['row_above', 'row_below', 'remove_row', 'sep1', 'undo', 'redo'], // cho thao tác cơ bản
+        cells: (row, col) => {
+            const cellMeta = {};
+            if (row === 0) { // hàng Tổng
+                cellMeta.readOnly = true;
+                cellMeta.className = 'htCenter htBold';
+            } else if (col === 0) { // cột Size
+                cellMeta.readOnly = true;
+                cellMeta.className = 'htCenter htBold';
+            } else {
+                cellMeta.className = 'htRight';
+            }
+            return cellMeta;
+        },
+        afterChange: (changes, source) => {
+            if (!changes || source === 'loadData') return;
+            // Khi user sửa số ở hàng size → tính lại Tổng
+            if (source === 'edit' || source === 'Autofill.fill' || source === 'CopyPaste.paste') {
+                const curr = xntHot.getSourceData();
+                recalcXntTotals(curr);
+                // Cập nhật hàng tổng (row 0) hàng loạt để mượt
+                Handsontable.helper.arrayEach(XNT_COLS, (c, colIdx) => {
+                    if (c.key !== 'size') {
+                        xntHot.setDataAtCell(0, colIdx, curr[0][c.key], 'recalc');
+                    }
+                });
+            }
+        }
+    });
+
+    return xntHot;
+}
+
 
 /* ====== TIỆN ÍCH ====== */
-
-
-
 
 // Base ảnh sản phẩm
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
