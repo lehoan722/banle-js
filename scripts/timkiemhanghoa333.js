@@ -192,7 +192,8 @@ async function triggerSearch(_masp = null) {
 
     multi.innerHTML = "";
     for (const m of productWithXNT) {
-        const html = await renderProductDetailHTML_Editable(m);
+        const html = await renderProductDetailHTML(m);
+
         const wrap = document.createElement("div");
         wrap.style.marginBottom = "32px";
         wrap.style.borderBottom = "1px dashed #90caf9";
