@@ -157,7 +157,20 @@ async function triggerSearch(_masp = null) {
     }
 
     // Gom danh sách mã có dữ liệu XNT
-    const productWithXNT = Array.from(new Set(bulkData.map(r => r.masp)));
+    // Gom danh sách mã có dữ liệu XNT
+    let productWithXNT = Array.from(new Set(bulkData.map(r => r.masp)));
+
+    // Nếu đang ở chế độ nhiều mã (textarea) → sắp xếp đúng thứ tự người dùng nhập
+    if (Array.isArray(candidates) && candidates.length > 0) {
+        const orderMap = new Map(candidates.map((m, i) => [m.toUpperCase(), i]));
+        productWithXNT.sort((a, b) => {
+            const ia = orderMap.get((a || "").toUpperCase());
+            const ib = orderMap.get((b || "").toUpperCase());
+            // Mã không có trong textarea sẽ đẩy về cuối (nếu có)
+            return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
+        });
+    }
+
 
     if (productWithXNT.length === 0) {
         msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
