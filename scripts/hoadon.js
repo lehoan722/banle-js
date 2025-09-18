@@ -16,48 +16,6 @@ export function getMaspspDangChon() {
     return maspDangChon;
 }
 
-//Thêm hàm tính lại thành tiền + gắn sự kiện cho #gia & #khuyenmai (hoadon.js)
-function toInt(v) {
-    if (v == null) return 0;
-    return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
-}
-
-// --- Helpers tiền/tỉ lệ & tính thành tiền ---
-function parseMoneyInt(v) {
-    if (v == null) return 0;
-    // cho phép nhập "7,5" -> 7.5; bỏ dấu . , khoảng trắng ngăn cách hàng nghìn
-    const s = String(v).trim().replace(/\s/g, '').replace(/\./g, '');
-    // Nếu có dấu phẩy, coi như thập phân
-    const n = parseFloat(s.replace(',', '.'));
-    if (Number.isNaN(n)) return 0;
-    return n; // CHÚ Ý: trả float tạm thời, sẽ làm tròn khi cần
-}
-
-// Quy đổi khuyến mại: >100 => TIỀN; <=100 => %
-function normalizeKmToMoney(giaInt, rawKm) {
-    const val = parseMoneyInt(rawKm);
-    if (val <= 100) {
-        // % khuyến mại
-        const kmTien = Math.round(giaInt * (val / 100));
-        return kmTien;
-    }
-    // tiền khuyến mại
-    return Math.round(val);
-}
-
-// Tính & hiển thị lại thanhtien từ form hiện tại
-function recalcThanhtienFromForm() {
-    const sl = Math.max(1, parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1);
-    const gia = Math.round(parseMoneyInt(document.getElementById("gia")?.value || 0));
-    const kmIn = document.getElementById("khuyenmai")?.value || 0;
-    const km = normalizeKmToMoney(gia, kmIn);
-    const tt = (gia - km) * sl;
-    const ttEl = document.getElementById("thanhtien");
-    if (ttEl) ttEl.value = (tt > 0 ? tt : 0).toLocaleString();
-    // đồng bộ lại #khuyenmai về dạng tiền tuyệt đối (để bảng hiểu đúng)
-    const kmEl = document.getElementById("khuyenmai");
-    if (kmEl) kmEl.value = km.toLocaleString();
-}
 
 
 export async function chuyenFocus(e) {
@@ -174,13 +132,6 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     // Gán thông tin sản phẩm vào form (giữ nguyên các dòng dưới)
     document.getElementById("gia").value = spData.giale || "";
     document.getElementById("khuyenmai").value = spData.khuyenmai || "";
-
-    // đảm bảo #soluong = 1 nếu đang trống
-    const slEl = document.getElementById("soluong");
-    if (!slEl.value || toInt(slEl.value) <= 0) slEl.value = "1";
-
-    // tính ngay thành tiền theo công thức: sl * (gia - km)
-    recalcThanhtienFromForm();
 
     const cs = document.getElementById("diadiem").value;
     const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
@@ -300,11 +251,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
 
     // ==== END KIỂM TRA ====
-    // ==== END KIỂM TRA ====
-    // LẤY GIÁ & KM TỪ FORM HIỆN TẠI
-    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
-    const giaForm = toInt(document.getElementById("gia")?.value || "0");
-    const kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
+    const gia = parseFloat(document.getElementById("gia").value) || 0;
+    let km = tinhKhuyenMai(sp, gia);
 
     const key = masp;
     const bang = bangKetQua[key] || {
@@ -313,15 +261,10 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         sizes: [],
         soluongs: [],
         tong: 0,
-        gia: giaForm,  // GIỮ theo giá bạn vừa xem/chỉnh trên form
-        km: kmForm,   // GIỮ theo khuyến mại bạn vừa nhập
+        gia,
+        km,
         dvt: ""
     };
-
-    // Nếu nhóm đã tồn tại và bạn muốn dùng GIÁ/KM mới cho các size thêm vào sau → cập nhật luôn:
-    bang.gia = giaForm;
-    bang.km = kmForm;
-
 
     // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
     const normSize = String(size).trim();
@@ -403,7 +346,6 @@ export function resetBangKetQua() {
 }
 
 
-
 export function ganTenNV() {
     const manv = document.getElementById("manv").value.trim();
     document.getElementById("tennv").value = window.nhanVienData?.[manv] || "";
@@ -423,26 +365,11 @@ export function xoaDongDangChon() {
 }
 
 export function suaDongDangChon() {
-    let dangChon = getMaspspDangChon();
-
-    // Nếu chưa chọn dòng nào -> tự lấy dòng đầu
+    const dangChon = getMaspspDangChon();
     if (!dangChon) {
-        const firstRow = document.querySelector("#bangketqua tbody tr");
-        if (!firstRow) {
-            alert("Không có dòng nào để sửa.");
-            return;
-        }
-        const tds = firstRow.querySelectorAll("td");
-        const masp = (tds[0]?.textContent || "").trim();
-        const size = (tds[2]?.textContent || "").trim();
-        if (!masp || !size) {
-            alert("Không đọc được dữ liệu dòng đầu tiên để sửa.");
-            return;
-        }
-        setMaspspDangChon({ masp, size });
-        dangChon = { masp, size };
+        alert("Vui lòng chọn dòng muốn sửa.");
+        return;
     }
-
     const { masp, size } = dangChon;
     const item = bangKetQua[masp];
     if (!item) {
@@ -450,39 +377,32 @@ export function suaDongDangChon() {
         return;
     }
     const idx = item.sizes.findIndex(s => s == size);
+
     if (idx === -1) {
         alert("Không tìm thấy size để sửa.");
         return;
     }
 
     // Đưa thông tin về form nhập
-    const maspEl = document.getElementById("masp");
+    document.getElementById("masp").value = item.masp || "";
     document.getElementById("size").value = item.sizes[idx] || "";
     document.getElementById("soluong").value = item.soluongs[idx] || "1";
     document.getElementById("dvt").value = item.dvt || "";
     document.getElementById("gia").value = item.gia || "";
     document.getElementById("khuyenmai").value = item.km || "";
 
-    // Gán mã & BÔI ĐEN ngay để người dùng có thể nhấn Delete là xoá toàn bộ mã 🔴
-    maspEl.value = item.masp || "";
-    maspEl.focus();        // 🔴
-    maspEl.select();       // 🔴
-
-    // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
+    // Xóa đúng dòng đang chọn (đúng size) khỏi bảng
     item.sizes.splice(idx, 1);
     item.soluongs.splice(idx, 1);
     item.tong -= parseInt(document.getElementById("soluong").value) || 0;
     if (item.sizes.length === 0) delete bangKetQua[masp];
 
-    // Clear trạng thái chọn + render lại bảng
-    setMaspspDangChon(null);
+    maspDangChon = null;
     capNhatBangHTML(bangKetQua, window.lastAdded);
 
-    // Phòng khi render cướp focus, re-focus + select thêm lần nữa sau 1 tick 🔴
-    setTimeout(() => { maspEl.focus(); maspEl.select(); }, 0); // 🔴
+    // Focus lại vào ô nhập liệu đầu vào để sửa
+    document.getElementById("masp").focus();
 }
-
-
 
 
 export async function napLaiChiTietHoaDon(sohd) {
@@ -528,56 +448,4 @@ export async function napLaiChiTietHoaDon(sohd) {
 
     capNhatBangHTML(bangKetQua, window.lastAdded);
 }
-
-//Gắn handler Enter/blur cho #gia và #khuyenmai (một lần khi trang load)
-document.addEventListener("DOMContentLoaded", () => {
-    const giaEl = document.getElementById("gia");
-    const kmEl = document.getElementById("khuyenmai");
-
-    async function recalcAndAutoAdd(e) {
-        recalcThanhtienFromForm();
-
-        // Kiểm tra đủ dữ liệu để tự thêm vào bảng
-        const masp = (document.getElementById("masp")?.value || "").trim().toUpperCase();
-        const sizeRaw = (document.getElementById("size")?.value || "").trim();
-        const sl = parseInt((document.getElementById("soluong")?.value || "1").replace(/[.,\s]/g, ""), 10) || 1;
-
-        // Mã sản phẩm đã được validate ngay khi Enter ở #masp (xuLyMaSanPham), ở đây chỉ kiểm tra tối thiểu
-        if (!masp) return;
-
-        // Size phải hợp lệ theo danh mục
-        const dsSize = Array.isArray(window.danhMucSize)
-            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
-            : [];
-        const size = sizeRaw.toUpperCase();
-        const isValidSize = size && dsSize.includes(size);
-        if (!isValidSize || sl <= 0) return;
-
-        // Đủ điều kiện -> thêm vào bảng
-        // Dùng đúng cơ chế hiện có: themVaoBang(forcedSize, opts)
-        // Với thao tác từ giá/khuyến mại, sau khi thêm mình cho focus về #masp để quét sp tiếp
-        try {
-            await themVaoBang(size, { afterAdd: "resetFormToMasp" });
-        } catch (err) {
-            console.error("Auto add after KM/Gia change failed:", err);
-        }
-    }
-
-    // Recalc khi blur/change
-    ["blur", "change"].forEach(evt => {
-        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
-        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
-    });
-
-    // Enter => recalc + nếu đủ dữ liệu thì tự thêm
-    const handleEnter = (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            recalcAndAutoAdd(e);
-        }
-    };
-    giaEl?.addEventListener("keydown", handleEnter);
-    kmEl?.addEventListener("keydown", handleEnter);
-});
-
 
