@@ -526,7 +526,6 @@ export function suaDongDangChon() {
 }
 
 
-
 export async function napLaiChiTietHoaDon(sohd) {
     // Lấy chi tiết từ bảng ct_hoadon_banle
     const { data: chitiet, error } = await supabase
@@ -571,6 +570,24 @@ export async function napLaiChiTietHoaDon(sohd) {
     capNhatBangHTML(bangKetQua, window.lastAdded);
 }
 
+
+// ===== Chuyển focus về #size khi Enter ở #gia hoặc #khuyenmai =====
+document.addEventListener("DOMContentLoaded", () => {
+    ["gia", "khuyenmai"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const sizeEl = document.getElementById("size");
+                if (sizeEl) {
+                    sizeEl.focus();
+                    sizeEl.select();
+                }
+            }
+        });
+    });
+});
 
 
 
