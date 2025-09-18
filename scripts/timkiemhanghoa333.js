@@ -626,23 +626,21 @@ async function resizeToStandardBlob(file) {
 }
 
 
-
-
 function onScanResult(result, err, controls) {
     if (result) {
         const text = result.getText ? result.getText() : (result.rawValue || '');
         if (text) {
             try { navigator.vibrate?.(80); } catch (_) { }
-            // đưa kết quả vào ô nhập & tìm
-            const ip = document.getElementById('maspInput');
-            ip.value = text.trim().toUpperCase();
+            // ĐẨY VÀO TEXTAREA (dòng đầu tiên) THAY VÌ maspInput
+            prependToBulkTextarea(text);
             closeScanner();
-            // gọi search như bình thường
+            // Gọi tìm kiếm dựa trên danh sách trong textarea
             triggerSearch();
         }
     }
-    // lỗi decode vặt thì bỏ qua để tiếp tục quét
+    // Lỗi decode lặt vặt: bỏ qua để tiếp tục quét
 }
+
 
 async function stopScanner() {
     try { scanControls?.stop(); } catch (_) { }
@@ -701,7 +699,7 @@ async function decodeFromFile(file) {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
         if (text) {
-            document.getElementById('maspInput').value = text.trim().toUpperCase();
+            prependToBulkTextarea(text);
             closeScanner();
             triggerSearch();
             return;
@@ -846,6 +844,28 @@ function parseBulkMasp() {
     for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
     return out.slice(0, 50);
 }
+
+function prependToBulkTextarea(code) {
+    const ta = document.getElementById('bulkTextarea');
+    if (!ta) return;
+
+    const up = (code || "").trim().toUpperCase();
+    if (!up) return;
+
+    // Tách dòng hiện có, chuẩn hoá IN HOA, loại rỗng & loại trùng với mã mới
+    const lines = (ta.value || "")
+        .split(/[\r\n]+/)
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean)
+        .filter(s => s !== up);
+
+    // Chèn mã mới lên đầu, giữ lại các mã cũ bên dưới
+    ta.value = up + (lines.length ? "\n" + lines.join("\n") : "");
+
+    // Đưa textarea về đầu, giúp nhìn thấy mã mới
+    ta.scrollTop = 0;
+}
+
 
 document.getElementById('clearBulkBtn')?.addEventListener('click', () => {
     const ta = document.getElementById('bulkTextarea');
