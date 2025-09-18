@@ -39,7 +39,7 @@ function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) 
 
 // “tinh” — ngắn, sáng
 export function playSuccessBeep() {
-  beep(2800, 100, "sine", 0.7);
+  beep(2400, 120, "sine", 0.7);
 }
 
 // “tút” — dài, trầm hơn
