@@ -840,19 +840,16 @@ function recalcXntTotals(rows) {
 function initXntHot(containerEl, rowMap) {
     const data = buildXntRows(rowMap);
 
-    const columns = XNT_COLS.map((c, idx) => {
+    const columns = XNT_COLS.map((c) => {
         if (c.key === 'size') {
-            return {
-                data: c.key,
-                readOnly: true,
-                className: 'htCenter htBold',
-            };
+            return { data: c.key, readOnly: true, className: 'htCenter htBold' };
         }
         return {
             data: c.key,
             type: 'numeric',
-            numericFormat: { pattern: '0' },
+            numericFormat: { pattern: '0' },   // data vẫn là số
             allowInvalid: false,
+            renderer: zeroBlankRenderer        // <-- HIỂN THỊ rỗng nếu 0
         };
     });
 
@@ -883,22 +880,50 @@ function initXntHot(containerEl, rowMap) {
             return cellMeta;
         },
         afterChange: (changes, source) => {
-            if (!changes || source === 'loadData') return;
-            // Khi user sửa số ở hàng size → tính lại Tổng
-            if (source === 'edit' || source === 'Autofill.fill' || source === 'CopyPaste.paste') {
+            if (!changes || ['loadData', 'recalc', 'coerce'].includes(source)) return;
+
+            let needRecalc = false;
+
+            for (const [r, c, oldVal, newVal] of changes) {
+                // chỉ xử lý ô dữ liệu số (bỏ hàng Tổng r=0, bỏ cột Size c=0)
+                if (r > 0 && c > 0) {
+                    const coerced = (newVal === '' || newVal === null || newVal === undefined)
+                        ? 0
+                        : Number(newVal);
+                    // Nếu khác với input ban đầu, set lại bằng 'coerce' để tránh vòng lặp
+                    if (!Number.isFinite(coerced)) {
+                        xntHot.setDataAtCell(r, c, 0, 'coerce');
+                    } else if (String(coerced) !== String(newVal)) {
+                        xntHot.setDataAtCell(r, c, coerced, 'coerce');
+                    }
+                    needRecalc = true;
+                }
+            }
+
+            if (needRecalc) {
                 const curr = xntHot.getSourceData();
                 recalcXntTotals(curr);
-                // Cập nhật hàng tổng (row 0) hàng loạt để mượt
-                Handsontable.helper.arrayEach(XNT_COLS, (c, colIdx) => {
-                    if (c.key !== 'size') {
-                        xntHot.setDataAtCell(0, colIdx, curr[0][c.key], 'recalc');
+                // Cập nhật hàng Tổng (row 0) hàng loạt
+                XNT_COLS.forEach((colDef, colIdx) => {
+                    if (colDef.key !== 'size') {
+                        xntHot.setDataAtCell(0, colIdx, curr[0][colDef.key], 'recalc');
                     }
                 });
             }
         }
+
     });
 
     return xntHot;
+}
+
+// Hiển thị rỗng nếu = 0, còn dữ liệu nguồn vẫn là số
+function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
+    const v = (value === null || value === undefined || value === '') ? '' : Number(value);
+    // dùng TextRenderer mặc định trước
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    // Nếu là số 0 -> hiển thị rỗng
+    td.textContent = (v === 0) ? '' : (Number.isFinite(v) ? String(v) : '');
 }
 
 
