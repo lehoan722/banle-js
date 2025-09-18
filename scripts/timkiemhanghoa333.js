@@ -1,5 +1,4 @@
 import { supabase } from "./supabaseClient.js";
-
 // ==== 1. ĐĂNG NHẬP SUPABASE ==== 
 window.dangNhap = async function () {
     const email = document.getElementById("email").value.trim();
@@ -987,5 +986,6 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
         document.getElementById('clearBulkBtn')?.click();
     }
 });
+
 
 
