@@ -1,5 +1,4 @@
 
-
 // hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
 import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangketqua.js';
 
@@ -572,29 +571,6 @@ export async function napLaiChiTietHoaDon(sohd) {
     capNhatBangHTML(bangKetQua, window.lastAdded);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const giaEl = document.getElementById("gia");
-    const kmEl = document.getElementById("khuyenmai");
-
-    const recalcAndMaybeMove = (e) => {
-        recalcThanhtienFromForm();
-        if (e && e.type === "keydown" && e.key === "Enter") {
-            // sau khi người dùng Enter ở #khuyenmai/#gia, cho flow của bạn tiếp tục
-            // tuỳ quy trình: nếu muốn nhảy qua #size thì mở 2 dòng dưới:
-            // const sizeEl = document.getElementById("size");
-            // sizeEl?.focus();
-        }
-    };
-
-    ["blur", "change"].forEach(evt => {
-        giaEl?.addEventListener(evt, recalcThanhtienFromForm);
-        kmEl?.addEventListener(evt, recalcThanhtienFromForm);
-    });
-    ["keydown"].forEach(evt => {
-        giaEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
-        kmEl?.addEventListener(evt, (e) => { if (e.key === "Enter") { e.preventDefault(); recalcAndMaybeMove(e); } });
-    });
-});
 
 // === Gắn sự kiện cho #gia và #khuyenmai ===
 document.addEventListener("DOMContentLoaded", () => {
