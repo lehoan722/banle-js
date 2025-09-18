@@ -573,50 +573,24 @@ export async function napLaiChiTietHoaDon(sohd) {
 
 
 // === Gắn sự kiện cho #gia và #khuyenmai ===
+
+// ===== DEBUG: xem Enter ở #gia/#khuyenmai có bắt được không =====
 document.addEventListener("DOMContentLoaded", () => {
-    const giaEl = document.getElementById("gia");
-    const kmEl = document.getElementById("khuyenmai");
-
-    // Hàm tiện ích
-    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
-
-    // Hàm kiểm tra và thêm vào bảng nếu đủ dữ liệu
-    function tryAddToBang() {
-        const masp = (document.getElementById("masp")?.value || "").trim();
-        const size = (document.getElementById("size")?.value || "").trim();
-        const sl = toInt(document.getElementById("soluong")?.value || "1");
-
-        const dsSize = Array.isArray(window.danhMucSize)
-            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
-            : [];
-        const isValidSize = size && dsSize.includes(size.toUpperCase());
-
-        if (masp && isValidSize && sl > 0) {
-            themVaoBang(size, { afterAdd: "resetFormToMasp" });
-        }
-    }
-
-    // Hàm xử lý khi Enter/blur/change
-    function recalcAndMaybeAdd(e) {
-        recalcThanhtienFromForm(); // luôn tính lại thành tiền
-
-        if (e && e.type === "keydown" && e.key === "Enter") {
-            e.preventDefault();
-            tryAddToBang(); // nếu đủ dữ liệu thì thêm vào bảng
-        }
-    }
-
-    // Gắn sự kiện
-    ["blur", "change"].forEach(evt => {
-        giaEl?.addEventListener(evt, recalcAndMaybeAdd);
-        kmEl?.addEventListener(evt, recalcAndMaybeAdd);
-    });
-
-    ["keydown"].forEach(evt => {
-        giaEl?.addEventListener(evt, recalcAndMaybeAdd);
-        kmEl?.addEventListener(evt, recalcAndMaybeAdd);
+    ["gia", "khuyenmai"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                console.log("[DEBUG] Enter detected on #" + id);
+                // flash viền để dễ nhìn trực quan
+                const oldOutline = el.style.outline;
+                el.style.outline = "3px solid #ff4d4f";
+                setTimeout(() => el.style.outline = oldOutline, 600);
+            }
+        });
     });
 });
+
 
 
 
