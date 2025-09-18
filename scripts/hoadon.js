@@ -466,6 +466,7 @@ export function suaDongDangChon() {
     document.getElementById("dvt").value = item.dvt || "";
     document.getElementById("gia").value = item.gia || "";
     document.getElementById("khuyenmai").value = item.km || "";
+    document.getElementById("thanhtien").value = item.km || "";
 
     // Gán mã & BÔI ĐEN ngay để người dùng có thể nhấn Delete là xoá toàn bộ mã 🔴
     maspEl.value = item.masp || "";
