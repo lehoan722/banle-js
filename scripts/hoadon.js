@@ -572,25 +572,6 @@ export async function napLaiChiTietHoaDon(sohd) {
 }
 
 
-// === Gắn sự kiện cho #gia và #khuyenmai ===
-
-// ===== DEBUG: xem Enter ở #gia/#khuyenmai có bắt được không =====
-document.addEventListener("DOMContentLoaded", () => {
-    ["gia", "khuyenmai"].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                console.log("[DEBUG] Enter detected on #" + id);
-                // flash viền để dễ nhìn trực quan
-                const oldOutline = el.style.outline;
-                el.style.outline = "3px solid #ff4d4f";
-                setTimeout(() => el.style.outline = oldOutline, 600);
-            }
-        });
-    });
-});
-
 
 
 
