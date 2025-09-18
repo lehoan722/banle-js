@@ -611,4 +611,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  ["masp","soluong","size","khuyenmai","gia"].forEach(id => {
+    const el = document.getElementById(id);
+    el && el.addEventListener("keydown", chuyenFocus);
+  });
+});
+
+
 
