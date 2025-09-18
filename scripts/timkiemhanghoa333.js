@@ -328,7 +328,7 @@ function _safeIdFromMasp(masp) {
  * - Trả về string HTML (chưa khởi tạo HOT)
  * - Lưu rowMap vào window.XNT_ROW_MAPS[masp] để lát nữa init HOT
  */
-async function renderProductDetailHTML_Editable(masp) {
+async function renderProductDetailHTML(masp) {
     const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) {
         return `<div style="color:red">Không lấy được thông tin sản phẩm ${masp}</div>`;
