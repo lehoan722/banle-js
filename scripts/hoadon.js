@@ -20,6 +20,16 @@ function toInt(v) {
     if (v == null) return 0;
     return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
 }
+
+function parseMoneyInt(v) {
+    if (v == null) return 0;
+    // bỏ dấu phẩy, chấm, khoảng trắng
+    const s = String(v).trim().replace(/\./g, "").replace(/,/g, "").replace(/\s/g, "");
+    const n = parseInt(s, 10);
+    return isNaN(n) ? 0 : n;
+}
+
+
 function recalcThanhtienFromForm() {
     const sl = toInt(document.getElementById("soluong")?.value || "1");
     const gia = toInt(document.getElementById("gia")?.value || "0");
