@@ -409,6 +409,18 @@ export function ganTenNV() {
     document.getElementById("tennv").value = window.nhanVienData?.[manv] || "";
 }
 
+export function xoaDongDangChon() {
+    if (!maspDangChon) {
+        alert("Vui lòng chọn dòng cần xóa.");
+        return;
+    }
+
+    if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
+        delete bangKetQua[maspDangChon];
+        maspDangChon = null;
+        capNhatBangHTML(bangKetQua, window.lastAdded);
+    }
+}
 
 export function suaDongDangChon() {
     let dangChon = getMaspspDangChon();
