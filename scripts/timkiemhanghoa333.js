@@ -202,8 +202,16 @@ async function triggerSearch(_masp = null) {
         const safeId = _safeIdFromMasp(m);
         const el = wrap.querySelector(`#xntHot_${safeId}`);
         const rowMap = window.XNT_ROW_MAPS[m];
-        if (el && rowMap) initXntHot(el, rowMap, m);
-
+        if (el && rowMap) {
+            const hot = initXntHot(el, rowMap, m);
+            // ép render lại ngay sau khi DOM ổn định
+            setTimeout(() => {
+                try {
+                    hot.render();
+                    hot.refreshDimensions();
+                } catch (e) { }
+            }, 0);
+        }
     }
 
     multi.style.display = "";
