@@ -11,270 +11,61 @@
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa333.js"></script>
     <style>
-        body {
-            background: #f6f8fa;
-            font-family: Segoe UI, Arial, sans-serif;
-            margin: 0;
-        }
+  body{background:#f6f8fa;font-family:Segoe UI,Arial,sans-serif;margin:0}
+  .main-container{max-width:900px;background:#fff;margin:32px auto 0;border-radius:16px;box-shadow:0 3px 18px #d2d8e3;padding:36px 24px 24px}
+  h2{margin:0 0 20px;text-align:center;color:#1976d2;font-size:2rem}
 
-        .main-container {
-            max-width: 900px;
-            background: #fff;
-            margin: 32px auto 0;
-            border-radius: 16px;
-            box-shadow: 0 3px 18px #d2d8e3;
-            padding: 36px 24px 24px;
-        }
+  .input-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px}
+  .input-group{display:flex;flex-direction:column}
+  .input-group label{font-weight:600;color:#1976d2;margin-bottom:5px}
+  .input-group input{font-size:1.15rem;padding:7px 11px;border-radius:5px;border:1px solid #90caf9;width:200px;transition:box-shadow .2s}
+  .input-group input:focus{outline:none;box-shadow:0 0 0 2px #90caf9}
+  .popup-btn{background:#e3f0ff;border:1px solid #1976d2;color:#1976d2;font-weight:600;padding:3px 11px;border-radius:4px;cursor:pointer;font-size:16px}
+  .popup-btn:hover{background:#bbdefb}
 
-        h2 {
-            margin: 0 0 20px;
-            text-align: center;
-            color: #1976d2;
-            font-size: 2rem;
-        }
+  /* Bảng thông tin */
+  .info-table{border-collapse:collapse;width:100%;margin-top:8px;background:#fafbfc;border-radius:10px;overflow:hidden;box-shadow:0 1px 10px #ececec}
+  .info-table th,.info-table td{padding:7px 10px;border:1px solid #dbe9fd;text-align:center}
+  .info-table th{background:#e3f0ff;color:#1976d2;font-weight:700}
+  .info-table th.red{color:#d32f2f}
+  .info-table td.size{font-weight:600;background:#f4f9fd}
+  .info-table td.number{font-variant-numeric:tabular-nums}
+  .info-table .blue{color:#1565c0;font-weight:700}
+  .info-table .red{color:#d32f2f;font-weight:700}
 
-        .top-info {
-            grid-area: top;
-        }
+  .right-xnt{width:100%;overflow-x:auto}
+  .top-info{margin-top:8px}
 
-        .right-xnt {
-            grid-area: xnt;
-        }
+  /* TOP BAR: trái form – phải textarea */
+  .topbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr);gap:16px;align-items:start}
+  .bulk-box{min-width:120px;max-width:120px}
+  #bulkTextarea{width:100%;height:3.5em;overflow:auto;resize:vertical;border:1px solid #cfd8dc;border-radius:8px;padding:8px 10px;font-family:Consolas,monospace;background:#fff}
 
+  /* ===== Layout CHUẨN bạn chọn ===== */
+  /* 1 mã: cột trái = thông tin + XNT; cột phải = ảnh (ảnh cao bằng 2 hàng) */
+  #singleDetailBox{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;gap:16px}
+  #singleDetailBox .top-info{grid-column:1/2}
+  #singleDetailBox .right-xnt{grid-column:1/2}
+  #singleDetailBox .img-wrap{grid-column:2/3;grid-row:1/span 2;align-self:start;margin-top:0}
 
-        .input-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: flex-end;
-            margin-bottom: 20px;
-        }
+  /* nhiều mã: mỗi block .detail-grid giống hệt bố cục trên */
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;gap:16px}
+  .detail-grid .top-info{grid-column:1}
+  .detail-grid .right-xnt{grid-column:1}
+  .detail-grid .img-wrap{grid-column:2;grid-row:1/span 2;align-self:start;margin-top:0}
 
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
+  /* Ảnh: thu nhỏ 60% bằng width (KHÔNG dùng transform để tránh chiều cao ảo) */
+  #singleDetailBox .img-wrap img,
+  .detail-grid .img-wrap img{width:60%;height:auto;display:block}
 
-        .input-group label {
-            font-weight: 600;
-            color: #1976d2;
-            margin-bottom: 5px;
-        }
+  /* Mobile (iPhone dọc): xếp theo thứ tự Thông tin → XNT → Ảnh, ảnh full width */
+  @media (max-width:700px){
+    #singleDetailBox,.detail-grid{grid-template-columns:1fr}
+    #singleDetailBox .img-wrap,.detail-grid .img-wrap{grid-column:1;grid-row:auto}
+    #singleDetailBox .img-wrap img,.detail-grid .img-wrap img{width:100%}
+  }
+</style>
 
-        .input-group input {
-            font-size: 1.15rem;
-            padding: 7px 11px;
-            border-radius: 5px;
-            border: 1px solid #90caf9;
-            width: 200px;
-            transition: box-shadow .2s;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px #90caf9;
-        }
-
-        .popup-btn {
-            background: #e3f0ff;
-            border: 1px solid #1976d2;
-            color: #1976d2;
-            font-weight: 600;
-            padding: 3px 11px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .popup-btn:hover {
-            background: #bbdefb;
-        }
-
-        /* bảng chung */
-        .info-table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 8px;
-            background: #fafbfc;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 1px 10px #ececec;
-        }
-
-        .info-table th,
-        .info-table td {
-            padding: 7px 10px;
-            border: 1px solid #dbe9fd;
-            text-align: center;
-        }
-
-        .info-table th {
-            background: #e3f0ff;
-            color: #1976d2;
-            font-weight: 700;
-        }
-
-        .info-table th.red {
-            color: #d32f2f;
-        }
-
-        .info-table td.size {
-            font-weight: 600;
-            background: #f4f9fd;
-        }
-
-        .info-table td.number {
-            font-variant-numeric: tabular-nums;
-        }
-
-        .info-table .blue {
-            color: #1565c0;
-            font-weight: 700;
-        }
-
-        .info-table .red {
-            color: #d32f2f;
-            font-weight: 700;
-        }
-
-        .right-xnt {
-            width: 100%;
-            overflow-x: auto;
-        }
-
-        .top-info {
-            margin-top: 8px;
-        }
-
-        /* ảnh sản phẩm */
-
-        /* popup tìm mã */
-        #popupSearch {
-            display: none;
-            position: fixed;
-            top: 16%;
-            left: 50%;
-            transform: translate(-50%, 0);
-            background: #fff;
-            z-index: 2000;
-            border: 1px solid #ccc;
-            min-width: 340px;
-            max-width: 96vw;
-            box-shadow: 0 0 12px #888;
-            border-radius: 8px;
-        }
-
-        #popupSearch input {
-            width: 94%;
-            margin-bottom: 5px;
-        }
-
-        #popupSearchList {
-            max-height: 260px;
-            overflow: auto;
-            font-size: 15px;
-        }
-
-        #popupSearchList div {
-            padding: 5px 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        #popupSearchList div:hover {
-            background: #e3f0ff;
-        }
-
-
-        /* --- TOP BAR: 2 cột (trái: form; phải: textarea) --- */
-        .topbar {
-            display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
-            gap: 16px;
-            align-items: start;
-        }
-
-        .bulk-box {
-            min-width: 120px;
-            max-width: 120px;
-        }
-
-        #bulkTextarea {
-            width: 100%;
-            height: 3.5em;
-            overflow: auto;
-            resize: vertical;
-            border: 1px solid #cfd8dc;
-            border-radius: 8px;
-            padding: 8px 10px;
-            font-family: Consolas, monospace;
-            box-shadow: none;
-            background: #fff;
-        }
-
-        /* Khung ảnh: bám mép trên, không tạo chiều cao ảo */
-        .img-wrap {
-            margin-top: 8px;
-            align-self: start;
-        }
-
-        /* Ảnh thu nhỏ còn 60% trên màn hình lớn */
-        #singleDetailBox .img-wrap img,
-        .detail-grid .img-wrap img {
-            width: 60%;
-            height: auto;
-            display: block;
-            /* tránh khoảng trắng do inline-image */
-        }
-
-        /* 1 mã */
-        #singleDetailBox {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-areas:
-                "top img"
-                "xnt img";
-            grid-auto-rows: min-content;
-            gap: 16px;
-        }
-
-        /* nhiều mã (mỗi block .detail-grid) */
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-areas:
-                "top img"
-                "xnt img";
-            grid-auto-rows: min-content;
-            gap: 16px;
-        }
-
-
-        @media (max-width:900px) {
-            .detail-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 600px) {
-
-            /* Xếp cột thành 1 cột và đặt thứ tự top → xnt → img */
-            #singleDetailBox,
-            .detail-grid {
-                grid-template-columns: 1fr;
-                grid-template-areas:
-                    "top"
-                    "xnt"
-                    "img";
-            }
-
-            /* Cho ảnh rộng 100% trên mobile để dễ xem */
-            #singleDetailBox .img-wrap img,
-            .detail-grid .img-wrap img {
-                width: 60%;
-            }
-        }
-    </style>
 
 </head>
 
