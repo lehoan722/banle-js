@@ -14,7 +14,7 @@
         body {
             background: #f6f8fa;
             font-family: Segoe UI, Arial, sans-serif;
-            margin: 0
+            margin: 0;
         }
 
         .main-container {
@@ -23,32 +23,33 @@
             margin: 32px auto 0;
             border-radius: 16px;
             box-shadow: 0 3px 18px #d2d8e3;
-            padding: 36px 24px 24px
+            padding: 36px 24px 24px;
         }
 
         h2 {
             margin: 0 0 20px;
             text-align: center;
             color: #1976d2;
-            font-size: 2rem
+            font-size: 2rem;
         }
 
         .input-row {
             display: flex;
-            gap: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
             align-items: flex-end;
-            margin-bottom: 20px
+            margin-bottom: 20px;
         }
 
         .input-group {
             display: flex;
-            flex-direction: column
+            flex-direction: column;
         }
 
         .input-group label {
             font-weight: 600;
             color: #1976d2;
-            margin-bottom: 5px
+            margin-bottom: 5px;
         }
 
         .input-group input {
@@ -57,12 +58,12 @@
             border-radius: 5px;
             border: 1px solid #90caf9;
             width: 200px;
-            transition: box-shadow .2s
+            transition: box-shadow .2s;
         }
 
         .input-group input:focus {
             outline: none;
-            box-shadow: 0 0 0 2px #90caf9
+            box-shadow: 0 0 0 2px #90caf9;
         }
 
         .popup-btn {
@@ -73,11 +74,11 @@
             padding: 3px 11px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px
+            font-size: 16px;
         }
 
         .popup-btn:hover {
-            background: #bbdefb
+            background: #bbdefb;
         }
 
         /* bảng chung */
@@ -88,70 +89,67 @@
             background: #fafbfc;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 1px 10px #ececec
+            box-shadow: 0 1px 10px #ececec;
         }
 
         .info-table th,
         .info-table td {
             padding: 7px 10px;
             border: 1px solid #dbe9fd;
-            text-align: center
+            text-align: center;
         }
 
         .info-table th {
             background: #e3f0ff;
             color: #1976d2;
-            font-weight: 700
+            font-weight: 700;
         }
 
         .info-table th.red {
-            color: #d32f2f
+            color: #d32f2f;
         }
 
         .info-table td.size {
             font-weight: 600;
-            background: #f4f9fd
+            background: #f4f9fd;
         }
 
         .info-table td.number {
-            font-variant-numeric: tabular-nums
+            font-variant-numeric: tabular-nums;
         }
 
         .info-table .blue {
             color: #1565c0;
-            font-weight: 700
+            font-weight: 700;
         }
 
         .info-table .red {
             color: #d32f2f;
-            font-weight: 700
-        }
-
-        /* bố cục hiển thị 1 sản phẩm */
-        #singleDetailBox {
-            display: block
+            font-weight: 700;
         }
 
         .right-xnt {
             width: 100%;
-            overflow-x: auto
+            overflow-x: auto;
         }
 
         .top-info {
-            margin-top: 8px
+            margin-top: 8px;
         }
 
-        /* ảnh sản phẩm dưới bảng */
+        /* ảnh sản phẩm */
         .img-wrap {
-            margin-top: 12px
+            margin-top: 12px;
+            transform: scale(0.5);
+            /* giảm còn 60% */
+            transform-origin: top left;
         }
 
         #productImage {
-            max-width: 380px;
             width: 100%;
             height: auto;
             border-radius: 8px;
-            box-shadow: 0 2px 8px #eee
+            box-shadow: 0 2px 8px #eee;
         }
 
         /* popup tìm mã */
@@ -167,28 +165,28 @@
             min-width: 340px;
             max-width: 96vw;
             box-shadow: 0 0 12px #888;
-            border-radius: 8px
+            border-radius: 8px;
         }
 
         #popupSearch input {
             width: 94%;
-            margin-bottom: 5px
+            margin-bottom: 5px;
         }
 
         #popupSearchList {
             max-height: 260px;
             overflow: auto;
-            font-size: 15px
+            font-size: 15px;
         }
 
         #popupSearchList div {
             padding: 5px 10px;
             cursor: pointer;
-            border-bottom: 1px solid #f0f0f0
+            border-bottom: 1px solid #f0f0f0;
         }
 
         #popupSearchList div:hover {
-            background: #e3f0ff
+            background: #e3f0ff;
         }
 
         @media (max-width:600px) {
@@ -196,88 +194,60 @@
                 padding: 10px;
                 margin: 0;
                 border-radius: 0;
-                box-shadow: none
+                box-shadow: none;
             }
 
             .input-row {
                 flex-direction: column;
-                gap: 10px
+                gap: 10px;
             }
 
             .input-group input {
-                width: 70%
+                width: 70%;
             }
 
             #productImage {
-                max-width: 100%
+                max-width: 100%;
             }
         }
 
-        /* thanh trên gồm form tìm kiếm (trái) + textarea (phải) */
+        /* --- TOP BAR: 2 cột (trái: form; phải: textarea) --- */
         .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 24px;
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+            gap: 16px;
+            align-items: start;
         }
 
         .bulk-box {
             min-width: 120px;
-            max-width: 120px
+            max-width: 120px;
         }
 
         #bulkTextarea {
             width: 100%;
             height: 3.5em;
-            /* ~5 dòng + thanh cuộn */
             overflow: auto;
             resize: vertical;
-            /* cho phép kéo cao nếu cần */
             border: 1px solid #cfd8dc;
             border-radius: 8px;
-            /* bo tròn nhẹ */
             padding: 8px 10px;
             font-family: Consolas, monospace;
             box-shadow: none;
             background: #fff;
-            /* nền trắng đơn giản */
         }
 
-        @media (max-width:600px) {
-
-            .bulk-box {
-                max-width: 20%
-            }
-        }
-
-        /* --- TOP BAR: 2 cột (trái: nút/quét/tìm; phải: textarea 1/3) --- */
-        .topbar {
-            display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
-            /* 2/3 : 1/3 */
-            gap: 16px;
-            align-items: start;
-        }
-
-        .input-row {
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 0;
-        }       
-
-        /* để theo ô lưới */
-        #bulkTextarea {
-            width: 100%;
-        }
-
-        /* Giữ 2 cột cả trên mobile để textarea không bị đẩy xuống */
         @media (max-width:600px) {
             .topbar {
                 grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
             }
+
+            .bulk-box {
+                max-width: 20%;
+            }
         }
 
-        /* --- VÙNG CHI TIẾT: 2 cột song song trên desktop, xếp dọc trên mobile --- */
+        /* --- VÙNG CHI TIẾT: 2 cột song song --- */
         #singleDetailBox {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -285,7 +255,6 @@
             gap: 16px;
         }
 
-        /* 2 bảng thông tin xếp chồng ở cột trái */
         .top-info {
             grid-column: 1 / 2;
         }
@@ -294,21 +263,12 @@
             grid-column: 1 / 2;
         }
 
-        /* Ảnh chiếm cột phải, thẳng hàng trên cùng */
         .img-wrap {
             grid-column: 2 / 3;
             grid-row: 1 / span 2;
             align-self: start;
         }
 
-        /* Ảnh co giãn theo cột, không giới hạn 380px nữa */
-        #productImage {
-            width: 100%;
-            max-width: none;
-            height: auto;
-        }
-
-        /* Màn nhỏ: chuyển về 1 cột, ảnh xuống dưới */
         @media (max-width:900px) {
             #singleDetailBox {
                 grid-template-columns: 1fr;
@@ -320,7 +280,7 @@
             }
         }
 
-        /* Áp dụng layout 2 cột cho từng khối khi hiển thị NHIỀU mã */
+        /* --- layout cho nhiều mã --- */
         .detail-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -353,6 +313,7 @@
             }
         }
     </style>
+
 </head>
 
 <body>
