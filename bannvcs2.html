@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN NV CS2</title>
+    <title>BAN NV cs2</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -262,7 +262,7 @@
         .sidebar {
             width: 360px;
             border-left: 1px solid #ccc;
-            display: flex;
+            display: none;
             flex-direction: column;
             justify-content: flex-start;
             /* ⚠️ CHUYỂN TỪ space-between */
@@ -470,18 +470,18 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <input id="masp" placeholder="Ma SP" autocomplete="off" />
                 <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 360px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
             </div>
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
             <input id="size" placeholder="SIZE" />
-            <input id="gia" placeholder="Giá SP" />
-            <input id="khuyenmai" placeholder="khuyen mai" />
-            <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />
+            <input id="gia" placeholder="Gia SP" readonly />
+            <input id="khuyenmai" placeholder="khuyen mai" readonly />
+            <input id="thanhtien" placeholder="Thanh tien" readonly />
+            <input id="sohd" placeholder="So HĐ" readonly  />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
         </div>
@@ -508,8 +508,8 @@
             </div>
             <div class="sidebar">
                 <div class="tabs">
-                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
-                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
+                    <button id="btn_thongtin" onclick="switchTab('thongtin')"  >Thông tin hóa đơn</button>
+                    <button id="btn_tacvu" onclick="switchTab('tacvu')"  >Thao tác nhanh</button>
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
@@ -679,7 +679,7 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
+        window.diadiem = "cs1"; // Không phụ thuộc localStorage nữa
 
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
@@ -693,7 +693,7 @@
             if (!email) return "";
             email = email.trim().toLowerCase();
             if (email === "khohangcs1@gmail.com") return "cs1";
-            if (email === "khohangcs2@gmail.com") return "cs2";
+            if (email === "khohangcs1@gmail.com") return "cs1";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
         }
@@ -1028,7 +1028,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
