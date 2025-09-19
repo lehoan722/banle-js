@@ -10,61 +10,233 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa333.js"></script>
-<style>
-  body{background:#f6f8fa;font-family:Segoe UI,Arial,sans-serif;margin:0}
-  .main-container{max-width:900px;background:#fff;margin:32px auto 0;border-radius:16px;box-shadow:0 3px 18px #d2d8e3;padding:36px 24px 24px}
-  h2{margin:0 0 20px;text-align:center;color:#1976d2;font-size:2rem}
+    <style>
+        body {
+            background: #f6f8fa;
+            font-family: Segoe UI, Arial, sans-serif;
+            margin: 0
+        }
 
-  .input-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px}
-  .input-group{display:flex;flex-direction:column}
-  .input-group label{font-weight:600;color:#1976d2;margin-bottom:5px}
-  .input-group input{font-size:1.15rem;padding:7px 11px;border-radius:5px;border:1px solid #90caf9;width:200px;transition:box-shadow .2s}
-  .input-group input:focus{outline:none;box-shadow:0 0 0 2px #90caf9}
-  .popup-btn{background:#e3f0ff;border:1px solid #1976d2;color:#1976d2;font-weight:600;padding:3px 11px;border-radius:4px;cursor:pointer;font-size:16px}
-  .popup-btn:hover{background:#bbdefb}
+        .main-container {
+            max-width: 900px;
+            background: #fff;
+            margin: 32px auto 0;
+            border-radius: 16px;
+            box-shadow: 0 3px 18px #d2d8e3;
+            padding: 36px 24px 24px
+        }
 
-  /* Bảng thông tin */
-  .info-table{border-collapse:collapse;width:100%;margin-top:8px;background:#fafbfc;border-radius:10px;overflow:hidden;box-shadow:0 1px 10px #ececec}
-  .info-table th,.info-table td{padding:7px 10px;border:1px solid #dbe9fd;text-align:center}
-  .info-table th{background:#e3f0ff;color:#1976d2;font-weight:700}
-  .info-table th.red{color:#d32f2f}
-  .info-table td.size{font-weight:600;background:#f4f9fd}
-  .info-table td.number{font-variant-numeric:tabular-nums}
-  .info-table .blue{color:#1565c0;font-weight:700}
-  .info-table .red{color:#d32f2f;font-weight:700}
+        h2 {
+            margin: 0 0 20px;
+            text-align: center;
+            color: #1976d2;
+            font-size: 2rem
+        }
 
-  .right-xnt{width:100%;overflow-x:auto}
-  .top-info{margin-top:8px}
+        .input-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 20px
+        }
 
-  /* TOP BAR: trái form – phải textarea */
-  .topbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr);gap:16px;align-items:start}
-  .bulk-box{min-width:120px;max-width:120px}
-  #bulkTextarea{width:100%;height:3.5em;overflow:auto;resize:vertical;border:1px solid #cfd8dc;border-radius:8px;padding:8px 10px;font-family:Consolas,monospace;background:#fff}
+        .input-group {
+            display: flex;
+            flex-direction: column
+        }
 
-  /* ===== Layout CHUẨN bạn chọn ===== */
-  /* 1 mã: cột trái = thông tin + XNT; cột phải = ảnh (ảnh cao bằng 2 hàng) */
-  #singleDetailBox{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;gap:16px}
-  #singleDetailBox .top-info{grid-column:1/2}
-  #singleDetailBox .right-xnt{grid-column:1/2}
-  #singleDetailBox .img-wrap{grid-column:2/3;grid-row:1/span 2;align-self:start;margin-top:0}
+        .input-group label {
+            font-weight: 600;
+            color: #1976d2;
+            margin-bottom: 5px
+        }
 
-  /* nhiều mã: mỗi block .detail-grid giống hệt bố cục trên */
-  .detail-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;gap:16px}
-  .detail-grid .top-info{grid-column:1}
-  .detail-grid .right-xnt{grid-column:1}
-  .detail-grid .img-wrap{grid-column:2;grid-row:1/span 2;align-self:start;margin-top:0}
+        .input-group input {
+            font-size: 1.15rem;
+            padding: 7px 11px;
+            border-radius: 5px;
+            border: 1px solid #90caf9;
+            width: 200px;
+            transition: box-shadow .2s
+        }
 
-  /* Ảnh: thu nhỏ 60% bằng width (KHÔNG dùng transform để tránh chiều cao ảo) */
-  #singleDetailBox .img-wrap img,
-  .detail-grid .img-wrap img{width:60%;height:auto;display:block}
+        .input-group input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #90caf9
+        }
 
-  /* Mobile (iPhone dọc): xếp theo thứ tự Thông tin → XNT → Ảnh, ảnh full width */
-  @media (max-width:700px){
-    #singleDetailBox,.detail-grid{grid-template-columns:1fr}
-    #singleDetailBox .img-wrap,.detail-grid .img-wrap{grid-column:1;grid-row:auto}
-    #singleDetailBox .img-wrap img,.detail-grid .img-wrap img{width:50%}
-  }
-</style>
+        .popup-btn {
+            background: #e3f0ff;
+            border: 1px solid #1976d2;
+            color: #1976d2;
+            font-weight: 600;
+            padding: 3px 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px
+        }
+
+        .popup-btn:hover {
+            background: #bbdefb
+        }
+
+        /* Bảng thông tin */
+        .info-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 8px;
+            background: #fafbfc;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 10px #ececec
+        }
+
+        .info-table th,
+        .info-table td {
+            padding: 7px 10px;
+            border: 1px solid #dbe9fd;
+            text-align: center
+        }
+
+        .info-table th {
+            background: #e3f0ff;
+            color: #1976d2;
+            font-weight: 700
+        }
+
+        .info-table th.red {
+            color: #d32f2f
+        }
+
+        .info-table td.size {
+            font-weight: 600;
+            background: #f4f9fd
+        }
+
+        .info-table td.number {
+            font-variant-numeric: tabular-nums
+        }
+
+        .info-table .blue {
+            color: #1565c0;
+            font-weight: 700
+        }
+
+        .info-table .red {
+            color: #d32f2f;
+            font-weight: 700
+        }
+
+        .right-xnt {
+            width: 100%;
+            overflow-x: auto
+        }
+
+        .top-info {
+            margin-top: 8px
+        }
+
+        /* TOP BAR: trái form – phải textarea */
+        .topbar {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+            gap: 16px;
+            align-items: start
+        }
+
+        .bulk-box {
+            min-width: 120px;
+            max-width: 120px
+        }
+
+        #bulkTextarea {
+            width: 100%;
+            height: 3.5em;
+            overflow: auto;
+            resize: vertical;
+            border: 1px solid #cfd8dc;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-family: Consolas, monospace;
+            background: #fff
+        }
+
+        /* ===== Layout CHUẨN bạn chọn ===== */
+        /* 1 mã: cột trái = thông tin + XNT; cột phải = ảnh (ảnh cao bằng 2 hàng) */
+        #singleDetailBox {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 16px
+        }
+
+        #singleDetailBox .top-info {
+            grid-column: 1/2
+        }
+
+        #singleDetailBox .right-xnt {
+            grid-column: 1/2
+        }
+
+        #singleDetailBox .img-wrap {
+            grid-column: 2/3;
+            grid-row: 1/span 2;
+            align-self: start;
+            margin-top: 0
+        }
+
+        /* nhiều mã: mỗi block .detail-grid giống hệt bố cục trên */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 16px
+        }
+
+        .detail-grid .top-info {
+            grid-column: 1
+        }
+
+        .detail-grid .right-xnt {
+            grid-column: 1
+        }
+
+        .detail-grid .img-wrap {
+            grid-column: 2;
+            grid-row: 1/span 2;
+            align-self: start;
+            margin-top: 0
+        }
+
+        /* Ảnh: thu nhỏ 60% bằng width (KHÔNG dùng transform để tránh chiều cao ảo) */
+        #singleDetailBox .img-wrap img,
+        .detail-grid .img-wrap img {
+            width: 60%;
+            height: auto;
+            display: block
+        }
+
+        /* Mobile (iPhone dọc): xếp theo thứ tự Thông tin → XNT → Ảnh, ảnh full width */
+        @media (max-width:700px) {
+
+            #singleDetailBox,
+            .detail-grid {
+                grid-template-columns: 1fr
+            }
+
+            #singleDetailBox .img-wrap,
+            .detail-grid .img-wrap {
+                grid-column: 1;
+                grid-row: auto
+            }
+
+            #singleDetailBox .img-wrap img,
+            .detail-grid .img-wrap img {
+                width: 50%
+            }
+        }
+    </style>
 
 
 </head>
@@ -86,54 +258,37 @@
         <h2>🔍 TÌM KIẾM THÔNG TIN HÀNG HÓA</h2>
 
         <div class="topbar">
-            <!-- Bên trái: form nhập mã như cũ -->
+            <!-- Hàng 1: nhập mã + tìm kiếm + quét -->
             <div class="input-row">
                 <div class="input-group">
-
                     <label for="maspInput">Nhập mã hàng</label>
-
-                    <div>
+                    <div style="display:flex;gap:8px;align-items:center;">
                         <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
-
                         <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
-
                     </div>
-
                 </div>
-
                 <button id="searchBtn"
                     style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
                     Tìm kiếm
                 </button>
-
                 <button class="popup-btn" id="scanBtn">📷 Quét</button>
-                style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
-                    <label class="popup-btn" style="cursor:pointer">
-                        Chọn tệp
-                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
-                    </label>
-                    <button id="saveImgBtn" class="popup-btn"
-                        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
-                        💾 Lưu ảnh
-                    </button>
+            </div>
 
+            <!-- Hàng 2: upload ảnh -->
+            <div class="input-row">
+                <label class="popup-btn" style="cursor:pointer">
+                    Chọn tệp
+                    <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
+                </label>
+                <button id="saveImgBtn" class="popup-btn"
+                    style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
+                    💾 Lưu ảnh
+                </button>
+                <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
+            </div>
 
-                <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
-                <div class="upload-row"
-                    style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
-                    
-
-                    <label style="display: none">
-                        <input id="resizeCheckbox" type="checkbox" checked>
-                        Chuẩn hoá kích thước (khuyên dùng)
-                    </label>
-
-                    <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
-                </div>
-
-
-                <!-- Bên phải: textarea nhiều mã -->
-                <!-- Bên phải: chỉ 1 ô textarea -->
+            <!-- Hàng 3: textarea nhiều mã -->
+            <div class="input-row">
                 <div class="bulk-box">
                     <textarea id="bulkTextarea"
                         placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
@@ -141,15 +296,9 @@
                         style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
                         🧹 Xoá DL
                     </button>
-
                 </div>
-
-
             </div>
-
-
         </div>
-
 
         <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
