@@ -333,15 +333,9 @@
                     <div style="display:flex;gap:8px;align-items:center;">
                         <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
                         <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
-                    </div>
+                    </div>                    
                 </div>
-                <button id="searchBtn"
-                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
-                    Tìm kiếm
-                </button>
-                <button class="popup-btn" id="scanBtn">📷 Quét</button>
-            </div>
-            <!-- Popup tìm kiếm dùng chung -->
+                <!-- Popup tìm kiếm dùng chung -->
             <div id="popupSearch">
                 <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
                     <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus />
@@ -350,6 +344,12 @@
                 </div>
                 <div id="popupSearchList"></div>
             </div>
+                <button id="searchBtn"
+                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
+                    Tìm kiếm
+                </button>
+                <button class="popup-btn" id="scanBtn">📷 Quét</button>
+            </div>            
             
             <!-- Hàng 2: upload ảnh -->
             <div class="input-row">
