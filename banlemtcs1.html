@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Hóa đơn bán lẻ</title>
+    <title>BAN LE cs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -78,6 +78,7 @@
         #size {
             width: 60px;
             text-align: center;
+            background: yellow;
         }
 
         #gia,
@@ -465,10 +466,7 @@
 
     </div>
 
-
-
     <div id="app-container" style="display:none;">
-
 
         <div class="top-inputs">
             <div style="position: relative;">
@@ -654,7 +652,7 @@
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
 
-                <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly style="background:#eee;" />
+                <input type="email" id="login-email"  value="khohangcs1@gmail.com" readonly style="background:#eee; display:none;" />
 
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
@@ -669,7 +667,7 @@
                 </div>
 
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" value="123123"><br /><br />
+                <input type="password" id="login-password" value="369369"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -695,7 +693,7 @@
             if (!email) return "";
             email = email.trim().toLowerCase();
             if (email === "khohangcs1@gmail.com") return "cs1";
-            if (email === "khohangcs2@gmail.com") return "cs2";
+            if (email === "khohangcs1@gmail.com") return "cs1";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
         }
@@ -1030,7 +1028,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1122,7 +1120,7 @@
                 btnLuu.addEventListener('click', (e) => {
                     e.preventDefault();
                     // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    moPopupXacThucSua();
+                    //moPopupXacThucSua();
                     // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
                 });
             }
