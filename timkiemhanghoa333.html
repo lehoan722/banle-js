@@ -182,7 +182,24 @@
             background: #e3f0ff;
         }
 
-       
+        @media (max-width:600px) {
+            .main-container {
+                padding: 10px;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .input-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .input-group input {
+                width: 70%;
+            }
+            
+        }
 
         /* --- TOP BAR: 2 cột (trái: form; phải: textarea) --- */
         .topbar {
@@ -208,7 +225,17 @@
             font-family: Consolas, monospace;
             box-shadow: none;
             background: #fff;
-        }       
+        }
+
+        @media (max-width:600px) {
+            .topbar {
+                grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+            }
+
+            .bulk-box {
+                max-width: 20%;
+            }
+        }
 
         /* --- VÙNG CHI TIẾT: 2 cột song song --- */
         #singleDetailBox {
