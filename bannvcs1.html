@@ -262,7 +262,7 @@
         .sidebar {
             width: 360px;
             border-left: 1px solid #ccc;
-            display: flex;
+            display: none;
             flex-direction: column;
             justify-content: flex-start;
             /* ⚠️ CHUYỂN TỪ space-between */
@@ -508,8 +508,8 @@
             </div>
             <div class="sidebar">
                 <div class="tabs">
-                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
-                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
+                    <button id="btn_thongtin" onclick="switchTab('thongtin')"  >Thông tin hóa đơn</button>
+                    <button id="btn_tacvu" onclick="switchTab('tacvu')"  >Thao tác nhanh</button>
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
