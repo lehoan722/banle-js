@@ -1066,9 +1066,9 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
-        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
