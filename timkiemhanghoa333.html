@@ -236,6 +236,36 @@
                 width: 50%
             }
         }
+
+        /* ===== Desktop tweaks (giữ bố cục gọn hàng 1) ===== */
+.topbar .input-row:first-child .input-group { flex: 1; min-width: 260px; }
+.topbar .input-row:first-child #maspInput { width: 100%; }
+
+/* ===== Mobile (iPhone dọc) — xếp topbar theo cột, không chồng chéo ===== */
+@media (max-width: 700px) {
+  /* 1 cột cho toàn bộ topbar */
+  .topbar { grid-template-columns: 1fr; }
+
+  /* Các hàng trong topbar giãn cách vừa phải và full width */
+  .topbar .input-row { gap: 8px; }
+  .topbar .input-row > * { width: 100%; }          /* nút + input full width */
+  .topbar .input-group input { width: 100%; }      /* ô nhập mã full width */
+  #searchBtn, #scanBtn { width: 100%; height: 44px; }
+
+  /* Hàng 2 (upload ảnh): cho 2 nút nằm cùng một hàng, trạng thái xuống dòng dưới */
+  .topbar .input-row:nth-child(2) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .topbar .input-row:nth-child(2) .popup-btn { width: 100%; }
+  #uploadStatus { grid-column: 1 / -1; }           /* chiếm trọn dòng để không đè nút */
+
+  /* Hàng 3 (textarea nhiều mã) chiếm trọn chiều ngang */
+  .bulk-box { min-width: 0; max-width: 100%; }
+  #bulkTextarea { width: 100%; height: 6.5em; }
+}
+
     </style>
 
 
