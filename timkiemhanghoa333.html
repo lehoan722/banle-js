@@ -138,12 +138,23 @@
         }
 
         /* ảnh sản phẩm */
+        /* Khung ảnh đứng thẳng hàng với TOP, không đội chiều cao ảo */
         .img-wrap {
-            margin-top: 12px;
-            transform: scale(0.7);
-            /* giảm còn 60% */
-            transform-origin: top left;
-        }        
+            margin-top: 0;
+            /* bỏ khoảng hở trên */
+            align-self: start;
+            /* bám mép trên của grid */
+        }
+
+        /* Ảnh thực sự thu nhỏ còn 60% (không dùng transform để tránh “chiều cao ảo”) */
+        #singleDetailBox .img-wrap img,
+        .detail-grid .img-wrap img {
+            width: 60%;
+            height: auto;
+            display: block;
+            /* loại bỏ khoảng trắng do inline-image */
+        }
+
 
         /* popup tìm mã */
         #popupSearch {
@@ -209,27 +220,31 @@
             background: #fff;
         }
 
-        
 
-        /* --- VÙNG CHI TIẾT: 2 cột song song --- */
+
+        /* 1 mã */
         #singleDetailBox {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            /* trái: bảng; phải: ảnh */
             grid-auto-rows: min-content;
             gap: 16px;
         }
 
-        .top-info {
+        #singleDetailBox .top-info {
             grid-column: 1 / 2;
         }
 
-        .right-xnt {
+        #singleDetailBox .right-xnt {
             grid-column: 1 / 2;
         }
 
-       
+        #singleDetailBox .img-wrap {
+            grid-column: 2 / 3;
+            grid-row: 1 / span 2;
+        }
 
-        /* --- layout cho nhiều mã --- */
+        /* nhiều mã */
         .detail-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -245,14 +260,20 @@
             grid-column: 1;
         }
 
-        
+        .detail-grid .img-wrap {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+        }
+
+
+
 
         @media (max-width:900px) {
             .detail-grid {
                 grid-template-columns: 1fr;
             }
 
-            
+
         }
     </style>
 
@@ -348,13 +369,13 @@
             <div class="top-info">
                 <table id="infoTopTable" class="info-table"></table>
             </div>
-             <div class="img-wrap">
+            <div class="img-wrap">
                 <img id="productImage" alt="Ảnh sản phẩm" />
             </div>
             <div class="right-xnt">
                 <table id="infoTableRight" class="info-table"></table>
             </div>
-           
+
         </div>
     </div>
 
