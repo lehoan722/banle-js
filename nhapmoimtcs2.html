@@ -23,7 +23,7 @@
         }
 
         .header {
-            background-color: #f0ed59;
+            background-color: #0078d7;
             color: white;
             text-align: center;
             padding: 10px;
@@ -35,7 +35,7 @@
             display: flex;
             padding: 5px;
             gap: 5px;
-           background-color: #f0ed59;
+            background: #f4f4f4;
             align-items: center;
         }
 
@@ -363,7 +363,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs2.css">
+    <link rel="stylesheet" href="banlemobilecs1.css">
 
 </head>
 
@@ -667,7 +667,7 @@
                 </div>
 
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" value="369369"><br /><br />
+                <input type="password" id="login-password" value="123123"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -692,7 +692,7 @@
         function getDiaDiemFromEmail(email) {
             if (!email) return "";
             email = email.trim().toLowerCase();
-            if (email === "khohangcs2@gmail.com") return "cs2";
+            if (email === "khohangcs1@gmail.com") return "cs1";
             if (email === "khohangcs2@gmail.com") return "cs2";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
@@ -1028,7 +1028,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
