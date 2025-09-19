@@ -33,6 +33,15 @@
             font-size: 2rem;
         }
 
+        .top-info {
+            grid-area: top;
+        }
+
+        .right-xnt {
+            grid-area: xnt;
+        }
+
+
         .input-row {
             display: flex;
             flex-wrap: wrap;
@@ -138,23 +147,6 @@
         }
 
         /* ảnh sản phẩm */
-        /* Khung ảnh đứng thẳng hàng với TOP, không đội chiều cao ảo */
-        .img-wrap {
-            margin-top: 0;
-            /* bỏ khoảng hở trên */
-            align-self: start;
-            /* bám mép trên của grid */
-        }
-
-        /* Ảnh thực sự thu nhỏ còn 60% (không dùng transform để tránh “chiều cao ảo”) */
-        #singleDetailBox .img-wrap img,
-        .detail-grid .img-wrap img {
-            width: 60%;
-            height: auto;
-            display: block;
-            /* loại bỏ khoảng trắng do inline-image */
-        }
-
 
         /* popup tìm mã */
         #popupSearch {
@@ -220,60 +212,67 @@
             background: #fff;
         }
 
+        /* Khung ảnh: bám mép trên, không tạo chiều cao ảo */
+        .img-wrap {
+            margin-top: 8px;
+            align-self: start;
+        }
 
+        /* Ảnh thu nhỏ còn 60% trên màn hình lớn */
+        #singleDetailBox .img-wrap img,
+        .detail-grid .img-wrap img {
+            width: 60%;
+            height: auto;
+            display: block;
+            /* tránh khoảng trắng do inline-image */
+        }
 
         /* 1 mã */
         #singleDetailBox {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            /* trái: bảng; phải: ảnh */
+            grid-template-areas:
+                "top img"
+                "xnt img";
             grid-auto-rows: min-content;
             gap: 16px;
         }
 
-        #singleDetailBox .top-info {
-            grid-column: 1 / 2;
-        }
-
-        #singleDetailBox .right-xnt {
-            grid-column: 1 / 2;
-        }
-
-        #singleDetailBox .img-wrap {
-            grid-column: 2 / 3;
-            grid-row: 1 / span 2;
-        }
-
-        /* nhiều mã */
+        /* nhiều mã (mỗi block .detail-grid) */
         .detail-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            grid-template-areas:
+                "top img"
+                "xnt img";
             grid-auto-rows: min-content;
             gap: 16px;
         }
-
-        .detail-grid .top-info {
-            grid-column: 1;
-        }
-
-        .detail-grid .right-xnt {
-            grid-column: 1;
-        }
-
-        .detail-grid .img-wrap {
-            grid-column: 2;
-            grid-row: 1 / span 2;
-        }
-
-
 
 
         @media (max-width:900px) {
             .detail-grid {
                 grid-template-columns: 1fr;
             }
+        }
 
+        @media (max-width: 700px) {
 
+            /* Xếp cột thành 1 cột và đặt thứ tự top → xnt → img */
+            #singleDetailBox,
+            .detail-grid {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "top"
+                    "xnt"
+                    "img";
+            }
+
+            /* Cho ảnh rộng 100% trên mobile để dễ xem */
+            #singleDetailBox .img-wrap img,
+            .detail-grid .img-wrap img {
+                width: 100%;
+            }
         }
     </style>
 
@@ -369,7 +368,7 @@
             <div class="top-info">
                 <table id="infoTopTable" class="info-table"></table>
             </div>
-            
+
             <div class="right-xnt">
                 <table id="infoTableRight" class="info-table"></table>
             </div>
