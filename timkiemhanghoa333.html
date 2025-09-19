@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa333.js"></script>
-    <style>
+<style>
   body{background:#f6f8fa;font-family:Segoe UI,Arial,sans-serif;margin:0}
   .main-container{max-width:900px;background:#fff;margin:32px auto 0;border-radius:16px;box-shadow:0 3px 18px #d2d8e3;padding:36px 24px 24px}
   h2{margin:0 0 20px;text-align:center;color:#1976d2;font-size:2rem}
@@ -62,7 +62,7 @@
   @media (max-width:700px){
     #singleDetailBox,.detail-grid{grid-template-columns:1fr}
     #singleDetailBox .img-wrap,.detail-grid .img-wrap{grid-column:1;grid-row:auto}
-    #singleDetailBox .img-wrap img,.detail-grid .img-wrap img{width:100%}
+    #singleDetailBox .img-wrap img,.detail-grid .img-wrap img{width:50%}
   }
 </style>
 
@@ -107,19 +107,21 @@
                 </button>
 
                 <button class="popup-btn" id="scanBtn">📷 Quét</button>
-
-                <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
-                <div class="upload-row"
-                    style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
+                style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
                     <label class="popup-btn" style="cursor:pointer">
                         Chọn tệp
                         <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
                     </label>
-
                     <button id="saveImgBtn" class="popup-btn"
                         style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
                         💾 Lưu ảnh
                     </button>
+
+
+                <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
+                <div class="upload-row"
+                    style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
+                    
 
                     <label style="display: none">
                         <input id="resizeCheckbox" type="checkbox" checked>
