@@ -226,27 +226,28 @@
             display: block;
             /* tránh khoảng trắng do inline-image */
         }
-        /* 1 mã */
-#singleDetailBox {
-    display: grid;
-    grid-template-columns: 1fr 1fr;  /* trái: bảng; phải: ảnh */
-    grid-auto-rows: min-content;
-    gap: 16px;
-}
-#singleDetailBox .top-info { grid-column: 1 / 2; }
-#singleDetailBox .right-xnt { grid-column: 1 / 2; }
-#singleDetailBox .img-wrap { grid-column: 2 / 3; grid-row: 1 / span 2; }
 
-/* nhiều mã */
-.detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-auto-rows: min-content;
-    gap: 16px;
-}
-.detail-grid .top-info { grid-column: 1; }
-.detail-grid .right-xnt { grid-column: 1; }
-.detail-grid .img-wrap { grid-column: 2; grid-row: 1 / span 2; }
+        /* 1 mã */
+        #singleDetailBox {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas:
+                "top img"
+                "xnt img";
+            grid-auto-rows: min-content;
+            gap: 16px;
+        }
+
+        /* nhiều mã (mỗi block .detail-grid) */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas:
+                "top img"
+                "xnt img";
+            grid-auto-rows: min-content;
+            gap: 16px;
+        }
 
 
         @media (max-width:900px) {
