@@ -252,7 +252,13 @@
         .right-xnt {
             grid-column: 1 / 2;
         }
-              
+       
+
+        @media (max-width:900px) {
+            #singleDetailBox {
+                grid-template-columns: 1fr;
+            }            
+        }
 
         /* --- layout cho nhiều mã --- */
         .detail-grid {
@@ -268,9 +274,9 @@
 
         .detail-grid .right-xnt {
             grid-column: 1;
-        }
-        
+        }        
 
+        
     </style>
 
 </head>
