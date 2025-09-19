@@ -1072,76 +1072,8 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
-    </script>
-
-    <script>
-        // Mở popup xác thực + focus ngay vào #xacmanv
-        function moPopupXacThucSua() {
-            const p = document.getElementById('popupXacThucSua');
-            p.style.display = 'block';
-            setTimeout(() => {
-                const manv = document.getElementById('xacmanv');
-                if (manv) { manv.focus(); manv.select(); }
-            }, 0);
-        }
-
-        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
-        document.addEventListener('DOMContentLoaded', () => {
-            const manv = document.getElementById('xacmanv');
-            const mk = document.getElementById('xacmatkhau');
-            const btn = document.getElementById('btnXacNhanSua');
-
-            if (manv) {
-                manv.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (mk) { mk.focus(); mk.select(); }
-                    }
-                });
-            }
-
-            if (mk) {
-                mk.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (btn) { btn.focus(); }
-                    }
-                });
-            }
-
-            if (btn) {
-                btn.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon()
-                    }
-                });
-            }
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
-                });
-            }
-
-            // Nếu bạn muốn cả nút "SỬA" cũng yêu cầu xác thực:
-            const btnSua = document.getElementById('sua');
-            if (btnSua) {
-                btnSua.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    moPopupXacThucSua();
-                });
-            }
-        });
-    </script>
+    </script>    
+    
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
