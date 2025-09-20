@@ -81,34 +81,51 @@ export function setupScanner({ videoEl, onResult }) {
   let controls = null;
 
   async function startScan(deviceId = null) {
+    // Dùng @zxing/browser qua ESM CDN cho môi trường thuần browser (không bundler)
+    const ZXING_URL = 'https://esm.sh/@zxing/browser@0.0.10';
+
     if (!window.ZXing) {
-      const mod = await import('@zxing/library');
+      const mod = await import(ZXING_URL);
+      // Lưu module lại để tái dùng
       window.ZXing = mod;
     }
-    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    const { BrowserMultiFormatReader } = window.ZXing;
+    codeReader = new BrowserMultiFormatReader();
+
 
     try {
-      controls = await codeReader.decodeFromVideoDevice(
-        deviceId,
-        videoEl,
-        (result, err) => {
-          if (result) {
-            const text = result.getText ? result.getText() : (result.rawValue || '');
-            if (text) {
-              onResult(text);   // Gọi callback bên ngoài
-            }
-          }
-        }
-      );
+      if (deviceId) {
+        controls = await codeReader.decodeFromVideoDevice(
+          deviceId,
+          videoEl,
+          onScanResult
+        );
+      } else {
+        controls = await codeReader.decodeFromConstraints(
+          { video: { facingMode: { ideal: 'environment' } } },
+          videoEl,
+          onScanResult
+        );
+      }
     } catch (e) {
       console.error('Lỗi startScan:', e);
     }
+
   }
 
   function stopScan() {
     try { controls?.stop(); } catch (_) { }
     try { codeReader?.reset(); } catch (_) { }
+    try {
+      const s = videoEl?.srcObject;
+      if (s) {
+        s.getTracks().forEach(t => t.stop());
+        videoEl.srcObject = null;
+      }
+    } catch (_) { }
   }
+
 
   return { startScan, stopScan };
 }
