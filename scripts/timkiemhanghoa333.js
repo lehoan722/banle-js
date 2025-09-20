@@ -191,11 +191,10 @@ async function triggerSearch(_masp = null) {
     multi.innerHTML = "";
 
     multi.innerHTML = "";
+    const hotList = [];
     for (const m of productWithXNT) {
         const html = await renderProductDetailHTML(m);
         const wrap = document.createElement("div");
-        wrap.style.marginBottom = "32px";
-        wrap.style.borderBottom = "1px dashed #90caf9";
         wrap.innerHTML = html;
         multi.appendChild(wrap);
 
@@ -204,15 +203,18 @@ async function triggerSearch(_masp = null) {
         const rowMap = window.XNT_ROW_MAPS[m];
         if (el && rowMap) {
             const hot = initXntHot(el, rowMap, m);
-            // ép render sau khi DOM đã layout
-            requestAnimationFrame(() => {
-                try {
-                    hot.refreshDimensions();
-                    hot.render();
-                } catch (e) { }
-            });
+            hotList.push(hot);
         }
     }
+
+    requestAnimationFrame(() => {
+        for (const hot of hotList) {
+            try {
+                hot.refreshDimensions();
+                hot.render();
+            } catch (e) { }
+        }
+    });
 
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
