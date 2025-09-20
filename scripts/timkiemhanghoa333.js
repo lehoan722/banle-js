@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
 window.dangNhap = async function () {
@@ -933,6 +934,8 @@ const _oldOnload = window.onload;
 window.onload = async function () {
     // giữ hành vi cũ: kiểm tra session và ẩn/hiện box đăng nhập
     if (typeof _oldOnload === "function") await _oldOnload();
+    // 🔊 mở khóa audio một lần cho iOS/Safari
+    try { setupBeepUnlockOnce(document); } catch (_) { }
 
     // nhận mã từ URL và tìm kiếm luôn
     const q = getQuery("masp");
