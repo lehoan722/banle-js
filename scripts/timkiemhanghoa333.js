@@ -512,6 +512,7 @@ function getQuery(name) {
 // ==== QUÉT MÃ VẠCH / QR BẰNG CAMERA (hỗ trợ iPhone) ====
 let ZXING = null, codeReader = null, scanControls = null;
 let torchOn = false;
+let track = null; // giữ MediaStreamTrack hiện tại để bật/tắt torch
 
 async function ensureZXing() {
     if (ZXING) return;
@@ -567,11 +568,17 @@ async function startScanner(deviceId) {
     };
 
     try {
+
         if (deviceId) {
-            // mở trực tiếp theo deviceId đã chọn (cực rộng)
             scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
         } else {
             scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
+        }
+
+        // Lưu track video để bật/tắt torch
+        const stream = videoEl.srcObject;
+        if (stream) {
+            track = stream.getVideoTracks()[0] || null;
         }
 
         // cố gắng bật continuous-focus (nếu hỗ trợ)
@@ -727,20 +734,17 @@ async function populateCameraList() {
 }
 
 
-
 async function switchCamera(deviceId) {
     await stopScanner();
     await startScanner(deviceId);
 }
 
-async function toggleTorch() {
-    const v = document.getElementById('scannerVideo');
 
+async function toggleTorch() {
     if (!track) return;
 
     try {
         torchOn = !torchOn;
-        // iOS 17.4+ có thể hỗ trợ; không phải máy nào cũng được → bọc try/catch
         await track.applyConstraints({ advanced: [{ torch: torchOn }] });
         document.getElementById('flashBtn').textContent = torchOn ? '🔦 Tắt đèn' : '🔦 Đèn';
     } catch (e) {
@@ -748,6 +752,7 @@ async function toggleTorch() {
         torchOn = false;
     }
 }
+
 
 async function decodeFromFile(file) {
     if (!file) return;
