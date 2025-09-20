@@ -758,10 +758,9 @@ async function decodeFromFile(file) {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
         if (text) {
-            prependToBulkTextarea(text);
-            closeScanner();
-            triggerSearch();
-            return;
+            addToScanBuffer(text);        // ✅ thêm vào buffer
+            renderScanBuffer();           // cập nhật panel
+            return;                       // ❌ KHÔNG đóng, KHÔNG tìm tại đây
         }
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } catch (e) {
@@ -773,34 +772,57 @@ async function decodeFromFile(file) {
 }
 
 
+
 // ==== Open/Close modal
 window.openScanner = async function () {
     try { document.activeElement?.blur(); } catch (_) { } // tránh Live Text chiếm camera
     document.getElementById('scannerModal').style.display = 'block';
-        // ====== PANEL BUFFER TRONG GIAO DIỆN QUÉT ======
+    // Đặt modal “đè” toàn màn hình, đảm bảo z-index cao
+    const modal = document.getElementById('scannerModal');
+    Object.assign(modal.style, {
+        position: 'fixed',
+        inset: '0',               // top/right/bottom/left = 0
+        zIndex: '9999',
+    });
+
+    // Thu nhỏ khung quét để chừa chỗ cho panel
+    const video = document.getElementById('scannerVideo');
+    if (video) {
+        video.style.maxWidth = '72vw';
+        video.style.maxHeight = '62vh';
+        video.style.borderRadius = '10px';
+        video.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)';
+    }
+
+    // ====== PANEL BUFFER TRONG GIAO DIỆN QUÉT ======
     let panel = document.getElementById('scanSidePanel');
     if (!panel) {
         panel = document.createElement('div');
         panel.id = 'scanSidePanel';
+        panel.style.cssText = `
+    position:absolute; right:10px; top:10px;
+    width:min(42vw, 300px); max-height:70vh; overflow:auto;
+    background:#ffffffee; backdrop-filter:saturate(180%) blur(6px);
+    border:1px solid #cfd8dc; border-radius:10px; padding:10px;
+    z-index:10001; box-shadow:0 6px 22px rgba(0,0,0,.15);
+  `;
         panel.innerHTML = `
-          <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
-          <div id="scanBufferBox" style="max-height:180px;overflow:auto;border:1px dashed #90caf9;
-               border-radius:6px;padding:6px;background:#fff"></div>
-          <div style="display:flex;gap:8px;margin-top:8px;">
-            <button id="scanCommitBtn" style="flex:1;background:#1976d2;color:#fff;border:none;
-               padding:8px 10px;border-radius:6px;font-weight:700;cursor:pointer;">Tìm kiếm</button>
-            <button id="scanClearBtn" style="background:#ffeaea;color:#c62828;border:1px solid #ef9a9a;
-               padding:8px 10px;border-radius:6px;cursor:pointer;">Xoá hết</button>
-            <button id="scanCloseBtn" style="background:#eceff1;color:#37474f;border:1px solid #cfd8dc;
-               padding:8px 10px;border-radius:6px;cursor:pointer;">Đóng</button>
-          </div>`;
-        document.getElementById('scannerModal').appendChild(panel);
+    <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
+    <div id="scanBufferBox" style="max-height:40vh; overflow:auto; border:1px dashed #90caf9; border-radius:6px; padding:6px; background:#fff"></div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button id="scanCommitBtn" style="flex:1; background:#1976d2; color:#fff; border:none; padding:8px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Tìm kiếm</button>
+      <button id="scanClearBtn"  style="background:#ffeaea; color:#c62828; border:1px solid #ef9a9a; padding:8px 10px; border-radius:6px; cursor:pointer;">Xoá hết</button>
+      <button id="scanCloseBtn"  style="background:#eceff1; color:#37474f; border:1px solid #cfd8dc; padding:8px 10px; border-radius:6px; cursor:pointer;">Đóng</button>
+    </div>
+  `;
+        modal.appendChild(panel);
 
         panel.querySelector('#scanCommitBtn').onclick = flushScanBufferToTextareaAndSearch;
-        panel.querySelector('#scanClearBtn').onclick  = clearScanBuffer;
-        panel.querySelector('#scanCloseBtn').onclick  = () => { closeScanner(); };
+        panel.querySelector('#scanClearBtn').onclick = clearScanBuffer;
+        panel.querySelector('#scanCloseBtn').onclick = () => { closeScanner(); /* KHÔNG xoá buffer */ };
     }
     renderScanBuffer();
+
 
     const status = document.getElementById('scannerStatus');
     status.textContent = 'Đang chuẩn bị camera...';
