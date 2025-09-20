@@ -1124,15 +1124,7 @@
                     // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
                 });
             }
-
-            // Nếu bạn muốn cả nút "SỬA" cũng yêu cầu xác thực:
-            const btnSua = document.getElementById('sua');
-            if (btnSua) {
-                btnSua.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    moPopupXacThucSua();
-                });
-            }
+           
         });
     </script>
 
