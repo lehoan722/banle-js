@@ -74,3 +74,41 @@ export function renderScanBuffer() {
     btn.onclick = () => removeFromScanBufferAt(+btn.dataset.idx);
   });
 }
+
+// scripts/scanner.js
+export function setupScanner({ videoEl, onResult }) {
+  let codeReader = null;
+  let controls = null;
+
+  async function startScan(deviceId = null) {
+    if (!window.ZXing) {
+      const mod = await import('@zxing/library');
+      window.ZXing = mod;
+    }
+    codeReader = new ZXing.BrowserMultiFormatReader();
+
+    try {
+      controls = await codeReader.decodeFromVideoDevice(
+        deviceId,
+        videoEl,
+        (result, err) => {
+          if (result) {
+            const text = result.getText ? result.getText() : (result.rawValue || '');
+            if (text) {
+              onResult(text);   // Gọi callback bên ngoài
+            }
+          }
+        }
+      );
+    } catch (e) {
+      console.error('Lỗi startScan:', e);
+    }
+  }
+
+  function stopScan() {
+    try { controls?.stop(); } catch (_) { }
+    try { codeReader?.reset(); } catch (_) { }
+  }
+
+  return { startScan, stopScan };
+}
