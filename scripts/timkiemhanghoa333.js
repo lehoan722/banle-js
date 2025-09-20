@@ -53,6 +53,65 @@ document.getElementById('popupSearchInput').addEventListener('input', function (
     searchPopup(this.value.trim());
 });
 
+// ====== BUFFER QUÉT MÃ (giữ qua các lần đóng/mở) ======
+window.scanBuffer = window.scanBuffer || []; // không xóa khi đóng modal
+
+function normCode(s) {
+    return (s || "").trim().toUpperCase();
+}
+
+function addToScanBuffer(raw) {
+    const code = normCode(raw);
+    if (!code) return false;
+    // bỏ trùng
+    if (!window.scanBuffer.includes(code)) {
+        // mã mới lên đầu danh sách
+        window.scanBuffer.unshift(code);
+        renderScanBuffer();
+        try { navigator.vibrate?.(60); } catch (_) { }
+        return true;
+    }
+    return false;
+}
+
+function removeFromScanBufferAt(idx) {
+    if (idx >= 0 && idx < window.scanBuffer.length) {
+        window.scanBuffer.splice(idx, 1);
+        renderScanBuffer();
+    }
+}
+
+function clearScanBuffer() {
+    window.scanBuffer = [];
+    renderScanBuffer();
+}
+
+// Đẩy buffer → textarea (mỗi mã 1 dòng, mã mới ở trên) rồi gọi tìm kiếm
+function flushScanBufferToTextareaAndSearch() {
+    const ta = document.getElementById('bulkTextarea');
+    if (!ta) return;
+
+    const existing = (ta.value || "")
+        .split(/[\r\n]+/)
+        .map(normCode)
+        .filter(Boolean);
+
+    // Loại phần trùng với buffer để không lặp
+    const existingFiltered = existing.filter(c => !window.scanBuffer.includes(c));
+    // Mã mới ở trên, giữ thứ tự như trong buffer
+    const merged = [...window.scanBuffer, ...existingFiltered];
+
+    ta.value = merged.join('\n');
+    ta.scrollTop = 0;
+
+    // đóng modal quét nhưng KHÔNG xóa buffer (theo yêu cầu)
+    closeScanner();
+
+    // gọi tìm kiếm 1 lần cho tất cả
+    triggerSearch();
+}
+
+
 async function searchPopup(keyword) {
     const type = window.currentPopupType;
     let table = '', field = '', extraFields = '';
@@ -628,21 +687,18 @@ async function resizeToStandardBlob(file) {
     ));
 }
 
-
+//gọi addToScanBuffer thôi, KHÔNG đóng, KHÔNG tìm:
 function onScanResult(result, err, controls) {
     if (result) {
         const text = result.getText ? result.getText() : (result.rawValue || '');
         if (text) {
-            try { navigator.vibrate?.(80); } catch (_) { }
-            // ĐẨY VÀO TEXTAREA (dòng đầu tiên) THAY VÌ maspInput
-            prependToBulkTextarea(text);
-            closeScanner();
-            // Gọi tìm kiếm dựa trên danh sách trong textarea
-            triggerSearch();
+            addToScanBuffer(text);
+            // KHÔNG closeScanner(), KHÔNG triggerSearch() ở đây
         }
     }
-    // Lỗi decode lặt vặt: bỏ qua để tiếp tục quét
+    // lỗi decode thì bỏ qua
 }
+
 
 
 async function stopScanner() {
@@ -717,11 +773,35 @@ async function decodeFromFile(file) {
 }
 
 
-
 // ==== Open/Close modal
 window.openScanner = async function () {
     try { document.activeElement?.blur(); } catch (_) { } // tránh Live Text chiếm camera
     document.getElementById('scannerModal').style.display = 'block';
+        // ====== PANEL BUFFER TRONG GIAO DIỆN QUÉT ======
+    let panel = document.getElementById('scanSidePanel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'scanSidePanel';
+        panel.innerHTML = `
+          <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
+          <div id="scanBufferBox" style="max-height:180px;overflow:auto;border:1px dashed #90caf9;
+               border-radius:6px;padding:6px;background:#fff"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button id="scanCommitBtn" style="flex:1;background:#1976d2;color:#fff;border:none;
+               padding:8px 10px;border-radius:6px;font-weight:700;cursor:pointer;">Tìm kiếm</button>
+            <button id="scanClearBtn" style="background:#ffeaea;color:#c62828;border:1px solid #ef9a9a;
+               padding:8px 10px;border-radius:6px;cursor:pointer;">Xoá hết</button>
+            <button id="scanCloseBtn" style="background:#eceff1;color:#37474f;border:1px solid #cfd8dc;
+               padding:8px 10px;border-radius:6px;cursor:pointer;">Đóng</button>
+          </div>`;
+        document.getElementById('scannerModal').appendChild(panel);
+
+        panel.querySelector('#scanCommitBtn').onclick = flushScanBufferToTextareaAndSearch;
+        panel.querySelector('#scanClearBtn').onclick  = clearScanBuffer;
+        panel.querySelector('#scanCloseBtn').onclick  = () => { closeScanner(); };
+    }
+    renderScanBuffer();
+
     const status = document.getElementById('scannerStatus');
     status.textContent = 'Đang chuẩn bị camera...';
 
@@ -742,6 +822,25 @@ window.openScanner = async function () {
     }
 };
 
+function renderScanBuffer() {
+    const box = document.getElementById('scanBufferBox');
+    if (!box) return;
+    if (!window.scanBuffer.length) {
+        box.innerHTML = `<div class="empty">Chưa có mã nào.</div>`;
+        return;
+    }
+    box.innerHTML = window.scanBuffer
+        .map((c, i) => `
+      <div class="scan-item">
+        <span class="code">${c}</span>
+        <button class="del" data-idx="${i}">×</button>
+      </div>
+    `).join('');
+    // gắn click xóa từng mã
+    box.querySelectorAll('.del').forEach(btn => {
+        btn.onclick = () => removeFromScanBufferAt(+btn.dataset.idx);
+    });
+}
 
 
 window.closeScanner = async function () {
