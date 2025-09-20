@@ -63,16 +63,39 @@ function normCode(s) {
 function addToScanBuffer(raw) {
     const code = normCode(raw);
     if (!code) return false;
-    // bỏ trùng
+
+    // flash luôn khi quét
+    showFlash();
+
     if (!window.scanBuffer.includes(code)) {
-        // mã mới lên đầu danh sách
         window.scanBuffer.unshift(code);
         renderScanBuffer();
-        try { navigator.vibrate?.(60); } catch (_) { }
+        showToast(`✅ Đã quét ${code}`, 'info');
         return true;
+    } else {
+        showToast(`⚠️ Mã ${code} đã tồn tại`, 'warn');
+        return false;
     }
-    return false;
 }
+
+
+// ====== FEEDBACK QUÉT ======
+function showFlash() {
+    const flash = document.getElementById('flashOverlay');
+    if (!flash) return;
+    flash.style.opacity = '1';
+    setTimeout(() => { flash.style.opacity = '0'; }, 120); // 120ms chớp
+}
+
+function showToast(msg, type = 'info') {
+    const toast = document.getElementById('toastMsg');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.style.background = type === 'warn' ? 'rgba(211,47,47,0.9)' : 'rgba(25,118,210,0.9)';
+    toast.style.opacity = '1';
+    setTimeout(() => { toast.style.opacity = '0'; }, 1800); // tự ẩn sau 1.8s
+}
+
 
 function removeFromScanBufferAt(idx) {
     if (idx >= 0 && idx < window.scanBuffer.length) {
