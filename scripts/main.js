@@ -13,6 +13,9 @@ import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './bangha
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep } from './soundBeep.js';
+import { setupScanner } from './scanner.js';
+import { showFlash, showToast } from './feedback.js';
+
 
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
@@ -214,11 +217,47 @@ export async function khoiTaoUngDung() {
     const nativeAlert = window.alert;
     window.alert = function (message) {
       try { window.soundAlert?.(); } catch { }
-      setTimeout(() => nativeAlert.call(window, message), 0);
+      setTimeout(() => nativeAlert.call(window, message), 300);
       return; // giữ API như alert gốc
     };
   })();
 
+  // Tạo scanner, gắn callback khi đọc được mã
+  const { startScan, stopScan } = setupScanner({
+    videoEl: document.getElementById("scanVideo"),
+    onResult: (code) => {
+      if (!code) return;
+
+      // Feedback
+      showFlash();
+      showToast(`✅ Đã quét: ${code}`, "info");
+
+      // Đẩy vào #masp và giả lập Enter
+      const maspInput = document.getElementById("masp");
+      maspInput.value = code;
+      const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+      maspInput.dispatchEvent(ev);
+
+      // Đóng popup quét
+      document.getElementById("popupScan").style.display = "none";
+      stopScan();
+    }
+  });
+
+  // Nút mở popup quét (bạn có thể đặt nút riêng trong giao diện)
+  const btnScan = document.createElement("button");
+  btnScan.textContent = "📷 Quét";
+  btnScan.onclick = () => {
+    document.getElementById("popupScan").style.display = "block";
+    startScan();
+  };
+  document.querySelector(".top-inputs").appendChild(btnScan);
+
+  // Nút đóng popup
+  document.getElementById("btnCloseScan").onclick = () => {
+    document.getElementById("popupScan").style.display = "none";
+    stopScan();
+  };
 }
 
 // --- Đặt ở cuối file main.js ---
