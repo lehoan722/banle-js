@@ -60,24 +60,26 @@ function normCode(s) {
     return (s || "").trim().toUpperCase();
 }
 
+//Gọi rung trong addToScanBuffer + Flash + Toast
 function addToScanBuffer(raw) {
     const code = normCode(raw);
     if (!code) return false;
 
-    // flash luôn khi quét
+    // Flash luôn khi nhận mã
     showFlash();
 
     if (!window.scanBuffer.includes(code)) {
         window.scanBuffer.unshift(code);
         renderScanBuffer();
         showToast(`✅ Đã quét ${code}`, 'info');
+        haptic(70);                 // ← rung ngắn (mã mới)
         return true;
     } else {
         showToast(`⚠️ Mã ${code} đã tồn tại`, 'warn');
+        haptic([40, 80, 40]);       // ← rung "đúp" (mã trùng)
         return false;
     }
 }
-
 
 // ====== FEEDBACK QUÉT ======
 function showFlash() {
@@ -96,6 +98,13 @@ function showToast(msg, type = 'info') {
     setTimeout(() => { toast.style.opacity = '0'; }, 1800); // tự ẩn sau 1.8s
 }
 
+// ====== HAPTIC (rung) ======
+function haptic(pattern = 60) {
+    try {
+        // Android Chrome hỗ trợ tốt; iOS Safari có thể bỏ qua (không lỗi)
+        if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (_) { }
+}
 
 function removeFromScanBufferAt(idx) {
     if (idx >= 0 && idx < window.scanBuffer.length) {
@@ -838,9 +847,9 @@ window.openScanner = async function () {
     <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
     <div id="scanBufferBox" style="max-height:40vh; overflow:auto; border:1px dashed #90caf9; border-radius:6px; padding:6px; background:#fff"></div>
     <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="scanCommitBtn" style="flex:1; background:#1976d2; color:#fff; border:none; padding:8px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Tìm kiếm</button>
       <button id="scanClearBtn"  style="background:#ffeaea; color:#c62828; border:1px solid #ef9a9a; padding:8px 10px; border-radius:6px; cursor:pointer;">Xoá hết</button>
       <button id="scanCloseBtn"  style="background:#eceff1; color:#37474f; border:1px solid #cfd8dc; padding:8px 10px; border-radius:6px; cursor:pointer;">Đóng</button>
+      <button id="scanCommitBtn" style="flex:1; background:#1976d2; color:#fff; border:none; padding:8px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Tìm kiếm</button>
     </div>
   `;
         modal.appendChild(panel);
