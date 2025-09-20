@@ -81,51 +81,37 @@ export function setupScanner({ videoEl, onResult }) {
   let controls = null;
 
   async function startScan(deviceId = null) {
-    // Dùng @zxing/browser qua ESM CDN cho môi trường thuần browser (không bundler)
     const ZXING_URL = 'https://esm.sh/@zxing/browser@0.0.10';
-
     if (!window.ZXing) {
       const mod = await import(ZXING_URL);
-      // Lưu module lại để tái dùng
       window.ZXing = mod;
     }
-
     const { BrowserMultiFormatReader } = window.ZXing;
     codeReader = new BrowserMultiFormatReader();
 
+    const onScan = (result, err) => {
+      if (result) {
+        const text = result.getText ? result.getText() : (result.rawValue || '');
+        if (text) onResult(text);
+      }
+    };
 
     try {
-      if (deviceId) {
-        controls = await codeReader.decodeFromVideoDevice(
-          deviceId,
-          videoEl,
-          onScanResult
-        );
-      } else {
-        controls = await codeReader.decodeFromConstraints(
-          { video: { facingMode: { ideal: 'environment' } } },
-          videoEl,
-          onScanResult
-        );
-      }
-    } catch (e) {
-      console.error('Lỗi startScan:', e);
-    }
-
+      controls = deviceId
+        ? await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScan)
+        : await codeReader.decodeFromConstraints({ video: { facingMode: { ideal: 'environment' } } },
+          videoEl, onScan);
+    } catch (e) { console.error('Lỗi startScan:', e); }
   }
 
   function stopScan() {
-    try { controls?.stop(); } catch (_) { }
-    try { codeReader?.reset(); } catch (_) { }
+    try { controls?.stop(); } catch { }
+    try { codeReader?.reset(); } catch { }
     try {
       const s = videoEl?.srcObject;
-      if (s) {
-        s.getTracks().forEach(t => t.stop());
-        videoEl.srcObject = null;
-      }
-    } catch (_) { }
+      if (s) { s.getTracks().forEach(t => t.stop()); videoEl.srcObject = null; }
+    } catch { }
   }
-
 
   return { startScan, stopScan };
 }
