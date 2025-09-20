@@ -204,13 +204,13 @@ async function triggerSearch(_masp = null) {
         const rowMap = window.XNT_ROW_MAPS[m];
         if (el && rowMap) {
             const hot = initXntHot(el, rowMap, m);
-            // ép render lại ngay sau khi DOM ổn định
-            setTimeout(() => {
+            // ép render sau khi DOM đã layout
+            requestAnimationFrame(() => {
                 try {
-                    hot.render();
                     hot.refreshDimensions();
+                    hot.render();
                 } catch (e) { }
-            }, 0);
+            });
         }
     }
 
