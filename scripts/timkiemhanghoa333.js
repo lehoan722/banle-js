@@ -65,21 +65,23 @@ function addToScanBuffer(raw) {
     const code = normCode(raw);
     if (!code) return false;
 
-    // Flash luôn khi nhận mã
     showFlash();
 
     if (!window.scanBuffer.includes(code)) {
         window.scanBuffer.unshift(code);
         renderScanBuffer();
         showToast(`✅ Đã quét ${code}`, 'info');
-        haptic(70);                 // ← rung ngắn (mã mới)
+        haptic(70);
+        playSuccessBeep();   // ✅ beep khi mã mới
         return true;
     } else {
         showToast(`⚠️ Mã ${code} đã tồn tại`, 'warn');
-        haptic([40, 80, 40]);       // ← rung "đúp" (mã trùng)
+        haptic([40, 80, 40]);
+        playAlertBeep();     // ⚠️ beep cảnh báo khi trùng
         return false;
     }
 }
+
 
 // ====== FEEDBACK QUÉT ======
 function showFlash() {
