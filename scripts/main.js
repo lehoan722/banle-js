@@ -223,41 +223,58 @@ export async function khoiTaoUngDung() {
   })();
 
   // Tạo scanner, gắn callback khi đọc được mã
-  const { startScan, stopScan } = setupScanner({
-    videoEl: document.getElementById("scanVideo"),
+  const videoEl = document.getElementById("scanVideo");
+  const statusEl = document.getElementById("scanStatus");
+  const selectEl = document.getElementById("cameraSelect");
+  const flashBtn = document.getElementById("flashBtn");
+  const fileInput = document.getElementById("pickImage");
+
+  const { startScan, stopScan, toggleTorch, changeCamera, decodeFromFile } = setupScanner({
+    videoEl, statusEl, selectEl,
     onResult: (code) => {
       if (!code) return;
-
-      // Feedback
       showFlash();
       showToast(`✅ Đã quét: ${code}`, "info");
+      try { window.soundSuccess?.(); } catch { }
 
-      // Đẩy vào #masp và giả lập Enter
       const maspInput = document.getElementById("masp");
       maspInput.value = code;
-      const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
-      maspInput.dispatchEvent(ev);
+      maspInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
-      // Đóng popup quét
       document.getElementById("popupScan").style.display = "none";
       stopScan();
     }
   });
 
-  // Nút mở popup quét (bạn có thể đặt nút riêng trong giao diện)
+  // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
   const btnScan = document.createElement("button");
   btnScan.textContent = "📷 Quét";
   btnScan.onclick = () => {
     document.getElementById("popupScan").style.display = "block";
-    startScan();
+    startScan(); // startScan() sẽ tự điền dropdown & chọn default Ultra-Wide
   };
   document.querySelector(".top-inputs").appendChild(btnScan);
 
-  // Nút đóng popup
   document.getElementById("btnCloseScan").onclick = () => {
     document.getElementById("popupScan").style.display = "none";
     stopScan();
   };
+
+  // bật/tắt đèn
+  flashBtn.onclick = async () => {
+    const on = await toggleTorch();
+    flashBtn.textContent = on ? "🔦 Tắt đèn" : "🔦 Đèn";
+  };
+
+  // đổi camera từ dropdown
+  selectEl.onchange = () => changeCamera(selectEl.value);
+
+  // ảnh có sẵn
+  fileInput.onchange = (e) => {
+    const f = e.target.files?.[0];
+    if (f) decodeFromFile(f);
+  };
+
 }
 
 // --- Đặt ở cuối file main.js ---
