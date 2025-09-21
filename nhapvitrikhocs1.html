@@ -20,7 +20,7 @@
 
         body {
             display: flex;
-            flex-direction: column; 
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
             padding: 0;
@@ -144,12 +144,12 @@
 
         .trangthai-khongtontai {
             color: #e53935 !important;
-            
+
         }
 
         .trangthai-chuacovitri {
             color: #e67e22 !important;
-            
+
         }
 
 
@@ -185,7 +185,7 @@
         <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
         <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
         <input id="login-password" type="password" value="123123" placeholder="Mật khẩu" style="display:none">
-      
+
         <button id="login-submit">Đăng nhập</button>
         <span id="login-status"></span>
     </div>
@@ -265,7 +265,34 @@
             window.editableMASP = true;
             window.editableVITRI = false;
         }
+
         initTable();
+
+        // === BỔ SUNG: tự đọc danh sách mã do F8 đẩy sang và chạy kiểm tra ===
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const raw = localStorage.getItem('VITRIKHO_IMPORT');
+                if (!raw) return; // không có payload thì thôi
+                const payload = JSON.parse(raw);
+                const list = Array.isArray(payload?.list) ? payload.list : [];
+                if (!list.length) return;
+
+                // Đổ vào HOT cột "Mã sản phẩm" (chuẩn hóa in hoa, loại trùng)
+                const uniq = Array.from(new Set(list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)));
+                const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
+                hot.loadData(rows);
+
+                // (không bắt buộc) Xóa khóa sau khi dùng, tránh nhầm lần sau
+                localStorage.removeItem('VITRIKHO_IMPORT');
+
+                // Tự động chạy kiểm tra vị trí để hiển thị trạng thái
+                setTimeout(() => kiemTraViTri(), 0);
+            } catch (err) {
+                console.error('VITRIKHO_IMPORT parse error:', err);
+            }
+        });
+
+
 
         // Đăng nhập Supabase (bắt buộc)
         document.getElementById('login-submit').onclick = async function () {
