@@ -299,7 +299,7 @@ export async function khoiTaoUngDung() {
         const masp_list = Array.from(maspSet);
 
         // Gọi RPC gọn cột (wrapper mới)
-        const { data, error } = await window.supabase.rpc('timton_hientai_bulk', { masp_list });
+        const { data, error } = await window.supabase.rpc('timton_hientai_v2', { masp_list });
         if (error) {
           console.error('RPC ton nhanh lỗi:', error);
           // Đổ lỗi nhẹ vào ô
