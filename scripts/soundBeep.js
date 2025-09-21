@@ -44,7 +44,7 @@ export function playSuccessBeep() {
 
 // “tút” — dài, trầm hơn
 export function playWaitSizeBeep() {
-  beep(1200, 200, "sine", 0.7);
+  beep(1200, 250, "sine", 0.7);
 }
 
 // Tuỳ chọn: beep cảnh báo (âm vuông, hơi “gắt” hơn)
