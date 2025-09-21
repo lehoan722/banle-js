@@ -650,35 +650,45 @@
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
+
+
+  <!--bat dau khu vuc thiet ke hien thi tem -->
+
 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
   width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
   box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
-">
+ ">
   <!-- Lưới 2 cột full height: 60% | 40% -->
   <div style="display:grid; grid-template-columns:60% 40%; height:100%; width:100%; gap:0;">
     
-    <!-- CỘT TRÁI (60%): trên = Giá/Mã/Shop ; dưới = Thông tin chung -->
-    <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; height:100%; margin:0; padding:0;">
+     <!-- CỘT TRÁI (60%): trên = Giá/Mã/Shop ; dưới = Thông tin chung -->
+     <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; height:100%; margin:0; padding:0;">
       <div style="width:100%; margin:0; padding:0;">
+
+
         <!-- SHOP HOÀN TUYẾT đặt ngay dưới Mã SP -->
         <div style="font-size:6pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
           Shop Hoàn Tuyết
         </div>
+
+        <!-- THÔNG TIN CHUNG ở đáy cột trái -->
+      <div style="font-size:5.5pt; line-height:1; word-break:break-word; width:100%; margin:0; padding:0;">
+        ${infoChung}
+      </div>
+
         <!-- GIÁ: không xuống dòng, thiếu chỗ cắt bên phải -->
-        <div style="font-size:11pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
+        <div style="font-size:10pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
           Giá: ${formatGia(t.giale)}
         </div>
-        <!-- MÃ SP: không xuống dòng, thiếu chỗ cắt BÊN TRÁI -->
-        <div style="font-size:8pt; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; text-align:left; margin:0;">
+        
+        <!-- MÃ SP: không xuống dòng, thiếu chỗ cắt BÊN TRÁI  text-align:left; -->
+        <div style="font-size:8pt; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
           ${t.masp}
         </div>
         
       </div>
 
-      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
-      <div style="font-size:5.5pt; line-height:1; word-break:break-word; width:100%; margin:0; padding:0;">
-        ${infoChung}
-      </div>
+      
     </div>
 
     <!-- CỘT PHẢI (40%): chỉ QR, đặt sát mép trên, canh trái -->
@@ -689,6 +699,9 @@
 
   </div>
 </div>
+
+<!--HET khu vuc thiet ke hien thi tem -->
+
 
 `;
             }
