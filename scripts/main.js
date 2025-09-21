@@ -275,6 +275,122 @@ export async function khoiTaoUngDung() {
     if (f) decodeFromFile(f);
   };
 
+  // === TỒN KHO TỨC THÌ: Observer + batch RPC (KHÔNG đụng code render cũ) ===
+  {
+    const tbody = document.querySelector('#bangketqua tbody');
+    if (!tbody) console.warn('Không thấy #bangketqua tbody');
+    const memo = new Map(); // cache theo key "MASP|SIZE"
+    let queue = new Map();  // gom batch {key -> {masp,size,row}}
+    let batchTimer = null;
+
+    function keyOf(masp, size) {
+      return (String(masp || '').toUpperCase() + '|' + String(size || '').trim());
+    }
+
+    function scheduleBatch() {
+      if (batchTimer) return;
+      batchTimer = setTimeout(async () => {
+        const items = Array.from(queue.values());
+        queue.clear(); batchTimer = null;
+        if (!items.length) return;
+
+        // Lấy mảng MASP (upper) cho RPC (giữ đúng format que hàm cũ/wrapper)
+        const maspSet = new Set(items.map(it => String(it.masp || '').toUpperCase()));
+        const masp_list = Array.from(maspSet);
+
+        // Gọi RPC gọn cột (wrapper mới)
+        const { data, error } = await window.supabase.rpc('timton_hientai_bulk', { masp_list });
+        if (error) {
+          console.error('RPC ton nhanh lỗi:', error);
+          // Đổ lỗi nhẹ vào ô
+          items.forEach(({ row }) => {
+            const cs1 = row.querySelector('td[data-col="ton_cs1"]'); if (cs1) cs1.textContent = '…';
+            const cs2 = row.querySelector('td[data-col="ton_cs2"]'); if (cs2) cs2.textContent = '…';
+          });
+          return;
+        }
+
+        // Map kết quả theo key "MASP|SIZE"
+        const resultMap = new Map();
+        (data || []).forEach(r => {
+          const k = keyOf(r.masp, r.size);
+          resultMap.set(k, { ton_cs1: r.ton_cs1 || 0, ton_cs2: r.ton_cs2 || 0 });
+        });
+
+        // Điền số vào từng dòng; ghi memo
+        items.forEach(({ masp, size, row }) => {
+          const k = keyOf(masp, size);
+          const val = resultMap.get(k) || { ton_cs1: 0, ton_cs2: 0 };
+          memo.set(k, val);
+
+          const cs1 = row.querySelector('td[data-col="ton_cs1"]');
+          const cs2 = row.querySelector('td[data-col="ton_cs2"]');
+          if (cs1) cs1.textContent = val.ton_cs1;
+          if (cs2) cs2.textContent = val.ton_cs2;
+        });
+      }, 80); // gom trong ~80ms cho 1-3 mã/lượt
+    }
+
+    function ensureTds(row) {
+      // Nếu chưa có 2 ô tồn → append vào cuối hàng
+      if (!row.querySelector('td[data-col="ton_cs1"]')) {
+        const td1 = document.createElement('td'); td1.dataset.col = 'ton_cs1'; td1.textContent = '…';
+        row.appendChild(td1);
+      }
+      if (!row.querySelector('td[data-col="ton_cs2"]')) {
+        const td2 = document.createElement('td'); td2.dataset.col = 'ton_cs2'; td2.textContent = '…';
+        row.appendChild(td2);
+      }
+    }
+
+    function pickCellText(row, idx) {
+      const c = row.cells[idx];
+      return c ? c.textContent.trim() : '';
+    }
+
+    function handleRow(row) {
+      // Cột hiện có theo thead: 0 Mã hàng, 1 Tên, 2 Kích cỡ, 3 SL, 4 ĐVT, 5 Đơn giá, 6 KM, 7 Thành tiền, 8 Vị trí
+      const masp = pickCellText(row, 0).toUpperCase();
+      const size = pickCellText(row, 2);
+      if (!masp) return;
+
+      ensureTds(row);
+      const k = keyOf(masp, size);
+
+      // Nếu vừa hỏi rồi → điền từ cache
+      if (memo.has(k)) {
+        const val = memo.get(k);
+        const cs1 = row.querySelector('td[data-col="ton_cs1"]');
+        const cs2 = row.querySelector('td[data-col="ton_cs2"]');
+        if (cs1) cs1.textContent = val.ton_cs1;
+        if (cs2) cs2.textContent = val.ton_cs2;
+        return;
+      }
+
+      // Gom batch; nếu đã có trong queue thì thay row cuối
+      queue.set(k, { masp, size, row });
+      scheduleBatch();
+    }
+
+    // Quan sát thêm dòng mới hoặc cập nhật nội dung dòng
+    if (tbody) {
+      const mo = new MutationObserver(muts => {
+        muts.forEach(m => {
+          m.addedNodes.forEach(node => {
+            if (node.nodeType === 1 && node.tagName === 'TR') handleRow(node);
+          });
+          if (m.type === 'childList' && m.target && m.target.tagName === 'TBODY') return;
+          // Nếu cell thay đổi (vd sửa size sau khi add)
+          if (m.type === 'characterData') {
+            const row = m.target.parentElement?.parentElement;
+            if (row && row.tagName === 'TR') handleRow(row);
+          }
+        });
+      });
+      mo.observe(tbody, { childList: true, subtree: true, characterData: true });
+    }
+  }
+
 }
 
 // --- Đặt ở cuối file main.js ---
