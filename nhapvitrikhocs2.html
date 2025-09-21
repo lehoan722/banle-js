@@ -184,7 +184,8 @@
     <div id="loginModule">
         <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
         <input id="login-email" type="email" value="khohangcs2@gmail.com" style="display:none">
-        <input id="login-password" type="password" placeholder="Mật khẩu">
+        <input id="login-password" type="password" value="369369" placeholder="Mật khẩu" style="display:none">
+
         <button id="login-submit">Đăng nhập</button>
         <span id="login-status"></span>
     </div>
@@ -265,6 +266,33 @@
             window.editableVITRI = false;
         }
         initTable();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const raw = localStorage.getItem('VITRIKHO_IMPORT');
+                if (!raw) return;
+                const payload = JSON.parse(raw);
+                // Chỉ xử lý nếu không ghi cs hoặc cs === 'cs1'
+                if (payload?.cs && payload.cs.toLowerCase() !== 'cs2') return;
+
+                const list = Array.isArray(payload?.list) ? payload.list : [];
+                if (!list.length) return;
+
+                const uniq = Array.from(new Set(
+                    list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)
+                ));
+                const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
+                hot.loadData(rows);
+
+                // Dọn khóa sau khi dùng để tránh dính ca sau
+                localStorage.removeItem('VITRIKHO_IMPORT');
+
+                // Tự chạy kiểm tra vị trí
+                setTimeout(() => kiemTraViTri(), 0);
+            } catch (err) {
+                console.error('VITRIKHO_IMPORT parse error:', err);
+            }
+        });
 
         // Đăng nhập Supabase (bắt buộc)
         document.getElementById('login-submit').onclick = async function () {
