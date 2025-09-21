@@ -598,14 +598,14 @@
             let infoChung = "";
             if (loaiTem === "giaydep") {
                 infoChung = `
-            không giặt,tẩy;Bảo quản nơi khô ráo;<br>
+            không giặt,tẩy;Bảo quản nơi khô ráo;
             Dán nhãn tại Việt Nam.Giày/dép;chất
             liệu:da,nhựa,caosu tổng hợp;cỡ:38-43            
         `;
             } else if (loaiTem === "quanao") {
                 infoChung = `
-            không tẩy;giặt tay,Bảo quản khô ráo;<br>
-            Dán nhãn tại Việt Nam. Quần,Áo ;<br>
+            không tẩy;giặt tay,Bảo quản khô ráo;
+            Dán nhãn tại Việt Nam. Quần,Áo ;
             chất liệu: Vải sợi tổng hợp;cỡ: S-XXL            
         `;
             } else {
@@ -651,40 +651,53 @@
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
-  width:${TEM_WIDTH_MM}mm;
-  height:${TEM_HEIGHT_MM}mm;
-  box-sizing:border-box; overflow:hidden; border:0;
-  display:flex; flex-direction:column; justify-content:space-between;
-  margin:0; padding:0;
+  width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
+  box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
 ">
-  <!-- Vùng TOP: grid 2 cột 60% | 40%, khóa cao ≈ 40% tem -->
-  <div style="
-    display:grid; grid-template-columns:60% 40%;
-    align-items:flex-start; margin:0; padding:0;
-    height:calc(${TEM_HEIGHT_MM}mm * 0.40);
-  ">
-    <!-- Bên trái (60%): Shop + Giá + Mã -->
-    <div style="display:flex; flex-direction:column; gap:0; margin:0; padding:0;">
-      <div style="font-size:6pt; line-height:1; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+  <!-- Lưới 2 cột full height: trái 60% | phải 40% -->
+  <div style="display:grid; grid-template-columns:60% 40%; height:100%; width:100%; gap:0;">
+
+    <!-- CỘT TRÁI (60%): trên = Giá + Mã; dưới = Thông tin chung -->
+    <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; height:100%; margin:0; padding:0;">
+      <!-- Giá + Mã (2 div tách riêng) -->
+      <div style="width:100%; margin:0; padding:0;">
+        <!-- GIÁ: không xuống dòng, nếu thiếu chỗ thì cắt bên phải -->
+        <div style="font-size:11pt; font-weight:bold; line-height:1;
+                    white-space:nowrap; overflow:hidden; text-overflow:clip;">
+          Giá: ${formatGia(t.giale)}
+        </div>
+
+        <!-- MÃ SP: không xuống dòng, nếu thiếu chỗ thì ẩn bớt PHẦN ĐẦU bên trái -->
+        <div style="font-size:8pt; line-height:1; margin-top:2px;
+                    white-space:nowrap; overflow:hidden; text-overflow:clip;
+                    direction:rtl; unicode-bidi:plaintext; text-align:left;">
+          ${t.masp}
+        </div>
+      </div>
+
+      <!-- Thông tin chung ở đáy cột trái -->
+      <div style="font-size:5.5pt; line-height:1; word-break:break-word; width:100%; margin:0; padding:0;">
+        ${infoChung}
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI (40%): trên = 'Shop Hoàn Tuyết'; dưới = QR -->
+    <div style="display:flex; flex-direction:column; justify-content:space-between;
+                align-items:flex-start; height:100%; margin:0; padding:0;">
+      <!-- Dòng 'Shop Hoàn Tuyết' vừa khít bề rộng 40%, canh trái, không xuống dòng -->
+      <div style="width:100%; font-size:6pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0; padding:0;">
         Shop Hoàn Tuyết
       </div>
-      <div style="font-size:11pt; font-weight:bold; line-height:1;">Giá: ${formatGia(t.giale)}</div>
-      <div style="font-size:8pt; line-height:1;">${t.masp}</div>
+
+      <!-- QR ở đáy, canh trái, kích thước thực 12mm x 12mm -->
+      <div style="display:flex; justify-content:flex-start; align-items:flex-end; width:100%; margin:0; padding:0;">
+        <canvas class="qr" style="width:12mm; height:12mm;"></canvas>
+      </div>
     </div>
 
-    <!-- Bên phải (40%): Ô chứa QR đặt góc phải-trên -->
-    <div style="display:flex; justify-content:flex-end; align-items:flex-start; margin:0; padding:0;">
-      <!-- 1.2 cm = 12mm -->
-      <canvas class="qr" style="width:12mm; height:12mm;"></canvas>
-    </div>
-  </div>
-
-  <!-- Vùng BOTTOM: Thông tin chung đẩy xuống đáy tem -->
-  <div style="font-size:5.5pt; line-height:1; word-break:break-word; margin:0; padding:0;">
-    ${infoChung}
   </div>
 </div>
-
 `;
             }
             html += `</div></div>`;
