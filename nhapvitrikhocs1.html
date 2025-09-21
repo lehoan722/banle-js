@@ -272,28 +272,29 @@
         document.addEventListener('DOMContentLoaded', () => {
             try {
                 const raw = localStorage.getItem('VITRIKHO_IMPORT');
-                if (!raw) return; // không có payload thì thôi
+                if (!raw) return;
                 const payload = JSON.parse(raw);
+                // Chỉ xử lý nếu không ghi cs hoặc cs === 'cs1'
+                if (payload?.cs && payload.cs.toLowerCase() !== 'cs1') return;
+
                 const list = Array.isArray(payload?.list) ? payload.list : [];
                 if (!list.length) return;
 
-                // Đổ vào HOT cột "Mã sản phẩm" (chuẩn hóa in hoa, loại trùng)
-                const uniq = Array.from(new Set(list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)));
+                const uniq = Array.from(new Set(
+                    list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)
+                ));
                 const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
                 hot.loadData(rows);
 
-                // (không bắt buộc) Xóa khóa sau khi dùng, tránh nhầm lần sau
+                // Dọn khóa sau khi dùng để tránh dính ca sau
                 localStorage.removeItem('VITRIKHO_IMPORT');
 
-                // Tự động chạy kiểm tra vị trí để hiển thị trạng thái
+                // Tự chạy kiểm tra vị trí
                 setTimeout(() => kiemTraViTri(), 0);
             } catch (err) {
                 console.error('VITRIKHO_IMPORT parse error:', err);
             }
         });
-
-
-
         // Đăng nhập Supabase (bắt buộc)
         document.getElementById('login-submit').onclick = async function () {
             const email = document.getElementById('login-email').value.trim();
