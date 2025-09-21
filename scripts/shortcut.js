@@ -131,12 +131,12 @@ export function khoiTaoShortcut() {
       // 3) Mở trang timkiemhanghoa333 trong TAB MỚI
       window.open("timkiemhanghoa333.html", "_blank");
     }
-   
-    // F8: mở trang nhập vị trí kho (CS1/CS2) + truyền danh sách mã
+    
+    // F8: mở trang nhập vị trí kho (theo cơ sở đích), có ngoại lệ ccn1v2/ccn2v1
     if (e.key === "F8") {
       e.preventDefault();
 
-      // 1) Gom danh sách mã từ bảng kết quả (cột 0)
+      // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
       const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
       const set = new Set(
         rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase()).filter(Boolean)
@@ -146,19 +146,31 @@ export function khoiTaoShortcut() {
         return;
       }
 
-      // 2) Xác định cơ sở hiện tại
+      // 2) Xác định cơ sở đang đăng nhập (origin_cs)
       const csFromLS = (localStorage.getItem('diadiem') || "").toLowerCase();
       const csFromInput = (document.getElementById('diadiem')?.value || "").toLowerCase();
-      const cs = (csFromLS || csFromInput || "cs1"); // mặc định cs1 nếu thiếu
+      const origin_cs = (csFromLS || csFromInput || "cs1"); // fallback cs1
 
-      // 3) Ghi payload vào localStorage
-      const payload = { t: Date.now(), cs, list: Array.from(set) };
+      // 3) Xác định trang nguồn để áp dụng ngoại lệ
+      const path = (location.pathname || "").toLowerCase();
+      let target_cs = origin_cs; // mặc định thuận chiều
+      if (path.endsWith("ccn2v1.html")) target_cs = "cs1"; // ngoại lệ: CS2 -> mở CS1
+      if (path.endsWith("ccn1v2.html")) target_cs = "cs2"; // ngoại lệ: CS1 -> mở CS2
+
+      // 4) Lưu payload vào localStorage
+      const payload = {
+        t: Date.now(),
+        origin_cs,
+        target_cs,
+        list: Array.from(set)
+      };
       localStorage.setItem("VITRIKHO_IMPORT", JSON.stringify(payload));
 
-      // 4) Mở trang đích đúng theo cơ sở
-      const target = (cs === "cs2") ? "nhapvitrikhocs2.html" : "nhapvitrikhocs1.html";
-      window.open(target, "_blank");
+      // 5) Mở trang nhập vị trí kho theo target_cs
+      const targetUrl = (target_cs === "cs2") ? "nhapvitrikhocs2.html" : "nhapvitrikhocs1.html";
+      window.open(targetUrl, "_blank");
     }
+
 
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
     if (e.ctrlKey && e.key.toLowerCase() === "t") {
