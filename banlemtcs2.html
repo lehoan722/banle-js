@@ -489,6 +489,7 @@
 
         <div class="main">
             <div class="table-area">
+
                 <table id="bangketqua">
                     <thead>
                         <tr>
@@ -500,11 +501,15 @@
                             <th>Đơn giá</th>
                             <th>Khuyến mại</th>
                             <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- ✅ THÊM MỚI -->
+                            <th>Vị trí</th> <!-- (giữ nguyên) -->
+                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                            <th>Tồn1</th>
+                            <th>Tồn2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
+
             </div>
             <div class="sidebar">
                 <div class="tabs">
@@ -652,7 +657,8 @@
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
 
-                <input type="email" id="login-email"  value="khohangcs2@gmail.com" readonly style="background:#eee; display:none;" />
+                <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly
+                    style="background:#eee; display:none;" />
 
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
