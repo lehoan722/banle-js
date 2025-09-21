@@ -134,6 +134,7 @@ export function khoiTaoShortcut() {
 
 
     // F8: mở báo cáo XNT17 (TAB MỚI) với danh sách mã đang có trên bảng kết quả
+    // F8: mở trang nhập vị trí kho CS1 + đẩy danh sách mã hiện có
     if (e.key === "F8") {
       e.preventDefault();
 
@@ -142,18 +143,17 @@ export function khoiTaoShortcut() {
         rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase()).filter(Boolean)
       );
       if (set.size === 0) {
-        alert("Không có mã hàng nào trên bảng để mở XNT17.");
+        alert("❌ Không có mã hàng nào trên bảng để mở nhập vị trí kho.");
         return;
       }
 
-      // Ghi vào localStorage (kèm timestamp để XNT17 xác định bản mới nhất)
+      // Ghi vào localStorage (kèm timestamp để trang đích nhận bản mới nhất)
       const payload = { t: Date.now(), list: Array.from(set) };
-      localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
+      localStorage.setItem("VITRIKHO_IMPORT", JSON.stringify(payload));
 
-      // Mở XNT17 trong TAB MỚI (để tab bán lẻ vẫn giữ đăng nhập, không bị mất phiên)
-      window.open("baocaoxnt17.html", "_blank");
+      // Mở trang nhập vị trí kho trong TAB MỚI
+      window.open("nhapvitrikhocs1.html", "_blank");
     }
-
 
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
     if (e.ctrlKey && e.key.toLowerCase() === "t") {
