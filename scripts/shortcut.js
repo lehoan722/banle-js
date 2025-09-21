@@ -131,13 +131,12 @@ export function khoiTaoShortcut() {
       // 3) Mở trang timkiemhanghoa333 trong TAB MỚI
       window.open("timkiemhanghoa333.html", "_blank");
     }
-
-
-    // F8: mở báo cáo XNT17 (TAB MỚI) với danh sách mã đang có trên bảng kết quả
-    // F8: mở trang nhập vị trí kho CS1 + đẩy danh sách mã hiện có
+   
+    // F8: mở trang nhập vị trí kho (CS1/CS2) + truyền danh sách mã
     if (e.key === "F8") {
       e.preventDefault();
 
+      // 1) Gom danh sách mã từ bảng kết quả (cột 0)
       const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
       const set = new Set(
         rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase()).filter(Boolean)
@@ -147,12 +146,18 @@ export function khoiTaoShortcut() {
         return;
       }
 
-      // Ghi vào localStorage (kèm timestamp để trang đích nhận bản mới nhất)
-      const payload = { t: Date.now(), list: Array.from(set) };
+      // 2) Xác định cơ sở hiện tại
+      const csFromLS = (localStorage.getItem('diadiem') || "").toLowerCase();
+      const csFromInput = (document.getElementById('diadiem')?.value || "").toLowerCase();
+      const cs = (csFromLS || csFromInput || "cs1"); // mặc định cs1 nếu thiếu
+
+      // 3) Ghi payload vào localStorage
+      const payload = { t: Date.now(), cs, list: Array.from(set) };
       localStorage.setItem("VITRIKHO_IMPORT", JSON.stringify(payload));
 
-      // Mở trang nhập vị trí kho trong TAB MỚI
-      window.open("nhapvitrikhocs1.html", "_blank");
+      // 4) Mở trang đích đúng theo cơ sở
+      const target = (cs === "cs2") ? "nhapvitrikhocs2.html" : "nhapvitrikhocs1.html";
+      window.open(target, "_blank");
     }
 
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
