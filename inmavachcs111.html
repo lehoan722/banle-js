@@ -599,15 +599,16 @@
             if (loaiTem === "giaydep") {
                 infoChung = `
             không giặt,tẩy;Bảoquản nơi<br>
-            khôráo;Dán nhãn tại Việt<br>
-            Nam.Giày,dép; chất liệu:<br>
-            da,pu, tổng hợp;cỡ:38-43            
+            khô ráo; Dán nhãn tại Việt<br>
+            Nam. Giày,dép; chất liệu:<br>
+            da, pu, tổng hợp;cỡ:38-43            
         `;
             } else if (loaiTem === "quanao") {
                 infoChung = `
-            không tẩy;giặt tay,Bảo quản khô ráo;
-            Dán nhãn tại Việt Nam. Quần,Áo ;
-            chất liệu: Vải sợi tổng hợp;cỡ: S-XXL            
+            không tẩy;giặt tay,Bảo quản<br>
+            khô ráo; Dán nhãn tại Việt<br>
+            Nam. Quần,Áo; chất liệu:<br>
+            Vải sợi tổng hợp;cỡ: S-XXL            
         `;
             } else {
                 // Thêm các loại tem khác ở đây nếu muốn mở rộng
@@ -659,10 +660,11 @@
   width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
   box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
  ">
-  <!-- Lưới 2 cột full height: 60% | 40% -->
-  <div style="display:grid; grid-template-columns:65% 35%; height:100%; width:100%; gap:0; padding-top:1mm; box-sizing:border-box;">
+  <!-- Lưới 2 cột full height: 60% | 40% -->  
+  <div style="display:grid; grid-template-columns:65% 35%; grid-template-rows:1mm auto; height:100%; width:100%; gap:0; box-sizing:border-box;">
   
-    
+    <div style="grid-column:1 / -1; height:1mm;"></div>
+
      <!-- CỘT TRÁI (60%): trên = Giá/Mã/Shop ; dưới = Thông tin chung -->
      <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; height:100%; margin:0; padding:0;">
       <div style="width:100%; margin:0; padding:0;">
