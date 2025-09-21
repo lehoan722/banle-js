@@ -632,79 +632,66 @@
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
             // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
-            let html = `<div class="print-preview" style="
-        padding-top: ${PAGE_MARGIN_TOP_MM}mm;
-        padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
-    ">
-    <div class="tem-grid" style="
-        display: grid;
-        grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
-        grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
-        column-gap: 5mm;
-        row-gap: 1.9mm;        
-    ">`;
-
-            // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
-            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-            for (let i = 0; i < maxTems; i++) {
-                const t = pageTems[i] || null;
-                if (!t) html += `<div class="tem tem-blank"></div>`;
-                else html += `
+             else html += `
 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
-    width:${TEM_WIDTH_MM}mm;
-    height:${TEM_HEIGHT_MM}mm;
-    box-sizing:border-box;
-    overflow:hidden;
-    border:0px solid #888;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    padding:0;
-    margin:0;
- ">
-  <div style="display:flex;flex-direction:row;align-items:flex-start;margin:0;padding:0;">
-    <!-- Khối Shop Hoàn Tuyết -->
-    <div style="width:60%;font-size:6pt;line-height:1;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-      Shop Hoàn Tuyết
+  width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
+  box-sizing:border-box; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:space-between;
+  margin:0; padding:0; border:0;
+">
+  <!-- Hàng trên: trái 60% | phải 40% (ô chứa QR) -->
+  <div style="
+    display:grid; grid-template-columns:60% 40%;
+    align-items:start; margin:0; padding:0;
+    /* khoá chiều cao vùng top (≈ 40% chiều cao tem) */
+    height: calc(${TEM_HEIGHT_MM}mm * 0.40);
+  ">
+    <!-- Trái: Shop Hoàn Tuyết (60%) -->
+    <div style="display:flex; flex-direction:column; justify-content:flex-start; margin:0; padding:0;">
+      <div style="font-size:6pt; line-height:1; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+        Shop Hoàn Tuyết
+      </div>
+      <!-- Giá + Mã: ngay dưới Shop Hoàn Tuyết, vẫn trong cột trái -->
+      <div style="margin:0; padding:0;">
+        <div style="font-size:11pt; font-weight:bold; line-height:1; margin:0; padding:0;">Giá: ${formatGia(t.giale)}</div>
+        <div style="font-size:8pt; line-height:1; margin:0; padding:0;">${t.masp}</div>
+      </div>
     </div>
-    <!-- QR Code -->
-    <div style="flex:1;display:flex;justify-content:flex-end;align-items:flex-start;">
-      <canvas class="qr" style="width:12mm;height:12mm;"></canvas>
+
+    <!-- Phải: Ô chứa QR (40%) -->
+    <div style="
+      display:flex; align-items:flex-start; justify-content:flex-end;
+      margin:0; padding:0;
+    ">
+      <!-- Kích thước QR cố định 1.2 cm x 1.2 cm -->
+      <canvas class="qr" style="width:12mm; height:12mm;"></canvas>
     </div>
   </div>
 
-  <!-- Giá + Mã -->
-  <div style="width:60%;font-size:8pt;line-height:1;margin:0;padding:0;">
-    <div style="font-size:10pt;font-weight:bold;">Giá: ${formatGia(t.giale)}</div>
-    <div style="font-size:7pt;">${t.masp}</div>
-  </div>
-
-  <!-- Thông tin chung -->
-  <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
+  <!-- Dưới: Thông tin chung đẩy xuống đáy tem -->
+  <div style="font-size:5.5pt; line-height:1; word-break:break-word; margin:0; padding:0;">
     ${infoChung}
   </div>
- </div>
-
-
 </div>
 `;
-            }
-            html += `</div></div>`;
-            previewArea.innerHTML = html;
 
-            // Sinh QR code cho từng tem
-            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
-                const parent = el.closest('.tem');
-                if (!parent || parent.classList.contains('tem-blank')) return;
-                const masp = parent.getAttribute('data-masp');
-                new QRious({
-                    element: el,
-                    value: masp,
-                    size: 40,
-                    level: 'M'
-                });
+        }
+        html += `</div></div>`;
+        previewArea.innerHTML = html;
+
+        // Sinh QR code cho từng tem
+        document.querySelectorAll('.tem .qr').forEach((el, idx) => {
+            const parent = el.closest('.tem');
+            if (!parent || parent.classList.contains('tem-blank')) return;
+            const masp = parent.getAttribute('data-masp');
+            new QRious({
+                element: el,
+                value: masp,
+                size: 128,
+                level: 'M'
             });
-            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
+        });
+        document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
         };
 
 
