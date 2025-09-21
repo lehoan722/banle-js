@@ -654,50 +654,42 @@
   width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
   box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
 ">
-  <!-- Lưới 2 cột full height: trái 60% | phải 40% -->
+  <!-- Lưới 2 cột full height: 60% | 40% -->
   <div style="display:grid; grid-template-columns:60% 40%; height:100%; width:100%; gap:0;">
-
-    <!-- CỘT TRÁI (60%): trên = Giá + Mã; dưới = Thông tin chung -->
+    
+    <!-- CỘT TRÁI (60%): trên = Giá/Mã/Shop ; dưới = Thông tin chung -->
     <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; height:100%; margin:0; padding:0;">
-      <!-- Giá + Mã (2 div tách riêng) -->
       <div style="width:100%; margin:0; padding:0;">
-        <!-- GIÁ: không xuống dòng, nếu thiếu chỗ thì cắt bên phải -->
-        <div style="font-size:11pt; font-weight:bold; line-height:1;
-                    white-space:nowrap; overflow:hidden; text-overflow:clip;">
+        <!-- SHOP HOÀN TUYẾT đặt ngay dưới Mã SP -->
+        <div style="font-size:6pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
+          Shop Hoàn Tuyết
+        </div>
+        <!-- GIÁ: không xuống dòng, thiếu chỗ cắt bên phải -->
+        <div style="font-size:11pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
           Giá: ${formatGia(t.giale)}
         </div>
-
-        <!-- MÃ SP: không xuống dòng, nếu thiếu chỗ thì ẩn bớt PHẦN ĐẦU bên trái -->
-        <div style="font-size:8pt; line-height:1; margin-top:2px;
-                    white-space:nowrap; overflow:hidden; text-overflow:clip;
-                    direction:rtl; unicode-bidi:plaintext; text-align:left;">
+        <!-- MÃ SP: không xuống dòng, thiếu chỗ cắt BÊN TRÁI -->
+        <div style="font-size:8pt; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; text-align:left; margin:0;">
           ${t.masp}
         </div>
+        
       </div>
 
-      <!-- Thông tin chung ở đáy cột trái -->
+      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
       <div style="font-size:5.5pt; line-height:1; word-break:break-word; width:100%; margin:0; padding:0;">
         ${infoChung}
       </div>
     </div>
 
-    <!-- CỘT PHẢI (40%): trên = 'Shop Hoàn Tuyết'; dưới = QR -->
-    <div style="display:flex; flex-direction:column; justify-content:space-between;
-                align-items:flex-start; height:100%; margin:0; padding:0;">
-      <!-- Dòng 'Shop Hoàn Tuyết' vừa khít bề rộng 40%, canh trái, không xuống dòng -->
-      <div style="width:100%; font-size:6pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0; padding:0;">
-        Shop Hoàn Tuyết
-      </div>
-
-      <!-- QR ở đáy, canh trái, kích thước thực 12mm x 12mm -->
-      <div style="display:flex; justify-content:flex-start; align-items:flex-end; width:100%; margin:0; padding:0;">
-        <canvas class="qr" style="width:12mm; height:12mm;"></canvas>
-      </div>
+    <!-- CỘT PHẢI (40%): chỉ QR, đặt sát mép trên, canh trái -->
+    <div style="display:flex; justify-content:flex-start; align-items:flex-start; height:100%; margin:0; padding:0;">
+      <!-- QR giữ kích cỡ cũ (ví dụ 12mm) -->
+      <canvas class="qr" style="width:12mm; height:12mm;"></canvas>
     </div>
 
   </div>
 </div>
+
 `;
             }
             html += `</div></div>`;
