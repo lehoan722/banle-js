@@ -214,7 +214,7 @@
 
   /* Bảng vẫn cao ~75% màn hình như anh muốn */
   .table-area {
-    height: 75dvh;
+    height: 60dvh;
     max-height: none !important;
     /* gỡ trần 100% từ trang chính */
     flex: 0 0 auto;
@@ -224,7 +224,7 @@
   /* Fallback cho máy chưa hỗ trợ dvh */
   @supports not (height: 1dvh) {
     .table-area {
-      height: 75vh;
+      height: 60vh;
     }
   }
 
