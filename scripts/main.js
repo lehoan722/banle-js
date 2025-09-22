@@ -51,7 +51,7 @@ export async function khoiTaoUngDung() {
         return;
       }
       data.forEach(row => {
-        window.danhMucNhom.set(row.manhom, {
+        window.danhMucNhom.set(String(row.manhom).toUpperCase(), {
           quanlysize: row.quanlysize,
           diadiem: (row.diadiem || "").toUpperCase()
         });
@@ -63,7 +63,7 @@ export async function khoiTaoUngDung() {
   }
 
   await loadDanhMucNhom();
-  
+
   //khoiTaoTimMaSP(window.sanPhamData);
 
   window.luuMaSanPhamMoi = () => luuMaSanPhamMoi(window.sanPhamData);
