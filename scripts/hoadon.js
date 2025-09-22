@@ -204,6 +204,37 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
 
+    // --- Kiểm tra QUẢN LÝ SIZE THEO NHÓM (ưu tiên cao hơn size45) ---
+    var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
+    var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
+
+    if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(String(spData.manhom).toUpperCase());
+        if (nhom && nhom.quanlysize) {
+            const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
+            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
+                const sizeInput = document.getElementById("size");
+                const sizeValue = sizeInput.value.trim();
+
+                if (!sizeValue) {
+                    // Chưa nhập size -> ép nhập
+                    sizeInput.focus();
+                    sizeInput.select();
+                    if (window.soundWaitSize) window.soundWaitSize();
+                    return true; // ⛔ dừng tại đây, không xuống size45
+                } else {
+                    // Đã nhập size -> thêm vào bảng, ép số lượng = 1
+                    document.getElementById("soluong").value = 1;
+                    themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+                    console.log('[QL size theo nhóm]', spData.manhom, nhom);
+                    return true; // ⛔ dừng tại đây, không xuống size45
+                }
+            }
+        }
+    }
+    // --- Hết kiểm tra nhóm ---
+
+
     // --- Kiểm tra quản lý size theo nhóm ---
     var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
     var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
