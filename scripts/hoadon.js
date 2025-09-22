@@ -205,9 +205,11 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     }
 
     // --- Kiểm tra quản lý size theo nhóm ---
-    const qlTheoNhom = document.getElementById("quanlysizetheonhom")?.checked;
+    var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
+    var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
+
     if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
-        const nhom = window.danhMucNhom.get(spData.manhom);
+        const nhom = window.danhMucNhom.get(String(spData.manhom).toUpperCase());
         if (nhom && nhom.quanlysize) {
             const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
             if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
@@ -215,20 +217,23 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                 const sizeValue = sizeInput.value.trim();
 
                 if (!sizeValue) {
+                    // Chưa nhập size -> ép nhập
                     sizeInput.focus();
                     sizeInput.select();
                     if (window.soundWaitSize) window.soundWaitSize();
-                    return; // dừng, chờ nhập size
+                    return true; // ✅ đã xử lý, dừng ở đây
                 } else {
+                    // Đã nhập size -> thêm vào bảng, ép số lượng = 1
                     document.getElementById("soluong").value = 1;
                     themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
-                    return; // dừng, không chạy rule khác
+                    return true; // ✅ đã xử lý, không xuống rule khác
                 }
             }
         }
     }
     // --- Kết thúc kiểm tra nhóm ---
-    
+
+
     // Sau khi bạn có spData và đã gán #gia:
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
