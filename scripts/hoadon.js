@@ -209,8 +209,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
     var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
 
-    if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
-        const nhom = window.danhMucNhom.get(String(spData.manhom).toUpperCase());
+    if (qlTheoNhom && spData.nhomhang && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
         if (nhom && nhom.quanlysize) {
             const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // 'CS1' | 'CS2'
             if (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai) {
