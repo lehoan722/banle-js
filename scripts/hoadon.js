@@ -226,6 +226,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                     // Đã nhập size -> thêm vào bảng, ép số lượng = 1
                     document.getElementById("soluong").value = 1;
                     themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+                    console.log('[QL size theo nhóm]', spData.manhom, nhom);
                     return true; // ✅ đã xử lý, không xuống rule khác
                 }
             }
