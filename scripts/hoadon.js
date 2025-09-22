@@ -204,37 +204,34 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
 
-    // --- Kiểm tra QUẢN LÝ SIZE THEO NHÓM (ưu tiên cao hơn size45) ---
+    // 4) ✅ QUẢN LÝ SIZE THEO NHÓM — ƯU TIÊN CAO HƠN SIZE45
+    //    Điều kiện: checkbox đang bật + sản phẩm có manhom + đã cache dmnhomhang
     var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
     var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
 
     if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
         const nhom = window.danhMucNhom.get(String(spData.manhom).toUpperCase());
         if (nhom && nhom.quanlysize) {
-            const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
-            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
+            const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // 'CS1' | 'CS2'
+            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai) {
                 const sizeInput = document.getElementById("size");
-                const sizeValue = sizeInput.value.trim();
+                const sizeValue = (sizeInput?.value || "").trim();
 
                 if (!sizeValue) {
-                    // Chưa nhập size -> ép nhập
+                    // Chưa nhập size → ép nhập (focus + beep), DỪNG HẲN để không rơi xuống size45
                     sizeInput.focus();
                     sizeInput.select();
                     if (window.soundWaitSize) window.soundWaitSize();
-                    return true; // ⛔ dừng tại đây, không xuống size45
+                    return true; // báo đã xử lý cho chuyenFocus
                 } else {
-                    // Đã nhập size -> thêm vào bảng, ép số lượng = 1
+                    // Đã có size → ép SL=1 và thêm ngay, DỪNG HẲN
                     document.getElementById("soluong").value = 1;
                     themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
-                    console.log('[QL size theo nhóm]', spData.manhom, nhom);
-                    return true; // ⛔ dừng tại đây, không xuống size45
+                    return true;
                 }
             }
         }
     }
-    // --- Hết kiểm tra nhóm ---
-
-
 
     // Sau khi bạn có spData và đã gán #gia:
     const giaEl = document.getElementById("gia");
