@@ -525,6 +525,8 @@
 
             <input id="ghichu" placeholder="Ghi chú HH" />
             <button id="masp-search">🔍</button>
+            <button id="xemtonkho">🔍</button>
+            <button id="ghivitri">✏️</button>
         </div>
 
 
@@ -595,8 +597,7 @@
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-
-
+                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
                             <label><input type="checkbox" /> Cộng dồn số lượng</label>
                         </div>
                     </div>
@@ -1116,7 +1117,6 @@
         // goi phím F2
         setTimeout(function () {
             window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-
         }, 1000);
 
 
@@ -1132,7 +1132,17 @@
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
 
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('ghivitri')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
 
     </script>
 
