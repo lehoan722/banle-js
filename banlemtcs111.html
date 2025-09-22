@@ -458,10 +458,7 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label>
-         
-        
-         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
+        <label>Giờ <input id="gio" /></label> -->        
 
 
     </div>
@@ -484,11 +481,13 @@
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
+            <button id="ghivitri">✏️</button>
         </div>
 
 
         <div class="main">
             <div class="table-area">
+
                 <table id="bangketqua">
                     <thead>
                         <tr>
@@ -502,8 +501,8 @@
                             <th>Thành tiền</th>
                             <th>Vị trí</th> <!-- (giữ nguyên) -->
                             <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>Tồn1</th>
-                            <th>Tồn2</th>
+                            <th>T1</th>
+                            <th>T2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -554,12 +553,11 @@
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
-                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
+                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-
-
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
+                            <label><input type="checkbox" id="quanlysizetheogia" />QL170</label>
                         </div>
                     </div>
                 </div>
@@ -1051,6 +1049,12 @@
     </script>
 
     <script>  //<!-- banlemobile -->
+
+        // goi phím F2
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        }, 1000);
+
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
@@ -1067,6 +1071,12 @@
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('ghivitri')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
