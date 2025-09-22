@@ -38,6 +38,32 @@ export async function khoiTaoUngDung() {
     dsnv.forEach(nv => window.nhanVienData[nv.manv] = nv.tennv);
   }
 
+  // Cache danh mục nhóm hàng
+  window.danhMucNhom = new Map();
+
+  async function loadDanhMucNhom() {
+    try {
+      const { data, error } = await supabase
+        .from("dmnhomhang")
+        .select("manhom, quanlysize, diadiem");
+      if (error) {
+        console.error("Lỗi tải dmnhomhang:", error);
+        return;
+      }
+      data.forEach(row => {
+        window.danhMucNhom.set(row.manhom, {
+          quanlysize: row.quanlysize,
+          diadiem: (row.diadiem || "").toUpperCase()
+        });
+      });
+      console.log("✅ Đã load dmnhomhang:", window.danhMucNhom.size, "nhóm");
+    } catch (e) {
+      console.error("Exception loadDanhMucNhom:", e);
+    }
+  }
+
+  await loadDanhMucNhom();
+  
   //khoiTaoTimMaSP(window.sanPhamData);
 
   window.luuMaSanPhamMoi = () => luuMaSanPhamMoi(window.sanPhamData);
