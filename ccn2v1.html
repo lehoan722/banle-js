@@ -448,11 +448,11 @@
     <div class="menu-bar">
         <div class="tennv">
 
-             
+
 
             <label>
                 <select id="diadiem">
-                    
+
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
@@ -526,7 +526,7 @@
             <input id="ghichu" placeholder="Ghi chú HH" />
             <button id="xemtonkho">🔍</button>
             <button id="ghivitri">✏️</button>
-            
+
         </div>
 
 
@@ -767,7 +767,7 @@
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
                     <option value="cs2" selected>Cơ sở 2</option>
-                </select>                
+                </select>
 
                 <div class="login-field">
                     <label for="login-manv">Mã nhân viên</label><br />
@@ -1149,6 +1149,36 @@
         });
 
     </script>
+
+    <!-- Overlay quét -->
+    <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
+        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+
+        <!-- Thanh điều khiển -->
+        <div
+            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
+            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
+            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
+
+            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
+                Ảnh có sẵn
+                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
+            </label>
+
+            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
+        </div>
+
+        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
+    </div>
+
+    <!-- Flash + Toast -->
+    <div id="flashOverlay"></div>
+    <div id="toastMsg"></div>
+
+
+    <script type="module" src="scripts/feedback.js"></script>
+    <script type="module" src="scripts/scanner.js"></script>
+
 
     <script type="module" src="scripts/luuhoadon.js"></script>
 
