@@ -235,36 +235,6 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     // --- Hết kiểm tra nhóm ---
 
 
-    // --- Kiểm tra quản lý size theo nhóm ---
-    var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
-    var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
-
-    if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
-        const nhom = window.danhMucNhom.get(String(spData.manhom).toUpperCase());
-        if (nhom && nhom.quanlysize) {
-            const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
-            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
-                const sizeInput = document.getElementById("size");
-                const sizeValue = sizeInput.value.trim();
-
-                if (!sizeValue) {
-                    // Chưa nhập size -> ép nhập
-                    sizeInput.focus();
-                    sizeInput.select();
-                    if (window.soundWaitSize) window.soundWaitSize();
-                    return true; // ✅ đã xử lý, dừng ở đây
-                } else {
-                    // Đã nhập size -> thêm vào bảng, ép số lượng = 1
-                    document.getElementById("soluong").value = 1;
-                    themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
-                    console.log('[QL size theo nhóm]', spData.manhom, nhom);
-                    return true; // ✅ đã xử lý, không xuống rule khác
-                }
-            }
-        }
-    }
-    // --- Kết thúc kiểm tra nhóm ---
-
 
     // Sau khi bạn có spData và đã gán #gia:
     const giaEl = document.getElementById("gia");
