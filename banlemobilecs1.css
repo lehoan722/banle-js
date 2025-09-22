@@ -106,7 +106,7 @@
 
   /* 3) Main chuyển cột; bảng co giãn */
   .main { flex-direction: column; height: auto; min-height: 0; }
-  .table-area { max-height: 48vh; background: #fff; }
+  .table-area { max-height: 75vh; background: #fff; }  /*tang chieu cao cua bangketqua le option A: cố định */  
   .sidebar { width: 100%; border-left: 0; }
 
   /* 4) Ẩn bớt cột bảng theo thứ tự */
