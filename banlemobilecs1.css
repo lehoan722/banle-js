@@ -196,14 +196,31 @@
     min-height: 0;
   }
 
-  /* mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới */
-  .table-area {
-    height: 75vh;
-    /* thêm chiều cao thực tế */
-    max-height: 75vh;
-    /* vẫn giữ trần để không vượt quá viewport */
-    background: #fff;
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+  /* 3) Main chuyển cột; bảng co giãn */
+  .main {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
   }
+
+  /* GHI ĐÈ CHẮC ĂN CHO MOBILE */
+  .table-area {
+    height: 75dvh;
+    /* ưu tiên dvh (iOS Safari mới), fallback thêm dòng dưới nếu cần */
+    max-height: none !important;
+    /* gỡ trần 100% từ file trang chính */
+    flex: 0 0 auto;
+    /* tránh flex:1 của file trang chính ép co */
+  }
+
+  /* Fallback cho máy chưa hỗ trợ dvh: bật kèm 75vh */
+  @supports not (height: 1dvh) {
+    .table-area {
+      height: 75vh;
+    }
+  }
+/*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
 
   .sidebar {
     width: 100%;
