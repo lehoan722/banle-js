@@ -524,7 +524,9 @@
             <input id="sohd" placeholder="Số HĐ" />
 
             <input id="ghichu" placeholder="Ghi chú HH" />
-            <button id="masp-search">🔍</button>
+            <button id="xemtonkho">🔍</button>
+            <button id="ghivitri">✏️</button>
+            
         </div>
 
 
@@ -1115,7 +1117,6 @@
         // goi phím F2
         setTimeout(function () {
             window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-
         }, 1000);
 
 
@@ -1131,7 +1132,17 @@
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
 
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('ghivitri')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
 
     </script>
 
