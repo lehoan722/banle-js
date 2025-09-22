@@ -38,8 +38,6 @@ export async function khoiTaoUngDung() {
     dsnv.forEach(nv => window.nhanVienData[nv.manv] = nv.tennv);
   }
 
-   await loadDanhMucNhom();
-
   // Cache danh mục nhóm hàng
   window.danhMucNhom = new Map();
 
@@ -64,7 +62,7 @@ export async function khoiTaoUngDung() {
     }
   }
 
- 
+  await loadDanhMucNhom();
 
   //khoiTaoTimMaSP(window.sanPhamData);
 
