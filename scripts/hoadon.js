@@ -125,7 +125,7 @@ export async function chuyenFocus(e) {
             return;
         }
     } else if (e.target.id === "khuyenmai") {
-        // Chuẩn hoá khuyến mại: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien
+        // Chuẩn hoá khuyến mại: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         let km = parseFloat(String(document.getElementById("khuyenmai").value).replace(/\./g, "").replace(/,/g, "."));
         if (!isFinite(km)) km = 0;
@@ -204,6 +204,31 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
 
+    // --- Kiểm tra quản lý size theo nhóm ---
+    const qlTheoNhom = document.getElementById("quanlysizetheonhom")?.checked;
+    if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(spData.manhom);
+        if (nhom && nhom.quanlysize) {
+            const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
+            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
+                const sizeInput = document.getElementById("size");
+                const sizeValue = sizeInput.value.trim();
+
+                if (!sizeValue) {
+                    sizeInput.focus();
+                    sizeInput.select();
+                    if (window.soundWaitSize) window.soundWaitSize();
+                    return; // dừng, chờ nhập size
+                } else {
+                    document.getElementById("soluong").value = 1;
+                    themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+                    return; // dừng, không chạy rule khác
+                }
+            }
+        }
+    }
+    // --- Kết thúc kiểm tra nhóm ---
+    
     // Sau khi bạn có spData và đã gán #gia:
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
