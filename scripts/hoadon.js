@@ -119,7 +119,7 @@ export async function chuyenFocus(e) {
             }
 
             // Không hợp lệ (dài hay ngắn đều coi là sai) -> chỉ báo lỗi + ở lại #size
-            alert("Bạn phải nhập size hợp lệ.");
+            alert("Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
             sizeInput.focus();
             sizeInput.select();
             return;
@@ -204,6 +204,28 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
 
+    // [NEW] Chuẩn hoá form từ spData (đặt TRƯỚC mọi nhánh early-return)
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+
+    const giaInt = Math.round(parseMoneyInt(spData.giale || 0));
+    giaEl.value = giaInt.toLocaleString();
+
+    // KM mặc định theo rule hiện tại
+    const kmDef = tinhKhuyenMai(spData, giaInt);
+    kmEl.value = (kmDef || 0).toLocaleString();
+
+    // số lượng mặc định = 1 nếu trống/<=0
+    const slEl = document.getElementById("soluong");
+    if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+    recalcThanhtienFromForm();
+
+    // vị trí kho theo cơ sở đang chọn
+    const cs = document.getElementById("diadiem").value;
+    const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
+    document.getElementById("vitri").value = vitri || "";
+
+
     // 4) ✅ QUẢN LÝ SIZE THEO NHÓM — ƯU TIÊN CAO HƠN SIZE45
     //    Điều kiện: checkbox đang bật + sản phẩm có manhom + đã cache dmnhomhang
     var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
@@ -233,26 +255,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         }
     }
 
-    // Sau khi bạn có spData và đã gán #gia:
-    const giaEl = document.getElementById("gia");
-    const kmEl = document.getElementById("khuyenmai");
 
-    const giaInt = Math.round(parseMoneyInt(spData.giale || 0));
-    giaEl.value = giaInt.toLocaleString();
-
-    // LẤY KM MẶC ĐỊNH THEO QUY ĐỊNH
-    const kmDef = tinhKhuyenMai(spData, giaInt);   // có cả rule 20k nếu giá > 500k
-    kmEl.value = (kmDef || 0).toLocaleString();
-
-    // đảm bảo số lượng mặc định & tính ngay thành tiền
-    const slEl = document.getElementById("soluong");
-    if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
-    recalcThanhtienFromForm();
-
-
-    const cs = document.getElementById("diadiem").value;
-    const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
-    document.getElementById("vitri").value = vitri || "";
 
     // ==== ⚡️ THÊM XỬ LÝ BÁN SIÊU NHANH Ở ĐÂY ====
     const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
@@ -369,8 +372,25 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // ==== END KIỂM TRA ====
     // Lấy giá & khuyến mại từ form
     const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
-    const giaForm = toInt(document.getElementById("gia")?.value || "0");
+    let giaForm = toInt(document.getElementById("gia")?.value || "0");
     let kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
+
+    // [SAFE GUARD] Nếu giá form vẫn = 0, fallback theo dm hàng hoá
+    if (giaForm === 0 && sp) {
+        const giaSP = Math.round(parseMoneyInt(sp.giale || 0));
+        let kmAuto = 0;
+        try { kmAuto = tinhKhuyenMai(sp, giaSP) || 0; } catch (e) { }
+
+        giaForm = giaSP;
+        if (!kmForm || kmForm < 0) kmForm = kmAuto;
+
+        // ghi ngược lại lên form để người dùng thấy đúng
+        const giaEl = document.getElementById("gia");
+        const kmEl = document.getElementById("khuyenmai");
+        if (giaEl) giaEl.value = giaSP.toLocaleString();
+        if (kmEl) kmEl.value = (kmForm || 0).toLocaleString();
+    }
+
 
     // Nếu nhập khuyến mại < 100 → coi là %
     if (kmForm > 0 && kmForm < 100) {
