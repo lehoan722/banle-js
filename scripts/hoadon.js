@@ -608,9 +608,14 @@ export function suaDongDangChon() {
     recalcThanhtienFromForm();   // <— THÊM DÒNG NÀY
     // Gán mã & BÔI ĐEN ngay để người dùng có thể nhấn Delete là xoá toàn bộ mã 🔴
     maspEl.value = item.masp || "";
-    maspEl.focus();        // 🔴
-    maspEl.select();       // 🔴
-    setTimeout(() => { maspEl.focus(); maspEl.select(); }, 0);
+    // Thay vì focus về #masp, ta chuyển sang #soluong để người dùng gõ số lượng ngay
+    const slEl = document.getElementById("soluong");
+    if (slEl) {
+        slEl.focus();
+        slEl.select();  // ✅ bôi đen để gõ luôn
+        // bảo hiểm: nếu render bảng làm cướp focus thì nạp lại focus sau 1 tick
+        setTimeout(() => { slEl.focus(); slEl.select(); }, 0);
+    }    
 
     // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
     item.sizes.splice(idx, 1);
