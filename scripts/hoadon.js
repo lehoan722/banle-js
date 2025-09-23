@@ -340,53 +340,59 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
 
     // quản lý việc tất cả các mã hàng thuộc điều kiện quản lý theo size thì
-    //  không được phép nhập sai bằng 0 chỉ được phép nhập (38–45):    
-    // ===== CỬA CUỐI: khóa size cho mọi đường vào =====
+    //  không được phép nhập sai bằng 0 chỉ được phép nhập (38–45):       
+    // ===== CỬA CUỐI: CHỈ KHI THUỘC DIỆN QUẢN LÝ SIZE mới chặn size rỗng/ngoài 38–45 =====
     {
         if (sp) {
-            const isShoe = String(sp.chungloai || "").trim().toLowerCase() === "gd";
-            if (isShoe) {
-                const size45On = !!document.getElementById("size45")?.checked;
-                const qlSizeTheoGiaOn = !!document.getElementById("quanlysizetheogia")?.checked;
-                const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
+            const size45On = !!document.getElementById("size45")?.checked;
+            const qlSizeTheoGiaOn = !!document.getElementById("quanlysizetheogia")?.checked;
+            const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
 
-                let groupRequires = false;
-                if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom) {
-                    const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
-                    if (nhom && nhom.quanlysize) {
-                        const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
-                        groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
-                    }
+            // Nhóm có quanlysize hợp lệ ở cơ sở hiện tại?
+            let groupRequires = false;
+            if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom) {
+                const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
+                if (nhom && nhom.quanlysize) {
+                    const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
+                    groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
+                }
+            }
+
+            // Quy tắc "quản lý size theo giá": chỉ áp dụng khi bật checkbox
+            // và (là giày dép) hoặc (giá niêm yết >= 170000)
+            const isGD = String(sp.chungloai || "").trim().toLowerCase() === "gd";
+            const giaHangHoa = Number(sp.giale) || 0;
+            const managedByGia = qlSizeTheoGiaOn && (isGD || giaHangHoa >= 170000);
+
+            // ✅ Chỉ khi thật sự thuộc diện mới siết size
+            const requireManagedSize = size45On || groupRequires || managedByGia;
+
+            if (requireManagedSize) {
+                const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+                const rawSize = (forcedSize ?? size ?? "").toString().trim().toUpperCase();
+
+                // ❌ Không cho size rỗng/0
+                if (!rawSize || rawSize === "0") {
+                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
+                    const sizeEl = document.getElementById("size");
+                    if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
+                    window.soundWaitSize?.();
+                    return; // dừng êm, KHÔNG thêm dòng
+                }
+                // ❌ Chỉ chấp nhận 38–45
+                if (!allowed.has(rawSize)) {
+                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
+                    const sizeEl = document.getElementById("size");
+                    if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
+                    window.soundWaitSize?.();
+                    return; // dừng êm, KHÔNG thêm dòng
                 }
 
-                const requireShoeSize = size45On || qlSizeTheoGiaOn || groupRequires;
-                if (requireShoeSize) {
-                    const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
-                    const rawSize = (forcedSize ?? size ?? "").toString().trim().toUpperCase();
-
-                    let blocked = false;
-                    // Không cho size rỗng/0
-                    if (!rawSize || rawSize === "0") {
-                        const sizeEl = document.getElementById("size");
-                        if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
-                        window.soundWaitSize?.();
-                        blocked = true;
-                    }
-                    // Chỉ chấp nhận 38–45
-                    else if (!allowed.has(rawSize)) {
-                        const sizeEl = document.getElementById("size");
-                        if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
-                        window.soundWaitSize?.();
-                        blocked = true;
-                    }
-
-                    if (blocked) return;      // ✅ thoát êm hàm themVaoBang, không ném lỗi
-                    size = rawSize;           // ✅ chuẩn hoá size dùng cho logic phía dưới
-                }
+                // ✅ Hợp lệ → chuẩn hoá để dùng tiếp
+                size = rawSize;
             }
         }
     }
-
 
     // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
 
@@ -687,10 +693,3 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
-
-
-
-
-
-
