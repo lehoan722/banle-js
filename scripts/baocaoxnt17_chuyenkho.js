@@ -2,7 +2,7 @@
 import { supabase } from './supabaseClient.js'; // dùng chung client đã có
 
 let hot;
-const SIZE_ORDER = ['size 0','size 38','size 39','size 40','size 41','size 42','size 43','size 44','size 45']; // 9 dòng/1 mã
+const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
 
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
@@ -12,23 +12,28 @@ function getFilters() {
 }
 
 // ===== 2) Tải toàn bộ dữ liệu bằng RPC hiện có =====
-async function fetchAllRows(params) {
-  // trước hết, đếm tổng bản ghi để biết cần lặp mấy trang  :contentReference[oaicite:4]{index=4}
-  const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', params);
-  if (cntErr) throw cntErr;
-  const total = Number(cntData || 0);
+function buildCountParams(params) {
+  const {
+    tu_ngay, den_ngay, p_dsmsp,
+    p_diadiem_filter, p_nhomhang_filter, p_chungloai_filter,
+    p_mausac_filter, p_size_filter, p_nhacc_filter,
+    p_khachhang_filter, p_nhanvien_filter,
+    p_tu_gia, p_den_gia,
+    loc_duong, loc_am, loc_het,
+    loc_phatsinh_nhap, loc_phatsinh_xuat,
+    p_tonghop_size
+  } = params;
 
-  const pageSize = 10000; // theo default RPC của bạn  :contentReference[oaicite:5]{index=5}
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  const all = [];
-
-  for (let p = 1; p <= pages; p++) {
-    const pageParams = { ...params, p_limit: pageSize, p_offset: (p-1)*pageSize };
-    const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
-    if (error) throw error;
-    all.push(...(data || []));
-  }
-  return all;
+  return {
+    tu_ngay, den_ngay, p_dsmsp,
+    p_diadiem_filter, p_nhomhang_filter, p_chungloai_filter,
+    p_mausac_filter, p_size_filter, p_nhacc_filter,
+    p_khachhang_filter, p_nhanvien_filter,
+    p_tu_gia, p_den_gia,
+    loc_duong, loc_am, loc_het,
+    loc_phatsinh_nhap, loc_phatsinh_xuat,
+    p_tonghop_size
+  };
 }
 
 // ===== 3) Gom theo masp → 9 size + 1 dòng “Tổng” =====
@@ -41,7 +46,7 @@ function buildTransferTable(rows) {
     if (!map.has(masp)) map.set(masp, {});
     const g = map.get(masp);
     const size = (r.size || '').toLowerCase();
-    g[size] = { masp, size: r.size, cs1: r.ton_cs1||0, cs2: r.ton_cs2||0 }; // tồn từng cơ sở  :contentReference[oaicite:6]{index=6}
+    g[size] = { masp, size: r.size, cs1: r.ton_cs1 || 0, cs2: r.ton_cs2 || 0 }; // tồn từng cơ sở  :contentReference[oaicite:6]{index=6}
   }
 
   const out = [];
@@ -55,7 +60,7 @@ function buildTransferTable(rows) {
       const goiy = calcGoiy(it.cs1, it.cs2);
       out.push({
         masp, size: it.size, cs1: it.cs1, cs2: it.cs2,
-        goiy, tong: (it.cs1 + it.cs2), vitri_cs1: '', vitri_cs2: '', __isSum:false
+        goiy, tong: (it.cs1 + it.cs2), vitri_cs1: '', vitri_cs2: '', __isSum: false
       });
       sum1 += it.cs1; sum2 += it.cs2;
     }
@@ -64,7 +69,7 @@ function buildTransferTable(rows) {
     out.push({
       masp, size: 'Tổng', cs1: sum1, cs2: sum2,
       goiy: calcGoiy(sum1, sum2), tong: (sum1 + sum2),
-      vitri_cs1: '', vitri_cs2: '', __isSum:true
+      vitri_cs1: '', vitri_cs2: '', __isSum: true
     });
   }
   return out;
@@ -109,16 +114,16 @@ function renderHOT(rows) {
     data: rows,
     licenseKey: 'non-commercial-and-evaluation',
     rowHeaders: true,
-    colHeaders: ['Mã SP','Size','CS1','CS2','Gợi ý','Tổng','Vị trí CS1','Vị trí CS2'],
+    colHeaders: ['Mã SP', 'Size', 'CS1', 'CS2', 'Gợi ý', 'Tổng', 'Vị trí CS1', 'Vị trí CS2'],
     columns: [
-      { data:'masp', readOnly:true },
-      { data:'size', readOnly:true },
-      { data:'cs1', readOnly:true, type:'numeric' },
-      { data:'cs2', readOnly:true, type:'numeric' },
-      { data:'goiy', readOnly:true },
-      { data:'tong', readOnly:true, type:'numeric' },
-      { data:'vitri_cs1', readOnly:true },
-      { data:'vitri_cs2', readOnly:true },
+      { data: 'masp', readOnly: true },
+      { data: 'size', readOnly: true },
+      { data: 'cs1', readOnly: true, type: 'numeric' },
+      { data: 'cs2', readOnly: true, type: 'numeric' },
+      { data: 'goiy', readOnly: true },
+      { data: 'tong', readOnly: true, type: 'numeric' },
+      { data: 'vitri_cs1', readOnly: true },
+      { data: 'vitri_cs2', readOnly: true },
     ],
     filters: true,
     dropdownMenu: true,
@@ -138,7 +143,7 @@ function renderHOT(rows) {
       updateImagesByMasp(row.masp);
       // center vào block mã này: cuộn để nó nằm giữa viewport
       const tr = hot.getCell(r, 0)?.parentElement;
-      if (tr) tr.scrollIntoView({ block:'center' });
+      if (tr) tr.scrollIntoView({ block: 'center' });
     }
   });
 
@@ -182,7 +187,24 @@ async function boot() {
   document.getElementById('status').textContent = 'Đang tải dữ liệu…';
 
   try {
-    const raw = await fetchAllRows(filters);                        // gọi count & paged hiện có  :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
+    async function fetchAllRows(params) {
+      // 1) Đếm tổng theo đúng chữ ký hàm COUNT
+      const countParams = buildCountParams(params);
+      const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', countParams);
+      if (cntErr) throw cntErr;
+      const total = Number(cntData || 0);
+
+      // 2) Lấy dữ liệu từng “trang lớn” từ hàm PAGED
+      const pageSize = 10000; // khớp logic XNT17
+      const all = [];
+      for (let offset = 0; offset < total; offset += pageSize) {
+        const pageParams = { ...params, p_limit: pageSize, p_offset: offset };
+        const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
+        if (error) throw error;
+        all.push(...(data || []));
+      }
+      return all;
+    }     // gọi count & paged hiện có  :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
     const rows = buildTransferTable(raw);                           // nhóm + tạo dòng “Tổng”
     await patchVitri(rows);                                         // chèn vị trí từ dmhanghoa
     renderHOT(rows);
