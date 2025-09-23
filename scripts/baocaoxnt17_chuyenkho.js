@@ -6,7 +6,7 @@ const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 
 
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
-  const raw = sessionStorage.getItem('xnt17_transfer_filters');
+  const raw = sessionStorage.getItem('xnt17_transfer_filters'); 
   if (!raw) return null;
   return JSON.parse(raw);
 }
@@ -219,3 +219,4 @@ async function boot() {
 
 document.getElementById('btnReload').onclick = boot;
 boot();
+
