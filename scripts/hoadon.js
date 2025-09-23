@@ -330,7 +330,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     const masp = layMaspGoc(document.getElementById("masp").value);
     const isNewGroup = !bangKetQua[masp]; // 🔔 nhóm mới hay không
 
-    const size = forcedSize !== null ? String(forcedSize).trim() : String(document.getElementById("size").value).trim();
+    let size = forcedSize !== null ? String(forcedSize).trim()
+        : String(document.getElementById("size").value).trim();
     const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
 
     const sp = window.sanPhamData?.[masp];
