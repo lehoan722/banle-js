@@ -555,6 +555,7 @@
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
+                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
@@ -806,6 +807,7 @@
             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
+            document.getElementById("quanlysizetheonhom").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
@@ -1119,6 +1121,7 @@
         });
     </script>
 
+    
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const btnLuu = document.getElementById('btn-luu');
@@ -1131,14 +1134,6 @@
                 });
             }
 
-            // Nếu bạn muốn cả nút "SỬA" cũng yêu cầu xác thực:
-            const btnSua = document.getElementById('sua');
-            if (btnSua) {
-                btnSua.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    moPopupXacThucSua();
-                });
-            }
         });
     </script>
 
