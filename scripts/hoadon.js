@@ -240,13 +240,12 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                 const sizeValue = (sizeInput?.value || "").trim();
 
                 if (!sizeValue) {
-                    // Chưa nhập size → ép nhập (focus + beep), DỪNG HẲN để không rơi xuống size45
+                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
                     sizeInput.focus();
                     sizeInput.select();
-                    if (window.soundWaitSize) window.soundWaitSize();
-                    return true; // báo đã xử lý cho chuyenFocus
+                    window.soundWaitSize?.();
+                    return true;
                 } else {
-                    // Đã có size → ép SL=1 và thêm ngay, DỪNG HẲN
                     document.getElementById("soluong").value = 1;
                     themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
                     return true;
