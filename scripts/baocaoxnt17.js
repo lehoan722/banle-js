@@ -894,3 +894,16 @@ window.gotoPage = async () => {
     if (n >= 1 && n <= max) { currentPage = n; await taiBaoCao(); }
 };
 
+// === ở cuối file hoặc gần các hàm button ===
+window.moTrangChuyenKho = () => {
+    // lấy filter hiện tại bằng buildParams nhưng KHÔNG cần p_limit/p_offset
+    const p = buildParams(1);
+    const forTransfer = {
+        ...buildCountParams(p), // chỉ giữ đúng tham số báo cáo (không limit/offset)  :contentReference[oaicite:1]{index=1}
+        // giữ thêm thông tin đang chọn hàm
+        fn: document.getElementById('selectFunction')?.value || 'baocaoxnt17_paged'
+    };
+    sessionStorage.setItem('xnt17_transfer_filters', JSON.stringify(forTransfer));
+    window.open('baocaoxnt17_chuyenkho.html', '_blank');
+};
+
