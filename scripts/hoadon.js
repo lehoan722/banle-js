@@ -10,7 +10,7 @@ export let bangKetQua = {};
 // Trong hoadon.js
 let maspDangChon = null;
 export function setMaspspDangChon(obj) {
-    maspDangChon = obj; // obj = {masp, size}
+    maspDangChon = obj; // obj = {masp, size} 
 }
 export function getMaspspDangChon() {
     return maspDangChon;
@@ -204,34 +204,33 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
 
-    // 4) ✅ QUẢN LÝ SIZE THEO NHÓM — ƯU TIÊN CAO HƠN SIZE45
-    //    Điều kiện: checkbox đang bật + sản phẩm có manhom + đã cache dmnhomhang
-    var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
-    var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
-
-    if (qlTheoNhom && String(spData.nhomhang || "").trim() && window.danhMucNhom) {
-        const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
+    // --- Kiểm tra quản lý size theo nhóm ---
+    const qlTheoNhom = document.getElementById("quanlysizetheonhom")?.checked;
+    if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(spData.manhom);
         if (nhom && nhom.quanlysize) {
-            const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // 'CS1' | 'CS2'
-            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai) {
+            const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
+            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
                 const sizeInput = document.getElementById("size");
-                const sizeValue = (sizeInput?.value || "").trim();
+                const sizeValue = sizeInput.value.trim();
 
                 if (!sizeValue) {
-                    // Chưa nhập size → ép nhập (focus + beep), DỪNG HẲN để không rơi xuống size45
+                    // Chưa nhập size -> ép nhập
                     sizeInput.focus();
                     sizeInput.select();
                     if (window.soundWaitSize) window.soundWaitSize();
-                    return true; // báo đã xử lý cho chuyenFocus
+                    return; // Dừng, chờ nhập size
                 } else {
-                    // Đã có size → ép SL=1 và thêm ngay, DỪNG HẲN
+                    // Đã nhập size -> thêm vào bảng, ép số lượng = 1
                     document.getElementById("soluong").value = 1;
                     themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
-                    return true;
+                    return; // Dừng, không xuống rule khác
                 }
             }
         }
     }
+    // --- Kết thúc kiểm tra nhóm ---
+
 
     // Sau khi bạn có spData và đã gán #gia:
     const giaEl = document.getElementById("gia");
