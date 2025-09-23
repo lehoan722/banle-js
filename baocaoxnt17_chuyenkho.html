@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gợi ý chuyển kho (XNT17)</title>
+
+  <!-- Handsontable -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+
+  <!-- XLSX để xuất (giống trang XNT17) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <!-- Supabase client dùng chung -->
+  <script type="module" src="scripts/supabaseClient.js"></script>
+
+  <style>
+    html,body{height:100%}
+    body{margin:0; display:flex; flex-direction:column; min-height:100vh; overflow:hidden; font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    header{padding:8px 12px; border-bottom:1px solid #e7e7e7; display:flex; gap:8px; align-items:center}
+    header .spacer{flex:1}
+    .main{
+      display:grid; grid-template-columns:60% 40%; gap:8px;
+      padding:8px; box-sizing:border-box; height:100%;
+    }
+    #leftPane{min-height:0; display:flex; flex-direction:column}
+    #hot{flex:1 1 auto; min-height:0}
+    #rightPane{min-height:0; overflow:auto}
+    #imagesWrap{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+    #imagesWrap img{width:100%; height:auto; aspect-ratio:3/4; object-fit:cover; display:block}
+    .sumRow{background:#f2f2f2; font-weight:bold}
+  </style>
+</head>
+<body>
+
+  <header>
+    <button id="btnReload">Tải lại đề xuất</button>
+    <button id="btnCopy">📋 Copy bảng</button>
+    <button id="btnExport">Xuất Excel</button>
+    <div class="spacer"></div>
+    <small id="status" style="color:#666"></small>
+  </header>
+
+  <div class="main">
+    <div id="leftPane">
+      <div id="hot"></div>
+    </div>
+
+    <div id="rightPane">
+      <div id="imagesWrap">
+        <img id="img1" alt="Ảnh 1">
+        <img id="img2" alt="Ảnh 2">
+      </div>
+    </div>
+  </div>
+
+  <!-- Logic riêng của trang -->
+  <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
+</body>
+</html>
