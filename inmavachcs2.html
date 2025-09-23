@@ -321,13 +321,15 @@
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
-                    <input type="email" id="login-email"  value="khohangcs2@gmail.com" readonly style="background:#eee; display:none;"                     
-                        style="width:130px;margin-right:2px;"/>                       
-                    <input type="password" id="login-password" value="369369" 
+                    <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
+                        style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
+                    <input type="password" id="login-password" value="123123"
                         style="width:110px;margin-right:2px; display:none ;">
-                    <button id="login-submit"  class="btn">Đăng nhập</button>
+                    <button id="login-submit" display:none class="btn">Đăng nhập</button>
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
                 </div>
+
+
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -659,45 +661,64 @@
   box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
  ">
   <!-- Lưới 2 cột full height: 60% | 40% -->  
-  <div style="display:grid; grid-template-columns:65% 35%; grid-template-rows:1mm auto; height:100%; width:100%; gap:0; box-sizing:border-box;">
-  
-    <div style="grid-column:1 / -1; height:1mm;"></div>
+  <div style="
+  display:grid;
+  grid-template-columns:65% 35%;
+  grid-template-rows:1mm 1mm auto;
+  height:100%; width:100%; gap:0; box-sizing:border-box;
+ ">
 
-     <!-- CỘT TRÁI (60%): trên = Giá/Mã/Shop ; dưới = Thông tin chung -->
-     <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; height:100%; margin:0; padding:0;">
-      <div style="width:100%; margin:0; padding:0;">
+  <!-- Spacer TRÁI: 1mm -->
+  <div style="grid-column:1; grid-row:1;"></div>
+
+  <!-- Spacer PHẢI: 2mm (chiếm 2 hàng 1mm) -->
+  <div style="grid-column:2; grid-row:1 / span 2;"></div>
 
 
-        <!-- SHOP HOÀN TUYẾT đặt ngay dưới Mã SP -->
-        <div style="font-size:7pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-          Shop Hoàn Tuyết
-        </div>
+      <!-- CỘT TRÁI: chiếm hàng 2-3, cột 1 -->
+  <div style="grid-column:1; grid-row:2 / span 2;
+              display:flex; flex-direction:column;
+              justify-content:space-between; align-items:flex-start;
+              height:100%; margin:0; padding:0;">
+    <div style="width:100%; margin:0; padding:0;">
 
-        <!-- THÔNG TIN CHUNG ở đáy cột trái -->
-      <div style="font-size:5.5pt; line-height:1; word-break:break-word; width:100%; margin:0; padding:0;">
-        ${infoChung}
+        <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
+      <div style="font-size:7pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
+        Shop Hoàn Tuyết
       </div>
 
-        <!-- GIÁ: không xuống dòng, thiếu chỗ cắt bên phải -->
-        <div style="font-size:10pt; font-weight:bold; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-          Giá: ${formatGia(t.giale)}
-        </div>
+      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
+    <div style="font-size:5.5pt; line-height:1; word-break:break-word;
+                width:100%; margin:0; padding:0;">
+      ${infoChung}
+    </div>
 
-        <!-- MÃ SP: không xuống dòng, thiếu chỗ cắt BÊN TRÁI  text-align:left; -->
-        <div style="font-size:8pt; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
-          ${t.masp}
-        </div>
-        
+      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
+      <div style="font-size:10pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
+        Giá: ${formatGia(t.giale)}
+      </div>
+
+      <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
+      <div style="font-size:8pt; line-height:1; white-space:nowrap;
+                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
+        ${t.masp}
       </div>
 
       
     </div>
 
-    <!-- CỘT PHẢI (40%): chỉ QR, đặt sát mép trên, canh trái -->
-    <div style="display:flex; justify-content:flex-start; align-items:flex-start; height:100%; margin:0; padding:0;">
-      <!-- QR giữ kích cỡ cũ (ví dụ 12mm) -->
-      <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-    </div>
+    
+  </div>
+
+  <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+  <div style="grid-column:2; grid-row:3;
+              display:flex; justify-content:flex-start; align-items:flex-start;
+              height:100%; margin:0; padding:0;">
+    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+  </div>
+
 
   </div>
 </div>
