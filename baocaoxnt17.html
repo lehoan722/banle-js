@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
 
     <style>
-        /* Body không cuộn; bảng cuộn trong vùng của nó */ 
+        /* Body không cuộn; bảng cuộn trong vùng của nó */  
         html,
         body {
             height: 100%;
@@ -481,14 +481,11 @@
                 </label>
 
                 <!-- Nút xem báo cáo -->
-                <button class="main" onclick="taiBaoCaoXNT()">Xem báo cáo</button>
+                <button class="main" onclick="taiBaoCaoXNT()">Xem bao cao</button>
                 <button id="btnShowImages" onclick="moTrangAnh()">🖼️ Hiển thị ảnh</button>
-
                 <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
-
-                <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuất Excel</button>               
-                
-
+                <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuat Excel</button>
+                <button class="main" id="btnChuyenKho" onclick="moTrangChuyenKho()">Gợi ý chuyển kho</button>
                 <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
                 
             </div>
