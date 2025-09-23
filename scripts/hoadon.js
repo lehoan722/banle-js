@@ -613,8 +613,7 @@ export function suaDongDangChon() {
     if (slEl) {
         slEl.focus();
         slEl.select();  // ✅ bôi đen để gõ luôn
-        // bảo hiểm: nếu render bảng làm cướp focus thì nạp lại focus sau 1 tick
-        setTimeout(() => { slEl.focus(); slEl.select(); }, 0);
+       
     }    
 
     // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
@@ -626,9 +625,6 @@ export function suaDongDangChon() {
     // Clear trạng thái chọn + render lại bảng
     setMaspspDangChon(null);
     capNhatBangHTML(bangKetQua, window.lastAdded);
-
-    // Phòng khi render cướp focus, re-focus + select thêm lần nữa sau 1 tick 🔴
-    setTimeout(() => { maspEl.focus(); maspEl.select(); }, 0); // 🔴
 }
 
 
