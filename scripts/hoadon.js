@@ -206,8 +206,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     // --- Kiểm tra quản lý size theo nhóm ---
     const qlTheoNhom = document.getElementById("quanlysizetheonhom")?.checked;
-    if (qlTheoNhom && spData.manhom && window.danhMucNhom) {
-        const nhom = window.danhMucNhom.get(spData.manhom);
+    if (qlTheoNhom && spData.nhomhang && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(spData.nhomhang);
         if (nhom && nhom.quanlysize) {
             const diadiem = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
             if (nhom.diadiem === "ALL" || nhom.diadiem === diadiem) {
