@@ -344,50 +344,46 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // ===== CỬA CUỐI: khóa size cho mọi đường vào =====
     {
         if (sp) {
-            const isShoe = String(sp.chungloai || "").trim().toLowerCase() === "gd";
-            if (isShoe) {
-                const size45On = !!document.getElementById("size45")?.checked;
-                const qlSizeTheoGiaOn = !!document.getElementById("quanlysizetheogia")?.checked;
-                const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
+            const size45On = !!document.getElementById("size45")?.checked;
+            const qlSizeTheoGiaOn = !!document.getElementById("quanlysizetheogia")?.checked;
+            const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
 
-                let groupRequires = false;
-                if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom) {
-                    const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
-                    if (nhom && nhom.quanlysize) {
-                        const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
-                        groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
-                    }
+            // nhóm có quanlysize hợp lệ tại cơ sở hiện tại?
+            let groupRequires = false;
+            if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom) {
+                const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
+                if (nhom && nhom.quanlysize) {
+                    const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
+                    groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
+                }
+            }
+
+            // size45 chỉ siết với giày; theo giá siết nếu là giày hoặc giale ≥ 170000
+            const isGD = String(sp.chungloai || "").trim().toLowerCase() === "gd";
+            const giaHangHoa = Number(sp.giale) || 0;
+            const managedByGia = qlSizeTheoGiaOn && (isGD || giaHangHoa >= 170000);
+
+            // 🔒 Chỉ khi thực sự thuộc diện quản lý size mới kiểm tra 38–45
+            const requireManagedSize = (size45On && isGD) || groupRequires || managedByGia;
+
+            if (requireManagedSize) {
+                const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+                const rawSize = (forcedSize ?? size ?? "").toString().trim().toUpperCase();
+
+                const invalid = (!rawSize || rawSize === "0" || !allowed.has(rawSize));
+                if (invalid) {
+                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
+                    const sizeEl = document.getElementById("size");
+                    if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
+                    window.soundWaitSize?.();   // beep cảnh báo
+                    return; // ❌ dừng thêm dòng
                 }
 
-                const requireShoeSize = size45On || qlSizeTheoGiaOn || groupRequires;
-                if (requireShoeSize) {
-                    const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
-                    const rawSize = (forcedSize ?? size ?? "").toString().trim().toUpperCase();
-
-                    let blocked = false;
-                    // Không cho size rỗng/0
-                    if (!rawSize || rawSize === "0") {
-                        const sizeEl = document.getElementById("size");
-                        if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
-                        window.soundWaitSize?.();
-                        blocked = true;
-                    }
-                    // Chỉ chấp nhận 38–45
-                    else if (!allowed.has(rawSize)) {
-                        const sizeEl = document.getElementById("size");
-                        if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
-                        window.soundWaitSize?.();
-                        blocked = true;
-                        alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
-                    }
-
-                    if (blocked) return;      // ✅ thoát êm hàm themVaoBang, không ném lỗi
-                    size = rawSize;           // ✅ chuẩn hoá size dùng cho logic phía dưới
-                }
+                // chuẩn hoá size hợp lệ để dùng tiếp phía dưới
+                size = rawSize;
             }
         }
     }
-
 
     // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
 
