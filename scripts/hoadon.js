@@ -378,6 +378,7 @@ export function themVaoBang(forcedSize = null, opts = {}) {
                         if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
                         window.soundWaitSize?.();
                         blocked = true;
+                        alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
                     }
 
                     if (blocked) return;      // ✅ thoát êm hàm themVaoBang, không ném lỗi
