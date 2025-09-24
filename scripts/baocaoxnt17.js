@@ -895,15 +895,32 @@ window.gotoPage = async () => {
 };
 
 // === ở cuối file hoặc gần các hàm button ===
-window.moTrangChuyenKho = () => {
-    // lấy filter hiện tại bằng buildParams nhưng KHÔNG cần p_limit/p_offset
-    const p = buildParams(1);
-    const forTransfer = {
-        ...buildCountParams(p), // chỉ giữ đúng tham số báo cáo (không limit/offset)  :contentReference[oaicite:1]{index=1}
-        // giữ thêm thông tin đang chọn hàm
-        fn: document.getElementById('selectFunction')?.value || 'baocaoxnt17_paged'
-    };
-    sessionStorage.setItem('xnt17_transfer_filters', JSON.stringify(forTransfer));
+// Gom tất cả dữ liệu theo filter hiện tại rồi mở trang chuyển kho
+window.moTrangChuyenKho = async () => {
+    const p = buildParams(1);                 // đang dùng sẵn
+    const countParams = buildCountParams(p);  // đang dùng sẵn ở XNT17
+
+    // đếm tổng
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', countParams);
+    if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
+    const total = Number(cntData || 0);
+
+    // lấy hết các “trang” của paged
+    const pageSize = 10000;
+    const all = [];
+    for (let offset = 0; offset < total; offset += pageSize) {
+        const pageParams = { ...p, p_limit: pageSize, p_offset: offset };
+        const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
+        if (error) { alert('Lỗi Paged: ' + error.message); return; }
+        all.push(...(data || []));
+    }
+
+    // đẩy dữ liệu + bộ lọc sang sessionStorage
+    sessionStorage.setItem('xnt17_transfer_rows', JSON.stringify(all));
+    sessionStorage.setItem('xnt17_transfer_filters', JSON.stringify(p));
+
+    // mở trang chuyển kho
     window.open('baocaoxnt17_chuyenkho.html', '_blank');
 };
+
 
