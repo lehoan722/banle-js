@@ -321,12 +321,12 @@
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
-                    <input id="login-email" type="email" placeholder="Email Supabase"
-                        style="width:130px;margin-right:2px;">
-                    <input id="login-password" type="password" placeholder="Mật khẩu"
-                        style="width:110px;margin-right:2px;">
-                    <button id="login-submit" class="btn">Đăng nhập</button>
-                    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b"></span>
+                    <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
+                        style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
+                    <input type="password" id="login-password" value="123123"
+                        style="width:110px;margin-right:2px; display:none ;">
+                    <button id="login-submit" display:none class="btn">Đăng nhập</button>
+                    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
                 </div>
 
 
@@ -598,17 +598,17 @@
             let infoChung = "";
             if (loaiTem === "giaydep") {
                 infoChung = `
-            không giặt,tẩy;Bảo quản nơi khô ráo;<br>
-            Dán nhãn tại Việt Nam.Giày/dép;chất
-            liệu:da,nhựa,caosu tổng hợp;cỡ:38-43<br>
-            Shop Hoàn Tuyết, Thái Nguyên;
+            không giặt,tẩy;Bảoquản nơi<br>
+            khô ráo; Dán nhãn tại Việt<br>
+            Nam. Giày,dép; chất liệu:<br>
+            da, pu, tổng hợp;cỡ:38-43            
         `;
             } else if (loaiTem === "quanao") {
                 infoChung = `
-            không tẩy;giặt tay,Bảo quản khô ráo;<br>
-            Dán nhãn tại Việt Nam. Quần,Áo ;<br>
-            chất liệu: Vải sợi tổng hợp;cỡ: S-XXL<br>
-            Shop Hoàn Tuyết, Thái Nguyên;
+            không tẩy;giặt tay,Bảo quản<br>
+            khô ráo; Dán nhãn tại Việt<br>
+            Nam. Quần,Áo; chất liệu:<br>
+            Vải sợi tổng hợp;cỡ: S-XXL            
         `;
             } else {
                 // Thêm các loại tem khác ở đây nếu muốn mở rộng
@@ -652,38 +652,80 @@
                 const t = pageTems[i] || null;
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
+
+
+  <!--bat dau khu vuc thiet ke hien thi tem -->
+
 <div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
-    width:${TEM_WIDTH_MM}mm;
-    height:${TEM_HEIGHT_MM}mm;
-    box-sizing:border-box;
-    overflow:hidden;
-    border:0px solid #888;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0mm 0mm 0mm 1mm;
-">
-    <div style="font-size:5.5pt;line-height:1;word-break:break-word;margin:0;padding:0;">
-        ${infoChung}
-    </div>
-   <div style="display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start;">
+  width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
+  box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
+ ">
+  <!-- Lưới 2 cột full height: 60% | 40% -->  
   <div style="
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      max-width: calc(100% - 32px);
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;">
-    <div style="font-size:11pt;font-weight:bold;line-height:1;">Giá: ${formatGia(t.giale)}</div>
-    <div style="font-size:8pt; line-height:1; margin-top:2px; word-break: break-word; white-space: normal;">${t.masp}</div>    
+  display:grid;
+  grid-template-columns:65% 35%;
+  grid-template-rows:1mm 1mm auto;
+  height:100%; width:100%; gap:0; box-sizing:border-box;
+ ">
+
+  <!-- Spacer TRÁI: 1mm -->
+  <div style="grid-column:1; grid-row:1;"></div>
+
+  <!-- Spacer PHẢI: 2mm (chiếm 2 hàng 1mm) -->
+  <div style="grid-column:2; grid-row:1 / span 2;"></div>
+
+
+      <!-- CỘT TRÁI: chiếm hàng 2-3, cột 1 -->
+  <div style="grid-column:1; grid-row:2 / span 2;
+              display:flex; flex-direction:column;
+              justify-content:space-between; align-items:flex-start;
+              height:100%; margin:0; padding:0;">
+    <div style="width:100%; margin:0; padding:0;">
+
+        <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
+      <div style="font-size:7pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
+        Shop Hoàn Tuyết
+      </div>
+
+      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
+    <div style="font-size:5.5pt; line-height:1; word-break:break-word;
+                width:100%; margin:0; padding:0;">
+      ${infoChung}
+    </div>
+
+      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
+      <div style="font-size:10pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
+        Giá: ${formatGia(t.giale)}
+      </div>
+
+      <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
+      <div style="font-size:8pt; line-height:1; white-space:nowrap;
+                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
+        ${t.masp}
+      </div>
+
+      
+    </div>
+
+    
   </div>
-  <div style="width:18px; height:18px; margin-left:4px; display:flex; align-items:flex-start; justify-content:flex-start;">
-    <canvas class="qr" width="18" height="18"></canvas>
+
+  <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+  <div style="grid-column:2; grid-row:3;
+              display:flex; justify-content:flex-start; align-items:flex-start;
+              height:100%; margin:0; padding:0;">
+    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+  </div>
+
+
   </div>
 </div>
 
-</div>
+<!--HET khu vuc thiet ke hien thi tem -->
+
+
 `;
             }
             html += `</div></div>`;
@@ -697,7 +739,7 @@
                 new QRious({
                     element: el,
                     value: masp,
-                    size: 25,
+                    size: 128,
                     level: 'M'
                 });
             });
