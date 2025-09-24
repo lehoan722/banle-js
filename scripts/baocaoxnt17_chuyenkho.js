@@ -37,24 +37,7 @@ function buildCountParams(params) {
 
 
 // ===== 2) Tải toàn bộ dữ liệu bằng RPC hiện có =====
-async function fetchAllRows(params) {
-  // trước hết, đếm tổng bản ghi để biết cần lặp mấy trang  :contentReference[oaicite:4]{index=4}
-  const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', params);
-  if (cntErr) throw cntErr;
-  const total = Number(cntData || 0);
 
-  const pageSize = 10000; // theo default RPC của bạn  :contentReference[oaicite:5]{index=5}
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  const all = [];
-
-  for (let p = 1; p <= pages; p++) {
-    const pageParams = { ...params, p_limit: pageSize, p_offset: (p - 1) * pageSize };
-    const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
-    if (error) throw error;
-    all.push(...(data || []));
-  }
-  return all;
-}
 
 // ===== 3) Gom theo masp → 9 size + 1 dòng “Tổng” =====
 function buildTransferTable(rows) {
@@ -199,26 +182,32 @@ function updateImagesByMasp(masp) {
 
 // ===== 6) Entry point =====
 async function boot() {
-  const filters = getFilters();
-  if (!filters) {
-    document.getElementById('status').textContent = 'Thiếu tham số lọc từ XNT17';
-    return;
-  }
   document.getElementById('status').textContent = 'Đang tải dữ liệu…';
 
-  try {
-    const raw = await fetchAllRows(filters);                        // gọi count & paged hiện có  :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
-    const rows = buildTransferTable(raw);                           // nhóm + tạo dòng “Tổng”
-    await patchVitri(rows);                                         // chèn vị trí từ dmhanghoa
-    renderHOT(rows);
-    document.getElementById('status').textContent =
-      `Đã tải ${rows.length} dòng (đã có dòng Tổng cho từng mã)`;
-  } catch (e) {
-    console.error(e);
-    document.getElementById('status').textContent = 'Lỗi tải dữ liệu: ' + e.message;
-    alert('Lỗi tải dữ liệu: ' + e.message);
+  // 1) Ưu tiên lấy data đã đẩy sẵn từ XNT17
+  const rawRows = sessionStorage.getItem('xnt17_transfer_rows');
+  let raw = [];
+  if (rawRows) {
+    raw = JSON.parse(rawRows);
+  } else {
+    // (fallback) nếu mở thẳng trang này không qua XNT17, mới gọi RPC
+    const filters = getFilters();
+    if (!filters) { document.getElementById('status').textContent = 'Thiếu dữ liệu/thiếu filter'; return; }
+    raw = await fetchAllRows(filters); // giữ lại hàm này như phương án B
   }
+
+  // 2) Dựng bảng chuyển kho
+  const rows = buildTransferTable(raw);   // 9 dòng size + 1 dòng “Tổng”
+  await patchVitri(rows);                 // lấy vị trí từ dmhanghoa (đọc trực tiếp table)
+  renderHOT(rows);
+
+  // 3) Tuỳ chọn: dọn storage (tránh chiếm bộ nhớ phiên)
+  // sessionStorage.removeItem('xnt17_transfer_rows');
+
+  document.getElementById('status').textContent =
+    `Đã tải ${rows.length} dòng (đã có dòng Tổng cho từng mã)`;
 }
+
 
 document.getElementById('btnReload').onclick = boot;
 boot();
