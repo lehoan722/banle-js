@@ -41,38 +41,35 @@ function buildCountParams(params) {
 
 // ===== 3) Gom theo masp → 9 size + 1 dòng “Tổng” =====
 function buildTransferTable(rows) {
-  // rows: [{masp, size, ton_cs1, ton_cs2, ...}]
-  // map theo mã
   const map = new Map();
   for (const r of rows) {
-    const masp = (r.masp || '').toUpperCase();
+    const masp = String(r.masp || '').toUpperCase();
+    if (!masp) continue;
     if (!map.has(masp)) map.set(masp, {});
     const g = map.get(masp);
-    const size = (r.size || '').toLowerCase();
-    g[size] = { masp, size: r.size, cs1: r.ton_cs1 || 0, cs2: r.ton_cs2 || 0 }; // tồn từng cơ sở  :contentReference[oaicite:6]{index=6}
+
+    const szKey = normalizeSize(r.size);     // ⬅️ dùng chuẩn hoá
+    const cs1 = Number(r.ton_cs1 || 0);
+    const cs2 = Number(r.ton_cs2 || 0);
+
+    g[szKey] = { masp, size: szKey || (r.size || ''), cs1, cs2 };
   }
 
   const out = [];
   for (const [masp, sizes] of map) {
     let sum1 = 0, sum2 = 0;
-
-    // 9 dòng size theo thứ tự chuẩn
     for (const s of SIZE_ORDER) {
-      const key = s.toLowerCase();
-      const it = sizes[key] || { masp, size: s, cs1: 0, cs2: 0 };
+      const it = sizes[s] || { masp, size: s, cs1: 0, cs2: 0 };
       const goiy = calcGoiy(it.cs1, it.cs2);
       out.push({
         masp, size: it.size, cs1: it.cs1, cs2: it.cs2,
-        goiy, tong: (it.cs1 + it.cs2), vitri_cs1: '', vitri_cs2: '', __isSum: false
+        goiy, tong: it.cs1 + it.cs2, vitri_cs1: '', vitri_cs2: '', __isSum: false
       });
       sum1 += it.cs1; sum2 += it.cs2;
     }
-
-    // dòng cuối: "Tổng" (thay cho "Vị trí kho")
     out.push({
       masp, size: 'Tổng', cs1: sum1, cs2: sum2,
-      goiy: calcGoiy(sum1, sum2), tong: (sum1 + sum2),
-      vitri_cs1: '', vitri_cs2: '', __isSum: true
+      goiy: calcGoiy(sum1, sum2), tong: sum1 + sum2, vitri_cs1: '', vitri_cs2: '', __isSum: true
     });
   }
   return out;
@@ -223,37 +220,4 @@ function normalizeSize(v) {
   return 'size ' + s.replace(/^size\s*/, '').trim();
 }
 
-function buildTransferTable(rows) {
-  const map = new Map();
-  for (const r of rows) {
-    const masp = String(r.masp || '').toUpperCase();
-    if (!masp) continue;
-    if (!map.has(masp)) map.set(masp, {});
-    const g = map.get(masp);
 
-    const szKey = normalizeSize(r.size);     // ⬅️ dùng chuẩn hoá
-    const cs1 = Number(r.ton_cs1 || 0);
-    const cs2 = Number(r.ton_cs2 || 0);
-
-    g[szKey] = { masp, size: szKey || (r.size || ''), cs1, cs2 };
-  }
-
-  const out = [];
-  for (const [masp, sizes] of map) {
-    let sum1 = 0, sum2 = 0;
-    for (const s of SIZE_ORDER) {
-      const it = sizes[s] || { masp, size: s, cs1: 0, cs2: 0 };
-      const goiy = calcGoiy(it.cs1, it.cs2);
-      out.push({
-        masp, size: it.size, cs1: it.cs1, cs2: it.cs2,
-        goiy, tong: it.cs1 + it.cs2, vitri_cs1: '', vitri_cs2: '', __isSum: false
-      });
-      sum1 += it.cs1; sum2 += it.cs2;
-    }
-    out.push({
-      masp, size: 'Tổng', cs1: sum1, cs2: sum2,
-      goiy: calcGoiy(sum1, sum2), tong: sum1 + sum2, vitri_cs1: '', vitri_cs2: '', __isSum: true
-    });
-  }
-  return out;
-}
