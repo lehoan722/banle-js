@@ -728,13 +728,25 @@
     
   </div>
 
-    <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->    
+    <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+    
+  <!-- CỘT PHẢI: QR trên, Size dưới & căn giữa -->
+<div style="
+  grid-column:2; grid-row:3;
+  display:flex; flex-direction:column;       /* xếp dọc: QR trên, size dưới */
+  justify-content:flex-start; align-items:flex-start;  /* QR sát trái */
+  height:100%; margin:0; padding:0;
+">
+  <canvas class="qr" style="width:9mm; height:9mm; display:block; margin:0;"></canvas>
 
-  <div style="grid-column:2; grid-row:3;
-              display:flex; justify-content:flex-start; align-items:flex-start;
-              height:100%; margin:0; padding:0;">
-    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-  ${sizeHtml}
+  <!-- Khung chứa size chiếm full chiều ngang để căn giữa -->
+  <div style="
+    width:100%;
+    display:flex; justify-content:center; align-items:center;
+    margin-top:0.8mm; line-height:1; white-space:nowrap;
+  ">
+    ${sizeHtml}
+  </div>
 </div>
 
   </div>
