@@ -224,6 +224,7 @@
                 style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
                 <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
 
+                <!-- THEM TRUONG danh sách sản phẩm -->
                 <form id="addProductForm" autocomplete="off">
                     <div class="form-row">
                         <label for="maspInput">Mã sản phẩm <span class="required">*</span></label>
@@ -329,9 +330,9 @@
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
-                    <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
+                    <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly
                         style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
-                    <input type="password" id="login-password" value="123123"
+                    <input type="password" id="login-password" value="369369"
                         style="width:110px;margin-right:2px; display:none ;">
                     <button id="login-submit" display:none class="btn">Đăng nhập</button>
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
@@ -658,6 +659,13 @@
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
+                const rawSize = (t && t.size != null) ? ('' + t.size) : '';
+                const sizeTxt = rawSize.trim();               // ép string & cắt trắng
+                const showSize = (sizeTxt !== '' && sizeTxt !== '0'); // bỏ qua 0 hoặc rỗng
+                const sizeHtml = showSize
+                    ? `<div style="font-size:8pt; line-height:1; margin-top:0.6mm; font-weight:700; text-align:center;">${sizeTxt}</div>`
+                    : '';
+
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
 
@@ -720,13 +728,13 @@
     
   </div>
 
-  <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+    <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
   <div style="grid-column:2; grid-row:3;
-              display:flex; justify-content:flex-start; align-items:flex-start;
-              height:100%; margin:0; padding:0;">
-    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-  </div>
-
+            display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
+            height:100%; margin:0; padding:0; overflow:visible;">
+  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+  ${sizeHtml}
+</div>
 
   </div>
 </div>
@@ -807,8 +815,8 @@
             window.print();
         }
 
-        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
+        // ==== THEM TRUONG / CẤU HÌNH GIỮ LẠI TRƯỜNG ====
+        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -853,7 +861,7 @@
                     .join('');
             } catch (e) { console.error(e); }
 
-            // 4) NHÓM HÀNG: dmnhomhang → value = MÃ, label = "MÃ - TÊN"
+            // 4) THEM TRUONG NHÓM HÀNG: dmnhomhang → value = MÃ, label = "MÃ - TÊN"
             try {
                 const { data: nh, error: errNh } = await supabase
                     .from('dmnhomhang')
@@ -890,7 +898,7 @@
             const { data, error } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).maybeSingle();
 
             if (data) {
-                // Chế độ SỬA: điền dữ liệu vào form
+                // THEM TRUONG/ Chế độ SỬA: điền dữ liệu vào form
                 isEditMode = true;
                 document.getElementById('tenspInput').value = data.tensp || '';
                 document.getElementById('gianhapInput').value = data.gianhap || '';
@@ -919,24 +927,49 @@
         };
 
         function resetForm(keepMasp = false) {
-            // Lấy giá trị các trường giữ lại hiện tại
-            const data = {};
+            const keepMap = {};
             GIU_LAI_FIELDS.forEach(field => {
-                data[field] = document.getElementById(field + 'Input').value;
+                const el = document.getElementById(field + 'Input');
+                keepMap[field] = el ? el.value : '';
             });
-            // Xóa trắng toàn bộ form
-            document.getElementById('addProductForm').reset();
-            // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
-            GIU_LAI_FIELDS.forEach(field => {
-                //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
-                document.getElementById(field + 'Input').value = data[field] || '';
+
+            // Danh sách tất cả input trong form
+            const allIds = [
+                'maspInput', 'tenspInput', 'gianhapInput', 'gialeInput',
+                'mausacInput', 'khuyenmaiInput', 'nhaccInput', 'nhomhangInput', 'chungloaiInput', 'quanlykichcoCheckbox'
+            ];
+
+            ['nhaccInput', 'nhomhangInput', 'chungloaiInput', 'mausacInput'].forEach(id => {
+                const el = document.getElementById(id);
+                el && el.addEventListener('blur', function () { this.value = this.value.trim().toUpperCase(); });
             });
+
+
+            allIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+
+                if (id === 'maspInput' && keepMasp) return; // nếu muốn giữ mã SP (hiện bạn không dùng)
+                if (id === 'quanlykichcoCheckbox') {
+                    el.checked = false;
+                    return;
+                }
+
+                // Nếu thuộc nhóm giữ lại -> khôi phục; nếu không -> xóa trắng
+                const field = id.replace('Input', '');
+                if (GIU_LAI_FIELDS.includes(field)) {
+                    el.value = keepMap[field] || '';
+                } else {
+                    el.value = '';
+                }
+            });
+
             document.getElementById('addProductMessage').textContent = '';
             document.getElementById('addProductForm').style.border = '';
             isEditMode = false;
         }
 
-        // ==== Validate các trường bắt buộc ====
+        // ==== THEM TRUONG/  Validate các trường bắt buộc ====
         function validateForm() {
             let valid = true;
             let msg = [];
@@ -974,7 +1007,7 @@
                 return;
             }
 
-            // Chuẩn hóa dữ liệu
+            // THEM TRUONG/ Chuẩn hóa dữ liệu
             const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
             const gialeVal = document.getElementById('gialeInput').value.replace(/\./g, '');
 
@@ -1187,6 +1220,8 @@
             }
         });
 
+        // THEM TRUONG/ Thứ tự Enter (focus/bôi đen)
+        // Giữ nguyên formOrder như bạn đang có
         const formOrder = [
             'maspInput',
             'tenspInput',
@@ -1194,36 +1229,51 @@
             'gialeInput',
             'mausacInput',
             'khuyenmaiInput',
-            'nhomhangInput',   // ⬅ thêm vào đây
-            'nhaccInput',
-            'chungloaiInput'
+            'nhaccInput',    // Nhà cung cấp
+            'nhomhangInput', // Nhóm hàng
+            'chungloaiInput' // Chủng loại
         ];
 
-        formOrder.forEach((id, idx) => {
-            const inp = document.getElementById(id);
-            if (!inp) return;
-            inp.addEventListener('keydown', function (e) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    // Nếu không phải ô cuối cùng thì focus ô tiếp theo
-                    if (idx < formOrder.length - 1) {
-                        const next = document.getElementById(formOrder[idx + 1]);
-                        if (next) {
-                            next.focus();
-                            setTimeout(() => next.select(), 10); // Bôi đen toàn bộ
-                        }
-                    } else {
-                        // Nếu là ô cuối cùng, submit form
-                        document.getElementById('saveFormBtn').focus();
+        (function attachFormEnterNav() {
+            const form = document.getElementById('addProductForm');
+            if (!form) return;
+
+            // Auto-select khi focus
+            formOrder.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
+            });
+
+            // Bắt ENTER ở cấp form (capture) để “đè” datalist & chặn submit
+            form.addEventListener('keydown', (ev) => {
+                if (ev.key !== 'Enter') return;
+
+                const active = document.activeElement;
+                if (!active || !form.contains(active)) return;
+
+                // Nếu focus đang ở nút Lưu thì cho submit bình thường
+                if (active.id === 'saveFormBtn') return;
+
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                const idx = formOrder.indexOf(active.id);
+                if (idx >= 0 && idx < formOrder.length - 1) {
+                    const next = document.getElementById(formOrder[idx + 1]);
+                    if (next) {
+                        next.focus();
+                        setTimeout(() => next.select?.(), 10);
                     }
+                } else if (idx === formOrder.length - 1) {
+                    // Ô cuối -> focus nút Lưu
+                    const btn = document.getElementById('saveFormBtn');
+                    btn && btn.focus();
                 }
-            });
-            inp.addEventListener('focus', function () {
-                setTimeout(() => inp.select(), 10);
-            });
-        });
+            }, true); // <— capture = true
+        })();
 
-
+        // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
+        attachEnterNav(formOrder);
 
         // Đăng nhập xong reload lại để token cập nhật
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
