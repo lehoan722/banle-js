@@ -485,76 +485,7 @@
             let data = hot.getSourceData();
             // Loại dòng trắng cuối bảng (dòng chỉ toàn rỗng/null)
             data = data.filter(row => Array.isArray(row)
-                ? row.some(cell => cell !== null && cell !== "")
-                : Object.values(row).some(cell => cell !== null && cell !== "")
-            );
 
-            // Kiểm tra mã đã có chưa
-            //if (data.some(row => row[1] === p.masp)) return; //Bỏ kiểm tra trùng mã sản phẩm khi thêm từ danh sách
-            // Thêm sản phẩm mới
-            data.push([
-                data.length + 1,        // STT
-                p.masp,                 // Mã hàng
-                p.tensp,                // Tên hàng
-                "0",                    // Kích cỡ (mặc định "0")
-                1,                      // Số lượng (default 1)
-                p.dvt || "sp",          // ĐVT (nếu trống thì "sp")
-                p.gianhap || 1,         // Giá nhập (nếu trống thì 1)
-                true,                   // In
-                p.giale || 0            // Giá lẻ (nếu trống thì 0)
-            ]);
-
-            // Cập nhật lại STT liên tục
-            data.forEach((row, idx) => row[0] = idx + 1);
-            hot.loadData(data);
-        }
-
-
-
-
-        function syncHandsontableToSelected() {
-            if (!hot) return;
-            const data = hot.getData().filter(row => row[1] && row[2]);
-            selected = data.map(row => ({
-                stt: row[0],         // STT
-                masp: row[1],        // Mã hàng
-                tensp: row[2],       // Tên hàng
-                size: row[3],        // Kích cỡ
-                sl: row[4],          // Số lượng
-                dvt: row[5],         // Đơn vị tính
-                gianhap: row[6],     // Giá nhập
-                tick: !!row[7],      // In
-                giale: row[8]        // Giá lẻ
-            }));
-
-        }
-
-
-        // Render lưới chọn
-        function renderSelectedTable() {
-            selectedTableBody.innerHTML = '';
-            selected.forEach((row, idx) => {
-                selectedTableBody.innerHTML += `
-      <tr data-idx="${idx}">
-        <td>${idx + 1}</td>
-        <td>${row.masp}</td>
-        <td>${row.tensp}</td>
-        <td><input type="number" min="1" max="50" value="${row.sltem}" style="width:38px"
-             onchange="changeSlTem(${idx}, this.value)"></td>
-        <td>${row.dvt || ''}</td>
-        <td><input type="number" min="1" max="999" value="${row.sl}" style="width:38px"
-             onchange="changeSl(${idx}, this.value)"></td>
-        <td>${formatGia(row.giale)}</td>
-        <td><input type="checkbox" ${row.tick ? 'checked' : ''} onchange="toggleTick(${idx}, this.checked)"></td>
-        <td>${formatGia(row.gianhap)}</td>
-      </tr>
-     `;
-            });
-            // Gắn double click xóa dòng
-            selectedTableBody.querySelectorAll('tr[data-idx]').forEach(tr => {
-                tr.ondblclick = () => {
-                    const idx = parseInt(tr.dataset.idx);
-                    selected.splice(idx, 1);
                     renderSelectedTable();
                 };
             });
