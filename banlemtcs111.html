@@ -1017,8 +1017,8 @@
                 giale: parseInt(gialeVal) || 0,
                 mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // ← HOA
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
+                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA
                 nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
-                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA               
                 chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // ← HOA
                 quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
@@ -1227,36 +1227,50 @@
             'gialeInput',
             'mausacInput',
             'khuyenmaiInput',
-            'nhaccInput',
-            'nhomhangInput',   // ⬅ thêm vào đây
+            'nhaccInput',     // NHÀ CUNG CẤP trước
+            'nhomhangInput',  // rồi NHÓM HÀNG
             'chungloaiInput'
         ];
 
-        formOrder.forEach((id, idx) => {
-            const inp = document.getElementById(id);
-            if (!inp) return;
-            inp.addEventListener('keydown', function (e) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    // Nếu không phải ô cuối cùng thì focus ô tiếp theo
-                    if (idx < formOrder.length - 1) {
-                        const next = document.getElementById(formOrder[idx + 1]);
+        function attachEnterNav(order) {
+            function handlerFactory(idx) {
+                return function (ev) {
+                    if (ev.key !== 'Enter') return;
+                    // Chặn submit form & chặn datalist "ăn" Enter
+                    ev.preventDefault();
+                    ev.stopPropagation();
+
+                    if (idx < order.length - 1) {
+                        const next = document.getElementById(order[idx + 1]);
                         if (next) {
                             next.focus();
-                            setTimeout(() => next.select(), 10); // Bôi đen toàn bộ
+                            setTimeout(() => next.select?.(), 10);
                         }
                     } else {
-                        // Nếu là ô cuối cùng, submit form
-                        document.getElementById('saveFormBtn').focus();
+                        // ô cuối cùng -> focus nút Lưu (không submit auto)
+                        const btn = document.getElementById('saveFormBtn');
+                        if (btn) btn.focus();
                     }
-                }
-            });
-            inp.addEventListener('focus', function () {
-                setTimeout(() => inp.select(), 10);
-            });
-        });
+                };
+            }
 
+            order.forEach((id, idx) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                // bỏ listener cũ nếu có
+                el.onkeydown = null; el.onkeypress = null;
 
+                const h = handlerFactory(idx);
+                el.addEventListener('keydown', h, true);
+                el.addEventListener('keypress', h, true);
+
+                // auto select khi vào ô
+                el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
+            });
+        }
+
+        // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
+        attachEnterNav(formOrder);
 
         // Đăng nhập xong reload lại để token cập nhật
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
