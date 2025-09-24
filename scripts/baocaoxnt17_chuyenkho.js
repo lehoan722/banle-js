@@ -257,70 +257,36 @@ const IMAGES_PER_ROW = 2; // số cột trong lưới ảnh
 // Lưu danh sách mã của panel ảnh để scroll/focus
 let currentMaspsList = [];
 
-function makePreviewCard(masp, index) {
-  const fig = document.createElement('figure');
-  fig.id = `img-${masp}`;
-  fig.className = 'preview-card';
-  fig.dataset.masp = masp;
-
-  const img = document.createElement('img');
-  img.loading = 'lazy';
-  img.alt = masp;
-  img.dataset.try = '0';
-  img.src = getImageUrl(masp);
-  img.onclick = () => openLightbox(img.src);
-  img.onerror = () => {
-    const next = (parseInt(img.dataset.try || '0', 10) + 1);
-    if (next < IMG_EXTS.length) {
-      img.dataset.try = String(next);
-      img.src = IMG_BASE + encodeURIComponent(masp) + '.' + IMG_EXTS[next];
-    } else {
-      img.onerror = null;
-      img.src = PLACEHOLDER_SVG;
-    }
-  };
-
-  const cap = document.createElement('figcaption');
-  cap.className = 'preview-cap';
-
-  const span = document.createElement('span');
-  span.className = 'cap-link';
-  span.textContent = `${index + 1}. ${masp}`;
-  span.onclick = () =>
-    window.open(`timkiemhanghoa333.html?masp=${encodeURIComponent(masp)}`, '_blank');
-
-  cap.appendChild(span);
-  fig.appendChild(img);
-  fig.appendChild(cap);
-  return fig;
-}
-
 function renderPreviewForMasps(list) {
-  currentMaspsList = (list || []).map(x => String(x || '').toUpperCase());
-  const box = document.getElementById('previewGrid');
-  const title = document.getElementById('previewTitle');
-  if (!box) return;
+    currentMaspsList = (list || []).map(x => String(x || "").toUpperCase());
+    const box = document.getElementById("previewGrid");
+    const title = document.getElementById("previewTitle");
+    if (!box) return;
 
-  box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
-  title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
+    box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+    title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
 
-  // Xoá cũ, render mới bằng DOM API
-  box.innerHTML = '';
-  currentMaspsList.forEach((m, i) => box.appendChild(makePreviewCard(m, i)));
+    const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+
+    box.innerHTML = currentMaspsList.map((m, i) => {
+        const src = getImageUrl(m);
+        return `
+      <figure id="img-${m}" class="preview-card" data-masp="${m}">
+        <img loading="lazy"
+             src="${src}" data-try="0" alt="${m}"
+             onclick="openLightbox(this.src)"
+             onerror="(function(img,masp){ const next = (parseInt(img.dataset.try||'0',10)+1);
+                const exts=['jpg','jpeg','png','webp','JPG','JPEG','PNG','WEBP'];
+                if(next<exts.length){ img.dataset.try=String(next); img.src='${IMG_BASE}'+encodeURIComponent(masp)+'.'+exts[next];}
+                else{ img.onerror=null; img.src='${PLACEHOLDER_SVG}'; } })(this,'${m}')">
+        <figcaption class="preview-cap">
+          <span class="cap-link" onclick="window.open('${DETAIL_URL}?masp=${encodeURIComponent(m)}','_blank')">
+            ${i + 1}. ${m}
+          </span>
+        </figcaption>
+      </figure>`;
+    }).join("");
 }
-
-function focusPreview(masp) {
-  const box = document.getElementById('previewGrid');
-  if (!box || !masp) return;
-  const old = box.querySelector('.preview-card.selected');
-  if (old) old.classList.remove('selected');
-  const el = document.getElementById(`img-${masp}`);
-  if (el) {
-    el.classList.add('selected');
-    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-  }
-}
-
 
 function focusPreview(masp) {
     const box = document.getElementById('previewGrid');
