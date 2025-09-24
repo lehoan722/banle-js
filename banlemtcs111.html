@@ -659,12 +659,11 @@
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
-                const sizeVal = t && t.size != null ? String(t.size).trim() : '';
-                const sizeTxt = /^\d+$/.test(sizeVal) ? sizeVal : sizeVal;
-                const sizeHtml = (sizeTxt !== '' && sizeTxt !== '0')
-                    ? `<div style="font-size:8pt; line-height:1; margin-top:0.6mm; font-weight:700; text-align:center;">
-       ${sizeTxt}
-     </div>`
+                const rawSize = (t && t.size != null) ? ('' + t.size) : '';
+                const sizeTxt = rawSize.trim();               // ép string & cắt trắng
+                const showSize = (sizeTxt !== '' && sizeTxt !== '0'); // bỏ qua 0 hoặc rỗng
+                const sizeHtml = showSize
+                    ? `<div style="font-size:8pt; line-height:1; margin-top:0.6mm; font-weight:700; text-align:center;">${sizeTxt}</div>`
                     : '';
 
                 if (!t) html += `<div class="tem tem-blank"></div>`;
@@ -731,12 +730,11 @@
 
     <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
   <div style="grid-column:2; grid-row:3;
-              display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
-              height:100%; margin:0; padding:0;">
-    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-    ${sizeHtml}
-  </div>
-
+            display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
+            height:100%; margin:0; padding:0; overflow:visible;">
+  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+  ${sizeHtml}
+</div>
 
   </div>
 </div>
@@ -1223,6 +1221,7 @@
         });
 
         // THEM TRUONG/ Thứ tự Enter (focus/bôi đen)
+        // Giữ nguyên formOrder như bạn đang có
         const formOrder = [
             'maspInput',
             'tenspInput',
@@ -1230,37 +1229,48 @@
             'gialeInput',
             'mausacInput',
             'khuyenmaiInput',
-            'nhaccInput',     // NHÀ CUNG CẤP trước
-            'nhomhangInput',  // rồi NHÓM HÀNG
-            'chungloaiInput'
+            'nhaccInput',    // Nhà cung cấp
+            'nhomhangInput', // Nhóm hàng
+            'chungloaiInput' // Chủng loại
         ];
-        function attachEnterNav(order) {
-            order.forEach((id, idx) => {
+
+        (function attachFormEnterNav() {
+            const form = document.getElementById('addProductForm');
+            if (!form) return;
+
+            // Auto-select khi focus
+            formOrder.forEach(id => {
                 const el = document.getElementById(id);
-                if (!el) return;
-
-                el.addEventListener('keydown', function (ev) {
-                    if (ev.key === 'Enter') {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-
-                        if (idx < order.length - 1) {
-                            const next = document.getElementById(order[idx + 1]);
-                            if (next) {
-                                next.focus();
-                                setTimeout(() => next.select?.(), 10);
-                            }
-                        } else {
-                            // ô cuối cùng -> focus nút Lưu
-                            document.getElementById('saveFormBtn').focus();
-                        }
-                    }
-                });
-
-                // Auto select khi focus
-                el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
+                if (el) el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
             });
-        }
+
+            // Bắt ENTER ở cấp form (capture) để “đè” datalist & chặn submit
+            form.addEventListener('keydown', (ev) => {
+                if (ev.key !== 'Enter') return;
+
+                const active = document.activeElement;
+                if (!active || !form.contains(active)) return;
+
+                // Nếu focus đang ở nút Lưu thì cho submit bình thường
+                if (active.id === 'saveFormBtn') return;
+
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                const idx = formOrder.indexOf(active.id);
+                if (idx >= 0 && idx < formOrder.length - 1) {
+                    const next = document.getElementById(formOrder[idx + 1]);
+                    if (next) {
+                        next.focus();
+                        setTimeout(() => next.select?.(), 10);
+                    }
+                } else if (idx === formOrder.length - 1) {
+                    // Ô cuối -> focus nút Lưu
+                    const btn = document.getElementById('saveFormBtn');
+                    btn && btn.focus();
+                }
+            }, true); // <— capture = true
+        })();
 
         // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
         attachEnterNav(formOrder);
