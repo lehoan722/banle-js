@@ -92,7 +92,7 @@ async function patchVitri(outArr) {
   // (giả sử cột tên là vitri_cs1, vitri_cs2 — bạn sửa lại nếu cột khác)
   const { data, error } = await supabase
     .from('dmhanghoa')
-    .select('masp, vitri_cs1, vitri_cs2')
+    .select('masp, vitrikho1, vitrikho2')
     .in('masp', uniq);
   if (error) return;
 
@@ -168,13 +168,48 @@ function renderHOT(rows) {
 }
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
+// ==== ẢNH: copy từ XNT17 ====
+const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG", "WEBP"];
+
+const PLACEHOLDER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360">' +
+  '<rect width="100%" height="100%" fill="#f3f4f6"/>' +
+  '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-size="18">Chưa có ảnh</text></svg>'
+);
+
+// Thử lần lượt các đuôi ảnh
+function handleImageError(img, masp, suffix = "") {
+  const next = (parseInt(img.dataset.try || "0", 10) + 1);
+  if (next < IMG_EXTS.length) {
+    img.dataset.try = String(next);
+    img.src = IMG_BASE + encodeURIComponent(masp + suffix) + "." + IMG_EXTS[next];
+  } else {
+    img.onerror = null;
+    img.src = PLACEHOLDER_SVG;
+  }
+}
+function getImageUrl(masp, suffix = "") {
+  // Thử JPG trước, onerror sẽ thử đuôi khác
+  return IMG_BASE + encodeURIComponent(masp + suffix) + ".JPG";
+}
+
 // Bạn có thể thay bằng đúng hàm tải ảnh đang dùng ở XNT17 (cùng cấu trúc). Dưới đây là placeholder:
 function updateImagesByMasp(masp) {
-  // TODO: nếu XNT17 có sẵn hàm build link ảnh theo masp thì gọi lại cho đồng nhất.
-  // Tạm thời minh họa: 2 ảnh theo đường dẫn chuẩn của bạn (sửa domain/path theo dự án)
-  const base = `https://your.cdn.example/images/${encodeURIComponent(masp)}`;
-  document.getElementById('img1').src = `${base}_1.jpg`;
-  document.getElementById('img2').src = `${base}_2.jpg`;
+  const img1 = document.getElementById('img1');
+  const img2 = document.getElementById('img2');
+  if (!img1 || !img2) return;
+
+  // Ảnh 1: mã gốc (giống XNT17)
+  img1.dataset.try = "0";
+  img1.onerror = () => handleImageError(img1, masp, "");
+  img1.src = getImageUrl(masp, "");
+
+  // Ảnh 2: ưu tiên file có hậu tố _2; nếu không có sẽ rơi về placeholder
+  const masp2 = masp + "_2";
+  img2.dataset.try = "0";
+  img2.onerror = () => handleImageError(img2, masp, "_2");
+  img2.src = getImageUrl(masp, "_2");
 }
 
 // ===== 6) Entry point =====
