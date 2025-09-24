@@ -659,6 +659,11 @@
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
+                const sizeTxt = t && t.size != null ? String(t.size).trim() : '';
+                const sizeHtml = (sizeTxt && sizeTxt !== '0')
+                    ? `<div class="size-under-qr" style="font-size:8pt; line-height:1; margin-top:0.6mm; font-weight:700; text-align:center;">${sizeTxt}</div>`
+                    : '';
+
                 if (!t) html += `<div class="tem tem-blank"></div>`;
                 else html += `
 
@@ -721,22 +726,13 @@
     
   </div>
 
-  <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+    <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
   <div style="grid-column:2; grid-row:3;
-              display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
+              display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
               height:100%; margin:0; padding:0;">
-  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-
-  ${(() => {
-                        const s = (t.size ?? '').toString().trim();
-                        return s && s !== '0'
-                            ? `<div class="size-under-qr" style="font-size:8pt; line-height:1; margin-top:0.6mm;">
-             ${s}
-           </div>`
-                            : ``;
-                    })()}
-</div>
-
+    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+    ${sizeHtml}
+  </div>
 
 
   </div>
@@ -930,18 +926,43 @@
         };
 
         function resetForm(keepMasp = false) {
-            // Lấy giá trị các trường giữ lại hiện tại
-            const data = {};
+            const keepMap = {};
             GIU_LAI_FIELDS.forEach(field => {
-                data[field] = document.getElementById(field + 'Input').value;
+                const el = document.getElementById(field + 'Input');
+                keepMap[field] = el ? el.value : '';
             });
-            // Xóa trắng toàn bộ form
-            document.getElementById('addProductForm').reset();
-            // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
-            GIU_LAI_FIELDS.forEach(field => {
-                //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
-                document.getElementById(field + 'Input').value = data[field] || '';
+
+            // Danh sách tất cả input trong form
+            const allIds = [
+                'maspInput', 'tenspInput', 'gianhapInput', 'gialeInput',
+                'mausacInput', 'khuyenmaiInput', 'nhaccInput', 'nhomhangInput', 'chungloaiInput', 'quanlykichcoCheckbox'
+            ];
+
+            ['nhaccInput', 'nhomhangInput', 'chungloaiInput', 'mausacInput'].forEach(id => {
+                const el = document.getElementById(id);
+                el && el.addEventListener('blur', function () { this.value = this.value.trim().toUpperCase(); });
             });
+
+
+            allIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+
+                if (id === 'maspInput' && keepMasp) return; // nếu muốn giữ mã SP (hiện bạn không dùng)
+                if (id === 'quanlykichcoCheckbox') {
+                    el.checked = false;
+                    return;
+                }
+
+                // Nếu thuộc nhóm giữ lại -> khôi phục; nếu không -> xóa trắng
+                const field = id.replace('Input', '');
+                if (GIU_LAI_FIELDS.includes(field)) {
+                    el.value = keepMap[field] || '';
+                } else {
+                    el.value = '';
+                }
+            });
+
             document.getElementById('addProductMessage').textContent = '';
             document.getElementById('addProductForm').style.border = '';
             isEditMode = false;
