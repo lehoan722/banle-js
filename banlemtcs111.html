@@ -659,9 +659,12 @@
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
-                const sizeTxt = t && t.size != null ? String(t.size).trim() : '';
-                const sizeHtml = (sizeTxt && sizeTxt !== '0')
-                    ? `<div class="size-under-qr" style="font-size:8pt; line-height:1; margin-top:0.6mm; font-weight:700; text-align:center;">${sizeTxt}</div>`
+                const sizeVal = t && t.size != null ? String(t.size).trim() : '';
+                const sizeTxt = /^\d+$/.test(sizeVal) ? sizeVal : sizeVal;
+                const sizeHtml = (sizeTxt !== '' && sizeTxt !== '0')
+                    ? `<div style="font-size:8pt; line-height:1; margin-top:0.6mm; font-weight:700; text-align:center;">
+       ${sizeTxt}
+     </div>`
                     : '';
 
                 if (!t) html += `<div class="tem tem-blank"></div>`;
@@ -1231,40 +1234,30 @@
             'nhomhangInput',  // rồi NHÓM HÀNG
             'chungloaiInput'
         ];
-
         function attachEnterNav(order) {
-            function handlerFactory(idx) {
-                return function (ev) {
-                    if (ev.key !== 'Enter') return;
-                    // Chặn submit form & chặn datalist "ăn" Enter
-                    ev.preventDefault();
-                    ev.stopPropagation();
-
-                    if (idx < order.length - 1) {
-                        const next = document.getElementById(order[idx + 1]);
-                        if (next) {
-                            next.focus();
-                            setTimeout(() => next.select?.(), 10);
-                        }
-                    } else {
-                        // ô cuối cùng -> focus nút Lưu (không submit auto)
-                        const btn = document.getElementById('saveFormBtn');
-                        if (btn) btn.focus();
-                    }
-                };
-            }
-
             order.forEach((id, idx) => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                // bỏ listener cũ nếu có
-                el.onkeydown = null; el.onkeypress = null;
 
-                const h = handlerFactory(idx);
-                el.addEventListener('keydown', h, true);
-                el.addEventListener('keypress', h, true);
+                el.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        ev.stopPropagation();
 
-                // auto select khi vào ô
+                        if (idx < order.length - 1) {
+                            const next = document.getElementById(order[idx + 1]);
+                            if (next) {
+                                next.focus();
+                                setTimeout(() => next.select?.(), 10);
+                            }
+                        } else {
+                            // ô cuối cùng -> focus nút Lưu
+                            document.getElementById('saveFormBtn').focus();
+                        }
+                    }
+                });
+
+                // Auto select khi focus
                 el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
             });
         }
