@@ -652,7 +652,7 @@
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
         column-gap: 5mm;
-        row-gap: 1.9mm;        
+        row-gap: 1.5mm;        
     ">`;
 
             // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
@@ -728,11 +728,12 @@
     
   </div>
 
-    <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+    <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->    
+
   <div style="grid-column:2; grid-row:3;
-            display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
-            height:100%; margin:0; padding:0; overflow:visible;">
-  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+              display:flex; justify-content:flex-start; align-items:flex-start;
+              height:100%; margin:0; padding:0;">
+    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
   ${sizeHtml}
 </div>
 
