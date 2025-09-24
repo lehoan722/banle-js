@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>In Tem QR - Giấy TOMY 108</title>
+    <title>In Tem QR - Giáº¥y TOMY 108</title>
 
     <style>
         body {
@@ -210,71 +210,72 @@
 </head>
 
 <body>
-    <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
+    <h2>Há»† THá»NG IN TEM QR - GIáº¤Y TOMY 108</h2>
     <div class="container">
-        <!-- Bên trái: danh sách sản phẩm -->
+        <!-- BĂªn trĂ¡i: danh sĂ¡ch sáº£n pháº©m -->
         <div class="left">
-            <b>Tìm kiếm sản phẩm</b>
+            <b>TĂ¬m kiáº¿m sáº£n pháº©m</b>
             <div class="search-box">
-                <input id="search" type="text" placeholder="Nhập mã, tên sản phẩm..." autocomplete="off" />
+                <input id="search" type="text" placeholder="Nháº­p mĂ£, tĂªn sáº£n pháº©m..." autocomplete="off" />
             </div>
             <div class="product-list" id="productList"></div>
 
             <div id="productInputForm"
                 style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
-                <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
+                <b style="font-size: 14px;">ThĂªm/Sá»­a sáº£n pháº©m</b>
 
+                <!-- THEM TRUONG danh sĂ¡ch sáº£n pháº©m -->
                 <form id="addProductForm" autocomplete="off">
                     <div class="form-row">
-                        <label for="maspInput">Mã sản phẩm <span class="required">*</span></label>
+                        <label for="maspInput">MĂ£ sáº£n pháº©m <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="masp" id="maspInput" type="text" required autocomplete="off" />
-                            <!-- Popup gợi ý mã sản phẩm -->
+                            <!-- Popup gá»£i Ă½ mĂ£ sáº£n pháº©m -->
                             <div id="maspSuggestList" class="product-list"
                                 style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
                             </div>
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="tenspInput">Tên sản phẩm <span class="required">*</span></label>
+                        <label for="tenspInput">TĂªn sáº£n pháº©m <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="tensp" id="tenspInput" type="text" required />
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="gianhapInput">Giá nhập <span class="required">*</span></label>
+                        <label for="gianhapInput">GiĂ¡ nháº­p <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="gianhap" id="gianhapInput" type="text" />
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="gialeInput">Giá lẻ <span class="required">*</span></label>
+                        <label for="gialeInput">GiĂ¡ láº» <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="giale" id="gialeInput" type="text" required />
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="mausacInput">Màu sắc</label>
+                        <label for="mausacInput">MĂ u sáº¯c</label>
                         <div class="form-input">
                             <input name="mausac" id="mausacInput" list="mausacList" autocomplete="off" />
                             <datalist id="mausacList"></datalist>
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="khuyenmaiInput">Khuyến mãi</label>
+                        <label for="khuyenmaiInput">Khuyáº¿n mĂ£i</label>
                         <div class="form-input">
                             <input name="khuyenmai" id="khuyenmaiInput" type="text" />
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="nhaccInput">Nhà cung cấp <span class="required">*</span></label>
+                        <label for="nhaccInput">NhĂ  cung cáº¥p <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="nhacc" id="nhaccInput" list="nhaccList" autocomplete="off" />
                             <datalist id="nhaccList"></datalist>
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="nhomhangInput">Nhóm hàng <span class="required">*</span></label>
+                        <label for="nhomhangInput">NhĂ³m hĂ ng <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="nhomhang" id="nhomhangInput" list="nhomhangList" autocomplete="off" />
                             <datalist id="nhomhangList"></datalist>
@@ -282,7 +283,7 @@
                     </div>
 
                     <div class="form-row">
-                        <label for="chungloaiInput">Chủng loại <span class="required">*</span></label>
+                        <label for="chungloaiInput">Chá»§ng loáº¡i <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="chungloai" id="chungloaiInput" list="chungloaiList" autocomplete="off" />
                             <datalist id="chungloaiList"></datalist>
@@ -291,15 +292,15 @@
                     </div>
 
                     <div class="form-row">
-                        <label><input type="checkbox" id="quanlykichcoCheckbox" /> Quản lý kích cỡ</label>
+                        <label><input type="checkbox" id="quanlykichcoCheckbox" /> Quáº£n lĂ½ kĂ­ch cá»¡</label>
                     </div>
 
 
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button type="button" id="resetFormBtn" class="btn" style="flex: 1;">Thêm mới</button>
-                        <button type="submit" id="saveFormBtn" class="btn" style="flex: 1;">Lưu</button>
+                        <button type="button" id="resetFormBtn" class="btn" style="flex: 1;">ThĂªm má»›i</button>
+                        <button type="submit" id="saveFormBtn" class="btn" style="flex: 1;">LÆ°u</button>
                         <button type="button" id="deleteProductBtn" class="btn"
-                            style="flex: 1; background: #cc3333;">Xóa</button>
+                            style="flex: 1; background: #cc3333;">XĂ³a</button>
                     </div>
 
                     <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
@@ -309,31 +310,31 @@
             </div>
 
         </div>
-        <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
+        <!-- BĂªn pháº£i: báº£ng sáº£n pháº©m Ä‘Ă£ chá»n vĂ  tĂ¹y chá»n in -->
         <div class="right">
-            <b>Danh sách tem in</b>
+            <b>Danh sĂ¡ch tem in</b>
             <div id="hot" style="margin-bottom:12px"></div>
 
             <div class="print-options">
-                <label>Từ dòng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
-                <label>Từ cột: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
-                <label>Loại tem:
+                <label>Tá»« dĂ²ng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
+                <label>Tá»« cá»™t: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
+                <label>Loáº¡i tem:
                     <select id="loaiTem">
-                        <option value="">– Chọn loại tem –</option>
-                        <option value="giaydep">Tem giày dép</option>
-                        <option value="quanao">Tem quần áo</option>
+                        <option value="">â€“ Chá»n loáº¡i tem â€“</option>
+                        <option value="giaydep">Tem giĂ y dĂ©p</option>
+                        <option value="quanao">Tem quáº§n Ă¡o</option>
                     </select>
                 </label>
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
-                <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-                <!-- MODULE ĐĂNG NHẬP SUPABASE -->
+                <button class="btn" onclick="exportExcel()">Xuáº¥t Excel</button>
+                <!-- MODULE ÄÄ‚NG NHáº¬P SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
                     <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
                         style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
                     <input type="password" id="login-password" value="123123"
                         style="width:110px;margin-right:2px; display:none ;">
-                    <button id="login-submit" display:none class="btn">Đăng nhập</button>
+                    <button id="login-submit" display:none class="btn">ÄÄƒng nháº­p</button>
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
                 </div>
 
@@ -342,7 +343,7 @@
             </div>
             <div class="preview-area" id="previewArea"></div>
             <div style="margin: 8px 0;">
-                <button class="btn" onclick="prevPage()">&#8592; Trang trước</button>
+                <button class="btn" onclick="prevPage()">&#8592; Trang trÆ°á»›c</button>
                 <span id="pageInfo"></span>
                 <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
             </div>
@@ -358,41 +359,41 @@
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay Ä‘Ăºng anon key
 
-        // Lấy token từ localStorage (nếu có)
+        // Láº¥y token tá»« localStorage (náº¿u cĂ³)
         const token = localStorage.getItem('supabase_access_token');
 
-        // Nếu có token thì khởi tạo client với Authorization header
+        // Náº¿u cĂ³ token thĂ¬ khá»Ÿi táº¡o client vá»›i Authorization header
         export const supabase = token
             ? createClient(supabaseUrl, supabaseKey, {
                 global: { headers: { Authorization: `Bearer ${token}` } }
             })
             : createClient(supabaseUrl, supabaseKey);
 
-        // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
+        // -- Cáº¤U HĂŒNH Báº¢NG 9 Cá»˜T HANDSONTABLE --
         let hot;
         const colHeaders = [
-            "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"
+            "STT", "MĂ£ hĂ ng", "TĂªn hĂ ng", "KĂ­ch cá»¡", "Sá»‘ lÆ°á»£ng", "ÄVT", "GiĂ¡ nháº­p", "In", "GiĂ¡ láº»"
         ];
         const columns = [
             { data: 0, type: 'numeric' }, // STT  { data: 0, type: 'numeric', readOnly: true },
-            { data: 1, type: 'text' },    // Mã hàng
-            { data: 2, type: 'text' },    // Tên hàng
-            { data: 3, type: 'text' },                    // Kích cỡ (Size)
-            { data: 4, type: 'numeric' },                 // Số lượng
-            { data: 5, type: 'text' },                    // ĐVT
+            { data: 1, type: 'text' },    // MĂ£ hĂ ng
+            { data: 2, type: 'text' },    // TĂªn hĂ ng
+            { data: 3, type: 'text' },                    // KĂ­ch cá»¡ (Size)
+            { data: 4, type: 'numeric' },                 // Sá»‘ lÆ°á»£ng
+            { data: 5, type: 'text' },                    // ÄVT
             {
                 data: 6,
                 type: 'numeric',
                 numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            },                                            // Giá nhập
+            },                                            // GiĂ¡ nháº­p
             { data: 7, type: 'checkbox' },                // In
             {
                 data: 8,
                 type: 'numeric',
                 numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            }                                             // Giá lẻ
+            }                                             // GiĂ¡ láº»
         ];
 
 
@@ -412,17 +413,17 @@
                 manualRowResize: true,
                 stretchH: 'all',
                 afterChange: syncHandsontableToSelected,
-                beforeChange: function (changes, source) {  //Thêm event beforeChange để chặn chỉnh sửa thủ công các cột "chỉ đọc"
+                beforeChange: function (changes, source) {  //ThĂªm event beforeChange Ä‘á»ƒ cháº·n chá»‰nh sá»­a thá»§ cĂ´ng cĂ¡c cá»™t "chá»‰ Ä‘á»c"
                     if (source === 'edit') {
-                        // Không cho chỉnh sửa trực tiếp các cột mã hàng, tên hàng, dvt, giá lẻ, giá nhập
+                        // KhĂ´ng cho chá»‰nh sá»­a trá»±c tiáº¿p cĂ¡c cá»™t mĂ£ hĂ ng, tĂªn hĂ ng, dvt, giĂ¡ láº», giĂ¡ nháº­p
                         const readOnlyColumns = [1, 2, 6, 8];
                         for (let i = changes.length - 1; i >= 0; i--) {
                             if (readOnlyColumns.includes(changes[i][1])) {
-                                changes.splice(i, 1); // Hủy thay đổi trên cột chỉ đọc nếu là thao tác nhập tay
+                                changes.splice(i, 1); // Há»§y thay Ä‘á»•i trĂªn cá»™t chá»‰ Ä‘á»c náº¿u lĂ  thao tĂ¡c nháº­p tay
                             }
                         }
                     }
-                    // Nếu là paste thì không chặn gì cả!
+                    // Náº¿u lĂ  paste thĂ¬ khĂ´ng cháº·n gĂ¬ cáº£!
                 }
             });
         });
@@ -430,14 +431,14 @@
 
 
 
-        // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-        const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
-        const PAGE_MARGIN_LEFT_MM = 11;   // Lề trái của toàn bộ khối tem (mm)
-        const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
-        const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
-        const TEM_WIDTH_MM = 37;           // Rộng mỗi tem (mm)
-        const TEM_HEIGHT_MM = 19;          // Cao mỗi tem (mm)
-        // ==== KẾT THÚC CẤU HÌNH ====
+        // ==== Cáº¤U HĂŒNH THĂ”NG Sá» IN TEM ====
+        const PAGE_MARGIN_TOP_MM = 3.5;      // Lá» trĂªn cá»§a toĂ n bá»™ khá»‘i tem (mm)
+        const PAGE_MARGIN_LEFT_MM = 11;   // Lá» trĂ¡i cá»§a toĂ n bá»™ khá»‘i tem (mm)
+        const TEM_H_GAP_MM = 0;          // Khoáº£ng cĂ¡ch ngang giá»¯a 2 tem (mm)
+        const TEM_V_GAP_MM = 0;          // Khoáº£ng cĂ¡ch dá»c giá»¯a 2 tem (mm)
+        const TEM_WIDTH_MM = 37;           // Rá»™ng má»—i tem (mm)
+        const TEM_HEIGHT_MM = 19;          // Cao má»—i tem (mm)
+        // ==== Káº¾T THĂC Cáº¤U HĂŒNH ====
 
         // State
         let products = [];
@@ -452,7 +453,7 @@
         const fromRowInput = document.getElementById('fromRow');
         const fromColInput = document.getElementById('fromCol');
 
-        // 1. Search products (không load all)
+        // 1. Search products (khĂ´ng load all)
         async function searchProducts(keyword, callback) {
             let { data, error } = await supabase
                 .from('dmhanghoa')
@@ -481,7 +482,7 @@
         // Render product list
         function renderProductList() {
             let html = '<table>';
-            html += '<tr><th>Mã SP</th><th>Tên hàng</th></tr>';
+            html += '<tr><th>MĂ£ SP</th><th>TĂªn hĂ ng</th></tr>';
             for (let p of filtered) {
                 html += `<tr data-masp="${p.masp}">
       <td>${p.masp}</td>
@@ -490,7 +491,7 @@
             }
             html += '</table>';
             productListDiv.innerHTML = html;
-            // Gắn double click event cho từng dòng
+            // Gáº¯n double click event cho tá»«ng dĂ²ng
             productListDiv.querySelectorAll('tr[data-masp]').forEach(row => {
                 row.ondblclick = () => selectProduct(row.dataset.masp);
             });
@@ -501,28 +502,28 @@
             const p = products.find(x => x.masp === masp);
             if (!p) return;
             let data = hot.getSourceData();
-            // Loại dòng trắng cuối bảng (dòng chỉ toàn rỗng/null)
+            // Loáº¡i dĂ²ng tráº¯ng cuá»‘i báº£ng (dĂ²ng chá»‰ toĂ n rá»—ng/null)
             data = data.filter(row => Array.isArray(row)
                 ? row.some(cell => cell !== null && cell !== "")
                 : Object.values(row).some(cell => cell !== null && cell !== "")
             );
 
-            // Kiểm tra mã đã có chưa
-            //if (data.some(row => row[1] === p.masp)) return; //Bỏ kiểm tra trùng mã sản phẩm khi thêm từ danh sách
-            // Thêm sản phẩm mới
+            // Kiá»ƒm tra mĂ£ Ä‘Ă£ cĂ³ chÆ°a
+            //if (data.some(row => row[1] === p.masp)) return; //Bá» kiá»ƒm tra trĂ¹ng mĂ£ sáº£n pháº©m khi thĂªm tá»« danh sĂ¡ch
+            // ThĂªm sáº£n pháº©m má»›i
             data.push([
                 data.length + 1,        // STT
-                p.masp,                 // Mã hàng
-                p.tensp,                // Tên hàng
-                "0",                    // Kích cỡ (mặc định "0")
-                1,                      // Số lượng (default 1)
-                p.dvt || "sp",          // ĐVT (nếu trống thì "sp")
-                p.gianhap || 1,         // Giá nhập (nếu trống thì 1)
+                p.masp,                 // MĂ£ hĂ ng
+                p.tensp,                // TĂªn hĂ ng
+                "0",                    // KĂ­ch cá»¡ (máº·c Ä‘á»‹nh "0")
+                1,                      // Sá»‘ lÆ°á»£ng (default 1)
+                p.dvt || "sp",          // ÄVT (náº¿u trá»‘ng thĂ¬ "sp")
+                p.gianhap || 1,         // GiĂ¡ nháº­p (náº¿u trá»‘ng thĂ¬ 1)
                 true,                   // In
-                p.giale || 0            // Giá lẻ (nếu trống thì 0)
+                p.giale || 0            // GiĂ¡ láº» (náº¿u trá»‘ng thĂ¬ 0)
             ]);
 
-            // Cập nhật lại STT liên tục
+            // Cáº­p nháº­t láº¡i STT liĂªn tá»¥c
             data.forEach((row, idx) => row[0] = idx + 1);
             hot.loadData(data);
         }
@@ -535,20 +536,20 @@
             const data = hot.getData().filter(row => row[1] && row[2]);
             selected = data.map(row => ({
                 stt: row[0],         // STT
-                masp: row[1],        // Mã hàng
-                tensp: row[2],       // Tên hàng
-                size: row[3],        // Kích cỡ
-                sl: row[4],          // Số lượng
-                dvt: row[5],         // Đơn vị tính
-                gianhap: row[6],     // Giá nhập
+                masp: row[1],        // MĂ£ hĂ ng
+                tensp: row[2],       // TĂªn hĂ ng
+                size: row[3],        // KĂ­ch cá»¡
+                sl: row[4],          // Sá»‘ lÆ°á»£ng
+                dvt: row[5],         // ÄÆ¡n vá»‹ tĂ­nh
+                gianhap: row[6],     // GiĂ¡ nháº­p
                 tick: !!row[7],      // In
-                giale: row[8]        // Giá lẻ
+                giale: row[8]        // GiĂ¡ láº»
             }));
 
         }
 
 
-        // Render lưới chọn
+        // Render lÆ°á»›i chá»n
         function renderSelectedTable() {
             selectedTableBody.innerHTML = '';
             selected.forEach((row, idx) => {
@@ -568,7 +569,7 @@
       </tr>
      `;
             });
-            // Gắn double click xóa dòng
+            // Gáº¯n double click xĂ³a dĂ²ng
             selectedTableBody.querySelectorAll('tr[data-idx]').forEach(tr => {
                 tr.ondblclick = () => {
                     const idx = parseInt(tr.dataset.idx);
@@ -588,42 +589,42 @@
             selected[idx].tick = val;
         };
 
-        // Phân trang preview
+        // PhĂ¢n trang preview
         let currentPage = 1;
         let totalPages = 1;
         let temsAll = [];
 
         window.renderPreview = function (page = 1) {
             syncHandsontableToSelected();
-            // Kiểm tra chọn loại tem
+            // Kiá»ƒm tra chá»n loáº¡i tem
             const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
             if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
+                alert("Vui lĂ²ng chá»n loáº¡i tem cáº§n in!");
                 return;
             }
 
-            // Info chung mẫu cho từng loại tem
+            // Info chung máº«u cho tá»«ng loáº¡i tem
             let infoChung = "";
             if (loaiTem === "giaydep") {
                 infoChung = `
-            không giặt,tẩy;Bảoquản nơi<br>
-            khô ráo; Dán nhãn tại Việt<br>
-            Nam. Giày,dép; chất liệu:<br>
-            da, pu, tổng hợp;cỡ:38-43            
+            khĂ´ng giáº·t,táº©y;Báº£oquáº£n nÆ¡i<br>
+            khĂ´ rĂ¡o; DĂ¡n nhĂ£n táº¡i Viá»‡t<br>
+            Nam. GiĂ y,dĂ©p; cháº¥t liá»‡u:<br>
+            da, pu, tá»•ng há»£p;cá»¡:38-43            
         `;
             } else if (loaiTem === "quanao") {
                 infoChung = `
-            không tẩy;giặt tay,Bảo quản<br>
-            khô ráo; Dán nhãn tại Việt<br>
-            Nam. Quần,Áo; chất liệu:<br>
-            Vải sợi tổng hợp;cỡ: S-XXL            
+            khĂ´ng táº©y;giáº·t tay,Báº£o quáº£n<br>
+            khĂ´ rĂ¡o; DĂ¡n nhĂ£n táº¡i Viá»‡t<br>
+            Nam. Quáº§n,Ăo; cháº¥t liá»‡u:<br>
+            Váº£i sá»£i tá»•ng há»£p;cá»¡: S-XXL            
         `;
             } else {
-                // Thêm các loại tem khác ở đây nếu muốn mở rộng
+                // ThĂªm cĂ¡c loáº¡i tem khĂ¡c á»Ÿ Ä‘Ă¢y náº¿u muá»‘n má»Ÿ rá»™ng
                 infoChung = "";
             }
 
-            // Chuẩn bị danh sách tem cần in (theo tick, số lượng)
+            // Chuáº©n bá»‹ danh sĂ¡ch tem cáº§n in (theo tick, sá»‘ lÆ°á»£ng)
             temsAll = [];
             selected.forEach(row => {
                 if (row.tick) {
@@ -641,7 +642,7 @@
             let maxTems = 40 - blank;
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
-            // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
+            // ---- ĂP Dá»¤NG MARGIN, GAP, KĂCH THÆ¯á»C ----
             let html = `<div class="print-preview" style="
         padding-top: ${PAGE_MARGIN_TOP_MM}mm;
         padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
@@ -654,7 +655,7 @@
         row-gap: 1.9mm;        
     ">`;
 
-            // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+            // Blank cho trang Ä‘áº§u  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
@@ -668,7 +669,7 @@
   width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
   box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
  ">
-  <!-- Lưới 2 cột full height: 60% | 40% -->  
+  <!-- LÆ°á»›i 2 cá»™t full height: 60% | 40% -->  
   <div style="
   display:grid;
   grid-template-columns:65% 35%;
@@ -676,39 +677,39 @@
   height:100%; width:100%; gap:0; box-sizing:border-box;
  ">
 
-  <!-- Spacer TRÁI: 1mm -->
+  <!-- Spacer TRĂI: 1mm -->
   <div style="grid-column:1; grid-row:1;"></div>
 
-  <!-- Spacer PHẢI: 2mm (chiếm 2 hàng 1mm) -->
+  <!-- Spacer PHáº¢I: 2mm (chiáº¿m 2 hĂ ng 1mm) -->
   <div style="grid-column:2; grid-row:1 / span 2;"></div>
 
 
-      <!-- CỘT TRÁI: chiếm hàng 2-3, cột 1 -->
+      <!-- Cá»˜T TRĂI: chiáº¿m hĂ ng 2-3, cá»™t 1 -->
   <div style="grid-column:1; grid-row:2 / span 2;
               display:flex; flex-direction:column;
               justify-content:space-between; align-items:flex-start;
               height:100%; margin:0; padding:0;">
     <div style="width:100%; margin:0; padding:0;">
 
-        <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
+        <!-- SHOP HOĂ€N TUYáº¾T ngay dÆ°á»›i MĂ£ -->
       <div style="font-size:7pt; font-weight:bold; line-height:1;
                   white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        Shop Hoàn Tuyết
+        Shop HoĂ n Tuyáº¿t
       </div>
 
-      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
+      <!-- THĂ”NG TIN CHUNG á»Ÿ Ä‘Ă¡y cá»™t trĂ¡i -->
     <div style="font-size:5.5pt; line-height:1; word-break:break-word;
                 width:100%; margin:0; padding:0;">
       ${infoChung}
     </div>
 
-      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
+      <!-- GIĂ (khĂ´ng xuá»‘ng dĂ²ng, cáº¯t bĂªn pháº£i) -->
       <div style="font-size:10pt; font-weight:bold; line-height:1;
                   white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        Giá: ${formatGia(t.giale)}
+        GiĂ¡: ${formatGia(t.giale)}
       </div>
 
-      <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
+      <!-- MĂƒ SP (khĂ´ng xuá»‘ng dĂ²ng, cáº¯t bĂªn trĂ¡i) -->
       <div style="font-size:8pt; line-height:1; white-space:nowrap;
                   overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
         ${t.masp}
@@ -720,12 +721,22 @@
     
   </div>
 
-  <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
+  <!-- Cá»˜T PHáº¢I: chá»‰ QR, á»Ÿ hĂ ng 3, cá»™t 2 -->
   <div style="grid-column:2; grid-row:3;
-              display:flex; justify-content:flex-start; align-items:flex-start;
+              display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
               height:100%; margin:0; padding:0;">
-    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-  </div>
+  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+
+  ${(() => {
+                        const s = (t.size ?? '').toString().trim();
+                        return s && s !== '0'
+                            ? `<div class="size-under-qr" style="font-size:8pt; line-height:1; margin-top:0.6mm;">
+             ${s}
+           </div>`
+                            : ``;
+                    })()}
+</div>
+
 
 
   </div>
@@ -739,7 +750,7 @@
             html += `</div></div>`;
             previewArea.innerHTML = html;
 
-            // Sinh QR code cho từng tem
+            // Sinh QR code cho tá»«ng tem
             document.querySelectorAll('.tem .qr').forEach((el, idx) => {
                 const parent = el.closest('.tem');
                 if (!parent || parent.classList.contains('tem-blank')) return;
@@ -762,15 +773,15 @@
             if (currentPage < totalPages) renderPreview(currentPage + 1);
         };
 
-        // Giá
+        // GiĂ¡
         function formatGia(val) {
             if (!val || val == 0) return '';
             return parseInt(val).toLocaleString('vi-VN');
         }
 
-        // Xuất Excel
+        // Xuáº¥t Excel
         window.exportExcel = function () {
-            const headers = ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"];
+            const headers = ["STT", "MĂ£ hĂ ng", "TĂªn hĂ ng", "KĂ­ch cá»¡", "Sá»‘ lÆ°á»£ng", "ÄVT", "GiĂ¡ nháº­p", "In", "GiĂ¡ láº»"];
             const data = selected.map((row, idx) => [
                 idx + 1,
                 row.masp,
@@ -793,7 +804,7 @@
         window.checkLoaiTemAndRender = function () {
             const loaiTem = document.getElementById('loaiTem').value;
             if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
+                alert("Vui lĂ²ng chá»n loáº¡i tem cáº§n in!");
                 return;
             }
             renderPreview();
@@ -801,19 +812,19 @@
         window.checkLoaiTemAndPrint = function () {
             const loaiTem = document.getElementById('loaiTem').value;
             if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
+                alert("Vui lĂ²ng chá»n loáº¡i tem cáº§n in!");
                 return;
             }
             window.print();
         }
 
-        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
+        // ==== THEM TRUONG / Cáº¤U HĂŒNH GIá»® Láº I TRÆ¯á»œNG ====
+        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
-        // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
-        // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
+        // ==== Dropdown: láº¥y danh sĂ¡ch dá»¯ liá»‡u unique cho tá»«ng trÆ°á»ng dropdown ====
+        // ==== Dropdown: náº¡p danh má»¥c tá»« báº£ng chuáº©n vĂ  hiá»ƒn thá»‹ "MĂƒ - TĂN" ====
         async function loadDropdownOptions() {
-            // 1) NHÀ CUNG CẤP: dmkhachhang (la_ncc = true) → value = MÃ NCC, label = "MÃ - TÊN"
+            // 1) NHĂ€ CUNG Cáº¤P: dmkhachhang (la_ncc = true) â†’ value = MĂƒ NCC, label = "MĂƒ - TĂN"
             try {
                 const { data: ncc, error: errNcc } = await supabase
                     .from('dmkhachhang')
@@ -827,39 +838,39 @@
                     .join('');
             } catch (e) { console.error(e); }
 
-            // 2) CHỦNG LOẠI: dmchungloai → value = MÃ, label = "MÃ - TÊN"
+            // 2) CHá»¦NG LOáº I: dmchungloai â†’ value = MĂƒ, label = "MĂƒ - TĂN"
             try {
                 const { data: cl, error: errCl } = await supabase
                     .from('dmchungloai')
                     .select('machungloai, tenchungloai')
                     .order('machungloai', { ascending: true });
-                if (errCl) console.error('Load Chủng loại error:', errCl);
+                if (errCl) console.error('Load Chá»§ng loáº¡i error:', errCl);
                 document.getElementById('chungloaiList').innerHTML = (cl || [])
                     .filter(r => r.machungloai)
                     .map(r => `<option value="${(r.machungloai || '').toUpperCase()}" label="${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}"></option>`)
                     .join('');
             } catch (e) { console.error(e); }
 
-            // 3) MÀU SẮC: dmmausac → value = MÃ MÀU, label = "MÃ - TÊN"
+            // 3) MĂ€U Sáº®C: dmmausac â†’ value = MĂƒ MĂ€U, label = "MĂƒ - TĂN"
             try {
                 const { data: ms, error: errMs } = await supabase
                     .from('dmmausac')
                     .select('mamau, tenmau')
                     .order('mamau', { ascending: true });
-                if (errMs) console.error('Load Màu sắc error:', errMs);
+                if (errMs) console.error('Load MĂ u sáº¯c error:', errMs);
                 document.getElementById('mausacList').innerHTML = (ms || [])
                     .filter(r => r.mamau)
                     .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
                     .join('');
             } catch (e) { console.error(e); }
 
-            // 4) NHÓM HÀNG: dmnhomhang → value = MÃ, label = "MÃ - TÊN"
+            // 4) THEM TRUONG NHĂ“M HĂ€NG: dmnhomhang â†’ value = MĂƒ, label = "MĂƒ - TĂN"
             try {
                 const { data: nh, error: errNh } = await supabase
                     .from('dmnhomhang')
                     .select('manhom, tennhom')
                     .order('manhom', { ascending: true });
-                if (errNh) console.error('Load Nhóm hàng error:', errNh);
+                if (errNh) console.error('Load NhĂ³m hĂ ng error:', errNh);
                 document.getElementById('nhomhangList').innerHTML = (nh || [])
                     .filter(r => r.manhom)
                     .map(r => `<option value="${(r.manhom || '').toUpperCase()}"
@@ -870,7 +881,7 @@
         }
 
 
-        // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
+        // ==== Khi nháº­p xong mĂ£ sáº£n pháº©m, kiá»ƒm tra tá»“n táº¡i, náº¿u cĂ³ thĂ¬ táº£i dá»¯ liá»‡u lĂªn form ====
         document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
         document.getElementById('maspInput').addEventListener('keydown', function (e) {
             if (e.key === "Enter") {
@@ -880,17 +891,17 @@
             }
         });
 
-        let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
+        let isEditMode = false; // ÄĂ¡nh dáº¥u Ä‘ang sá»­a hay thĂªm má»›i
 
         async function checkExistAndFillForm() {
             const masp = document.getElementById('maspInput').value.trim().toUpperCase();
             if (!masp) return;
 
-            // Tránh gọi reset liên tục, chỉ fill dữ liệu khi có mã, không thì giữ nguyên input đang nhập
+            // TrĂ¡nh gá»i reset liĂªn tá»¥c, chá»‰ fill dá»¯ liá»‡u khi cĂ³ mĂ£, khĂ´ng thĂ¬ giá»¯ nguyĂªn input Ä‘ang nháº­p
             const { data, error } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).maybeSingle();
 
             if (data) {
-                // Chế độ SỬA: điền dữ liệu vào form
+                // THEM TRUONG/ Cháº¿ Ä‘á»™ Sá»¬A: Ä‘iá»n dá»¯ liá»‡u vĂ o form
                 isEditMode = true;
                 document.getElementById('tenspInput').value = data.tensp || '';
                 document.getElementById('gianhapInput').value = data.gianhap || '';
@@ -903,32 +914,32 @@
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
-                // Không fill gì cả, không reset
+                // KhĂ´ng fill gĂ¬ cáº£, khĂ´ng reset
                 isEditMode = false;
                 document.getElementById('addProductForm').style.border = '';
-                // Không gọi resetForm ở đây!
-                // Giữ nguyên các trường, để người dùng nhập tiếp tục
+                // KhĂ´ng gá»i resetForm á»Ÿ Ä‘Ă¢y!
+                // Giá»¯ nguyĂªn cĂ¡c trÆ°á»ng, Ä‘á»ƒ ngÆ°á»i dĂ¹ng nháº­p tiáº¿p tá»¥c
             }
         }
 
 
-        // ==== Nút Thêm mới ====
+        // ==== NĂºt ThĂªm má»›i ====
         document.getElementById('resetFormBtn').onclick = function () {
             resetForm(false);
-            document.getElementById('maspInput').focus();  // <== Tự động focus lại
+            document.getElementById('maspInput').focus();  // <== Tá»± Ä‘á»™ng focus láº¡i
         };
 
         function resetForm(keepMasp = false) {
-            // Lấy giá trị các trường giữ lại hiện tại
+            // Láº¥y giĂ¡ trá»‹ cĂ¡c trÆ°á»ng giá»¯ láº¡i hiá»‡n táº¡i
             const data = {};
             GIU_LAI_FIELDS.forEach(field => {
                 data[field] = document.getElementById(field + 'Input').value;
             });
-            // Xóa trắng toàn bộ form
+            // XĂ³a tráº¯ng toĂ n bá»™ form
             document.getElementById('addProductForm').reset();
-            // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
+            // Äiá»n láº¡i cĂ¡c trÆ°á»ng giá»¯ láº¡i (trá»« khi reset hoĂ n toĂ n)
             GIU_LAI_FIELDS.forEach(field => {
-                //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
+                //if (keepMasp && field === 'masp') return; // TrÆ°á»ng há»£p muá»‘n giá»¯ láº¡i mĂ£ sp cÅ©
                 document.getElementById(field + 'Input').value = data[field] || '';
             });
             document.getElementById('addProductMessage').textContent = '';
@@ -936,24 +947,24 @@
             isEditMode = false;
         }
 
-        // ==== Validate các trường bắt buộc ====
+        // ==== THEM TRUONG/  Validate cĂ¡c trÆ°á»ng báº¯t buá»™c ====
         function validateForm() {
             let valid = true;
             let msg = [];
             const bbFields = [
-                { id: 'maspInput', label: 'Mã sản phẩm' },
-                { id: 'tenspInput', label: 'Tên sản phẩm' },
-                //{ id: 'gianhapInput', label: 'Giá nhập' },
-                { id: 'gialeInput', label: 'Giá lẻ' },
-                { id: 'nhaccInput', label: 'Nhà cung cấp' },   // Thêm bắt buộc
-                { id: 'nhomhangInput', label: 'Nhóm hàng' },   // Thêm bắt buộc
-                { id: 'chungloaiInput', label: 'Chủng loại' }  // Thêm bắt buộc
+                { id: 'maspInput', label: 'MĂ£ sáº£n pháº©m' },
+                { id: 'tenspInput', label: 'TĂªn sáº£n pháº©m' },
+                //{ id: 'gianhapInput', label: 'GiĂ¡ nháº­p' },
+                { id: 'gialeInput', label: 'GiĂ¡ láº»' },
+                { id: 'nhaccInput', label: 'NhĂ  cung cáº¥p' },   // ThĂªm báº¯t buá»™c
+                { id: 'nhomhangInput', label: 'NhĂ³m hĂ ng' },   // ThĂªm báº¯t buá»™c
+                { id: 'chungloaiInput', label: 'Chá»§ng loáº¡i' }  // ThĂªm báº¯t buá»™c
             ];
             bbFields.forEach(f => {
                 const inp = document.getElementById(f.id);
                 if (!inp.value.trim()) {
                     inp.style.border = '1.5px solid red';
-                    msg.push(`${f.label} là bắt buộc`);
+                    msg.push(`${f.label} lĂ  báº¯t buá»™c`);
                     valid = false;
                 } else {
                     inp.style.border = '';
@@ -964,7 +975,7 @@
 
 
 
-        // ==== Nút Lưu (submit form) ====
+        // ==== NĂºt LÆ°u (submit form) ====
         document.getElementById('addProductForm').onsubmit = async function (e) {
             e.preventDefault();
             // Validate
@@ -974,7 +985,7 @@
                 return;
             }
 
-            // Chuẩn hóa dữ liệu
+            // THEM TRUONG/ Chuáº©n hĂ³a dá»¯ liá»‡u
             const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
             const gialeVal = document.getElementById('gialeInput').value.replace(/\./g, '');
 
@@ -983,30 +994,30 @@
                 tensp: document.getElementById('tenspInput').value.trim(),
                 gianhap: parseInt(gianhapVal) || 1,
                 giale: parseInt(gialeVal) || 0,
-                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // ← HOA
+                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // â† HOA
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
-                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA
+                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // â† HOA
                 nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
-                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // ← HOA
+                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // â† HOA
                 quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
 
 
             let res, errorMsg;
             if (isEditMode) {
-                // Trường hợp đang sửa sản phẩm đã tồn tại
-                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
+                // TrÆ°á»ng há»£p Ä‘ang sá»­a sáº£n pháº©m Ä‘Ă£ tá»“n táº¡i
+                const userConfirm = confirm(`â ï¸ MĂ£ sáº£n pháº©m "${data.masp}" Ä‘Ă£ tá»“n táº¡i.\nBáº¡n cĂ³ muá»‘n cáº­p nháº­t thĂ´ng tin khĂ´ng?`);
                 if (!userConfirm) {
                     document.getElementById('addProductMessage').style.color = 'orange';
-                    document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
+                    document.getElementById('addProductMessage').textContent = `â›” ÄĂ£ há»§y cáº­p nháº­t sáº£n pháº©m "${data.masp}".`;
                     return;
                 }
 
-                // Tiếp tục cập nhật nếu người dùng xác nhận
+                // Tiáº¿p tá»¥c cáº­p nháº­t náº¿u ngÆ°á»i dĂ¹ng xĂ¡c nháº­n
                 res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
-                if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
+                if (res.error) errorMsg = 'Lá»—i cáº­p nháº­t: ' + res.error.message;
             } else {
-                // Kiểm tra trùng mã sản phẩm trước khi thêm
+                // Kiá»ƒm tra trĂ¹ng mĂ£ sáº£n pháº©m trÆ°á»›c khi thĂªm
                 const { data: maspCheck, error: checkError } = await supabase
                     .from('dmhanghoa')
                     .select('masp')
@@ -1015,13 +1026,13 @@
 
                 if (maspCheck) {
                     document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại. Không thể thêm mới.`;
+                    document.getElementById('addProductMessage').textContent = `âŒ MĂ£ sáº£n pháº©m "${data.masp}" Ä‘Ă£ tá»“n táº¡i. KhĂ´ng thá»ƒ thĂªm má»›i.`;
                     return;
                 }
 
-                // Insert mới
+                // Insert má»›i
                 res = await supabase.from('dmhanghoa').insert([data]);
-                if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
+                if (res.error) errorMsg = 'Lá»—i thĂªm má»›i: ' + res.error.message;
             }
 
 
@@ -1031,15 +1042,15 @@
                 return;
             }
 
-            // Hiện thông báo thành công
+            // Hiá»‡n thĂ´ng bĂ¡o thĂ nh cĂ´ng
             document.getElementById('addProductMessage').style.color = '#0a9e1c';
-            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
-            // Reset lại form theo giữ lại trường
+            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cáº­p nháº­t thĂ nh cĂ´ng!' : 'ThĂªm má»›i thĂ nh cĂ´ng!';
+            // Reset láº¡i form theo giá»¯ láº¡i trÆ°á»ng
             resetForm();
-            document.getElementById('maspInput').focus();  // <== Tự động focus lại
-            // Load lại dropdown option (nếu có giá trị mới)
+            document.getElementById('maspInput').focus();  // <== Tá»± Ä‘á»™ng focus láº¡i
+            // Load láº¡i dropdown option (náº¿u cĂ³ giĂ¡ trá»‹ má»›i)
             loadDropdownOptions();
-            // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
+            // Sau khi lÆ°u xong, gá»i searchProducts vĂ  truyá»n thĂªm callback
             searchProducts(document.getElementById('search').value.trim().toLowerCase());
             pushProductToGrid(data);
 
@@ -1047,11 +1058,11 @@
 
         loadDropdownOptions();
 
-        // Xử lý nút XÓA sản phẩm
+        // Xá»­ lĂ½ nĂºt XĂ“A sáº£n pháº©m
 
         document.getElementById('deleteProductBtn').addEventListener('click', async () => {
             const masp = document.getElementById('maspInput').value.trim().toUpperCase();
-            if (!masp) return alert('❌ Bạn chưa nhập mã sản phẩm cần xóa.');
+            if (!masp) return alert('âŒ Báº¡n chÆ°a nháº­p mĂ£ sáº£n pháº©m cáº§n xĂ³a.');
 
             const { data: ct1, error: err1 } = await supabase
                 .from('ct_hoadon_banle')
@@ -1065,31 +1076,31 @@
                 .limit(1);
 
             if ((ct1 && ct1.length > 0) || (ct2 && ct2.length > 0)) {
-                alert(`⚠️ Mã sản phẩm "${masp}" đã có giao dịch, không thể xóa.`);
+                alert(`â ï¸ MĂ£ sáº£n pháº©m "${masp}" Ä‘Ă£ cĂ³ giao dá»‹ch, khĂ´ng thá»ƒ xĂ³a.`);
                 return;
             }
 
-            const confirmDel = confirm(`⚠️ Bạn có chắc chắn muốn xóa mã sản phẩm "${masp}" không?`);
+            const confirmDel = confirm(`â ï¸ Báº¡n cĂ³ cháº¯c cháº¯n muá»‘n xĂ³a mĂ£ sáº£n pháº©m "${masp}" khĂ´ng?`);
             if (!confirmDel) return;
 
             const { error: deleteError } = await supabase.from('dmhanghoa').delete().eq('masp', masp);
             if (deleteError) {
-                alert('❌ Xóa thất bại: ' + deleteError.message);
+                alert('âŒ XĂ³a tháº¥t báº¡i: ' + deleteError.message);
             } else {
-                alert(`✅ Đã xóa mã sản phẩm "${masp}" khỏi danh mục.`);
+                alert(`âœ… ÄĂ£ xĂ³a mĂ£ sáº£n pháº©m "${masp}" khá»i danh má»¥c.`);
                 resetForm();
                 document.getElementById('search').value = masp;
-                searchProducts(masp); // Reload danh sách
+                searchProducts(masp); // Reload danh sĂ¡ch
             }
         });
 
 
-        // === GỢI Ý MÃ SẢN PHẨM GIỐNG TÌM KIẾM SẢN PHẨM ===
+        // === Gá»¢I Ă MĂƒ Sáº¢N PHáº¨M GIá»NG TĂŒM KIáº¾M Sáº¢N PHáº¨M ===
 
         const maspInput = document.getElementById('maspInput');
         const maspSuggestDiv = document.getElementById('maspSuggestList');
 
-        // Xác định lại vị trí popup
+        // XĂ¡c Ä‘á»‹nh láº¡i vá»‹ trĂ­ popup
 
         function positionMaspSuggestList() {
             const rect = maspInput.getBoundingClientRect();
@@ -1107,7 +1118,7 @@
                 maspSuggestDiv.innerHTML = '';
                 return;
             }
-            // Lọc mã & tên
+            // Lá»c mĂ£ & tĂªn
             let { data } = await supabase
                 .from('dmhanghoa')
                 .select('masp, tensp')
@@ -1120,8 +1131,8 @@
                 maspSuggestDiv.innerHTML = '';
                 return;
             }
-            // Hiển thị popup
-            let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
+            // Hiá»ƒn thá»‹ popup
+            let html = '<table><tr><th>MĂ£ SP</th><th>TĂªn hĂ ng</th></tr>';
             for (let p of data) {
                 html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
             }
@@ -1130,26 +1141,26 @@
             maspSuggestDiv.style.display = 'block';
             positionMaspSuggestList();
 
-            // Sự kiện chọn
+            // Sá»± kiá»‡n chá»n
             maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
                 row.onclick = function () {
                     maspInput.value = row.dataset.masp;
                     document.getElementById('tenspInput').value = row.dataset.tensp;
                     maspSuggestDiv.style.display = 'none';
-                    checkExistAndFillForm(); // Tải info nếu có
+                    checkExistAndFillForm(); // Táº£i info náº¿u cĂ³
                     document.getElementById('tenspInput').focus();
                 }
             });
         });
 
-        // Ẩn popup khi click ra ngoài hoặc tab/blur
+        // áº¨n popup khi click ra ngoĂ i hoáº·c tab/blur
         document.addEventListener('mousedown', function (e) {
             if (!maspInput.contains(e.target) && !maspSuggestDiv.contains(e.target)) {
                 maspSuggestDiv.style.display = 'none';
             }
         });
 
-        // Đặt lại vị trí popup khi resize/scroll
+        // Äáº·t láº¡i vá»‹ trĂ­ popup khi resize/scroll
         window.addEventListener('resize', positionMaspSuggestList);
         window.addEventListener('scroll', positionMaspSuggestList);
 
@@ -1162,7 +1173,7 @@
         const gianhapInput = document.getElementById('gianhapInput');
         const gialeInput = document.getElementById('gialeInput');
 
-        //Format số cho giá nhập & giá lẻ trên FORM
+        //Format sá»‘ cho giĂ¡ nháº­p & giĂ¡ láº» trĂªn FORM
         [gianhapInput, gialeInput].forEach(inp => {
             inp.addEventListener('blur', function () {
                 let val = inp.value.replace(/\./g, '').replace(/[^0-9]/g, '');
@@ -1179,7 +1190,7 @@
         });
 
 
-        // Tự động tính giá lẻ khi nhập xong giá nhập
+        // Tá»± Ä‘á»™ng tĂ­nh giĂ¡ láº» khi nháº­p xong giĂ¡ nháº­p
         gianhapInput.addEventListener('change', function () {
             const val = parseFloat(this.value);
             if (!isNaN(val) && val > 0) {
@@ -1187,6 +1198,7 @@
             }
         });
 
+        // THEM TRUONG/ Thá»© tá»± Enter (focus/bĂ´i Ä‘en)
         const formOrder = [
             'maspInput',
             'tenspInput',
@@ -1194,8 +1206,8 @@
             'gialeInput',
             'mausacInput',
             'khuyenmaiInput',
-            'nhomhangInput',   // ⬅ thêm vào đây
             'nhaccInput',
+            'nhomhangInput',   // â¬… thĂªm vĂ o Ä‘Ă¢y
             'chungloaiInput'
         ];
 
@@ -1205,15 +1217,15 @@
             inp.addEventListener('keydown', function (e) {
                 if (e.key === "Enter") {
                     e.preventDefault();
-                    // Nếu không phải ô cuối cùng thì focus ô tiếp theo
+                    // Náº¿u khĂ´ng pháº£i Ă´ cuá»‘i cĂ¹ng thĂ¬ focus Ă´ tiáº¿p theo
                     if (idx < formOrder.length - 1) {
                         const next = document.getElementById(formOrder[idx + 1]);
                         if (next) {
                             next.focus();
-                            setTimeout(() => next.select(), 10); // Bôi đen toàn bộ
+                            setTimeout(() => next.select(), 10); // BĂ´i Ä‘en toĂ n bá»™
                         }
                     } else {
-                        // Nếu là ô cuối cùng, submit form
+                        // Náº¿u lĂ  Ă´ cuá»‘i cĂ¹ng, submit form
                         document.getElementById('saveFormBtn').focus();
                     }
                 }
@@ -1225,41 +1237,41 @@
 
 
 
-        // Đăng nhập xong reload lại để token cập nhật
+        // ÄÄƒng nháº­p xong reload láº¡i Ä‘á»ƒ token cáº­p nháº­t
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
         renderLoginModule({
             supabaseUrl,
             supabaseKey,
             onLoginSuccess: (accessToken) => {
-                window.location.reload(); // Đăng nhập xong reload lại để token cập nhật
+                window.location.reload(); // ÄÄƒng nháº­p xong reload láº¡i Ä‘á»ƒ token cáº­p nháº­t
             }
         });
 
         function pushProductToGrid(product) {
             if (!hot) return;
             let data = hot.getSourceData();
-            // Loại dòng trắng cuối bảng (dòng chỉ toàn rỗng/null)
+            // Loáº¡i dĂ²ng tráº¯ng cuá»‘i báº£ng (dĂ²ng chá»‰ toĂ n rá»—ng/null)
             data = data.filter(row => Array.isArray(row)
                 ? row.some(cell => cell !== null && cell !== "")
                 : Object.values(row).some(cell => cell !== null && cell !== "")
             );
-            // Kiểm tra mã đã có trên lưới chưa
+            // Kiá»ƒm tra mĂ£ Ä‘Ă£ cĂ³ trĂªn lÆ°á»›i chÆ°a
             const idx = data.findIndex(row => row[1] === product.masp);
             if (idx !== -1) {
-                // Nếu có rồi, cập nhật thông tin mới
+                // Náº¿u cĂ³ rá»“i, cáº­p nháº­t thĂ´ng tin má»›i
                 data[idx] = [
                     idx + 1, // STT
                     product.masp,
                     product.tensp,
-                    "0", // Kích cỡ mặc định
-                    1,   // Số lượng mặc định
+                    "0", // KĂ­ch cá»¡ máº·c Ä‘á»‹nh
+                    1,   // Sá»‘ lÆ°á»£ng máº·c Ä‘á»‹nh
                     product.dvt || "sp",
                     product.gianhap || 1,
                     true,
                     product.giale || 0
                 ];
             } else {
-                // Nếu chưa có, thêm vào cuối
+                // Náº¿u chÆ°a cĂ³, thĂªm vĂ o cuá»‘i
                 data.push([
                     data.length + 1,
                     product.masp,
@@ -1272,7 +1284,7 @@
                     product.giale || 0
                 ]);
             }
-            // Cập nhật lại STT liên tục
+            // Cáº­p nháº­t láº¡i STT liĂªn tá»¥c
             data.forEach((row, idx) => row[0] = idx + 1);
             hot.loadData(data);
         }
