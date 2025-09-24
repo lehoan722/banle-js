@@ -1,17 +1,16 @@
 // scripts/baocaoxnt17_chuyenkho.js
-import { supabase } from './supabaseClient.js'; // dùng chung client đã có 
+import { supabase } from './supabaseClient.js'; // dùng chung client đã có
 
 let hot;
 const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
 
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
-  const raw = sessionStorage.getItem('xnt17_transfer_filters'); 
+  const raw = sessionStorage.getItem('xnt17_transfer_filters');
   if (!raw) return null;
   return JSON.parse(raw);
 }
 
-// ===== 2) Tải toàn bộ dữ liệu bằng RPC hiện có =====
 function buildCountParams(params) {
   const {
     tu_ngay, den_ngay, p_dsmsp,
@@ -34,6 +33,27 @@ function buildCountParams(params) {
     loc_phatsinh_nhap, loc_phatsinh_xuat,
     p_tonghop_size
   };
+}
+
+
+// ===== 2) Tải toàn bộ dữ liệu bằng RPC hiện có =====
+async function fetchAllRows(params) {
+  // trước hết, đếm tổng bản ghi để biết cần lặp mấy trang  :contentReference[oaicite:4]{index=4}
+  const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', params);
+  if (cntErr) throw cntErr;
+  const total = Number(cntData || 0);
+
+  const pageSize = 10000; // theo default RPC của bạn  :contentReference[oaicite:5]{index=5}
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const all = [];
+
+  for (let p = 1; p <= pages; p++) {
+    const pageParams = { ...params, p_limit: pageSize, p_offset: (p - 1) * pageSize };
+    const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
+    if (error) throw error;
+    all.push(...(data || []));
+  }
+  return all;
 }
 
 // ===== 3) Gom theo masp → 9 size + 1 dòng “Tổng” =====
@@ -187,24 +207,7 @@ async function boot() {
   document.getElementById('status').textContent = 'Đang tải dữ liệu…';
 
   try {
-    async function fetchAllRows(params) {
-      // 1) Đếm tổng theo đúng chữ ký hàm COUNT
-      const countParams = buildCountParams(params);
-      const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', countParams);
-      if (cntErr) throw cntErr;
-      const total = Number(cntData || 0);
-
-      // 2) Lấy dữ liệu từng “trang lớn” từ hàm PAGED
-      const pageSize = 10000; // khớp logic XNT17
-      const all = [];
-      for (let offset = 0; offset < total; offset += pageSize) {
-        const pageParams = { ...params, p_limit: pageSize, p_offset: offset };
-        const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
-        if (error) throw error;
-        all.push(...(data || []));
-      }
-      return all;
-    }     // gọi count & paged hiện có  :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
+    const raw = await fetchAllRows(filters);                        // gọi count & paged hiện có  :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
     const rows = buildTransferTable(raw);                           // nhóm + tạo dòng “Tổng”
     await patchVitri(rows);                                         // chèn vị trí từ dmhanghoa
     renderHOT(rows);
@@ -219,5 +222,3 @@ async function boot() {
 
 document.getElementById('btnReload').onclick = boot;
 boot();
-
-
