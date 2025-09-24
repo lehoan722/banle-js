@@ -897,15 +897,18 @@ window.gotoPage = async () => {
 // === ở cuối file hoặc gần các hàm button ===
 // Gom tất cả dữ liệu theo filter hiện tại rồi mở trang chuyển kho
 window.moTrangChuyenKho = async () => {
-    const p = buildParams(1);                 // đang dùng sẵn
-    const countParams = buildCountParams(p);  // đang dùng sẵn ở XNT17
+    // 1) Lấy filter hiện tại
+    const p0 = buildParams(1);
 
-    // đếm tổng
+    // 2) BẮT BUỘC ép lấy theo size (không gộp)
+    const p = { ...p0, p_tonghop_size: false };
+
+    // 3) Đếm + lấy toàn bộ dữ liệu theo size
+    const countParams = buildCountParams(p);
     const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', countParams);
     if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
     const total = Number(cntData || 0);
 
-    // lấy hết các “trang” của paged
     const pageSize = 10000;
     const all = [];
     for (let offset = 0; offset < total; offset += pageSize) {
@@ -915,11 +918,10 @@ window.moTrangChuyenKho = async () => {
         all.push(...(data || []));
     }
 
-    // đẩy dữ liệu + bộ lọc sang sessionStorage
+    // 4) Đẩy dữ liệu & filter sang
     sessionStorage.setItem('xnt17_transfer_rows', JSON.stringify(all));
     sessionStorage.setItem('xnt17_transfer_filters', JSON.stringify(p));
 
-    // mở trang chuyển kho
     window.open('baocaoxnt17_chuyenkho.html', '_blank');
 };
 
