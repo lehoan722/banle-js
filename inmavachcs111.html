@@ -1,1297 +1,1179 @@
 <!DOCTYPE html>
+
 <html lang="vi">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.css">
-<script src="https://cdn.jsdelivr.net/npm/handsontable@7.4.2/dist/handsontable.full.min.js"></script>
 
 <head>
-    <meta charset="UTF-8">
-    <title>In Tem QR - Giáº¥y TOMY 108</title>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>BAN LE cs1</title>
+    <!-- Backup: các thư viện ngoài -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
+
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            font-size: 13px;
+            font-family: Arial; 
+            margin: 0;
+            height: 100%;
         }
 
-        .container {
-            display: flex;
-            gap: 12px;
-            margin: 16px;
-        }
-
-        .left,
-        .right {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 10px;
-        }
-
-        .left {
-            width: 320px;
-        }
-
-        .right {
-            flex: 1;
-        }
-
-        .search-box input {
-            width: 90%;
-            padding: 4px;
-        }
-
-        .product-list {
-            height: 280px;
-            overflow-y: auto;
-            margin-top: 10px;
-            border-top: 1px solid #eee;
-        }
-
-        .product-list table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-
-        .product-list tr {
-            cursor: pointer;
-        }
-
-        .product-list tr:hover {
-            background: #eef;
-        }
-
-        .selected-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-            font-size: 12px;
-        }
-
-        .selected-table th,
-        .selected-table td {
-            border: 1px solid #bbb;
-            padding: 3px 5px;
-            text-align: center;
-        }
-
-        .selected-table th {
-            background: #f5f5f5;
-        }
-
-        .print-options {
-            margin: 10px 0 12px 0;
-        }
-
-        .preview-area {
-            border: 1px solid #bbb;
-            margin-top: 16px;
-            padding: 8px;
-            background: #fafafa;
-        }
-
-        /* In preview tem */
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-
-            .print-preview,
-            .print-preview * {
-                visibility: visible;
-            }
-
-            .print-preview {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 210mm;
-                height: 297mm;
-                background: white;
-                padding: 0;
-                margin: 0;
-                transform: scale(1.46222);
-                transform-origin: top left;
-            }
-
-            body,
-            html {
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            .print-preview * {
-                box-sizing: border-box;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-
-        }
-
-        .btn {
-            background: #2a87f4;
+        .header {
+            background-color: #0078d7;
             color: white;
-            border: none;
-            padding: 5px 12px;
-            margin: 0 6px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background: #1360b2;
-        }
-
-        #maspSuggestList {
-            font-size: 13px;
-        }
-
-        #maspSuggestList table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        #maspSuggestList th,
-        #maspSuggestList td {
-            border-bottom: 1px solid #eee;
-            padding: 2px 5px;
-            cursor: pointer;
-        }
-
-        #maspSuggestList tr:hover {
-            background: #e6f3ff;
-        }
-
-        .form-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 4px;
-            position: relative;
-        }
-
-        .form-row label {
-            flex: 0 0 90px;
-            text-align: left;
-            margin-right: 5px;
-            font-size: 13px;
-        }
-
-        .form-input {
-            flex: 1 1 auto;
-            position: relative;
-        }
-
-        .form-input input {
-            width: 100%;
-            padding: 2px 5px;
-            font-size: 13px;
-            box-sizing: border-box;
-        }
-
-        .required {
-            color: red;
+            text-align: center;
+            padding: 10px;
+            font-size: 28px;
             font-weight: bold;
         }
 
-        #maspSuggestList {
-            position: fixed !important;
-            z-index: 9999 !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        .top-inputs {
+            display: flex;
+            padding: 5px;
+            gap: 5px;
+            background: #f4f4f4;
+            align-items: center;
         }
 
-        #deleteProductBtn {
-            background-color: #cc3333 !important;
+        .tennv {
+            display: auto;
+            padding: 5px;
+            gap: 5px;
+            background: #0088cc;
+            align-items: center;
+            justify-content: flex-end;
+            /* Đẩy hết sang phải */
         }
 
-        #deleteProductBtn:hover {
-            background-color: #a60000 !important;
+
+        .top-inputs input,
+        .top-inputs select {
+            padding: 4px;
+            font-size: 20px;
+        }
+
+        .top-inputs input {
+            box-sizing: border-box;
+        }
+
+        #masp {
+            width: 250px;
+            background: cyan;
+        }
+
+        #soluong {
+            width: 60px;
+            background: yellow;
+            text-align: center;
+        }
+
+        #dvt {
+            width: 60px;
+        }
+
+        #size {
+            width: 60px;
+            text-align: center;
+            background: yellow;
+        }
+
+        #gia,
+        #khuyenmai,
+        #thanhtien {
+            width: 150px;
+            text-align: right;
+        }
+
+
+
+        .main {
+            display: flex;
+            height: calc(100vh - 150px);
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th,
+        table td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .sidebar {
+            width: 360px;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .tabs {
+            display: flex;
+            background: #eee;
+        }
+
+        .tabs button {
+            flex: 1;
+            padding: 8px;
+            cursor: pointer;
+            border: none;
+            background: #ddd;
+        }
+
+        .tabs button.active {
+            background: white;
+            font-weight: bold;
+            border-bottom: 2px solid #0078d7;
+        }
+
+        .tab-content {
+            flex: 1;
+            padding: 10px;
+            font-size: 13px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .sidebar input,
+        .sidebar select {
+            width: 100%;
+            padding: 4px;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .checkbox-list label {
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .btn-big {
+            width: 85%;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px;
+            margin: 6px 0;
+        }
+
+        .red {
+            background-color: darkred;
+            color: white;
+        }
+
+        .gray {
+            background-color: lightgray;
+            color: black;
+        }
+
+        .product-image {
+            width: 360px !important;
+            height: 360px !important;
+            display: block;
+            object-fit: contain;
+            /* Giữ nguyên tỉ lệ, không cắt ảnh */
+            object-position: center;
+            background: #f5f5f5;
+            /* Màu nền trung tính, có thể chỉnh nếu muốn */
+            border: 1px solid #ccc;
+            margin: 0 auto;
+        }
+
+
+        .footer-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            /* dồn trái */
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 5px 0 5px 8px;
+            background: #dce9f9;
+        }
+
+        .footer-buttons button {
+            margin-right: 4px;
+            font-size: 15px;
+            padding: 7px 13px;
+            min-width: 85px;
+        }
+
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 5%;
+            width: 90%;
+            height: 70%;
+            background: white;
+            border: 1px solid #ccc;
+            z-index: 999;
+            box-shadow: 0 0 10px #333;
+        }
+
+        .popup-content {
+            padding: 10px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .popup-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin-top: 6px;
+        }
+
+        /* Bố cục nhóm nhập liệu */
+        .tab-pane label {
+            display: inline-block;
+            width: 32%;
+            box-sizing: border-box;
+            padding-right: 4px;
+            margin-bottom: 6px;
+        }
+
+        .tab-pane input,
+        .tab-pane select {
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 360px;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            /* ⚠️ CHUYỂN TỪ space-between */
+        }
+
+        .tab-content {
+            flex-grow: 0;
+            /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1 1 auto;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo,
+        .footer-buttons {
+            flex-shrink: 0;
+            width: 75%;
+            z-index: 100;
+        }
+
+        @media print {
+
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 80mm;
+                /* đúng khổ K80 */
+                box-sizing: border-box;
+            }
+
+            body {
+                /* Xóa font-size mặc định lớn */
+                font-size: 12px;
+                line-height: 1.2;
+            }
+
+            /* Xóa header/footer mặc định của trình duyệt nếu có */
+            @page {
+                margin: 0;
+                size: 80mm auto;
+            }
+        }
+
+        tr.highlight {
+            background-color: #fff3cd !important;
+            /* vàng nhạt */
         }
     </style>
+
+
+    <script>
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.getElementById('btn_' + tabName).classList.add('active');
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            switchTab("thongtin");
+        });
+
+
+    </script>
+
+    <!-- banlemobile -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
+    <link rel="stylesheet" href="banlemobilecs1.css">
+
 </head>
 
 <body>
-    <h2>Há»† THá»NG IN TEM QR - GIáº¤Y TOMY 108</h2>
-    <div class="container">
-        <!-- BĂªn trĂ¡i: danh sĂ¡ch sáº£n pháº©m -->
-        <div class="left">
-            <b>TĂ¬m kiáº¿m sáº£n pháº©m</b>
-            <div class="search-box">
-                <input id="search" type="text" placeholder="Nháº­p mĂ£, tĂªn sáº£n pháº©m..." autocomplete="off" />
-            </div>
-            <div class="product-list" id="productList"></div>
 
-            <div id="productInputForm"
-                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
-                <b style="font-size: 14px;">ThĂªm/Sá»­a sáº£n pháº©m</b>
+    <style>
+        .menu-bar {
+            background: #0088cc;
+            padding: 8px 20px;
+            display: flex;
+            gap: 30px;
+            color: rgb(42, 11, 245);
+            position: relative;
+            z-index: 1000;
+        }
 
-                <!-- THEM TRUONG danh sĂ¡ch sáº£n pháº©m -->
-                <form id="addProductForm" autocomplete="off">
-                    <div class="form-row">
-                        <label for="maspInput">MĂ£ sáº£n pháº©m <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="masp" id="maspInput" type="text" required autocomplete="off" />
-                            <!-- Popup gá»£i Ă½ mĂ£ sáº£n pháº©m -->
-                            <div id="maspSuggestList" class="product-list"
-                                style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="tenspInput">TĂªn sáº£n pháº©m <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="tensp" id="tenspInput" type="text" required />
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="gianhapInput">GiĂ¡ nháº­p <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="gianhap" id="gianhapInput" type="text" />
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="gialeInput">GiĂ¡ láº» <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="giale" id="gialeInput" type="text" required />
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="mausacInput">MĂ u sáº¯c</label>
-                        <div class="form-input">
-                            <input name="mausac" id="mausacInput" list="mausacList" autocomplete="off" />
-                            <datalist id="mausacList"></datalist>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="khuyenmaiInput">Khuyáº¿n mĂ£i</label>
-                        <div class="form-input">
-                            <input name="khuyenmai" id="khuyenmaiInput" type="text" />
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="nhaccInput">NhĂ  cung cáº¥p <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="nhacc" id="nhaccInput" list="nhaccList" autocomplete="off" />
-                            <datalist id="nhaccList"></datalist>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <label for="nhomhangInput">NhĂ³m hĂ ng <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="nhomhang" id="nhomhangInput" list="nhomhangList" autocomplete="off" />
-                            <datalist id="nhomhangList"></datalist>
-                        </div>
-                    </div>
+        .menu-item {
+            position: relative;
+        }
 
-                    <div class="form-row">
-                        <label for="chungloaiInput">Chá»§ng loáº¡i <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="chungloai" id="chungloaiInput" list="chungloaiList" autocomplete="off" />
-                            <datalist id="chungloaiList"></datalist>
-                        </div>
+        .menu-link {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 6px 10px;
+            display: inline-block;
+        }
 
-                    </div>
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 240px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            top: 100%;
+            left: 0;
+            z-index: 1001;
+            padding: 6px 0;
+        }
 
-                    <div class="form-row">
-                        <label><input type="checkbox" id="quanlykichcoCheckbox" /> Quáº£n lĂ½ kĂ­ch cá»¡</label>
-                    </div>
+        .dropdown-content a {
+            color: black;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+            white-space: nowrap;
+        }
 
+        .dropdown-content a:hover {
+            background-color: #ddd;
+        }
 
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button type="button" id="resetFormBtn" class="btn" style="flex: 1;">ThĂªm má»›i</button>
-                        <button type="submit" id="saveFormBtn" class="btn" style="flex: 1;">LÆ°u</button>
-                        <button type="button" id="deleteProductBtn" class="btn"
-                            style="flex: 1; background: #cc3333;">XĂ³a</button>
-                    </div>
+        .menu-item:hover .dropdown-content {
+            display: block;
+        }
 
-                    <div id="addProductMessage" style="color: red; margin-top: 4px;"></div>
-                </form>
+        .footer-userinfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 4px 0 4px 8px;
+            background: #e5eef9;
+            border-top: 1px solid #c7d3e9;
+        }
 
+        .footer-userinfo label {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
 
-            </div>
+        .footer-userinfo input,
+        .footer-userinfo select {
+            padding: 3px 6px;
+            font-size: 15px;
+            margin-left: 2px;
+        }
+    </style>
+
+    <div class="menu-bar">
+        <div class="tennv">
+
+            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="ngay" type="date" readonly />
+            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
-        <!-- BĂªn pháº£i: báº£ng sáº£n pháº©m Ä‘Ă£ chá»n vĂ  tĂ¹y chá»n in -->
-        <div class="right">
-            <b>Danh sĂ¡ch tem in</b>
-            <div id="hot" style="margin-bottom:12px"></div>
 
-            <div class="print-options">
-                <label>Tá»« dĂ²ng: <input type="number" id="fromRow" value="1" min="1" max="8" style="width:35px"></label>
-                <label>Tá»« cá»™t: <input type="number" id="fromCol" value="1" min="1" max="5" style="width:35px"></label>
-                <label>Loáº¡i tem:
-                    <select id="loaiTem">
-                        <option value="">â€“ Chá»n loáº¡i tem â€“</option>
-                        <option value="giaydep">Tem giĂ y dĂ©p</option>
-                        <option value="quanao">Tem quáº§n Ă¡o</option>
-                    </select>
-                </label>
-                <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
-                <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
-                <button class="btn" onclick="exportExcel()">Xuáº¥t Excel</button>
-                <!-- MODULE ÄÄ‚NG NHáº¬P SUPABASE -->
-                <div id="loginModule" style="display:inline-block; margin-left:16px;">
-                    <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
-                        style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
-                    <input type="password" id="login-password" value="123123"
-                        style="width:110px;margin-right:2px; display:none ;">
-                    <button id="login-submit" display:none class="btn">ÄÄƒng nháº­p</button>
-                    <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
+        <div id="app-menu" class="menu-item"></div>
+
+        <!--
+        <label>Giờ <input id="gio" /></label> -->        
+
+
+    </div>
+
+    <div id="app-container" style="display:none;">
+
+        <div class="top-inputs">
+            <div style="position: relative;">
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <div id="popup_masp"
+                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                </div>
+            </div>
+            <input id="soluong" value="1" />
+            <input id="dvt" placeholder="DVT" />
+            <input id="size" placeholder="SIZE" />
+            <input id="gia" placeholder="Giá SP" />
+            <input id="khuyenmai" placeholder="khuyen mai" />
+            <input id="thanhtien" placeholder="Thành tiền" />
+            <input id="sohd" placeholder="Số HĐ" />
+            <input id="vitri" placeholder="vi tri" readonly />
+            <button id="xemtonkho">🔍</button>
+            <button id="ghivitri">✏️</button>
+        </div>
+
+
+        <div class="main">
+            <div class="table-area">
+
+                <table id="bangketqua">
+                    <thead>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Tên hàng</th>
+                            <th>Kích cỡ</th>
+                            <th>S.lượng</th>
+                            <th>ĐVT</th>
+                            <th>Đơn giá</th>
+                            <th>Khuyến mại</th>
+                            <th>Thành tiền</th>
+                            <th>Vị trí</th> <!-- (giữ nguyên) -->
+                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                            <th>T1</th>
+                            <th>T2</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+            <div class="sidebar">
+                <div class="tabs">
+                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
+                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane" id="thongtin">
+
+                        <label>Hình thức TT <select id="hinhthuctt">
+                                <option value="tm">Tiền mặt</option>
+                                <option value="ck">Chuyển khoản</option>
+                            </select></label>
+
+                        <label>Chiết khấu <input id="chietkhau" /></label>
+                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
+
+                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
+                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+
+                        <!-- khu vuc tìm khách hàng -->
+                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                            <input id="makh" placeholder="mã khách"
+                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                            <button id="btnPopupKH" type="button"
+                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                🔍
+                            </button>
+                        </div>
+                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+
+                        <!-- Popup tìm khách hàng -->
+                        <div id="popupTimKH"
+                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
+                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
+                            <table id="tableKH" style="width:100%;font-size:15px"></table>
+                        </div>
+                        <!-- het khu vuc tìm khách hàng -->
+                    </div>
+                    <div class="tab-pane" id="tacvu">
+                        <div class="checkbox-list">
+                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
+                            <label><input id="size45" type="checkbox" />QL SIZE</label>
+                            <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
+                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
+                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
+                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
+                    Tổng phải trả
+                    <input id="phaithanhtoan"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
+                </div>
+                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                    Khách thanh toán
+                    <input id="khachtra"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
+                </div>
+                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                    Còn lại
+                    <input id="conlai"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
+                        readonly />
                 </div>
 
 
 
+                <img alt="Ảnh sản phẩm" class="product-image"
+                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
-            <div class="preview-area" id="previewArea"></div>
-            <div style="margin: 8px 0;">
-                <button class="btn" onclick="prevPage()">&#8592; Trang trÆ°á»›c</button>
-                <span id="pageInfo"></span>
-                <button class="btn" onclick="nextPage()">Trang sau &#8594;</button>
+        </div>
+
+
+        <div class="footer-buttons">
+            <button id="them">Thêm mới</button>
+            <button id="btn-luu">💾 Lưu</button>
+
+            <button id="sua" class="btn edit" type="button">SỬA</button>
+
+            <button id="quaylai">Quay lại</button>
+            <button id="tieptuc">Tiếp tục</button>
+            <button id="xemin">Xem in</button>
+            <button id="btnCopy">Copy</button>
+            <button id="xuatexcel">Xuất Excel</button>
+            <button id="btn-logout">THOAT PM</button>
+
+
+            <!-- Popup tìm khách hàng
+             
+             <button id="xuatexcel">Xuất Excel</button>
+             <button id="timkiem">Tìm kiếm</button>
+             <button id="luu">Lưu</button>
+            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
+            
+            -->
+
+        </div>
+
+
+        <div class="top-inputs">
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
+            F7: xem tồn kho nhanh, F8: nhập vị trí kho
+        </div>
+        <div class="top-inputs">
+            ----------------------------------------------------------
+        </div>
+
+        <!-- ✅ Popup xác thực sửa hóa đơn -->
+        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+            <h3>Xác thực sửa hóa đơn</h3>
+            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+        </div>
+
+        <!-- Popup xác nhận thêm mới -->
+        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+            <h3>Bạn có thực sự muốn thêm mới?</h3>
+            <div style="text-align:center; margin-top:10px;">
+                <button id="btnThemMoiCo">✅ Có</button>
+                <button onclick="dongTatCaPopup()">❌ Không</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Đăng nhập Supabase -->
+    <div id="login-container"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:99999;">
+        <div style="background:#f9f9f9; padding:30px; border-radius:8px; box-shadow:0 0 10px #ccc;">
+            <h2>Đăng nhập hệ thống</h2>
+            <form id="form-login" onsubmit="dangNhap(); return false;">
+                <label>Email đăng nhập:</label><br />
+
+                <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
+                    style="background:#eee; display:none;" />
+
+                <!-- Thêm đoạn sau: -->
+                <label>Cơ sở bán hàng:</label><br />
+                <select id="login-cs" style="width:200px; padding:6px;" disabled>
+                    <option value="cs1" selected>Cơ sở 1</option>
+                </select>
+
+                <div class="login-field">
+                    <label for="login-manv">Mã nhân viên</label><br />
+                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
+                        required />
+                </div>
+
+                <label>Mật khẩu:</label><br />
+                <input type="password" id="login-password" value="123123"><br /><br />
+
+                <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
+                <p id="login-error" style="color:red; margin-top:10px;"></p>
+            </form>
+
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        window.diadiem = "cs1"; // Không phụ thuộc localStorage nữa
+
+
+        const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
+        window.supabase = createClient(supabaseUrl, supabaseKey);
+        // Đặt ở đầu file/script chính
+        window.dangLuu = false;
+
+        // Ánh xạ email sang cơ sở bán hàng
+        function getDiaDiemFromEmail(email) {
+            if (!email) return "";
+            email = email.trim().toLowerCase();
+            if (email === "khohangcs1@gmail.com") return "cs1";
+            if (email === "khohangcs1@gmail.com") return "cs1";
+            // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
+            return "";
+        }
+
+        // Sự kiện khi người dùng nhập email xong (rời khỏi ô email)
+        document.getElementById("login-email").addEventListener("blur", function () {
+            const email = this.value.trim();
+            const cs = getDiaDiemFromEmail(email);
+            const csSelect = document.getElementById("login-cs");
+            if (cs) {
+                csSelect.value = cs;
+                csSelect.disabled = true; // Không cho chọn lại
+            } else {
+                csSelect.value = "";
+                csSelect.disabled = false; // Cho chọn khi không nằm trong danh sách
+            }
+        });
+
+        window.dangNhap = async function () {
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value.trim();
+            const cs = document.getElementById('login-cs').value;
+            const manv = document.getElementById('login-manv').value.trim().toUpperCase();
+            const statusEl = document.getElementById('login-error');
+
+            // Kiểm tra đầu vào
+            if (!email || !password) {
+                statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
+                statusEl.style.color = 'red';
+                return;
+            }
+            if (!cs) {
+                statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!';
+                statusEl.style.color = 'red';
+                return;
+            }
+            if (!manv) {
+                statusEl.textContent = 'Vui lòng nhập mã nhân viên!';
+                statusEl.style.color = 'red';
+                return;
+            }
+
+            // 1. Đăng nhập Supabase trước!
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
+                statusEl.style.color = 'red';
+                return;
+            }
+
+            // 2. Sau khi đăng nhập thành công, lấy thông tin nhân viên
+            // Đảm bảo session Supabase (phòng trường hợp chậm set session)
+            await window.supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token
+            });
+
+            // Truy vấn bảng nhân viên với RLS đã mở
+            const { data: nvArr, error: errNV } = await supabase
+                .from('dmnhanvien')
+                .select('manv, tennv, sua_hoadon')
+                .eq('manv', manv);
+
+            if (errNV || !nvArr || nvArr.length === 0) {
+                statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
+                statusEl.style.color = 'red';
+
+                // Đăng xuất ngay nếu nhập mã nhân viên sai!
+                await supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+
+                document.getElementById('login-container').style.display = '';
+                document.getElementById('app-container').style.display = 'none';
+                document.getElementById('login-manv').focus();
+                return;
+            }
+
+            const nv = nvArr[0];
+
+            // Lưu thông tin vào localStorage
+            localStorage.setItem("diadiem", cs);
+            localStorage.setItem('supabase_access_token', data.session.access_token);
+            localStorage.setItem("manv", nv.manv);
+            localStorage.setItem("tennv", nv.tennv);
+            localStorage.setItem("quyen_sua_hoadon", nv.sua_hoadon ? "true" : "false");
+
+            // Ẩn form đăng nhập, hiển thị app
+            statusEl.textContent = '✅ Đăng nhập thành công!';
+            statusEl.style.color = 'green';
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('app-container').style.display = '';
+
+            // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
+            document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
+            document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
+            // Thêm dòng này:
+            capNhatQuyenGiaoDien();
+
+            // Khởi tạo ứng dụng
+            import('./scripts/main.js').then(module => {
+                if (module.khoiTaoUngDung) module.khoiTaoUngDung();
+            });
+            // ======= Thêm vào đây ========= quanlysizetheogia
+            switchTab("thongtin");
+            document.getElementById("size45").checked = true;
+            document.getElementById("quanlysizetheonhom").checked = true;
+            //document.getElementById("quanlysizetheogia").checked = true;
+
+            // ==============================
+        };
+
+
+
+
+
+        function capNhatQuyenGiaoDien() {
+            // Lấy quyền từ localStorage 
+            const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
+            // Nút quay lại
+            document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
+            // Nút tiếp tục
+            document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
+            // Nút lưu
+            //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
+
+            // ================= THÊM ĐOẠN SAU =================
+            // Ô số hóa đơn
+            var sohd = document.getElementById('sohd');
+            if (sohd) {
+                sohd.readOnly = !quyenSua; // Cấm sửa nếu không có quyền
+                sohd.style.background = quyenSua ? "" : "#eee"; // Màu nền để nhận biết không sửa được
+            }
+            // Ô chiết khấu
+            var chietkhau = document.getElementById('chietkhau');
+            if (chietkhau) {
+                chietkhau.readOnly = !quyenSua;
+                chietkhau.style.background = quyenSua ? "" : "#eee";
+            }
+            // ===============================================
+        }
+
+
+    </script>
+
+    <script type="module">
+        // Nút kính lúp cạnh ô nhập mã KH
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
+
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
+
+        // Hàm show popup
+        function showPopupTimKH() {
+            const popup = document.getElementById('popupTimKH');
+            popup.style.display = '';
+            document.getElementById('txtSearchKH').value = '';
+            document.getElementById('txtSearchKH').focus();
+            loadListKH('');
+        }
+
+        // Tìm kiếm realtime theo ký tự gõ
+        document.getElementById('txtSearchKH').oninput = function () {
+            loadListKH(this.value.trim());
+        };
+
+        // Hàm load danh sách KH (gọi Supabase)
+        async function loadListKH(keyword) {
+            const table = document.getElementById('tableKH');
+            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
+            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
+            if (keyword) {
+                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+            }
+            const { data, error } = await query;
+            if (error || !data || !data.length) {
+                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
+                return;
+            }
+            table.innerHTML = data.map(kh =>
+                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
+        <td>${kh.makh}</td><td>${kh.tenkh}</td>
+      </tr>`
+            ).join('');
+            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
+                row.onclick = function () {
+                    document.getElementById('makh').value = this.dataset.makh;
+                    document.getElementById('khachhang').value = this.dataset.tenkh;
+                    document.getElementById('popupTimKH').style.display = 'none';
+                }
+            });
+        }
+
+        // Copy bảng sang clipboard,
+        document.getElementById('btnCopy').onclick = function () {
+            const table = document.getElementById('bangketqua');
+            let str = '';
+
+            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
+            }
+
+            navigator.clipboard.writeText(str)
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
+        };
+
+
+
+        // Dán từ clipboard (Excel) vào bảng web
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            const rows = text.trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            tbody.innerHTML = '';
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+                const tr = document.createElement('tr');
+                rowArr.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
+            capNhatBangKetQuaTuDOM();
+
+            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
+            if (typeof capNhatThongTinTong === "function") {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
+
+            // Log để kiểm tra
+            console.log("window.bangKetQua:", window.bangKetQua);
+            if (typeof bangKetQua !== "undefined") {
+                console.log("bangKetQua:", bangKetQua);
+            }
+        });
+
+
+
+        // Đóng popup khi bấm ESC hoặc click ra ngoài
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
+        });
+        document.addEventListener('click', function (e) {
+            const p = document.getElementById('popupTimKH');
+            if (p.style.display === '' && !p.contains(e.target) && e.target.id !== 'btnPopupKH') {
+                p.style.display = 'none';
+            }
+        });
+
+        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const img = document.querySelector('.product-image');
+            if (img) {
+                img.addEventListener('dblclick', function () {
+                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
+                });
+            }
+        });
+    </script>
+
+
+    <!-- Overlay loading khi backup -->
+    <div id="backup-overlay" style="
+    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
+    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
             </div>
         </div>
     </div>
 
-    <!-- QR Code lib -->
-    <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
-    <!-- SheetJS for export Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
     <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        import { backupAllTablesToZip } from './scripts/backup.js';
 
-        const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay Ä‘Ăºng anon key
+        document.getElementById('btn-logout').onclick = async function () {
 
-        // Láº¥y token tá»« localStorage (náº¿u cĂ³)
-        const token = localStorage.getItem('supabase_access_token');
-
-        // Náº¿u cĂ³ token thĂ¬ khá»Ÿi táº¡o client vá»›i Authorization header
-        export const supabase = token
-            ? createClient(supabaseUrl, supabaseKey, {
-                global: { headers: { Authorization: `Bearer ${token}` } }
-            })
-            : createClient(supabaseUrl, supabaseKey);
-
-        // -- Cáº¤U HĂŒNH Báº¢NG 9 Cá»˜T HANDSONTABLE --
-        let hot;
-        const colHeaders = [
-            "STT", "MĂ£ hĂ ng", "TĂªn hĂ ng", "KĂ­ch cá»¡", "Sá»‘ lÆ°á»£ng", "ÄVT", "GiĂ¡ nháº­p", "In", "GiĂ¡ láº»"
-        ];
-        const columns = [
-            { data: 0, type: 'numeric' }, // STT  { data: 0, type: 'numeric', readOnly: true },
-            { data: 1, type: 'text' },    // MĂ£ hĂ ng
-            { data: 2, type: 'text' },    // TĂªn hĂ ng
-            { data: 3, type: 'text' },                    // KĂ­ch cá»¡ (Size)
-            { data: 4, type: 'numeric' },                 // Sá»‘ lÆ°á»£ng
-            { data: 5, type: 'text' },                    // ÄVT
-            {
-                data: 6,
-                type: 'numeric',
-                numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            },                                            // GiĂ¡ nháº­p
-            { data: 7, type: 'checkbox' },                // In
-            {
-                data: 8,
-                type: 'numeric',
-                numericFormat: { pattern: "0,0", culture: 'vi-VN' }
-            }                                             // GiĂ¡ láº»
-        ];
-
-
-
-        document.addEventListener("DOMContentLoaded", function () {
-            const container = document.getElementById('hot');
-            hot = new Handsontable(container, {
-                data: [],
-                colHeaders: colHeaders,
-                columns: columns,
-                rowHeaders: true,
-                minSpareRows: 1,
-                licenseKey: 'non-commercial-and-evaluation',
-                contextMenu: true,
-                copyPaste: true,
-                manualColumnResize: true,
-                manualRowResize: true,
-                stretchH: 'all',
-                afterChange: syncHandsontableToSelected,
-                beforeChange: function (changes, source) {  //ThĂªm event beforeChange Ä‘á»ƒ cháº·n chá»‰nh sá»­a thá»§ cĂ´ng cĂ¡c cá»™t "chá»‰ Ä‘á»c"
-                    if (source === 'edit') {
-                        // KhĂ´ng cho chá»‰nh sá»­a trá»±c tiáº¿p cĂ¡c cá»™t mĂ£ hĂ ng, tĂªn hĂ ng, dvt, giĂ¡ láº», giĂ¡ nháº­p
-                        const readOnlyColumns = [1, 2, 6, 8];
-                        for (let i = changes.length - 1; i >= 0; i--) {
-                            if (readOnlyColumns.includes(changes[i][1])) {
-                                changes.splice(i, 1); // Há»§y thay Ä‘á»•i trĂªn cá»™t chá»‰ Ä‘á»c náº¿u lĂ  thao tĂ¡c nháº­p tay
-                            }
-                        }
-                    }
-                    // Náº¿u lĂ  paste thĂ¬ khĂ´ng cháº·n gĂ¬ cáº£!
-                }
-            });
-        });
-
-
-
-
-        // ==== Cáº¤U HĂŒNH THĂ”NG Sá» IN TEM ====
-        const PAGE_MARGIN_TOP_MM = 3.5;      // Lá» trĂªn cá»§a toĂ n bá»™ khá»‘i tem (mm)
-        const PAGE_MARGIN_LEFT_MM = 11;   // Lá» trĂ¡i cá»§a toĂ n bá»™ khá»‘i tem (mm)
-        const TEM_H_GAP_MM = 0;          // Khoáº£ng cĂ¡ch ngang giá»¯a 2 tem (mm)
-        const TEM_V_GAP_MM = 0;          // Khoáº£ng cĂ¡ch dá»c giá»¯a 2 tem (mm)
-        const TEM_WIDTH_MM = 37;           // Rá»™ng má»—i tem (mm)
-        const TEM_HEIGHT_MM = 19;          // Cao má»—i tem (mm)
-        // ==== Káº¾T THĂC Cáº¤U HĂŒNH ====
-
-        // State
-        let products = [];
-        let filtered = [];
-        let selected = [];
-
-        // Elements
-        const searchInput = document.getElementById('search');
-        const productListDiv = document.getElementById('productList');
-
-        const previewArea = document.getElementById('previewArea');
-        const fromRowInput = document.getElementById('fromRow');
-        const fromColInput = document.getElementById('fromCol');
-
-        // 1. Search products (khĂ´ng load all)
-        async function searchProducts(keyword, callback) {
-            let { data, error } = await supabase
-                .from('dmhanghoa')
-                .select('masp, tensp, dvt, giale, gianhap')
-                .or(`masp.ilike.%${keyword}%,tensp.ilike.%${keyword}%`)
-                .order('masp')
-                .limit(100);
-            filtered = data || [];
-            products = data || [];
-            renderProductList();
-            if (typeof callback === 'function') callback();
-        }
-
-
-        searchInput.addEventListener('input', () => {
-            const val = searchInput.value.trim().toLowerCase();
-            if (val.length === 0) {
-                filtered = [];
-                products = [];
-                renderProductList();
-            } else {
-                searchProducts(val);
-            }
-        });
-
-        // Render product list
-        function renderProductList() {
-            let html = '<table>';
-            html += '<tr><th>MĂ£ SP</th><th>TĂªn hĂ ng</th></tr>';
-            for (let p of filtered) {
-                html += `<tr data-masp="${p.masp}">
-      <td>${p.masp}</td>
-      <td>${p.tensp}</td>
-    </tr>`;
-            }
-            html += '</table>';
-            productListDiv.innerHTML = html;
-            // Gáº¯n double click event cho tá»«ng dĂ²ng
-            productListDiv.querySelectorAll('tr[data-masp]').forEach(row => {
-                row.ondblclick = () => selectProduct(row.dataset.masp);
-            });
-        }
-
-        function selectProduct(masp) {
-            if (!hot) return;
-            const p = products.find(x => x.masp === masp);
-            if (!p) return;
-            let data = hot.getSourceData();
-            // Loáº¡i dĂ²ng tráº¯ng cuá»‘i báº£ng (dĂ²ng chá»‰ toĂ n rá»—ng/null)
-            data = data.filter(row => Array.isArray(row)
-                ? row.some(cell => cell !== null && cell !== "")
-                : Object.values(row).some(cell => cell !== null && cell !== "")
-            );
-
-            // Kiá»ƒm tra mĂ£ Ä‘Ă£ cĂ³ chÆ°a
-            //if (data.some(row => row[1] === p.masp)) return; //Bá» kiá»ƒm tra trĂ¹ng mĂ£ sáº£n pháº©m khi thĂªm tá»« danh sĂ¡ch
-            // ThĂªm sáº£n pháº©m má»›i
-            data.push([
-                data.length + 1,        // STT
-                p.masp,                 // MĂ£ hĂ ng
-                p.tensp,                // TĂªn hĂ ng
-                "0",                    // KĂ­ch cá»¡ (máº·c Ä‘á»‹nh "0")
-                1,                      // Sá»‘ lÆ°á»£ng (default 1)
-                p.dvt || "sp",          // ÄVT (náº¿u trá»‘ng thĂ¬ "sp")
-                p.gianhap || 1,         // GiĂ¡ nháº­p (náº¿u trá»‘ng thĂ¬ 1)
-                true,                   // In
-                p.giale || 0            // GiĂ¡ láº» (náº¿u trá»‘ng thĂ¬ 0)
-            ]);
-
-            // Cáº­p nháº­t láº¡i STT liĂªn tá»¥c
-            data.forEach((row, idx) => row[0] = idx + 1);
-            hot.loadData(data);
-        }
-
-
-
-
-        function syncHandsontableToSelected() {
-            if (!hot) return;
-            const data = hot.getData().filter(row => row[1] && row[2]);
-            selected = data.map(row => ({
-                stt: row[0],         // STT
-                masp: row[1],        // MĂ£ hĂ ng
-                tensp: row[2],       // TĂªn hĂ ng
-                size: row[3],        // KĂ­ch cá»¡
-                sl: row[4],          // Sá»‘ lÆ°á»£ng
-                dvt: row[5],         // ÄÆ¡n vá»‹ tĂ­nh
-                gianhap: row[6],     // GiĂ¡ nháº­p
-                tick: !!row[7],      // In
-                giale: row[8]        // GiĂ¡ láº»
-            }));
-
-        }
-
-
-        // Render lÆ°á»›i chá»n
-        function renderSelectedTable() {
-            selectedTableBody.innerHTML = '';
-            selected.forEach((row, idx) => {
-                selectedTableBody.innerHTML += `
-      <tr data-idx="${idx}">
-        <td>${idx + 1}</td>
-        <td>${row.masp}</td>
-        <td>${row.tensp}</td>
-        <td><input type="number" min="1" max="50" value="${row.sltem}" style="width:38px"
-             onchange="changeSlTem(${idx}, this.value)"></td>
-        <td>${row.dvt || ''}</td>
-        <td><input type="number" min="1" max="999" value="${row.sl}" style="width:38px"
-             onchange="changeSl(${idx}, this.value)"></td>
-        <td>${formatGia(row.giale)}</td>
-        <td><input type="checkbox" ${row.tick ? 'checked' : ''} onchange="toggleTick(${idx}, this.checked)"></td>
-        <td>${formatGia(row.gianhap)}</td>
-      </tr>
-     `;
-            });
-            // Gáº¯n double click xĂ³a dĂ²ng
-            selectedTableBody.querySelectorAll('tr[data-idx]').forEach(tr => {
-                tr.ondblclick = () => {
-                    const idx = parseInt(tr.dataset.idx);
-                    selected.splice(idx, 1);
-                    renderSelectedTable();
-                };
-            });
-        }
-
-        window.changeSlTem = function (idx, val) {
-            selected[idx].sltem = parseInt(val) || 1;
-        };
-        window.changeSl = function (idx, val) {
-            selected[idx].sl = parseInt(val) || 1;
-        };
-        window.toggleTick = function (idx, val) {
-            selected[idx].tick = val;
-        };
-
-        // PhĂ¢n trang preview
-        let currentPage = 1;
-        let totalPages = 1;
-        let temsAll = [];
-
-        window.renderPreview = function (page = 1) {
-            syncHandsontableToSelected();
-            // Kiá»ƒm tra chá»n loáº¡i tem
-            const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
-            if (!loaiTem) {
-                alert("Vui lĂ²ng chá»n loáº¡i tem cáº§n in!");
-                return;
-            }
-
-            // Info chung máº«u cho tá»«ng loáº¡i tem
-            let infoChung = "";
-            if (loaiTem === "giaydep") {
-                infoChung = `
-            khĂ´ng giáº·t,táº©y;Báº£oquáº£n nÆ¡i<br>
-            khĂ´ rĂ¡o; DĂ¡n nhĂ£n táº¡i Viá»‡t<br>
-            Nam. GiĂ y,dĂ©p; cháº¥t liá»‡u:<br>
-            da, pu, tá»•ng há»£p;cá»¡:38-43            
-        `;
-            } else if (loaiTem === "quanao") {
-                infoChung = `
-            khĂ´ng táº©y;giáº·t tay,Báº£o quáº£n<br>
-            khĂ´ rĂ¡o; DĂ¡n nhĂ£n táº¡i Viá»‡t<br>
-            Nam. Quáº§n,Ăo; cháº¥t liá»‡u:<br>
-            Váº£i sá»£i tá»•ng há»£p;cá»¡: S-XXL            
-        `;
-            } else {
-                // ThĂªm cĂ¡c loáº¡i tem khĂ¡c á»Ÿ Ä‘Ă¢y náº¿u muá»‘n má»Ÿ rá»™ng
-                infoChung = "";
-            }
-
-            // Chuáº©n bá»‹ danh sĂ¡ch tem cáº§n in (theo tick, sá»‘ lÆ°á»£ng)
-            temsAll = [];
-            selected.forEach(row => {
-                if (row.tick) {
-                    for (let i = 0; i < row.sl; i++) {
-                        temsAll.push(row);
-                    }
-                }
-            });
-
-            totalPages = Math.ceil(temsAll.length / 40) || 1;
-            currentPage = page > totalPages ? totalPages : page;
-            const fromRow = parseInt(fromRowInput.value) || 1;
-            const fromCol = parseInt(fromColInput.value) || 1;
-            let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
-            let maxTems = 40 - blank;
-            let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
-
-            // ---- ĂP Dá»¤NG MARGIN, GAP, KĂCH THÆ¯á»C ----
-            let html = `<div class="print-preview" style="
-        padding-top: ${PAGE_MARGIN_TOP_MM}mm;
-        padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
-    ">
-    <div class="tem-grid" style="
-        display: grid;
-        grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
-        grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
-        column-gap: 5mm;
-        row-gap: 1.9mm;        
-    ">`;
-
-            // Blank cho trang Ä‘áº§u  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
-            for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
-            for (let i = 0; i < maxTems; i++) {
-                const t = pageTems[i] || null;
-                if (!t) html += `<div class="tem tem-blank"></div>`;
-                else html += `
-
-
-  <!--bat dau khu vuc thiet ke hien thi tem -->
-
-<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
-  width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
-  box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
- ">
-  <!-- LÆ°á»›i 2 cá»™t full height: 60% | 40% -->  
-  <div style="
-  display:grid;
-  grid-template-columns:65% 35%;
-  grid-template-rows:1mm 1mm auto;
-  height:100%; width:100%; gap:0; box-sizing:border-box;
- ">
-
-  <!-- Spacer TRĂI: 1mm -->
-  <div style="grid-column:1; grid-row:1;"></div>
-
-  <!-- Spacer PHáº¢I: 2mm (chiáº¿m 2 hĂ ng 1mm) -->
-  <div style="grid-column:2; grid-row:1 / span 2;"></div>
-
-
-      <!-- Cá»˜T TRĂI: chiáº¿m hĂ ng 2-3, cá»™t 1 -->
-  <div style="grid-column:1; grid-row:2 / span 2;
-              display:flex; flex-direction:column;
-              justify-content:space-between; align-items:flex-start;
-              height:100%; margin:0; padding:0;">
-    <div style="width:100%; margin:0; padding:0;">
-
-        <!-- SHOP HOĂ€N TUYáº¾T ngay dÆ°á»›i MĂ£ -->
-      <div style="font-size:7pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        Shop HoĂ n Tuyáº¿t
-      </div>
-
-      <!-- THĂ”NG TIN CHUNG á»Ÿ Ä‘Ă¡y cá»™t trĂ¡i -->
-    <div style="font-size:5.5pt; line-height:1; word-break:break-word;
-                width:100%; margin:0; padding:0;">
-      ${infoChung}
-    </div>
-
-      <!-- GIĂ (khĂ´ng xuá»‘ng dĂ²ng, cáº¯t bĂªn pháº£i) -->
-      <div style="font-size:10pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        GiĂ¡: ${formatGia(t.giale)}
-      </div>
-
-      <!-- MĂƒ SP (khĂ´ng xuá»‘ng dĂ²ng, cáº¯t bĂªn trĂ¡i) -->
-      <div style="font-size:8pt; line-height:1; white-space:nowrap;
-                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
-        ${t.masp}
-      </div>
-
-      
-    </div>
-
-    
-  </div>
-
-  <!-- Cá»˜T PHáº¢I: chá»‰ QR, á»Ÿ hĂ ng 3, cá»™t 2 -->
-  <div style="grid-column:2; grid-row:3;
-              display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
-              height:100%; margin:0; padding:0;">
-  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-
-  ${(() => {
-                        const s = (t.size ?? '').toString().trim();
-                        return s && s !== '0'
-                            ? `<div class="size-under-qr" style="font-size:8pt; line-height:1; margin-top:0.6mm;">
-             ${s}
-           </div>`
-                            : ``;
-                    })()}
-</div>
-
-
-
-  </div>
-</div>
-
-<!--HET khu vuc thiet ke hien thi tem -->
-
-
-`;
-            }
-            html += `</div></div>`;
-            previewArea.innerHTML = html;
-
-            // Sinh QR code cho tá»«ng tem
-            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
-                const parent = el.closest('.tem');
-                if (!parent || parent.classList.contains('tem-blank')) return;
-                const masp = parent.getAttribute('data-masp');
-                new QRious({
-                    element: el,
-                    value: masp,
-                    size: 128,
-                    level: 'M'
-                });
-            });
-            document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
-        };
-
-
-        window.prevPage = function () {
-            if (currentPage > 1) renderPreview(currentPage - 1);
-        };
-        window.nextPage = function () {
-            if (currentPage < totalPages) renderPreview(currentPage + 1);
-        };
-
-        // GiĂ¡
-        function formatGia(val) {
-            if (!val || val == 0) return '';
-            return parseInt(val).toLocaleString('vi-VN');
-        }
-
-        // Xuáº¥t Excel
-        window.exportExcel = function () {
-            const headers = ["STT", "MĂ£ hĂ ng", "TĂªn hĂ ng", "KĂ­ch cá»¡", "Sá»‘ lÆ°á»£ng", "ÄVT", "GiĂ¡ nháº­p", "In", "GiĂ¡ láº»"];
-            const data = selected.map((row, idx) => [
-                idx + 1,
-                row.masp,
-                row.tensp,
-                row.size,
-                row.sl,
-                row.dvt || "",
-                Number(row.gianhap) || 0,
-                row.tick ? true : false,
-                Number(row.giale) || 0
-            ]);
-            const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
-            XLSX.writeFile(wb, "tem-ma-vach.xlsx");
-        };
-
-        // chon loai tem in
-
-        window.checkLoaiTemAndRender = function () {
-            const loaiTem = document.getElementById('loaiTem').value;
-            if (!loaiTem) {
-                alert("Vui lĂ²ng chá»n loáº¡i tem cáº§n in!");
-                return;
-            }
-            renderPreview();
-        }
-        window.checkLoaiTemAndPrint = function () {
-            const loaiTem = document.getElementById('loaiTem').value;
-            if (!loaiTem) {
-                alert("Vui lĂ²ng chá»n loáº¡i tem cáº§n in!");
-                return;
-            }
-            window.print();
-        }
-
-        // ==== THEM TRUONG / Cáº¤U HĂŒNH GIá»® Láº I TRÆ¯á»œNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
-
-        // ==== Dropdown: láº¥y danh sĂ¡ch dá»¯ liá»‡u unique cho tá»«ng trÆ°á»ng dropdown ====
-        // ==== Dropdown: náº¡p danh má»¥c tá»« báº£ng chuáº©n vĂ  hiá»ƒn thá»‹ "MĂƒ - TĂN" ====
-        async function loadDropdownOptions() {
-            // 1) NHĂ€ CUNG Cáº¤P: dmkhachhang (la_ncc = true) â†’ value = MĂƒ NCC, label = "MĂƒ - TĂN"
+            document.getElementById('backup-overlay').style.display = "block";
             try {
-                const { data: ncc, error: errNcc } = await supabase
-                    .from('dmkhachhang')
-                    .select('makh, tenkh, la_ncc')
-                    .eq('la_ncc', true)
-                    .order('makh', { ascending: true });
-                if (errNcc) console.error('Load NCC error:', errNcc);
-                document.getElementById('nhaccList').innerHTML = (ncc || [])
-                    .filter(r => r.makh)
-                    .map(r => `<option value="${(r.makh || '').toUpperCase()}" label="${(r.makh || '').toUpperCase()} - ${r.tenkh || ''}"></option>`)
-                    .join('');
-            } catch (e) { console.error(e); }
-
-            // 2) CHá»¦NG LOáº I: dmchungloai â†’ value = MĂƒ, label = "MĂƒ - TĂN"
-            try {
-                const { data: cl, error: errCl } = await supabase
-                    .from('dmchungloai')
-                    .select('machungloai, tenchungloai')
-                    .order('machungloai', { ascending: true });
-                if (errCl) console.error('Load Chá»§ng loáº¡i error:', errCl);
-                document.getElementById('chungloaiList').innerHTML = (cl || [])
-                    .filter(r => r.machungloai)
-                    .map(r => `<option value="${(r.machungloai || '').toUpperCase()}" label="${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}"></option>`)
-                    .join('');
-            } catch (e) { console.error(e); }
-
-            // 3) MĂ€U Sáº®C: dmmausac â†’ value = MĂƒ MĂ€U, label = "MĂƒ - TĂN"
-            try {
-                const { data: ms, error: errMs } = await supabase
-                    .from('dmmausac')
-                    .select('mamau, tenmau')
-                    .order('mamau', { ascending: true });
-                if (errMs) console.error('Load MĂ u sáº¯c error:', errMs);
-                document.getElementById('mausacList').innerHTML = (ms || [])
-                    .filter(r => r.mamau)
-                    .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
-                    .join('');
-            } catch (e) { console.error(e); }
-
-            // 4) THEM TRUONG NHĂ“M HĂ€NG: dmnhomhang â†’ value = MĂƒ, label = "MĂƒ - TĂN"
-            try {
-                const { data: nh, error: errNh } = await supabase
-                    .from('dmnhomhang')
-                    .select('manhom, tennhom')
-                    .order('manhom', { ascending: true });
-                if (errNh) console.error('Load NhĂ³m hĂ ng error:', errNh);
-                document.getElementById('nhomhangList').innerHTML = (nh || [])
-                    .filter(r => r.manhom)
-                    .map(r => `<option value="${(r.manhom || '').toUpperCase()}"
-                 label="${(r.manhom || '').toUpperCase()} - ${r.tennhom || ''}"></option>`)
-                    .join('');
-            } catch (e) { console.error(e); }
-
-        }
-
-
-        // ==== Khi nháº­p xong mĂ£ sáº£n pháº©m, kiá»ƒm tra tá»“n táº¡i, náº¿u cĂ³ thĂ¬ táº£i dá»¯ liá»‡u lĂªn form ====
-        document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
-        document.getElementById('maspInput').addEventListener('keydown', function (e) {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                checkExistAndFillForm();
-                document.getElementById('tenspInput').focus();
+                await backupAllTablesToZip();
+                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
+            } catch (err) {
+                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
             }
-        });
-
-        let isEditMode = false; // ÄĂ¡nh dáº¥u Ä‘ang sá»­a hay thĂªm má»›i
-
-        async function checkExistAndFillForm() {
-            const masp = document.getElementById('maspInput').value.trim().toUpperCase();
-            if (!masp) return;
-
-            // TrĂ¡nh gá»i reset liĂªn tá»¥c, chá»‰ fill dá»¯ liá»‡u khi cĂ³ mĂ£, khĂ´ng thĂ¬ giá»¯ nguyĂªn input Ä‘ang nháº­p
-            const { data, error } = await supabase.from('dmhanghoa').select('*').eq('masp', masp).maybeSingle();
-
-            if (data) {
-                // THEM TRUONG/ Cháº¿ Ä‘á»™ Sá»¬A: Ä‘iá»n dá»¯ liá»‡u vĂ o form
-                isEditMode = true;
-                document.getElementById('tenspInput').value = data.tensp || '';
-                document.getElementById('gianhapInput').value = data.gianhap || '';
-                document.getElementById('gialeInput').value = data.giale || '';
-                document.getElementById('mausacInput').value = data.mausac || '';
-                document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
-                document.getElementById('nhaccInput').value = data.nhacc || '';
-                document.getElementById('nhomhangInput').value = data.nhomhang || '';
-                document.getElementById('chungloaiInput').value = data.chungloai || '';
-                document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
-                document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
-            } else {
-                // KhĂ´ng fill gĂ¬ cáº£, khĂ´ng reset
-                isEditMode = false;
-                document.getElementById('addProductForm').style.border = '';
-                // KhĂ´ng gá»i resetForm á»Ÿ Ä‘Ă¢y!
-                // Giá»¯ nguyĂªn cĂ¡c trÆ°á»ng, Ä‘á»ƒ ngÆ°á»i dĂ¹ng nháº­p tiáº¿p tá»¥c
-            }
-        }
-
-
-        // ==== NĂºt ThĂªm má»›i ====
-        document.getElementById('resetFormBtn').onclick = function () {
-            resetForm(false);
-            document.getElementById('maspInput').focus();  // <== Tá»± Ä‘á»™ng focus láº¡i
+            document.getElementById('backup-overlay').style.display = "none";
+            await dangXuatApp();
         };
 
-        function resetForm(keepMasp = false) {
-            // Láº¥y giĂ¡ trá»‹ cĂ¡c trÆ°á»ng giá»¯ láº¡i hiá»‡n táº¡i
-            const data = {};
-            GIU_LAI_FIELDS.forEach(field => {
-                data[field] = document.getElementById(field + 'Input').value;
+        async function dangXuatApp() {
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+            }
+            document.getElementById('login-manv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
             });
-            // XĂ³a tráº¯ng toĂ n bá»™ form
-            document.getElementById('addProductForm').reset();
-            // Äiá»n láº¡i cĂ¡c trÆ°á»ng giá»¯ láº¡i (trá»« khi reset hoĂ n toĂ n)
-            GIU_LAI_FIELDS.forEach(field => {
-                //if (keepMasp && field === 'masp') return; // TrÆ°á»ng há»£p muá»‘n giá»¯ láº¡i mĂ£ sp cÅ©
-                document.getElementById(field + 'Input').value = data[field] || '';
-            });
-            document.getElementById('addProductMessage').textContent = '';
-            document.getElementById('addProductForm').style.border = '';
-            isEditMode = false;
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+            document.getElementById('login-manv').focus();
         }
+    </script>
 
-        // ==== THEM TRUONG/  Validate cĂ¡c trÆ°á»ng báº¯t buá»™c ====
-        function validateForm() {
-            let valid = true;
-            let msg = [];
-            const bbFields = [
-                { id: 'maspInput', label: 'MĂ£ sáº£n pháº©m' },
-                { id: 'tenspInput', label: 'TĂªn sáº£n pháº©m' },
-                //{ id: 'gianhapInput', label: 'GiĂ¡ nháº­p' },
-                { id: 'gialeInput', label: 'GiĂ¡ láº»' },
-                { id: 'nhaccInput', label: 'NhĂ  cung cáº¥p' },   // ThĂªm báº¯t buá»™c
-                { id: 'nhomhangInput', label: 'NhĂ³m hĂ ng' },   // ThĂªm báº¯t buá»™c
-                { id: 'chungloaiInput', label: 'Chá»§ng loáº¡i' }  // ThĂªm báº¯t buá»™c
-            ];
-            bbFields.forEach(f => {
-                const inp = document.getElementById(f.id);
-                if (!inp.value.trim()) {
-                    inp.style.border = '1.5px solid red';
-                    msg.push(`${f.label} lĂ  báº¯t buá»™c`);
-                    valid = false;
-                } else {
-                    inp.style.border = '';
-                }
-            });
-            return { valid, msg: msg.join(', ') };
-        }
+    <script src="scripts/menu-component.js"></script>
 
+    <script>
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
+        // Bạn đã cung cấp:
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_NAME = 'menubanlemt';
 
-        // ==== NĂºt LÆ°u (submit form) ====
-        document.getElementById('addProductForm').onsubmit = async function (e) {
-            e.preventDefault();
-            // Validate
-            const { valid, msg } = validateForm();
-            if (!valid) {
-                document.getElementById('addProductMessage').textContent = msg;
-                return;
-            }
+        MenuComponent.mount({
+            el: '#app-menu',
+            sheetId: SHEET_ID,
+            sheetName: SHEET_NAME,
+            cs,
+            manv,
+            cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
 
-            // THEM TRUONG/ Chuáº©n hĂ³a dá»¯ liá»‡u
-            const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
-            const gialeVal = document.getElementById('gialeInput').value.replace(/\./g, '');
+    <script>  //<!-- banlemobile -->
 
-            const data = {
-                masp: document.getElementById('maspInput').value.trim().toUpperCase(),
-                tensp: document.getElementById('tenspInput').value.trim(),
-                gianhap: parseInt(gianhapVal) || 1,
-                giale: parseInt(gialeVal) || 0,
-                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // â† HOA
-                khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
-                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // â† HOA
-                nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
-                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // â† HOA
-                quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
-            };
+        // goi phím F2
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        }, 1000);
 
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        const dispatchTarget = document.body || document.documentElement;
 
-            let res, errorMsg;
-            if (isEditMode) {
-                // TrÆ°á»ng há»£p Ä‘ang sá»­a sáº£n pháº©m Ä‘Ă£ tá»“n táº¡i
-                const userConfirm = confirm(`â ï¸ MĂ£ sáº£n pháº©m "${data.masp}" Ä‘Ă£ tá»“n táº¡i.\nBáº¡n cĂ³ muá»‘n cáº­p nháº­t thĂ´ng tin khĂ´ng?`);
-                if (!userConfirm) {
-                    document.getElementById('addProductMessage').style.color = 'orange';
-                    document.getElementById('addProductMessage').textContent = `â›” ÄĂ£ há»§y cáº­p nháº­t sáº£n pháº©m "${data.masp}".`;
-                    return;
-                }
-
-                // Tiáº¿p tá»¥c cáº­p nháº­t náº¿u ngÆ°á»i dĂ¹ng xĂ¡c nháº­n
-                res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
-                if (res.error) errorMsg = 'Lá»—i cáº­p nháº­t: ' + res.error.message;
-            } else {
-                // Kiá»ƒm tra trĂ¹ng mĂ£ sáº£n pháº©m trÆ°á»›c khi thĂªm
-                const { data: maspCheck, error: checkError } = await supabase
-                    .from('dmhanghoa')
-                    .select('masp')
-                    .eq('masp', data.masp)
-                    .maybeSingle();
-
-                if (maspCheck) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = `âŒ MĂ£ sáº£n pháº©m "${data.masp}" Ä‘Ă£ tá»“n táº¡i. KhĂ´ng thá»ƒ thĂªm má»›i.`;
-                    return;
-                }
-
-                // Insert má»›i
-                res = await supabase.from('dmhanghoa').insert([data]);
-                if (res.error) errorMsg = 'Lá»—i thĂªm má»›i: ' + res.error.message;
-            }
-
-
-
-            if (errorMsg) {
-                document.getElementById('addProductMessage').textContent = errorMsg;
-                return;
-            }
-
-            // Hiá»‡n thĂ´ng bĂ¡o thĂ nh cĂ´ng
-            document.getElementById('addProductMessage').style.color = '#0a9e1c';
-            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cáº­p nháº­t thĂ nh cĂ´ng!' : 'ThĂªm má»›i thĂ nh cĂ´ng!';
-            // Reset láº¡i form theo giá»¯ láº¡i trÆ°á»ng
-            resetForm();
-            document.getElementById('maspInput').focus();  // <== Tá»± Ä‘á»™ng focus láº¡i
-            // Load láº¡i dropdown option (náº¿u cĂ³ giĂ¡ trá»‹ má»›i)
-            loadDropdownOptions();
-            // Sau khi lÆ°u xong, gá»i searchProducts vĂ  truyá»n thĂªm callback
-            searchProducts(document.getElementById('search').value.trim().toLowerCase());
-            pushProductToGrid(data);
-
-        };
-
-        loadDropdownOptions();
-
-        // Xá»­ lĂ½ nĂºt XĂ“A sáº£n pháº©m
-
-        document.getElementById('deleteProductBtn').addEventListener('click', async () => {
-            const masp = document.getElementById('maspInput').value.trim().toUpperCase();
-            if (!masp) return alert('âŒ Báº¡n chÆ°a nháº­p mĂ£ sáº£n pháº©m cáº§n xĂ³a.');
-
-            const { data: ct1, error: err1 } = await supabase
-                .from('ct_hoadon_banle')
-                .select('masp')
-                .eq('masp', masp)
-                .limit(1);
-            const { data: ct2, error: err2 } = await supabase
-                .from('ct_hoadon_banleT')
-                .select('masp')
-                .eq('masp', masp)
-                .limit(1);
-
-            if ((ct1 && ct1.length > 0) || (ct2 && ct2.length > 0)) {
-                alert(`â ï¸ MĂ£ sáº£n pháº©m "${masp}" Ä‘Ă£ cĂ³ giao dá»‹ch, khĂ´ng thá»ƒ xĂ³a.`);
-                return;
-            }
-
-            const confirmDel = confirm(`â ï¸ Báº¡n cĂ³ cháº¯c cháº¯n muá»‘n xĂ³a mĂ£ sáº£n pháº©m "${masp}" khĂ´ng?`);
-            if (!confirmDel) return;
-
-            const { error: deleteError } = await supabase.from('dmhanghoa').delete().eq('masp', masp);
-            if (deleteError) {
-                alert('âŒ XĂ³a tháº¥t báº¡i: ' + deleteError.message);
-            } else {
-                alert(`âœ… ÄĂ£ xĂ³a mĂ£ sáº£n pháº©m "${masp}" khá»i danh má»¥c.`);
-                resetForm();
-                document.getElementById('search').value = masp;
-                searchProducts(masp); // Reload danh sĂ¡ch
-            }
+        document.getElementById('sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
         });
 
-
-        // === Gá»¢I Ă MĂƒ Sáº¢N PHáº¨M GIá»NG TĂŒM KIáº¾M Sáº¢N PHáº¨M ===
-
-        const maspInput = document.getElementById('maspInput');
-        const maspSuggestDiv = document.getElementById('maspSuggestList');
-
-        // XĂ¡c Ä‘á»‹nh láº¡i vá»‹ trĂ­ popup
-
-        function positionMaspSuggestList() {
-            const rect = maspInput.getBoundingClientRect();
-            maspSuggestDiv.style.position = 'fixed';
-            maspSuggestDiv.style.top = (rect.bottom) + 'px';
-            maspSuggestDiv.style.left = (rect.left) + 'px';
-            maspSuggestDiv.style.width = rect.width + 'px';
-        }
-
-
-        maspInput.addEventListener('input', async function () {
-            const val = maspInput.value.trim().toLowerCase();
-            if (val.length === 0) {
-                maspSuggestDiv.style.display = 'none';
-                maspSuggestDiv.innerHTML = '';
-                return;
-            }
-            // Lá»c mĂ£ & tĂªn
-            let { data } = await supabase
-                .from('dmhanghoa')
-                .select('masp, tensp')
-                .or(`masp.ilike.%${val}%,tensp.ilike.%${val}%`)
-                .order('masp')
-                .limit(100);
-
-            if (!data || !data.length) {
-                maspSuggestDiv.style.display = 'none';
-                maspSuggestDiv.innerHTML = '';
-                return;
-            }
-            // Hiá»ƒn thá»‹ popup
-            let html = '<table><tr><th>MĂ£ SP</th><th>TĂªn hĂ ng</th></tr>';
-            for (let p of data) {
-                html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
-            }
-            html += '</table>';
-            maspSuggestDiv.innerHTML = html;
-            maspSuggestDiv.style.display = 'block';
-            positionMaspSuggestList();
-
-            // Sá»± kiá»‡n chá»n
-            maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
-                row.onclick = function () {
-                    maspInput.value = row.dataset.masp;
-                    document.getElementById('tenspInput').value = row.dataset.tensp;
-                    maspSuggestDiv.style.display = 'none';
-                    checkExistAndFillForm(); // Táº£i info náº¿u cĂ³
-                    document.getElementById('tenspInput').focus();
-                }
-            });
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
         });
 
-        // áº¨n popup khi click ra ngoĂ i hoáº·c tab/blur
-        document.addEventListener('mousedown', function (e) {
-            if (!maspInput.contains(e.target) && !maspSuggestDiv.contains(e.target)) {
-                maspSuggestDiv.style.display = 'none';
-            }
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('ghivitri')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
         });
-
-        // Äáº·t láº¡i vá»‹ trĂ­ popup khi resize/scroll
-        window.addEventListener('resize', positionMaspSuggestList);
-        window.addEventListener('scroll', positionMaspSuggestList);
-
-        maspInput.addEventListener('focus', function () {
-            if (maspSuggestDiv.innerHTML.trim() !== '') maspSuggestDiv.style.display = 'block';
-            positionMaspSuggestList();
-        });
-
-
-        const gianhapInput = document.getElementById('gianhapInput');
-        const gialeInput = document.getElementById('gialeInput');
-
-        //Format sá»‘ cho giĂ¡ nháº­p & giĂ¡ láº» trĂªn FORM
-        [gianhapInput, gialeInput].forEach(inp => {
-            inp.addEventListener('blur', function () {
-                let val = inp.value.replace(/\./g, '').replace(/[^0-9]/g, '');
-                if (val && !isNaN(val)) {
-                    inp.value = Number(val).toLocaleString('vi-VN');
-                } else {
-                    inp.value = '';
-                }
-            });
-            inp.addEventListener('focus', function () {
-                inp.value = inp.value.replace(/\./g, '');
-                setTimeout(() => inp.select(), 10);
-            });
-        });
-
-
-        // Tá»± Ä‘á»™ng tĂ­nh giĂ¡ láº» khi nháº­p xong giĂ¡ nháº­p
-        gianhapInput.addEventListener('change', function () {
-            const val = parseFloat(this.value);
-            if (!isNaN(val) && val > 0) {
-                gialeInput.value = Math.round(val * 1.5);
-            }
-        });
-
-        // THEM TRUONG/ Thá»© tá»± Enter (focus/bĂ´i Ä‘en)
-        const formOrder = [
-            'maspInput',
-            'tenspInput',
-            'gianhapInput',
-            'gialeInput',
-            'mausacInput',
-            'khuyenmaiInput',
-            'nhaccInput',
-            'nhomhangInput',   // â¬… thĂªm vĂ o Ä‘Ă¢y
-            'chungloaiInput'
-        ];
-
-        formOrder.forEach((id, idx) => {
-            const inp = document.getElementById(id);
-            if (!inp) return;
-            inp.addEventListener('keydown', function (e) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    // Náº¿u khĂ´ng pháº£i Ă´ cuá»‘i cĂ¹ng thĂ¬ focus Ă´ tiáº¿p theo
-                    if (idx < formOrder.length - 1) {
-                        const next = document.getElementById(formOrder[idx + 1]);
-                        if (next) {
-                            next.focus();
-                            setTimeout(() => next.select(), 10); // BĂ´i Ä‘en toĂ n bá»™
-                        }
-                    } else {
-                        // Náº¿u lĂ  Ă´ cuá»‘i cĂ¹ng, submit form
-                        document.getElementById('saveFormBtn').focus();
-                    }
-                }
-            });
-            inp.addEventListener('focus', function () {
-                setTimeout(() => inp.select(), 10);
-            });
-        });
-
-
-
-        // ÄÄƒng nháº­p xong reload láº¡i Ä‘á»ƒ token cáº­p nháº­t
-        import { renderLoginModule } from './scripts/loginSupabaseModule.js';
-        renderLoginModule({
-            supabaseUrl,
-            supabaseKey,
-            onLoginSuccess: (accessToken) => {
-                window.location.reload(); // ÄÄƒng nháº­p xong reload láº¡i Ä‘á»ƒ token cáº­p nháº­t
-            }
-        });
-
-        function pushProductToGrid(product) {
-            if (!hot) return;
-            let data = hot.getSourceData();
-            // Loáº¡i dĂ²ng tráº¯ng cuá»‘i báº£ng (dĂ²ng chá»‰ toĂ n rá»—ng/null)
-            data = data.filter(row => Array.isArray(row)
-                ? row.some(cell => cell !== null && cell !== "")
-                : Object.values(row).some(cell => cell !== null && cell !== "")
-            );
-            // Kiá»ƒm tra mĂ£ Ä‘Ă£ cĂ³ trĂªn lÆ°á»›i chÆ°a
-            const idx = data.findIndex(row => row[1] === product.masp);
-            if (idx !== -1) {
-                // Náº¿u cĂ³ rá»“i, cáº­p nháº­t thĂ´ng tin má»›i
-                data[idx] = [
-                    idx + 1, // STT
-                    product.masp,
-                    product.tensp,
-                    "0", // KĂ­ch cá»¡ máº·c Ä‘á»‹nh
-                    1,   // Sá»‘ lÆ°á»£ng máº·c Ä‘á»‹nh
-                    product.dvt || "sp",
-                    product.gianhap || 1,
-                    true,
-                    product.giale || 0
-                ];
-            } else {
-                // Náº¿u chÆ°a cĂ³, thĂªm vĂ o cuá»‘i
-                data.push([
-                    data.length + 1,
-                    product.masp,
-                    product.tensp,
-                    "0",
-                    1,
-                    product.dvt || "sp",
-                    product.gianhap || 1,
-                    true,
-                    product.giale || 0
-                ]);
-            }
-            // Cáº­p nháº­t láº¡i STT liĂªn tá»¥c
-            data.forEach((row, idx) => row[0] = idx + 1);
-            hot.loadData(data);
-        }
-
-
 
     </script>
+
+    <script>
+        // Mở popup xác thực + focus ngay vào #xacmanv
+        function moPopupXacThucSua() {
+            const p = document.getElementById('popupXacThucSua');
+            p.style.display = 'block';
+            setTimeout(() => {
+                const manv = document.getElementById('xacmanv');
+                if (manv) { manv.focus(); manv.select(); }
+            }, 0);
+        }
+
+        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
+        document.addEventListener('DOMContentLoaded', () => {
+            const manv = document.getElementById('xacmanv');
+            const mk = document.getElementById('xacmatkhau');
+            const btn = document.getElementById('btnXacNhanSua');
+
+            if (manv) {
+                manv.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (mk) { mk.focus(); mk.select(); }
+                    }
+                });
+            }
+
+            if (mk) {
+                mk.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (btn) { btn.focus(); }
+                    }
+                });
+            }
+
+            if (btn) {
+                btn.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
+                    //moPopupXacThucSua();
+                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+                });
+            }
+
+        });
+    </script>
+
+    <!-- Overlay quét -->
+    <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
+        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+
+        <!-- Thanh điều khiển -->
+        <div
+            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
+            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
+            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
+
+            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
+                Ảnh có sẵn
+                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
+            </label>
+
+            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
+        </div>
+
+        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
+    </div>
+
+    <!-- Flash + Toast -->
+    <div id="flashOverlay"></div>
+    <div id="toastMsg"></div>
+
+
+    <script type="module" src="scripts/feedback.js"></script>
+    <script type="module" src="scripts/scanner.js"></script>
+
+    <script type="module" src="scripts/viettelInvoice.js"></script>
 
 </body>
 
