@@ -1,6 +1,33 @@
 // scripts/baocaoxnt17_chuyenkho.js
 import { supabase } from './supabaseClient.js'; // dùng chung client đã có
 
+// == CSS & LIGHTBOX cho lưới ảnh (port từ XNT17) ==
+(function injectQuickViewCss() {
+    const css = `
+  #previewGrid { display:grid; gap:10px; overflow:auto; }
+  .preview-card { border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
+  .preview-card.selected { box-shadow:0 0 0 2px #3b82f6 inset; }
+  .preview-card img { width:100%; height:auto; aspect-ratio: 4/3; object-fit: cover; border-radius:8px; display:block; cursor: zoom-in; }
+  .preview-cap { margin-top:6px; font-size:13px; color:#374151; text-align:center; }
+  .preview-cap .cap-link { font-weight:700; color:#111; text-decoration:none; cursor:pointer; }
+  .preview-cap .cap-link:hover { text-decoration:underline; }
+  .lb-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; z-index: 9999; }
+  .lb-backdrop.show { display:flex; }
+  .lb-wrap { max-width: 92vw; max-height: 92vh; }
+  .lb-wrap img { width:100%; height:100%; object-fit:contain; }
+  .lb-close { position:absolute; top:14px; right:18px; font-size:22px; color:#fff; cursor:pointer; }`;
+    const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+
+    const lb = document.createElement('div');
+    lb.className = 'lb-backdrop';
+    lb.innerHTML = `<div class="lb-close" title="Đóng">✕</div><div class="lb-wrap"><img alt="Ảnh lớn"></div>`;
+    document.body.appendChild(lb);
+    lb.addEventListener('click', (e) => {
+        if (e.target.classList.contains('lb-backdrop') || e.target.classList.contains('lb-close')) lb.classList.remove('show');
+    });
+    window.openLightbox = (src) => { const img = lb.querySelector('.lb-wrap img'); img.src = src; lb.classList.add('show'); };
+})();
+
 let hot;
 const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
 
@@ -142,9 +169,7 @@ function renderHOT(rows) {
         afterSelectionEnd: (r) => {
             const row = rows[r];
             if (!row) return;
-            // cập nhật ảnh theo mã
-            updateImagesByMasp(row.masp);
-            // center vào block mã này: cuộn để nó nằm giữa viewport
+            focusPreview(row.masp);  // ⬅️ chỉ focus/scroll tới ảnh tương ứng
             const tr = hot.getCell(r, 0)?.parentElement;
             if (tr) tr.scrollIntoView({ block: 'center' });
         }
@@ -227,6 +252,89 @@ function setTimKiemLinks(masp) {
     if (a2) a2.href = u;
 }
 
+const IMAGES_PER_ROW = 2; // số cột trong lưới ảnh
+
+// Lưu danh sách mã của panel ảnh để scroll/focus
+let currentMaspsList = [];
+
+function makePreviewCard(masp, index) {
+  const fig = document.createElement('figure');
+  fig.id = `img-${masp}`;
+  fig.className = 'preview-card';
+  fig.dataset.masp = masp;
+
+  const img = document.createElement('img');
+  img.loading = 'lazy';
+  img.alt = masp;
+  img.dataset.try = '0';
+  img.src = getImageUrl(masp);
+  img.onclick = () => openLightbox(img.src);
+  img.onerror = () => {
+    const next = (parseInt(img.dataset.try || '0', 10) + 1);
+    if (next < IMG_EXTS.length) {
+      img.dataset.try = String(next);
+      img.src = IMG_BASE + encodeURIComponent(masp) + '.' + IMG_EXTS[next];
+    } else {
+      img.onerror = null;
+      img.src = PLACEHOLDER_SVG;
+    }
+  };
+
+  const cap = document.createElement('figcaption');
+  cap.className = 'preview-cap';
+
+  const span = document.createElement('span');
+  span.className = 'cap-link';
+  span.textContent = `${index + 1}. ${masp}`;
+  span.onclick = () =>
+    window.open(`timkiemhanghoa333.html?masp=${encodeURIComponent(masp)}`, '_blank');
+
+  cap.appendChild(span);
+  fig.appendChild(img);
+  fig.appendChild(cap);
+  return fig;
+}
+
+function renderPreviewForMasps(list) {
+  currentMaspsList = (list || []).map(x => String(x || '').toUpperCase());
+  const box = document.getElementById('previewGrid');
+  const title = document.getElementById('previewTitle');
+  if (!box) return;
+
+  box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+  title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
+
+  // Xoá cũ, render mới bằng DOM API
+  box.innerHTML = '';
+  currentMaspsList.forEach((m, i) => box.appendChild(makePreviewCard(m, i)));
+}
+
+function focusPreview(masp) {
+  const box = document.getElementById('previewGrid');
+  if (!box || !masp) return;
+  const old = box.querySelector('.preview-card.selected');
+  if (old) old.classList.remove('selected');
+  const el = document.getElementById(`img-${masp}`);
+  if (el) {
+    el.classList.add('selected');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  }
+}
+
+
+function focusPreview(masp) {
+    const box = document.getElementById('previewGrid');
+    if (!box || !masp) return;
+    const old = box.querySelector('.preview-card.selected');
+    if (old) old.classList.remove('selected');
+    const el = document.getElementById(`img-${masp}`);
+    if (el) {
+        el.classList.add('selected');
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+}
+
+
 // ===== 6) Entry point =====
 async function boot() {
     document.getElementById('status').textContent = 'Đang tải dữ liệu…';
@@ -245,8 +353,13 @@ async function boot() {
 
     // 2) Dựng bảng chuyển kho
     const rows = buildTransferTable(raw);   // 9 dòng size + 1 dòng “Tổng”
+    // Lập danh sách MASP duy nhất (giữ thứ tự xuất hiện trong raw)
+    const masps = Array.from(new Map((raw || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
+    renderPreviewForMasps(masps);
+
     await patchVitri(rows);                 // lấy vị trí từ dmhanghoa (đọc trực tiếp table)
     renderHOT(rows);
+    if (masps.length) focusPreview(masps[0]);
 
     // 3) Tuỳ chọn: dọn storage (tránh chiếm bộ nhớ phiên)
     // sessionStorage.removeItem('xnt17_transfer_rows');
