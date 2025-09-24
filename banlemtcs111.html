@@ -268,20 +268,19 @@
                         </div>
                     </div>
                     <div class="form-row">
-                        <label for="nhomhangInput">Nhóm hàng <span class="required">*</span></label>
-                        <div class="form-input">
-                            <input name="nhomhang" id="nhomhangInput" list="nhomhangList" autocomplete="off" />
-                            <datalist id="nhomhangList"></datalist>
-                        </div>
-                    </div>
-                    <div class="form-row">
                         <label for="nhaccInput">Nhà cung cấp <span class="required">*</span></label>
                         <div class="form-input">
                             <input name="nhacc" id="nhaccInput" list="nhaccList" autocomplete="off" />
                             <datalist id="nhaccList"></datalist>
                         </div>
                     </div>
-                    
+                    <div class="form-row">
+                        <label for="nhomhangInput">Nhóm hàng <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="nhomhang" id="nhomhangInput" list="nhomhangList" autocomplete="off" />
+                            <datalist id="nhomhangList"></datalist>
+                        </div>
+                    </div>
 
                     <div class="form-row">
                         <label for="chungloaiInput">Chủng loại <span class="required">*</span></label>
@@ -905,8 +904,8 @@
                 document.getElementById('gialeInput').value = data.giale || '';
                 document.getElementById('mausacInput').value = data.mausac || '';
                 document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
-                document.getElementById('nhaccInput').value = data.nhacc || '';
                 document.getElementById('nhomhangInput').value = data.nhomhang || '';
+                document.getElementById('nhaccInput').value = data.nhacc || '';                
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
