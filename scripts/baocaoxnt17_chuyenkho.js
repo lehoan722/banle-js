@@ -211,3 +211,49 @@ async function boot() {
 
 document.getElementById('btnReload').onclick = boot;
 boot();
+
+function normalizeSize(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (!s) return '';
+  // nếu chỉ là số: "39" -> "size 39", "0" -> "size 0"
+  if (/^\d+$/.test(s)) return 'size ' + s;
+  // nếu đã có chữ size thì giữ nguyên
+  if (s.startsWith('size ')) return s;
+  // các trường hợp khác (ví dụ "SIZE 39") -> chuẩn về "size 39"
+  return 'size ' + s.replace(/^size\s*/, '').trim();
+}
+
+function buildTransferTable(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const masp = String(r.masp || '').toUpperCase();
+    if (!masp) continue;
+    if (!map.has(masp)) map.set(masp, {});
+    const g = map.get(masp);
+
+    const szKey = normalizeSize(r.size);     // ⬅️ dùng chuẩn hoá
+    const cs1 = Number(r.ton_cs1 || 0);
+    const cs2 = Number(r.ton_cs2 || 0);
+
+    g[szKey] = { masp, size: szKey || (r.size || ''), cs1, cs2 };
+  }
+
+  const out = [];
+  for (const [masp, sizes] of map) {
+    let sum1 = 0, sum2 = 0;
+    for (const s of SIZE_ORDER) {
+      const it = sizes[s] || { masp, size: s, cs1: 0, cs2: 0 };
+      const goiy = calcGoiy(it.cs1, it.cs2);
+      out.push({
+        masp, size: it.size, cs1: it.cs1, cs2: it.cs2,
+        goiy, tong: it.cs1 + it.cs2, vitri_cs1: '', vitri_cs2: '', __isSum: false
+      });
+      sum1 += it.cs1; sum2 += it.cs2;
+    }
+    out.push({
+      masp, size: 'Tổng', cs1: sum1, cs2: sum2,
+      goiy: calcGoiy(sum1, sum2), tong: sum1 + sum2, vitri_cs1: '', vitri_cs2: '', __isSum: true
+    });
+  }
+  return out;
+}
