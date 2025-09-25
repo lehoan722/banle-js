@@ -53,18 +53,18 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     // Nếu có override từ dmkhachhang thì dùng, không thì fallback "Khách lẻ"  
     buyerInfo: {
       sohd: hoadon.sohd,
-      buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
-      buyerTaxCode: b?.buyerTaxCode || "09000000999",
-      buyerAddressLine: b?.buyerAddressLine || "dia chi",
-      buyerPhoneNumber: b?.buyerPhoneNumber || "0919111111",
-      buyerEmail: b?.buyerEmail || "thu@gmail.com",
-      buyerIdNo: "999888",
-      buyerIdType: "111222",
-      buyerBudgetCode: "333555"
+      buyerName: b?.buyerName || hoadon.khachhang || "",
+      buyerTaxCode: b?.buyerTaxCode || "",
+      buyerAddressLine: b?.buyerAddressLine || "",
+      buyerPhoneNumber: b?.buyerPhoneNumber || "",
+      buyerEmail: b?.buyerEmail || "",
+      buyerIdNo: "",
+      buyerIdType: "",
+      buyerBudgetCode: ""
     },
     sellerInfo: sellerInfo,
     payments: [
-      { paymentMethodName: "TM/CK", paymentAmount: tongTien }
+      { paymentMethodName: "", paymentAmount: tongTien }
     ],
     sellerInfo: sellerInfo, // ĐÃ ĐƯỢC TÁCH RIÊNG BIỆT
     payments: [
