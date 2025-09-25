@@ -10,7 +10,7 @@ export let bangKetQua = {};
 // Trong hoadon.js
 let maspDangChon = null;
 export function setMaspspDangChon(obj) {
-    maspDangChon = obj; // obj = {masp, size} 
+    maspDangChon = obj; // obj = {masp, size}
 }
 export function getMaspspDangChon() {
     return maspDangChon;
@@ -195,6 +195,21 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         }
     }
 
+    // Guard: đợi dữ liệu nền (dm hàng hóa, dm nhóm, danh mục size) sẵn sàng
+    if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
+        alert("Đang tải danh mục sản phẩm... vui lòng thử lại sau 1–2 giây.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
+        return false;
+    }
+    if (!window.danhMucNhom || typeof window.danhMucNhom.size !== "number") {
+        alert("Đang tải cấu hình nhóm hàng... vui lòng thử lại sau 1–2 giây.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
+        return false;
+    }
+    // (danhMucSize có thể rỗng, nhưng không ảnh hưởng các 'cửa chặn' 38–45)
+
     // Không tìm thấy → chỉ cảnh báo và đưa con trỏ về lại ô MÃ SP
     if (!spData) {
         alert("❌ Mã sản phẩm không hợp lệ. Vui lòng nhập lại.");
@@ -314,14 +329,18 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return true;
     }
 
-    // === ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
-    // === AN TOÀN: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC (KHÔNG THUỘC DIỆN QUẢN LÝ SIZE) ===
-    // -> KHÔNG tự thêm "0" nữa. Chỉ điều hướng con trỏ hợp lý.
-    {
+    // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
+    if (size45) {
+        document.getElementById("soluong").value = "1";
+        themVaoBang("0");
+    } else {
         const nextId = nhapNhanh ? "size" : "soluong";
         const nextInput = document.getElementById(nextId);
-        if (nextInput) { nextInput.focus(); nextInput.select(); }
+        nextInput.focus();
+        nextInput.select();  // ✅ luôn select, không cần if
+        if (nextId === "soluong") nextInput.select();
     }
+
     return true;
 }
 
