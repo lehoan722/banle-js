@@ -206,6 +206,34 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
     );
 
+    async function fetchBuyerFromDMKH(makhOrName) {
+      const key = String(makhOrName || "").trim();
+      if (!key || /^kh(á|a)ch\s*l(ẻ|e)$/i.test(key)) return null;
+
+      let { data: kh } = await supabase
+        .from('dmkhachhang')
+        .select('makh, tenkh, diachi, dienthoai, email, mst')
+        .eq('makh', key)
+        .maybeSingle();
+
+      if (!kh && key.length >= 2) {
+        const { data: list } = await supabase
+          .from('dmkhachhang')
+          .select('makh, tenkh, diachi, dienthoai, email, mst')
+          .ilike('tenkh', key);
+        kh = Array.isArray(list) && list.length === 1 ? list[0] : null;
+      }
+
+      if (!kh) return null;
+      return {
+        buyerName: kh.tenkh || 'Khách lẻ',
+        buyerAddressLine: kh.diachi || '',
+        buyerTaxCode: kh.mst || '',
+        buyerPhoneNumber: kh.dienthoai || '',
+        buyerEmail: kh.email || ''
+      };
+    }
+
     document.getElementById("loaiTongHopT").onchange = taiDanhSachHoaDon;
 
 
@@ -471,7 +499,11 @@
           continue;
         }
 
-        const json = taoDuLieuHoaDon(hoadon, chitiet);
+        let buyerOverride = null;
+        if (hoadon?.khachhang && !/^kh(á|a)ch\s*l(ẻ|e)$/i.test(hoadon.khachhang)) {
+          buyerOverride = await fetchBuyerFromDMKH(hoadon.khachhang);
+        }
+        const json = taoDuLieuHoaDon({ ...hoadon, __buyerOverride: buyerOverride }, chitiet);
 
         try {
           const response = await fetch('/api/guiHDDT', {
@@ -561,6 +593,7 @@
 
       // Chọn thông tin người bán
       const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
+      const b = hoadon.__buyerOverride || null;
 
       return {
         generalInvoiceInfo: {
@@ -578,11 +611,11 @@
         },
         buyerInfo: {
           sohd: hoadon.sohd,
-          buyerName: hoadon.khachhang || "Khách lẻ",
-          buyerTaxCode: "025074015704",
-          buyerAddressLine: hoadon.diadiem || "",
-          buyerPhoneNumber: "0916774001",
-          buyerEmail: "",
+          buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
+          buyerTaxCode: b?.buyerTaxCode || "",
+          buyerAddressLine: b?.buyerAddressLine || "",
+          buyerPhoneNumber: b?.buyerPhoneNumber || "",
+          buyerEmail: b?.buyerEmail || "",
           buyerIdNo: "",
           buyerIdType: "",
           buyerBudgetCode: ""
