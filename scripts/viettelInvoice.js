@@ -54,13 +54,13 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     buyerInfo: {
       sohd: hoadon.sohd,
       buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
-      buyerTaxCode: b?.buyerTaxCode || "",
-      buyerAddressLine: b?.buyerAddressLine || "",
-      buyerPhoneNumber: b?.buyerPhoneNumber || "",
-      buyerEmail: b?.buyerEmail || "",
-      buyerIdNo: "",
-      buyerIdType: "",
-      buyerBudgetCode: ""
+      buyerTaxCode: b?.buyerTaxCode || "09000000999",
+      buyerAddressLine: b?.buyerAddressLine || "dia chi",
+      buyerPhoneNumber: b?.buyerPhoneNumber || "0919111111",
+      buyerEmail: b?.buyerEmail || "thu@gmail.com",
+      buyerIdNo: "999888",
+      buyerIdType: "111222",
+      buyerBudgetCode: "333555"
     },
     sellerInfo: sellerInfo,
     payments: [
