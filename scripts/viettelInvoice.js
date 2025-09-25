@@ -33,6 +33,8 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
 
   // Chọn sellerInfo đúng theo cơ sở
   const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
+  // Nếu có override từ dmkhachhang thì dùng, không thì fallback "Khách lẻ"
+  const b = hoadon.__buyerOverride || null;
 
   return {
     generalInvoiceInfo: {
@@ -48,17 +50,22 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       paymentTypeName: "TM/CK",
       cusGetInvoiceRight: true
     },
+    // Nếu có override từ dmkhachhang thì dùng, không thì fallback "Khách lẻ"  
     buyerInfo: {
       sohd: hoadon.sohd,
-      buyerName: hoadon.khachhang || "Khách lẻ",
-      buyerTaxCode: "",
-      buyerAddressLine: hoadon.diadiem || "",
-      buyerPhoneNumber: "",
-      buyerEmail: "",
+      buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
+      buyerTaxCode: b?.buyerTaxCode || "",
+      buyerAddressLine: b?.buyerAddressLine || "",
+      buyerPhoneNumber: b?.buyerPhoneNumber || "",
+      buyerEmail: b?.buyerEmail || "",
       buyerIdNo: "",
       buyerIdType: "",
       buyerBudgetCode: ""
     },
+    sellerInfo: sellerInfo,
+    payments: [
+      { paymentMethodName: "TM/CK", paymentAmount: tongTien }
+    ],
     sellerInfo: sellerInfo, // ĐÃ ĐƯỢC TÁCH RIÊNG BIỆT
     payments: [
       { paymentMethodName: "TM/CK", paymentAmount: tongTien }
@@ -101,6 +108,43 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Lấy thông tin KH từ dmkhachhang theo makh hoặc tên (fallback)
+async function fetchBuyerFromDMKH(makhOrName) {
+  try {
+    const key = String(makhOrName || "").trim();
+    if (!key || /^kh(á|a)ch\s*l(ẻ|e)$/i.test(key)) return null;
+
+    // Ưu tiên coi #khachhang là MÃ KH
+    let { data: kh, error } = await supabase
+      .from('dmkhachhang')
+      .select('makh, tenkh, diachi, dienthoai, email, mst')
+      .eq('makh', key)
+      .maybeSingle();
+
+    // Nếu không có, thử khớp theo tên (nới lỏng)
+    if ((!kh || error) && key.length >= 2) {
+      const { data: list } = await supabase
+        .from('dmkhachhang')
+        .select('makh, tenkh, diachi, dienthoai, email, mst')
+        .ilike('tenkh', key);
+      kh = Array.isArray(list) && list.length === 1 ? list[0] : null;
+    }
+
+    if (!kh) return null;
+
+    return {
+      buyerName: kh.tenkh || 'Khách lẻ',
+      buyerAddressLine: kh.diachi || '',
+      buyerTaxCode: kh.mst || '',
+      buyerPhoneNumber: kh.dienthoai || '',
+      buyerEmail: kh.email || ''
+    };
+  } catch {
+    return null;
+  }
+}
+
+
 // Hàm gửi hóa đơn từ Web (có retry tối đa 3 lần, giữ popup gửi lại)
 export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
   let json; // payload gửi Viettel
@@ -114,6 +158,17 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
         .select('*')
         .eq('sohd', mahoadon)
         .single();
+
+      let buyerOverride = null;
+      if (hoadonData?.khachhang && !/^kh(á|a)ch\s*l(ẻ|e)$/i.test(hoadonData.khachhang)) {
+        buyerOverride = await fetchBuyerFromDMKH(hoadonData.khachhang);
+      }
+
+      // Build JSON (truyền override nếu có)
+      json = taoDuLieuHoaDon(
+        { ...hoadonData, __buyerOverride: buyerOverride },
+        chitietData
+      );
 
       const { data: chitietData, error: e2 } = await supabase
         .from('ct_hoadon_banleT')
@@ -148,7 +203,7 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
         // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
         const raw = await response.text();
         let result;
-        try { result = JSON.parse(raw); } catch (_) {}
+        try { result = JSON.parse(raw); } catch (_) { }
 
         if (response.ok) {
           await supabase
