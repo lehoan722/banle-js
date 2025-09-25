@@ -134,10 +134,10 @@ async function fetchBuyerFromDMKH(makhOrName) {
 
     return {
       buyerName: kh.tenkh || 'Khách lẻ',
-      buyerAddressLine: kh.diachi || '',
-      buyerTaxCode: kh.mst || '',
-      buyerPhoneNumber: kh.dienthoai || '',
-      buyerEmail: kh.email || ''
+      buyerAddressLine: kh.diachi || 'dia chi',
+      buyerTaxCode: kh.mst || 'tax code',
+      buyerPhoneNumber: kh.dienthoai || '0916747401',
+      buyerEmail: kh.email || 'khach@gmail.com'
     };
   } catch {
     return null;
