@@ -1288,8 +1288,7 @@
         })();
 
         // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
-        attachEnterNav(formOrder);
-
+        attachFormEnterNav();
         // Đăng nhập xong reload lại để token cập nhật
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
         renderLoginModule({
