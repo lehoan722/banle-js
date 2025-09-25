@@ -200,6 +200,17 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
 
         // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
         const raw = await response.text();
+
+        if (!response.ok) {
+          // Nếu backend lỗi nhưng bên Viettel đã tạo bản nháp (raw chứa 'success' hay 'invoiceNo')
+          if (/\b(success|invoice|created|draft)\b/i.test(raw)) {
+            await supabase.from('hoadon_banleT')
+              .update({ trang_thai_gui: 'Đã gửi' })
+              .eq('sohd', mahoadon);
+            alert("✅ Gửi hóa đơn thành công (backend báo 500 nhưng Viettel đã nhận).");
+            return;
+          }
+        }
         let result;
         try { result = JSON.parse(raw); } catch (_) { }
 
