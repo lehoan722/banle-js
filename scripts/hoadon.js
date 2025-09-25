@@ -10,7 +10,7 @@ export let bangKetQua = {};
 // Trong hoadon.js
 let maspDangChon = null;
 export function setMaspspDangChon(obj) {
-    maspDangChon = obj; // obj = {masp, size}
+    maspDangChon = obj; // obj = {masp, size} 
 }
 export function getMaspspDangChon() {
     return maspDangChon;
@@ -180,6 +180,20 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     maspVal = layMaspGoc(maspVal);
 
     let spData = window.sanPhamData?.[maspVal];
+    // Guard: đợi dữ liệu nền (dm hàng hóa, dm nhóm, danh mục size) sẵn sàng
+    if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
+        alert("Đang tải danh mục sản phẩm... vui lòng thử lại sau 1–2 giây.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
+        return false;
+    }
+    if (!window.danhMucNhom || typeof window.danhMucNhom.size !== "number") {
+        alert("Đang tải cấu hình nhóm hàng... vui lòng thử lại sau 1–2 giây.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
+        return false;
+    }
+    // (danhMucSize có thể rỗng, nhưng không ảnh hưởng các 'cửa chặn' 38–45)
 
     // Nếu không có trong cache, gọi Supabase để tìm chính xác
     if (!spData) {
@@ -314,18 +328,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return true;
     }
 
-    // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
-    if (size45) {
-        document.getElementById("soluong").value = "1";
-        themVaoBang("0");
-    } else {
+    // === AN TOÀN: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC (KHÔNG THUỘC DIỆN QUẢN LÝ SIZE) ===
+    // -> KHÔNG tự thêm "0" nữa. Chỉ điều hướng con trỏ hợp lý.
+    {
         const nextId = nhapNhanh ? "size" : "soluong";
         const nextInput = document.getElementById(nextId);
-        nextInput.focus();
-        nextInput.select();  // ✅ luôn select, không cần if
-        if (nextId === "soluong") nextInput.select();
+        if (nextInput) { nextInput.focus(); nextInput.select(); }
     }
-
     return true;
 }
 
@@ -613,8 +622,8 @@ export function suaDongDangChon() {
     if (slEl) {
         slEl.focus();
         slEl.select();  // ✅ bôi đen để gõ luôn
-       
-    }    
+
+    }
 
     // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
     item.sizes.splice(idx, 1);
