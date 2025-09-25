@@ -31,11 +31,12 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     }
   };
 
-    // Chọn seller theo cơ sở
+  // Chọn seller theo cơ sở
   const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
   // Ưu tiên override từ dmkhachhang
   const b = hoadon.__buyerOverride || null;
-
+  const _buyerName = (b?.buyerName || hoadon.khachhang || "Khách lẻ").trim();
+  const _hasTax = !!(b?.buyerTaxCode && String(b.buyerTaxCode).trim());
   return {
     generalInvoiceInfo: {
       sohd: hoadon.sohd,
@@ -50,17 +51,22 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       paymentTypeName: "TM/CK",
       cusGetInvoiceRight: true
     },
+
     buyerInfo: {
       sohd: hoadon.sohd,
-      buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
-      buyerTaxCode: b?.buyerTaxCode || "",
-      buyerAddressLine: b?.buyerAddressLine || "",
-      buyerPhoneNumber: b?.buyerPhoneNumber || "",
-      buyerEmail: b?.buyerEmail || "",
+      // Dùng cả hai khóa tên để tương thích template Viettel
+      buyerName: _buyerName,                 // cho trường hợp cá nhân/không MST
+      buyerLegalName: _buyerName,            // cho trường hợp tổ chức/có MST
+      buyerTaxCode: (b?.buyerTaxCode || "").trim(),
+      buyerAddressLine: (b?.buyerAddressLine || "").trim(),
+      buyerPhoneNumber: (b?.buyerPhoneNumber || "").trim(),
+      buyerEmail: (b?.buyerEmail || "").trim(),
+      // (tùy chọn) map thêm nếu cần
       buyerIdNo: "",
       buyerIdType: "",
       buyerBudgetCode: ""
     },
+
     sellerInfo: sellerInfo,
     payments: [
       { paymentMethodName: "TM/CK", paymentAmount: Number(hoadon.thanhtoan) || 0 }
