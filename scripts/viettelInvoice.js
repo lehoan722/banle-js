@@ -31,16 +31,16 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     }
   };
 
-  // Chọn sellerInfo đúng theo cơ sở
+    // Chọn seller theo cơ sở
   const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
-  // Nếu có override từ dmkhachhang thì dùng, không thì fallback "Khách lẻ"
+  // Ưu tiên override từ dmkhachhang
   const b = hoadon.__buyerOverride || null;
 
   return {
     generalInvoiceInfo: {
       sohd: hoadon.sohd,
       invoiceType: "02GTTT",
-      templateCode: isCs2 ? "2/001" : "2/001", // nếu 2 mẫu template khác nhau thì sửa ở đây
+      templateCode: isCs2 ? "2/001" : "2/001",
       invoiceSeries: isCs2 ? "C25MAT" : "C25MLH",
       invoiceIssuedDate: new Date().getTime(),
       currencyCode: "VND",
@@ -50,10 +50,9 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       paymentTypeName: "TM/CK",
       cusGetInvoiceRight: true
     },
-    // Nếu có override từ dmkhachhang thì dùng, không thì fallback "Khách lẻ"  
     buyerInfo: {
       sohd: hoadon.sohd,
-      buyerName: b?.buyerName || hoadon.khachhang || "",
+      buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
       buyerTaxCode: b?.buyerTaxCode || "",
       buyerAddressLine: b?.buyerAddressLine || "",
       buyerPhoneNumber: b?.buyerPhoneNumber || "",
@@ -64,17 +63,13 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     },
     sellerInfo: sellerInfo,
     payments: [
-      { paymentMethodName: "", paymentAmount: tongTien }
-    ],
-    sellerInfo: sellerInfo, // ĐÃ ĐƯỢC TÁCH RIÊNG BIỆT
-    payments: [
-      { paymentMethodName: "TM/CK", paymentAmount: tongTien }
+      { paymentMethodName: "TM/CK", paymentAmount: Number(hoadon.thanhtoan) || 0 }
     ],
     itemInfo: chitiet.map((item, index) => ({
       lineNumber: index + 1,
       itemCode: item.masp,
       itemName: item.tensp,
-      unitName: item.dvt,
+      unitName: item.dvt || "",
       quantity: Number(item.soluong),
       unitPrice: Number(item.gia) - Number(item.km || 0),
       itemTotalAmountWithoutTax: Number(item.thanhtien),
@@ -84,10 +79,10 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       itemDiscount: Number(item.km) || 0
     })),
     summarizeInfo: {
-      totalAmountWithoutTax: tongTien,
+      totalAmountWithoutTax: chitiet.reduce((s, i) => s + Number(i.thanhtien || 0), 0),
       totalTaxAmount: 0,
-      totalAmountWithTax: tongTien,
-      totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn",
+      totalAmountWithTax: chitiet.reduce((s, i) => s + Number(i.thanhtien || 0), 0),
+      totalAmountWithTaxInWords: "", // (nếu cần mình thêm hàm đọc tiền bằng chữ sau)
       discountAmount: Number(hoadon.chietkhau) || 0
     },
     taxBreakdowns: [],
@@ -96,6 +91,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     deliveryInfo: {},
     meterReading: []
   };
+
 }
 
 
@@ -134,10 +130,10 @@ async function fetchBuyerFromDMKH(makhOrName) {
 
     return {
       buyerName: kh.tenkh || 'Khách lẻ',
-      buyerAddressLine: kh.diachi || 'dia chi',
-      buyerTaxCode: kh.mst || 'tax code',
-      buyerPhoneNumber: kh.dienthoai || '0916747401',
-      buyerEmail: kh.email || 'khach@gmail.com'
+      buyerAddressLine: kh.diachi || '',
+      buyerTaxCode: kh.mst || '',
+      buyerPhoneNumber: kh.dienthoai || '',
+      buyerEmail: kh.email || ''
     };
   } catch {
     return null;
@@ -159,17 +155,6 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
         .eq('sohd', mahoadon)
         .single();
 
-      let buyerOverride = null;
-      if (hoadonData?.khachhang && !/^kh(á|a)ch\s*l(ẻ|e)$/i.test(hoadonData.khachhang)) {
-        buyerOverride = await fetchBuyerFromDMKH(hoadonData.khachhang);
-      }
-
-      // Build JSON (truyền override nếu có)
-      json = taoDuLieuHoaDon(
-        { ...hoadonData, __buyerOverride: buyerOverride },
-        chitietData
-      );
-
       const { data: chitietData, error: e2 } = await supabase
         .from('ct_hoadon_banleT')
         .select('*')
@@ -179,7 +164,14 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
         alert("❌ Không tìm thấy dữ liệu hóa đơn.\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
         return;
       }
-      json = taoDuLieuHoaDon(hoadonData, chitietData);
+
+      // Tra thông tin KH từ dmkhachhang (nếu không phải “Khách lẻ”)
+      let buyerOverride = null;
+      if (hoadonData?.khachhang && !/^kh(á|a)ch\s*l(ẻ|e)$/i.test(hoadonData.khachhang)) {
+        buyerOverride = await fetchBuyerFromDMKH(hoadonData.khachhang);
+      }
+
+      json = taoDuLieuHoaDon({ ...hoadonData, __buyerOverride: buyerOverride }, chitietData);
     }
 
     // 2) Gửi với retry
