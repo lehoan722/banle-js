@@ -723,11 +723,19 @@
 
   <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
   <div style="grid-column:2; grid-row:3;
-              display:flex; justify-content:flex-start; align-items:flex-start;
+              display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
               height:100%; margin:0; padding:0;">
-    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-  </div>
+  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
 
+  ${(() => {
+      const s = (t.size ?? '').toString().trim();
+      return s && s !== '0'
+        ? `<div class="size-under-qr" style="font-size:8pt; line-height:1; margin-top:0.6mm;">
+             ${s}
+           </div>`
+        : ``;
+    })()}
+</div>
 
   </div>
 </div>
