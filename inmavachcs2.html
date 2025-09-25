@@ -273,6 +273,15 @@
                             <datalist id="nhaccList"></datalist>
                         </div>
                     </div>
+
+                    <div class="form-row">
+                        <label for="nhomhangInput">Nhóm hàng <span class="required">*</span></label>
+                        <div class="form-input">
+                            <input name="nhomhang" id="nhomhangInput" list="nhomhangList" autocomplete="off" />
+                            <datalist id="nhomhangList"></datalist>
+                        </div>
+                    </div>
+
                     <div class="form-row">
                         <label for="chungloaiInput">Chủng loại <span class="required">*</span></label>
                         <div class="form-input">
@@ -321,9 +330,9 @@
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
-                    <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
+                    <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly
                         style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
-                    <input type="password" id="login-password" value="123123"
+                    <input type="password" id="login-password" value="369369"
                         style="width:110px;margin-right:2px; display:none ;">
                     <button id="login-submit" display:none class="btn">Đăng nhập</button>
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
@@ -714,11 +723,19 @@
 
   <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
   <div style="grid-column:2; grid-row:3;
-              display:flex; justify-content:flex-start; align-items:flex-start;
+              display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
               height:100%; margin:0; padding:0;">
-    <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
-  </div>
+  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
 
+  ${(() => {
+      const s = (t.size ?? '').toString().trim();
+      return s && s !== '0'
+        ? `<div class="size-under-qr" style="font-size:10pt; line-height:1; margin-top:0.8mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
+             ${s}
+           </div>`
+        : ``;
+    })()}
+</div>
 
   </div>
 </div>
@@ -800,7 +817,7 @@
         }
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
+        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -844,6 +861,21 @@
                     .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
                     .join('');
             } catch (e) { console.error(e); }
+
+            // 4) NHÓM HÀNG: dmnhomhang → value = MÃ, label = "MÃ - TÊN"
+            try {
+                const { data: nh, error: errNh } = await supabase
+                    .from('dmnhomhang')
+                    .select('manhom, tennhom')
+                    .order('manhom', { ascending: true });
+                if (errNh) console.error('Load Nhóm hàng error:', errNh);
+                document.getElementById('nhomhangList').innerHTML = (nh || [])
+                    .filter(r => r.manhom)
+                    .map(r => `<option value="${(r.manhom || '').toUpperCase()}"
+                 label="${(r.manhom || '').toUpperCase()} - ${r.tennhom || ''}"></option>`)
+                    .join('');
+            } catch (e) { console.error(e); }
+
         }
 
 
@@ -875,6 +907,7 @@
                 document.getElementById('mausacInput').value = data.mausac || '';
                 document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                 document.getElementById('nhaccInput').value = data.nhacc || '';
+                document.getElementById('nhomhangInput').value = data.nhomhang || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
@@ -922,6 +955,7 @@
                 //{ id: 'gianhapInput', label: 'Giá nhập' },
                 { id: 'gialeInput', label: 'Giá lẻ' },
                 { id: 'nhaccInput', label: 'Nhà cung cấp' },   // Thêm bắt buộc
+                { id: 'nhomhangInput', label: 'Nhóm hàng' },
                 { id: 'chungloaiInput', label: 'Chủng loại' }  // Thêm bắt buộc
             ];
             bbFields.forEach(f => {
@@ -961,6 +995,7 @@
                 mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // ← HOA
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
                 nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA
+                nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                 chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // ← HOA
                 quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
@@ -1168,6 +1203,7 @@
             'gialeInput',
             'mausacInput',
             'khuyenmaiInput',
+            'nhomhangInput',   // ⬅ thêm vào đây
             'nhaccInput',
             'chungloaiInput'
         ];
