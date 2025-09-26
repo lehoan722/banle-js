@@ -23,12 +23,23 @@ function inferBranches() {
 function requireManagedAtBranch(masp, branch) {
     const upper = (s) => String(s || "").toUpperCase();
     const sp = window.sanPhamData?.[upper(masp)];
-    if (!sp || !window.danhMucNhom) return false;
+    if (!sp) return false;
+
+    // [MỚI] Kiểm tra chủng loại quản lý size (vd: GD = giày dép)
+    const chungloai = upper(sp.chungloai || "");
+    if (chungloai === "GD") {
+        return true; // Giày dép: luôn quản lý size ở mọi cơ sở
+    }
+
+    // Kiểm tra nhóm hàng có quanlysize không
+    if (!window.danhMucNhom) return false;
     const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
     if (!nhom || !nhom.quanlysize) return false;
+
     const dia = upper(nhom.diadiem);
     return dia === "ALL" || dia === upper(branch);
 }
+
 
 async function handleSpecialSoHoaDon(sohd) {
     // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
