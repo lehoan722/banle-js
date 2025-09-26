@@ -144,7 +144,7 @@ export function playWaitSizeBeep() {
    // Ping trái
   scheduleSequence([
     
-    { startMs: 350,  f: 800, type: "square", durMs: 140, vol: 0.6, pan: 0.5 } // Ping phải
+    { startMs: 750,  f: 500, type: "square", durMs: 140, vol: 0.7, pan: 0.5 } // Ping phải
   ]);
   // Lớp nền rất nhỏ cho mỗi nhát để dày tiếng (triangle detune)
   
