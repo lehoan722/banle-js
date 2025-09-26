@@ -39,6 +39,48 @@ function recalcThanhtienFromForm() {
     if (ttEl) ttEl.value = tt.toLocaleString();
 }
 
+/***** CCN HELPERS: xác định bối cảnh chuyển chi nhánh *****/
+function isCCNMode() {
+    const p = (location.pathname || "").toLowerCase();
+    const loai = (window.loaihd || "").toLowerCase();
+    // Trang CCN thường chứa "ccn"; hoặc loaihd “xcncs1/xcncs2” (phiếu xuất chuyển chi nhánh)
+    return p.includes("ccn") || loai === "xcncs1" || loai === "xcncs2";
+}
+
+// SUY RA CHIỀU CHUYỂN (nguồn → đích)
+function inferBranches() {
+    const loai = (window.loaihd || "").toLowerCase();
+    if (loai === "xcncs1") return { src: "CS1", dst: "CS2" }; // xuất CS1 → nhập CS2
+    if (loai === "xcncs2") return { src: "CS2", dst: "CS1" }; // xuất CS2 → nhập CS1
+
+    // fallback: lấy từ diadiem hiện tại (nếu có)
+    const here = (localStorage.getItem("diadiem") || "").toUpperCase();
+    if (here === "CS1") return { src: "CS1", dst: "CS2" };
+    if (here === "CS2") return { src: "CS2", dst: "CS1" };
+    return { src: "CS1", dst: "CS2" }; // an toàn
+}
+
+// NHÓM này có bắt quản-size ở một CƠ SỞ cụ thể không?
+function requireManagedAtBranch(masp, branch) {
+    const upper = (s) => String(s || "").toUpperCase();
+    const sp = window.sanPhamData?.[upper(masp)];
+    if (!sp || !window.danhMucNhom) return false;
+
+    const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
+    if (!nhom || !nhom.quanlysize) return false;
+
+    const dia = upper(nhom.diadiem); // 'ALL' | 'CS1' | 'CS2'
+    return dia === "ALL" || dia === upper(branch);
+}
+
+// Trong NGỮ CẢNH CCN: chỉ cần một trong hai đầu quản-size là phải nhập size
+function requireManagedInTransfer(masp) {
+    const branches = inferBranches();
+    return (
+        requireManagedAtBranch(masp, branches.src) ||
+        requireManagedAtBranch(masp, branches.dst)
+    );
+}
 
 export async function chuyenFocus(e) {
     if (e.key !== "Enter") return;
@@ -209,6 +251,33 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return false;
     }
     // (danhMucSize có thể rỗng, nhưng không ảnh hưởng các 'cửa chặn' 38–45)
+
+    /***** NHÁNH SỚM CHO CCN: nếu ít nhất một đầu quản-size → bắt nhập size *****/
+    if (isCCNMode()) {
+        try {
+            if (requireManagedInTransfer(maspVal)) {
+                // → BẮT NHẬP SIZE THỰC
+                const sizeEl = document.getElementById("size");
+                if (!sizeEl.value.trim()) {
+                    sizeEl.focus();
+                    sizeEl.select?.();
+                    window.soundWaitSize?.();
+                    return true; // dừng tại đây, chờ người dùng nhập size
+                }
+                // Có size rồi → set SL=1 nếu trống và thêm luôn với size thực
+                const slEl = document.getElementById("soluong");
+                if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+
+                // Giữ nguyên workflow cũ: sau khi thêm → focus về #masp / #size tùy thói quen của bạn
+                themVaoBang(sizeEl.value.trim(), { afterAdd: "keepMaspFocusSize" });
+                return true;
+            }
+        } catch (e) {
+            console.warn("CCN size-check fallback:", e);
+            // Nếu có sự cố bất ngờ, cứ để flow cũ tiếp tục (không chặn nhập nhanh)
+        }
+    }
+    // (không phải CCN, hoặc CCN nhưng không cần size) → rơi về logic cũ phía dưới
 
     // Không tìm thấy → chỉ cảnh báo và đưa con trỏ về lại ô MÃ SP
     if (!spData) {
