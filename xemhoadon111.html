@@ -140,7 +140,7 @@
   </select>
 
   <label>
-    Xem tổng hợp: 
+    Xem tổng hợp:
     <select id="loaiTongHop" style="min-width:120px">
       <option value="chitiet">Chi tiết từng hóa đơn</option>
       <option value="ngay">Tổng hợp theo ngày</option>
@@ -537,35 +537,60 @@
     }
 
     async function xoaHoaDonDaChon() {
-      const checkboxes = document.querySelectorAll(".chonHD:checked");
-      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
-      if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+      const checkboxes = document.querySelectorAll(".chon-xoa:checked");
+      if (checkboxes.length === 0) {
+        alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
+        return;
+      }
 
-      // Gọi xác thực và chỉ xóa nếu xác thực thành công
-      kiemTraNhanVienTruocKhiXoa(async function () {
-        if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
-        // het doan  xác thực và chỉ xóa nếu xác thực thành công
+      let dsXoa = [];
+      let coCCN = false;
 
-        // Xóa khỏi ct_hoadon_banle trước
-        const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
-        if (errCT) {
-          alert("Không thể xóa chi tiết hóa đơn.");
-          return;
+      for (const cb of checkboxes) {
+        const sohd = cb.getAttribute("data-sohd");
+        if (!sohd) continue;
+
+        const prefix = sohd.split("_")[0] || "";
+
+        if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
+          coCCN = true;
+          // Tìm số hóa đơn đối ứng
+          const so = sohd.split("_")[1];
+          let doiUng = "";
+          if (prefix === "xcncs1") doiUng = `ncncs2_${so}`;
+          if (prefix === "xcncs2") doiUng = `ncncs1_${so}`;
+          if (prefix === "ncncs1") doiUng = `xcncs2_${so}`;
+          if (prefix === "ncncs2") doiUng = `xcncs1_${so}`;
+
+          dsXoa.push(sohd);
+          if (doiUng) dsXoa.push(doiUng);
+        } else {
+          dsXoa.push(sohd);
         }
+      }
 
-        // Sau đó xóa khỏi hoadon_banle
-        const { error: errHD } = await supabase.from('hoadon_banle').delete().in('sohd', sohdList);
-        if (errHD) {
-          alert("Không thể xóa hóa đơn.");
-          return;
-        }
+      dsXoa = [...new Set(dsXoa)]; // bỏ trùng
 
-        alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
-        taiDanhSachHoaDon();
-      });
+      if (coCCN) {
+        const xacNhan = confirm(
+          "⚠️ Hóa đơn chuyển chi nhánh phải xóa kèm cả hóa đơn đối ứng.\n" +
+          "Bạn có đồng ý xóa toàn bộ các cặp hóa đơn này không?"
+        );
+        if (!xacNhan) return;
+      } else {
+        const xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
+        if (!xacNhan) return;
+      }
+
+      // Thực hiện xóa
+      for (const sohd of dsXoa) {
+        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+      }
+
+      alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
+      taiLaiDuLieu(); // refresh lại bảng
     }
-
-
 
     window.onload = function () {
       // Set ngày mặc định là hôm nay
