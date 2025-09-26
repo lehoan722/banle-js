@@ -11,33 +11,72 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 let choPhepSua = false;
 
 /***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
-function inferBranches() {
-    const loai = (window.loaihd || "").toLowerCase();
-    if (loai === "xcncs1") return { src: "CS1", dst: "CS2" };
-    if (loai === "xcncs2") return { src: "CS2", dst: "CS1" };
-    const here = (localStorage.getItem("diadiem") || "").toUpperCase();
-    if (here === "CS1") return { src: "CS1", dst: "CS2" };
-    if (here === "CS2") return { src: "CS2", dst: "CS1" };
-    return { src: "CS1", dst: "CS2" };
+/* ========================= CCN CONTEXT (ĐÓNG BĂNG CHIỀU CHUYỂN) ========================= */
+/* [MỚI] Đóng băng bối cảnh CCN theo chính tên trang, không dùng localStorage ở trang CCN */
+function buildCCNCtxFromPathname() {
+    const p = (window.location.pathname || '').toLowerCase();
+    // Mặc định
+    let ctx = {
+        isCCN: false,
+        src: 'CS1',
+        dst: 'CS2',
+        loaihdGoc: '',     // xcncs1 | xcncs2
+        loaihdDoiUng: '',  // ncncs2 | ncncs1
+        page: p
+    };
+
+    if (p.includes('ccn1v2')) {
+        ctx.isCCN = true;
+        ctx.src = 'CS1';
+        ctx.dst = 'CS2';
+        ctx.loaihdGoc = 'xcncs1';
+        ctx.loaihdDoiUng = 'ncncs2';
+        return ctx;
+    }
+    if (p.includes('ccn2v1')) {
+        ctx.isCCN = true;
+        ctx.src = 'CS2';
+        ctx.dst = 'CS1';
+        ctx.loaihdGoc = 'xcncs2';
+        ctx.loaihdDoiUng = 'ncncs1';
+        return ctx;
+    }
+    return ctx; // không phải trang CCN
 }
+
+// [MỚI] Tạo context 1 lần, giữ cố định cho toàn phiên của tab
+const CCN_CTX = buildCCNCtxFromPathname();
+
+/* [MỚI] inferBranches() nay trả về từ CCN_CTX nếu là trang CCN,
+   còn trang khác (bán lẻ/nhập) giữ nguyên suy luận cũ theo prefix số chứng từ */
+function inferBranches() {
+    if (CCN_CTX.isCCN) {
+        return { src: CCN_CTX.src, dst: CCN_CTX.dst };
+    }
+    // Non-CCN: đoán theo sohd/prefix (giữ logic cũ)
+    const sohd = document.getElementById('sohd')?.value || '';
+    const prefix = sohd.split('_')[0] || '';
+    if (prefix.includes('cs2')) return { src: 'CS2', dst: 'CS1' };
+    return { src: 'CS1', dst: 'CS2' };
+}
+
+/* [MỚI] Nhận diện "quản size" theo CHỦNG LOẠI (GD = giày dép) & theo NHÓM (quanlysize + diadiem) */
 function requireManagedAtBranch(masp, branch) {
-    const upper = (s) => String(s || "").toUpperCase();
+    const upper = (s) => String(s || '').toUpperCase();
     const sp = window.sanPhamData?.[upper(masp)];
     if (!sp) return false;
 
-    // [MỚI] Kiểm tra chủng loại quản lý size (vd: GD = giày dép)
-    const chungloai = upper(sp.chungloai || "");
-    if (chungloai === "GD") {
-        return true; // Giày dép: luôn quản lý size ở mọi cơ sở
-    }
+    // Chủng loại luôn quản size: GD (giày dép)
+    const chungloai = upper(sp.chungloai || '');
+    if (chungloai === 'GD') return true;
 
-    // Kiểm tra nhóm hàng có quanlysize không
+    // Theo nhóm & địa điểm
     if (!window.danhMucNhom) return false;
     const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
     if (!nhom || !nhom.quanlysize) return false;
 
-    const dia = upper(nhom.diadiem);
-    return dia === "ALL" || dia === upper(branch);
+    const dia = upper(nhom.diadiem); // ALL | CS1 | CS2
+    return dia === 'ALL' || dia === upper(branch);
 }
 
 
