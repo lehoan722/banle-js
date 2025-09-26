@@ -580,14 +580,16 @@ function inHoaDon(hoadon, chitiet) {
 }
 
 export async function luuHoaDonccn1v2() {
+    // Xác định loại chứng từ thực tế theo URL
     const pathname = window.location.pathname;
     let loaihd_thucte = "";
     if (pathname.includes("ccn1v2")) loaihd_thucte = "xcncs1";
     else if (pathname.includes("ccn2v1")) loaihd_thucte = "xcncs2";
 
-    capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
-    // BỔ SUNG CHẶN LƯU Ở ĐÂY:
+    // Đồng bộ lại tổng trước khi lấy dữ liệu
+    capNhatThongTinTong(getBangKetQua());
 
+    // Chặn còn mã đang gõ dở
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
         alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
@@ -599,27 +601,26 @@ export async function luuHoaDonccn1v2() {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌1v2/2v1 Bạn chưa nhập tên nhân viên bán hàng.");
+    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-    // Lấy cơ sở từ localStorage, không lấy từ input
-    //const diadiem = localStorage.getItem("diadiem");
+    // Suy ra cơ sở từ prefix số chứng từ
     const prefix = sohd.split("_")[0] || "";
     let diadiem = "cs1";
     if (prefix.includes("cs2")) diadiem = "cs2";
     else if (prefix.includes("cs1")) diadiem = "cs1";
-    if (!diadiem || (diadiem !== 'cs1' && diadiem !== 'cs2')) {
-        alert("❌ Không xác định được địa điểm chi nhánh (cs1 hoặc cs2). Hãy kiểm tra lại!");
+    if (!diadiem || (diadiem !== "cs1" && diadiem !== "cs2")) {
+        alert("❌ Không xác định được địa điểm chi nhánh (cs1/cs2).");
         return;
     }
 
-    // ✅ Kiểm tra logic chi nhánh khớp với loại chứng từ
-    const loaihd = sohd.split("_")[0];  // xcncs1 hoặc xcncs2
-
+    // ✅ Kiểm tra chứng từ đúng cơ sở đang lập
+    const loaihd = sohd.split("_")[0]; // xcncs1 | xcncs2
     if ((loaihd === "xcncs1" && diadiem !== "cs1") || (loaihd === "xcncs2" && diadiem !== "cs2")) {
-        alert("🚫 Bạn đang tạo hóa đơn không đúng với chi nhánh đang đăng nhập.\nVui lòng kiểm tra lại!");
+        alert("🚫 Bạn đang tạo hóa đơn không đúng với chi nhánh đang đăng nhập. Vui lòng kiểm tra lại!");
         return;
     }
 
+    // Kiểm tra đã tồn tại
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
         .select("sohd")
@@ -635,27 +636,27 @@ export async function luuHoaDonccn1v2() {
     }
 
     if (tonTai && choPhepSua) {
+        // Xoá chứng từ gốc
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
 
-        // ✅ THÊM MỚI: cũng xóa hóa đơn đối ứng cũ (nếu có)
-        const base = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
-        const parts = base.split('_');
+        // [MỚI] Xoá cả đối ứng cũ (nếu có)
+        const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
+        const parts = base.split("_");
         const so = parts[parts.length - 1];
-        const loaiGoc = parts.slice(0, -1).join('_'); // xcncs1 hoặc xcncs2
-        const loaiDoiUng = (loaiGoc === 'xcncs1') ? 'ncncs2' : 'ncncs1';
+        const loaiGoc = parts.slice(0, -1).join("_"); // xcncs1|xcncs2
+        const loaiDoiUng = (loaiGoc === "xcncs1") ? "ncncs2" : "ncncs1";
         const sohdDoiUng = `${loaiDoiUng}_${so}`;
 
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng);
     }
 
-
     const createdAt = new Date().toISOString();
-
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
 
+    // Header hoá đơn xuất (gốc)
     const hoadon = {
         sohd,
         ngay: document.getElementById("ngay").value,
@@ -672,188 +673,177 @@ export async function luuHoaDonccn1v2() {
         created_at: createdAt,
         loai: "",
         dvt: "",
-        loaihd: loaihd_thucte,   // <-- CHỈNH ĐOẠN NÀY!
+        loaihd: loaihd_thucte, // xcncs1 | xcncs2
         nhacc: ""
     };
 
-
-
+    // =========================
+    // [MỚI] XỬ LÝ SIZE NGAY KHI BUILD CHI TIẾT
+    // - Kho nào quản size → ghi size thực
+    // - Kho nào không quản → ghi size = 0
+    // =========================
+    const { src, dst } = inferBranches(); // cần helpers đã thêm ở trên file
     const chitiet = [];
+
     Object.values(bangKetQua).forEach(item => {
         item.sizes.forEach((sz, i) => {
             const sl = item.soluongs[i];
+            const masp = item.masp;
+            const sizeInput = String(sz || "").trim() || "0";
+
+            const managedAtSrc = requireManagedAtBranch(masp, src); // CS nguồn
+            const size_effective_src = managedAtSrc ? sizeInput : "0";
+
             chitiet.push({
                 sohd,
-                masp: item.masp,
+                masp,
                 tensp: item.tensp,
-                size: sz,
+                size: size_effective_src,           // ⬅ size ghi tại SRC
                 soluong: sl,
                 gia: item.gia,
                 km: item.km,
                 thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || '',
-                diadiem: diadiem,
+                dvt: item.dvt || "",
+                diadiem: diadiem,                   // SRC
                 created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
-
         });
     });
 
+    // Lưu hoá đơn xuất (gốc)
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
-    const { src, dst } = inferBranches();
+    if (errHD || errCT) {
+        alert("❌ Lỗi khi lưu hóa đơn (gốc).");
+        console.error(errHD || errCT);
+        return;
+    }
 
-    /* Ví dụ mỗi dòng hiện có:
-       const masp = item.masp;
-       const sl   = Number(item.soluong);
-       const sizeInput = String(item.size || item.size_input || "").trim() || "0";
-    */
+    // =========================
+    // [MỚI] PHÁT SINH HOÁ ĐƠN ĐỐI ỨNG + CHI TIẾT ĐỐI ỨNG VỚI SIZE THEO DST
+    // =========================
+    // Lấy loại gốc + số
+    const sohdBase = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
+    const parts = sohdBase.split("_");
+    const loaiGoc = parts.slice(0, -1).join("_"); // xcncs1|xcncs2
+    const soStr = parts[parts.length - 1];
+    const soMoi = parseInt(soStr, 10);
 
-    const managedAtSrc = requireManagedAtBranch(masp, src);
-    const managedAtDst = requireManagedAtBranch(masp, dst);
+    // Tính thông tin đối ứng
+    const diadiemGoc = hoadon.diadiem;                          // cs1|cs2
+    const diadiemDoiUng = diadiemGoc === "cs1" ? "cs2" : "cs1";
+    const loaiDoiUng = diadiemDoiUng === "cs1" ? "ncncs1" : "ncncs2";
+    const sohdDoiUng = `${loaiDoiUng}_${soStr}`;
 
-    const size_effective_src = managedAtSrc ? sizeInput : "0";
-    const size_effective_dst = managedAtDst ? sizeInput : "0";
+    // Kiểm tra đã có đối ứng chưa
+    const { data: doiUngDaCo, error: errCheckDU } = await supabase
+        .from("hoadon_banle")
+        .select("sohd")
+        .eq("sohd", sohdDoiUng)
+        .maybeSingle();
 
-    // --- Ghi CHI TIẾT XUẤT (tại src) ---
-    ct_xuat.push({
-        ...baseXuatFields,
-        masp,
-        soluong: sl,
-        size: size_effective_src,
-        // (khuyến nghị) note để audit nếu có chuyển đổi
-        note: managedAtSrc ? null : (sizeInput !== "0" ? `COLLAPSE_AT_SRC_FROM:${sizeInput}` : null)
-    });
+    if (errCheckDU) {
+        // Rollback hoá đơn gốc
+        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        alert("❗Lỗi kiểm tra hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
+        return;
+    }
 
-    // --- Ghi CHI TIẾT NHẬP (đối ứng tại dst) ---
-    ct_nhap.push({
-        ...baseNhapFields,
-        masp,
-        soluong: sl,
-        size: size_effective_dst,
-        note: managedAtDst ? null : (sizeInput !== "0" ? `COLLAPSE_AT_DST_FROM:${sizeInput}` : null)
-    });
+    if (!doiUngDaCo) {
+        // Header đối ứng
+        const hoadonDoiUng = {
+            ...hoadon,
+            sohd: sohdDoiUng,
+            loaihd: loaiDoiUng,
+            diadiem: diadiemDoiUng,
+            created_at: new Date().toISOString()
+        };
 
-    if (!errHD && !errCT) {
-        // === LẤY ĐÚNG LOẠI GỐC DÙ sohd CÓ HẬU TỐ _IN ===
-        // === Parse lại số & loại gốc (bỏ _IN nếu có) ===
-        const sohdBase = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
-        const parts = sohdBase.split('_');
-        const loai = parts.slice(0, -1).join('_');  // xcncs1 | xcncs2
-        const soStr = parts[parts.length - 1];       // "00031" ...
-        const soMoi = parseInt(soStr, 10);           // số để cập nhật sochungtu
+        // Chi tiết đối ứng (ghi theo DST)
+        const chitietDoiUng = [];
+        Object.values(bangKetQua).forEach(item => {
+            item.sizes.forEach((sz, i) => {
+                const sl = item.soluongs[i];
+                const masp = item.masp;
+                const sizeInput = String(sz || "").trim() || "0";
 
+                const managedAtDst = requireManagedAtBranch(masp, dst); // CS đích
+                const size_effective_dst = managedAtDst ? sizeInput : "0";
 
+                chitietDoiUng.push({
+                    sohd: sohdDoiUng,
+                    masp,
+                    tensp: item.tensp,
+                    size: size_effective_dst,          // ⬅ size ghi tại DST
+                    soluong: sl,
+                    gia: item.gia,
+                    km: item.km,
+                    thanhtien: (item.gia - item.km) * sl,
+                    dvt: item.dvt || "",
+                    diadiem: diadiemDoiUng,            // DST
+                    created_at: new Date().toISOString(),
+                    ngay: document.getElementById("ngay").value
+                });
+            });
+        });
 
-        // === Tính thông tin đối ứng (không dùng biến trước khi khai báo) ===
-        let doiUngOK = true;
-        const diadiemGoc = hoadon.diadiem;
-        const diadiemDoiUng = diadiemGoc === 'cs1' ? 'cs2' : 'cs1';
-        const loaiDoiUng = diadiemDoiUng === 'cs1' ? 'ncncs1' : 'ncncs2';
-        const sohdDoiUng = `${loaiDoiUng}_${soStr}`; // dùng luôn soStr của hoá đơn gốc
-
-
-        // Kiểm tra đã có đối ứng chưa
-        const { data: doiUngDaCo, error: errCheckDU } = await supabase
+        // Lưu đối ứng (upsert để an toàn khi người dùng bấm lại)
+        const { error: errDU1 } = await supabase
             .from("hoadon_banle")
-            .select("sohd")
-            .eq("sohd", sohdDoiUng)
-            .maybeSingle();
+            .upsert([hoadonDoiUng], { onConflict: "sohd" });
 
-        if (errCheckDU) {
-            doiUngOK = false;
-            alert("❗Lỗi kiểm tra hóa đơn đối ứng. Dừng lưu cặp chứng từ.");
-        }
+        const { error: errDU2 } = await supabase
+            .from("ct_hoadon_banle")
+            .upsert(chitietDoiUng);
 
-        if (doiUngOK && !doiUngDaCo) {
-            // Tạo payload đối ứng
-            const hoadonDoiUng = {
-                ...hoadon,
-                sohd: sohdDoiUng,
-                loaihd: loaiDoiUng,
-                diadiem: diadiemDoiUng,
-                created_at: new Date().toISOString(),
-            };
-
-            const chitietDoiUng = chitiet.map(ct => ({
-                ...ct,
-                sohd: sohdDoiUng,
-                diadiem: diadiemDoiUng,
-                created_at: new Date().toISOString(),
-            }));
-
-            // Tạo đối ứng: dùng upsert để tránh lỗi trùng
-            const { error: errDU1 } = await supabase
-                .from("hoadon_banle")
-                .upsert([hoadonDoiUng], { onConflict: 'sohd' });
-
-            const { error: errDU2 } = await supabase
-                .from("ct_hoadon_banle")
-                .upsert(chitietDoiUng); // KHÔNG truyền onConflict nếu không có unique phù hợp
-
-            if (errDU1 || errDU2) {
-                doiUngOK = false;
-                alert("❗Không tạo được hóa đơn đối ứng. Dừng lưu cặp chứng từ.");
-            }
-        }
-
-        if (!doiUngOK) {
-            // ROLLBACK hóa đơn xuất vừa lưu
+        if (errDU1 || errDU2) {
+            // Rollback hoá đơn gốc
             await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
             await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-            return; // Không hiện alert "Đã lưu hóa đơn CCN !"
+            alert("❗Không tạo được hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
+            return;
         }
-
-        // === Tới đây là THÀNH CÔNG đủ cặp ===
-        // Cập nhật sochungtu cho LOẠI GỐC
-        const { data: currSoChungTu } = await supabase
-            .from("sochungtu")
-            .select("so_hientai")
-            .eq("loai", loai)
-            .single();
-
-        if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
-            await supabase
-                .from("sochungtu")
-                .update({ so_hientai: soMoi })
-                .eq("loai", loai);
-        }
-
-        // Cập nhật sochungtu cho LOẠI ĐỐI ỨNG
-        const { data: currSoChungTuDoiUng } = await supabase
-            .from("sochungtu")
-            .select("so_hientai")
-            .eq("loai", loaiDoiUng)
-            .single();
-
-        if (!currSoChungTuDoiUng || soMoi > currSoChungTuDoiUng.so_hientai) {
-            await supabase
-                .from("sochungtu")
-                .update({ so_hientai: soMoi })
-                .eq("loai", loaiDoiUng);
-        }
-
-        // Hoàn tất
-        alert("✅ Đã lưu hóa đơn CCN (đã tạo cả đối ứng)!");
-        inHoaDon(hoadon, chitiet);
-        await lamMoiSauKhiLuu();
-        choPhepSua = false;
-        return;
-        // === KẾT THÚC ĐOẠN PHÁT SINH CHỨNG TỪ ĐỐI ỨNG (có kiểm soát + rollback) ===    
-
-        alert("✅ Đã lưu hóa đơn CCN !");
-        inHoaDon(hoadon, chitiet);
-        await lamMoiSauKhiLuu();
-        choPhepSua = false;
     }
 
-    else {
-        alert("❌ Lỗi khi lưu hóa đơn");
-        console.error(errHD || errCT);
+    // =========================
+    // [MỚI] CẬP NHẬT SỐ CHỨNG TỪ CHO CẢ LOẠI GỐC VÀ LOẠI ĐỐI ỨNG
+    // =========================
+    const { data: currSoChungTu } = await supabase
+        .from("sochungtu")
+        .select("so_hientai")
+        .eq("loai", loaiGoc)
+        .single();
+
+    if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
+        await supabase
+            .from("sochungtu")
+            .update({ so_hientai: soMoi })
+            .eq("loai", loaiGoc);
     }
+
+    const { data: currSoChungTuDoiUng } = await supabase
+        .from("sochungtu")
+        .select("so_hientai")
+        .eq("loai", loaiDoiUng)
+        .single();
+
+    if (!currSoChungTuDoiUng || soMoi > currSoChungTuDoiUng.so_hientai) {
+        await supabase
+            .from("sochungtu")
+            .update({ so_hientai: soMoi })
+            .eq("loai", loaiDoiUng);
+    }
+
+    // Hoàn tất
+    alert("✅ Đã lưu hóa đơn CCN (đã tạo cả đối ứng)!");
+    inHoaDon(hoadon, chitiet);
+    await lamMoiSauKhiLuu();
+    choPhepSua = false;
 }
+
 
 window.luuHoaDonccn1v2 = luuHoaDonccn1v2; // expose đúng hàm lưu chuyển chi nhánh
 window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI; // nếu muốn giữ hàm nhập qua API cho các trang khác
