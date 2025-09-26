@@ -10,6 +10,26 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 
 let choPhepSua = false;
 
+/***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
+function inferBranches() {
+    const loai = (window.loaihd || "").toLowerCase();
+    if (loai === "xcncs1") return { src: "CS1", dst: "CS2" };
+    if (loai === "xcncs2") return { src: "CS2", dst: "CS1" };
+    const here = (localStorage.getItem("diadiem") || "").toUpperCase();
+    if (here === "CS1") return { src: "CS1", dst: "CS2" };
+    if (here === "CS2") return { src: "CS2", dst: "CS1" };
+    return { src: "CS1", dst: "CS2" };
+}
+function requireManagedAtBranch(masp, branch) {
+    const upper = (s) => String(s || "").toUpperCase();
+    const sp = window.sanPhamData?.[upper(masp)];
+    if (!sp || !window.danhMucNhom) return false;
+    const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
+    if (!nhom || !nhom.quanlysize) return false;
+    const dia = upper(nhom.diadiem);
+    return dia === "ALL" || dia === upper(branch);
+}
+
 async function handleSpecialSoHoaDon(sohd) {
     // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
     const prefixFull = (sohd.split("_")[0] || "").toLowerCase();
@@ -683,6 +703,39 @@ export async function luuHoaDonccn1v2() {
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
+    const { src, dst } = inferBranches();
+
+    /* Ví dụ mỗi dòng hiện có:
+       const masp = item.masp;
+       const sl   = Number(item.soluong);
+       const sizeInput = String(item.size || item.size_input || "").trim() || "0";
+    */
+
+    const managedAtSrc = requireManagedAtBranch(masp, src);
+    const managedAtDst = requireManagedAtBranch(masp, dst);
+
+    const size_effective_src = managedAtSrc ? sizeInput : "0";
+    const size_effective_dst = managedAtDst ? sizeInput : "0";
+
+    // --- Ghi CHI TIẾT XUẤT (tại src) ---
+    ct_xuat.push({
+        ...baseXuatFields,
+        masp,
+        soluong: sl,
+        size: size_effective_src,
+        // (khuyến nghị) note để audit nếu có chuyển đổi
+        note: managedAtSrc ? null : (sizeInput !== "0" ? `COLLAPSE_AT_SRC_FROM:${sizeInput}` : null)
+    });
+
+    // --- Ghi CHI TIẾT NHẬP (đối ứng tại dst) ---
+    ct_nhap.push({
+        ...baseNhapFields,
+        masp,
+        soluong: sl,
+        size: size_effective_dst,
+        note: managedAtDst ? null : (sizeInput !== "0" ? `COLLAPSE_AT_DST_FROM:${sizeInput}` : null)
+    });
+
     if (!errHD && !errCT) {
         // === LẤY ĐÚNG LOẠI GỐC DÙ sohd CÓ HẬU TỐ _IN ===
         // === Parse lại số & loại gốc (bỏ _IN nếu có) ===
@@ -691,6 +744,8 @@ export async function luuHoaDonccn1v2() {
         const loai = parts.slice(0, -1).join('_');  // xcncs1 | xcncs2
         const soStr = parts[parts.length - 1];       // "00031" ...
         const soMoi = parseInt(soStr, 10);           // số để cập nhật sochungtu
+
+
 
         // === Tính thông tin đối ứng (không dùng biến trước khi khai báo) ===
         let doiUngOK = true;
