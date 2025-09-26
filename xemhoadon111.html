@@ -544,6 +544,7 @@
       }
 
       let dsXoa = [];
+      let doiUngList = [];
       let coCCN = false;
 
       for (const cb of checkboxes) {
@@ -554,7 +555,6 @@
 
         if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
           coCCN = true;
-          // Tìm số hóa đơn đối ứng
           const so = sohd.split("_")[1];
           let doiUng = "";
           if (prefix === "xcncs1") doiUng = `ncncs2_${so}`;
@@ -563,24 +563,29 @@
           if (prefix === "ncncs2") doiUng = `xcncs1_${so}`;
 
           dsXoa.push(sohd);
-          if (doiUng) dsXoa.push(doiUng);
+          if (doiUng) {
+            dsXoa.push(doiUng);
+            doiUngList.push(`${sohd} ↔ ${doiUng}`);
+          }
         } else {
           dsXoa.push(sohd);
         }
       }
 
-      dsXoa = [...new Set(dsXoa)]; // bỏ trùng
+      dsXoa = [...new Set(dsXoa)]; // loại trùng
 
+      let xacNhan = false;
       if (coCCN) {
-        const xacNhan = confirm(
+        xacNhan = confirm(
           "⚠️ Hóa đơn chuyển chi nhánh phải xóa kèm cả hóa đơn đối ứng.\n" +
-          "Bạn có đồng ý xóa toàn bộ các cặp hóa đơn này không?"
+          "Các cặp sẽ bị xóa:\n" +
+          doiUngList.join("\n") +
+          "\n\nBạn có đồng ý xóa toàn bộ không?"
         );
-        if (!xacNhan) return;
       } else {
-        const xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
-        if (!xacNhan) return;
+        xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
       }
+      if (!xacNhan) return;
 
       // Thực hiện xóa
       for (const sohd of dsXoa) {
@@ -589,7 +594,7 @@
       }
 
       alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
-      taiLaiDuLieu(); // refresh lại bảng
+      await taiDanhSachHoaDon(); // refresh lại bảng
     }
 
     window.onload = function () {
