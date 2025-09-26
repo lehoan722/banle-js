@@ -164,7 +164,7 @@ export function playAlertBeep() {
   // Ping trái
   scheduleSequence([
     { startMs: 0,   f: 520, type: "square", durMs: 120, vol: 0.22, pan: -0.5 },
-    { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
+    { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 }, // Ping phải
     { startMs: 0,   f: 520, type: "square", durMs: 120, vol: 0.22, pan: -0.5 },
     { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
   ]);
