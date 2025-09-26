@@ -134,34 +134,31 @@ export function playSuccessBeep() {
 
   // Arp lên nhanh (hai nốt 60ms & 120ms)
   scheduleSequence([
-    { startMs: 60, f: f * 1.25, type: "triangle", durMs: 90, vol: 0.2, pan: -0.2 },
-    { startMs: 120, f: f * 1.5, type: "triangle", durMs: 120, vol: 0.22, pan: 0.25 }
+    { startMs: 60, f: f * 1.25, type: "triangle", durMs: 90, vol: 0.5, pan: -0.2 },
+    { startMs: 120, f: f * 1.5, type: "triangle", durMs: 120, vol: 0.6, pan: 0.25 }
   ]);
 }
 
 // 2) “Wait size” — trầm, dài hơn, có sweep nhẹ từ cao xuống thấp + vibrato dịu, stereo nhẹ
 export function playWaitSizeBeep() {
-   // Hợp âm major: f, 1.25f (≈maj3), 1.5f (quint)
-  const f = 800;
-  // Layer chord tức thời (tr/trg/phải) + arpeggio 2 nốt đi lên rất nhanh
-  spawnTone({ f, type: "triangle", vol: 0.22, dur: 0.12, pan: -0.35 });
-  spawnTone({ f: f * 1.25, type: "sine", vol: 0.18, dur: 0.12, pan: 0.0 });
-  spawnTone({ f: f * 1.5, type: "sine", vol: 0.18, dur: 0.12, pan: 0.35 });
-
-  // Arp lên nhanh (hai nốt 60ms & 120ms)
+   // Ping trái
   scheduleSequence([
-    { startMs: 80, f: f * 1.25, type: "triangle", durMs: 90, vol: 0.2, pan: -0.2 },
-    { startMs: 180, f: f * 1.5, type: "triangle", durMs: 120, vol: 0.22, pan: 0.25 }
+   
+    { startMs: 250,  f: 800, type: "square", durMs: 140, vol: 0.6, pan: 0.5 } // Ping phải
   ]);
-}  
+  // Lớp nền rất nhỏ cho mỗi nhát để dày tiếng (triangle detune)
+  scheduleSequence([
+    { startMs: 0,   f: 520*0.97, type: "triangle", durMs: 120, vol: 0.08, pan: -0.2 },
+    { startMs: 80,  f: 720*1.03, type: "triangle", durMs: 140, vol: 0.08, pan: 0.2 }
+  ]);
+}
 
 // 3) “Alert” — hai nhát nhanh kiểu “bi-bip”, hơi gắt hơn (square), stereo ping-pong
 export function playAlertBeep() {
   // Ping trái
   scheduleSequence([
-    { startMs: 80,   f: 520, type: "square", durMs: 120, vol: 0.22, pan: -0.5 },
-    { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 }, // Ping phải
-    { startMs: 180,  f: 920, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
+    { startMs: 0,   f: 520, type: "square", durMs: 120, vol: 0.5, pan: -0.5 },
+    { startMs: 180,  f: 720, type: "square", durMs: 140, vol: 0.6, pan: 0.5 } // Ping phải
   ]);
   // Lớp nền rất nhỏ cho mỗi nhát để dày tiếng (triangle detune)
   scheduleSequence([
