@@ -143,14 +143,11 @@ export function playSuccessBeep() {
 export function playWaitSizeBeep() {
    // Ping trái
   scheduleSequence([
-    { startMs: 0,   f: 520, type: "square", durMs: 120, vol: 0.5, pan: -0.5 },   
+    { startMs: 50,   f: 520, type: "square", durMs: 120, vol: 0.5, pan: -0.5 },   
     { startMs: 250,  f: 800, type: "square", durMs: 140, vol: 0.6, pan: 0.5 } // Ping phải
   ]);
   // Lớp nền rất nhỏ cho mỗi nhát để dày tiếng (triangle detune)
-  scheduleSequence([
-    { startMs: 0,   f: 520*0.97, type: "triangle", durMs: 120, vol: 0.08, pan: -0.2 },
-    { startMs: 180,  f: 720*1.03, type: "triangle", durMs: 140, vol: 0.08, pan: 0.2 }
-  ]);
+  
 }
 
 // 3) “Alert” — hai nhát nhanh kiểu “bi-bip”, hơi gắt hơn (square), stereo ping-pong
