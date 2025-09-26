@@ -363,8 +363,7 @@ window.taiBaoCaoXNT = async function () {
     } catch (err) {
         console.error(err);
         loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
-    }
-    toggleHeader();
+    }    
 };
 
 // ===================== EXCEL EXPORT (song song) =====================
@@ -924,5 +923,6 @@ window.moTrangChuyenKho = async () => {
 
     window.open('baocaoxnt17_chuyenkho.html', '_blank');
 };
+
 
 
