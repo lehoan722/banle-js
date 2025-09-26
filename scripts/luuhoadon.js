@@ -590,17 +590,18 @@ function inHoaDon(hoadon, chitiet) {
     };
 }
 
+/* ========================= LƯU CHUYỂN CHI NHÁNH – ĐÃ TÍCH HỢP CCN_CTX ========================= */
 export async function luuHoaDonccn1v2() {
-    // Xác định loại chứng từ thực tế theo URL
-    const pathname = window.location.pathname;
-    let loaihd_thucte = "";
-    if (pathname.includes("ccn1v2")) loaihd_thucte = "xcncs1";
-    else if (pathname.includes("ccn2v1")) loaihd_thucte = "xcncs2";
+    // [MỚI] Lấy bối cảnh cố định từ CCN_CTX (không dùng localStorage)
+    if (!CCN_CTX.isCCN) {
+        alert("❗Trang hiện tại không phải trang CCN. Vui lòng mở đúng trang ccn1v2 hoặc ccn2v1.");
+        return;
+    }
+    const loaihd_thucte = CCN_CTX.loaihdGoc; // xcncs1 | xcncs2
+    const diadiemSRC = CCN_CTX.src.toLowerCase(); // 'cs1' | 'cs2'
 
-    // Đồng bộ lại tổng trước khi lấy dữ liệu
     capNhatThongTinTong(getBangKetQua());
 
-    // Chặn còn mã đang gõ dở
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
         alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
@@ -612,26 +613,15 @@ export async function luuHoaDonccn1v2() {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+    if (!tennv) return alert("❌1v2/2v1 Bạn chưa nhập tên nhân viên bán hàng.");
 
-    // Suy ra cơ sở từ prefix số chứng từ
+    // [MỚI] Ràng prefix phải trùng loaihd_thucte (tránh người dùng đổi tay)
     const prefix = sohd.split("_")[0] || "";
-    let diadiem = "cs1";
-    if (prefix.includes("cs2")) diadiem = "cs2";
-    else if (prefix.includes("cs1")) diadiem = "cs1";
-    if (!diadiem || (diadiem !== "cs1" && diadiem !== "cs2")) {
-        alert("❌ Không xác định được địa điểm chi nhánh (cs1/cs2).");
+    if (prefix !== loaihd_thucte) {
+        alert(`🚫 Số chứng từ không khớp trang. Trang này yêu cầu prefix "${loaihd_thucte}_*".`);
         return;
     }
 
-    // ✅ Kiểm tra chứng từ đúng cơ sở đang lập
-    const loaihd = sohd.split("_")[0]; // xcncs1 | xcncs2
-    if ((loaihd === "xcncs1" && diadiem !== "cs1") || (loaihd === "xcncs2" && diadiem !== "cs2")) {
-        alert("🚫 Bạn đang tạo hóa đơn không đúng với chi nhánh đang đăng nhập. Vui lòng kiểm tra lại!");
-        return;
-    }
-
-    // Kiểm tra đã tồn tại
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
         .select("sohd")
@@ -647,16 +637,15 @@ export async function luuHoaDonccn1v2() {
     }
 
     if (tonTai && choPhepSua) {
-        // Xoá chứng từ gốc
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
 
-        // [MỚI] Xoá cả đối ứng cũ (nếu có)
-        const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-        const parts = base.split("_");
+        // Xoá đối ứng cũ (nếu có)
+        const base = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+        const parts = base.split('_');
         const so = parts[parts.length - 1];
-        const loaiGoc = parts.slice(0, -1).join("_"); // xcncs1|xcncs2
-        const loaiDoiUng = (loaiGoc === "xcncs1") ? "ncncs2" : "ncncs1";
+        const loaiGoc = parts.slice(0, -1).join('_'); // xcncs1|xcncs2
+        const loaiDoiUng = (loaiGoc === 'xcncs1') ? 'ncncs2' : 'ncncs1';
         const sohdDoiUng = `${loaiDoiUng}_${so}`;
 
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng);
@@ -667,13 +656,12 @@ export async function luuHoaDonccn1v2() {
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
 
-    // Header hoá đơn xuất (gốc)
     const hoadon = {
         sohd,
         ngay: document.getElementById("ngay").value,
         manv: document.getElementById("manv").value,
         tennv: document.getElementById("tennv").value,
-        diadiem: diadiem,
+        diadiem: diadiemSRC,                  // [MỚI] cố định theo CCN_CTX.src
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongkm: getIntValue("tongkm"),
@@ -684,16 +672,12 @@ export async function luuHoaDonccn1v2() {
         created_at: createdAt,
         loai: "",
         dvt: "",
-        loaihd: loaihd_thucte, // xcncs1 | xcncs2
+        loaihd: loaihd_thucte,                // [MỚI] xcncs1 | xcncs2 theo trang
         nhacc: ""
     };
 
-    // =========================
-    // [MỚI] XỬ LÝ SIZE NGAY KHI BUILD CHI TIẾT
-    // - Kho nào quản size → ghi size thực
-    // - Kho nào không quản → ghi size = 0
-    // =========================
-    const { src, dst } = inferBranches(); // cần helpers đã thêm ở trên file
+    // ===== Build chi tiết XUẤT (SRC) với size hiệu lực theo SRC =====
+    const { src, dst } = inferBranches();   // [MỚI] sẽ trả về CCN_CTX.src/dst
     const chitiet = [];
 
     Object.values(bangKetQua).forEach(item => {
@@ -702,27 +686,26 @@ export async function luuHoaDonccn1v2() {
             const masp = item.masp;
             const sizeInput = String(sz || "").trim() || "0";
 
-            const managedAtSrc = requireManagedAtBranch(masp, src); // CS nguồn
+            const managedAtSrc = requireManagedAtBranch(masp, src);
             const size_effective_src = managedAtSrc ? sizeInput : "0";
 
             chitiet.push({
                 sohd,
                 masp,
                 tensp: item.tensp,
-                size: size_effective_src,           // ⬅ size ghi tại SRC
+                size: size_effective_src,           // size ghi tại SRC
                 soluong: sl,
                 gia: item.gia,
                 km: item.km,
                 thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || "",
-                diadiem: diadiem,                   // SRC
+                dvt: item.dvt || '',
+                diadiem: diadiemSRC,                // SRC
                 created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
         });
     });
 
-    // Lưu hoá đơn xuất (gốc)
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
@@ -732,23 +715,17 @@ export async function luuHoaDonccn1v2() {
         return;
     }
 
-    // =========================
-    // [MỚI] PHÁT SINH HOÁ ĐƠN ĐỐI ỨNG + CHI TIẾT ĐỐI ỨNG VỚI SIZE THEO DST
-    // =========================
-    // Lấy loại gốc + số
-    const sohdBase = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-    const parts = sohdBase.split("_");
-    const loaiGoc = parts.slice(0, -1).join("_"); // xcncs1|xcncs2
+    // ===== Tính đối ứng (DST) & build chi tiết với size hiệu lực theo DST =====
+    const sohdBase = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+    const parts = sohdBase.split('_');
+    const loaiGoc = parts.slice(0, -1).join('_'); // xcncs1|xcncs2
     const soStr = parts[parts.length - 1];
     const soMoi = parseInt(soStr, 10);
 
-    // Tính thông tin đối ứng
-    const diadiemGoc = hoadon.diadiem;                          // cs1|cs2
-    const diadiemDoiUng = diadiemGoc === "cs1" ? "cs2" : "cs1";
-    const loaiDoiUng = diadiemDoiUng === "cs1" ? "ncncs1" : "ncncs2";
+    const diadiemDoiUng = CCN_CTX.dst.toLowerCase();           // [MỚI] cố định theo CCN_CTX.dst
+    const loaiDoiUng = CCN_CTX.loaihdDoiUng;                   // [MỚI] ncncs2|ncncs1
     const sohdDoiUng = `${loaiDoiUng}_${soStr}`;
 
-    // Kiểm tra đã có đối ứng chưa
     const { data: doiUngDaCo, error: errCheckDU } = await supabase
         .from("hoadon_banle")
         .select("sohd")
@@ -756,7 +733,6 @@ export async function luuHoaDonccn1v2() {
         .maybeSingle();
 
     if (errCheckDU) {
-        // Rollback hoá đơn gốc
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
         alert("❗Lỗi kiểm tra hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
@@ -764,7 +740,6 @@ export async function luuHoaDonccn1v2() {
     }
 
     if (!doiUngDaCo) {
-        // Header đối ứng
         const hoadonDoiUng = {
             ...hoadon,
             sohd: sohdDoiUng,
@@ -773,7 +748,6 @@ export async function luuHoaDonccn1v2() {
             created_at: new Date().toISOString()
         };
 
-        // Chi tiết đối ứng (ghi theo DST)
         const chitietDoiUng = [];
         Object.values(bangKetQua).forEach(item => {
             item.sizes.forEach((sz, i) => {
@@ -781,19 +755,19 @@ export async function luuHoaDonccn1v2() {
                 const masp = item.masp;
                 const sizeInput = String(sz || "").trim() || "0";
 
-                const managedAtDst = requireManagedAtBranch(masp, dst); // CS đích
+                const managedAtDst = requireManagedAtBranch(masp, dst);
                 const size_effective_dst = managedAtDst ? sizeInput : "0";
 
                 chitietDoiUng.push({
                     sohd: sohdDoiUng,
                     masp,
                     tensp: item.tensp,
-                    size: size_effective_dst,          // ⬅ size ghi tại DST
+                    size: size_effective_dst,          // size ghi tại DST
                     soluong: sl,
                     gia: item.gia,
                     km: item.km,
                     thanhtien: (item.gia - item.km) * sl,
-                    dvt: item.dvt || "",
+                    dvt: item.dvt || '',
                     diadiem: diadiemDoiUng,            // DST
                     created_at: new Date().toISOString(),
                     ngay: document.getElementById("ngay").value
@@ -801,17 +775,15 @@ export async function luuHoaDonccn1v2() {
             });
         });
 
-        // Lưu đối ứng (upsert để an toàn khi người dùng bấm lại)
         const { error: errDU1 } = await supabase
             .from("hoadon_banle")
-            .upsert([hoadonDoiUng], { onConflict: "sohd" });
+            .upsert([hoadonDoiUng], { onConflict: 'sohd' });
 
         const { error: errDU2 } = await supabase
             .from("ct_hoadon_banle")
             .upsert(chitietDoiUng);
 
         if (errDU1 || errDU2) {
-            // Rollback hoá đơn gốc
             await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
             await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
             alert("❗Không tạo được hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
@@ -819,9 +791,7 @@ export async function luuHoaDonccn1v2() {
         }
     }
 
-    // =========================
-    // [MỚI] CẬP NHẬT SỐ CHỨNG TỪ CHO CẢ LOẠI GỐC VÀ LOẠI ĐỐI ỨNG
-    // =========================
+    // ===== Cập nhật sochungtu cho cả loại gốc và đối ứng =====
     const { data: currSoChungTu } = await supabase
         .from("sochungtu")
         .select("so_hientai")
@@ -848,13 +818,13 @@ export async function luuHoaDonccn1v2() {
             .eq("loai", loaiDoiUng);
     }
 
-    // Hoàn tất
     alert("✅ Đã lưu hóa đơn CCN (đã tạo cả đối ứng)!");
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
 }
 
+/* ===== expose ===== */
 
 window.luuHoaDonccn1v2 = luuHoaDonccn1v2; // expose đúng hàm lưu chuyển chi nhánh
 window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI; // nếu muốn giữ hàm nhập qua API cho các trang khác
