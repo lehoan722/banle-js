@@ -142,9 +142,9 @@ export function playSuccessBeep() {
 // 2) “Wait size” — trầm, dài hơn, có sweep nhẹ từ cao xuống thấp + vibrato dịu, stereo nhẹ
 export function playWaitSizeBeep() {
    // Ping trái
-  scheduleSequence([
-    
-    { startMs: 750,  f: 500, type: "square", durMs: 140, vol: 0.7, pan: 0.5 } // Ping phải
+  scheduleSequence([    
+    { startMs: 60, f: f * 1.25, type: "triangle", durMs: 90, vol: 0.5, pan: -0.2 },
+    { startMs: 750,  f: 500, type: "square", durMs: 140, vol: 0.8, pan: 0.5 } // Ping phải
   ]);
   // Lớp nền rất nhỏ cho mỗi nhát để dày tiếng (triangle detune)
   
