@@ -604,7 +604,11 @@ export async function xacNhanSuaHoaDon() {
     document.getElementById("popupXacThucSua").style.display = "none";
     alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
 
-    luuHoaDonQuaAPI();
+    if (CCN_CTX.isCCN) {
+        luuHoaDonccn1v2();
+    } else {
+        luuHoaDonQuaAPI();
+    }
 }
 
 
