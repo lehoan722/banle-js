@@ -160,7 +160,7 @@ export function playAlertBeep() {
   // Ping trái
   scheduleSequence([
     { startMs: 80,   f: 520, type: "square", durMs: 120, vol: 0.22, pan: -0.5 },
-    { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
+    { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 }, // Ping phải
     { startMs: 180,  f: 920, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
   ]);
   // Lớp nền rất nhỏ cho mỗi nhát để dày tiếng (triangle detune)
