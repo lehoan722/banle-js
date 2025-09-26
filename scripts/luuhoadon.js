@@ -676,6 +676,7 @@ export async function luuHoaDonccn1v2() {
     }
 
     if (tonTai && choPhepSua) {
+        // ===== XÓA CŨ =====
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
 
@@ -689,7 +690,20 @@ export async function luuHoaDonccn1v2() {
 
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng);
+
+        // ===== CHUẨN BỊ GHI CHÚ MỚI =====
+        let oldNote = document.getElementById("ghichu")?.value || "";
+        const manv = document.getElementById("manv").value.trim();
+        const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const oldEdits = (oldNote.match(/Sửa lần/g) || []).length;
+        const newEditCount = oldEdits + 1;
+        const newNoteEntry = `Sửa lần ${newEditCount} – ${timestamp} – ${manv}`;
+        const finalNote = oldNote ? (oldNote + "\n" + newNoteEntry) : newNoteEntry;
+
+        // Ghi chú mới này sẽ được dùng khi insert lại hoá đơn và đối ứng
+        document.getElementById("ghichu").value = finalNote;
     }
+
 
     const createdAt = new Date().toISOString();
     const getIntValue = (id) =>
