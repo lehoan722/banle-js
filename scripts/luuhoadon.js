@@ -635,18 +635,19 @@ function inHoaDon(hoadon, chitiet) {
 
 /* ========================= LƯU CHUYỂN CHI NHÁNH – ĐÃ TÍCH HỢP CCN_CTX ========================= */
 export async function luuHoaDonccn1v2() {
+    // [MỚI] Lấy bối cảnh cố định từ CCN_CTX (không dùng localStorage)
     if (!CCN_CTX.isCCN) {
         alert("❗Trang hiện tại không phải trang CCN. Vui lòng mở đúng trang ccn1v2 hoặc ccn2v1.");
         return;
     }
-    const loaihd_thucte = CCN_CTX.loaihdGoc;
-    const diadiemSRC = CCN_CTX.src.toLowerCase();
+    const loaihd_thucte = CCN_CTX.loaihdGoc; // xcncs1 | xcncs2
+    const diadiemSRC = CCN_CTX.src.toLowerCase(); // 'cs1' | 'cs2'
 
     capNhatThongTinTong(getBangKetQua());
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-        alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng!");
+        alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
         document.getElementById("masp").focus();
         return;
     }
@@ -655,8 +656,9 @@ export async function luuHoaDonccn1v2() {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên.");
+    if (!tennv) return alert("❌1v2/2v1 Bạn chưa nhập tên nhân viên bán hàng.");
 
+    // [MỚI] Ràng prefix phải trùng loaihd_thucte (tránh người dùng đổi tay)
     const prefix = sohd.split("_")[0] || "";
     if (prefix !== loaihd_thucte) {
         alert(`🚫 Số chứng từ không khớp trang. Trang này yêu cầu prefix "${loaihd_thucte}_*".`);
@@ -678,29 +680,31 @@ export async function luuHoaDonccn1v2() {
     }
 
     if (tonTai && choPhepSua) {
-        // Xoá phiếu gốc
+        // ===== XÓA CŨ =====
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
 
-        // Xoá phiếu đối ứng
-        const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-        const parts = base.split("_");
+        // Xoá đối ứng cũ (nếu có)
+        const base = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+        const parts = base.split('_');
         const so = parts[parts.length - 1];
-        const loaiGoc = parts.slice(0, -1).join("_");
-        const loaiDoiUng = (loaiGoc === "xcncs1") ? "ncncs2" : "ncncs1";
+        const loaiGoc = parts.slice(0, -1).join('_'); // xcncs1|xcncs2
+        const loaiDoiUng = (loaiGoc === 'xcncs1') ? 'ncncs2' : 'ncncs1';
         const sohdDoiUng = `${loaiDoiUng}_${so}`;
 
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng);
 
-        // Nối ghi chú sửa
+        // ===== CHUẨN BỊ GHI CHÚ MỚI =====
         let oldNote = document.getElementById("ghichu")?.value || "";
         const manv = document.getElementById("manv").value.trim();
         const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
         const oldEdits = (oldNote.match(/Sửa lần/g) || []).length;
         const newEditCount = oldEdits + 1;
         const newNoteEntry = `Sửa lần ${newEditCount} – ${timestamp} – ${manv}`;
-        const finalNote = oldNote ? oldNote + "\n" + newNoteEntry : newNoteEntry;
+        const finalNote = oldNote ? (oldNote + "\n" + newNoteEntry) : newNoteEntry;
+
+        // Ghi chú mới này sẽ được dùng khi insert lại hoá đơn và đối ứng
         document.getElementById("ghichu").value = finalNote;
     }
 
@@ -713,7 +717,7 @@ export async function luuHoaDonccn1v2() {
         ngay: document.getElementById("ngay").value,
         manv: document.getElementById("manv").value,
         tennv: document.getElementById("tennv").value,
-        diadiem: diadiemSRC,
+        diadiem: diadiemSRC,                  // [MỚI] cố định theo CCN_CTX.src
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongkm: getIntValue("tongkm"),
@@ -724,18 +728,20 @@ export async function luuHoaDonccn1v2() {
         created_at: createdAt,
         loai: "",
         dvt: "",
-        loaihd: loaihd_thucte,
+        loaihd: loaihd_thucte,                // [MỚI] xcncs1 | xcncs2 theo trang
         nhacc: ""
     };
 
-    // Chi tiết xuất (SRC)
-    const { src, dst } = inferBranches();
+    // ===== Build chi tiết XUẤT (SRC) với size hiệu lực theo SRC =====
+    const { src, dst } = inferBranches();   // [MỚI] sẽ trả về CCN_CTX.src/dst
     const chitiet = [];
+
     Object.values(bangKetQua).forEach(item => {
         item.sizes.forEach((sz, i) => {
             const sl = item.soluongs[i];
             const masp = item.masp;
             const sizeInput = String(sz || "").trim() || "0";
+
             const managedAtSrc = requireManagedAtBranch(masp, src);
             const size_effective_src = managedAtSrc ? sizeInput : "0";
 
@@ -743,25 +749,21 @@ export async function luuHoaDonccn1v2() {
                 sohd,
                 masp,
                 tensp: item.tensp,
-                size: size_effective_src,
+                size: size_effective_src,           // size ghi tại SRC
                 soluong: sl,
                 gia: item.gia,
                 km: item.km,
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
-                diadiem: diadiemSRC,
+                diadiem: diadiemSRC,                // SRC
                 created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
         });
     });
 
-    const { error: errHD } = await supabase
-        .from("hoadon_banle")
-        .upsert([hoadon], { onConflict: "sohd" });
-    const { error: errCT } = await supabase
-        .from("ct_hoadon_banle")
-        .upsert(chitiet);
+    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
+    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
     if (errHD || errCT) {
         alert("❌ Lỗi khi lưu hóa đơn (gốc).");
@@ -769,89 +771,114 @@ export async function luuHoaDonccn1v2() {
         return;
     }
 
-    // Đối ứng (DST)
-    const sohdBase = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-    const parts = sohdBase.split("_");
-    const loaiGoc = parts.slice(0, -1).join("_");
+    // ===== Tính đối ứng (DST) & build chi tiết với size hiệu lực theo DST =====
+    const sohdBase = sohd.endsWith('_IN') ? sohd.slice(0, -3) : sohd;
+    const parts = sohdBase.split('_');
+    const loaiGoc = parts.slice(0, -1).join('_'); // xcncs1|xcncs2
     const soStr = parts[parts.length - 1];
     const soMoi = parseInt(soStr, 10);
 
-    const diadiemDoiUng = CCN_CTX.dst.toLowerCase();
-    const loaiDoiUng = CCN_CTX.loaihdDoiUng;
+    const diadiemDoiUng = CCN_CTX.dst.toLowerCase();           // [MỚI] cố định theo CCN_CTX.dst
+    const loaiDoiUng = CCN_CTX.loaihdDoiUng;                   // [MỚI] ncncs2|ncncs1
     const sohdDoiUng = `${loaiDoiUng}_${soStr}`;
 
-    const hoadonDoiUng = {
-        ...hoadon,
-        sohd: sohdDoiUng,
-        loaihd: loaiDoiUng,
-        diadiem: diadiemDoiUng,
-        created_at: new Date().toISOString()
-    };
-
-    const chitietDoiUng = [];
-    Object.values(bangKetQua).forEach(item => {
-        item.sizes.forEach((sz, i) => {
-            const sl = item.soluongs[i];
-            const masp = item.masp;
-            const sizeInput = String(sz || "").trim() || "0";
-            const managedAtDst = requireManagedAtBranch(masp, dst);
-            const size_effective_dst = managedAtDst ? sizeInput : "0";
-
-            chitietDoiUng.push({
-                sohd: sohdDoiUng,
-                masp,
-                tensp: item.tensp,
-                size: size_effective_dst,
-                soluong: sl,
-                gia: item.gia,
-                km: item.km,
-                thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || '',
-                diadiem: diadiemDoiUng,
-                created_at: new Date().toISOString(),
-                ngay: document.getElementById("ngay").value
-            });
-        });
-    });
-
-    const { error: errDU1 } = await supabase
+    const { data: doiUngDaCo, error: errCheckDU } = await supabase
         .from("hoadon_banle")
-        .upsert([hoadonDoiUng], { onConflict: "sohd" });
-    const { error: errDU2 } = await supabase
-        .from("ct_hoadon_banle")
-        .insert(chitietDoiUng); // đã xoá trước nên dùng insert thay vì upsert
+        .select("sohd")
+        .eq("sohd", sohdDoiUng)
+        .maybeSingle();
 
-    if (errDU1 || errDU2) {
+    if (errCheckDU) {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-        alert("❗Không tạo được hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
+        alert("❗Lỗi kiểm tra hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
         return;
     }
 
-    // Cập nhật sochungtu
+    if (!doiUngDaCo) {
+        const hoadonDoiUng = {
+            ...hoadon,
+            sohd: sohdDoiUng,
+            loaihd: loaiDoiUng,
+            diadiem: diadiemDoiUng,
+            created_at: new Date().toISOString()
+        };
+
+        const chitietDoiUng = [];
+        Object.values(bangKetQua).forEach(item => {
+            item.sizes.forEach((sz, i) => {
+                const sl = item.soluongs[i];
+                const masp = item.masp;
+                const sizeInput = String(sz || "").trim() || "0";
+
+                const managedAtDst = requireManagedAtBranch(masp, dst);
+                const size_effective_dst = managedAtDst ? sizeInput : "0";
+
+                chitietDoiUng.push({
+                    sohd: sohdDoiUng,
+                    masp,
+                    tensp: item.tensp,
+                    size: size_effective_dst,          // size ghi tại DST
+                    soluong: sl,
+                    gia: item.gia,
+                    km: item.km,
+                    thanhtien: (item.gia - item.km) * sl,
+                    dvt: item.dvt || '',
+                    diadiem: diadiemDoiUng,            // DST
+                    created_at: new Date().toISOString(),
+                    ngay: document.getElementById("ngay").value
+                });
+            });
+        });
+
+        const { error: errDU1 } = await supabase
+            .from("hoadon_banle")
+            .upsert([hoadonDoiUng], { onConflict: 'sohd' });
+
+        const { error: errDU2 } = await supabase
+            .from("ct_hoadon_banle")
+            .upsert(chitietDoiUng);
+
+        if (errDU1 || errDU2) {
+            await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+            await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+            alert("❗Không tạo được hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
+            return;
+        }
+    }
+
+    // ===== Cập nhật sochungtu cho cả loại gốc và đối ứng =====
     const { data: currSoChungTu } = await supabase
         .from("sochungtu")
         .select("so_hientai")
         .eq("loai", loaiGoc)
         .single();
+
     if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
-        await supabase.from("sochungtu").update({ so_hientai: soMoi }).eq("loai", loaiGoc);
+        await supabase
+            .from("sochungtu")
+            .update({ so_hientai: soMoi })
+            .eq("loai", loaiGoc);
     }
+
     const { data: currSoChungTuDoiUng } = await supabase
         .from("sochungtu")
         .select("so_hientai")
         .eq("loai", loaiDoiUng)
         .single();
+
     if (!currSoChungTuDoiUng || soMoi > currSoChungTuDoiUng.so_hientai) {
-        await supabase.from("sochungtu").update({ so_hientai: soMoi }).eq("loai", loaiDoiUng);
+        await supabase
+            .from("sochungtu")
+            .update({ so_hientai: soMoi })
+            .eq("loai", loaiDoiUng);
     }
 
-    alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
+    alert("✅ Đã lưu hóa đơn CCN (đã tạo cả đối ứng)!");
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
 }
-
 
 /* ===== expose ===== */
 
