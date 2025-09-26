@@ -151,7 +151,7 @@ export function playWaitSizeBeep() {
     pan: 0.0,
     vibratoHz: 6,        // rung nhẹ
     vibratoDepth: 4,
-    sweepTo: 340,        // lướt xuống một chút
+    sweepTo: 600,        // lướt xuống một chút
     sweepCurve: "linear"
   });
   // Lớp phụ rất nhỏ để dày tiếng (detune + pan trái/phải)
@@ -163,6 +163,8 @@ export function playWaitSizeBeep() {
 export function playAlertBeep() {
   // Ping trái
   scheduleSequence([
+    { startMs: 0,   f: 520, type: "square", durMs: 120, vol: 0.22, pan: -0.5 },
+    { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
     { startMs: 0,   f: 520, type: "square", durMs: 120, vol: 0.22, pan: -0.5 },
     { startMs: 80,  f: 720, type: "square", durMs: 140, vol: 0.22, pan: 0.5 } // Ping phải
   ]);
