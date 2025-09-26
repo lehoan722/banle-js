@@ -527,7 +527,7 @@
       data.forEach(row => {
         const tt = (row.gia - row.km) * row.soluong;
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.dvt}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
         tbody.appendChild(tr);
       });
     }
