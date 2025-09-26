@@ -564,7 +564,6 @@ export async function xacNhanSuaHoaDon() {
     const mk = document.getElementById("xacmatkhau").value.trim();
     const sohd = document.getElementById("sohd").value.trim();
 
-    // 1. Kiểm tra mã nhân viên và mật khẩu
     const { data: nv, error: errNV } = await supabase
         .from("dmnhanvien")
         .select("matkhau, sua_hoadon")
@@ -580,7 +579,6 @@ export async function xacNhanSuaHoaDon() {
         return;
     }
 
-    // 2. Kiểm tra địa điểm lập hóa đơn
     const { data: hd, error: errHD } = await supabase
         .from("hoadon_banle")
         .select("diadiem")
@@ -592,25 +590,37 @@ export async function xacNhanSuaHoaDon() {
         return;
     }
 
-    // 3. Địa điểm đăng nhập phải trùng với địa điểm hóa đơn lập
     const diadiemDangNhap = localStorage.getItem("diadiem");
     if (hd.diadiem !== diadiemDangNhap) {
         alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
         return;
     }
 
-    // 4. Nếu qua tất cả kiểm tra trên, cho phép sửa
     choPhepSua = true;
     document.getElementById("popupXacThucSua").style.display = "none";
     alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
 
+    // [MỚI] Gọi đúng hàm lưu tuỳ theo loại trang
     if (CCN_CTX.isCCN) {
-        luuHoaDonccn1v2();
+        // Trang chuyển chi nhánh
+        await luuHoaDonccn1v2();
     } else {
-        luuHoaDonQuaAPI();
+        // Lấy loại chứng từ từ số hoá đơn để xác định
+        const sohd = document.getElementById("sohd").value.trim();
+        const prefix = sohd.split("_")[0] || "";
+
+        if (prefix.includes("nmcs1") || prefix.includes("nmcs2")) {
+            // Hoá đơn nhập mới
+            await luuHoaDonNhapQuaAPI();
+        } else if (prefix.endsWith("T")) {
+            // Hoá đơn 2 bản (song song)
+            await luuHoaDonCaHaiBan();
+        } else {
+            // Mặc định: hoá đơn bán lẻ thường
+            await luuHoaDonQuaAPI();
+        }
     }
 }
-
 
 function inHoaDon(hoadon, chitiet) {
     const data = { hoadon, chitiet };
