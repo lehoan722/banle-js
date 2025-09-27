@@ -963,10 +963,9 @@
             });
 
             window.bangKetQua = bangObj;
-            console.log("[NHAP] capNhatBangKetQuaTuDOM:", bangObj);
+            console.log("🔎 [capNhatBangKetQuaTuDOM] ->", bangObj);
             return bangObj;
         }
-
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
@@ -1348,7 +1347,8 @@
 
         // Gắn vào nút
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            const current = capNhatBangKetQuaTuDOM(); // 🔑 gom lại dữ liệu mới nhất
+            const current = capNhatBangKetQuaTuDOM();
+            console.log("🔎 [In mã vạch] current =", current);
             openInTemFromNhap(current);
         });
 
