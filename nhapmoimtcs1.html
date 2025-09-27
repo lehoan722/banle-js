@@ -652,7 +652,8 @@
             <form id="form-login" onsubmit="dangNhap(); return false;">
                 <label>Email đăng nhập:</label><br />
 
-                <input type="email" id="login-email"  value="khohangcs1@gmail.com" readonly style="background:#eee; display:none;" />
+                <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
+                    style="background:#eee; display:none;" />
 
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
@@ -1134,6 +1135,95 @@
                 });
             }
         });
+    </script>
+
+    <script>
+        // ========= NHẬN DỮ LIỆU TỪ TRANG IN MÃ VẠCH & ĐỔ VÀO BẢNG =========
+        (function importFromHash() {
+            const hash = location.hash || '';
+            if (!hash) return;
+
+            const params = new URLSearchParams(hash.slice(1));
+            let payload = null;
+
+            // 1) Nhận qua base64 hash
+            if (params.get('imp')) {
+                try {
+                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
+                    payload = JSON.parse(json);
+                } catch (e) { console.error('Decode imp error', e); }
+            }
+
+            // 2) Hoặc nhận qua localStorage (khi dữ liệu dài)
+            if (!payload && params.get('impkey')) {
+                const key = params.get('impkey');
+                try {
+                    const json = localStorage.getItem(key);
+                    if (json) {
+                        payload = JSON.parse(json);
+                        localStorage.removeItem(key); // dọn tạm
+                    }
+                } catch (e) { console.error('Load impkey error', e); }
+            }
+
+            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return;
+
+            // ===== Chuẩn hóa & gộp dữ liệu theo (masp + size) =====
+            const map = new Map();
+            payload.items.forEach(it => {
+                const masp = (it.masp || '').toUpperCase();
+                const size = ((it.size ?? '').toString().trim()) || '0';
+                const key = masp + '@@' + size;
+
+                const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
+                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
+                const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
+                const sl = Number(it.sl) || 1;
+
+                if (!map.has(key)) {
+                    map.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
+                } else {
+                    map.get(key).sl += sl;
+                }
+            });
+
+            // ===== Chuyển sang cấu trúc bangKetQua (gộp theo MÃ, mảng size/soluong) =====
+            const groupMap = new Map();
+            [...map.values()].forEach(o => {
+                if (!groupMap.has(o.masp)) {
+                    groupMap.set(o.masp, { masp: o.masp, tensp: o.tensp, dvt: o.dvt, gia: o.gia, km: 0, sizes: [], soluongs: [] });
+                }
+                const g = groupMap.get(o.masp);
+                g.sizes.push(o.size);
+                g.soluongs.push(o.sl);
+            });
+
+            // ===== Ghép vào bangKetQua hiện có (merge nếu trùng mã) =====
+            window.bangKetQua = window.bangKetQua || [];
+            const existing = new Map(window.bangKetQua.map(x => [x.masp, x]));
+            for (const g of groupMap.values()) {
+                if (existing.has(g.masp)) {
+                    const e = existing.get(g.masp);
+                    g.sizes.forEach((sz, i) => {
+                        const idx = e.sizes.indexOf(sz);
+                        if (idx >= 0) e.soluongs[idx] = (Number(e.soluongs[idx]) || 0) + g.soluongs[i];
+                        else { e.sizes.push(sz); e.soluongs.push(g.soluongs[i]); }
+                    });
+                    // cập nhật dvt/gia nếu có
+                    e.dvt = g.dvt || e.dvt;
+                    e.gia = g.gia || e.gia;
+                } else {
+                    window.bangKetQua.push(g);
+                }
+            }
+
+            // ===== Render lại bảng & tổng =====
+            if (typeof window.capNhatBangHTML === 'function') window.capNhatBangHTML(window.bangKetQua);
+            if (typeof window.capNhatThongTinTong === 'function') window.capNhatThongTinTong();
+
+            // Scroll tới bảng (tuỳ giao diện của bạn)
+            // document.getElementById('bangKetQua')?.scrollIntoView({ behavior: 'smooth' });
+        })();
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
