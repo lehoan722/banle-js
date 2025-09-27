@@ -11,7 +11,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -799,7 +798,76 @@
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
             // Sau khi khởi tạo app, nạp dữ liệu import (đợi module attach hàm render)
-            setTimeout(() => { window.consumeImportPayload && window.consumeImportPayload(); }, 400);
+            // Sau khi khởi tạo app, nạp dữ liệu import
+            setTimeout(() => {
+                if (window.consumeImportPayload && window.consumeImportPayload()) return;
+
+                // Kế hoạch B: nếu module không có hàm render, tự xử lý và render tối thiểu
+                const bangObj = (window.parseImportPayload && window.parseImportPayload()) || null;
+                if (!bangObj) return;
+
+                // Lưu vào window.bangKetQua dạng object theo mã
+                window.bangKetQua = window.bangKetQua && Object.keys(window.bangKetQua).length ? window.bangKetQua : {};
+                for (const masp in bangObj) {
+                    if (!window.bangKetQua[masp]) {
+                        window.bangKetQua[masp] = bangObj[masp];
+                    } else {
+                        const cur = window.bangKetQua[masp], g = bangObj[masp];
+                        g.sizes.forEach((sz, i) => {
+                            const idx = cur.sizes.indexOf(sz);
+                            if (idx >= 0) cur.soluongs[idx] = (Number(cur.soluongs[idx]) || 0) + (g.soluongs[i] || 0);
+                            else { cur.sizes.push(sz); cur.soluongs.push(g.soluongs[i] || 0); }
+                        });
+                        cur.gia ||= g.gia; cur.dvt ||= g.dvt;
+                    }
+                }
+
+                // Fallback render trực tiếp ra bảng nếu không có capNhatBangHTML
+                if (typeof window.capNhatBangHTML !== 'function') {
+                    const tbody = document.querySelector('#bangketqua tbody');
+                    if (tbody) {
+                        tbody.innerHTML = '';
+                        Object.values(window.bangKetQua).forEach(row => {
+                            row.sizes.forEach((sz, i) => {
+                                const sl = row.soluongs[i] || 0;
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+            <td>${row.masp}</td>
+            <td>${row.tensp || ''}</td>
+            <td>${sz}</td>
+            <td>${sl}</td>
+            <td>${row.dvt || 'sp'}</td>
+            <td>${row.gia || 0}</td>
+            <td>0</td>
+            <td>${(row.gia || 0) * sl}</td>
+            <td></td>`;
+                                tbody.appendChild(tr);
+                            });
+                        });
+                    }
+                }
+
+                // Fallback tổng
+                if (typeof window.capNhatThongTinTong !== 'function') {
+                    const sum = { mathang: 0, tongsl: 0, tongkm: 0, phaitra: 0 };
+                    Object.values(window.bangKetQua).forEach(r => {
+                        r.soluongs.forEach((sl, i) => {
+                            sum.mathang++;
+                            sum.tongsl += Number(sl) || 0;
+                            sum.phaitra += (Number(r.gia) || 0) * (Number(sl) || 0);
+                        });
+                    });
+                    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+                    set('mathang', sum.mathang);
+                    set('tongsl', sum.tongsl);
+                    set('tongkm', 0);
+                    set('phaithanhtoan', sum.phaitra.toLocaleString('vi-VN'));
+                }
+
+                // Xoá hash để tránh nạp lại khi F5
+                history.replaceState(null, '', location.pathname);
+            }, 800); // tăng 800ms cho chắc
+
 
             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
