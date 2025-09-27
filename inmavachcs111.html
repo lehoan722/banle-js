@@ -1343,14 +1343,12 @@
         }
 
         // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
-        (function importFromHashToInTem() {
+        function importFromHashToInTem() {
             const hash = location.hash || "";
             if (!hash.startsWith("#imp=")) return;
 
             let imp = hash.slice(5).trim();
             if (!imp) return;
-
-            // Normalize base64 URL-safe
             imp = imp.replace(/-/g, "+").replace(/_/g, "/");
             const pad = imp.length % 4;
             if (pad) imp += "=".repeat(4 - pad);
@@ -1366,27 +1364,35 @@
 
             console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
 
-            // Chuyển items → data cho bảng Handsontable (đúng cấu trúc 9 cột)
+            // Chuyển items thành data đúng 9 cột
             const data = payload.items.map((it, idx) => [
-                idx + 1,                // STT
+                idx + 1,
                 it.masp || "",
                 it.tensp || "",
                 it.size || "0",
                 it.sl || 0,
                 it.dvt || "sp",
                 it.gianhap || 0,
-                true,                   // In: luôn tick
-                it.giale || 0           // Giá lẻ: nếu có
+                true,
+                it.giale || 0
             ]);
+            console.log("[IN-TEM] data:", data);
 
-            if (window.hot) {
-                hot.loadData(data);
+            // Đợi hot sẵn sàng mới load
+            const tryLoad = () => {
+                if (window.hot) {
+                    hot.loadData(data);
+                    console.log("[IN-TEM] Đã nạp vào hot:", hot.getData());
+                    history.replaceState(null, "", location.pathname);
+                    return true;
+                }
+                return false;
+            };
+            if (!tryLoad()) {
+                const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
             }
-
-            // Xoá hash để tránh nạp lại khi refresh
-            history.replaceState(null, "", location.pathname);
-        })();
-
+        }
+        document.addEventListener("DOMContentLoaded", importFromHashToInTem);
 
         // ===== NHẬN PAYLOAD TỪ HASH #imp =====
         function parseImportPayload() {
@@ -1415,21 +1421,21 @@
             // Chuyển items thành object bangObj
             const bangObj = {};
             payload.items.forEach(it => {
-    const masp = (it.masp || "").toUpperCase();
-    if (!masp) return;
+                const masp = (it.masp || "").toUpperCase();
+                if (!masp) return;
 
-    // fallback dữ liệu từ sanPhamData
-    const spInfo = window.sanPhamData?.[masp] || {};
-    const tensp = it.tensp || spInfo.tensp || "";
-    const dvt = spInfo.dvt || "sp";
-    const gia = spInfo.gianhap || 0;
+                // fallback dữ liệu từ sanPhamData
+                const spInfo = window.sanPhamData?.[masp] || {};
+                const tensp = it.tensp || spInfo.tensp || "";
+                const dvt = spInfo.dvt || "sp";
+                const gia = spInfo.gianhap || 0;
 
-    if (!bangObj[masp]) {
-        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
-    }
-    bangObj[masp].sizes.push(it.size || "0");
-    bangObj[masp].soluongs.push(Number(it.sl) || 0);
-});
+                if (!bangObj[masp]) {
+                    bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
+                }
+                bangObj[masp].sizes.push(it.size || "0");
+                bangObj[masp].soluongs.push(Number(it.sl) || 0);
+            });
 
 
             console.log("[IN TEM] bangObj parse:", bangObj);
