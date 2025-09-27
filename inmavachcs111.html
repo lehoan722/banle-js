@@ -857,45 +857,6 @@
             openNhapFromItems(items);
         });
 
-        // Gom danh sách item từ lưới đang chọn để in
-        function collectInvoiceItems() {
-            syncHandsontableToSelected(); // đã có sẵn: build mảng "selected"
-            return (selected || [])
-                .filter(r => r && r.tick) // chỉ lấy dòng được tick In
-                .map(r => ({
-                    masp: (r.masp || '').toUpperCase(),
-                    tensp: r.tensp || '',
-                    size: ((r.size ?? '').toString().trim()) || '0',
-                    sl: Number(r.sl) || 1,
-                    dvt: r.dvt || 'sp',
-                    gianhap: Number(r.gianhap) || 0
-                }));
-        }
-
-        // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
-        function openNhapFromItems(items) {
-            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
-            const json = JSON.stringify(payload);
-            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
-
-            if (b64.length <= 1800) {
-                window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
-            } else {
-                const key = 'IMP_' + Date.now();
-                localStorage.setItem(key, json);
-                window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
-            }
-        }
-
-        // Click nút "Tạo HĐ nhập"
-        document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
-            const items = collectInvoiceItems();
-            if (!items.length) {
-                alert('Danh sách in rỗng hoặc chưa tick In.');
-                return;
-            }
-            openNhapFromItems(items);
-        });
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
@@ -1381,6 +1342,48 @@
             hot.loadData(data);
         }
 
+        // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
+        (function importFromHashToInTem() {
+            const hash = location.hash || "";
+            if (!hash.startsWith("#imp=")) return;
+
+            let imp = hash.slice(5).trim();
+            if (!imp) return;
+
+            // Normalize base64 URL-safe
+            imp = imp.replace(/-/g, "+").replace(/_/g, "/");
+            const pad = imp.length % 4;
+            if (pad) imp += "=".repeat(4 - pad);
+
+            let payload = null;
+            try {
+                payload = JSON.parse(decodeURIComponent(escape(atob(imp))));
+            } catch (e) {
+                console.error("Decode imp error", e);
+                return;
+            }
+            if (!payload || !Array.isArray(payload.items)) return;
+
+            console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
+
+            // Chuyển items → data cho bảng Handsontable
+            const data = payload.items.map(it => [
+                it.masp || "",
+                it.tensp || "",
+                it.size || "0",
+                it.sl || 0,
+                it.dvt || "sp",
+                it.gianhap || 0
+            ]);
+
+            // Nạp vào bảng (hot là biến Handsontable bạn đang dùng)
+            if (window.hot) {
+                hot.loadData(data);
+            }
+
+            // Xoá hash để tránh nạp lại khi refresh
+            history.replaceState(null, "", location.pathname);
+        })();
 
 
     </script>
