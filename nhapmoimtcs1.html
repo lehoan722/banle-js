@@ -1289,6 +1289,9 @@
 
         // ===== Tiêu thụ payload sau khi app sẵn sàng (được gọi sau login/khởi tạo) =====
         window.consumeImportPayload = function () {
+            console.log("[NHAP] hash:", location.hash);
+            console.log("[NHAP] parseImportPayload:", window.parseImportPayload());
+
             const bangObj = window.parseImportPayload();
             if (!bangObj) return false;
 
