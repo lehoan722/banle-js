@@ -1247,6 +1247,8 @@
                 if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
                     window.capNhatBangHTML(window.bangKetQua);
                     window.capNhatThongTinTong(window.bangKetQua);
+                    window.bangKetQua = bangObj;
+
                     // Xoá hash sau khi nạp xong để tránh nạp lại
                     history.replaceState(null, '', location.pathname);
                     return true;
@@ -1347,8 +1349,11 @@
 
         // Gắn vào nút
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            const current = capNhatBangKetQuaTuDOM();
-            console.log("🔎 [In mã vạch] current =", current);
+            const current = window.bangKetQua && Object.keys(window.bangKetQua).length > 0
+                ? window.bangKetQua
+                : capNhatBangKetQuaTuDOM();  // fallback nếu chưa có
+
+            console.log("🔎 [In mã vạch] sử dụng dữ liệu =", current);
             openInTemFromNhap(current);
         });
 
