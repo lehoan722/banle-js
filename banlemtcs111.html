@@ -844,15 +844,7 @@
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-
-        // Nhấn F2 trong ô mã khách cũng bật popup
-        document.getElementById('makh').addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                showPopupTimKH();
-            }
-        });
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;        
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -1052,9 +1044,9 @@
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-        }, 1000);
+        //setTimeout(function () {
+           // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        //}, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
