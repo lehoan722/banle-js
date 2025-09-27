@@ -549,16 +549,6 @@
 
         }
 
-        window.syncHandsontableToSelected = syncHandsontableToSelected;
-
-        document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
-            const items = collectInvoiceItems();
-            console.log("DEBUG items trước khi mở trang nhập:", items);
-            if (!items.length) { alert('Danh sách in rỗng hoặc chưa tick In.'); return; }
-            openNhapFromItems(items);
-        });
-
-
 
         // Render lưới chọn
         function renderSelectedTable() {
@@ -827,6 +817,46 @@
             window.print();
         }
 
+        // // ===== script nhap xuat du lieu tu in ma vach , Gom danh sách item từ lưới đang chọn để in
+        function collectInvoiceItems() {
+            syncHandsontableToSelected(); // đã có sẵn: build mảng "selected"
+            return (selected || [])
+                .filter(r => r && r.tick) // chỉ lấy dòng được tick In
+                .map(r => ({
+                    masp: (r.masp || '').toUpperCase(),
+                    tensp: r.tensp || '',
+                    size: ((r.size ?? '').toString().trim()) || '0',
+                    sl: Number(r.sl) || 1,
+                    dvt: r.dvt || 'sp',
+                    gianhap: Number(r.gianhap) || 0
+                }));
+        }
+
+        // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
+        function openNhapFromItems(items) {
+            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+            const json = JSON.stringify(payload);
+            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
+
+            if (b64.length <= 1800) {
+                window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
+            } else {
+                const key = 'IMP_' + Date.now();
+                localStorage.setItem(key, json);
+                window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
+            }
+        }
+
+        // Click nút "Tạo HĐ nhập"
+        document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
+            const items = collectInvoiceItems();
+            if (!items.length) {
+                alert('Danh sách in rỗng hoặc chưa tick In.');
+                return;
+            }
+            openNhapFromItems(items);
+        });
+
         // Gom danh sách item từ lưới đang chọn để in
         function collectInvoiceItems() {
             syncHandsontableToSelected(); // đã có sẵn: build mảng "selected"
@@ -844,28 +874,16 @@
 
         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
         function openNhapFromItems(items) {
-            const payload = { source: 'in-tem', cs: 'cs1', items };
+            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
             const json = JSON.stringify(payload);
-
-            // base64 URL-safe, không có '=' cuối
-            const b64 = btoa(unescape(encodeURIComponent(json)))
-                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-            // Dùng tuyệt đối theo origin để chắn chắc đúng đường dẫn deploy
-            const url = `${location.origin}/nhapmoimtcs1.html#imp=${b64}`;
-
-            // Debug nhìn ngay tại nguồn
-            console.log('[IN-TEM] items gửi đi:', items);
-            console.log('[IN-TEM] URL mở sang trang nhập:', url);
+            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
             if (b64.length <= 1800) {
-                window.open(url, '_blank');
+                window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
             } else {
                 const key = 'IMP_' + Date.now();
                 localStorage.setItem(key, json);
-                const url2 = `${location.origin}/nhapmoimtcs1.html#impkey=${key}`;
-                console.log('[IN-TEM] Dùng localStorage key:', key, '→', url2);
-                window.open(url2, '_blank');
+                window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
             }
         }
 
