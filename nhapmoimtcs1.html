@@ -1200,9 +1200,10 @@
                 const size = ((it.size ?? '').toString().trim()) || '0';
                 const key = masp + '@@' + size;
 
-                const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
-                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
-                const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
+                const tensp = (it.tensp ?? '') || (window.sanPhamData?.[masp]?.tensp) || '';
+                const dvt = (window.sanPhamData?.[masp]?.dvt) || 'sp';
+                const gia = (window.sanPhamData?.[masp]?.gianhap) || 0;
+
                 const sl = Number(it.sl) || 1;
 
                 if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
