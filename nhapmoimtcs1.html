@@ -5,12 +5,13 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>nhapmoics1</title>
+    <title>NHAP MOI cs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -457,7 +458,10 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label> -->
+        <label>Giờ <input id="gio" /></label>
+         
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
 
 
     </div>
@@ -480,13 +484,11 @@
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
-            <button id="ghivitri">✏️</button>
         </div>
 
 
         <div class="main">
             <div class="table-area">
-
                 <table id="bangketqua">
                     <thead>
                         <tr>
@@ -498,15 +500,11 @@
                             <th>Đơn giá</th>
                             <th>Khuyến mại</th>
                             <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- (giữ nguyên) -->
-                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>T1</th>
-                            <th>T2</th>
+                            <th>Vị trí</th> <!-- ✅ THÊM MỚI -->
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
-
             </div>
             <div class="sidebar">
                 <div class="tabs">
@@ -552,11 +550,12 @@
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
-                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
+                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
+
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
                 </div>
@@ -802,7 +801,6 @@
             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
-            document.getElementById("quanlysizetheonhom").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
@@ -844,6 +842,14 @@
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
+
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -1041,12 +1047,6 @@
     </script>
 
     <script>  //<!-- banlemobile -->
-
-        // goi phím F2
-        //setTimeout(function () {
-        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-        //}, 1000);
-
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
@@ -1060,14 +1060,8 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
-        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
-        document.getElementById('xemtonkho')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-
         // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
-        document.getElementById('ghivitri')?.addEventListener('click', () => {
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
@@ -1113,7 +1107,7 @@
                 btn.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                        btn.click(); // = gọi xacNhanSuaHoaDon()
                     }
                 });
             }
@@ -1132,6 +1126,14 @@
                 });
             }
 
+            // Nếu bạn muốn cả nút "SỬA" cũng yêu cầu xác thực:
+            const btnSua = document.getElementById('sua');
+            if (btnSua) {
+                btnSua.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    moPopupXacThucSua();
+                });
+            }
         });
     </script>
 
@@ -1287,6 +1289,7 @@
         }
 
     </script>
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
