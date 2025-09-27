@@ -5,6 +5,7 @@ let currentFilters = null;
 let totalRows = 0;
 let pageSize = 1000;
 let currentPage = 1;
+let onlyOneProduct = false; // <== thêm biến toàn cục để xác định
 
 // ở CUỐI FILE, thêm:
 window.trangTruoc = window.trangTruoc;
@@ -19,7 +20,6 @@ function getFiltersFromUI() {
     const khachhang = document.getElementById("khachhangInput").value.trim() || null;
     const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
 
-    // chuẩn hoá mã SP sang UPPER và hỗ trợ danh sách nếu bạn đã có từ UI
     const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
     const finalMaspList = masp ? masp.split(/[,\s]+/).map(x => x.trim()).filter(Boolean) : null;
 
@@ -49,20 +49,16 @@ function safeDestroyHot() {
         if (typeof hotInstance.isDestroyed === 'function') {
             if (!hotInstance.isDestroyed()) hotInstance.destroy();
         } else {
-            // một số bản Handsontable không có isDestroyed()
             hotInstance.destroy();
         }
     } catch (e) {
-        // bỏ qua nếu instance đã bị huỷ trước đó
     } finally {
         hotInstance = null;
     }
 }
 
-
 // ========== HÀM CHÍNH LẤY BÁO CÁO =============
 window.taiBaoCaoChiTiet = async function () {
-    // 1) Lấy filter từ giao diện
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
@@ -75,28 +71,27 @@ window.taiBaoCaoChiTiet = async function () {
     const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
     const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
 
-    // Lấy nhiều mã SP từ textarea (nếu có) -> ưu tiên hơn ô mã đơn
     const maspListRaw = document.getElementById("maspList").value || "";
     let maspListArr = maspListRaw
         .split("\n")
         .map(s => s.trim().toUpperCase())
         .filter(Boolean);
-    maspListArr = Array.from(new Set(maspListArr)); // loại trùng
+    maspListArr = Array.from(new Set(maspListArr));
 
     const finalMaspList = maspListArr.length > 0 ? maspListArr : (masp ? [masp] : null);
 
-    // 2) Kiểm tra đủ ngày
     if (!tuNgay || !denNgay) {
         alert("Vui lòng chọn đủ Từ ngày và Đến ngày!");
         return;
     }
 
-    // 3) Đóng bảng cũ nếu có và hiển thị trạng thái
     const container = document.getElementById("hot");
     safeDestroyHot();
     container.innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
 
-    // 4) Lưu filter & state phân trang
+    // xác định có phải chỉ 1 mã hay không
+    onlyOneProduct = Array.isArray(finalMaspList) && finalMaspList.length === 1;
+
     const f = {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
@@ -108,13 +103,13 @@ window.taiBaoCaoChiTiet = async function () {
         p_tensp: tensp,
         p_size: size,
         p_tu_gia: tuGia,
-        p_den_gia: denGia
+        p_den_gia: denGia,
+        p_tinh_ton: onlyOneProduct   // <== truyền thêm tham số
     };
     currentFilters = f;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
     currentPage = 1;
 
-    // 5) Gọi RPC đếm tổng dòng
     const { data: cnt, error: errCnt } = await supabase.rpc("baocaochitiet_bh_count", currentFilters);
     if (errCnt) {
         console.error("baocaochitiet_bh_count error:", errCnt);
@@ -123,16 +118,13 @@ window.taiBaoCaoChiTiet = async function () {
     }
     totalRows = Number(cnt || 0);
 
-    // 6) Tải trang đầu tiên
     await taiTrang(currentPage);
 };
-
 
 async function taiTrang(page) {
     const container = document.getElementById("hot");
     safeDestroyHot();
     container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
-
 
     const offset = (page - 1) * pageSize;
     const params = {
@@ -148,15 +140,14 @@ async function taiTrang(page) {
         return;
     }
 
-    // ánh xạ thêm cột STT như cũ
     const startIndex = offset + 1;
     const hotData = (data || []).map((r, idx) => ({
         stt: startIndex + idx,
         ...r
     }));
 
-    renderTable(hotData);      // dùng lại cấu hình Handsontable y như cũ
-    updatePagingBar();         // cập nhật nút/nhãn
+    renderTable(hotData);
+    updatePagingBar();
     currentPage = page;
 }
 
@@ -170,8 +161,6 @@ function updatePagingBar() {
     if (next) next.disabled = currentPage >= totalPages;
 }
 
-
-// hook cho nút
 window.trangTruoc = function () {
     if (currentPage > 1) taiTrang(currentPage - 1);
 };
@@ -186,7 +175,6 @@ window.toiTrang = function () {
     taiTrang(n);
 };
 
-// khi đổi “số dòng/trang”
 document.getElementById("pageSize").addEventListener("change", async function () {
     if (!currentFilters) return;
     pageSize = Number(this.value) || 1000;
@@ -194,9 +182,23 @@ document.getElementById("pageSize").addEventListener("change", async function ()
     await taiTrang(currentPage);
 });
 
+// renderer riêng cho cột tồn
+function tonRenderer(instance, td, row, col, prop, value, cellProperties) {
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.style.textAlign = 'right';
+    if (value !== null && value !== undefined && value !== '') {
+        const num = Number(value);
+        td.textContent = isNaN(num) ? '' : num.toLocaleString('vi-VN');
+        if (!isNaN(num) && num < 0) {
+            td.style.background = '#ffe6e6';   // cảnh báo âm
+            td.style.color = '#c00';
+            td.style.fontWeight = '600';
+        }
+    }
+}
+
 function renderTable(hotData) {
     const container = document.getElementById("hot");
-    // columns: **giữ nguyên** danh sách cột bạn đang dùng
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
         { data: "ngay", title: "Ngày", readOnly: true, width: 105 },
@@ -214,6 +216,17 @@ function renderTable(hotData) {
         { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
         { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
     ];
+
+    if (onlyOneProduct) {
+        columns.push({
+            data: "ton_tichluy",
+            title: "Tổng tồn kho",
+            readOnly: true,
+            width: 120,
+            type: 'numeric',
+            renderer: tonRenderer
+        });
+    }
 
     hotInstance = new Handsontable(container, {
         data: hotData,
@@ -254,14 +267,17 @@ window.xuatExcelToanBo = async function () {
         }));
     }
 
-    // Xuất như xuatExcel() hiện tại, nhưng dùng allRows
     const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
+    if (onlyOneProduct) headers.push("Tổng tồn kho");
+
     const aoa = [headers];
     allRows.forEach(r => {
-        aoa.push([
+        const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
             r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
-        ]);
+        ];
+        if (onlyOneProduct) row.push(r.ton_tichluy);
+        aoa.push(row);
     });
 
     const wb = XLSX.utils.book_new();
@@ -270,8 +286,7 @@ window.xuatExcelToanBo = async function () {
     XLSX.writeFile(wb, "baocao_chitiet_banhang_ALL.xlsx");
 };
 
-
-
+// (phần xuất Excel từng trang giữ nguyên)
 // ========== XUẤT EXCEL ==========
 window.xuatExcel = function () {
     if (!hotInstance) return alert("Chưa có dữ liệu để xuất!");
