@@ -809,10 +809,6 @@
             // ==============================
         };
 
-
-
-
-
         function capNhatQuyenGiaoDien() {
             // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
@@ -1142,6 +1138,7 @@
 
     <script>
         // ===== Parse payload từ hash/localStorage → trả về bangObj { MASP:{...sizes,soluongs} } =====
+
         window.parseImportPayload = function () {
             const hash = location.hash || '';
             if (!hash) return null;
@@ -1149,43 +1146,66 @@
             const params = new URLSearchParams(hash.slice(1));
             let payload = null;
 
-            // 1) Base64 hash
-            if (params.get('imp')) {
-                try {
-                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
-                    payload = JSON.parse(json);
-                } catch (e) { console.error('Decode imp error', e); }
-            }
+            // ƯU TIÊN lấy imp trong hash
+            let imp = params.get('imp');
+            let useLocalKey = null;
 
-            // 2) localStorage key
-            if (!payload && params.get('impkey')) {
-                const key = params.get('impkey');
+            // Hoặc lấy qua localStorage khi quá dài
+            if (!imp && params.get('impkey')) {
+                useLocalKey = params.get('impkey').trim();
                 try {
-                    const json = localStorage.getItem(key);
+                    const json = localStorage.getItem(useLocalKey);
                     if (json) {
                         payload = JSON.parse(json);
-                        localStorage.removeItem(key);
+                        localStorage.removeItem(useLocalKey);
                     }
-                } catch (e) { console.error('Load impkey error', e); }
+                } catch (e) {
+                    console.error('Load impkey error', e);
+                }
+            }
+
+            // Nếu đã có payload từ localStorage thì bỏ qua phần imp
+            if (payload && Array.isArray(payload.items) && payload.items.length) {
+                // ok
+            } else if (imp) {
+                // 1) Làm sạch imp: bỏ dấu phẩy / khoảng trắng ở cuối
+                imp = imp.trim().replace(/[,;\s]+$/g, '');
+
+                // 2) Chuyển URL-safe base64 -> chuẩn base64
+                imp = imp.replace(/-/g, '+').replace(/_/g, '/');
+
+                // 3) Bổ sung padding '=' cho đủ bội số 4
+                const pad = imp.length % 4;
+                if (pad) imp += '='.repeat(4 - pad);
+
+                try {
+                    const json = atob(imp); // đã chuẩn hoá -> atob an toàn
+                    payload = JSON.parse(json);
+                } catch (e) {
+                    console.error('Decode imp error', e);
+                    // Thêm cảnh báo nhẹ để bạn biết lỗi parse
+                    alert('Không đọc được dữ liệu từ đường link (imp). Vui lòng thử lại từ trang in mã vạch.');
+                    return null;
+                }
             }
 
             if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return null;
 
-            // Gộp theo MASP@@SIZE → rồi quy về bangObj { MASP:{sizes,soluongs,...} }
+            // ==== Gộp theo (MASP@@SIZE) rồi quy về object { MASP:{sizes,soluongs,...} } ====
             const perKey = new Map();
-            payload.items.forEach(it => {
+            for (const it of payload.items) {
                 const masp = (it.masp || '').toUpperCase();
                 const size = ((it.size ?? '').toString().trim()) || '0';
                 const key = masp + '@@' + size;
 
                 const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
-                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
+                const dvt = (it.dvt && it.dvt !== 'NULL') ? it.dvt : (window.sanPhamData?.[masp]?.dvt || 'sp');
                 const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
                 const sl = Number(it.sl) || 1;
 
                 if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
                 else perKey.get(key).sl += sl;
-            });
+            }
 
             const bangObj = {};
             for (const o of perKey.values()) {
@@ -1195,6 +1215,7 @@
                 bangObj[o.masp].sizes.push(o.size);
                 bangObj[o.masp].soluongs.push(o.sl);
             }
+
             return bangObj;
         };
 
