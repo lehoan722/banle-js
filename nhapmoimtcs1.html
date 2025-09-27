@@ -1329,6 +1329,60 @@
             }
             return true;
         };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Thử nạp payload sau khi load
+            const bangObj = window.parseImportPayload && window.parseImportPayload();
+            console.log("[NHAP] parseImportPayload:", bangObj);
+
+            if (bangObj) {
+                window.bangKetQua = bangObj; // lưu vào global
+                renderBangKetQua(bangObj);
+                capNhatTongTien(bangObj);
+                // xoá hash để F5 không nạp lại
+                history.replaceState(null, '', location.pathname);
+            }
+        });
+
+        function renderBangKetQua(bangObj) {
+            const tbody = document.querySelector("#bangketqua tbody");
+            if (!tbody) return;
+            tbody.innerHTML = "";
+            Object.values(bangObj).forEach(row => {
+                // mỗi size + sl một dòng
+                row.sizes?.forEach((sz, i) => {
+                    const sl = row.soluongs[i] || 0;
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+        <td>${row.masp}</td>
+        <td>${row.tensp || ""}</td>
+        <td>${sz || ""}</td>
+        <td>${sl}</td>
+        <td>${row.dvt || ""}</td>
+        <td>${row.gia || 0}</td>
+        <td>${row.km || 0}</td>
+        <td>${(row.gia || 0) * sl}</td>
+      `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function capNhatTongTien(bangObj) {
+            let mathang = 0, tongsl = 0, tongkm = 0, phaitra = 0;
+            Object.values(bangObj).forEach(r => {
+                r.soluongs?.forEach((sl, i) => {
+                    mathang++;
+                    tongsl += Number(sl) || 0;
+                    phaitra += (Number(r.gia) || 0) * (Number(sl) || 0);
+                });
+            });
+            document.getElementById("mathang")?.setAttribute("value", mathang);
+            document.getElementById("tongsl")?.setAttribute("value", tongsl);
+            document.getElementById("tongkm")?.setAttribute("value", tongkm);
+            document.getElementById("phaithanhtoan")?.setAttribute("value", phaitra.toLocaleString("vi-VN"));
+        }
+
     </script>
 
     <!-- Overlay quét -->
