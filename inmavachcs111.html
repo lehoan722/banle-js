@@ -834,19 +834,28 @@
 
         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
         function openNhapFromItems(items) {
-            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+            const payload = { source: 'in-tem', cs: 'cs1', items };
             const json = JSON.stringify(payload);
-            const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+
+            // base64 URL-safe, không có '=' cuối
+            const b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
-            // base64 cho gọn URL
+
+            // Dùng tuyệt đối theo origin để chắn chắc đúng đường dẫn deploy
+            const url = `${location.origin}/nhapmoimtcs1.html#imp=${b64}`;
+
+            // Debug nhìn ngay tại nguồn
+            console.log('[IN-TEM] items gửi đi:', items);
+            console.log('[IN-TEM] URL mở sang trang nhập:', url);
 
             if (b64.length <= 1800) {
-                window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
+                window.open(url, '_blank');
             } else {
                 const key = 'IMP_' + Date.now();
                 localStorage.setItem(key, json);
-                window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
+                const url2 = `${location.origin}/nhapmoimtcs1.html#impkey=${key}`;
+                console.log('[IN-TEM] Dùng localStorage key:', key, '→', url2);
+                window.open(url2, '_blank');
             }
         }
 
