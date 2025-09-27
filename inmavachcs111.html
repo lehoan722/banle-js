@@ -1366,17 +1366,19 @@
 
             console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
 
-            // Chuyển items → data cho bảng Handsontable
-            const data = payload.items.map(it => [
+            // Chuyển items → data cho bảng Handsontable (đúng cấu trúc 9 cột)
+            const data = payload.items.map((it, idx) => [
+                idx + 1,                // STT
                 it.masp || "",
                 it.tensp || "",
                 it.size || "0",
                 it.sl || 0,
                 it.dvt || "sp",
-                it.gianhap || 0
+                it.gianhap || 0,
+                true,                   // In: luôn tick
+                it.giale || 0           // Giá lẻ: nếu có
             ]);
 
-            // Nạp vào bảng (hot là biến Handsontable bạn đang dùng)
             if (window.hot) {
                 hot.loadData(data);
             }
