@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -657,7 +658,7 @@
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs1" selected>Cơ sở 1</option>
+                    <option value="cs1" selected>Cơ sở 2</option>
                 </select>
 
                 <div class="login-field">
@@ -797,78 +798,6 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-            // Sau khi khởi tạo app, nạp dữ liệu import (đợi module attach hàm render)
-            // Sau khi khởi tạo app, nạp dữ liệu import
-            setTimeout(() => {
-                if (window.consumeImportPayload && window.consumeImportPayload()) return;
-
-                // Kế hoạch B: nếu module không có hàm render, tự xử lý và render tối thiểu
-                const bangObj = (window.parseImportPayload && window.parseImportPayload()) || null;
-                if (!bangObj) return;
-
-                // Lưu vào window.bangKetQua dạng object theo mã
-                window.bangKetQua = window.bangKetQua && Object.keys(window.bangKetQua).length ? window.bangKetQua : {};
-                for (const masp in bangObj) {
-                    if (!window.bangKetQua[masp]) {
-                        window.bangKetQua[masp] = bangObj[masp];
-                    } else {
-                        const cur = window.bangKetQua[masp], g = bangObj[masp];
-                        g.sizes.forEach((sz, i) => {
-                            const idx = cur.sizes.indexOf(sz);
-                            if (idx >= 0) cur.soluongs[idx] = (Number(cur.soluongs[idx]) || 0) + (g.soluongs[i] || 0);
-                            else { cur.sizes.push(sz); cur.soluongs.push(g.soluongs[i] || 0); }
-                        });
-                        cur.gia ||= g.gia; cur.dvt ||= g.dvt;
-                    }
-                }
-
-                // Fallback render trực tiếp ra bảng nếu không có capNhatBangHTML
-                if (typeof window.capNhatBangHTML !== 'function') {
-                    const tbody = document.querySelector('#bangketqua tbody');
-                    if (tbody) {
-                        tbody.innerHTML = '';
-                        Object.values(window.bangKetQua).forEach(row => {
-                            row.sizes.forEach((sz, i) => {
-                                const sl = row.soluongs[i] || 0;
-                                const tr = document.createElement('tr');
-                                tr.innerHTML = `
-            <td>${row.masp}</td>
-            <td>${row.tensp || ''}</td>
-            <td>${sz}</td>
-            <td>${sl}</td>
-            <td>${row.dvt || 'sp'}</td>
-            <td>${row.gia || 0}</td>
-            <td>0</td>
-            <td>${(row.gia || 0) * sl}</td>
-            <td></td>`;
-                                tbody.appendChild(tr);
-                            });
-                        });
-                    }
-                }
-
-                // Fallback tổng
-                if (typeof window.capNhatThongTinTong !== 'function') {
-                    const sum = { mathang: 0, tongsl: 0, tongkm: 0, phaitra: 0 };
-                    Object.values(window.bangKetQua).forEach(r => {
-                        r.soluongs.forEach((sl, i) => {
-                            sum.mathang++;
-                            sum.tongsl += Number(sl) || 0;
-                            sum.phaitra += (Number(r.gia) || 0) * (Number(sl) || 0);
-                        });
-                    });
-                    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-                    set('mathang', sum.mathang);
-                    set('tongsl', sum.tongsl);
-                    set('tongkm', 0);
-                    set('phaithanhtoan', sum.phaitra.toLocaleString('vi-VN'));
-                }
-
-                // Xoá hash để tránh nạp lại khi F5
-                history.replaceState(null, '', location.pathname);
-            }, 800); // tăng 800ms cho chắc
-
-
             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
@@ -876,6 +805,10 @@
 
             // ==============================
         };
+
+
+
+
 
         function capNhatQuyenGiaoDien() {
             // Lấy quyền từ localStorage 
@@ -1205,131 +1138,95 @@
     </script>
 
     <script>
-        // ===== Parse payload từ hash/localStorage → trả về bangObj { MASP:{...sizes,soluongs} } =====
-
-        window.parseImportPayload = function () {
+        // ========= NHẬN DỮ LIỆU TỪ TRANG IN MÃ VẠCH & ĐỔ VÀO BẢNG =========
+        (function importFromHash() {
             const hash = location.hash || '';
-            if (!hash) return null;
+            if (!hash) return;
 
             const params = new URLSearchParams(hash.slice(1));
             let payload = null;
 
-            // ƯU TIÊN lấy imp trong hash
-            let imp = params.get('imp');
-            let useLocalKey = null;
-
-            // Hoặc lấy qua localStorage khi quá dài
-            if (!imp && params.get('impkey')) {
-                useLocalKey = params.get('impkey').trim();
+            // 1) Nhận qua base64 hash
+            if (params.get('imp')) {
                 try {
-                    const json = localStorage.getItem(useLocalKey);
+                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
+                    payload = JSON.parse(json);
+                } catch (e) { console.error('Decode imp error', e); }
+            }
+
+            // 2) Hoặc nhận qua localStorage (khi dữ liệu dài)
+            if (!payload && params.get('impkey')) {
+                const key = params.get('impkey');
+                try {
+                    const json = localStorage.getItem(key);
                     if (json) {
                         payload = JSON.parse(json);
-                        localStorage.removeItem(useLocalKey);
+                        localStorage.removeItem(key); // dọn tạm
                     }
-                } catch (e) {
-                    console.error('Load impkey error', e);
-                }
+                } catch (e) { console.error('Load impkey error', e); }
             }
 
-            // Nếu đã có payload từ localStorage thì bỏ qua phần imp
-            if (payload && Array.isArray(payload.items) && payload.items.length) {
-                // ok
-            } else if (imp) {
-                // 1) Làm sạch imp: bỏ dấu phẩy / khoảng trắng ở cuối
-                imp = imp.trim().replace(/[,;\s]+$/g, '');
+            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return;
 
-                // 2) Chuyển URL-safe base64 -> chuẩn base64
-                imp = imp.replace(/-/g, '+').replace(/_/g, '/');
-
-                // 3) Bổ sung padding '=' cho đủ bội số 4
-                const pad = imp.length % 4;
-                if (pad) imp += '='.repeat(4 - pad);
-
-                try {
-                    const json = atob(imp); // đã chuẩn hoá -> atob an toàn
-                    payload = JSON.parse(json);
-                } catch (e) {
-                    console.error('Decode imp error', e);
-                    // Thêm cảnh báo nhẹ để bạn biết lỗi parse
-                    alert('Không đọc được dữ liệu từ đường link (imp). Vui lòng thử lại từ trang in mã vạch.');
-                    return null;
-                }
-            }
-
-            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return null;
-
-            // ==== Gộp theo (MASP@@SIZE) rồi quy về object { MASP:{sizes,soluongs,...} } ====
-            const perKey = new Map();
-            for (const it of payload.items) {
+            // ===== Chuẩn hóa & gộp dữ liệu theo (masp + size) =====
+            const map = new Map();
+            payload.items.forEach(it => {
                 const masp = (it.masp || '').toUpperCase();
                 const size = ((it.size ?? '').toString().trim()) || '0';
                 const key = masp + '@@' + size;
 
                 const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
-                const dvt = (it.dvt && it.dvt !== 'NULL') ? it.dvt : (window.sanPhamData?.[masp]?.dvt || 'sp');
+                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
                 const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
                 const sl = Number(it.sl) || 1;
 
-                if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
-                else perKey.get(key).sl += sl;
-            }
-
-            const bangObj = {};
-            for (const o of perKey.values()) {
-                if (!bangObj[o.masp]) {
-                    bangObj[o.masp] = { masp: o.masp, tensp: o.tensp, dvt: o.dvt, gia: o.gia, km: 0, sizes: [], soluongs: [] };
-                }
-                bangObj[o.masp].sizes.push(o.size);
-                bangObj[o.masp].soluongs.push(o.sl);
-            }
-
-            return bangObj;
-        };
-
-        // ===== Tiêu thụ payload sau khi app sẵn sàng (được gọi sau login/khởi tạo) =====
-        window.consumeImportPayload = function () {
-            console.log("[NHAP] hash:", location.hash);
-            console.log("[NHAP] parseImportPayload:", window.parseImportPayload());
-
-            const bangObj = window.parseImportPayload();
-            if (!bangObj) return false;
-
-            // Hợp nhất vào window.bangKetQua (định dạng object theo mã)
-            window.bangKetQua = window.bangKetQua && Object.keys(window.bangKetQua).length ? window.bangKetQua : {};
-            for (const masp in bangObj) {
-                if (!window.bangKetQua[masp]) {
-                    window.bangKetQua[masp] = bangObj[masp];
+                if (!map.has(key)) {
+                    map.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
                 } else {
-                    const cur = window.bangKetQua[masp];
-                    bangObj[masp].sizes.forEach((sz, i) => {
-                        const idx = cur.sizes.indexOf(sz);
-                        if (idx >= 0) cur.soluongs[idx] = (Number(cur.soluongs[idx]) || 0) + (bangObj[masp].soluongs[i] || 0);
-                        else { cur.sizes.push(sz); cur.soluongs.push(bangObj[masp].soluongs[i] || 0); }
+                    map.get(key).sl += sl;
+                }
+            });
+
+            // ===== Chuyển sang cấu trúc bangKetQua (gộp theo MÃ, mảng size/soluong) =====
+            const groupMap = new Map();
+            [...map.values()].forEach(o => {
+                if (!groupMap.has(o.masp)) {
+                    groupMap.set(o.masp, { masp: o.masp, tensp: o.tensp, dvt: o.dvt, gia: o.gia, km: 0, sizes: [], soluongs: [] });
+                }
+                const g = groupMap.get(o.masp);
+                g.sizes.push(o.size);
+                g.soluongs.push(o.sl);
+            });
+
+            // ===== Ghép vào bangKetQua hiện có (merge nếu trùng mã) =====
+            window.bangKetQua = window.bangKetQua || [];
+            const existing = new Map(window.bangKetQua.map(x => [x.masp, x]));
+            for (const g of groupMap.values()) {
+                if (existing.has(g.masp)) {
+                    const e = existing.get(g.masp);
+                    g.sizes.forEach((sz, i) => {
+                        const idx = e.sizes.indexOf(sz);
+                        if (idx >= 0) e.soluongs[idx] = (Number(e.soluongs[idx]) || 0) + g.soluongs[i];
+                        else { e.sizes.push(sz); e.soluongs.push(g.soluongs[i]); }
                     });
-                    cur.gia = cur.gia || bangObj[masp].gia;
-                    cur.dvt = cur.dvt || bangObj[masp].dvt;
+                    // cập nhật dvt/gia nếu có
+                    e.dvt = g.dvt || e.dvt;
+                    e.gia = g.gia || e.gia;
+                } else {
+                    window.bangKetQua.push(g);
                 }
             }
 
-            // Render (chờ hàm sẵn sàng)
-            const tryRender = () => {
-                if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
-                    window.capNhatBangHTML(window.bangKetQua);
-                    window.capNhatThongTinTong(window.bangKetQua);
-                    // Xoá hash sau khi nạp xong để tránh nạp lại
-                    history.replaceState(null, '', location.pathname);
-                    return true;
-                }
-                return false;
-            };
+            // ===== Render lại bảng & tổng =====
+            if (typeof window.capNhatBangHTML === 'function') window.capNhatBangHTML(window.bangKetQua);
+            if (typeof window.capNhatThongTinTong === 'function') window.capNhatThongTinTong();
 
-            if (!tryRender()) {
-                const tm = setInterval(() => { if (tryRender()) clearInterval(tm); }, 200);
-            }
-            return true;
-        };
+            // Scroll tới bảng (tuỳ giao diện của bạn)
+            // document.getElementById('bangKetQua')?.scrollIntoView({ behavior: 'smooth' });
+        })();
+    </script>
 
+    <script>
         document.addEventListener("DOMContentLoaded", () => {
             // Thử nạp payload sau khi load
             const bangObj = window.parseImportPayload && window.parseImportPayload();
@@ -1382,37 +1279,8 @@
             document.getElementById("tongkm")?.setAttribute("value", tongkm);
             document.getElementById("phaithanhtoan")?.setAttribute("value", phaitra.toLocaleString("vi-VN"));
         }
-
     </script>
 
-    <!-- Overlay quét -->
-    <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
-        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
-
-        <!-- Thanh điều khiển -->
-        <div
-            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
-            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
-            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
-
-            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
-                Ảnh có sẵn
-                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
-            </label>
-
-            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
-        </div>
-
-        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
-    </div>
-
-    <!-- Flash + Toast -->
-    <div id="flashOverlay"></div>
-    <div id="toastMsg"></div>
-
-
-    <script type="module" src="scripts/feedback.js"></script>
-    <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
