@@ -1357,7 +1357,8 @@
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            const bang = window.getBangKetQua ? window.getBangKetQua() : {};
+            // ✅ Dùng thẳng window.bangKetQua thay vì getBangKetQua
+            const bang = window.bangKetQua || {};
             console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
 
             if (!bang || Object.keys(bang).length === 0) {
@@ -1391,7 +1392,6 @@
             const url = `inmavachcs111.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
-
 
     </script>
 
