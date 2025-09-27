@@ -1393,57 +1393,7 @@
             }
         }
         document.addEventListener("DOMContentLoaded", importFromHashToInTem);
-
-        // ===== NHẬN PAYLOAD TỪ HASH #imp =====
-        function parseImportPayload() {
-            const hash = location.hash || "";
-            if (!hash.startsWith("#imp=")) return null;
-
-            let imp = hash.slice(5).trim();
-            if (!imp) return null;
-
-            // Chuẩn hóa base64 url-safe
-            imp = imp.replace(/-/g, "+").replace(/_/g, "/");
-            const pad = imp.length % 4;
-            if (pad) imp += "=".repeat(4 - pad);
-
-            let payload = null;
-            try {
-                payload = JSON.parse(decodeURIComponent(escape(atob(imp))));
-            } catch (e) {
-                console.error("[IN TEM] Decode error:", e);
-                return null;
-            }
-
-            console.log("[IN TEM] payload decode:", payload);
-            if (!payload || !Array.isArray(payload.items)) return null;
-
-            // Chuyển items thành object bangObj
-            const bangObj = {};
-            payload.items.forEach(it => {
-                const masp = (it.masp || "").toUpperCase();
-                if (!masp) return;
-
-                // fallback dữ liệu từ sanPhamData
-                const spInfo = window.sanPhamData?.[masp] || {};
-                const tensp = it.tensp || spInfo.tensp || "";
-                const dvt = spInfo.dvt || "sp";
-                const gia = spInfo.gianhap || 0;
-
-                if (!bangObj[masp]) {
-                    bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
-                }
-                bangObj[masp].sizes.push(it.size || "0");
-                bangObj[masp].soluongs.push(Number(it.sl) || 0);
-            });
-
-
-            console.log("[IN TEM] bangObj parse:", bangObj);
-            return bangObj;
-        }
-
-
-
+        
 
     </script>
 
