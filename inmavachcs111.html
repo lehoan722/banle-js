@@ -1344,6 +1344,11 @@
 
         // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
         (function importFromHashToInTem() {
+
+            console.log("[IN TEM] payload decode:", payload);
+            console.log("[IN TEM] bangObj parse:", bangObj);
+
+
             const hash = location.hash || "";
             if (!hash.startsWith("#imp=")) return;
 
@@ -1386,6 +1391,10 @@
             // Xoá hash để tránh nạp lại khi refresh
             history.replaceState(null, "", location.pathname);
         })();
+
+        console.log("[IN TEM] payload decode:", payload);
+        console.log("[IN TEM] bangObj parse:", bangObj);
+
 
 
     </script>
