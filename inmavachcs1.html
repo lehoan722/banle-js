@@ -328,6 +328,7 @@
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
+                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
                     <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
@@ -815,6 +816,46 @@
             }
             window.print();
         }
+
+        // Gom danh sách item từ lưới đang chọn để in
+        function collectInvoiceItems() {
+            syncHandsontableToSelected(); // đã có sẵn: build mảng "selected"
+            return (selected || [])
+                .filter(r => r && r.tick) // chỉ lấy dòng được tick In
+                .map(r => ({
+                    masp: (r.masp || '').toUpperCase(),
+                    tensp: r.tensp || '',
+                    size: ((r.size ?? '').toString().trim()) || '0',
+                    sl: Number(r.sl) || 1,
+                    dvt: r.dvt || 'sp',
+                    gianhap: Number(r.gianhap) || 0
+                }));
+        }
+
+        // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
+        function openNhapFromItems(items) {
+            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+            const json = JSON.stringify(payload);
+            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
+
+            if (b64.length <= 1800) {
+                window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
+            } else {
+                const key = 'IMP_' + Date.now();
+                localStorage.setItem(key, json);
+                window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
+            }
+        }
+
+        // Click nút "Tạo HĐ nhập"
+        document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
+            const items = collectInvoiceItems();
+            if (!items.length) {
+                alert('Danh sách in rỗng hoặc chưa tick In.');
+                return;
+            }
+            openNhapFromItems(items);
+        });
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
