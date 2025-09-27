@@ -1342,51 +1342,6 @@
             hot.loadData(data);
         }
 
-        // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
-        (function importFromHashToInTem() {
-            const hash = location.hash || "";
-            if (!hash.startsWith("#imp=")) return;
-
-            let imp = hash.slice(5).trim();
-            if (!imp) return;
-
-            // Normalize base64 URL-safe
-            imp = imp.replace(/-/g, "+").replace(/_/g, "/");
-            const pad = imp.length % 4;
-            if (pad) imp += "=".repeat(4 - pad);
-
-            let payload = null;
-            try {
-                payload = JSON.parse(decodeURIComponent(escape(atob(imp))));
-            } catch (e) {
-                console.error("Decode imp error", e);
-                return;
-            }
-            if (!payload || !Array.isArray(payload.items)) return;
-
-            console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
-
-            // Chuyển items → data cho bảng Handsontable (đúng cấu trúc 9 cột)
-            const data = payload.items.map((it, idx) => [
-                idx + 1,                // STT
-                it.masp || "",
-                it.tensp || "",
-                it.size || "0",
-                it.sl || 0,
-                it.dvt || "sp",
-                it.gianhap || 0,
-                true,                   // In: luôn tick
-                it.giale || 0           // Giá lẻ: nếu có
-            ]);
-
-            if (window.hot) {
-                hot.loadData(data);
-            }
-
-            // Xoá hash để tránh nạp lại khi refresh
-            history.replaceState(null, "", location.pathname);
-        })();
-
 
         // ===== NHẬN PAYLOAD TỪ HASH #imp =====
         function parseImportPayload() {
