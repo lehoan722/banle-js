@@ -1200,10 +1200,9 @@
                 const size = ((it.size ?? '').toString().trim()) || '0';
                 const key = masp + '@@' + size;
 
-                const tensp = (it.tensp ?? '') || (window.sanPhamData?.[masp]?.tensp) || '';
-                const dvt = (window.sanPhamData?.[masp]?.dvt) || 'sp';
-                const gia = (window.sanPhamData?.[masp]?.gianhap) || 0;
-
+                const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
+                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
+                const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
                 const sl = Number(it.sl) || 1;
 
                 if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
@@ -1350,15 +1349,16 @@
 
         // Gắn vào nút
         // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
+
+        // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
             console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
 
-            // Gom dữ liệu từ DOM vào window.bangKetQua
+            // Gom dữ liệu từ DOM vào window.bangKetQua (nếu có hàm này)
             if (window.capNhatBangKetQuaTuDOM) {
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            // ✅ Dùng thẳng window.bangKetQua thay vì getBangKetQua
             const bang = window.bangKetQua || {};
             console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
 
@@ -1367,7 +1367,7 @@
                 return;
             }
 
-            // Gom dữ liệu xuất sang trang inmavachcs111
+            // Gom dữ liệu tối thiểu để gửi đi
             const items = [];
             Object.values(bang).forEach(item => {
                 item.sizes.forEach((sz, idx) => {
@@ -1375,9 +1375,7 @@
                         masp: item.masp,
                         tensp: item.tensp,
                         size: sz,
-                        sl: item.soluongs[idx],
-                        dvt: item.dvt || "",
-                        gianhap: item.gia || 0   // 👈 đổi từ giaNhap → gianhap
+                        sl: item.soluongs[idx]
                     });
                 });
             });
@@ -1389,8 +1387,9 @@
             };
             console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
-            const encoded = btoa(JSON.stringify(payload));
-            const url = `inmavachcs111.html#imp=${encoded}`;
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
