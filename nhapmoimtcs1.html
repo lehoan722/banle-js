@@ -1351,47 +1351,47 @@
         // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
 
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
+        // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
+document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
+    console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
 
-            // Gom dữ liệu từ DOM vào window.bangKetQua (nếu có hàm này)
-            if (window.capNhatBangKetQuaTuDOM) {
-                window.capNhatBangKetQuaTuDOM();
-            }
+    if (window.capNhatBangKetQuaTuDOM) {
+        window.capNhatBangKetQuaTuDOM();
+    }
 
-            const bang = window.bangKetQua || {};
-            console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
+    const bang = window.bangKetQua || {};
+    console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
 
-            if (!bang || Object.keys(bang).length === 0) {
-                alert("❌ Chưa có dữ liệu để in mã vạch!");
-                return;
-            }
+    if (!bang || Object.keys(bang).length === 0) {
+        alert("❌ Chưa có dữ liệu để in mã vạch!");
+        return;
+    }
 
-            // Gom dữ liệu tối thiểu để gửi đi
-            const items = [];
-            Object.values(bang).forEach(item => {
-                item.sizes.forEach((sz, idx) => {
-                    items.push({
-                        masp: item.masp,
-                        tensp: item.tensp,
-                        size: sz,
-                        sl: item.soluongs[idx]
-                    });
-                });
+    // Chỉ gửi các trường tối thiểu
+    const items = [];
+    Object.values(bang).forEach(item => {
+        item.sizes.forEach((sz, idx) => {
+            items.push({
+                masp: item.masp,
+                tensp: item.tensp,
+                size: sz,
+                sl: item.soluongs[idx]
             });
-
-            const payload = {
-                source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
-                items
-            };
-            console.log("📤 [In mã vạch] payload gửi đi:", payload);
-
-            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
-            window.open(url, "_blank");
         });
+    });
+
+    const payload = {
+        source: "nhapmoi",
+        cs: localStorage.getItem("diadiem") || "cs1",
+        items
+    };
+    console.log("📤 [In mã vạch] payload gửi đi:", payload);
+
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
+    window.open(url, "_blank");
+});
 
     </script>
 
