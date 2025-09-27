@@ -599,6 +599,7 @@
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
             <button id="btnOpenInTem">In mã vạch</button>
+            <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
 
             <!-- Popup tìm khách hàng
@@ -1342,7 +1343,7 @@
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs111.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
@@ -1352,48 +1353,145 @@
 
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-    console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
+        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
+            console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
 
-    if (window.capNhatBangKetQuaTuDOM) {
-        window.capNhatBangKetQuaTuDOM();
-    }
+            if (window.capNhatBangKetQuaTuDOM) {
+                window.capNhatBangKetQuaTuDOM();
+            }
 
-    const bang = window.bangKetQua || {};
-    console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
+            const bang = window.bangKetQua || {};
+            console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
 
-    if (!bang || Object.keys(bang).length === 0) {
-        alert("❌ Chưa có dữ liệu để in mã vạch!");
-        return;
-    }
+            if (!bang || Object.keys(bang).length === 0) {
+                alert("❌ Chưa có dữ liệu để in mã vạch!");
+                return;
+            }
 
-    // Chỉ gửi các trường tối thiểu
-    const items = [];
-    Object.values(bang).forEach(item => {
-        item.sizes.forEach((sz, idx) => {
-            items.push({
-                masp: item.masp,
-                tensp: item.tensp,
-                size: sz,
-                sl: item.soluongs[idx]
+            // Chỉ gửi các trường tối thiểu
+            const items = [];
+            Object.values(bang).forEach(item => {
+                item.sizes.forEach((sz, idx) => {
+                    items.push({
+                        masp: item.masp,
+                        tensp: item.tensp,
+                        size: sz,
+                        sl: item.soluongs[idx]
+                    });
+                });
             });
+
+            const payload = {
+                source: "nhapmoi",
+                cs: localStorage.getItem("diadiem") || "cs1",
+                items
+            };
+            console.log("📤 [In mã vạch] payload gửi đi:", payload);
+
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
+            window.open(url, "_blank");
         });
-    });
 
-    const payload = {
-        source: "nhapmoi",
-        cs: localStorage.getItem("diadiem") || "cs1",
-        items
-    };
-    console.log("📤 [In mã vạch] payload gửi đi:", payload);
-
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
-    window.open(url, "_blank");
-});
 
     </script>
+
+    <script>
+        // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
+        async function importFromGoogleSheet() {
+            const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
+            const sheetName = "kiemkhocs1";
+            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+
+            try {
+                const res = await fetch(url);
+                const csv = await res.text();
+
+                // Parse CSV thành mảng [masp, size, sl]
+                const rows = csv.trim().split("\n").map(r => r.split(","));
+                rows.shift(); // bỏ header nếu có
+
+                const bangObj = {};
+                const invalidCodes = [];
+
+                rows.forEach(([maspRaw, sizeRaw, slRaw]) => {
+                    if (!maspRaw) return;
+                    const masp = maspRaw.trim().toUpperCase();
+                    const size = (sizeRaw || "0").trim();
+                    const sl = Number(slRaw) || 0;
+
+                    // Kiểm tra tồn tại trong danh mục
+                    const spInfo = window.sanPhamData?.[masp];
+                    if (!spInfo) {
+                        // Mã không hợp lệ -> ghi vào invalidCodes
+                        invalidCodes.push({ masp, size, sl });
+                        return;
+                    }
+
+                    // Nếu hợp lệ -> gộp vào bangObj
+                    if (!bangObj[masp]) {
+                        bangObj[masp] = {
+                            masp,
+                            tensp: spInfo.tensp,
+                            dvt: spInfo.dvt || "sp",
+                            gia: spInfo.gianhap || 0,
+                            km: 0,
+                            sizes: [],
+                            soluongs: []
+                        };
+                    }
+                    const idx = bangObj[masp].sizes.indexOf(size);
+                    if (idx >= 0) {
+                        bangObj[masp].soluongs[idx] += sl;
+                    } else {
+                        bangObj[masp].sizes.push(size);
+                        bangObj[masp].soluongs.push(sl);
+                    }
+                });
+
+                // Cập nhật bangKetQua
+                window.bangKetQua = bangObj;
+
+                // Render lại bảng
+                if (typeof window.capNhatBangHTML === "function") {
+                    window.capNhatBangHTML(window.bangKetQua);
+                }
+                if (typeof window.capNhatThongTinTong === "function") {
+                    window.capNhatThongTinTong(window.bangKetQua);
+                }
+
+                // Highlight các mã không hợp lệ
+                if (invalidCodes.length > 0) {
+                    const tbody = document.querySelector("#bangketqua tbody");
+                    invalidCodes.forEach(item => {
+                        const tr = document.createElement("tr");
+                        tr.style.backgroundColor = "#f8d7da"; // đỏ nhạt
+                        tr.innerHTML = `
+          <td>${item.masp}</td>
+          <td></td>
+          <td>${item.size}</td>
+          <td>${item.sl}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        `;
+                        tbody.appendChild(tr);
+                    });
+                    alert("⚠ Có mã sản phẩm không tồn tại trong danh mục. Vui lòng kiểm tra lại.");
+                }
+
+            } catch (err) {
+                console.error("Import Google Sheet error:", err);
+                alert("Không thể lấy dữ liệu từ Google Sheet.");
+            }
+        }
+
+        // Gắn nút
+        document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
+    </script>
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
