@@ -1348,7 +1348,8 @@
 
         // Gắn vào nút
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            openInTemFromNhap(window.bangKetQua);
+            const current = capNhatBangKetQuaTuDOM(); // 🔑 gom lại dữ liệu mới nhất
+            openInTemFromNhap(current);
         });
 
     </script>
