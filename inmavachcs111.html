@@ -836,7 +836,10 @@
         function openNhapFromItems(items) {
             const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
             const json = JSON.stringify(payload);
-            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
+            const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
+            // base64 cho gọn URL
 
             if (b64.length <= 1800) {
                 window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
