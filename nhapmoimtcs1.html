@@ -926,6 +926,33 @@
             });
             // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
             capNhatBangKetQuaTuDOM();
+            function capNhatBangKetQuaTuDOM() {
+                const tbody = document.querySelector("#bangketqua tbody");
+                const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+                const bangObj = {};
+
+                rows.forEach(tr => {
+                    const cells = tr.querySelectorAll("td");
+                    if (cells.length >= 6) {
+                        const masp = (cells[0].innerText || "").toUpperCase();
+                        const tensp = cells[1].innerText || "";
+                        const size = cells[2].innerText || "0";
+                        const sl = Number(cells[3].innerText) || 0;
+                        const dvt = cells[4].innerText || "sp";
+                        const gia = Number(cells[5].innerText) || 0;
+
+                        if (!bangObj[masp]) {
+                            bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
+                        }
+                        bangObj[masp].sizes.push(size);
+                        bangObj[masp].soluongs.push(sl);
+                    }
+                });
+
+                window.bangKetQua = bangObj;   // 🔑 Cập nhật global để openInTemFromNhap dùng
+                console.log("[NHAP] capNhatBangKetQuaTuDOM:", bangObj);
+                return bangObj;
+            }
 
             // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
             if (typeof capNhatThongTinTong === "function") {
