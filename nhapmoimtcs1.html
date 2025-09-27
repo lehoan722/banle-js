@@ -658,7 +658,7 @@
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs1" selected>Cơ sở 2</option>
+                    <option value="cs1" selected>Cơ sở 1</option>
                 </select>
 
                 <div class="login-field">
@@ -1138,15 +1138,15 @@
     </script>
 
     <script>
-        // ========= NHẬN DỮ LIỆU TỪ TRANG IN MÃ VẠCH & ĐỔ VÀO BẢNG =========
-        (function importFromHash() {
+        // ===== Parse payload từ hash/localStorage → trả về bangObj { MASP:{...sizes,soluongs} } =====
+        window.parseImportPayload = function () {
             const hash = location.hash || '';
-            if (!hash) return;
+            if (!hash) return null;
 
             const params = new URLSearchParams(hash.slice(1));
             let payload = null;
 
-            // 1) Nhận qua base64 hash
+            // 1) Base64 hash
             if (params.get('imp')) {
                 try {
                     const json = decodeURIComponent(escape(atob(params.get('imp'))));
@@ -1154,7 +1154,7 @@
                 } catch (e) { console.error('Decode imp error', e); }
             }
 
-            // 2) Hoặc nhận qua localStorage (khi dữ liệu dài)
+            // 2) localStorage key
             if (!payload && params.get('impkey')) {
                 const key = params.get('impkey');
                 try {
@@ -1166,10 +1166,10 @@
                 } catch (e) { console.error('Load impkey error', e); }
             }
 
-            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return;
+            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return null;
 
-            // ===== Chuẩn hóa & gộp theo (masp + size) =====
-            const perKey = new Map(); // key: MASP@@SIZE
+            // Gộp theo MASP@@SIZE → rồi quy về bangObj { MASP:{sizes,soluongs,...} }
+            const perKey = new Map();
             payload.items.forEach(it => {
                 const masp = (it.masp || '').toUpperCase();
                 const size = ((it.size ?? '').toString().trim()) || '0';
@@ -1180,14 +1180,10 @@
                 const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
                 const sl = Number(it.sl) || 1;
 
-                if (!perKey.has(key)) {
-                    perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
-                } else {
-                    perKey.get(key).sl += sl;
-                }
+                if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
+                else perKey.get(key).sl += sl;
             });
 
-            // ===== Chuyển sang **đối tượng** bangKetQua: { MASP: {sizes:[],soluongs:[],…} } =====
             const bangObj = {};
             for (const o of perKey.values()) {
                 if (!bangObj[o.masp]) {
@@ -1196,14 +1192,20 @@
                 bangObj[o.masp].sizes.push(o.size);
                 bangObj[o.masp].soluongs.push(o.sl);
             }
+            return bangObj;
+        };
 
-            // ===== Ghép vào bangKetQua hiện có (nếu có) =====
+        // ===== Tiêu thụ payload sau khi app sẵn sàng (được gọi sau login/khởi tạo) =====
+        window.consumeImportPayload = function () {
+            const bangObj = window.parseImportPayload();
+            if (!bangObj) return false;
+
+            // Hợp nhất vào window.bangKetQua (định dạng object theo mã)
             window.bangKetQua = window.bangKetQua && Object.keys(window.bangKetQua).length ? window.bangKetQua : {};
             for (const masp in bangObj) {
                 if (!window.bangKetQua[masp]) {
                     window.bangKetQua[masp] = bangObj[masp];
                 } else {
-                    // merge size/SL
                     const cur = window.bangKetQua[masp];
                     bangObj[masp].sizes.forEach((sz, i) => {
                         const idx = cur.sizes.indexOf(sz);
@@ -1215,18 +1217,23 @@
                 }
             }
 
-            // ===== Chờ module render sẵn sàng rồi mới gọi =====
-            function tryRender() {
+            // Render (chờ hàm sẵn sàng)
+            const tryRender = () => {
                 if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
                     window.capNhatBangHTML(window.bangKetQua);
                     window.capNhatThongTinTong(window.bangKetQua);
-                } else {
-                    // thử lại sau 200ms (main.js/hoadon.js/bangketqua.js có thể chưa load xong)
-                    setTimeout(tryRender, 200);
+                    // Xoá hash sau khi nạp xong để tránh nạp lại
+                    history.replaceState(null, '', location.pathname);
+                    return true;
                 }
+                return false;
+            };
+
+            if (!tryRender()) {
+                const tm = setInterval(() => { if (tryRender()) clearInterval(tm); }, 200);
             }
-            tryRender();
-        })();
+            return true;
+        };
 
         document.addEventListener("DOMContentLoaded", () => {
             // Thử nạp payload sau khi load
@@ -1282,6 +1289,7 @@
         }
 
     </script>
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
