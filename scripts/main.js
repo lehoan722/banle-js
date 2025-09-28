@@ -399,6 +399,10 @@ export async function khoiTaoUngDung() {
       scheduleBatch();
     }
 
+    // THÊM MỚI: bind nút xóa
+    const btnXoa = document.getElementById("xoa");
+    if (btnXoa) btnXoa.addEventListener("click", xoaDongDangChon);
+
     document.addEventListener("keydown", (e) => {
       // tránh xóa khi đang gõ trong input
       const tag = (e.target.tagName || "").toUpperCase();
