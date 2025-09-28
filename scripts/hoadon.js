@@ -5,6 +5,30 @@ import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangk
 import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
+// === BRANCH RESOLVER (ưu tiên tên trang/biến toàn cục), Fallback: localStorage (tương thích cũ) ===
+function currentBranchUpper() {
+    // 1) Ưu tiên window.diadiem do trang đã cài cứng (banlemtcs111: "cs1")
+    try {
+        const w = (window.diadiem || '').toString().toLowerCase();
+        if (w === 'cs1' || w === 'cs2') return w.toUpperCase(); // -> 'CS1' | 'CS2'
+    } catch (_) { }
+
+    // 2) Thử ô #diadiem (nếu có sẵn trên trang)
+    try {
+        const el = document.getElementById('diadiem');
+        if (el && /cs[12]/i.test(el.value)) return el.value.toUpperCase();
+    } catch (_) { }
+
+    // 3) Fallback tạm thời: localStorage (giữ an toàn cho trang cũ chưa đặt window.diadiem)
+    try {
+        const ls = (localStorage.getItem('diadiem') || '').toLowerCase();
+        if (ls === 'cs1' || ls === 'cs2') return ls.toUpperCase();
+    } catch (_) { }
+
+    // 4) Mặc định an toàn
+    return 'CS1';
+}
+
 export let bangKetQua = {};
 
 // Trong hoadon.js
@@ -323,7 +347,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     if (qlTheoNhom && String(spData.nhomhang || "").trim() && window.danhMucNhom) {
         const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
         if (nhom && nhom.quanlysize) {
-            const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // 'CS1' | 'CS2'
+            const diadiemHienTai = currentBranchUpper(); // 'CS1' | 'CS2' cố định theo trang
+
             if (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai) {
                 const sizeInput = document.getElementById("size");
                 const sizeValue = (sizeInput?.value || "").trim();
@@ -442,7 +467,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
             if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom) {
                 const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
                 if (nhom && nhom.quanlysize) {
-                    const diadiemHienTai = (localStorage.getItem("diadiem") || "").toUpperCase(); // CS1/CS2
+                    const diadiemHienTai = currentBranchUpper(); // 'CS1' | 'CS2' cố định theo trang
+
                     groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
                 }
             }
