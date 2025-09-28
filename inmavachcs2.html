@@ -323,7 +323,7 @@
                         <option value="">– Chọn loại tem –</option>
                         <option value="giaydep">Tem giày dép</option>
                         <option value="quanao">Tem quần áo</option>
-                        <option value="insize_tomy114">In size</option>
+                        <option value="insize_tomy114">In size </option>
                     </select>
                 </label>
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
@@ -669,7 +669,7 @@
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
         column-gap: 5mm;
-        row-gap: 1.9mm;        
+        row-gap: 1.5mm;        
     ">`;
 
             // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
@@ -811,14 +811,14 @@
             const maxTems = PER_PAGE - (currentPage === 1 ? blank : 0);
 
             // Dựng HTML: padding theo thông số bạn cung cấp
-            // Blank cho trang đầu  //row-gap: 2.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+            // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
             let html = `<div class="print-preview" style="padding-top:5.5mm; padding-left:9mm;">
     <div class="tem-grid" style="
       display:grid;
       grid-template-columns: repeat(${COLS}, 11mm);
       grid-template-rows: repeat(${ROWS}, 11mm);
       column-gap: 1.4mm;
-      row-gap: 2.9mm;
+      row-gap: 2.5mm;
     ">`;
 
             // Ô trống đầu trang (offset)
