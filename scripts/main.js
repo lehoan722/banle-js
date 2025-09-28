@@ -1,6 +1,6 @@
 
 import { khoiTaoTimMaSP, luuMaSanPhamMoi, moCauHinhTruong, luuCauHinhTruong } from './sanpham.js';
-import { chuyenFocus, ganTenNV, getBangKetQua } from './hoadon.js';
+import { chuyenFocus, ganTenNV,xoaDongDangChon, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
