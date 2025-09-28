@@ -323,6 +323,7 @@
                         <option value="">– Chọn loại tem –</option>
                         <option value="giaydep">Tem giày dép</option>
                         <option value="quanao">Tem quần áo</option>
+                        <option value="insize_tomy114">In size – TOMY 114 (tem tròn 11mm, 16×12)</option>
                     </select>
                 </label>
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
@@ -453,6 +454,20 @@
         const previewArea = document.getElementById('previewArea');
         const fromRowInput = document.getElementById('fromRow');
         const fromColInput = document.getElementById('fromCol');
+
+        const loaiTemSelect = document.getElementById('loaiTem');
+        function applyFromLimits() {
+            if (loaiTemSelect.value === 'insize_tomy114') {
+                fromRowInput.max = 12;
+                fromColInput.max = 16;
+            } else {
+                fromRowInput.max = 8;
+                fromColInput.max = 5;
+            }
+        }
+        loaiTemSelect.addEventListener('change', applyFromLimits);
+        applyFromLimits();
+
 
         // 1. Search products (không load all)
         async function searchProducts(keyword, callback) {
@@ -594,6 +609,7 @@
         let currentPage = 1;
         let totalPages = 1;
         let temsAll = [];
+
 
         window.renderPreview = function (page = 1) {
             syncHandsontableToSelected();
@@ -764,13 +780,88 @@
             document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
         };
 
+        // ==== RENDER: In SIZE theo giấy TOMY 114 (tem tròn 11mm, 16 cột × 12 hàng) ====
+        function renderPreviewInSizeTomy114(page = 1) {
+            syncHandsontableToSelected();
 
-        window.prevPage = function () {
-            if (currentPage > 1) renderPreview(currentPage - 1);
-        };
-        window.nextPage = function () {
-            if (currentPage < totalPages) renderPreview(currentPage + 1);
-        };
+            // Gom dữ liệu: chỉ lấy các dòng tick In và có size hợp lệ (khác rỗng/'0')
+            const items = (selected || [])
+                .filter(r => r && r.tick)
+                .flatMap(r => {
+                    const s = ((r.size ?? '').toString().trim());
+                    const qty = Number(r.sl) || 0;
+                    if (!s || s === '0' || qty <= 0) return [];
+                    return Array(qty).fill({ size: s });
+                });
+
+            // Phân trang: 192 tem/trang
+            const PER_PAGE = 192, COLS = 16, ROWS = 12;
+            totalPages = Math.max(1, Math.ceil(items.length / PER_PAGE));
+            currentPage = Math.min(Math.max(1, page), totalPages);
+
+            // Vị trí bắt đầu (blank slot) chỉ áp dụng cho trang đầu
+            const fromRow = parseInt(fromRowInput.value) || 1; // 1..12
+            const fromCol = parseInt(fromColInput.value) || 1; // 1..16
+            const blank = (currentPage === 1) ? (fromRow - 1) * COLS + (fromCol - 1) : 0;
+
+            // Lấy dữ liệu cho trang hiện tại (chú ý blank chỉ trừ ở trang đầu)
+            const start = (currentPage - 1) * PER_PAGE - (currentPage === 1 ? 0 : blank);
+            const end = currentPage * PER_PAGE - (currentPage === 1 ? 0 : blank);
+            const pageTems = items.slice(Math.max(0, start), Math.max(0, end));
+            const maxTems = PER_PAGE - (currentPage === 1 ? blank : 0);
+
+            // Dựng HTML: padding theo thông số bạn cung cấp
+            let html = `<div class="print-preview" style="padding-top:7mm; padding-left:5mm;">
+    <div class="tem-grid" style="
+      display:grid;
+      grid-template-columns: repeat(${COLS}, 11mm);
+      grid-template-rows: repeat(${ROWS}, 11mm);
+      column-gap: 1mm;
+      row-gap: 2mm;
+    ">`;
+
+            // Ô trống đầu trang (offset)
+            for (let i = 0; i < (currentPage === 1 ? blank : 0); i++) {
+                html += `<div class="tem tem-blank"></div>`;
+            }
+
+            // Các tem size
+            const fitFont = s => (s.length >= 3 ? '7pt' : '9pt'); // auto-fit đơn giản
+            for (let i = 0; i < maxTems; i++) {
+                const t = pageTems[i];
+                if (!t) { html += `<div class="tem tem-blank"></div>`; continue; }
+                const sizeText = (t.size || '').toString();
+                html += `
+      <div class="tem" style="
+        width:11mm;height:11mm;border-radius:50%;
+        display:flex;justify-content:center;align-items:center;
+        overflow:hidden;text-align:center;
+      ">
+        <span style="font-weight:700;font-size:${fitFont(sizeText)};line-height:1; text-transform:uppercase;">
+          ${sizeText}
+        </span>
+      </div>`;
+            }
+
+            html += `</div></div>`;
+            previewArea.innerHTML = html;
+            document.getElementById("pageInfo").textContent = \`Trang \${currentPage} / \${totalPages}\`;
+}
+
+
+       window.prevPage = function () {
+  const t = document.getElementById('loaiTem').value;
+  if (currentPage <= 1) return;
+  if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage - 1);
+  else renderPreview(currentPage - 1);
+};
+window.nextPage = function () {
+  const t = document.getElementById('loaiTem').value;
+  if (currentPage >= totalPages) return;
+  if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage + 1);
+  else renderPreview(currentPage + 1);
+};
+
 
         // Giá
         function formatGia(val) {
@@ -801,21 +892,21 @@
         // chon loai tem in
 
         window.checkLoaiTemAndRender = function () {
-            const loaiTem = document.getElementById('loaiTem').value;
-            if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
-                return;
-            }
-            renderPreview();
-        }
-        window.checkLoaiTemAndPrint = function () {
-            const loaiTem = document.getElementById('loaiTem').value;
-            if (!loaiTem) {
-                alert("Vui lòng chọn loại tem cần in!");
-                return;
-            }
-            window.print();
-        }
+  const loaiTem = document.getElementById('loaiTem').value;
+  if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+  applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
+  if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
+  else renderPreview(1);
+};
+window.checkLoaiTemAndPrint = function () {
+  const loaiTem = document.getElementById('loaiTem').value;
+  if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+  // render lại đúng mode trước khi in
+  if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
+  else renderPreview(currentPage || 1);
+  window.print();
+};
+
 
         // // ===== script nhap xuat du lieu tu in ma vach , Gom danh sách item từ lưới đang chọn để in
         function collectInvoiceItems() {
@@ -839,11 +930,11 @@
             const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
             if (b64.length <= 1800) {
-                window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
+                window.open(`/ nhapmoimtcs1.html#imp = ${ b64 } `, '_blank');
             } else {
                 const key = 'IMP_' + Date.now();
                 localStorage.setItem(key, json);
-                window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
+                window.open(`/ nhapmoimtcs1.html#impkey = ${ key } `, '_blank');
             }
         }
 
@@ -874,7 +965,7 @@
                 if (errNcc) console.error('Load NCC error:', errNcc);
                 document.getElementById('nhaccList').innerHTML = (ncc || [])
                     .filter(r => r.makh)
-                    .map(r => `<option value="${(r.makh || '').toUpperCase()}" label="${(r.makh || '').toUpperCase()} - ${r.tenkh || ''}"></option>`)
+                    .map(r => `< option value = "${(r.makh || '').toUpperCase()}" label = "${(r.makh || '').toUpperCase()} - ${r.tenkh || ''}" ></option > `)
                     .join('');
             } catch (e) { console.error(e); }
 
@@ -887,7 +978,7 @@
                 if (errCl) console.error('Load Chủng loại error:', errCl);
                 document.getElementById('chungloaiList').innerHTML = (cl || [])
                     .filter(r => r.machungloai)
-                    .map(r => `<option value="${(r.machungloai || '').toUpperCase()}" label="${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}"></option>`)
+                    .map(r => `< option value = "${(r.machungloai || '').toUpperCase()}" label = "${(r.machungloai || '').toUpperCase()} - ${r.tenchungloai || ''}" ></option > `)
                     .join('');
             } catch (e) { console.error(e); }
 
@@ -900,7 +991,7 @@
                 if (errMs) console.error('Load Màu sắc error:', errMs);
                 document.getElementById('mausacList').innerHTML = (ms || [])
                     .filter(r => r.mamau)
-                    .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label="${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}"></option>`)
+                    .map(r => `< option value = "${(r.mamau || '').toUpperCase()}" label = "${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}" ></option > `)
                     .join('');
             } catch (e) { console.error(e); }
 
@@ -913,8 +1004,8 @@
                 if (errNh) console.error('Load Nhóm hàng error:', errNh);
                 document.getElementById('nhomhangList').innerHTML = (nh || [])
                     .filter(r => r.manhom)
-                    .map(r => `<option value="${(r.manhom || '').toUpperCase()}"
-                 label="${(r.manhom || '').toUpperCase()} - ${r.tennhom || ''}"></option>`)
+                    .map(r => `< option value = "${(r.manhom || '').toUpperCase()}"
+            label = "${(r.manhom || '').toUpperCase()} - ${r.tennhom || ''}" ></option > `)
                     .join('');
             } catch (e) { console.error(e); }
 
@@ -1004,7 +1095,7 @@
                 const inp = document.getElementById(f.id);
                 if (!inp.value.trim()) {
                     inp.style.border = '1.5px solid red';
-                    msg.push(`${f.label} là bắt buộc`);
+                    msg.push(`${ f.label } là bắt buộc`);
                     valid = false;
                 } else {
                     inp.style.border = '';
@@ -1046,7 +1137,7 @@
             let res, errorMsg;
             if (isEditMode) {
                 // Trường hợp đang sửa sản phẩm đã tồn tại
-                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
+                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không ? `);
                 if (!userConfirm) {
                     document.getElementById('addProductMessage').style.color = 'orange';
                     document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
@@ -1066,7 +1157,7 @@
 
                 if (maspCheck) {
                     document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại. Không thể thêm mới.`;
+                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại.Không thể thêm mới.`;
                     return;
                 }
 
@@ -1120,7 +1211,7 @@
                 return;
             }
 
-            const confirmDel = confirm(`⚠️ Bạn có chắc chắn muốn xóa mã sản phẩm "${masp}" không?`);
+            const confirmDel = confirm(`⚠️ Bạn có chắc chắn muốn xóa mã sản phẩm "${masp}" không ? `);
             if (!confirmDel) return;
 
             const { error: deleteError } = await supabase.from('dmhanghoa').delete().eq('masp', masp);
@@ -1162,7 +1253,7 @@
             let { data } = await supabase
                 .from('dmhanghoa')
                 .select('masp, tensp')
-                .or(`masp.ilike.%${val}%,tensp.ilike.%${val}%`)
+                .or(`masp.ilike.% ${ val }%, tensp.ilike.% ${ val }% `)
                 .order('masp')
                 .limit(100);
 
@@ -1174,7 +1265,7 @@
             // Hiển thị popup
             let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
             for (let p of data) {
-                html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
+                html += `< tr data - masp="${p.masp}" data - tensp="${p.tensp || ''}" ><td>${p.masp}</td><td>${p.tensp || ''}</td></tr >`;
             }
             html += '</table>';
             maspSuggestDiv.innerHTML = html;
@@ -1393,7 +1484,7 @@
             }
         }
         document.addEventListener("DOMContentLoaded", importFromHashToInTem);
-        
+
 
     </script>
 
