@@ -543,58 +543,63 @@
         return;
       }
 
-      let dsXoa = [];
-      let doiUngList = [];
-      let coCCN = false;
+      // Gọi xác thực và chỉ xóa nếu xác thực thành công
+      kiemTraNhanVienTruocKhiXoa(async function () {
 
-      for (const cb of checkboxes) {
-        const sohd = cb.getAttribute("data-sohd");
-        if (!sohd) continue;
+        let dsXoa = [];
+        let doiUngList = [];
+        let coCCN = false;
 
-        const prefix = sohd.split("_")[0] || "";
+        for (const cb of checkboxes) {
+          const sohd = cb.getAttribute("data-sohd");
+          if (!sohd) continue;
 
-        if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
-          coCCN = true;
-          const so = sohd.split("_")[1];
-          let doiUng = "";
-          if (prefix === "xcncs1") doiUng = `ncncs2_${so}`;
-          if (prefix === "xcncs2") doiUng = `ncncs1_${so}`;
-          if (prefix === "ncncs1") doiUng = `xcncs2_${so}`;
-          if (prefix === "ncncs2") doiUng = `xcncs1_${so}`;
+          const prefix = sohd.split("_")[0] || "";
 
-          dsXoa.push(sohd);
-          if (doiUng) {
-            dsXoa.push(doiUng);
-            doiUngList.push(`${sohd} ↔ ${doiUng}`);
+          if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
+            coCCN = true;
+            const so = sohd.split("_")[1];
+            let doiUng = "";
+            if (prefix === "xcncs1") doiUng = `ncncs2_${so}`;
+            if (prefix === "xcncs2") doiUng = `ncncs1_${so}`;
+            if (prefix === "ncncs1") doiUng = `xcncs2_${so}`;
+            if (prefix === "ncncs2") doiUng = `xcncs1_${so}`;
+
+            dsXoa.push(sohd);
+            if (doiUng) {
+              dsXoa.push(doiUng);
+              doiUngList.push(`${sohd} ↔ ${doiUng}`);
+            }
+          } else {
+            dsXoa.push(sohd);
           }
-        } else {
-          dsXoa.push(sohd);
         }
-      }
 
-      dsXoa = [...new Set(dsXoa)]; // loại trùng
+        dsXoa = [...new Set(dsXoa)]; // loại trùng
 
-      let xacNhan = false;
-      if (coCCN) {
-        xacNhan = confirm(
-          "⚠️ Hóa đơn chuyển chi nhánh phải xóa kèm cả hóa đơn đối ứng.\n" +
-          "Các cặp sẽ bị xóa:\n" +
-          doiUngList.join("\n") +
-          "\n\nBạn có đồng ý xóa toàn bộ không?"
-        );
-      } else {
-        xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
-      }
-      if (!xacNhan) return;
+        let xacNhan = false;
+        if (coCCN) {
+          xacNhan = confirm(
+            "⚠️ Hóa đơn chuyển chi nhánh phải xóa kèm cả hóa đơn đối ứng.\n" +
+            "Các cặp sẽ bị xóa:\n" +
+            doiUngList.join("\n") +
+            "\n\nBạn có đồng ý xóa toàn bộ không?"
+          );
+        } else {
+          xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
+        }
+        if (!xacNhan) return;
 
-      // Thực hiện xóa
-      for (const sohd of dsXoa) {
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-      }
+        // Thực hiện xóa
+        for (const sohd of dsXoa) {
+          await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+          await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        }
 
-      alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
-      await taiDanhSachHoaDon(); // refresh lại bảng
+        alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
+        await taiDanhSachHoaDon(); // refresh lại bảng
+
+      });
     }
 
     window.onload = function () {
