@@ -323,7 +323,7 @@
                         <option value="">– Chọn loại tem –</option>
                         <option value="giaydep">Tem giày dép</option>
                         <option value="quanao">Tem quần áo</option>
-                        <option value="insize_tomy114">In size – TOMY 114 (tem tròn 11mm, 16×12)</option>
+                        <option value="insize_tomy114">In size </option>
                     </select>
                 </label>
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
@@ -747,7 +747,7 @@
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
                         return s && s !== '0'
-                            ? `<div class="size-under-qr" style="font-size:10pt; line-height:1; margin-top:0.8mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
+                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:1mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
              ${s}
            </div>`
                             : ``;
@@ -812,7 +812,7 @@
 
             // Dựng HTML: padding theo thông số bạn cung cấp
             // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
-            let html = `<div class="print-preview" style="padding-top:5.5mm; padding-left:8.5mm;">
+            let html = `<div class="print-preview" style="padding-top:5.5mm; padding-left:9mm;">
     <div class="tem-grid" style="
       display:grid;
       grid-template-columns: repeat(${COLS}, 11mm);
