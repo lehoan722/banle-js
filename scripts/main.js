@@ -1,6 +1,6 @@
 
 import { khoiTaoTimMaSP, luuMaSanPhamMoi, moCauHinhTruong, luuCauHinhTruong } from './sanpham.js';
-import { chuyenFocus, ganTenNV, xoaDongDangChon, getBangKetQua } from './hoadon.js';
+import { chuyenFocus, ganTenNV,xoaDongDangChon, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
@@ -16,19 +16,6 @@ import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep }
 import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
 
-// === Branch resolver (ưu tiên ctx.js, fallback localStorage) ===
-export function resolveBranch() {
-  try {
-    const ctx = (window.getAppCtx && window.getAppCtx()) || null;
-    if (ctx && (ctx.diadiem === 'cs1' || ctx.diadiem === 'cs2')) return ctx.diadiem;
-  } catch (_) { }
-  // Fallback tạm thời để tương thích các trang cũ chưa đặt tên chuẩn
-  try {
-    const ls = (localStorage.getItem('diadiem') || '').toLowerCase();
-    if (ls === 'cs1' || ls === 'cs2') return ls;
-  } catch (_) { }
-  return 'cs1'; // mặc định an toàn
-}
 
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
@@ -100,7 +87,7 @@ export async function khoiTaoUngDung() {
     const input = document.getElementById(id);
     if (input) input.addEventListener("keydown", chuyenFocus);
   });
-
+  
   const manvInput = document.getElementById("manv");
   if (manvInput) manvInput.addEventListener("change", ganTenNV);
 
@@ -193,16 +180,12 @@ export async function khoiTaoUngDung() {
 
 
   // Đảm bảo ô cơ sở luôn hiển thị đúng và bị khóa không đổi
-  // Đảm bảo ô cơ sở luôn hiển thị đúng và bị khóa không đổi (ưu tiên ctx.js)
-  const cs = resolveBranch();
-  const csSelect = document.getElementById('diadiem');
-  if (csSelect) {
+  const cs = localStorage.getItem("diadiem");
+  const csSelect = document.getElementById("diadiem");
+  if (cs && csSelect) {
     csSelect.value = cs;
-    csSelect.disabled = true;
+    csSelect.disabled = true; // Không cho đổi
   }
-  // Giữ tương thích với mã cũ có thể đang dùng window.diadiem
-  window.diadiem = cs;
-
 
   // 1. Hàm tải lại danh mục sản phẩm
   window.taiLaiSanPhamData = async function () {
