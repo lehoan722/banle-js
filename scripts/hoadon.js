@@ -641,12 +641,53 @@ export function xoaDongDangChon() {
         return;
     }
 
-    if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
-        delete bangKetQua[maspDangChon];
-        maspDangChon = null;
-        capNhatBangHTML(bangKetQua, window.lastAdded);
+    // Chuẩn hóa: cho phép maspDangChon là string hoặc {masp, size}
+    let masp = null, size = null;
+    if (typeof maspDangChon === "string") {
+        masp = maspDangChon.trim();
+    } else if (maspDangChon && typeof maspDangChon === "object") {
+        masp = String(maspDangChon.masp || "").trim();
+        size = maspDangChon.size != null ? String(maspDangChon.size).trim() : null;
     }
+
+    if (!masp) {
+        alert("Không xác định được mã sản phẩm đang chọn để xóa.");
+        return;
+    }
+
+    const item = bangKetQua[masp];
+    if (!item) {
+        alert("Không tìm thấy dòng để xóa.");
+        return;
+    }
+
+    const msg = size
+        ? `Bạn có chắc muốn xóa size "${size}" của mã "${masp}"?`
+        : `Bạn có chắc muốn xóa toàn bộ mã "${masp}"?`;
+
+    if (!confirm(msg)) return;
+
+    if (size) {
+        // Xóa 1 size trong nhóm mã
+        const idx = item.sizes.findIndex(s => String(s).trim() === size);
+        if (idx !== -1) {
+            const sl = parseInt(item.soluongs[idx] || 0, 10) || 0;
+            item.tong = Math.max(0, (item.tong || 0) - sl);
+            item.sizes.splice(idx, 1);
+            item.soluongs.splice(idx, 1);
+        }
+        if (item.sizes.length === 0) {
+            delete bangKetQua[masp];
+        }
+    } else {
+        // Xóa cả nhóm mã
+        delete bangKetQua[masp];
+    }
+
+    maspDangChon = null; // reset chọn
+    capNhatBangHTML(bangKetQua, window.lastAdded);
 }
+
 
 export function suaDongDangChon() {
     let dangChon = getMaspspDangChon();
