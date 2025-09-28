@@ -374,6 +374,7 @@ export async function khoiTaoUngDung() {
       return c ? c.textContent.trim() : '';
     }
 
+
     function handleRow(row) {
       // Cột hiện có theo thead: 0 Mã hàng, 1 Tên, 2 Kích cỡ, 3 SL, 4 ĐVT, 5 Đơn giá, 6 KM, 7 Thành tiền, 8 Vị trí
       const masp = pickCellText(row, 0).toUpperCase();
@@ -397,6 +398,17 @@ export async function khoiTaoUngDung() {
       queue.set(k, { masp, size, row });
       scheduleBatch();
     }
+
+    document.addEventListener("keydown", (e) => {
+      // tránh xóa khi đang gõ trong input
+      const tag = (e.target.tagName || "").toUpperCase();
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.isComposing) return;
+
+      if (e.key === "Delete") {
+        e.preventDefault();
+        try { xoaDongDangChon(); } catch (err) { console.warn(err); }
+      }
+    });
 
     // Quan sát thêm dòng mới hoặc cập nhật nội dung dòng
     if (tbody) {
