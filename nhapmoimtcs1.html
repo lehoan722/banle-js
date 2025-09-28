@@ -1343,7 +1343,7 @@
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs111.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
@@ -1390,7 +1390,7 @@
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
@@ -1534,25 +1534,24 @@
                 if (typeof window.capNhatBangHTML === "function") window.capNhatBangHTML(window.bangKetQua);
                 if (typeof window.capNhatThongTinTong === "function") window.capNhatThongTinTong(window.bangKetQua);
                 // --- Fallback: nếu bảng chưa có dòng nào, tự render ---
-const tbody = document.querySelector("#bangketqua tbody");
-const beforeCount = tbody ? tbody.children.length : 0;
+                const tbody = document.querySelector("#bangketqua tbody");
+                const beforeCount = tbody ? tbody.children.length : 0;
 
-// Đợi một nhịp cho capNhatBangHTML (nếu có) vẽ xong:
-setTimeout(() => {
-  const afterCount = tbody ? tbody.children.length : 0;
-  console.log("[GS] tbody rows before/after capNhatBangHTML:", beforeCount, "→", afterCount);
+                // Đợi một nhịp cho capNhatBangHTML (nếu có) vẽ xong:
+                setTimeout(() => {
+                    const afterCount = tbody ? tbody.children.length : 0;
+                    console.log("[GS] tbody rows before/after capNhatBangHTML:", beforeCount, "→", afterCount);
 
-  // Nếu vẫn chưa có dữ liệu → tự render + tính tổng
-  if (afterCount === beforeCount) {
-    console.warn("[GS] capNhatBangHTML không vẽ ra bảng – dùng renderBangKetQua fallback.");
-    if (typeof window.renderBangKetQua === "function") window.renderBangKetQua(window.bangKetQua);
-    if (typeof window.capNhatTongTien === "function") window.capNhatTongTien(window.bangKetQua);
-  }
-}, 50);
-
+                    // Nếu vẫn chưa có dữ liệu → tự render + tính tổng
+                    if (afterCount === beforeCount) {
+                        console.warn("[GS] capNhatBangHTML không vẽ ra bảng – dùng renderBangKetQua fallback.");
+                        if (typeof window.renderBangKetQua === "function") window.renderBangKetQua(window.bangKetQua);
+                        if (typeof window.capNhatTongTien === "function") window.capNhatTongTien(window.bangKetQua);
+                    }
+                }, 50);
 
                 // 5) Tô đỏ & cảnh báo cho phần còn lại (thật sự không có trong CSDL)
-                
+
                 if (invalid.length) {
                     invalid.forEach(item => {
                         const tr = document.createElement('tr');
