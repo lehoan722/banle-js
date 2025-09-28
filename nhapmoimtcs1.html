@@ -1418,7 +1418,7 @@
                 rows.forEach(([maspRaw, sizeRaw, slRaw]) => {
                     if (!maspRaw) return;
                     const masp = maspRaw.trim().toUpperCase();
-                    const size = (sizeRaw || "0").trim();
+                    const size = (sizeRaw || 0).trim();
                     const sl = Number(slRaw) || 0;
 
                     // Kiểm tra tồn tại trong danh mục
@@ -1434,7 +1434,7 @@
                         bangObj[masp] = {
                             masp,
                             tensp: spInfo.tensp,
-                            dvt: spInfo.dvt || "sp",
+                            dvt: spInfo.dvt || sp,
                             gia: spInfo.gianhap || 0,
                             km: 0,
                             sizes: [],
