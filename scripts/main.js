@@ -87,6 +87,9 @@ export async function khoiTaoUngDung() {
     const input = document.getElementById(id);
     if (input) input.addEventListener("keydown", chuyenFocus);
   });
+  // THÊM MỚI: bind nút xóa
+  const btnXoa = document.getElementById("xoa");
+  if (btnXoa) btnXoa.addEventListener("click", xoaDongDangChon);
 
   const manvInput = document.getElementById("manv");
   if (manvInput) manvInput.addEventListener("change", ganTenNV);
@@ -398,10 +401,6 @@ export async function khoiTaoUngDung() {
       queue.set(k, { masp, size, row });
       scheduleBatch();
     }
-
-    // THÊM MỚI: bind nút xóa
-    const btnXoa = document.getElementById("xoa");
-    if (btnXoa) btnXoa.addEventListener("click", xoaDongDangChon);
 
     document.addEventListener("keydown", (e) => {
       // tránh xóa khi đang gõ trong input
