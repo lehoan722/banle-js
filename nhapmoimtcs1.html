@@ -1396,8 +1396,44 @@
 
 
     </script>
-
     <script>
+        // ===== Helper: tách 1 dòng CSV có dấu "..." và dấu phẩy trong chuỗi
+        function splitCSVLine(line) {
+            const out = [];
+            let cur = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    // gặp dấu " → đảo trạng thái, nhưng xử lý cặp "" => là dấu " thật trong dữ liệu
+                    if (inQuotes && line[i + 1] === '"') {
+                        cur += '"'; // thêm 1 dấu " vào dữ liệu
+                        i++;        // bỏ qua ký tự " kế tiếp
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (ch === ',' && !inQuotes) {
+                    out.push(cur);
+                    cur = '';
+                } else {
+                    cur += ch;
+                }
+            }
+            out.push(cur);
+            return out;
+        }
+
+        // ===== Helper: bỏ ngoặc kép bao ngoài + trim
+        function unquote(s) {
+            if (s == null) return '';
+            s = String(s).trim();
+            if (s.startsWith('"') && s.endsWith('"')) {
+                s = s.slice(1, -1).replace(/""/g, '"'); // bỏ " bao và đổi "" -> "
+            }
+            return s.trim();
+        }
+
         // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
         async function importFromGoogleSheet() {
             const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
@@ -1406,80 +1442,83 @@
 
             try {
                 const res = await fetch(url);
-                const csv = await res.text();
+                const raw = await res.text();
 
-                // Parse CSV thành mảng [masp, size, sl]
-                const rows = csv.trim().split("\n").map(r => r.split(","));
-                rows.shift(); // bỏ header nếu có
+                // Loại BOM + tách dòng
+                const csv = raw.replace(/^\uFEFF/, '');
+                const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
+
+                // Nếu dòng đầu là header (có chữ) thì bỏ
+                let start = 0;
+                const first = lines[0] ? lines[0].toLowerCase() : '';
+                if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
 
                 const bangObj = {};
                 const invalidCodes = [];
 
-                rows.forEach(([maspRaw, sizeRaw, slRaw]) => {
-                    if (!maspRaw) return;
-                    const masp = maspRaw.trim().toUpperCase();
-                    const size = (sizeRaw || 0).trim();
-                    const sl = Number(slRaw) || 0;
+                for (let i = start; i < lines.length; i++) {
+                    const cols = splitCSVLine(lines[i]).map(unquote); // <— quan trọng
+                    const maspRaw = cols[0] ?? '';
+                    const sizeRaw = cols[1] ?? '0';
+                    const slRaw = cols[2] ?? '0';
+
+                    if (!maspRaw) continue;
+
+                    const masp = maspRaw.toUpperCase();             // ép IN HOA
+                    const size = (sizeRaw || '0').trim();           // giữ chuỗi, ví dụ "38"
+                    const sl = Number(String(slRaw).replace(/\s/g, '')) || 0;
 
                     // Kiểm tra tồn tại trong danh mục
                     const spInfo = window.sanPhamData?.[masp];
                     if (!spInfo) {
-                        // Mã không hợp lệ -> ghi vào invalidCodes
-                        invalidCodes.push({ masp, size, sl });
-                        return;
+                        invalidCodes.push({ masp, size, sl, __row: i + 1 });
+                        continue; // KHÔNG ghi vào bangKetQua
                     }
 
-                    // Nếu hợp lệ -> gộp vào bangObj
+                    // Gộp vào bangObj theo mã + size
                     if (!bangObj[masp]) {
                         bangObj[masp] = {
                             masp,
-                            tensp: spInfo.tensp,
-                            dvt: spInfo.dvt || sp,
-                            gia: spInfo.gianhap || 0,
+                            tensp: spInfo.tensp || '',
+                            dvt: spInfo.dvt || 'sp',
+                            gia: Number(spInfo.gianhap) || 0,
                             km: 0,
                             sizes: [],
                             soluongs: []
                         };
                     }
                     const idx = bangObj[masp].sizes.indexOf(size);
-                    if (idx >= 0) {
-                        bangObj[masp].soluongs[idx] += sl;
-                    } else {
-                        bangObj[masp].sizes.push(size);
-                        bangObj[masp].soluongs.push(sl);
-                    }
-                });
+                    if (idx >= 0) bangObj[masp].soluongs[idx] += sl;
+                    else { bangObj[masp].sizes.push(size); bangObj[masp].soluongs.push(sl); }
+                }
 
-                // Cập nhật bangKetQua
+                // Cập nhật bangKetQua & render
                 window.bangKetQua = bangObj;
+                if (typeof window.capNhatBangHTML === "function") window.capNhatBangHTML(window.bangKetQua);
+                if (typeof window.capNhatThongTinTong === "function") window.capNhatThongTinTong(window.bangKetQua);
 
-                // Render lại bảng
-                if (typeof window.capNhatBangHTML === "function") {
-                    window.capNhatBangHTML(window.bangKetQua);
-                }
-                if (typeof window.capNhatThongTinTong === "function") {
-                    window.capNhatThongTinTong(window.bangKetQua);
-                }
-
-                // Highlight các mã không hợp lệ
+                // Tô đỏ các dòng không hợp lệ (để người dùng sửa tay)
                 if (invalidCodes.length > 0) {
                     const tbody = document.querySelector("#bangketqua tbody");
                     invalidCodes.forEach(item => {
                         const tr = document.createElement("tr");
                         tr.style.backgroundColor = "#f8d7da"; // đỏ nhạt
                         tr.innerHTML = `
-          <td>${item.masp}</td>
-          <td></td>
-          <td>${item.size}</td>
-          <td>${item.sl}</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-        `;
+            <td>${item.masp}</td>
+            <td></td>
+            <td>${item.size}</td>
+            <td>${item.sl}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>`;
                         tbody.appendChild(tr);
                     });
                     alert("⚠ Có mã sản phẩm không tồn tại trong danh mục. Vui lòng kiểm tra lại.");
+                    // (tuỳ chọn) chặn lưu khi còn lỗi:
+                    // document.getElementById('btn-luu').disabled = true;
+                } else {
+                    // document.getElementById('btn-luu').disabled = false;
                 }
 
             } catch (err) {
@@ -1491,7 +1530,6 @@
         // Gắn nút
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
     </script>
-
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
