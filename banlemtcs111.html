@@ -13,7 +13,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
-
+    <!-- (đặt trước main.js, hoadon.js, luuhoadon.js) -->
+    <script src="/scripts/ctx.js"></script>
 
     <style>
         body {
@@ -458,7 +459,7 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label> -->        
+        <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
@@ -844,7 +845,7 @@
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;        
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -1045,7 +1046,7 @@
 
         // goi phím F2
         //setTimeout(function () {
-           // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
         //}, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
