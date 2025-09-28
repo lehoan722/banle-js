@@ -637,7 +637,7 @@
             <button id="btn-luu">💾 Lưu</button>
             <button id="sua" class="btn edit" type="button">SỬA</button>
             <button id="quaylai">Quay lại</button>
-            <button id="sua" class="xoaDongDangChon" type="button">xoa</button>
+            <button id="xoa" class="xoaDongDangChon" type="button">xoa</button>
 
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
@@ -789,7 +789,7 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-         window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
+        window.diadiem = "cs2"; // Không phụ thuộc localStorage nữa
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
@@ -1130,9 +1130,9 @@
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
-        document.getElementById('sua')?.addEventListener('click', () => {
+        document.getElementById('btn-sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            (document.body || document.documentElement).dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
