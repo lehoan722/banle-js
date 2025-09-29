@@ -240,14 +240,47 @@ function layMaspGoc(str) {
     return String(str || "").toUpperCase().replace(/\(\d+\)\s*$/, "").trim();
 }
 
+// [MỚI] Tách mã & size hậu tố: "ABC12-DG38_38" -> { masp:"ABC12-DG38", size:"38" }
+function tachMaspVaSizeHauTo(raw) {
+    const s = String(raw || "").trim().toUpperCase();
+    // Nhận "_xxx" ở cuối. Ví dụ "…_38", "…_40", "…_L", v.v.
+    const m = s.match(/^(.*)\_([A-Z0-9\-]+)$/);
+    if (!m) return { masp: s, size: null };
+    return { masp: m[1], size: m[2] };
+}
 
+// === REPLACE THIS WHOLE FUNCTION IN hoadon.js ===
 async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
-    maspVal = layMaspGoc(maspVal);
+    // --- [NEW SIZE SUFFIX] Tách hậu tố _NN (ví dụ abc12-dg38_38) ---
+    // Lấy danh sách size hợp lệ: ưu tiên window.danhMucSize, fallback 38–45
+    const allowedFromDM = Array.isArray(window.danhMucSize)
+        ? new Set(window.danhMucSize.map(s => String(s).trim().toUpperCase()))
+        : null;
+    const fallbackAllowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
 
+    let typedSize = null;
+    let baseCode = String(maspVal || "").trim().toUpperCase();
+    const mSuffix = baseCode.match(/^(.*)_([0-9]{2})$/); // bắt hậu tố _NN
+    if (mSuffix) {
+        const candidate = mSuffix[2].toUpperCase();
+        const ok = allowedFromDM ? allowedFromDM.has(candidate) : fallbackAllowed.has(candidate);
+        if (ok) {
+            baseCode = mSuffix[1].trim().toUpperCase(); // mã gốc
+            typedSize = candidate;                      // size người dùng gõ
+            // Ghi sẵn về form để các nhánh dưới dùng
+            const maspEl = document.getElementById("masp");
+            const sizeEl = document.getElementById("size");
+            if (maspEl) maspEl.value = baseCode;
+            if (sizeEl) sizeEl.value = typedSize;
+        }
+    }
+    // Chuẩn hoá kiểu "MASP(3)" → "MASP"
+    maspVal = layMaspGoc(baseCode);
+
+    // --- Tải dữ liệu sản phẩm (cache trước, supabase sau) ---
     let spData = window.sanPhamData?.[maspVal];
 
-    // Nếu không có trong cache, gọi Supabase để tìm chính xác
     if (!spData) {
         const { data, error } = await supabase
             .from("dmhanghoa")
@@ -261,7 +294,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         }
     }
 
-    // Guard: đợi dữ liệu nền (dm hàng hóa, dm nhóm, danh mục size) sẵn sàng
+    // Guard dữ liệu nền
     if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
         alert("Đang tải danh mục sản phẩm... vui lòng thử lại sau 1–2 giây.");
         const maspInput = document.getElementById("masp");
@@ -274,93 +307,122 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
         return false;
     }
-    // (danhMucSize có thể rỗng, nhưng không ảnh hưởng các 'cửa chặn' 38–45)
+    // (danhMucSize có thể rỗng)
 
     /***** NHÁNH SỚM CHO CCN: nếu ít nhất một đầu quản-size → bắt nhập size *****/
     if (isCCNMode()) {
         try {
             if (requireManagedInTransfer(maspVal)) {
-                // → BẮT NHẬP SIZE THỰC
+                // Nếu người dùng có gõ hậu tố size thì đã điền sẵn #size ở trên
                 const sizeEl = document.getElementById("size");
                 if (!sizeEl.value.trim()) {
                     sizeEl.focus();
                     sizeEl.select?.();
                     window.soundWaitSize?.();
-                    return true; // dừng tại đây, chờ người dùng nhập size
+                    return true; // đợi người dùng nhập size
                 }
-                // Có size rồi → set SL=1 nếu trống và thêm luôn với size thực
+                // Có size rồi → ép SL=1 và thêm ngay
                 const slEl = document.getElementById("soluong");
                 if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
-
-                // Giữ nguyên workflow cũ: sau khi thêm → focus về #masp / #size tùy thói quen của bạn
                 themVaoBang(sizeEl.value.trim(), { afterAdd: "keepMaspFocusSize" });
                 return true;
             }
         } catch (e) {
             console.warn("CCN size-check fallback:", e);
-            // Nếu có sự cố bất ngờ, cứ để flow cũ tiếp tục (không chặn nhập nhanh)
         }
     }
-    // (không phải CCN, hoặc CCN nhưng không cần size) → rơi về logic cũ phía dưới
 
-    // Không tìm thấy → chỉ cảnh báo và đưa con trỏ về lại ô MÃ SP
+    // Không tìm thấy sp
     if (!spData) {
         alert("❌ Mã sản phẩm không hợp lệ. Vui lòng nhập lại.");
         const maspInput = document.getElementById("masp");
         if (maspInput) {
-            // main.js có patch alert phát âm + delay 500ms; đặt 600ms để focus xảy ra ngay sau khi đóng alert
-            setTimeout(() => {
-                maspInput.focus();
-                maspInput.select();
-            }, 600);
+            setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600);
         }
         return false;
     }
 
-    // [NEW] Chuẩn hoá form từ spData (đặt TRƯỚC mọi nhánh early-return)
+    // [NEW giữ nguyên] Chuẩn hoá form từ spData
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
-
     const giaInt = Math.round(parseMoneyInt(spData.giale || 0));
     giaEl.value = giaInt.toLocaleString();
-
-    // KM mặc định theo rule hiện tại
     const kmDef = tinhKhuyenMai(spData, giaInt);
     kmEl.value = (kmDef || 0).toLocaleString();
 
-    // số lượng mặc định = 1 nếu trống/<=0
     const slEl = document.getElementById("soluong");
     if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
     recalcThanhtienFromForm();
 
-    // vị trí kho theo cơ sở đang chọn
+    // vị trí kho theo cơ sở
     const cs = document.getElementById("diadiem").value;
     const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
     document.getElementById("vitri").value = vitri || "";
 
+    // -------------- [NEW SIZE SUFFIX] TỰ ĐỘNG THÊM NẾU CÓ HẬU TỐ --------------
+    // Tính xem hàng này hiện tại có thuộc diện "quản size" không
+    const isGD = String(spData.chungloai || "").trim().toLowerCase() === "gd";
+    const giaHangHoa = Number(spData.giale) || 0;
 
-    // 4) ✅ QUẢN LÝ SIZE THEO NHÓM — ƯU TIÊN CAO HƠN SIZE45
-    //    Điều kiện: checkbox đang bật + sản phẩm có manhom + đã cache dmnhomhang
+    // trạng thái checkbox hiện tại
+    const size45On = !!size45; // tham số truyền vào từ UI
+    const qlSizeTheoGiaOn = !!quanlysizetheogia;
+    const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
+
+    // nhóm có quanlysize hợp lệ tại cơ sở?
+    let groupRequires = false;
+    if (qlTheoNhomOn && spData.nhomhang && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
+        if (nhom && nhom.quanlysize) {
+            const diadiemHienTai = currentBranchUpper(); // 'CS1'|'CS2'
+            groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
+        }
+    }
+
+    // theo giá: siết nếu là giày hoặc giá ≥ 170000
+    const managedByGia = qlSizeTheoGiaOn && (isGD || giaHangHoa >= 170000);
+
+    // Tổng điều kiện cần quản-size
+    const requireManagedSizeNow = (size45On && isGD) || groupRequires || managedByGia;
+
+    if (typedSize) {
+        // Người dùng đã gõ hậu tố size
+        const sizeEl = document.getElementById("size");
+        const sizeChosen = String(typedSize).trim();
+
+        if (requireManagedSizeNow) {
+            // → Hàng quản-size: thêm đúng size người dùng chọn
+            if (sizeEl) sizeEl.value = sizeChosen;
+            if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+            themVaoBang(sizeChosen, { afterAdd: "keepMaspFocusSize" });
+            return true;
+        } else {
+            // → Hàng không quản-size: bỏ hậu tố, thêm với size=0
+            if (sizeEl) sizeEl.value = "0";
+            if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+            themVaoBang("0"); // giữ luồng cũ (reset form, focus masp)
+            return true;
+        }
+    }
+    // ------------------- END [NEW SIZE SUFFIX] -------------------
+
+    // ===== QUẢN LÝ SIZE THEO NHÓM (giữ nguyên hành vi cũ) =====
     var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
     var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
 
     if (qlTheoNhom && String(spData.nhomhang || "").trim() && window.danhMucNhom) {
         const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
         if (nhom && nhom.quanlysize) {
-            const diadiemHienTai = currentBranchUpper(); // 'CS1' | 'CS2' cố định theo trang
-
+            const diadiemHienTai = currentBranchUpper();
             if (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai) {
                 const sizeInput = document.getElementById("size");
                 const sizeValue = (sizeInput?.value || "").trim();
-
                 if (!sizeValue) {
-                    // Chưa nhập size → ép nhập (focus + beep), DỪNG HẲN để không rơi xuống size45
                     sizeInput.focus();
                     sizeInput.select();
                     if (window.soundWaitSize) window.soundWaitSize();
-                    return true; // báo đã xử lý cho chuyenFocus
+                    return true;
                 } else {
-                    // Đã có size → ép SL=1 và thêm ngay, DỪNG HẲN
                     document.getElementById("soluong").value = 1;
                     themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
                     return true;
@@ -369,61 +431,48 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         }
     }
 
-
-
-    // ==== ⚡️ THÊM XỬ LÝ BÁN SIÊU NHANH Ở ĐÂY ====
+    // ==== BÁN SIÊU NHANH (giữ nguyên) ====
     const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
     if (banSieuNhanh) {
         document.getElementById("soluong").value = "1";
-        document.getElementById("size").value = "0"; // size rỗng
-        themVaoBang(""); // Bỏ qua kiểm tra size, số lượng
+        document.getElementById("size").value = "0";
+        themVaoBang("");
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
-        return true; // Không chạy các logic kiểm tra khác nữa!
+        return true;
     }
-    // ==== ⚡️ END ====
 
-    // ... Các xử lý logic size45, nhập nhanh cũ giữ nguyên ...
-    // === BẮT BUỘC NHẬP SIZE VỚI GIÀY DÉP KHI BẬT SIZE 45 ===
-
+    // === BẮT NHẬP SIZE VỚI GIÀY DÉP KHI BẬT CỜ (giữ nguyên) ===
     if (
         quanlysizetheogia &&
-        (
-            (spData.chungloai && spData.chungloai.toLowerCase() === "gd")
-            ||
-            (Number(spData.giale) >= 170000)
-        )
+        ((spData.chungloai && spData.chungloai.toLowerCase() === "gd") || (Number(spData.giale) >= 170000))
     ) {
         const sizeInput = document.getElementById("size");
         if (!sizeInput.value.trim()) {
             sizeInput.focus();
             sizeInput.select();
-            window.soundWaitSize?.();   // ✅ phát "tút" báo cần nhập size
-            return true; // Dừng lại, không tự thêm vào bảng
+            window.soundWaitSize?.();
+            return true;
         }
         document.getElementById("soluong").value = "1";
-        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });  // ✅
+        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });
         return true;
     }
 
-    if (
-        size45 &&
-        spData.chungloai &&
-        spData.chungloai.toLowerCase() === "gd"
-    ) {
+    if (size45 && spData.chungloai && spData.chungloai.toLowerCase() === "gd") {
         const sizeInput = document.getElementById("size");
         if (!sizeInput.value.trim()) {
             sizeInput.focus();
             sizeInput.select();
-            window.soundWaitSize?.();   // ✅ phát "tút" báo cần nhập size
-            return true; // Dừng lại, không tự thêm vào bảng
+            window.soundWaitSize?.();
+            return true;
         }
         document.getElementById("soluong").value = "1";
-        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });  // ✅
+        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });
         return true;
     }
 
-    // === CŨ: ĐỐI VỚI CÁC TRƯỜNG HỢP KHÁC ===
+    // === Các trường hợp khác (giữ nguyên) ===
     if (size45) {
         document.getElementById("soluong").value = "1";
         themVaoBang("0");
@@ -431,7 +480,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         const nextId = nhapNhanh ? "size" : "soluong";
         const nextInput = document.getElementById(nextId);
         nextInput.focus();
-        nextInput.select();  // ✅ luôn select, không cần if
+        nextInput.select();
         if (nextId === "soluong") nextInput.select();
     }
 
