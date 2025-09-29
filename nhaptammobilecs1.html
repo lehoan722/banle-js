@@ -6,45 +6,57 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>Nhập tạm Mobile CS1</title>
     <style>
+        :root {
+            --gap: 6px;
+            --pad: 8px;
+            --h-input: 32px;
+            --label: 72px;
+            --fs: 13px;
+            --col-radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
         body {
             font-family: system-ui, Segoe UI, Roboto, Arial;
             margin: 6px;
             font-size: var(--fs);
         }
 
-        :root {
-            --gap: 6px;
-            --pad: 8px;
-            --h-input: 34px;
-            --label: 86px;
-            --fs: 14px;
+        h3 {
+            margin: 6px 0 10px
         }
 
         .grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: var(--gap);
-            max-width: 100vw;
+            max-width: 100vw
         }
 
         .card {
             border: 1px solid #ddd;
-            border-radius: 10px;
+            border-radius: var(--col-radius);
             padding: var(--pad);
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden
         }
 
         .row {
             display: flex;
             align-items: center;
             gap: 6px;
-            margin: 6px 0;
+            margin: 6px 0
         }
 
         .row label {
             min-width: var(--label);
             color: #444;
-            font-size: var(--fs);
+            font-size: var(--fs)
         }
 
         .row input,
@@ -53,7 +65,7 @@
             height: var(--h-input);
             padding: 6px 8px;
             border: 1px solid #ccc;
-            border-radius: 8px;
+            border-radius: 8px
         }
 
         .row .pill {
@@ -61,38 +73,83 @@
             border: 1px solid #ccc;
             border-radius: 999px;
             background: #fafafa;
-            font-size: 12px
+            font-size: 12px;
+            white-space: nowrap
+        }
+
+        .row input::placeholder,
+        .row textarea::placeholder {
+            color: #b9b9b9
         }
 
         .sizes {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 6px
         }
 
-        /* ⬅ 9 dòng, không còn lưới 4 cột */
         .sizes input {
             width: 100%;
             text-align: center;
-            height: var(--h-input);
+            height: var(--h-input)
+        }
+
+        #inpMa {
+            width: 100%
         }
 
         #col3 #taQuick {
             height: calc(9*var(--h-input) + 8*6px);
-            resize: none;
+            resize: none
         }
 
         /* cao bằng 9 ô size */
         .table-wrap {
             overflow: auto;
             border: 1px solid #ddd;
-            border-radius: 10px;
+            border-radius: 10px
         }
 
-        /* bảng có thanh kéo ngang */
+        table {
+            border-collapse: collapse;
+            width: 100%
+        }
+
         th,
         td {
-            white-space: nowrap;
+            border: 1px solid #e6e6e6;
+            padding: 6px 8px;
+            text-align: center;
+            white-space: nowrap
+        }
+
+        th {
+            background: #fafafa
+        }
+
+        td.locked {
+            background: #f7f7f7;
+            color: #888
+        }
+
+        td.err {
+            background: #ffecec
+        }
+
+        .banner {
+            position: sticky;
+            bottom: 56px;
+            background: #fff6e5;
+            border: 1px solid #ffd699;
+            color: #995700;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-top: 8px;
+            display: none
+        }
+
+        .banner.show {
+            display: block
         }
 
         .toolbar {
@@ -127,53 +184,6 @@
             background: #fff0f0;
             color: #b00020;
             border-color: #f3bcbc
-        }
-
-        .table-wrap {
-            overflow: auto;
-            border: 1px solid #ddd;
-            border-radius: 10px
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 100%
-        }
-
-        th,
-        td {
-            border: 1px solid #e6e6e6;
-            padding: 6px 8px;
-            text-align: center
-        }
-
-        th {
-            background: #fafafa
-        }
-
-        td.locked {
-            background: #f7f7f7;
-            color: #888
-        }
-
-        td.err {
-            background: #ffecec
-        }
-
-        .banner {
-            position: sticky;
-            bottom: 56px;
-            background: #fff6e5;
-            border: 1px solid #ffd699;
-            color: #995700;
-            padding: 6px 10px;
-            border-radius: 8px;
-            margin-top: 8px;
-            display: none
-        }
-
-        .banner.show {
-            display: block
         }
     </style>
 </head>
@@ -216,6 +226,8 @@
                 <div id="lblTongSoLuong" class="pill">0</div>
             </div>
             <hr />
+            <div class="row"><label></label><input id="inpTongNhapHienTai" placeholder="0" readonly /></div>
+
             <div class="sizes" id="sizesC2">
                 <!-- các ô nhập SL theo size cho luồng Enter; trùng id với C1 là cố ý: JS sẽ đọc cả 2 cột -->
                 <input id="q0" data-size="0" placeholder="0" inputmode="numeric" />
