@@ -124,15 +124,3 @@ export async function phatSinhSoHDTMoi() {
     }
 }
 window.phatSinhSoHDTMoi = phatSinhSoHDTMoi;
-
-// thêm vào switch/if nhận diện loại chứng từ theo pathname:
-(function () {
-    const p = (location.pathname || '').toLowerCase()
-    // ...
-    if (p.includes('nhaptammobilecs1')) {
-        window.SoHoaDon = Object.assign(window.SoHoaDon || {}, {
-            loai: 'nhaptamcs1'
-        })
-    }
-    // giữ nguyên các nhánh khác của bạn
-})();
