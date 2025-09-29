@@ -104,6 +104,7 @@
         }
 
         /* cao bằng 9 ô size */
+
         .table-wrap {
             overflow: auto;
             border: 1px solid #ddd;
@@ -191,7 +192,7 @@
             box-shadow: none
         }
 
-        /* Ẩn toàn bộ label mô tả, giữ lại input */
+        /* Ẩn nhãn để phần đầu gọn */
         .card .row label {
             display: none;
         }
@@ -206,7 +207,7 @@
             width: 100%;
         }
 
-        /* ô mã + ô tổng SL căng full cột */
+        /* ô mã + tổng SL căng full cột */
     </style>
 </head>
 
@@ -223,10 +224,8 @@
                 <div id="lblTongMatHang" class="pill">0</div>
             </div>
             <hr />
-            <div class="row"><label></label><input id="inpMa" placeholder="mã sản phẩm" autocomplete="off" />
-            </div>
+            <div class="row"><label></label><input id="inpMa" placeholder="mã sản phẩm" autocomplete="off" /></div>
             <div class="sizes" id="sizesC1">
-                <!-- size 0,38..45 (tự bật/tắt bằng JS) -->
                 <input id="sz0" data-size="0" placeholder="0" inputmode="numeric" />
                 <input id="sz38" data-size="38" placeholder="38" inputmode="numeric" />
                 <input id="sz39" data-size="39" placeholder="39" inputmode="numeric" />
@@ -249,9 +248,7 @@
             </div>
             <hr />
             <div class="row"><label></label><input id="inpTongNhapHienTai" placeholder="0" readonly /></div>
-
             <div class="sizes" id="sizesC2">
-                <!-- các ô nhập SL theo size cho luồng Enter; trùng id với C1 là cố ý: JS sẽ đọc cả 2 cột -->
                 <input id="q0" data-size="0" placeholder="0" inputmode="numeric" />
                 <input id="q38" data-size="38" placeholder="38" inputmode="numeric" />
                 <input id="q39" data-size="39" placeholder="39" inputmode="numeric" />
@@ -274,9 +271,26 @@
             </div>
             <hr />
             <div class="row"><label>nhập nhanh (textarea)</label></div>
-            <div class="row"><textarea id="taQuick" rows="8" placeholder="VD:
-DGA-DEN 40 40 39
-6496-SM 0 38 38 45"></textarea></div>
+            <div class="row">
+                <textarea id="taQuick" rows="8" placeholder="VD:
+DGA-DEN
+40
+40
+39
+6496-SM
+0
+38
+38
+45"></textarea>
+            </div>
+
+            <!-- input hệ thống (ẩn) để module lưu/sohoadon dùng -->
+            <input id="sohd" style="display:none">
+            <input id="ngay" style="display:none">
+            <input id="manv" style="display:none">
+            <input id="tennv" style="display:none">
+            <input id="diadiem" style="display:none" value="cs1">
+
             <div id="unknownSku" class="row" style="display:none;color:#b00020;font-size:12px"></div>
         </div>
     </div>
@@ -314,18 +328,16 @@ DGA-DEN 40 40 39
         <button id="btnLuu" class="btn primary" disabled>luu</button>
         <button id="btnChuyen2" class="btn">chuyen 2</button>
         <button id="btnXoaBang" class="btn danger">xóa bảng</button>
-
     </div>
 
-    <!-- scripts -->
-    <!-- modules: các file có import/export -->
+    <!-- CÁC SCRIPT CÓ import/export (module) -->
     <script type="module" src="./scripts/main.js"></script>
     <script type="module" src="./scripts/bangketqua.js"></script>
     <script type="module" src="./scripts/hoadon.js"></script>
     <script type="module" src="./scripts/luuhoadon.js"></script>
     <script type="module" src="./scripts/sohoadon.js"></script>
 
-    <!-- scripts thuần cho trang mobile (không dùng import) -->
+    <!-- SCRIPT THUẦN CHO TRANG MOBILE -->
     <script src="./scripts/nhaptammobile.grid.js"></script>
     <script src="./scripts/nhaptammobile.controller.js"></script>
 
@@ -344,12 +356,16 @@ DGA-DEN 40 40 39
         </div>
     </div>
 
+    <!-- Supabase login + set số HĐ/Input ẩn -->
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
         const supabase = createClient(
             'https://rddjrmbyftlcvrgzlyby.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
         );
+        // để controller/autocomplete có thể dùng
+        window.supabase = supabase;
+
         window.NTLogin = {
             async doLogin() {
                 const email = document.getElementById('lg-email').value.trim().toLowerCase();
@@ -357,34 +373,40 @@ DGA-DEN 40 40 39
                 const manv = document.getElementById('lg-manv').value.trim().toUpperCase();
                 const msg = document.getElementById('lg-msg');
                 msg.textContent = '';
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+                const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
                 if (error) { msg.textContent = 'Đăng nhập thất bại: ' + error.message; return; }
 
-                const { data: nv, error: errNV } = await supabase
-                    .from('dmnhanvien').select('manv,tennv').eq('manv', manv).maybeSingle();
+                const { data: nv, error: errNV } = await supabase.from('dmnhanvien').select('manv,tennv').eq('manv', manv).maybeSingle();
                 if (errNV || !nv) { msg.textContent = 'Mã nhân viên không đúng'; await supabase.auth.signOut(); return; }
 
                 localStorage.setItem('diadiem', 'cs1');
                 localStorage.setItem('manv', nv.manv);
                 localStorage.setItem('tennv', nv.tennv);
 
-                // Đẩy lên UI
-                document.getElementById('lblDiaDiem').textContent = 'CS1';
-                document.getElementById('lblTenNV').textContent = nv.tennv;
+                // cập nhật UI/pill
+                const ten = nv.tennv || manv;
+                const tenLbl = document.getElementById('lblTenNV'); if (tenLbl) tenLbl.textContent = ten;
 
-                // Ẩn overlay đăng nhập
-                document.getElementById('login-container').style.display = 'none';
+                // cập nhật input ẩn cho module lưu
+                document.getElementById('diadiem').value = 'cs1';
+                document.getElementById('manv').value = nv.manv;
+                document.getElementById('tennv').value = ten;
+                document.getElementById('ngay').value = new Date().toISOString().slice(0, 10);
 
-                // Lấy số HĐ dự kiến sau khi đăng nhập xong
+                // phát sinh số HĐ dự kiến & set vào #sohd + pill
                 try {
                     const so = await window.SoHoaDon?.goiSoDuKien?.('nhaptamcs1');
-                    if (so) document.getElementById('lblSoHD').textContent = so;
-                } catch (e) { }
+                    if (so) {
+                        const soLbl = document.getElementById('lblSoHD'); if (soLbl) soLbl.textContent = so;
+                        const soInp = document.getElementById('sohd'); if (soInp) soInp.value = so;
+                    }
+                } catch (_) { }
+
+                // Ẩn overlay
+                document.getElementById('login-container').style.display = 'none';
             }
         }
-
     </script>
-
 </body>
 
 </html>
