@@ -291,6 +291,8 @@ DGA-DEN 40 40 39
         <button id="btnThemMoi" class="btn">them moi</button>
         <button id="btnLuu" class="btn primary" disabled>luu</button>
         <button id="btnChuyen2" class="btn">chuyen 2</button>
+        <button id="btnXoaBang" class="btn danger">xóa bảng</button>
+
     </div>
 
     <!-- scripts -->
@@ -358,6 +360,9 @@ DGA-DEN 40 40 39
                 } catch (e) { }
             }
         }
+
+        $('#btnXoaBang').onclick = () => { NTGrid.replaceState({}); localStorage.removeItem(STORAGE_KEY); onGridChanged(); }
+
     </script>
 
 </body>
