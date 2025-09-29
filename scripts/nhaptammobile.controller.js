@@ -6,7 +6,7 @@
   const SIZES = [0,38,39,40,41,42,43,44,45];
   const STORAGE_KEY = 'nhaptammobilecs1_draft_v1';
   const CS = 'cs1';
-  const DEFAULT_QUAN_SIZE_ON = true; // mặc định bật quản size khi chưa xác định từ DM/API
+  const DEFAULT_QUAN_SIZE_ON = true; // mặc định BẬT quản size khi chưa xác định từ DM/API
 
   /*** TIỆN ÍCH DOM ***/
   const $  = (s) => document.querySelector(s);
@@ -16,27 +16,67 @@
   let lastSnapshot = null;              // cho Undo 1 bước
   let quanLySizeCache = new Map();      // masp -> boolean
 
+  /*** ===== DANH MỤC HÀNG HÓA: hợp nhất nhiều nguồn ===== ***/
+  async function ensureDanhMucHangHoa(){
+    if (window.sanPhamData && Object.keys(window.sanPhamData).length) return;
+
+    window.sanPhamData = window.sanPhamData || {};
+
+    // 1) Nguồn local từ các module của bạn (nếu có)
+    const localSources = [
+      window.banghanghoa,            // mảng [{masp,ten,...}]
+      window.DANH_MUC_HANG_HOA,
+      window.dmhanghoa,
+      window.hanghoaList
+    ];
+    for (const src of localSources){
+      if (Array.isArray(src)){
+        src.forEach(r=>{
+          if(!r || !r.masp) return;
+          window.sanPhamData[r.masp] = Object.assign(window.sanPhamData[r.masp]||{}, r);
+        });
+      }
+    }
+
+    // 2) Nếu vẫn ít dữ liệu → thử Supabase (không bắt buộc; bỏ qua lỗi 400/RLS)
+    if (Object.keys(window.sanPhamData).length < 50 && window.supabase){
+      try{
+        const { data, error } = await window.supabase
+          .from('dmhanghoa')            // đổi tên bảng nếu khác
+          .select('masp,ten,chungloai') // đổi field nếu khác
+          .range(0,1999);               // tránh limit 2000 gây 400 với 1 số cấu hình
+        if(!error && Array.isArray(data)){
+          data.forEach(r=>{
+            if(!r || !r.masp) return;
+            window.sanPhamData[r.masp] = Object.assign(window.sanPhamData[r.masp]||{}, r);
+          });
+        }
+      }catch(e){
+        console.warn('Supabase DM fetch skipped:', e?.message||e);
+      }
+    }
+  }
+  const hasInDM = (masp) => !!(window.sanPhamData && window.sanPhamData[masp]);
+
   /*** KHỞI TẠO ***/
   async function init(){
-    // hiển thị nhanh thông tin đầu trang (nếu có)
     try{
       $('#lblDiaDiem') && ($('#lblDiaDiem').textContent = 'CS1');
       $('#lblNgayGio') && ($('#lblNgayGio').textContent = new Date().toLocaleString());
       if (window.AppUser) $('#lblTenNV') && ($('#lblTenNV').textContent = window.AppUser.ten || window.AppUser.email || '-');
     }catch(_){}
 
-    // phát sinh số HĐ dự kiến (nếu module sohoadon đã nạp)
+    // Số HĐ dự kiến (nếu module đã nạp)
     try{
       const so = await (window.SoHoaDon?.goiSoDuKien?.('nhaptamcs1'));
-      if (so) $('#lblSoHD') && ($('#lblSoHD').textContent = so);
-      // đồng thời nếu trang có #sohd (input ẩn) thì set để các module khác dùng
-      if ($('#sohd')) $('#sohd').value = so || '';
+      if (so) {
+        $('#lblSoHD') && ($('#lblSoHD').textContent = so);
+        $('#sohd') && ($('#sohd').value = so);
+      }
     }catch(_){}
 
-    // Gắn sự kiện
+    // Sự kiện
     $('#inpMa')?.addEventListener('keydown', onEnterMa);
-
-    // gắn Enter & tính tổng đang nhập cho 9 ô size
     SIZES.forEach(sz=>{
       const el = $(`#q${sz}`);
       if(!el) return;
@@ -44,57 +84,50 @@
       el.addEventListener('input', recalcNhapHienTai);
     });
 
-    // Nút chức năng
     $('#btnChuyen1') && ($('#btnChuyen1').onclick = handleChuyen1);
     $('#btnChuyen2') && ($('#btnChuyen2').onclick = handleChuyen2);
     $('#btnThemMoi') && ($('#btnThemMoi').onclick = clearInputs);
     $('#btnLuu') && ($('#btnLuu').onclick = handleLuu);
     $('#btnXoaBang') && ($('#btnXoaBang').onclick = ()=>{ NTGrid.replaceState({}); localStorage.removeItem(STORAGE_KEY); onGridChanged(); });
 
-    // callback từ grid
     window.NTMobile.onGridChanged = onGridChanged;
 
-    // khôi phục draft (nếu có)
+    // Draft
     restoreDraft();
 
-    // set lock/mở size theo mã đang có
+    // DM và quản size ban đầu
+    await ensureDanhMucHangHoa();
     await applyQuanLySizeForCurrentMa();
 
-    // tính tổng đang nhập lần đầu
     recalcNhapHienTai();
   }
 
-  /*** TÍNH TỔNG SỐ LƯỢNG ĐANG NHẬP (9 ô) ***/
+  /*** TỔNG ĐANG NHẬP ***/
   function recalcNhapHienTai(){
     let s = 0;
     SIZES.forEach(sz=>{
       const v = parseInt(($(`#q${sz}`)?.value || '0').trim(),10);
       if(!isNaN(v) && v>0) s += v;
     });
-    const box = $('#inpTongNhapHienTai');
-    if (box) box.value = s;
+    $('#inpTongNhapHienTai') && ($('#inpTongNhapHienTai').value = s);
   }
 
   /*** QUẢN SIZE THEO MÃ ***/
   async function isQuanLySize(masp){
-    // 1) từ danh mục đã cache
     const sp = (window.sanPhamData||{})[masp];
     if (sp){
       const cl = String(sp.chungloai||'').trim().toUpperCase();
       if (cl==='GD' || cl==='GIAYDEP') return true;
       if (sp.quanlysize !== undefined) return !!sp.quanlysize;
     }
-    // 2) từ API (nếu dự án có)
     try{
       const flag = await window.AppAPI?.isQuanLySizeTheoCoSo?.(masp, CS);
       if (typeof flag === 'boolean') return flag;
     }catch(_){}
-    // 3) mặc định
     return !!DEFAULT_QUAN_SIZE_ON;
   }
 
   function toggleSizeInputs(qls){
-    // qls=true => mở 38..45; khóa 0
     const open = (id,on)=>{
       const el = $(id); if(!el) return;
       el.disabled = !on;
@@ -103,7 +136,6 @@
     open('#q0', !qls);
     [38,39,40,41,42,43,44,45].forEach(sz=> open(`#q${sz}`, qls));
 
-    // cột hiển thị size (nếu bạn dùng input cho nhãn)
     open('#sz0', !qls);
     [38,39,40,41,42,43,44,45].forEach(sz=> open(`#sz${sz}`, qls));
   }
@@ -126,28 +158,20 @@
     const masp = (inp.value||'').trim().toUpperCase();
     if(!masp){ box && (box.style.display='none'); return; }
 
-    // kiểm tra danh mục: ưu tiên cache, thiếu thì kéo về 1 mã
-    let ok = !!(window.sanPhamData && window.sanPhamData[masp]);
+    await ensureDanhMucHangHoa();
+    let ok = hasInDM(masp);
     if(!ok){
       try{
         if (window.AppAPI?.ensureSanPhamDataFor){
           await window.AppAPI.ensureSanPhamDataFor([masp]);
-        } else if (window.supabase){
-          const { data, error } = await window.supabase
-            .from('dmhanghoa').select('masp,ten,chungloai,nhomhang,gianhap').eq('masp',masp).maybeSingle();
-          if(!error && data){
-            window.sanPhamData = Object.assign(window.sanPhamData||{}, {[masp]:data});
-          }
         }
       }catch(_){}
-      ok = !!(window.sanPhamData && window.sanPhamData[masp]);
+      ok = hasInDM(masp);
     }
     if(!ok){ box && (box.style.display='block', box.textContent='Mã chưa có DM: '+masp); return; }
     box && (box.style.display='none');
 
     await applyQuanLySizeForCurrentMa();
-
-    // nhảy tới ô hợp lệ đầu
     if($('#q0') && !$('#q0').disabled){ $('#q0').focus(); $('#q0').select(); }
     else { $('#q38').focus(); $('#q38').select(); }
   }
@@ -161,11 +185,10 @@
       const el = $(`#q${nxt}`);
       if(el && !el.disabled){ el.focus(); el.select(); return; }
     }
-    // nếu đã ở size cuối -> quay về ô mã
     $('#inpMa')?.focus(); $('#inpMa')?.select();
   }
 
-  /*** CHUYỂN 1: lấy 9 ô -> bảng ***/
+  /*** CHUYỂN 1 ***/
   function handleChuyen1(){
     const masp = ($('#inpMa')?.value || '').trim().toUpperCase();
     if(!masp) return;
@@ -179,14 +202,14 @@
     if(!Object.keys(patch.qty).length) return;
 
     NTGrid.setRow(masp, patch);
-    fetchVitriTonBatch([masp]); // lấy vị trí, tồn
+    fetchVitriTonBatch([masp]);
     clearInputsKeepMa();
     $('#inpTongNhapHienTai') && ($('#inpTongNhapHienTai').value = 0);
     saveDraft();
   }
 
-  /*** CHUYỂN 2: định dạng mới (mã 1 dòng, mỗi size 1 dòng) ***/
-  function handleChuyen2(){
+  /*** CHUYỂN 2 – mã 1 dòng, mỗi size 1 dòng; clear textarea sau khi đẩy ***/
+  async function handleChuyen2(){
     const raw = ($('#taQuick')?.value || '').trim();
     if(!raw) return;
     snapshot();
@@ -194,6 +217,8 @@
     const lines = raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
     const isCode = (s)=> /^[A-Z0-9._-]{4,}$/i.test(s) && !/^(0|3[8-9]|4[0-5])$/.test(s);
     const isSize = (s)=> /^(0|3[8-9]|4[0-5])$/.test(s);
+
+    await ensureDanhMucHangHoa();
 
     const push = new Map();   // masp -> {size:qty}
     const unknown = new Set();
@@ -203,7 +228,7 @@
       if(isCode(ln)){
         cur = ln.toUpperCase();
         if(!push.has(cur)) push.set(cur,{});
-        if(!(window.sanPhamData && window.sanPhamData[cur])) unknown.add(cur);
+        if(!hasInDM(cur)) unknown.add(cur);
         continue;
       }
       if(isSize(ln) && cur){
@@ -213,22 +238,20 @@
       }
     }
 
-    const list=[]; // các mã mới để lấy tồn/ vị trí
+    const list=[];
     push.forEach((qty, masp)=>{ NTGrid.setRow(masp, {qty}); list.push(masp); });
     if(list.length) fetchVitriTonBatch(list);
 
-    // cảnh báo mã chưa có thật sự
+    const warns = [...unknown].filter(m => !hasInDM(m));
     const box = $('#unknownSku');
-    const warns = [...unknown].filter(m => !(window.sanPhamData && window.sanPhamData[m]));
     if(warns.length){ box && (box.style.display='block', box.textContent='Mã chưa có DM: '+warns.join(', ')); }
     else { box && (box.style.display='none'); }
 
-    // xóa textarea để tránh nhầm lần sau
     $('#taQuick').value = '';
     saveDraft();
   }
 
-  /*** LẤY VỊ TRÍ/TỒN THEO BATCH ***/
+  /*** VỊ TRÍ & TỒN ***/
   async function fetchVitriTonBatch(masps){
     try{
       const rows = await window.AppAPI?.getVitriTonBatch?.(masps, CS); // [{masp, vitri, ton1, ton2}]
@@ -238,7 +261,7 @@
     }catch(_){}
   }
 
-  /*** VALIDATE + TỔNG ***/
+  /*** GRID CHANGE / VALIDATE ***/
   function onGridChanged(){
     const { tongMH, tongSL } = NTGrid.computeTotals();
     $('#lblTongMatHang') && ($('#lblTongMatHang').textContent = String(tongMH));
@@ -374,17 +397,8 @@
     box.style.cssText='position:absolute;z-index:9999;background:#fff;border:1px solid #ccc;display:none;max-height:200px;overflow:auto';
     document.body.appendChild(box);
 
-    function ensureDataLoaded(){
-      // nếu chưa có danh mục thì cố tải ~2000 mã để gợi ý
-      if (window.sanPhamData && Object.keys(window.sanPhamData).length) return Promise.resolve();
-      if (window.loadSKUCache) return window.loadSKUCache();
-      if (window.supabase){
-        return window.supabase.from('dmhanghoa').select('masp,ten').limit(2000).then(({data})=>{
-          window.sanPhamData = window.sanPhamData||{};
-          (data||[]).forEach(r=> window.sanPhamData[r.masp] = Object.assign(window.sanPhamData[r.masp]||{}, r));
-        });
-      }
-      return Promise.resolve();
+    async function ensureDataLoaded(){
+      await ensureDanhMucHangHoa(); // dùng DM local + supabase khi có
     }
 
     function show(items){
@@ -406,7 +420,7 @@
       await ensureDataLoaded();
       const d = window.sanPhamData||{};
       const all = Object.keys(d).map(k=>({ masp:k, ten:d[k].ten||'' }));
-      const list = all.filter(it => it.masp.includes(q) || it.ten.toUpperCase().includes(q)).slice(0,50);
+      const list = all.filter(it => it.masp.includes(q) || (it.ten||'').toUpperCase().includes(q)).slice(0,50);
       show(list);
     });
 
