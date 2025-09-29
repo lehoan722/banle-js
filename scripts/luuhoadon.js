@@ -863,82 +863,99 @@ export async function luuHoaDonccn1v2() {
 }
 
 // ===== LƯU NHẬP TẠM MOBILE CS1 – không phụ thuộc form cũ =====
-window.LuuHoaDon = Object.assign(window.LuuHoaDon || {}, {
-    async luuHoaDonNhapTamCs1(chitietArr) {
-        try {
-            // 1) Lấy thông tin hệ thống từ input ẩn
-            const sohd = document.getElementById('sohd')?.value || '';
-            const ngay = document.getElementById('ngay')?.value || new Date().toISOString().slice(0, 10);
-            const manv = document.getElementById('manv')?.value || (localStorage.getItem('manv') || '');
-            const tennv = document.getElementById('tennv')?.value || (localStorage.getItem('tennv') || '');
-            const diadiem = (document.getElementById('diadiem')?.value || 'cs1').toLowerCase();
+// public/scripts/luuhoadon.js
+// YÊU CẦU: window.supabase đã được khởi tạo ở HTML (khối đăng nhập)
 
-            if (!sohd) return { ok: false, message: 'Chưa có số hóa đơn' };
-            if (!tennv) return { ok: false, message: 'Chưa có tên nhân viên' };
+(function () {
+    'use strict';
 
-            // 2) Tổng số lượng
-            let tongsl = 0;
-            chitietArr.forEach(c => tongsl += (Number(c.soluong) || 0));
+    const sb = () => window.supabase;
 
-            // 3) Tạo hoá đơn đầu (bảng hoadon_banle) dùng loaihd = 'nhaptamcs1'
-            const createdAt = new Date().toISOString();
-            const hoadon = {
-                sohd,
-                ngay,
-                manv,
-                tennv,
-                diadiem,
-                khachhang: '',
-                tongsl,
-                tongkm: 0,
-                chietkhau: 0,
-                thanhtoan: 0,
-                hinhthuctt: 'TM',
-                ghichu: '',
-                created_at: createdAt,
-                loai: '',
-                dvt: '',
-                loaihd: 'nhaptamcs1',
-                nhacc: ''
-            };
+    // ===== LƯU NHẬP TẠM MOBILE CS1 – độc lập với form cũ =====
+    window.LuuHoaDon = Object.assign(window.LuuHoaDon || {}, {
+        /**
+         * @param {Array<{masp:string,size:number,soluong:number}>} chitietArr
+         * @returns {Promise<{ok:boolean,message?:string}>}
+         */
+        async luuHoaDonNhapTamCs1(chitietArr) {
+            try {
+                if (!sb()) return { ok: false, message: 'Supabase chưa sẵn sàng' };
 
-            // 4) Map chi tiết -> bảng ct_hoadon_banle (giá nhập = 0)
-            const chitiet = chitietArr.map(c => ({
-                sohd,
-                masp: c.masp,
-                tensp: (window.sanPhamData?.[c.masp]?.ten || ''),
-                size: String(c.size || 0),
-                soluong: Number(c.soluong) || 0,
-                gia: 0,
-                km: 0,
-                thanhtien: 0,
-                dvt: '',
-                diadiem,
-                created_at: createdAt,
-                ngay
-            }));
+                // 1) Lấy thông tin hệ thống từ input ẩn
+                let sohd = document.getElementById('sohd')?.value || '';
+                const ngay = document.getElementById('ngay')?.value || new Date().toISOString().slice(0, 10);
+                const manv = document.getElementById('manv')?.value || (localStorage.getItem('manv') || '');
+                const tennv = document.getElementById('tennv')?.value || (localStorage.getItem('tennv') || '');
+                const diadiem = (document.getElementById('diadiem')?.value || 'cs1').toLowerCase();
 
-            // 5) Ghi vào Supabase
-            const { error: errHD } = await supabase.from('hoadon_banle').insert([hoadon]);
-            if (errHD) return { ok: false, message: errHD.message || 'Lỗi ghi hoadon_banle' };
+                // 1.1 Tự xin số HĐ nếu trống
+                if (!sohd) {
+                    try {
+                        const so = await window.SoHoaDon?.goiSoDuKien?.('nhaptamcs1');
+                        if (so) {
+                            sohd = so;
+                            const soLbl = document.getElementById('lblSoHD'); if (soLbl) soLbl.textContent = so;
+                            const soInp = document.getElementById('sohd'); if (soInp) soInp.value = so;
+                        }
+                    } catch (_) { }
+                    if (!sohd) return { ok: false, message: 'Chưa có số hóa đơn' };
+                }
+                if (!tennv) return { ok: false, message: 'Chưa có tên nhân viên' };
 
-            const { error: errCT } = await supabase.from('ct_hoadon_banle').insert(chitiet);
-            if (errCT) return { ok: false, message: errCT.message || 'Lỗi ghi ct_hoadon_banle' };
+                // 2) Tổng số lượng
+                let tongsl = 0;
+                (chitietArr || []).forEach(c => tongsl += (Number(c.soluong) || 0));
+                if (!tongsl) return { ok: false, message: 'Chưa có chi tiết' };
 
-            // 6) Cập nhật sochungtu nếu số mới > hiện tại
-            const [loai, soStr] = sohd.split('_');
-            const soMoi = parseInt(soStr, 10) || 0;
-            const { data: curr } = await supabase.from('sochungtu').select('so_hientai').eq('loai', loai).single();
-            if (!curr || soMoi > (curr.so_hientai || 0)) {
-                await supabase.from('sochungtu').update({ so_hientai: soMoi }).eq('loai', loai);
+                // 3) Chuẩn bị bản ghi
+                const createdAt = new Date().toISOString();
+                const hoadon = {
+                    sohd, ngay, manv, tennv, diadiem,
+                    khachhang: '', tongsl, tongkm: 0, chietkhau: 0, thanhtoan: 0,
+                    hinhthuctt: 'TM', ghichu: '', created_at: createdAt,
+                    loai: '', dvt: '', loaihd: 'nhaptamcs1', nhacc: ''
+                };
+
+                const chitiet = chitietArr.map(c => ({
+                    sohd,
+                    masp: c.masp,
+                    tensp: (window.sanPhamData?.[c.masp]?.ten || ''),
+                    size: String(c.size || 0),
+                    soluong: Number(c.soluong) || 0,
+                    gia: 0,
+                    km: 0,
+                    thanhtien: 0,
+                    dvt: '',
+                    diadiem,
+                    created_at: createdAt,
+                    ngay
+                }));
+
+                // 4) Ghi vào Supabase
+                const { error: errHD } = await sb().from('hoadon_banle').insert([hoadon]);
+                if (errHD) return { ok: false, message: errHD.message || 'Lỗi ghi hoadon_banle' };
+
+                const { error: errCT } = await sb().from('ct_hoadon_banle').insert(chitiet);
+                if (errCT) return { ok: false, message: errCT.message || 'Lỗi ghi ct_hoadon_banle' };
+
+                // 5) Cập nhật sochungtu nếu cần
+                try {
+                    const [loai, soStr] = String(sohd).split('_');
+                    const soMoi = parseInt(soStr, 10) || 0;
+                    const { data: curr } = await sb().from('sochungtu').select('so_hientai').eq('loai', loai).maybeSingle();
+                    if (!curr || soMoi > (curr.so_hientai || 0)) {
+                        await sb().from('sochungtu').update({ so_hientai: soMoi }).eq('loai', loai);
+                    }
+                } catch (_) { }
+
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, message: e.message };
             }
-
-            return { ok: true };
-        } catch (e) {
-            return { ok: false, message: e.message };
         }
-    }
-});
+    });
+
+})();
 
 /* ===== expose ===== */
 
