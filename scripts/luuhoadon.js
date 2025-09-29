@@ -865,10 +865,10 @@ export async function luuHoaDonccn1v2() {
 // Gói các hàm cần dùng cho trang mobile
 window.LuuHoaDon = Object.assign(window.LuuHoaDon || {}, {
     async luuHoaDonNhapTamCs1(chitiet) {
-        // tạm thời tái dùng pipeline nhập (luuHoaDonNhapQuaAPI) – không nhận payload
-        // nạp chitiet vào bảng kết quả trước khi gọi nếu bạn cần
         try {
-            return await window.luuHoaDonNhapQuaAPI(); // ⬅ gọi đúng tên hàm gắn trên window
+            // TODO: nếu cần chuyển 'chitiet' sang cấu trúc chuẩn trước khi lưu thì map tại đây
+            const rs = await window.luuHoaDonNhapQuaAPI();   // gọi đúng tên hàm gốc
+            return rs || { ok: true };
         } catch (e) {
             return { ok: false, message: e.message };
         }
