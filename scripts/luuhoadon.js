@@ -862,21 +862,18 @@ export async function luuHoaDonccn1v2() {
     choPhepSua = false;
 }
 
-// thêm vào cuối file luuhoadon.js:
+// Gói các hàm cần dùng cho trang mobile
 window.LuuHoaDon = Object.assign(window.LuuHoaDon || {}, {
     async luuHoaDonNhapTamCs1(chitiet) {
-        // chitiet: [{masp, size, soluong}]
-        // TODO: nếu hệ thống của bạn yêu cầu thêm đơn giá/ma_kho/... thì map tại đây
+        // tạm thời tái dùng pipeline nhập (luuHoaDonNhapQuaAPI) – không nhận payload
+        // nạp chitiet vào bảng kết quả trước khi gọi nếu bạn cần
         try {
-            const payload = { loai: 'nhaptamcs1', diadiem: 'cs1', chitiet }
-            // tái sử dụng hàm chung của bạn, ví dụ:
-            return await window.LuuHoaDon.luuHoaDonNhapQuaAPI(payload)
+            return await window.luuHoaDonNhapQuaAPI(); // ⬅ gọi đúng tên hàm gắn trên window
         } catch (e) {
-            return { ok: false, message: e.message }
+            return { ok: false, message: e.message };
         }
     }
-})
-
+});
 
 /* ===== expose ===== */
 
