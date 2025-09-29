@@ -862,6 +862,21 @@ export async function luuHoaDonccn1v2() {
     choPhepSua = false;
 }
 
+// thêm vào cuối file luuhoadon.js:
+window.LuuHoaDon = Object.assign(window.LuuHoaDon || {}, {
+    async luuHoaDonNhapTamCs1(chitiet) {
+        // chitiet: [{masp, size, soluong}]
+        // TODO: nếu hệ thống của bạn yêu cầu thêm đơn giá/ma_kho/... thì map tại đây
+        try {
+            const payload = { loai: 'nhaptamcs1', diadiem: 'cs1', chitiet }
+            // tái sử dụng hàm chung của bạn, ví dụ:
+            return await window.LuuHoaDon.luuHoaDonNhapQuaAPI(payload)
+        } catch (e) {
+            return { ok: false, message: e.message }
+        }
+    }
+})
+
 
 /* ===== expose ===== */
 
