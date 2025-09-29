@@ -66,11 +66,20 @@
 
   // ======== SIZE LOCK BY SKU MODE ========
   async function isQuanLySize(masp) {
-    if (quanLySizeCache.has(masp)) return quanLySizeCache.get(masp)
-    // Tận dụng module của bạn (hoặc RPC) — ở đây gọi hàm giả định trong main.js:
-    const flag = await window.AppAPI?.isQuanLySizeTheoCoSo?.(masp, cs) ?? true // mặc định TRUE theo yêu cầu
-    quanLySizeCache.set(masp, !!flag)
-    return !!flag
+    // 1) Ưu tiên dữ liệu đã cache
+    const sp = (window.sanPhamData || {})[masp];
+    if (sp) {
+      // chủng loại GD (giày dép) → quản size
+      if (String(sp.chungloai || '').toUpperCase() === 'GD') return true;
+      // nếu DM có cờ quanlysize (nếu bạn có) → dùng trực tiếp
+      if (sp.quanlysize !== undefined) return !!sp.quanlysize;
+    }
+    // 2) Hỏi API theo nhóm/địa điểm (nếu có), nếu không có → mặc định FALSE
+    try {
+      const flag = await window.AppAPI?.isQuanLySizeTheoCoSo?.(masp, cs);
+      if (typeof flag === 'boolean') return flag;
+    } catch (e) { }
+    return false; // ⬅ mặc định KHÔNG quản size
   }
   async function applyQuanLySizeForCurrentMa() {
     const masp = $('#inpMa').value.trim().toUpperCase()
@@ -81,16 +90,16 @@
   }
   function toggleSizeInputs(qls) {
     const open = (id, on) => {
-      const el = $(id); if (!el) return
-      el.disabled = !on; el.placeholder = on ? el.placeholder : el.dataset.size
-      if (!on) el.value = ''
-    }
-    // cột C2 (nhập số lượng)
-    open('#q0', !qls)
-    SIZES.filter(s => s !== 0).forEach(sz => open(`#q${sz}`, qls))
-    // cột C1 (hiển thị size tham chiếu)
-    open('#sz0', !qls)
-    SIZES.filter(s => s !== 0).forEach(sz => open(`#sz${sz}`, qls))
+      const el = document.querySelector(id); if (!el) return;
+      el.disabled = !on;
+      if (!on) { el.value = ''; }      // tắt thì xóa giá trị
+    };
+    // C2 (ô nhập)
+    open('#q0', !qls);
+    [38, 39, 40, 41, 42, 43, 44, 45].forEach(sz => open(`#q${sz}`, qls));
+    // C1 (cột “nhãn size”)
+    open('#sz0', !qls);
+    [38, 39, 40, 41, 42, 43, 44, 45].forEach(sz => open(`#sz${sz}`, qls));
   }
 
   // ======== ENTER FLOW ========
@@ -104,9 +113,22 @@
     // Ưu tiên cache hiện có
     let ok = !!(window.sanPhamData && window.sanPhamData[masp]);
     if (!ok) {
-      try { await window.AppAPI?.ensureSanPhamDataFor?.([masp]); } catch (_) { }
+      // Fallback: nếu không có AppAPI → hỏi thẳng Supabase
+      try {
+        if (window.AppAPI?.ensureSanPhamDataFor) {
+          await window.AppAPI.ensureSanPhamDataFor([masp]);
+        } else if (window.supabase) {
+          const { data, error } = await window.supabase.from('dmhanghoa')
+            .select('masp,ten,chungloai,nhomhang,gianhap')
+            .eq('masp', masp).maybeSingle();
+          if (!error && data) {
+            window.sanPhamData = Object.assign(window.sanPhamData || {}, { [masp]: data });
+          }
+        }
+      } catch (_) { }
       ok = !!(window.sanPhamData && window.sanPhamData[masp]);
     }
+
     if (!ok) { box.style.display = 'block'; box.textContent = 'Mã không có trong danh mục: ' + masp; return; }
     box.style.display = 'none';
 
@@ -250,7 +272,7 @@
     SIZES.forEach(sz => { const el = $(`#q${sz}`); if (el) { el.value = '' } })
     $('#taQuick').value = ''
     saveDraft()
-     $('#inpTongNhapHienTai').value = 0;
+    $('#inpTongNhapHienTai').value = 0;
   }
 
   function clearInputsKeepMa() {
@@ -323,3 +345,46 @@
   // go!
   document.addEventListener('DOMContentLoaded', init)
 })()
+
+  // AUTOCOMPLETE CHO #inpMa
+  (function () {
+    const box = document.createElement('div');
+    box.id = 'ac-ma'; box.style.cssText =
+      'position:absolute;z-index:9999;background:#fff;border:1px solid #ccc;display:none;max-height:180px;overflow:auto;';
+    document.body.appendChild(box);
+
+    const inp = document.querySelector('#inpMa');
+    let list = []; // [{masp,ten}]
+    function rebuildList() {
+      // Ưu tiên cache nội bộ
+      const d = window.sanPhamData || {};
+      list = Object.keys(d).slice(0, 2000).map(k => ({ masp: k, ten: d[k].ten || '' }));
+    }
+    rebuildList();
+
+    function show(items) {
+      if (!items.length) { box.style.display = 'none'; return; }
+      const r = inp.getBoundingClientRect();
+      box.style.left = `${r.left + window.scrollX}px`;
+      box.style.top = `${r.bottom + window.scrollY}px`;
+      box.style.width = `${r.width}px`;
+      box.innerHTML = items.map(it => `<div data-m="${it.masp}" style="padding:6px;cursor:pointer">
+      <b>${it.masp}</b> – ${it.ten}</div>`).join('');
+      box.style.display = '';
+      Array.from(box.children).forEach(div => {
+        div.onclick = () => { inp.value = div.dataset.m; box.style.display = 'none'; inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
+      });
+    }
+
+    inp.addEventListener('input', () => {
+      const q = inp.value.trim().toUpperCase();
+      if (q.length < 2) { box.style.display = 'none'; return; }
+      // nếu chưa có danh mục → thử kéo về
+      if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
+        loadSKUCache().then(() => { rebuildList(); });
+      }
+      const items = list.filter(it => it.masp.includes(q) || (it.ten || '').toUpperCase().includes(q)).slice(0, 50);
+      show(items);
+    });
+    document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
+  })();
