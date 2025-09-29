@@ -1266,8 +1266,8 @@ window.checkLoaiTemAndPrint = function () {
             }
             // Hiển thị popup
             let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
-            for (let p of data) {
-                html += `< tr data - masp="${p.masp}" data - tensp="${p.tensp || ''}" ><td>${p.masp}</td><td>${p.tensp || ''}</td></tr >`;
+            for (let p of data) {                
+                html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
             }
             html += '</table>';
             maspSuggestDiv.innerHTML = html;
