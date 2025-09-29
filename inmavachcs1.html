@@ -310,7 +310,7 @@
             </div>
 
         </div>
-        <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in --> 
+        <!-- Bên phải: bảng sản phẩm đã chọn và tùy chọn in -->
         <div class="right">
             <b>Danh sách tem in</b>
             <div id="hot" style="margin-bottom:12px"></div>
@@ -682,7 +682,12 @@
 
   <!--bat dau khu vuc thiet ke hien thi tem -->
 
-<div class="tem" data-masp="${t.masp}" data-giale="${t.giale}" style="
+<div class="tem"
+     data-masp="${t.masp}"
+     data-size="${(t.size ?? '').toString().trim()}"
+     data-giale="${t.giale}"
+     style="
+
   width:${TEM_WIDTH_MM}mm; height:${TEM_HEIGHT_MM}mm;
   box-sizing:border-box; overflow:hidden; border:0; margin:0; padding:0;
  ">
@@ -766,13 +771,18 @@
             previewArea.innerHTML = html;
 
             // Sinh QR code cho từng tem
-            document.querySelectorAll('.tem .qr').forEach((el, idx) => {
+            document.querySelectorAll('.tem .qr').forEach((el) => {
                 const parent = el.closest('.tem');
                 if (!parent || parent.classList.contains('tem-blank')) return;
-                const masp = parent.getAttribute('data-masp');
+
+                const masp = (parent.getAttribute('data-masp') || '').trim().toUpperCase();
+                const size = (parent.getAttribute('data-size') || '').trim().toUpperCase();
+
+                const qrValue = (size && size !== '0') ? `${masp}_${size}` : masp;
+
                 new QRious({
                     element: el,
-                    value: masp,
+                    value: qrValue,
                     size: 128,
                     level: 'M'
                 });
@@ -848,21 +858,21 @@
             html += `</div></div>`;
             previewArea.innerHTML = html;
             document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
-}
+        }
 
 
-       window.prevPage = function () {
-  const t = document.getElementById('loaiTem').value;
-  if (currentPage <= 1) return;
-  if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage - 1);
-  else renderPreview(currentPage - 1);
-};
-window.nextPage = function () {
-  const t = document.getElementById('loaiTem').value;
-  if (currentPage >= totalPages) return;
-  if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage + 1);
-  else renderPreview(currentPage + 1);
-};
+        window.prevPage = function () {
+            const t = document.getElementById('loaiTem').value;
+            if (currentPage <= 1) return;
+            if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage - 1);
+            else renderPreview(currentPage - 1);
+        };
+        window.nextPage = function () {
+            const t = document.getElementById('loaiTem').value;
+            if (currentPage >= totalPages) return;
+            if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage + 1);
+            else renderPreview(currentPage + 1);
+        };
 
 
         // Giá
@@ -894,20 +904,20 @@ window.nextPage = function () {
         // chon loai tem in
 
         window.checkLoaiTemAndRender = function () {
-  const loaiTem = document.getElementById('loaiTem').value;
-  if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
-  applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
-  if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
-  else renderPreview(1);
-};
-window.checkLoaiTemAndPrint = function () {
-  const loaiTem = document.getElementById('loaiTem').value;
-  if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
-  // render lại đúng mode trước khi in
-  if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
-  else renderPreview(currentPage || 1);
-  window.print();
-};
+            const loaiTem = document.getElementById('loaiTem').value;
+            if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+            applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
+            if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
+            else renderPreview(1);
+        };
+        window.checkLoaiTemAndPrint = function () {
+            const loaiTem = document.getElementById('loaiTem').value;
+            if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+            // render lại đúng mode trước khi in
+            if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
+            else renderPreview(currentPage || 1);
+            window.print();
+        };
 
 
         // // ===== script nhap xuat du lieu tu in ma vach , Gom danh sách item từ lưới đang chọn để in
@@ -932,11 +942,11 @@ window.checkLoaiTemAndPrint = function () {
             const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
             if (b64.length <= 1800) {
-                window.open(`/nhapmoimtcs1.html#imp=${ b64 } `, '_blank');
+                window.open(`/nhapmoimtcs1.html#imp=${b64} `, '_blank');
             } else {
                 const key = 'IMP_' + Date.now();
                 localStorage.setItem(key, json);
-                window.open(`/nhapmoimtcs2.html#impkey=${ key } `, '_blank');
+                window.open(`/nhapmoimtcs2.html#impkey=${key} `, '_blank');
             }
         }
 
@@ -1097,7 +1107,7 @@ window.checkLoaiTemAndPrint = function () {
                 const inp = document.getElementById(f.id);
                 if (!inp.value.trim()) {
                     inp.style.border = '1.5px solid red';
-                    msg.push(`${ f.label } là bắt buộc`);
+                    msg.push(`${f.label} là bắt buộc`);
                     valid = false;
                 } else {
                     inp.style.border = '';
@@ -1266,7 +1276,7 @@ window.checkLoaiTemAndPrint = function () {
             }
             // Hiển thị popup
             let html = '<table><tr><th>Mã SP</th><th>Tên hàng</th></tr>';
-            for (let p of data) {                
+            for (let p of data) {
                 html += `<tr data-masp="${p.masp}" data-tensp="${p.tensp || ''}"><td>${p.masp}</td><td>${p.tensp || ''}</td></tr>`;
             }
             html += '</table>';
