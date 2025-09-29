@@ -66,28 +66,30 @@
 
   // ======== SIZE LOCK BY SKU MODE ========
   async function isQuanLySize(masp) {
-    // 1) Ưu tiên dữ liệu đã cache
+    // Ưu tiên dm đã nạp
     const sp = (window.sanPhamData || {})[masp];
     if (sp) {
-      // chủng loại GD (giày dép) → quản size
-      if (String(sp.chungloai || '').toUpperCase() === 'GD') return true;
-      // nếu DM có cờ quanlysize (nếu bạn có) → dùng trực tiếp
+      const cl = String(sp.chungloai || '').trim().toUpperCase();
+      if (cl === 'GD' || cl === 'GIAYDEP') return true;   // giày dép → quản size
       if (sp.quanlysize !== undefined) return !!sp.quanlysize;
     }
-    // 2) Hỏi API theo nhóm/địa điểm (nếu có), nếu không có → mặc định FALSE
+    // Hỏi API của bạn nếu có
     try {
-      const flag = await window.AppAPI?.isQuanLySizeTheoCoSo?.(masp, cs);
+      const flag = await window.AppAPI?.isQuanLySizeTheoCoSo?.(masp, 'cs1');
       if (typeof flag === 'boolean') return flag;
-    } catch (e) { }
-    return false; // ⬅ mặc định KHÔNG quản size
+    } catch { }
+    return false;
   }
+
   async function applyQuanLySizeForCurrentMa() {
-    const masp = $('#inpMa').value.trim().toUpperCase()
-    if (!masp) return
-    const qls = await isQuanLySize(masp)
-    // nếu QLS: mở 38..45, khóa 0; ngược lại mở 0, khóa 38..45
-    toggleSizeInputs(qls)
+    const masp = $('#inpMa').value.trim().toUpperCase();
+    if (!masp) return;
+    const qls = await isQuanLySize(masp);
+    quanLySizeCache.set(masp, qls);           // <-- ghi vào cache để validator dùng
+    toggleSizeInputs(qls);
   }
+
+  
   function toggleSizeInputs(qls) {
     const open = (id, on) => {
       const el = document.querySelector(id); if (!el) return;
@@ -167,8 +169,6 @@
     fetchVitriTonBatch([masp]) // nền
     saveDraft()
 
-    NTGrid.setRow(masp, patch);
-    clearInputsKeepMa();
     $('#inpTongNhapHienTai').value = 0;   // reset tổng đang nhập
   }
 
@@ -345,49 +345,49 @@
   // go!
   document.addEventListener('DOMContentLoaded', init)
 
-   // AUTOCOMPLETE CHO #inpMa
-  (function () {
-    const box = document.createElement('div');
-    box.id = 'ac-ma'; box.style.cssText =
-      'position:absolute;z-index:9999;background:#fff;border:1px solid #ccc;display:none;max-height:180px;overflow:auto;';
-    document.body.appendChild(box);
+    // AUTOCOMPLETE CHO #inpMa
+    (function () {
+      const box = document.createElement('div');
+      box.id = 'ac-ma'; box.style.cssText =
+        'position:absolute;z-index:9999;background:#fff;border:1px solid #ccc;display:none;max-height:180px;overflow:auto;';
+      document.body.appendChild(box);
 
-    const inp = document.querySelector('#inpMa');
-    let list = []; // [{masp,ten}]
-    function rebuildList() {
-      // Ưu tiên cache nội bộ
-      const d = window.sanPhamData || {};
-      list = Object.keys(d).slice(0, 2000).map(k => ({ masp: k, ten: d[k].ten || '' }));
-    }
-    rebuildList();
-
-    function show(items) {
-      if (!items.length) { box.style.display = 'none'; return; }
-      const r = inp.getBoundingClientRect();
-      box.style.left = `${r.left + window.scrollX}px`;
-      box.style.top = `${r.bottom + window.scrollY}px`;
-      box.style.width = `${r.width}px`;
-      box.innerHTML = items.map(it => `<div data-m="${it.masp}" style="padding:6px;cursor:pointer">
-      <b>${it.masp}</b> – ${it.ten}</div>`).join('');
-      box.style.display = '';
-      Array.from(box.children).forEach(div => {
-        div.onclick = () => { inp.value = div.dataset.m; box.style.display = 'none'; inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
-      });
-    }
-
-    inp.addEventListener('input', () => {
-      const q = inp.value.trim().toUpperCase();
-      if (q.length < 2) { box.style.display = 'none'; return; }
-      // nếu chưa có danh mục → thử kéo về
-      if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
-        loadSKUCache().then(() => { rebuildList(); });
+      const inp = document.querySelector('#inpMa');
+      let list = []; // [{masp,ten}]
+      function rebuildList() {
+        // Ưu tiên cache nội bộ
+        const d = window.sanPhamData || {};
+        list = Object.keys(d).slice(0, 2000).map(k => ({ masp: k, ten: d[k].ten || '' }));
       }
-      const items = list.filter(it => it.masp.includes(q) || (it.ten || '').toUpperCase().includes(q)).slice(0, 50);
-      show(items);
-    });
-    document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
-  })();
+      rebuildList();
+
+      function show(items) {
+        if (!items.length) { box.style.display = 'none'; return; }
+        const r = inp.getBoundingClientRect();
+        box.style.left = `${r.left + window.scrollX}px`;
+        box.style.top = `${r.bottom + window.scrollY}px`;
+        box.style.width = `${r.width}px`;
+        box.innerHTML = items.map(it => `<div data-m="${it.masp}" style="padding:6px;cursor:pointer">
+      <b>${it.masp}</b> – ${it.ten}</div>`).join('');
+        box.style.display = '';
+        Array.from(box.children).forEach(div => {
+          div.onclick = () => { inp.value = div.dataset.m; box.style.display = 'none'; inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
+        });
+      }
+
+      inp.addEventListener('input', () => {
+        const q = inp.value.trim().toUpperCase();
+        if (q.length < 2) { box.style.display = 'none'; return; }
+        // nếu chưa có danh mục → thử kéo về
+        if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
+          loadSKUCache().then(() => { rebuildList(); });
+        }
+        const items = list.filter(it => it.masp.includes(q) || (it.ten || '').toUpperCase().includes(q)).slice(0, 50);
+        show(items);
+      });
+      document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
+    })();
 
 })();
 
- 
+
