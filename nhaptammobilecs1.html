@@ -7,53 +7,40 @@
     <title>Nhập tạm Mobile CS1</title>
     <style>
         body {
-            font-family: system-ui, Segoe UI, Roboto, Arial;
-            margin: 6px;
-            font-size: var(--fs);
-        }
-
-        :root {
-            --gap: 6px;
-            --pad: 8px;
-            --h-input: 34px;
-            --label: 86px;
-            --fs: 14px;
+            font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 8px
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--gap);
-            max-width: 100vw;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px
         }
 
         .card {
             border: 1px solid #ddd;
             border-radius: 10px;
-            padding: var(--pad);
-            min-width: 0;
+            padding: 10px
         }
 
         .row {
             display: flex;
             align-items: center;
             gap: 6px;
-            margin: 6px 0;
+            margin: 6px 0
         }
 
         .row label {
-            min-width: var(--label);
-            color: #444;
-            font-size: var(--fs);
+            min-width: 110px;
+            color: #444
         }
 
         .row input,
         .row textarea {
             flex: 1;
-            height: var(--h-input);
-            padding: 6px 8px;
+            padding: 8px;
             border: 1px solid #ccc;
-            border-radius: 8px;
+            border-radius: 8px
         }
 
         .row .pill {
@@ -65,34 +52,15 @@
         }
 
         .sizes {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 6px;
+            margin-top: 6px
         }
 
-        /* ⬅ 9 dòng, không còn lưới 4 cột */
         .sizes input {
             width: 100%;
-            text-align: center;
-            height: var(--h-input);
-        }
-
-        #col3 #taQuick {
-            height: calc(9*var(--h-input) + 8*6px);
-            resize: none;
-        }
-
-        /* cao bằng 9 ô size */
-        .table-wrap {
-            overflow: auto;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-        }
-
-        /* bảng có thanh kéo ngang */
-        th,
-        td {
-            white-space: nowrap;
+            text-align: center
         }
 
         .toolbar {
@@ -191,8 +159,10 @@
                 <div id="lblTongMatHang" class="pill">0</div>
             </div>
             <hr />
-            <div class="row"><label>mã sản phẩm</label><input id="inpMa" placeholder="VD: DGA-DEN" autocomplete="off" />
-            </div>
+            <div class="row"><label></label><input id="inpMa" placeholder="mã sản phẩm" autocomplete="off" />
+            </div>  
+             <div class="row"><label></label><input id="tong" placeholder="tinh tong" autocomplete="off" />
+            </div>          
             <div class="sizes" id="sizesC1">
                 <!-- size 0,38..45 (tự bật/tắt bằng JS) -->
                 <input id="sz0" data-size="0" placeholder="0" inputmode="numeric" />
@@ -216,6 +186,11 @@
                 <div id="lblTongSoLuong" class="pill">0</div>
             </div>
             <hr />
+            <div class="row"><label></label><input id="tong" placeholder="tong nhap" autocomplete="off" />
+            </div>
+            <div class="row"><label></label><input id="tong" placeholder="tinh tong" autocomplete="off" />
+            </div>
+            
             <div class="sizes" id="sizesC2">
                 <!-- các ô nhập SL theo size cho luồng Enter; trùng id với C1 là cố ý: JS sẽ đọc cả 2 cột -->
                 <input id="q0" data-size="0" placeholder="0" inputmode="numeric" />
@@ -292,61 +267,6 @@ DGA-DEN 40 40 39
     <!-- scripts thuần cho trang mobile (không dùng import) -->
     <script src="./scripts/nhaptammobile.grid.js"></script>
     <script src="./scripts/nhaptammobile.controller.js"></script>
-
-    <!-- Đăng nhập -->
-    <div id="login-container"
-        style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99999;">
-        <div style="background:#f9f9f9;padding:20px;border-radius:8px;box-shadow:0 0 10px #ccc;">
-            <h3>Đăng nhập</h3>
-            <form onsubmit="NTLogin.doLogin();return false;">
-                <div> Email: <input id="lg-email" value="khohangcs1@gmail.com" readonly style="background:#eee"></div>
-                <div> Mật khẩu: <input id="lg-pass" type="password" value="123123"></div>
-                <div> Mã NV: <input id="lg-manv" placeholder="VD: NV001"></div>
-                <button>Đăng nhập</button>
-                <div id="lg-msg" style="color:#b00020;margin-top:6px"></div>
-            </form>
-        </div>
-    </div>
-
-    <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        const supabase = createClient(
-            'https://rddjrmbyftlcvrgzlyby.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-        );
-        window.NTLogin = {
-            async doLogin() {
-                const email = document.getElementById('lg-email').value.trim().toLowerCase();
-                const pass = document.getElementById('lg-pass').value.trim();
-                const manv = document.getElementById('lg-manv').value.trim().toUpperCase();
-                const msg = document.getElementById('lg-msg');
-                msg.textContent = '';
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-                if (error) { msg.textContent = 'Đăng nhập thất bại: ' + error.message; return; }
-
-                const { data: nv, error: errNV } = await supabase
-                    .from('dmnhanvien').select('manv,tennv').eq('manv', manv).maybeSingle();
-                if (errNV || !nv) { msg.textContent = 'Mã nhân viên không đúng'; await supabase.auth.signOut(); return; }
-
-                localStorage.setItem('diadiem', 'cs1');
-                localStorage.setItem('manv', nv.manv);
-                localStorage.setItem('tennv', nv.tennv);
-
-                // Đẩy lên UI
-                document.getElementById('lblDiaDiem').textContent = 'CS1';
-                document.getElementById('lblTenNV').textContent = nv.tennv;
-
-                // Ẩn overlay đăng nhập
-                document.getElementById('login-container').style.display = 'none';
-
-                // Lấy số HĐ dự kiến sau khi đăng nhập xong
-                try {
-                    const so = await window.SoHoaDon?.goiSoDuKien?.('nhaptamcs1');
-                    if (so) document.getElementById('lblSoHD').textContent = so;
-                } catch (e) { }
-            }
-        }
-    </script>
 
 </body>
 
