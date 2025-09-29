@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Nhập tạm Mobile CS1</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:8px}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .card{border:1px solid #ddd;border-radius:10px;padding:10px}
+    .row{display:flex;align-items:center;gap:6px;margin:6px 0}
+    .row label{min-width:110px;color:#444}
+    .row input,.row textarea{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px}
+    .row .pill{padding:3px 8px;border:1px solid #ccc;border-radius:999px;background:#fafafa;font-size:12px}
+    .sizes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+    .sizes input{width:100%;text-align:center}
+    .toolbar{position:sticky;bottom:0;left:0;right:0;background:#fff;padding:8px 0;margin-top:10px;
+             border-top:1px solid #eee;display:flex;gap:8px;justify-content:space-between}
+    .btn{flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;background:#f5f5f5}
+    .btn.primary{background:#1976d2;color:#fff;border-color:#1976d2}
+    .btn.danger{background:#fff0f0;color:#b00020;border-color:#f3bcbc}
+    .table-wrap{overflow:auto;border:1px solid #ddd;border-radius:10px}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #e6e6e6;padding:6px 8px;text-align:center}
+    th{background:#fafafa}
+    td.locked{background:#f7f7f7;color:#888}
+    td.err{background:#ffecec}
+    .banner{position:sticky;bottom:56px;background:#fff6e5;border:1px solid #ffd699;color:#995700;
+            padding:6px 10px;border-radius:8px;margin-top:8px;display:none}
+    .banner.show{display:block}
+  </style>
+</head>
+<body>
+  <h3>NHAP TAM – khu vực nhập liệu</h3>
+
+  <div class="grid">
+    <!-- CỘT 1 -->
+    <div class="card" id="col1">
+      <div class="row"><label>địa điểm</label><div id="lblDiaDiem" class="pill">CS1</div></div>
+      <div class="row"><label>tổng mặt hàng</label><div id="lblTongMatHang" class="pill">0</div></div>
+      <hr/>
+      <div class="row"><label>mã sản phẩm</label><input id="inpMa" placeholder="VD: DGA-DEN" autocomplete="off" /></div>
+      <div class="sizes" id="sizesC1">
+        <!-- size 0,38..45 (tự bật/tắt bằng JS) -->
+        <input id="sz0"  data-size="0"  placeholder="0"  inputmode="numeric" />
+        <input id="sz38" data-size="38" placeholder="38" inputmode="numeric" />
+        <input id="sz39" data-size="39" placeholder="39" inputmode="numeric" />
+        <input id="sz40" data-size="40" placeholder="40" inputmode="numeric" />
+        <input id="sz41" data-size="41" placeholder="41" inputmode="numeric" />
+        <input id="sz42" data-size="42" placeholder="42" inputmode="numeric" />
+        <input id="sz43" data-size="43" placeholder="43" inputmode="numeric" />
+        <input id="sz44" data-size="44" placeholder="44" inputmode="numeric" />
+        <input id="sz45" data-size="45" placeholder="45" inputmode="numeric" />
+      </div>
+    </div>
+
+    <!-- CỘT 2 -->
+    <div class="card" id="col2">
+      <div class="row"><label>tên nhân viên</label><div id="lblTenNV" class="pill">-</div></div>
+      <div class="row"><label>tổng số lượng</label><div id="lblTongSoLuong" class="pill">0</div></div>
+      <hr/>
+      <div class="sizes" id="sizesC2">
+        <!-- các ô nhập SL theo size cho luồng Enter; trùng id với C1 là cố ý: JS sẽ đọc cả 2 cột -->
+        <input id="q0"  data-size="0"  placeholder="0"  inputmode="numeric" />
+        <input id="q38" data-size="38" placeholder="38" inputmode="numeric" />
+        <input id="q39" data-size="39" placeholder="39" inputmode="numeric" />
+        <input id="q40" data-size="40" placeholder="40" inputmode="numeric" />
+        <input id="q41" data-size="41" placeholder="41" inputmode="numeric" />
+        <input id="q42" data-size="42" placeholder="42" inputmode="numeric" />
+        <input id="q43" data-size="43" placeholder="43" inputmode="numeric" />
+        <input id="q44" data-size="44" placeholder="44" inputmode="numeric" />
+        <input id="q45" data-size="45" placeholder="45" inputmode="numeric" />
+      </div>
+    </div>
+
+    <!-- CỘT 3 -->
+    <div class="card" id="col3">
+      <div class="row"><label>ngày giờ</label><div id="lblNgayGio" class="pill">-</div></div>
+      <div class="row"><label>số hóa đơn</label><div id="lblSoHD" class="pill">nhaptamcs1_...</div></div>
+      <hr/>
+      <div class="row"><label>nhập nhanh (textarea)</label></div>
+      <div class="row"><textarea id="taQuick" rows="8" placeholder="VD:
+DGA-DEN 40 40 39
+6496-SM 0 38 38 45"></textarea></div>
+      <div id="unknownSku" class="row" style="display:none;color:#b00020;font-size:12px"></div>
+    </div>
+  </div>
+
+  <h4>bang ket qua</h4>
+  <div class="table-wrap">
+    <table id="tblKQ">
+      <thead>
+        <tr>
+          <th>Mã hàng</th><th>0</th><th>38</th><th>39</th><th>40</th><th>41</th><th>42</th><th>43</th><th>44</th><th>45</th>
+          <th>tổng</th><th>Vị trí</th><th>tồn cs1</th><th>tồn cs2</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="banner" class="banner"></div>
+
+  <div class="toolbar">
+    <button id="btnChuyen1" class="btn">chuyen 1</button>
+    <button id="btnThemMoi" class="btn">them moi</button>
+    <button id="btnLuu" class="btn primary" disabled>luu</button>
+    <button id="btnChuyen2" class="btn">chuyen 2</button>
+  </div>
+
+  <!-- scripts -->
+  <script src="./scripts/main.js"></script>
+  <script src="./scripts/bangketqua.js"></script>
+  <script src="./scripts/hoadon.js"></script>
+  <script src="./scripts/luuhoadon.js"></script>
+  <script src="./scripts/sohoadon.js"></script>
+  <script src="./scripts/nhaptammobile.grid.js"></script>
+  <script src="./scripts/nhaptammobile.controller.js"></script>
+</body>
+</html>
