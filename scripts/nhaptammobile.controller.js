@@ -344,9 +344,8 @@
 
   // go!
   document.addEventListener('DOMContentLoaded', init)
-})()
 
-  // AUTOCOMPLETE CHO #inpMa
+   // AUTOCOMPLETE CHO #inpMa
   (function () {
     const box = document.createElement('div');
     box.id = 'ac-ma'; box.style.cssText =
@@ -388,3 +387,7 @@
     });
     document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
   })();
+
+})()
+
+ 
