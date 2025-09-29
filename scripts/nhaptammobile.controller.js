@@ -89,7 +89,7 @@
     toggleSizeInputs(qls);
   }
 
-  
+
   function toggleSizeInputs(qls) {
     const open = (id, on) => {
       const el = document.querySelector(id); if (!el) return;
@@ -174,41 +174,59 @@
 
   // ======== CHUYỂN 2 (textarea) ========
   function handleChuyen2() {
-    const txt = $('#taQuick').value.trim();
-    if (!txt) return;
+    const raw = $('#taQuick').value.trim();
+    if (!raw) return;
     snapshot();
 
-    const push = new Map();   // masp -> {size:qty}
+    const lines = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+    // Định dạng mới:
+    // <MÃ>        (>= 4 ký tự, chứa chữ hoặc '-')
+    // <size>      (0 | 38..45) — 1 dòng 1 số
+    // <size>
+    // <MÃ>
+    // <size> ...
+    let current = null;                 // mã hiện tại
+    const push = new Map();             // masp -> { size: qty }
     const unknown = new Set();
 
-    txt.split(/\r?\n/).forEach(line => {
-      const t = line.trim().split(/\s+/);
-      if (t.length < 2) return;
-      const masp = t[0].toUpperCase();
-      if (masp.length < 4) return;
+    const isCodeLine = (s) => /^[A-Z0-9\-_.]{4,}$/i.test(s) && !/^(0|3[8-9]|4[0-5])$/.test(s);
+    const isSizeLine = (s) => /^(0|3[8-9]|4[0-5])$/.test(s);
 
-      // kiểm danh mục (ưu tiên sanPhamData)
-      if (!(window.sanPhamData && window.sanPhamData[masp])) unknown.add(masp);
-
-      if (!push.has(masp)) push.set(masp, {});
-      for (let i = 1; i < t.length; i++) {
-        const n = parseInt(t[i], 10);
-        if ([0, 38, 39, 40, 41, 42, 43, 44, 45].includes(n)) {
-          push.get(masp)[n] = (push.get(masp)[n] || 0) + 1;
-        }
+    for (const ln of lines) {
+      if (isCodeLine(ln)) {
+        current = ln.toUpperCase();
+        if (!push.has(current)) push.set(current, {});
+        // kiểm DM (ưu tiên cache; nếu chưa có, sẽ cảnh báo sau)
+        if (!(window.sanPhamData && window.sanPhamData[current])) unknown.add(current);
+        continue;
       }
-    });
+      if (isSizeLine(ln) && current) {
+        const n = parseInt(ln, 10);
+        const map = push.get(current);
+        map[n] = (map[n] || 0) + 1;
+        continue;
+      }
+      // dòng khác bỏ qua
+    }
 
     // đổ xuống lưới
     const list = [];
     push.forEach((qty, masp) => { NTGrid.setRow(masp, { qty }); list.push(masp); });
     if (list.length) fetchVitriTonBatch(list);
 
-    // cảnh báo mã chưa có thật sự (không chặn)
-    const lack = [...unknown].filter(m => !(window.sanPhamData && window.sanPhamData[m]));
+    // cảnh báo mã chưa có thật sự (sau khi thử nạp)
+    const stillUnknown = [];
+    for (const m of unknown) {
+      if (!(window.sanPhamData && window.sanPhamData[m])) stillUnknown.push(m);
+    }
     const box = $('#unknownSku');
-    if (lack.length) { box.style.display = 'block'; box.textContent = 'Mã chưa có DM: ' + lack.join(', '); }
+    if (stillUnknown.length) { box.style.display = 'block'; box.textContent = 'Mã chưa có DM: ' + stillUnknown.join(', '); }
     else { box.style.display = 'none'; }
+
+    // XÓA textarea sau khi chuyển để tránh nhập nhầm
+    $('#taQuick').value = '';
+    saveDraft();
   }
 
   // ======== VITRÍ & TỒN (batch) ========
@@ -343,50 +361,50 @@
   }
 
   // go!
-  document.addEventListener('DOMContentLoaded', init)
+  document.addEventListener('DOMContentLoaded', init);
 
-    // AUTOCOMPLETE CHO #inpMa
-    (function () {
-      const box = document.createElement('div');
-      box.id = 'ac-ma'; box.style.cssText =
-        'position:absolute;z-index:9999;background:#fff;border:1px solid #ccc;display:none;max-height:180px;overflow:auto;';
-      document.body.appendChild(box);
+  // AUTOCOMPLETE CHO #inpMa
+  (function () {
+    const box = document.createElement('div');
+    box.id = 'ac-ma'; box.style.cssText =
+      'position:absolute;z-index:9999;background:#fff;border:1px solid #ccc;display:none;max-height:180px;overflow:auto;';
+    document.body.appendChild(box);
 
-      const inp = document.querySelector('#inpMa');
-      let list = []; // [{masp,ten}]
-      function rebuildList() {
-        // Ưu tiên cache nội bộ
-        const d = window.sanPhamData || {};
-        list = Object.keys(d).slice(0, 2000).map(k => ({ masp: k, ten: d[k].ten || '' }));
-      }
-      rebuildList();
+    const inp = document.querySelector('#inpMa');
+    let list = []; // [{masp,ten}]
+    function rebuildList() {
+      // Ưu tiên cache nội bộ
+      const d = window.sanPhamData || {};
+      list = Object.keys(d).slice(0, 2000).map(k => ({ masp: k, ten: d[k].ten || '' }));
+    }
+    rebuildList();
 
-      function show(items) {
-        if (!items.length) { box.style.display = 'none'; return; }
-        const r = inp.getBoundingClientRect();
-        box.style.left = `${r.left + window.scrollX}px`;
-        box.style.top = `${r.bottom + window.scrollY}px`;
-        box.style.width = `${r.width}px`;
-        box.innerHTML = items.map(it => `<div data-m="${it.masp}" style="padding:6px;cursor:pointer">
+    function show(items) {
+      if (!items.length) { box.style.display = 'none'; return; }
+      const r = inp.getBoundingClientRect();
+      box.style.left = `${r.left + window.scrollX}px`;
+      box.style.top = `${r.bottom + window.scrollY}px`;
+      box.style.width = `${r.width}px`;
+      box.innerHTML = items.map(it => `<div data-m="${it.masp}" style="padding:6px;cursor:pointer">
       <b>${it.masp}</b> – ${it.ten}</div>`).join('');
-        box.style.display = '';
-        Array.from(box.children).forEach(div => {
-          div.onclick = () => { inp.value = div.dataset.m; box.style.display = 'none'; inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
-        });
-      }
-
-      inp.addEventListener('input', () => {
-        const q = inp.value.trim().toUpperCase();
-        if (q.length < 2) { box.style.display = 'none'; return; }
-        // nếu chưa có danh mục → thử kéo về
-        if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
-          loadSKUCache().then(() => { rebuildList(); });
-        }
-        const items = list.filter(it => it.masp.includes(q) || (it.ten || '').toUpperCase().includes(q)).slice(0, 50);
-        show(items);
+      box.style.display = '';
+      Array.from(box.children).forEach(div => {
+        div.onclick = () => { inp.value = div.dataset.m; box.style.display = 'none'; inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); };
       });
-      document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
-    })();
+    }
+
+    inp.addEventListener('input', () => {
+      const q = inp.value.trim().toUpperCase();
+      if (q.length < 2) { box.style.display = 'none'; return; }
+      // nếu chưa có danh mục → thử kéo về
+      if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
+        loadSKUCache().then(() => { rebuildList(); });
+      }
+      const items = list.filter(it => it.masp.includes(q) || (it.ten || '').toUpperCase().includes(q)).slice(0, 50);
+      show(items);
+    });
+    document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
+  })();
 
 })();
 
