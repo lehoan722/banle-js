@@ -388,6 +388,6 @@
     document.addEventListener('click', (e) => { if (e.target !== inp && !box.contains(e.target)) box.style.display = 'none'; });
   })();
 
-})()
+})();
 
  
