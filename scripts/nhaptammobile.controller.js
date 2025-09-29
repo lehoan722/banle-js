@@ -30,14 +30,20 @@
 
     // hook events
     $('#inpMa').addEventListener('keydown', onEnterMa)
+
     SIZES.forEach(sz => {
-      $(`#q${sz}`)?.addEventListener('keydown', e => onEnterSize(e, sz))
-    })
+      const el = $(`#q${sz}`);
+      if (!el) return;
+      el.addEventListener('keydown', e => onEnterSize(e, sz));
+      el.addEventListener('input', recalcNhapHienTai); // <-- thêm dòng này
+    });
+
 
     $('#btnChuyen1').onclick = handleChuyen1
     $('#btnChuyen2').onclick = handleChuyen2
     $('#btnThemMoi').onclick = clearInputs
     $('#btnLuu').onclick = handleLuu
+    $('#btnXoaBang').onclick = () => { NTGrid.replaceState({}); localStorage.removeItem(STORAGE_KEY); onGridChanged(); }
 
     // grid change → cập nhật tổng & validate
     window.NTMobile.onGridChanged = onGridChanged
@@ -47,6 +53,16 @@
     // lock/mở size theo mã hiện tại (nếu có)
     await applyQuanLySizeForCurrentMa()
   }
+
+  function recalcNhapHienTai() {
+    let s = 0;
+    SIZES.forEach(sz => {
+      const v = parseInt($(`#q${sz}`)?.value || '0', 10) || 0;
+      s += v;
+    });
+    $('#inpTongNhapHienTai').value = s;
+  }
+
 
   // ======== SIZE LOCK BY SKU MODE ========
   async function isQuanLySize(masp) {
@@ -85,20 +101,17 @@
     const masp = $('#inpMa').value.trim().toUpperCase();
     if (!masp) { box.style.display = 'none'; return; }
 
-    // 1) Ưu tiên danh mục đã nạp
-    if (window.sanPhamData && window.sanPhamData[masp]) {
-      box.style.display = 'none';
-    } else {
-      // 2) Nếu chưa có → thử nạp nhanh 1 mã
-      try {
-        await window.AppAPI?.ensureSanPhamDataFor?.([masp]); // bạn đã có hàm tương tự trong nhapmoi
-      } catch (e) { }
-      if (window.sanPhamData && window.sanPhamData[masp]) box.style.display = 'none';
-      else { box.style.display = 'block'; box.textContent = 'Mã không có trong danh mục: ' + masp; return; }
+    // Ưu tiên cache hiện có
+    let ok = !!(window.sanPhamData && window.sanPhamData[masp]);
+    if (!ok) {
+      try { await window.AppAPI?.ensureSanPhamDataFor?.([masp]); } catch (_) { }
+      ok = !!(window.sanPhamData && window.sanPhamData[masp]);
     }
+    if (!ok) { box.style.display = 'block'; box.textContent = 'Mã không có trong danh mục: ' + masp; return; }
+    box.style.display = 'none';
 
     await applyQuanLySizeForCurrentMa();
-    // nhảy tới size đầu hợp lệ
+    // Nhảy đến size đầu hợp lệ
     if ($('#q0') && !$('#q0').disabled) { $('#q0').focus(); $('#q0').select(); }
     else { $('#q38').focus(); $('#q38').select(); }
   }
@@ -131,6 +144,10 @@
     clearInputsKeepMa()
     fetchVitriTonBatch([masp]) // nền
     saveDraft()
+
+    NTGrid.setRow(masp, patch);
+    clearInputsKeepMa();
+    $('#inpTongNhapHienTai').value = 0;   // reset tổng đang nhập
   }
 
   // ======== CHUYỂN 2 (textarea) ========
@@ -233,10 +250,13 @@
     SIZES.forEach(sz => { const el = $(`#q${sz}`); if (el) { el.value = '' } })
     $('#taQuick').value = ''
     saveDraft()
+     $('#inpTongNhapHienTai').value = 0;
   }
+
   function clearInputsKeepMa() {
     SIZES.forEach(sz => { const el = $(`#q${sz}`); if (el) { el.value = '' } })
     $('#inpMa').focus(); $('#inpMa').select()
+    $('#inpTongNhapHienTai').value = 0;
   }
 
   // ======== OFFLINE DRAFT ========
