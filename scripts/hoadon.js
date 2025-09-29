@@ -324,7 +324,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                 // Có size rồi → ép SL=1 và thêm ngay
                 const slEl = document.getElementById("soluong");
                 if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
-                themVaoBang(sizeEl.value.trim(), { afterAdd: "keepMaspFocusSize" });
+
+                const nhapSizeMode = document.getElementById("nhapsize")?.checked === true;
+                if (nhapSizeMode) {
+                    themVaoBang(sizeEl.value.trim(), { afterAdd: "keepMaspFocusSize" });
+                } else {
+                    themVaoBang(sizeEl.value.trim()); // mặc định: reset về #masp
+                }
                 return true;
             }
         } catch (e) {
