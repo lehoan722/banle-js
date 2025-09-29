@@ -391,25 +391,32 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     // Tổng điều kiện cần quản-size
     const requireManagedSizeNow = (size45On && isGD) || groupRequires || managedByGia;
 
+    // --- thay thế toàn bộ khối này trong xuLyMaSanPham ---
     if (typedSize) {
-        // Người dùng đã gõ hậu tố size
         const sizeEl = document.getElementById("size");
         const sizeChosen = String(typedSize).trim();
+        const nhapSizeMode = document.getElementById("nhapsize")?.checked === true;
 
         if (requireManagedSizeNow) {
-            // → Hàng quản-size: thêm đúng size người dùng chọn
+            // → Hàng QUẢN-SIZE: thêm đúng size người dùng chọn
             if (sizeEl) sizeEl.value = sizeChosen;
             if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
-            themVaoBang(sizeChosen, { afterAdd: "keepMaspFocusSize" });
+
+            if (nhapSizeMode) {
+                themVaoBang(sizeChosen, { afterAdd: "keepMaspFocusSize" }); // giữ ở #size để nhập tiếp
+            } else {
+                themVaoBang(sizeChosen); // reset về #masp như yêu cầu
+            }
             return true;
         } else {
-            // → Hàng không quản-size: bỏ hậu tố, thêm với size=0
+            // → Hàng KHÔNG QUẢN-SIZE: bỏ hậu tố, thêm với size=0
             if (sizeEl) sizeEl.value = "0";
             if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
-            themVaoBang("0"); // giữ luồng cũ (reset form, focus masp)
+            themVaoBang("0"); // mặc định: resetFormBang() → focus #masp
             return true;
         }
     }
+    // --- hết khối thay thế ---
     // ------------------- END [NEW SIZE SUFFIX] -------------------
 
     // ===== QUẢN LÝ SIZE THEO NHÓM (giữ nguyên hành vi cũ) =====
