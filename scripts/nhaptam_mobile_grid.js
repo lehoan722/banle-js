@@ -41,31 +41,51 @@
    *  - Theo cờ "QL SIZE" (size45) + giày
    * ================================================== */
   // Tra sản phẩm theo mã (hỗ trợ sanPhamData là mảng hoặc object, key hoa/thường)
+  // Lấy “kho” danh mục sản phẩm (object hoặc mảng) từ nhiều khả năng đặt tên
+  function pickSanPhamStore() {
+    const cands = [
+      'sanPhamData', 'sanphamData', 'dsSanPham',
+      'dmhanghoa', 'hanghoa', 'hangHoaData', 'dssp'
+    ];
+    for (const k of cands) {
+      if (Array.isArray(window[k]) && window[k].length) return window[k];
+      if (window[k] && typeof window[k] === 'object') return window[k];
+    }
+    return null;
+  }
+
+  // Tra sản phẩm theo mã (hỗ trợ store là object HOẶC mảng; key hoa/thường)
   function getSanPhamByMa(code) {
     const raw = String(code || '').trim();
     if (!raw) return null;
     const key = raw.toUpperCase();
 
-    const d = window.sanPhamData;
-    if (!d) return null;
-
-    // Trường hợp là object map sẵn
-    if (!Array.isArray(d)) {
-      // thử nhiều biến thể key
-      return d[key] || d[raw] || d[key.replace(/\s+/g, '')] || null;
+    const store = pickSanPhamStore();
+    if (!store) {
+      console.warn('[MobileGrid] Không tìm thấy danh mục sản phẩm trong window.*');
+      return null;
     }
 
-    // Trường hợp là mảng => build index 1 lần
+    // Nếu là object map sẵn
+    if (!Array.isArray(store)) {
+      // thử nhiều biến thể key
+      return store[key] || store[raw] || store[key.replace(/\s+/g, '')] || null;
+    }
+
+    // Nếu là mảng, build index 1 lần
     if (!window.__spIndex__) {
       const idx = new Map();
-      d.forEach(sp => {
-        const k = String(sp?.masp || '').trim().toUpperCase();
+      store.forEach(sp => {
+        const k = String(sp?.masp || sp?.MA || sp?.ma || '').trim().toUpperCase();
         if (k) idx.set(k, sp);
       });
       window.__spIndex__ = idx;
     }
     return window.__spIndex__.get(key) || null;
   }
+
+  // 👉 Cho phép bạn gõ thử trên Console: getSanPhamByMa('810-APSH')
+  window.getSanPhamByMa = getSanPhamByMa;
 
   async function isQuanLySize(masp) {
     const sp = getSanPhamByMa(masp);
