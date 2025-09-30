@@ -210,13 +210,18 @@
       SIZES.forEach(sz=>{
         const inp = tbody.querySelector(`tr[data-ri="${ri}"] input[data-sz="${sz}"]`);
         if (!inp) return;
+
+        // lọc chỉ cho nhập số
         inp.addEventListener('input', e=>{
           e.target.value = e.target.value.replace(/[^\d]/g,'');
           setQty(r.masp, sz, e.target.value);
         });
+
+        // Enter/Next → nhảy sang ô kế tiếp (ô cuối quay về #masp)
         inp.addEventListener('keydown', e=>{
           if (e.key==='Enter'){ e.preventDefault(); goNextCell(ri,sz); }
         });
+
         // QLS: true → chỉ mở 38..45 ; false → chỉ mở size 0
         if (r.qls){ inp.disabled = (sz===0); } else { inp.disabled = (sz!==0); }
       });
@@ -225,7 +230,11 @@
 
   function rowHtml(r,ri){
     const t = sumSizes(r.qty);
-    const cells = SIZES.map(sz=>`<td class="td-sz"><input data-sz="${sz}" value="${r.qty[sz]||''}" inputmode="numeric"></td>`).join('');
+    // ⤵️ cập nhật: dùng text + inputmode=numeric + enterkeyhint=next để có keypad số & nút hành động
+    const cells = SIZES.map(sz=>`<td class="td-sz">
+      <input type="text" inputmode="numeric" enterkeyhint="next"
+             data-sz="${sz}" value="${r.qty[sz]||''}">
+    </td>`).join('');
     return `<tr data-ri="${ri}" data-masp="${r.masp}">
       <td class="td-masp">${r.masp}</td>${cells}
       <td class="td-total" data-total>${t}</td>
