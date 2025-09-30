@@ -422,7 +422,7 @@
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
-    <link rel="stylesheet" href="nhaptamcs111.mobile.css">
+    
 
 </head>
 
@@ -1175,18 +1175,7 @@
             }
         });
     </script>
-
-    <script>
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            console.log("🔗 Sync trước khi lưu");
-            window.bangKetQua = fromMobileGrid();
-            // gọi thẳng hàm lưu hóa đơn cũ, nếu cần:
-            if (typeof window.luuHoaDonQuaAPI === "function") {
-                window.luuHoaDonQuaAPI();
-            }
-        });
-
-    </script>
+    
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
