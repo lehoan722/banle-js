@@ -373,6 +373,28 @@
             })
             : createClient(supabaseUrl, supabaseKey);
 
+        // 🔎 LẤY GIÁ LẺ THEO DANH SÁCH MÃ (batch)
+        async function fetchGiaLeByMasps(masps = []) {
+            const uniq = Array.from(new Set(
+                (masps || []).map(m => (m || '').toUpperCase()).filter(Boolean)
+            ));
+            if (!uniq.length) return {};
+            const { data, error } = await supabase
+                .from('dmhanghoa')
+                .select('masp, giale, gianhap, dvt, tensp')
+                .in('masp', uniq);
+            if (error) {
+                console.warn('fetchGiaLeByMasps error:', error);
+                return {};
+            }
+            const map = {};
+            (data || []).forEach(sp => {
+                const k = (sp.masp || '').toUpperCase();
+                map[k] = sp || {};
+            });
+            return map;
+        }
+
         // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
         let hot;
         const colHeaders = [
