@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>nhaptamcs1</title>
-    <!-- Backup: các thư viện ngoài --> 
+    <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -458,7 +458,7 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label> -->        
+        <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
@@ -488,19 +488,21 @@
         <div class="main">
             <div class="table-area">
 
-                <table id="bangketqua">
+                <table id="bangketqua" class="table table-compact">
                     <thead>
                         <tr>
                             <th>Mã hàng</th>
-                            <th>Tên hàng</th>
-                            <th>Kích cỡ</th>
-                            <th>S.lượng</th>
-                            <th>ĐVT</th>
-                            <th>Đơn giá</th>
-                            <th>Khuyến mại</th>
-                            <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- (giữ nguyên) -->
-                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                            <th class="sz">0</th>
+                            <th class="sz">38</th>
+                            <th class="sz">39</th>
+                            <th class="sz">40</th>
+                            <th class="sz">41</th>
+                            <th class="sz">42</th>
+                            <th class="sz">43</th>
+                            <th class="sz">44</th>
+                            <th class="sz">45</th>
+                            <th>Tổng</th>
+                            <th>Vị trí</th>
                             <th>T1</th>
                             <th>T2</th>
                         </tr>
@@ -844,7 +846,7 @@
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;        
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -1045,7 +1047,7 @@
 
         // goi phím F2
         //setTimeout(function () {
-           // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
         //}, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
