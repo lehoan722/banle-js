@@ -24,16 +24,25 @@ export async function capNhatSoHoaDonTuDong() {
         let loai = "";
         if (pathname.includes("banle")) {
             loai = diadiem === "cs1" ? "bancs1" : "bancs2";
+
         } else if (pathname.includes("bannv")) {
             loai = diadiem === "cs1" ? "bannvcs1" : "bannvcs2";
+
         } else if (pathname.includes("nhapmoi")) {
             loai = diadiem === "cs1" ? "nmcs1" : "nmcs2";
+
         } else if (pathname.includes("nhapdoi")) {
             loai = diadiem === "cs1" ? "nhapdoics1" : "nhapdoics2";
+
+        } else if (pathname.includes("nhapnhanvien")) {
+            loai = diadiem === "cs1" ? "nhapnhanviencs1" : "nhapnhanviencs2";
+
         } else if (pathname.includes("tralaincc")) {
             loai = diadiem === "cs1" ? "tralaincccs1" : "tralaincccs2";
+
         } else if (pathname.includes("xuathuy")) {
             loai = diadiem === "cs1" ? "xuathuycs1" : "xuathuycs2";
+
         } else if (pathname.includes("ccn1v2")) {
             loai = "xcncs1";
         } else if (pathname.includes("ccn2v1")) {
