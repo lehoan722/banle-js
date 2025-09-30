@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Nhập tạm Mobile CS1</title>
+    <style>
+        body {
+            font-family: system-ui, Segoe UI, Roboto, Arial;
+            font-size: 14px;
+            margin: 6px
+        }
+
+        h3 {
+            margin: 6px 0 10px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 6px 0
+        }
+
+        .row input,
+        .row textarea {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px
+        }
+
+        .row .pill {
+            padding: 3px 8px;
+            border: 1px solid #ccc;
+            border-radius: 999px;
+            background: #fafafa;
+            font-size: 12px
+        }
+
+        .sizes {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .sizes input {
+            text-align: center
+        }
+
+        textarea {
+            resize: none
+        }
+
+        .toolbar {
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+            padding: 8px 0;
+            display: flex;
+            gap: 8px;
+            border-top: 1px solid #eee
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc
+        }
+
+        .btn.primary {
+            background: #1976d2;
+            color: #fff;
+            border-color: #1976d2
+        }
+
+        .btn.danger {
+            background: #fee;
+            color: #b00020
+        }
+
+        #popup_masp {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 300px;
+            max-height: 160px;
+            background: #fff;
+            border: 1px solid #ccc;
+            display: none;
+            overflow-y: auto;
+            z-index: 10000
+        }
+
+        #popup_masp div {
+            padding: 6px;
+            cursor: pointer
+        }
+
+        #popup_masp div:hover {
+            background: #eef6ff
+        }
+    </style>
+</head>
+
+<body>
+    <h3>NHẬP TẠM – MOBILE CS1</h3>
+
+    <div class="grid">
+        <!-- CỘT 1 -->
+        <div class="card">
+            <div class="row">
+                <div id="lblDiaDiem" class="pill">CS1</div>
+            </div>
+            <div class="row">
+                <div id="lblTongMatHang" class="pill">0</div>
+            </div>
+            <hr />
+            <div class="row" style="position:relative">
+                <input id="masp" placeholder="Mã sản phẩm" autocomplete="off" />
+                <div id="popup_masp"></div>
+            </div>
+            <div class="sizes">
+                <input id="sz0" placeholder="0" inputmode="numeric" />
+                <input id="sz38" placeholder="38" inputmode="numeric" />
+                <input id="sz39" placeholder="39" inputmode="numeric" />
+                <input id="sz40" placeholder="40" inputmode="numeric" />
+                <input id="sz41" placeholder="41" inputmode="numeric" />
+                <input id="sz42" placeholder="42" inputmode="numeric" />
+                <input id="sz43" placeholder="43" inputmode="numeric" />
+                <input id="sz44" placeholder="44" inputmode="numeric" />
+                <input id="sz45" placeholder="45" inputmode="numeric" />
+            </div>
+        </div>
+
+        <!-- CỘT 2 -->
+        <div class="card">
+            <div class="row">
+                <div id="lblTenNV" class="pill">-</div>
+            </div>
+            <div class="row">
+                <div id="lblTongSoLuong" class="pill">0</div>
+            </div>
+            <hr />
+            <div class="sizes">
+                <input id="q0" placeholder="0" inputmode="numeric" />
+                <input id="q38" placeholder="38" inputmode="numeric" />
+                <input id="q39" placeholder="39" inputmode="numeric" />
+                <input id="q40" placeholder="40" inputmode="numeric" />
+                <input id="q41" placeholder="41" inputmode="numeric" />
+                <input id="q42" placeholder="42" inputmode="numeric" />
+                <input id="q43" placeholder="43" inputmode="numeric" />
+                <input id="q44" placeholder="44" inputmode="numeric" />
+                <input id="q45" placeholder="45" inputmode="numeric" />
+            </div>
+        </div>
+
+        <!-- CỘT 3 -->
+        <div class="card">
+            <div class="row">
+                <div id="lblNgayGio" class="pill">-</div>
+            </div>
+            <div class="row">
+                <div id="lblSoHD" class="pill">nhaptamcs1_...</div>
+            </div>
+            <hr />
+            <div class="row">
+                <textarea id="taQuick" rows="10" placeholder="Mã + size mỗi dòng"></textarea>
+            </div>
+            <!-- input ẩn phục vụ saver -->
+            <input id="sohd" style="display:none">
+            <input id="ngay" style="display:none">
+            <input id="manv" style="display:none">
+            <input id="tennv" style="display:none">
+            <input id="diadiem" style="display:none" value="cs1">
+            <div id="unknownSku" style="color:#b00020;font-size:12px"></div>
+        </div>
+    </div>
+
+    <h4>Bảng kết quả</h4>
+    <div class="table-wrap">
+        <table id="tblKQ" border="1" cellspacing="0" cellpadding="4" width="100%">
+            <thead>
+                <tr>
+                    <th>Mã hàng</th>
+                    <th>0</th>
+                    <th>38</th>
+                    <th>39</th>
+                    <th>40</th>
+                    <th>41</th>
+                    <th>42</th>
+                    <th>43</th>
+                    <th>44</th>
+                    <th>45</th>
+                    <th>Tổng</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="toolbar">
+        <button id="btnChuyen1" class="btn">Chuyển 1</button>
+        <button id="btnThemMoi" class="btn">Thêm mới</button>
+        <button id="btnLuu" class="btn primary">Lưu</button>
+        <button id="btnChuyen2" class="btn">Chuyển 2</button>
+        <button id="btnXoaBang" class="btn danger">Xóa bảng</button>
+    </div>
+
+    <!-- Supabase client -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+        window.supabase = createClient(
+            'https://rddjrmbyftlcvrgzlyby.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+        );
+
+        // Autocomplete lấy từ in mã vạch
+        let DM_CACHE = [];
+        async function loadDM() {
+            if (DM_CACHE.length) return DM_CACHE;
+            const { data, error } = await supabase.from('dmhanghoa').select('masp,ten').limit(5000);
+            if (error) { console.error(error); return []; }
+            DM_CACHE = data || [];
+            return DM_CACHE;
+        }
+
+        const maspInput = document.getElementById('masp');
+        const popup = document.getElementById('popup_masp');
+        let curIndex = -1, curList = [];
+
+        function render(list) {
+            curList = list; curIndex = -1;
+            if (!list.length) { popup.style.display = 'none'; return; }
+            popup.innerHTML = list.map((r, i) => `<div data-i="${i}"><b>${r.masp}</b> – ${r.ten || ''}</div>`).join('');
+            popup.style.display = '';
+            [...popup.children].forEach(div => {
+                div.onclick = () => choose(parseInt(div.dataset.i, 10));
+            });
+        }
+        function highlight(i) {
+            curIndex = i;
+            [...popup.children].forEach((el, idx) => {
+                el.style.background = (idx === i) ? '#eef6ff' : '';
+            });
+        }
+        function choose(i) {
+            if (i < 0 || i >= curList.length) return;
+            maspInput.value = curList[i].masp;
+            popup.style.display = 'none';
+            maspInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        }
+
+        maspInput.addEventListener('input', async () => {
+            const q = maspInput.value.trim().toUpperCase();
+            if (q.length < 2) { popup.style.display = 'none'; return; }
+            const all = await loadDM();
+            const list = all.filter(r => r.masp.includes(q) || (r.ten || '').toUpperCase().includes(q)).slice(0, 50);
+            render(list);
+        });
+        maspInput.addEventListener('keydown', (e) => {
+            if (popup.style.display === 'none') return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); highlight((curIndex + 1) % curList.length); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); highlight((curIndex - 1 + curList.length) % curList.length); }
+            else if (e.key === 'Enter') { if (curIndex >= 0) { e.preventDefault(); choose(curIndex); } }
+            else if (e.key === 'Escape') { popup.style.display = 'none'; }
+        });
+        document.addEventListener('click', (e) => { if (e.target !== maspInput && !popup.contains(e.target)) popup.style.display = 'none'; });
+    </script>
+
+    <!-- Controller & saver -->
+    <script src="./scripts/nhaptammobile.grid.js"></script>
+    <script src="./scripts/nhaptammobile.controller.js"></script>
+    <script type="module" src="./scripts/luuhoadon.js"></script>
+</body>
+
+</html>
