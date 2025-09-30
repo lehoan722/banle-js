@@ -43,12 +43,16 @@
             }
             activeMas = masp;
             if (rows[0].qls === undefined) rows[0].qls = await isQuanLySize(masp);
-            // luôn reset 9 size về trống để dễ nhập
-            SIZES.forEach(s => rows[0].qty[s] = 0);
+            // ⚠️ KHÔNG reset số lượng nữa để giữ nguyên dữ liệu đã nhập
         }
         render();
         focusFirstSizeFor(masp);
         ensureVitriTonBatch([masp]);                   // đổ vị trí + tồn
+
+        // xóa ô #masp để nhập mã mới
+        const mas = document.getElementById('masp');
+        if (mas) mas.value = '';
+
     }
 
     function setQty(masp, size, val) {
@@ -159,15 +163,30 @@
 })();
 
 // Vô hiệu hóa #size của luồng cũ + chuyển hướng focus về ô size đầu tiên trong lưới
-(function neutralizeLegacySize(){
-  const size = document.getElementById('size');
-  if (!size) return;
-  size.readOnly = true;
-  size.tabIndex = -1;
-  size.addEventListener('focus', (e)=>{
-    e.preventDefault();
-    const ma = (document.getElementById('masp')?.value||'').trim().toUpperCase();
-    if (ma) { MobileKQ.focusFirstSizeFor(ma); }
-  });
+(function neutralizeLegacySize() {
+    const size = document.getElementById('size');
+    if (!size) return;
+    size.readOnly = true;
+    size.tabIndex = -1;
+    size.addEventListener('focus', (e) => {
+        e.preventDefault();
+        const ma = (document.getElementById('masp')?.value || '').trim().toUpperCase();
+        if (ma) { MobileKQ.focusFirstSizeFor(ma); }
+    });
 })();
+
+document.getElementById('them')?.addEventListener('click', ()=>{
+  // xóa lưới
+  rows.length = 0;
+  render();
+  // xóa bộ nhớ cũ của luồng cũ
+  window.bangKetQua = {};
+  // xóa các input nhanh ở đầu
+  ['masp','soluong','dvt','size','gia','khuyenmai','thanhtien','vitri'].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  // focus lại masp
+  document.getElementById('masp')?.focus();
+});
+
 
