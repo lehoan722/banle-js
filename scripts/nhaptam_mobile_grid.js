@@ -229,7 +229,7 @@
     // Keypad/Enter: dùng type="text" để luôn có phím Enter
     const cells = SIZES.map(sz => `
     <td class="td-sz">
-      <input type="text" inputmode="numeric" enterkeyhint="next"
+      <input type="text" inputmode="text" enterkeyhint="next"
              data-sz="${sz}" value="${r.qty[sz] || ''}">
     </td>
   `).join('');
@@ -342,5 +342,6 @@
     if (ma) { MobileKQ.focusFirstSizeFor(ma); }
   });
 })();
+
 
 
