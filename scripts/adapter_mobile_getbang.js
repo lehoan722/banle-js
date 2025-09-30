@@ -49,5 +49,8 @@
     fromMobileGrid();
   });
 
-
+  
 })();
+
+console.log("getBangKetQua hiện tại =", window.getBangKetQua);
+
