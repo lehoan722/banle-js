@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>nhaptamcs1</title>
-    <!-- Backup: cĂ¡c thÆ° viá»‡n ngoĂ i -->
+    <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -46,7 +46,7 @@
             background: #0088cc;
             align-items: center;
             justify-content: flex-end;
-            /* Äáº©y háº¿t sang pháº£i */
+            /* Đẩy hết sang phải */
         }
 
 
@@ -190,10 +190,10 @@
             height: 360px !important;
             display: block;
             object-fit: contain;
-            /* Giá»¯ nguyĂªn tá»‰ lá»‡, khĂ´ng cáº¯t áº£nh */
+            /* Giữ nguyên tỉ lệ, không cắt ảnh */
             object-position: center;
             background: #f5f5f5;
-            /* MĂ u ná»n trung tĂ­nh, cĂ³ thá»ƒ chá»‰nh náº¿u muá»‘n */
+            /* Màu nền trung tính, có thể chỉnh nếu muốn */
             border: 1px solid #ccc;
             margin: 0 auto;
         }
@@ -203,7 +203,7 @@
             display: flex;
             flex-direction: row;
             justify-content: flex-start;
-            /* dá»“n trĂ¡i */
+            /* dồn trái */
             flex-wrap: wrap;
             gap: 7px;
             padding: 5px 0 5px 8px;
@@ -245,7 +245,7 @@
             margin-top: 6px;
         }
 
-        /* Bá»‘ cá»¥c nhĂ³m nháº­p liá»‡u */
+        /* Bố cục nhóm nhập liệu */
         .tab-pane label {
             display: inline-block;
             width: 32%;
@@ -265,12 +265,12 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
-            /* â ï¸ CHUYá»‚N Tá»ª space-between */
+            /* ⚠️ CHUYỂN TỪ space-between */
         }
 
         .tab-content {
             flex-grow: 0;
-            /* â ï¸ KHĂ”NG chiáº¿m toĂ n bá»™ chiá»u cao */
+            /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
         }
 
         html,
@@ -319,17 +319,17 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 width: 80mm;
-                /* Ä‘Ăºng khá»• K80 */
+                /* đúng khổ K80 */
                 box-sizing: border-box;
             }
 
             body {
-                /* XĂ³a font-size máº·c Ä‘á»‹nh lá»›n */
+                /* Xóa font-size mặc định lớn */
                 font-size: 12px;
                 line-height: 1.2;
             }
 
-            /* XĂ³a header/footer máº·c Ä‘á»‹nh cá»§a trĂ¬nh duyá»‡t náº¿u cĂ³ */
+            /* Xóa header/footer mặc định của trình duyệt nếu có */
             @page {
                 margin: 0;
                 size: 80mm auto;
@@ -338,7 +338,41 @@
 
         tr.highlight {
             background-color: #fff3cd !important;
-            /* vĂ ng nháº¡t */
+            /* vàng nhạt */
+        }
+
+        /* ép layout bảng cố định, cột size hẹp */
+        #bangketqua {
+            table-layout: fixed;
+        }
+
+        #bangketqua th.sz,
+        #bangketqua td.td-sz {
+            width: 48px;
+        }
+
+        #bangketqua td.td-sz input {
+            width: 100%;
+            text-align: center;
+            border: none;
+            padding: 4px 0;
+        }
+
+        #bangketqua td.td-masp {
+            width: 140px;
+        }
+
+        #bangketqua td.td-total {
+            width: 50px;
+        }
+
+        #bangketqua td.td-vitri {
+            width: 80px;
+        }
+
+        #bangketqua td.td-t1,
+        #bangketqua td.td-t2 {
+            width: 46px;
         }
     </style>
 
@@ -359,10 +393,10 @@
     </script>
 
     <!-- banlemobile -->
-    <!-- (ADD #1) Náº¿u báº£n gá»‘c CHÆ¯A cĂ³ viewport thĂ¬ thĂªm: -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-    <!-- (ADD #2) Link CSS ghi Ä‘Ă¨ cho mobile: Ä‘áº·t CUá»I <head> Ä‘á»ƒ nĂ³ override -->
+    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
 
 </head>
@@ -449,16 +483,16 @@
 
             <input id="diadiem" placeholder="diadiem" readonly />
             <input id="ngay" type="date" readonly />
-            <input id="manv" type="password" placeholder="MĂ£ NV" />
-            <input id="tennv" placeholder="TĂªn NV" readonly />
-            <button id="btnReloadSP" style="margin-left:10px">đŸ”„ Táº£i</button>
+            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
 
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giá» <input id="gio" /></label> -->
+        <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
@@ -467,7 +501,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="MĂ£ SP" autocomplete="off" />
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -475,13 +509,13 @@
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
             <input id="size" placeholder="SIZE" />
-            <input id="gia" placeholder="GiĂ¡ SP" />
+            <input id="gia" placeholder="Giá SP" />
             <input id="khuyenmai" placeholder="khuyen mai" />
-            <input id="thanhtien" placeholder="ThĂ nh tiá»n" />
-            <input id="sohd" placeholder="Sá»‘ HÄ" />
+            <input id="thanhtien" placeholder="Thành tiền" />
+            <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
-            <button id="xemtonkho">đŸ”</button>
-            <button id="ghivitri">âœï¸</button>
+            <button id="xemtonkho">🔍</button>
+            <button id="ghivitri">✏️</button>
         </div>
 
 
@@ -491,7 +525,7 @@
                 <table id="bangketqua" class="table table-compact">
                     <thead>
                         <tr>
-                            <th>MĂ£ hĂ ng</th>
+                            <th>Mã hàng</th>
                             <th class="sz">0</th>
                             <th class="sz">38</th>
                             <th class="sz">39</th>
@@ -501,8 +535,8 @@
                             <th class="sz">43</th>
                             <th class="sz">44</th>
                             <th class="sz">45</th>
-                            <th>Tá»•ng</th>
-                            <th>Vá»‹ trĂ­</th>
+                            <th>Tổng</th>
+                            <th>Vị trí</th>
                             <th>T1</th>
                             <th>T2</th>
                         </tr>
@@ -513,51 +547,51 @@
             </div>
             <div class="sidebar">
                 <div class="tabs">
-                    <button id="btn_thongtin" onclick="switchTab('thongtin')">ThĂ´ng tin hĂ³a Ä‘Æ¡n</button>
-                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tĂ¡c nhanh</button>
+                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
+                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
                 </div>
                 <div class="tab-content">
                     <div class="tab-pane" id="thongtin">
 
-                        <label>HĂ¬nh thá»©c TT <select id="hinhthuctt">
-                                <option value="tm">Tiá»n máº·t</option>
-                                <option value="ck">Chuyá»ƒn khoáº£n</option>
+                        <label>Hình thức TT <select id="hinhthuctt">
+                                <option value="tm">Tiền mặt</option>
+                                <option value="ck">Chuyển khoản</option>
                             </select></label>
 
-                        <label>Chiáº¿t kháº¥u <input id="chietkhau" /></label>
-                        <label>Tá»•ng KM <input id="tongkm" readonly="" /></label>
+                        <label>Chiết khấu <input id="chietkhau" /></label>
+                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
 
-                        <label>Máº·t hĂ ng <input id="mathang" readonly="" /></label>
-                        <label>Tá»•ng SL <input id="tongsl" readonly="" /></label>
-                        <label><input id="ghichu" placeholder="Ghi chĂº HH" /></label>
+                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
+                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
 
-                        <!-- khu vuc tĂ¬m khĂ¡ch hĂ ng -->
+                        <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mĂ£ khĂ¡ch"
+                            <input id="makh" placeholder="mã khách"
                                 style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
                             <button id="btnPopupKH" type="button"
                                 style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                đŸ”
+                                🔍
                             </button>
                         </div>
-                        <label>KhĂ¡ch hĂ ng <input id="khachhang" readonly="" /></label>
+                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
 
-                        <!-- Popup tĂ¬m khĂ¡ch hĂ ng -->
+                        <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
                             style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
-                            <input id="txtSearchKH" placeholder="Nháº­p mĂ£/tĂªn khĂ¡ch..." style="width:95%;margin:5px">
+                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
                             <table id="tableKH" style="width:100%;font-size:15px"></table>
                         </div>
-                        <!-- het khu vuc tĂ¬m khĂ¡ch hĂ ng -->
+                        <!-- het khu vuc tìm khách hàng -->
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
-                            <label><input id="bansieunhanh" type="checkbox" /> BĂ¡n siĂªu nhanh</label>
+                            <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
-                            <label><input id="inKhongHoi" type="checkbox" /> In khĂ´ng há»i</label>
-                            <label><input checked="" type="checkbox" /> Hiá»ƒn thá»‹ hĂ¬nh áº£nh</label>
+                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
                             <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
@@ -565,17 +599,17 @@
                 </div>
 
                 <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
-                    Tá»•ng pháº£i tráº£
+                    Tổng phải trả
                     <input id="phaithanhtoan"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
                 </div>
                 <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    KhĂ¡ch thanh toĂ¡n
+                    Khách thanh toán
                     <input id="khachtra"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
                 </div>
                 <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    CĂ²n láº¡i
+                    Còn lại
                     <input id="conlai"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
                         readonly />
@@ -583,32 +617,32 @@
 
 
 
-                <img alt="áº¢nh sáº£n pháº©m" class="product-image"
+                <img alt="Ảnh sản phẩm" class="product-image"
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
         </div>
 
 
         <div class="footer-buttons">
-            <button id="them">ThĂªm má»›i</button>
-            <button id="btn-luu">đŸ’¾ LÆ°u</button>
+            <button id="them">Thêm mới</button>
+            <button id="btn-luu">💾 Lưu</button>
 
-            <button id="sua" class="btn edit" type="button">Sá»¬A</button>
+            <button id="sua" class="btn edit" type="button">SỬA</button>
 
-            <button id="quaylai">Quay láº¡i</button>
-            <button id="tieptuc">Tiáº¿p tá»¥c</button>
+            <button id="quaylai">Quay lại</button>
+            <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
-            <button id="xuatexcel">Xuáº¥t Excel</button>
+            <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
 
 
-            <!-- Popup tĂ¬m khĂ¡ch hĂ ng
+            <!-- Popup tìm khách hàng
              
-             <button id="xuatexcel">Xuáº¥t Excel</button>
-             <button id="timkiem">TĂ¬m kiáº¿m</button>
-             <button id="luu">LÆ°u</button>
-            <button onclick="luuHoaDonQuaAPI()">LÆ°u API</button>
+             <button id="xuatexcel">Xuất Excel</button>
+             <button id="timkiem">Tìm kiếm</button>
+             <button id="luu">Lưu</button>
+            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
             
             -->
 
@@ -616,65 +650,65 @@
 
 
         <div class="top-inputs">
-            F1: thĂªm má»›i, F2: lÆ°u dá»¯ liá»‡u, F3: sá»­a dá»¯ liá»‡u, F4: khĂ¡ch thanh toĂ¡n, F5: nháº­p sá»‘ lÆ°á»£ng, F6: quáº£n lĂ½ size,
-            F7: xem tá»“n kho nhanh, F8: nháº­p vá»‹ trĂ­ kho
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
+            F7: xem tồn kho nhanh, F8: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
         </div>
 
-        <!-- âœ… Popup xĂ¡c thá»±c sá»­a hĂ³a Ä‘Æ¡n -->
+        <!-- ✅ Popup xác thực sửa hóa đơn -->
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
      background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-            <h3>XĂ¡c thá»±c sá»­a hĂ³a Ä‘Æ¡n</h3>
-            <input id="xacmanv" placeholder="MĂ£ nhĂ¢n viĂªn" type="password"
+            <h3>Xác thực sửa hóa đơn</h3>
+            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-            <input id="xacmatkhau" placeholder="Máº­t kháº©u" type="password"
+            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">XĂ¡c nháº­n</button>
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
 
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Há»§y</button>
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
 
-        <!-- Popup xĂ¡c nháº­n thĂªm má»›i -->
+        <!-- Popup xác nhận thêm mới -->
         <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
      background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-            <h3>Báº¡n cĂ³ thá»±c sá»± muá»‘n thĂªm má»›i?</h3>
+            <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
-                <button id="btnThemMoiCo">âœ… CĂ³</button>
-                <button onclick="dongTatCaPopup()">âŒ KhĂ´ng</button>
+                <button id="btnThemMoiCo">✅ Có</button>
+                <button onclick="dongTatCaPopup()">❌ Không</button>
             </div>
         </div>
 
     </div>
 
-    <!-- ÄÄƒng nháº­p Supabase -->
+    <!-- Đăng nhập Supabase -->
     <div id="login-container"
         style="position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:99999;">
         <div style="background:#f9f9f9; padding:30px; border-radius:8px; box-shadow:0 0 10px #ccc;">
-            <h2>ÄÄƒng nháº­p há»‡ thá»‘ng</h2>
+            <h2>Đăng nhập hệ thống</h2>
             <form id="form-login" onsubmit="dangNhap(); return false;">
-                <label>Email Ä‘Äƒng nháº­p:</label><br />
+                <label>Email đăng nhập:</label><br />
 
                 <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
                     style="background:#eee; display:none;" />
 
-                <!-- ThĂªm Ä‘oáº¡n sau: -->
-                <label>CÆ¡ sá»Ÿ bĂ¡n hĂ ng:</label><br />
+                <!-- Thêm đoạn sau: -->
+                <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs1" selected>CÆ¡ sá»Ÿ 1</option>
+                    <option value="cs1" selected>Cơ sở 1</option>
                 </select>
 
                 <div class="login-field">
-                    <label for="login-manv">MĂ£ nhĂ¢n viĂªn</label><br />
-                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nháº­p mĂ£ nhĂ¢n viĂªn"
+                    <label for="login-manv">Mã nhân viên</label><br />
+                    <input type="password" id="login-manv" autocomplete="off" placeholder="Nhập mã nhân viên"
                         required />
                 </div>
 
-                <label>Máº­t kháº©u:</label><br />
+                <label>Mật khẩu:</label><br />
                 <input type="password" id="login-password" value="123123"><br /><br />
 
-                <button type="submit" style="padding: 8px 16px;">ÄÄƒng nháº­p</button>
+                <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
             </form>
 
@@ -684,36 +718,36 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        window.diadiem = "cs1"; // KhĂ´ng phá»¥ thuá»™c localStorage ná»¯a
+        window.diadiem = "cs1"; // Không phụ thuộc localStorage nữa
 
 
-        const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dá»± Ă¡n cá»§a báº¡n náº¿u khĂ¡c
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay Ä‘Ăºng anon key
+        const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
         window.supabase = createClient(supabaseUrl, supabaseKey);
-        // Äáº·t á»Ÿ Ä‘áº§u file/script chĂ­nh
+        // Đặt ở đầu file/script chính
         window.dangLuu = false;
 
-        // Ănh xáº¡ email sang cÆ¡ sá»Ÿ bĂ¡n hĂ ng
+        // Ánh xạ email sang cơ sở bán hàng
         function getDiaDiemFromEmail(email) {
             if (!email) return "";
             email = email.trim().toLowerCase();
             if (email === "khohangcs1@gmail.com") return "cs1";
             if (email === "khohangcs1@gmail.com") return "cs1";
-            // ThĂªm cĂ¡c Ă¡nh xáº¡ email â†’ cÆ¡ sá»Ÿ khĂ¡c táº¡i Ä‘Ă¢y náº¿u cáº§n
+            // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
         }
 
-        // Sá»± kiá»‡n khi ngÆ°á»i dĂ¹ng nháº­p email xong (rá»i khá»i Ă´ email)
+        // Sự kiện khi người dùng nhập email xong (rời khỏi ô email)
         document.getElementById("login-email").addEventListener("blur", function () {
             const email = this.value.trim();
             const cs = getDiaDiemFromEmail(email);
             const csSelect = document.getElementById("login-cs");
             if (cs) {
                 csSelect.value = cs;
-                csSelect.disabled = true; // KhĂ´ng cho chá»n láº¡i
+                csSelect.disabled = true; // Không cho chọn lại
             } else {
                 csSelect.value = "";
-                csSelect.disabled = false; // Cho chá»n khi khĂ´ng náº±m trong danh sĂ¡ch
+                csSelect.disabled = false; // Cho chọn khi không nằm trong danh sách
             }
         });
 
@@ -724,49 +758,49 @@
             const manv = document.getElementById('login-manv').value.trim().toUpperCase();
             const statusEl = document.getElementById('login-error');
 
-            // Kiá»ƒm tra Ä‘áº§u vĂ o
+            // Kiểm tra đầu vào
             if (!email || !password) {
-                statusEl.textContent = 'Vui lĂ²ng nháº­p Ä‘áº§y Ä‘á»§ email vĂ  máº­t kháº©u';
+                statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu';
                 statusEl.style.color = 'red';
                 return;
             }
             if (!cs) {
-                statusEl.textContent = 'Vui lĂ²ng chá»n cÆ¡ sá»Ÿ bĂ¡n hĂ ng!';
+                statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!';
                 statusEl.style.color = 'red';
                 return;
             }
             if (!manv) {
-                statusEl.textContent = 'Vui lĂ²ng nháº­p mĂ£ nhĂ¢n viĂªn!';
+                statusEl.textContent = 'Vui lòng nhập mã nhân viên!';
                 statusEl.style.color = 'red';
                 return;
             }
 
-            // 1. ÄÄƒng nháº­p Supabase trÆ°á»›c!
+            // 1. Đăng nhập Supabase trước!
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
-                statusEl.textContent = `âŒ ÄÄƒng nháº­p tháº¥t báº¡i: ${error.message}`;
+                statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
                 statusEl.style.color = 'red';
                 return;
             }
 
-            // 2. Sau khi Ä‘Äƒng nháº­p thĂ nh cĂ´ng, láº¥y thĂ´ng tin nhĂ¢n viĂªn
-            // Äáº£m báº£o session Supabase (phĂ²ng trÆ°á»ng há»£p cháº­m set session)
+            // 2. Sau khi đăng nhập thành công, lấy thông tin nhân viên
+            // Đảm bảo session Supabase (phòng trường hợp chậm set session)
             await window.supabase.auth.setSession({
                 access_token: data.session.access_token,
                 refresh_token: data.session.refresh_token
             });
 
-            // Truy váº¥n báº£ng nhĂ¢n viĂªn vá»›i RLS Ä‘Ă£ má»Ÿ
+            // Truy vấn bảng nhân viên với RLS đã mở
             const { data: nvArr, error: errNV } = await supabase
                 .from('dmnhanvien')
                 .select('manv, tennv, sua_hoadon')
                 .eq('manv', manv);
 
             if (errNV || !nvArr || nvArr.length === 0) {
-                statusEl.textContent = 'âŒ MĂ£ nhĂ¢n viĂªn khĂ´ng Ä‘Ăºng hoáº·c khĂ´ng tá»“n táº¡i!';
+                statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
                 statusEl.style.color = 'red';
 
-                // ÄÄƒng xuáº¥t ngay náº¿u nháº­p mĂ£ nhĂ¢n viĂªn sai!
+                // Đăng xuất ngay nếu nhập mã nhân viên sai!
                 await supabase.auth.signOut();
                 localStorage.clear();
                 sessionStorage.clear();
@@ -779,30 +813,30 @@
 
             const nv = nvArr[0];
 
-            // LÆ°u thĂ´ng tin vĂ o localStorage
+            // Lưu thông tin vào localStorage
             localStorage.setItem("diadiem", cs);
             localStorage.setItem('supabase_access_token', data.session.access_token);
             localStorage.setItem("manv", nv.manv);
             localStorage.setItem("tennv", nv.tennv);
             localStorage.setItem("quyen_sua_hoadon", nv.sua_hoadon ? "true" : "false");
 
-            // áº¨n form Ä‘Äƒng nháº­p, hiá»ƒn thá»‹ app
-            statusEl.textContent = 'âœ… ÄÄƒng nháº­p thĂ nh cĂ´ng!';
+            // Ẩn form đăng nhập, hiển thị app
+            statusEl.textContent = '✅ Đăng nhập thành công!';
             statusEl.style.color = 'green';
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('app-container').style.display = '';
 
-            // Cáº­p nháº­t lĂªn giao diá»‡n bĂ¡n hĂ ng náº¿u cĂ³ input manv/tennv
+            // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
             document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
             document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
-            // ThĂªm dĂ²ng nĂ y:
+            // Thêm dòng này:
             capNhatQuyenGiaoDien();
 
-            // Khá»Ÿi táº¡o á»©ng dá»¥ng
+            // Khởi tạo ứng dụng
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-            // ======= ThĂªm vĂ o Ä‘Ă¢y ========= quanlysizetheogia
+            // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             document.getElementById("quanlysizetheonhom").checked = true;
@@ -816,23 +850,23 @@
 
 
         function capNhatQuyenGiaoDien() {
-            // Láº¥y quyá»n tá»« localStorage 
+            // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
-            // NĂºt quay láº¡i
+            // Nút quay lại
             document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
-            // NĂºt tiáº¿p tá»¥c
+            // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
-            // NĂºt lÆ°u
+            // Nút lưu
             //document.getElementById('btn-luu') && (document.getElementById('btn-luu').disabled = !quyenSua);
 
-            // ================= THĂM ÄOáº N SAU =================
-            // Ă” sá»‘ hĂ³a Ä‘Æ¡n
+            // ================= THÊM ĐOẠN SAU =================
+            // Ô số hóa đơn
             var sohd = document.getElementById('sohd');
             if (sohd) {
-                sohd.readOnly = !quyenSua; // Cáº¥m sá»­a náº¿u khĂ´ng cĂ³ quyá»n
-                sohd.style.background = quyenSua ? "" : "#eee"; // MĂ u ná»n Ä‘á»ƒ nháº­n biáº¿t khĂ´ng sá»­a Ä‘Æ°á»£c
+                sohd.readOnly = !quyenSua; // Cấm sửa nếu không có quyền
+                sohd.style.background = quyenSua ? "" : "#eee"; // Màu nền để nhận biết không sửa được
             }
-            // Ă” chiáº¿t kháº¥u
+            // Ô chiết khấu
             var chietkhau = document.getElementById('chietkhau');
             if (chietkhau) {
                 chietkhau.readOnly = !quyenSua;
@@ -845,10 +879,10 @@
     </script>
 
     <script type="module">
-        // NĂºt kĂ­nh lĂºp cáº¡nh Ă´ nháº­p mĂ£ KH
+        // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
-        // HĂ m show popup
+        // Hàm show popup
         function showPopupTimKH() {
             const popup = document.getElementById('popupTimKH');
             popup.style.display = '';
@@ -857,22 +891,22 @@
             loadListKH('');
         }
 
-        // TĂ¬m kiáº¿m realtime theo kĂ½ tá»± gĂµ
+        // Tìm kiếm realtime theo ký tự gõ
         document.getElementById('txtSearchKH').oninput = function () {
             loadListKH(this.value.trim());
         };
 
-        // HĂ m load danh sĂ¡ch KH (gá»i Supabase)
+        // Hàm load danh sách KH (gọi Supabase)
         async function loadListKH(keyword) {
             const table = document.getElementById('tableKH');
-            table.innerHTML = `<tr><td>Äang tĂ¬m...</td></tr>`;
+            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
             let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
             if (keyword) {
                 query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
             }
             const { data, error } = await query;
             if (error || !data || !data.length) {
-                table.innerHTML = '<tr><td>KhĂ´ng tĂ¬m tháº¥y khĂ¡ch hĂ ng phĂ¹ há»£p.</td></tr>';
+                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
                 return;
             }
             table.innerHTML = data.map(kh =>
@@ -889,12 +923,12 @@
             });
         }
 
-        // Copy báº£ng sang clipboard,
+        // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
             let str = '';
 
-            // Chá»‰ copy tá»«ng dĂ²ng dá»¯ liá»‡u (tbody) â€“ KHĂ”NG copy thead ná»¯a
+            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
             for (let row of table.querySelectorAll('tbody tr')) {
                 let line = [];
                 for (let cell of row.cells) {
@@ -904,12 +938,12 @@
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('ÄĂ£ copy dá»¯ liá»‡u ra clipboard! DĂ¡n láº¡i vĂ o báº£ng sáº½ giá»¯ nguyĂªn.'));
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
         };
 
 
 
-        // DĂ¡n tá»« clipboard (Excel) vĂ o báº£ng web
+        // Dán từ clipboard (Excel) vào bảng web
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
@@ -926,15 +960,15 @@
                 });
                 tbody.appendChild(tr);
             });
-            // âœ… Cáº­p nháº­t láº¡i dá»¯ liá»‡u JS sau khi dĂ¡n xong
+            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
             capNhatBangKetQuaTuDOM();
 
-            // âœ… Cáº­p nháº­t tá»•ng sá»‘ lÆ°á»£ng vĂ  tá»•ng khuyáº¿n mĂ£i
+            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
             if (typeof capNhatThongTinTong === "function") {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log Ä‘á»ƒ kiá»ƒm tra
+            // Log để kiểm tra
             console.log("window.bangKetQua:", window.bangKetQua);
             if (typeof bangKetQua !== "undefined") {
                 console.log("bangKetQua:", bangKetQua);
@@ -943,7 +977,7 @@
 
 
 
-        // ÄĂ³ng popup khi báº¥m ESC hoáº·c click ra ngoĂ i
+        // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
         });
@@ -975,7 +1009,7 @@
     background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
         <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
             <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
-            <div style="font-size:1.2em;font-weight:bold; color:#004;">Äang backup toĂ n bá»™ dá»¯ liá»‡u, vui lĂ²ng chá»...
+            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
             </div>
         </div>
     </div>
@@ -988,16 +1022,16 @@
             document.getElementById('backup-overlay').style.display = "block";
             try {
                 await backupAllTablesToZip();
-                //alert("ÄĂ£ backup toĂ n bá»™ dá»¯ liá»‡u!\nSau khi táº£i vá», hĂ£y di chuyá»ƒn file vĂ o thÆ° má»¥c D:\\backup Ä‘á»ƒ lÆ°u trá»¯.");
+                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
             } catch (err) {
-                alert("Lá»—i backup: " + err.message + "\nVui lĂ²ng thá»­ láº¡i hoáº·c bĂ¡o IT!");
+                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
             }
             document.getElementById('backup-overlay').style.display = "none";
             await dangXuatApp();
         };
 
         async function dangXuatApp() {
-            // Copy Ä‘oáº¡n Ä‘Äƒng xuáº¥t cÅ© á»Ÿ Ä‘Ă¢y hoáº·c gá»i hĂ m logout báº¡n Ä‘Ă£ viáº¿t
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
                 localStorage.clear();
@@ -1025,11 +1059,11 @@
     <script src="scripts/menu-component.js"></script>
 
     <script>
-        // Láº¥y bá»‘i cáº£nh sáºµn cĂ³ tá»« trang bĂ¡n láº»
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
         const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
-        const manv = (localStorage.manv || "");           // náº¿u cáº§n lá»c theo roles
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
-        // Báº¡n Ä‘Ă£ cung cáº¥p:
+        // Bạn đã cung cấp:
         const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
         const SHEET_NAME = 'menubanlemt';
 
@@ -1039,37 +1073,37 @@
             sheetName: SHEET_NAME,
             cs,
             manv,
-            cacheTtlMin: 30 // TTL cache 30 phĂºt
+            cacheTtlMin: 30 // TTL cache 30 phút
         });
     </script>
 
     <script>  //<!-- banlemobile -->
 
-        // goi phĂ­m F2
+        // goi phím F2
         //setTimeout(function () {
         // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
         //}, 1000);
 
-        // Giáº£ láº­p phĂ­m F3 Ä‘á»ƒ dĂ¹ng Ä‘Ăºng nghiá»‡p vá»¥ cÅ©
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giáº£ láº­p phĂ­m F2 Ä‘á»ƒ dĂ¹ng Ä‘Ăºng nghiá»‡p vá»¥ cÅ©
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
-        // Giáº£ láº­p phĂ­m F7 Ä‘á»ƒ dĂ¹ng Ä‘Ăºng nghiá»‡p vá»¥ cÅ©
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
-        // Giáº£ láº­p phĂ­m F8 Ä‘á»ƒ dĂ¹ng Ä‘Ăºng nghiá»‡p vá»¥ cÅ©
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
         document.getElementById('ghivitri')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
@@ -1078,7 +1112,7 @@
     </script>
 
     <script>
-        // Má»Ÿ popup xĂ¡c thá»±c + focus ngay vĂ o #xacmanv
+        // Mở popup xác thực + focus ngay vào #xacmanv
         function moPopupXacThucSua() {
             const p = document.getElementById('popupXacThucSua');
             p.style.display = 'block';
@@ -1088,7 +1122,7 @@
             }, 0);
         }
 
-        // Äiá»u khiá»ƒn Enter theo thá»© tá»±: xacmanv -> xacmatkhau -> nĂºt xĂ¡c nháº­n -> click
+        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
         document.addEventListener('DOMContentLoaded', () => {
             const manv = document.getElementById('xacmanv');
             const mk = document.getElementById('xacmatkhau');
@@ -1116,7 +1150,7 @@
                 btn.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        btn.click(); // = gá»i xacNhanSuaHoaDon() 
+                        btn.click(); // = gọi xacNhanSuaHoaDon() 
                     }
                 });
             }
@@ -1125,9 +1159,9 @@
 
     <script>
         document.getElementById('btn-luu')?.addEventListener('click', () => {
-            console.log("đŸ”— Sync trÆ°á»›c khi lÆ°u");
+            console.log("🔗 Sync trước khi lưu");
             window.bangKetQua = fromMobileGrid();
-            // gá»i tháº³ng hĂ m lÆ°u hĂ³a Ä‘Æ¡n cÅ©, náº¿u cáº§n:
+            // gọi thẳng hàm lưu hóa đơn cũ, nếu cần:
             if (typeof window.luuHoaDonQuaAPI === "function") {
                 window.luuHoaDonQuaAPI();
             }
@@ -1135,22 +1169,22 @@
 
     </script>
 
-    <!-- Overlay quĂ©t -->
+    <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
         <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
 
-        <!-- Thanh Ä‘iá»u khiá»ƒn -->
+        <!-- Thanh điều khiển -->
         <div
             style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
             <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
-            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">đŸ”¦ ÄĂ¨n</button>
+            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
 
             <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
-                áº¢nh cĂ³ sáºµn
+                Ảnh có sẵn
                 <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
             </label>
 
-            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">ÄĂ³ng</button>
+            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
         </div>
 
         <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
