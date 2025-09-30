@@ -31,9 +31,10 @@
     window.bangKetQua = kq;
     return kq;
   }
-  
+
   // Expose hàm thay cho getBangKetQua() của trang cũ
-  window.getBangKetQua = fromMobileGrid;
+ 
+  window.getBangKetQua = () => fromMobileGrid();
 
   // Nếu trang có nút “thêm mới”, gọi MobileKQ.render() cho chắc
   document.addEventListener('DOMContentLoaded', () => {
