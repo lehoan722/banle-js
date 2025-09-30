@@ -54,3 +54,11 @@
 
 console.log("getBangKetQua hiện tại =", window.getBangKetQua);
 
+// Ép cố định không cho file khác ghi đè nữa
+Object.defineProperty(window, "getBangKetQua", {
+  value: () => fromMobileGrid(),
+  writable: false,
+  configurable: false
+});
+
+
