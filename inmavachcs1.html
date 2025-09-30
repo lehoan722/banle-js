@@ -1468,7 +1468,7 @@
         }
 
         // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
-        function importFromHashToInTem() {
+        async function importFromHashToInTem() {
             const hash = location.hash || "";
             if (!hash.startsWith("#imp=")) return;
 
@@ -1489,26 +1489,33 @@
 
             console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
 
-            // Chuyển items thành data đúng 9 cột
-            const data = payload.items.map((it, idx) => [
-                idx + 1,
-                it.masp || "",
-                it.tensp || "",
-                it.size || "0",
-                it.sl || 0,
-                it.dvt || "sp",
-                it.gianhap || 0,
-                true,
-                it.giale || 0
-            ]);
-            console.log("[IN-TEM] data:", data);
+            // 🆕 Lấy map { MASP → {giale,gianhap,dvt,tensp} } từ CSDL
+            const masps = payload.items.map(it => (it.masp || '').toUpperCase());
+            const spMap = await fetchGiaLeByMasps(masps);
 
-            // Đợi hot sẵn sàng mới load
+            // Chuyển items thành data đúng 9 cột và LẤY GIÁ LẺ từ spMap
+            const data = payload.items.map((it, idx) => {
+                const masp = (it.masp || '').toUpperCase();
+                const sp = spMap[masp] || {};
+                return [
+                    idx + 1,                        // STT
+                    masp,                           // Mã hàng
+                    it.tensp || sp.tensp || "",     // Tên hàng (ưu tiên payload)
+                    it.size || "0",                 // Kích cỡ
+                    it.sl || 0,                     // Số lượng
+                    it.dvt || sp.dvt || "sp",       // ĐVT
+                    (it.gianhap ?? sp.gianhap) || 0,// Giá nhập (nếu muốn hiển thị)
+                    true,                           // In
+                    (it.giale ?? sp.giale) || 0     // 🔥 GIÁ LẺ – lấy từ DB nếu payload không có
+                ];
+            });
+
+            // Đợi hot sẵn sàng rồi nạp
             const tryLoad = () => {
                 if (window.hot) {
                     hot.loadData(data);
                     console.log("[IN-TEM] Đã nạp vào hot:", hot.getData());
-                    history.replaceState(null, "", location.pathname);
+                    history.replaceState(null, "", location.pathname); // xoá hash để tránh nạp lại
                     return true;
                 }
                 return false;
@@ -1517,8 +1524,7 @@
                 const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
             }
         }
-        document.addEventListener("DOMContentLoaded", importFromHashToInTem);
-
+        document.addEventListener("DOMContentLoaded", () => { importFromHashToInTem(); });
 
     </script>
 
