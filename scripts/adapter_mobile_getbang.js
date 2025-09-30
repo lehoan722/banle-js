@@ -16,7 +16,8 @@
       });
 
       // lấy thông tin sp từ cache
-      const sp   = window.sanPhamData?.[r.masp] || {};
+      
+      const sp   = (window.getSanPhamByMa ? window.getSanPhamByMa(r.masp) : null) || {};
       const tensp= sp.ten || sp.tensp || sp.tensanpham || '';
       const dvt  = sp.dvt || sp.donvitinh || '';
       const gia  = Number(sp.gia ?? sp.giaban ?? sp.gianhap ?? sp.giamua ?? 0) || 0;
