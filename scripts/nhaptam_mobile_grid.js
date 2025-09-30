@@ -225,15 +225,36 @@
 
   function rowHtml(r, ri) {
     const t = sumSizes(r.qty);
-    const cells = SIZES.map(sz => `<td class="td-sz"><input data-sz="${sz}" value="${r.qty[sz] || ''}" inputmode="text"></td>`).join('');
-    return `<tr data-ri="${ri}" data-masp="${r.masp}">
-  <td class="td-masp">${r.masp}</td>${cells}
-  <td class="td-total" data-total>${t}</td>
-  <td class="td-vitri">${r.vitri || ''}</td>
-  <td class="td-t1">${r.t1 || 0}</td>
-  <td class="td-t2">${r.t2 || 0}</td>
-</tr>`;
 
+    // Keypad/Enter: dùng type="text" để luôn có phím Enter
+    const cells = SIZES.map(sz => `
+    <td class="td-sz">
+      <input type="text" inputmode="numeric" enterkeyhint="next"
+             data-sz="${sz}" value="${r.qty[sz] || ''}">
+    </td>
+  `).join('');
+
+    // CHỈ hiện Vị trí/T1/T2 trên màn hình rộng (>= 992px)
+    const isDesktop = window.matchMedia('(min-width: 992px)').matches;
+
+    let tail = `
+    <td class="td-total" data-total>${t}</td>
+  `;
+    if (isDesktop) {
+      tail += `
+      <td class="td-vitri">${r.vitri || ''}</td>
+      <td class="td-t1">${r.t1 || 0}</td>
+      <td class="td-t2">${r.t2 || 0}</td>
+    `;
+    }
+
+    return `
+    <tr data-ri="${ri}" data-masp="${r.masp}">
+      <td class="td-masp">${r.masp}</td>
+      ${cells}
+      ${tail}
+    </tr>
+  `;
   }
 
   function sumSizes(q) { return SIZES.reduce((s, k) => s + (parseInt(q[k] || 0, 10) || 0), 0); }
