@@ -177,13 +177,7 @@
     if (!masp || !tbody) return;
 
     // ❌ Mã không tồn tại trong danh mục → không cho thêm
-    if (!getSanPhamByMa(masp)) {
-      alert('❌ Mã sản phẩm không hợp lệ hoặc không tồn tại trong danh mục.');
-      const inp = document.getElementById('masp'); if (inp) { inp.focus(); inp.select(); }
-      return;
-    }
-
-
+    
     let i = getRowIdx(masp);
     if (i === -1) {
       const qls = await isQuanLySize(masp);
