@@ -34,17 +34,8 @@
     return 'CS1';
   }
 
-  /* ==================================================
-   *  Xác định sản phẩm có quản size (qls) hay không?
-   *  - Theo nhóm (danhMucNhom từ hoadon.js, có diadiem)
-   *  - Theo giá/giày (giá >= 170k hoặc chungloai = 'GD')
-   *  - Theo cờ "QL SIZE" (size45) + giày
-   * ================================================== */
-  // Tra sản phẩm theo mã (hỗ trợ sanPhamData là mảng hoặc object, key hoa/thường)
-  // Lấy “kho” danh mục sản phẩm (object hoặc mảng) từ nhiều khả năng đặt tên
-  // ==== Helpers: tìm kho danh mục & tra sản phẩm theo mã ====
-
-  // Lấy “kho” danh mục sản phẩm (object hoặc mảng) từ nhiều tên biến phổ biến
+  
+  // Lấy “kho” danh mục sản phẩm từ nhiều biến global phổ biến
   function pickSanPhamStore() {
     const cands = [
       'sanPhamData', 'sanphamData', 'dsSanPham',
@@ -52,52 +43,83 @@
     ];
     for (const k of cands) {
       const v = window[k];
-      if (Array.isArray(v) && v.length) return v;
-      if (v && typeof v === 'object') return v;
+      if (Array.isArray(v) && v.length) return v;     // mảng
+      if (v && typeof v === 'object') return v;      // object-map
     }
     return null;
   }
 
-  // Tra sản phẩm theo mã (hỗ trợ store là object HOẶC mảng; key hoa/thường/không khoảng)
-  function getSanPhamByMa(code) {
-    const raw = String(code || '').trim();
-    if (!raw) return null;
-
-    // các biến thể key để thử
-    const keyU = raw.toUpperCase();
-    const keyL = raw.toLowerCase();
-    const keyUNoSpace = keyU.replace(/\s+/g, '');
-    const keyLNoSpace = keyL.replace(/\s+/g, '');
-
-    const store = pickSanPhamStore();
-    if (!store) {
-      console.warn('[MobileGrid] Không tìm thấy danh mục sản phẩm trong window.*');
-      return null;
-    }
-
-    // Nếu store là object (map)
-    if (!Array.isArray(store)) {
-      return (
-        store[keyU] || store[raw] || store[keyUNoSpace] ||
-        store[keyL] || store[keyLNoSpace] || null
-      );
-    }
-
-    // Nếu store là mảng => build index 1 lần
-    if (!window.__spIndex__) {
-      const idx = new Map();
-      store.forEach(sp => {
-        const m = String(sp?.masp || sp?.MA || sp?.ma || '').trim();
-        if (m) idx.set(m.toUpperCase(), sp);
-      });
-      window.__spIndex__ = idx;
-    }
-    return window.__spIndex__.get(keyU) || null;
+  // Chuẩn hóa mã để so sánh
+  function normCode(s) {
+    return String(s || '').trim().toUpperCase().replace(/\s+/g, '');
   }
 
-  // expose để bạn debug ở Console
+  // Build index 1 lần nếu store là mảng
+  function ensureIndexForArrayStore(arr) {
+    if (window.__spIndex__) return window.__spIndex__;
+    const idx = new Map();
+
+    // ưu tiên các tên cột thường gặp
+    const likelyKeys = ['masp', 'MA', 'ma', 'ma_sp', 'mahang', 'ma_hang', 'mavattu', 'mavt', 'code', 'sku', 'mahh'];
+    const lkSet = new Set(likelyKeys.map(x => x.toLowerCase()));
+
+    for (const sp of arr) {
+      // 1) ưu tiên cột “quen thuộc”
+      for (const k of Object.keys(sp)) {
+        if (!lkSet.has(k.toLowerCase())) continue;
+        const val = sp[k];
+        if (typeof val === 'string' || typeof val === 'number') {
+          const n = normCode(val);
+          if (n) { idx.set(n, sp); }
+        }
+      }
+      // 2) fallback: duyệt mọi thuộc tính chuỗi ngắn
+      for (const [k, v] of Object.entries(sp)) {
+        if (typeof v !== 'string' && typeof v !== 'number') continue;
+        const n = normCode(v);
+        // tránh lạm phát: chuỗi quá dài/bất thường bỏ qua
+        if (!n || n.length > 32) continue;
+        // lưu nhưng không đè key đã có (ưu tiên cột quen thuộc)
+        if (!idx.has(n)) idx.set(n, sp);
+      }
+    }
+    window.__spIndex__ = idx;
+    return idx;
+  }
+
+  // Tra sản phẩm theo mã (store có thể là object-map hoặc mảng record)
+  function getSanPhamByMa(code) {
+    const store = pickSanPhamStore();
+    if (!store) return null;
+
+    const keyU = normCode(code);
+    if (!keyU) return null;
+
+    // object-map
+    if (!Array.isArray(store)) {
+      // thử nhiều biến thể key
+      const direct = store[keyU] || store[code] || store[keyU.replace(/-/g, '')] || null;
+      if (direct) return direct;
+      // thử không phân biệt hoa/thường/space
+      // duyệt keys 1 lần rồi cache map
+      if (!window.__spKeyMap__) {
+        const m = new Map();
+        for (const k of Object.keys(store)) m.set(normCode(k), k);
+        window.__spKeyMap__ = m;
+      }
+      const realKey = window.__spKeyMap__.get(keyU);
+      return realKey ? store[realKey] : null;
+    }
+
+    // array
+    const idx = ensureIndexForArrayStore(store);
+    return idx.get(keyU) || idx.get(keyU.replace(/-/g, '')) || null;
+  }
+
+  // Expose để debug
   window.pickSanPhamStore = pickSanPhamStore;
   window.getSanPhamByMa = getSanPhamByMa;
+
 
   async function isQuanLySize(masp) {
     const sp = getSanPhamByMa(masp);
