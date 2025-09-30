@@ -5,16 +5,16 @@
   // Map MobileKQ → cấu trúc getBangKetQua cũ
   function fromMobileGrid() {
     if (!window.MobileKQ) return {};
-    const all = window.MobileKQ.getAll();  // [{masp, qty:{}, vitri,t1,t2, qls}]
+    const all = window.MobileKQ.getAll();
+    console.log("👉 MobileKQ.getAll()", all);
     const kq = {};
     all.forEach(r => {
-      const sizes = [];
-      const soluongs = [];
+      const sizes = [], soluongs = [];
       Object.keys(r.qty).forEach(k => {
-        const sz = parseInt(k, 10); const sl = parseInt(r.qty[k] || 0, 10) || 0;
+        const sz = parseInt(k, 10);
+        const sl = parseInt(r.qty[k] || 0, 10) || 0;
         if (sl > 0) { sizes.push(String(sz)); soluongs.push(sl); }
       });
-      // Chỉ thêm vào kq nếu có ít nhất 1 số lượng > 0
       if (sizes.length > 0) {
         kq[r.masp] = {
           masp: r.masp,
@@ -30,6 +30,7 @@
         };
       }
     });
+    console.log("👉 fromMobileGrid -> kq", kq);
     window.bangKetQua = kq;
     return kq;
   }
@@ -42,5 +43,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     window.MobileKQ?.render?.();
   });
+
+  document.getElementById('btn-luu')?.addEventListener('click', () => {
+    console.log("🔗 Sync trước khi lưu");
+    fromMobileGrid();
+  });
+
 
 })();
