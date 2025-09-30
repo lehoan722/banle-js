@@ -56,7 +56,7 @@ export async function capNhatSoHoaDonTuDong() {
             .from("sochungtu")
             .select("so_hientai")
             .eq("loai", loai)
-            .single();
+            .maybeSingle(); 
 
         let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
 
