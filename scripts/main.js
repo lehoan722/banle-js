@@ -1,6 +1,6 @@
 
 import { khoiTaoTimMaSP, luuMaSanPhamMoi, moCauHinhTruong, luuCauHinhTruong } from './sanpham.js';
-import { chuyenFocus, ganTenNV,xoaDongDangChon, getBangKetQua } from './hoadon.js';
+import { chuyenFocus, ganTenNV, xoaDongDangChon, getBangKetQua } from './hoadon.js';
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
@@ -20,13 +20,20 @@ import { showFlash, showToast } from './feedback.js';
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
 export async function khoiTaoUngDung() {
+
+  window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
+
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
 
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
   if (error) {
     alert("Lỗi khi tải danh mục hàng hóa");
     console.error(error);
-    return;
+    // KHÔNG return; vẫn tiếp tục để còn nạp dmnhomhang
+    window.sanPhamData = {};  // vẫn thiết lập biến rỗng để phần khác không vấp
+  } else {
+    window.sanPhamData = {};
+    dssp.forEach(sp => window.sanPhamData[sp.masp] = sp);
   }
 
   window.sanPhamData = {};
@@ -87,7 +94,7 @@ export async function khoiTaoUngDung() {
     const input = document.getElementById(id);
     if (input) input.addEventListener("keydown", chuyenFocus);
   });
-  
+
   const manvInput = document.getElementById("manv");
   if (manvInput) manvInput.addEventListener("change", ganTenNV);
 
