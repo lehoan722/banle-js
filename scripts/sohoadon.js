@@ -41,7 +41,7 @@ export async function capNhatSoHoaDonTuDong() {
 
         } else if (pathname.includes("nhaptam")) {
             loai = diadiem === "cs1" ? "nhaptamcs1" : "nhaptamcs2";
-            
+
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
             loai = isTang ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
@@ -99,9 +99,10 @@ export async function phatSinhSoHDTMoi() {
             .from("sochungtu")
             .select("so_hientai")
             .eq("loai", loai)
-            .single();
+            .maybeSingle();  // <-- KHÔNG 406 khi 0 dòng
 
-        let soMoi = 1;
+        let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
+       
         if (!error && data) {
             soMoi = data.so_hientai + 1;
             await supabase
