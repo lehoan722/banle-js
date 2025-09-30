@@ -42,9 +42,6 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("nhaptam")) {
             loai = diadiem === "cs1" ? "nhaptamcs1" : "nhaptamcs1";
 
-        } else if (location.pathname.toLowerCase().includes('nhaptammobilecs1')) {
-            window.SoHoaDon = Object.assign(window.SoHoaDon || {}, { loai: 'nhaptamcs1' });
-
 
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
