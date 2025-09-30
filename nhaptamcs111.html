@@ -359,11 +359,11 @@
         }
 
         #bangketqua td.td-masp {
-            width: 140px;
+            width: 100px;
         }
 
         #bangketqua td.td-total {
-            width: 50px;
+            width: 30px;
         }
 
         #bangketqua td.td-vitri {
@@ -374,6 +374,30 @@
         #bangketqua td.td-t2 {
             width: 46px;
         }
+
+        /* Chỉ áp cho nhaptamcs111.html */
+@media (max-width: 480px) {
+  /* Ẩn các cột: Tổng (11), Vị trí (12), T1 (13), T2 (14) */
+  #bangketqua thead th:nth-child(11),
+  #bangketqua tbody td:nth-child(11),
+  #bangketqua thead th:nth-child(12),
+  #bangketqua tbody td:nth-child(12),
+  #bangketqua thead th:nth-child(13),
+  #bangketqua tbody td:nth-child(13),
+  #bangketqua thead th:nth-child(14),
+  #bangketqua tbody td:nth-child(14) {
+    display: none;
+  }
+
+  /* Giữ các cột size vừa khít trên mobile */
+  #bangketqua { table-layout: fixed; }
+  #bangketqua th.sz, #bangketqua td.td-sz { width: 42px; }
+  #bangketqua td.td-sz input { width: 100%; text-align: center; }
+
+  /* Tùy chọn: thu nhỏ ảnh panel phải */
+  .product-image { width: 120px !important; height: 120px !important; }
+}
+
     </style>
 
 
@@ -398,6 +422,7 @@
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
+    <link rel="stylesheet" href="nhaptamcs111.mobile.css">
 
 </head>
 
@@ -523,6 +548,7 @@
             <div class="table-area">
 
                 <table id="bangketqua" class="table table-compact">
+
                     <thead>
                         <tr>
                             <th>Mã hàng</th>
@@ -541,6 +567,7 @@
                             <th>T2</th>
                         </tr>
                     </thead>
+
                     <tbody></tbody>
                 </table>
 
@@ -625,7 +652,7 @@
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
-            <button id="luudl">💾 Lưu</button>
+            <button id="btn-luu">💾 Lưu</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
@@ -1079,10 +1106,6 @@
 
     <script>  //<!-- banlemobile -->
 
-        // goi phím F2
-        //setTimeout(function () {
-        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-        //}, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
@@ -1091,11 +1114,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('luudl')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1158,7 +1177,7 @@
     </script>
 
     <script>
-        document.getElementById('luudl')?.addEventListener('click', () => {
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
             console.log("🔗 Sync trước khi lưu");
             window.bangKetQua = fromMobileGrid();
             // gọi thẳng hàm lưu hóa đơn cũ, nếu cần:
@@ -1202,6 +1221,46 @@
 
     <script src="scripts/nhaptam_mobile_grid.js"></script>
     <script src="scripts/adapter_mobile_getbang.js"></script>
+
+    <script>
+        ; (() => {
+            function syncBangKetQua() {
+                try {
+                    if (typeof window.getBangKetQua === 'function') {
+                        const kq = window.getBangKetQua();     // adapter sẽ tự gán window.bangKetQua
+                        return kq;
+                    }
+                } catch (e) { console.error(e); }
+                return {};
+            }
+
+            function dispatchF2() {
+                const ev = new KeyboardEvent('keydown', {
+                    key: 'F2', code: 'F2', bubbles: true, cancelable: true
+                });
+                Object.defineProperty(ev, 'keyCode', { get: () => 113 });
+                Object.defineProperty(ev, 'which', { get: () => 113 });
+                document.dispatchEvent(ev);
+                window.dispatchEvent(ev);
+            }
+
+            const btn = document.getElementById('btn-luu');
+            if (btn) {
+                btn.removeAttribute('onclick'); // đề phòng onclick inline cũ
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    const kq = syncBangKetQua();           // ép sync từ lưới → bangKetQua
+                    if (!kq || !Object.keys(kq).length) {
+                        alert('Không có dữ liệu để lưu hóa đơn.');
+                        return;
+                    }
+                    dispatchF2();                          // để luồng bàn phím cũ xử lý lưu
+                }, { capture: true });
+            }
+        })();
+    </script>
 
 
 </body>
