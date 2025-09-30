@@ -1092,10 +1092,6 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1109,6 +1105,65 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
+    </script>
+
+    <script>
+        ; (() => {
+            // --- 1) Hàm đồng bộ dữ liệu từ lưới về window.bangKetQua
+            function syncBangKetQua() {
+                try {
+                    if (typeof window.getBangKetQua === 'function') {
+                        // getBangKetQua() của adapter sẽ tự đọc MobileKQ và gán window.bangKetQua
+                        const kq = window.getBangKetQua();
+                        // console.log('SYNC kq =', kq);
+                        return kq;
+                    }
+                } catch (e) { console.error(e); }
+                return {};
+            }
+
+            // --- 2) Tạo 1 sự kiện F2 “giống thật”
+            function dispatchF2Once() {
+                const makeEv = () => {
+                    const ev = new KeyboardEvent('keydown', {
+                        key: 'F2',
+                        code: 'F2',
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    // một số lib cũ vẫn đọc keyCode/which
+                    Object.defineProperty(ev, 'keyCode', { get: () => 113 });
+                    Object.defineProperty(ev, 'which', { get: () => 113 });
+                    return ev;
+                };
+                // bắn cho cả document lẫn window (tuỳ nơi bạn gắn listener F2)
+                document.dispatchEvent(makeEv());
+                window.dispatchEvent(makeEv());
+            }
+
+            // --- 3) Gắn lại nút Lưu = sync + F2 (đúng 1 luồng)
+            const btn = document.getElementById('btn-luu');
+            if (btn) {
+                // loại bỏ onclick inline nếu có để tránh chạy 2 lần
+                btn.removeAttribute('onclick');
+
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    // 3.1 đồng bộ dữ liệu từ lưới sang bangKetQua
+                    const kq = syncBangKetQua();
+
+                    // Nếu thật sự rỗng thì cảnh báo sớm theo đúng logic
+                    if (!kq || !Object.keys(kq).length) {
+                        alert('Không có dữ liệu để lưu hóa đơn.');
+                        return;
+                    }
+
+                    // 3.2 bắn F2 để chạy đúng luồng bàn phím của desktop
+                    dispatchF2Once();
+                }, { capture: true }); // capture để “đè” các listener cũ nếu còn
+            }
+        })();
     </script>
 
     <script>
