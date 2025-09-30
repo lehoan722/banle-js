@@ -374,29 +374,7 @@
         #bangketqua td.td-t2 {
             width: 46px;
         }
-
-        /* Chỉ áp cho nhaptamcs111.html */
-@media (max-width: 480px) {
-  /* Ẩn các cột: Tổng (11), Vị trí (12), T1 (13), T2 (14) */
-  #bangketqua thead th:nth-child(11),
-  #bangketqua tbody td:nth-child(11),
-  #bangketqua thead th:nth-child(12),
-  #bangketqua tbody td:nth-child(12),
-  #bangketqua thead th:nth-child(13),
-  #bangketqua tbody td:nth-child(13),
-  #bangketqua thead th:nth-child(14),
-  #bangketqua tbody td:nth-child(14) {
-    display: none;
-  }
-
-  /* Giữ các cột size vừa khít trên mobile */
-  #bangketqua { table-layout: fixed; }
-  #bangketqua th.sz, #bangketqua td.td-sz { width: 42px; }
-  #bangketqua td.td-sz input { width: 100%; text-align: center; }
-
-  /* Tùy chọn: thu nhỏ ảnh panel phải */
-  .product-image { width: 120px !important; height: 120px !important; }
-}
+      
 
     </style>
 
@@ -421,8 +399,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css">
-    
+       <link rel="stylesheet" href="nhaptammobilecs1.css">        
 
 </head>
 
