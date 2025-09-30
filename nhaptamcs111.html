@@ -6,23 +6,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>Nhập tạm Mobile CS1</title>
     <style>
-        :root {
-            --gap: 6px;
-            --pad: 8px;
-            --h-input: 32px;
-            --label: 72px;
-            --fs: 13px;
-            --col-radius: 12px;
-        }
-
-        * {
-            box-sizing: border-box
-        }
-
         body {
             font-family: system-ui, Segoe UI, Roboto, Arial;
-            margin: 6px;
-            font-size: var(--fs);
+            font-size: 14px;
+            margin: 6px
         }
 
         h3 {
@@ -32,18 +19,15 @@
         .grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: var(--gap);
-            max-width: 100vw
+            gap: 6px
         }
 
         .card {
             border: 1px solid #ddd;
-            border-radius: var(--col-radius);
-            padding: var(--pad);
-            min-width: 0;
+            border-radius: 10px;
+            padding: 8px;
             display: flex;
-            flex-direction: column;
-            overflow: hidden
+            flex-direction: column
         }
 
         .row {
@@ -53,19 +37,12 @@
             margin: 6px 0
         }
 
-        .row label {
-            min-width: var(--label);
-            color: #444;
-            font-size: var(--fs)
-        }
-
         .row input,
         .row textarea {
             flex: 1;
-            height: var(--h-input);
-            padding: 6px 8px;
+            padding: 6px;
             border: 1px solid #ccc;
-            border-radius: 8px
+            border-radius: 6px
         }
 
         .row .pill {
@@ -73,13 +50,7 @@
             border: 1px solid #ccc;
             border-radius: 999px;
             background: #fafafa;
-            font-size: 12px;
-            white-space: nowrap
-        }
-
-        .row input::placeholder,
-        .row textarea::placeholder {
-            color: #b9b9b9
+            font-size: 12px
         }
 
         .sizes {
@@ -89,90 +60,28 @@
         }
 
         .sizes input {
-            width: 100%;
-            text-align: center;
-            height: var(--h-input)
+            text-align: center
         }
 
-        #inpMa {
-            width: 100%
-        }
-
-        #col3 #taQuick {
-            height: calc(9*var(--h-input) + 8*6px);
+        textarea {
             resize: none
-        }
-
-        /* cao bằng 9 ô size */
-
-        .table-wrap {
-            overflow: auto;
-            border: 1px solid #ddd;
-            border-radius: 10px
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 100%
-        }
-
-        th,
-        td {
-            border: 1px solid #e6e6e6;
-            padding: 6px 8px;
-            text-align: center;
-            white-space: nowrap
-        }
-
-        th {
-            background: #fafafa
-        }
-
-        td.locked {
-            background: #f7f7f7;
-            color: #888
-        }
-
-        td.err {
-            background: #ffecec
-        }
-
-        .banner {
-            position: sticky;
-            bottom: 56px;
-            background: #fff6e5;
-            border: 1px solid #ffd699;
-            color: #995700;
-            padding: 6px 10px;
-            border-radius: 8px;
-            margin-top: 8px;
-            display: none
-        }
-
-        .banner.show {
-            display: block
         }
 
         .toolbar {
             position: sticky;
             bottom: 0;
-            left: 0;
-            right: 0;
             background: #fff;
             padding: 8px 0;
-            margin-top: 10px;
-            border-top: 1px solid #eee;
             display: flex;
             gap: 8px;
-            justify-content: space-between
+            border-top: 1px solid #eee
         }
 
         .btn {
             flex: 1;
             padding: 10px;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-            background: #f5f5f5
+            border-radius: 8px;
+            border: 1px solid #ccc
         }
 
         .btn.primary {
@@ -182,128 +91,111 @@
         }
 
         .btn.danger {
-            background: #fff0f0;
-            color: #b00020;
-            border-color: #f3bcbc
+            background: #fee;
+            color: #b00020
         }
 
-        #inpMa:focus {
-            outline: 2px solid rgba(25, 118, 210, .3);
-            box-shadow: none
-        }
-
-        /* Ẩn nhãn để phần đầu gọn */
-        .card .row label {
+        #popup_masp {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 300px;
+            max-height: 160px;
+            background: #fff;
+            border: 1px solid #ccc;
             display: none;
+            overflow-y: auto;
+            z-index: 10000
         }
 
-        .row input,
-        .row .pill {
-            width: 100%;
+        #popup_masp div {
+            padding: 6px;
+            cursor: pointer
         }
 
-        #inpMa,
-        #inpTongNhapHienTai {
-            width: 100%;
+        #popup_masp div:hover {
+            background: #eef6ff
         }
-
-        /* ô mã + tổng SL căng full cột */
     </style>
 </head>
 
 <body>
-    <h3>NHAP TAM – khu vực nhập liệu</h3>
+    <h3>NHẬP TẠM – MOBILE CS1</h3>
 
     <div class="grid">
         <!-- CỘT 1 -->
-        <div class="card" id="col1">
-            <div class="row"><label>địa điểm</label>
+        <div class="card">
+            <div class="row">
                 <div id="lblDiaDiem" class="pill">CS1</div>
             </div>
-            <div class="row"><label>tổng mặt hàng</label>
+            <div class="row">
                 <div id="lblTongMatHang" class="pill">0</div>
             </div>
             <hr />
-            <div style="position: relative;">
-                <input id="masp" placeholder="mã sản phẩm" autocomplete="off" />
-                <div id="popup_masp"
-                    style="position:absolute;top:100%;left:0;width:300px;max-height:140px;background:#fff;border:1px solid #ccc;display:none;overflow-y:auto;z-index:10000;">
-                </div>
+            <div class="row" style="position:relative">
+                <input id="masp" placeholder="Mã sản phẩm" autocomplete="off" />
+                <div id="popup_masp"></div>
             </div>
-
-            <div class="sizes" id="sizesC1">
-                <input id="sz0" data-size="0" placeholder="0" inputmode="numeric" />
-                <input id="sz38" data-size="38" placeholder="38" inputmode="numeric" />
-                <input id="sz39" data-size="39" placeholder="39" inputmode="numeric" />
-                <input id="sz40" data-size="40" placeholder="40" inputmode="numeric" />
-                <input id="sz41" data-size="41" placeholder="41" inputmode="numeric" />
-                <input id="sz42" data-size="42" placeholder="42" inputmode="numeric" />
-                <input id="sz43" data-size="43" placeholder="43" inputmode="numeric" />
-                <input id="sz44" data-size="44" placeholder="44" inputmode="numeric" />
-                <input id="sz45" data-size="45" placeholder="45" inputmode="numeric" />
+            <div class="sizes">
+                <input id="sz0" placeholder="0" inputmode="numeric" />
+                <input id="sz38" placeholder="38" inputmode="numeric" />
+                <input id="sz39" placeholder="39" inputmode="numeric" />
+                <input id="sz40" placeholder="40" inputmode="numeric" />
+                <input id="sz41" placeholder="41" inputmode="numeric" />
+                <input id="sz42" placeholder="42" inputmode="numeric" />
+                <input id="sz43" placeholder="43" inputmode="numeric" />
+                <input id="sz44" placeholder="44" inputmode="numeric" />
+                <input id="sz45" placeholder="45" inputmode="numeric" />
             </div>
         </div>
 
         <!-- CỘT 2 -->
-        <div class="card" id="col2">
-            <div class="row"><label>tên nhân viên</label>
+        <div class="card">
+            <div class="row">
                 <div id="lblTenNV" class="pill">-</div>
             </div>
-            <div class="row"><label>tổng số lượng</label>
+            <div class="row">
                 <div id="lblTongSoLuong" class="pill">0</div>
             </div>
             <hr />
-            <div class="row"><label></label><input id="inpTongNhapHienTai" placeholder="0" readonly /></div>
-            <div class="sizes" id="sizesC2">
-                <input id="q0" data-size="0" placeholder="0" inputmode="numeric" />
-                <input id="q38" data-size="38" placeholder="38" inputmode="numeric" />
-                <input id="q39" data-size="39" placeholder="39" inputmode="numeric" />
-                <input id="q40" data-size="40" placeholder="40" inputmode="numeric" />
-                <input id="q41" data-size="41" placeholder="41" inputmode="numeric" />
-                <input id="q42" data-size="42" placeholder="42" inputmode="numeric" />
-                <input id="q43" data-size="43" placeholder="43" inputmode="numeric" />
-                <input id="q44" data-size="44" placeholder="44" inputmode="numeric" />
-                <input id="q45" data-size="45" placeholder="45" inputmode="numeric" />
+            <div class="sizes">
+                <input id="q0" placeholder="0" inputmode="numeric" />
+                <input id="q38" placeholder="38" inputmode="numeric" />
+                <input id="q39" placeholder="39" inputmode="numeric" />
+                <input id="q40" placeholder="40" inputmode="numeric" />
+                <input id="q41" placeholder="41" inputmode="numeric" />
+                <input id="q42" placeholder="42" inputmode="numeric" />
+                <input id="q43" placeholder="43" inputmode="numeric" />
+                <input id="q44" placeholder="44" inputmode="numeric" />
+                <input id="q45" placeholder="45" inputmode="numeric" />
             </div>
         </div>
 
         <!-- CỘT 3 -->
-        <div class="card" id="col3">
-            <div class="row"><label>ngày giờ</label>
+        <div class="card">
+            <div class="row">
                 <div id="lblNgayGio" class="pill">-</div>
             </div>
-            <div class="row"><label>số hóa đơn</label>
+            <div class="row">
                 <div id="lblSoHD" class="pill">nhaptamcs1_...</div>
             </div>
             <hr />
-            <div class="row"><label>nhập nhanh (textarea)</label></div>
             <div class="row">
-                <textarea id="taQuick" rows="8" placeholder="VD:
-DGA-DEN
-40
-40
-39
-6496-SM
-0
-38
-38
-45"></textarea>
+                <textarea id="taQuick" rows="10" placeholder="Mã + size mỗi dòng"></textarea>
             </div>
-
-            <!-- input hệ thống (ẩn) để module lưu/sohoadon dùng -->
+            <!-- input ẩn phục vụ saver -->
             <input id="sohd" style="display:none">
             <input id="ngay" style="display:none">
             <input id="manv" style="display:none">
             <input id="tennv" style="display:none">
             <input id="diadiem" style="display:none" value="cs1">
-
-            <div id="unknownSku" class="row" style="display:none;color:#b00020;font-size:12px"></div>
+            <div id="unknownSku" style="color:#b00020;font-size:12px"></div>
         </div>
     </div>
 
-    <h4>bang ket qua</h4>
+    <h4>Bảng kết quả</h4>
     <div class="table-wrap">
-        <table id="tblKQ">
+        <table id="tblKQ" border="1" cellspacing="0" cellpadding="4" width="100%">
             <thead>
                 <tr>
                     <th>Mã hàng</th>
@@ -316,103 +208,86 @@ DGA-DEN
                     <th>43</th>
                     <th>44</th>
                     <th>45</th>
-                    <th>tổng</th>
-                    <th>Vị trí</th>
-                    <th>tồn cs1</th>
-                    <th>tồn cs2</th>
+                    <th>Tổng</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 
-    <div id="banner" class="banner"></div>
-
     <div class="toolbar">
-        <button id="btnChuyen1" class="btn">chuyen 1</button>
-        <button id="btnThemMoi" class="btn">them moi</button>
-        <button id="btnLuu" class="btn primary" disabled>luu</button>
-        <button id="btnChuyen2" class="btn">chuyen 2</button>
-        <button id="btnXoaBang" class="btn danger">xóa bảng</button>
+        <button id="btnChuyen1" class="btn">Chuyển 1</button>
+        <button id="btnThemMoi" class="btn">Thêm mới</button>
+        <button id="btnLuu" class="btn primary">Lưu</button>
+        <button id="btnChuyen2" class="btn">Chuyển 2</button>
+        <button id="btnXoaBang" class="btn danger">Xóa bảng</button>
     </div>
 
-    <!-- CÁC SCRIPT CÓ import/export (module) -->
-    <script type="module" src="./scripts/main.js"></script>
-    <script type="module" src="./scripts/bangketqua.js"></script>
-    <script type="module" src="./scripts/hoadon.js"></script>
-    <script type="module" src="./scripts/luuhoadon.js"></script>
-    <script type="module" src="./scripts/sohoadon.js"></script>
-
-    <!-- SCRIPT THUẦN CHO TRANG MOBILE -->
-    <script src="./scripts/nhaptammobile.grid.js"></script>
-    <script src="./scripts/nhaptammobile.controller.js"></script>
-
-    <!-- Đăng nhập -->
-    <div id="login-container"
-        style="position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:99999;">
-        <div style="background:#f9f9f9;padding:20px;border-radius:8px;box-shadow:0 0 10px #ccc;">
-            <h3>Đăng nhập</h3>
-            <form onsubmit="NTLogin.doLogin();return false;">
-                <div> Email: <input id="lg-email" value="khohangcs1@gmail.com" readonly style="background:#eee"></div>
-                <div> Mật khẩu: <input id="lg-pass" type="password" value="123123"></div>
-                <div> Mã NV: <input id="lg-manv" placeholder="VD: NV001"></div>
-                <button>Đăng nhập</button>
-                <div id="lg-msg" style="color:#b00020;margin-top:6px"></div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Supabase login + set số HĐ/Input ẩn -->
+    <!-- Supabase client -->
     <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        const supabase = createClient(
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+        window.supabase = createClient(
             'https://rddjrmbyftlcvrgzlyby.supabase.co',
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
         );
-        // để controller/autocomplete có thể dùng
-        window.supabase = supabase;
 
-        window.NTLogin = {
-            async doLogin() {
-                const email = document.getElementById('lg-email').value.trim().toLowerCase();
-                const pass = document.getElementById('lg-pass').value.trim();
-                const manv = document.getElementById('lg-manv').value.trim().toUpperCase();
-                const msg = document.getElementById('lg-msg');
-                msg.textContent = '';
-                const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-                if (error) { msg.textContent = 'Đăng nhập thất bại: ' + error.message; return; }
-
-                const { data: nv, error: errNV } = await supabase.from('dmnhanvien').select('manv,tennv').eq('manv', manv).maybeSingle();
-                if (errNV || !nv) { msg.textContent = 'Mã nhân viên không đúng'; await supabase.auth.signOut(); return; }
-
-                localStorage.setItem('diadiem', 'cs1');
-                localStorage.setItem('manv', nv.manv);
-                localStorage.setItem('tennv', nv.tennv);
-
-                // cập nhật UI/pill
-                const ten = nv.tennv || manv;
-                const tenLbl = document.getElementById('lblTenNV'); if (tenLbl) tenLbl.textContent = ten;
-
-                // cập nhật input ẩn cho module lưu
-                document.getElementById('diadiem').value = 'cs1';
-                document.getElementById('manv').value = nv.manv;
-                document.getElementById('tennv').value = ten;
-                document.getElementById('ngay').value = new Date().toISOString().slice(0, 10);
-
-                // phát sinh số HĐ dự kiến & set vào #sohd + pill
-                try {
-                    const so = await window.SoHoaDon?.goiSoDuKien?.('nhaptamcs1');
-                    if (so) {
-                        const soLbl = document.getElementById('lblSoHD'); if (soLbl) soLbl.textContent = so;
-                        const soInp = document.getElementById('sohd'); if (soInp) soInp.value = so;
-                    }
-                } catch (_) { }
-
-                // Ẩn overlay
-                document.getElementById('login-container').style.display = 'none';
-            }
+        // Autocomplete lấy từ in mã vạch
+        let DM_CACHE = [];
+        async function loadDM() {
+            if (DM_CACHE.length) return DM_CACHE;
+            const { data, error } = await supabase.from('dmhanghoa').select('masp,ten').limit(5000);
+            if (error) { console.error(error); return []; }
+            DM_CACHE = data || [];
+            return DM_CACHE;
         }
+
+        const maspInput = document.getElementById('masp');
+        const popup = document.getElementById('popup_masp');
+        let curIndex = -1, curList = [];
+
+        function render(list) {
+            curList = list; curIndex = -1;
+            if (!list.length) { popup.style.display = 'none'; return; }
+            popup.innerHTML = list.map((r, i) => `<div data-i="${i}"><b>${r.masp}</b> – ${r.ten || ''}</div>`).join('');
+            popup.style.display = '';
+            [...popup.children].forEach(div => {
+                div.onclick = () => choose(parseInt(div.dataset.i, 10));
+            });
+        }
+        function highlight(i) {
+            curIndex = i;
+            [...popup.children].forEach((el, idx) => {
+                el.style.background = (idx === i) ? '#eef6ff' : '';
+            });
+        }
+        function choose(i) {
+            if (i < 0 || i >= curList.length) return;
+            maspInput.value = curList[i].masp;
+            popup.style.display = 'none';
+            maspInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        }
+
+        maspInput.addEventListener('input', async () => {
+            const q = maspInput.value.trim().toUpperCase();
+            if (q.length < 2) { popup.style.display = 'none'; return; }
+            const all = await loadDM();
+            const list = all.filter(r => r.masp.includes(q) || (r.ten || '').toUpperCase().includes(q)).slice(0, 50);
+            render(list);
+        });
+        maspInput.addEventListener('keydown', (e) => {
+            if (popup.style.display === 'none') return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); highlight((curIndex + 1) % curList.length); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); highlight((curIndex - 1 + curList.length) % curList.length); }
+            else if (e.key === 'Enter') { if (curIndex >= 0) { e.preventDefault(); choose(curIndex); } }
+            else if (e.key === 'Escape') { popup.style.display = 'none'; }
+        });
+        document.addEventListener('click', (e) => { if (e.target !== maspInput && !popup.contains(e.target)) popup.style.display = 'none'; });
     </script>
+
+    <!-- Controller & saver -->
+    <script src="./scripts/nhaptammobile.grid.js"></script>
+    <script src="./scripts/nhaptammobile.controller.js"></script>
+    <script type="module" src="./scripts/luuhoadon.js"></script>
 </body>
 
 </html>
