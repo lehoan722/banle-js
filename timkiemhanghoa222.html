@@ -489,50 +489,55 @@
             return m ? m[1] : s;
         }
 
-        </script>
-        
-    <script>
-        // === WRAP triggerSearch: luôn làm sạch + delay 1 nhịp trước khi gọi gốc ===
-        (function ensureWrapTriggerSearch() {
-            // Hàm bọc
-            function wrapNow() {
-                if (typeof window.triggerSearch === 'function' && !window._wrappedTriggerSearch) {
-                    window._origTriggerSearch = window.triggerSearch;
-                    window.triggerSearch = function () {
-                        // Làm sạch trước
-                        preCleanInputs();
-                        // Delay 1 nhịp cho chắc (scanner/enter có thể còn đang đi sự kiện)
-                        setTimeout(() => {
-                            try {
-                                window._origTriggerSearch.apply(this, arguments);
-                            } catch (e) {
-                                console.error('triggerSearch (wrapped) error:', e);
-                            }
-                        }, 0);
-                    };
-                    window._wrappedTriggerSearch = true;
-                }
+        // Làm sạch tất cả input/textarea liên quan rồi gọi hàm tìm kiếm cũ
+        function preCleanThenSearch() {
+            // 1) Ô nhập 1 mã (nếu có)
+            var ip = document.getElementById('maspInput');
+            if (ip && ip.value) {
+                ip.value = stripSizeSuffixAtEnd(ip.value);
             }
 
-            // Nếu chưa có triggerSearch, poll nhẹ cho đến khi có rồi wrap
+            // 2) Textarea nhiều mã (nếu có)
+            var ta = document.getElementById('bulkTextarea');
+            if (ta && ta.value) {
+                var cleaned = ta.value
+                    .split(/[\r\n,;\t]+/)
+                    .map(function (x) { return stripSizeSuffixAtEnd(x); })
+                    .map(function (x) { return x.trim(); })
+                    .filter(Boolean);
+                // không tự động loại trùng/đổi thứ tự — giữ nguyên “đơn giản”
+                ta.value = cleaned.join('\n');
+            }
+
+            // 3) Gọi lại hàm tìm kiếm cũ (nếu có tham số tuỳ trang thì để nguyên)
             if (typeof window.triggerSearch === 'function') {
-                wrapNow();
-            } else {
-                let tries = 0, t = setInterval(() => {
-                    if (typeof window.triggerSearch === 'function') {
-                        clearInterval(t);
-                        wrapNow();
-                    } else if (++tries > 50) { // ~10s nếu 200ms/lần
-                        clearInterval(t);
-                        console.warn('Không tìm thấy triggerSearch để wrap.');
-                    }
-                }, 200);
+                window.triggerSearch();
             }
-        })();
-
+        }
     </script>
 
+    <script>
+        // lang nghe enter trong o maspInput
+        document.addEventListener('DOMContentLoaded', function () {
+            var ip = document.getElementById('maspInput');
+            if (!ip) return;
+            ip.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();          // chặn submit form / reload trang
+                    preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
+                }
+            });
 
+            // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
+            var form = ip.closest('form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    preCleanThenSearch();
+                });
+            }
+        });
+    </script>
 
 </body>
 
