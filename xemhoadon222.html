@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Tra cứu Hóa Đơn Bán Lẻ 222</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h2>🧾 Tra cứu Hóa Đơn Bán Lẻ (222)</h2>
+
+  <div class="filters">
+    <input type="date" id="tuNgay" />
+    <input type="date" id="denNgay" />
+    <select id="loaihd" multiple>
+      <option value="bancs1" selected>ban cs1</option>
+      <option value="bancs2" selected>ban cs2</option>
+      <!-- có thể thêm các loại khác nếu muốn so sánh -->
+    </select>
+
+    <select id="groupMode">
+      <option value="day" selected>Tổng hợp theo ngày</option>
+      <option value="invoice">Chi tiết từng hóa đơn</option>
+    </select>
+
+    <input id="nhanvien" placeholder="Nhân viên" />
+    <input id="khach" placeholder="Khách hàng" />
+    <input id="tienTu" placeholder="Tiền từ" type="number" />
+    <input id="tienDen" placeholder="Tiền đến" type="number" />
+    <input id="sohd" placeholder="Số HĐ" />
+
+    <input id="maspList" placeholder="Tìm nhiều Mã SP, cách nhau bởi dấu cách hoặc xuống dòng" />
+    <label><input type="checkbox" id="mustAll" /> HĐ phải chứa tất cả mã</label>
+
+    <button id="btnLoc">🔎 Lọc</button>
+    <button id="btnCopy">📋 Copy bảng</button>
+  </div>
+
+  <div id="summary" class="summary"></div>
+
+  <table id="tbl" class="data">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Ngày</th>
+        <th>Số HĐ</th>
+        <th>NV</th>
+        <th>Khách</th>
+        <th>SL (chi tiết)</th>
+        <th>TT (chi tiết)</th>
+        <th>SL (header)</th>
+        <th>Lệch SL</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="pager">
+    <button id="prev">&lt; Trang trước</button>
+    <span id="pageInfo"></span>
+    <button id="next">Trang sau &gt;</button>
+  </div>
+
+  <script src="supabaseClient.js"></script>
+  <script src="xemhoadon222.js"></script>
+</body>
+</html>
