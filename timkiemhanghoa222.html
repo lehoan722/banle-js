@@ -474,30 +474,7 @@
     </div>
 
     <div id="flashOverlay"></div>
-    <div id="toastMsg"></div>   
-
-    <script>
-        // lang nghe enter trong o maspInput
-        document.addEventListener('DOMContentLoaded', function () {
-            var ip = document.getElementById('maspInput');
-            if (!ip) return;
-            ip.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();          // chặn submit form / reload trang
-                    preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
-                }
-            });
-
-            // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
-            var form = ip.closest('form');
-            if (form) {
-                form.addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    preCleanThenSearch();
-                });
-            }
-        });
-    </script>
+    <div id="toastMsg"></div>       
 
 
     <script>
@@ -535,6 +512,29 @@
                 window.triggerSearch();
             }
         }
+    </script>
+
+    <script>
+        // lang nghe enter trong o maspInput
+        document.addEventListener('DOMContentLoaded', function () {
+            var ip = document.getElementById('maspInput');
+            if (!ip) return;
+            ip.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();          // chặn submit form / reload trang
+                    preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
+                }
+            });
+
+            // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
+            var form = ip.closest('form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    preCleanThenSearch();
+                });
+            }
+        });
     </script>
 
 </body>
