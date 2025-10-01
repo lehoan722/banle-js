@@ -110,14 +110,13 @@
 
   <label><input type="date" id="tuNgay" placeholder="Từ ngày:" ></label>
   <label><input type="date" id="denNgay" placeholder="Đến ngày:"></label>
-  <label>Nhân viên: <input type="text" id="locNV" placeholder="Đến ngày:"></label>
-  <label>Khách hàng: <input type="text" id="locKhach" placeholder="Đến ngày:"></label>
-  <label>Tiền từ: <input type="number" id="tienTu" style="width:80px" placeholder="Đến ngày:"></label>
-  <label>Tiền đến: <input type="number" id="tienDen" style="width:80px" placeholder="Đến ngày:"></label>
-  <label>Số HĐ: <input type="text" id="locSoHD"></label>
+  <label><input type="text" id="locNV" placeholder="Nhân viên:"></label>
+  <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
+  <label><input type="number" id="tienTu" style="width:80px" placeholder="Tiền từ:"></label>
+  <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
+  <label> <input type="text" id="locSoHD"  placeholder="so hd:"></label>
   <label><input type="text" id="locMasp" placeholder="tim nhiều Mã SP cách nhau dấu phẩy"> </label>
-  <label style="user-select:none">
-    <input type="checkbox" id="chkMatchAll" checked> HĐ phải chứa tất cả mã </label>
+  <label style="user-select:none"> <input type="checkbox" id="chkMatchAll" checked> HĐ phải chứa tất cả mã </label>
 
 
   <label>Loại chứng từ:</label>
@@ -132,10 +131,14 @@
     <option value="ncncs">nhap cn</option>
     <option value="nhapkiem">nhap kiem</option>
     <option value="xuatkiem">xuat kiem</option>
+    <option value="nhaptam">nhap tam</option>
+    <option value="nhapdoi">nhap doi tu khach</option>
+    <option value="xuattralai">xuat tra lai ncc</option>
+
   </select>
 
   <label>
-    Xem tổng hợp:
+   
     <select id="loaiTongHop" style="min-width:120px">
       <option value="chitiet">Chi tiết từng hóa đơn</option>
       <option value="ngay">Tổng hợp theo ngày</option>
