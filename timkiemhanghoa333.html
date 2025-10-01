@@ -9,7 +9,7 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
-    <script type="module" src="scripts/timkiemhanghoa333.js"></script>   
+    <script type="module" src="scripts/timkiemhanghoa333.js"></script>
     <style>
         body {
             background: #f6f8fa;
@@ -377,13 +377,14 @@
                     <label for="maspInput">Nhập mã hàng</label>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
-                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
+                        <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off"
+                            onkeydown="if((event.key==='Enter'||event.keyCode===13)){event.preventDefault(); preCleanThenSearch(); return false;}" />
+
                     </div>
                 </div>
-                <button id="searchBtn"
-                    style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
-                    Tìm kiếm
-                </button>
+                <button id="searchBtn" onclick="preCleanThenSearch()">Tìm kiếm</button>
+
+
                 <button class="popup-btn" id="scanBtn">📷 Quét</button>
             </div>
 
@@ -475,10 +476,69 @@
     </div>
 
     <div id="flashOverlay"></div>
-<div id="toastMsg"></div>
+    <div id="toastMsg"></div>
 
+
+    <script>
+        // CẮT HẬU TỐ _SIZE Ở CUỐI CHUỖI. VD: "ABC12-DG38_38" -> "ABC12-DG38"
+        function stripSizeSuffixAtEnd(s) {
+            if (!s) return "";
+            s = String(s).trim();
+            // chỉ cắt đoạn _... nếu NẰM Ở CUỐI
+            const m = s.match(/^(.*)_[A-Za-z0-9.\-]+$/);
+            return m ? m[1] : s;
+        }
+
+        // Làm sạch tất cả input/textarea liên quan rồi gọi hàm tìm kiếm cũ
+        function preCleanThenSearch() {
+            // 1) Ô nhập 1 mã (nếu có)
+            var ip = document.getElementById('maspInput');
+            if (ip && ip.value) {
+                ip.value = stripSizeSuffixAtEnd(ip.value);
+            }
+
+            // 2) Textarea nhiều mã (nếu có)
+            var ta = document.getElementById('bulkTextarea');
+            if (ta && ta.value) {
+                var cleaned = ta.value
+                    .split(/[\r\n,;\t]+/)
+                    .map(function (x) { return stripSizeSuffixAtEnd(x); })
+                    .map(function (x) { return x.trim(); })
+                    .filter(Boolean);
+                // không tự động loại trùng/đổi thứ tự — giữ nguyên “đơn giản”
+                ta.value = cleaned.join('\n');
+            }
+
+            // 3) Gọi lại hàm tìm kiếm cũ (nếu có tham số tuỳ trang thì để nguyên)
+            if (typeof window.triggerSearch === 'function') {
+                window.triggerSearch();
+            }
+        }
+    </script>
+
+    <script>
+        // lang nghe enter trong o maspInput
+        document.addEventListener('DOMContentLoaded', function () {
+            var ip = document.getElementById('maspInput');
+            if (!ip) return;
+            ip.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();          // chặn submit form / reload trang
+                    preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
+                }
+            });
+
+            // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
+            var form = ip.closest('form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    preCleanThenSearch();
+                });
+            }
+        });
+    </script>
 
 </body>
 
 </html>
-
