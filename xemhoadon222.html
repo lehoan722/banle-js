@@ -4,7 +4,17 @@
   <meta charset="utf-8" />
   <title>Tra cứu Hóa Đơn Bán Lẻ 222</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="styles.css" />
+  <!-- (Tạm) bỏ styles.css để hết 404. Nếu bạn có file thật, đổi href đúng đường dẫn rồi dùng lại -->
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 12px; }
+    .filters { display: grid; grid-template-columns: repeat(6, minmax(140px,1fr)); gap: 8px; align-items: center; }
+    .summary { margin: 10px 0; }
+    table.data { width: 100%; border-collapse: collapse; }
+    table.data th, table.data td { border: 1px solid #ddd; padding: 6px 8px; }
+    table.data th { background: #f7f7f7; text-align: left; }
+    td.num { text-align: right; }
+    .pager { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+  </style>
 </head>
 <body>
   <h2>🧾 Tra cứu Hóa Đơn Bán Lẻ (222)</h2>
@@ -15,7 +25,7 @@
     <select id="loaihd" multiple>
       <option value="bancs1" selected>ban cs1</option>
       <option value="bancs2" selected>ban cs2</option>
-      <!-- có thể thêm các loại khác nếu muốn so sánh -->
+      <!-- có thể thêm các loại khác nếu muốn so sánh --> 
     </select>
 
     <select id="groupMode">
@@ -61,7 +71,6 @@
     <button id="next">Trang sau &gt;</button>
   </div>
 
-  <script src="scripts/supabaseClient.js"></script>
-  <script src="scripts/xemhoadon222.js"></script>
+  <script type="module" src="xemhoadon222.js"></script>
 </body>
 </html>
