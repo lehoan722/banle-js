@@ -1,4 +1,4 @@
-// xemhoadon222.js — dùng global window.supabase (giống 111/XNT)
+// xemhoadon222.js — dùng window.supabase (global), clone UX 111 + nâng cấp
 
 const qs  = (s) => document.querySelector(s);
 const qsa = (s) => Array.from(document.querySelectorAll(s));
@@ -7,7 +7,7 @@ const qsv = (s) => (qs(s)?.value || '').trim();
 let limit = 1000;
 let offset = 0;
 let lastTotal = 0;
-let currentRows = [];  // lưu rows để mở popup nhanh
+let currentRows = [];
 
 // ngày mặc định: tháng hiện tại
 (function initDates(){
@@ -18,12 +18,13 @@ let currentRows = [];  // lưu rows để mở popup nhanh
   qs('#denNgay').value = `${yyyy}-${mm}-${new Date(yyyy, today.getMonth()+1, 0).getDate()}`;
 })();
 
+// sự kiện
 qs('#btnLoc').addEventListener('click', () => { offset = 0; loadData(); });
 qs('#prev').addEventListener('click', () => { offset = Math.max(0, offset - limit); loadData(); });
 qs('#next').addEventListener('click', () => { if (offset + limit < lastTotal) { offset += limit; loadData(); }});
 qs('#btnCopy').addEventListener('click', copyTable);
 qs('#btnDelete').addEventListener('click', onDeleteSelected);
-qs('#pageSize').addEventListener('change', () => { limit = Number(qsv('#pageSize')) || 1000; offset = 0; loadData(); });
+qs('#pageSize').addEventListener('change', () => { offset = 0; loadData(); });
 qs('#chkAll').addEventListener('change', (e)=> {
   const ck = e.target.checked;
   qsa('#tbl tbody input[type="checkbox"].rowchk').forEach(c => c.checked = ck);
@@ -34,6 +35,9 @@ qs('#btnClose').addEventListener('click', closeModal);
 qs('#btnCopyDetail').addEventListener('click', copyDetail);
 
 async function loadData(){
+  // áp dụng page size mỗi lần tải
+  limit = Number(qsv('#pageSize')) || 1000;
+
   const tu_ngay    = qsv('#tuNgay');
   const den_ngay   = qsv('#denNgay');
   const group_mode = qsv('#groupMode') || 'day';
@@ -91,6 +95,9 @@ async function loadData(){
   currentRows = rows || [];
   render(currentRows, group_mode);
   qs('#pageInfo').textContent = `Trang ${Math.floor(offset/limit)+1} / ${Math.max(1, Math.ceil(lastTotal/limit))}`;
+
+  // reset select-all sau khi render
+  qs('#chkAll').checked = false;
 }
 
 function render(rows, mode){
@@ -99,11 +106,13 @@ function render(rows, mode){
   rows.forEach((r, i) => {
     const tr = document.createElement('tr');
     const lech = Number(r.lech_sl || 0);
-    // click mở chi tiết: chỉ khi có số HĐ (mode = invoice)
+
+    // click mở chi tiết + highlight (như 111)
     tr.addEventListener('click', (ev) => {
-      // tránh click vào checkbox
-      if ((ev.target.tagName==='INPUT') || (mode!=='invoice')) return;
-      openModal(r.sohd);
+      if (ev.target.tagName === 'INPUT') return; // bỏ qua click vào checkbox
+      qsa('#tbl tbody tr').forEach(row => row.classList.remove('active'));
+      tr.classList.add('active');
+      if (mode === 'invoice' && r.sohd) openModal(r.sohd);
     });
 
     tr.innerHTML = `
@@ -123,62 +132,39 @@ function render(rows, mode){
   });
 }
 
-async function copyTable(){
-  const text = qs('#tbl')?.outerText || '';
-  await navigator.clipboard.writeText(text);
-  alert('Đã copy bảng vào clipboard.');
-}
-
 async function onDeleteSelected(){
-  // chỉ cho phép xóa ở chế độ chi tiết (mới có sohd)
   const mode = qsv('#groupMode');
   if (mode !== 'invoice') {
-    alert('Hãy chuyển "Loại tổng hợp" sang "Chi tiết từng hóa đơn" để xóa.');
+    alert('Hãy chuyển sang "Chi tiết từng hóa đơn" để xóa.');
     return;
   }
   const chosen = qsa('#tbl tbody input.rowchk:checked').map(c => c.dataset.sohd).filter(Boolean);
   if (!chosen.length) { alert('Chưa chọn hóa đơn nào.'); return; }
+  if (!confirm(`Xóa ${chosen.length} hóa đơn? (không thể hoàn tác)`)) return;
 
-  // Xác nhận
-  if (!confirm(`Bạn chắc chắn muốn xóa ${chosen.length} hóa đơn? (Hành động này không thể hoàn tác)`)) return;
-
-  // (Tùy chọn) xác thực NV: bạn có thể hỏi mã NV ở đây
-  // const manv = prompt('Nhập mã NV xác thực (tùy chọn):', '');
-
-  // Xóa HĐ: do FK CASCADE, ct_hoadon_banle sẽ xóa theo
-  const { error } = await supabase
-    .from('hoadon_banle')
-    .delete()
-    .in('sohd', chosen);
-
+  const { error } = await supabase.from('hoadon_banle').delete().in('sohd', chosen);
   if (error) { alert('Xóa lỗi: ' + error.message); return; }
 
   alert('Đã xóa thành công.');
-  // reload trang hiện tại
   loadData();
 }
 
 // ======= POPUP CHI TIẾT =======
 function openModal(sohd){
-  if (!sohd) return;
   qs('#modalSohd').textContent = sohd;
-  // load detail
   loadDetail(sohd);
   qs('#modal').style.display = 'flex';
 }
-
 function closeModal(){
   qs('#modal').style.display = 'none';
   qs('#tblDetail tbody').innerHTML = '';
 }
-
 async function loadDetail(sohd){
   const { data, error } = await supabase
     .from('ct_hoadon_banle')
     .select('masp,tensp,size,soluong,gia,km,thanhtien')
     .eq('sohd', sohd)
     .order('id', { ascending: true });
-
   if (error) { alert('Lỗi tải chi tiết: ' + error.message); return; }
 
   const tb = qs('#tblDetail tbody');
@@ -193,12 +179,11 @@ async function loadDetail(sohd){
       <td class="num">${fmt(r.soluong)}</td>
       <td class="num">${fmtMoney(r.gia)}</td>
       <td class="num">${fmtMoney(r.km)}</td>
-      <td class="num">${fmtMoney(r.thanhtien ?? ( (Number(r.gia||0)-Number(r.km||0)) * Number(r.soluong||0) ))}</td>
+      <td class="num">${fmtMoney(r.thanhtien ?? ((Number(r.gia||0)-Number(r.km||0)) * Number(r.soluong||0)))}</td>
     `;
     tb.appendChild(tr);
   });
 }
-
 async function copyDetail(){
   const text = qs('#tblDetail')?.outerText || '';
   await navigator.clipboard.writeText(text);
@@ -206,6 +191,11 @@ async function copyDetail(){
 }
 
 // ======= Utils =======
+async function copyTable(){
+  const text = qs('#tbl')?.outerText || '';
+  await navigator.clipboard.writeText(text);
+  alert('Đã copy bảng vào clipboard.');
+}
 function fmt(x){ return (x==null)?'':Number(x).toLocaleString('vi-VN'); }
 function fmtMoney(x){ return (x==null)?'':Number(x).toLocaleString('vi-VN'); }
 
