@@ -475,6 +475,19 @@
 
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
+    
+    <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('btnSearch');
+    if (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault(); // nếu nút nằm trong <form>
+        preCleanThenSearch();
+      });
+    }
+  });
+</script>
+
 
     <script>
         // CẮT HẬU TỐ _SIZE Ở CUỐI CHUỖI. VD: "ABC12-DG38_38" -> "ABC12-DG38"
