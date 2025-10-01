@@ -4,8 +4,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // 2) Khởi tạo client (điền URL & anon key của bạn)
 const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
 
 // 3) Phần còn lại giữ nguyên như cũ
 const qs = (s) => document.querySelector(s);
@@ -111,3 +111,10 @@ function fmtMoney(x){ return (x==null)?'':Number(x).toLocaleString('vi-VN'); }
 
 // auto load lần đầu
 loadData();
+
+async function copyTable() {
+  const text = document.querySelector('#tbl').outerText || '';
+  await navigator.clipboard.writeText(text);
+  alert('Đã copy bảng vào clipboard.');
+}
+
