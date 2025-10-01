@@ -382,7 +382,7 @@
                 </div>
                 <button id="searchBtn" onclick="preCleanThenSearch()">Tìm kiếm</button>
 
-                
+
                 <button class="popup-btn" id="scanBtn">📷 Quét</button>
             </div>
 
@@ -475,18 +475,41 @@
 
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
-    
+
     <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var btn = document.getElementById('searchBtn');
-    if (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault(); // nếu nút nằm trong <form>
-        preCleanThenSearch();
-      });
-    }
-  });
-</script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var btn = document.getElementById('searchBtn');
+            if (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault(); // nếu nút nằm trong <form>
+                    preCleanThenSearch();
+                });
+            }
+        });
+    </script>
+
+    <script>
+        // lang nghe enter trong o maspInput
+        document.addEventListener('DOMContentLoaded', function () {
+            var ip = document.getElementById('maspInput');
+            if (!ip) return;
+            ip.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();          // chặn submit form / reload trang
+                    preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
+                }
+            });
+
+            // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
+            var form = ip.closest('form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    preCleanThenSearch();
+                });
+            }
+        });
+    </script>
 
 
     <script>
@@ -505,7 +528,7 @@
             var ip = document.getElementById('maspInput');
             if (ip && ip.value) {
                 ip.value = stripSizeSuffixAtEnd(ip.value);
-            }            
+            }
 
             // 2) Textarea nhiều mã (nếu có)
             var ta = document.getElementById('bulkTextarea');
@@ -525,32 +548,6 @@
             }
         }
     </script>
-    
-
-    <script>
-        // lang nghe enter trong o maspInput
-  document.addEventListener('DOMContentLoaded', function () {
-    var ip = document.getElementById('maspInput');
-    if (!ip) return;
-    ip.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();          // chặn submit form / reload trang
-        preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
-      }
-    });
-
-    // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
-    var form = ip.closest('form');
-    if (form) {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        preCleanThenSearch();
-      });
-    }
-  });
-</script>
-
-
 
 </body>
 
