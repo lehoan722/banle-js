@@ -4,16 +4,27 @@
   <meta charset="utf-8" />
   <title>Tra cứu Hóa Đơn Bán Lẻ 222</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- (Tạm) bỏ styles.css để hết 404. Nếu bạn có file thật, đổi href đúng đường dẫn rồi dùng lại -->
   <style>
     body { font-family: system-ui, sans-serif; padding: 12px; }
-    .filters { display: grid; grid-template-columns: repeat(6, minmax(140px,1fr)); gap: 8px; align-items: center; }
+    h2 { margin-top: 0; }
+    .filters { display: grid; grid-template-columns: repeat(6, minmax(160px,1fr)); gap: 8px; align-items: center; }
+    select[multiple] { min-height: 96px; }
+    .row { display:flex; gap:8px; align-items:center; }
     .summary { margin: 10px 0; }
     table.data { width: 100%; border-collapse: collapse; }
     table.data th, table.data td { border: 1px solid #ddd; padding: 6px 8px; }
     table.data th { background: #f7f7f7; text-align: left; }
     td.num { text-align: right; }
     .pager { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+    .btn-danger { background:#d33; color:#fff; border:0; padding:6px 10px; border-radius:6px; cursor:pointer;}
+    .btn { padding:6px 10px; border:1px solid #ccc; border-radius:6px; cursor:pointer; background:#fff; }
+    .badge-ok{color:green} .badge-err{color:#d00;font-weight:600}
+    /* Popup */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;}
+    .modal .panel{background:#fff;min-width:60vw;max-width:80vw;max-height:80vh;overflow:auto;border-radius:10px;padding:12px;}
+    .modal h3{margin-top:0}
+    .modal table{width:100%;border-collapse:collapse}
+    .modal th,.modal td{border:1px solid #ddd;padding:6px 8px;}
   </style>
 </head>
 <body>
@@ -22,15 +33,39 @@
   <div class="filters">
     <input type="date" id="tuNgay" />
     <input type="date" id="denNgay" />
+
     <select id="loaihd" multiple>
+      <!-- mặc định chọn hai loại bán -->
       <option value="bancs1" selected>ban cs1</option>
       <option value="bancs2" selected>ban cs2</option>
-      <!-- có thể thêm các loại khác nếu muốn so sánh --> 
+      <!-- mở rộng giống 111 -->
+      <option value="bannvcs1">bannv cs1</option>
+      <option value="bannvcs2">bannv cs2</option>
+      <option value="nmcs1">nhapmua cs1</option>
+      <option value="nmcs2">nhapmua cs2</option>
+      <option value="xcncs1">xuat cn cs1</option>
+      <option value="xcncs2">xuat cn cs2</option>
+      <option value="ncncs1">nhap cn cs1</option>
+      <option value="ncncs2">nhap cn cs2</option>
+      <option value="nhapkiem">nhập kiểm</option>
+      <option value="xuatkiem">xuất kiểm</option>
+      <option value="nhaptam">nhập tạm</option>
+      <option value="nhapdoi">nhập đổi</option>
+      <option value="tralaincc">trả lại NCC</option>
+      <!-- ... thêm các loại khác bạn có ở 111 -->
     </select>
 
     <select id="groupMode">
       <option value="day" selected>Tổng hợp theo ngày</option>
+      <option value="month">Tổng hợp theo tháng</option>
+      <option value="year">Tổng hợp theo năm</option>
       <option value="invoice">Chi tiết từng hóa đơn</option>
+    </select>
+
+    <select id="diadiem">
+      <option value="">Tất cả cơ sở</option>
+      <option value="cs1">Cơ sở 1</option>
+      <option value="cs2">Cơ sở 2</option>
     </select>
 
     <input id="nhanvien" placeholder="Nhân viên" />
@@ -39,11 +74,23 @@
     <input id="tienDen" placeholder="Tiền đến" type="number" />
     <input id="sohd" placeholder="Số HĐ" />
 
-    <input id="maspList" placeholder="Tìm nhiều Mã SP, cách nhau bởi dấu cách hoặc xuống dòng" />
-    <label><input type="checkbox" id="mustAll" /> HĐ phải chứa tất cả mã</label>
+    <textarea id="maspList" placeholder="Danh sách mã SP, cách nhau dấu cách hoặc xuống dòng" rows="3"></textarea>
+    <label class="row"><input type="checkbox" id="mustAll" /> HĐ phải chứa tất cả mã</label>
 
-    <button id="btnLoc">🔎 Lọc</button>
-    <button id="btnCopy">📋 Copy bảng</button>
+    <div class="row">
+      <label for="pageSize">Số dòng/trang:</label>
+      <select id="pageSize">
+        <option value="1000" selected>1.000</option>
+        <option value="5000">5.000</option>
+        <option value="10000">10.000</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <button id="btnLoc" class="btn">🔎 Lọc</button>
+      <button id="btnCopy" class="btn">📋 Copy bảng</button>
+      <button id="btnDelete" class="btn-danger">❌ Xóa HĐ đã chọn</button>
+    </div>
   </div>
 
   <div id="summary" class="summary"></div>
@@ -51,9 +98,11 @@
   <table id="tbl" class="data">
     <thead>
       <tr>
+        <th><input type="checkbox" id="chkAll" /></th>
         <th>#</th>
         <th>Ngày</th>
         <th>Số HĐ</th>
+        <th>Cơ sở</th>
         <th>NV</th>
         <th>Khách</th>
         <th>SL (chi tiết)</th>
@@ -66,11 +115,41 @@
   </table>
 
   <div class="pager">
-    <button id="prev">&lt; Trang trước</button>
+    <button id="prev" class="btn">&lt; Trang trước</button>
     <span id="pageInfo"></span>
-    <button id="next">Trang sau &gt;</button>
+    <button id="next" class="btn">Trang sau &gt;</button>
   </div>
 
-  <script type="module" src="scripts/xemhoadon222.js"></script>
+  <!-- Popup chi tiết HĐ -->
+  <div id="modal" class="modal">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3>Chi tiết hóa đơn: <span id="modalSohd"></span></h3>
+        <div class="row">
+          <button id="btnCopyDetail" class="btn">📋 Copy chi tiết</button>
+          <button id="btnClose" class="btn">Đóng</button>
+        </div>
+      </div>
+      <table id="tblDetail">
+        <thead>
+          <tr>
+            <th>#</th><th>Mã SP</th><th>Tên SP</th><th>Size</th><th>SL</th><th>Giá</th><th>KM</th><th>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Cách B: KHỞI TẠO SUPABASE GLOBAL như các trang cũ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.supabase = window.supabase.createClient(
+      'https://rddjrmbyftlcvrgzlyby.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM' // <-- thay bằng anon key thật
+    );
+  </script>
+
+  <script src="scripts/xemhoadon222.js"></script>
 </body>
 </html>
