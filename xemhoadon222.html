@@ -8,8 +8,8 @@
     body { font-family: system-ui, sans-serif; padding: 12px; }
     h2 { margin-top: 0; }
     .filters { display: grid; grid-template-columns: repeat(6, minmax(160px,1fr)); gap: 8px; align-items: center; }
-    select[multiple] { min-height: 96px; }
-    .row { display:flex; gap:8px; align-items:center; }
+    select[multiple] { min-height: 110px; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
     .summary { margin: 10px 0; }
     table.data { width: 100%; border-collapse: collapse; }
     table.data th, table.data td { border: 1px solid #ddd; padding: 6px 8px; }
@@ -19,6 +19,11 @@
     .btn-danger { background:#d33; color:#fff; border:0; padding:6px 10px; border-radius:6px; cursor:pointer;}
     .btn { padding:6px 10px; border:1px solid #ccc; border-radius:6px; cursor:pointer; background:#fff; }
     .badge-ok{color:green} .badge-err{color:#d00;font-weight:600}
+    /* Hover & Active row (giống 111) */
+    table.data tbody tr:hover { background: #fffbe6; }
+    table.data tbody tr.active { background: #ffe08a; }
+    table.data tbody tr td:first-child { width: 36px; }
+    table.data tbody tr { cursor: pointer; }
     /* Popup */
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;}
     .modal .panel{background:#fff;min-width:60vw;max-width:80vw;max-height:80vh;overflow:auto;border-radius:10px;padding:12px;}
@@ -35,31 +40,32 @@
     <input type="date" id="denNgay" />
 
     <select id="loaihd" multiple>
-      <!-- mặc định chọn hai loại bán -->
-      <option value="bancs1" selected>ban cs1</option>
-      <option value="bancs2" selected>ban cs2</option>
-      <!-- mở rộng giống 111 -->
+      <!-- mặc định chọn hai loại bán <option value="bancs1" selected>ban cs1</option> -->
+      <option value="bancs1" >ban cs1</option>
+      <option value="bancs2" >ban cs2</option>
+      <!-- mở rộng đầy đủ như 111 -->
       <option value="bannvcs1">bannv cs1</option>
       <option value="bannvcs2">bannv cs2</option>
-      <option value="nmcs1">nhapmua cs1</option>
-      <option value="nmcs2">nhapmua cs2</option>
-      <option value="xcncs1">xuat cn cs1</option>
-      <option value="xcncs2">xuat cn cs2</option>
-      <option value="ncncs1">nhap cn cs1</option>
-      <option value="ncncs2">nhap cn cs2</option>
+      <option value="nmcs1">nhập mua cs1</option>
+      <option value="nmcs2">nhập mua cs2</option>
+      <option value="xcncs1">xuất CN cs1</option>
+      <option value="xcncs2">xuất CN cs2</option>
+      <option value="ncncs1">nhập CN cs1</option>
+      <option value="ncncs2">nhập CN cs2</option>
       <option value="nhapkiem">nhập kiểm</option>
       <option value="xuatkiem">xuất kiểm</option>
       <option value="nhaptam">nhập tạm</option>
       <option value="nhapdoi">nhập đổi</option>
       <option value="tralaincc">trả lại NCC</option>
-      <!-- ... thêm các loại khác bạn có ở 111 -->
+      <!-- nếu còn loại khác, thêm ở đây -->
     </select>
 
     <select id="groupMode">
+      <option value="invoice">Chi tiết từng hóa đơn</option>
       <option value="day" selected>Tổng hợp theo ngày</option>
       <option value="month">Tổng hợp theo tháng</option>
       <option value="year">Tổng hợp theo năm</option>
-      <option value="invoice">Chi tiết từng hóa đơn</option>
+      
     </select>
 
     <select id="diadiem">
@@ -80,9 +86,9 @@
     <div class="row">
       <label for="pageSize">Số dòng/trang:</label>
       <select id="pageSize">
-        <option value="1000" selected>1.000</option>
+        <option value="10000">10.000</option>        
         <option value="5000">5.000</option>
-        <option value="10000">10.000</option>
+        <option value="1000" selected>1.000</option>        
       </select>
     </div>
 
@@ -141,15 +147,15 @@
     </div>
   </div>
 
-  <!-- Cách B: KHỞI TẠO SUPABASE GLOBAL như các trang cũ -->
+  <!-- Khởi tạo Supabase theo kiểu global (giống 111) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     window.supabase = window.supabase.createClient(
       'https://rddjrmbyftlcvrgzlyby.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM' // <-- thay bằng anon key thật
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'  /* thay bằng anon key thật */
     );
   </script>
 
-  <script src="scripts/xemhoadon222.js"></script>
+  <script src="xemhoadon222.js"></script>
 </body>
 </html>
