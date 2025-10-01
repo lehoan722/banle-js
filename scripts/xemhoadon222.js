@@ -3,9 +3,9 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // 2) Khởi tạo client (điền URL & anon key của bạn)
-const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';    // đổi nếu khác
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';                      // dán anon key của bạn
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 3) Phần còn lại giữ nguyên như cũ
 const qs = (s) => document.querySelector(s);
