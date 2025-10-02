@@ -479,7 +479,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return true;
     }
 
-    if (size45 && spData.chungloai && spData.chungloai.toLowerCase() === "gd") {
+    if (size45 && isQuanLySizeProduct && spData.chungloai && spData.chungloai.toLowerCase() === "gd") {
         const sizeInput = document.getElementById("size");
         if (!sizeInput.value.trim()) {
             sizeInput.focus();
@@ -494,8 +494,14 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     // === Các trường hợp khác (giữ nguyên) ===
     if (size45) {
+        if (isQuanLySizeProduct(spData)) {
+            // hàng quản-size (GD hoặc quanlykichco) thì KHÔNG chèn "0"
+            const sizeEl = document.getElementById("size");
+            sizeEl.focus(); sizeEl.select?.();
+            return true;
+        }
         document.getElementById("soluong").value = "1";
-        themVaoBang("0");
+        themVaoBang("0"); // chỉ dành cho hàng KHÔNG quản-size
     } else {
         const nextId = nhapNhanh ? "size" : "soluong";
         const nextInput = document.getElementById(nextId);
