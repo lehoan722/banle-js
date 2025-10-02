@@ -294,16 +294,7 @@
           const rIdx = this.rows.length;
           const c1 = makeCell(neck);
           const c2 = makeCell(alpha);
-          const c3el = makeCell(c3 || '');
-
-          // để hover toàn hàng
-          [c1, c2, c3el].forEach(c => {
-            c.dataset.index = rIdx;
-            c.style.cursor = 'pointer';
-            c.addEventListener('mouseenter', () => this.highlight(rIdx));
-            c.addEventListener('mousedown', (e) => e.preventDefault()); // không làm mất focus input
-            c.addEventListener('click', () => this.pick(rIdx));
-          });
+          const c3el = makeCell(c3 || '');          
 
           this.list.appendChild(c1);
           this.list.appendChild(c2);
