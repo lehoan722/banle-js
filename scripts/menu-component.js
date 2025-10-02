@@ -228,234 +228,6 @@
       left.appendChild(g);
     });
 
-    // ===== Size Dropdown (3 cột) – áp dụng toàn hệ thống thông qua MenuComponent =====
-    let __sizeDDInited = false;
-    let __sizeDD;     // instance dropdown
-    let __sizeInput;  // tham chiếu ô #size
-
-    // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
-    const SIZE_ROWS = [
-      [38, 'S',  48],
-      [39, 'M',  ''],
-      [40, 'L',  50],
-      [41, 'XL', ''],
-      [42, '2X', 52],
-      [43, '3X', ''],
-      [44, '4X', 54],
-      [45, '5X', '']
-    ];
-
-    class SizeDropdown {
-      constructor() {
-        this.root = document.createElement('div');
-        this.root.id = 'sizeDropdown';
-        Object.assign(this.root.style, {
-          position: 'fixed',
-          zIndex: 10001,
-          display: 'none',
-          background: '#fff',
-          border: '1px solid #d1d5db',
-          boxShadow: '0 8px 24px rgba(0,0,0,.14)',
-          borderRadius: '10px',
-          padding: '6px',
-          minWidth: '260px',
-          maxHeight: '280px',
-          overflow: 'auto',
-          fontSize: '14px',
-          lineHeight: 1.35
-        });
-
-        const head = document.createElement('div');
-        head.textContent = 'Bảng quy đổi vòng cổ → size chữ';
-        head.style.fontWeight = '600';
-        head.style.padding = '4px 6px 6px';
-        this.root.appendChild(head);
-
-        this.list = document.createElement('div');
-        this.list.setAttribute('role', 'listbox');
-        this.list.style.display = 'grid';
-        this.list.style.gridTemplateColumns = '1fr 1fr 1fr';
-        this.list.style.gap = '0';
-        this.root.appendChild(this.list);
-
-        const mkHeadCell = (txt) => {
-          const c = document.createElement('div');
-          c.textContent = txt;
-          c.style.fontWeight = '600';
-          c.style.borderBottom = '1px solid #e5e7eb';
-          c.style.padding = '6px 8px';
-          c.style.textAlign = 'center';
-          return c;
-        };
-        this.list.appendChild(mkHeadCell('Vòng cổ'));
-        this.list.appendChild(mkHeadCell('Size'));
-        this.list.appendChild(mkHeadCell('Cột 3'));
-
-        this.rows = [];
-        for (const [neck, alpha, c3] of SIZE_ROWS) {
-          const makeCell = (txt) => {
-            const c = document.createElement('div');
-            c.textContent = txt;
-            c.style.padding = '8px 8px';
-            c.style.textAlign = 'center';
-            return c;
-          };
-
-          const rIdx = this.rows.length;
-          const c1 = makeCell(neck);
-          const c2 = makeCell(alpha);
-          const c3el = makeCell(c3 || '');
-
-          [c1, c2, c3el].forEach(c => {
-            c.dataset.index = rIdx;
-            c.style.cursor = 'pointer';
-            c.addEventListener('mouseenter', () => this.highlight(rIdx));
-            c.addEventListener('mousedown', (e) => e.preventDefault());
-            c.addEventListener('click', () => this.pick(rIdx));
-          });
-
-          this.list.appendChild(c1);
-          this.list.appendChild(c2);
-          this.list.appendChild(c3el);
-
-          this.rows.push({ neck, alpha, c3, cells: [c1, c2, c3el] });
-        }
-
-        document.body.appendChild(this.root);
-        this.active = -1;
-        this.onPick = null;
-
-        document.addEventListener('mousedown', (e) => {
-          if (this.root.style.display === 'none') return;
-          if (!this.root.contains(e.target) && e.target !== __sizeInput) {
-            this.close();
-          }
-        });
-      }
-
-      openFor(inputEl) {
-        const r = inputEl.getBoundingClientRect();
-        const top = r.bottom + 8;
-        const left = Math.min(r.left, window.innerWidth - Math.max(280, r.width));
-        this.root.style.top = `${top}px`;
-        this.root.style.left = `${left}px`;
-        this.root.style.minWidth = `${Math.max(260, r.width)}px`;
-        this.root.style.display = 'block';
-        this.highlight(this.findIndexByValue(Number(inputEl.value)) ?? 0);
-      }
-
-      close() { this.root.style.display = 'none'; }
-      isOpen() { return this.root.style.display !== 'none'; }
-
-      highlight(idx) {
-        if (idx < 0 || idx >= this.rows.length) return;
-        if (this.active !== -1) {
-          this.rows[this.active].cells.forEach(c => c.style.background = '');
-        }
-        this.active = idx;
-        this.rows[idx].cells.forEach(c => c.style.background = '#f3f4f6');
-        this.rows[idx].cells[0].scrollIntoView({ block: 'nearest' });
-      }
-
-      move(delta) {
-        if (!this.isOpen()) return;
-        let idx = this.active + delta;
-        if (idx < 0) idx = 0;
-        if (idx >= this.rows.length) idx = this.rows.length - 1;
-        this.highlight(idx);
-      }
-
-      pick(idx = this.active) {
-        if (idx < 0 || idx >= this.rows.length) return;
-        const value = this.rows[idx].neck;
-        if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx]);
-        this.close();
-      }
-
-      findIndexByValue(v) {
-        const i = this.rows.findIndex(r => r.neck === v);
-        return i >= 0 ? i : null;
-      }
-    }
-
-    function initGlobalSizeDropdown() {
-      if (__sizeDDInited) return;
-      __sizeDDInited = true;
-
-      const boot = () => {
-        const masp = document.getElementById('masp');
-        __sizeInput = document.getElementById('size');
-        if (!__sizeInput) return;
-
-        __sizeDD = new SizeDropdown();
-        __sizeDD.onPick = (val) => {
-          __sizeInput.value = String(val);
-          __sizeInput.dispatchEvent(new Event('input',  { bubbles: true }));
-          __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
-          __sizeInput.focus();
-          __sizeInput.select();
-          const keydownEnter = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
-          const keyupEnter   = new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true });
-          setTimeout(() => { __sizeInput.dispatchEvent(keydownEnter); __sizeInput.dispatchEvent(keyupEnter); }, 0);
-        };
-
-        function syncHighlightFromInput() {
-          const raw = (__sizeInput.value || '').replace(/[^\d]/g, '');
-          if (raw !== __sizeInput.value) __sizeInput.value = raw;
-          const v = Number(raw);
-          const idx = __sizeDD.findIndexByValue(v);
-          if (idx !== null) __sizeDD.highlight(idx);
-        }
-
-        if (masp) {
-          masp.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              __sizeInput.focus();
-              __sizeInput.select();
-              __sizeDD.openFor(__sizeInput);
-              syncHighlightFromInput();
-            }
-          });
-        }
-
-        __sizeInput.addEventListener('focus', () => { __sizeDD.openFor(__sizeInput); syncHighlightFromInput(); });
-        __sizeInput.addEventListener('click', () => { __sizeDD.openFor(__sizeInput); syncHighlightFromInput(); });
-
-        __sizeInput.addEventListener('input', syncHighlightFromInput);
-
-        __sizeInput.addEventListener('keydown', (e) => {
-          if (!__sizeDD.isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-            __sizeDD.openFor(__sizeInput);
-            syncHighlightFromInput();
-            e.preventDefault();
-            return;
-          }
-          switch (e.key) {
-            case 'ArrowDown': __sizeDD.move(1); e.preventDefault(); break;
-            case 'ArrowUp':   __sizeDD.move(-1); e.preventDefault(); break;
-            case 'Enter':
-              syncHighlightFromInput();
-              if (__sizeDD.isOpen()) { __sizeDD.pick(); e.preventDefault(); }
-              break;
-            case 'Escape': __sizeDD.close(); break;
-            default:
-              setTimeout(syncHighlightFromInput, 0);
-          }
-        });
-
-        __sizeInput.addEventListener('blur', () => {
-          setTimeout(() => __sizeDD.close(), 120);
-        });
-      };
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot, { once: true });
-      } else {
-        boot();
-      }
-    }
-
     
     // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
@@ -474,9 +246,6 @@
     });
 
     right.appendChild(refresh);
-    // Bật dropdown size cho tất cả trang đang dùng MenuComponent
-    initGlobalSizeDropdown();
-
 
     wrap.appendChild(left);
     wrap.appendChild(right);
@@ -543,3 +312,53 @@
   global.MenuComponent = { mount, buildCsvUrl, clearCache };
 })(window);
 
+
+
+// ================= PATCHED DROPDOWN ENTER-GUARD =================
+// Bản vá: chống chồng chéo Enter giữa scanner và Enter giả lập
+
+// Guard variables
+const ENTER_DELAY_MS = 180;
+const ENTER_WINDOW_MS = 180;
+let __lastTrustedEnterAt = 0;
+
+function syncHighlightFromInput() {
+  const raw = (__sizeInput.value || '').replace(/[^\d]/g, '');
+  if (raw !== __sizeInput.value) __sizeInput.value = raw;
+  const v = Number(raw);
+  const idx = __sizeDD.findIndexByValue(v);
+  if (idx !== null) __sizeDD.highlight(idx);
+}
+
+// Capture Enter "thật"
+if (typeof __sizeInput !== 'undefined' && __sizeInput) {
+  __sizeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.isTrusted) {
+      __lastTrustedEnterAt = Date.now();
+    }
+  }, true);
+}
+
+// Modified onPick
+__sizeDD.onPick = (val, row, source) => {
+  __sizeInput.value = String(val);
+  __sizeInput.dispatchEvent(new Event('input',  { bubbles: true }));
+  __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
+  __sizeInput.focus();
+  __sizeInput.select();
+
+  if (source === 'mouse') {
+    const plannedValue = __sizeInput.value;
+    setTimeout(() => {
+      if (Date.now() - __lastTrustedEnterAt <= ENTER_WINDOW_MS) return;
+      if (document.activeElement !== __sizeInput) return;
+      if (!__sizeInput.value || __sizeInput.value.trim() === '') return;
+      if (__sizeInput.value !== plannedValue) return;
+      const kd = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
+      const ku = new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true });
+      __sizeInput.dispatchEvent(kd);
+      __sizeInput.dispatchEvent(ku);
+    }, ENTER_DELAY_MS);
+  }
+};
+// ================= END PATCH =================
