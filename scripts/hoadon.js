@@ -479,12 +479,12 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         return true;
     }
 
-    if (size45 && isQuanLySizeProduct && spData.chungloai && spData.chungloai.toLowerCase() === "gd") {
+    if (size45 && isQuanLySizeProduct(spData)) {
         const sizeInput = document.getElementById("size");
         if (!sizeInput.value.trim()) {
             sizeInput.focus();
             sizeInput.select();
-            window.soundWaitSize?.();
+            window.soundWaitSize?.(); // 🔔 Beep chờ size — giữ nguyên như GD
             return true;
         }
         document.getElementById("soluong").value = "1";
