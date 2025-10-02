@@ -267,7 +267,7 @@
 
         // header
         const head = document.createElement('div');
-        head.textContent = 'Bảng quy đổi vòng cổ → size chữ';
+        head.textContent = 'cach đổi size';
         head.style.fontWeight = '600';
         head.style.padding = '4px 6px 6px';
         this.root.appendChild(head);
