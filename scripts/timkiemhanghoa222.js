@@ -1,5 +1,4 @@
 import { supabase } from "./supabaseClient.js";
-import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
 window.dangNhap = async function () {
@@ -53,99 +52,6 @@ window.closePopupSearch = function () {
 document.getElementById('popupSearchInput').addEventListener('input', function () {
     searchPopup(this.value.trim());
 });
-
-// ====== BUFFER QUÉT MÃ (giữ qua các lần đóng/mở) ======
-window.scanBuffer = window.scanBuffer || []; // không xóa khi đóng modal
-
-function normCode(s) {
-    return (s || "").trim().toUpperCase();
-}
-
-//Gọi rung trong addToScanBuffer + Flash + Toast
-function addToScanBuffer(raw) {
-    const code = normCode(raw);
-    if (!code) return false;
-
-    showFlash();
-
-    if (!window.scanBuffer.includes(code)) {
-        window.scanBuffer.unshift(code);
-        renderScanBuffer();
-        showToast(`✅ Đã quét ${code}`, 'info');
-        haptic(70);
-        playSuccessBeep();   // ✅ beep khi mã mới
-        return true;
-    } else {
-        showToast(`⚠️ Mã ${code} đã tồn tại`, 'warn');
-        haptic([40, 80, 40]);
-        playAlertBeep();     // ⚠️ beep cảnh báo khi trùng
-        return false;
-    }
-}
-
-
-// ====== FEEDBACK QUÉT ======
-function showFlash() {
-    const flash = document.getElementById('flashOverlay');
-    if (!flash) return;
-    flash.style.opacity = '1';
-    setTimeout(() => { flash.style.opacity = '0'; }, 120); // 120ms chớp
-}
-
-function showToast(msg, type = 'info') {
-    const toast = document.getElementById('toastMsg');
-    if (!toast) return;
-    toast.textContent = msg;
-    toast.style.background = type === 'warn' ? 'rgba(211,47,47,0.9)' : 'rgba(25,118,210,0.9)';
-    toast.style.opacity = '1';
-    setTimeout(() => { toast.style.opacity = '0'; }, 1800); // tự ẩn sau 1.8s
-}
-
-// ====== HAPTIC (rung) ======
-function haptic(pattern = 60) {
-    try {
-        // Android Chrome hỗ trợ tốt; iOS Safari có thể bỏ qua (không lỗi)
-        if (navigator.vibrate) navigator.vibrate(pattern);
-    } catch (_) { }
-}
-
-function removeFromScanBufferAt(idx) {
-    if (idx >= 0 && idx < window.scanBuffer.length) {
-        window.scanBuffer.splice(idx, 1);
-        renderScanBuffer();
-    }
-}
-
-function clearScanBuffer() {
-    window.scanBuffer = [];
-    renderScanBuffer();
-}
-
-// Đẩy buffer → textarea (mỗi mã 1 dòng, mã mới ở trên) rồi gọi tìm kiếm
-function flushScanBufferToTextareaAndSearch() {
-    const ta = document.getElementById('bulkTextarea');
-    if (!ta) return;
-
-    const existing = (ta.value || "")
-        .split(/[\r\n]+/)
-        .map(normCode)
-        .filter(Boolean);
-
-    // Loại phần trùng với buffer để không lặp
-    const existingFiltered = existing.filter(c => !window.scanBuffer.includes(c));
-    // Mã mới ở trên, giữ thứ tự như trong buffer
-    const merged = [...window.scanBuffer, ...existingFiltered];
-
-    ta.value = merged.join('\n');
-    ta.scrollTop = 0;
-
-    // đóng modal quét nhưng KHÔNG xóa buffer (theo yêu cầu)
-    closeScanner();
-
-    // gọi tìm kiếm 1 lần cho tất cả
-    triggerSearch();
-}
-
 
 async function searchPopup(keyword) {
     const type = window.currentPopupType;
@@ -285,10 +191,11 @@ async function triggerSearch(_masp = null) {
     multi.innerHTML = "";
 
     multi.innerHTML = "";
-    const hotList = [];
     for (const m of productWithXNT) {
         const html = await renderProductDetailHTML(m);
         const wrap = document.createElement("div");
+        wrap.style.marginBottom = "32px";
+        wrap.style.borderBottom = "1px dashed #90caf9";
         wrap.innerHTML = html;
         multi.appendChild(wrap);
 
@@ -297,18 +204,15 @@ async function triggerSearch(_masp = null) {
         const rowMap = window.XNT_ROW_MAPS[m];
         if (el && rowMap) {
             const hot = initXntHot(el, rowMap, m);
-            hotList.push(hot);
+            // ép render lại ngay sau khi DOM ổn định
+            setTimeout(() => {
+                try {
+                    hot.render();
+                    hot.refreshDimensions();
+                } catch (e) { }
+            }, 0);
         }
     }
-
-    requestAnimationFrame(() => {
-        for (const hot of hotList) {
-            try {
-                hot.refreshDimensions();
-                hot.render();
-            } catch (e) { }
-        }
-    });
 
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
@@ -547,7 +451,6 @@ function getQuery(name) {
 // ==== QUÉT MÃ VẠCH / QR BẰNG CAMERA (hỗ trợ iPhone) ====
 let ZXING = null, codeReader = null, scanControls = null;
 let torchOn = false;
-let track = null; // giữ MediaStreamTrack hiện tại để bật/tắt torch
 
 async function ensureZXing() {
     if (ZXING) return;
@@ -603,17 +506,11 @@ async function startScanner(deviceId) {
     };
 
     try {
-
         if (deviceId) {
+            // mở trực tiếp theo deviceId đã chọn (cực rộng)
             scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
         } else {
             scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
-        }
-
-        // Lưu track video để bật/tắt torch
-        const stream = videoEl.srcObject;
-        if (stream) {
-            track = stream.getVideoTracks()[0] || null;
         }
 
         // cố gắng bật continuous-focus (nếu hỗ trợ)
@@ -729,18 +626,21 @@ async function resizeToStandardBlob(file) {
     ));
 }
 
-//gọi addToScanBuffer thôi, KHÔNG đóng, KHÔNG tìm:
+
 function onScanResult(result, err, controls) {
     if (result) {
         const text = result.getText ? result.getText() : (result.rawValue || '');
         if (text) {
-            addToScanBuffer(text);
-            // KHÔNG closeScanner(), KHÔNG triggerSearch() ở đây
+            try { navigator.vibrate?.(80); } catch (_) { }
+            // ĐẨY VÀO TEXTAREA (dòng đầu tiên) THAY VÌ maspInput
+            prependToBulkTextarea(text);
+            closeScanner();
+            // Gọi tìm kiếm dựa trên danh sách trong textarea
+            triggerSearch();
         }
     }
-    // lỗi decode thì bỏ qua
+    // Lỗi decode lặt vặt: bỏ qua để tiếp tục quét
 }
-
 
 
 async function stopScanner() {
@@ -769,17 +669,20 @@ async function populateCameraList() {
 }
 
 
+
 async function switchCamera(deviceId) {
     await stopScanner();
     await startScanner(deviceId);
 }
 
-
 async function toggleTorch() {
+    const v = document.getElementById('scannerVideo');
+
     if (!track) return;
 
     try {
         torchOn = !torchOn;
+        // iOS 17.4+ có thể hỗ trợ; không phải máy nào cũng được → bọc try/catch
         await track.applyConstraints({ advanced: [{ torch: torchOn }] });
         document.getElementById('flashBtn').textContent = torchOn ? '🔦 Tắt đèn' : '🔦 Đèn';
     } catch (e) {
@@ -787,7 +690,6 @@ async function toggleTorch() {
         torchOn = false;
     }
 }
-
 
 async function decodeFromFile(file) {
     if (!file) return;
@@ -798,9 +700,10 @@ async function decodeFromFile(file) {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
         if (text) {
-            addToScanBuffer(text);        // ✅ thêm vào buffer
-            renderScanBuffer();           // cập nhật panel
-            return;                       // ❌ KHÔNG đóng, KHÔNG tìm tại đây
+            prependToBulkTextarea(text);
+            closeScanner();
+            triggerSearch();
+            return;
         }
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } catch (e) {
@@ -817,53 +720,6 @@ async function decodeFromFile(file) {
 window.openScanner = async function () {
     try { document.activeElement?.blur(); } catch (_) { } // tránh Live Text chiếm camera
     document.getElementById('scannerModal').style.display = 'block';
-    // Đặt modal “đè” toàn màn hình, đảm bảo z-index cao
-    const modal = document.getElementById('scannerModal');
-    Object.assign(modal.style, {
-        position: 'fixed',
-        inset: '0',               // top/right/bottom/left = 0
-        zIndex: '9999',
-    });
-
-    // Thu nhỏ khung quét để chừa chỗ cho panel
-    const video = document.getElementById('scannerVideo');
-    if (video) {
-        video.style.maxWidth = '72vw';
-        video.style.maxHeight = '62vh';
-        video.style.borderRadius = '10px';
-        video.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)';
-    }
-
-    // ====== PANEL BUFFER TRONG GIAO DIỆN QUÉT ======
-    let panel = document.getElementById('scanSidePanel');
-    if (!panel) {
-        panel = document.createElement('div');
-        panel.id = 'scanSidePanel';
-        panel.style.cssText = `
-    position:absolute; right:10px; top:10px;
-    width:min(42vw, 300px); max-height:70vh; overflow:auto;
-    background:#ffffffee; backdrop-filter:saturate(180%) blur(6px);
-    border:1px solid #cfd8dc; border-radius:10px; padding:10px;
-    z-index:10001; box-shadow:0 6px 22px rgba(0,0,0,.15);
-  `;
-        panel.innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
-    <div id="scanBufferBox" style="max-height:40vh; overflow:auto; border:1px dashed #90caf9; border-radius:6px; padding:6px; background:#fff"></div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="scanClearBtn"  style="background:#ffeaea; color:#c62828; border:1px solid #ef9a9a; padding:8px 10px; border-radius:6px; cursor:pointer;">Xoá hết</button>
-      <button id="scanCloseBtn"  style="background:#eceff1; color:#37474f; border:1px solid #cfd8dc; padding:8px 10px; border-radius:6px; cursor:pointer;">Đóng</button>
-      <button id="scanCommitBtn" style="flex:1; background:#1976d2; color:#fff; border:none; padding:8px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Tìm kiếm</button>
-    </div>
-  `;
-        modal.appendChild(panel);
-
-        panel.querySelector('#scanCommitBtn').onclick = flushScanBufferToTextareaAndSearch;
-        panel.querySelector('#scanClearBtn').onclick = clearScanBuffer;
-        panel.querySelector('#scanCloseBtn').onclick = () => { closeScanner(); /* KHÔNG xoá buffer */ };
-    }
-    renderScanBuffer();
-
-
     const status = document.getElementById('scannerStatus');
     status.textContent = 'Đang chuẩn bị camera...';
 
@@ -884,25 +740,6 @@ window.openScanner = async function () {
     }
 };
 
-function renderScanBuffer() {
-    const box = document.getElementById('scanBufferBox');
-    if (!box) return;
-    if (!window.scanBuffer.length) {
-        box.innerHTML = `<div class="empty">Chưa có mã nào.</div>`;
-        return;
-    }
-    box.innerHTML = window.scanBuffer
-        .map((c, i) => `
-      <div class="scan-item">
-        <span class="code">${c}</span>
-        <button class="del" data-idx="${i}">×</button>
-      </div>
-    `).join('');
-    // gắn click xóa từng mã
-    box.querySelectorAll('.del').forEach(btn => {
-        btn.onclick = () => removeFromScanBufferAt(+btn.dataset.idx);
-    });
-}
 
 
 window.closeScanner = async function () {
@@ -934,8 +771,6 @@ const _oldOnload = window.onload;
 window.onload = async function () {
     // giữ hành vi cũ: kiểm tra session và ẩn/hiện box đăng nhập
     if (typeof _oldOnload === "function") await _oldOnload();
-    // 🔊 mở khóa audio một lần cho iOS/Safari
-    try { setupBeepUnlockOnce(document); } catch (_) { }
 
     // nhận mã từ URL và tìm kiếm luôn
     const q = getQuery("masp");
