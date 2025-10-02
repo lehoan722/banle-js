@@ -474,7 +474,8 @@
             </div>
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
-            <input id="size" placeholder="SIZE" />
+           
+            <input id="size" placeholder="SIZE" , title: Làm mới menu (bỏ qua cache) />
             <input id="gia" placeholder="Giá SP" />
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
@@ -844,15 +845,7 @@
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-
-        // Nhấn F2 trong ô mã khách cũng bật popup
-        document.getElementById('makh').addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                showPopupTimKH();
-            }
-        });
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;       
 
         // Hàm show popup
         function showPopupTimKH() {
