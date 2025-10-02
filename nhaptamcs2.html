@@ -1064,7 +1064,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs2");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1252,7 +1252,7 @@
                 });
             });
 
-            const payload = { source: "nhap-hd", cs: "cs1", items };
+            const payload = { source: "nhap-hd", cs: "cs2", items };
             const json = JSON.stringify(payload);
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
