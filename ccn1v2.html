@@ -369,14 +369,13 @@
 </head>
 
 <body>
-
     <style>
         .menu-bar {
             background: #0088cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
-            color: white;
+            color: rgb(42, 11, 245);
             position: relative;
             z-index: 1000;
         }
@@ -463,44 +462,11 @@
             <input id="tennv" placeholder="Tên NV" readonly />
 
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-        </div>
-        <div class="menu-item">
-
-            <span class="menu-link">📁 Báo cáo hóa đơn</span>
-            <div class="dropdown-content">
-
-                <a href="xemhoadonT.html" target="_blank">Xem hóa đơn tạm</a>
-
-                <a href="inmavachcs2.html" target="_blank">in mã vạch cs2</a>
-                <a href="inmavachcs1.html" target="_blank">in mã vạch cs1</a>
-                <a href="nhapdmhanghoa.html" target="_blank">nhap dm hang hoa</a>
-                <a href="baocaohoadon.html" target="_blank">Báo cáo tổng hợp</a>
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 Báo cáo nhập hàng</span>
-            <div class="dropdown-content">
-                <a href="banlemt.html" target="_blank">HOA DON BAN LE</a>
-                <a href="nhapmoimt.html" target="_blank">HOA DON NHAP MOI</a>
-                <a href="ccn1v2.html" target="_blank">CHUYEN CN 1V2</a>
-                <a href="ccn2v1.html" target="_blank">CHUYEN CN 2v1</a>
-                <a href="nhapdoikh.html" target="_blank">NHAP DOI TU KHACH</a>
-                <a href="tralaincc.html" target="_blank">TRA LAI NHA CC</a>
-                <a href="xuathuy.html" target="_blank">XUAT HUY HANG HONG</a>
-                <a href="kiemkho.html" target="_blank">PHIEU KIEM KHO</a>
-
-
-            </div>
-        </div>
-        <div class="menu-item">
-            <span class="menu-link">📦 Hóa đơn bán lẻ</span>
-            <div class="dropdown-content">
-                <a href="nhaphang1.html" target="_blank">Chi tiết nhập hàng CS1</a>
-                <a href="nhaphang2.html" target="_blank">Chi tiết nhập hàng CS2</a>
-                <a href="baocaonhap.html" target="_blank">Tổng hợp nhập theo ngày</a>
-            </div>
-        </div>
-
+        </div>     
+        
+        <div id="app-menu" class="menu-item"></div>
+        <!--
+        <label>Giờ <input id="gio" /></label> -->
 
     </div>
 
@@ -789,7 +755,7 @@
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-         window.diadiem = "cs1"; // Không phụ thuộc localStorage nữa
+        window.diadiem = "cs1"; // Không phụ thuộc localStorage nữa
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';  // <-- Thay url dự án của bạn nếu khác
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
@@ -974,8 +940,27 @@
             }
             // ===============================================
         }
+    </script>
 
+    <script src="scripts/menu-component.js"></script>
 
+    <script>
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+
+        // Bạn đã cung cấp:
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_NAME = 'menubanlemt';
+
+        MenuComponent.mount({
+            el: '#app-menu',
+            sheetId: SHEET_ID,
+            sheetName: SHEET_NAME,
+            cs,
+            manv,
+            cacheTtlMin: 30 // TTL cache 30 phút
+        });
     </script>
 
     <script type="module">
@@ -1107,18 +1092,7 @@
         });
 
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
-    </script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const img = document.querySelector('.menu-bar');
-            if (img) {
-                img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xembaocao.html', '_blank');
-                });
-            }
-        });
-    </script>
+    </script>   
 
     <script>
         // goi phím F2
@@ -1129,10 +1103,10 @@
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
-         document.getElementById('btn-sua')?.addEventListener('click', () => {
-    const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-    (document.body || document.documentElement).dispatchEvent(ev);
-  });        
+        document.getElementById('btn-sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            (document.body || document.documentElement).dispatchEvent(ev);
+        });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
