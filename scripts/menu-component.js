@@ -290,9 +290,9 @@
           c.style.textAlign = 'center';
           return c;
         };
-        this.list.appendChild(mkHeadCell('Vòng cổ'));
+        this.list.appendChild(mkHeadCell('GD,SM'));
         this.list.appendChild(mkHeadCell('Size'));
-        this.list.appendChild(mkHeadCell('Cột 3'));
+        this.list.appendChild(mkHeadCell('KHOAC'));
 
         // data rows
         this.rows = [];
