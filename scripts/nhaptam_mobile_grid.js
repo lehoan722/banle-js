@@ -120,13 +120,15 @@
     const sp = await ensureSanPhamLoaded(masp);
     if (!sp) return false;
 
-    const isGD = String(sp.chungloai || '').trim().toLowerCase() === 'gd';
+    const isGD = String(sp.chungloai || '').trim().toUpperCase() === 'GD';
+    const isQL = sp.quanlykichco === true;               // ✅ thêm cờ quanlykichco
     const giaSP = Number(sp.giale) || 0;
 
     const size45On = !!document.getElementById('size45')?.checked;
     const qlTheoNhomOn = !!document.getElementById('quanlysizetheonhom')?.checked;
     const qlTheoGiaOn = !!document.getElementById('quanlysizetheogia')?.checked;
 
+    // Giữ logic nhóm như cũ
     let groupRequires = false;
     if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom instanceof Map) {
       const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
@@ -136,9 +138,14 @@
           || String(nhom.diadiem).toUpperCase() === here);
       }
     }
-    const managedByGia = qlTheoGiaOn && (isGD || giaSP >= 170000);
-    const managedByFlag = size45On && isGD;
 
+    // ✅ “Cửa cờ” size45: trước đây chỉ ép GD, giờ ép cả GD || quanlykichco
+    const managedByFlag = size45On && (isGD || isQL);
+
+    // ✅ “Cửa theo giá”: coi quanlykichco giống GD
+    const managedByGia = qlTheoGiaOn && (isGD || isQL || giaSP >= 170000);
+
+    // Bất kỳ cửa nào đúng → dòng đó là “quản size” (mở ô 38..45, khoá size 0)
     return groupRequires || managedByGia || managedByFlag;
   }
 
