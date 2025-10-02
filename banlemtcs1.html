@@ -17,7 +17,7 @@
 
     <style>
         body {
-            font-family: Arial; 
+            font-family: Arial;
             margin: 0;
             height: 100%;
         }
@@ -458,7 +458,7 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label> -->        
+        <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
@@ -474,8 +474,7 @@
             </div>
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
-           
-            <input id="size" placeholder="SIZE" , title: Làm mới menu (bỏ qua cache) />
+            <input id="size" placeholder="SIZE" />
             <input id="gia" placeholder="Giá SP" />
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
@@ -845,7 +844,7 @@
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;       
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -1134,6 +1133,101 @@
                 });
             }
 
+        });
+    </script>
+
+    <script>
+        /** ====== BẢNG QUY ĐỔI SIZE ÁO: VÒNG CỔ → SIZE CHỮ ======
+         * 38 → S, 39 → M, 40 → L, 41 → XL, 42 → 2X, 43 → 3X, 44 → 4X, 45 → 5X
+         * Dùng để hiển thị tooltip & gợi ý cho nhân viên.
+         */
+        const SHIRT_NECK_TO_ALPHA = [
+            [38, 'S'], [39, 'M'], [40, 'L'], [41, 'XL'],
+            [42, '2X'], [43, '3X'], [44, '4X'], [45, '5X']
+        ];
+
+        // Nội dung tooltip nhiều dòng
+        const SIZE_TOOLTIP_TEXT = SHIRT_NECK_TO_ALPHA
+            .map(([n, a]) => `${n} → ${a}`)
+            .join('\n');
+
+        // --- Tooltip nổi tuỳ biến (đẹp hơn title mặc định) ---
+        let _sizeTooltipEl = null;
+        function showSizeTooltipNear(el) {
+            // tạo khối tooltip nếu chưa có
+            if (!_sizeTooltipEl) {
+                _sizeTooltipEl = document.createElement('div');
+                _sizeTooltipEl.id = 'sizeTooltipFloating';
+                _sizeTooltipEl.style.position = 'fixed';
+                _sizeTooltipEl.style.zIndex = '10001';
+                _sizeTooltipEl.style.background = '#fff';
+                _sizeTooltipEl.style.border = '1px solid #bbb';
+                _sizeTooltipEl.style.boxShadow = '0 6px 16px rgba(0,0,0,.12)';
+                _sizeTooltipEl.style.borderRadius = '8px';
+                _sizeTooltipEl.style.fontSize = '14px';
+                _sizeTooltipEl.style.lineHeight = '1.35';
+                _sizeTooltipEl.style.padding = '8px 10px';
+                _sizeTooltipEl.style.whiteSpace = 'pre'; // giữ \n
+                document.body.appendChild(_sizeTooltipEl);
+            }
+            _sizeTooltipEl.textContent = SIZE_TOOLTIP_TEXT;
+
+            const r = el.getBoundingClientRect();
+            const top = r.bottom + 6;            // dưới ô #size 6px
+            const left = Math.min(r.left, window.innerWidth - 220); // tránh tràn
+            _sizeTooltipEl.style.top = `${top}px`;
+            _sizeTooltipEl.style.left = `${left}px`;
+            _sizeTooltipEl.style.display = 'block';
+        }
+
+        function hideSizeTooltip() {
+            if (_sizeTooltipEl) _sizeTooltipEl.style.display = 'none';
+        }
+
+        // --- Gán sự kiện vào #masp & #size ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const masp = document.getElementById('masp');
+            const size = document.getElementById('size');
+            if (!masp || !size) return;
+
+            // gán title để hover hiển thị giống nút refresh menu
+            size.title = SIZE_TOOLTIP_TEXT;
+
+            // 1) Nhập mã SP → Enter → focus #size + bật tooltip
+            masp.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    size.focus();
+                    size.select();
+                    // hiển thị tooltip ngay khi focus
+                    showSizeTooltipNear(size);
+                }
+            });
+
+            // 2) Khi focus hoặc mouseenter vào #size -> hiện tooltip
+            size.addEventListener('focus', () => showSizeTooltipNear(size));
+            size.addEventListener('mouseenter', () => showSizeTooltipNear(size));
+
+            // 3) Khi rời #size hoặc mouseleave -> ẩn tooltip (trễ 150ms để dễ đọc)
+            ['blur', 'mouseleave'].forEach(evt => {
+                size.addEventListener(evt, () => {
+                    setTimeout(hideSizeTooltip, 150);
+                });
+            });
+
+            // 4) Nếu muốn tự động quy đổi khi người dùng gõ 38/39/... trong #size:
+            //    ví dụ gõ "40" rồi Enter thì tự ghi chú thích L sau ô (tuỳ chọn)
+            size.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const v = parseInt(size.value, 10);
+                    const found = SHIRT_NECK_TO_ALPHA.find(([n]) => n === v);
+                    if (found) {
+                        // hiển thị nhanh trong title để nhân viên biết mình đã đúng size
+                        size.title = `${SIZE_TOOLTIP_TEXT}\n\n-> Bạn chọn: ${v} (${found[1]})`;
+                    }
+                    hideSizeTooltip();
+                }
+            });
         });
     </script>
 
