@@ -659,7 +659,7 @@
             let maxTems = 40 - blank;
             let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
 
-            // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
+            // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ---- 
             let html = `<div class="print-preview" style="
         padding-top: ${PAGE_MARGIN_TOP_MM}mm;
         padding-left: ${PAGE_MARGIN_LEFT_MM}mm;
@@ -938,7 +938,7 @@
 
         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
         function openNhapFromItems(items) {
-            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+            const payload = { source: 'in-tem', cs: 'cs2', items }; // cs: bạn đổi cs2 nếu cần
             const json = JSON.stringify(payload);
             const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
