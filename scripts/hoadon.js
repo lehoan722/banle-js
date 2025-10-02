@@ -53,6 +53,12 @@ function parseMoneyInt(v) {
     return isNaN(n) ? 0 : n;
 }
 
+// === Helper: Sản phẩm có bắt buộc quản lý size không? (GD hoặc quanlykichco=true)
+function isQuanLySizeProduct(sp) {
+    if (!sp) return false;
+    const isGD = String(sp.chungloai || "").trim().toUpperCase() === "GD";
+    return isGD || sp.quanlykichco === true;
+}
 
 function recalcThanhtienFromForm() {
     const sl = toInt(document.getElementById("soluong")?.value || "1");
@@ -312,7 +318,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     /***** NHÁNH SỚM CHO CCN: nếu ít nhất một đầu quản-size → bắt nhập size *****/
     if (isCCNMode()) {
         try {
-            if (requireManagedInTransfer(maspVal)) {
+            if (requireManagedInTransfer(maspVal) || isQuanLySizeProduct(spData)) {  // ✅ thêm vế phải isQuanLySizeProduct
                 // Nếu người dùng có gõ hậu tố size thì đã điền sẵn #size ở trên
                 const sizeEl = document.getElementById("size");
                 if (!sizeEl.value.trim()) {
@@ -367,11 +373,12 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     // -------------- [NEW SIZE SUFFIX] TỰ ĐỘNG THÊM NẾU CÓ HẬU TỐ --------------
     // Tính xem hàng này hiện tại có thuộc diện "quản size" không
-    const isGD = String(spData.chungloai || "").trim().toLowerCase() === "gd";
+    const isGD = String(spData.chungloai || "").trim().toUpperCase() === "GD";
+    const isQLSize = isQuanLySizeProduct(spData);   // ✅ mới
     const giaHangHoa = Number(spData.giale) || 0;
 
     // trạng thái checkbox hiện tại
-    const size45On = !!size45; // tham số truyền vào từ UI
+    const size45On = !!size45;
     const qlSizeTheoGiaOn = !!quanlysizetheogia;
     const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
 
@@ -386,10 +393,10 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     }
 
     // theo giá: siết nếu là giày hoặc giá ≥ 170000
-    const managedByGia = qlSizeTheoGiaOn && (isGD || giaHangHoa >= 170000);
+    const managedByGia = qlSizeTheoGiaOn && (isQLSize || giaHangHoa >= 170000);  // ✅ dùng isQLSize
 
-    // Tổng điều kiện cần quản-size
-    const requireManagedSizeNow = (size45On && isGD) || groupRequires || managedByGia;
+    // Tổng điều kiện cần quản-size (size45 bật thì ép cho mọi mã quản-size)
+    const requireManagedSizeNow = (size45On && isQLSize) || groupRequires || managedByGia; // ✅ dùng isQLSize
 
     // --- thay thế toàn bộ khối này trong xuLyMaSanPham ---
     if (typedSize) {
@@ -536,12 +543,13 @@ export function themVaoBang(forcedSize = null, opts = {}) {
             }
 
             // size45 chỉ siết với giày; theo giá siết nếu là giày hoặc giale ≥ 170000
-            const isGD = String(sp.chungloai || "").trim().toLowerCase() === "gd";
+            const isGD = String(sp.chungloai || "").trim().toUpperCase() === "GD";
+            const isQLSize = isQuanLySizeProduct(sp);        // ✅ mới
             const giaHangHoa = Number(sp.giale) || 0;
-            const managedByGia = qlSizeTheoGiaOn && (isGD || giaHangHoa >= 170000);
+            const managedByGia = qlSizeTheoGiaOn && (isQLSize || giaHangHoa >= 170000); // ✅
 
             // 🔒 Chỉ khi thực sự thuộc diện quản lý size mới kiểm tra 38–45
-            const requireManagedSize = (size45On && isGD) || groupRequires || managedByGia;
+            const requireManagedSize = (size45On && isQLSize) || groupRequires || managedByGia;  // ✅
 
             if (requireManagedSize) {
                 const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
