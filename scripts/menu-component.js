@@ -38,14 +38,14 @@
     try {
       localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(data));
       localStorage.setItem(CACHE_KEY_TS, String(now()));
-    } catch { }
+    } catch {}
   }
 
   function clearCache() {
     try {
       localStorage.removeItem(CACHE_KEY_DATA);
       localStorage.removeItem(CACHE_KEY_TS);
-    } catch { }
+    } catch {}
   }
 
   // CSV parser đơn giản (hỗ trợ dấu phẩy trong "...")
@@ -235,9 +235,9 @@
 
     // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
     const SIZE_ROWS = [
-      [38, 'S', 48],
-      [39, 'M', ''],
-      [40, 'L', 50],
+      [38, 'S',  48],
+      [39, 'M',  ''],
+      [40, 'L',  50],
       [41, 'XL', ''],
       [42, '2X', 52],
       [43, '3X', ''],
@@ -265,14 +265,12 @@
           lineHeight: 1.35
         });
 
-        // header
         const head = document.createElement('div');
-        head.textContent = 'cach đổi size';
+        head.textContent = 'Bảng quy đổi vòng cổ → size chữ';
         head.style.fontWeight = '600';
         head.style.padding = '4px 6px 6px';
         this.root.appendChild(head);
 
-        // list
         this.list = document.createElement('div');
         this.list.setAttribute('role', 'listbox');
         this.list.style.display = 'grid';
@@ -280,7 +278,6 @@
         this.list.style.gap = '0';
         this.root.appendChild(this.list);
 
-        // header row
         const mkHeadCell = (txt) => {
           const c = document.createElement('div');
           c.textContent = txt;
@@ -290,11 +287,10 @@
           c.style.textAlign = 'center';
           return c;
         };
-        this.list.appendChild(mkHeadCell('GD,SM'));
+        this.list.appendChild(mkHeadCell('Vòng cổ'));
         this.list.appendChild(mkHeadCell('Size'));
-        this.list.appendChild(mkHeadCell('KHOAC'));
+        this.list.appendChild(mkHeadCell('Cột 3'));
 
-        // data rows
         this.rows = [];
         for (const [neck, alpha, c3] of SIZE_ROWS) {
           const makeCell = (txt) => {
@@ -310,12 +306,11 @@
           const c2 = makeCell(alpha);
           const c3el = makeCell(c3 || '');
 
-          // để hover toàn hàng
           [c1, c2, c3el].forEach(c => {
             c.dataset.index = rIdx;
             c.style.cursor = 'pointer';
             c.addEventListener('mouseenter', () => this.highlight(rIdx));
-            c.addEventListener('mousedown', (e) => e.preventDefault()); // không làm mất focus input
+            c.addEventListener('mousedown', (e) => e.preventDefault());
             c.addEventListener('click', () => this.pick(rIdx));
           });
 
@@ -330,7 +325,6 @@
         this.active = -1;
         this.onPick = null;
 
-        // click ngoài để đóng
         document.addEventListener('mousedown', (e) => {
           if (this.root.style.display === 'none') return;
           if (!this.root.contains(e.target) && e.target !== __sizeInput) {
@@ -351,7 +345,6 @@
       }
 
       close() { this.root.style.display = 'none'; }
-
       isOpen() { return this.root.style.display !== 'none'; }
 
       highlight(idx) {
@@ -361,7 +354,6 @@
         }
         this.active = idx;
         this.rows[idx].cells.forEach(c => c.style.background = '#f3f4f6');
-        // scroll into view nếu bị khuất
         this.rows[idx].cells[0].scrollIntoView({ block: 'nearest' });
       }
 
@@ -375,7 +367,7 @@
 
       pick(idx = this.active) {
         if (idx < 0 || idx >= this.rows.length) return;
-        const value = this.rows[idx].neck; // ghi cột 1 vào #size
+        const value = this.rows[idx].neck;
         if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx]);
         this.close();
       }
@@ -386,7 +378,6 @@
       }
     }
 
-    // Khởi tạo & gắn sự kiện toàn cục
     function initGlobalSizeDropdown() {
       if (__sizeDDInited) return;
       __sizeDDInited = true;
@@ -397,14 +388,25 @@
         if (!__sizeInput) return;
 
         __sizeDD = new SizeDropdown();
-        __sizeDD.onPick = (val /*, row */) => {
+        __sizeDD.onPick = (val) => {
           __sizeInput.value = String(val);
+          __sizeInput.dispatchEvent(new Event('input',  { bubbles: true }));
           __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
           __sizeInput.focus();
           __sizeInput.select();
+          const keydownEnter = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
+          const keyupEnter   = new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true });
+          setTimeout(() => { __sizeInput.dispatchEvent(keydownEnter); __sizeInput.dispatchEvent(keyupEnter); }, 0);
         };
 
-        // Từ #masp nhấn Enter -> focus #size + mở dropdown
+        function syncHighlightFromInput() {
+          const raw = (__sizeInput.value || '').replace(/[^\d]/g, '');
+          if (raw !== __sizeInput.value) __sizeInput.value = raw;
+          const v = Number(raw);
+          const idx = __sizeDD.findIndexByValue(v);
+          if (idx !== null) __sizeDD.highlight(idx);
+        }
+
         if (masp) {
           masp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -412,39 +414,36 @@
               __sizeInput.focus();
               __sizeInput.select();
               __sizeDD.openFor(__sizeInput);
+              syncHighlightFromInput();
             }
           });
         }
 
-        // Focus/Click vào #size -> mở dropdown
-        __sizeInput.addEventListener('focus', () => __sizeDD.openFor(__sizeInput));
-        __sizeInput.addEventListener('click', () => __sizeDD.openFor(__sizeInput));
+        __sizeInput.addEventListener('focus', () => { __sizeDD.openFor(__sizeInput); syncHighlightFromInput(); });
+        __sizeInput.addEventListener('click', () => { __sizeDD.openFor(__sizeInput); syncHighlightFromInput(); });
 
-        // Khi gõ phím trong #size: điều hướng ↑/↓, Enter chọn, Esc đóng
+        __sizeInput.addEventListener('input', syncHighlightFromInput);
+
         __sizeInput.addEventListener('keydown', (e) => {
           if (!__sizeDD.isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
             __sizeDD.openFor(__sizeInput);
+            syncHighlightFromInput();
             e.preventDefault();
             return;
           }
           switch (e.key) {
             case 'ArrowDown': __sizeDD.move(1); e.preventDefault(); break;
-            case 'ArrowUp': __sizeDD.move(-1); e.preventDefault(); break;
+            case 'ArrowUp':   __sizeDD.move(-1); e.preventDefault(); break;
             case 'Enter':
+              syncHighlightFromInput();
               if (__sizeDD.isOpen()) { __sizeDD.pick(); e.preventDefault(); }
               break;
             case 'Escape': __sizeDD.close(); break;
             default:
-              // Cho phép gõ tay (38–45). Nếu gõ xong trùng hàng -> auto highlight
-              setTimeout(() => {
-                const v = parseInt(__sizeInput.value, 10);
-                const idx = __sizeDD.findIndexByValue(v);
-                if (idx !== null) __sizeDD.highlight(idx);
-              }, 0);
+              setTimeout(syncHighlightFromInput, 0);
           }
         });
 
-        // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
         __sizeInput.addEventListener('blur', () => {
           setTimeout(() => __sizeDD.close(), 120);
         });
@@ -457,6 +456,7 @@
       }
     }
 
+    
     // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
     refresh.addEventListener("click", async () => {
@@ -485,10 +485,10 @@
 
     // Thêm banner nhỏ hiển thị cơ sở hiện tại
     //if (ctx.cs) {
-    //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
-    //banner.style.marginTop = "4px";
-    //hostEl.appendChild(banner);
-    // }
+      //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
+      //banner.style.marginTop = "4px";
+      //hostEl.appendChild(banner);
+   // }
   }
 
   function showError(msg, host) {
