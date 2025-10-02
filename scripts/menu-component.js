@@ -38,14 +38,14 @@
     try {
       localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(data));
       localStorage.setItem(CACHE_KEY_TS, String(now()));
-    } catch {}
+    } catch { }
   }
 
   function clearCache() {
     try {
       localStorage.removeItem(CACHE_KEY_DATA);
       localStorage.removeItem(CACHE_KEY_TS);
-    } catch {}
+    } catch { }
   }
 
   // CSV parser đơn giản (hỗ trợ dấu phẩy trong "...")
@@ -228,19 +228,16 @@
       left.appendChild(g);
     });
 
-    
-    
     // ===== Size Dropdown (3 cột) – áp dụng toàn hệ thống thông qua MenuComponent =====
     let __sizeDDInited = false;
     let __sizeDD;     // instance dropdown
     let __sizeInput;  // tham chiếu ô #size
-    let __maspInput;
 
     // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
     const SIZE_ROWS = [
-      [38, 'S',  48],
-      [39, 'M',  ''],
-      [40, 'L',  50],
+      [38, 'S', 48],
+      [39, 'M', ''],
+      [40, 'L', 50],
       [41, 'XL', ''],
       [42, '2X', 52],
       [43, '3X', ''],
@@ -319,7 +316,7 @@
             c.style.cursor = 'pointer';
             c.addEventListener('mouseenter', () => this.highlight(rIdx));
             c.addEventListener('mousedown', (e) => e.preventDefault()); // không làm mất focus input
-            c.addEventListener('click', () => this.pick(rIdx, 'mouse'));
+            c.addEventListener('click', () => this.pick(rIdx));
           });
 
           this.list.appendChild(c1);
@@ -376,10 +373,10 @@
         this.highlight(idx);
       }
 
-      pick(idx = this.active, source = 'mouse') {
+      pick(idx = this.active) {
         if (idx < 0 || idx >= this.rows.length) return;
         const value = this.rows[idx].neck; // ghi cột 1 vào #size
-        if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx], source);
+        if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx]);
         this.close();
       }
 
@@ -389,127 +386,68 @@
       }
     }
 
-    // ===== Guard chống chồng chéo Enter / scanner =====
-    const ENTER_DELAY_MS = 180;          // delay khi bắn Enter giả lập
-    const ENTER_WINDOW_MS = 180;         // khoảng thời gian coi Enter "vừa xảy ra"
-    let __lastTrustedEnterAt = 0;        // thời điểm Enter thật (do người dùng/scanner)
-
+    // Khởi tạo & gắn sự kiện toàn cục
     function initGlobalSizeDropdown() {
       if (__sizeDDInited) return;
       __sizeDDInited = true;
 
       const boot = () => {
-        __maspInput = document.getElementById('masp');
+        const masp = document.getElementById('masp');
         __sizeInput = document.getElementById('size');
         if (!__sizeInput) return;
 
         __sizeDD = new SizeDropdown();
-
-        function syncHighlightFromInput() {
-          const raw = (__sizeInput.value || '').replace(/[^\\d]/g, '');
-          if (raw !== __sizeInput.value) __sizeInput.value = raw;
-          const v = Number(raw);
-          const idx = __sizeDD.findIndexByValue(v);
-          if (idx !== null) __sizeDD.highlight(idx);
-        }
-
-        // Ghi nhận Enter thật (scanner / user)
-        __sizeInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && e.isTrusted) {
-            __lastTrustedEnterAt = Date.now();
-          }
-        }, true);
-
-        __sizeDD.onPick = (val, row, source) => {
-          // 1) Ghi size vào input
+        __sizeDD.onPick = (val /*, row */) => {
           __sizeInput.value = String(val);
-
-          // 2) Phát sự kiện
-          __sizeInput.dispatchEvent(new Event('input',  { bubbles: true }));
           __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-          // 3) Focus lại & select
           __sizeInput.focus();
           __sizeInput.select();
-
-          // 4) Chỉ giả lập Enter khi chọn bằng chuột
-          if (source === 'mouse') {
-            const plannedValue = __sizeInput.value;
-            setTimeout(() => {
-              if (Date.now() - __lastTrustedEnterAt <= ENTER_WINDOW_MS) return;
-              if (document.activeElement !== __sizeInput) return;
-              if (!__sizeInput.value || __sizeInput.value.trim() === '') return;
-              if (__sizeInput.value !== plannedValue) return;
-              const kd = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
-              const ku = new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true });
-              __sizeInput.dispatchEvent(kd);
-              __sizeInput.dispatchEvent(ku);
-            }, ENTER_DELAY_MS);
-          }
         };
 
-        // Từ #masp Enter -> focus size + mở dropdown
-        if (__maspInput) {
-          __maspInput.addEventListener('keydown', (e) => {
+        // Từ #masp nhấn Enter -> focus #size + mở dropdown
+        if (masp) {
+          masp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
               __sizeInput.focus();
               __sizeInput.select();
               __sizeDD.openFor(__sizeInput);
-              syncHighlightFromInput();
             }
           });
         }
 
         // Focus/Click vào #size -> mở dropdown
-        __sizeInput.addEventListener('focus', () => { 
-          __sizeDD.openFor(__sizeInput);
-          syncHighlightFromInput();
-        });
-        __sizeInput.addEventListener('click', () => { 
-          __sizeDD.openFor(__sizeInput);
-          syncHighlightFromInput();
-        });
+        __sizeInput.addEventListener('focus', () => __sizeDD.openFor(__sizeInput));
+        __sizeInput.addEventListener('click', () => __sizeDD.openFor(__sizeInput));
 
-        // Gõ input: sync realtime
-        __sizeInput.addEventListener('input', syncHighlightFromInput);
-
-        // Điều hướng & Enter trong input #size
+        // Khi gõ phím trong #size: điều hướng ↑/↓, Enter chọn, Esc đóng
         __sizeInput.addEventListener('keydown', (e) => {
           if (!__sizeDD.isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
             __sizeDD.openFor(__sizeInput);
-            syncHighlightFromInput();
             e.preventDefault();
             return;
           }
           switch (e.key) {
             case 'ArrowDown': __sizeDD.move(1); e.preventDefault(); break;
-            case 'ArrowUp':   __sizeDD.move(-1); e.preventDefault(); break;
-            case 'Enter': {
-              syncHighlightFromInput();
-              if (__sizeDD.isOpen()) {
-                const v = Number(__sizeInput.value);
-                const idx = __sizeDD.findIndexByValue(v);
-                if (idx !== null) {
-                  // Đã nhập đúng 38..45 (scanner/user) -> đóng, để Enter tự nhiên xử lý
-                  __sizeDD.close();
-                  return;
-                } else {
-                  // Không trùng -> dùng Enter để pick hàng đang highlight (kbd)
-                  __sizeDD.pick(undefined, 'kbd');
-                  e.preventDefault();
-                }
-              }
+            case 'ArrowUp': __sizeDD.move(-1); e.preventDefault(); break;
+            case 'Enter':
+              if (__sizeDD.isOpen()) { __sizeDD.pick(); e.preventDefault(); }
               break;
-            }
             case 'Escape': __sizeDD.close(); break;
             default:
-              setTimeout(syncHighlightFromInput, 0);
+              // Cho phép gõ tay (38–45). Nếu gõ xong trùng hàng -> auto highlight
+              setTimeout(() => {
+                const v = parseInt(__sizeInput.value, 10);
+                const idx = __sizeDD.findIndexByValue(v);
+                if (idx !== null) __sizeDD.highlight(idx);
+              }, 0);
           }
         });
 
-        // Blur input -> đóng dropdown (chờ 120ms để nhận click)
-        __sizeInput.addEventListener('blur', () => setTimeout(() => __sizeDD.close(), 120));
+        // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
+        __sizeInput.addEventListener('blur', () => {
+          setTimeout(() => __sizeDD.close(), 120);
+        });
       };
 
       if (document.readyState === 'loading') {
@@ -518,7 +456,8 @@
         boot();
       }
     }
-// Nút refresh
+
+    // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
     refresh.addEventListener("click", async () => {
       try {
@@ -535,9 +474,9 @@
     });
 
     right.appendChild(refresh);
+    // Bật dropdown size cho tất cả trang đang dùng MenuComponent
+    initGlobalSizeDropdown();
 
-    // Khởi tạo dropdown size toàn cục
-    try { initGlobalSizeDropdown(); } catch (e) { console.warn('initGlobalSizeDropdown failed', e); }
 
     wrap.appendChild(left);
     wrap.appendChild(right);
@@ -546,10 +485,10 @@
 
     // Thêm banner nhỏ hiển thị cơ sở hiện tại
     //if (ctx.cs) {
-      //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
-      //banner.style.marginTop = "4px";
-      //hostEl.appendChild(banner);
-   // }
+    //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
+    //banner.style.marginTop = "4px";
+    //hostEl.appendChild(banner);
+    // }
   }
 
   function showError(msg, host) {
