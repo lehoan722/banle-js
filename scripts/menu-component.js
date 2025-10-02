@@ -278,21 +278,7 @@
         this.list.style.display = 'grid';
         this.list.style.gridTemplateColumns = '1fr 1fr 1fr';
         this.list.style.gap = '0';
-        this.root.appendChild(this.list);
-
-        // header row
-        const mkHeadCell = (txt) => {
-          const c = document.createElement('div');
-          c.textContent = txt;
-          c.style.fontWeight = '600';
-          c.style.borderBottom = '1px solid #e5e7eb';
-          c.style.padding = '6px 8px';
-          c.style.textAlign = 'center';
-          return c;
-        };
-        this.list.appendChild(mkHeadCell('Vòng cổ'));
-        this.list.appendChild(mkHeadCell('Size'));
-        this.list.appendChild(mkHeadCell('Cột 3'));
+        this.root.appendChild(this.list);     
 
         // data rows
         this.rows = [];
