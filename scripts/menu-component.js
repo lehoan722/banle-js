@@ -38,14 +38,14 @@
     try {
       localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(data));
       localStorage.setItem(CACHE_KEY_TS, String(now()));
-    } catch { }
+    } catch {}
   }
 
   function clearCache() {
     try {
       localStorage.removeItem(CACHE_KEY_DATA);
       localStorage.removeItem(CACHE_KEY_TS);
-    } catch { }
+    } catch {}
   }
 
   // CSV parser đơn giản (hỗ trợ dấu phẩy trong "...")
@@ -228,229 +228,7 @@
       left.appendChild(g);
     });
 
-    // ===== Size Dropdown (3 cột) – áp dụng toàn hệ thống thông qua MenuComponent =====
-    let __sizeDDInited = false;
-    let __sizeDD;     // instance dropdown
-    let __sizeInput;  // tham chiếu ô #size
-
-    // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
-    const SIZE_ROWS = [
-      [38, 'S', 48],
-      [39, 'M', ''],
-      [40, 'L', 50],
-      [41, 'XL', ''],
-      [42, '2X', 52],
-      [43, '3X', ''],
-      [44, '4X', 54],
-      [45, '5X', '']
-    ];
-
-    class SizeDropdown {
-      constructor() {
-        this.root = document.createElement('div');
-        this.root.id = 'sizeDropdown';
-        Object.assign(this.root.style, {
-          position: 'fixed',
-          zIndex: 10001,
-          display: 'none',
-          background: '#fff',
-          border: '1px solid #d1d5db',
-          boxShadow: '0 8px 24px rgba(0,0,0,.14)',
-          borderRadius: '10px',
-          padding: '6px',
-          minWidth: '260px',
-          maxHeight: '280px',
-          overflow: 'auto',
-          fontSize: '14px',
-          lineHeight: 1.35
-        });
-
-        // header
-        const head = document.createElement('div');
-        head.textContent = 'cach đổi size';
-        head.style.fontWeight = '600';
-        head.style.padding = '4px 6px 6px';
-        this.root.appendChild(head);
-
-        // list
-        this.list = document.createElement('div');
-        this.list.setAttribute('role', 'listbox');
-        this.list.style.display = 'grid';
-        this.list.style.gridTemplateColumns = '1fr 1fr 1fr';
-        this.list.style.gap = '0';
-        this.root.appendChild(this.list);
-
-        // data rows
-        this.rows = [];
-        for (const [neck, alpha, c3] of SIZE_ROWS) {
-          const makeCell = (txt) => {
-            const c = document.createElement('div');
-            c.textContent = txt;
-            c.style.padding = '8px 8px';
-            c.style.textAlign = 'center';
-            return c;
-          };
-
-          const rIdx = this.rows.length;
-          const c1 = makeCell(neck);
-          const c2 = makeCell(alpha);
-          const c3el = makeCell(c3 || '');          
-
-          this.list.appendChild(c1);
-          this.list.appendChild(c2);
-          this.list.appendChild(c3el);
-
-          this.rows.push({ neck, alpha, c3, cells: [c1, c2, c3el] });
-        }
-
-        document.body.appendChild(this.root);
-        this.active = -1;
-        this.onPick = null;
-
-        // click ngoài để đóng
-        document.addEventListener('mousedown', (e) => {
-          if (this.root.style.display === 'none') return;
-          if (!this.root.contains(e.target) && e.target !== __sizeInput) {
-            this.close();
-          }
-        });
-      }
-
-      openFor(inputEl) {
-        const r = inputEl.getBoundingClientRect();
-        const top = r.bottom + 8;
-        const left = Math.min(r.left, window.innerWidth - Math.max(280, r.width));
-        this.root.style.top = `${top}px`;
-        this.root.style.left = `${left}px`;
-        this.root.style.minWidth = `${Math.max(260, r.width)}px`;
-        this.root.style.display = 'block';
-        this.highlight(this.findIndexByValue(Number(inputEl.value)) ?? 0);
-      }
-
-      close() { this.root.style.display = 'none'; }
-
-      isOpen() { return this.root.style.display !== 'none'; }
-
-      highlight(idx) {
-        if (idx < 0 || idx >= this.rows.length) return;
-        if (this.active !== -1) {
-          this.rows[this.active].cells.forEach(c => c.style.background = '');
-        }
-        this.active = idx;
-        this.rows[idx].cells.forEach(c => c.style.background = '#f3f4f6');
-        // scroll into view nếu bị khuất
-        this.rows[idx].cells[0].scrollIntoView({ block: 'nearest' });
-      }
-
-      move(delta) {
-        if (!this.isOpen()) return;
-        let idx = this.active + delta;
-        if (idx < 0) idx = 0;
-        if (idx >= this.rows.length) idx = this.rows.length - 1;
-        this.highlight(idx);
-      }
-
-      pick(idx = this.active) {
-        if (idx < 0 || idx >= this.rows.length) return;
-        const value = this.rows[idx].neck; // ghi cột 1 vào #size
-        if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx]);
-        this.close();
-      }
-
-      findIndexByValue(v) {
-        const i = this.rows.findIndex(r => r.neck === v);
-        return i >= 0 ? i : null;
-      }
-    }
-
-    // Khởi tạo & gắn sự kiện toàn cục
-    function initGlobalSizeDropdown() {
-      if (__sizeDDInited) return;
-      __sizeDDInited = true;
-
-      const boot = () => {
-        const masp = document.getElementById('masp');
-        __sizeInput = document.getElementById('size');
-        if (!__sizeInput) return;
-
-        __sizeDD = new SizeDropdown();
-        __sizeDD.onPick = (val /*, row */) => {
-          // 1) Ghi size vào input
-          __sizeInput.value = String(val);
-
-          // 2) Phát các sự kiện thường dùng: input + change
-          __sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
-          __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-          // 3) Focus lại & bôi đen để nhân viên có thể gõ đổi nhanh nếu muốn
-          __sizeInput.focus();
-          __sizeInput.select();
-
-          // 4) Giả lập người dùng bấm Enter trong ô #size
-          //    (để tái sử dụng chính handler Enter hiện có của bạn)
-          //const keydownEnter = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
-          //const keyupEnter = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true });
-
-          // Một số UI cần "đợi" DOM update 1 tick trước khi xử lý Enter
-          setTimeout(() => {
-            __sizeInput.dispatchEvent(keydownEnter);
-            __sizeInput.dispatchEvent(keyupEnter);
-          }, 0);
-        };
-
-        // Từ #masp nhấn Enter -> focus #size + mở dropdown
-        if (masp) {
-          masp.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              __sizeInput.focus();
-              __sizeInput.select();
-              __sizeDD.openFor(__sizeInput);
-            }
-          });
-        }
-
-        // Focus/Click vào #size -> mở dropdown
-        __sizeInput.addEventListener('focus', () => __sizeDD.openFor(__sizeInput));
-        __sizeInput.addEventListener('click', () => __sizeDD.openFor(__sizeInput));
-
-        // Khi gõ phím trong #size: điều hướng ↑/↓, Enter chọn, Esc đóng
-        __sizeInput.addEventListener('keydown', (e) => {
-          if (!__sizeDD.isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-            __sizeDD.openFor(__sizeInput);
-            e.preventDefault();
-            return;
-          }
-          switch (e.key) {
-            case 'ArrowDown': __sizeDD.move(1); e.preventDefault(); break;
-            case 'ArrowUp': __sizeDD.move(-1); e.preventDefault(); break;
-            case 'Enter':
-              if (__sizeDD.isOpen()) { __sizeDD.pick(); e.preventDefault(); }
-              break;
-            case 'Escape': __sizeDD.close(); break;
-            default:
-              // Cho phép gõ tay (38–45). Nếu gõ xong trùng hàng -> auto highlight
-              setTimeout(() => {
-                const v = parseInt(__sizeInput.value, 10);
-                const idx = __sizeDD.findIndexByValue(v);
-                if (idx !== null) __sizeDD.highlight(idx);
-              }, 0);
-          }
-        });
-
-        // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
-        __sizeInput.addEventListener('blur', () => {
-          setTimeout(() => __sizeDD.close(), 120);
-        });
-      };
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot, { once: true });
-      } else {
-        boot();
-      }
-    }
-
+    
     // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
     refresh.addEventListener("click", async () => {
@@ -468,9 +246,6 @@
     });
 
     right.appendChild(refresh);
-    // Bật dropdown size cho tất cả trang đang dùng MenuComponent
-    initGlobalSizeDropdown();
-
 
     wrap.appendChild(left);
     wrap.appendChild(right);
@@ -479,10 +254,10 @@
 
     // Thêm banner nhỏ hiển thị cơ sở hiện tại
     //if (ctx.cs) {
-    //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
-    //banner.style.marginTop = "4px";
-    //hostEl.appendChild(banner);
-    // }
+      //const banner = el("div", { class: "mc-badge" }, `Cơ sở: ${ctx.cs.toUpperCase()}`); 
+      //banner.style.marginTop = "4px";
+      //hostEl.appendChild(banner);
+   // }
   }
 
   function showError(msg, host) {
