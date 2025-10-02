@@ -267,7 +267,7 @@
 
         // header
         const head = document.createElement('div');
-        head.textContent = 'Bảng quy đổi vòng cổ → size chữ';
+        head.textContent = 'cach đổi size';
         head.style.fontWeight = '600';
         head.style.padding = '4px 6px 6px';
         this.root.appendChild(head);
@@ -279,20 +279,6 @@
         this.list.style.gridTemplateColumns = '1fr 1fr 1fr';
         this.list.style.gap = '0';
         this.root.appendChild(this.list);
-
-        // header row
-        const mkHeadCell = (txt) => {
-          const c = document.createElement('div');
-          c.textContent = txt;
-          c.style.fontWeight = '600';
-          c.style.borderBottom = '1px solid #e5e7eb';
-          c.style.padding = '6px 8px';
-          c.style.textAlign = 'center';
-          return c;
-        };
-        this.list.appendChild(mkHeadCell('Vòng cổ'));
-        this.list.appendChild(mkHeadCell('Size'));
-        this.list.appendChild(mkHeadCell('Cột 3'));
 
         // data rows
         this.rows = [];
@@ -398,10 +384,27 @@
 
         __sizeDD = new SizeDropdown();
         __sizeDD.onPick = (val /*, row */) => {
+          // 1) Ghi size vào input
           __sizeInput.value = String(val);
+
+          // 2) Phát các sự kiện thường dùng: input + change
+          __sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
           __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+          // 3) Focus lại & bôi đen để nhân viên có thể gõ đổi nhanh nếu muốn
           __sizeInput.focus();
           __sizeInput.select();
+
+          // 4) Giả lập người dùng bấm Enter trong ô #size
+          //    (để tái sử dụng chính handler Enter hiện có của bạn)
+          //const keydownEnter = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
+          //const keyupEnter = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true });
+
+          // Một số UI cần "đợi" DOM update 1 tick trước khi xử lý Enter
+          setTimeout(() => {
+            __sizeInput.dispatchEvent(keydownEnter);
+            __sizeInput.dispatchEvent(keyupEnter);
+          }, 0);
         };
 
         // Từ #masp nhấn Enter -> focus #size + mở dropdown
