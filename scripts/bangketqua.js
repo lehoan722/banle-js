@@ -61,12 +61,23 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         const counts = item.soluongs.slice(); // song song với sizes
 
         const toIndex = (sz) => {
-            if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
-                const idx = window.danhMucSize.findIndex(x => String(x).trim().toUpperCase() === sz.toUpperCase());
-                if (idx !== -1) return idx;
+            const s = String(sz).trim().toUpperCase();
+
+            // 1) Size là số -> sắp xếp tăng dần tuyệt đối (38 < 39 < ... < 45)
+            if (/^\d+(\.\d+)?$/.test(s)) {
+                return parseFloat(s);                  // ví dụ "38" -> 38
             }
-            const n = parseFloat(sz);
-            return isNaN(n) ? Number.POSITIVE_INFINITY : n + 100000; // tránh va chạm index hợp lệ
+
+            // 2) Size KHÔNG phải số -> theo thứ tự trong danh mục (nếu có)
+            if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
+                const idx = window.danhMucSize
+                    .map(x => String(x).trim().toUpperCase())
+                    .indexOf(s);
+                if (idx !== -1) return 1000 + idx;     // đẩy nhóm “chữ” xuống sau nhóm số
+            }
+
+            // 3) Không biết -> xuống cuối
+            return Number.POSITIVE_INFINITY;
         };
 
         const orderIdx = sizes.map((_, i) => i).sort((i, j) => toIndex(sizes[i]) - toIndex(sizes[j]));
