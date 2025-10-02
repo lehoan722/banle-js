@@ -1293,14 +1293,14 @@
 
             const payload = {
                 source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
+                cs: localStorage.getItem("diadiem") || "cs2",
                 items
             };
             console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs2.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
