@@ -407,7 +407,7 @@
 
     <style>
         .menu-bar {
-            background: #a3cc00;
+            background: #cccc00;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -1257,7 +1257,7 @@
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs111.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
@@ -1300,7 +1300,7 @@
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
