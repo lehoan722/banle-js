@@ -1304,12 +1304,10 @@
             window.open(url, "_blank");
         });
 
-    </script> 
-    
-    
+    </script>  
       <script>
 (function(){
-  let isGrouped = true; // mặc định ban đầu đang grouped
+  let isGrouped = true; 
   let snapshotBang = {};
 
   const footer = document.querySelector('.footer-buttons');
@@ -1317,10 +1315,10 @@
   btn.textContent = "Chuyển giao diện";
   footer.appendChild(btn);
 
-  // gom bangKetQua → dạng raw (mỗi size 1 dòng)
   function toRaw(bang) {
     const arr = [];
-    Object.values(bang).forEach(row => {
+    Object.values(bang || {}).forEach(row => {
+      if (!row.sizes || !row.soluongs) return;
       row.sizes.forEach((sz, idx) => {
         arr.push({
           masp: row.masp,
@@ -1335,41 +1333,20 @@
     return arr;
   }
 
-  // từ raw → gom lại bangKetQua chuẩn
-  function toGrouped(rawArr) {
-    const grouped = {};
-    rawArr.forEach(r=>{
-      if(!grouped[r.masp]) {
-        grouped[r.masp] = {
-          masp:r.masp,
-          tensp:r.tensp||'',
-          dvt:r.dvt||'',
-          gia:r.gia||0,
-          sizes:[],
-          soluongs:[]
-        };
-      }
-      grouped[r.masp].sizes.push(r.size);
-      grouped[r.masp].soluongs.push(r.soluong);
-    });
-    return grouped;
-  }
-
-  // render dạng grouped ra bảng
   function renderGrouped(bang) {
     const tbody = document.querySelector('#bangketqua tbody');
     tbody.innerHTML = '';
-    Object.values(bang).forEach(row=>{
+    Object.values(bang || {}).forEach(row=>{
       const tr = document.createElement('tr');
       let html = `<td>${row.masp}</td>`;
-      // cột size 0..45
       const sizes = ['0','38','39','40','41','42','43','44','45'];
       sizes.forEach(sz=>{
-        let idx = row.sizes.findIndex(s=>s==sz);
-        let sl = idx>=0 ? row.soluongs[idx] : '';
+        let idx = row.sizes ? row.sizes.findIndex(s=>s==sz) : -1;
+        let sl = (idx>=0 && row.soluongs) ? row.soluongs[idx] : '';
         html += `<td>${sl}</td>`;
       });
-      html += `<td>${row.soluongs.reduce((a,b)=>a+b,0)}</td>`;
+      const tong = row.soluongs ? row.soluongs.reduce((a,b)=>a+ (parseInt(b)||0),0) : 0;
+      html += `<td>${tong}</td>`;
       html += `<td>${row.vitri||''}</td><td></td><td></td>`;
       tr.innerHTML = html;
       tbody.appendChild(tr);
@@ -1379,7 +1356,10 @@
   btn.addEventListener('click', ()=>{
     if(isGrouped) {
       // grouped → raw
-      snapshotBang = window.bangKetQua; // lưu lại
+      if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+        window.capNhatBangKetQuaTuDOM();
+      }
+      snapshotBang = JSON.parse(JSON.stringify(window.bangKetQua || {})); // clone an toàn
       const raw = toRaw(window.bangKetQua||{});
       const tbody = document.querySelector('#bangketqua tbody');
       tbody.innerHTML = '';
@@ -1392,6 +1372,10 @@
       btn.textContent = "Chuyển về dạng gộp";
     } else {
       // raw → grouped
+      if (!snapshotBang || Object.keys(snapshotBang).length === 0) {
+        alert("❌ Không có dữ liệu grouped để khôi phục!");
+        return;
+      }
       renderGrouped(snapshotBang);
       isGrouped = true;
       btn.textContent = "Chuyển giao diện";
