@@ -407,7 +407,7 @@
 
     <style>
         .menu-bar {
-            background: #a0cc00;
+            background: #0088cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -1186,7 +1186,7 @@
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script src="scripts/nhaptam_mobile_grid.js"></script>
-    <script src="scripts/nhaptam_mobile_getbang.js"></script>
+    <script src="scripts/nhaptam_mobile_grid.js"></script>
 
     <script>
         ; (() => {
@@ -1257,7 +1257,7 @@
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs111.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
@@ -1300,90 +1300,11 @@
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
-    </script>  
-      <script>
-(function(){
-  let isGrouped = true; 
-  let snapshotBang = {};
-
-  const footer = document.querySelector('.footer-buttons');
-  const btn = document.createElement('button');
-  btn.textContent = "Chuyển giao diện";
-  footer.appendChild(btn);
-
-  function toRaw(bang) {
-    const arr = [];
-    Object.values(bang || {}).forEach(row => {
-      if (!row.sizes || !row.soluongs) return;
-      row.sizes.forEach((sz, idx) => {
-        arr.push({
-          masp: row.masp,
-          tensp: row.tensp || '',
-          size: sz,
-          soluong: row.soluongs[idx],
-          dvt: row.dvt || '',
-          gia: row.gia || 0
-        });
-      });
-    });
-    return arr;
-  }
-
-  function renderGrouped(bang) {
-    const tbody = document.querySelector('#bangketqua tbody');
-    tbody.innerHTML = '';
-    Object.values(bang || {}).forEach(row=>{
-      const tr = document.createElement('tr');
-      let html = `<td>${row.masp}</td>`;
-      const sizes = ['0','38','39','40','41','42','43','44','45'];
-      sizes.forEach(sz=>{
-        let idx = row.sizes ? row.sizes.findIndex(s=>s==sz) : -1;
-        let sl = (idx>=0 && row.soluongs) ? row.soluongs[idx] : '';
-        html += `<td>${sl}</td>`;
-      });
-      const tong = row.soluongs ? row.soluongs.reduce((a,b)=>a+ (parseInt(b)||0),0) : 0;
-      html += `<td>${tong}</td>`;
-      html += `<td>${row.vitri||''}</td><td></td><td></td>`;
-      tr.innerHTML = html;
-      tbody.appendChild(tr);
-    });
-  }
-
-  btn.addEventListener('click', ()=>{
-    if(isGrouped) {
-      // grouped → raw
-      if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-        window.capNhatBangKetQuaTuDOM();
-      }
-      snapshotBang = JSON.parse(JSON.stringify(window.bangKetQua || {})); // clone an toàn
-      const raw = toRaw(window.bangKetQua||{});
-      const tbody = document.querySelector('#bangketqua tbody');
-      tbody.innerHTML = '';
-      raw.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.masp}</td><td>${r.tensp}</td><td>${r.size}</td><td>${r.soluong}</td>`;
-        tbody.appendChild(tr);
-      });
-      isGrouped = false;
-      btn.textContent = "Chuyển về dạng gộp";
-    } else {
-      // raw → grouped
-      if (!snapshotBang || Object.keys(snapshotBang).length === 0) {
-        alert("❌ Không có dữ liệu grouped để khôi phục!");
-        return;
-      }
-      renderGrouped(snapshotBang);
-      isGrouped = true;
-      btn.textContent = "Chuyển giao diện";
-    }
-  });
-})();
-</script>
-
+    </script>    
 
 
 </body>
