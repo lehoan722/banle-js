@@ -3,7 +3,7 @@
   'use strict';
 
   // dấu hiệu kiểm tra đã nạp đúng bản
-  window.__BKQ_BUILD = '2025-10-03-quiet-300-domparse';
+  window.__BKQ_BUILD = '2025-10-03-quiet-300';
 
   // ================= STATE CHỐNG LOOP =================
   const BKQ = (window.__BKQ_BRIDGE = window.__BKQ_BRIDGE || {
@@ -247,7 +247,7 @@
           } finally {
             BKQ.hydrating = false;
           }
-        }, 120);
+        }, 100);
       }
     });
     window.__bkq_defined__ = true;
@@ -256,86 +256,27 @@
   // ========== D) LATE-HOOK QUAY LẠI: chờ DOM “yên” rồi mới hydrate ==========
   function _safeLen(o){ try { return Object.keys(o||{}).length; } catch { return 0; } }
 
-  // (NEW) Phân tích DOM bảng cũ → object bangKetQua
-  function parseBangKetQuaFromOldTable() {
-    const table = document.querySelector('#bangketqua');
-    if (!table) return {};
-
-    // Map cột → size dựa trên header
-    const sizeCols = {};
-    const ths = table.querySelectorAll('thead th');
-    ths.forEach((th, idx) => {
-      const txt = (th.textContent || '').trim();
-      const n = parseInt(txt, 10);
-      if (!isNaN(n) && (n === 0 || (n >= 30 && n <= 50))) sizeCols[idx] = n;
-    });
-
-    const rows = table.querySelectorAll('tbody tr');
-    const out = {};
-    rows.forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (!tds.length) return;
-      // Lấy mã SP từ attr hoặc từ text ở ô đầu
-      let masp = (tr.getAttribute('data-masp') || '').toUpperCase().trim();
-      if (!masp) {
-        const first = (tds[0].textContent || '').replace(/\s+/g,' ').trim();
-        const m = first.match(/[A-Z0-9][A-Z0-9\-._/]{2,}/i);
-        if (m) masp = m[0].toUpperCase();
-      }
-      if (!masp) return;
-
-      const qty = {};
-      for (const [colIdxStr, size] of Object.entries(sizeCols)) {
-        const colIdx = parseInt(colIdxStr, 10);
-        const td = tds[colIdx];
-        if (!td) continue;
-        const raw = (td.textContent || td.innerText || '').trim();
-        const val = parseInt(raw.replace(/[^0-9-]/g,''), 10) || 0;
-        if (val > 0) qty[size] = val;
-      }
-      const sizes = Object.keys(qty).map(s => String(parseInt(s,10)));
-      if (!sizes.length) return;
-      const soluongs = sizes.map(s => qty[parseInt(s,10)] || 0);
-
-      out[masp] = { masp, sizes, soluongs };
-    });
-
-    return out;
-  }
-
   function tryHydrateFromBKQorDOM() {
     let src = window.bangKetQua;
-    if (!_safeLen(src)) {
-      if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-        const prev = window.__bkq_assigning_from_mobile;
-        window.__bkq_assigning_from_mobile = true;
-        try { src = window.capNhatBangKetQuaTuDOM() || {}; }
-        catch (e) { console.warn('[hydrate fallback DOM old fn] ', e); }
-        finally { window.__bkq_assigning_from_mobile = prev; }
-      } else {
-        // (NEW) tự parse từ bảng cũ
-        src = parseBangKetQuaFromOldTable();
-      }
+    if (!_safeLen(src) && typeof window.capNhatBangKetQuaTuDOM === 'function') {
+      const prev = window.__bkq_assigning_from_mobile;
+      window.__bkq_assigning_from_mobile = true;
+      try { src = window.capNhatBangKetQuaTuDOM() || {}; }
+      catch (e) { console.warn('[hydrate fallback DOM] ', e); }
+      finally { window.__bkq_assigning_from_mobile = prev; }
     }
     if (_safeLen(src)) {
       const prev2 = window.__bkq_assigning_from_mobile;
       window.__bkq_assigning_from_mobile = true;
       try { setMobileGridFromBangKetQua(src); }
       finally { window.__bkq_assigning_from_mobile = prev2; }
-      // “nhát bồi” phòng script cũ ghi đè muộn
-      setTimeout(() => {
-        const prev3 = window.__bkq_assigning_from_mobile;
-        window.__bkq_assigning_from_mobile = true;
-        try { setMobileGridFromBangKetQua(src); }
-        finally { window.__bkq_assigning_from_mobile = prev3; }
-      }, 400);
       return true;
     }
     return false;
   }
 
   // Quan sát tbody cho đến khi “yên” quietMs (reset timer mỗi biến động), hoặc quá maxWaitMs
-  function observeUntilQuietAndHydrate(quietMs = 400, maxWaitMs = 5000) {
+  function observeUntilQuietAndHydrate(quietMs = 500, maxWaitMs = 5000) {
     const tbody = document.querySelector('#bangketqua tbody');
     if (!tbody) return;
 
@@ -356,10 +297,10 @@
       }, quietMs);
     });
 
+    // Bắt đầu quan sát & cài maxWait
     mo.observe(tbody, { childList: true, subtree: true, attributes: false, characterData: false });
     tMax = setTimeout(() => { cleanup(mo); tryHydrateFromBKQorDOM(); }, maxWaitMs);
-  } 
-
+  }
 
   function attachQuayLaiHook() {
     const btn = document.getElementById('quaylai');
@@ -377,3 +318,158 @@
   attachQuayLaiHook();
 
 })();
+
+// ========== E) QUAY LẠI (LUỒNG MỚI, KHÔNG DÍNH MODULE CŨ) ==========
+
+// 1) Helper: cố gắng lấy số HĐ từ ô đang có trên trang
+function __getSoHDOnPage() {
+  // ưu tiên input có placeholder "Số HĐ" hoặc name chứa "sohd"
+  const inputs = Array.from(document.querySelectorAll('input[type="text"], input:not([type])'));
+  for (const el of inputs) {
+    const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+    const nm = (el.name || '').toLowerCase();
+    const id = (el.id || '').toLowerCase();
+    const ttl = (el.title || '').toLowerCase();
+    if (ph.includes('số hd') || ph.includes('so hd') || ph.includes('số hóa đơn') || ph.includes('so hoa don')
+        || nm.includes('sohd') || id.includes('sohd') || ttl.includes('sohd')) {
+      const v = (el.value || '').trim();
+      if (v) return v;
+    }
+  }
+  // nếu không tìm thấy, thử ô text lớn dưới "Mã SP"
+  const maybe = document.querySelector('input[type="text"][maxlength], .sohd, #sohd');
+  return (maybe && maybe.value || '').trim();
+}
+
+// 2) BẠN ĐIỀN TRUY VẤN Ở ĐÂY
+// Trả về { hoadon: {...}, chitiet: [{masp, size, soluong, dongia?, km?}, ...] }
+async function queryInvoiceFromDB(sohd) {
+  // --- CHỌN 1 TRONG 2 CÁCH SAU ---
+
+  // (A) GỌI API RIÊNG CỦA BẠN (đề xuất)
+  // const res = await fetch(`/api/invoice?sohd=${encodeURIComponent(sohd)}`);
+  // if (!res.ok) throw new Error('Không đọc được hóa đơn');
+  // return await res.json();
+
+  // (B) SUPABASE (nếu bạn đã nạp window.supabase)
+  if (window.supabase) {
+    // ví dụ: bảng header: nhaptam_hd, bảng detail: nhaptam_ct
+    const { data: hd, error: e1 } = await window.supabase
+      .from('nhaptam_hd')
+      .select('*')
+      .eq('sohd', sohd)
+      .limit(1)
+      .maybeSingle();
+    if (e1) throw e1;
+    if (!hd) throw new Error('Không có hóa đơn: ' + sohd);
+
+    const { data: ct, error: e2 } = await window.supabase
+      .from('nhaptam_ct')
+      .select('masp, size, soluong, dongia, khuyenmai')
+      .eq('sohd', sohd);
+    if (e2) throw e2;
+
+    return { hoadon: hd, chitiet: ct || [] };
+  }
+
+  // (C) TẠM THỜI: nếu chưa có API → trả rỗng (sẽ báo lỗi)
+  return { hoadon: null, chitiet: [] };
+}
+
+// 3) Ánh xạ từ {hoadon, chitiet[]} → object bangKetQua (1 mã = 1 dòng, có mảng sizes/soluongs)
+function __mapInvoiceToBangKetQua(inv) {
+  const out = {};
+  const rows = Array.isArray(inv?.chitiet) ? inv.chitiet : [];
+
+  const grouped = new Map(); // masp -> { masp, qty:{size:sl}, gia?, km? (theo tuỳ ý) }
+  for (const r of rows) {
+    const masp = String(r?.masp || r?.ma || '').trim().toUpperCase();
+    if (!masp) continue;
+    const size = Number.isFinite(parseInt(r?.size,10)) ? parseInt(r.size,10) : 0;
+    const sl = parseInt(r?.soluong ?? r?.sl ?? 0, 10) || 0;
+    if (!sl) continue;
+
+    if (!grouped.has(masp)) grouped.set(masp, { masp, qty: {}, gia: r?.dongia || 0, km: r?.km ?? r?.khuyenmai ?? 0 });
+    const g = grouped.get(masp);
+    g.qty[size] = (g.qty[size] || 0) + sl;
+    // có thể cập nhật đơn giá/khuyến mãi nếu dòng khác nhau – lấy theo dòng đầu
+  }
+
+  for (const [masp, g] of grouped.entries()) {
+    const sizes = Object.keys(g.qty).map(s => String(parseInt(s,10))).filter(Boolean);
+    const soluongs = sizes.map(s => g.qty[parseInt(s,10)] || 0);
+    out[masp] = {
+      masp,
+      sizes,
+      soluongs,
+      gia: g.gia || 0,
+      km: g.km || 0
+    };
+  }
+  return out;
+}
+
+// 4) UI: hiển thị loading ngắn (tuỳ chọn)
+function __showLoading(flag) {
+  const id = '__quaylai_loading__';
+  let el = document.getElementById(id);
+  if (flag) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.cssText = 'position:fixed;right:20px;bottom:20px;padding:8px 12px;background:#222;color:#fff;border-radius:6px;z-index:99999;font-size:12px';
+      el.textContent = 'Đang nạp hóa đơn...';
+      document.body.appendChild(el);
+    }
+  } else if (el) {
+    el.remove();
+  }
+}
+
+// 5) Chạy luồng “Quay lại mới” hoàn chỉnh
+async function openInvoiceFromDatabase() {
+  const sohd = __getSoHDOnPage();
+  if (!sohd) { alert('Vui lòng nhập Số HĐ trước khi bấm Quay lại.'); return; }
+
+  __showLoading(true);
+  try {
+    const inv = await queryInvoiceFromDB(sohd);
+    if (!inv || !Array.isArray(inv?.chitiet) || inv.chitiet.length === 0) {
+      alert('Không tìm thấy chi tiết hóa đơn: ' + sohd);
+      return;
+    }
+
+    const bang = __mapInvoiceToBangKetQua(inv);
+
+    // Đổ vào lưới mới
+    await (window.setMobileGridFromBangKetQua
+      ? window.setMobileGridFromBangKetQua(bang)
+      : window.setMobileGridFromHoaDon(inv.hoadon, inv.chitiet));
+
+    // Cập nhật tổng/khuyến mãi nếu bạn muốn
+    if (typeof window.capNhatThongTinTong === 'function') {
+      window.capNhatThongTinTong();
+    }
+
+  } catch (err) {
+    console.error('[Quay lại (DB)]', err);
+    alert('Lỗi đọc dữ liệu hóa đơn từ CSDL.');
+  } finally {
+    __showLoading(false);
+  }
+}
+
+// 6) Gắn nút “Quay lại” – chặn hẳn luồng cũ
+(function attachBackButtonDBFlow() {
+  const btn = document.getElementById('quaylai');
+  if (!btn) return;
+
+  // Gắn ở capture phase để chặn mọi handler cũ
+  btn.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    await openInvoiceFromDatabase();
+    return false;
+  }, true);
+})();
+
