@@ -2,18 +2,14 @@
 ;(() => {
   'use strict';
 
-  // ================= CẦU CHÌ CHỐNG LOOP / DEBUG =================
+  // ================= STATE CHỐNG LOOP =================
   const BKQ = (window.__BKQ_BRIDGE = window.__BKQ_BRIDGE || {
-    hydrating: false,   // đang hydrate MobileKQ từ bangKetQua
-    timer: null,        // debounce timer cho setter
-    lastHash: '',       // dấu vết lần hydrate gần nhất
-    disabled: false     // bật/tắt bridge nhanh khi cần debug: window.__BKQ_BRIDGE.disabled = true
+    hydrating: false,
+    timer: null,
+    lastHash: '',
   });
 
-  // ============================================================== 
-  // A) ADAPTER CHIỀU THUẬN: MobileKQ → window.bangKetQua
-  // ==============================================================
-
+  // ========== A) CHIỀU THUẬN: MobileKQ → window.bangKetQua ==========
   function getSPFast(code) {
     const masp = String(code || '').trim().toUpperCase();
     if (!masp) return null;
@@ -48,8 +44,7 @@
     const kq = {};
 
     all.forEach(r => {
-      const sizes = [];
-      const soluongs = [];
+      const sizes = [], soluongs = [];
       for (const k of Object.keys(r.qty || {})) {
         const sz = parseInt(k, 10);
         const sl = parseInt(r.qty[k] || 0, 10) || 0;
@@ -81,22 +76,17 @@
 
   Object.defineProperty(window, 'getBangKetQua', {
     value: () => fromMobileGrid(),
-    writable: false,
-    configurable: false
+    writable: false, configurable: false
   });
   window._fromMobileGrid = fromMobileGrid;
 
-  // ============================================================== 
-  // B) ADAPTER CHIỀU NGƯỢC: dữ liệu cũ/HĐ cũ → MobileKQ
-  // ==============================================================
-
+  // ========== B) CHIỀU NGƯỢC: HĐ cũ → MobileKQ ==========
   function _bkqItemToRow(item) {
     const masp = String(item?.masp || '').trim().toUpperCase();
     const row = { masp, qty: {}, vitri: item?.vitri || '', t1: item?.toncs1 || 0, t2: item?.toncs2 || 0 };
 
     const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
     const sls   = Array.isArray(item?.soluongs) ? item.soluongs : [];
-
     if (sizes.length && sizes.length === sls.length) {
       sizes.forEach((s, i) => {
         const sz = parseInt(s, 10);
@@ -120,7 +110,6 @@
         if (tbody) tbody.innerHTML = '';
       }
     } catch (e) {
-      console.warn('[clear grid] fallback:', e);
       const tbody = document.querySelector('#bangketqua tbody');
       if (tbody) tbody.innerHTML = '';
     }
@@ -223,10 +212,7 @@
     setMobileGridFromHoaDon(hoadon, chitiet);
   });
 
-  // ============================================================== 
-  // C) SETTER bangKetQua: tự hydrate vào MobileKQ (debounce, chống loop)
-  // ==============================================================
-
+  // ========== C) SETTER bangKetQua: tự hydrate (debounce, chống loop) ==========
   if (!window.__bkq_defined__) {
     let __bkq_store = {};
     Object.defineProperty(window, 'bangKetQua', {
@@ -234,8 +220,6 @@
       get() { return __bkq_store; },
       set(v) {
         __bkq_store = v || {};
-
-        if (BKQ.disabled) return;
         if (BKQ.hydrating) return;
         if (window.__bkq_assigning_from_mobile) return;
         if (!__bkq_store || !Object.keys(__bkq_store).length) return;
@@ -259,25 +243,18 @@
           } finally {
             BKQ.hydrating = false;
           }
-        }, 60);
+        }, 100);
       }
     });
     window.__bkq_defined__ = true;
   }
 
-  // ============================================================== 
-  // D) LATE-HOOK CHO NÚT "QUAY LẠI"
-  //    - chạy SAU luồng cũ, bắt cả trường hợp mutate object/đổ thẳng DOM
-  // ==============================================================
-
+  // ========== D) LATE-HOOK QUAY LẠI: chờ DOM “yên” rồi mới hydrate ==========
   function _safeLen(o){ try { return Object.keys(o||{}).length; } catch { return 0; } }
 
-  function tryHydrateFromBKQorDOM(reason='') {
-    if (BKQ.disabled) return;
-    // 1) Ưu tiên đọc từ window.bangKetQua (dù có thể bị mutate)
+  function tryHydrateFromBKQorDOM() {
     let src = window.bangKetQua;
     if (!_safeLen(src) && typeof window.capNhatBangKetQuaTuDOM === 'function') {
-      // 2) fallback: gom từ DOM nếu trang cũ vừa đổ thẳng ra bảng
       const prev = window.__bkq_assigning_from_mobile;
       window.__bkq_assigning_from_mobile = true;
       try { src = window.capNhatBangKetQuaTuDOM() || {}; }
@@ -289,40 +266,51 @@
       window.__bkq_assigning_from_mobile = true;
       try { setMobileGridFromBangKetQua(src); }
       finally { window.__bkq_assigning_from_mobile = prev2; }
-      console.debug('[hydrate] done via', reason || 'hook');
       return true;
     }
     return false;
   }
 
-  function observeOnceAndHydrate() {
+  // Quan sát tbody cho đến khi “yên” quietMs (reset timer mỗi biến động), hoặc quá maxWaitMs
+  function observeUntilQuietAndHydrate(quietMs = 300, maxWaitMs = 3000) {
     const tbody = document.querySelector('#bangketqua tbody');
     if (!tbody) return;
 
+    let tQuiet = null;
+    let tMax = null;
+    const cleanup = (mo) => {
+      if (tQuiet) clearTimeout(tQuiet);
+      if (tMax) clearTimeout(tMax);
+      mo && mo.disconnect();
+    };
+
     const mo = new MutationObserver(() => {
-      if (BKQ.hydrating) return;                 // bỏ thay đổi do chính mình gây ra
-      if (tryHydrateFromBKQorDOM('MutationObserver')) {
-        mo.disconnect();
-      }
+      if (BKQ.hydrating) return; // bỏ thay đổi do chính mình gây ra
+      if (tQuiet) clearTimeout(tQuiet);
+      tQuiet = setTimeout(() => {    // không có thay đổi mới trong quietMs
+        cleanup(mo);
+        tryHydrateFromBKQorDOM();
+      }, quietMs);
     });
-    mo.observe(tbody, { childList: true, subtree: true });
+
+    // Bắt đầu quan sát & cài maxWait
+    mo.observe(tbody, { childList: true, subtree: true, attributes: false, characterData: false });
+    tMax = setTimeout(() => { cleanup(mo); tryHydrateFromBKQorDOM(); }, maxWaitMs);
   }
 
   function attachQuayLaiHook() {
     const btn = document.getElementById('quaylai');
     if (!btn) return;
+
     btn.addEventListener('click', () => {
-      // cho luồng cũ chạy trước: đổ DOM / mutate object / gọi RPC...
+      // Cho luồng cũ chạy tự do, mình chờ DOM “yên” rồi mới hydrate
       setTimeout(() => {
-        // 1) Thử hydrate trực tiếp từ nguồn sẵn có
-        if (tryHydrateFromBKQorDOM('click-delay')) return;
-        // 2) Nếu chưa có, theo dõi DOM 1 lần để bắt khi dữ liệu xuất hiện
-        observeOnceAndHydrate();
-      }, 120);
+        observeUntilQuietAndHydrate(300, 3000);
+      }, 50);
     }, { capture: false });
   }
 
-  // chạy khi file load (DOM đã có vì script ở cuối trang)
+  // chạy khi file load
   attachQuayLaiHook();
 
 })();
