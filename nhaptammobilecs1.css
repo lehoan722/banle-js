@@ -241,17 +241,13 @@
     border-left: 0;
   }
 
-  /* 4) Ẩn bớt cột bảng theo thứ tự */
-  #bangketqua thead th:nth-child(2),
-  #bangketqua tbody td:nth-child(2),
+  /* 4) Ẩn bớt cột bảng theo thứ tự */  
   #bangketqua thead th:nth-child(12),
   #bangketqua tbody td:nth-child(12),
   #bangketqua thead th:nth-child(13),
   #bangketqua tbody td:nth-child(13),
   #bangketqua thead th:nth-child(14),
-  #bangketqua tbody td:nth-child(14) {
-    display: none;
-  }
+  #bangketqua tbody td:nth-child(14) { display: none; }
 
   /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
   .btn-big {
