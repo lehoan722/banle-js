@@ -93,7 +93,11 @@
     });
 
     // Đồng bộ cho luồng cũ
-    window.bangKetQua = kq;
+    // MỚI: đặt cờ để setter không tự kích lại
+window.__bkq_assigning_from_mobile = true;
+window.bangKetQua = kq;
+window.__bkq_assigning_from_mobile = false;
+
     return kq;
   }
 
@@ -217,6 +221,33 @@
     }
     await setMobileGridFromBangKetQua(bang);
   }
+
+  // Bridge: khi luồng cũ gán window.bangKetQua → tự hydrate sang MobileKQ
+if (!window.__bkq_defined__) {
+  let __bkq_store = {};
+  Object.defineProperty(window, 'bangKetQua', {
+    configurable: true,
+    get() { return __bkq_store; },
+    set(v) {
+      __bkq_store = v || {};
+      // Nếu dữ liệu đến từ luồng cũ (không phải fromMobileGrid)
+      if (!window.__bkq_assigning_from_mobile
+          && v && typeof window.setMobileGridFromBangKetQua === 'function') {
+        // Đợi 1 nhịp cho code cũ render xong rồi mình "ghi đè" lưới mới
+        setTimeout(() => {
+          try {
+            window.setMobileGridFromBangKetQua(__bkq_store);
+            // Đồng bộ lại tổng số
+            window.capNhatThongTinTong?.();
+          } catch (e) {
+            console.error('[BKQ setter] hydrate lỗi:', e);
+          }
+        }, 0);
+      }
+    }
+  });
+  window.__bkq_defined__ = true;
+}
 
   // Expose API chiều ngược
   Object.defineProperty(window, 'setMobileGridFromBangKetQua', {
