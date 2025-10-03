@@ -355,8 +355,8 @@ async function queryInvoiceFromDB(sohd) {
     // Ưu tiên theo tiền tố số HĐ
     [`${prefix}_hd`, `${prefix}_ct`],
     // Một số tên tổng quát có thể dùng
-    ['nhaptamcs1_hd', 'nhaptamcs1_ct'],
-    ['nhaptam_hd', 'nhaptam_ct'],
+    ['hoadon_banle', 'ct_hoadon_banle'],
+    ['hoadon_banle', 'ct_hoadon_banle'],
     // (tuỳ hệ thống bạn có thể thêm: ['hoadon', 'hoadonct'], ['banle_hd','banle_ct'], ... )
   ];
 
