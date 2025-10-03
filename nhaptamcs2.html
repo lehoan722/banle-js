@@ -344,6 +344,11 @@
         /* ép layout bảng cố định, cột size hẹp */
         #bangketqua {
             table-layout: fixed;
+
+            thead th:nth-child(2),
+            tbody td:nth-child(2) {
+                display: none;
+            }
         }
 
         #bangketqua th.sz,
@@ -374,8 +379,6 @@
         #bangketqua td.td-t2 {
             width: 46px;
         }
-      
-
     </style>
 
 
@@ -399,7 +402,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-       <link rel="stylesheet" href="nhaptammobilecs1.css">        
+    <link rel="stylesheet" href="nhaptammobilecs1.css">
 
 </head>
 
@@ -407,7 +410,7 @@
 
     <style>
         .menu-bar {
-            background: #0088cc;
+            background: #c5cc00;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -526,7 +529,7 @@
 
                 <table id="bangketqua" class="table table-compact">
 
-                     <thead>
+                    <thead>
                         <tr>
                             <th>Mã hàng</th>
                             <th class="sz">0</th>
@@ -1152,7 +1155,7 @@
             }
         });
     </script>
-    
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
@@ -1262,7 +1265,7 @@
             window.open(url, "_blank");
         }
 
-         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
+        // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
             console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
 
@@ -1304,11 +1307,9 @@
             window.open(url, "_blank");
         });
 
-    </script>    
+    </script>
 
 
 </body>
 
 </html>
-
-
