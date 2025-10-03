@@ -2,6 +2,9 @@
 ;(() => {
   'use strict';
 
+  // dấu hiệu kiểm tra đã nạp đúng bản
+  window.__BKQ_BUILD = '2025-10-03-quiet-300';
+
   // ================= STATE CHỐNG LOOP =================
   const BKQ = (window.__BKQ_BRIDGE = window.__BKQ_BRIDGE || {
     hydrating: false,
@@ -68,6 +71,7 @@
       };
     });
 
+    // gán an toàn (không kích loop)
     window.__bkq_assigning_from_mobile = true;
     try { window.bangKetQua = kq; }
     finally { window.__bkq_assigning_from_mobile = false; }
