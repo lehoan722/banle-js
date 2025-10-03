@@ -1304,7 +1304,72 @@
             window.open(url, "_blank");
         });
 
-    </script>    
+    </script>  
+
+    <script>// ====== TOGGLE VIEW (RAW <-> GROUPED) ======
+(function () {
+  let isGrouped = false;
+  let snapshotHTML = '';
+  let snapshotBKQ = {};
+
+  // thêm nút vào giao diện
+  const footer = document.getElementById('footer-buttons') || document.body;
+  const btn = document.createElement('button');
+  btn.id = 'btnToggleView';
+  btn.textContent = 'Chuyển giao diện';
+  btn.style.marginLeft = '8px';
+  footer.appendChild(btn);
+
+  // hàm gom dữ liệu từ DOM cũ thành 1 dòng / sản phẩm
+  function collectFromDOM() {
+    const rows = Array.from(document.querySelectorAll('#bangketqua tbody tr'));
+    const grouped = {};
+    rows.forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (!tds.length) return;
+      const masp = (tds[0].innerText || '').trim().toUpperCase();
+      const tensp = (tds[1]?.innerText || '').trim();
+      const size = (tds[2]?.innerText || '').trim();
+      const sl = parseInt(tds[3]?.innerText || '0', 10) || 0;
+      if (!masp) return;
+      if (!grouped[masp]) grouped[masp] = { masp, tensp, sizes: [], soluongs: [] };
+      grouped[masp].sizes.push(size || '0');
+      grouped[masp].soluongs.push(sl);
+    });
+    return grouped;
+  }
+
+  // render lại dạng gộp bằng MobileKQ
+  async function renderGrouped(bkq) {
+    if (!window.setMobileGridFromBangKetQua) return;
+    await window.setMobileGridFromBangKetQua(bkq);
+  }
+
+  btn.addEventListener('click', async () => {
+    const tbody = document.querySelector('#bangketqua tbody');
+    if (!tbody) { alert('Không tìm thấy bảng dữ liệu.'); return; }
+
+    if (!isGrouped) {
+      // chuyển sang dạng gộp
+      snapshotHTML = tbody.innerHTML;              // lưu snapshot HTML
+      snapshotBKQ = window.bangKetQua || {};       // lưu dữ liệu gốc
+      const bkq = collectFromDOM();
+      await renderGrouped(bkq);
+      isGrouped = true;
+      btn.textContent = 'Chuyển về dạng cũ';
+    } else {
+      // khôi phục dạng cũ
+      tbody.innerHTML = snapshotHTML;
+      window.bangKetQua = snapshotBKQ;
+      if (typeof window.capNhatThongTinTong === 'function') {
+        window.capNhatThongTinTong();
+      }
+      isGrouped = false;
+      btn.textContent = 'Chuyển giao diện';
+    }
+  });
+})();
+</script>   
 
 
 </body>
