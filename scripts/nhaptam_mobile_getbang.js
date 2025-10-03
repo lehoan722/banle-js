@@ -10,53 +10,41 @@
     disabled: false     // bật/tắt bridge nhanh khi cần debug: window.__BKQ_BRIDGE.disabled = true
   });
 
-  // ==============================================================
+  // ============================================================== 
   // A) ADAPTER CHIỀU THUẬN: MobileKQ → window.bangKetQua
-  //    (giữ nguyên API getBangKetQua() bạn đang dùng)
   // ==============================================================
 
-  // Tìm nhanh thông tin SP từ cache hiện có (không gọi DB)
   function getSPFast(code) {
     const masp = String(code || '').trim().toUpperCase();
     if (!masp) return null;
 
-    // 1) Map chuẩn
     if (window.sanPhamData && typeof window.sanPhamData === 'object') {
       const m = window.sanPhamData;
       const k = m[masp] || m[masp.replace(/\s+/g, '')] || m[code] || null;
       if (k) return k;
     }
-
-    // 2) Index đã build sẵn (Map)
     if (window.__spIndex__ instanceof Map) {
       const v = window.__spIndex__.get(masp) || window.__spIndex__.get(masp.replace(/\s+/g,'')) || null;
       if (v) return v;
     }
-
-    // 3) Quét mảng (nếu có)
     const arr = window.dmhanghoa || window.dssp || window.dsSanPham;
     if (Array.isArray(arr)) {
       const likely = ['masp','MA','ma','ma_sp','mahang','ma_hang','mavattu','mavt','code','sku','mahh'];
-      for (const rec of arr) {
-        for (const k of likely) {
-          if (rec[k] != null && String(rec[k]).trim().toUpperCase() === masp) return rec;
-        }
+      for (const rec of arr) for (const k of likely) {
+        if (rec[k] != null && String(rec[k]).trim().toUpperCase() === masp) return rec;
       }
-      for (const rec of arr) {
-        for (const [k,v] of Object.entries(rec)) {
-          if ((typeof v === 'string' || typeof v === 'number')
-              && String(v).trim().toUpperCase() === masp
-              && String(v).length <= 32) return rec;
-        }
+      for (const rec of arr) for (const [k,v] of Object.entries(rec)) {
+        if ((typeof v === 'string' || typeof v === 'number')
+            && String(v).trim().toUpperCase() === masp
+            && String(v).length <= 32) return rec;
       }
     }
     return null;
   }
 
-  // Đọc dữ liệu từ lưới MobileKQ → chuẩn hoá về window.bangKetQua
   function fromMobileGrid() {
     if (!window.MobileKQ || typeof window.MobileKQ.getAll !== 'function') return {};
-    const all = window.MobileKQ.getAll();  // [{masp, qty:{}, vitri,t1,t2, ...}]
+    const all = window.MobileKQ.getAll();
     const kq = {};
 
     all.forEach(r => {
@@ -85,30 +73,23 @@
       };
     });
 
-    // Gán an toàn (không kích loop)
     window.__bkq_assigning_from_mobile = true;
-    try {
-      window.bangKetQua = kq;
-    } finally {
-      window.__bkq_assigning_from_mobile = false;
-    }
+    try { window.bangKetQua = kq; }
+    finally { window.__bkq_assigning_from_mobile = false; }
     return kq;
   }
 
-  // API công khai (GIỮ NGUYÊN)
   Object.defineProperty(window, 'getBangKetQua', {
     value: () => fromMobileGrid(),
     writable: false,
     configurable: false
   });
-  window._fromMobileGrid = fromMobileGrid; // tiện debug
+  window._fromMobileGrid = fromMobileGrid;
 
-
-  // ==============================================================
+  // ============================================================== 
   // B) ADAPTER CHIỀU NGƯỢC: dữ liệu cũ/HĐ cũ → MobileKQ
   // ==============================================================
 
-  // Chuẩn hoá 1 item bangKetQua → { masp, qty:{0..45}, vitri,t1,t2 }
   function _bkqItemToRow(item) {
     const masp = String(item?.masp || '').trim().toUpperCase();
     const row = { masp, qty: {}, vitri: item?.vitri || '', t1: item?.toncs1 || 0, t2: item?.toncs2 || 0 };
@@ -124,12 +105,11 @@
       });
     } else {
       const sl = parseInt(item?.soluong ?? item?.sl ?? 0, 10) || 0;
-      if (sl > 0) row.qty[0] = sl; // fallback size 0
+      if (sl > 0) row.qty[0] = sl;
     }
     return row;
   }
 
-  // Clear lưới an toàn (không click "Thêm mới")
   function _clearMobileGrid() {
     try {
       if (window.MobileKQ?.clear) {
@@ -146,7 +126,6 @@
     }
   }
 
-  // (B1) Đổ từ bangKetQua (object/array) → MobileKQ
   async function setMobileGridFromBangKetQua(bang) {
     if (!bang || typeof bang !== 'object') return;
     if (!window.MobileKQ || typeof window.MobileKQ.upsertRow !== 'function') return;
@@ -172,21 +151,18 @@
 
     if (typeof window.MobileKQ.ensureVitriTonBatch === 'function') {
       const masps = entries.map(x => (x?.masp || '').toUpperCase()).filter(Boolean);
-      // chạy nền, không await để UI mượt
       try { window.MobileKQ.ensureVitriTonBatch(masps); } catch (_) {}
     }
 
-    // Đồng bộ lại cho Lưu/In mà không gây loop
     const prev = window.__bkq_assigning_from_mobile;
     window.__bkq_assigning_from_mobile = true;
     try { window.getBangKetQua?.(); } finally { window.__bkq_assigning_from_mobile = prev; }
     window.capNhatThongTinTong?.();
   }
 
-  // (B2) Đổ từ chi tiết hoá đơn → MobileKQ
   async function setMobileGridFromHoaDon(hoadon, chitiet) {
     if (!Array.isArray(chitiet)) return setMobileGridFromBangKetQua({});
-    const grouped = new Map(); // masp -> { masp, qty:{} }
+    const grouped = new Map();
 
     for (const r of chitiet) {
       const masp = String(r?.masp || r?.ma || '').trim().toUpperCase();
@@ -210,7 +186,6 @@
     await setMobileGridFromBangKetQua(bang);
   }
 
-  // Expose API chiều ngược
   Object.defineProperty(window, 'setMobileGridFromBangKetQua', {
     value: setMobileGridFromBangKetQua, writable: false, configurable: false
   });
@@ -218,7 +193,6 @@
     value: setMobileGridFromHoaDon, writable: false, configurable: false
   });
 
-  // (B3) Bridge đa dụng cho "Quay lại"
   async function applyOldInvoiceData(payload) {
     try {
       if (payload?.bangKetQua && typeof payload.bangKetQua === 'object') {
@@ -240,7 +214,6 @@
     value: applyOldInvoiceData, writable: false, configurable: false
   });
 
-  // Hỗ trợ dispatch event nếu luồng cũ phát sự kiện
   window.addEventListener('hydrate-mobile-from-bangketqua', e => {
     const bang = e?.detail?.bang || e?.detail;
     setMobileGridFromBangKetQua(bang);
@@ -250,8 +223,7 @@
     setMobileGridFromHoaDon(hoadon, chitiet);
   });
 
-
-  // ==============================================================
+  // ============================================================== 
   // C) SETTER bangKetQua: tự hydrate vào MobileKQ (debounce, chống loop)
   // ==============================================================
 
@@ -263,17 +235,14 @@
       set(v) {
         __bkq_store = v || {};
 
-        // Các trường hợp KHÔNG hydrate
-        if (BKQ.disabled) return;                          // tắt cầu khi debug
-        if (BKQ.hydrating) return;                         // đang hydrate → bỏ
-        if (window.__bkq_assigning_from_mobile) return;    // do chiều thuận vừa gán → bỏ
-        if (!__bkq_store || !Object.keys(__bkq_store).length) return; // rỗng → bỏ
+        if (BKQ.disabled) return;
+        if (BKQ.hydrating) return;
+        if (window.__bkq_assigning_from_mobile) return;
+        if (!__bkq_store || !Object.keys(__bkq_store).length) return;
 
-        // Debounce: gom các lần gán liên tiếp
         if (BKQ.timer) clearTimeout(BKQ.timer);
         BKQ.timer = setTimeout(() => {
           try {
-            // tránh hydrate lại cùng data
             const hash = (() => { try { return JSON.stringify(__bkq_store).length + ''; } catch { return Date.now()+''; }})();
             if (hash === BKQ.lastHash) return;
             BKQ.lastHash = hash;
@@ -281,7 +250,6 @@
             BKQ.hydrating = true;
             window.setMobileGridFromBangKetQua?.(__bkq_store);
 
-            // Cập nhật tổng/nguồn lưu mà không kích lại setter
             const prev = window.__bkq_assigning_from_mobile;
             window.__bkq_assigning_from_mobile = true;
             try { window.getBangKetQua?.(); } finally { window.__bkq_assigning_from_mobile = prev; }
@@ -291,10 +259,70 @@
           } finally {
             BKQ.hydrating = false;
           }
-        }, 60); // đợi 60ms cho luồng cũ kết thúc render
+        }, 60);
       }
     });
     window.__bkq_defined__ = true;
   }
+
+  // ============================================================== 
+  // D) LATE-HOOK CHO NÚT "QUAY LẠI"
+  //    - chạy SAU luồng cũ, bắt cả trường hợp mutate object/đổ thẳng DOM
+  // ==============================================================
+
+  function _safeLen(o){ try { return Object.keys(o||{}).length; } catch { return 0; } }
+
+  function tryHydrateFromBKQorDOM(reason='') {
+    if (BKQ.disabled) return;
+    // 1) Ưu tiên đọc từ window.bangKetQua (dù có thể bị mutate)
+    let src = window.bangKetQua;
+    if (!_safeLen(src) && typeof window.capNhatBangKetQuaTuDOM === 'function') {
+      // 2) fallback: gom từ DOM nếu trang cũ vừa đổ thẳng ra bảng
+      const prev = window.__bkq_assigning_from_mobile;
+      window.__bkq_assigning_from_mobile = true;
+      try { src = window.capNhatBangKetQuaTuDOM() || {}; }
+      catch (e) { console.warn('[hydrate fallback DOM] ', e); }
+      finally { window.__bkq_assigning_from_mobile = prev; }
+    }
+    if (_safeLen(src)) {
+      const prev2 = window.__bkq_assigning_from_mobile;
+      window.__bkq_assigning_from_mobile = true;
+      try { setMobileGridFromBangKetQua(src); }
+      finally { window.__bkq_assigning_from_mobile = prev2; }
+      console.debug('[hydrate] done via', reason || 'hook');
+      return true;
+    }
+    return false;
+  }
+
+  function observeOnceAndHydrate() {
+    const tbody = document.querySelector('#bangketqua tbody');
+    if (!tbody) return;
+
+    const mo = new MutationObserver(() => {
+      if (BKQ.hydrating) return;                 // bỏ thay đổi do chính mình gây ra
+      if (tryHydrateFromBKQorDOM('MutationObserver')) {
+        mo.disconnect();
+      }
+    });
+    mo.observe(tbody, { childList: true, subtree: true });
+  }
+
+  function attachQuayLaiHook() {
+    const btn = document.getElementById('quaylai');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      // cho luồng cũ chạy trước: đổ DOM / mutate object / gọi RPC...
+      setTimeout(() => {
+        // 1) Thử hydrate trực tiếp từ nguồn sẵn có
+        if (tryHydrateFromBKQorDOM('click-delay')) return;
+        // 2) Nếu chưa có, theo dõi DOM 1 lần để bắt khi dữ liệu xuất hiện
+        observeOnceAndHydrate();
+      }, 120);
+    }, { capture: false });
+  }
+
+  // chạy khi file load (DOM đã có vì script ở cuối trang)
+  attachQuayLaiHook();
 
 })();
