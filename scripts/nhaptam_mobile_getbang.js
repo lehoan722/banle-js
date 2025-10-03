@@ -486,35 +486,88 @@ function __showLoading(flag) {
 }
 
 // 5) Chạy luồng “Quay lại mới” hoàn chỉnh
+// 5) Chạy luồng “Quay lại mới” – tự lùi sang số HĐ có dữ liệu gần nhất
 async function openInvoiceFromDatabase() {
-  const sohd = __getSoHDOnPage();
-  if (!sohd) { alert('Vui lòng nhập Số HĐ trước khi bấm Quay lại.'); return; }
+  function parsePrev(sohd) {
+    // dạng: prefix_number  (ví dụ: nhaptamcs1_00033)
+    const m = String(sohd || '').trim().match(/^(.*?_)(\d+)$/);
+    if (!m) return null;
+    const prefix = m[1], numStr = m[2];
+    const n = parseInt(numStr, 10);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const prev = (n - 1).toString().padStart(numStr.length, '0');
+    return prefix + prev;
+  }
 
-  __showLoading(true);
+  // lấy số HĐ từ trang
+  const sohdInput = (() => {
+    const cands = Array.from(document.querySelectorAll('input[type="text"], input:not([type])'));
+    for (const el of cands) {
+      const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+      const nm = (el.name || '').toLowerCase();
+      const id = (el.id || '').toLowerCase();
+      if (ph.includes('số hd') || ph.includes('so hd') || nm.includes('sohd') || id.includes('sohd')) return el;
+    }
+    return document.querySelector('#sohd') || null;
+  })();
+  const currSohd = (sohdInput?.value || '').trim();
+  if (!currSohd) { alert('Vui lòng nhập Số HĐ.'); return; }
+
+  // danh sách sohd cần thử: ưu tiên HĐ hiện tại (phòng khi có), sau đó lùi dần
+  const toTry = [currSohd];
+  let p = parsePrev(currSohd);
+  for (let i = 0; i < 20 && p; i++) { toTry.push(p); p = parsePrev(p); }
+
+  // loading nho nhỏ
+  const loadingId = '__quaylai_loading__';
+  const showLoading = (flag) => {
+    let el = document.getElementById(loadingId);
+    if (flag) {
+      if (!el) {
+        el = document.createElement('div');
+        el.id = loadingId;
+        el.style.cssText = 'position:fixed;right:20px;bottom:20px;padding:8px 12px;background:#222;color:#fff;border-radius:6px;z-index:99999;font-size:12px';
+        el.textContent = 'Đang nạp hóa đơn...';
+        document.body.appendChild(el);
+      }
+    } else if (el) el.remove();
+  };
+
+  showLoading(true);
   try {
-    const inv = await queryInvoiceFromDB(sohd);
-    if (!inv || !Array.isArray(inv?.chitiet) || inv.chitiet.length === 0) {
-      alert('Không tìm thấy chi tiết hóa đơn: ' + sohd);
+    let found = null, foundSohd = null;
+    for (const s of toTry) {
+      try {
+        const inv = await queryInvoiceFromDB(s);
+        if (inv && Array.isArray(inv.chitiet) && inv.chitiet.length) {
+          found = inv; foundSohd = s; break;
+        }
+      } catch (e) {
+        // bỏ qua nếu “không thấy chi tiết”, thử tiếp số trước đó
+        if (!/Không thấy chi tiết/.test(String(e?.message || ''))) {
+          console.debug('[quaylai] lỗi khi thử', s, e);
+        }
+      }
+    }
+
+    if (!found) {
+      alert('Không tìm thấy hóa đơn cũ nào có dữ liệu (đã thử lùi 20 số).');
       return;
     }
 
-    const bang = __mapInvoiceToBangKetQua(inv);
-
-    // Đổ vào lưới mới
+    // map → bangKetQua và đổ vào lưới MobileKQ
+    const bang = __mapInvoiceToBangKetQua(found);
     await (window.setMobileGridFromBangKetQua
       ? window.setMobileGridFromBangKetQua(bang)
-      : window.setMobileGridFromHoaDon(inv.hoadon, inv.chitiet));
+      : window.setMobileGridFromHoaDon(found.hoadon, found.chitiet));
 
-    // Cập nhật tổng/khuyến mãi nếu bạn muốn
-    if (typeof window.capNhatThongTinTong === 'function') {
-      window.capNhatThongTinTong();
-    }
+    // cập nhật ô Số HĐ thành số tìm được
+    if (sohdInput) sohdInput.value = foundSohd;
 
-  } catch (err) {
-    console.error('[Quay lại (DB)]', err);
-    alert('Lỗi đọc dữ liệu hóa đơn từ CSDL.');
+    // cập nhật tổng
+    if (typeof window.capNhatThongTinTong === 'function') window.capNhatThongTinTong();
   } finally {
-    __showLoading(false);
+    showLoading(false);
   }
 }
 
