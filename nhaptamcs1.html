@@ -633,7 +633,7 @@
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
-            <button id="trolai">Quay lại</button>
+            <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
@@ -857,7 +857,7 @@
             // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
             // Nút quay lại
-            document.getElementById('trolai') && (document.getElementById('trolai').disabled = !quyenSua);
+            document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
             // Nút lưu
@@ -1213,7 +1213,7 @@ window.applyOldInvoiceData = async function(payload) {
 
 // (Tuỳ chọn) Nếu luồng cũ set sẵn các biến toàn cục sau khi chọn HĐ,
 // bạn có thể gắn sự kiện click nút Quay lại để nạp ngay:
-document.getElementById('trolai')?.addEventListener('click', async () => {
+document.getElementById('quaylai')?.addEventListener('click', async () => {
   if (window.__hoadonCu__?.chitiet) {
     await window.applyOldInvoiceData(window.__hoadonCu__);
   } else if (window.bangKetQua && Object.keys(window.bangKetQua).length) {
