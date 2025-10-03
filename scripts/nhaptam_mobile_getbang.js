@@ -358,7 +358,22 @@
 
     mo.observe(tbody, { childList: true, subtree: true, attributes: false, characterData: false });
     tMax = setTimeout(() => { cleanup(mo); tryHydrateFromBKQorDOM(); }, maxWaitMs);
-  }
+  } 
+
 
   function attachQuayLaiHook() {
-    const btn = document.getElementById
+    const btn = document.getElementById('quaylai');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+      // Cho luồng cũ chạy tự do, mình chờ DOM “yên” rồi mới hydrate
+      setTimeout(() => {
+        observeUntilQuietAndHydrate(300, 3000);
+      }, 50);
+    }, { capture: false });
+  }
+
+  // chạy khi file load
+  attachQuayLaiHook();
+
+})();
