@@ -587,6 +587,92 @@ async function openInvoiceFromDatabase() {
     await openInvoiceFromDatabase();
     return false;
   }, true);
-  
+
+  // ========== F) CHUẨN HÓA DỮ LIỆU CHO TRANG IN MÃ VẠCH ==========
+
+// 1) Phẳng hoá bangKetQua → mảng item {masp, tensp, dvt, size, sl, gia}
+function __flattenBangKetQuaForPrint(bkq) {
+  const out = [];
+  const src = bkq && typeof bkq === 'object' ? Object.values(bkq) : [];
+  for (const it of src) {
+    const masp = String(it?.masp || '').toUpperCase().trim();
+    if (!masp) continue;
+    const tensp = it?.tensp || '';
+    const dvt   = it?.dvt   || '';
+    const gia   = Number(it?.gia || 0) || 0;
+
+    const sizes = Array.isArray(it?.sizes) ? it.sizes : [];
+    const sls   = Array.isArray(it?.soluongs) ? it.soluongs : [];
+
+    if (sizes.length && sizes.length === sls.length) {
+      sizes.forEach((s, i) => {
+        const size = String(parseInt(s,10));
+        const sl = Number(sls[i] || 0) || 0;
+        if (sl > 0) out.push({ masp, tensp, dvt, size, sl, gia });
+      });
+    } else {
+      // không quản size → coi như size "0"
+      const sl = Number(it?.soluong || it?.sl || 0) || 0;
+      if (sl > 0) out.push({ masp, tensp, dvt, size: '0', sl, gia });
+    }
+  }
+  return out;
+}
+
+// 2) Ghi ra nhiều “kênh” để trang in nào cũng lấy được
+function __publishPrintItems(items) {
+  // Global shims
+  window.bangTem = items;                    // tên phổ biến (nhiều trang in đang dùng)
+  window.printPayload = { items };           // gói chuẩn
+  window.temItems = items;                   // alias
+
+  // localStorage (để trang in mở tab mới vẫn lấy được)
+  try {
+    localStorage.setItem('IN_TEM_ITEMS', JSON.stringify(items));
+    localStorage.setItem('PRINT_ITEMS', JSON.stringify(items));
+    localStorage.setItem('TEM_ITEMS', JSON.stringify(items));
+  } catch (e) {
+    console.warn('[print] localStorage error:', e);
+  }
+}
+
+// 3) Hook nút "In mã vạch": gom dữ liệu & publish trước khi luồng cũ điều hướng
+(function attachPrintHook() {
+  // đoán id/selector nút in
+  const btn = document.getElementById('inmavach')
+           || document.querySelector('button[data-action="inmavach"], .btn-inmavach, .inmavach');
+
+  if (!btn) return;
+
+  btn.addEventListener('click', (ev) => {
+    try {
+      // luôn đồng bộ lại từ lưới → bangKetQua
+      if (typeof window.getBangKetQua === 'function') window.getBangKetQua();
+
+      const bkq = window.bangKetQua || {};
+      const items = __flattenBangKetQuaForPrint(bkq);
+
+      if (!items.length) {
+        alert('Không có dữ liệu để in mã vạch.');
+        // Cho phép bạn quyết định: nếu muốn chặn hẳn điều hướng khi trống:
+        // ev.preventDefault(); ev.stopImmediatePropagation(); return false;
+      } else {
+        __publishPrintItems(items);
+        // tùy trang in cần query flag để nhận biết “nguồn mobile”
+        try {
+          const a = ev.currentTarget.closest('a');
+          if (a && a.href && !/source=mobile/.test(a.href)) {
+            a.href = a.href + (a.href.includes('?') ? '&' : '?') + 'source=mobile';
+          }
+        } catch (_e) {}
+      }
+    } catch (err) {
+      console.error('[print] build payload error:', err);
+    }
+    // không chặn luồng cũ: để trang in tiếp tục mở như trước
+  }, true); // capture: chạy TRƯỚC handler cũ
+})();
+
+
 })();
 
