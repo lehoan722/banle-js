@@ -1,6 +1,13 @@
-// scripts/adapter_mobile_getbang.js
+// scripts/nhaptam_mobile_getbang.js
 ;(() => {
   'use strict';
+
+  /**
+   * ==========================================================
+   *  A) ADAPTER CHIỀU THUẬN: MobileKQ → window.bangKetQua
+   *     (giữ nguyên API getBangKetQua() bạn đang dùng)
+   * ==========================================================
+   */
 
   /**
    * Lấy nhanh thông tin SP từ cache hiện có (KHÔNG gọi DB).
@@ -90,7 +97,7 @@
     return kq;
   }
 
-  // API công khai duy nhất để các module khác gọi
+  // API công khai để các module khác gọi (GIỮ NGUYÊN)
   Object.defineProperty(window, 'getBangKetQua', {
     value: () => fromMobileGrid(),
     writable: false,
@@ -99,5 +106,161 @@
 
   // Cho phép gọi trực tiếp nếu cần debug
   window._fromMobileGrid = fromMobileGrid;
+
+
+  /**
+   * ==========================================================
+   *  B) ADAPTER CHIỀU NGƯỢC: dữ liệu cũ/HĐ cũ → MobileKQ
+   *     (mới thêm, để nút "Quay lại" đổ đúng vào lưới)
+   * ==========================================================
+   */
+
+  // Chuẩn hoá 1 item bangKetQua → { masp, qty:{0..45}, vitri,t1,t2 }
+  function _bkqItemToRow(item) {
+    const masp = String(item?.masp || '').trim().toUpperCase();
+    const row = { masp, qty: {}, vitri: item?.vitri || '', t1: item?.toncs1 || 0, t2: item?.toncs2 || 0 };
+
+    // Ưu tiên cặp sizes/soluongs
+    const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+    const sls   = Array.isArray(item?.soluongs) ? item.soluongs : [];
+
+    if (sizes.length && sizes.length === sls.length) {
+      sizes.forEach((s, i) => {
+        const sz = parseInt(s, 10);
+        const sl = parseInt(sls[i] || 0, 10) || 0;
+        if (!Number.isNaN(sz) && sl > 0) row.qty[sz] = sl;
+      });
+    } else {
+      // Fallback: nếu chỉ có "soluong" tổng, đổ về size 0
+      const sl = parseInt(item?.soluong ?? item?.sl ?? 0, 10) || 0;
+      if (sl > 0) row.qty[0] = sl;
+    }
+    return row;
+  }
+
+  // Xoá dữ liệu hiện có trong lưới (tuỳ API MobileKQ)
+  function _clearMobileGrid() {
+    if (window.MobileKQ?.clear) return window.MobileKQ.clear();
+    // fallback: bấm "Thêm mới" → reset rows, rồi dọn tbody
+    const btnThem = document.getElementById('them');
+    if (btnThem) btnThem.click();
+    const tbl = document.querySelector('#bangketqua tbody');
+    if (tbl) tbl.innerHTML = '';
+  }
+
+  /**
+   * (B1) Đổ từ bangKetQua (object hoặc array item) → MobileKQ
+   */
+  async function setMobileGridFromBangKetQua(bang) {
+    if (!bang || typeof bang !== 'object') return;
+    if (!window.MobileKQ || typeof window.MobileKQ.upsertRow !== 'function') return;
+
+    _clearMobileGrid();
+
+    const entries = Array.isArray(bang) ? bang : Object.values(bang);
+    for (const it of entries) {
+      const row = _bkqItemToRow(it);
+      if (!row.masp) continue;
+      await window.MobileKQ.upsertRow(row.masp, { moveTop: false });
+      for (const [sz, sl] of Object.entries(row.qty)) {
+        window.MobileKQ.setQty(row.masp, parseInt(sz, 10), sl);
+      }
+      // có thể set thêm vitri/tồn nếu muốn show ngay
+      if (row.vitri) {
+        const r = window.MobileKQ.find?.(row.masp);
+        if (r) { r.vitri = row.vitri; r.t1 = row.t1 || 0; r.t2 = row.t2 || 0; }
+      }
+    }
+
+    // render + nạp vị trí/tồn như lúc nhập mới
+    window.MobileKQ.render?.();
+
+    if (typeof window.MobileKQ.ensureVitriTonBatch === 'function') {
+      const masps = entries.map(x => (x?.masp || '').toUpperCase()).filter(Boolean);
+      // không cần await: có thể chạy nền
+      window.MobileKQ.ensureVitriTonBatch(masps);
+    }
+
+    // Đồng bộ lại cho các nút Lưu/In (dùng chung bangKetQua)
+    window.getBangKetQua?.();
+    window.capNhatThongTinTong?.();
+  }
+
+  /**
+   * (B2) Đổ từ chi tiết hoá đơn → MobileKQ
+   * hoadon: header (không bắt buộc), chitiet: array các dòng {masp, size/kichco, soluong}
+   */
+  async function setMobileGridFromHoaDon(hoadon, chitiet) {
+    if (!Array.isArray(chitiet)) return setMobileGridFromBangKetQua({});
+
+    // Gom theo masp → qty theo size
+    const grouped = new Map(); // masp -> { masp, qty:{} }
+    for (const r of chitiet) {
+      const masp = String(r?.masp || r?.ma || '').trim().toUpperCase();
+      if (!masp) continue;
+      const sizeRaw = r?.size ?? r?.kichco ?? r?.kc ?? 0;
+      const size = parseInt(sizeRaw, 10);
+      const sl = parseInt(r?.soluong ?? r?.sl ?? r?.qty ?? 0, 10) || 0;
+
+      if (!grouped.has(masp)) grouped.set(masp, { masp, qty: {} });
+      const g = grouped.get(masp);
+      const k = Number.isFinite(size) ? size : 0;
+      g.qty[k] = (g.qty[k] || 0) + sl;
+    }
+
+    // chuyển sang format bangKetQua rồi dùng (B1)
+    const bang = {};
+    for (const [masp, g] of grouped.entries()) {
+      const sizes = Object.keys(g.qty).map(s => String(parseInt(s,10))).filter(Boolean);
+      const soluongs = sizes.map(s => g.qty[parseInt(s,10)] || 0);
+      bang[masp] = { masp, sizes, soluongs };
+    }
+    await setMobileGridFromBangKetQua(bang);
+  }
+
+  // Expose API chiều ngược
+  Object.defineProperty(window, 'setMobileGridFromBangKetQua', {
+    value: setMobileGridFromBangKetQua, writable: false, configurable: false
+  });
+  Object.defineProperty(window, 'setMobileGridFromHoaDon', {
+    value: setMobileGridFromHoaDon, writable: false, configurable: false
+  });
+
+  /**
+   * (B3) Bridge "Quay lại" — 1 hàm nhận nhiều dạng payload
+   *  - payload = { bangKetQua: {...} }    → dùng thẳng
+   *  - payload = { hoadon, chitiet: [] }  → gom & đổ
+   *  - payload = {...} (object bangKetQua) → dùng thẳng
+   */
+  async function applyOldInvoiceData(payload) {
+    try {
+      if (payload?.bangKetQua && typeof payload.bangKetQua === 'object') {
+        return await setMobileGridFromBangKetQua(payload.bangKetQua);
+      }
+      if (Array.isArray(payload?.chitiet)) {
+        return await setMobileGridFromHoaDon(payload.hoadon, payload.chitiet);
+      }
+      if (payload && typeof payload === 'object') {
+        return await setMobileGridFromBangKetQua(payload);
+      }
+      alert('Không nhận diện được dữ liệu hóa đơn cũ để nạp vào lưới.');
+    } catch (err) {
+      console.error('[Quay lại] Lỗi hydrate:', err);
+      alert('Lỗi khi phục hồi dữ liệu vào lưới.');
+    }
+  }
+  Object.defineProperty(window, 'applyOldInvoiceData', {
+    value: applyOldInvoiceData, writable: false, configurable: false
+  });
+
+  // Tuỳ chọn: hỗ trợ event để luồng cũ chỉ việc dispatch
+  window.addEventListener('hydrate-mobile-from-bangketqua', e => {
+    const bang = e?.detail?.bang || e?.detail;
+    setMobileGridFromBangKetQua(bang);
+  });
+  window.addEventListener('hydrate-mobile-from-hoadon', e => {
+    const hoadon = e?.detail?.hoadon, chitiet = e?.detail?.chitiet || e?.detail;
+    setMobileGridFromHoaDon(hoadon, chitiet);
+  });
 
 })();
