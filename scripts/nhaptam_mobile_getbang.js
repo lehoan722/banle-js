@@ -3,7 +3,7 @@
   'use strict';
 
   // dấu hiệu kiểm tra đã nạp đúng bản
-  window.__BKQ_BUILD = '2025-10-03-quiet-300';
+  window.__BKQ_BUILD = '2025-10-03-quiet-300-domparse';
 
   // ================= STATE CHỐNG LOOP =================
   const BKQ = (window.__BKQ_BRIDGE = window.__BKQ_BRIDGE || {
@@ -247,7 +247,7 @@
           } finally {
             BKQ.hydrating = false;
           }
-        }, 100);
+        }, 120);
       }
     });
     window.__bkq_defined__ = true;
@@ -256,27 +256,86 @@
   // ========== D) LATE-HOOK QUAY LẠI: chờ DOM “yên” rồi mới hydrate ==========
   function _safeLen(o){ try { return Object.keys(o||{}).length; } catch { return 0; } }
 
+  // (NEW) Phân tích DOM bảng cũ → object bangKetQua
+  function parseBangKetQuaFromOldTable() {
+    const table = document.querySelector('#bangketqua');
+    if (!table) return {};
+
+    // Map cột → size dựa trên header
+    const sizeCols = {};
+    const ths = table.querySelectorAll('thead th');
+    ths.forEach((th, idx) => {
+      const txt = (th.textContent || '').trim();
+      const n = parseInt(txt, 10);
+      if (!isNaN(n) && (n === 0 || (n >= 30 && n <= 50))) sizeCols[idx] = n;
+    });
+
+    const rows = table.querySelectorAll('tbody tr');
+    const out = {};
+    rows.forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (!tds.length) return;
+      // Lấy mã SP từ attr hoặc từ text ở ô đầu
+      let masp = (tr.getAttribute('data-masp') || '').toUpperCase().trim();
+      if (!masp) {
+        const first = (tds[0].textContent || '').replace(/\s+/g,' ').trim();
+        const m = first.match(/[A-Z0-9][A-Z0-9\-._/]{2,}/i);
+        if (m) masp = m[0].toUpperCase();
+      }
+      if (!masp) return;
+
+      const qty = {};
+      for (const [colIdxStr, size] of Object.entries(sizeCols)) {
+        const colIdx = parseInt(colIdxStr, 10);
+        const td = tds[colIdx];
+        if (!td) continue;
+        const raw = (td.textContent || td.innerText || '').trim();
+        const val = parseInt(raw.replace(/[^0-9-]/g,''), 10) || 0;
+        if (val > 0) qty[size] = val;
+      }
+      const sizes = Object.keys(qty).map(s => String(parseInt(s,10)));
+      if (!sizes.length) return;
+      const soluongs = sizes.map(s => qty[parseInt(s,10)] || 0);
+
+      out[masp] = { masp, sizes, soluongs };
+    });
+
+    return out;
+  }
+
   function tryHydrateFromBKQorDOM() {
     let src = window.bangKetQua;
-    if (!_safeLen(src) && typeof window.capNhatBangKetQuaTuDOM === 'function') {
-      const prev = window.__bkq_assigning_from_mobile;
-      window.__bkq_assigning_from_mobile = true;
-      try { src = window.capNhatBangKetQuaTuDOM() || {}; }
-      catch (e) { console.warn('[hydrate fallback DOM] ', e); }
-      finally { window.__bkq_assigning_from_mobile = prev; }
+    if (!_safeLen(src)) {
+      if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+        const prev = window.__bkq_assigning_from_mobile;
+        window.__bkq_assigning_from_mobile = true;
+        try { src = window.capNhatBangKetQuaTuDOM() || {}; }
+        catch (e) { console.warn('[hydrate fallback DOM old fn] ', e); }
+        finally { window.__bkq_assigning_from_mobile = prev; }
+      } else {
+        // (NEW) tự parse từ bảng cũ
+        src = parseBangKetQuaFromOldTable();
+      }
     }
     if (_safeLen(src)) {
       const prev2 = window.__bkq_assigning_from_mobile;
       window.__bkq_assigning_from_mobile = true;
       try { setMobileGridFromBangKetQua(src); }
       finally { window.__bkq_assigning_from_mobile = prev2; }
+      // “nhát bồi” phòng script cũ ghi đè muộn
+      setTimeout(() => {
+        const prev3 = window.__bkq_assigning_from_mobile;
+        window.__bkq_assigning_from_mobile = true;
+        try { setMobileGridFromBangKetQua(src); }
+        finally { window.__bkq_assigning_from_mobile = prev3; }
+      }, 400);
       return true;
     }
     return false;
   }
 
   // Quan sát tbody cho đến khi “yên” quietMs (reset timer mỗi biến động), hoặc quá maxWaitMs
-  function observeUntilQuietAndHydrate(quietMs = 500, maxWaitMs = 5000) {
+  function observeUntilQuietAndHydrate(quietMs = 400, maxWaitMs = 5000) {
     const tbody = document.querySelector('#bangketqua tbody');
     if (!tbody) return;
 
@@ -297,24 +356,9 @@
       }, quietMs);
     });
 
-    // Bắt đầu quan sát & cài maxWait
     mo.observe(tbody, { childList: true, subtree: true, attributes: false, characterData: false });
     tMax = setTimeout(() => { cleanup(mo); tryHydrateFromBKQorDOM(); }, maxWaitMs);
   }
 
   function attachQuayLaiHook() {
-    const btn = document.getElementById('quaylai');
-    if (!btn) return;
-
-    btn.addEventListener('click', () => {
-      // Cho luồng cũ chạy tự do, mình chờ DOM “yên” rồi mới hydrate
-      setTimeout(() => {
-        observeUntilQuietAndHydrate(300, 3000);
-      }, 50);
-    }, { capture: false });
-  }
-
-  // chạy khi file load
-  attachQuayLaiHook();
-
-})();
+    const btn = document.getElementById
