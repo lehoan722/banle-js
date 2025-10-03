@@ -276,7 +276,7 @@
   }
 
   // Quan sát tbody cho đến khi “yên” quietMs (reset timer mỗi biến động), hoặc quá maxWaitMs
-  function observeUntilQuietAndHydrate(quietMs = 300, maxWaitMs = 3000) {
+  function observeUntilQuietAndHydrate(quietMs = 500, maxWaitMs = 5000) {
     const tbody = document.querySelector('#bangketqua tbody');
     if (!tbody) return;
 
