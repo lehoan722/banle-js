@@ -1190,26 +1190,6 @@
 
     <script>
 // Bridge cho luồng quay lại cũ: gọi 1 hàm là xong
-window.applyOldInvoiceData = async function(payload) {
-  try {
-    // Trường hợp A: đưa thẳng bangKetQua
-    if (payload?.bangKetQua && typeof payload.bangKetQua === 'object') {
-      return await window.setMobileGridFromBangKetQua(payload.bangKetQua);
-    }
-    // Trường hợp B: đưa { hoadon, chitiet[] }
-    if (Array.isArray(payload?.chitiet)) {
-      return await window.setMobileGridFromHoaDon(payload.hoadon, payload.chitiet);
-    }
-    // Trường hợp C: payload chính là bangKetQua object
-    if (payload && typeof payload === 'object') {
-      return await window.setMobileGridFromBangKetQua(payload);
-    }
-    alert('Không nhận diện được dữ liệu hóa đơn cũ để nạp vào lưới.');
-  } catch (err) {
-    console.error('[Quay lại] Lỗi hydrate:', err);
-    alert('Lỗi khi phục hồi dữ liệu vào lưới.');
-  }
-};
 
 
 </script>
