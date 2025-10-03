@@ -206,6 +206,15 @@
         #deleteProductBtn:hover {
             background-color: #a60000 !important;
         }
+
+        
+  label.locked { opacity: 0.9; }
+  label.locked::after {
+    content: ' (tự bật theo giá)';
+    font-size: 12px; color: #888; margin-left: 4px;
+  }
+
+
     </style>
 </head>
 
@@ -221,7 +230,7 @@
             <div class="product-list" id="productList"></div>
 
             <div id="productInputForm"
-                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
+                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 40vh; ">
                 <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
 
                 <form id="addProductForm" autocomplete="off">
@@ -332,15 +341,16 @@
                 <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
-                    <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly
+                    <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
                         style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
-                    <input type="password" id="login-password" value="369369"
+                    <input type="password" id="login-password" value="123123"
                         style="width:110px;margin-right:2px; display:none ;">
                     <button id="login-submit" display:none class="btn">Đăng nhập</button>
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
                 </div>
 
-
+                <!-- [ADD] Nút tạo HĐ nhập tạm -->
+<button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button>
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -372,6 +382,28 @@
                 global: { headers: { Authorization: `Bearer ${token}` } }
             })
             : createClient(supabaseUrl, supabaseKey);
+
+        // 🔎 LẤY GIÁ LẺ THEO DANH SÁCH MÃ (batch)
+        async function fetchGiaLeByMasps(masps = []) {
+            const uniq = Array.from(new Set(
+                (masps || []).map(m => (m || '').toUpperCase()).filter(Boolean)
+            ));
+            if (!uniq.length) return {};
+            const { data, error } = await supabase
+                .from('dmhanghoa')
+                .select('masp, giale, gianhap, dvt, tensp')
+                .in('masp', uniq);
+            if (error) {
+                console.warn('fetchGiaLeByMasps error:', error);
+                return {};
+            }
+            const map = {};
+            (data || []).forEach(sp => {
+                const k = (sp.masp || '').toUpperCase();
+                map[k] = sp || {};
+            });
+            return map;
+        }
 
         // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
         let hot;
@@ -752,7 +784,7 @@
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
                         return s && s !== '0'
-                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:1mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
+                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
              ${s}
            </div>`
                             : ``;
@@ -787,7 +819,6 @@
                     level: 'M'
                 });
             });
-
             document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages}`;
         };
 
@@ -947,11 +978,11 @@
             } else {
                 const key = 'IMP_' + Date.now();
                 localStorage.setItem(key, json);
-                window.open(`/nhapmoimtcs2.html#impkey=${key} `, '_blank');
+                window.open(`/nhapmoimtcs1.html#impkey=${key} `, '_blank');
             }
         }
 
-        // Click nút "Tạo HĐ nhập"
+         // Click nút "Tạo HĐ nhập"
         document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
             const items = collectInvoiceItems();
             if (!items.length) {
@@ -961,6 +992,33 @@
             openNhapFromItems(items);
         });
 
+
+        // [ADD] Mở trang NHẬP TẠM với cùng payload/format
+function openNhapTamFromItems(items) {
+  const payload = { source: 'in-tem', cs: 'cs1', items }; // giữ format y hệt
+  const json = JSON.stringify(payload);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+
+  if (b64.length <= 1800) {
+    window.open(`/nhaptamcs111.html#imp=${b64} `, '_blank');
+  } else {
+    const key = 'IMP_' + Date.now();
+    localStorage.setItem(key, json);
+    window.open(`/nhaptamcs111.html#impkey=${key} `, '_blank');
+  }
+}
+
+// [ADD] Click nút "Tạo HĐ nhập tạm"
+document.getElementById('btnCreateNhapTam').addEventListener('click', () => {
+  const items = collectInvoiceItems();
+  if (!items.length) {
+    alert('Danh sách in rỗng hoặc chưa tick In.');
+    return;
+  }
+  openNhapTamFromItems(items);
+});
+
+       
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
@@ -1056,6 +1114,8 @@
                 document.getElementById('nhomhangInput').value = data.nhomhang || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
+                // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
+syncQuanLyKichCoByGiaLe();
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
                 // Không fill gì cả, không reset
@@ -1316,6 +1376,8 @@
 
         const gianhapInput = document.getElementById('gianhapInput');
         const gialeInput = document.getElementById('gialeInput');
+        // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
+        const GIALE_LOCK_THRESHOLD = 170000; // đổi sau này nếu cần
 
         //Format số cho giá nhập & giá lẻ trên FORM
         [gianhapInput, gialeInput].forEach(inp => {
@@ -1333,6 +1395,49 @@
             });
         });
 
+        // [ADD] Helper khóa/mở khóa checkbox "Quản lý kích cỡ"
+const qlkcCheckbox = document.getElementById('quanlykichcoCheckbox');
+const qlkcLabel    = qlkcCheckbox?.parentElement; // <label> bao checkbox
+
+function lockQuanLyKichCo() {
+  if (!qlkcCheckbox) return;
+  qlkcCheckbox.checked = true;
+  qlkcCheckbox.disabled = true;
+  qlkcCheckbox.title = 'Đã khóa do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
+  qlkcLabel?.classList.add('locked');
+}
+
+function unlockQuanLyKichCoAndUntick() {
+  if (!qlkcCheckbox) return;
+  qlkcCheckbox.disabled = false;
+  qlkcCheckbox.checked = false;
+  qlkcCheckbox.title = '';
+  qlkcLabel?.classList.remove('locked');
+}
+
+// [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
+function syncQuanLyKichCoByGiaLe() {
+  if (!gialeInput || !qlkcCheckbox) return;
+  const raw = (gialeInput.value || '').toString().replace(/\./g, '').replace(/[^0-9]/g, '');
+  const val = Number(raw || 0);
+  if (val >= GIALE_LOCK_THRESHOLD) {
+    lockQuanLyKichCo();
+  } else {
+    // Nếu hạ xuống dưới ngưỡng -> mở khóa & bỏ tick
+    unlockQuanLyKichCoAndUntick();
+  }
+}
+
+// [ADD] Admin override: ALT + click vào vùng label để mở khóa thủ công
+if (qlkcLabel) {
+  qlkcLabel.addEventListener('click', (e) => {
+    if (e.altKey && qlkcCheckbox?.disabled) {
+      e.preventDefault(); // ngăn thao tác mặc định trên label
+      qlkcCheckbox.disabled = false;
+      qlkcCheckbox.title = 'Đã mở khóa thủ công (admin override)';
+    }
+  });
+}
 
         // Tự động tính giá lẻ khi nhập xong giá nhập
         gianhapInput.addEventListener('change', function () {
@@ -1341,6 +1446,9 @@
                 gialeInput.value = Math.round(val * 1.5);
             }
         });
+        // [ADD]
+syncQuanLyKichCoByGiaLe();
+
 
         const formOrder = [
             'maspInput',
@@ -1393,6 +1501,15 @@
 
         // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
         attachEnterNav(formOrder);
+        // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
+if (gialeInput) {
+  gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
+  gialeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      syncQuanLyKichCoByGiaLe();
+    }
+  });
+}
 
         // Đăng nhập xong reload lại để token cập nhật
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
@@ -1447,7 +1564,7 @@
         }
 
         // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
-        function importFromHashToInTem() {
+        async function importFromHashToInTem() {
             const hash = location.hash || "";
             if (!hash.startsWith("#imp=")) return;
 
@@ -1468,26 +1585,33 @@
 
             console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
 
-            // Chuyển items thành data đúng 9 cột
-            const data = payload.items.map((it, idx) => [
-                idx + 1,
-                it.masp || "",
-                it.tensp || "",
-                it.size || "0",
-                it.sl || 0,
-                it.dvt || "sp",
-                it.gianhap || 0,
-                true,
-                it.giale || 0
-            ]);
-            console.log("[IN-TEM] data:", data);
+            // 🆕 Lấy map { MASP → {giale,gianhap,dvt,tensp} } từ CSDL
+            const masps = payload.items.map(it => (it.masp || '').toUpperCase());
+            const spMap = await fetchGiaLeByMasps(masps);
 
-            // Đợi hot sẵn sàng mới load
+            // Chuyển items thành data đúng 9 cột và LẤY GIÁ LẺ từ spMap
+            const data = payload.items.map((it, idx) => {
+                const masp = (it.masp || '').toUpperCase();
+                const sp = spMap[masp] || {};
+                return [
+                    idx + 1,                        // STT
+                    masp,                           // Mã hàng
+                    it.tensp || sp.tensp || "",     // Tên hàng (ưu tiên payload)
+                    it.size || "0",                 // Kích cỡ
+                    it.sl || 0,                     // Số lượng
+                    it.dvt || sp.dvt || "sp",       // ĐVT
+                    (it.gianhap ?? sp.gianhap) || 0,// Giá nhập (nếu muốn hiển thị)
+                    true,                           // In
+                    (it.giale ?? sp.giale) || 0     // 🔥 GIÁ LẺ – lấy từ DB nếu payload không có
+                ];
+            });
+
+            // Đợi hot sẵn sàng rồi nạp
             const tryLoad = () => {
                 if (window.hot) {
                     hot.loadData(data);
                     console.log("[IN-TEM] Đã nạp vào hot:", hot.getData());
-                    history.replaceState(null, "", location.pathname);
+                    history.replaceState(null, "", location.pathname); // xoá hash để tránh nạp lại
                     return true;
                 }
                 return false;
@@ -1496,8 +1620,7 @@
                 const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
             }
         }
-        document.addEventListener("DOMContentLoaded", importFromHashToInTem);
-
+        document.addEventListener("DOMContentLoaded", () => { importFromHashToInTem(); });
 
     </script>
 
