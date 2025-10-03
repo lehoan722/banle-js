@@ -1,5 +1,5 @@
 // scripts/nhaptam_mobile_getbang.js
-;(() => {
+; (() => {
   'use strict';
 
   // dấu hiệu kiểm tra đã nạp đúng bản
@@ -23,19 +23,19 @@
       if (k) return k;
     }
     if (window.__spIndex__ instanceof Map) {
-      const v = window.__spIndex__.get(masp) || window.__spIndex__.get(masp.replace(/\s+/g,'')) || null;
+      const v = window.__spIndex__.get(masp) || window.__spIndex__.get(masp.replace(/\s+/g, '')) || null;
       if (v) return v;
     }
     const arr = window.dmhanghoa || window.dssp || window.dsSanPham;
     if (Array.isArray(arr)) {
-      const likely = ['masp','MA','ma','ma_sp','mahang','ma_hang','mavattu','mavt','code','sku','mahh'];
+      const likely = ['masp', 'MA', 'ma', 'ma_sp', 'mahang', 'ma_hang', 'mavattu', 'mavt', 'code', 'sku', 'mahh'];
       for (const rec of arr) for (const k of likely) {
         if (rec[k] != null && String(rec[k]).trim().toUpperCase() === masp) return rec;
       }
-      for (const rec of arr) for (const [k,v] of Object.entries(rec)) {
+      for (const rec of arr) for (const [k, v] of Object.entries(rec)) {
         if ((typeof v === 'string' || typeof v === 'number')
-            && String(v).trim().toUpperCase() === masp
-            && String(v).length <= 32) return rec;
+          && String(v).trim().toUpperCase() === masp
+          && String(v).length <= 32) return rec;
       }
     }
     return null;
@@ -57,8 +57,8 @@
 
       const sp = getSPFast(r.masp) || {};
       const tensp = sp.ten || sp.tensp || sp.tensanpham || sp.tenhang || sp.ten_hang || '';
-      const dvt   = sp.dvt || sp.donvitinh || sp.don_vi_tinh || '';
-      const gia   = Number(sp.gia ?? sp.giaban ?? sp.gianhap ?? sp.giamua ?? sp.giale ?? 0) || 0;
+      const dvt = sp.dvt || sp.donvitinh || sp.don_vi_tinh || '';
+      const gia = Number(sp.gia ?? sp.giaban ?? sp.gianhap ?? sp.giamua ?? sp.giale ?? 0) || 0;
 
       kq[r.masp] = {
         masp: r.masp,
@@ -90,7 +90,7 @@
     const row = { masp, qty: {}, vitri: item?.vitri || '', t1: item?.toncs1 || 0, t2: item?.toncs2 || 0 };
 
     const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
-    const sls   = Array.isArray(item?.soluongs) ? item.soluongs : [];
+    const sls = Array.isArray(item?.soluongs) ? item.soluongs : [];
     if (sizes.length && sizes.length === sls.length) {
       sizes.forEach((s, i) => {
         const sz = parseInt(s, 10);
@@ -144,7 +144,7 @@
 
     if (typeof window.MobileKQ.ensureVitriTonBatch === 'function') {
       const masps = entries.map(x => (x?.masp || '').toUpperCase()).filter(Boolean);
-      try { window.MobileKQ.ensureVitriTonBatch(masps); } catch (_) {}
+      try { window.MobileKQ.ensureVitriTonBatch(masps); } catch (_) { }
     }
 
     const prev = window.__bkq_assigning_from_mobile;
@@ -172,8 +172,8 @@
 
     const bang = {};
     for (const [masp, g] of grouped.entries()) {
-      const sizes = Object.keys(g.qty).map(s => String(parseInt(s,10))).filter(Boolean);
-      const soluongs = sizes.map(s => g.qty[parseInt(s,10)] || 0);
+      const sizes = Object.keys(g.qty).map(s => String(parseInt(s, 10))).filter(Boolean);
+      const soluongs = sizes.map(s => g.qty[parseInt(s, 10)] || 0);
       bang[masp] = { masp, sizes, soluongs };
     }
     await setMobileGridFromBangKetQua(bang);
@@ -231,7 +231,7 @@
         if (BKQ.timer) clearTimeout(BKQ.timer);
         BKQ.timer = setTimeout(() => {
           try {
-            const hash = (() => { try { return JSON.stringify(__bkq_store).length + ''; } catch { return Date.now()+''; }})();
+            const hash = (() => { try { return JSON.stringify(__bkq_store).length + ''; } catch { return Date.now() + ''; } })();
             if (hash === BKQ.lastHash) return;
             BKQ.lastHash = hash;
 
@@ -254,7 +254,7 @@
   }
 
   // ========== D) LATE-HOOK QUAY LẠI: chờ DOM “yên” rồi mới hydrate ==========
-  function _safeLen(o){ try { return Object.keys(o||{}).length; } catch { return 0; } }
+  function _safeLen(o) { try { return Object.keys(o || {}).length; } catch { return 0; } }
 
   function tryHydrateFromBKQorDOM() {
     let src = window.bangKetQua;
@@ -331,7 +331,7 @@ function __getSoHDOnPage() {
     const id = (el.id || '').toLowerCase();
     const ttl = (el.title || '').toLowerCase();
     if (ph.includes('số hd') || ph.includes('so hd') || ph.includes('số hóa đơn') || ph.includes('so hoa don')
-        || nm.includes('sohd') || id.includes('sohd') || ttl.includes('sohd')) {
+      || nm.includes('sohd') || id.includes('sohd') || ttl.includes('sohd')) {
       const v = (el.value || '').trim();
       if (v) return v;
     }
@@ -444,7 +444,7 @@ function __mapInvoiceToBangKetQua(inv) {
   for (const r of rows) {
     const masp = String(r?.masp || r?.ma || '').trim().toUpperCase();
     if (!masp) continue;
-    const size = Number.isFinite(parseInt(r?.size,10)) ? parseInt(r.size,10) : 0;
+    const size = Number.isFinite(parseInt(r?.size, 10)) ? parseInt(r.size, 10) : 0;
     const sl = parseInt(r?.soluong ?? r?.sl ?? 0, 10) || 0;
     if (!sl) continue;
 
@@ -455,8 +455,8 @@ function __mapInvoiceToBangKetQua(inv) {
   }
 
   for (const [masp, g] of grouped.entries()) {
-    const sizes = Object.keys(g.qty).map(s => String(parseInt(s,10))).filter(Boolean);
-    const soluongs = sizes.map(s => g.qty[parseInt(s,10)] || 0);
+    const sizes = Object.keys(g.qty).map(s => String(parseInt(s, 10))).filter(Boolean);
+    const soluongs = sizes.map(s => g.qty[parseInt(s, 10)] || 0);
     out[masp] = {
       masp,
       sizes,
@@ -513,10 +513,14 @@ async function openInvoiceFromDatabase() {
   const currSohd = (sohdInput?.value || '').trim();
   if (!currSohd) { alert('Vui lòng nhập Số HĐ.'); return; }
 
-  // danh sách sohd cần thử: ưu tiên HĐ hiện tại (phòng khi có), sau đó lùi dần
-  const toTry = [currSohd];
+  // luôn bắt đầu từ số HĐ liền trước, rồi tiếp tục lùi
+  const toTry = [];
   let p = parsePrev(currSohd);
-  for (let i = 0; i < 20 && p; i++) { toTry.push(p); p = parsePrev(p); }
+  for (let i = 0; i < 50 && p; i++) {  // tăng biên tìm tối đa 50 số nếu muốn
+    toTry.push(p);
+    p = parsePrev(p);
+  }
+
 
   // loading nho nhỏ
   const loadingId = '__quaylai_loading__';
