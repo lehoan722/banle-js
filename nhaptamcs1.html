@@ -17,7 +17,7 @@
 
     <style>
         body {
-            font-family: Arial; 
+            font-family: Arial;
             margin: 0;
             height: 100%;
         }
@@ -1305,75 +1305,75 @@
         });
 
     </script>  
+    <script>
+(function(){
+  let isGrouped = true; // mặc định trang bạn đang mở là dạng gộp (1 dòng nhiều size)
+  let snapshotBang = {};
 
-    <script>// ====== TOGGLE VIEW (RAW <-> GROUPED) ======
-(function () {
-  let isGrouped = false;
-  let snapshotHTML = '';
-  let snapshotBKQ = {};
-
-  // thêm nút vào giao diện
-  const footer = document.getElementById('footer-buttons') || document.body;
+  const footer = document.querySelector('.footer-buttons');
   const btn = document.createElement('button');
-  btn.id = 'btnToggleView';
-  btn.textContent = 'Chuyển giao diện';
-  btn.style.marginLeft = '8px';
+  btn.textContent = "Chuyển giao diện";
   footer.appendChild(btn);
 
-  // hàm gom dữ liệu từ DOM cũ thành 1 dòng / sản phẩm
-  function collectFromDOM() {
-    const rows = Array.from(document.querySelectorAll('#bangketqua tbody tr'));
+  // gom bangKetQua → dạng raw (mỗi size 1 dòng)
+  function toRaw(bang) {
+    const arr = [];
+    Object.values(bang).forEach(row => {
+      row.sizes.forEach((sz, idx) => {
+        arr.push({
+          masp: row.masp,
+          tensp: row.tensp || '',
+          size: sz,
+          soluong: row.soluongs[idx],
+          dvt: row.dvt || '',
+          gia: row.gia || 0
+        });
+      });
+    });
+    return arr;
+  }
+
+  // từ raw → gom lại bangKetQua chuẩn
+  function toGrouped(rawArr) {
     const grouped = {};
-    rows.forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (!tds.length) return;
-      const masp = (tds[0].innerText || '').trim().toUpperCase();
-      const tensp = (tds[1]?.innerText || '').trim();
-      const size = (tds[2]?.innerText || '').trim();
-      const sl = parseInt(tds[3]?.innerText || '0', 10) || 0;
-      if (!masp) return;
-      if (!grouped[masp]) grouped[masp] = { masp, tensp, sizes: [], soluongs: [] };
-      grouped[masp].sizes.push(size || '0');
-      grouped[masp].soluongs.push(sl);
+    rawArr.forEach(r=>{
+      if(!grouped[r.masp]) {
+        grouped[r.masp] = { masp:r.masp, tensp:r.tensp||'', dvt:r.dvt||'', gia:r.gia||0, sizes:[], soluongs:[] };
+      }
+      grouped[r.masp].sizes.push(r.size);
+      grouped[r.masp].soluongs.push(r.soluong);
     });
     return grouped;
   }
 
-  // render lại dạng gộp bằng MobileKQ
-  async function renderGrouped(bkq) {
-    if (!window.setMobileGridFromBangKetQua) return;
-    await window.setMobileGridFromBangKetQua(bkq);
-  }
-
-  btn.addEventListener('click', async () => {
-    const tbody = document.querySelector('#bangketqua tbody');
-    if (!tbody) { alert('Không tìm thấy bảng dữ liệu.'); return; }
-
-    if (!isGrouped) {
-      // chuyển sang dạng gộp
-      snapshotHTML = tbody.innerHTML;              // lưu snapshot HTML
-      snapshotBKQ = window.bangKetQua || {};       // lưu dữ liệu gốc
-      const bkq = collectFromDOM();
-      await renderGrouped(bkq);
-      isGrouped = true;
-      btn.textContent = 'Chuyển về dạng cũ';
-    } else {
-      // khôi phục dạng cũ
-      tbody.innerHTML = snapshotHTML;
-      window.bangKetQua = snapshotBKQ;
-      if (typeof window.capNhatThongTinTong === 'function') {
-        window.capNhatThongTinTong();
-      }
+  btn.addEventListener('click', async ()=>{
+    if(isGrouped) {
+      // đang grouped → chuyển sang raw
+      snapshotBang = window.bangKetQua; // lưu lại để khôi phục
+      const raw = toRaw(window.bangKetQua||{});
+      // render raw vào bảng
+      const tbody = document.querySelector('#bangketqua tbody');
+      tbody.innerHTML = '';
+      raw.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.masp}</td><td>${r.tensp}</td><td>${r.size}</td><td>${r.soluong}</td>`;
+        tbody.appendChild(tr);
+      });
       isGrouped = false;
-      btn.textContent = 'Chuyển giao diện';
+      btn.textContent = "Chuyển về dạng gộp";
+    } else {
+      // đang raw → chuyển về grouped
+      await window.setMobileGridFromBangKetQua(snapshotBang);
+      isGrouped = true;
+      btn.textContent = "Chuyển giao diện";
     }
   });
 })();
-</script>   
+</script>
+  
 
 
 </body>
 
 </html>
-
 
