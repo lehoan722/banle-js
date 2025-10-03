@@ -343,38 +343,77 @@ function __getSoHDOnPage() {
 
 // 2) BẠN ĐIỀN TRUY VẤN Ở ĐÂY
 // Trả về { hoadon: {...}, chitiet: [{masp, size, soluong, dongia?, km?}, ...] }
+// Trả về { hoadon, chitiet } bằng cách tự suy luận bảng từ Số HĐ
 async function queryInvoiceFromDB(sohd) {
-  // --- CHỌN 1 TRONG 2 CÁCH SAU ---
+  if (!window.supabase) throw new Error('Supabase client (window.supabase) chưa sẵn sàng');
 
-  // (A) GỌI API RIÊNG CỦA BẠN (đề xuất)
-  // const res = await fetch(`/api/invoice?sohd=${encodeURIComponent(sohd)}`);
-  // if (!res.ok) throw new Error('Không đọc được hóa đơn');
-  // return await res.json();
+  // 1) Tách tiền tố trước dấu "_" của số HĐ, ví dụ: "nhaptamcs1_00032" → "nhaptamcs1"
+  const prefix = String(sohd).split('_')[0].toLowerCase().trim();
 
-  // (B) SUPABASE (nếu bạn đã nạp window.supabase)
-  if (window.supabase) {
-    // ví dụ: bảng header: nhaptam_hd, bảng detail: nhaptam_ct
-    const { data: hd, error: e1 } = await window.supabase
-      .from('nhaptam_hd')
-      .select('*')
-      .eq('sohd', sohd)
-      .limit(1)
-      .maybeSingle();
-    if (e1) throw e1;
-    if (!hd) throw new Error('Không có hóa đơn: ' + sohd);
+  // 2) Danh sách cặp bảng có thể có (header, detail) — sắp xếp theo độ ưu tiên
+  const tablePairs = [
+    // Ưu tiên theo tiền tố số HĐ
+    [`${prefix}_hd`, `${prefix}_ct`],
+    // Một số tên tổng quát có thể dùng
+    ['nhaptamcs1_hd', 'nhaptamcs1_ct'],
+    ['nhaptam_hd', 'nhaptam_ct'],
+    // (tuỳ hệ thống bạn có thể thêm: ['hoadon', 'hoadonct'], ['banle_hd','banle_ct'], ... )
+  ];
 
-    const { data: ct, error: e2 } = await window.supabase
-      .from('nhaptam_ct')
-      .select('masp, size, soluong, dongia, khuyenmai')
-      .eq('sohd', sohd);
-    if (e2) throw e2;
+  // 3) Schema có thể dùng
+  const schemas = ['public', 'banle']; // thêm schema khác của bạn nếu cần
 
-    return { hoadon: hd, chitiet: ct || [] };
+  // 4) Helper: thử đọc 1 cặp bảng (theo schema) — bỏ qua nếu bảng không tồn tại (42P01)
+  async function tryReadPair(schema, hdTable, ctTable) {
+    try {
+      const hdQ = window.supabase.schema(schema).from(hdTable).select('*').eq('sohd', sohd).limit(1);
+      const { data: hd, error: e1 } = await hdQ.maybeSingle();
+      if (e1) {
+        // nếu lỗi "relation does not exist" thì ném cho caller xử lý thử cặp khác
+        if (String(e1?.code) === '42P01') throw e1;
+        // lỗi khác: coi như fail cặp này
+        console.debug('[quaylai] lỗi đọc header', schema, hdTable, e1);
+        return null;
+      }
+      if (!hd) return null;
+
+      const { data: ct, error: e2 } = await window.supabase
+        .schema(schema)
+        .from(ctTable)
+        .select('masp, size, soluong, dongia, khuyenmai')
+        .eq('sohd', sohd);
+
+      if (e2) {
+        if (String(e2?.code) === '42P01') throw e2; // bảng chi tiết không tồn tại → để caller thử cặp khác
+        console.debug('[quaylai] lỗi đọc chi tiết', schema, ctTable, e2);
+        return null;
+      }
+
+      console.debug('[quaylai] dùng bảng', { schema, hdTable, ctTable });
+      return { hoadon: hd, chitiet: ct || [] };
+    } catch (err) {
+      if (String(err?.code) === '42P01') {
+        // bảng không tồn tại → thử cặp khác
+        return null;
+      }
+      // lỗi khác → ném ra ngoài
+      throw err;
+    }
   }
 
-  // (C) TẠM THỜI: nếu chưa có API → trả rỗng (sẽ báo lỗi)
-  return { hoadon: null, chitiet: [] };
+  // 5) Vòng thử: duyệt theo schema → theo cặp bảng
+  for (const schema of schemas) {
+    for (const [hdTable, ctTable] of tablePairs) {
+      const res = await tryReadPair(schema, hdTable, ctTable);
+      if (res && Array.isArray(res.chitiet) && res.chitiet.length) return res;
+    }
+  }
+
+  // Nếu vẫn không tìm được, báo lỗi kèm danh sách đã thử
+  const tried = schemas.flatMap(s => tablePairs.map(([h,c]) => `${s}.${h}/${c}`)).join(', ');
+  throw new Error('Không tìm thấy bảng chứa hóa đơn. Đã thử: ' + tried);
 }
+
 
 // 3) Ánh xạ từ {hoadon, chitiet[]} → object bangKetQua (1 mã = 1 dòng, có mảng sizes/soluongs)
 function __mapInvoiceToBangKetQua(inv) {
