@@ -344,75 +344,60 @@ function __getSoHDOnPage() {
 // 2) BẠN ĐIỀN TRUY VẤN Ở ĐÂY
 // Trả về { hoadon: {...}, chitiet: [{masp, size, soluong, dongia?, km?}, ...] }
 // Trả về { hoadon, chitiet } bằng cách tự suy luận bảng từ Số HĐ
+// ĐỌC HÓA ĐƠN TỪ public.hoadon_banle + public.ct_hoadon_banle
+// Trả về { hoadon, chitiet[] } – hoadon có thể null nếu không có header
 async function queryInvoiceFromDB(sohd) {
   if (!window.supabase) throw new Error('Supabase client (window.supabase) chưa sẵn sàng');
 
-  // 1) Tách tiền tố trước dấu "_" của số HĐ, ví dụ: "nhaptamcs1_00032" → "nhaptamcs1"
-  const prefix = String(sohd).split('_')[0].toLowerCase().trim();
+  const SCHEMA = 'public';
+  const HD = 'hoadon_banle';
+  const CT = 'ct_hoadon_banle';
 
-  // 2) Danh sách cặp bảng có thể có (header, detail) — sắp xếp theo độ ưu tiên
-  const tablePairs = [
-    // Ưu tiên theo tiền tố số HĐ
-    [`${prefix}_hd`, `${prefix}_ct`],
-    // Một số tên tổng quát có thể dùng
-    ['hoadon_banle', 'ct_hoadon_banle'],
-    ['hoadon_banle', 'ct_hoadon_banle'],
-    // (tuỳ hệ thống bạn có thể thêm: ['hoadon', 'hoadonct'], ['banle_hd','banle_ct'], ... )
-  ];
-
-  // 3) Schema có thể dùng
-  const schemas = ['public', 'banle']; // thêm schema khác của bạn nếu cần
-
-  // 4) Helper: thử đọc 1 cặp bảng (theo schema) — bỏ qua nếu bảng không tồn tại (42P01)
-  async function tryReadPair(schema, hdTable, ctTable) {
-    try {
-      const hdQ = window.supabase.schema(schema).from(hdTable).select('*').eq('sohd', sohd).limit(1);
-      const { data: hd, error: e1 } = await hdQ.maybeSingle();
-      if (e1) {
-        // nếu lỗi "relation does not exist" thì ném cho caller xử lý thử cặp khác
-        if (String(e1?.code) === '42P01') throw e1;
-        // lỗi khác: coi như fail cặp này
-        console.debug('[quaylai] lỗi đọc header', schema, hdTable, e1);
-        return null;
-      }
-      if (!hd) return null;
-
-      const { data: ct, error: e2 } = await window.supabase
-        .schema(schema)
-        .from(ctTable)
-        .select('masp, size, soluong, dongia, khuyenmai')
-        .eq('sohd', sohd);
-
-      if (e2) {
-        if (String(e2?.code) === '42P01') throw e2; // bảng chi tiết không tồn tại → để caller thử cặp khác
-        console.debug('[quaylai] lỗi đọc chi tiết', schema, ctTable, e2);
-        return null;
-      }
-
-      console.debug('[quaylai] dùng bảng', { schema, hdTable, ctTable });
-      return { hoadon: hd, chitiet: ct || [] };
-    } catch (err) {
-      if (String(err?.code) === '42P01') {
-        // bảng không tồn tại → thử cặp khác
-        return null;
-      }
-      // lỗi khác → ném ra ngoài
-      throw err;
+  // 1) Header: chịu 406 (không có dòng) → hoadon = null
+  let hoadon = null;
+  try {
+    const { data: hd, error: e1 } = await window.supabase
+      .schema(SCHEMA)
+      .from(HD)
+      .select('*')
+      .eq('sohd', sohd)
+      .limit(1)
+      .maybeSingle();
+    if (!e1) hoadon = hd || null;
+    else if (String(e1?.code) !== 'PGRST116' && String(e1?.code) !== '406') {
+      // Lỗi khác với "không có bản ghi" → log để bạn theo dõi
+      console.debug('[quaylai] header error', e1);
     }
+  } catch (err) {
+    // nếu RLS chặn hoặc lỗi mạng → log, vẫn cố đọc chi tiết
+    console.debug('[quaylai] header catch', err);
   }
 
-  // 5) Vòng thử: duyệt theo schema → theo cặp bảng
-  for (const schema of schemas) {
-    for (const [hdTable, ctTable] of tablePairs) {
-      const res = await tryReadPair(schema, hdTable, ctTable);
-      if (res && Array.isArray(res.chitiet) && res.chitiet.length) return res;
-    }
+  // 2) Chi tiết: BẮT BUỘC phải có ít nhất 1 dòng
+  const { data: ct, error: e2 } = await window.supabase
+    .schema(SCHEMA)
+    .from(CT)
+    .select('masp, size, soluong, gia, km, dvt')
+    .eq('sohd', sohd);
+
+  if (e2) throw e2;                 // lỗi thực sự khi đọc chi tiết
+  if (!Array.isArray(ct) || ct.length === 0) {
+    throw new Error('Không thấy chi tiết cho số HĐ: ' + sohd);
   }
 
-  // Nếu vẫn không tìm được, báo lỗi kèm danh sách đã thử
-  const tried = schemas.flatMap(s => tablePairs.map(([h,c]) => `${s}.${h}/${c}`)).join(', ');
-  throw new Error('Không tìm thấy bảng chứa hóa đơn. Đã thử: ' + tried);
+  // Chuẩn hóa trường (đổi tên để khớp mapper đã viết)
+  const chitiet = ct.map(r => ({
+    masp: (r.masp || '').toUpperCase().trim(),
+    size: r.size,                  // text → sẽ parse int ở mapper
+    soluong: Number(r.soluong || 0),
+    dongia: Number(r.gia || 0),
+    khuyenmai: Number(r.km || 0),
+    dvt: r.dvt || ''
+  }));
+
+  return { hoadon, chitiet };
 }
+
 
 
 // 3) Ánh xạ từ {hoadon, chitiet[]} → object bangKetQua (1 mã = 1 dòng, có mảng sizes/soluongs)
