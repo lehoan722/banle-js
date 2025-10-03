@@ -346,49 +346,86 @@ function __getSoHDOnPage() {
 // Trả về { hoadon, chitiet } bằng cách tự suy luận bảng từ Số HĐ
 // ĐỌC HÓA ĐƠN TỪ public.hoadon_banle + public.ct_hoadon_banle
 // Trả về { hoadon, chitiet[] } – hoadon có thể null nếu không có header
-async function queryInvoiceFromDB(sohd) {
+// ĐỌC HÓA ĐƠN TỪ public.hoadon_banle + public.ct_hoadon_banle
+// Chịu khác biệt hoa/thường & ký tự thừa trong sohd
+async function queryInvoiceFromDB(sohdRaw) {
   if (!window.supabase) throw new Error('Supabase client (window.supabase) chưa sẵn sàng');
 
   const SCHEMA = 'public';
   const HD = 'hoadon_banle';
   const CT = 'ct_hoadon_banle';
 
-  // 1) Header: chịu 406 (không có dòng) → hoadon = null
+  const sohd = String(sohdRaw || '').trim();
+  const sohdU = sohd.toUpperCase();
+  const sohdL = sohd.toLowerCase();
+
+  // 1) Header (tùy – có cũng được, không có vẫn hydrate từ chi tiết)
   let hoadon = null;
   try {
-    const { data: hd, error: e1 } = await window.supabase
-      .schema(SCHEMA)
-      .from(HD)
-      .select('*')
-      .eq('sohd', sohd)
-      .limit(1)
-      .maybeSingle();
-    if (!e1) hoadon = hd || null;
-    else if (String(e1?.code) !== 'PGRST116' && String(e1?.code) !== '406') {
-      // Lỗi khác với "không có bản ghi" → log để bạn theo dõi
-      console.debug('[quaylai] header error', e1);
+    // thử eq 3 biến thể
+    let q = window.supabase.schema(SCHEMA).from(HD).select('*').limit(1);
+    let r = await q.eq('sohd', sohd).maybeSingle();
+    if (r.data) hoadon = r.data;
+    else {
+      r = await window.supabase.schema(SCHEMA).from(HD).select('*').eq('sohd', sohdU).limit(1).maybeSingle();
+      if (r.data) hoadon = r.data;
+      else {
+        r = await window.supabase.schema(SCHEMA).from(HD).select('*').eq('sohd', sohdL).limit(1).maybeSingle();
+        if (r.data) hoadon = r.data;
+        else {
+          // last try: tìm gần giống để debug (không bắt buộc phải có)
+          const like = await window.supabase.schema(SCHEMA).from(HD)
+            .select('sohd, ngay, diadiem').ilike('sohd', `%${sohd}%`).limit(5);
+          if (like.data && like.data.length) {
+            console.debug('[quaylai][gợi ý header gần giống]', like.data);
+          }
+        }
+      }
     }
   } catch (err) {
-    // nếu RLS chặn hoặc lỗi mạng → log, vẫn cố đọc chi tiết
-    console.debug('[quaylai] header catch', err);
+    // 406 hoặc RLS: bỏ qua, không critical
+    console.debug('[quaylai] header err (bỏ qua)', err);
   }
 
-  // 2) Chi tiết: BẮT BUỘC phải có ít nhất 1 dòng
-  const { data: ct, error: e2 } = await window.supabase
-    .schema(SCHEMA)
-    .from(CT)
-    .select('masp, size, soluong, gia, km, dvt')
-    .eq('sohd', sohd);
-
-  if (e2) throw e2;                 // lỗi thực sự khi đọc chi tiết
-  if (!Array.isArray(ct) || ct.length === 0) {
-    throw new Error('Không thấy chi tiết cho số HĐ: ' + sohd);
+  // 2) Chi tiết: bắt buộc có ít nhất 1 dòng
+  async function fetchCTEq(val) {
+    const { data, error } = await window.supabase.schema(SCHEMA).from(CT)
+      .select('masp, size, soluong, gia, km, dvt')
+      .eq('sohd', val);
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
   }
 
-  // Chuẩn hóa trường (đổi tên để khớp mapper đã viết)
+  let ct = await fetchCTEq(sohd);
+  if (!ct.length) ct = await fetchCTEq(sohdU);
+  if (!ct.length) ct = await fetchCTEq(sohdL);
+  if (!ct.length) {
+    // like cuối cùng để “vớt” trường hợp có ký tự lạ
+    const { data: likeCt, error: eLike } = await window.supabase.schema(SCHEMA).from(CT)
+      .select('sohd, masp, size, soluong, gia, km, dvt')
+      .ilike('sohd', `%${sohd}%`)
+      .limit(200);
+    if (eLike) throw eLike;
+    if (!likeCt || !likeCt.length) {
+      // log một vài sohd để bạn đối chiếu trực tiếp
+      const { data: peek } = await window.supabase.schema(SCHEMA).from(CT)
+        .select('sohd').order('sohd', { ascending: false }).limit(10);
+      console.debug('[quaylai] không thấy chi tiết; vài sohd gần đây:', peek || []);
+      throw new Error('Không thấy chi tiết cho số HĐ: ' + sohd);
+    }
+    // lọc đúng hóa đơn mong muốn nếu mảng lớn
+    const picked = likeCt.filter(r => {
+      const s = String(r.sohd || '');
+      return s === sohd || s === sohdU || s === sohdL || s.includes(sohd);
+    });
+    ct = picked.length ? picked : likeCt;
+    console.debug('[quaylai] dùng ilike cho chi tiết, match dòng:', ct.length);
+  }
+
+  // Chuẩn hoá → trả về
   const chitiet = ct.map(r => ({
     masp: (r.masp || '').toUpperCase().trim(),
-    size: r.size,                  // text → sẽ parse int ở mapper
+    size: r.size,
     soluong: Number(r.soluong || 0),
     dongia: Number(r.gia || 0),
     khuyenmai: Number(r.km || 0),
@@ -397,8 +434,6 @@ async function queryInvoiceFromDB(sohd) {
 
   return { hoadon, chitiet };
 }
-
-
 
 // 3) Ánh xạ từ {hoadon, chitiet[]} → object bangKetQua (1 mã = 1 dòng, có mảng sizes/soluongs)
 function __mapInvoiceToBangKetQua(inv) {
