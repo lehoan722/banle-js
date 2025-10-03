@@ -374,8 +374,6 @@
         #bangketqua td.td-t2 {
             width: 46px;
         }
-      
-
     </style>
 
 
@@ -399,7 +397,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-       <link rel="stylesheet" href="nhaptammobilecs1.css">        
+    <link rel="stylesheet" href="nhaptammobilecs1.css">
 
 </head>
 
@@ -407,7 +405,7 @@
 
     <style>
         .menu-bar {
-            background: #0088cc;
+            background: #69cc00;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -1152,7 +1150,7 @@
             }
         });
     </script>
-    
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
@@ -1187,6 +1185,44 @@
 
     <script src="scripts/nhaptam_mobile_grid.js"></script>
     <script src="scripts/nhaptam_mobile_getbang.js"></script>
+
+    <script>
+        // Bridge cho luồng quay lại cũ: gọi 1 hàm là xong
+        window.applyOldInvoiceData = async function (payload) {
+            try {
+                // Trường hợp A: đưa thẳng bangKetQua
+                if (payload?.bangKetQua && typeof payload.bangKetQua === 'object') {
+                    return await window.setMobileGridFromBangKetQua(payload.bangKetQua);
+                }
+                // Trường hợp B: đưa { hoadon, chitiet[] }
+                if (Array.isArray(payload?.chitiet)) {
+                    return await window.setMobileGridFromHoaDon(payload.hoadon, payload.chitiet);
+                }
+                // Trường hợp C: payload chính là bangKetQua object
+                if (payload && typeof payload === 'object') {
+                    return await window.setMobileGridFromBangKetQua(payload);
+                }
+                alert('Không nhận diện được dữ liệu hóa đơn cũ để nạp vào lưới.');
+            } catch (err) {
+                console.error('[Quay lại] Lỗi hydrate:', err);
+                alert('Lỗi khi phục hồi dữ liệu vào lưới.');
+            }
+        };
+
+        // (Tuỳ chọn) Nếu luồng cũ set sẵn các biến toàn cục sau khi chọn HĐ,
+        // bạn có thể gắn sự kiện click nút Quay lại để nạp ngay:
+        document.getElementById('quaylai')?.addEventListener('click', async () => {
+            if (window.__hoadonCu__?.chitiet) {
+                await window.applyOldInvoiceData(window.__hoadonCu__);
+            } else if (window.bangKetQua && Object.keys(window.bangKetQua).length) {
+                await window.applyOldInvoiceData({ bangKetQua: window.bangKetQua });
+            } else {
+                // Nếu luồng chọn HĐ cũ của bạn mở popup/trang khác → giữ nguyên hành vi mở popup.
+                // Sau khi chọn xong, chỉ cần gọi: window.applyOldInvoiceData(<payload đã lấy được>);
+            }
+        });
+    </script>
+
 
     <script>
         ; (() => {
@@ -1262,7 +1298,7 @@
             window.open(url, "_blank");
         }
 
-         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
+        // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
             console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
 
@@ -1304,10 +1340,9 @@
             window.open(url, "_blank");
         });
 
-    </script>    
+    </script>
 
 
 </body>
 
 </html>
-
