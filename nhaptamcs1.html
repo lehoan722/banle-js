@@ -1304,10 +1304,12 @@
             window.open(url, "_blank");
         });
 
-    </script>  
-    <script>
+    </script> 
+    
+    
+      <script>
 (function(){
-  let isGrouped = true; // mặc định trang bạn đang mở là dạng gộp (1 dòng nhiều size)
+  let isGrouped = true; // mặc định ban đầu đang grouped
   let snapshotBang = {};
 
   const footer = document.querySelector('.footer-buttons');
@@ -1338,7 +1340,14 @@
     const grouped = {};
     rawArr.forEach(r=>{
       if(!grouped[r.masp]) {
-        grouped[r.masp] = { masp:r.masp, tensp:r.tensp||'', dvt:r.dvt||'', gia:r.gia||0, sizes:[], soluongs:[] };
+        grouped[r.masp] = {
+          masp:r.masp,
+          tensp:r.tensp||'',
+          dvt:r.dvt||'',
+          gia:r.gia||0,
+          sizes:[],
+          soluongs:[]
+        };
       }
       grouped[r.masp].sizes.push(r.size);
       grouped[r.masp].soluongs.push(r.soluong);
@@ -1346,12 +1355,32 @@
     return grouped;
   }
 
-  btn.addEventListener('click', async ()=>{
+  // render dạng grouped ra bảng
+  function renderGrouped(bang) {
+    const tbody = document.querySelector('#bangketqua tbody');
+    tbody.innerHTML = '';
+    Object.values(bang).forEach(row=>{
+      const tr = document.createElement('tr');
+      let html = `<td>${row.masp}</td>`;
+      // cột size 0..45
+      const sizes = ['0','38','39','40','41','42','43','44','45'];
+      sizes.forEach(sz=>{
+        let idx = row.sizes.findIndex(s=>s==sz);
+        let sl = idx>=0 ? row.soluongs[idx] : '';
+        html += `<td>${sl}</td>`;
+      });
+      html += `<td>${row.soluongs.reduce((a,b)=>a+b,0)}</td>`;
+      html += `<td>${row.vitri||''}</td><td></td><td></td>`;
+      tr.innerHTML = html;
+      tbody.appendChild(tr);
+    });
+  }
+
+  btn.addEventListener('click', ()=>{
     if(isGrouped) {
-      // đang grouped → chuyển sang raw
-      snapshotBang = window.bangKetQua; // lưu lại để khôi phục
+      // grouped → raw
+      snapshotBang = window.bangKetQua; // lưu lại
       const raw = toRaw(window.bangKetQua||{});
-      // render raw vào bảng
       const tbody = document.querySelector('#bangketqua tbody');
       tbody.innerHTML = '';
       raw.forEach(r=>{
@@ -1362,15 +1391,15 @@
       isGrouped = false;
       btn.textContent = "Chuyển về dạng gộp";
     } else {
-      // đang raw → chuyển về grouped
-      await window.setMobileGridFromBangKetQua(snapshotBang);
+      // raw → grouped
+      renderGrouped(snapshotBang);
       isGrouped = true;
       btn.textContent = "Chuyển giao diện";
     }
   });
 })();
 </script>
-  
+
 
 
 </body>
