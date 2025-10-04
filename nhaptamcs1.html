@@ -407,7 +407,7 @@
 
     <style>
         .menu-bar {
-            background: #cccc00;
+            background: #0088cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -1186,14 +1186,14 @@
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script src="scripts/nhaptam_mobile_grid.js"></script>
-    <script src="scripts/nhaptam_mobile_grid.js"></script>
+    <script src="scripts/adapter_mobile_getbang.js"></script>
 
     <script>
         ; (() => {
             function syncBangKetQua() {
                 try {
                     if (typeof window.getBangKetQua === 'function') {
-                        const kq = window.getBangKetQua();     // adapter sẽ tự gán window.bangKetQua
+                        const kq = window.getBangKetQua();     // adapter sẽ tự gán window.bangKetQua 
                         return kq;
                     }
                 } catch (e) { console.error(e); }
@@ -1257,7 +1257,7 @@
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs111.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
@@ -1300,7 +1300,7 @@
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs111.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
