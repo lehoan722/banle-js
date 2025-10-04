@@ -753,18 +753,18 @@
     <div style="font-size:5.5pt; line-height:1; word-break:break-word;
                 width:100%; margin:0; padding:0;">
       ${infoChung}
-    </div>
-
-      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
-      <div style="font-size:10pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        Giá: ${formatGia(t.giale)}
-      </div>
+    </div>    
 
       <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
       <div style="font-size:9pt; line-height:1; white-space:nowrap;
                   overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
         ${t.masp}
+      </div>
+
+      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
+      <div style="font-size:11pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; text-overflow:clip; margin:0;">
+        Giá: ${formatGia(t.giale)}
       </div>
 
       
@@ -782,7 +782,7 @@
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
                         return s && s !== '0'
-                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
+                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; text-transform: uppercase;   /* luôn hiển thị in hoa */">
              ${s}
            </div>`
                             : ``;
