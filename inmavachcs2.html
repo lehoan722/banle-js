@@ -206,6 +206,15 @@
         #deleteProductBtn:hover {
             background-color: #a60000 !important;
         }
+
+        
+  label.locked { opacity: 0.9; }
+  label.locked::after {
+    content: ' (tự bật theo giá)';
+    font-size: 12px; color: #888; margin-left: 4px;
+  }
+
+
     </style>
 </head>
 
@@ -221,7 +230,7 @@
             <div class="product-list" id="productList"></div>
 
             <div id="productInputForm"
-                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 48vh; overflow-y: auto;">
+                style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 40vh; ">
                 <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
 
                 <form id="addProductForm" autocomplete="off">
@@ -340,7 +349,8 @@
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
                 </div>
 
-
+                <!-- [ADD] Nút tạo HĐ nhập tạm -->
+<button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button>
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -646,17 +656,15 @@
             let infoChung = "";
             if (loaiTem === "giaydep") {
                 infoChung = `
-            không giặt,tẩy;Bảoquản nơi<br>
-            khô ráo; Dán nhãn tại Việt<br>
-            Nam. Giày,dép; chất liệu:<br>
-            da, pu, tổng hợp;cỡ:38-43            
+            không giặttẩy;Bảoquản khô<br>
+            Dán nhãn tại Việt Nam Giày<br>
+            dép;chất liệu da,tổng hợp<br>           
         `;
             } else if (loaiTem === "quanao") {
                 infoChung = `
-            không tẩy;giặt tay,Bảo quản<br>
-            khô ráo; Dán nhãn tại Việt<br>
-            Nam. Quần,Áo; chất liệu:<br>
-            Vải sợi tổng hợp;cỡ: S-XXL            
+            không tẩy;giặt tay,Bảo quản   <br>
+            khô,Dán nhãn tại Việt Nam     <br>
+            Quần,Áo Vải sợi tổng hợp     <br>           
         `;
             } else {
                 // Thêm các loại tem khác ở đây nếu muốn mở rộng
@@ -745,18 +753,18 @@
     <div style="font-size:5.5pt; line-height:1; word-break:break-word;
                 width:100%; margin:0; padding:0;">
       ${infoChung}
-    </div>
-
-      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
-      <div style="font-size:10pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        Giá: ${formatGia(t.giale)}
-      </div>
+    </div>    
 
       <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
-      <div style="font-size:8pt; line-height:1; white-space:nowrap;
+      <div style="font-size:9pt; line-height:1; white-space:nowrap;
                   overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
         ${t.masp}
+      </div>
+
+      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
+      <div style="font-size:12pt; font-weight:bold; line-height:1;
+                  white-space:nowrap; text-overflow:clip; margin:0;">
+        Giá: ${formatGia(t.giale)}
       </div>
 
       
@@ -766,15 +774,15 @@
   </div>
 
   <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
-  <div style="grid-column:2; grid-row:3;
+  <div style="grid-column:2; grid-row:3; 
               display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
               height:100%; margin:0; padding:0;">
   <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
 
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
-                        return s && s !== '0'
-                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; display:flex;text-transform: uppercase;   /* luôn hiển thị in hoa */">
+                        return s && s !== '0'                        
+                            ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; text-transform: uppercase; align-self:center; text-align:center;  /* luôn hiển thị in hoa */">
              ${s}
            </div>`
                             : ``;
@@ -972,7 +980,7 @@
             }
         }
 
-        // Click nút "Tạo HĐ nhập"
+         // Click nút "Tạo HĐ nhập"
         document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
             const items = collectInvoiceItems();
             if (!items.length) {
@@ -982,6 +990,33 @@
             openNhapFromItems(items);
         });
 
+
+        // [ADD] Mở trang NHẬP TẠM với cùng payload/format
+function openNhapTamFromItems(items) {
+  const payload = { source: 'in-tem', cs: 'cs2', items }; // giữ format y hệt
+  const json = JSON.stringify(payload);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+
+  if (b64.length <= 1800) {
+    window.open(`/nhaptamcs222.html#imp=${b64} `, '_blank');
+  } else {
+    const key = 'IMP_' + Date.now();
+    localStorage.setItem(key, json);
+    window.open(`/nhaptamcs222.html#impkey=${key} `, '_blank');
+  }
+}
+
+// [ADD] Click nút "Tạo HĐ nhập tạm"
+document.getElementById('btnCreateNhapTam').addEventListener('click', () => {
+  const items = collectInvoiceItems();
+  if (!items.length) {
+    alert('Danh sách in rỗng hoặc chưa tick In.');
+    return;
+  }
+  openNhapTamFromItems(items);
+});
+
+       
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
@@ -1077,6 +1112,8 @@
                 document.getElementById('nhomhangInput').value = data.nhomhang || '';
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
+                // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
+syncQuanLyKichCoByGiaLe();
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
                 // Không fill gì cả, không reset
@@ -1337,6 +1374,8 @@
 
         const gianhapInput = document.getElementById('gianhapInput');
         const gialeInput = document.getElementById('gialeInput');
+        // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
+        const GIALE_LOCK_THRESHOLD = 170000; // đổi sau này nếu cần
 
         //Format số cho giá nhập & giá lẻ trên FORM
         [gianhapInput, gialeInput].forEach(inp => {
@@ -1354,6 +1393,49 @@
             });
         });
 
+        // [ADD] Helper khóa/mở khóa checkbox "Quản lý kích cỡ"
+const qlkcCheckbox = document.getElementById('quanlykichcoCheckbox');
+const qlkcLabel    = qlkcCheckbox?.parentElement; // <label> bao checkbox
+
+function lockQuanLyKichCo() {
+  if (!qlkcCheckbox) return;
+  qlkcCheckbox.checked = true;
+  qlkcCheckbox.disabled = true;
+  qlkcCheckbox.title = 'Đã khóa do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
+  qlkcLabel?.classList.add('locked');
+}
+
+function unlockQuanLyKichCoAndUntick() {
+  if (!qlkcCheckbox) return;
+  qlkcCheckbox.disabled = false;
+  qlkcCheckbox.checked = false;
+  qlkcCheckbox.title = '';
+  qlkcLabel?.classList.remove('locked');
+}
+
+// [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
+function syncQuanLyKichCoByGiaLe() {
+  if (!gialeInput || !qlkcCheckbox) return;
+  const raw = (gialeInput.value || '').toString().replace(/\./g, '').replace(/[^0-9]/g, '');
+  const val = Number(raw || 0);
+  if (val >= GIALE_LOCK_THRESHOLD) {
+    lockQuanLyKichCo();
+  } else {
+    // Nếu hạ xuống dưới ngưỡng -> mở khóa & bỏ tick
+    unlockQuanLyKichCoAndUntick();
+  }
+}
+
+// [ADD] Admin override: ALT + click vào vùng label để mở khóa thủ công
+if (qlkcLabel) {
+  qlkcLabel.addEventListener('click', (e) => {
+    if (e.altKey && qlkcCheckbox?.disabled) {
+      e.preventDefault(); // ngăn thao tác mặc định trên label
+      qlkcCheckbox.disabled = false;
+      qlkcCheckbox.title = 'Đã mở khóa thủ công (admin override)';
+    }
+  });
+}
 
         // Tự động tính giá lẻ khi nhập xong giá nhập
         gianhapInput.addEventListener('change', function () {
@@ -1362,6 +1444,9 @@
                 gialeInput.value = Math.round(val * 1.5);
             }
         });
+        // [ADD]
+syncQuanLyKichCoByGiaLe();
+
 
         const formOrder = [
             'maspInput',
@@ -1414,6 +1499,15 @@
 
         // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
         attachEnterNav(formOrder);
+        // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
+if (gialeInput) {
+  gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
+  gialeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      syncQuanLyKichCoByGiaLe();
+    }
+  });
+}
 
         // Đăng nhập xong reload lại để token cập nhật
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
