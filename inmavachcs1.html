@@ -460,10 +460,14 @@
                     // Nếu là paste thì không chặn gì cả!
                 }
             });
+
+            window.hotInstance = hot;        // ← expose instance thật sự ra global
+// (nếu muốn giữ tên cũ)
+window.hot = hot;                // ← để window.hot không còn là <div id="hot">
+
         });
 
-
-
+        window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
         const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
@@ -1606,14 +1610,17 @@ if (gialeInput) {
 
             // Đợi hot sẵn sàng rồi nạp
             const tryLoad = () => {
-                if (window.hot) {
-                    hot.loadData(data);
-                    console.log("[IN-TEM] Đã nạp vào hot:", hot.getData());
-                    history.replaceState(null, "", location.pathname); // xoá hash để tránh nạp lại
-                    return true;
-                }
-                return false;
-            };
+  const inst = window.hotInstance || window.hot;  // ưu tiên instance thật
+  if (inst && typeof inst.loadData === 'function') {
+    inst.loadData(data);
+    console.log("[IN-TEM] Đã nạp vào Handsontable:", inst.getData?.());
+    // Xoá hash / query để tránh nạp lại
+    history.replaceState(null, "", location.pathname + location.hash);
+    return true;
+  }
+  return false;
+};
+
             if (!tryLoad()) {
                 const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
             }
@@ -1662,15 +1669,17 @@ if (gialeInput) {
 
       // Nạp vào HOT (bảng thực đang hiển thị)
       const tryLoad = () => {
-        if (window.hot) {
-          hot.loadData(data);
-          console.log("[IN-TEM] Đã nạp vào Handsontable:", hot.getData());
-          // Xóa ?data khỏi URL để tránh nạp lại khi F5
-          history.replaceState(null, "", location.pathname + location.hash);
-          return true;
-        }
-        return false;
-      };
+  const inst = window.hotInstance || window.hot;  // ưu tiên instance thật
+  if (inst && typeof inst.loadData === 'function') {
+    inst.loadData(data);
+    console.log("[IN-TEM] Đã nạp vào Handsontable:", inst.getData?.());
+    // Xoá hash / query để tránh nạp lại
+    history.replaceState(null, "", location.pathname + location.hash);
+    return true;
+  }
+  return false;
+};
+
 
       if (!tryLoad()) {
         // Nếu HOT chưa sẵn, đợi nó init xong
