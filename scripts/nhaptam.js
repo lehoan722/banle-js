@@ -1,6 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 const supabase = createClient('https://rddjrmbyftlcvrgzlyby.supabase.co', '<anon-key>');
 
+//(a) Lưu dữ liệu nhập tạm
+
 window.saveNhapTam = async function() {
   try {
     const cs = localStorage.getItem('diadiem') || 'cs1';
@@ -57,5 +59,38 @@ window.saveNhapTam = async function() {
   } catch (e) {
     console.error(e);
     alert('❌ Lưu hóa đơn nhập tạm thất bại!');
+  }
+};
+
+//Nạp lại hóa đơn nhập tạm (nút “Quay lại”)
+
+window.loadNhapTam = async function(soct) {
+  try {
+    const { data, error } = await supabase
+      .from('nhaptam_ct')
+      .select('*')
+      .eq('soct', soct);
+
+    if (error || !data?.length) {
+      alert('Không tìm thấy hóa đơn nhập tạm!');
+      return;
+    }
+
+    // 1. Xóa bảng hiện tại
+    const tbody = document.querySelector('#bangketqua tbody');
+    tbody.innerHTML = '';
+
+    // 2. Duyệt qua từng dòng và nạp lại vào MobileKQ
+    for (const d of data) {
+      await MobileKQ.upsertRow(d.masp);
+      for (const s of [0, 38, 39, 40, 41, 42, 43, 44, 45]) {
+        MobileKQ.setQty(d.masp, s, d[`qty${s}`] || 0);
+      }
+    }
+    MobileKQ.render();
+    alert(`✅ Đã tải lại hóa đơn ${soct}`);
+  } catch (e) {
+    console.error(e);
+    alert('❌ Lỗi khi tải hóa đơn nhập tạm!');
   }
 };
