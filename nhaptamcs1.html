@@ -1307,6 +1307,82 @@ async function openInTemFromNhapTam() {
 document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFromNhapTam);
 </script>
 
+<script>
+/**
+ * Nhận payload từ ?data= (base64 JSON) do trang in mã vạch gửi sang
+ * Dạng items: [{ masp, s0, s38, s39, s40, s41, s42, s43, s44, s45, ... }, ...]
+ * Mục tiêu: 1 mã/1 dòng, set các size vào lưới; "Tổng" tự cộng như hiện tại.
+ */
+(function () {
+  const SIZES = [0,38,39,40,41,42,43,44,45];
+
+  function decodePayloadFromQuery() {
+    const q = new URLSearchParams(location.search).get("data");
+    if (!q) return null;
+    try {
+      // base64 -> json
+      const json = decodeURIComponent(escape(atob(q)));
+      const payload = JSON.parse(json);
+      // Cho phép cả 2 dạng: [{...}, {...}] hoặc { items:[...] }
+      if (Array.isArray(payload)) return payload;
+      if (payload && Array.isArray(payload.items)) return payload.items;
+    } catch (e) {
+      console.error("❌ Không đọc được ?data=", e);
+    }
+    return null;
+  }
+
+  async function importToGrid(items) {
+    if (!items || !items.length) {
+      alert("⚠️ Không có dữ liệu để nhập.");
+      return;
+    }
+
+    // Đảm bảo MobileKQ đã sẵn sàng
+    const ready = () => (window.MobileKQ && typeof MobileKQ.upsertRow === "function" && typeof MobileKQ.setQty === "function");
+    if (!ready()) {
+      // Đợi MobileKQ khởi tạo (nếu script của bạn load chậm)
+      let cnt = 0;
+      await new Promise((res) => {
+        const tm = setInterval(() => {
+          if (ready() || ++cnt > 30) { clearInterval(tm); res(); }
+        }, 200);
+      });
+    }
+    if (!ready()) {
+      alert("⚠️ Lưới chưa sẵn sàng. Vui lòng tải lại trang.");
+      return;
+    }
+
+    // Đổ dữ liệu: 1 mã/1 dòng, set các size
+    for (const it of items) {
+      const masp = (it.masp || "").toString().trim().toUpperCase();
+      if (!masp) continue;
+
+      MobileKQ.upsertRow(masp);
+      for (const s of SIZES) {
+        const key = `s${s}`;
+        const val = parseInt(it[key] ?? 0, 10) || 0;
+        if (val > 0) MobileKQ.setQty(masp, s, val);
+      }
+    }
+
+    // Vẽ lại
+    if (typeof MobileKQ.render === "function") MobileKQ.render();
+
+    // Xoá ?data= khỏi URL để tránh nhập lại khi F5
+    try { history.replaceState(null, "", location.pathname); } catch {}
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const items = decodePayloadFromQuery();
+    if (items && items.length) {
+      await importToGrid(items);
+    }
+  });
+})();
+</script>
+
  
     <script type="module" src="scripts/nhaptam.js"></script>
 
@@ -1314,4 +1390,5 @@ document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFrom
 </body>
 
 </html>
+
 
