@@ -49,14 +49,15 @@ window.saveNhapTam = async function() {
         qty44: r.qty[44] || 0,
         qty45: r.qty[45] || 0,
         tong,
-        created_by: manv
+       
       });
     }
 
     // 3. Ghi vào Supabase
     const { error: errHd } = await supabase
   .from('nhaptam_hd')
-  .insert([{ soct, diadiem: cs, ngay: today, manv, tennv, ghichu }]);
+  .insert([{ soct, coso: cs, ngay: today, nhanvien: tennv, ghichu }]);
+
 if (errHd) throw new Error(errHd.message);
 
    const { error: errCt } = await supabase.from('nhaptam_ct').insert(details);
