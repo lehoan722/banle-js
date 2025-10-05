@@ -1242,17 +1242,13 @@
 
     </script>
 
-    <script>
-      
-         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-        
+   <script>
 // ============================================================
-// === GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH CƠ SỞ 1 (PHIÊN BẢN MỚI)
+// === GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH CƠ SỞ 1 (CHUẨN MỚI)
 // ============================================================
-
 async function openInTemFromNhapTam() {
   try {
-    // Lấy dữ liệu từ grid hiện tại
+    // 1️⃣ Lấy dữ liệu từ bảng hiện tại
     let rows = [];
     if (window.MobileKQ && typeof MobileKQ.getAll === "function") {
       rows = MobileKQ.getAll() || [];
@@ -1262,28 +1258,28 @@ async function openInTemFromNhapTam() {
       return;
     }
 
-    // Chuẩn bị danh sách item gửi sang trang in mã vạch
+    // 2️⃣ Chuẩn bị dữ liệu cần gửi sang trang in mã vạch
     const items = [];
     const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
     for (const r of rows) {
-      const masp = r.masp?.trim?.().toUpperCase?.() || "";
+      const masp = (r.masp || "").trim().toUpperCase();
       if (!masp) continue;
-
       const tensp = r.tensp || "";
       const dvt = r.dvt || "";
       const gianhap = r.gianhap || 0;
 
+      // Duyệt từng size và lấy số lượng nếu > 0
       for (const s of sizes) {
-        const qty = r.qty?.[s] ?? r[`s${s}`] ?? r[s] ?? 0;
+        const qty = r[`s${s}`] ?? r.qty?.[s] ?? 0;
         if (qty && parseInt(qty) > 0) {
           items.push({
             masp,
             tensp,
-            size: s === 0 ? "0" : String(s),
+            size: String(s),
             sl: parseInt(qty),
             dvt,
-            gianhap,
+            gianhap
           });
         }
       }
@@ -1294,6 +1290,7 @@ async function openInTemFromNhapTam() {
       return;
     }
 
+    // 3️⃣ Mã hóa dữ liệu và mở trang in
     const json = JSON.stringify(items);
     const encoded = btoa(unescape(encodeURIComponent(json)));
     const url = `inmavachcs1.html?data=${encoded}`;
@@ -1304,13 +1301,11 @@ async function openInTemFromNhapTam() {
   }
 }
 
-// Gắn sự kiện nút “In mã vạch”
+// Gắn sự kiện cho nút “In mã vạch”
 document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFromNhapTam);
+</script>
 
-
-
-    </script>    
-
+ 
     <script type="module" src="scripts/nhaptam.js"></script>
 
 
