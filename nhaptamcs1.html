@@ -1189,6 +1189,15 @@
     <script src="scripts/adapter_mobile_getbang.js"></script>
 
     <script>
+  document.getElementById('btn-luu')?.addEventListener('click', () => saveNhapTam());
+  document.getElementById('quaylai')?.addEventListener('click', async () => {
+    const soct = prompt('Nhập số chứng từ cần mở lại:');
+    if (soct) await loadNhapTam(soct.trim());
+  });
+</script>
+
+
+    <script>
         ; (() => {
             function syncBangKetQua() {
                 try {
@@ -1305,6 +1314,8 @@
         });
 
     </script>    
+
+    <script type="module" src="scripts/nhaptam.js"></script>
 
 
 </body>
