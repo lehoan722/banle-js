@@ -64,6 +64,16 @@ window.saveNhapTam = async function () {
 
 
         alert(`✅ Đã lưu hóa đơn nhập tạm: ${soct}`);
+
+        // 🔄 Làm mới bảng và tải số chứng từ mới
+        MobileKQ.clear();
+        MobileKQ.render();
+
+        // Lấy số chứng từ tiếp theo ngay
+        const num = parseInt(soct.split("_")[1]) + 1;
+        const nextSoct = `nt${cs}_${String(num).padStart(5, "0")}`;
+        document.getElementById("socttam").value = nextSoct;
+
     } catch (e) {
         console.error(e);
         alert('❌ Lưu hóa đơn nhập tạm thất bại!');
@@ -109,13 +119,56 @@ document.addEventListener("DOMContentLoaded", () => {
         await saveNhapTam();
     });
     document.getElementById("btn-quaylai-nt")?.addEventListener("click", async () => {
-        const soct = prompt("Nhập số chứng từ nhập tạm cần mở lại:");
-        if (soct) await loadNhapTam(soct.trim());
+        const current = document.getElementById("socttam").value;
+        if (!current) return alert("⚠️ Chưa có số chứng từ hiện tại!");
+
+        const [prefix, numStr] = current.split("_");
+        const prevNum = parseInt(numStr) - 1;
+        if (isNaN(prevNum) || prevNum < 1) {
+            alert("⚠️ Đây là hóa đơn đầu tiên, không có hóa đơn trước đó!");
+            return;
+        }
+
+        const prevSoct = `${prefix}_${String(prevNum).padStart(5, "0")}`;
+        await loadNhapTam(prevSoct);
+        document.getElementById("socttam").value = prevSoct;
     });
+
 });
 
 // ✅ Khi mở trang, tự động lấy số chứng từ lớn nhất hiện có rồi cộng 1
 document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const cs = localStorage.getItem("diadiem") || "cs1";
+        const { data: last, error } = await supabase
+            .from("nhaptam_hd")
+            .select("soct")
+            .ilike("soct", `nt${cs}_%`)
+            .order("soct", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) throw error;
+        let nextNumber = 1;
+        if (last?.soct) {
+            const num = parseInt(last.soct.split("_")[1]);
+            if (!isNaN(num)) nextNumber = num + 1;
+        }
+
+        const newSoct = `nt${cs}_${String(nextNumber).padStart(5, "0")}`;
+        document.getElementById("socttam").value = newSoct;
+    } catch (e) {
+        console.error("❌ Lỗi khi tự động lấy số chứng từ:", e);
+    }
+});
+
+document.getElementById("them")?.addEventListener("click", async () => {
+  // Làm sạch bảng
+  MobileKQ.clear();
+  MobileKQ.render();
+  document.getElementById("ghichu").value = "";
+
+  // Lấy lại số chứng từ tiếp theo từ Supabase
   try {
     const cs = localStorage.getItem("diadiem") || "cs1";
     const { data: last, error } = await supabase
@@ -127,6 +180,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .maybeSingle();
 
     if (error) throw error;
+
     let nextNumber = 1;
     if (last?.soct) {
       const num = parseInt(last.soct.split("_")[1]);
@@ -136,6 +190,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const newSoct = `nt${cs}_${String(nextNumber).padStart(5, "0")}`;
     document.getElementById("socttam").value = newSoct;
   } catch (e) {
-    console.error("❌ Lỗi khi tự động lấy số chứng từ:", e);
+    console.error("❌ Lỗi khi lấy số chứng từ mới:", e);
   }
 });
