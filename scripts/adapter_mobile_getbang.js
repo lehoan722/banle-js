@@ -101,3 +101,38 @@
   window._fromMobileGrid = fromMobileGrid;
 
 })();
+
+// scripts/adapter_mobile_getbang.js
+// Adapter cung cấp các hàm cũ (nếu nơi khác còn gọi) dựa trên MobileKQ mới
+
+(function () {
+  if (!window.MobileKQ) return;
+
+  const SIZE_ORDER = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+
+  // Hàm cũ “getBangKetQua” – trả về object dạng { masp: { s0, s38... } }
+  window.getBangKetQua = function () {
+    const rows = MobileKQ.getAll();
+    const obj = {};
+    rows.forEach(r => {
+      const o = { masp: r.masp };
+      SIZE_ORDER.forEach(s => o['s' + s] = r['s' + s] || 0);
+      o.tong = r.tong || 0;
+      obj[r.masp] = o;
+    });
+    // Gán để chỗ khác sử dụng nếu cần
+    window.bangKetQua = obj;
+    return obj;
+  };
+
+  // Một vài “alias” để tương thích ngược ở nơi khác (nếu có)
+  window.KQ_addOrSelectRow = function (masp) {
+    return MobileKQ.upsertRow(masp);
+  };
+  window.KQ_setQty = function (masp, size, qty) {
+    return MobileKQ.setQty(masp, size, qty);
+  };
+  window.KQ_render = function () {
+    return MobileKQ.render();
+  };
+})();
