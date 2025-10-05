@@ -1243,79 +1243,71 @@
     </script>
 
     <script>
-        // ===== GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH =====
-        function openInTemFromNhap(bangKetQua) {
-            if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
-                alert("Chưa có dữ liệu để in mã vạch");
-                return;
-            }
-
-            // Chuyển bangKetQua → danh sách items
-            const items = [];
-            Object.values(bangKetQua).forEach(row => {
-                row.sizes.forEach((sz, i) => {
-                    items.push({
-                        masp: row.masp,
-                        tensp: row.tensp,
-                        size: sz,
-                        sl: row.soluongs[i],
-                        dvt: row.dvt,
-                        gianhap: row.gia
-                    });
-                });
-            });
-
-            const payload = { source: "nhap-hd", cs: "cs1", items };
-            const json = JSON.stringify(payload);
-            let b64 = btoa(unescape(encodeURIComponent(json)))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
-            console.log("[NHAP] Mở trang in với dữ liệu:", items);
-            window.open(url, "_blank");
-        }
-
+      
          // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
+        
+// ============================================================
+// === GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH CƠ SỞ 1 (PHIÊN BẢN MỚI)
+// ============================================================
 
-            if (window.capNhatBangKetQuaTuDOM) {
-                window.capNhatBangKetQuaTuDOM();
-            }
+async function openInTemFromNhapTam() {
+  try {
+    // Lấy dữ liệu từ grid hiện tại
+    let rows = [];
+    if (window.MobileKQ && typeof MobileKQ.getAll === "function") {
+      rows = MobileKQ.getAll() || [];
+    }
+    if (!rows.length) {
+      alert("⚠️ Không có dữ liệu để in mã vạch!");
+      return;
+    }
 
-            const bang = window.bangKetQua || {};
-            console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
+    // Chuẩn bị danh sách item gửi sang trang in mã vạch
+    const items = [];
+    const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
-            if (!bang || Object.keys(bang).length === 0) {
-                alert("❌ Chưa có dữ liệu để in mã vạch!");
-                return;
-            }
+    for (const r of rows) {
+      const masp = r.masp?.trim?.().toUpperCase?.() || "";
+      if (!masp) continue;
 
-            // Chỉ gửi các trường tối thiểu
-            const items = [];
-            Object.values(bang).forEach(item => {
-                item.sizes.forEach((sz, idx) => {
-                    items.push({
-                        masp: item.masp,
-                        tensp: item.tensp,
-                        size: sz,
-                        sl: item.soluongs[idx]
-                    });
-                });
-            });
+      const tensp = r.tensp || "";
+      const dvt = r.dvt || "";
+      const gianhap = r.gianhap || 0;
 
-            const payload = {
-                source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
-                items
-            };
-            console.log("📤 [In mã vạch] payload gửi đi:", payload);
+      for (const s of sizes) {
+        const qty = r.qty?.[s] ?? r[`s${s}`] ?? r[s] ?? 0;
+        if (qty && parseInt(qty) > 0) {
+          items.push({
+            masp,
+            tensp,
+            size: s === 0 ? "0" : String(s),
+            sl: parseInt(qty),
+            dvt,
+            gianhap,
+          });
+        }
+      }
+    }
 
-            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
-            window.open(url, "_blank");
-        });
+    if (!items.length) {
+      alert("⚠️ Không có size nào có số lượng > 0 để in mã vạch!");
+      return;
+    }
+
+    const json = JSON.stringify(items);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    const url = `inmavachcs1.html?data=${encoded}`;
+    window.open(url, "_blank");
+  } catch (err) {
+    console.error("❌ Lỗi khi gửi dữ liệu sang trang in mã vạch:", err);
+    alert("❌ Có lỗi xảy ra khi gửi dữ liệu sang trang in mã vạch!");
+  }
+}
+
+// Gắn sự kiện nút “In mã vạch”
+document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFromNhapTam);
+
+
 
     </script>    
 
