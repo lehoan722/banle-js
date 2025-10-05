@@ -25,8 +25,8 @@ window.saveNhapTam = async function() {
       if (!isNaN(num)) nextNumber = num + 1;
     }
 
+    if (errLast) throw new Error(errLast.message);
     
-
     const soct = `nt${cs}_${String(nextNumber).padStart(5, '0')}`;
     document.getElementById('sohd').value = soct;
 
@@ -54,10 +54,14 @@ window.saveNhapTam = async function() {
     }
 
     // 3. Ghi vào Supabase
-    await supabase.from('nhaptam_hd').insert([{
-      soct, diadiem: cs, ngay: today, manv, tennv, ghichu
-    }]);
-    await supabase.from('nhaptam_ct').insert(details);
+    const { error: errHd } = await supabase
+  .from('nhaptam_hd')
+  .insert([{ soct, diadiem: cs, ngay: today, manv, tennv, ghichu }]);
+if (errHd) throw new Error(errHd.message);
+
+   const { error: errCt } = await supabase.from('nhaptam_ct').insert(details);
+if (errCt) throw new Error(errCt.message);
+
 
     alert(`✅ Đã lưu hóa đơn nhập tạm: ${soct}`);
   } catch (e) {
@@ -80,6 +84,7 @@ window.loadNhapTam = async function(soct) {
       return;
     }
 
+    if (errLast) throw new Error(errLast.message);
 
     // 1. Xóa bảng hiện tại
     const tbody = document.querySelector('#bangketqua tbody');
