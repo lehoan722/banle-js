@@ -39,18 +39,17 @@ window.saveNhapTam = async function () {
             details.push({
                 soct,
                 masp: r.masp,
-                qty0: r.qty[0] || 0,
-                qty38: r.qty[38] || 0,
-                qty39: r.qty[39] || 0,
-                qty40: r.qty[40] || 0,
-                qty41: r.qty[41] || 0,
-                qty42: r.qty[42] || 0,
-                qty43: r.qty[43] || 0,
-                qty44: r.qty[44] || 0,
-                qty45: r.qty[45] || 0,
-                tong,
-
+                s0: r.qty[0] || 0,
+                s38: r.qty[38] || 0,
+                s39: r.qty[39] || 0,
+                s40: r.qty[40] || 0,
+                s41: r.qty[41] || 0,
+                s42: r.qty[42] || 0,
+                s43: r.qty[43] || 0,
+                s44: r.qty[44] || 0,
+                s45: r.qty[45] || 0,
             });
+
         }
 
         // 3. Ghi vào Supabase
@@ -95,7 +94,7 @@ window.loadNhapTam = async function (soct) {
         for (const d of data) {
             await MobileKQ.upsertRow(d.masp);
             for (const s of [0, 38, 39, 40, 41, 42, 43, 44, 45]) {
-                MobileKQ.setQty(d.masp, s, d[`qty${s}`] || 0);
+                MobileKQ.setQty(d.masp, s, d[`s${s}`] || 0);
             }
         }
         MobileKQ.render();
