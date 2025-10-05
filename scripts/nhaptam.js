@@ -25,8 +25,8 @@ window.saveNhapTam = async function() {
       if (!isNaN(num)) nextNumber = num + 1;
     }
 
-    if (error) throw new Error(error.message);
     
+
     const soct = `nt${cs}_${String(nextNumber).padStart(5, '0')}`;
     document.getElementById('sohd').value = soct;
 
@@ -80,7 +80,6 @@ window.loadNhapTam = async function(soct) {
       return;
     }
 
-    if (error) throw new Error(error.message);
 
     // 1. Xóa bảng hiện tại
     const tbody = document.querySelector('#bangketqua tbody');
