@@ -1624,74 +1624,56 @@ if (gialeInput) {
 
     <script>
 (function () {
-  // ---- decode ?data= (base64 -> JSON) ----
-  function readItemsFromQuery() {
+  // ✅ Giải mã query ?data=... và đẩy vào bảng Handsontable (hot)
+  async function importFromQueryData() {
     const q = new URLSearchParams(location.search).get("data");
-    if (!q) return null;
+    if (!q) return;
+
     try {
       const json = decodeURIComponent(escape(atob(q)));
       const items = JSON.parse(json);
-      return Array.isArray(items) ? items : null;
+      if (!Array.isArray(items) || items.length === 0) return;
+
+      console.log("[IN-TEM] Nhận ?data:", items);
+
+      // 🔥 Chuẩn hóa dữ liệu giống importFromHashToInTem
+      const masps = items.map(it => (it.masp || "").toUpperCase());
+      const spMap = await window.fetchGiaLeByMasps(masps);
+
+      const data = items.map((it, idx) => {
+        const masp = (it.masp || "").toUpperCase();
+        const sp = spMap[masp] || {};
+        return [
+          idx + 1,
+          masp,
+          it.tensp || sp.tensp || "",
+          it.size || "0",
+          it.sl || 0,
+          it.dvt || sp.dvt || "sp",
+          it.gianhap ?? sp.gianhap ?? 0,
+          true,
+          it.giale ?? sp.giale ?? 0
+        ];
+      });
+
+      const tryLoad = () => {
+        if (window.hot) {
+          hot.loadData(data);
+          console.log("[IN-TEM] Đã nạp vào Handsontable:", hot.getData());
+          history.replaceState(null, "", location.pathname); // xoá ?data
+          return true;
+        }
+        return false;
+      };
+      if (!tryLoad()) {
+        const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
+      }
     } catch (e) {
-      console.error("Decode ?data error:", e);
-      return null;
+      console.error("❌ Lỗi decode ?data:", e);
     }
   }
 
-  // ---- tìm bảng "Danh sách tem in" một cách an toàn ----
-  function findDanhSachTable() {
-    // ưu tiên: bảng có dòng header chứa "STT" và "Mã hàng"
-    const tables = Array.from(document.querySelectorAll("table"));
-    for (const tb of tables) {
-      const headText = (tb.tHead?.innerText || "").toLowerCase();
-      if (headText.includes("stt") && headText.includes("mã hàng")) return tb;
-    }
-    // fallback: bảng thứ 2 trong trang (thường là danh sách in)
-    return tables[1] || tables[0] || null;
-  }
-
-  // ---- render items vào bảng ----
-  function renderItems(items) {
-    const table = findDanhSachTable();
-    if (!table) {
-      console.warn("Không tìm thấy bảng 'Danh sách tem in'.");
-      return;
-    }
-    const tbody = table.tBodies[0] || table.createTBody();
-    tbody.innerHTML = "";
-
-    items.forEach((it, i) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${i + 1}</td>
-        <td>${it.masp || ""}</td>
-        <td>${it.tensp || ""}</td>
-        <td>${it.size ?? ""}</td>
-        <td>${it.sl ?? 0}</td>
-        <td>${it.dvt || ""}</td>
-        <td>${it.gianhap ?? ""}</td>
-        <td><input type="checkbox" checked></td>
-        <td></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // ---- main ----
-  document.addEventListener("DOMContentLoaded", () => {
-    const items = readItemsFromQuery();
-    if (items && items.length) {
-      // lưu lại để F5 vẫn còn
-      try { localStorage.setItem("inmavach_last_import", JSON.stringify(items)); } catch {}
-      renderItems(items);
-    } else {
-      // nếu không có ?data, thử lấy cache
-      try {
-        const cached = JSON.parse(localStorage.getItem("inmavach_last_import") || "null");
-        if (cached && cached.length) renderItems(cached);
-      } catch {}
-    }
-  });
+  document.addEventListener("DOMContentLoaded", importFromQueryData);
 })();
 </script>
 
