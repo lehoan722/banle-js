@@ -1624,48 +1624,52 @@ if (gialeInput) {
 
     <script>
 (function () {
-  function getItemsFromQuery() {
-    const p = new URLSearchParams(location.search).get('data');
-    if (!p) return null;
+  // ---- decode ?data= (base64 -> JSON) ----
+  function readItemsFromQuery() {
+    const q = new URLSearchParams(location.search).get("data");
+    if (!q) return null;
     try {
-      // Giải mã base64 -> JSON
-      const json = decodeURIComponent(escape(atob(p)));
+      const json = decodeURIComponent(escape(atob(q)));
       const items = JSON.parse(json);
-      if (Array.isArray(items) && items.length) return items;
+      return Array.isArray(items) ? items : null;
     } catch (e) {
-      console.error('Decode data error:', e);
+      console.error("Decode ?data error:", e);
+      return null;
     }
-    return null;
   }
 
-  // Tìm cái bảng “Danh sách tem in”
+  // ---- tìm bảng "Danh sách tem in" một cách an toàn ----
   function findDanhSachTable() {
-    // Ưu tiên: bảng thứ 2 trong trang (bảng đầu thường là form tìm kiếm)
-    const tables = document.querySelectorAll('table');
-    if (tables.length >= 2) return tables[1];
-    // Không chắc layout? fallback: trả về bảng đầu
-    return tables[0] || null;
+    // ưu tiên: bảng có dòng header chứa "STT" và "Mã hàng"
+    const tables = Array.from(document.querySelectorAll("table"));
+    for (const tb of tables) {
+      const headText = (tb.tHead?.innerText || "").toLowerCase();
+      if (headText.includes("stt") && headText.includes("mã hàng")) return tb;
+    }
+    // fallback: bảng thứ 2 trong trang (thường là danh sách in)
+    return tables[1] || tables[0] || null;
   }
 
-  function renderItemsToTable(items) {
+  // ---- render items vào bảng ----
+  function renderItems(items) {
     const table = findDanhSachTable();
     if (!table) {
-      console.warn('Không tìm thấy bảng Danh sách tem in để đổ dữ liệu.');
+      console.warn("Không tìm thấy bảng 'Danh sách tem in'.");
       return;
     }
     const tbody = table.tBodies[0] || table.createTBody();
-    tbody.innerHTML = '';
+    tbody.innerHTML = "";
 
-    items.forEach((it, idx) => {
-      const tr = document.createElement('tr');
+    items.forEach((it, i) => {
+      const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td>${it.masp || ''}</td>
-        <td>${it.tensp || ''}</td>
-        <td>${it.size || ''}</td>
-        <td>${it.sl || 0}</td>
-        <td>${it.dvt || ''}</td>
-        <td>${it.gianhap ?? ''}</td>
+        <td>${i + 1}</td>
+        <td>${it.masp || ""}</td>
+        <td>${it.tensp || ""}</td>
+        <td>${it.size ?? ""}</td>
+        <td>${it.sl ?? 0}</td>
+        <td>${it.dvt || ""}</td>
+        <td>${it.gianhap ?? ""}</td>
         <td><input type="checkbox" checked></td>
         <td></td>
       `;
@@ -1673,17 +1677,18 @@ if (gialeInput) {
     });
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const items = getItemsFromQuery();
-    if (items) {
-      // Lưu lại để “Trang trước / Trang sau” vẫn còn dữ liệu (nếu bạn có dùng)
-      try { localStorage.setItem('inmavach_last_import', JSON.stringify(items)); } catch {}
-      renderItemsToTable(items);
+  // ---- main ----
+  document.addEventListener("DOMContentLoaded", () => {
+    const items = readItemsFromQuery();
+    if (items && items.length) {
+      // lưu lại để F5 vẫn còn
+      try { localStorage.setItem("inmavach_last_import", JSON.stringify(items)); } catch {}
+      renderItems(items);
     } else {
-      // Nếu không có ?data= thì thử lấy lại lần cuối từ localStorage (tiện khi F5)
+      // nếu không có ?data, thử lấy cache
       try {
-        const cached = JSON.parse(localStorage.getItem('inmavach_last_import') || 'null');
-        if (cached && Array.isArray(cached) && cached.length) renderItemsToTable(cached);
+        const cached = JSON.parse(localStorage.getItem("inmavach_last_import") || "null");
+        if (cached && cached.length) renderItems(cached);
       } catch {}
     }
   });
