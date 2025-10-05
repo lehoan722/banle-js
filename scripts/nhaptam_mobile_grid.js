@@ -339,16 +339,163 @@
 })();
 
 // Vô hiệu hóa #size của luồng cũ: nếu lỡ focus, kéo về ô size đầu của dòng hiện tại
+// scripts/nhaptam_mobile_grid.js
+// Lưới “nhập tạm” bản đơn giản, làm việc trực tiếp với #bangketqua (DOM)
+
 (function () {
-  const size = document.getElementById('size');
-  if (!size) return;
-  size.readOnly = true; size.tabIndex = -1;
-  size.addEventListener('focus', (e) => {
-    e.preventDefault();
-    const ma = (document.getElementById('masp')?.value || '').trim().toUpperCase();
-    if (ma) { MobileKQ.focusFirstSizeFor(ma); }
-  });
+  const SIZE_ORDER = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+
+  // Tìm tbody & bảng
+  const table = document.getElementById('bangketqua');
+  const tbody = table?.querySelector('tbody');
+
+  // Helper: từ size → index cột (ô <td>) trong DOM
+  // Cột 0: "Mã hàng", cột 1..9: size 0..45, cột 10: "Tổng", 11: "Vị trí", 12: T1, 13: T2
+  function colIndexBySize(size) {
+    const idx = SIZE_ORDER.indexOf(Number(size));
+    return idx === -1 ? -1 : (1 + idx); // cộng 1 vì cột 0 là "Mã hàng"
+  }
+
+  // Tìm <tr> theo masp (so sánh uppercase, trim)
+  function findRowByMasp(masp) {
+    if (!tbody) return null;
+    const target = (masp || '').toString().trim().toUpperCase();
+    for (const tr of tbody.rows) {
+      const cellMasp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || '').trim().toUpperCase();
+      if (cellMasp === target) return tr;
+    }
+    return null;
+  }
+
+  // Tạo một dòng mới cho masp, khởi tạo các size = 0
+  function createRow(masp) {
+    const tr = document.createElement('tr');
+
+    // 0: Mã hàng
+    const tdMasp = document.createElement('td');
+    tdMasp.className = 'td-masp';
+    tdMasp.textContent = (masp || '').toString().trim().toUpperCase();
+    tr.appendChild(tdMasp);
+
+    // 1..9: size
+    for (let i = 0; i < SIZE_ORDER.length; i++) {
+      const td = document.createElement('td');
+      td.className = 'td-sz td-sz-' + SIZE_ORDER[i];
+
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.min = '0';
+      inp.step = '1';
+      inp.value = '0';
+      inp.addEventListener('input', () => recalcRowTotal(tr));
+
+      td.appendChild(inp);
+      tr.appendChild(td);
+    }
+
+    // 10: Tổng
+    const tdTotal = document.createElement('td');
+    tdTotal.className = 'td-total';
+    tdTotal.textContent = '0';
+    tr.appendChild(tdTotal);
+
+    // 11: Vị trí
+    const tdVitri = document.createElement('td');
+    tdVitri.className = 'td-vitri';
+    tdVitri.textContent = '';
+    tr.appendChild(tdVitri);
+
+    // 12: T1
+    const tdT1 = document.createElement('td');
+    tdT1.className = 'td-t1';
+    tdT1.textContent = '0';
+    tr.appendChild(tdT1);
+
+    // 13: T2
+    const tdT2 = document.createElement('td');
+    tdT2.className = 'td-t2';
+    tdT2.textContent = '0';
+    tr.appendChild(tdT2);
+
+    tbody.appendChild(tr);
+    return tr;
+  }
+
+  // Tính lại tổng cho 1 dòng
+  function recalcRowTotal(tr) {
+    let sum = 0;
+    // size nằm ở cells 1..9
+    for (let c = 1; c <= 9; c++) {
+      const inp = tr.cells[c]?.querySelector('input');
+      if (!inp) continue;
+      const v = parseInt(inp.value, 10) || 0;
+      sum += v;
+    }
+    if (tr.cells[10]) tr.cells[10].textContent = String(sum);
+  }
+
+  // API công khai
+  window.MobileKQ = {
+    // tạo/đảm bảo có dòng masp, trả về <tr>
+    upsertRow(masp, opts = {}) {
+      if (!tbody) return null;
+      let tr = findRowByMasp(masp);
+      if (!tr) tr = createRow(masp);
+
+      // Ghi thêm một vài giá trị phụ nếu có (không bắt buộc)
+      if (opts.vitri != null && tr.cells[11]) tr.cells[11].textContent = opts.vitri;
+      if (opts.t1 != null && tr.cells[12]) tr.cells[12].textContent = String(opts.t1);
+      if (opts.t2 != null && tr.cells[13]) tr.cells[13].textContent = String(opts.t2);
+      return tr;
+    },
+
+    // ghi số lượng theo size (0,38..45)
+    setQty(masp, size, qty) {
+      const tr = findRowByMasp(masp) || this.upsertRow(masp);
+      if (!tr) return;
+
+      const col = colIndexBySize(size);
+      if (col === -1) return;
+
+      const inp = tr.cells[col]?.querySelector('input');
+      if (!inp) return;
+
+      const v = Math.max(0, parseInt(qty, 10) || 0);
+      inp.value = String(v);
+      recalcRowTotal(tr);
+    },
+
+    // dùng khi muốn vẽ lại (ở đây DOM là nguồn dữ liệu nên chỉ cần tính lại tổng toàn bảng)
+    render() {
+      if (!tbody) return;
+      for (const tr of tbody.rows) recalcRowTotal(tr);
+    },
+
+    // trả về toàn bộ dữ liệu
+    getAll() {
+      const arr = [];
+      if (!tbody) return arr;
+      for (const tr of tbody.rows) {
+        const masp = (tr.cells[0]?.innerText || '').trim().toUpperCase();
+        if (!masp) continue;
+
+        const item = { masp };
+        SIZE_ORDER.forEach((s, i) => {
+          const inp = tr.cells[1 + i]?.querySelector('input');
+          item['s' + s] = parseInt(inp?.value || '0', 10) || 0;
+        });
+        item.tong = parseInt(tr.cells[10]?.textContent || '0', 10) || 0;
+        item.vitri = (tr.cells[11]?.textContent || '').trim();
+        item.t1 = parseInt(tr.cells[12]?.textContent || '0', 10) || 0;
+        item.t2 = parseInt(tr.cells[13]?.textContent || '0', 10) || 0;
+
+        arr.push(item);
+      }
+      return arr;
+    }
+  };
 })();
+
 
 
 
