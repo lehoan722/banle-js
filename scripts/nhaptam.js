@@ -94,3 +94,13 @@ window.loadNhapTam = async function(soct) {
     alert('❌ Lỗi khi tải hóa đơn nhập tạm!');
   }
 };
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("btn-luu-nt")?.addEventListener("click", async () => {
+    await saveNhapTam();
+  });
+  document.getElementById("btn-quaylai-nt")?.addEventListener("click", async () => {
+    const soct = prompt("Nhập số chứng từ nhập tạm cần mở lại:");
+    if (soct) await loadNhapTam(soct.trim());
+  });
+});
