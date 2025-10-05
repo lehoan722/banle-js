@@ -1624,7 +1624,7 @@ if (gialeInput) {
 
     <script>
 (function () {
-  // ✅ Giải mã query ?data=... và đẩy vào bảng Handsontable (hot)
+  // Giải mã ?data= (base64 -> JSON) và nạp thẳng vào Handsontable (hot)
   async function importFromQueryData() {
     const q = new URLSearchParams(location.search).get("data");
     if (!q) return;
@@ -1636,10 +1636,14 @@ if (gialeInput) {
 
       console.log("[IN-TEM] Nhận ?data:", items);
 
-      // 🔥 Chuẩn hóa dữ liệu giống importFromHashToInTem
+      // Gọi hàm fetch giá/lệ nếu trang đã có (giống import từ hash)
       const masps = items.map(it => (it.masp || "").toUpperCase());
-      const spMap = await window.fetchGiaLeByMasps(masps);
+      const spMap = (typeof window.fetchGiaLeByMasps === "function")
+        ? await window.fetchGiaLeByMasps(masps)
+        : {};
 
+      // Chuyển item -> mảng hàng theo format của Handsontable:
+      // [STT, Mã hàng, Tên hàng, Kích cỡ, Số lượng, ĐVT, Giá nhập, In, Giá lẻ]
       const data = items.map((it, idx) => {
         const masp = (it.masp || "").toUpperCase();
         const sp = spMap[masp] || {};
@@ -1656,16 +1660,20 @@ if (gialeInput) {
         ];
       });
 
+      // Nạp vào HOT (bảng thực đang hiển thị)
       const tryLoad = () => {
         if (window.hot) {
           hot.loadData(data);
           console.log("[IN-TEM] Đã nạp vào Handsontable:", hot.getData());
-          history.replaceState(null, "", location.pathname); // xoá ?data
+          // Xóa ?data khỏi URL để tránh nạp lại khi F5
+          history.replaceState(null, "", location.pathname + location.hash);
           return true;
         }
         return false;
       };
+
       if (!tryLoad()) {
+        // Nếu HOT chưa sẵn, đợi nó init xong
         const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
       }
     } catch (e) {
