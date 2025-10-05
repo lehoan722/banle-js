@@ -84,7 +84,6 @@ window.loadNhapTam = async function (soct) {
             return;
         }
 
-        if (errLast) throw new Error(errLast.message);
 
         // 1. Xóa bảng hiện tại
         const tbody = document.querySelector('#bangketqua tbody');
@@ -113,4 +112,30 @@ document.addEventListener("DOMContentLoaded", () => {
         const soct = prompt("Nhập số chứng từ nhập tạm cần mở lại:");
         if (soct) await loadNhapTam(soct.trim());
     });
+});
+
+// ✅ Khi mở trang, tự động lấy số chứng từ lớn nhất hiện có rồi cộng 1
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const cs = localStorage.getItem("diadiem") || "cs1";
+    const { data: last, error } = await supabase
+      .from("nhaptam_hd")
+      .select("soct")
+      .ilike("soct", `nt${cs}_%`)
+      .order("soct", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    let nextNumber = 1;
+    if (last?.soct) {
+      const num = parseInt(last.soct.split("_")[1]);
+      if (!isNaN(num)) nextNumber = num + 1;
+    }
+
+    const newSoct = `nt${cs}_${String(nextNumber).padStart(5, "0")}`;
+    document.getElementById("socttam").value = newSoct;
+  } catch (e) {
+    console.error("❌ Lỗi khi tự động lấy số chứng từ:", e);
+  }
 });
