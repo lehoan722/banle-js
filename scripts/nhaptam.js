@@ -1,5 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-const supabase = createClient('https://rddjrmbyftlcvrgzlyby.supabase.co', '<anon-key>');
+const supabase = window.supabase;
 
 //(a) Lưu dữ liệu nhập tạm
 
@@ -25,7 +24,12 @@ window.saveNhapTam = async function() {
       const num = parseInt(last.soct.split('_')[1]);
       if (!isNaN(num)) nextNumber = num + 1;
     }
+
+    if (error) throw new Error(error.message);
+    
     const soct = `nt${cs}_${String(nextNumber).padStart(5, '0')}`;
+    document.getElementById('sohd').value = soct;
+
 
     // 2. Lấy dữ liệu bảng hiện tại
     const rows = MobileKQ.getAll();
@@ -75,6 +79,8 @@ window.loadNhapTam = async function(soct) {
       alert('Không tìm thấy hóa đơn nhập tạm!');
       return;
     }
+
+    if (error) throw new Error(error.message);
 
     // 1. Xóa bảng hiện tại
     const tbody = document.querySelector('#bangketqua tbody');
