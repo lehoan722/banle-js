@@ -338,56 +338,142 @@
 
 })();
 
-// Vô hiệu hóa #size của luồng cũ: nếu lỡ focus, kéo về ô size đầu của dòng hiện tại
-// scripts/nhaptam_mobile_grid.js
-// Lưới “nhập tạm” bản đơn giản, làm việc trực tiếp với #bangketqua (DOM)
+/* nhaptam_mobile_grid.js
+ * Lưới nhập tạm “1 mã / 1 dòng, nhiều size” cho trang nhaptamcs1.html
+ * - Không dùng spinner (input type="text", inputmode="numeric")
+ * - Focus: select() toàn bộ để gõ đè
+ * - Enter: 0 → 38 → ... → 45; hết dòng nhảy xuống dòng kế tiếp, bắt đầu lại từ 0
+ * - Ô rỗng được hiểu là 0; hiển thị rỗng nếu giá trị 0
+ * - API giữ nguyên: upsertRow, setQty, render, getAll, focusFirstSizeFor, moveRowToTopByMa, ensureVitriTonBatch
+ * - Bổ sung: addRow(row), setTongNhap(masp, val) (giữ để tương thích)
+ */
 
 (function () {
   const SIZE_ORDER = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
-  // Tìm tbody & bảng
+  // DOM
   const table = document.getElementById('bangketqua');
   const tbody = table?.querySelector('tbody');
 
-  // Helper: từ size → index cột (ô <td>) trong DOM
-  // Cột 0: "Mã hàng", cột 1..9: size 0..45, cột 10: "Tổng", 11: "Vị trí", 12: T1, 13: T2
+  // ===== Helpers =====
+  const U = (s) => (s || '').toString().trim().toUpperCase();
+
+  // Từ size → index cột trong bảng
+  // cột 0: Mã hàng; 1..9: size; 10: Tổng; 11: Vị trí; 12: T1; 13: T2
   function colIndexBySize(size) {
-    const idx = SIZE_ORDER.indexOf(Number(size));
-    return idx === -1 ? -1 : (1 + idx); // cộng 1 vì cột 0 là "Mã hàng"
+    const k = SIZE_ORDER.indexOf(Number(size));
+    return k === -1 ? -1 : (1 + k);
   }
 
-  // Tìm <tr> theo masp (so sánh uppercase, trim)
   function findRowByMasp(masp) {
     if (!tbody) return null;
-    const target = (masp || '').toString().trim().toUpperCase();
+    const target = U(masp);
     for (const tr of tbody.rows) {
-      const cellMasp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || '').trim().toUpperCase();
-      if (cellMasp === target) return tr;
+      const maspCell = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || '').trim().toUpperCase();
+      if (maspCell === target) return tr;
     }
     return null;
   }
 
-  // Tạo một dòng mới cho masp, khởi tạo các size = 0
+  function sanitizeDigits(str) {
+    return (str || '').toString().replace(/[^\d]/g, '');
+  }
+
+  function showValueInInput(inp, n) {
+    // Hiển thị rỗng nếu n==0; nơi tính tổng sẽ coi rỗng là 0
+    inp.value = (n && n > 0) ? String(n) : '';
+  }
+
+  function recalcRowTotal(tr) {
+    let sum = 0;
+    for (let c = 1; c <= 9; c++) {
+      const inp = tr.cells[c]?.querySelector('input');
+      if (!inp) continue;
+      const v = parseInt(inp.value || '0', 10) || 0;
+      sum += v;
+    }
+    if (tr.cells[10]) tr.cells[10].textContent = String(sum);
+  }
+
+  function focusAndSelect(inp) {
+    requestAnimationFrame(() => {
+      inp.focus({ preventScroll: false });
+      inp.select();
+    });
+  }
+
+  function nextCellPosition(tr, col) {
+    // Trong 1 dòng: size cột 1..9
+    if (col >= 1 && col < 9) {
+      return { tr, col: col + 1 };
+    }
+    // col == 9 -> nhảy xuống dòng tiếp theo, cột 1 (size 0)
+    const nextTr = tr.nextElementSibling;
+    if (nextTr) return { tr: nextTr, col: 1 };
+    // Không có dòng tiếp theo -> giữ nguyên
+    return { tr, col };
+  }
+
+  function gotoCell(tr, col) {
+    const inp = tr?.cells?.[col]?.querySelector('input');
+    if (inp) focusAndSelect(inp);
+  }
+
+  // ===== Tạo dòng mới =====
   function createRow(masp) {
     const tr = document.createElement('tr');
 
     // 0: Mã hàng
     const tdMasp = document.createElement('td');
     tdMasp.className = 'td-masp';
-    tdMasp.textContent = (masp || '').toString().trim().toUpperCase();
+    tdMasp.textContent = U(masp);
     tr.appendChild(tdMasp);
 
-    // 1..9: size
+    // 1..9: input size
     for (let i = 0; i < SIZE_ORDER.length; i++) {
+      const size = SIZE_ORDER[i];
       const td = document.createElement('td');
-      td.className = 'td-sz td-sz-' + SIZE_ORDER[i];
+      td.className = `td-sz td-sz-${size}`;
 
       const inp = document.createElement('input');
-      inp.type = 'number';
-      inp.min = '0';
-      inp.step = '1';
-      inp.value = '0';
-      inp.addEventListener('input', () => recalcRowTotal(tr));
+      // Văn bản để bỏ spinner, nhưng vẫn gợi ý bàn phím số
+      inp.type = 'text';
+      inp.inputMode = 'numeric';
+      inp.setAttribute('enterkeyhint', 'next');
+      inp.autocomplete = 'off';
+      inp.spellcheck = false;
+      inp.value = '';
+
+      // input: chỉ nhận số, tính tổng
+      inp.addEventListener('input', () => {
+        const raw = sanitizeDigits(inp.value);
+        // không tự ép 0 -> rỗng ngay trong input (tránh chớp tắt khi đang gõ)
+        inp.value = raw;
+        recalcRowTotal(tr);
+      });
+
+      // focus: bôi đen
+      inp.addEventListener('focus', () => {
+        focusAndSelect(inp);
+      });
+
+      // blur: nếu 0 hoặc rỗng -> hiển thị rỗng
+      inp.addEventListener('blur', () => {
+        const v = parseInt(inp.value || '0', 10) || 0;
+        showValueInInput(inp, v);
+        recalcRowTotal(tr);
+      });
+
+      // Enter: nhảy ô kế tiếp theo thứ tự 0→38→…→45; hết dòng nhảy xuống dòng dưới
+      inp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          // xác định vị trí hiện tại
+          const col = td.cellIndex; // chỉ số cột đang đứng
+          const pos = nextCellPosition(tr, col);
+          gotoCell(pos.tr, pos.col);
+        }
+      });
 
       td.appendChild(inp);
       tr.appendChild(td);
@@ -421,39 +507,24 @@
     return tr;
   }
 
-  // Tính lại tổng cho 1 dòng
-  function recalcRowTotal(tr) {
-    let sum = 0;
-    // size nằm ở cells 1..9
-    for (let c = 1; c <= 9; c++) {
-      const inp = tr.cells[c]?.querySelector('input');
-      if (!inp) continue;
-      const v = parseInt(inp.value, 10) || 0;
-      sum += v;
-    }
-    if (tr.cells[10]) tr.cells[10].textContent = String(sum);
-  }
-
-  // API công khai
+  // ===== API =====
   window.MobileKQ = {
-    // tạo/đảm bảo có dòng masp, trả về <tr>
+    // Thêm/đảm bảo có dòng theo mã
     upsertRow(masp, opts = {}) {
       if (!tbody) return null;
       let tr = findRowByMasp(masp);
       if (!tr) tr = createRow(masp);
 
-      // Ghi thêm một vài giá trị phụ nếu có (không bắt buộc)
-      if (opts.vitri != null && tr.cells[11]) tr.cells[11].textContent = opts.vitri;
-      if (opts.t1 != null && tr.cells[12]) tr.cells[12].textContent = String(opts.t1);
-      if (opts.t2 != null && tr.cells[13]) tr.cells[13].textContent = String(opts.t2);
+      if (opts.vitri != null && tr.cells[11]) tr.cells[11].textContent = String(opts.vitri || '');
+      if (opts.t1 != null && tr.cells[12]) tr.cells[12].textContent = String(parseInt(opts.t1, 10) || 0);
+      if (opts.t2 != null && tr.cells[13]) tr.cells[13].textContent = String(parseInt(opts.t2, 10) || 0);
       return tr;
     },
 
-    // ghi số lượng theo size (0,38..45)
+    // Ghi số lượng theo size (size = 0,38..45). Hiển thị rỗng nếu 0.
     setQty(masp, size, qty) {
       const tr = findRowByMasp(masp) || this.upsertRow(masp);
       if (!tr) return;
-
       const col = colIndexBySize(size);
       if (col === -1) return;
 
@@ -461,24 +532,39 @@
       if (!inp) return;
 
       const v = Math.max(0, parseInt(qty, 10) || 0);
-      inp.value = String(v);
+      showValueInInput(inp, v);
       recalcRowTotal(tr);
     },
 
-    // dùng khi muốn vẽ lại (ở đây DOM là nguồn dữ liệu nên chỉ cần tính lại tổng toàn bảng)
+    // Thêm dòng từ object đầy đủ: { masp, s0..s45, vitri?, t1?, t2?, tong_nhap? }
+    addRow(row) {
+      if (!row || !row.masp) return;
+      const tr = this.upsertRow(row.masp, row);
+      for (const s of SIZE_ORDER) {
+        const v = parseInt(row['s' + s] ?? 0, 10) || 0;
+        const col = colIndexBySize(s);
+        const inp = tr.cells[col]?.querySelector('input');
+        if (inp) showValueInInput(inp, v);
+      }
+      recalcRowTotal(tr);
+    },
+
+    // (giữ để tương thích – không dùng ở bản mới)
+    setTongNhap(/* masp, val */) { /* no-op */ },
+
+    // Vẽ lại: tính tổng cho toàn bộ các dòng
     render() {
       if (!tbody) return;
       for (const tr of tbody.rows) recalcRowTotal(tr);
     },
 
-    // trả về toàn bộ dữ liệu
+    // Lấy toàn bộ dữ liệu từ DOM; rỗng => 0
     getAll() {
       const arr = [];
       if (!tbody) return arr;
       for (const tr of tbody.rows) {
         const masp = (tr.cells[0]?.innerText || '').trim().toUpperCase();
         if (!masp) continue;
-
         const item = { masp };
         SIZE_ORDER.forEach((s, i) => {
           const inp = tr.cells[1 + i]?.querySelector('input');
@@ -488,14 +574,26 @@
         item.vitri = (tr.cells[11]?.textContent || '').trim();
         item.t1 = parseInt(tr.cells[12]?.textContent || '0', 10) || 0;
         item.t2 = parseInt(tr.cells[13]?.textContent || '0', 10) || 0;
-
         arr.push(item);
       }
       return arr;
+    },
+
+    // Tiện ích giữ tương thích
+    focusFirstSizeFor(masp) {
+      const tr = findRowByMasp(masp);
+      if (!tr) return;
+      gotoCell(tr, 1);
+    },
+
+    moveRowToTopByMa(masp) {
+      const tr = findRowByMasp(masp);
+      if (!tr || !tbody) return;
+      tbody.insertBefore(tr, tbody.firstChild);
+    },
+
+    ensureVitriTonBatch() {
+      // stub – tùy hệ thống bạn, để nguyên cho tương thích
     }
   };
 })();
-
-
-
-
