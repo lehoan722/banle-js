@@ -46,6 +46,7 @@ function clearGrid() {
 }
 
 // Nạp rows vào grid (ưu tiên qua MobileKQ nếu có)
+// nhaptam.js
 async function fillGrid(rows) {
   clearGrid();
   if (window.MobileKQ && typeof MobileKQ.upsertRow === "function") {
@@ -54,16 +55,24 @@ async function fillGrid(rows) {
       const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
       for (const s of sizes) {
         const key = `s${s}`;
+        const val = +d[key] || 0;
         if (typeof MobileKQ.setQty === "function") {
-          MobileKQ.setQty(d.masp, s, +d[key] || 0);
+
+         MobileKQ.setQty(d.masp, String(s), val);  // ép về chuỗi
+         // dự phòng: nếu lib hỗ trợ dạng "s38"
+         if (val > 0 && typeof MobileKQ.setQty === "function" && MobileKQ.getQty?.(d.masp, String(s)) !== val) {
+           MobileKQ.setQty(d.masp, `s${s}`, val);
+         }
         }
       }
     }
-    if (typeof MobileKQ.render === "function") MobileKQ.render();
-  } else {
-    // Fallback: chỉ hiển thị rỗng (vì không biết cấu trúc DOM chi tiết của bạn)
+
+   // tính lại + vẽ lại nếu có
+   if (typeof MobileKQ.recalcAll === "function") MobileKQ.recalcAll();
+   if (typeof MobileKQ.render === "function")   MobileKQ.render();
   }
 }
+
 
 // ======= API chính =======
 
