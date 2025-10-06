@@ -67,6 +67,20 @@ async function fillGrid(rows) {
             }
         }
 
+        // ✅ Gán thêm cột "Tổng nhập" nếu có trong dữ liệu
+        if (typeof d.tong_nhap !== "undefined") {
+            const tbody = document.querySelector("#bangketqua tbody");
+            if (tbody) {
+                for (const tr of tbody.rows) {
+                    const masp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || "").trim().toUpperCase();
+                    if (masp === d.masp.toUpperCase() && tr.cells[11]) {
+                        tr.cells[11].textContent = d.tong_nhap || "0";
+                        break;
+                    }
+                }
+            }
+        }
+
         // tính lại + vẽ lại nếu có
         if (typeof MobileKQ.recalcAll === "function") MobileKQ.recalcAll();
         if (typeof MobileKQ.render === "function") MobileKQ.render();
@@ -161,7 +175,7 @@ window.loadNhapTam = async function (soct) {
             return;
         }
 
-        await fillGrid(data);  
+        await fillGrid(data);
 
         if ($("#socttam")) $("#socttam").value = soct;
     } catch (e) {
@@ -187,13 +201,13 @@ async function openPrevDoc() {
 
 // tiep tuc chứng từ sau (lớn hơn 1)
 async function openNextDoc() {
-  const parsed = parseSoctInput();
-  if (!parsed) {
-    alert("⚠️ Chưa có số chứng từ hiện tại!");
-    return;
-  }
-  const nextSoct = `${parsed.prefix}_${pad5(parsed.num + 1)}`;
-  await window.loadNhapTam(nextSoct); // Nếu không tồn tại, loadNhapTam sẽ alert
+    const parsed = parseSoctInput();
+    if (!parsed) {
+        alert("⚠️ Chưa có số chứng từ hiện tại!");
+        return;
+    }
+    const nextSoct = `${parsed.prefix}_${pad5(parsed.num + 1)}`;
+    await window.loadNhapTam(nextSoct); // Nếu không tồn tại, loadNhapTam sẽ alert
 }
 
 
