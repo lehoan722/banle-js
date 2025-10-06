@@ -571,6 +571,7 @@
           item['s' + s] = parseInt(inp?.value || '0', 10) || 0;
         });
         item.tong = parseInt(tr.cells[10]?.textContent || '0', 10) || 0;
+        item.tong_nhap = parseInt(tr.cells[11]?.textContent || '0', 10) || 0;
         item.vitri = (tr.cells[11]?.textContent || '').trim();
         item.t1 = parseInt(tr.cells[12]?.textContent || '0', 10) || 0;
         item.t2 = parseInt(tr.cells[13]?.textContent || '0', 10) || 0;
