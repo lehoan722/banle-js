@@ -1,7 +1,7 @@
-// ================== NHAP TAM MODULE ==================
+// nhaptam.js (phiên bản đầy đủ)
+// Dùng cho trang nhaptamcs1.html – lưu/đọc nhập tạm độc lập 2 bảng nhaptam_hd / nhaptam_ct
 
-// dùng client supabase đã có sẵn trên trang
-const supabase = window.supabase;
+const supabase = window.supabase; // dùng client chung đã đăng nhập
 
 // ======= Helpers =======
 const $ = (sel) => document.querySelector(sel);
@@ -11,40 +11,42 @@ const getCS = () => (localStorage.getItem("diadiem") || "cs1").toLowerCase();
 
 // Hỏi DB lấy số chứng từ mới nhất theo cơ sở, rồi cộng 1
 async function getNextSoctFromDB(coso) {
-  const { data: last, error } = await supabase
-    .from("nhaptam_hd")
-    .select("soct")
-    .ilike("soct", `nt${coso}_%`)
-    .order("soct", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
+    const { data: last, error } = await supabase
+        .from("nhaptam_hd")
+        .select("soct")
+        .ilike("soct", `nt${coso}_%`)
+        .order("soct", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error) throw error;
 
-  let next = 1;
-  if (last?.soct) {
-    const n = parseInt(last.soct.split("_")[1], 10);
-    if (!Number.isNaN(n)) next = n + 1;
-  }
-  return `nt${coso}_${pad5(next)}`;
+    let next = 1;
+    if (last?.soct) {
+        const n = parseInt(last.soct.split("_")[1], 10);
+        if (!Number.isNaN(n)) next = n + 1;
+    }
+    return `nt${coso}_${pad5(next)}`;
 }
 
-// Parse số hiện tại trong ô #socttam → { prefix, num }
+// Parse số hiện tại trong ô #socttam → {prefix, num}
 function parseSoctInput() {
-  const v = $("#socttam")?.value?.trim();
-  if (!v) return null;
-  const [prefix, numStr] = v.split("_");
-  return { prefix, num: parseInt(numStr, 10) || 0 };
+    const soct = $("#socttam")?.value?.trim();
+    if (!soct || !soct.includes("_")) return null;
+    const [prefix, numStr] = soct.split("_");
+    const num = parseInt(numStr, 10);
+    if (Number.isNaN(num)) return null;
+    return { soct, prefix, num };
 }
 
-let __isLoading = false; // cờ tránh load song song
-
-// Xóa toàn bộ lưới
+// Xóa lưới trên UI
 function clearGrid() {
-  const tbody = document.querySelector("#bangketqua tbody");
-  if (tbody) tbody.innerHTML = "";
+    const tbody = $("#bangketqua tbody");
+    if (tbody) tbody.innerHTML = "";
+    if (window.MobileKQ && typeof MobileKQ.render === "function") MobileKQ.render();
 }
 
-// Đổ dữ liệu từ DB lên lưới (gồm cả Tổng nhập)
+// Nạp rows vào grid (ưu tiên qua MobileKQ nếu có)
+// nhaptam.js
 async function fillGrid(rows) {
   try {
     // ✅ Xóa lưới cũ trước khi nạp dữ liệu mới (tránh chồng)
@@ -124,9 +126,79 @@ async function fillGrid(rows) {
     console.error("fillGrid error:", err);
   }
 }
+// ======= API chính =======
 
-// =============== LOAD / SAVE ===============
+// Lưu hóa đơn nhập tạm (sinh số mới, chặn khi không có dữ liệu)
+window.saveNhapTam = async function () {
+    try {
+        const cs = getCS();
+        const today = new Date().toISOString().slice(0, 10);
+        const tennv = localStorage.getItem("tennv") || "";
+        const ghichu = $("#ghichu")?.value || "";
 
+        // 1) sinh số chứng từ mới nhất + 1
+        const soct = await getNextSoctFromDB(cs);
+        if ($("#socttam")) $("#socttam").value = soct;
+
+        // 2) lấy dữ liệu grid
+        let rows = [];
+        if (window.MobileKQ && typeof MobileKQ.getAll === "function") {
+            rows = MobileKQ.getAll() || [];
+        }
+
+        if (!rows || !rows.length) {
+            alert("⚠️ Không có dữ liệu để lưu!");
+            return;
+        }
+
+        // 3) map sang cấu trúc bảng nhaptam_ct (s0, s38…)
+        const details = rows.map((r) => ({
+            soct,
+            masp: U(r.masp),
+            s0: +(r.s0 ?? 0),
+            s38: +(r.s38 ?? 0),
+            s39: +(r.s39 ?? 0),
+            s40: +(r.s40 ?? 0),
+            s41: +(r.s41 ?? 0),
+            s42: +(r.s42 ?? 0),
+            s43: +(r.s43 ?? 0),
+            s44: +(r.s44 ?? 0),
+            s45: +(r.s45 ?? 0),
+            tong_nhap: +(r.tong_nhap ?? 0),
+        }));
+
+        // 4) insert header
+        const { error: errHd } = await supabase.from("nhaptam_hd").insert([
+            {
+                soct,
+                diadiem: cs, // bạn đã tạo cột 'diadiem' trong bảng hd
+                ngay: today,
+                nhanvien: tennv,
+                ghichu,
+                status: "draft",
+            },
+        ]);
+        if (errHd) throw errHd;
+
+        // 5) insert chi tiết
+        const { error: errCt } = await supabase.from("nhaptam_ct").insert(details);
+        if (errCt) throw errCt;
+
+        alert(`✅ Đã lưu hóa đơn nhập tạm: ${soct}`);
+
+        // 6) refresh lưới & xin số tiếp theo để sẵn sàng nhập tiếp
+        clearGrid();
+        if ($("#ghichu")) $("#ghichu").value = "";
+
+        const nextSoct = `${soct.split("_")[0]}_${pad5(parseInt(soct.split("_")[1], 10) + 1)}`;
+        if ($("#socttam")) $("#socttam").value = nextSoct;
+    } catch (e) {
+        console.error(e);
+        alert("❌ Lưu hóa đơn nhập tạm thất bại!");
+    }
+};
+
+// Nạp hóa đơn theo số chứng từ
 window.loadNhapTam = async function (soct) {
   try {
     if (__isLoading) return;
@@ -161,81 +233,57 @@ window.loadNhapTam = async function (soct) {
   }
 };
 
-window.saveNhapTam = async function () {
-  try {
-    const soct = $("#socttam")?.value?.trim();
-    if (!soct) return alert("⚠️ Chưa có số chứng từ!");
-
-    const rows = (typeof MobileKQ.getAll === "function") ? MobileKQ.getAll() : [];
-    if (!rows.length) return alert("⚠️ Không có dữ liệu để lưu!");
-
-    const hd = {
-      soct,
-      diadiem: getCS(),
-      ngay: new Date().toISOString().split("T")[0],
-      nhanvien: $("#manv")?.value || "",
-      ghichu: $("#ghichu")?.value || "",
-    };
-
-    const details = rows.map((r) => ({
-      soct,
-      masp: (r.masp || "").toUpperCase(),
-      s0: +(r.s0 ?? 0),
-      s38: +(r.s38 ?? 0),
-      s39: +(r.s39 ?? 0),
-      s40: +(r.s40 ?? 0),
-      s41: +(r.s41 ?? 0),
-      s42: +(r.s42 ?? 0),
-      s43: +(r.s43 ?? 0),
-      s44: +(r.s44 ?? 0),
-      s45: +(r.s45 ?? 0),
-      tong_nhap: +(r.tong_nhap ?? 0),
-    }));
-
-    const { error: errHd } = await supabase.from("nhaptam_hd").upsert(hd);
-    if (errHd) throw errHd;
-
-    const { error: errCt } = await supabase.from("nhaptam_ct").upsert(details);
-    if (errCt) throw errCt;
-
-    alert("✅ Đã lưu dữ liệu thành công!");
-  } catch (error) {
-    console.error(error);
-    alert("❌ Lỗi khi lưu dữ liệu!");
-  }
-};
-
-// =============== CHUYỂN HÓA ĐƠN ===============
-
+// quay lai chứng từ trước (nhỏ hơn 1)
 async function openPrevDoc() {
-  const parsed = parseSoctInput();
-  if (!parsed) return alert("⚠️ Chưa có số chứng từ hiện tại!");
-  if (parsed.num <= 1) return alert("⚠️ Đây là hóa đơn đầu tiên!");
-  const prevSoct = `${parsed.prefix}_${pad5(parsed.num - 1)}`;
-  await window.loadNhapTam(prevSoct);
+    const parsed = parseSoctInput();
+    if (!parsed) {
+        alert("⚠️ Chưa có số chứng từ hiện tại!");
+        return;
+    }
+    if (parsed.num <= 1) {
+        alert("⚠️ Đây là hóa đơn đầu tiên, không còn hóa đơn trước đó!");
+        return;
+    }
+    const prevSoct = `${parsed.prefix}_${pad5(parsed.num - 1)}`;
+    await window.loadNhapTam(prevSoct);
 }
 
+// tiep tuc chứng từ sau (lớn hơn 1)
 async function openNextDoc() {
-  const parsed = parseSoctInput();
-  if (!parsed) return alert("⚠️ Chưa có số chứng từ hiện tại!");
-  const nextSoct = `${parsed.prefix}_${pad5(parsed.num + 1)}`;
-  await window.loadNhapTam(nextSoct);
+    const parsed = parseSoctInput();
+    if (!parsed) {
+        alert("⚠️ Chưa có số chứng từ hiện tại!");
+        return;
+    }
+    const nextSoct = `${parsed.prefix}_${pad5(parsed.num + 1)}`;
+    await window.loadNhapTam(nextSoct); // Nếu không tồn tại, loadNhapTam sẽ alert
 }
 
+
+// Thêm mới: xóa lưới + xin số mới nhất + 1 từ DB
 async function newDoc() {
-  if (confirm("🆕 Tạo hóa đơn nhập tạm mới?")) {
-    if (typeof clearGrid === "function") clearGrid();
-    const soct = await getNextSoctFromDB(getCS());
-    if ($("#socttam")) $("#socttam").value = soct;
-  }
+    try {
+        clearGrid();
+        if ($("#ghichu")) $("#ghichu").value = "";
+        const soct = await getNextSoctFromDB(getCS());
+        if ($("#socttam")) $("#socttam").value = soct;
+    } catch (e) {
+        console.error("Lỗi khi lấy số chứng từ mới:", e);
+    }
 }
 
-// =============== GẮN SỰ KIỆN ===============
-document.addEventListener("DOMContentLoaded", () => {
-  $("#btn-luu-nt")?.addEventListener("click", () => window.saveNhapTam());
-  $("#btn-quaylai-nt")?.addEventListener("click", () => openPrevDoc());
-  $("#tieptuc")?.addEventListener("click", () => openNextDoc());
-  $("#them")?.addEventListener("click", () => newDoc());
-});
+// ======= Gắn sự kiện UI =======
+document.addEventListener("DOMContentLoaded", async () => {
+    // Auto hiển thị số chứng từ mới nhất + 1 khi mở trang
+    try {
+        const soct = await getNextSoctFromDB(getCS());
+        if ($("#socttam")) $("#socttam").value = soct;
+    } catch (e) {
+        console.error("Không lấy được số chứng từ ban đầu:", e);
+    }
 
-console.log("✅ nhaptam.js loaded");
+    $("#btn-luu-nt")?.addEventListener("click", () => window.saveNhapTam());
+    $("#btn-quaylai-nt")?.addEventListener("click", () => openPrevDoc());
+    $("#tieptuc")?.addEventListener("click", () => openNextDoc()); // ✅ nút Tiếp tục
+    $("#them")?.addEventListener("click", () => newDoc());
+});
