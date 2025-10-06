@@ -242,12 +242,15 @@
   }
 
   /* 4) Ẩn bớt cột bảng theo thứ tự */  
-  #bangketqua thead th:nth-child(15),
-  #bangketqua tbody td:nth-child(15),
+  
   #bangketqua thead th:nth-child(13),
   #bangketqua tbody td:nth-child(13),
   #bangketqua thead th:nth-child(14),
-  #bangketqua tbody td:nth-child(14) { display: none; }
+  #bangketqua tbody td:nth-child(14),
+  #bangketqua thead th:nth-child(15),
+  #bangketqua tbody td:nth-child(15)  
+  
+  { display: none; }
 
   /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
   .btn-big {
