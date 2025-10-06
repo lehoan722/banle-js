@@ -6,6 +6,7 @@ let totalRows = 0;
 let pageSize = 1000;
 let currentPage = 1;
 let onlyOneProduct = false; // <== thêm biến toàn cục để xác định
+let isCompactMode = false;
 
 // ở CUỐI FILE, thêm:
 window.trangTruoc = window.trangTruoc;
@@ -201,7 +202,7 @@ function renderTable(hotData) {
     const container = document.getElementById("hot");
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
-        { data: "ngay", title: "Ngày", readOnly: true, width: 105 },
+        { data: "ngay", title: "Ngày", readOnly: true, width: 105, renderer: formatDateTimeCell },
         { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
         { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
@@ -241,12 +242,105 @@ function renderTable(hotData) {
         filters: true,
         dropdownMenu: true,
     });
+
+    hotInstance = new Handsontable(container, {
+        data: hotData,
+        columns,
+        colHeaders: columns.map(c => c.title || c.data),
+        rowHeaders: true,
+        width: '100%',
+        height: Math.min(window.innerHeight - 260, 550),
+        licenseKey: 'non-commercial-and-evaluation',
+        stretchH: 'all',
+        manualColumnResize: true,
+        filters: true,
+        dropdownMenu: true,
+        // không cần khai báo hiddenColumns ở đây; sẽ update bằng applyCompactView()
+    });
+
+    // áp dụng trạng thái rút gọn (nếu đang bật)
+    applyCompactView();
+
 }
+
+function getCompactColumnIndexes() {
+    if (!hotInstance) return [];
+    // danh sách cột cần ẩn khi rút gọn:
+    const props = ["loaihd", "khachhang", "nhanvien", "tensp", "dvt", "gia", "km", "thanhtien"];
+    // chuyển data-prop -> chỉ số cột hiện tại
+    const cols = [];
+    for (const p of props) {
+        const idx = hotInstance.propToCol(p);
+        if (typeof idx === 'number' && idx >= 0) cols.push(idx);
+    }
+    // loại trùng + sắp xếp tăng dần để tránh lỗi
+    return Array.from(new Set(cols)).sort((a, b) => a - b);
+}
+
+function applyCompactView() {
+    if (!hotInstance) return;
+    if (isCompactMode) {
+        const colsToHide = getCompactColumnIndexes();
+        hotInstance.updateSettings({
+            hiddenColumns: { columns: colsToHide, indicators: true }
+        });
+        const btn = document.getElementById('btnCompact');
+        if (btn) btn.textContent = "Đầy đủ";
+    } else {
+        // Hiện tất cả cột
+        hotInstance.updateSettings({
+            hiddenColumns: { columns: [], indicators: true }
+        });
+        const btn = document.getElementById('btnCompact');
+        if (btn) btn.textContent = "Rút gọn";
+    }
+}
+
+// toggle từ nút bấm
+window.toggleCompact = function () {
+    isCompactMode = !isCompactMode;
+    applyCompactView();
+};
+
 
 function formatNumberCell(instance, td, row, col, prop, value, cellProperties) {
     const v = (value == null || value === '') ? '' : Number(value).toLocaleString('vi-VN');
     td.textContent = v;
 }
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function formatDateTimeCell(instance, td, row, col, prop, value, cellProperties) {
+    // Cho phép các dạng: Date | ISO string | "YYYY-MM-DD HH:mm:ss" | chỉ có ngày
+    let d = null;
+    if (value instanceof Date) {
+        d = value;
+    } else if (typeof value === 'string' && value.trim()) {
+        // chuyển dấu ' ' thành 'T' để Date parse tốt hơn
+        const candidate = value.includes('T') ? value : value.replace(' ', 'T');
+        const t = new Date(candidate);
+        if (!isNaN(t.getTime())) d = t;
+    }
+    if (!d) {
+        // fallback: nếu chỉ có YYYY-MM-DD, hiển thị với 00-00
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            const [y, m, day] = value.split('-').map(Number);
+            const yy = String(y).slice(-2);
+            td.textContent = `${pad2(day)}-${pad2(m)}-${yy} 00-00`;
+            return td;
+        }
+        td.textContent = value ?? ''; // để nguyên nếu không parse được
+        return td;
+    }
+    const dd = pad2(d.getDate());
+    const mm = pad2(d.getMonth() + 1);
+    const yy = String(d.getFullYear()).slice(-2);
+    const HH = pad2(d.getHours());
+    const MM = pad2(d.getMinutes());
+    td.textContent = `${dd}-${mm}-${yy} ${HH}-${MM}`; // dd-mm-yy hh-mm
+    return td;
+}
+
 
 window.xuatExcelToanBo = async function () {
     if (!currentFilters) return alert("Hãy chạy báo cáo trước đã!");
