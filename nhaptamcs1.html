@@ -529,15 +529,15 @@
                             <th>Mã hàng</th>
                             <th class="sz">0</th>
                             <th class="sz">38 S 48 </th>
-                            <th class="sz">39 M    </th>
+                            <th class="sz">39 M </th>
                             <th class="sz">40 L 50 </th>
-                            <th class="sz">41 XL   </th>
+                            <th class="sz">41 XL </th>
                             <th class="sz">42 2X 52</th>
-                            <th class="sz">43 3X   </th>
+                            <th class="sz">43 3X </th>
                             <th class="sz">44 4X 54</th>
                             <th class="sz">45 5X 56</th>
-                            <th class="sz">Tổng    </th>
-                            <th class="sz">T,N     </th>                            
+                            <th class="sz">Tổng </th>
+                            <th class="sz">T,N </th>
                             <th>Vị trí</th>
                             <th>T1</th>
                             <th>T2</th>
@@ -636,7 +636,7 @@
             <button id="quaylai">Quay lại</button>-->
 
             <button id="btn-luu-nt" style="background:#0a7;color:#fff;">💾 Lưu nhập tạm</button>
-            <button id="btn-quaylai-nt" style="background:#888;color:#fff;">↩️ Mở nhập tạm</button>
+            <button id="btn-quaylai-nt" style="background:#888;color:#fff;">Quay Lai</button>
 
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
@@ -1309,16 +1309,32 @@
         /**
          * Nhận payload từ ?data= (base64 JSON) do trang in mã vạch gửi sang
          * Dạng items: [{ masp, s0, s38, s39, s40, s41, s42, s43, s44, s45, ... }, ...]
-         * Mục tiêu: 1 mã/1 dòng, set các size vào lưới; "Tổng" tự cộng như hiện tại.
+         * Mục tiêu: 1 mã/1 dòng, set các size vào lưới; "Tổng" tự cộng như hiện tại,
+         * và sau khi import xong sẽ copy cột "Tổng" sang "Tổng nhập".
          */
         (function () {
             const SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
+            // ✅ Hàm copy “Tổng” → “Tổng nhập”
+            function copyTotalsToTongNhapOnce() {
+                const tbody = document.querySelector("#bangketqua tbody");
+                if (!tbody) return;
+                for (const tr of tbody.rows) {
+                    // Cột 10: "Tổng" | Cột 11: "Tổng nhập"
+                    const tdTotal = tr.cells[10];
+                    const tdTN = tr.cells[11];
+                    if (tdTotal && tdTN) {
+                        tdTN.textContent = tdTotal.textContent || "0";
+                    }
+                }
+            }
+
+            // ✅ Giải mã payload từ ?data=
             function decodePayloadFromQuery() {
                 const q = new URLSearchParams(location.search).get("data");
                 if (!q) return null;
                 try {
-                    // base64 -> json
+                    // base64 → JSON
                     const json = decodeURIComponent(escape(atob(q)));
                     const payload = JSON.parse(json);
                     // Cho phép cả 2 dạng: [{...}, {...}] hoặc { items:[...] }
@@ -1330,20 +1346,27 @@
                 return null;
             }
 
+            // ✅ Nạp dữ liệu vào lưới
             async function importToGrid(items) {
                 if (!items || !items.length) {
                     alert("⚠️ Không có dữ liệu để nhập.");
                     return;
                 }
 
-                // Đảm bảo MobileKQ đã sẵn sàng
-                const ready = () => (window.MobileKQ && typeof MobileKQ.upsertRow === "function" && typeof MobileKQ.setQty === "function");
+                // Đợi lưới MobileKQ sẵn sàng
+                const ready = () =>
+                    window.MobileKQ &&
+                    typeof MobileKQ.upsertRow === "function" &&
+                    typeof MobileKQ.setQty === "function";
+
                 if (!ready()) {
-                    // Đợi MobileKQ khởi tạo (nếu script của bạn load chậm)
                     let cnt = 0;
                     await new Promise((res) => {
                         const tm = setInterval(() => {
-                            if (ready() || ++cnt > 30) { clearInterval(tm); res(); }
+                            if (ready() || ++cnt > 30) {
+                                clearInterval(tm);
+                                res();
+                            }
                         }, 200);
                     });
                 }
@@ -1352,7 +1375,7 @@
                     return;
                 }
 
-                // Đổ dữ liệu: 1 mã/1 dòng, set các size
+                // Đổ dữ liệu: mỗi mã 1 dòng
                 for (const it of items) {
                     const masp = (it.masp || "").toString().trim().toUpperCase();
                     if (!masp) continue;
@@ -1365,13 +1388,19 @@
                     }
                 }
 
-                // Vẽ lại
+                // Vẽ lại lưới
                 if (typeof MobileKQ.render === "function") MobileKQ.render();
 
-                // Xoá ?data= khỏi URL để tránh nhập lại khi F5
-                try { history.replaceState(null, "", location.pathname); } catch { }
+                // ✅ Sau khi render xong, copy “Tổng” sang “Tổng nhập”
+                copyTotalsToTongNhapOnce();
+
+                // Xoá ?data= khỏi URL (tránh F5 nạp lại)
+                try {
+                    history.replaceState(null, "", location.pathname);
+                } catch { }
             }
 
+            // ✅ Khi DOM sẵn sàng → nạp nếu có ?data=
             document.addEventListener("DOMContentLoaded", async () => {
                 const items = decodePayloadFromQuery();
                 if (items && items.length) {
@@ -1380,6 +1409,7 @@
             });
         })();
     </script>
+
 
 
     <script type="module" src="scripts/nhaptam.js"></script>
