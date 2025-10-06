@@ -200,37 +200,26 @@ window.saveNhapTam = async function () {
 
 // Nạp hóa đơn theo số chứng từ
 window.loadNhapTam = async function (soct) {
-  try {
-    if (__isLoading) return;
-    __isLoading = true;
+    try {
+        const { data, error } = await supabase
+            .from("nhaptam_ct")
+            .select("masp,dvt,vitrikho,s0,s38,s39,s40,s41,s42,s43,s44,s45,tong,tong_nhap")
+            .eq("soct", soct)
+            .order("masp", { ascending: true });
+        if (error) throw error;
 
-    // khóa nút điều hướng khi đang tải
-    $("#btn-quaylai-nt")?.setAttribute("disabled", "disabled");
-    $("#tieptuc")?.setAttribute("disabled", "disabled");
+        if (!data || !data.length) {
+            alert("⚠️ Không tìm thấy hóa đơn nhập tạm!");
+            return;
+        }
 
-    const { data, error } = await supabase
-      .from("nhaptam_ct")
-      .select("masp,dvt,vitrikho,s0,s38,s39,s40,s41,s42,s43,s44,s45,tong,tong_nhap")
-      .eq("soct", soct)
-      .order("masp", { ascending: true });
+        await fillGrid(data);
 
-    if (error) throw error;
-
-    if (!data || !data.length) {
-      alert("⚠️ Không tìm thấy hóa đơn nhập tạm!");
-      return;
+        if ($("#socttam")) $("#socttam").value = soct;
+    } catch (e) {
+        console.error(e);
+        alert("❌ Lỗi khi tải hóa đơn nhập tạm!");
     }
-
-    await fillGrid(data);
-    if ($("#socttam")) $("#socttam").value = soct;
-  } catch (e) {
-    console.error(e);
-    alert("❌ Lỗi khi tải hóa đơn nhập tạm!");
-  } finally {
-    __isLoading = false;
-    $("#btn-quaylai-nt")?.removeAttribute("disabled");
-    $("#tieptuc")?.removeAttribute("disabled");
-  }
 };
 
 // quay lai chứng từ trước (nhỏ hơn 1)
