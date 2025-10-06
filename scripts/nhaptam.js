@@ -7,7 +7,19 @@ const supabase = window.supabase; // dùng client chung đã đăng nhập
 const $ = (sel) => document.querySelector(sel);
 const U = (s) => (s || "").toString().trim().toUpperCase();
 const pad5 = (n) => String(n).padStart(5, "0");
-const getCS = () => (localStorage.getItem("diadiem") || "cs1").toLowerCase();
+// Nhận biết cơ sở (cs1/cs2) theo tên file HTML hiện tại
+const getCS = () => {
+    try {
+        const path = window.location.pathname || "";
+        const file = path.split("/").pop().toLowerCase(); // vd: nhaptamcs1.html
+        const m = file.match(/nhaptam(cs\d+)/);
+        if (m && m[1]) return m[1];
+        return "cs1"; // mặc định nếu không nhận diện được
+    } catch {
+        return "cs1";
+    }
+};
+
 
 // Hỏi DB lấy số chứng từ mới nhất theo cơ sở, rồi cộng 1
 async function getNextSoctFromDB(coso) {
@@ -48,83 +60,83 @@ function clearGrid() {
 // Nạp rows vào grid (ưu tiên qua MobileKQ nếu có)
 // nhaptam.js
 async function fillGrid(rows) {
-  try {
-    // ✅ Xóa lưới cũ trước khi nạp dữ liệu mới (tránh chồng)
-    if (typeof clearGrid === "function") clearGrid();
+    try {
+        // ✅ Xóa lưới cũ trước khi nạp dữ liệu mới (tránh chồng)
+        if (typeof clearGrid === "function") clearGrid();
 
-    const SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+        const SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
-    if (!rows || !rows.length) {
-      if (typeof MobileKQ?.render === "function") MobileKQ.render();
-      return;
-    }
-
-    // Đảm bảo MobileKQ sẵn sàng
-    const ready = () =>
-      window.MobileKQ &&
-      typeof MobileKQ.upsertRow === "function" &&
-      typeof MobileKQ.setQty === "function";
-
-    if (!ready()) {
-      let cnt = 0;
-      await new Promise((res) => {
-        const tm = setInterval(() => {
-          if (ready() || ++cnt > 30) {
-            clearInterval(tm);
-            res();
-          }
-        }, 200);
-      });
-      if (!ready()) return;
-    }
-
-    // 1) Đổ size
-    for (const d of rows) {
-      const masp = (d.masp || "").toString().trim().toUpperCase();
-      if (!masp) continue;
-
-      await MobileKQ.upsertRow(masp);
-
-      for (const s of SIZES) {
-        const key = `s${s}`;
-        const val = Number(d[key] ?? 0) || 0;
-        MobileKQ.setQty(masp, s, val);
-      }
-    }
-
-    // 2) Vẽ để cập nhật "Tổng"
-    if (typeof MobileKQ.render === "function") MobileKQ.render();
-
-    // 3) Gán "Tổng nhập" từ DB
-    const tbody = document.querySelector("#bangketqua tbody");
-    for (const d of rows) {
-      const masp = (d.masp || "").toString().trim().toUpperCase();
-      if (!masp) continue;
-      const tn = Number(d.tong_nhap ?? 0) || 0;
-
-      if (typeof MobileKQ.setTongNhapByMasp === "function") {
-        MobileKQ.setTongNhapByMasp(masp, tn);
-        continue;
-      }
-
-      if (tbody) {
-        for (const tr of tbody.rows) {
-          const cellMasp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || "")
-            .trim()
-            .toUpperCase();
-          if (cellMasp === masp && tr.cells[11]) {
-            tr.cells[11].textContent = String(tn);
-            break;
-          }
+        if (!rows || !rows.length) {
+            if (typeof MobileKQ?.render === "function") MobileKQ.render();
+            return;
         }
-      }
-    }
 
-    // 4) Vẽ lại lần nữa nếu cần
-    if (typeof MobileKQ.render === "function") MobileKQ.render();
-  } catch (err) {
-    console.error("fillGrid error:", err);
-  }
+        // Đảm bảo MobileKQ sẵn sàng
+        const ready = () =>
+            window.MobileKQ &&
+            typeof MobileKQ.upsertRow === "function" &&
+            typeof MobileKQ.setQty === "function";
+
+        if (!ready()) {
+            let cnt = 0;
+            await new Promise((res) => {
+                const tm = setInterval(() => {
+                    if (ready() || ++cnt > 30) {
+                        clearInterval(tm);
+                        res();
+                    }
+                }, 200);
+            });
+            if (!ready()) return;
+        }
+
+        // 1) Đổ size
+        for (const d of rows) {
+            const masp = (d.masp || "").toString().trim().toUpperCase();
+            if (!masp) continue;
+
+            await MobileKQ.upsertRow(masp);
+
+            for (const s of SIZES) {
+                const key = `s${s}`;
+                const val = Number(d[key] ?? 0) || 0;
+                MobileKQ.setQty(masp, s, val);
+            }
+        }
+
+        // 2) Vẽ để cập nhật "Tổng"
+        if (typeof MobileKQ.render === "function") MobileKQ.render();
+
+        // 3) Gán "Tổng nhập" từ DB
+        const tbody = document.querySelector("#bangketqua tbody");
+        for (const d of rows) {
+            const masp = (d.masp || "").toString().trim().toUpperCase();
+            if (!masp) continue;
+            const tn = Number(d.tong_nhap ?? 0) || 0;
+
+            if (typeof MobileKQ.setTongNhapByMasp === "function") {
+                MobileKQ.setTongNhapByMasp(masp, tn);
+                continue;
+            }
+
+            if (tbody) {
+                for (const tr of tbody.rows) {
+                    const cellMasp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || "")
+                        .trim()
+                        .toUpperCase();
+                    if (cellMasp === masp && tr.cells[11]) {
+                        tr.cells[11].textContent = String(tn);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 4) Vẽ lại lần nữa nếu cần
+        if (typeof MobileKQ.render === "function") MobileKQ.render();
+    } catch (err) {
+        console.error("fillGrid error:", err);
+    }
 }
 // ======= API chính =======
 
@@ -276,3 +288,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("#tieptuc")?.addEventListener("click", () => openNextDoc()); // ✅ nút Tiếp tục
     $("#them")?.addEventListener("click", () => newDoc());
 });
+
