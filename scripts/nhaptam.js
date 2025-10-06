@@ -47,46 +47,93 @@ function clearGrid() {
 
 // Nạp rows vào grid (ưu tiên qua MobileKQ nếu có)
 // nhaptam.js
+// Đổ dữ liệu từ DB lên lưới (gồm cả Tổng nhập)
 async function fillGrid(rows) {
-    clearGrid();
-    if (window.MobileKQ && typeof MobileKQ.upsertRow === "function") {
-        for (const d of rows) {
-            await MobileKQ.upsertRow(d.masp);
-            const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
-            for (const s of sizes) {
-                const key = `s${s}`;
-                const val = +d[key] || 0;
-                if (typeof MobileKQ.setQty === "function") {
+  try {
+    // Xóa lưới cũ (nếu bạn có hàm clearGrid thì bật dòng dưới)
+    // if (typeof clearGrid === "function") clearGrid();
 
-                    MobileKQ.setQty(d.masp, String(s), val);  // ép về chuỗi
-                    // dự phòng: nếu lib hỗ trợ dạng "s38"
-                    if (val > 0 && typeof MobileKQ.setQty === "function" && MobileKQ.getQty?.(d.masp, String(s)) !== val) {
-                        MobileKQ.setQty(d.masp, `s${s}`, val);
-                    }
-                }
-            }
-        }
+    const SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
-        // ✅ Gán thêm cột "Tổng nhập" nếu có trong dữ liệu
-        if (typeof d.tong_nhap !== "undefined") {
-            const tbody = document.querySelector("#bangketqua tbody");
-            if (tbody) {
-                for (const tr of tbody.rows) {
-                    const masp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || "").trim().toUpperCase();
-                    if (masp === d.masp.toUpperCase() && tr.cells[11]) {
-                        tr.cells[11].textContent = d.tong_nhap || "0";
-                        break;
-                    }
-                }
-            }
-        }
-
-        // tính lại + vẽ lại nếu có
-        if (typeof MobileKQ.recalcAll === "function") MobileKQ.recalcAll();
-        if (typeof MobileKQ.render === "function") MobileKQ.render();
+    if (!rows || !rows.length) {
+      if (typeof MobileKQ?.render === "function") MobileKQ.render();
+      return;
     }
-}
 
+    // Đảm bảo MobileKQ sẵn sàng
+    const ready = () =>
+      window.MobileKQ &&
+      typeof MobileKQ.upsertRow === "function" &&
+      typeof MobileKQ.setQty === "function";
+
+    if (!ready()) {
+      let cnt = 0;
+      await new Promise((res) => {
+        const tm = setInterval(() => {
+          if (ready() || ++cnt > 30) {
+            clearInterval(tm);
+            res();
+          }
+        }, 200);
+      });
+      if (!ready()) return;
+    }
+
+    // 1) Đổ size vào đúng cột
+    for (const d of rows) {
+      const masp = (d.masp || "").toString().trim().toUpperCase();
+      if (!masp) continue;
+
+      await MobileKQ.upsertRow(masp);
+
+      for (const s of SIZES) {
+        const key = `s${s}`;
+        const val = Number(d[key] ?? 0) || 0;
+
+        // chấp nhận cả số lẫn chuỗi size
+        MobileKQ.setQty(masp, s, val);
+      }
+    }
+
+    // 2) Vẽ lại để cột "Tổng" cập nhật
+    if (typeof MobileKQ.render === "function") MobileKQ.render();
+
+    // 3) Gán lại cột "Tổng nhập" từ DB (nếu có),
+    //    nếu không có (0/rỗng) thì giữ nguyên (KHÔNG copy từ Tổng ở đây).
+    const tbody = document.querySelector("#bangketqua tbody");
+
+    for (const d of rows) {
+      const masp = (d.masp || "").toString().trim().toUpperCase();
+      if (!masp) continue;
+
+      const tn = Number(d.tong_nhap ?? 0) || 0;
+
+      // ưu tiên API nếu có
+      if (typeof MobileKQ.setTongNhapByMasp === "function") {
+        MobileKQ.setTongNhapByMasp(masp, tn);
+        continue;
+      }
+
+      // fallback DOM: cột 11 là "Tổng nhập"
+      if (tbody) {
+        for (const tr of tbody.rows) {
+          const cellMasp = (tr.cells[0]?.innerText || tr.cells[0]?.textContent || "")
+            .trim()
+            .toUpperCase();
+          if (cellMasp === masp && tr.cells[11]) {
+            tr.cells[11].textContent = String(tn);
+            break;
+          }
+        }
+      }
+    }
+
+    // 4) Vẽ lại lần nữa nếu cần
+    if (typeof MobileKQ.render === "function") MobileKQ.render();
+  } catch (err) {
+    console.error("fillGrid error:", err);
+  }
+}
 
 // ======= API chính =======
 
