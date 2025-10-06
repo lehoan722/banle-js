@@ -348,7 +348,7 @@
 
         #bangketqua th.sz,
         #bangketqua td.td-sz {
-            width: 25px;
+            width: 15px;
         }
 
         #bangketqua td.td-sz input {
@@ -374,8 +374,6 @@
         #bangketqua td.td-t2 {
             width: 46px;
         }
-      
-
     </style>
 
 
@@ -399,7 +397,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-       <link rel="stylesheet" href="nhaptammobilecs1.css">        
+    <link rel="stylesheet" href="nhaptammobilecs1.css">
 
 </head>
 
@@ -407,7 +405,7 @@
 
     <style>
         .menu-bar {
-            background: #0088cc;
+            background: #aacc00;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -514,7 +512,7 @@
             <input id="gia" placeholder="Giá SP" />
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />
+            <input id="socttam" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
             <button id="ghivitri">✏️</button>
@@ -526,24 +524,26 @@
 
                 <table id="bangketqua" class="table table-compact">
 
-                     <thead>
+                    <thead>
                         <tr>
                             <th>Mã hàng</th>
                             <th class="sz">0</th>
-                            <th class="sz">38 S 48</th>
-                            <th class="sz">39 M 50</th>
-                            <th class="sz">40 L 52</th>
-                            <th class="sz">41 XL 54</th>
-                            <th class="sz">42 2X 56</th>
-                            <th class="sz">43 3X 58</th>
-                            <th class="sz">44 4X 60</th>
-                            <th class="sz">45 5X 62</th>
-                            <th>Tổng</th>
+                            <th class="sz">38 S 48 </th>
+                            <th class="sz">39 M </th>
+                            <th class="sz">40 L 50 </th>
+                            <th class="sz">41 XL </th>
+                            <th class="sz">42 2X 52</th>
+                            <th class="sz">43 3X </th>
+                            <th class="sz">44 4X 54</th>
+                            <th class="sz">45 5X 56</th>
+                            <th class="sz">Tổng </th>
+                            <th class="sz">T,N </th>
                             <th>Vị trí</th>
                             <th>T1</th>
                             <th>T2</th>
                         </tr>
                     </thead>
+
 
                     <tbody></tbody>
                 </table>
@@ -629,11 +629,15 @@
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
-            <button id="btn-luu">💾 Lưu</button>
+            <!-- <button id="btn-luu">💾 Lưu</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
-            <button id="quaylai">Quay lại</button>
+            <button id="quaylai">Quay lại</button>-->
+
+            <button id="btn-luu-nt" style="background:#0a7;color:#fff;">💾 Lưu nhập tạm</button>
+            <button id="btn-quaylai-nt" style="background:#888;color:#fff;">Quay Lai</button>
+
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
@@ -736,7 +740,7 @@
             if (!email) return "";
             email = email.trim().toLowerCase();
             if (email === "khohangcs1@gmail.com") return "cs1";
-            if (email === "khohangcs2@gmail.com") return "cs2";
+            if (email === "khohangcs1@gmail.com") return "cs1";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
         }
@@ -1152,7 +1156,7 @@
             }
         });
     </script>
-    
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
@@ -1189,11 +1193,20 @@
     <script src="scripts/adapter_mobile_getbang.js"></script>
 
     <script>
+        document.getElementById('btn-luu')?.addEventListener('click', () => saveNhapTam());
+        document.getElementById('quaylai')?.addEventListener('click', async () => {
+            const soct = prompt('Nhập số chứng từ cần mở lại:');
+            if (soct) await loadNhapTam(soct.trim());
+        });
+    </script>
+
+
+    <script>
         ; (() => {
             function syncBangKetQua() {
                 try {
                     if (typeof window.getBangKetQua === 'function') {
-                        const kq = window.getBangKetQua();     // adapter sẽ tự gán window.bangKetQua
+                        const kq = window.getBangKetQua();     // adapter sẽ tự gán window.bangKetQua 
                         return kq;
                     }
                 } catch (e) { console.error(e); }
@@ -1230,85 +1243,178 @@
     </script>
 
     <script>
-        // ===== GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH =====
-        function openInTemFromNhap(bangKetQua) {
-            if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
-                alert("Chưa có dữ liệu để in mã vạch");
-                return;
+        // ============================================================
+        // === GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH CƠ SỞ 1 (CHUẨN MỚI)
+        // ============================================================
+        async function openInTemFromNhapTam() {
+            try {
+                // 1️⃣ Lấy dữ liệu từ bảng hiện tại
+                let rows = [];
+                if (window.MobileKQ && typeof MobileKQ.getAll === "function") {
+                    rows = MobileKQ.getAll() || [];
+                }
+                if (!rows.length) {
+                    alert("⚠️ Không có dữ liệu để in mã vạch!");
+                    return;
+                }
+
+                // 2️⃣ Chuẩn bị dữ liệu cần gửi sang trang in mã vạch
+                const items = [];
+                const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+
+                for (const r of rows) {
+                    const masp = (r.masp || "").trim().toUpperCase();
+                    if (!masp) continue;
+                    const tensp = r.tensp || "";
+                    const dvt = r.dvt || "";
+                    const gianhap = r.gianhap || 0;
+
+                    // Duyệt từng size và lấy số lượng nếu > 0
+                    for (const s of sizes) {
+                        const qty = r[`s${s}`] ?? r.qty?.[s] ?? 0;
+                        if (qty && parseInt(qty) > 0) {
+                            items.push({
+                                masp,
+                                tensp,
+                                size: String(s),
+                                sl: parseInt(qty),
+                                dvt,
+                                gianhap
+                            });
+                        }
+                    }
+                }
+
+                if (!items.length) {
+                    alert("⚠️ Không có size nào có số lượng > 0 để in mã vạch!");
+                    return;
+                }
+
+                // 3️⃣ Mã hóa dữ liệu và mở trang in
+                const json = JSON.stringify(items);
+                const encoded = btoa(unescape(encodeURIComponent(json)));
+                const url = `inmavachcs2.html?data=${encoded}`;
+                window.open(url, "_blank");
+            } catch (err) {
+                console.error("❌ Lỗi khi gửi dữ liệu sang trang in mã vạch:", err);
+                alert("❌ Có lỗi xảy ra khi gửi dữ liệu sang trang in mã vạch!");
             }
-
-            // Chuyển bangKetQua → danh sách items
-            const items = [];
-            Object.values(bangKetQua).forEach(row => {
-                row.sizes.forEach((sz, i) => {
-                    items.push({
-                        masp: row.masp,
-                        tensp: row.tensp,
-                        size: sz,
-                        sl: row.soluongs[i],
-                        dvt: row.dvt,
-                        gianhap: row.gia
-                    });
-                });
-            });
-
-            const payload = { source: "nhap-hd", cs: "cs2", items };
-            const json = JSON.stringify(payload);
-            let b64 = btoa(unescape(encodeURIComponent(json)))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-
-            const url = `${location.origin}/inmavachcs2.html#imp=${b64}`;
-            console.log("[NHAP] Mở trang in với dữ liệu:", items);
-            window.open(url, "_blank");
         }
 
-         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
+        // Gắn sự kiện cho nút “In mã vạch”
+        document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFromNhapTam);
+    </script>
 
-            if (window.capNhatBangKetQuaTuDOM) {
-                window.capNhatBangKetQuaTuDOM();
+    <script>
+        /**
+         * Nhận payload từ ?data= (base64 JSON) do trang in mã vạch gửi sang
+         * Dạng items: [{ masp, s0, s38, s39, s40, s41, s42, s43, s44, s45, ... }, ...]
+         * Mục tiêu: 1 mã/1 dòng, set các size vào lưới; "Tổng" tự cộng như hiện tại,
+         * và sau khi import xong sẽ copy cột "Tổng" sang "Tổng nhập".
+         */
+        (function () {
+            const SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+
+            // ✅ Hàm copy “Tổng” → “Tổng nhập”
+            function copyTotalsToTongNhapOnce() {
+                const tbody = document.querySelector("#bangketqua tbody");
+                if (!tbody) return;
+                for (const tr of tbody.rows) {
+                    // Cột 10: "Tổng" | Cột 11: "Tổng nhập"
+                    const tdTotal = tr.cells[10];
+                    const tdTN = tr.cells[11];
+                    if (tdTotal && tdTN) {
+                        tdTN.textContent = tdTotal.textContent || "0";
+                    }
+                }
             }
 
-            const bang = window.bangKetQua || {};
-            console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
-
-            if (!bang || Object.keys(bang).length === 0) {
-                alert("❌ Chưa có dữ liệu để in mã vạch!");
-                return;
+            // ✅ Giải mã payload từ ?data=
+            function decodePayloadFromQuery() {
+                const q = new URLSearchParams(location.search).get("data");
+                if (!q) return null;
+                try {
+                    // base64 → JSON
+                    const json = decodeURIComponent(escape(atob(q)));
+                    const payload = JSON.parse(json);
+                    // Cho phép cả 2 dạng: [{...}, {...}] hoặc { items:[...] }
+                    if (Array.isArray(payload)) return payload;
+                    if (payload && Array.isArray(payload.items)) return payload.items;
+                } catch (e) {
+                    console.error("❌ Không đọc được ?data=", e);
+                }
+                return null;
             }
 
-            // Chỉ gửi các trường tối thiểu
-            const items = [];
-            Object.values(bang).forEach(item => {
-                item.sizes.forEach((sz, idx) => {
-                    items.push({
-                        masp: item.masp,
-                        tensp: item.tensp,
-                        size: sz,
-                        sl: item.soluongs[idx]
+            // ✅ Nạp dữ liệu vào lưới
+            async function importToGrid(items) {
+                if (!items || !items.length) {
+                    alert("⚠️ Không có dữ liệu để nhập.");
+                    return;
+                }
+
+                // Đợi lưới MobileKQ sẵn sàng
+                const ready = () =>
+                    window.MobileKQ &&
+                    typeof MobileKQ.upsertRow === "function" &&
+                    typeof MobileKQ.setQty === "function";
+
+                if (!ready()) {
+                    let cnt = 0;
+                    await new Promise((res) => {
+                        const tm = setInterval(() => {
+                            if (ready() || ++cnt > 30) {
+                                clearInterval(tm);
+                                res();
+                            }
+                        }, 200);
                     });
-                });
+                }
+                if (!ready()) {
+                    alert("⚠️ Lưới chưa sẵn sàng. Vui lòng tải lại trang.");
+                    return;
+                }
+
+                // Đổ dữ liệu: mỗi mã 1 dòng
+                for (const it of items) {
+                    const masp = (it.masp || "").toString().trim().toUpperCase();
+                    if (!masp) continue;
+
+                    MobileKQ.upsertRow(masp);
+                    for (const s of SIZES) {
+                        const key = `s${s}`;
+                        const val = parseInt(it[key] ?? 0, 10) || 0;
+                        if (val > 0) MobileKQ.setQty(masp, s, val);
+                    }
+                }
+
+                // Vẽ lại lưới
+                if (typeof MobileKQ.render === "function") MobileKQ.render();
+
+                // ✅ Sau khi render xong, copy “Tổng” sang “Tổng nhập”
+                copyTotalsToTongNhapOnce();
+
+                // Xoá ?data= khỏi URL (tránh F5 nạp lại)
+                try {
+                    history.replaceState(null, "", location.pathname);
+                } catch { }
+            }
+
+            // ✅ Khi DOM sẵn sàng → nạp nếu có ?data=
+            document.addEventListener("DOMContentLoaded", async () => {
+                const items = decodePayloadFromQuery();
+                if (items && items.length) {
+                    await importToGrid(items);
+                }
             });
+        })();
+    </script>
 
-            const payload = {
-                source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs2",
-                items
-            };
-            console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
-            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs2.html#imp=${encoded}`;
-            window.open(url, "_blank");
-        });
 
-    </script>    
+    <script type="module" src="scripts/nhaptam.js"></script>
 
 
 </body>
 
 </html>
-
-
