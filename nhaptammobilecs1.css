@@ -242,8 +242,8 @@
   }
 
   /* 4) Ẩn bớt cột bảng theo thứ tự */  
-  #bangketqua thead th:nth-child(12),
-  #bangketqua tbody td:nth-child(12),
+  #bangketqua thead th:nth-child(15),
+  #bangketqua tbody td:nth-child(15),
   #bangketqua thead th:nth-child(13),
   #bangketqua tbody td:nth-child(13),
   #bangketqua thead th:nth-child(14),
