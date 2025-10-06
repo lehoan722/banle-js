@@ -146,20 +146,6 @@ window.saveNhapTam = async function () {
     }
 };
 
-// Chép cột Tổng (index 10) sang cột Tổng Nhập (index 11) cho toàn bộ tbody
-function copyTotalToTongNhapDOM() {
-  const tbody = document.querySelector("#bangketqua tbody");
-  if (!tbody) return;
-  for (const tr of tbody.rows) {
-    const tdTotal = tr.cells[10];   // "Tổng"
-    const tdTongNhap = tr.cells[11]; // "Tổng Nhap"
-    if (tdTotal && tdTongNhap) {
-      tdTongNhap.textContent = tdTotal.textContent || "0";
-    }
-  }
-}
-
-
 // Nạp hóa đơn theo số chứng từ
 window.loadNhapTam = async function (soct) {
     try {
@@ -175,8 +161,8 @@ window.loadNhapTam = async function (soct) {
             return;
         }
 
-        await fillGrid(data);
-        copyTotalToTongNhapDOM(); // ✅ chép Tổng → Tổng Nhập
+        await fillGrid(data);  
+
         if ($("#socttam")) $("#socttam").value = soct;
     } catch (e) {
         console.error(e);
