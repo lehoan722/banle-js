@@ -112,7 +112,7 @@ window.saveNhapTam = async function () {
             s43: +(r.s43 ?? 0),
             s44: +(r.s44 ?? 0),
             s45: +(r.s45 ?? 0),
-            tong_nhap: 0, // bạn đang bỏ cột này, để 0 cũng không ảnh hưởng
+            tong_nhap: +(r.tong_nhap ?? 0),
         }));
 
         // 4) insert header
