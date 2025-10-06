@@ -146,6 +146,20 @@ window.saveNhapTam = async function () {
     }
 };
 
+// Chép cột Tổng (index 10) sang cột Tổng Nhập (index 11) cho toàn bộ tbody
+function copyTotalToTongNhapDOM() {
+  const tbody = document.querySelector("#bangketqua tbody");
+  if (!tbody) return;
+  for (const tr of tbody.rows) {
+    const tdTotal = tr.cells[10];   // "Tổng"
+    const tdTongNhap = tr.cells[11]; // "Tổng Nhap"
+    if (tdTotal && tdTongNhap) {
+      tdTongNhap.textContent = tdTotal.textContent || "0";
+    }
+  }
+}
+
+
 // Nạp hóa đơn theo số chứng từ
 window.loadNhapTam = async function (soct) {
     try {
@@ -162,6 +176,7 @@ window.loadNhapTam = async function (soct) {
         }
 
         await fillGrid(data);
+        copyTotalToTongNhapDOM(); // ✅ chép Tổng → Tổng Nhập
         if ($("#socttam")) $("#socttam").value = soct;
     } catch (e) {
         console.error(e);
@@ -169,7 +184,7 @@ window.loadNhapTam = async function (soct) {
     }
 };
 
-// Lùi về chứng từ trước (nhỏ hơn 1)
+// quay lai chứng từ trước (nhỏ hơn 1)
 async function openPrevDoc() {
     const parsed = parseSoctInput();
     if (!parsed) {
@@ -183,6 +198,18 @@ async function openPrevDoc() {
     const prevSoct = `${parsed.prefix}_${pad5(parsed.num - 1)}`;
     await window.loadNhapTam(prevSoct);
 }
+
+// tiep tuc chứng từ sau (lớn hơn 1)
+async function openNextDoc() {
+  const parsed = parseSoctInput();
+  if (!parsed) {
+    alert("⚠️ Chưa có số chứng từ hiện tại!");
+    return;
+  }
+  const nextSoct = `${parsed.prefix}_${pad5(parsed.num + 1)}`;
+  await window.loadNhapTam(nextSoct); // Nếu không tồn tại, loadNhapTam sẽ alert
+}
+
 
 // Thêm mới: xóa lưới + xin số mới nhất + 1 từ DB
 async function newDoc() {
