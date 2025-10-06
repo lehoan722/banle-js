@@ -207,14 +207,17 @@
             background-color: #a60000 !important;
         }
 
-        
-  label.locked { opacity: 0.9; }
-  label.locked::after {
-    content: ' (tự bật theo giá)';
-    font-size: 12px; color: #888; margin-left: 4px;
-  }
 
+        label.locked {
+            opacity: 0.9;
+        }
 
+        label.locked::after {
+            content: ' (tự bật theo giá)';
+            font-size: 12px;
+            color: #888;
+            margin-left: 4px;
+        }
     </style>
 </head>
 
@@ -343,14 +346,16 @@
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
                     <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly
                         style="background:#eee; display:none;" style="width:130px;margin-right:2px;" />
-                    <input type="password" id="login-password" value="369369"
+                    <input type="password" id="login-password" value="123123"
                         style="width:110px;margin-right:2px; display:none ;">
                     <button id="login-submit" display:none class="btn">Đăng nhập</button>
                     <span id="login-status" style="margin-left:6px;font-size:12px;color:#ad3a2b ; display:none;"></span>
                 </div>
 
-                <!-- [ADD] Nút tạo HĐ nhập tạm -->
-<button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button>
+                <!-- [ADD] Nút tạo HĐ nhập tạm 
+                <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
+
+                <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm</button>
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -460,10 +465,14 @@
                     // Nếu là paste thì không chặn gì cả!
                 }
             });
+
+            window.hotInstance = hot;        // ← expose instance thật sự ra global
+            // (nếu muốn giữ tên cũ)
+            window.hot = hot;                // ← để window.hot không còn là <div id="hot">
+
         });
 
-
-
+        window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
         const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
@@ -781,7 +790,7 @@
 
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
-                        return s && s !== '0'                        
+                        return s && s !== '0'
                             ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; text-transform: uppercase; align-self:center; text-align:center;  /* luôn hiển thị in hoa */">
              ${s}
            </div>`
@@ -980,7 +989,7 @@
             }
         }
 
-         // Click nút "Tạo HĐ nhập"
+        // Click nút "Tạo HĐ nhập"
         document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
             const items = collectInvoiceItems();
             if (!items.length) {
@@ -992,31 +1001,31 @@
 
 
         // [ADD] Mở trang NHẬP TẠM với cùng payload/format
-function openNhapTamFromItems(items) {
-  const payload = { source: 'in-tem', cs: 'cs2', items }; // giữ format y hệt
-  const json = JSON.stringify(payload);
-  const b64 = btoa(unescape(encodeURIComponent(json)));
+        function openNhapTamFromItems(items) {
+            const payload = { source: 'in-tem', cs: 'cs2', items }; // giữ format y hệt
+            const json = JSON.stringify(payload);
+            const b64 = btoa(unescape(encodeURIComponent(json)));
 
-  if (b64.length <= 1800) {
-    window.open(`/nhaptamcs222.html#imp=${b64} `, '_blank');
-  } else {
-    const key = 'IMP_' + Date.now();
-    localStorage.setItem(key, json);
-    window.open(`/nhaptamcs222.html#impkey=${key} `, '_blank');
-  }
-}
+            if (b64.length <= 1800) {
+                window.open(`/nhaptamcs2.html#imp=${b64} `, '_blank');
+            } else {
+                const key = 'IMP_' + Date.now();
+                localStorage.setItem(key, json);
+                window.open(`/nhaptamcs2.html#impkey=${key} `, '_blank');
+            }
+        }
 
-// [ADD] Click nút "Tạo HĐ nhập tạm"
-document.getElementById('btnCreateNhapTam').addEventListener('click', () => {
-  const items = collectInvoiceItems();
-  if (!items.length) {
-    alert('Danh sách in rỗng hoặc chưa tick In.');
-    return;
-  }
-  openNhapTamFromItems(items);
-});
+        // [ADD] Click nút "Tạo HĐ nhập tạm"
+        document.getElementById('btnTaoNhapTam').addEventListener('click', () => {
+            const items = collectInvoiceItems();
+            if (!items.length) {
+                alert('Danh sách in rỗng hoặc chưa tick In.');
+                return;
+            }
+            openNhapTamFromItems(items);
+        });
 
-       
+
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
         const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
@@ -1113,7 +1122,7 @@ document.getElementById('btnCreateNhapTam').addEventListener('click', () => {
                 document.getElementById('chungloaiInput').value = data.chungloai || '';
                 document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                 // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
-syncQuanLyKichCoByGiaLe();
+                syncQuanLyKichCoByGiaLe();
                 document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
             } else {
                 // Không fill gì cả, không reset
@@ -1394,48 +1403,48 @@ syncQuanLyKichCoByGiaLe();
         });
 
         // [ADD] Helper khóa/mở khóa checkbox "Quản lý kích cỡ"
-const qlkcCheckbox = document.getElementById('quanlykichcoCheckbox');
-const qlkcLabel    = qlkcCheckbox?.parentElement; // <label> bao checkbox
+        const qlkcCheckbox = document.getElementById('quanlykichcoCheckbox');
+        const qlkcLabel = qlkcCheckbox?.parentElement; // <label> bao checkbox
 
-function lockQuanLyKichCo() {
-  if (!qlkcCheckbox) return;
-  qlkcCheckbox.checked = true;
-  qlkcCheckbox.disabled = true;
-  qlkcCheckbox.title = 'Đã khóa do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
-  qlkcLabel?.classList.add('locked');
-}
+        function lockQuanLyKichCo() {
+            if (!qlkcCheckbox) return;
+            qlkcCheckbox.checked = true;
+            qlkcCheckbox.disabled = true;
+            qlkcCheckbox.title = 'Đã khóa do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
+            qlkcLabel?.classList.add('locked');
+        }
 
-function unlockQuanLyKichCoAndUntick() {
-  if (!qlkcCheckbox) return;
-  qlkcCheckbox.disabled = false;
-  qlkcCheckbox.checked = false;
-  qlkcCheckbox.title = '';
-  qlkcLabel?.classList.remove('locked');
-}
+        function unlockQuanLyKichCoAndUntick() {
+            if (!qlkcCheckbox) return;
+            qlkcCheckbox.disabled = false;
+            qlkcCheckbox.checked = false;
+            qlkcCheckbox.title = '';
+            qlkcLabel?.classList.remove('locked');
+        }
 
-// [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
-function syncQuanLyKichCoByGiaLe() {
-  if (!gialeInput || !qlkcCheckbox) return;
-  const raw = (gialeInput.value || '').toString().replace(/\./g, '').replace(/[^0-9]/g, '');
-  const val = Number(raw || 0);
-  if (val >= GIALE_LOCK_THRESHOLD) {
-    lockQuanLyKichCo();
-  } else {
-    // Nếu hạ xuống dưới ngưỡng -> mở khóa & bỏ tick
-    unlockQuanLyKichCoAndUntick();
-  }
-}
+        // [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
+        function syncQuanLyKichCoByGiaLe() {
+            if (!gialeInput || !qlkcCheckbox) return;
+            const raw = (gialeInput.value || '').toString().replace(/\./g, '').replace(/[^0-9]/g, '');
+            const val = Number(raw || 0);
+            if (val >= GIALE_LOCK_THRESHOLD) {
+                lockQuanLyKichCo();
+            } else {
+                // Nếu hạ xuống dưới ngưỡng -> mở khóa & bỏ tick
+                unlockQuanLyKichCoAndUntick();
+            }
+        }
 
-// [ADD] Admin override: ALT + click vào vùng label để mở khóa thủ công
-if (qlkcLabel) {
-  qlkcLabel.addEventListener('click', (e) => {
-    if (e.altKey && qlkcCheckbox?.disabled) {
-      e.preventDefault(); // ngăn thao tác mặc định trên label
-      qlkcCheckbox.disabled = false;
-      qlkcCheckbox.title = 'Đã mở khóa thủ công (admin override)';
-    }
-  });
-}
+        // [ADD] Admin override: ALT + click vào vùng label để mở khóa thủ công
+        if (qlkcLabel) {
+            qlkcLabel.addEventListener('click', (e) => {
+                if (e.altKey && qlkcCheckbox?.disabled) {
+                    e.preventDefault(); // ngăn thao tác mặc định trên label
+                    qlkcCheckbox.disabled = false;
+                    qlkcCheckbox.title = 'Đã mở khóa thủ công (admin override)';
+                }
+            });
+        }
 
         // Tự động tính giá lẻ khi nhập xong giá nhập
         gianhapInput.addEventListener('change', function () {
@@ -1445,7 +1454,7 @@ if (qlkcLabel) {
             }
         });
         // [ADD]
-syncQuanLyKichCoByGiaLe();
+        syncQuanLyKichCoByGiaLe();
 
 
         const formOrder = [
@@ -1500,14 +1509,14 @@ syncQuanLyKichCoByGiaLe();
         // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
         attachEnterNav(formOrder);
         // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
-if (gialeInput) {
-  gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
-  gialeInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      syncQuanLyKichCoByGiaLe();
-    }
-  });
-}
+        if (gialeInput) {
+            gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
+            gialeInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    syncQuanLyKichCoByGiaLe();
+                }
+            });
+        }
 
         // Đăng nhập xong reload lại để token cập nhật
         import { renderLoginModule } from './scripts/loginSupabaseModule.js';
@@ -1606,14 +1615,17 @@ if (gialeInput) {
 
             // Đợi hot sẵn sàng rồi nạp
             const tryLoad = () => {
-                if (window.hot) {
-                    hot.loadData(data);
-                    console.log("[IN-TEM] Đã nạp vào hot:", hot.getData());
-                    history.replaceState(null, "", location.pathname); // xoá hash để tránh nạp lại
+                const inst = window.hotInstance || window.hot;  // ưu tiên instance thật
+                if (inst && typeof inst.loadData === 'function') {
+                    inst.loadData(data);
+                    console.log("[IN-TEM] Đã nạp vào Handsontable:", inst.getData?.());
+                    // Xoá hash / query để tránh nạp lại
+                    history.replaceState(null, "", location.pathname + location.hash);
                     return true;
                 }
                 return false;
             };
+
             if (!tryLoad()) {
                 const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
             }
@@ -1621,6 +1633,149 @@ if (gialeInput) {
         document.addEventListener("DOMContentLoaded", () => { importFromHashToInTem(); });
 
     </script>
+
+    <script>
+        (function () {
+            // Giải mã ?data= (base64 -> JSON) và nạp thẳng vào Handsontable (hot)
+            async function importFromQueryData() {
+                const q = new URLSearchParams(location.search).get("data");
+                if (!q) return;
+
+                try {
+                    const json = decodeURIComponent(escape(atob(q)));
+                    const items = JSON.parse(json);
+                    if (!Array.isArray(items) || items.length === 0) return;
+
+                    console.log("[IN-TEM] Nhận ?data:", items);
+
+                    // Gọi hàm fetch giá/lệ nếu trang đã có (giống import từ hash)
+                    const masps = items.map(it => (it.masp || "").toUpperCase());
+                    const spMap = (typeof window.fetchGiaLeByMasps === "function")
+                        ? await window.fetchGiaLeByMasps(masps)
+                        : {};
+
+                    // Chuyển item -> mảng hàng theo format của Handsontable:
+                    // [STT, Mã hàng, Tên hàng, Kích cỡ, Số lượng, ĐVT, Giá nhập, In, Giá lẻ]
+                    const data = items.map((it, idx) => {
+                        const masp = (it.masp || "").toUpperCase();
+                        const sp = spMap[masp] || {};
+                        return [
+                            idx + 1,
+                            masp,
+                            it.tensp || sp.tensp || "",
+                            it.size || "0",
+                            it.sl || 0,
+                            it.dvt || sp.dvt || "sp",
+                            it.gianhap ?? sp.gianhap ?? 0,
+                            true,
+                            it.giale ?? sp.giale ?? 0
+                        ];
+                    });
+
+                    // Nạp vào HOT (bảng thực đang hiển thị)
+                    const tryLoad = () => {
+                        const inst = window.hotInstance || window.hot;  // ưu tiên instance thật
+                        if (inst && typeof inst.loadData === 'function') {
+                            inst.loadData(data);
+                            console.log("[IN-TEM] Đã nạp vào Handsontable:", inst.getData?.());
+                            // Xoá hash / query để tránh nạp lại
+                            history.replaceState(null, "", location.pathname + location.hash);
+                            return true;
+                        }
+                        return false;
+                    };
+
+
+                    if (!tryLoad()) {
+                        // Nếu HOT chưa sẵn, đợi nó init xong
+                        const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
+                    }
+                } catch (e) {
+                    console.error("❌ Lỗi decode ?data:", e);
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", importFromQueryData);
+        })();
+    </script>
+
+    <script>
+// ===============================
+// === TẠO HÓA ĐƠN NHẬP TẠM MỚI ===
+// ===============================
+async function createNhapTamFromInTem() {
+  try {
+    if (!window.hot || typeof hot.getData !== "function") {
+      alert("⚠️ Không tìm thấy bảng dữ liệu!");
+      return;
+    }
+
+    // 1️⃣ Lấy toàn bộ dữ liệu từ bảng in
+    const rawData = hot.getData();
+    const headers = hot.getColHeader();
+    const colIndex = (name) => headers.indexOf(name);
+
+    const maspIdx = colIndex("Mã hàng");
+    const sizeIdx = colIndex("Kích cỡ");
+    const qtyIdx  = colIndex("Số lượng");
+    const dvtIdx  = colIndex("ĐVT");
+    const gianhapIdx = colIndex("Giá nhập");
+
+    if (maspIdx === -1 || sizeIdx === -1 || qtyIdx === -1) {
+      alert("⚠️ Không tìm thấy các cột cần thiết (Mã hàng / Kích cỡ / Số lượng).");
+      return;
+    }
+
+    // 2️⃣ Gom theo mã hàng
+    const map = {};
+    const sizes = [0,38,39,40,41,42,43,44,45];
+    for (const row of rawData) {
+      const masp = (row[maspIdx] || "").toString().trim().toUpperCase();
+      const size = (row[sizeIdx] || "").toString().trim();
+      const sl = parseInt(row[qtyIdx]) || 0;
+      const dvt = row[dvtIdx] || "sp";
+      const gianhap = parseFloat(row[gianhapIdx]) || 0;
+      if (!masp || sl <= 0) continue;
+
+      if (!map[masp]) {
+        map[masp] = { masp, dvt, gianhap };
+        sizes.forEach(s => map[masp][`s${s}`] = 0);
+      }
+      const s = sizes.includes(+size) ? +size : null;
+      if (s !== null) map[masp][`s${s}`] += sl;
+    }
+
+    // 3️⃣ Tính tổng nhập và đóng gói payload
+    const items = Object.values(map).map(it => {
+      const tong_nhap = sizes.reduce((sum,s)=>sum+(it[`s${s}`]||0),0);
+      return { ...it, tong_nhap };
+    });
+
+    if (!items.length) {
+      alert("⚠️ Không có dữ liệu hợp lệ để tạo nhập tạm!");
+      return;
+    }
+
+    // 4️⃣ Encode payload và mở trang nhập tạm
+    const payload = {
+      source: "in-tem",
+      cs: "cs2",
+      items
+    };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    const url = `nhaptamcs2.html?data=${encoded}`;
+    window.open(url, "_blank");
+  } catch (err) {
+    console.error("❌ Lỗi khi tạo nhập tạm:", err);
+    alert("❌ Có lỗi xảy ra khi tạo hóa đơn nhập tạm!");
+  }
+}
+
+// Gắn vào nút "Tạo HĐ nhập tạm"
+document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
+</script>
+
+
 
 </body>
 
