@@ -235,5 +235,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     $("#btn-luu-nt")?.addEventListener("click", () => window.saveNhapTam());
     $("#btn-quaylai-nt")?.addEventListener("click", () => openPrevDoc());
+    $("#tieptuc")?.addEventListener("click", () => openNextDoc()); // ✅ nút Tiếp tục
     $("#them")?.addEventListener("click", () => newDoc());
 });
