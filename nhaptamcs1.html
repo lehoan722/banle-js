@@ -348,7 +348,7 @@
 
         #bangketqua th.sz,
         #bangketqua td.td-sz {
-            width: 30px;
+            width: 15px;
         }
 
         #bangketqua td.td-sz input {
@@ -374,8 +374,6 @@
         #bangketqua td.td-t2 {
             width: 46px;
         }
-      
-
     </style>
 
 
@@ -399,7 +397,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-       <link rel="stylesheet" href="nhaptammobilecs1.css">        
+    <link rel="stylesheet" href="nhaptammobilecs1.css">
 
 </head>
 
@@ -407,7 +405,7 @@
 
     <style>
         .menu-bar {
-            background: #0088cc;
+            background: #aacc00;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -527,23 +525,24 @@
                 <table id="bangketqua" class="table table-compact">
 
                     <thead>
-  <tr>
-    <th>Mã hàng</th>
-    <th class="sz">0</th>
-    <th class="sz">38 S</th>
-    <th class="sz">39 M</th>
-    <th class="sz">40 L</th>
-    <th class="sz">41 XL</th>
-    <th class="sz">42 2X</th>
-    <th class="sz">43 3X</th>
-    <th class="sz">44 4X</th>
-    <th class="sz">45 5X</th>
-    <th>Tổng</th>   
-    <th>Vị trí</th>
-    <th>T1</th>
-    <th>T2</th>
-  </tr>
-</thead>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th class="sz">0</th>
+                            <th class="sz">38 S 48</th>
+                            <th class="sz">39 M</th>
+                            <th class="sz">40 L 50</th>
+                            <th class="sz">41 XL</th>
+                            <th class="sz">42 2X 52</th>
+                            <th class="sz">43 3X</th>
+                            <th class="sz">44 4X 54</th>
+                            <th class="sz">45 5X 56</th>
+                            <th>Tổng</th>
+                            <th>Tổng Nhap</th>
+                            <th>Vị trí</th>
+                            <th>T1</th>
+                            <th>T2</th>
+                        </tr>
+                    </thead>
 
 
                     <tbody></tbody>
@@ -630,14 +629,14 @@
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
-           <!-- <button id="btn-luu">💾 Lưu</button>
+            <!-- <button id="btn-luu">💾 Lưu</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
             <button id="quaylai">Quay lại</button>-->
 
             <button id="btn-luu-nt" style="background:#0a7;color:#fff;">💾 Lưu nhập tạm</button>
-<button id="btn-quaylai-nt" style="background:#888;color:#fff;">↩️ Mở nhập tạm</button>
+            <button id="btn-quaylai-nt" style="background:#888;color:#fff;">↩️ Mở nhập tạm</button>
 
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
@@ -1157,7 +1156,7 @@
             }
         });
     </script>
-    
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
@@ -1194,12 +1193,12 @@
     <script src="scripts/adapter_mobile_getbang.js"></script>
 
     <script>
-  document.getElementById('btn-luu')?.addEventListener('click', () => saveNhapTam());
-  document.getElementById('quaylai')?.addEventListener('click', async () => {
-    const soct = prompt('Nhập số chứng từ cần mở lại:');
-    if (soct) await loadNhapTam(soct.trim());
-  });
-</script>
+        document.getElementById('btn-luu')?.addEventListener('click', () => saveNhapTam());
+        document.getElementById('quaylai')?.addEventListener('click', async () => {
+            const soct = prompt('Nhập số chứng từ cần mở lại:');
+            if (soct) await loadNhapTam(soct.trim());
+        });
+    </script>
 
 
     <script>
@@ -1243,151 +1242,149 @@
 
     </script>
 
-   <script>
-// ============================================================
-// === GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH CƠ SỞ 1 (CHUẨN MỚI)
-// ============================================================
-async function openInTemFromNhapTam() {
-  try {
-    // 1️⃣ Lấy dữ liệu từ bảng hiện tại
-    let rows = [];
-    if (window.MobileKQ && typeof MobileKQ.getAll === "function") {
-      rows = MobileKQ.getAll() || [];
-    }
-    if (!rows.length) {
-      alert("⚠️ Không có dữ liệu để in mã vạch!");
-      return;
-    }
+    <script>
+        // ============================================================
+        // === GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH CƠ SỞ 1 (CHUẨN MỚI)
+        // ============================================================
+        async function openInTemFromNhapTam() {
+            try {
+                // 1️⃣ Lấy dữ liệu từ bảng hiện tại
+                let rows = [];
+                if (window.MobileKQ && typeof MobileKQ.getAll === "function") {
+                    rows = MobileKQ.getAll() || [];
+                }
+                if (!rows.length) {
+                    alert("⚠️ Không có dữ liệu để in mã vạch!");
+                    return;
+                }
 
-    // 2️⃣ Chuẩn bị dữ liệu cần gửi sang trang in mã vạch
-    const items = [];
-    const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+                // 2️⃣ Chuẩn bị dữ liệu cần gửi sang trang in mã vạch
+                const items = [];
+                const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
-    for (const r of rows) {
-      const masp = (r.masp || "").trim().toUpperCase();
-      if (!masp) continue;
-      const tensp = r.tensp || "";
-      const dvt = r.dvt || "";
-      const gianhap = r.gianhap || 0;
+                for (const r of rows) {
+                    const masp = (r.masp || "").trim().toUpperCase();
+                    if (!masp) continue;
+                    const tensp = r.tensp || "";
+                    const dvt = r.dvt || "";
+                    const gianhap = r.gianhap || 0;
 
-      // Duyệt từng size và lấy số lượng nếu > 0
-      for (const s of sizes) {
-        const qty = r[`s${s}`] ?? r.qty?.[s] ?? 0;
-        if (qty && parseInt(qty) > 0) {
-          items.push({
-            masp,
-            tensp,
-            size: String(s),
-            sl: parseInt(qty),
-            dvt,
-            gianhap
-          });
+                    // Duyệt từng size và lấy số lượng nếu > 0
+                    for (const s of sizes) {
+                        const qty = r[`s${s}`] ?? r.qty?.[s] ?? 0;
+                        if (qty && parseInt(qty) > 0) {
+                            items.push({
+                                masp,
+                                tensp,
+                                size: String(s),
+                                sl: parseInt(qty),
+                                dvt,
+                                gianhap
+                            });
+                        }
+                    }
+                }
+
+                if (!items.length) {
+                    alert("⚠️ Không có size nào có số lượng > 0 để in mã vạch!");
+                    return;
+                }
+
+                // 3️⃣ Mã hóa dữ liệu và mở trang in
+                const json = JSON.stringify(items);
+                const encoded = btoa(unescape(encodeURIComponent(json)));
+                const url = `inmavachcs1.html?data=${encoded}`;
+                window.open(url, "_blank");
+            } catch (err) {
+                console.error("❌ Lỗi khi gửi dữ liệu sang trang in mã vạch:", err);
+                alert("❌ Có lỗi xảy ra khi gửi dữ liệu sang trang in mã vạch!");
+            }
         }
-      }
-    }
 
-    if (!items.length) {
-      alert("⚠️ Không có size nào có số lượng > 0 để in mã vạch!");
-      return;
-    }
+        // Gắn sự kiện cho nút “In mã vạch”
+        document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFromNhapTam);
+    </script>
 
-    // 3️⃣ Mã hóa dữ liệu và mở trang in
-    const json = JSON.stringify(items);
-    const encoded = btoa(unescape(encodeURIComponent(json)));
-    const url = `inmavachcs1.html?data=${encoded}`;
-    window.open(url, "_blank");
-  } catch (err) {
-    console.error("❌ Lỗi khi gửi dữ liệu sang trang in mã vạch:", err);
-    alert("❌ Có lỗi xảy ra khi gửi dữ liệu sang trang in mã vạch!");
-  }
-}
+    <script>
+        /**
+         * Nhận payload từ ?data= (base64 JSON) do trang in mã vạch gửi sang
+         * Dạng items: [{ masp, s0, s38, s39, s40, s41, s42, s43, s44, s45, ... }, ...]
+         * Mục tiêu: 1 mã/1 dòng, set các size vào lưới; "Tổng" tự cộng như hiện tại.
+         */
+        (function () {
+            const SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
-// Gắn sự kiện cho nút “In mã vạch”
-document.getElementById("btnOpenInTem")?.addEventListener("click", openInTemFromNhapTam);
-</script>
+            function decodePayloadFromQuery() {
+                const q = new URLSearchParams(location.search).get("data");
+                if (!q) return null;
+                try {
+                    // base64 -> json
+                    const json = decodeURIComponent(escape(atob(q)));
+                    const payload = JSON.parse(json);
+                    // Cho phép cả 2 dạng: [{...}, {...}] hoặc { items:[...] }
+                    if (Array.isArray(payload)) return payload;
+                    if (payload && Array.isArray(payload.items)) return payload.items;
+                } catch (e) {
+                    console.error("❌ Không đọc được ?data=", e);
+                }
+                return null;
+            }
 
-<script>
-/**
- * Nhận payload từ ?data= (base64 JSON) do trang in mã vạch gửi sang
- * Dạng items: [{ masp, s0, s38, s39, s40, s41, s42, s43, s44, s45, ... }, ...]
- * Mục tiêu: 1 mã/1 dòng, set các size vào lưới; "Tổng" tự cộng như hiện tại.
- */
-(function () {
-  const SIZES = [0,38,39,40,41,42,43,44,45];
+            async function importToGrid(items) {
+                if (!items || !items.length) {
+                    alert("⚠️ Không có dữ liệu để nhập.");
+                    return;
+                }
 
-  function decodePayloadFromQuery() {
-    const q = new URLSearchParams(location.search).get("data");
-    if (!q) return null;
-    try {
-      // base64 -> json
-      const json = decodeURIComponent(escape(atob(q)));
-      const payload = JSON.parse(json);
-      // Cho phép cả 2 dạng: [{...}, {...}] hoặc { items:[...] }
-      if (Array.isArray(payload)) return payload;
-      if (payload && Array.isArray(payload.items)) return payload.items;
-    } catch (e) {
-      console.error("❌ Không đọc được ?data=", e);
-    }
-    return null;
-  }
+                // Đảm bảo MobileKQ đã sẵn sàng
+                const ready = () => (window.MobileKQ && typeof MobileKQ.upsertRow === "function" && typeof MobileKQ.setQty === "function");
+                if (!ready()) {
+                    // Đợi MobileKQ khởi tạo (nếu script của bạn load chậm)
+                    let cnt = 0;
+                    await new Promise((res) => {
+                        const tm = setInterval(() => {
+                            if (ready() || ++cnt > 30) { clearInterval(tm); res(); }
+                        }, 200);
+                    });
+                }
+                if (!ready()) {
+                    alert("⚠️ Lưới chưa sẵn sàng. Vui lòng tải lại trang.");
+                    return;
+                }
 
-  async function importToGrid(items) {
-    if (!items || !items.length) {
-      alert("⚠️ Không có dữ liệu để nhập.");
-      return;
-    }
+                // Đổ dữ liệu: 1 mã/1 dòng, set các size
+                for (const it of items) {
+                    const masp = (it.masp || "").toString().trim().toUpperCase();
+                    if (!masp) continue;
 
-    // Đảm bảo MobileKQ đã sẵn sàng
-    const ready = () => (window.MobileKQ && typeof MobileKQ.upsertRow === "function" && typeof MobileKQ.setQty === "function");
-    if (!ready()) {
-      // Đợi MobileKQ khởi tạo (nếu script của bạn load chậm)
-      let cnt = 0;
-      await new Promise((res) => {
-        const tm = setInterval(() => {
-          if (ready() || ++cnt > 30) { clearInterval(tm); res(); }
-        }, 200);
-      });
-    }
-    if (!ready()) {
-      alert("⚠️ Lưới chưa sẵn sàng. Vui lòng tải lại trang.");
-      return;
-    }
+                    MobileKQ.upsertRow(masp);
+                    for (const s of SIZES) {
+                        const key = `s${s}`;
+                        const val = parseInt(it[key] ?? 0, 10) || 0;
+                        if (val > 0) MobileKQ.setQty(masp, s, val);
+                    }
+                }
 
-    // Đổ dữ liệu: 1 mã/1 dòng, set các size
-    for (const it of items) {
-      const masp = (it.masp || "").toString().trim().toUpperCase();
-      if (!masp) continue;
+                // Vẽ lại
+                if (typeof MobileKQ.render === "function") MobileKQ.render();
 
-      MobileKQ.upsertRow(masp);
-      for (const s of SIZES) {
-        const key = `s${s}`;
-        const val = parseInt(it[key] ?? 0, 10) || 0;
-        if (val > 0) MobileKQ.setQty(masp, s, val);
-      }
-    }
+                // Xoá ?data= khỏi URL để tránh nhập lại khi F5
+                try { history.replaceState(null, "", location.pathname); } catch { }
+            }
 
-    // Vẽ lại
-    if (typeof MobileKQ.render === "function") MobileKQ.render();
+            document.addEventListener("DOMContentLoaded", async () => {
+                const items = decodePayloadFromQuery();
+                if (items && items.length) {
+                    await importToGrid(items);
+                }
+            });
+        })();
+    </script>
 
-    // Xoá ?data= khỏi URL để tránh nhập lại khi F5
-    try { history.replaceState(null, "", location.pathname); } catch {}
-  }
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    const items = decodePayloadFromQuery();
-    if (items && items.length) {
-      await importToGrid(items);
-    }
-  });
-})();
-</script>
-
- 
     <script type="module" src="scripts/nhaptam.js"></script>
 
 
 </body>
 
 </html>
-
-
