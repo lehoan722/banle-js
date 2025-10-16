@@ -1409,7 +1409,7 @@
         function lockQuanLyKichCo() {
             if (!qlkcCheckbox) return;
             qlkcCheckbox.checked = true;
-            qlkcCheckbox.disabled = true;
+            //qlkcCheckbox.disabled = true;
             qlkcCheckbox.title = 'Đã khóa do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
             qlkcLabel?.classList.add('locked');
         }
