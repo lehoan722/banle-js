@@ -46,30 +46,40 @@ export async function khoiTaoUngDung() {
   }
 
   // Cache danh mục nhóm hàng
-  window.danhMucNhom = new Map();
+  //window.danhMucNhom = new Map();
 
   async function loadDanhMucNhom() {
     try {
       const { data, error } = await supabase
         .from("dmnhomhang")
         .select("manhom, quanlysize, diadiem");
+
       if (error) {
         console.error("Lỗi tải dmnhomhang:", error);
+        // KHÔNG return; vẫn giữ Map hiện tại (có thể rỗng)
         return;
       }
-      data.forEach(row => {
+
+      // Xóa sạch & nạp lại (đảm bảo Map luôn tồn tại)
+      window.danhMucNhom.clear();
+      (data || []).forEach(row => {
         window.danhMucNhom.set(String(row.manhom).toUpperCase(), {
-          quanlysize: row.quanlysize,
-          diadiem: (row.diadiem || "").toUpperCase()
+          quanlysize: !!row.quanlysize,
+          diadiem: String(row.diadiem || "").toUpperCase()
         });
       });
+
       console.log("✅ Đã load dmnhomhang:", window.danhMucNhom.size, "nhóm");
     } catch (e) {
       console.error("Exception loadDanhMucNhom:", e);
     }
   }
 
+  // GỌI LẦN ĐẦU
   await loadDanhMucNhom();
+
+  // EXPOSE để module khác gọi khi cần
+  window.reloadDanhMucNhom = loadDanhMucNhom;
 
   //khoiTaoTimMaSP(window.sanPhamData);
 
