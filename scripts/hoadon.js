@@ -94,8 +94,17 @@ function inferBranches() {
 function requireManagedAtBranch(masp, branch) {
     const upper = (s) => String(s || "").toUpperCase();
     const sp = window.sanPhamData?.[upper(masp)];
-    if (!sp || !window.danhMucNhom) return false;
+    if (!sp) return false;
 
+    // 1) Theo CHỦNG LOẠI
+    const chungloai = upper(sp.chungloai || "");
+    if (chungloai === "GD") return true;
+
+    // 2) Theo CỜ SẢN PHẨM
+    if (sp.quanlykichco === true) return true;
+
+    // 3) Theo NHÓM + địa điểm
+    if (!window.danhMucNhom) return false;
     const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
     if (!nhom || !nhom.quanlysize) return false;
 
@@ -307,12 +316,14 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
         return false;
     }
-    if (!window.danhMucNhom || typeof window.danhMucNhom.size !== "number") {
-        alert("Đang tải cấu hình nhóm hàng... vui lòng thử lại sau 1–2 giây.");
-        const maspInput = document.getElementById("masp");
-        if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
-        return false;
+    // BẢO VỆ MỀM với danh mục nhóm: luôn là Map, rỗng thì coi như "không quản size theo nhóm"
+    if (!(window.danhMucNhom instanceof Map)) {
+        window.danhMucNhom = new Map();
+        // thử reload nền nếu có expose
+        try { window.reloadDanhMucNhom?.(); } catch (e) { }
     }
+    // KHÔNG alert, KHÔNG return; tiếp tục xử lý bình thường
+
     // (danhMucSize có thể rỗng)
 
     /***** NHÁNH SỚM CHO CCN: nếu ít nhất một đầu quản-size → bắt nhập size *****/
