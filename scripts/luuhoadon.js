@@ -66,16 +66,19 @@ function requireManagedAtBranch(masp, branch) {
     const sp = window.sanPhamData?.[upper(masp)];
     if (!sp) return false;
 
-    // Chủng loại luôn quản size: GD (giày dép)
+    // 1) Theo CHỦNG LOẠI: Giày/Dép luôn quản-size
     const chungloai = upper(sp.chungloai || '');
     if (chungloai === 'GD') return true;
 
-    // Theo nhóm & địa điểm
+    // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả hai cơ sở)
+    if (sp.quanlykichco === true) return true;
+
+    // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
     if (!window.danhMucNhom) return false;
     const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
     if (!nhom || !nhom.quanlysize) return false;
 
-    const dia = upper(nhom.diadiem); // ALL | CS1 | CS2
+    const dia = upper(nhom.diadiem); // 'ALL' | 'CS1' | 'CS2'
     return dia === 'ALL' || dia === upper(branch);
 }
 
