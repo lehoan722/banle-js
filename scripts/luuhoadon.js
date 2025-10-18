@@ -10,6 +10,46 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 
 let choPhepSua = false;
 
+// --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
+async function ensureCatalogsReady() {
+    // Sản phẩm
+    if (!window.sanPhamData || Object.keys(window.sanPhamData).length === 0) {
+        const { data: dssp, error } = await supabase
+            .from("dmhanghoa")
+            .select("masp, tensp, dvt, chungloai, quanlykichco, nhomhang, giale");
+        if (!error && Array.isArray(dssp)) {
+            window.sanPhamData = {};
+            dssp.forEach(sp => {
+                const key = String(sp.masp || "").toUpperCase();
+                window.sanPhamData[key] = sp;
+            });
+        } else {
+            console.warn("⚠️ Không tải được dmhanghoa, requireManagedAtBranch có thể sai.");
+            window.sanPhamData = window.sanPhamData || {};
+        }
+    }
+
+    // Nhóm hàng (Map)
+    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) {
+        const { data, error } = await supabase
+            .from("dmnhomhang")
+            .select("manhom, quanlysize, diadiem");
+        if (!error && Array.isArray(data)) {
+            window.danhMucNhom = new Map();
+            data.forEach(row => {
+                window.danhMucNhom.set(String(row.manhom).toUpperCase(), {
+                    quanlysize: !!row.quanlysize,
+                    diadiem: String(row.diadiem || "").toUpperCase() // ALL | CS1 | CS2
+                });
+            });
+        } else {
+            console.warn("⚠️ Không tải được dmnhomhang, requireManagedAtBranch sẽ trả false.");
+            window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
+        }
+    }
+}
+
+
 /***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
 /* ========================= CCN CONTEXT (ĐÓNG BĂNG CHIỀU CHUYỂN) ========================= */
 /* [MỚI] Đóng băng bối cảnh CCN theo chính tên trang, không dùng localStorage ở trang CCN */
@@ -62,24 +102,25 @@ function inferBranches() {
 
 /* [MỚI] Nhận diện "quản size" theo CHỦNG LOẠI (GD = giày dép) & theo NHÓM (quanlysize + diadiem) */
 function requireManagedAtBranch(masp, branch) {
-    const upper = (s) => String(s || '').toUpperCase();
+    const upper = (s) => String(s || "").toUpperCase();
     const sp = window.sanPhamData?.[upper(masp)];
-    if (!sp) return false;
+    if (!sp) return false; // thiếu catalog → coi như không quản-size
 
     // 1) Theo CHỦNG LOẠI: Giày/Dép luôn quản-size
-    const chungloai = upper(sp.chungloai || '');
-    if (chungloai === 'GD') return true;
+    const chungloai = upper(sp.chungloai || "");
+    if (chungloai === "GD") return true;
 
-    // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả hai cơ sở)
+    // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả 2 cơ sở)
     if (sp.quanlykichco === true) return true;
 
     // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
-    if (!window.danhMucNhom) return false;
-    const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
+    if (!(window.danhMucNhom instanceof Map)) return false;
+    const nhomKey = upper(sp.nhomhang);      // (đảm bảo dmhanghoa có cột nhomhang trỏ về dmnhomhang.manhom)
+    const nhom = window.danhMucNhom.get(nhomKey);
     if (!nhom || !nhom.quanlysize) return false;
 
-    const dia = upper(nhom.diadiem); // 'ALL' | 'CS1' | 'CS2'
-    return dia === 'ALL' || dia === upper(branch);
+    const dia = upper(nhom.diadiem);         // 'ALL' | 'CS1' | 'CS2'
+    return dia === "ALL" || dia === upper(branch);
 }
 
 
@@ -664,7 +705,20 @@ export async function luuHoaDonccn1v2() {
         return;
     }
 
+    await ensureCatalogsReady();
+
     const bangKetQua = getBangKetQua();
+
+    // Normalize sau dán (tránh size null/undefined hoặc số chưa được stringify)
+    for (const k of Object.keys(bangKetQua)) {
+        const item = bangKetQua[k];
+        if (!Array.isArray(item.sizes) || !Array.isArray(item.soluongs)) continue;
+        item.sizes = item.sizes.map(sz => {
+            const s = String(sz ?? "").trim();
+            return s === "" ? "0" : s;
+        });
+    }
+
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
