@@ -90,25 +90,40 @@ function inferBranches() {
     return { src: "CS1", dst: "CS2" }; // an toàn
 }
 
-// NHÓM này có bắt quản-size ở một CƠ SỞ cụ thể không?
+/* [MỚI] Nhận diện "quản size" theo CHỦNG LOẠI (GD = giày dép) & theo NHÓM (quanlysize + diadiem) */
+
+function resolveGroupKeyFromSP(sp) {
+    // Thử lần lượt các tên cột nhóm có thể gặp trong dự án
+    const candidates = ["nhomhang", "manhom", "nhom", "group_code", "nhomsp"];
+    for (const key of candidates) {
+        if (sp && sp[key] != null && String(sp[key]).trim() !== "") {
+            return String(sp[key]).toUpperCase().trim();
+        }
+    }
+    return null;
+}
+
 function requireManagedAtBranch(masp, branch) {
-    const upper = (s) => String(s || "").toUpperCase();
+    const upper = (s) => String(s || "").toUpperCase().trim();
     const sp = window.sanPhamData?.[upper(masp)];
-    if (!sp) return false;
+    if (!sp) return false; // thiếu catalog → coi như không quản-size
 
-    // 1) Theo CHỦNG LOẠI
-    const chungloai = upper(sp.chungloai || "");
-    if (chungloai === "GD") return true;
+    // 1) Theo CHỦNG LOẠI: Giày/Dép luôn quản-size
+    if (upper(sp.chungloai || "") === "GD") return true;
 
-    // 2) Theo CỜ SẢN PHẨM
+    // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả 2 cơ sở)
     if (sp.quanlykichco === true) return true;
 
-    // 3) Theo NHÓM + địa điểm
-    if (!window.danhMucNhom) return false;
-    const nhom = window.danhMucNhom.get(upper(sp.nhomhang));
+    // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
+    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) return false;
+
+    const groupKey = resolveGroupKeyFromSP(sp); // <-- CHỐT: lấy manhom/nhomhang linh hoạt
+    if (!groupKey) return false;
+
+    const nhom = window.danhMucNhom.get(groupKey);
     if (!nhom || !nhom.quanlysize) return false;
 
-    const dia = upper(nhom.diadiem); // 'ALL' | 'CS1' | 'CS2'
+    const dia = String(nhom.diadiem || "ALL").toUpperCase().trim(); // 'ALL' | 'CS1' | 'CS2'
     return dia === "ALL" || dia === upper(branch);
 }
 
