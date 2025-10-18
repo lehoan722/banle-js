@@ -115,7 +115,7 @@ function requireManagedAtBranch(masp, branch) {
 
     // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
     if (!(window.danhMucNhom instanceof Map)) return false;
-    const nhomKey = upper(sp.nhomhang);      // (đảm bảo dmhanghoa có cột nhomhang trỏ về dmnhomhang.manhom)
+    const nhomKey = upper(sp.manhom);      // (đảm bảo dmhanghoa có cột nhomhang trỏ về dmnhomhang.manhom)
     const nhom = window.danhMucNhom.get(nhomKey);
     if (!nhom || !nhom.quanlysize) return false;
 
