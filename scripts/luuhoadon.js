@@ -11,20 +11,22 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 let choPhepSua = false;
 
 // --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
+// --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
 async function ensureCatalogsReady() {
     // Sản phẩm
     if (!window.sanPhamData || Object.keys(window.sanPhamData).length === 0) {
         const { data: dssp, error } = await supabase
             .from("dmhanghoa")
-            .select("masp, tensp, dvt, chungloai, quanlykichco, nhomhang, giale");
+            .select("*"); // DÙNG * để nhận được cả manhom/nhomhang tùy DB của bạn
+
         if (!error && Array.isArray(dssp)) {
             window.sanPhamData = {};
             dssp.forEach(sp => {
-                const key = String(sp.masp || "").toUpperCase();
+                const key = String(sp.masp || "").toUpperCase().trim();
                 window.sanPhamData[key] = sp;
             });
         } else {
-            console.warn("⚠️ Không tải được dmhanghoa, requireManagedAtBranch có thể sai.");
+            console.warn("⚠️ Không tải được dmhanghoa, requireManagedAtBranch có thể sai.", error);
             window.sanPhamData = window.sanPhamData || {};
         }
     }
@@ -33,22 +35,22 @@ async function ensureCatalogsReady() {
     if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) {
         const { data, error } = await supabase
             .from("dmnhomhang")
-            .select("manhom, quanlysize, diadiem");
+            .select("manhom, quanlysize, diadiem"); // dmnhomhang có cột manhom là PK
+
         if (!error && Array.isArray(data)) {
             window.danhMucNhom = new Map();
             data.forEach(row => {
-                window.danhMucNhom.set(String(row.manhom).toUpperCase(), {
+                window.danhMucNhom.set(String(row.manhom).toUpperCase().trim(), {
                     quanlysize: !!row.quanlysize,
-                    diadiem: String(row.diadiem || "").toUpperCase() // ALL | CS1 | CS2
+                    diadiem: String(row.diadiem || "ALL").toUpperCase().trim() // ALL | CS1 | CS2
                 });
             });
         } else {
-            console.warn("⚠️ Không tải được dmnhomhang, requireManagedAtBranch sẽ trả false.");
+            console.warn("⚠️ Không tải được dmnhomhang, requireManagedAtBranch sẽ trả false.", error);
             window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
         }
     }
 }
-
 
 /***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
 /* ========================= CCN CONTEXT (ĐÓNG BĂNG CHIỀU CHUYỂN) ========================= */
@@ -101,28 +103,41 @@ function inferBranches() {
 }
 
 /* [MỚI] Nhận diện "quản size" theo CHỦNG LOẠI (GD = giày dép) & theo NHÓM (quanlysize + diadiem) */
+
+function resolveGroupKeyFromSP(sp) {
+    // Thử lần lượt các tên cột nhóm có thể gặp trong dự án
+    const candidates = ["nhomhang", "manhom", "nhom", "group_code", "nhomsp"];
+    for (const key of candidates) {
+        if (sp && sp[key] != null && String(sp[key]).trim() !== "") {
+            return String(sp[key]).toUpperCase().trim();
+        }
+    }
+    return null;
+}
+
 function requireManagedAtBranch(masp, branch) {
-    const upper = (s) => String(s || "").toUpperCase();
+    const upper = (s) => String(s || "").toUpperCase().trim();
     const sp = window.sanPhamData?.[upper(masp)];
     if (!sp) return false; // thiếu catalog → coi như không quản-size
 
     // 1) Theo CHỦNG LOẠI: Giày/Dép luôn quản-size
-    const chungloai = upper(sp.chungloai || "");
-    if (chungloai === "GD") return true;
+    if (upper(sp.chungloai || "") === "GD") return true;
 
     // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả 2 cơ sở)
     if (sp.quanlykichco === true) return true;
 
     // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
-    if (!(window.danhMucNhom instanceof Map)) return false;
-    const nhomKey = upper(sp.manhom);      // (đảm bảo dmhanghoa có cột nhomhang trỏ về dmnhomhang.manhom)
-    const nhom = window.danhMucNhom.get(nhomKey);
+    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) return false;
+
+    const groupKey = resolveGroupKeyFromSP(sp); // <-- CHỐT: lấy manhom/nhomhang linh hoạt
+    if (!groupKey) return false;
+
+    const nhom = window.danhMucNhom.get(groupKey);
     if (!nhom || !nhom.quanlysize) return false;
 
-    const dia = upper(nhom.diadiem);         // 'ALL' | 'CS1' | 'CS2'
+    const dia = String(nhom.diadiem || "ALL").toUpperCase().trim(); // 'ALL' | 'CS1' | 'CS2'
     return dia === "ALL" || dia === upper(branch);
 }
-
 
 async function handleSpecialSoHoaDon(sohd) {
     // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
