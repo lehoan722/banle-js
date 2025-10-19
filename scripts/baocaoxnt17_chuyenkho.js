@@ -238,10 +238,11 @@ function renderHOT(rows) {
         afterSelectionEnd: (r) => {
             const row = rows[r];
             if (!row) return;
-            focusPreview(row.masp);  // ⬅️ chỉ focus/scroll tới ảnh tương ứng
+            promotePreviewToTop(row.masp); // ⬅️ đưa ảnh lên vị trí đầu & cuộn lên top
             const tr = hot.getCell(r, 0)?.parentElement;
             if (tr) tr.scrollIntoView({ block: 'center' });
         }
+
     });
 
     // Copy
@@ -474,6 +475,55 @@ function renderPreviewForMasps(list) {
       </figure>`;
     }).join("");
 }
+
+// Di chuyển 1 phần tử mảng về đầu (giữ trật tự phần còn lại)
+function moveMaspToFront(list, masp) {
+    const M = String(masp || '').toUpperCase();
+    const idx = list.indexOf(M);
+    if (idx <= 0) return list; // đã ở đầu hoặc không có
+    list.splice(idx, 1);
+    list.unshift(M);
+    return list;
+}
+
+// Cập nhật lại STT (1., 2., ...) trong caption sau khi reorder DOM
+function renumberPreviewCards() {
+    const box = document.getElementById('previewGrid');
+    if (!box) return;
+    const cards = box.querySelectorAll('.preview-card');
+    let i = 0;
+    for (const fig of cards) {
+        const masp = fig?.dataset?.masp || '';
+        const cap = fig.querySelector('.preview-cap .cap-link');
+        if (cap) cap.textContent = `${++i}. ${masp}`;
+    }
+}
+
+// Đưa card ảnh của MASP lên đầu lưới và cuộn lên đầu
+function promotePreviewToTop(masp) {
+    const box = document.getElementById('previewGrid');
+    if (!box || !masp) return;
+
+    // 1) Di chuyển DOM node lên đầu
+    const id = `img-${String(masp).toUpperCase()}`;
+    const el = document.getElementById(id);
+    if (!el) return; // không có ảnh trong lưới hiện tại
+    const first = box.firstElementChild;
+    if (el !== first) {
+        box.insertBefore(el, first);
+        renumberPreviewCards(); // cập nhật lại STT
+    }
+
+    // 2) Cập nhật mảng currentMaspsList để giữ trạng thái nhất quán
+    currentMaspsList = moveMaspToFront(currentMaspsList, masp);
+
+    // 3) Bôi chọn & cuộn lên đầu
+    const old = box.querySelector('.preview-card.selected');
+    if (old && old !== el) old.classList.remove('selected');
+    el.classList.add('selected');
+    box.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 
 function focusPreview(masp) {
     const box = document.getElementById('previewGrid');
