@@ -28,6 +28,8 @@ import { supabase } from './supabaseClient.js'; // dùng chung client đã có
     window.openLightbox = (src) => { const img = lb.querySelector('.lb-wrap img'); img.src = src; lb.classList.add('show'); };
 })();
 
+let allMasps = []; // danh sách mã đầy đủ dùng để vẽ lại ảnh khi "Hiện tất cả"
+
 let hot;
 const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
 
@@ -302,7 +304,11 @@ function clearAllFilters() {
     if (!hot) return;
     const filters = hot.getPlugin('filters');
     filters.clearConditions();
-    filters.filter(); // áp dụng lại để hiện toàn bộ
+    filters.filter();
+
+    // Khôi phục panel ảnh về toàn bộ mã
+    renderPreviewForMasps(allMasps);
+    if (allMasps.length) focusPreview(allMasps[0]);
 }
 
 function updateStatusTotals(rows) {
@@ -317,26 +323,36 @@ function updateStatusTotals(rows) {
     const el = document.getElementById('status');
     if (el) el.textContent = `Đã tải ${rows.length} dòng • Tổng SL chuyển 1→2: ${t12} | 2→1: ${t21}`;
 }
+// Lọc ra danh sách MASP theo giá trị gợi ý (1v2 / 2v1), chỉ lấy dòng size (không lấy dòng Tổng)
+function getFilteredMaspsByGoiy(value) {
+    const picked = new Set();
+    for (const r of currentRows) {
+        if (!r || r.__isSum) continue;          // bỏ dòng "Tổng"
+        if (r.goiy === value) picked.add(r.masp);
+    }
+    // Giữ nguyên thứ tự như lưới ảnh ban đầu
+    return allMasps.filter(m => picked.has(m));
+}
+
 
 // Áp bộ lọc theo cột "goiy" và ẩn dòng Tổng ("size" !== "Tổng")
 function applyGoiyFilter(value) {
     if (!hot) return;
     const filters = hot.getPlugin('filters');
-    // Xóa mọi điều kiện cũ
     filters.clearConditions();
 
-    // Lấy index cột theo prop (an toàn khi có thay đổi cột)
-    const colGoiy = hot.propToCol('goiy');   // cột "Gợi ý"
-    const colSize = hot.propToCol('size');   // cột "Size"
+    const colGoiy = hot.propToCol('goiy');
+    const colSize = hot.propToCol('size');
 
-    // Chỉ giữ dòng có Gợi ý = value (1v2 hoặc 2v1)
+    // Lọc theo gợi ý + ẩn dòng Tổng
     filters.addCondition(colGoiy, 'eq', [value]);
-
-    // Ẩn dòng Tổng: "Size" != "Tổng"
     filters.addCondition(colSize, 'neq', ['Tổng']);
-
-    // Kích hoạt lọc
     filters.filter();
+
+    // Đồng bộ ảnh: chỉ hiển thị ảnh của các mã còn trong kết quả sau lọc
+    const list = getFilteredMaspsByGoiy(value);
+    renderPreviewForMasps(list);
+    if (list.length) focusPreview(list[0]);   // UX: focus ảnh đầu tiên
 }
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
@@ -463,9 +479,12 @@ async function boot() {
 
     // 2) Dựng bảng chuyển kho
     const rows = buildTransferTable(raw);   // 9 dòng size + 1 dòng “Tổng”
-    // Lập danh sách MASP duy nhất (giữ thứ tự xuất hiện trong raw)
+
+    // Lập danh sách MASP duy nhất theo thứ tự xuất hiện trong raw
     const masps = Array.from(new Map((raw || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
-    renderPreviewForMasps(masps);
+    allMasps = masps;               // ⬅️ lưu lại để dùng cho "Hiện tất cả"
+    renderPreviewForMasps(allMasps);
+
 
     await patchVitri(rows);                 // lấy vị trí từ dmhanghoa (đọc trực tiếp table)
 
