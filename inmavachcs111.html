@@ -1027,8 +1027,8 @@
 
 
 
-        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
+        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====giale
+        const GIU_LAI_FIELDS = ['masp','tensp','giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -1187,7 +1187,7 @@
 
 
         // ==== Nút Lưu (submit form) ====
-        document.getElementById('addProductForm').onsubmit = async function (e) {
+         document.getElementById('addProductForm').onsubmit = async function (e) {
             e.preventDefault();
             // Validate
             const { valid, msg } = validateForm();
@@ -1260,59 +1260,8 @@
             // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
             searchProducts(document.getElementById('search').value.trim().toLowerCase());
             pushProductToGrid(data);
-        };let res, errorMsg;
-            if (isEditMode) {
-                // Trường hợp đang sửa sản phẩm đã tồn tại
-                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không ? `);
-                if (!userConfirm) {
-                    document.getElementById('addProductMessage').style.color = 'orange';
-                    document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
-                    return;
-                }
-
-                // Tiếp tục cập nhật nếu người dùng xác nhận
-                res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
-                if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
-            } else {
-                // Kiểm tra trùng mã sản phẩm trước khi thêm
-                const { data: maspCheck, error: checkError } = await supabase
-                    .from('dmhanghoa')
-                    .select('masp')
-                    .eq('masp', data.masp)
-                    .maybeSingle();
-
-                if (maspCheck) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại.Không thể thêm mới.`;
-                    return;
-                }
-
-                // Insert mới
-                res = await supabase.from('dmhanghoa').insert([data]);
-                if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
-            }
-
-
-
-            if (errorMsg) {
-                document.getElementById('addProductMessage').textContent = errorMsg;
-                return;
-            }
-
-            // Hiện thông báo thành công
-            document.getElementById('addProductMessage').style.color = '#0a9e1c';
-            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
-            // Reset lại form theo giữ lại trường
-            resetForm();
-            document.getElementById('maspInput').focus();  // <== Tự động focus lại
-            // Load lại dropdown option (nếu có giá trị mới)
-            loadDropdownOptions();
-            // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
-            searchProducts(document.getElementById('search').value.trim().toLowerCase());
-            pushProductToGrid(data);
-
-        };
-
+        }
+        
         loadDropdownOptions();
 
         // Xử lý nút XÓA sản phẩm
@@ -1431,6 +1380,61 @@
         const gialeInput = document.getElementById('gialeInput');
         // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
         const GIALE_LOCK_THRESHOLD = 170000; // đổi sau này nếu cần
+
+        // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
+const mausacInput = document.getElementById('mausacInput');
+const maspInputEl = document.getElementById('maspInput');
+
+
+function updateMaspWithColorSuffix() {
+  if (!mausacInput || !maspInputEl) return;
+
+  const color = (mausacInput.value || '').trim();     // giữ nguyên người dùng gõ (không ép HOA)
+  if (!color) {
+    // Không nhập màu -> không thay MASP; chỉ đóng popup gợi ý mã SP nếu đang mở
+    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+    return;
+  }
+
+  let masp = (maspInputEl.value || '').trim();
+  if (!masp) {
+    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+    return;
+  }
+
+  const slashIdx = masp.indexOf('/');
+  if (slashIdx === -1) {
+    masp = masp + '/' + color;
+  } else {
+    masp = masp.slice(0, slashIdx + 1) + color;
+  }
+  maspInputEl.value = masp;
+
+  // 🔧 Quan trọng: đổi MASP rồi thì coi như trạng thái THÊM MỚI
+  // Tránh nhánh update chạy vào mã mới (chưa tồn tại)
+  isEditMode = false;
+  window.isEditMode = false;
+  // bỏ khung màu xanh sửa (nếu có)
+  document.getElementById('addProductForm').style.border = '';
+
+  // Đóng popup gợi ý mã sản phẩm theo yêu cầu
+  if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+}
+
+// BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
+mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
+
+// ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
+mausacInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    updateMaspWithColorSuffix();
+    // chuyển sang ô Khuyến mãi như thứ tự formOrder
+    const km = document.getElementById('khuyenmaiInput');
+    if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
+  }
+});
+
 
         //Format số cho giá nhập & giá lẻ trên FORM
         [gianhapInput, gialeInput].forEach(inp => {
@@ -1552,51 +1556,7 @@
             });
         }
 
-        
-        // === NỐI HẬU TỐ MÀU VÀ ĐÓNG POPUP GỢI Ý MÃ SP KHI RỜI/ENTER Ở Ô MÀU SẮC ===
-        (function(){
-          const mausacInput = document.getElementById('mausacInput');
-          const maspInputEl  = document.getElementById('maspInput');
-          const maspSuggestDiv = document.getElementById('maspSuggestList'); // popup gợi ý mã sp nếu có
-          const kmInput = document.getElementById('khuyenmaiInput');
-
-          function applyColorSuffix() {
-            if (!mausacInput || !maspInputEl) return;
-            const color = (mausacInput.value || '').trim();
-            if (!color) { 
-              if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-              return; 
-            }
-            let masp = (maspInputEl.value || '').trim();
-            if (!masp) { 
-              if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-              return; 
-            }
-            const slashIdx = masp.indexOf('/');
-            if (slashIdx === -1) masp = masp + '/' + color;
-            else masp = masp.slice(0, slashIdx + 1) + color;
-            maspInputEl.value = masp;
-
-            // Khi đổi mã, coi như thêm mới để tránh update nhầm mã chưa tồn tại
-            if (typeof window.isEditMode !== 'undefined') window.isEditMode = false;
-
-            // đóng popup gợi ý mã sp theo yêu cầu
-            if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-          }
-
-          if (mausacInput) {
-            mausacInput.addEventListener('blur', applyColorSuffix);
-            mausacInput.addEventListener('keydown', function(e){
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                applyColorSuffix();
-                // chuyển sang khuyến mãi như thứ tự formOrder
-                if (kmInput) { kmInput.focus(); setTimeout(()=>kmInput.select?.(),10); }
-              }
-            });
-          }
-        })();
-// GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
+        // GỌI SAU KHI DOM SẴN SÀNG (bạn đã có DOMContentLoaded ở trên)
         attachEnterNav(formOrder);
         // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
         if (gialeInput) {
