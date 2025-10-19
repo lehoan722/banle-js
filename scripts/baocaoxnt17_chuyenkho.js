@@ -236,12 +236,21 @@ function renderHOT(rows) {
         },
 
         afterSelectionEnd: (r) => {
-            const row = rows[r];
-            if (!row) return;
-            focusPreview(row.masp);  // ⬅️ chỉ focus/scroll tới ảnh tương ứng
+            if (!hot) return;
+
+            // Lấy mã SP theo hàng đang HIỂN THỊ trong HOT (an toàn khi có lọc/sắp xếp)
+            const colMasp = hot.propToCol('masp');
+            const masp = String(hot.getDataAtCell(r, colMasp) || '').toUpperCase();
+            if (!masp) return;
+
+            // Đưa ảnh mã này lên vị trí đầu + cuộn panel ảnh
+            promotePreviewToTop(masp);
+
+            // (giữ hành vi cuộn bảng như cũ)
             const tr = hot.getCell(r, 0)?.parentElement;
             if (tr) tr.scrollIntoView({ block: 'center' });
         }
+
     });
 
     // Copy
@@ -474,6 +483,57 @@ function renderPreviewForMasps(list) {
       </figure>`;
     }).join("");
 }
+
+// Di chuyển MASP về đầu danh sách (giữ thứ tự phần còn lại)
+function moveMaspToFront(list, masp) {
+    const M = String(masp || '').toUpperCase();
+    const idx = list.indexOf(M);
+    if (idx <= 0) return list;     // đã ở đầu hoặc không tồn tại
+    list.splice(idx, 1);
+    list.unshift(M);
+    return list;
+}
+
+// Cập nhật lại STT trong caption sau khi reorder DOM
+function renumberPreviewCards() {
+    const box = document.getElementById('previewGrid');
+    if (!box) return;
+    const cards = box.querySelectorAll('.preview-card');
+    let i = 0;
+    for (const fig of cards) {
+        const masp = fig?.dataset?.masp || '';
+        const cap = fig.querySelector('.preview-cap .cap-link');
+        if (cap) cap.textContent = `${++i}. ${masp}`;
+    }
+}
+
+// Đưa card ảnh của MASP lên đầu lưới + cuộn lên
+function promotePreviewToTop(masp) {
+    const box = document.getElementById('previewGrid');
+    if (!box || !masp) return;
+
+    const id = `img-${String(masp).toUpperCase()}`;
+    const el = document.getElementById(id);   // card ảnh của mã đang chọn
+    if (!el) return;                          // không có trong lưới hiện tại (ví dụ không thỏa filter)
+
+    const first = box.firstElementChild;
+    if (el !== first) {
+        box.insertBefore(el, first);            // kéo card lên vị trí đầu
+        renumberPreviewCards();                 // đánh số lại caption 1.,2.,3.,…
+    }
+
+    // Cập nhật mảng danh sách đang hiển thị (nếu bạn có biến currentMaspsList)
+    if (typeof currentMaspsList !== 'undefined' && Array.isArray(currentMaspsList)) {
+        currentMaspsList = moveMaspToFront(currentMaspsList, masp);
+    }
+
+    // Bôi viền chọn & cuộn lên đầu để dễ nhìn
+    const old = box.querySelector('.preview-card.selected');
+    if (old && old !== el) old.classList.remove('selected');
+    el.classList.add('selected');
+    box.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 
 function focusPreview(masp) {
     const box = document.getElementById('previewGrid');
