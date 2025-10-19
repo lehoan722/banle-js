@@ -40,10 +40,20 @@ const CFG = {
 };
 
 // Trả về SL chuyển mặc định cho 1 dòng size
+// Trả về SL chuyển mặc định cho 1 dòng size
 function calcMoveQty(cs1, cs2, goiy) {
     const keep = CFG.keep_min_src;
     const dest = CFG.dest_min;
     const maxm = CFG.max_move;
+
+    // ======= ƯU TIÊN ĐƠN GIẢN BẠN YÊU CẦU =======
+    // Nếu cơ sở 1 = 0 và cơ sở 2 > 1 (>=2) thì cho phép chuyển 1 về CS1
+    // (vẫn tôn trọng giữ tối thiểu tại nguồn)
+    if (cs1 === 0 && cs2 > 1) {
+        const srcCap = Math.max(0, cs2 - keep); // ví dụ keep=1, cs2=2 -> srcCap=1
+        return Math.min(1, srcCap);
+    }
+    // ============================================
 
     if (goiy === '1v2') {
         const need_min = Math.max(0, dest - cs2);
@@ -58,7 +68,7 @@ function calcMoveQty(cs1, cs2, goiy) {
     if (goiy === '2v1') {
         const need_min = Math.max(0, dest - cs1);
         const bias_limit = CFG.prefer_cs2
-            ? Math.floor((cs2 - cs1 - 1) / 2)  // sau chuyển CS2 > CS1
+            ? Math.floor((cs2 - cs1 - 1) / 2)  // giữ CS2 > CS1
             : Math.floor((cs2 - cs1) / 2);     // cho phép bằng
         const srcCap = Math.max(0, cs2 - keep);
         const q0 = Math.max(need_min, 0);
@@ -67,6 +77,7 @@ function calcMoveQty(cs1, cs2, goiy) {
 
     return 0; // cân bằng
 }
+
 
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
