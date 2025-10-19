@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>In Tem QR - Giấy TOMY 108</title>
+    <title>InTem CS1</title>
 
     <style>
         body {
@@ -222,7 +222,7 @@
 </head>
 
 <body>
-    <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
+    <h2></h2>
     <div class="container">
         <!-- Bên trái: danh sách sản phẩm -->
         <div class="left">
@@ -268,7 +268,7 @@
                     <div class="form-row">
                         <label for="mausacInput">Màu sắc</label>
                         <div class="form-input">
-                            <input name="mausac" id="mausacInput" list="mausacList" autocomplete="off" />
+                            <input name="mausac" id="mausacInput" list="mausacList" autocomplete="on" />
                             <datalist id="mausacList"></datalist>
                         </div>
                     </div>
@@ -765,7 +765,7 @@
     </div>    
 
       <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
-      <div style="font-size:9pt; line-height:1; white-space:nowrap;
+      <div style="font-size:8pt; line-height:1; white-space:nowrap;
                   overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
         ${t.masp}
       </div>
@@ -1028,7 +1028,7 @@
 
 
         // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====giale
-        const GIU_LAI_FIELDS = ['tensp','giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
+        const GIU_LAI_FIELDS = ['tensp', 'giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -1093,22 +1093,22 @@
         // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
         document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
         document.getElementById('maspInput').addEventListener('keydown', function (e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    e.stopPropagation();
+            if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
 
-    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
-    try {
-      const pop = document.getElementById('maspSuggestList');
-      if (pop) pop.style.display = 'none';
-    } catch (_) {}
+                // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
+                try {
+                    const pop = document.getElementById('maspSuggestList');
+                    if (pop) pop.style.display = 'none';
+                } catch (_) { }
 
-    // Giữ luồng cũ: kiểm tra tồn tại + fill form, rồi sang Tên SP
-    checkExistAndFillForm();
-    const tensp = document.getElementById('tenspInput');
-    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
-  }
-});
+                // Giữ luồng cũ: kiểm tra tồn tại + fill form, rồi sang Tên SP
+                checkExistAndFillForm();
+                const tensp = document.getElementById('tenspInput');
+                if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
+            }
+        });
 
 
         let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
@@ -1198,7 +1198,7 @@
 
 
         // ==== Nút Lưu (submit form) ====
-         document.getElementById('addProductForm').onsubmit = async function (e) {
+        document.getElementById('addProductForm').onsubmit = async function (e) {
             e.preventDefault();
             // Validate
             const { valid, msg } = validateForm();
@@ -1272,7 +1272,7 @@
             searchProducts(document.getElementById('search').value.trim().toLowerCase());
             pushProductToGrid(data);
         }
-        
+
         loadDropdownOptions();
 
         // Xử lý nút XÓA sản phẩm
@@ -1393,58 +1393,58 @@
         const GIALE_LOCK_THRESHOLD = 170000; // đổi sau này nếu cần
 
         // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
-const mausacInput = document.getElementById('mausacInput');
-const maspInputEl = document.getElementById('maspInput');
+        const mausacInput = document.getElementById('mausacInput');
+        const maspInputEl = document.getElementById('maspInput');
 
 
-function updateMaspWithColorSuffix() {
-  if (!mausacInput || !maspInputEl) return;
+        function updateMaspWithColorSuffix() {
+            if (!mausacInput || !maspInputEl) return;
 
-  const color = (mausacInput.value || '').trim();     // giữ nguyên người dùng gõ (không ép HOA)
-  if (!color) {
-    // Không nhập màu -> không thay MASP; chỉ đóng popup gợi ý mã SP nếu đang mở
-    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-    return;
-  }
+            const color = (mausacInput.value || '').trim();     // giữ nguyên người dùng gõ (không ép HOA)
+            if (!color) {
+                // Không nhập màu -> không thay MASP; chỉ đóng popup gợi ý mã SP nếu đang mở
+                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+                return;
+            }
 
-  let masp = (maspInputEl.value || '').trim();
-  if (!masp) {
-    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-    return;
-  }
+            let masp = (maspInputEl.value || '').trim();
+            if (!masp) {
+                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+                return;
+            }
 
-  const slashIdx = masp.indexOf('/');
-  if (slashIdx === -1) {
-    masp = masp + '/' + color;
-  } else {
-    masp = masp.slice(0, slashIdx + 1) + color;
-  }
-  maspInputEl.value = masp;
+            const slashIdx = masp.indexOf('/');
+            if (slashIdx === -1) {
+                masp = masp + '/' + color;
+            } else {
+                masp = masp.slice(0, slashIdx + 1) + color;
+            }
+            maspInputEl.value = masp;
 
-  // 🔧 Quan trọng: đổi MASP rồi thì coi như trạng thái THÊM MỚI
-  // Tránh nhánh update chạy vào mã mới (chưa tồn tại)
-  isEditMode = false;
-  window.isEditMode = false;
-  // bỏ khung màu xanh sửa (nếu có)
-  document.getElementById('addProductForm').style.border = '';
+            // 🔧 Quan trọng: đổi MASP rồi thì coi như trạng thái THÊM MỚI
+            // Tránh nhánh update chạy vào mã mới (chưa tồn tại)
+            isEditMode = false;
+            window.isEditMode = false;
+            // bỏ khung màu xanh sửa (nếu có)
+            document.getElementById('addProductForm').style.border = '';
 
-  // Đóng popup gợi ý mã sản phẩm theo yêu cầu
-  if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-}
+            // Đóng popup gợi ý mã sản phẩm theo yêu cầu
+            if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+        }
 
-// BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
-mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
+        // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
+        mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
 
-// ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
-mausacInput?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    updateMaspWithColorSuffix();
-    // chuyển sang ô Khuyến mãi như thứ tự formOrder
-    const km = document.getElementById('khuyenmaiInput');
-    if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
-  }
-});
+        // ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
+        mausacInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                updateMaspWithColorSuffix();
+                // chuyển sang ô Khuyến mãi như thứ tự formOrder
+                const km = document.getElementById('khuyenmaiInput');
+                if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
+            }
+        });
 
 
         //Format số cho giá nhập & giá lẻ trên FORM
@@ -1534,26 +1534,26 @@ mausacInput?.addEventListener('keydown', (e) => {
             function handlerFactory(idx) {
                 return function (ev) {
                     if (ev.key !== 'Enter') return;
-ev.preventDefault();
-ev.stopPropagation();
+                    ev.preventDefault();
+                    ev.stopPropagation();
 
-// 🔒 Nếu đang ở ô Mã SP -> đóng popup gợi ý ngay lập tức
-if (order[idx] === 'maspInput') {
-  const pop = document.getElementById('maspSuggestList');
-  if (pop) pop.style.display = 'none';
-  // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
-}
+                    // 🔒 Nếu đang ở ô Mã SP -> đóng popup gợi ý ngay lập tức
+                    if (order[idx] === 'maspInput') {
+                        const pop = document.getElementById('maspSuggestList');
+                        if (pop) pop.style.display = 'none';
+                        // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
+                    }
 
-if (idx < order.length - 1) {
-  const next = document.getElementById(order[idx + 1]);
-  if (next) {
-    next.focus();
-    setTimeout(() => next.select?.(), 10);
-  }
-} else {
-  const btn = document.getElementById('saveFormBtn');
-  if (btn) btn.focus();
-}
+                    if (idx < order.length - 1) {
+                        const next = document.getElementById(order[idx + 1]);
+                        if (next) {
+                            next.focus();
+                            setTimeout(() => next.select?.(), 10);
+                        }
+                    } else {
+                        const btn = document.getElementById('saveFormBtn');
+                        if (btn) btn.focus();
+                    }
 
                 };
             }
@@ -1767,80 +1767,80 @@ if (idx < order.length - 1) {
     </script>
 
     <script>
-// ===============================
-// === TẠO HÓA ĐƠN NHẬP TẠM MỚI ===
-// ===============================
-async function createNhapTamFromInTem() {
-  try {
-    if (!window.hot || typeof hot.getData !== "function") {
-      alert("⚠️ Không tìm thấy bảng dữ liệu!");
-      return;
-    }
+        // ===============================
+        // === TẠO HÓA ĐƠN NHẬP TẠM MỚI ===
+        // ===============================
+        async function createNhapTamFromInTem() {
+            try {
+                if (!window.hot || typeof hot.getData !== "function") {
+                    alert("⚠️ Không tìm thấy bảng dữ liệu!");
+                    return;
+                }
 
-    // 1️⃣ Lấy toàn bộ dữ liệu từ bảng in
-    const rawData = hot.getData();
-    const headers = hot.getColHeader();
-    const colIndex = (name) => headers.indexOf(name);
+                // 1️⃣ Lấy toàn bộ dữ liệu từ bảng in
+                const rawData = hot.getData();
+                const headers = hot.getColHeader();
+                const colIndex = (name) => headers.indexOf(name);
 
-    const maspIdx = colIndex("Mã hàng");
-    const sizeIdx = colIndex("Kích cỡ");
-    const qtyIdx  = colIndex("Số lượng");
-    const dvtIdx  = colIndex("ĐVT");
-    const gianhapIdx = colIndex("Giá nhập");
+                const maspIdx = colIndex("Mã hàng");
+                const sizeIdx = colIndex("Kích cỡ");
+                const qtyIdx = colIndex("Số lượng");
+                const dvtIdx = colIndex("ĐVT");
+                const gianhapIdx = colIndex("Giá nhập");
 
-    if (maspIdx === -1 || sizeIdx === -1 || qtyIdx === -1) {
-      alert("⚠️ Không tìm thấy các cột cần thiết (Mã hàng / Kích cỡ / Số lượng).");
-      return;
-    }
+                if (maspIdx === -1 || sizeIdx === -1 || qtyIdx === -1) {
+                    alert("⚠️ Không tìm thấy các cột cần thiết (Mã hàng / Kích cỡ / Số lượng).");
+                    return;
+                }
 
-    // 2️⃣ Gom theo mã hàng
-    const map = {};
-    const sizes = [0,38,39,40,41,42,43,44,45];
-    for (const row of rawData) {
-      const masp = (row[maspIdx] || "").toString().trim().toUpperCase();
-      const size = (row[sizeIdx] || "").toString().trim();
-      const sl = parseInt(row[qtyIdx]) || 0;
-      const dvt = row[dvtIdx] || "sp";
-      const gianhap = parseFloat(row[gianhapIdx]) || 0;
-      if (!masp || sl <= 0) continue;
+                // 2️⃣ Gom theo mã hàng
+                const map = {};
+                const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+                for (const row of rawData) {
+                    const masp = (row[maspIdx] || "").toString().trim().toUpperCase();
+                    const size = (row[sizeIdx] || "").toString().trim();
+                    const sl = parseInt(row[qtyIdx]) || 0;
+                    const dvt = row[dvtIdx] || "sp";
+                    const gianhap = parseFloat(row[gianhapIdx]) || 0;
+                    if (!masp || sl <= 0) continue;
 
-      if (!map[masp]) {
-        map[masp] = { masp, dvt, gianhap };
-        sizes.forEach(s => map[masp][`s${s}`] = 0);
-      }
-      const s = sizes.includes(+size) ? +size : null;
-      if (s !== null) map[masp][`s${s}`] += sl;
-    }
+                    if (!map[masp]) {
+                        map[masp] = { masp, dvt, gianhap };
+                        sizes.forEach(s => map[masp][`s${s}`] = 0);
+                    }
+                    const s = sizes.includes(+size) ? +size : null;
+                    if (s !== null) map[masp][`s${s}`] += sl;
+                }
 
-    // 3️⃣ Tính tổng nhập và đóng gói payload
-    const items = Object.values(map).map(it => {
-      const tong_nhap = sizes.reduce((sum,s)=>sum+(it[`s${s}`]||0),0);
-      return { ...it, tong_nhap };
-    });
+                // 3️⃣ Tính tổng nhập và đóng gói payload
+                const items = Object.values(map).map(it => {
+                    const tong_nhap = sizes.reduce((sum, s) => sum + (it[`s${s}`] || 0), 0);
+                    return { ...it, tong_nhap };
+                });
 
-    if (!items.length) {
-      alert("⚠️ Không có dữ liệu hợp lệ để tạo nhập tạm!");
-      return;
-    }
+                if (!items.length) {
+                    alert("⚠️ Không có dữ liệu hợp lệ để tạo nhập tạm!");
+                    return;
+                }
 
-    // 4️⃣ Encode payload và mở trang nhập tạm
-    const payload = {
-      source: "in-tem",
-      cs: "cs1",
-      items
-    };
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    const url = `nhaptamcs1.html?data=${encoded}`;
-    window.open(url, "_blank");
-  } catch (err) {
-    console.error("❌ Lỗi khi tạo nhập tạm:", err);
-    alert("❌ Có lỗi xảy ra khi tạo hóa đơn nhập tạm!");
-  }
-}
+                // 4️⃣ Encode payload và mở trang nhập tạm
+                const payload = {
+                    source: "in-tem",
+                    cs: "cs1",
+                    items
+                };
+                const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+                const url = `nhaptamcs1.html?data=${encoded}`;
+                window.open(url, "_blank");
+            } catch (err) {
+                console.error("❌ Lỗi khi tạo nhập tạm:", err);
+                alert("❌ Có lỗi xảy ra khi tạo hóa đơn nhập tạm!");
+            }
+        }
 
-// Gắn vào nút "Tạo HĐ nhập tạm"
-document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
-</script>
+        // Gắn vào nút "Tạo HĐ nhập tạm"
+        document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
+    </script>
 
 
 
