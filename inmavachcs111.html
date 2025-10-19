@@ -272,12 +272,6 @@
                             <datalist id="mausacList"></datalist>
                         </div>
                     </div>
-
-                    <div id="mausacSuggestList"
-     style="position:absolute;z-index:999;background:white;width:250px;max-height:270px;overflow-y:auto;display:none;border:1px solid #ddd; font-size:13px;">
-</div>
-
-
                     <div class="form-row">
                         <label for="khuyenmaiInput">Khuyến mãi</label>
                         <div class="form-input">
@@ -591,128 +585,6 @@
             hot.loadData(data);
         }
 
-        // ==== GỢI Ý MÀU SẮC GIỐNG POPUP MÃ SP ====
-const mausacInput = document.getElementById('mausacInput');
-const mausacList   = document.getElementById('mausacList');
-const mausacSuggestDiv = document.getElementById('mausacSuggestList');
-const khuyenmaiInput = document.getElementById('khuyenmaiInput');
-const maspInput2 = document.getElementById('maspInput');
-
-// Định vị popup theo vị trí ô input màu
-function positionMauSuggest() {
-  const rect = mausacInput.getBoundingClientRect();
-  mausacSuggestDiv.style.position = 'fixed';
-  mausacSuggestDiv.style.top  = (rect.bottom) + 'px';
-  mausacSuggestDiv.style.left = (rect.left) + 'px';
-  mausacSuggestDiv.style.width = rect.width + 'px';
-}
-
-function buildMauOptions(filterText='') {
-  // đọc options từ datalist (value= MÃ MÀU, label= "MÃ - TÊN")
-  const opts = Array.from(mausacList.querySelectorAll('option'))
-    .map(o => ({ value: (o.value || '').toUpperCase(), label: (o.getAttribute('label') || o.value || '').toUpperCase() }))
-    .filter(x => {
-      const f = (filterText || '').toUpperCase();
-      if (!f) return true;
-      return x.value.includes(f) || x.label.includes(f);
-    })
-    .slice(0, 200); // giới hạn hiển thị
-
-  if (!opts.length) {
-    mausacSuggestDiv.style.display = 'none';
-    mausacSuggestDiv.innerHTML = '';
-    return;
-  }
-  let html = '<table style="width:100%;border-collapse:collapse;">';
-  html += '<tr><th style="text-align:left;padding:2px 5px;border-bottom:1px solid #eee;">Mã</th><th style="text-align:left;padding:2px 5px;border-bottom:1px solid #eee;">Tên</th></tr>';
-  for (const it of opts) {
-    const parts = (it.label || '').split(' - ');
-    html += `<tr data-mau="${it.value}" style="cursor:pointer;">
-      <td style="padding:2px 5px;border-bottom:1px solid #f2f2f2;">${it.value}</td>
-      <td style="padding:2px 5px;border-bottom:1px solid #f2f2f2;">${parts[1] || ''}</td>
-    </tr>`;
-  }
-  html += '</table>';
-  mausacSuggestDiv.innerHTML = html;
-  mausacSuggestDiv.style.display = 'block';
-  positionMauSuggest();
-
-  mausacSuggestDiv.querySelectorAll('tr[data-mau]').forEach(row => {
-    row.onclick = () => {
-      mausacInput.value = row.dataset.mau || '';
-      mausacSuggestDiv.style.display = 'none';
-      // Sau khi chọn màu -> tự xử lý nối hậu tố vào mã SP
-      applyColorSuffixToMasp();
-      // Rồi nhảy sang Khuyến mãi
-      khuyenmaiInput?.focus();
-      setTimeout(() => khuyenmaiInput?.select?.(), 10);
-    };
-  });
-}
-
-function showMauPopupNow() {
-  buildMauOptions(mausacInput.value);
-}
-
-// gõ vào ô Màu -> lọc danh sách
-mausacInput.addEventListener('input', () => buildMauOptions(mausacInput.value));
-// focus vào ô Màu -> hiện popup
-mausacInput.addEventListener('focus', showMauPopupNow);
-
-// Ẩn khi click ra ngoài
-document.addEventListener('mousedown', (e) => {
-  if (!mausacInput.contains(e.target) && !mausacSuggestDiv.contains(e.target)) {
-    mausacSuggestDiv.style.display = 'none';
-  }
-});
-window.addEventListener('resize', positionMauSuggest);
-window.addEventListener('scroll', positionMauSuggest);
-
-// Khi NHẤN ENTER ở ô Giá lẻ -> nhảy sang ô Màu và mở popup gợi ý
-gialeInput?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    mausacInput?.focus();
-    // chờ focus xong rồi hiển thị
-    setTimeout(showMauPopupNow, 10);
-  }
-});
-
-function applyColorSuffixToMasp() {
-  const mau = (mausacInput.value || '').trim().toUpperCase();
-  if (!mau) return;  // không đụng vào MASP nếu màu trống
-
-  let masp = (maspInput2.value || '').trim().toUpperCase();
-  if (!masp) return; // chưa có MASP thì cũng thôi
-
-  const slashIdx = masp.indexOf('/');
-  if (slashIdx === -1) {
-    // chưa có hậu tố -> thêm mới
-    masp = masp + '/' + mau;
-  } else {
-    // đã có hậu tố -> thay thế phần sau dấu '/'
-    masp = masp.slice(0, slashIdx + 1) + mau;
-  }
-  maspInput2.value = masp;
-}
-
-// ENTER tại ô Màu: Áp dụng hậu tố + nhảy sang Khuyến mãi
-mausacInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    applyColorSuffixToMasp();
-    mausacSuggestDiv.style.display = 'none';
-    khuyenmaiInput?.focus();
-    setTimeout(() => khuyenmaiInput?.select?.(), 10);
-  }
-});
-
-// BLUR (rời ô Màu): cũng áp dụng hậu tố
-mausacInput.addEventListener('blur', () => {
-  // nếu blur do click chọn trong popup thì đã xử lý ở onclick
-  // vẫn gọi để đảm bảo mọi case khác
-  applyColorSuffixToMasp();
-});
 
 
 
@@ -1513,6 +1385,34 @@ mausacInput.addEventListener('blur', () => {
         const gialeInput = document.getElementById('gialeInput');
         // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
         const GIALE_LOCK_THRESHOLD = 170000; // đổi sau này nếu cần
+
+        // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
+const mausacInput = document.getElementById('mausacInput');
+const maspInputEl = document.getElementById('maspInput');
+
+function updateMaspWithColorSuffix() {
+  if (!mausacInput || !maspInputEl) return;
+
+  const color = (mausacInput.value || '').trim();   // giữ nguyên kiểu gõ (không ép HOA)
+  if (!color) return;                                // không nhập màu -> không làm gì
+
+  let masp = (maspInputEl.value || '').trim();
+  if (!masp) return;                                 // chưa có mã sp -> bỏ qua
+
+  const slashIdx = masp.indexOf('/');
+  if (slashIdx === -1) {
+    // Chưa có hậu tố -> nối thêm "/<màu>"
+    masp = masp + '/' + color;
+  } else {
+    // Đã có hậu tố -> thay phần sau dấu "/" bằng màu mới
+    masp = masp.slice(0, slashIdx + 1) + color;
+  }
+  maspInputEl.value = masp;
+}
+
+// Chỉ cần BLUR là đủ (Enter ở ô Màu sẽ chuyển focus -> blur sẽ chạy)
+mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
+
 
         //Format số cho giá nhập & giá lẻ trên FORM
         [gianhapInput, gialeInput].forEach(inp => {
