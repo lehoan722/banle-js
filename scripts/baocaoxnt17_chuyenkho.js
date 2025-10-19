@@ -277,6 +277,12 @@ function renderHOT(rows) {
         }
     };
 
+    // Sau khi khởi tạo HOT
+    const btn1v2 = document.getElementById('btnFilter1v2');
+    const btn2v1 = document.getElementById('btnFilter2v1');
+    if (btn1v2) btn1v2.onclick = () => applyGoiyFilter('1v2');
+    if (btn2v1) btn2v1.onclick = () => applyGoiyFilter('2v1');
+
 }
 
 function updateStatusTotals(rows) {
@@ -290,6 +296,27 @@ function updateStatusTotals(rows) {
     }
     const el = document.getElementById('status');
     if (el) el.textContent = `Đã tải ${rows.length} dòng • Tổng SL chuyển 1→2: ${t12} | 2→1: ${t21}`;
+}
+
+// Áp bộ lọc theo cột "goiy" và ẩn dòng Tổng ("size" !== "Tổng")
+function applyGoiyFilter(value) {
+    if (!hot) return;
+    const filters = hot.getPlugin('filters');
+    // Xóa mọi điều kiện cũ
+    filters.clearConditions();
+
+    // Lấy index cột theo prop (an toàn khi có thay đổi cột)
+    const colGoiy = hot.propToCol('goiy');   // cột "Gợi ý"
+    const colSize = hot.propToCol('size');   // cột "Size"
+
+    // Chỉ giữ dòng có Gợi ý = value (1v2 hoặc 2v1)
+    filters.addCondition(colGoiy, 'eq', [value]);
+
+    // Ẩn dòng Tổng: "Size" != "Tổng"
+    filters.addCondition(colSize, 'neq', ['Tổng']);
+
+    // Kích hoạt lọc
+    filters.filter();
 }
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
@@ -421,7 +448,7 @@ async function boot() {
     renderPreviewForMasps(masps);
 
     await patchVitri(rows);                 // lấy vị trí từ dmhanghoa (đọc trực tiếp table)
-    
+
     renderHOT(rows);
     if (masps.length) focusPreview(masps[0]);
     updateStatusTotals(rows);
