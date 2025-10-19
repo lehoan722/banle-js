@@ -28,7 +28,7 @@ import { supabase } from './supabaseClient.js'; // dùng chung client đã có
     window.openLightbox = (src) => { const img = lb.querySelector('.lb-wrap img'); img.src = src; lb.classList.add('show'); };
 })();
 
-let allMasps = []; // danh sách mã đầy đủ dùng để vẽ lại ảnh khi "Hiện tất cả"
+
 
 let hot;
 const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
@@ -416,6 +416,7 @@ const IMAGES_PER_ROW = 1; // số cột trong lưới ảnh
 
 // Lưu danh sách mã của panel ảnh để scroll/focus
 let currentMaspsList = [];
+let allMasps = []; // danh sách mã đầy đủ dùng để vẽ lại ảnh khi "Hiện tất cả"
 
 function renderPreviewForMasps(list) {
     currentMaspsList = (list || []).map(x => String(x || "").toUpperCase());
