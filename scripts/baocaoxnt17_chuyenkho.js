@@ -311,6 +311,7 @@ function clearAllFilters() {
     if (allMasps.length) focusPreview(allMasps[0]);
 }
 
+
 function updateStatusTotals(rows) {
     let t12 = 0, t21 = 0;
     for (const r of rows) {
@@ -349,11 +350,12 @@ function applyGoiyFilter(value) {
     filters.addCondition(colSize, 'neq', ['Tổng']);
     filters.filter();
 
-    // Đồng bộ ảnh: chỉ hiển thị ảnh của các mã còn trong kết quả sau lọc
-    const list = getFilteredMaspsByGoiy(value);
+    // Đồng bộ ảnh đúng với dữ liệu đang hiển thị
+    const list = getVisibleMaspsByGoiy(value);
     renderPreviewForMasps(list);
-    if (list.length) focusPreview(list[0]);   // UX: focus ảnh đầu tiên
+    if (list.length) focusPreview(list[0]);  // focus ảnh đầu tiên cho UX
 }
+
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
 // ==== ẢNH: copy từ XNT17 ====
@@ -417,6 +419,30 @@ const IMAGES_PER_ROW = 1; // số cột trong lưới ảnh
 // Lưu danh sách mã của panel ảnh để scroll/focus
 let currentMaspsList = [];
 let allMasps = []; // danh sách mã đầy đủ dùng để vẽ lại ảnh khi "Hiện tất cả"
+
+// Lấy danh sách MASP đang hiển thị sau khi lọc (đọc trực tiếp từ HOT)
+function getVisibleMaspsByGoiy(value) {
+    if (!hot) return [];
+    const colMasp = hot.propToCol('masp');
+    const colSize = hot.propToCol('size');
+    const colGoiy = hot.propToCol('goiy');
+
+    const n = hot.countRows();   // số dòng đang hiển thị (sau filter)
+    const picked = new Set();
+
+    for (let r = 0; r < n; r++) {
+        const size = hot.getDataAtCell(r, colSize);
+        const goiy = hot.getDataAtCell(r, colGoiy);
+        if (size === 'Tổng') continue;        // bỏ dòng Tổng
+        if (goiy === value) {
+            const masp = String(hot.getDataAtCell(r, colMasp) || '').toUpperCase();
+            if (masp) picked.add(masp);
+        }
+    }
+
+    // Giữ thứ tự như lưới ảnh ban đầu
+    return allMasps.filter(m => picked.has(m));
+}
 
 function renderPreviewForMasps(list) {
     currentMaspsList = (list || []).map(x => String(x || "").toUpperCase());
