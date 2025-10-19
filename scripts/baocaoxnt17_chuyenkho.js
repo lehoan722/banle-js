@@ -31,6 +31,43 @@ import { supabase } from './supabaseClient.js'; // dùng chung client đã có
 let hot;
 const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
 
+// --- Cấu hình mặc định cho tính SL chuyển ---
+const CFG = {
+    keep_min_src: 1,   // giữ tối thiểu tại nguồn
+    dest_min: 2,       // mục tiêu tối thiểu tại đích
+    max_move: 999999,  // trần chuyển mỗi size (mặc định: không giới hạn)
+    prefer_cs2: true   // ưu tiên CS2 >= CS1 sau chuyển
+};
+
+// Trả về SL chuyển mặc định cho 1 dòng size
+function calcMoveQty(cs1, cs2, goiy) {
+    const keep = CFG.keep_min_src;
+    const dest = CFG.dest_min;
+    const maxm = CFG.max_move;
+
+    if (goiy === '1v2') {
+        const need_min = Math.max(0, dest - cs2);
+        const need_bias = CFG.prefer_cs2
+            ? Math.ceil((cs1 - cs2 + 1) / 2)   // sau chuyển CS2 > CS1
+            : Math.ceil((cs1 - cs2) / 2);      // cho phép bằng
+        const q0 = Math.max(need_min, need_bias, 0);
+        const srcCap = Math.max(0, cs1 - keep);
+        return Math.max(0, Math.min(q0, srcCap, maxm));
+    }
+
+    if (goiy === '2v1') {
+        const need_min = Math.max(0, dest - cs1);
+        const bias_limit = CFG.prefer_cs2
+            ? Math.floor((cs2 - cs1 - 1) / 2)  // sau chuyển CS2 > CS1
+            : Math.floor((cs2 - cs1) / 2);     // cho phép bằng
+        const srcCap = Math.max(0, cs2 - keep);
+        const q0 = Math.max(need_min, 0);
+        return Math.max(0, Math.min(q0, bias_limit, srcCap, maxm));
+    }
+
+    return 0; // cân bằng
+}
+
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
     const raw = sessionStorage.getItem('xnt17_transfer_filters');
@@ -88,16 +125,29 @@ function buildTransferTable(rows) {
         for (const s of SIZE_ORDER) {
             const it = sizes[s] || { masp, size: s, cs1: 0, cs2: 0 };
             const goiy = calcGoiy(it.cs1, it.cs2);
+            const sl = calcMoveQty(it.cs1, it.cs2, goiy);
             out.push({
                 masp, size: it.size, cs1: it.cs1, cs2: it.cs2,
-                goiy, tong: it.cs1 + it.cs2, vitri_cs1: '', vitri_cs2: '', __isSum: false
+                goiy, sl_chuyen: sl,
+                tong: it.cs1 + it.cs2, vitri_cs1: '', vitri_cs2: '', __isSum: false
             });
+
             sum1 += it.cs1; sum2 += it.cs2;
         }
+        // tính tổng SL chuyển của 9 size trong block vừa add
+        const startIdx = out.length - SIZE_ORDER.length;
+        let sumMove = 0;
+        for (let i = 0; i < SIZE_ORDER.length; i++) {
+            sumMove += Number(out[startIdx + i].sl_chuyen || 0);
+        }
+
         out.push({
             masp, size: 'Tổng', cs1: sum1, cs2: sum2,
-            goiy: calcGoiy(sum1, sum2), tong: sum1 + sum2, vitri_cs1: '', vitri_cs2: '', __isSum: true
+            goiy: calcGoiy(sum1, sum2),
+            sl_chuyen: sumMove,     // tổng SL chuyển cho mã này
+            tong: sum1 + sum2, vitri_cs1: '', vitri_cs2: '', __isSum: true
         });
+
     }
     return out;
 }
@@ -144,17 +194,19 @@ function renderHOT(rows) {
         data: rows,
         licenseKey: 'non-commercial-and-evaluation',
         rowHeaders: true,
-        colHeaders: ['Mã SP', 'Size', 'CS1', 'CS2', 'Gợi ý', 'Tổng', 'Vị trí CS1', 'Vị trí CS2'],
+        colHeaders: ['Mã SP', 'Size', 'CS1', 'CS2', 'Gợi ý', 'SL chuyển', 'Tổng', 'Vị trí CS1', 'Vị trí CS2'],
         columns: [
             { data: 'masp', readOnly: true },
             { data: 'size', readOnly: true },
             { data: 'cs1', readOnly: true, type: 'numeric' },
             { data: 'cs2', readOnly: true, type: 'numeric' },
             { data: 'goiy', readOnly: true },
+            { data: 'sl_chuyen', type: 'numeric' },       // cho phép sửa tay ở dòng size
             { data: 'tong', readOnly: true, type: 'numeric' },
             { data: 'vitri_cs1', readOnly: true },
             { data: 'vitri_cs2', readOnly: true },
         ],
+
         filters: true,
         dropdownMenu: true,
         columnSorting: true,
@@ -163,9 +215,13 @@ function renderHOT(rows) {
         cells: (row, col) => {
             const cell = {};
             const r = rows[row];
-            if (r?.__isSum) cell.className = 'sumRow';
+            if (r?.__isSum) {
+                cell.className = 'sumRow';
+                if (hot && hot.colToProp(col) === 'sl_chuyen') cell.readOnly = true; // khoá ở dòng Tổng
+            }
             return cell;
         },
+
         afterSelectionEnd: (r) => {
             const row = rows[r];
             if (!row) return;
@@ -193,6 +249,47 @@ function renderHOT(rows) {
         XLSX.utils.book_append_sheet(wb, ws, 'ChuyenKho');
         XLSX.writeFile(wb, `goi_y_chuyen_kho_${Date.now()}.xlsx`);
     };
+
+    afterChange: (changes, source) => {
+        if (!changes || source === 'loadData') return;
+
+        // nếu có thay đổi ở cột sl_chuyen => cộng lại dòng Tổng của mã đó
+        for (const [rIdx, prop] of changes.map(c => [c[0], c[1]])) {
+            if (prop !== 'sl_chuyen') continue;
+            const r = rows[rIdx];
+            if (!r || r.__isSum) continue;
+
+            // tìm block của mã hiện tại: 9 size + 1 Tổng
+            // giả định: các dòng của 1 mã nằm kề nhau theo buildTransferTable
+            // đi xuống để tìm dòng "Tổng"
+            let sumIndex = rIdx;
+            while (sumIndex < rows.length && rows[sumIndex].masp === r.masp && !rows[sumIndex].__isSum) sumIndex++;
+            if (sumIndex < rows.length && rows[sumIndex].__isSum && rows[sumIndex].masp === r.masp) {
+                // tính lại tổng sl_chuyen 9 size
+                let s = 0;
+                for (let i = sumIndex - SIZE_ORDER.length; i < sumIndex; i++) {
+                    s += Number(rows[i]?.sl_chuyen || 0);
+                }
+                rows[sumIndex].sl_chuyen = s;
+                hot.render();
+                updateStatusTotals(rows); // cập nhật tổng hướng 1→2 và 2→1 trên thanh trạng thái
+            }
+        }
+    };
+
+}
+
+function updateStatusTotals(rows) {
+    let t12 = 0, t21 = 0;
+    for (const r of rows) {
+        if (!r || r.__isSum) continue;
+        const q = Number(r.sl_chuyen || 0);
+        if (!q) continue;
+        if (r.goiy === '1v2') t12 += q;
+        else if (r.goiy === '2v1') t21 += q;
+    }
+    const el = document.getElementById('status');
+    if (el) el.textContent = `Đã tải ${rows.length} dòng • Tổng SL chuyển 1→2: ${t12} | 2→1: ${t21}`;
 }
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
@@ -324,8 +421,11 @@ async function boot() {
     renderPreviewForMasps(masps);
 
     await patchVitri(rows);                 // lấy vị trí từ dmhanghoa (đọc trực tiếp table)
+    
     renderHOT(rows);
     if (masps.length) focusPreview(masps[0]);
+    updateStatusTotals(rows);
+
 
     // 3) Tuỳ chọn: dọn storage (tránh chiếm bộ nhớ phiên)
     // sessionStorage.removeItem('xnt17_transfer_rows');
@@ -348,6 +448,5 @@ function normalizeSize(v) {
     // các trường hợp khác (ví dụ "SIZE 39") -> chuẩn về "size 39"
     return 'size ' + s.replace(/^size\s*/, '').trim();
 }
-
 
 
