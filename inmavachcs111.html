@@ -1092,24 +1092,7 @@
 
         // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
         document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
-        document.getElementById('maspInput').addEventListener('keydown', function (e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
-    try {
-      const pop = document.getElementById('maspSuggestList');
-      if (pop) pop.style.display = 'none';
-    } catch (_) {}
-
-    // Giữ luồng cũ: kiểm tra tồn tại + fill form, rồi sang Tên SP
-    checkExistAndFillForm();
-    const tensp = document.getElementById('tenspInput');
-    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
-  }
-});
-
+        document.getElementById('maspInput').addEventListener('keydown', checkExistAndFillForm);       
 
         let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
 
