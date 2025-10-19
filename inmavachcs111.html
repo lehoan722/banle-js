@@ -1092,7 +1092,24 @@
 
         // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
         document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
-        document.getElementById('maspInput').addEventListener('keydown', checkExistAndFillForm);       
+        document.getElementById('maspInput').addEventListener('keydown', function (e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
+    try {
+      const pop = document.getElementById('maspSuggestList');
+      if (pop) pop.style.display = 'none';
+    } catch (_) {}
+
+    // Giữ luồng cũ: kiểm tra tồn tại + fill form, rồi sang Tên SP
+    checkExistAndFillForm();
+    const tensp = document.getElementById('tenspInput');
+    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
+  }
+});
+
 
         let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
 
@@ -1517,21 +1534,27 @@ mausacInput?.addEventListener('keydown', (e) => {
             function handlerFactory(idx) {
                 return function (ev) {
                     if (ev.key !== 'Enter') return;
-                    // Chặn submit form & chặn datalist "ăn" Enter
-                    ev.preventDefault();
-                    ev.stopPropagation();
+ev.preventDefault();
+ev.stopPropagation();
 
-                    if (idx < order.length - 1) {
-                        const next = document.getElementById(order[idx + 1]);
-                        if (next) {
-                            next.focus();
-                            setTimeout(() => next.select?.(), 10);
-                        }
-                    } else {
-                        // ô cuối cùng -> focus nút Lưu (không submit auto)
-                        const btn = document.getElementById('saveFormBtn');
-                        if (btn) btn.focus();
-                    }
+// 🔒 Nếu đang ở ô Mã SP -> đóng popup gợi ý ngay lập tức
+if (order[idx] === 'maspInput') {
+  const pop = document.getElementById('maspSuggestList');
+  if (pop) pop.style.display = 'none';
+  // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
+}
+
+if (idx < order.length - 1) {
+  const next = document.getElementById(order[idx + 1]);
+  if (next) {
+    next.focus();
+    setTimeout(() => next.select?.(), 10);
+  }
+} else {
+  const btn = document.getElementById('saveFormBtn');
+  if (btn) btn.focus();
+}
+
                 };
             }
 
