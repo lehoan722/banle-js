@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>In Tem QR - Giấy TOMY 108</title>
+    <title></title>
 
     <style>
         body {
@@ -1027,8 +1027,8 @@
 
 
 
-        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====
-        const GIU_LAI_FIELDS = ['tensp', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
+        // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====giale
+        const GIU_LAI_FIELDS = ['tensp', 'giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
         // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
         // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -1095,10 +1095,21 @@
         document.getElementById('maspInput').addEventListener('keydown', function (e) {
             if (e.key === "Enter") {
                 e.preventDefault();
+                e.stopPropagation();
+
+                // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
+                try {
+                    const pop = document.getElementById('maspSuggestList');
+                    if (pop) pop.style.display = 'none';
+                } catch (_) { }
+
+                // Giữ luồng cũ: kiểm tra tồn tại + fill form, rồi sang Tên SP
                 checkExistAndFillForm();
-                document.getElementById('tenspInput').focus();
+                const tensp = document.getElementById('tenspInput');
+                if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
             }
         });
+
 
         let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
 
@@ -1205,67 +1216,62 @@
                 tensp: document.getElementById('tenspInput').value.trim(),
                 gianhap: parseInt(gianhapVal) || 1,
                 giale: parseInt(gialeVal) || 0,
-                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),   // ← HOA
+                mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),
                 khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
-                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),     // ← HOA
+                nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                 nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
-                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(), // ← HOA
+                chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
                 quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
             };
 
+            let errorMsg;
+            // ✅ Quyết định INSERT/UPDATE dựa trên sự tồn tại thực tế của mã hiện tại
+            const { data: existed, error: existErr } = await supabase
+                .from('dmhanghoa')
+                .select('masp')
+                .eq('masp', data.masp)
+                .maybeSingle();
 
-            let res, errorMsg;
-            if (isEditMode) {
-                // Trường hợp đang sửa sản phẩm đã tồn tại
-                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không ? `);
+            let res;
+            if (existed) {
+                const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
                 if (!userConfirm) {
-                    document.getElementById('addProductMessage').style.color = 'orange';
-                    document.getElementById('addProductMessage').textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
+                    const msgEl = document.getElementById('addProductMessage');
+                    msgEl.style.color = 'orange';
+                    msgEl.textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
                     return;
                 }
-
-                // Tiếp tục cập nhật nếu người dùng xác nhận
-                res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp);
+                // UPDATE và yêu cầu trả về dòng đã thay đổi để chắc chắn
+                res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp).select();
                 if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
-            } else {
-                // Kiểm tra trùng mã sản phẩm trước khi thêm
-                const { data: maspCheck, error: checkError } = await supabase
-                    .from('dmhanghoa')
-                    .select('masp')
-                    .eq('masp', data.masp)
-                    .maybeSingle();
-
-                if (maspCheck) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = `❌ Mã sản phẩm "${data.masp}" đã tồn tại.Không thể thêm mới.`;
-                    return;
+                if (!errorMsg && (!res.data || res.data.length === 0)) {
+                    errorMsg = 'Cập nhật không thành công (không có dòng nào được thay đổi).';
                 }
-
-                // Insert mới
+            } else {
+                // INSERT mới
                 res = await supabase.from('dmhanghoa').insert([data]);
                 if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
             }
 
-
-
             if (errorMsg) {
+                document.getElementById('addProductMessage').style.color = 'red';
                 document.getElementById('addProductMessage').textContent = errorMsg;
                 return;
             }
 
             // Hiện thông báo thành công
             document.getElementById('addProductMessage').style.color = '#0a9e1c';
-            document.getElementById('addProductMessage').textContent = isEditMode ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
+            document.getElementById('addProductMessage').textContent = existed ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
+
             // Reset lại form theo giữ lại trường
             resetForm();
-            document.getElementById('maspInput').focus();  // <== Tự động focus lại
+            document.getElementById('maspInput').focus();
             // Load lại dropdown option (nếu có giá trị mới)
             loadDropdownOptions();
             // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
             searchProducts(document.getElementById('search').value.trim().toLowerCase());
             pushProductToGrid(data);
-
-        };
+        }
 
         loadDropdownOptions();
 
@@ -1386,6 +1392,61 @@
         // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
         const GIALE_LOCK_THRESHOLD = 170000; // đổi sau này nếu cần
 
+        // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
+        const mausacInput = document.getElementById('mausacInput');
+        const maspInputEl = document.getElementById('maspInput');
+
+
+        function updateMaspWithColorSuffix() {
+            if (!mausacInput || !maspInputEl) return;
+
+            const color = (mausacInput.value || '').trim();     // giữ nguyên người dùng gõ (không ép HOA)
+            if (!color) {
+                // Không nhập màu -> không thay MASP; chỉ đóng popup gợi ý mã SP nếu đang mở
+                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+                return;
+            }
+
+            let masp = (maspInputEl.value || '').trim();
+            if (!masp) {
+                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+                return;
+            }
+
+            const slashIdx = masp.indexOf('/');
+            if (slashIdx === -1) {
+                masp = masp + '/' + color;
+            } else {
+                masp = masp.slice(0, slashIdx + 1) + color;
+            }
+            maspInputEl.value = masp;
+
+            // 🔧 Quan trọng: đổi MASP rồi thì coi như trạng thái THÊM MỚI
+            // Tránh nhánh update chạy vào mã mới (chưa tồn tại)
+            isEditMode = false;
+            window.isEditMode = false;
+            // bỏ khung màu xanh sửa (nếu có)
+            document.getElementById('addProductForm').style.border = '';
+
+            // Đóng popup gợi ý mã sản phẩm theo yêu cầu
+            if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+        }
+
+        // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
+        mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
+
+        // ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
+        mausacInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                updateMaspWithColorSuffix();
+                // chuyển sang ô Khuyến mãi như thứ tự formOrder
+                const km = document.getElementById('khuyenmaiInput');
+                if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
+            }
+        });
+
+
         //Format số cho giá nhập & giá lẻ trên FORM
         [gianhapInput, gialeInput].forEach(inp => {
             inp.addEventListener('blur', function () {
@@ -1473,9 +1534,15 @@
             function handlerFactory(idx) {
                 return function (ev) {
                     if (ev.key !== 'Enter') return;
-                    // Chặn submit form & chặn datalist "ăn" Enter
                     ev.preventDefault();
                     ev.stopPropagation();
+
+                    // 🔒 Nếu đang ở ô Mã SP -> đóng popup gợi ý ngay lập tức
+                    if (order[idx] === 'maspInput') {
+                        const pop = document.getElementById('maspSuggestList');
+                        if (pop) pop.style.display = 'none';
+                        // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
+                    }
 
                     if (idx < order.length - 1) {
                         const next = document.getElementById(order[idx + 1]);
@@ -1484,10 +1551,10 @@
                             setTimeout(() => next.select?.(), 10);
                         }
                     } else {
-                        // ô cuối cùng -> focus nút Lưu (không submit auto)
                         const btn = document.getElementById('saveFormBtn');
                         if (btn) btn.focus();
                     }
+
                 };
             }
 
@@ -1700,80 +1767,80 @@
     </script>
 
     <script>
-// ===============================
-// === TẠO HÓA ĐƠN NHẬP TẠM MỚI ===
-// ===============================
-async function createNhapTamFromInTem() {
-  try {
-    if (!window.hot || typeof hot.getData !== "function") {
-      alert("⚠️ Không tìm thấy bảng dữ liệu!");
-      return;
-    }
+        // ===============================
+        // === TẠO HÓA ĐƠN NHẬP TẠM MỚI ===
+        // ===============================
+        async function createNhapTamFromInTem() {
+            try {
+                if (!window.hot || typeof hot.getData !== "function") {
+                    alert("⚠️ Không tìm thấy bảng dữ liệu!");
+                    return;
+                }
 
-    // 1️⃣ Lấy toàn bộ dữ liệu từ bảng in
-    const rawData = hot.getData();
-    const headers = hot.getColHeader();
-    const colIndex = (name) => headers.indexOf(name);
+                // 1️⃣ Lấy toàn bộ dữ liệu từ bảng in
+                const rawData = hot.getData();
+                const headers = hot.getColHeader();
+                const colIndex = (name) => headers.indexOf(name);
 
-    const maspIdx = colIndex("Mã hàng");
-    const sizeIdx = colIndex("Kích cỡ");
-    const qtyIdx  = colIndex("Số lượng");
-    const dvtIdx  = colIndex("ĐVT");
-    const gianhapIdx = colIndex("Giá nhập");
+                const maspIdx = colIndex("Mã hàng");
+                const sizeIdx = colIndex("Kích cỡ");
+                const qtyIdx = colIndex("Số lượng");
+                const dvtIdx = colIndex("ĐVT");
+                const gianhapIdx = colIndex("Giá nhập");
 
-    if (maspIdx === -1 || sizeIdx === -1 || qtyIdx === -1) {
-      alert("⚠️ Không tìm thấy các cột cần thiết (Mã hàng / Kích cỡ / Số lượng).");
-      return;
-    }
+                if (maspIdx === -1 || sizeIdx === -1 || qtyIdx === -1) {
+                    alert("⚠️ Không tìm thấy các cột cần thiết (Mã hàng / Kích cỡ / Số lượng).");
+                    return;
+                }
 
-    // 2️⃣ Gom theo mã hàng
-    const map = {};
-    const sizes = [0,38,39,40,41,42,43,44,45];
-    for (const row of rawData) {
-      const masp = (row[maspIdx] || "").toString().trim().toUpperCase();
-      const size = (row[sizeIdx] || "").toString().trim();
-      const sl = parseInt(row[qtyIdx]) || 0;
-      const dvt = row[dvtIdx] || "sp";
-      const gianhap = parseFloat(row[gianhapIdx]) || 0;
-      if (!masp || sl <= 0) continue;
+                // 2️⃣ Gom theo mã hàng
+                const map = {};
+                const sizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+                for (const row of rawData) {
+                    const masp = (row[maspIdx] || "").toString().trim().toUpperCase();
+                    const size = (row[sizeIdx] || "").toString().trim();
+                    const sl = parseInt(row[qtyIdx]) || 0;
+                    const dvt = row[dvtIdx] || "sp";
+                    const gianhap = parseFloat(row[gianhapIdx]) || 0;
+                    if (!masp || sl <= 0) continue;
 
-      if (!map[masp]) {
-        map[masp] = { masp, dvt, gianhap };
-        sizes.forEach(s => map[masp][`s${s}`] = 0);
-      }
-      const s = sizes.includes(+size) ? +size : null;
-      if (s !== null) map[masp][`s${s}`] += sl;
-    }
+                    if (!map[masp]) {
+                        map[masp] = { masp, dvt, gianhap };
+                        sizes.forEach(s => map[masp][`s${s}`] = 0);
+                    }
+                    const s = sizes.includes(+size) ? +size : null;
+                    if (s !== null) map[masp][`s${s}`] += sl;
+                }
 
-    // 3️⃣ Tính tổng nhập và đóng gói payload
-    const items = Object.values(map).map(it => {
-      const tong_nhap = sizes.reduce((sum,s)=>sum+(it[`s${s}`]||0),0);
-      return { ...it, tong_nhap };
-    });
+                // 3️⃣ Tính tổng nhập và đóng gói payload
+                const items = Object.values(map).map(it => {
+                    const tong_nhap = sizes.reduce((sum, s) => sum + (it[`s${s}`] || 0), 0);
+                    return { ...it, tong_nhap };
+                });
 
-    if (!items.length) {
-      alert("⚠️ Không có dữ liệu hợp lệ để tạo nhập tạm!");
-      return;
-    }
+                if (!items.length) {
+                    alert("⚠️ Không có dữ liệu hợp lệ để tạo nhập tạm!");
+                    return;
+                }
 
-    // 4️⃣ Encode payload và mở trang nhập tạm
-    const payload = {
-      source: "in-tem",
-      cs: "cs1",
-      items
-    };
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    const url = `nhaptamcs1.html?data=${encoded}`;
-    window.open(url, "_blank");
-  } catch (err) {
-    console.error("❌ Lỗi khi tạo nhập tạm:", err);
-    alert("❌ Có lỗi xảy ra khi tạo hóa đơn nhập tạm!");
-  }
-}
+                // 4️⃣ Encode payload và mở trang nhập tạm
+                const payload = {
+                    source: "in-tem",
+                    cs: "cs1",
+                    items
+                };
+                const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+                const url = `nhaptamcs1.html?data=${encoded}`;
+                window.open(url, "_blank");
+            } catch (err) {
+                console.error("❌ Lỗi khi tạo nhập tạm:", err);
+                alert("❌ Có lỗi xảy ra khi tạo hóa đơn nhập tạm!");
+            }
+        }
 
-// Gắn vào nút "Tạo HĐ nhập tạm"
-document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
-</script>
+        // Gắn vào nút "Tạo HĐ nhập tạm"
+        document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
+    </script>
 
 
 
