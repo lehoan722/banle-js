@@ -252,7 +252,7 @@ function setTimKiemLinks(masp) {
     if (a2) a2.href = u;
 }
 
-const IMAGES_PER_ROW = 2; // số cột trong lưới ảnh
+const IMAGES_PER_ROW = 1; // số cột trong lưới ảnh
 
 // Lưu danh sách mã của panel ảnh để scroll/focus
 let currentMaspsList = [];
@@ -348,5 +348,6 @@ function normalizeSize(v) {
     // các trường hợp khác (ví dụ "SIZE 39") -> chuẩn về "size 39"
     return 'size ' + s.replace(/^size\s*/, '').trim();
 }
+
 
 
