@@ -280,9 +280,18 @@ function renderHOT(rows) {
     // Sau khi khởi tạo HOT
     const btn1v2 = document.getElementById('btnFilter1v2');
     const btn2v1 = document.getElementById('btnFilter2v1');
+    const btnShowAll = document.getElementById('btnShowAll');
     if (btn1v2) btn1v2.onclick = () => applyGoiyFilter('1v2');
     if (btn2v1) btn2v1.onclick = () => applyGoiyFilter('2v1');
+    if (btnShowAll) btnShowAll.onclick = clearAllFilters;
 
+}
+
+function clearAllFilters() {
+    if (!hot) return;
+    const filters = hot.getPlugin('filters');
+    filters.clearConditions();
+    filters.filter(); // áp dụng lại để hiện toàn bộ
 }
 
 function updateStatusTotals(rows) {
