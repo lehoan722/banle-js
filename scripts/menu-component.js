@@ -265,7 +265,7 @@
           borderRadius: '10px',
           padding: '6px',
           minWidth: '260px',
-          maxHeight: '280px',
+          maxHeight: '300px',
           overflow: 'auto',
           fontSize: '14px',
           lineHeight: 1.35
