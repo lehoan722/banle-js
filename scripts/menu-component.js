@@ -350,7 +350,9 @@
           const rowEls = [qrWrap, c1, c2, c3el];
           rowEls.forEach(el => {
             el.addEventListener('mouseenter', () => {
-              rowEls.forEach(cell => cell.style.background = '#f2f2f2');
+              
+              rowEls.forEach(cell => cell.style.transition = 'background 0.15s');
+
             });
             el.addEventListener('mouseleave', () => {
               rowEls.forEach(cell => cell.style.background = '');
