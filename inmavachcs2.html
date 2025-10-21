@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>InTem CS2</title>
+    <title>in ma vach cs2</title>
 
     <style>
         body {
@@ -222,7 +222,7 @@
 </head>
 
 <body>
-    <h2></h2>
+    <h2>HỆ THỐNG IN TEM QR - GIẤY TOMY 108</h2>
     <div class="container">
         <!-- Bên trái: danh sách sản phẩm -->
         <div class="left">
@@ -341,7 +341,8 @@
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
+                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>                
+
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
                     <input type="email" id="login-email" value="khohangcs2@gmail.com" readonly
@@ -354,8 +355,9 @@
 
                 <!-- [ADD] Nút tạo HĐ nhập tạm 
                 <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
+                <button class="btnTaoNhapTam" id="btnCreateNhaptamcs2">Tạo HĐ nhập tạm</button>
 
-                <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm</button>
+                <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 222</button>
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -989,6 +991,21 @@
             }
         }
 
+         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
+        function openNhaptamcs2(items) {
+            const payload = { source: 'in-tem', cs: 'cs2', items }; // cs: bạn đổi cs2 nếu cần
+            const json = JSON.stringify(payload);
+            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
+
+            if (b64.length <= 1800) {
+                window.open(`/nhaptamcs2.html#imp=${b64} `, '_blank');
+            } else {
+                const key = 'IMP_' + Date.now();
+                localStorage.setItem(key, json);
+                window.open(`/nhaptamcs2.html#impkey=${key} `, '_blank');
+            }
+        }
+
         // Click nút "Tạo HĐ nhập"
         document.getElementById('btnCreateNhapHD').addEventListener('click', () => {
             const items = collectInvoiceItems();
@@ -999,6 +1016,16 @@
             openNhapFromItems(items);
         });
 
+        // Click nút "Tạo HĐ nhập"
+        document.getElementById('btnCreateNhaptamcs2').addEventListener('click', () => {
+            const items = collectInvoiceItems();
+            if (!items.length) {
+                alert('Danh sách in rỗng hoặc chưa tick In.');
+                return;
+            }
+            openNhaptamcs2(items);
+        });
+
 
         // [ADD] Mở trang NHẬP TẠM với cùng payload/format
         function openNhapTamFromItems(items) {
@@ -1007,11 +1034,11 @@
             const b64 = btoa(unescape(encodeURIComponent(json)));
 
             if (b64.length <= 1800) {
-                window.open(`/nhaptamcs2.html#imp=${b64} `, '_blank');
+                window.open(`/nhaptamcs222.html#imp=${b64} `, '_blank');
             } else {
                 const key = 'IMP_' + Date.now();
                 localStorage.setItem(key, json);
-                window.open(`/nhaptamcs2.html#impkey=${key} `, '_blank');
+                window.open(`/nhaptamcs222.html#impkey=${key} `, '_blank');
             }
         }
 
@@ -1830,7 +1857,7 @@
                     items
                 };
                 const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-                const url = `nhaptamcs2.html?data=${encoded}`;
+                const url = `nhaptamcs222.html?data=${encoded}`;
                 window.open(url, "_blank");
             } catch (err) {
                 console.error("❌ Lỗi khi tạo nhập tạm:", err);
