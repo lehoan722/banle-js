@@ -483,28 +483,31 @@
             <button id="ghivitri">✏️</button>
         </div>
 
+        <div style="margin-bottom:6px;">
+            <button id="btnChuyenBang" class="btnChuyen">🔁 Dạng ngang</button>
+        </div>
 
         <div class="main">
             <div class="table-area">
 
-                <table id="bangketqua">
-                    <thead>
-                        <tr>
-                            <th>Mã hàng</th>
-                            <th>Tên hàng</th>
-                            <th>Kích cỡ</th>
-                            <th>S.lượng</th>
-                            <th>ĐVT</th>
-                            <th>Đơn giá</th>
-                            <th>Khuyến mại</th>
-                            <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- (giữ nguyên) -->
-                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>T1</th>
-                            <th>T2</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
+                <table id="bangketqua" data-mode="doc"></table>
+                <thead>
+                    <tr>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
+                        <th>Kích cỡ</th>
+                        <th>S.lượng</th>
+                        <th>ĐVT</th>
+                        <th>Đơn giá</th>
+                        <th>Khuyến mại</th>
+                        <th>Thành tiền</th>
+                        <th>Vị trí</th> <!-- (giữ nguyên) -->
+                        <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                        <th>T1</th>
+                        <th>T2</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
                 </table>
 
             </div>
@@ -690,112 +693,112 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
         window.supabase = createClient(supabaseUrl, supabaseKey);
 
-         // === tu dong dang nhap ================================
+        // === tu dong dang nhap ================================
 
-// Kênh broadcast để đồng bộ đăng xuất giữa các tab/trang
-window.authChannel = new BroadcastChannel('auth');
-authChannel.onmessage = (ev) => {
-  if (ev?.data?.type === 'signed_out') {
-    try {
-      document.getElementById('app-container').style.display = 'none';
-      document.getElementById('login-container').style.display = '';
-    } catch {}
-  }
-};
+        // Kênh broadcast để đồng bộ đăng xuất giữa các tab/trang
+        window.authChannel = new BroadcastChannel('auth');
+        authChannel.onmessage = (ev) => {
+            if (ev?.data?.type === 'signed_out') {
+                try {
+                    document.getElementById('app-container').style.display = 'none';
+                    document.getElementById('login-container').style.display = '';
+                } catch { }
+            }
+        };
 
-// Điền NV vào UI (nếu có)
-function fillNhanVienUI(nv) {
-  const manvEl = document.getElementById('manv');
-  if (manvEl && nv?.manv) { manvEl.value = nv.manv; manvEl.readOnly = true; }
-  const tennvEl = document.getElementById('tennv');
-  if (tennvEl && nv?.tennv) { tennvEl.value = nv.tennv; tennvEl.readOnly = true; }
-}
+        // Điền NV vào UI (nếu có)
+        function fillNhanVienUI(nv) {
+            const manvEl = document.getElementById('manv');
+            if (manvEl && nv?.manv) { manvEl.value = nv.manv; manvEl.readOnly = true; }
+            const tennvEl = document.getElementById('tennv');
+            if (tennvEl && nv?.tennv) { tennvEl.value = nv.tennv; tennvEl.readOnly = true; }
+        }
 
-// Sau khi “đã đăng nhập” → ẩn form, hiện app, khởi tạo logic
-async function afterLogin(nv) {
-  try {
-    document.getElementById('login-container').style.display = 'none';
-    document.getElementById('app-container').style.display = '';
+        // Sau khi “đã đăng nhập” → ẩn form, hiện app, khởi tạo logic
+        async function afterLogin(nv) {
+            try {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('app-container').style.display = '';
 
-    fillNhanVienUI(nv);
-    if (typeof capNhatQuyenGiaoDien === 'function') capNhatQuyenGiaoDien();
+                fillNhanVienUI(nv);
+                if (typeof capNhatQuyenGiaoDien === 'function') capNhatQuyenGiaoDien();
 
-    // Khởi tạo app như luồng đăng nhập thủ công
-    const m = await import('./scripts/main.js');
-    if (m && m.khoiTaoUngDung) m.khoiTaoUngDung();
+                // Khởi tạo app như luồng đăng nhập thủ công
+                const m = await import('./scripts/main.js');
+                if (m && m.khoiTaoUngDung) m.khoiTaoUngDung();
 
-    if (typeof switchTab === 'function') switchTab('thongtin');
-    const s45 = document.getElementById('size45'); if (s45) s45.checked = true;
-    const qn  = document.getElementById('quanlysizetheonhom'); if (qn) qn.checked = true;
-  } catch (e) {
-    console.error('[SSO] afterLogin error:', e);
-  }
-}
+                if (typeof switchTab === 'function') switchTab('thongtin');
+                const s45 = document.getElementById('size45'); if (s45) s45.checked = true;
+                const qn = document.getElementById('quanlysizetheonhom'); if (qn) qn.checked = true;
+            } catch (e) {
+                console.error('[SSO] afterLogin error:', e);
+            }
+        }
 
-// Tự đăng nhập nếu đã có session Supabase
-async function tryAutoLogin() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
+        // Tự đăng nhập nếu đã có session Supabase
+        async function tryAutoLogin() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
-      // Chưa có session → chỉ prefll nhanh form login nếu có dữ liệu cũ
-      const manvLS = localStorage.getItem('manv') || '';
-      const manvInput = document.getElementById('login-manv');
-      if (manvInput && manvLS) manvInput.value = manvLS;
+                if (!session) {
+                    // Chưa có session → chỉ prefll nhanh form login nếu có dữ liệu cũ
+                    const manvLS = localStorage.getItem('manv') || '';
+                    const manvInput = document.getElementById('login-manv');
+                    if (manvInput && manvLS) manvInput.value = manvLS;
 
-      const csLS = localStorage.getItem('diadiem') || 'cs1';
-      const csSelect = document.getElementById('login-cs');
-      if (csSelect && csLS) csSelect.value = csLS;
-      return;
-    }
+                    const csLS = localStorage.getItem('diadiem') || 'cs1';
+                    const csSelect = document.getElementById('login-cs');
+                    if (csSelect && csLS) csSelect.value = csLS;
+                    return;
+                }
 
-    // ĐÃ có session → dựng thông tin NV từ localStorage hoặc truy vấn lại
-    let manv = localStorage.getItem('manv');
-    const urlManv = new URLSearchParams(location.search).get('manv');
-    if (!manv && urlManv) { manv = urlManv.toUpperCase(); localStorage.setItem('manv', manv); }
+                // ĐÃ có session → dựng thông tin NV từ localStorage hoặc truy vấn lại
+                let manv = localStorage.getItem('manv');
+                const urlManv = new URLSearchParams(location.search).get('manv');
+                if (!manv && urlManv) { manv = urlManv.toUpperCase(); localStorage.setItem('manv', manv); }
 
-    // Đảm bảo có cơ sở
-    const cs = localStorage.getItem('diadiem') || 'cs1';
-    localStorage.setItem('diadiem', cs);
+                // Đảm bảo có cơ sở
+                const cs = localStorage.getItem('diadiem') || 'cs1';
+                localStorage.setItem('diadiem', cs);
 
-    let tennv = localStorage.getItem('tennv');
-    let quyen = localStorage.getItem('quyen_sua_hoadon');
+                let tennv = localStorage.getItem('tennv');
+                let quyen = localStorage.getItem('quyen_sua_hoadon');
 
-    if (manv && (!tennv || quyen === null)) {
-      const { data: nv, error } = await supabase
-        .from('dmnhanvien')
-        .select('manv, tennv, sua_hoadon')
-        .eq('manv', manv)
-        .single();
+                if (manv && (!tennv || quyen === null)) {
+                    const { data: nv, error } = await supabase
+                        .from('dmnhanvien')
+                        .select('manv, tennv, sua_hoadon')
+                        .eq('manv', manv)
+                        .single();
 
-      if (!error && nv) {
-        tennv = nv.tennv;
-        localStorage.setItem('tennv', tennv);
-        localStorage.setItem('quyen_sua_hoadon', nv.sua_hoadon ? 'true' : 'false');
-        await afterLogin({ manv, tennv });
-        return;
-      }
-    }
+                    if (!error && nv) {
+                        tennv = nv.tennv;
+                        localStorage.setItem('tennv', tennv);
+                        localStorage.setItem('quyen_sua_hoadon', nv.sua_hoadon ? 'true' : 'false');
+                        await afterLogin({ manv, tennv });
+                        return;
+                    }
+                }
 
-    await afterLogin({ manv, tennv });
-  } catch (e) {
-    console.error('[SSO] tryAutoLogin error:', e);
-  }
-}
+                await afterLogin({ manv, tennv });
+            } catch (e) {
+                console.error('[SSO] tryAutoLogin error:', e);
+            }
+        }
 
-// Thử auto-login khi DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', tryAutoLogin);
+        // Thử auto-login khi DOM sẵn sàng
+        document.addEventListener('DOMContentLoaded', tryAutoLogin);
 
-// Bắt sự kiện thay đổi phiên (hết hạn token, đăng xuất ở tab khác, v.v.)
-supabase.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_OUT') {
-    try {
-      document.getElementById('app-container').style.display = 'none';
-      document.getElementById('login-container').style.display = '';
-    } catch {}
-  }
-});
-// === het tu dong dang nhap [/SSO] ==============================================================
+        // Bắt sự kiện thay đổi phiên (hết hạn token, đăng xuất ở tab khác, v.v.)
+        supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') {
+                try {
+                    document.getElementById('app-container').style.display = 'none';
+                    document.getElementById('login-container').style.display = '';
+                } catch { }
+            }
+        });
+        // === het tu dong dang nhap [/SSO] ==============================================================
 
         // Đặt ở đầu file/script chính
         window.dangLuu = false;
@@ -913,6 +916,7 @@ supabase.auth.onAuthStateChange((event) => {
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             document.getElementById("quanlysizetheonhom").checked = true;
+            document.getElementById("nhapsize").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
