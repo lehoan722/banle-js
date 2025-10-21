@@ -233,34 +233,42 @@ export function capNhatBangKetQuaTuDOM() {
 // ====== HIỂN THỊ DẠNG NGANG (0–45) ======
 window.dangXemBangNgang = false;
 
+// ====== HIỂN THỊ DẠNG NGANG (0–45) ======
+window.dangXemBangNgang = false;
+
 export function toggleBangKetQua() {
-    // 1) đảm bảo có dữ liệu mới nhất từ DOM nếu global rỗng
-    if (!window.bangKetQua || Object.keys(window.bangKetQua).length === 0) {
-        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-            window.capNhatBangKetQuaTuDOM();
-        }
-    }
+  const table = document.getElementById("bangketqua");
+  const btn = document.getElementById("btnChuyenBang");
 
-    const bang = window.bangKetQua || {};
-    window.dangXemBangNgang = !window.dangXemBangNgang;
+  // Xác định mode hiện tại từ chính bảng
+  const currMode = table?.getAttribute("data-mode") || "doc";
+  const isDoc = currMode !== "ngang";
 
-    const btn = document.getElementById("btnChuyenBang");
-    const body = document.body;
+  // ✅ Nếu đang ở DẠNG DỌC → luôn đồng bộ dữ liệu mới nhất từ DOM
+  if (isDoc && typeof window.capNhatBangKetQuaTuDOM === "function") {
+    window.capNhatBangKetQuaTuDOM();
+  }
 
-    if (window.dangXemBangNgang) {
-        // 👉 Bật chế độ bảng ngang
-        body.classList.add("bang-ngang-mode");
-        renderBangNgang(bang);
-        if (btn) btn.textContent = "🔁 Dạng dọc";
-    } else {
-        // 👉 Trở về bảng dọc
-        body.classList.remove("bang-ngang-mode");
-        capNhatBangHTML(bang);
-        if (btn) btn.textContent = "🔁 Dạng ngang";
-    }
+  const bang = window.bangKetQua || {};
+  window.dangXemBangNgang = isDoc; // nếu đang dọc thì chuyển sang ngang, ngược lại về dọc
 
-    // 2) Cập nhật lại tổng
-    if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(bang);
+  if (isDoc) {
+    // 👉 chuyển sang NGANG
+    table?.setAttribute("data-mode", "ngang");
+    renderBangNgang(bang);
+    if (btn) btn.textContent = "🔁 Dạng dọc";
+  } else {
+    // 👉 chuyển về DỌC
+    table?.setAttribute("data-mode", "doc");
+    capNhatBangHTML(bang);
+    if (btn) btn.textContent = "🔁 Dạng ngang";
+  }
+
+  // (tùy chọn) force reflow để trình duyệt layout lại ngay
+  // void table?.offsetHeight;
+
+  // 🔄 luôn cập nhật panel tổng bên phải sau khi chuyển
+  if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(bang);
 }
 
 function renderBangNgang(bangKetQua) {
