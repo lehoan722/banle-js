@@ -303,6 +303,9 @@ function renderHOT(rows) {
     const btn1v2 = document.getElementById('btnFilter1v2');
     const btn2v1 = document.getElementById('btnFilter2v1');
     const btnShowAll = document.getElementById('btnShowAll');
+    const btnTaoPhieuCN = document.getElementById('btnTaoPhieuCN');
+    if (btnTaoPhieuCN) btnTaoPhieuCN.onclick = onTaoPhieuChuyenCN;
+
     if (btn1v2) btn1v2.onclick = () => applyGoiyFilter('1v2');
     if (btn2v1) btn2v1.onclick = () => applyGoiyFilter('2v1');
     if (btnShowAll) btnShowAll.onclick = clearAllFilters;
@@ -364,6 +367,89 @@ function applyGoiyFilter(value) {
     renderPreviewForMasps(list);
     if (list.length) focusPreview(list[0]);  // focus ảnh đầu tiên cho UX
 }
+
+// Trả về '1v2' hoặc '2v1' nếu toàn bộ các dòng đang hiển thị có cùng Gợi ý (và không có "Tổng"); ngược lại trả null
+function getVisibleDirection() {
+    if (!hot) return null;
+    const colSize = hot.propToCol('size');
+    const colGoiy = hot.propToCol('goiy');
+    const n = hot.countRows();
+
+    let has1v2 = false, has2v1 = false, anyRow = false;
+    for (let r = 0; r < n; r++) {
+        const size = hot.getDataAtCell(r, colSize);
+        if (size === 'Tổng') continue; // bỏ dòng Tổng
+        anyRow = true;
+        const g = hot.getDataAtCell(r, colGoiy);
+        if (g === '1v2') has1v2 = true;
+        else if (g === '2v1') has2v1 = true;
+    }
+    if (!anyRow) return null;
+    if (has1v2 && !has2v1) return '1v2';
+    if (has2v1 && !has1v2) return '2v1';
+    return null; // lẫn lộn hoặc không có
+}
+
+// Gom dữ liệu hiển thị sau filter thành payload: [{ masp, items:[{size, sl}] }, ...]
+function collectVisibleTransferItems(dir) {
+    if (!hot) return [];
+    const colMasp = hot.propToCol('masp');
+    const colSize = hot.propToCol('size');
+    const colGoiy = hot.propToCol('goiy');
+    const colMove = hot.propToCol('sl_chuyen');
+
+    const n = hot.countRows();
+    const map = new Map(); // masp -> [{size, sl}...]
+
+    for (let r = 0; r < n; r++) {
+        const size = hot.getDataAtCell(r, colSize);
+        if (size === 'Tổng') continue; // bỏ dòng Tổng
+        const goiy = hot.getDataAtCell(r, colGoiy);
+        if (goiy !== dir) continue;
+
+        const sl = Number(hot.getDataAtCell(r, colMove) || 0);
+        if (!sl || sl <= 0) continue; // chỉ lấy size có SL chuyển > 0
+
+        const masp = String(hot.getDataAtCell(r, colMasp) || '').toUpperCase();
+        if (!masp) continue;
+
+        if (!map.has(masp)) map.set(masp, []);
+        map.get(masp).push({ size: size, sl: sl });
+    }
+
+    // giữ thứ tự theo lưới ảnh ban đầu để người dùng dễ đối chiếu
+    const list = [];
+    for (const m of allMasps) {
+        if (map.has(m)) list.push({ masp: m, items: map.get(m) });
+    }
+    return list;
+}
+
+function onTaoPhieuChuyenCN() {
+    const dir = getVisibleDirection();
+    if (!dir) {
+        alert('Vui lòng lọc cột "Gợi ý" sao cho chỉ còn 1 hướng (1v2 hoặc 2v1) và đã ẩn dòng "Tổng".');
+        return;
+    }
+    const items = collectVisibleTransferItems(dir);
+    if (!items.length) {
+        alert('Không có dòng nào có "SL chuyển" > 0 để tạo phiếu.');
+        return;
+    }
+
+    // Lưu payload sang sessionStorage
+    const payload = {
+        dir,                       // '1v2' hoặc '2v1'
+        items,                     // [{masp, items:[{size, sl}]}]
+        created_at: new Date().toISOString()
+    };
+    sessionStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
+
+    // Mở đúng trang đích
+    const url = (dir === '1v2') ? 'ccn1v2.html' : 'ccn2v1.html';
+    window.open(url, '_blank');
+}
+
 
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
