@@ -309,3 +309,10 @@
     font-size: 14px;
   }
 }
+
+/* === GIỮ HIỂN THỊ ĐẦY ĐỦ CỘT KHI Ở DẠNG NGANG === */
+.bang-ngang-mode #bangketqua th,
+.bang-ngang-mode #bangketqua td {
+  display: table-cell !important;
+  visibility: visible !important;
+}
