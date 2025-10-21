@@ -230,8 +230,11 @@ export function capNhatBangKetQuaTuDOM() {
     window.bangKetQua = bang;
 }
 
+// ====== HIỂN THỊ DẠNG NGANG (0–45) ======
+window.dangXemBangNgang = false;
+
 export function toggleBangKetQua() {
-    // 1) đảm bảo có data mới nhất từ DOM nếu global rỗng
+    // 1) đảm bảo có dữ liệu mới nhất từ DOM nếu global rỗng
     if (!window.bangKetQua || Object.keys(window.bangKetQua).length === 0) {
         if (typeof window.capNhatBangKetQuaTuDOM === "function") {
             window.capNhatBangKetQuaTuDOM();
@@ -242,15 +245,21 @@ export function toggleBangKetQua() {
     window.dangXemBangNgang = !window.dangXemBangNgang;
 
     const btn = document.getElementById("btnChuyenBang");
+    const body = document.body;
+
     if (window.dangXemBangNgang) {
+        // 👉 Bật chế độ bảng ngang
+        body.classList.add("bang-ngang-mode");
         renderBangNgang(bang);
-        btn && (btn.textContent = "🔁 Dạng dọc");
+        if (btn) btn.textContent = "🔁 Dạng dọc";
     } else {
+        // 👉 Trở về bảng dọc
+        body.classList.remove("bang-ngang-mode");
         capNhatBangHTML(bang);
-        btn && (btn.textContent = "🔁 Dạng ngang");
+        if (btn) btn.textContent = "🔁 Dạng ngang";
     }
 
-    // 2) luôn cập nhật lại khu thông tin hóa đơn sau khi đổi chế độ
+    // 2) Cập nhật lại tổng
     if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(bang);
 }
 
@@ -261,23 +270,23 @@ function renderBangNgang(bangKetQua) {
 
     const thead = document.querySelector("#bangketqua thead");
     if (thead) {
-        // ⚠️ Không có cột Tên SP
+        // ⚠️ Không có cột Tên SP, thêm size 0
         thead.innerHTML = `
       <tr>
         <th>Mã SP</th>
-        <th>38</th><th>39</th><th>40</th><th>41</th>
-        <th>42</th><th>43</th><th>44</th><th>45</th>
+        <th>0</th><th>38</th><th>39</th><th>40</th>
+        <th>41</th><th>42</th><th>43</th><th>44</th><th>45</th>
         <th>Tổng SL</th>
       </tr>`;
     }
 
-    const arrSize = ["38", "39", "40", "41", "42", "43", "44", "45"];
+    const arrSize = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
 
     Object.values(bangKetQua).forEach(item => {
         if (!item) return;
         const tr = document.createElement("tr");
 
-        // gộp số lượng theo size
+        // Gộp số lượng theo size
         const mapSL = {};
         (item.sizes || []).forEach((sz, i) => {
             const key = String(sz).trim();
@@ -289,7 +298,7 @@ function renderBangNgang(bangKetQua) {
         const cellsSize = arrSize.map(sz => {
             const val = mapSL[sz];
             if (val && val !== 0) { tong += val; return `<td>${val}</td>`; }
-            return `<td></td>`; // ô trống cho size = 0
+            return `<td></td>`; // để trống nếu size không có SL
         }).join("");
 
         tr.innerHTML = `
@@ -300,7 +309,5 @@ function renderBangNgang(bangKetQua) {
         tbody.appendChild(tr);
     });
 }
-
-
 
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
