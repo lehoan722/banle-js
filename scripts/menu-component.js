@@ -236,14 +236,14 @@
 
     // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
     const SIZE_ROWS = [
-      ['38/240', 'S', '46/165'],
-      ['39/245', 'M', '48/170'],
-      ['40/250', 'L', '50/175'],
-      ['41/255', 'XL','52/180'],
-      ['42/260', '2X','54/185'],
-      ['43/265', '3X','56/190'],
-      ['44/270', '4X','58/195'],
-      ['45/275', '5X','60/200']
+      ['38', 'S', '46  240  165'],
+      ['39', 'M', '48  245  170'],
+      ['40', 'L', '50  250  175'],
+      ['41', 'XL','52  255  180'],
+      ['42', '2X','54  260  185'],
+      ['43', '3X','56  265  190'],
+      ['44', '4X','58  270  195'],
+      ['45', '5X','60  275  200']
     ];
 
     // Guard chống chồng chéo Enter / scanner
@@ -263,11 +263,11 @@
           border: '1px solid #d1d5db',
           boxShadow: '0 8px 24px rgba(0,0,0,.14)',
           borderRadius: '10px',
-          padding: '6px',
+          padding: '8px',
           minWidth: '260px',
-          maxHeight: '320px',
+          maxHeight: '420px',
           overflow: 'auto',
-          fontSize: '14px',
+          fontSize: '16px',
           lineHeight: 1.35
         });
 
