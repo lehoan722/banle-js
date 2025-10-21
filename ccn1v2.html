@@ -1151,6 +1151,54 @@
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
 
+    <script>
+(function prefillFromTransfer(){
+  try {
+    const raw = sessionStorage.getItem('ccn_prefill_payload');
+    if (!raw) return;
+    const pf = JSON.parse(raw);
+    if (!pf || pf.dir !== '1v2') return;  // chỉ nhận đúng hướng
+
+    // Chuyển payload {masp, items:[{size, sl}]} => mảng dòng chi tiết cho "bảng kết quả"
+    const rows = [];
+    for (const it of pf.items) {
+      const masp = String(it.masp || '').toUpperCase();
+      for (const line of (it.items || [])) {
+        rows.push({
+          masp,
+          size: line.size,
+          sl: Number(line.sl || 0)
+        });
+      }
+    }
+
+    // Nếu trang của bạn dùng cấu trúc dữ liệu trung gian rồi render:
+    // - Ưu tiên dùng hàm có sẵn để đổ bảng (nếu có), ví dụ:
+    //   window.prefillBangKetQua(rows)
+    // - Nếu chưa có, ta tạo "bangKetQua" tối giản rồi gọi capNhatBangHTML (nếu có):
+    if (Array.isArray(window.bangKetQua)) {
+      // nếu có sẵn cấu trúc, nối thêm:
+      for (const r of rows) window.bangKetQua.push(r);
+      if (typeof window.capNhatBangHTML === 'function') {
+        window.capNhatBangHTML(window.bangKetQua);
+      }
+    } else if (typeof window.capNhatBangHTML === 'function') {
+      window.capNhatBangHTML(rows);
+      window.bangKetQua = rows;
+    } else {
+      // fallback: bắn event để mã hiện có bắt lấy nếu bạn đã cài listener
+      window.dispatchEvent(new CustomEvent('ccn-prefill', { detail: rows }));
+    }
+
+    // Dọn payload để tránh nạp lặp khi refresh
+    sessionStorage.removeItem('ccn_prefill_payload');
+  } catch(e) {
+    console.error('Prefill CCN 1v2 error:', e);
+  }
+})();
+</script>
+
+
 
     <script type="module" src="scripts/feedback.js"></script>
     <script type="module" src="scripts/scanner.js"></script>
