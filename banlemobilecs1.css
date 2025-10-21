@@ -310,6 +310,13 @@
   }
 }
 
+/* === GIỮ HIỂN THỊ ĐẦY ĐỦ CỘT KHI Ở DẠNG NGANG === */
+.bang-ngang-mode #bangketqua th,
+.bang-ngang-mode #bangketqua td {
+  display: table-cell !important;
+  visibility: visible !important;
+}
+
 /* Chỉ mở toàn bộ cột khi đang xem "dạng ngang" trên màn hình nhỏ */
 @media (max-width: 768px) {
   #bangketqua[data-mode="ngang"] th,
@@ -318,4 +325,3 @@
     visibility: visible !important;
   }
 }
-
