@@ -230,4 +230,72 @@ export function capNhatBangKetQuaTuDOM() {
     window.bangKetQua = bang;
 }
 
+// ====== HIỂN THỊ DẠNG NGANG (38–45) ======
+window.dangXemBangNgang = false;
+
+export function toggleBangKetQua() {
+  const bang = window.bangKetQua || {};
+  window.dangXemBangNgang = !window.dangXemBangNgang;
+
+  const btn = document.getElementById("btnChuyenBang");
+  if (!btn) return;
+
+  if (window.dangXemBangNgang) {
+    renderBangNgang(bang);
+    btn.textContent = "🔁 Dạng dọc";
+  } else {
+    capNhatBangHTML(bang);
+    btn.textContent = "🔁 Dạng ngang";
+  }
+}
+
+function renderBangNgang(bangKetQua) {
+  const tbody = document.querySelector("#bangketqua tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const thead = document.querySelector("#bangketqua thead");
+  if (thead) {
+    thead.innerHTML = `
+      <tr>
+        <th>Mã SP</th>
+        <th>Tên SP</th>
+        <th>38</th><th>39</th><th>40</th><th>41</th><th>42</th><th>43</th><th>44</th><th>45</th>
+        <th>Tổng SL</th>
+      </tr>`;
+  }
+
+  Object.values(bangKetQua).forEach(item => {
+    if (!item) return;
+    const tr = document.createElement("tr");
+    const arrSize = ["38","39","40","41","42","43","44","45"];
+    const arrSoLuong = {};
+
+    (item.sizes || []).forEach((sz, i) => {
+      const key = String(sz).trim();
+      const sl = parseFloat(item.soluongs[i]) || 0;
+      arrSoLuong[key] = (arrSoLuong[key] || 0) + sl;
+    });
+
+    let tong = 0;
+    const cellsSize = arrSize.map(sz => {
+      const val = arrSoLuong[sz];
+      if (val && val !== 0) {
+        tong += val;
+        return `<td>${val}</td>`;
+      }
+      return `<td></td>`;
+    }).join("");
+
+    tr.innerHTML = `
+      <td>${item.masp}</td>
+      <td>${item.tensp}</td>
+      ${cellsSize}
+      <td>${tong || ""}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
