@@ -234,32 +234,27 @@ export function capNhatBangKetQuaTuDOM() {
 window.dangXemBangNgang = false;
 
 export function toggleBangKetQua() {
-    // 1) đảm bảo có dữ liệu mới nhất từ DOM nếu global rỗng
-    if (!window.bangKetQua || Object.keys(window.bangKetQua).length === 0) {
-        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-            window.capNhatBangKetQuaTuDOM();
-        }
+    // luôn đồng bộ dữ liệu trước khi chuyển
+    if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+        window.capNhatBangKetQuaTuDOM();
     }
-
     const bang = window.bangKetQua || {};
     window.dangXemBangNgang = !window.dangXemBangNgang;
 
     const btn = document.getElementById("btnChuyenBang");
-    const body = document.body;
+    const table = document.getElementById("bangketqua");
 
     if (window.dangXemBangNgang) {
-        // 👉 Bật chế độ bảng ngang
-        body.classList.add("bang-ngang-mode");
+        // đặt cờ ngay trên bảng
+        table?.setAttribute("data-mode", "ngang");
         renderBangNgang(bang);
         if (btn) btn.textContent = "🔁 Dạng dọc";
     } else {
-        // 👉 Trở về bảng dọc
-        body.classList.remove("bang-ngang-mode");
+        table?.removeAttribute("data-mode");
         capNhatBangHTML(bang);
         if (btn) btn.textContent = "🔁 Dạng ngang";
     }
 
-    // 2) Cập nhật lại tổng
     if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(bang);
 }
 
