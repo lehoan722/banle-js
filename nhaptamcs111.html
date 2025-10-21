@@ -481,18 +481,15 @@
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
             <button id="ghivitri">✏️</button>
+            <button id="btnChuyenBang" class="btnChuyen">🔁chuyen</button>
         </div>
 
-        <div style="margin-bottom:6px;">
-  <button id="btnChuyenBang" class="btnChuyen">🔁chuyen</button>
-</div>
-
-
-
+        
         <div class="main">
             <div class="table-area">
 
-                <table id="bangketqua">
+                <table id="bangketqua" data-mode="doc">
+
                     <thead>
                         <tr>
                             <th>Mã hàng</th>
@@ -810,6 +807,7 @@
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             document.getElementById("quanlysizetheonhom").checked = true;
+            document.getElementById("nhapsize").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
