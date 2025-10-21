@@ -115,29 +115,37 @@ function resolveGroupKeyFromSP(sp) {
     return null;
 }
 
+// luuhoadon.js
 function requireManagedAtBranch(masp, branch) {
-    const upper = (s) => String(s || "").toUpperCase().trim();
+    const upper = s => String(s || "").toUpperCase().trim();
     const sp = window.sanPhamData?.[upper(masp)];
-    if (!sp) return false; // thiếu catalog → coi như không quản-size
+    const br = upper(branch);
 
-    // 1) Theo CHỦNG LOẠI: Giày/Dép luôn quản-size
+    // ❗Nếu chưa tra được catalog → giữ size (trả true)
+    if (!sp) return true;
+
+    // 1) Chủng loại GD => quản size
     if (upper(sp.chungloai || "") === "GD") return true;
 
-    // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả 2 cơ sở)
+    // 2) Cờ riêng của SP
     if (sp.quanlykichco === true) return true;
 
-    // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
-    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) return false;
+    // 3) Theo nhóm + địa điểm
+    if (window.danhMucNhom instanceof Map && window.danhMucNhom.size) {
+        const groupKey = resolveGroupKeyFromSP(sp); // manhom/nhomhang/...
+        if (groupKey) {
+            const nhom = window.danhMucNhom.get(upper(groupKey));
+            if (nhom && nhom.quanlysize) {
+                const dia = upper(nhom.diadiem || "ALL");
+                return dia === "ALL" || dia === br;
+            }
+        }
+    }
 
-    const groupKey = resolveGroupKeyFromSP(sp); // <-- CHỐT: lấy manhom/nhomhang linh hoạt
-    if (!groupKey) return false;
-
-    const nhom = window.danhMucNhom.get(groupKey);
-    if (!nhom || !nhom.quanlysize) return false;
-
-    const dia = String(nhom.diadiem || "ALL").toUpperCase().trim(); // 'ALL' | 'CS1' | 'CS2'
-    return dia === "ALL" || dia === upper(branch);
+    // ✅ Không rơi vào case nào khẳng định “không size” → vẫn coi là có size
+    return true;
 }
+
 
 async function handleSpecialSoHoaDon(sohd) {
     // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
