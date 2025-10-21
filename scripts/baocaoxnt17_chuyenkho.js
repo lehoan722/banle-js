@@ -198,6 +198,13 @@ async function patchVitri(outArr) {
     }
 }
 
+function renderOnlySizeNumber(instance, td, row, col, prop, value) {
+    const s = String(value ?? '');
+    const m = s.match(/\d{1,2}/);
+    td.textContent = m ? m[0] : '';           // chỉ hiện số 0 / 38..45
+    td.className = 'htDimmed';
+}
+
 // ===== 4) Render Handsontable + đồng bộ ảnh =====
 function renderHOT(rows) {
     const container = document.getElementById('hot');
@@ -210,11 +217,11 @@ function renderHOT(rows) {
         colHeaders: ['Mã SP', 'Size', 'CS1', 'CS2', 'Gợi ý', 'SL chuyển', 'Tổng', 'Vị trí CS1', 'Vị trí CS2'],
         columns: [
             { data: 'masp', readOnly: true },
-            { data: 'size', readOnly: true },
+            { data: 'size', readOnly: true, renderer: renderOnlySizeNumber }, // ⬅️ thay cho cột Size
             { data: 'cs1', readOnly: true, type: 'numeric' },
             { data: 'cs2', readOnly: true, type: 'numeric' },
             { data: 'goiy', readOnly: true },
-            { data: 'sl_chuyen', type: 'numeric' },       // cho phép sửa tay ở dòng size
+            { data: 'sl_chuyen', type: 'numeric' },
             { data: 'tong', readOnly: true, type: 'numeric' },
             { data: 'vitri_cs1', readOnly: true },
             { data: 'vitri_cs2', readOnly: true },
