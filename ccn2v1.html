@@ -567,7 +567,7 @@
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label> 
+                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
                             <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
@@ -612,7 +612,7 @@
             <button id="btn-logout">THOAT PM</button>
 
             <!-- Popup tìm khách hàng
-             <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
+             <button onclick="luuHoaDonccn2v1()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
@@ -870,10 +870,19 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
+
+            // Gọi nạp payload trễ sau khi app khởi tạo
+            setTimeout(() => {
+                if (typeof tryPrefillFromStorage === 'function') {
+                    tryPrefillFromStorage(true);
+                }
+            }, 400);
+
             // ======= Thêm vào đây ========= quanlysizetheogia
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             document.getElementById("quanlysizetheonhom").checked = true;
+            document.getElementById("nhapsize").checked = true;
             //document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
@@ -1148,6 +1157,132 @@
     <!-- Flash + Toast -->
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
+
+
+    <script>
+        function renderRowsDirectIntoTable(rows) {
+            // rows: [{ masp, size, sl }]
+            const table = document.getElementById('bangketqua');
+            if (!table) { console.warn('[CCN 2v1] Không tìm thấy #bangketqua'); return false; }
+            const tbody = table.querySelector('tbody');
+            if (!tbody) { console.warn('[CCN 2v1] Không tìm thấy tbody'); return false; }
+
+            // Xóa cũ rồi đổ mới
+            tbody.innerHTML = '';
+            for (const r of rows) {
+                const tr = document.createElement('tr');
+
+                // Thứ tự cột: Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
+                const cells = [
+                    r.masp || '',
+                    '',
+                    normSize(r.size),   // <— thay vì r.size
+                    String(r.sl ?? 0),
+                    '', '', '', '',
+                    '',
+                    '', ''
+                ];
+
+
+                for (const c of cells) {
+                    const td = document.createElement('td');
+                    td.textContent = c;
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+
+            // Nếu dự án bạn có sẵn hàm này (đã thấy bạn gọi nó ở đoạn dán từ clipboard)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+            // Nếu có hàm tính tổng:
+            if (typeof window.capNhatThongTinTong === 'function') {
+                window.capNhatThongTinTong(window.bangKetQua || {});
+            }
+            console.log('[CCN 2v1] Render trực tiếp vào bảng xong:', rows.length);
+            return true;
+        }
+    </script>
+
+    <script>
+        function normSize(x) {
+            // Trả về "38" từ "size 38", "SIZE 41", "41", ...
+            const s = String(x || '').trim();
+            const m = s.match(/\d{1,2}/);
+            return m ? m[0] : '';
+        }
+    </script>
+
+
+    <script>
+        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 2v1) */
+        function tryPrefillFromStorage(waitForRenderer = true, tries = 0) {
+            try {
+                const raw = localStorage.getItem('ccn_prefill_payload');
+                if (!raw) {
+                    console.log('[CCN 2v1] Không thấy payload trong localStorage.');
+                    return;
+                }
+
+                let pf;
+                try { pf = JSON.parse(raw); } catch (parseErr) {
+                    console.error('[CCN 2v1] Lỗi parse payload:', parseErr);
+                    return;
+                }
+                if (!pf || pf.dir !== '2v1') {
+                    console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
+                    return;
+                }
+
+                const rows = [];
+                for (const it of pf.items || []) {
+                    const masp = String(it.masp || '').toUpperCase();
+                    for (const line of (it.items || [])) {
+
+                        rows.push({ masp, size: normSize(line.size), sl: Number(line.sl || 0) });
+
+                    }
+                }
+                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
+
+                // Ưu tiên dùng hàm render “chính chủ” nếu có public trên window
+                const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
+
+                if (renderFn) {
+                    if (!Array.isArray(window.bangKetQua)) window.bangKetQua = [];
+                    window.bangKetQua.push(...rows);
+                    renderFn(window.bangKetQua);
+
+                    localStorage.removeItem('ccn_prefill_payload');
+                    console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
+                    return;
+                }
+
+                // Nếu chưa có renderFn: 1) nếu cho phép đợi & còn lượt thử -> retry
+                if (waitForRenderer && tries < 20) {
+                    console.log('[CCN 2v1] Chưa có hàm render, thử lại...', tries + 1);
+                    setTimeout(() => tryPrefillFromStorage(true, tries + 1), 300);
+                    return;
+                }
+
+                // 2) HẾT LƯỢT HOẶC KHÔNG MUỐN ĐỢI: dùng fallback render trực tiếp vào bảng
+                const ok = renderRowsDirectIntoTable(rows);
+                if (ok) {
+                    localStorage.removeItem('ccn_prefill_payload');
+                    console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
+                } else {
+                    console.warn('[CCN 2v1] Fallback render không thành công.');
+                }
+            } catch (e) {
+                console.error('[CCN 2v1] Lỗi nạp payload:', e);
+            }
+        }
+
+        // Gọi khi DOM sẵn sàng + sau load (bạn đã có sẵn 2 chỗ gọi này, cứ giữ nguyên)
+        document.addEventListener('DOMContentLoaded', () => tryPrefillFromStorage(true));
+        window.addEventListener('load', () => setTimeout(() => tryPrefillFromStorage(true), 600));
+    </script>
 
 
     <script type="module" src="scripts/feedback.js"></script>
