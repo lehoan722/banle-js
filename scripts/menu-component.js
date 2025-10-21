@@ -246,6 +246,10 @@
       ['45', '5X','60/ 275/ 200']
     ];
 
+    // Ảnh QR prebuilt cho các giá trị vòng cổ (38..45)
+    const SIZE_QR_IMAGES = {"38": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABRklEQVR4nO2YsY7DMAxD+Q79/19mB8lOckunyirsDEEscCCIUKKM9eH5+wQ4iIM4iE0RL0kivkcrQb5VujAt1COUIF6WH5UuTEsRgCRSEmalmkc3BL5ss5LHMsTrcTKYf4p0YVqqx1Qg+sb9L+nCtFIPrgLG3CtdmNYguHsDycLs7hcib9gze8S5kEcrhGVLFmDLU41d8wcIGVKDFKeeRxeE50SxJFKfeh4NELm/hEsie1gyml21C9PS/QXJIQJxvEZMF6bFCAsJp2O8q18GwqQ/iGljkdmkG9PvIsb+Qq4ukhnzNlpIF6ar8mn8IpqLXRempfNFkmQL5kbHvvlUtjOsX1lkz3ya/WM4JTMZupzUhemK+yCNm2Rr57w+n+EUA1vnD9uSnItL7nPU81iOeNyPjfzhlGXDfvq8C1vH4yAO4iB+D/EGTup8GitsGzIAAAAASUVORK5CYII=", "39": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABUElEQVR4nO2YsY4DIQxEZ075/19+V9iQJU2q9TqCaIuAXjEaYRjb6Mvv7xtwiEMcYlPiJUmO/8jxibnTR2mhH0IKV0yu5k4bpaWEbUnOz3OnWsfjxGtZIVkfL3AXpU/4kSdkcaSL0lI/hgOEJVw86aK00g+PpTHGl502SmsIsy4s4d3rxZE3wBLKl2aUTBelhUT4gE1Ej+HGrvnDCGOGE0xTanU0IF6ShJWVgrJ63pm9i9JKAkg3In1wuVV7Kb2bmP0c0c5hSVxDahelpecjS2ZUTDpCtY42BB63iIVAZFvXTunNROb1OBF+2xJnZr/5x5pPx9iDfGX282OZj+FpCbPx76K0+r0lJkGM7nbPfDrvjzgNWSRzdFimowvxOR/LVIo2zesrMdIp9rxoeyq9mSA627xQs5/bN39kbUQotYYtG96n6yzsOR2HOMQhfo/4B6B/gRobkXWjAAAAAElFTkSuQmCC", "40": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABUElEQVR4nO2YsY7DMAxDH4v8/y/zBsl22qVTFR1sD0FscCAEiaIk8+W8vgEO4iAOYlPEBaD4t3BcPV7KeHRBXAAjDBER4fXSh2llPBAYrJkr+VLGowviul+EkUH3JtyF6QMIg1ZiPMfjQUTmx4yA5ciO+dKFaWU8UjRGLOQpI32Y1iDepEJYo+kW82iFEBKSTKSKUD7W8miDULgOgbEFaNROM6a/RlwQvgMLK/3YlJEyHl0Q6U8jBsKa2jpkpAvTyvnFRreZRY4RRvvNLy8AS4BNCqqx5Y3rZfRZpR8Tnn23C9PKfmuZpaLCBrzjfJtNVc6xZXoQ9tTTT3+6ZtyRL12YVvaX+I/UMNlZ9vVjaz82NoWb+7HbfiyLZcprG6al8YijsRAKU7atH5tH0m2VvHG9+PZlevZCHl0QH/uxNbvAlvXy5j8e5HEQB3EQ/w/xB1Snfiw9TXkmAAAAAElFTkSuQmCC", "41": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABTUlEQVR4nO2YsZLEIAxDn3b2/39ZV9hw5Jqt1vgG0sQhKjQagYVlPjyvT4CLuIiLOBTxBlDURliWl5U+TAv1wAACC2PkudKHaaUeKDSRAUWZKrVhugNhCdnazWMf4v34kpGHMUp5dEGkHqGA8sWqSRemlXrMDSKDrGWlDdMahPznS9Fkqnm0QgiEFM6wjI71xxt+Y0fU1ni5jkcXxMyniiJ2TB6pOi+fjvND0xlDjfGrC9Pi/pIpffoDpyJdmFb7w4tH1sDehWltfzHIDnHsc/PHC8BClpEAW1mU82iAwOEKZ0Z32AOytLsw3ZBP5yQoU/uB58djPhYhTNZ6y+3CtLLf5jRMJmcfsXCqP0aHsbCxlrDah+kGhMirfob1A/3xQNjz3DDk3mnJ9GuIx3wsHo2r3LnnRzYYYeS8+EdE68N0Q/7YyOMiLuIi/h/iB/szjQvue5E2AAAAAElFTkSuQmCC", "42": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABUElEQVR4nO2YsY7DMAxDHw/5/1/mDXLkJEunKirsAi1ilwMjUBRtmQ+fv0+AjdiIjVgUcQAoni0LC5w7ZTy6IA4g3hthWYpijJ0yHl0QUQ8EBhkje+6U8WiJcPxIL/NogxD6gKjh8R5i9Eu0hiwETgOp49EFEfWYqrCs+04XpjUI+bEUjwTfhWkhImxDQsgggdJMWjH9OkJmNIfR+HLNIG2YViJ8lgMsgYTjqRvTbyOGPqwzooZavKo+Ln4apfHomtFDfZiWztuI6ZnR8ar54/TT0EP0TQplQX1kv5xGclYj/+vCtNZPATnm7JSKFtZHLJQNkwOmC9NCP523YaMQyKmTLkwr50uGj+vpVivmj9v9GCOmjgshLThfjttqusm0lS5MX6iHLJzOsWT+GAjb5LFOOE53C86Xed6PcBqG6jFx19PH437sNR4bsREb8XuIfyksfRRThvvLAAAAAElFTkSuQmCC", "43": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABUklEQVR4nO2ZMZJDIQxD9XZy/ytrC9vsZ5tUAWcg1Yd5hUaDbUGw3vx+3gGXuMQlDiVekkR8W8IYP3faKF3ohyxJSBjJwmOnj9KVfojyxBLyY6eN0h2EhbDZraMPYVwHY6uOXUTWSziAjLJghiddlK70owrEmGiqfyXTRekaAv9fYqaC6aJ0IYGEQGAwFseejyCQJEf7wMQClutoRCAcviAbrGiu/ZR+lMh8OlqGkVUrr9PRhah5SxwLpRvkbWaZji5EzRciimUCeQb2LkrXzhdbo4Pa5+aPl5STpQrFOWGqo3RRurBeqkrqdpvHhAPfP6Z8OryIl6ET+8f0PuZsq+hxy+2idCVhO5toxRCpbOql9NPE9D4W+cNUTj0wf0xEXmDSG5/YPybCHi9B1sn3l/HgQaZ010cfpSv9yAGDJFz5I/6JaaN0Q/7YqOMSl7jE9xG/WPWAHGAwWoYAAAAASUVORK5CYII=", "44": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABQklEQVR4nO2Yu47EMAwDOYf9/1/mFbKcR7NVFC3sFEFiTEEQlkwL68vz9w3YxCY2sSjxkSTiO1sJ8mmli9JCP8IJcs2XlS5KK/0QkufbzO8yHT0Jz9e7Ot4jPvcFdHOki9JSP4YDGCPhkyddlFb6ka3UOC0p1tGFwLcfZFavFyJv2MKRPeK/UEczIiIHw4Z0Y9n8QZhhodFKTXaQLkpr9wdybggEYUy9jiZEpHNHqcQOmV21l9KnicxjFhaO3mFOkayL0lIComOEEZwdaaa0ikCxOZDlo3IaKn2UmPcXZ0o3msfuevOPaz7NsYdHRlvPj8t87CgSPE/cLkpLz1s748dRNwvn02MapmnE2vkjnjlJ9nHj76L0DSIrxcDS+cPOoTpyeDKO3W5KHyYu8zFG/nDc57xgP73Owt7TsYlNbOL3iH/nr3kSb2CofQAAAABJRU5ErkJggg==", "45": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQgAAAEIAQAAAACLjVdSAAABTklEQVR4nO2YsRLDIAxDpV7//5fVQYZCl0xx3DNph4R7g04HtjCFi+d1BRziEIdoSrwBgH4X6D80V+ooTfQDAuwKIX/NlTJKM/0AAYUboKixkqajMKFLIkfHI8R7+xL13RipOqoQ4Uc4QNAnZvGkitJMP6KdQPTvu1JHaQ7B9WwQYUm+jipEnA8CkT/cZeI7T0ctgpAgUuDqRsP8YUKit4qdEIYpyTqqEIQgRTYlyIhm2TqKEN4YpAOIXZlVtZTS24lxn5Mvca6s4hLJqihNrR+xNbw7fMEdmayW0iRCM4nMUtKzns77reBsCnH0Wzacf/zm0xHIXEn6+bHNx8RRSanZcasozc1jUqQxjdttz3y6zcc8Nw0jGueP5YlJstC0v+wE46SIZOO8DkhjqE5EYo+2W03pzcQ2H3PuoCOI4uxUUfpA/nhQxyEOcYj/Iz49IYQLcN6G7wAAAABJRU5ErkJggg=="};
+
+
     // Guard chống chồng chéo Enter / scanner
     const ENTER_DELAY_MS = 180;
     const ENTER_WINDOW_MS = 180;
@@ -263,9 +267,9 @@
           border: '1px solid #d1d5db',
           boxShadow: '0 8px 24px rgba(0,0,0,.14)',
           borderRadius: '10px',
-          padding: '8px',
+          padding: '10px',
           minWidth: '260px',
-          maxHeight: '520px',
+          maxHeight: '620px',
           overflow: 'auto',
           fontSize: '16px',
           lineHeight: 1.35
@@ -282,8 +286,10 @@
         this.list = document.createElement('div');
         this.list.setAttribute('role', 'listbox');
         this.list.style.display = 'grid';
-        this.list.style.gridTemplateColumns = '1fr 1fr 1fr';
-        this.list.style.gap = '0';
+        this.list.style.gridTemplateColumns = 'auto 1fr 1fr 1fr';
+        this.list.style.columnGap = '24px';
+        this.list.style.rowGap = '18px';
+        this.list.style.alignItems = 'center';
         this.root.appendChild(this.list);
 
         // header row
@@ -296,6 +302,7 @@
           c.style.textAlign = 'center';
           return c;
         };
+        this.list.appendChild(mkHeadCell('QR'));
         this.list.appendChild(mkHeadCell('Vòng cổ'));
         this.list.appendChild(mkHeadCell('Size'));
         this.list.appendChild(mkHeadCell('48/50/52/54'));
@@ -306,12 +313,28 @@
           const makeCell = (txt) => {
             const c = document.createElement('div');
             c.textContent = txt;
-            c.style.padding = '8px 8px';
+            c.style.padding = '10px 8px'; // tăng padding cho hàng thoáng hơn
             c.style.textAlign = 'center';
             c.style.cursor = 'pointer';
             c.addEventListener('mousedown', (e) => e.preventDefault()); // giữ focus input
             return c;
           };
+
+          // QR cell (đứng trước cột Vòng cổ)
+          const qrWrap = document.createElement('div');
+          qrWrap.style.textAlign = 'center';
+          qrWrap.style.cursor = 'pointer';
+          const qrImg = document.createElement('img');
+          qrImg.src = SIZE_QR_IMAGES[neck];
+          qrImg.alt = `QR ${neck}`;
+          // Kích thước vật lý ≥ 1cm: đặt 1.2cm để dư biên khi màn hình thu phóng
+          qrImg.style.width = '1.2cm';
+          qrImg.style.height = '1.2cm';
+          qrImg.style.display = 'block';
+          qrImg.style.margin = '6px auto';
+          // giữ pixel gọn khi thu/phóng
+          qrImg.style.imageRendering = 'pixelated';
+          qrWrap.appendChild(qrImg);
 
           const rIdx = this.rows.length;
           const c1 = makeCell(neck);
@@ -319,15 +342,17 @@
           const c3el = makeCell(c3 || '');
 
           // click chọn dòng -> onPick('mouse')
-          [c1, c2, c3el].forEach(c => {
+          [qrWrap, c1, c2, c3el].forEach(c => {
             c.addEventListener('click', () => this.pick(rIdx, 'mouse'));
           });
 
+          // append theo thứ tự: QR | Vòng cổ | Size | 48/50/52/54
+          this.list.appendChild(qrWrap);
           this.list.appendChild(c1);
           this.list.appendChild(c2);
           this.list.appendChild(c3el);
 
-          this.rows.push({ neck, alpha, c3, cells: [c1, c2, c3el] });
+          this.rows.push({ neck, alpha, c3, cells: [qrWrap, c1, c2, c3el] });
         }
 
         document.body.appendChild(this.root);
@@ -349,6 +374,9 @@
         this.root.style.top = `${top}px`;
         this.root.style.left = `${left}px`;
         this.root.style.minWidth = `${Math.max(260, r.width)}px`;
+        // Cho phép popup mở rộng tối đa theo nội dung
+        this.root.style.maxWidth = 'none';
+        this.root.style.maxHeight = 'none';
         this.root.style.display = 'block';
         // KHÔNG auto-highlight bất kỳ dòng nào
       }
