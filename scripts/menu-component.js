@@ -263,11 +263,11 @@
           border: '1px solid #d1d5db',
           boxShadow: '0 8px 24px rgba(0,0,0,.14)',
           borderRadius: '10px',
-          padding: '6px',
+          padding: '8px',
           minWidth: '260px',
-          maxHeight: '320px',
+          maxHeight: '520px',
           overflow: 'auto',
-          fontSize: '14px',
+          fontSize: '16px',
           lineHeight: 1.35
         });
 
