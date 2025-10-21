@@ -256,12 +256,12 @@ export function toggleBangKetQua() {
     // 👉 chuyển sang NGANG
     table?.setAttribute("data-mode", "ngang");
     renderBangNgang(bang);
-    if (btn) btn.textContent = "🔁 Dạng dọc";
+    if (btn) btn.textContent = "🔁 dọc";
   } else {
     // 👉 chuyển về DỌC
     table?.setAttribute("data-mode", "doc");
     capNhatBangHTML(bang);
-    if (btn) btn.textContent = "🔁 Dạng ngang";
+    if (btn) btn.textContent = "🔁 ngang";
   }
 
   // (tùy chọn) force reflow để trình duyệt layout lại ngay
