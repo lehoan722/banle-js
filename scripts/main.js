@@ -212,9 +212,10 @@ export async function khoiTaoUngDung() {
       return;
     }
     window.sanPhamData = {};
-    data.forEach(sp => {
-      window.sanPhamData[sp.masp.toUpperCase()] = sp;
-    });
+dssp.forEach(sp => {
+  const key = String(sp.masp || "").toUpperCase().trim();
+  window.sanPhamData[key] = sp;
+});
     //alert('✅ Đã tải lại danh mục sản phẩm!');
   };
 
