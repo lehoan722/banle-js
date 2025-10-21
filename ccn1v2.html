@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>CCN1V2</title>
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -860,6 +860,20 @@
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('app-container').style.display = '';
 
+            // 1) nạp DM hàng hóa để có Tên/ĐVT/giá
+            try {
+                if (window.taiLaiSanPhamData) {
+                    await window.taiLaiSanPhamData();     // ⬅️ đợi cache DM sẵn sàng
+                }
+            } catch (e) { console.warn('Load DM thất bại:', e); }
+
+            // 2) rồi mới prefill từ chuyển kho
+            setTimeout(() => {
+                if (typeof tryPrefillFromStorage === 'function') {
+                    tryPrefillFromStorage(true);
+                }
+            }, 200);
+
             // Cập nhật lên giao diện bán hàng nếu có input manv/tennv
             document.getElementById('manv') && (document.getElementById('manv').value = nv.manv, document.getElementById('manv').readOnly = true);
             document.getElementById('tennv') && (document.getElementById('tennv').value = nv.tennv, document.getElementById('tennv').readOnly = true);
@@ -882,6 +896,8 @@
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
             document.getElementById("quanlysizetheonhom").checked = true;
+            document.getElementById("nhapsize").checked = true;
+
             //document.getElementById("quanlysizetheogia").checked = true;
 
             // ==============================
