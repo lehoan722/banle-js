@@ -228,22 +228,22 @@
       left.appendChild(g);
     });
 
-    
-// ===== Size Dropdown (3 cột) – áp dụng toàn hệ thống thông qua MenuComponent =====
+
+    // ===== Size Dropdown (3 cột) – áp dụng toàn hệ thống thông qua MenuComponent =====
     let __sizeDDInited = false;
     let __sizeDD;     // instance dropdown
     let __sizeInput;  // tham chiếu ô #size
 
     // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
     const SIZE_ROWS = [
-      [38, 'S', 48],
-      [39, 'M', ''],
-      [40, 'L', 50],
-      [41, 'XL', ''],
-      [42, '2X', 52],
-      [43, '3X', ''],
-      [44, '4X', 54],
-      [45, '5X', '']
+      ['38', 'S', '46 240 165'],
+      ['39', 'M', '48 245 170'],
+      ['40', 'L', '50 250 175'],
+      ['41', 'XL','52 255 180'],
+      ['42', '2X','54 260 185'],
+      ['43', '3X','56 265 190'],
+      ['44', '4X','58 270 195'],
+      ['45', '5X','60 275 200']
     ];
 
     // Guard chống chồng chéo Enter / scanner
@@ -392,7 +392,7 @@
         // Chọn bằng chuột trong dropdown -> ghi size + GIẢ LẬP Enter (delay, có guard)
         __sizeDD.onPick = (val, row, source) => {
           __sizeInput.value = String(val);
-          __sizeInput.dispatchEvent(new Event('input',  { bubbles: true }));
+          __sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
           __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
           __sizeInput.focus();
           __sizeInput.select();
@@ -405,7 +405,7 @@
               if (!__sizeInput.value || __sizeInput.value.trim() === '') return;
               if (__sizeInput.value !== plannedValue) return;
               const kd = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
-              const ku = new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true });
+              const ku = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true });
               __sizeInput.dispatchEvent(kd);
               __sizeInput.dispatchEvent(ku);
             }, ENTER_DELAY_MS);
@@ -464,7 +464,7 @@
         boot();
       }
     }
-// Nút refresh
+    // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
     refresh.addEventListener("click", async () => {
       try {
