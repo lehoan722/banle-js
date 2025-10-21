@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title></title>
+    <title>in ma vach cs1</title>
 
     <style>
         body {
@@ -342,6 +342,8 @@
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                 <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
+                <button class="btn" id="btnCreateNhaptamcs1">Tạo HĐ nhập</button>
+
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
                     <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
@@ -981,6 +983,21 @@
             const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
             if (b64.length <= 1800) {
+                window.open(`/nhapmoimtcs1.html#imp=${b64} `, '_blank');
+            } else {
+                const key = 'IMP_' + Date.now();
+                localStorage.setItem(key, json);
+                window.open(`/nhapmoimtcs1.html#impkey=${key} `, '_blank');
+            }
+        }
+
+         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
+        function openNhaptamcs1(items) {
+            const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+            const json = JSON.stringify(payload);
+            const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
+
+            if (b64.length <= 1800) {
                 window.open(`/nhaptamcs1.html#imp=${b64} `, '_blank');
             } else {
                 const key = 'IMP_' + Date.now();
@@ -997,6 +1014,16 @@
                 return;
             }
             openNhapFromItems(items);
+        });
+
+        // Click nút "Tạo HĐ nhập"
+        document.getElementById('btnCreateNhaptamcs1').addEventListener('click', () => {
+            const items = collectInvoiceItems();
+            if (!items.length) {
+                alert('Danh sách in rỗng hoặc chưa tick In.');
+                return;
+            }
+            openNhaptamcs1(items);
         });
 
 
