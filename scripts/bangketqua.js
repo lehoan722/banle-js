@@ -231,28 +231,76 @@ export function capNhatBangKetQuaTuDOM() {
 }
 
 export function toggleBangKetQua() {
-  // 1) đảm bảo có data mới nhất từ DOM nếu global rỗng
-  if (!window.bangKetQua || Object.keys(window.bangKetQua).length === 0) {
-    if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-      window.capNhatBangKetQuaTuDOM();
+    // 1) đảm bảo có data mới nhất từ DOM nếu global rỗng
+    if (!window.bangKetQua || Object.keys(window.bangKetQua).length === 0) {
+        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+            window.capNhatBangKetQuaTuDOM();
+        }
     }
-  }
 
-  const bang = window.bangKetQua || {};
-  window.dangXemBangNgang = !window.dangXemBangNgang;
+    const bang = window.bangKetQua || {};
+    window.dangXemBangNgang = !window.dangXemBangNgang;
 
-  const btn = document.getElementById("btnChuyenBang");
-  if (window.dangXemBangNgang) {
-    renderBangNgang(bang);
-    btn && (btn.textContent = "🔁 Dạng dọc");
-  } else {
-    capNhatBangHTML(bang);
-    btn && (btn.textContent = "🔁 Dạng ngang");
-  }
+    const btn = document.getElementById("btnChuyenBang");
+    if (window.dangXemBangNgang) {
+        renderBangNgang(bang);
+        btn && (btn.textContent = "🔁 Dạng dọc");
+    } else {
+        capNhatBangHTML(bang);
+        btn && (btn.textContent = "🔁 Dạng ngang");
+    }
 
-  // 2) luôn cập nhật lại khu thông tin hóa đơn sau khi đổi chế độ
-  if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(bang);
+    // 2) luôn cập nhật lại khu thông tin hóa đơn sau khi đổi chế độ
+    if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(bang);
 }
+
+function renderBangNgang(bangKetQua) {
+    const tbody = document.querySelector("#bangketqua tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const thead = document.querySelector("#bangketqua thead");
+    if (thead) {
+        // ⚠️ Không có cột Tên SP
+        thead.innerHTML = `
+      <tr>
+        <th>Mã SP</th>
+        <th>38</th><th>39</th><th>40</th><th>41</th>
+        <th>42</th><th>43</th><th>44</th><th>45</th>
+        <th>Tổng SL</th>
+      </tr>`;
+    }
+
+    const arrSize = ["38", "39", "40", "41", "42", "43", "44", "45"];
+
+    Object.values(bangKetQua).forEach(item => {
+        if (!item) return;
+        const tr = document.createElement("tr");
+
+        // gộp số lượng theo size
+        const mapSL = {};
+        (item.sizes || []).forEach((sz, i) => {
+            const key = String(sz).trim();
+            const sl = parseFloat(item.soluongs?.[i]) || 0;
+            mapSL[key] = (mapSL[key] || 0) + sl;
+        });
+
+        let tong = 0;
+        const cellsSize = arrSize.map(sz => {
+            const val = mapSL[sz];
+            if (val && val !== 0) { tong += val; return `<td>${val}</td>`; }
+            return `<td></td>`; // ô trống cho size = 0
+        }).join("");
+
+        tr.innerHTML = `
+      <td>${item.masp}</td>
+      ${cellsSize}
+      <td>${tong || ""}</td>
+    `;
+        tbody.appendChild(tr);
+    });
+}
+
 
 
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
