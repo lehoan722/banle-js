@@ -112,6 +112,14 @@ export async function khoiTaoUngDung() {
   document.getElementById("masp").focus();
   initAutocompleteRealtimeMasp();
 
+  // Gắn nút chuyển dạng bảng
+  const btnChuyen = document.getElementById("btnChuyenBang");
+  if (btnChuyen) {
+    import('./bangketqua.js').then(mod => {
+      btnChuyen.addEventListener("click", () => mod.toggleBangKetQua());
+    });
+  }
+
   // Helper: lấy mã gốc, bỏ hậu tố (xx) nếu có, chuẩn hoá IN HOA
   function layMaspGoc(str) {
     return String(str || "")
