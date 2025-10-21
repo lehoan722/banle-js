@@ -437,20 +437,22 @@ function onTaoPhieuChuyenCN() {
         return;
     }
 
-    // Lưu payload sang sessionStorage
+    // Lưu payload sang localStorage (để dùng được ở tab mới)
     const payload = {
         dir,                       // '1v2' hoặc '2v1'
         items,                     // [{masp, items:[{size, sl}]}]
         created_at: new Date().toISOString()
     };
-    sessionStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
+    localStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
+
+    // Log kiểm tra
+    console.log('[XNT17→CCN] Gửi payload:', { dir, count: items.length, sample: items[0] });
 
     // Mở đúng trang đích
     const url = (dir === '1v2') ? 'ccn1v2.html' : 'ccn2v1.html';
     window.open(url, '_blank');
+
 }
-
-
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
 // ==== ẢNH: copy từ XNT17 ====
