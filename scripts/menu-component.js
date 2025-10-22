@@ -388,7 +388,22 @@
         });
       }
 
+
+
       openFor(inputEl) {
+        // --- Đóng bàn phím di động nếu đang mở ---
+        try {
+          if (window.innerWidth < 900) { // chỉ áp dụng cho thiết bị nhỏ (mobile/tablet)
+            inputEl.blur(); // hủy focus để bàn phím ẩn đi
+            // sau 250ms focus lại để giữ luồng logic (#size vẫn là active)
+            setTimeout(() => {
+              if (isNhapSizeLienTiep()) inputEl.focus({ preventScroll: true });
+            }, 250);
+          }
+        } catch (e) {
+          console.warn('Hide keyboard failed:', e);
+        }
+
         const r = inputEl.getBoundingClientRect();
         const top = r.bottom + 8;
         const left = Math.min(r.left, window.innerWidth - Math.max(280, r.width));
@@ -529,7 +544,7 @@
         document.addEventListener('DOMContentLoaded', boot, { once: true });
       } else {
         boot();
-      }     
+      }
 
     }
     // Nút refresh
@@ -617,5 +632,6 @@
 
   global.MenuComponent = { mount, buildCsvUrl, clearCache };
 })(window);
+
 
 
