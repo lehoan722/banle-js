@@ -45,10 +45,8 @@ async function runReport() {
   const rows = (data || []).map(r => ([
     r.stt,
     r.sohd,
-    r.loaict,
     r.ngay ? new Date(r.ngay) : null,
-    r.dvt,
-    r.dauky,
+    r.dauky,       // giờ đã có đầu kỳ cho TỪNG DÒNG
     r.sl_nhap,
     r.sl_xuat,
     r.ton_chay,
@@ -82,37 +80,31 @@ function renderHOT(rows) {
       data: rows,
       rowHeaders: true,
       colHeaders: [
-        'STT', 'Chứng từ', 'Loại CT', 'Ngày giờ', 'ĐVT',
-        'Đầu kỳ', 'SL Nhập', 'SL Xuất', 'Tồn chạy', 'Khách hàng / NCC'
+        'STT', 'Chứng từ', 'Ngày giờ',
+        'Đầu kỳ', 'SL Nhập', 'SL Xuất', 'Tồn chạy',
+        'Khách hàng / NCC'
       ],
       columns: [
-        { type: 'numeric', readOnly: true, width: 60 },
-        { readOnly: true, renderer: linkSohdRenderer, width: 160 },
-        { readOnly: true, width: 160 },
-        { readOnly: true, renderer: dateVNRenderer, width: 170 },
-        { readOnly: true, width: 70 },
-        { readOnly: true, type: 'numeric', width: 90 },
-        { readOnly: true, type: 'numeric', width: 90 },
-        { readOnly: true, type: 'numeric', width: 90 },
-        { readOnly: true, type: 'numeric', width: 90 },
-        { readOnly: true, width: 240 }
+        { type: 'numeric', readOnly: true, width: 60 },            // STT
+        { readOnly: true, renderer: linkSohdRenderer, width: 160 },// Chứng từ
+        { readOnly: true, renderer: dateVNRenderer, width: 170 },  // Ngày giờ
+        { readOnly: true, type: 'numeric', width: 90 },            // Đầu kỳ (mỗi dòng)
+        { readOnly: true, type: 'numeric', width: 90 },            // SL Nhập
+        { readOnly: true, type: 'numeric', width: 90 },            // SL Xuất
+        { readOnly: true, type: 'numeric', width: 90 },            // Tồn chạy
+        { readOnly: true, width: 240 }                             // KH/NCC
       ],
+
       stretchH: 'all',
       licenseKey: 'non-commercial-and-evaluation', // hoặc license của bạn
       height: 'auto',
       afterRender: function () {
-        // làm nổi bật dòng "Mở sổ" (STT=0)
-        const ht = this; // <- instance
+        const ht = this;
         const count = ht.countRows ? ht.countRows() : 0;
         for (let r = 0; r < count; r++) {
           const stt = ht.getDataAtCell(r, 0);
           if (stt === 0) {
-            ht.setCellMeta(r, 0, 'className', 'htDimmed');
-            ht.setCellMeta(r, 1, 'className', 'htDimmed');
-            ht.setCellMeta(r, 2, 'className', 'htDimmed');
-            ht.setCellMeta(r, 3, 'className', 'htDimmed');
-            ht.setCellMeta(r, 4, 'className', 'htDimmed');
-            ht.setCellMeta(r, 9, 'className', 'htDimmed');
+            for (const c of [0, 1, 2, 7]) ht.setCellMeta(r, c, 'className', 'htDimmed');
           }
         }
       }
