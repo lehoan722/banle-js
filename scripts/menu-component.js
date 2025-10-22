@@ -14,6 +14,12 @@
   const CACHE_KEY_DATA = "MENU_CONFIG_CACHE_V1";
   const CACHE_KEY_TS = "MENU_CONFIG_CACHE_TS_V1";
 
+  function isNhapSizeLienTiep() {
+    const cb = document.querySelector('#nhapsize');
+    return !!(cb && cb.checked);
+  }
+
+
   function buildCsvUrl(sheetId, sheetName) {
     const base = "https://docs.google.com/spreadsheets/d/";
     // gviz CSV export
@@ -234,7 +240,7 @@
     let __sizeDD;     // instance dropdown
     let __sizeInput;  // tham chiếu ô #size
 
-    // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3]
+    // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3] 
     const SIZE_ROWS = [
       ['38', 'S', '46/ 240/ 165'],
       ['39', 'M', '48/ 245/ 170'],
@@ -257,6 +263,7 @@
 
     class SizeDropdown {
       constructor() {
+
         this.root = document.createElement('div');
         this.root.id = 'sizeDropdown';
         Object.assign(this.root.style, {
@@ -348,16 +355,17 @@
 
           // hiệu ứng tô sáng khi hover
           const rowEls = [qrWrap, c1, c2, c3el];
+          rowEls.forEach(cell => cell.style.transition = 'background 0.15s');
+
           rowEls.forEach(el => {
             el.addEventListener('mouseenter', () => {
-              rowEls.forEach(cell => cell.style.background = '#ded95eff');
-              
-
+              rowEls.forEach(cell => cell.style.background = '#ebeb64ff');
             });
             el.addEventListener('mouseleave', () => {
               rowEls.forEach(cell => cell.style.background = '');
             });
           });
+
 
           // append theo thứ tự: QR | Vòng cổ | Size | 48/50/52/54
           this.list.appendChild(qrWrap);
@@ -504,6 +512,18 @@
       } else {
         boot();
       }
+
+      // Nếu đang bật "nhập size liên tiếp": sau khi pick xong, đưa focus về #size và mở lại popup
+      if (isNhapSizeLienTiep()) {
+        // cho Enter giả lập (nếu có) chạy xong rồi mở lại
+        setTimeout(() => {
+          __sizeInput.focus({ preventScroll: true });
+          if (document.activeElement === __sizeInput && isNhapSizeLienTiep()) {
+            __sizeDD.openFor(__sizeInput);
+          }
+        }, ENTER_DELAY_MS + 10);
+      }
+
     }
     // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
