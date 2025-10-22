@@ -391,14 +391,12 @@
 
 
       openFor(inputEl) {
-        // --- Đóng bàn phím di động nếu đang mở ---
+        // --- Ẩn bàn phím mobile nhưng KHÔNG làm blur đóng popup ---
         try {
-          if (window.innerWidth < 900) { // chỉ áp dụng cho thiết bị nhỏ (mobile/tablet)
-            inputEl.blur(); // hủy focus để bàn phím ẩn đi
-            // sau 250ms focus lại để giữ luồng logic (#size vẫn là active)
-            setTimeout(() => {
-              if (isNhapSizeLienTiep()) inputEl.focus({ preventScroll: true });
-            }, 250);
+          if (window.innerWidth < 900 && isNhapSizeLienTiep()) {
+            __skipBlurOnce = true;        // báo cho blur-handler bỏ qua lần blur này
+            inputEl.blur();               // ẩn bàn phím
+            // KHÔNG focus lại ở đây để tránh vòng lặp đóng/mở
           }
         } catch (e) {
           console.warn('Hide keyboard failed:', e);
@@ -410,12 +408,11 @@
         this.root.style.top = `${top}px`;
         this.root.style.left = `${left}px`;
         this.root.style.minWidth = `${Math.max(260, r.width)}px`;
-        // Cho phép popup mở rộng tối đa theo nội dung
         this.root.style.maxWidth = 'none';
         this.root.style.maxHeight = 'none';
         this.root.style.display = 'block';
-        // KHÔNG auto-highlight bất kỳ dòng nào
       }
+
 
       close() { this.root.style.display = 'none'; }
       isOpen() { return this.root.style.display !== 'none'; }
@@ -536,8 +533,14 @@
 
         // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
         __sizeInput.addEventListener('blur', () => {
+          // Nếu blur xảy ra do ta chủ động blur() để ẩn bàn phím thì bỏ qua lần này
+          if (__skipBlurOnce) {
+            __skipBlurOnce = false;
+            return;
+          }
           setTimeout(() => __sizeDD.close(), 120);
         });
+
       };
 
       if (document.readyState === 'loading') {
