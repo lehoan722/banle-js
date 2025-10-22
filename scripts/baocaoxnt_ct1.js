@@ -192,20 +192,35 @@ function renderHOT(rows) {
   }
 }
 
-function linkSohdRenderer(instance, td, row, col, prop, value) {
+function linkSohdRenderer(instance, td, row, col, prop, value, cellProperties) {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
+
   const sohd = value || '';
+  td.style.cursor = '';
+  td.innerHTML = '';
+
   if (sohd && sohd !== 'Mở sổ') {
-    td.innerHTML = `<u>${sohd}</u>`;
-    td.style.color = '#1a73e8';
-    td.style.cursor = 'pointer';
-    td.onclick = (e) => {
+    // Tạo span chiếm toàn bộ ô để dễ click
+    const span = document.createElement('span');
+    span.textContent = sohd;
+    span.style.color = '#1a73e8';
+    span.style.textDecoration = 'underline';
+    span.style.cursor = 'pointer';
+    span.style.display = 'inline-block';
+    span.style.width = '100%';
+    span.style.height = '100%';
+
+    // Gắn sự kiện click trực tiếp vào vùng chữ
+    span.addEventListener('click', (e) => {
       e.stopPropagation();
       window.open(`/xemhoadon111.html?sohd=${encodeURIComponent(sohd)}`, '_blank');
-    };
+    });
+
+    td.appendChild(span);
+  } else {
+    td.textContent = sohd;
   }
 }
-
 
 // Xuất Excel
 function exportExcel() {
