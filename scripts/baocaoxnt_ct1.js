@@ -154,13 +154,33 @@ function renderHOT(rows) {
       afterRender: function () {
         const ht = this;
         const count = ht.countRows ? ht.countRows() : 0;
+
         for (let r = 0; r < count; r++) {
           const stt = ht.getDataAtCell(r, 0);
           if (stt === 0) {
             for (const c of [0, 1, 2, 7]) ht.setCellMeta(r, c, 'className', 'htDimmed');
           }
         }
+
+        // ✅ Gắn lại sự kiện click cho cột Chứng từ (cột 1)
+        const colIndex = 1;
+        const tdNodes = ht.rootElement.querySelectorAll(`.htCore tbody tr td:nth-child(${colIndex + 1})`);
+        tdNodes.forEach((td, idx) => {
+          const value = ht.getDataAtCell(idx, colIndex);
+          if (value && value !== 'Mở sổ') {
+            td.style.color = '#1a73e8';
+            td.style.cursor = 'pointer';
+            td.onclick = (e) => {
+              e.stopPropagation();
+              window.open(`/xemhoadon111.html?sohd=${encodeURIComponent(value)}`, '_blank');
+            };
+          } else {
+            td.onclick = null;
+            td.style.cursor = 'default';
+          }
+        });
       }
+
 
     });
   } else {
