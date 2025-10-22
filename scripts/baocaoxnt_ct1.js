@@ -72,6 +72,24 @@ async function runReport() {
   renderHOT(rows);
 }
 
+let hoverRow = null;
+let selectedRow = null;
+
+function paintRow(ht, row, className, on = true) {
+  if (row == null || row < 0) return;
+  const cols = ht.countCols ? ht.countCols() : 0;
+  for (let c = 0; c < cols; c++) {
+    const prev = ht.getCellMeta(row, c).className || '';
+    const has = prev.split(' ').includes(className);
+    if (on && !has) {
+      ht.setCellMeta(row, c, 'className', (prev + ' ' + className).trim());
+    } else if (!on && has) {
+      ht.setCellMeta(row, c, 'className', prev.split(' ').filter(x => x && x !== className).join(' '));
+    }
+  }
+}
+
+
 function renderHOT(rows) {
   const container = $('#grid');
 
@@ -98,6 +116,41 @@ function renderHOT(rows) {
       stretchH: 'all',
       licenseKey: 'non-commercial-and-evaluation', // hoặc license của bạn
       height: 'auto',
+
+      currentRowClassName: '',   // không dùng built-in, ta tự tô để giống 111
+      currentColClassName: '',
+
+      afterOnCellMouseOver: function (event, coords) {
+        const ht = this;
+        if (coords.row >= 0 && coords.row !== hoverRow) {
+          // bỏ màu hover cũ
+          if (hoverRow !== null) paintRow(ht, hoverRow, 'row-hover', false);
+          // tô hover mới
+          hoverRow = coords.row;
+          paintRow(ht, hoverRow, 'row-hover', true);
+          ht.render();
+        }
+      },
+
+      afterOnCellMouseOut: function () {
+        const ht = this;
+        if (hoverRow !== null) {
+          paintRow(ht, hoverRow, 'row-hover', false);
+          hoverRow = null;
+          ht.render();
+        }
+      },
+
+      afterSelection: function (r1) {
+        const ht = this;
+        // bỏ màu selected cũ
+        if (selectedRow !== null) paintRow(ht, selectedRow, 'row-selected', false);
+        // tô selected mới (lấy dòng đầu của vùng chọn)
+        selectedRow = r1 >= 0 ? r1 : null;
+        if (selectedRow !== null) paintRow(ht, selectedRow, 'row-selected', true);
+        ht.render();
+      },
+
       afterRender: function () {
         const ht = this;
         const count = ht.countRows ? ht.countRows() : 0;
@@ -112,6 +165,10 @@ function renderHOT(rows) {
     });
   } else {
     hot.loadData(rows);
+    hoverRow = null;
+    selectedRow = null;
+    hot.render();
+
   }
 }
 
