@@ -1,50 +1,87 @@
 <!-- FILE: public/baocaoxnt_ct1.html -->
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="utf-8" />
-  <title>Báo cáo XNT chi tiết (1 mã)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; }
-    .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
-    .toolbar input, .toolbar select, .toolbar button { padding:6px 8px; }
-    #summary { margin:6px 0 10px; font-weight:600; }
-    #grid { height: calc(100vh - 180px); }
-    .muted { color:#888; }
-  </style>
+    <meta charset="utf-8" />
+    <title>Báo cáo XNT chi tiết (1 mã)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .toolbar input,
+        .toolbar select,
+        .toolbar button {
+            padding: 6px 8px;
+        }
+
+        #summary {
+            margin: 6px 0 10px;
+            font-weight: 600;
+        }
+
+        #grid {
+            height: calc(100vh - 180px);
+        }
+
+        .muted {
+            color: #888;
+        }
+
+        /* tô màu khi rê chuột qua dòng */
+        .row-hover {
+            background: #eef6ff !important;
+        }
+
+        /* tô màu khi chọn dòng */
+        .row-selected {
+            background: #fff3cd !important;
+        }
+    </style>
 </head>
+
 <body>
-  <h3>Sổ chi tiết xuất-nhập-tồn (1 mã hàng)</h3>
+    <h3>Sổ chi tiết xuất-nhập-tồn (1 mã hàng)</h3>
 
-  <div class="toolbar">
-    <label>Mã SP:</label>
-    <input id="masp" placeholder="VD: SA05-K" style="width:160px" />
-    <button id="btnFind">🔍</button>
+    <div class="toolbar">
+        <label>Mã SP:</label>
+        <input id="masp" placeholder="VD: SA05-K" style="width:160px" />
+        <button id="btnFind">🔍</button>
 
-    <label>Từ:</label>
-    <input id="tu" type="datetime-local" />
-    <label>Đến:</label>
-    <input id="den" type="datetime-local" />
+        <label>Từ:</label>
+        <input id="tu" type="datetime-local" />
+        <label>Đến:</label>
+        <input id="den" type="datetime-local" />
 
-    <label>Địa điểm:</label>
-    <select id="diadiem">
-      <option value="">Tất cả</option>
-      <option value="CS1">CS1</option>
-      <option value="CS2">CS2</option>
-    </select>
+        <label>Địa điểm:</label>
+        <select id="diadiem">
+            <option value="">Tất cả</option>
+            <option value="CS1">CS1</option>
+            <option value="CS2">CS2</option>
+        </select>
 
-    <button id="btnRun">Xem</button>
-    <button id="btnExport">Xuất Excel</button>
-  </div>
+        <button id="btnRun">Xem</button>
+        <button id="btnExport">Xuất Excel</button>
+    </div>
 
-  <div id="summary" class="muted">Nhập bộ lọc và bấm “Xem”…</div>
-  <div id="grid"></div>
+    <div id="summary" class="muted">Nhập bộ lọc và bấm “Xem”…</div>
+    <div id="grid"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="/scripts/supabaseClient.js"></script>
-  <script type="module" src="/scripts/baocaoxnt_ct1.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module" src="/scripts/supabaseClient.js"></script>
+    <script type="module" src="/scripts/baocaoxnt_ct1.js"></script>
 </body>
+
 </html>
