@@ -108,13 +108,13 @@
   <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
 
 
-  <label><input type="date" id="tuNgay" placeholder="Từ ngày:" ></label>
+  <label><input type="date" id="tuNgay" placeholder="Từ ngày:"></label>
   <label><input type="date" id="denNgay" placeholder="Đến ngày:"></label>
   <label><input type="text" id="locNV" placeholder="Nhân viên:"></label>
   <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
   <label><input type="number" id="tienTu" style="width:80px" placeholder="Tiền từ:"></label>
   <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
-  <label> <input type="text" id="locSoHD"  placeholder="so hd:"></label>
+  <label> <input type="text" id="locSoHD" placeholder="so hd:"></label>
   <label><input type="text" id="locMasp" placeholder="tim nhiều Mã SP cách nhau dấu phẩy"> </label>
   <label style="user-select:none"> <input type="checkbox" id="chkMatchAll" checked> HĐ phải chứa tất cả mã </label>
 
@@ -138,7 +138,7 @@
   </select>
 
   <label>
-   
+
     <select id="loaiTongHop" style="min-width:120px">
       <option value="chitiet">Chi tiết từng hóa đơn</option>
       <option value="ngay">Tổng hợp theo ngày</option>
@@ -338,7 +338,7 @@
           let query = supabase
             .from('hoadon_banle')
             .select('*')
-            .order('created_at', { ascending: true })    // SỬA: dùng 'ngay'
+            .order('ngay', { ascending: true })    // SỬA: dùng 'ngay'
             .ilike('sohd', `${loai}_%`);
 
           if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);   // SỬA: dùng 'ngay'
@@ -371,7 +371,7 @@
         let query = supabase
           .from('hoadon_banle')
           .select('*')
-          .order('created_at', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
+          .order('ngay', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
 
         if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
         else if (tuNgay) query = query.gte('ngay', tuNgay);
@@ -600,13 +600,56 @@
       });
     }
 
-    window.onload = function () {
-      // Set ngày mặc định là hôm nay
+    window.onload = async function () {
+      const params = new URLSearchParams(window.location.search);
+      const sohdQ = (params.get('sohd') || '').trim();
+
+      // Nếu có ?sohd= từ trang báo cáo:
+      if (sohdQ) {
+        // điền số HĐ vào ô lọc
+        document.getElementById('locSoHD').value = sohdQ;
+
+        // đoán prefix để tick loại chứng từ tương ứng (bancs1/bancs2/bannvcs...):
+        const prefix = sohdQ.split('_')[0];  // vd: "bancs1"
+        const selectLoai = document.getElementById("loaiChungTu");
+        // clear lựa chọn cũ
+        Array.from(selectLoai.options).forEach(o => (o.selected = false));
+        // chọn đúng option nếu có
+        const opt = Array.from(selectLoai.options).find(o => o.value === prefix);
+        if (opt) opt.selected = true;
+
+        // lấy ngày của hóa đơn -> đặt từ/đến đúng ngày đó
+        try {
+          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+          const sb = createClient(
+            'https://rddjrmbyftlcvrgzlyby.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+          );
+          const { data } = await sb.from('hoadon_banle').select('ngay').eq('sohd', sohdQ).maybeSingle();
+          if (data?.ngay) {
+            const d = new Date(data.ngay);
+            const yyyy_mm_dd = d.toISOString().slice(0, 10);
+            document.getElementById('tuNgay').value = yyyy_mm_dd;
+            document.getElementById('denNgay').value = yyyy_mm_dd;
+          } else {
+            // fallback: để rỗng -> lọc theo số HĐ vẫn ra đúng 1 dòng
+            document.getElementById('tuNgay').value = '';
+            document.getElementById('denNgay').value = '';
+          }
+        } catch (e) { /* bỏ qua nếu lỗi nhỏ */ }
+
+        // chạy lọc
+        taiDanhSachHoaDon();
+        return;
+      }
+
+      // Không có ?sohd= -> mặc định ngày hôm nay
       const today = new Date().toISOString().slice(0, 10);
       document.getElementById('tuNgay').value = today;
       document.getElementById('denNgay').value = today;
       taiDanhSachHoaDon();
     };
+
     document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
 
     // DRAG POPUP (kéo popup)
