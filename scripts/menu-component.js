@@ -263,11 +263,6 @@
 
     class SizeDropdown {
       constructor() {
-        // trong constructor
-        this.inputEl = null;
-        this.stickyMode = false; // true khi #nhapsize đang bật
-        this._focusHandler = null;
-        this._blurHandler = null;
 
         this.root = document.createElement('div');
         this.root.id = 'sizeDropdown';
@@ -356,19 +351,6 @@
           // click chọn dòng -> onPick('mouse')
           [qrWrap, c1, c2, c3el].forEach(c => {
             c.addEventListener('click', () => this.pick(rIdx, 'mouse'));
-            // Nếu chế độ liên tiếp đang bật: tự focus lại ô size và mở popup lại
-if (this.stickyMode && this.inputEl) {
-  // đưa focus về ô size (không scroll)
-  this.inputEl.focus({ preventScroll: true });
-
-  // mở lại popup ngay khi focus đặt vào ô size
-  setTimeout(() => {
-    if (document.activeElement === this.inputEl && isNhapSizeLienTiep()) {
-      this.openFor(this.inputEl);
-    }
-  }, 0);
-}
-
           });
 
           // hiệu ứng tô sáng khi hover
@@ -407,47 +389,12 @@ if (this.stickyMode && this.inputEl) {
       }
 
       openFor(inputEl) {
-        
         const r = inputEl.getBoundingClientRect();
         const top = r.bottom + 8;
         const left = Math.min(r.left, window.innerWidth - Math.max(280, r.width));
         this.root.style.top = `${top}px`;
         this.root.style.left = `${left}px`;
         this.root.style.minWidth = `${Math.max(260, r.width)}px`;
-
-        this.inputEl = inputEl;
-this.stickyMode = isNhapSizeLienTiep();
-
-// Gắn listener focus/blur cho ô size để tự mở/đóng popup
-// (chỉ gắn 1 lần cho input hiện tại)
-if (!this._focusHandler) {
-  this._focusHandler = () => {
-    if (isNhapSizeLienTiep()) {
-      // nếu checkbox ON và con trỏ đang ở size → luôn mở popup
-      if (document.activeElement === this.inputEl) {
-        // tránh đệ quy: nếu đã mở rồi thì thôi
-        if (this.root.style.display !== 'block') {
-          this.openFor(this.inputEl);
-        }
-      }
-    }
-  };
-  this.inputEl.addEventListener('focus', this._focusHandler);
-}
-if (!this._blurHandler) {
-  this._blurHandler = () => {
-    // rời khỏi ô size → đóng popup
-    // delay 0 để cho click trên item không bị chặn
-    setTimeout(() => {
-      if (document.activeElement !== this.inputEl) {
-        this.close();
-      }
-    }, 0);
-  };
-  this.inputEl.addEventListener('blur', this._blurHandler);
-}
-
-
         // Cho phép popup mở rộng tối đa theo nội dung
         this.root.style.maxWidth = 'none';
         this.root.style.maxHeight = 'none';
@@ -468,7 +415,6 @@ if (!this._blurHandler) {
         if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx], source);
         this.close();
       }
-      
 
       findIndexByValue(v) {
         const i = this.rows.findIndex(r => r.neck === v);
@@ -513,6 +459,19 @@ if (!this._blurHandler) {
               __sizeInput.dispatchEvent(ku);
             }, ENTER_DELAY_MS);
           }
+
+          // Nếu đang bật "nhập size liên tiếp": sau khi pick xong, đưa focus về #size và MỞ LẠI popup
+          if (isNhapSizeLienTiep()) {
+            // Chờ qua thời điểm blur-đóng (120ms) và Enter mô phỏng (ENTER_DELAY_MS) để tránh mở–đóng chéo
+            const OPEN_BACK_DELAY = Math.max(ENTER_DELAY_MS, 130) + 40; // ví dụ: 180 + 40 = 220ms
+            setTimeout(() => {
+              __sizeInput.focus({ preventScroll: true });
+              if (document.activeElement === __sizeInput && isNhapSizeLienTiep()) {
+                __sizeDD.openFor(__sizeInput);
+              }
+            }, OPEN_BACK_DELAY);
+          }
+
         };
 
         // Từ #masp nhấn Enter -> focus #size + mở dropdown
@@ -528,8 +487,13 @@ if (!this._blurHandler) {
         }
 
         // Focus/Click vào #size -> mở dropdown
-        __sizeInput.addEventListener('focus', () => __sizeDD.openFor(__sizeInput));
-        __sizeInput.addEventListener('click', () => __sizeDD.openFor(__sizeInput));
+        __sizeInput.addEventListener('focus', () => {
+          if (isNhapSizeLienTiep()) __sizeDD.openFor(__sizeInput);
+        });
+        __sizeInput.addEventListener('click', () => {
+          if (isNhapSizeLienTiep()) __sizeDD.openFor(__sizeInput);
+        });
+
 
         // Khi gõ phím trong #size: KHÔNG pick bằng Enter nữa
         __sizeInput.addEventListener('keydown', (e) => {
@@ -565,7 +529,8 @@ if (!this._blurHandler) {
         document.addEventListener('DOMContentLoaded', boot, { once: true });
       } else {
         boot();
-      }
+      }     
+
     }
     // Nút refresh
     const refresh = el("button", { class: "mc-btn mc-refresh", title: "Làm mới menu (bỏ qua cache)" }, "🔄");
@@ -652,4 +617,5 @@ if (!this._blurHandler) {
 
   global.MenuComponent = { mount, buildCsvUrl, clearCache };
 })(window);
+
 
