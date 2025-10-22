@@ -125,7 +125,7 @@ function linkSohdRenderer(instance, td, row, col, prop, value, cellProperties) {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
   const sohd = value || '';
   if (sohd && sohd !== 'Mở sổ') {
-    td.innerHTML = `<a href="/xemhoadonT.html?sohd=${encodeURIComponent(sohd)}" target="_blank">${sohd}</a>`;
+    td.innerHTML = `<a href="/xemhoadon111.html?sohd=${encodeURIComponent(sohd)}" target="_blank">${sohd}</a>`;
   }
 }
 
