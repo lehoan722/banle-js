@@ -89,7 +89,7 @@ function renderHOT(rows) {
         { type: 'numeric', readOnly: true, width: 60 },
         { readOnly: true, renderer: linkSohdRenderer, width: 160 },
         { readOnly: true, width: 160 },
-        { readOnly: true, type: 'date', dateFormat: 'DD/MM/YYYY HH:mm', correctFormat: true, width: 160 },
+        { readOnly: true, renderer: dateVNRenderer, width: 170 },
         { readOnly: true, width: 70 },
         { readOnly: true, type: 'numeric', width: 90 },
         { readOnly: true, type: 'numeric', width: 90 },
@@ -100,34 +100,43 @@ function renderHOT(rows) {
       stretchH: 'all',
       licenseKey: 'non-commercial-and-evaluation', // hoặc license của bạn
       height: 'auto',
-      afterRender() {
+      afterRender: function () {
         // làm nổi bật dòng "Mở sổ" (STT=0)
-        const count = hot.countRows();
+        const ht = this; // <- instance
+        const count = ht.countRows ? ht.countRows() : 0;
         for (let r = 0; r < count; r++) {
-          const stt = hot.getDataAtCell(r, 0);
+          const stt = ht.getDataAtCell(r, 0);
           if (stt === 0) {
-            hot.setCellMeta(r, 0, 'className', 'htDimmed');
-            hot.setCellMeta(r, 1, 'className', 'htDimmed');
-            hot.setCellMeta(r, 2, 'className', 'htDimmed');
-            hot.setCellMeta(r, 3, 'className', 'htDimmed');
-            hot.setCellMeta(r, 4, 'className', 'htDimmed');
-            hot.setCellMeta(r, 9, 'className', 'htDimmed');
+            ht.setCellMeta(r, 0, 'className', 'htDimmed');
+            ht.setCellMeta(r, 1, 'className', 'htDimmed');
+            ht.setCellMeta(r, 2, 'className', 'htDimmed');
+            ht.setCellMeta(r, 3, 'className', 'htDimmed');
+            ht.setCellMeta(r, 4, 'className', 'htDimmed');
+            ht.setCellMeta(r, 9, 'className', 'htDimmed');
           }
         }
       }
+
     });
   } else {
     hot.loadData(rows);
   }
 }
 
-function linkSohdRenderer(instance, td, row, col, prop, value, cellProperties) {
+function linkSohdRenderer(instance, td, row, col, prop, value) {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
   const sohd = value || '';
   if (sohd && sohd !== 'Mở sổ') {
-    td.innerHTML = `<a href="/xemhoadon111.html?sohd=${encodeURIComponent(sohd)}" target="_blank">${sohd}</a>`;
+    td.innerHTML = `<u>${sohd}</u>`;
+    td.style.color = '#1a73e8';
+    td.style.cursor = 'pointer';
+    td.onclick = (e) => {
+      e.stopPropagation();
+      window.open(`/xemhoadon111.html?sohd=${encodeURIComponent(sohd)}`, '_blank');
+    };
   }
 }
+
 
 // Xuất Excel
 function exportExcel() {
@@ -137,9 +146,19 @@ function exportExcel() {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   XLSX.utils.book_append_sheet(wb, ws, 'XNT_CT_1MA');
   const { masp, tu, den } = getFilters();
-  const fname = `xnt_chitiet_${masp}_${tu?.slice(0,10)}_${den?.slice(0,10)}.xlsx`;
+  const fname = `xnt_chitiet_${masp}_${tu?.slice(0, 10)}_${den?.slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, fname);
 }
+
+function dateVNRenderer(instance, td, row, col, prop, value) {
+  Handsontable.renderers.TextRenderer.apply(this, arguments);
+  if (!value) { td.textContent = ''; return; }
+  const d = new Date(value);
+  const z = (n) => String(n).padStart(2, '0');
+  const s = `${z(d.getDate())}/${z(d.getMonth() + 1)}/${d.getFullYear()} ${z(d.getHours())}h${z(d.getMinutes())}`;
+  td.textContent = s;
+}
+
 
 // Sự kiện
 $('#btnRun').addEventListener('click', runReport);
@@ -153,10 +172,10 @@ $('#btnExport').addEventListener('click', exportExcel);
 });
 
 // Gợi ý: gán mặc định khoảng thời gian hôm nay
-(function initDefaults(){
+(function initDefaults() {
   const now = new Date();
-  const start = new Date(now); start.setHours(0,0,0,0);
-  const end = new Date(now);   end.setHours(23,59,59,999);
-  $('#tu').value = new Date(start.getTime() - 1000*60*60*24*30).toISOString().slice(0,16); // mặc định lùi 30 ngày
-  $('#den').value = end.toISOString().slice(0,16);
+  const start = new Date(now); start.setHours(0, 0, 0, 0);
+  const end = new Date(now); end.setHours(23, 59, 59, 999);
+  $('#tu').value = new Date(start.getTime() - 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 16); // mặc định lùi 30 ngày
+  $('#den').value = end.toISOString().slice(0, 16);
 })();
