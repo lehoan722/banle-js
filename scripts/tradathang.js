@@ -3,15 +3,10 @@ const IMG_BASE = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/pub
 const SEARCH_PAGE = 'timkiemhanghoa222.html'; // mở tab mới với ?masp=...
 
 
-// ===== Khởi tạo Supabase đúng cách cho UMD v2 =====
+// ==== Supabase client (giống xemhoadon111) ====
 const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-
-// 👉 Ở UMD, namespace chuẩn là window.Supabase
-if (!window.supabase) {
-  window.supabase = window.Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
-
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /** ========= TIỆN ÍCH ========= **/
 function showToast(msg, type='info') {
