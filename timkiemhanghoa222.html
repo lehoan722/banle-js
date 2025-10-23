@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8" />
     <title>Tìm kiếm thông tin hàng hóa</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
@@ -349,6 +350,35 @@
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
+
+        /* Ngăn iOS Safari auto-zoom khi focus input bằng cách đảm bảo font-size >= 16px */
+#popupDatHang input,
+#popupDatHang textarea,
+#popupDatHang select,
+#popupDatHang button {
+  font-size: 16px;        /* quan trọng: >=16px */
+  line-height: 1.25;
+}
+
+/* Nếu có ô tìm nhanh trong popup chọn size/màu */
+#popupPickSize input#sizeFilter,
+#popupPickMau input {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+html, body, #popupDatHang {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation; /* hạn chế double-tap zoom trên mobile */
+}
+
+#popupDatHang {
+  position: fixed;
+  inset: 0;
+  height: 100vh;       /* luôn chiếm toàn màn hình */
+  overflow: auto;      /* cuộn bên trong nếu nội dung dài */
+}
+
     </style>
 
 
