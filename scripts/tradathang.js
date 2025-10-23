@@ -187,13 +187,15 @@ function renderTable() {
 }
 
 /** ========= LƯU DỮ LIỆU (trahang + nvtrahang) ========= **/
+/** ========= LƯU DỮ LIỆU (trahang + nvtrahang + diadiem) ========= **/
 async function saveData() {
   if (!hot) return;
   const nowRows = hot.getSourceData();
   const oldMap = new Map(originalRows.map(r => [r.sohd, r.trahang || '']));
 
   const tennv = (localStorage.getItem('tennv') || '').trim();
-  if (!tennv) { showToast('⚠️ Chưa đăng nhập', 'warn'); return; }
+  const diadiem = (localStorage.getItem('diadiem') || '').trim();
+  if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập hoặc thiếu địa điểm', 'warn'); return; }
 
   const changed = [];
   for (const r of nowRows) {
@@ -208,7 +210,8 @@ async function saveData() {
       changed.push({
         sohd,
         trahang: newVal || null,
-        nvtrahang: tennv
+        nvtrahang: tennv,
+        diadiem: diadiem   // 🔹 thêm dòng này
       });
     }
   }
@@ -223,9 +226,6 @@ async function saveData() {
 
   if (error) {
     console.error(error);
-    // Một số lỗi thường gặp:
-    // - "UPSERT requires an updateable view" hoặc thiếu unique(sohd) -> chạy SQL ở bước 1
-    // - Null value in column sohd -> có dòng thiếu sohd -> đã lọc ở trên
     showToast('❌ Lưu dữ liệu thất bại: ' + (error.message || ''), 'warn');
     return;
   }
@@ -233,7 +233,10 @@ async function saveData() {
   // cập nhật snapshot gốc + hiển thị nvtrahang trên bảng
   for (const u of changed) {
     const i = originalRows.findIndex(x => x.sohd === u.sohd);
-    if (i >= 0) originalRows[i].trahang = u.trahang, originalRows[i].nvtrahang = u.nvtrahang;
+    if (i >= 0) {
+      originalRows[i].trahang = u.trahang;
+      originalRows[i].nvtrahang = u.nvtrahang;
+    }
   }
   const cur = hot.getSourceData();
   for (const u of changed) {
