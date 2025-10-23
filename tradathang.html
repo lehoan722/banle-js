@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.1.0/dist/handsontable.full.min.css">
   <script src="https://cdn.jsdelivr.net/npm/handsontable@13.1.0/dist/handsontable.full.min.js"></script>
 
-  <!-- Supabase (UMD) -->
+  <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 
   <style>
@@ -22,19 +22,18 @@
     .toolbar input[type="date"],
     .toolbar input[type="text"],
     .toolbar select {
-      height:36px; padding:6px 10px; border:1px solid var(--bd); border-radius:8px; outline:none; font-size:16px;
-      background:#fff;
+      height:36px; padding:6px 10px; border:1px solid var(--bd); border-radius:8px; outline:none; font-size:16px; background:#fff;
     }
     .btn { height:36px; border-radius:8px; border:1px solid var(--blue); background:var(--blue); color:#fff; font-weight:700; padding:0 14px; cursor:pointer; }
     .btn.secondary { background:#e3f2fd; color:#0b60b3; border-color:#90caf9; }
     .btn:disabled { opacity:.5; cursor:not-allowed; }
     #grid { margin-top:12px; background:#fff; border:1px solid #e5ecff; border-radius:12px; overflow:hidden; }
     .foot { display:flex; gap:10px; justify-content:flex-end; margin:12px 0 24px; }
+
     /* Popup ảnh */
     #imgModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:4000; }
     #imgModal .card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:12px; overflow:hidden; width:min(92vw, 720px); box-shadow:0 12px 40px rgba(0,0,0,.25); }
     #imgModal .head { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#f7f9ff; border-bottom:1px solid #eef3ff; }
-    #imgModal .head b { color:#333; }
     #imgModal .body { padding:12px; max-height:76vh; overflow:auto; }
     #imgModal img { max-width:100%; height:auto; border-radius:8px; display:block; margin:auto; }
     #imgModal .cap { text-align:center; padding:8px 12px 12px; color:#333; }
@@ -44,13 +43,21 @@
     /* iOS chống auto-zoom khi focus input */
     input, select, button { font-size:16px; }
 
-    /* màu dòng theo trạng thái (tùy thích) */
-    .row-ok    { background: #e8f5e9 !important; }
-    .row-het   { background: #fff8e1 !important; }
+    /* màu dòng theo trạng thái */
+    .row-ok  { background: #e8f5e9 !important; }
+    .row-het { background: #fff8e1 !important; }
+
+    /* Đăng nhập overlay */
+    #loginOverlay { position:fixed; inset:0; background:#fff; display:none; align-items:center; justify-content:center; z-index:99999; }
+    #loginBox { background:#f9f9f9; padding:24px; border-radius:10px; width:min(92vw, 380px); box-shadow:0 8px 30px rgba(0,0,0,.15); }
+    #loginBox h3 { margin-top:0; color:#333; }
+    #loginBox input, #loginBox select, #loginBox button { width:100%; margin:6px 0; padding:8px 10px; border:1px solid #cfe1ff; border-radius:8px; }
+    #loginBox button { background:#1976d2; color:#fff; font-weight:700; cursor:pointer; }
+    #loginBox small { color:#666; }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" id="appRoot" style="display:none;">
     <h2>TRA DAT HANG</h2>
 
     <div class="toolbar">
@@ -108,9 +115,33 @@
         </div>
       </div>
     </div>
-
   </div>
-  
+
+  <!-- Đăng nhập (tái dùng mô hình trang bán lẻ CS1) -->
+  <div id="loginOverlay">
+    <div id="loginBox">
+      <h3>Đăng nhập hệ thống</h3>
+      <label>Cơ sở</label>
+      <select id="login-cs">
+        <option value="cs1" selected>Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+
+      <label>Email</label>
+      <input id="login-email" placeholder="Email" value="khohangcs1@gmail.com">
+
+      <label>Mã nhân viên</label>
+      <input id="login-manv" type="text" placeholder="VD: HOAN" autocomplete="off">
+
+      <label>Mật khẩu</label>
+      <input id="login-password" type="password" placeholder="••••••••">
+
+      <button id="btnLogin">Đăng nhập</button>
+      <div id="loginMsg" style="color:#c62828; font-weight:600;"></div>
+      <small>Email dùng cho Supabase; Mã NV sẽ tra bảng nhân viên để lấy tên NV.</small>
+    </div>
+  </div>
+
   <script src="scripts/tradathang.js"></script>
 </body>
 </html>
