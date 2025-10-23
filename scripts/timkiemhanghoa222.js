@@ -63,33 +63,31 @@ function normCode(s) {
 
 // === CHẾ ĐỘ QUÉT 1 MÃ → ĐẨY VÀO TEXTAREA & TÌM NGAY (CẮT HẬU TỐ _SIZE) ===
 function pushCodeToTextareaAndSearch(raw) {
-    // Nếu trang có khai báo stripSizeSuffixAtEnd ở HTML, dùng nó để cắt hậu tố _SIZE ở cuối
     const strip = (typeof window !== 'undefined' && typeof window.stripSizeSuffixAtEnd === 'function')
         ? window.stripSizeSuffixAtEnd
         : function (s) { return String(s || ''); };
     const code = normCode(strip(raw));
     if (!code) return;
 
-    // feedback giữ nguyên để người dùng biết đã quét
+    // feedback nhẹ để biết đã quét
     showFlash();
     try { haptic(70); } catch (_) {}
     try { playSuccessBeep(); } catch (_) {}
     try { showToast(`✅ Đã quét ${code}`, 'info'); } catch (_) {}
 
-    // Ghi đè textarea để chỉ tìm 1 mã
-    const ta = document.getElementById('bulkTextarea');
-    if (ta) {
-        ta.value = code;
-        ta.scrollTop = 0;
-    }
-    // Đồng bộ vào ô nhập 1 mã (nếu có)
+    // ✅ Chỉ đẩy vào ô nhập mã
     const ip = document.getElementById('maspInput');
-    if (ip) ip.value = code;
+    if (ip) {
+        ip.value = code;
+        ip.focus();
+        try { ip.select(); } catch(_) {}
+    }
 
-    // Đóng scanner (nếu có) và tìm ngay
+    // Đóng scanner (nếu đang mở) và tìm ngay
     try { closeScanner(); } catch (_) {}
     if (typeof triggerSearch === 'function') triggerSearch();
 }
+
 
 //Gọi rung trong addToScanBuffer + Flash + Toast
 function addToScanBuffer(raw) {
@@ -241,7 +239,7 @@ async function triggerSearch(_masp = null) {
 
     document.getElementById("maspInput").select();
 
-    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên
+    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên 
     const bulkCodes = parseBulkMasp(); // [ '11376-GDM', ... ]
     let candidates = [];
 
@@ -855,36 +853,8 @@ window.openScanner = async function () {
         video.style.maxHeight = '62vh';
         video.style.borderRadius = '10px';
         video.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)';
-    }
-
-    // ====== PANEL BUFFER TRONG GIAO DIỆN QUÉT ======
-    let panel = document.getElementById('scanSidePanel');
-    if (!panel) {
-        panel = document.createElement('div');
-        panel.id = 'scanSidePanel';
-        panel.style.cssText = `
-    position:absolute; right:10px; top:10px;
-    width:min(42vw, 300px); max-height:70vh; overflow:auto;
-    background:#ffffffee; backdrop-filter:saturate(180%) blur(6px);
-    border:1px solid #cfd8dc; border-radius:10px; padding:10px;
-    z-index:10001; box-shadow:0 6px 22px rgba(0,0,0,.15);
-  `;
-        panel.innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
-    <div id="scanBufferBox" style="max-height:40vh; overflow:auto; border:1px dashed #90caf9; border-radius:6px; padding:6px; background:#fff"></div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="scanClearBtn"  style="background:#ffeaea; color:#c62828; border:1px solid #ef9a9a; padding:8px 10px; border-radius:6px; cursor:pointer;">Xoá hết</button>
-      <button id="scanCloseBtn"  style="background:#eceff1; color:#37474f; border:1px solid #cfd8dc; padding:8px 10px; border-radius:6px; cursor:pointer;">Đóng</button>
-      <button id="scanCommitBtn" style="flex:1; background:#1976d2; color:#fff; border:none; padding:8px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Tìm kiếm</button>
-    </div>
-  `;
-        modal.appendChild(panel);
-
-        panel.querySelector('#scanCommitBtn').onclick = flushScanBufferToTextareaAndSearch;
-        panel.querySelector('#scanClearBtn').onclick = clearScanBuffer;
-        panel.querySelector('#scanCloseBtn').onclick = () => { closeScanner(); /* KHÔNG xoá buffer */ };
-    }
-    renderScanBuffer();
+    } 
+   
 
 
     const status = document.getElementById('scannerStatus');
