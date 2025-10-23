@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
 window.dangNhap = async function () {
@@ -10,7 +11,7 @@ window.dangNhap = async function () {
     if (!email || !password) {
         status.textContent = "Nhập đầy đủ email và mật khẩu!";
         return;
-    } 
+    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -52,6 +53,127 @@ window.closePopupSearch = function () {
 document.getElementById('popupSearchInput').addEventListener('input', function () {
     searchPopup(this.value.trim());
 });
+
+// ====== BUFFER QUÉT MÃ (giữ qua các lần đóng/mở) ======
+window.scanBuffer = window.scanBuffer || []; // không xóa khi đóng modal
+
+function normCode(s) {
+    return (s || "").trim().toUpperCase();
+}
+
+// === CHẾ ĐỘ QUÉT 1 MÃ → ĐẨY VÀO TEXTAREA & TÌM NGAY (CẮT HẬU TỐ _SIZE) ===
+function pushCodeToTextareaAndSearch(raw) {
+    const strip = (typeof window !== 'undefined' && typeof window.stripSizeSuffixAtEnd === 'function')
+        ? window.stripSizeSuffixAtEnd
+        : function (s) { return String(s || ''); };
+    const code = normCode(strip(raw));
+    if (!code) return;
+
+    // feedback nhẹ để biết đã quét
+    showFlash();
+    try { haptic(70); } catch (_) {}
+    try { playSuccessBeep(); } catch (_) {}
+    try { showToast(`✅ Đã quét ${code}`, 'info'); } catch (_) {}
+
+    // ✅ Chỉ đẩy vào ô nhập mã
+    const ip = document.getElementById('maspInput');
+    if (ip) {
+        ip.value = code;
+        ip.focus();
+        try { ip.select(); } catch(_) {}
+    }
+
+    // Đóng scanner (nếu đang mở) và tìm ngay
+    try { closeScanner(); } catch (_) {}
+    if (typeof triggerSearch === 'function') triggerSearch();
+}
+
+
+//Gọi rung trong addToScanBuffer + Flash + Toast
+function addToScanBuffer(raw) {
+    const code = normCode(raw);
+    if (!code) return false;
+
+    showFlash();
+
+    if (!window.scanBuffer.includes(code)) {
+        window.scanBuffer.unshift(code);
+        renderScanBuffer();
+        showToast(`✅ Đã quét ${code}`, 'info');
+        haptic(70);
+        playSuccessBeep();   // ✅ beep khi mã mới
+        return true;
+    } else {
+        showToast(`⚠️ Mã ${code} đã tồn tại`, 'warn');
+        haptic([40, 80, 40]);
+        playAlertBeep();     // ⚠️ beep cảnh báo khi trùng
+        return false;
+    }
+}
+
+
+// ====== FEEDBACK QUÉT ======
+function showFlash() {
+    const flash = document.getElementById('flashOverlay');
+    if (!flash) return;
+    flash.style.opacity = '1';
+    setTimeout(() => { flash.style.opacity = '0'; }, 120); // 120ms chớp
+}
+
+function showToast(msg, type = 'info') {
+    const toast = document.getElementById('toastMsg');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.style.background = type === 'warn' ? 'rgba(211,47,47,0.9)' : 'rgba(25,118,210,0.9)';
+    toast.style.opacity = '1';
+    setTimeout(() => { toast.style.opacity = '0'; }, 1800); // tự ẩn sau 1.8s
+}
+
+// ====== HAPTIC (rung) ======
+function haptic(pattern = 60) {
+    try {
+        // Android Chrome hỗ trợ tốt; iOS Safari có thể bỏ qua (không lỗi)
+        if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (_) { }
+}
+
+function removeFromScanBufferAt(idx) {
+    if (idx >= 0 && idx < window.scanBuffer.length) {
+        window.scanBuffer.splice(idx, 1);
+        renderScanBuffer();
+    }
+}
+
+function clearScanBuffer() {
+    window.scanBuffer = [];
+    renderScanBuffer();
+}
+
+// Đẩy buffer → textarea (mỗi mã 1 dòng, mã mới ở trên) rồi gọi tìm kiếm
+function flushScanBufferToTextareaAndSearch() {
+    const ta = document.getElementById('bulkTextarea');
+    if (!ta) return;
+
+    const existing = (ta.value || "")
+        .split(/[\r\n]+/)
+        .map(normCode)
+        .filter(Boolean);
+
+    // Loại phần trùng với buffer để không lặp
+    const existingFiltered = existing.filter(c => !window.scanBuffer.includes(c));
+    // Mã mới ở trên, giữ thứ tự như trong buffer
+    const merged = [...window.scanBuffer, ...existingFiltered];
+
+    ta.value = merged.join('\n');
+    ta.scrollTop = 0;
+
+    // đóng modal quét nhưng KHÔNG xóa buffer (theo yêu cầu)
+    closeScanner();
+
+    // gọi tìm kiếm 1 lần cho tất cả
+    triggerSearch();
+}
+
 
 async function searchPopup(keyword) {
     const type = window.currentPopupType;
@@ -98,336 +220,341 @@ function showEmptyIfZero(val) {
     return (val && Number(val) !== 0) ? val : "";
 }
 
-// ==== Hàm chính lấy và render dữ liệu ====
+
+// ==== Hàm chính lấy và render dữ liệu ==== 
 async function triggerSearch(_masp = null) {
-    const msg = document.getElementById('statusMsg');
+    const msg = document.getElementById("statusMsg");
     msg.textContent = "Đang tìm kiếm mã sản phẩm...";
-    document.getElementById('multiDetailBox').innerHTML = "";
-    document.getElementById('multiDetailBox').style.display = "none";
-    document.getElementById('singleDetailBox').style.display = "";
-    document.getElementById('maspInput').select();
+    document.getElementById("multiDetailBox").innerHTML = "";
+    document.getElementById("multiDetailBox").style.display = "none";
+    document.getElementById("singleDetailBox").style.display = "";
 
-    let masp = _masp || document.getElementById('maspInput').value.trim().toUpperCase();
-    if (!masp || masp.length < 3) {
-        msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
-        return;
-    }
+    // clear vùng hiển thị
+    const tTop = document.getElementById("infoTopTable");
+    const tRight = document.getElementById("infoTableRight");
+    if (tTop) tTop.innerHTML = "";
+    if (tRight) tRight.innerHTML = "";
+    const img = document.getElementById("productImage");
+    if (img) img.src = "";
 
-    // Tìm tất cả mã sản phẩm phù hợp
-    let { data: list, error } = await supabase
-        .from("dmhanghoa")
-        .select("*")
-        .ilike("masp", `%${masp}%`)
-        .order("masp")
-        .limit(20);
+    document.getElementById("maspInput").select();
 
-    if (error || !list || !list.length) {
-        msg.textContent = "SAI MÃ";
-        return;
-    }
+    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên 
+    const bulkCodes = parseBulkMasp(); // [ '11376-GDM', ... ]
+    let candidates = [];
 
-    // Mảng chứa các mã thực sự có phát sinh xuất nhập tồn
-    let productWithXNT = [];
-
-    // Lặp từng mã sản phẩm, chỉ giữ lại mã có phát sinh XNT
-    for (const row of list) {
-        let { data: xntdata, error: xntErr } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
-        if (xntErr) continue;
-        if (xntdata && xntdata.length > 0) {
-            productWithXNT.push(row.masp);
+    if (bulkCodes.length > 0) {
+        candidates = bulkCodes;
+        msg.textContent = `Đang tìm ${candidates.length} mã từ Textarea...`;
+    } else {
+        // 2) nếu textarea trống → chạy như cũ (từ ô maspInput)
+        let masp = _masp || document.getElementById("maspInput").value.trim().toUpperCase();
+        if (!masp || masp.length < 3) {
+            msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
+            return;
         }
+        let { data: list, error } = await supabase.from("dmhanghoa")
+            .select("*").ilike("masp", `%${masp}%`).order("masp").limit(50);
+        if (error || !list || !list.length) {
+            msg.textContent = "SAI MÃ";
+            return;
+        }
+        candidates = list.map(r => r.masp);
     }
+
+    if (candidates.length === 0) {
+        msg.textContent = "Không có mã hợp lệ để tìm!";
+        return;
+    }
+
+    // === GỌI RPC BULK 1 LẦN ===
+    const { data: bulkData, error: bulkErr } = await supabase.rpc("timkiemhanghoa_bulk", {
+        masp_list: candidates
+    });
+
+    if (bulkErr || !bulkData) {
+        msg.textContent = "❌ Lỗi khi gọi RPC bulk!";
+        console.error(bulkErr);
+        return;
+    }
+
+    // Gom danh sách mã có dữ liệu XNT
+    // Gom danh sách mã có dữ liệu XNT
+    let productWithXNT = Array.from(new Set(bulkData.map(r => r.masp)));
+
+    // Nếu đang ở chế độ nhiều mã (textarea) → sắp xếp đúng thứ tự người dùng nhập
+    if (Array.isArray(candidates) && candidates.length > 0) {
+        const orderMap = new Map(candidates.map((m, i) => [m.toUpperCase(), i]));
+        productWithXNT.sort((a, b) => {
+            const ia = orderMap.get((a || "").toUpperCase());
+            const ib = orderMap.get((b || "").toUpperCase());
+            // Mã không có trong textarea sẽ đẩy về cuối (nếu có)
+            return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
+        });
+    }
+
 
     if (productWithXNT.length === 0) {
         msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
-        document.getElementById('singleDetailBox').style.display = "none";
-        document.getElementById('multiDetailBox').style.display = "none";
+        document.getElementById("singleDetailBox").style.display = "none";
         return;
     }
 
-    // Nếu chỉ 1 mã, hiển thị như cũ
     if (productWithXNT.length === 1) {
-        document.getElementById('singleDetailBox').style.display = "";
+        document.getElementById("singleDetailBox").style.display = "";
         await renderOneProductDetail(productWithXNT[0]);
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
         return;
     }
 
-    // Nếu nhiều mã, hiển thị tất cả
-    document.getElementById('singleDetailBox').style.display = "none";
-    let html = "";
-    for (const masp of productWithXNT) {
-        html += `<div style="margin-bottom:32px; border-bottom:1px dashed #90caf9;">${await renderProductDetailHTML(masp)}</div>`;
+    // nhiều mã → render từng block + HOT editable
+    document.getElementById("singleDetailBox").style.display = "none";
+    const multi = document.getElementById("multiDetailBox");
+    multi.innerHTML = "";
+
+    multi.innerHTML = "";
+    const hotList = [];
+    for (const m of productWithXNT) {
+        const html = await renderProductDetailHTML(m);
+        const wrap = document.createElement("div");
+        wrap.innerHTML = html;
+        multi.appendChild(wrap);
+
+        const safeId = _safeIdFromMasp(m);
+        const el = wrap.querySelector(`#xntHot_${safeId}`);
+        const rowMap = window.XNT_ROW_MAPS[m];
+        if (el && rowMap) {
+            const hot = initXntHot(el, rowMap, m);
+            hotList.push(hot);
+        }
     }
-    document.getElementById('multiDetailBox').innerHTML = html;
-    document.getElementById('multiDetailBox').style.display = "";
+
+    requestAnimationFrame(() => {
+        for (const hot of hotList) {
+            try {
+                hot.refreshDimensions();
+                hot.render();
+            } catch (e) { }
+        }
+    });
+
+    multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
 }
 
 
-// Hàm render detail cho 1 mã, chèn trực tiếp vào DOM (giữ nguyên khung trái/phải)
+/* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
-    // Lấy thông tin hàng hóa
-    let { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+
+    CURRENT_MASP = (masp || '').toUpperCase();   // luôn IN HOA để đặt tên file .JPG
+    _pendingBlob = null;                          // reset blob chờ upload
+    const sts = document.getElementById('uploadStatus');
+    if (sts) sts.textContent = '';
+
+    // thông tin hàng hóa
+    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
     if (err1 || !hanghoa) return;
 
-    // Lấy ngày nhập đầu/cuối
-    let { data: nhapList } = await supabase
-        .from("hoadon_banle")
-        .select("ngay, sohd")
-        .in("loaihd", ["nmcs1", "nmcs2"])
-        .order("ngay", { ascending: true });
-    let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList && nhapList.length) {
-        let sohdArr = nhapList.map(e => e.sohd);
-        let { data: cts } = await supabase
-            .from("ct_hoadon_banle")
-            .select("sohd, masp")
-            .in("sohd", sohdArr)
-            .eq("masp", masp);
-        let sohdHasMasp = new Set(cts.map(e => e.sohd));
-        let filtered = nhapList.filter(e => sohdHasMasp.has(e.sohd));
-        if (filtered.length > 0) {
-            ngay_nhapdau = filtered[0].ngay;
-            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
+    // ND lấy từ dmhanghoa.nhapdau; fallback tính từ hóa đơn nếu thiếu
+    let ngay_nhapdau = hanghoa.nhapdau || "";
+    let ngay_nhapcuoi = "";
+
+    if (!ngay_nhapdau || !ngay_nhapcuoi) {
+        const { data: nhapList } = await supabase
+            .from("hoadon_banle")
+            .select("ngay,sohd")
+            .in("loaihd", ["nmcs1", "nmcs2"])
+            .order("ngay", { ascending: true });
+        if (nhapList?.length) {
+            const sohdArr = nhapList.map(e => e.sohd);
+            const { data: cts } = await supabase
+                .from("ct_hoadon_banle")
+                .select("sohd,masp")
+                .in("sohd", sohdArr)
+                .eq("masp", masp);
+            const setSohd = new Set(cts.map(e => e.sohd));
+            const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+            if (filtered.length) {
+                if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;  // fallback nếu thiếu
+                ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
+            }
         }
     }
 
-    // Lấy ngày kiểm kho gần nhất tại CS1 và CS2
+
+    // ngày kiểm gần nhất CS1/CS2
     let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
     {
-        let { data: kiem1 } = await supabase
-            .from("kiemkho")
-            .select("ngaygio")
-            .eq("masp", masp)
-            .eq("diadiem", "cs1")
-            .order("ngaygio", { ascending: false })
-            .limit(1);
-        if (kiem1 && kiem1.length) ngay_kiem_cs1 = kiem1[0].ngaygio;
-
-        let { data: kiem2 } = await supabase
-            .from("kiemkho")
-            .select("ngaygio")
-            .eq("masp", masp)
-            .eq("diadiem", "cs2")
-            .order("ngaygio", { ascending: false })
-            .limit(1);
-        if (kiem2 && kiem2.length) ngay_kiem_cs2 = kiem2[0].ngaygio;
+        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
+        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
+        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
+        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
     }
 
-    // Gọi function SQL lấy xuất nhập tồn
-    let { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    // xuất nhập tồn
+    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
     if (!xntdata || !xntdata.length) {
-        document.getElementById('infoTableLeft').innerHTML = "";
-        document.getElementById('infoTableRight').innerHTML = "";
-        document.getElementById('statusMsg').textContent = "Không có dữ liệu xuất nhập tồn!";
+        document.getElementById("infoTopTable").innerHTML = "";
+        document.getElementById("infoTableRight").innerHTML = "";
+        document.getElementById("statusMsg").textContent = "Không có dữ liệu xuất nhập tồn!";
         return false;
     }
 
-    // Map dữ liệu từng size, tính tổng dòng đầu
+    // map size & tổng dòng đầu
     const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    let rowMap = {};
-    xntdata?.forEach(row => {
-        rowMap[row.size === null ? '' : row.size] = row;
-    });
-    let totalRow = {};
-    let fieldList = ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"];
-    fieldList.forEach(field => {
-        totalRow[field] = SIZE_LIST.slice(1).reduce((sum, sz) => sum + (Number(rowMap[sz]?.[field]) || 0), 0);
+    const rowMap = {};
+    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+    const totalRow = {};
+    ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
+        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
     });
 
-    // Render khung trái (thông tin)
-    let htmlLeft = "";
-    htmlLeft += `<tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Nhập đầu</td><td>${formatDateOnly(ngay_nhapdau) || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Nhập cuối</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Kiểm CS1</td><td>${formatDateOnly(ngay_kiem_cs1) || ""}</td></tr>`;
-    htmlLeft += `<tr><td class="label">Kiểm CS2</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td></tr>`;
-
-    document.getElementById('infoTableLeft').innerHTML = htmlLeft;
-
-    // Render khung phải (tồn kho từng size)
-    let htmlRight = `
+    // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
+    const top = document.getElementById("infoTopTable");
+    top.innerHTML = `
     <tr>
-        <th class="size">Size</th>
-        <th class="blue">Tổng mua</th>
-        <th class="blue">Tổng bán</th>
-        <th class="blue">Tổng tồn</th>
-        <th class="red">Bán CS1</th>
-        <th class="red">Tồn CS1</th>
-        <th class="red">Tồn CS2</th>
-        <th class="red">Bán CS2</th>
+      <th>Mã hàng</th>
+      <th>Vị trí CS1</th>
+      <th>Vị trí CS2</th>
+      <th>${hanghoa.nhacc || ""}</th>
+      <th class="red">ND</th>
+      <th class="red">NC</th>
+      <th class="red">Kiểm CS1</th>
+      <th class="red">Kiểm CS2</th>
     </tr>
-    `;
-    htmlRight += `
     <tr>
-        <td class="size">Tổng</td>
-        <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-        <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
+      <td>${hanghoa.masp || ""}</td>
+      <td>${hanghoa.vitrikho1 || ""}</td>
+      <td>${hanghoa.vitrikho2 || ""}</td>
+      <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+      <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+      <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+      <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+      <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
     </tr>
-    `;
-    SIZE_LIST.slice(1).forEach(sz => {
-        let row = rowMap[sz];
-        htmlRight += `
-        <tr>
-            <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
-            <td class="number">${showEmptyIfZero(row?.nhapmua)}</td>
-            <td class="number">${showEmptyIfZero(row?.xuatban)}</td>
-            <td class="number">${showEmptyIfZero(row?.toncuoi)}</td>
-            <td class="number">${showEmptyIfZero(row?.ban_cs1)}</td>
-            <td class="number">${showEmptyIfZero(row?.ton_cs1)}</td>
-            <td class="number">${showEmptyIfZero(row?.ton_cs2)}</td>
-            <td class="number">${showEmptyIfZero(row?.ban_cs2)}</td>
-        </tr>
-        `;
-    });
-    document.getElementById('infoTableRight').innerHTML = htmlRight;
-    document.getElementById('maspInput').select();
+  `;
+
+    // Bảng XNT
+    // Bảng XNT (Editable)
+    const rightBox = document.querySelector('.right-xnt');
+    if (rightBox) {
+        rightBox.innerHTML = '<div id="xntHot" style="max-width:100%;"></div>';
+        const el = document.getElementById('xntHot');
+        initXntHot(el, rowMap);
+    }
+
+
+    // Ảnh sản phẩm dưới bảng
+    setProductImageByMasp(hanghoa.masp);
+    document.getElementById("maspInput").select();
+}
+// Lưu rowMap tạm để khởi tạo HOT sau khi gán HTML vào DOM
+window.XNT_ROW_MAPS = window.XNT_ROW_MAPS || {};
+
+function _safeIdFromMasp(masp) {
+    // id an toàn cho DOM (#xntHot_<id>)
+    return String(masp || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
 }
 
-// Hàm render 1 bản kết quả chi tiết trả về HTML (để dùng trong trường hợp nhiều mã)
+/**
+ * Tạo block HTML cho 1 sản phẩm (dùng trong chế độ nhiều mã)
+ * - Trả về string HTML (chưa khởi tạo HOT)
+ * - Lưu rowMap vào window.XNT_ROW_MAPS[masp] để lát nữa init HOT
+ */
 async function renderProductDetailHTML(masp) {
-    // Lấy thông tin hàng hóa
-    let { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
-    if (err1 || !hanghoa) return "<div style='color:red'>Không lấy được thông tin sản phẩm</div>";
+    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+    if (err1 || !hanghoa) {
+        return `<div style="color:red">Không lấy được thông tin sản phẩm ${masp}</div>`;
+    }
 
-    // Lấy ngày nhập đầu/cuối (giống trên)
-    let { data: nhapList } = await supabase
-        .from("hoadon_banle")
-        .select("ngay, sohd")
+    // ngày nhập đầu/cuối (giữ nguyên logic gọn)
+    const { data: nhapList } = await supabase
+        .from("hoadon_banle").select("ngay,sohd")
         .in("loaihd", ["nmcs1", "nmcs2"])
         .order("ngay", { ascending: true });
     let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList && nhapList.length) {
-        let sohdArr = nhapList.map(e => e.sohd);
-        let { data: cts } = await supabase
-            .from("ct_hoadon_banle")
-            .select("sohd, masp")
-            .in("sohd", sohdArr)
-            .eq("masp", masp);
-        let sohdHasMasp = new Set(cts.map(e => e.sohd));
-        let filtered = nhapList.filter(e => sohdHasMasp.has(e.sohd));
-        if (filtered.length > 0) {
-            ngay_nhapdau = filtered[0].ngay;
-            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
-        }
+    if (nhapList?.length) {
+        const sohdArr = nhapList.map(e => e.sohd);
+        const { data: cts } = await supabase
+            .from("ct_hoadon_banle").select("sohd,masp")
+            .in("sohd", sohdArr).eq("masp", masp);
+        const setSohd = new Set((cts || []).map(e => e.sohd));
+        const filtered = (nhapList || []).filter(e => setSohd.has(e.sohd));
+        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
     }
 
-    // Lấy ngày kiểm kho gần nhất tại CS1 và CS2
+    // ngày kiểm
     let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
     {
-        let { data: kiem1 } = await supabase
-            .from("kiemkho")
-            .select("ngaygio")
-            .eq("masp", masp)
-            .eq("diadiem", "cs1")
-            .order("ngaygio", { ascending: false })
-            .limit(1);
-        if (kiem1 && kiem1.length) ngay_kiem_cs1 = kiem1[0].ngaygio;
-
-        let { data: kiem2 } = await supabase
-            .from("kiemkho")
-            .select("ngaygio")
-            .eq("masp", masp)
-            .eq("diadiem", "cs2")
-            .order("ngaygio", { ascending: false })
-            .limit(1);
-        if (kiem2 && kiem2.length) ngay_kiem_cs2 = kiem2[0].ngaygio;
+        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
+        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
+        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
+        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
     }
 
-    // Gọi function SQL lấy xuất nhập tồn
-    let { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    // XNT của 1 mã
+    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
     if (!xntdata || !xntdata.length) {
-        document.getElementById('infoTableLeft').innerHTML = "";
-        document.getElementById('infoTableRight').innerHTML = "";
-        document.getElementById('statusMsg').textContent = "Không có dữ liệu xuất nhập tồn!";
-        return false;
+        return `
+      <div class="detail-grid">
+        <div class="top-info">
+          <table class="info-table">
+            <tr>
+              <th>Mã hàng</th><th>Vị trí CS1</th><th>Vị trí CS2</th><th>${hanghoa.nhacc || ""}</th>
+              <th class="red">ND</th><th class="red">NC</th><th class="red">Kiểm CS1</th><th class="red">Kiểm CS2</th>
+            </tr>
+            <tr>
+              <td>${hanghoa.masp || ""}</td><td>${hanghoa.vitrikho1 || ""}</td><td>${hanghoa.vitrikho2 || ""}</td>
+              <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+              <td>${formatDateOnly(ngay_nhapdau) || ""}</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+              <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="right-xnt"><i>Không có dữ liệu xuất nhập tồn!</i></div>
+        <div class="img-wrap">
+          <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
+               onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
+        </div>
+      </div>`;
     }
 
-    // Map dữ liệu từng size, tính tổng dòng đầu
-    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    let rowMap = {};
-    xntdata?.forEach(row => {
-        rowMap[row.size === null ? '' : row.size] = row;
-    });
-    let totalRow = {};
-    let fieldList = ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"];
-    fieldList.forEach(field => {
-        totalRow[field] = SIZE_LIST.slice(1).reduce((sum, sz) => sum + (Number(rowMap[sz]?.[field]) || 0), 0);
-    });
+    // rowMap + id placeholder HOT
+    const rowMap = {};
+    xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
+    window.XNT_ROW_MAPS[masp] = rowMap;
 
-    let html = `
-    <div class="flex-wrap" style="margin-bottom:12px;">
-        <div class="left-info">
-            <table class="info-table">
-                <tr><td class="label">Mã hàng</td><td>${hanghoa.masp}</td></tr>
-                <tr><td class="label">Tên hàng</td><td>${hanghoa.tensp}</td></tr>
-                <tr><td class="label">Vị trí kệ hàng CS1</td><td>${hanghoa.vitrikho1 || ""}</td></tr>
-                <tr><td class="label">Vị trí kệ hàng CS2</td><td>${hanghoa.vitrikho2 || ""}</td></tr>
-                <tr><td class="label">Giá lẻ</td><td>${hanghoa.giale?.toLocaleString() || ""}</td></tr>
-                <tr><td class="label">Nhà cung cấp</td><td>${hanghoa.nhacc || ""}</td></tr>
-                <tr><td class="label">Nhập đầu</td><td>${formatDateOnly(ngay_nhapdau) || ""}</td></tr>
-                <tr><td class="label">Nhập cuối</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td></tr>
-                <tr><td class="label">Kiểm CS1</td><td>${formatDateOnly(ngay_kiem_cs1) || ""}</td></tr>
-                <tr><td class="label">Kiểm CS2</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td></tr>
-            </table>
-        </div>
-        <div class="right-xnt">
-            <table class="info-table">
-                <tr>
-                    <th class="size">Size</th>
-                    <th class="blue">Tổng mua</th>
-                    <th class="blue">Tổng bán</th>
-                    <th class="blue">Tổng tồn</th>
-                    <th class="red">Bán CS1</th>
-                    <th class="red">Tồn CS1</th>
-                    <th class="red">Tồn CS2</th>
-                    <th class="red">Bán CS2</th>
-                </tr>
-                <tr>
-                    <td class="size">Tổng</td>
-                    <td class="number">${showEmptyIfZero(totalRow.nhapmua)}</td>
-                    <td class="number">${showEmptyIfZero(totalRow.xuatban)}</td>
-                    <td class="number">${showEmptyIfZero(totalRow.toncuoi)}</td>
-                    <td class="number">${showEmptyIfZero(totalRow.ban_cs1)}</td>
-                    <td class="number">${showEmptyIfZero(totalRow.ton_cs1)}</td>
-                    <td class="number">${showEmptyIfZero(totalRow.ton_cs2)}</td>
-                    <td class="number">${showEmptyIfZero(totalRow.ban_cs2)}</td>
-                </tr>
-    `;
-    SIZE_LIST.slice(1).forEach(sz => {
-        let row = rowMap[sz];
-        html += `
-                <tr>
-                    <td class="size">${sz === '0' ? 'Sai không' : sz}</td>
-                    <td class="number">${showEmptyIfZero(row?.nhapmua)}</td>
-                    <td class="number">${showEmptyIfZero(row?.xuatban)}</td>
-                    <td class="number">${showEmptyIfZero(row?.toncuoi)}</td>
-                    <td class="number">${showEmptyIfZero(row?.ban_cs1)}</td>
-                    <td class="number">${showEmptyIfZero(row?.ton_cs1)}</td>
-                    <td class="number">${showEmptyIfZero(row?.ton_cs2)}</td>
-                    <td class="number">${showEmptyIfZero(row?.ban_cs2)}</td>
-                </tr>
-        `;
-    });
-    html += `
-            </table>
-        </div>
+    const safeId = _safeIdFromMasp(masp);
+    return `
+    <div class="detail-grid">
+      <div class="top-info">
+        <table class="info-table">
+          <tr>
+            <th>Mã hàng</th><th>Vị trí CS1</th><th>Vị trí CS2</th><th>${hanghoa.nhacc || ""}</th>
+            <th class="red">ND</th><th class="red">NC</th><th class="red">Kiểm CS1</th><th class="red">Kiểm CS2</th>
+          </tr>
+          <tr>
+            <td>${hanghoa.masp || ""}</td>
+            <td>${hanghoa.vitrikho1 || ""}</td>
+            <td>${hanghoa.vitrikho2 || ""}</td>
+            <td>${hanghoa.giale?.toLocaleString() || ""}</td>
+            <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+            <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+            <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+            <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="right-xnt">
+        <div id="xntHot_${safeId}" style="max-width:100%;"></div>
+      </div>
+      <div class="img-wrap">
+        <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
+             onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
+      </div>
     </div>
-    `;
-    return html;
+  `;
 }
-
 
 function formatDateOnly(val) {
     if (!val) return "";
@@ -448,6 +575,7 @@ function getQuery(name) {
 // ==== QUÉT MÃ VẠCH / QR BẰNG CAMERA (hỗ trợ iPhone) ====
 let ZXING = null, codeReader = null, scanControls = null;
 let torchOn = false;
+let track = null; // giữ MediaStreamTrack hiện tại để bật/tắt torch
 
 async function ensureZXing() {
     if (ZXING) return;
@@ -476,106 +604,194 @@ function scoreCameraLabel(label = '') {
 
 
 async function pickBestBackCamera() {
-  await ensureZXing();
-  const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-  if (!devices || !devices.length) return undefined;
-  // Sắp xếp để “cực rộng” đứng đầu
-  devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-  return devices[0].deviceId;
+    await ensureZXing();
+    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+    if (!devices || !devices.length) return undefined;
+    // Sắp xếp để “cực rộng” đứng đầu
+    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+    return devices[0].deviceId;
 }
 
 
 async function startScanner(deviceId) {
-  await ensureZXing();
-  const videoEl = document.getElementById('scannerVideo');
-  const status  = document.getElementById('scannerStatus');
+    await ensureZXing();
+    const videoEl = document.getElementById('scannerVideo');
+    const status = document.getElementById('scannerStatus');
 
-  // giảm trễ giữa các lần decode để phản hồi nhanh
-  codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
+    // giảm trễ giữa các lần decode để phản hồi nhanh
+    codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
 
-  // dùng 720p cho tốc độ cao (thường đủ nét để quét nhanh hơn 1080p)
-  const fastConstraints = {
-    video: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 1280 }, height: { ideal: 720 },
-      frameRate: { ideal: 30 }
-    }
-  };
+    // dùng 720p cho tốc độ cao (thường đủ nét để quét nhanh hơn 1080p)
+    const fastConstraints = {
+        video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 }, height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+        }
+    };
 
-  try {
-    if (deviceId) {
-      // mở trực tiếp theo deviceId đã chọn (cực rộng)
-      scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
-    } else {
-      scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
-    }
-
-    // cố gắng bật continuous-focus (nếu hỗ trợ)
     try {
-      
-      await track?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] });
-    } catch(_) {}
 
-    status.textContent = 'Đang quét... đưa mã vào khung.';
-    await populateCameraList();
+        if (deviceId) {
+            scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
+        } else {
+            scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
+        }
 
-    // set dropdown trỏ ngay camera tốt nhất (cực rộng)
-    try {
-      const sel = document.getElementById('cameraSelect');
-      const bestId = deviceId || await pickBestBackCamera();
-      if (sel && bestId) sel.value = bestId;
-    } catch(_) {}
-  } catch (err) {
-    console.error('startScanner error:', err);
-    status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
-  }
+        // Lưu track video để bật/tắt torch
+        const stream = videoEl.srcObject;
+        if (stream) {
+            track = stream.getVideoTracks()[0] || null;
+        }
+
+        // cố gắng bật continuous-focus (nếu hỗ trợ)
+        try {
+
+            await track?.applyConstraints?.({ advanced: [{ focusMode: 'continuous' }] });
+        } catch (_) { }
+
+        status.textContent = 'Đang quét... đưa mã vào khung.';
+        await populateCameraList();
+
+        // set dropdown trỏ ngay camera tốt nhất (cực rộng)
+        try {
+            const sel = document.getElementById('cameraSelect');
+            const bestId = deviceId || await pickBestBackCamera();
+            if (sel && bestId) sel.value = bestId;
+        } catch (_) { }
+    } catch (err) {
+        console.error('startScanner error:', err);
+        status.textContent = 'Không mở được camera. Kiểm tra quyền camera và tắt Live Text nếu đang bật.';
+    }
 }
 
+// === SỰ KIỆN UPLOAD ẢNH ===
+const fileInput = document.getElementById('imgFileInput');
+const saveImgBtn = document.getElementById('saveImgBtn');
+const resizeCheckbox = document.getElementById('resizeCheckbox');
+const uploadStatus = document.getElementById('uploadStatus');
+
+fileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const imgEl = document.getElementById('productImage');
+
+    // luôn chuẩn hoá kích thước trước khi upload
+    _pendingBlob = await resizeToStandardBlob(file);   // → Blob JPEG 640x480 or 480x640
+    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob); // xem trước đè lên ảnh cũ
+
+    const sts = document.getElementById('uploadStatus');
+    if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
+});
 
 
+saveImgBtn?.addEventListener('click', async () => {
+    try {
+        uploadStatus.style.color = '#c62828';
+        if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
+        if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
 
+        const fileName = `${CURRENT_MASP}.JPG`; // luôn in hoa
+        uploadStatus.textContent = 'Đang lưu ảnh...';
 
+        const { error } = await supabase
+            .storage.from(STORAGE_BUCKET)
+            .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
+
+        if (error) throw error;
+
+        // refresh ảnh với cache-busting
+        const imgEl = document.getElementById('productImage');
+        imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
+
+        uploadStatus.style.color = 'green';
+        uploadStatus.textContent = 'Đã lưu ảnh thành công!';
+        // NEW: dọn trạng thái + focus & bôi đen ô nhập mã để nhập tiếp
+        const fi = document.getElementById('imgFileInput');
+        if (fi) fi.value = '';
+        _pendingBlob = null;
+
+        const ip = document.getElementById('maspInput');
+        if (ip) { ip.focus(); ip.select(); }   // <<< bôi đen để gõ mã tiếp
+    } catch (e) {
+        console.error(e);
+        uploadStatus.style.color = '#c62828';
+        uploadStatus.textContent = 'Lưu ảnh thất bại!';
+    }
+});
+
+async function resizeToStandardBlob(file) {
+    // đọc file → Image
+    const dataUrl = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(file);
+    });
+    const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = rej;
+        i.src = dataUrl;
+    });
+
+    // chọn size đích theo hướng ảnh
+    const isLandscape = img.width > img.height;
+    const targetW = isLandscape ? 640 : 480;
+    const targetH = isLandscape ? 480 : 640;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW; canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+
+    const scale = Math.min(targetW / img.width, targetH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const offX = (targetW - drawW) / 2;
+    const offY = (targetH - drawH) / 2;
+    ctx.drawImage(img, offX, offY, drawW, drawH);
+
+    return await new Promise((res) => canvas.toBlob(
+        (blob) => res(blob), 'image/jpeg'
+    ));
+}
+
+//gọi addToScanBuffer thôi, KHÔNG đóng, KHÔNG tìm:
 function onScanResult(result, err, controls) {
     if (result) {
         const text = result.getText ? result.getText() : (result.rawValue || '');
-        if (text) {
-            try { navigator.vibrate?.(80); } catch (_) { }
-            // đưa kết quả vào ô nhập & tìm
-            const ip = document.getElementById('maspInput');
-            ip.value = text.trim().toUpperCase();
-            closeScanner();
-            // gọi search như bình thường
-            triggerSearch();
-        }
+        if (text) { pushCodeToTextareaAndSearch(text); }
     }
-    // lỗi decode vặt thì bỏ qua để tiếp tục quét
+    // lỗi decode thì bỏ qua
 }
+
+
 
 async function stopScanner() {
     try { scanControls?.stop(); } catch (_) { }
     const v = document.getElementById('scannerVideo');
-    
+
     try { track?.stop(); } catch (_) { }
     if (v) v.srcObject = null;
     codeReader = null; scanControls = null; torchOn = false;
 }
 
 async function populateCameraList() {
-  await ensureZXing();
-  const sel = document.getElementById('cameraSelect');
-  sel.innerHTML = '';
-  try {
-    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
-    devices.forEach((d, i) => {
-      const opt = document.createElement('option');
-      opt.value = d.deviceId;
-      opt.textContent = d.label || `Camera ${i + 1}`;
-      sel.appendChild(opt);
-    });
-  } catch (_) {}
+    await ensureZXing();
+    const sel = document.getElementById('cameraSelect');
+    sel.innerHTML = '';
+    try {
+        const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+        devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+        devices.forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || `Camera ${i + 1}`;
+            sel.appendChild(opt);
+        });
+    } catch (_) { }
 }
-
 
 
 async function switchCamera(deviceId) {
@@ -583,14 +799,12 @@ async function switchCamera(deviceId) {
     await startScanner(deviceId);
 }
 
+
 async function toggleTorch() {
-    const v = document.getElementById('scannerVideo');
-    
     if (!track) return;
 
     try {
         torchOn = !torchOn;
-        // iOS 17.4+ có thể hỗ trợ; không phải máy nào cũng được → bọc try/catch
         await track.applyConstraints({ advanced: [{ torch: torchOn }] });
         document.getElementById('flashBtn').textContent = torchOn ? '🔦 Tắt đèn' : '🔦 Đèn';
     } catch (e) {
@@ -598,6 +812,7 @@ async function toggleTorch() {
         torchOn = false;
     }
 }
+
 
 async function decodeFromFile(file) {
     if (!file) return;
@@ -607,12 +822,7 @@ async function decodeFromFile(file) {
     try {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
-        if (text) {
-            document.getElementById('maspInput').value = text.trim().toUpperCase();
-            closeScanner();
-            triggerSearch();
-            return;
-        }
+        if (text) { pushCodeToTextareaAndSearch(text); }
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } catch (e) {
         console.error('decodeFromFile error:', e);
@@ -626,28 +836,66 @@ async function decodeFromFile(file) {
 
 // ==== Open/Close modal
 window.openScanner = async function () {
-  try { document.activeElement?.blur(); } catch (_) {} // tránh Live Text chiếm camera
-  document.getElementById('scannerModal').style.display = 'block';
-  const status = document.getElementById('scannerStatus');
-  status.textContent = 'Đang chuẩn bị camera...';
+    try { document.activeElement?.blur(); } catch (_) { } // tránh Live Text chiếm camera
+    document.getElementById('scannerModal').style.display = 'block';
+    // Đặt modal “đè” toàn màn hình, đảm bảo z-index cao
+    const modal = document.getElementById('scannerModal');
+    Object.assign(modal.style, {
+        position: 'fixed',
+        inset: '0',               // top/right/bottom/left = 0
+        zIndex: '9999',
+    });
 
-  try {
-    await ensureZXing();
+    // Thu nhỏ khung quét để chừa chỗ cho panel
+    const video = document.getElementById('scannerVideo');
+    if (video) {
+        video.style.maxWidth = '72vw';
+        video.style.maxHeight = '62vh';
+        video.style.borderRadius = '10px';
+        video.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)';
+    } 
+   
 
-    // mồi quyền & lộ labels (để thấy “cực rộng”)
+
+    const status = document.getElementById('scannerStatus');
+    status.textContent = 'Đang chuẩn bị camera...';
+
     try {
-      const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-      pre.getTracks().forEach(t => t.stop());
-    } catch (_) {}
+        await ensureZXing();
 
-    const bestId = await pickBestBackCamera();     // → sẽ ưu tiên “cực rộng”
-    await startScanner(bestId || null);
-  } catch (e) {
-    console.error('openScanner error:', e);
-    status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
-  }
+        // mồi quyền & lộ labels (để thấy “cực rộng”)
+        try {
+            const pre = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+            pre.getTracks().forEach(t => t.stop());
+        } catch (_) { }
+
+        const bestId = await pickBestBackCamera();     // → sẽ ưu tiên “cực rộng”
+        await startScanner(bestId || null);
+    } catch (e) {
+        console.error('openScanner error:', e);
+        status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera và đóng Live Text.';
+    }
 };
 
+function renderScanBuffer() {
+    const box = document.getElementById('scanBufferBox');
+    if (!box) return;
+    if (!window.scanBuffer.length) {
+        box.innerHTML = `<div class="empty">Chưa có mã nào.</div>`;
+        return;
+    }
+    box.innerHTML = window.scanBuffer
+        .map((c, i) => `
+      <div class="scan-item">
+        <span class="code">${c}</span>
+        <button class="del" data-idx="${i}">×</button>
+      </div>
+    `).join('');
+    // gắn click xóa từng mã
+    box.querySelectorAll('.del').forEach(btn => {
+        btn.onclick = () => removeFromScanBufferAt(+btn.dataset.idx);
+    });
+}
 
 
 window.closeScanner = async function () {
@@ -679,6 +927,8 @@ const _oldOnload = window.onload;
 window.onload = async function () {
     // giữ hành vi cũ: kiểm tra session và ẩn/hiện box đăng nhập
     if (typeof _oldOnload === "function") await _oldOnload();
+    // 🔊 mở khóa audio một lần cho iOS/Safari
+    try { setupBeepUnlockOnce(document); } catch (_) { }
 
     // nhận mã từ URL và tìm kiếm luôn
     const q = getQuery("masp");
@@ -692,4 +942,224 @@ window.onload = async function () {
             await triggerSearch(masp);
         } catch (e) { /* bỏ qua lỗi */ }
     }
+
+    // NHẬN DANH SÁCH MÃ TỪ localStorage (nếu được F8 truyền sang)
+    const bulk = localStorage.getItem("TKHH333_BULK");
+    if (bulk) {
+        const ta = document.getElementById("bulkTextarea");
+        if (ta) ta.value = bulk;
+        localStorage.removeItem("TKHH333_BULK"); // dọn key
+        try {
+            await triggerSearch(); // chạy tìm luôn
+        } catch (e) {
+            console.error("Lỗi auto triggerSearch từ F8:", e);
+        }
+    }
+
 };
+
+// ====== XNT HOT (Handsontable) ======
+const xntHotInstances = {};  // thay vì let xntHot = null
+
+const XNT_COLS = [
+    { header: 'Size', key: 'size' },
+    { header: 'Tồn CS1', key: 'ton_cs1' },
+    { header: 'Tồn CS2', key: 'ton_cs2' },
+    { header: 'Bán CS1', key: 'ban_cs1' },
+    { header: 'Bán CS2', key: 'ban_cs2' },
+    { header: 'Tổng mua', key: 'nhapmua' },
+    { header: 'Tổng bán', key: 'xuatban' },
+    { header: 'Tổng tồn', key: 'toncuoi' },
+];
+
+// 0 -> hiển thị rỗng (dữ liệu vẫn là số)
+function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
+    const v = (value === '' || value == null) ? '' : Number(value);
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.textContent = (v === 0) ? '' : (Number.isFinite(v) ? String(v) : '');
+}
+
+// Tổng từ các hàng size (index 1..n) vào hàng 0
+function recalcXntTotals(rows) {
+    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
+    for (let i = 1; i < rows.length; i++) {
+        for (const k of Object.keys(total)) total[k] += Number(rows[i][k]) || 0;
+    }
+    Object.assign(rows[0], total);
+}
+
+// Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
+function buildXntRows(rowMap) {
+    const SIZE_LIST = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+    const rows = [{
+        size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0
+    }];
+    for (const sz of SIZE_LIST) {
+        const r = rowMap[sz] || {};
+        rows.push({
+            size: sz,
+            ton_cs1: Number(r.ton_cs1) || 0,
+            ton_cs2: Number(r.ton_cs2) || 0,
+            ban_cs1: Number(r.ban_cs1) || 0,
+            ban_cs2: Number(r.ban_cs2) || 0,
+            nhapmua: Number(r.nhapmua) || 0,
+            xuatban: Number(r.xuatban) || 0,
+            toncuoi: Number(r.toncuoi) || 0,
+        });
+    }
+    recalcXntTotals(rows);
+    return rows;
+}
+
+function initXntHot(containerEl, rowMap, masp) {
+    const data = buildXntRows(rowMap);
+
+    const columns = XNT_COLS.map(c => {
+        if (c.key === 'size') return { data: c.key, readOnly: true, className: 'htCenter htBold' };
+        return {
+            data: c.key,
+            type: 'numeric',
+            numericFormat: { pattern: '0' },
+            allowInvalid: false,
+            renderer: zeroBlankRenderer,
+        };
+    });
+
+    // nếu đã có instance cho masp thì destroy trước
+    if (xntHotInstances[masp]) {
+        try { xntHotInstances[masp].destroy(); } catch (_) { }
+        delete xntHotInstances[masp];
+    }
+
+    const hot = new Handsontable(containerEl, {
+        data,
+        columns,
+        rowHeaders: true,
+        colHeaders: XNT_COLS.map(c => c.header),
+        licenseKey: 'non-commercial-and-evaluation',
+        stretchH: 'all',
+        height: 'auto',
+        manualColumnResize: true,
+        contextMenu: ['row_above', 'row_below', 'remove_row', 'sep1', 'undo', 'redo'],
+        cells: (row, col, prop) => {
+            const meta = {};
+            if (row === 0 || prop === 'size') { meta.readOnly = true; meta.className = 'htCenter htBold'; }
+            else { meta.className = 'htRight'; }
+            return meta;
+        },
+        afterChange: (changes, source) => {
+            if (!changes || ['loadData', 'recalc', 'coerce'].includes(source)) return;
+            let needRecalc = false;
+            for (const [r, c, oldVal, newVal] of changes) {
+                if (r > 0 && c !== 'size') {
+                    const coerced = (newVal === '' || newVal == null) ? 0 : Number(newVal);
+                    if (!Number.isFinite(coerced)) hot.setSourceDataAtCell(r, c, 0, 'coerce');
+                    else if (String(coerced) !== String(newVal)) hot.setSourceDataAtCell(r, c, coerced, 'coerce');
+                    needRecalc = true;
+                }
+            }
+            if (needRecalc) {
+                const curr = hot.getSourceData();
+                recalcXntTotals(curr);
+                for (const colDef of XNT_COLS) {
+                    if (colDef.key !== 'size') {
+                        hot.setSourceDataAtCell(0, colDef.key, curr[0][colDef.key], 'recalc');
+                    }
+                }
+                hot.render();
+            }
+        }
+    });
+
+    xntHotInstances[masp] = hot;  // lưu lại
+    return hot;
+}
+
+
+/* ====== TIỆN ÍCH ====== */
+
+// Base ảnh sản phẩm
+const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+// === ẢNH SẢN PHẨM ===
+const STORAGE_BUCKET = 'anhsanpham';
+
+let CURRENT_MASP = null;        // đang hiển thị 1 sản phẩm nào
+let _pendingBlob = null;        // blob đã resize (để upload)
+
+
+
+// Thử .JPG → .jpg → .PNG → .png
+function setProductImageByMasp(masp) {
+    const img = document.getElementById("productImage");
+    if (!img) return;
+    const m = encodeURIComponent(masp);
+    const candidates = [`${IMG_BASE}${m}.JPG`, `${IMG_BASE}${m}.jpg`, `${IMG_BASE}${m}.PNG`, `${IMG_BASE}${m}.png`];
+    let i = 0;
+    const tryNext = () => {
+        if (i >= candidates.length) return;
+        img.onerror = () => { i++; tryNext(); };
+        img.src = candidates[i];
+    };
+    tryNext();
+}
+
+function parseBulkMasp() {
+    const ta = document.getElementById('bulkTextarea');
+    if (!ta) return [];
+    const raw = ta.value || "";
+    if (!raw.trim()) return [];
+    // tách theo xuống dòng, tab, dấu phẩy/chấm phẩy → chuẩn hóa UPPERCASE
+    const arr = raw.split(/[\r\n,;\t]+/)
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+    // loại trùng, giữ thứ tự; giới hạn 50 mã để tránh quá nhiều RPC
+    const seen = new Set(), out = [];
+    for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
+    return out.slice(0, 50);
+}
+
+function prependToBulkTextarea(code) {
+    const ta = document.getElementById('bulkTextarea');
+    if (!ta) return;
+
+    const up = (code || "").trim().toUpperCase();
+    if (!up) return;
+
+    // Tách dòng hiện có, chuẩn hoá IN HOA, loại rỗng & loại trùng với mã mới
+    const lines = (ta.value || "")
+        .split(/[\r\n]+/)
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean)
+        .filter(s => s !== up);
+
+    // Chèn mã mới lên đầu, giữ lại các mã cũ bên dưới
+    ta.value = up + (lines.length ? "\n" + lines.join("\n") : "");
+
+    // Đưa textarea về đầu, giúp nhìn thấy mã mới
+    ta.scrollTop = 0;
+}
+
+
+document.getElementById('clearBulkBtn')?.addEventListener('click', () => {
+    const ta = document.getElementById('bulkTextarea');
+    if (ta) { ta.value = ''; ta.focus(); }
+
+    // Dọn trạng thái hiển thị kết quả
+    const msg = document.getElementById('statusMsg'); if (msg) msg.textContent = '';
+    const multi = document.getElementById('multiDetailBox');
+    if (multi) { multi.innerHTML = ''; multi.style.display = 'none'; }
+    const top = document.getElementById('infoTopTable'); if (top) top.innerHTML = '';
+    const right = document.getElementById('infoTableRight'); if (right) right.innerHTML = '';
+    const img = document.getElementById('productImage'); if (img) img.src = '';
+    // đảm bảo khối đơn hiển thị rỗng
+    const single = document.getElementById('singleDetailBox'); if (single) single.style.display = '';
+});
+
+document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        document.getElementById('clearBulkBtn')?.click();
+    }
+});
+
+
