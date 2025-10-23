@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>TRA DAT HANG</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+  <!-- Handsontable CE -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.1.0/dist/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@13.1.0/dist/handsontable.full.min.js"></script>
+
+  <!-- Supabase (UMD) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+
+  <style>
+    :root { --blue:#1976d2; --bd:#d9e5ff; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f7fafc; margin:0; }
+    .wrap { max-width: 1180px; margin: 18px auto; padding: 0 12px; }
+    h2 { margin: 8px 0 14px; color: var(--blue); letter-spacing: .5px; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:#fff; padding:10px; border:1px solid #e5ecff; border-radius:10px; }
+    .toolbar label { color:#333; font-weight:600; margin-right:4px; }
+    .toolbar input[type="date"],
+    .toolbar input[type="text"],
+    .toolbar select {
+      height:36px; padding:6px 10px; border:1px solid var(--bd); border-radius:8px; outline:none; font-size:16px;
+      background:#fff;
+    }
+    .btn { height:36px; border-radius:8px; border:1px solid var(--blue); background:var(--blue); color:#fff; font-weight:700; padding:0 14px; cursor:pointer; }
+    .btn.secondary { background:#e3f2fd; color:#0b60b3; border-color:#90caf9; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    #grid { margin-top:12px; background:#fff; border:1px solid #e5ecff; border-radius:12px; overflow:hidden; }
+    .foot { display:flex; gap:10px; justify-content:flex-end; margin:12px 0 24px; }
+    /* Popup ảnh */
+    #imgModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:4000; }
+    #imgModal .card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:12px; overflow:hidden; width:min(92vw, 720px); box-shadow:0 12px 40px rgba(0,0,0,.25); }
+    #imgModal .head { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#f7f9ff; border-bottom:1px solid #eef3ff; }
+    #imgModal .head b { color:#333; }
+    #imgModal .body { padding:12px; max-height:76vh; overflow:auto; }
+    #imgModal img { max-width:100%; height:auto; border-radius:8px; display:block; margin:auto; }
+    #imgModal .cap { text-align:center; padding:8px 12px 12px; color:#333; }
+    a.link { color: var(--blue); text-decoration: none; }
+    a.link:hover { text-decoration: underline; }
+
+    /* iOS chống auto-zoom khi focus input */
+    input, select, button { font-size:16px; }
+
+    /* màu dòng theo trạng thái (tùy thích) */
+    .row-ok    { background: #e8f5e9 !important; }
+    .row-het   { background: #fff8e1 !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>TRA DAT HANG</h2>
+
+    <div class="toolbar">
+      <div>
+        <label>Địa điểm:</label>
+        <select id="fDiaDiem">
+          <option value="ALL">Tất cả</option>
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
+      </div>
+      <div>
+        <label>Từ ngày:</label>
+        <input type="date" id="fFrom">
+      </div>
+      <div>
+        <label>Đến ngày:</label>
+        <input type="date" id="fTo">
+      </div>
+      <div>
+        <label>Mã SP:</label>
+        <input type="text" id="fMasp" placeholder="nhập mã...">
+      </div>
+      <div>
+        <label>Tên NV:</label>
+        <input type="text" id="fTennv" placeholder="nhập tên...">
+      </div>
+      <div>
+        <label>Trạng thái:</label>
+        <select id="fTrangThai">
+          <option value="ALL">Tất cả</option>
+          <option value="OK">OK</option>
+          <option value="HET">HET</option>
+          <option value="TRONG">Trống</option>
+        </select>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button id="btnFilter" class="btn secondary">LOC DL</button>
+        <button id="btnSave" class="btn">LƯU DL</button>
+      </div>
+    </div>
+
+    <div id="grid"></div>
+
+    <!-- Popup ảnh -->
+    <div id="imgModal">
+      <div class="card">
+        <div class="head">
+          <b>Ảnh sản phẩm</b>
+          <button id="imgClose" class="btn secondary">Đóng</button>
+        </div>
+        <div class="body">
+          <img id="pimg" src="" alt="product">
+          <div class="cap" id="cap"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="./tradathang.js"></script>
+</body>
+</html>
