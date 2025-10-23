@@ -191,36 +191,55 @@ async function saveData() {
   if (!hot) return;
   const nowRows = hot.getSourceData();
   const oldMap = new Map(originalRows.map(r => [r.sohd, r.trahang || '']));
-  const changed = [];
 
-  const { tennv } = getUser();
+  const tennv = (localStorage.getItem('tennv') || '').trim();
   if (!tennv) { showToast('⚠️ Chưa đăng nhập', 'warn'); return; }
 
+  const changed = [];
   for (const r of nowRows) {
-    const oldVal = oldMap.get(r.sohd) ?? '';
-    const newVal = (r.trahang || '').trim();
+    const sohd = (r.sohd || '').trim();
+    if (!sohd) continue; // bỏ dòng rác
+
+    const oldVal = (oldMap.get(sohd) ?? '').trim();
+    let newVal = (r.trahang || '').trim().toUpperCase();
+    if (newVal !== 'OK' && newVal !== 'HET') newVal = ''; // chỉ chấp nhận OK/HET, còn lại coi như rỗng
+
     if (oldVal !== newVal) {
-      changed.push({ sohd: r.sohd, trahang: newVal || null, nvtrahang: tennv });
+      changed.push({
+        sohd,
+        trahang: newVal || null,
+        nvtrahang: tennv
+      });
     }
   }
+
   if (!changed.length) { showToast('Không có gì để lưu'); return; }
 
   document.getElementById('btnSave').disabled = true;
-  const { error } = await supabase.from('dathang').upsert(changed, { onConflict: 'sohd' });
+  const { error } = await supabase
+    .from('dathang')
+    .upsert(changed, { onConflict: 'sohd', ignoreDuplicates: false, returning: 'minimal' });
   document.getElementById('btnSave').disabled = false;
 
-  if (error) { showToast('❌ Lưu dữ liệu thất bại', 'warn'); return; }
+  if (error) {
+    console.error(error);
+    // Một số lỗi thường gặp:
+    // - "UPSERT requires an updateable view" hoặc thiếu unique(sohd) -> chạy SQL ở bước 1
+    // - Null value in column sohd -> có dòng thiếu sohd -> đã lọc ở trên
+    showToast('❌ Lưu dữ liệu thất bại: ' + (error.message || ''), 'warn');
+    return;
+  }
 
-  // cập nhật snapshot & cột nvtrahang trên UI
-  changed.forEach(u => {
-    const idx = originalRows.findIndex(x => x.sohd === u.sohd);
-    if (idx >= 0) { originalRows[idx].trahang = u.trahang; originalRows[idx].nvtrahang = u.nvtrahang; }
-  });
+  // cập nhật snapshot gốc + hiển thị nvtrahang trên bảng
+  for (const u of changed) {
+    const i = originalRows.findIndex(x => x.sohd === u.sohd);
+    if (i >= 0) originalRows[i].trahang = u.trahang, originalRows[i].nvtrahang = u.nvtrahang;
+  }
   const cur = hot.getSourceData();
-  changed.forEach(u => {
+  for (const u of changed) {
     const i = cur.findIndex(x => x.sohd === u.sohd);
     if (i >= 0) cur[i].nvtrahang = u.nvtrahang;
-  });
+  }
   hot.loadData(cur);
 
   showToast('✅ Lưu dữ liệu thành công', 'ok');
