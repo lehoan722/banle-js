@@ -9,7 +9,7 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
-    <script type="module" src="scripts/timkiemhanghoa333.js"></script>   
+    <script type="module" src="scripts/timkiemhanghoa333.js"></script>
     <style>
         body {
             background: #f6f8fa;
@@ -18,12 +18,12 @@
         }
 
         .main-container {
-            max-width: 900px;
+            max-width: 980px;
             background: #fff;
             margin: 32px auto 0;
             border-radius: 16px;
             box-shadow: 0 3px 18px #d2d8e3;
-            padding: 10px 10px 10px
+            padding: 36px 24px 24px
         }
 
         h2 {
@@ -35,8 +35,7 @@
 
         .input-row {
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
+            gap: 24px;
             align-items: flex-end;
             margin-bottom: 20px
         }
@@ -54,7 +53,7 @@
 
         .input-group input {
             font-size: 1.15rem;
-            padding: 5px 5px;
+            padding: 7px 11px;
             border-radius: 5px;
             border: 1px solid #90caf9;
             width: 200px;
@@ -71,7 +70,7 @@
             border: 1px solid #1976d2;
             color: #1976d2;
             font-weight: 600;
-            padding: 3px 5px;
+            padding: 3px 11px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px
@@ -81,7 +80,7 @@
             background: #bbdefb
         }
 
-        /* Bảng thông tin */
+        /* bảng chung */
         .info-table {
             border-collapse: collapse;
             width: 100%;
@@ -94,7 +93,7 @@
 
         .info-table th,
         .info-table td {
-            padding: 5px 5px;
+            padding: 7px 10px;
             border: 1px solid #dbe9fd;
             text-align: center
         }
@@ -128,6 +127,11 @@
             font-weight: 700
         }
 
+        /* bố cục hiển thị 1 sản phẩm */
+        #singleDetailBox {
+            display: block
+        }
+
         .right-xnt {
             width: 100%;
             overflow-x: auto
@@ -137,180 +141,25 @@
             margin-top: 8px
         }
 
-        /* TOP BAR: trái form – phải textarea */
-        .topbar {
-            display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
-            gap: 16px;
-            align-items: start
+        /* ảnh sản phẩm dưới bảng */
+        .img-wrap {
+            margin-top: 12px
         }
 
-        .bulk-box {
-            min-width: 120px;
-            max-width: 120px
-        }
-
-        #bulkTextarea {
+        #productImage {
+            max-width: 380px;
             width: 100%;
-            height: 3.5em;
-            overflow: auto;
-            resize: vertical;
-            border: 1px solid #cfd8dc;
-            border-radius: 8px;
-            padding: 5px 5px;
-            font-family: Consolas, monospace;
-            background: #fff
-        }
-
-        /* ===== Layout CHUẨN bạn chọn ===== */
-        /* 1 mã: cột trái = thông tin + XNT; cột phải = ảnh (ảnh cao bằng 2 hàng) */
-        #singleDetailBox {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-auto-rows: min-content;
-            gap: 16px
-        }
-
-        #singleDetailBox .top-info {
-            grid-column: 1/2
-        }
-
-        #singleDetailBox .right-xnt {
-            grid-column: 1/2
-        }
-
-        #singleDetailBox .img-wrap {
-            grid-column: 2/3;
-            grid-row: 1/span 2;
-            align-self: start;
-            margin-top: 0
-        }
-
-        /* nhiều mã: mỗi block .detail-grid giống hệt bố cục trên */
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-auto-rows: min-content;
-            gap: 16px
-        }
-
-        .detail-grid .top-info {
-            grid-column: 1
-        }
-
-        .detail-grid .right-xnt {
-            grid-column: 1
-        }
-
-        .detail-grid .img-wrap {
-            grid-column: 2;
-            grid-row: 1/span 2;
-            align-self: start;
-            margin-top: 0
-        }
-
-        /* Ảnh: thu nhỏ 60% bằng width (KHÔNG dùng transform để tránh chiều cao ảo) */
-        #singleDetailBox .img-wrap img,
-        .detail-grid .img-wrap img {
-            width: 80%;
             height: auto;
-            display: block
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #eee
         }
 
-        /* Mobile (iPhone dọc): xếp theo thứ tự Thông tin → XNT → Ảnh, ảnh full width */
-        @media (max-width:700px) {
-
-            #singleDetailBox,
-            .detail-grid {
-                grid-template-columns: 1fr
-            }
-
-            #singleDetailBox .img-wrap,
-            .detail-grid .img-wrap {
-                grid-column: 1;
-                grid-row: auto
-            }
-
-            #singleDetailBox .img-wrap img,
-            .detail-grid .img-wrap img {
-                width: 50%
-            }
-        }
-
-        /* ===== Desktop tweaks (giữ bố cục gọn hàng 1) ===== */
-        .topbar .input-row:first-child .input-group {
-            flex: 1;
-            min-width: 260px;
-        }
-
-        .topbar .input-row:first-child #maspInput {
-            width: 100%;
-        }
-
-        /* ===== Mobile (iPhone dọc) — xếp topbar theo cột, không chồng chéo ===== */
-        @media (max-width: 700px) {
-
-            /* 1 cột cho toàn bộ topbar */
-            .topbar {
-                grid-template-columns: 1fr;
-            }
-
-            /* Các hàng trong topbar giãn cách vừa phải và full width */
-            .topbar .input-row {
-                gap: 8px;
-            }
-
-            .topbar .input-row>* {
-                width: 100%;
-            }
-
-            /* nút + input full width */
-            .topbar .input-group input {
-                width: 100%;
-            }
-
-            /* ô nhập mã full width */
-            #searchBtn,
-            #scanBtn {
-                width: 100%;
-                height: 44px;
-            }
-
-            /* Hàng 2 (upload ảnh): cho 2 nút nằm cùng một hàng, trạng thái xuống dòng dưới */
-            .topbar .input-row:nth-child(2) {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-
-            .topbar .input-row:nth-child(2) .popup-btn {
-                width: 100%;
-            }
-
-            #uploadStatus {
-                grid-column: 1 / -1;
-            }
-
-            /* chiếm trọn dòng để không đè nút */
-
-            /* Hàng 3 (textarea nhiều mã) chiếm trọn chiều ngang */
-            .bulk-box {
-                min-width: 0;
-                max-width: 100%;
-            }
-
-            #bulkTextarea {
-                width: 100%;
-                height: 6.5em;
-            }
-        }
-
+        /* popup tìm mã */
         #popupSearch {
             display: none;
             position: fixed;
             top: 16%;
             left: 50%;
-            padding: 5px 10px;
             transform: translate(-50%, 0);
             background: #fff;
             z-index: 2000;
@@ -318,40 +167,197 @@
             min-width: 340px;
             max-width: 96vw;
             box-shadow: 0 0 12px #888;
-            border-radius: 8px;
+            border-radius: 8px
         }
 
-        /* Hiệu ứng flash toàn màn hình */
-        #flashOverlay {
-            position: fixed;
-            inset: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 20000;
-            transition: opacity 0.25s ease;
+        #popupSearch input {
+            width: 94%;
+            margin-bottom: 5px
         }
 
-        /* Thông báo nhanh (toast) */
-        #toastMsg {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 10px 18px;
+        #popupSearchList {
+            max-height: 260px;
+            overflow: auto;
+            font-size: 15px
+        }
+
+        #popupSearchList div {
+            padding: 5px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0
+        }
+
+        #popupSearchList div:hover {
+            background: #e3f0ff
+        }
+
+        @media (max-width:600px) {
+            .main-container {
+                padding: 10px;
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none
+            }
+
+            .input-row {
+                flex-direction: column;
+                gap: 10px
+            }
+
+            .input-group input {
+                width: 70%
+            }
+
+            #productImage {
+                max-width: 100%
+            }
+        }
+
+        /* thanh trên gồm form tìm kiếm (trái) + textarea (phải) */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .bulk-box {
+            min-width: 260px;
+            max-width: 320px
+        }
+
+        #bulkTextarea {
+            width: 100%;
+            height: 7.5em;
+            /* ~5 dòng + thanh cuộn */
+            overflow: auto;
+            resize: vertical;
+            /* cho phép kéo cao nếu cần */
+            border: 1px solid #cfd8dc;
             border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            opacity: 0;
-            z-index: 20001;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
+            /* bo tròn nhẹ */
+            padding: 8px 10px;
+            font-family: Consolas, monospace;
+            box-shadow: none;
+            background: #fff;
+            /* nền trắng đơn giản */
+        }
+
+        @media (max-width:600px) {
+
+            .bulk-box {
+                max-width: 30%
+            }
+        }
+
+        /* --- TOP BAR: 2 cột (trái: nút/quét/tìm; phải: textarea 1/3) --- */
+        .topbar {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
+            /* 2/3 : 1/3 */
+            gap: 16px;
+            align-items: start;
+        }
+
+        .input-row {
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .bulk-box {
+            min-width: 160px;
+            max-width: 100%;
+        }
+
+        /* để theo ô lưới */
+        #bulkTextarea {
+            width: 100%;
+        }
+
+        /* Giữ 2 cột cả trên mobile để textarea không bị đẩy xuống */
+        @media (max-width:600px) {
+            .topbar {
+                grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+            }
+        }
+
+        /* --- VÙNG CHI TIẾT: 2 cột song song trên desktop, xếp dọc trên mobile --- */
+        #singleDetailBox {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 16px;
+        }
+
+        /* 2 bảng thông tin xếp chồng ở cột trái */
+        .top-info {
+            grid-column: 1 / 2;
+        }
+
+        .right-xnt {
+            grid-column: 1 / 2;
+        }
+
+        /* Ảnh chiếm cột phải, thẳng hàng trên cùng */
+        .img-wrap {
+            grid-column: 2 / 3;
+            grid-row: 1 / span 2;
+            align-self: start;
+        }
+
+        /* Ảnh co giãn theo cột, không giới hạn 380px nữa */
+        #productImage {
+            width: 100%;
+            max-width: none;
+            height: auto;
+        }
+
+        /* Màn nhỏ: chuyển về 1 cột, ảnh xuống dưới */
+        @media (max-width:900px) {
+            #singleDetailBox {
+                grid-template-columns: 1fr;
+            }
+
+            .img-wrap {
+                grid-column: 1 / 2;
+                grid-row: auto;
+            }
+        }
+
+        /* Áp dụng layout 2 cột cho từng khối khi hiển thị NHIỀU mã */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 16px;
+        }
+
+        .detail-grid .top-info {
+            grid-column: 1;
+        }
+
+        .detail-grid .right-xnt {
+            grid-column: 1;
+        }
+
+        .detail-grid .img-wrap {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            align-self: start;
+        }
+
+        @media (max-width:900px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-grid .img-wrap {
+                grid-column: 1;
+                grid-row: auto;
+            }
         }
     </style>
-
-
 </head>
 
 <body>
@@ -368,50 +374,71 @@
     </div>
 
     <div class="main-container">
-
+        <h2>🔍 TÌM KIẾM THÔNG TIN HÀNG HÓA</h2>
 
         <div class="topbar">
-            <!-- Hàng 1: nhập mã + tìm kiếm + quét -->
+            <!-- Bên trái: form nhập mã như cũ -->
             <div class="input-row">
                 <div class="input-group">
+
                     <label for="maspInput">Nhập mã hàng</label>
-                    <div style="display:flex;gap:8px;align-items:center;">
+
+                    <div>
                         <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
+
                         <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off" />
+
                     </div>
+
                 </div>
+
                 <button id="searchBtn"
                     style="height:40px;background:#1976d2;color:#fff;font-weight:bold;border:none;border-radius:7px;padding:0 32px;cursor:pointer;">
                     Tìm kiếm
                 </button>
+
                 <button class="popup-btn" id="scanBtn">📷 Quét</button>
-            </div>
 
-            <!-- Hàng 2: upload ảnh -->
-            <div class="input-row">
-                <label class="popup-btn" style="cursor:pointer">
-                    Chọn tệp
-                    <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
-                </label>
-                <button id="saveImgBtn" class="popup-btn"
-                    style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
-                    💾 Lưu ảnh
-                </button>
-                <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
-            </div>
+                <!-- HÀNG UPLOAD ẢNH: đặt ngay dưới 2 nút Tìm kiếm / Quét -->
+                <div class="upload-row"
+                    style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;margin-top:8px">
+                    <label class="popup-btn" style="cursor:pointer">
+                        Chọn tệp
+                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
+                    </label>
 
-            <!-- Hàng 3: textarea nhiều mã -->
-            <div class="input-row">
+                    <button id="saveImgBtn" class="popup-btn"
+                        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
+                        💾 Lưu ảnh
+                    </button>
+
+                    <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:#1976d2">
+                        <input id="resizeCheckbox" type="checkbox" checked>
+                        Chuẩn hoá kích thước (khuyên dùng)
+                    </label>
+
+                    <span id="uploadStatus" style="font-weight:600;color:#c62828"></span>
+                </div>
+
+
+                <!-- Bên phải: textarea nhiều mã -->
+                <!-- Bên phải: chỉ 1 ô textarea -->
                 <div class="bulk-box">
                     <textarea id="bulkTextarea"
                         placeholder="Dán 1 cột mã (mỗi dòng 1 mã)&#10;VD:&#10;11376-GDM&#10;60252-GDE"></textarea>
                     <button id="clearBulkBtn" class="popup-btn"
                         style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
-                        🧹 Xoá DL
+                        🧹 Xoá danh sách
                     </button>
+
                 </div>
+
+
             </div>
+
+
         </div>
+
 
         <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
@@ -423,14 +450,12 @@
             <div class="top-info">
                 <table id="infoTopTable" class="info-table"></table>
             </div>
-
             <div class="right-xnt">
                 <table id="infoTableRight" class="info-table"></table>
             </div>
             <div class="img-wrap">
                 <img id="productImage" alt="Ảnh sản phẩm" />
             </div>
-
         </div>
     </div>
 
@@ -473,12 +498,6 @@
             </div>
         </div>
     </div>
-
-    <div id="flashOverlay"></div>
-<div id="toastMsg"></div>
-
-
 </body>
 
 </html>
-
