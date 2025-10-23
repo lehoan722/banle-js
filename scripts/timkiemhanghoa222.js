@@ -672,54 +672,73 @@ const resizeCheckbox = document.getElementById('resizeCheckbox');
 const uploadStatus = document.getElementById('uploadStatus');
 
 fileInput?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    const imgEl = document.getElementById('productImage');
+  const imgEl = document.getElementById('productImage');
 
-    // luôn chuẩn hoá kích thước trước khi upload
-    _pendingBlob = await resizeToStandardBlob(file);   // → Blob JPEG 640x480 or 480x640
-    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob); // xem trước đè lên ảnh cũ
+  // luôn chuẩn hoá kích thước trước khi upload
+  _pendingBlob = await resizeToStandardBlob(file);
+  if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob);
 
-    const sts = document.getElementById('uploadStatus');
-    if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
+  const sts = document.getElementById('uploadStatus');
+  if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
+
+  // NEW: nếu đang đi theo luồng Đặt hàng → tự upload ngay và mở popup
+  if (_orderAutoFlow) {
+    await uploadCurrentPendingImage(/*autoOpenAfter=*/true);
+  }
 });
 
 
 saveImgBtn?.addEventListener('click', async () => {
-    try {
-        uploadStatus.style.color = '#c62828';
-        if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
-        if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
-
-        const fileName = `${CURRENT_MASP}.JPG`; // luôn in hoa
-        uploadStatus.textContent = 'Đang lưu ảnh...';
-
-        const { error } = await supabase
-            .storage.from(STORAGE_BUCKET)
-            .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
-
-        if (error) throw error;
-
-        // refresh ảnh với cache-busting
-        const imgEl = document.getElementById('productImage');
-        imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
-
-        uploadStatus.style.color = 'green';
-        uploadStatus.textContent = 'Đã lưu ảnh thành công!';
-        // NEW: dọn trạng thái + focus & bôi đen ô nhập mã để nhập tiếp
-        const fi = document.getElementById('imgFileInput');
-        if (fi) fi.value = '';
-        _pendingBlob = null;
-
-        const ip = document.getElementById('maspInput');
-        if (ip) { ip.focus(); ip.select(); }   // <<< bôi đen để gõ mã tiếp
-    } catch (e) {
-        console.error(e);
-        uploadStatus.style.color = '#c62828';
-        uploadStatus.textContent = 'Lưu ảnh thất bại!';
-    }
+  await uploadCurrentPendingImage(/*autoOpenAfter=*/false);
 });
+ 
+async function uploadCurrentPendingImage(autoOpenAfter = false) {
+  try {
+    uploadStatus.style.color = '#c62828';
+    if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
+    if (!_pendingBlob)   { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
+
+    const fileName = `${CURRENT_MASP}.JPG`;
+    uploadStatus.textContent = 'Đang lưu ảnh...';
+
+    const { error } = await supabase
+      .storage.from(STORAGE_BUCKET)
+      .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
+
+    if (error) throw error;
+
+    // refresh ảnh với cache-busting
+    const imgEl = document.getElementById('productImage');
+    imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
+
+    uploadStatus.style.color = 'green';
+    uploadStatus.textContent = 'Đã lưu ảnh thành công!';
+
+    // dọn trạng thái chọn file
+    const fi = document.getElementById('imgFileInput'); if (fi) fi.value = '';
+    _pendingBlob = null;
+
+    // nếu là luồng tự lưu → mở popup đặt hàng luôn
+    if (autoOpenAfter) {
+      try { await openDatHangPopup(); } catch (_) {}
+    } else {
+      // thủ công thì chỉ focus về ô mã cho tiện
+      const ip = document.getElementById('maspInput');
+      if (ip) { ip.focus(); ip.select(); }
+    }
+  } catch (e) {
+    console.error(e);
+    uploadStatus.style.color = '#c62828';
+    uploadStatus.textContent = 'Lưu ảnh thất bại!';
+  } finally {
+    // tắt cờ auto flow (nếu có)
+    _orderAutoFlow = false;
+  }
+}
+
 
 async function resizeToStandardBlob(file) {
     // đọc file → Image
@@ -958,20 +977,21 @@ window.onload = async function () {
 
       // === ĐẶT HÀNG: gắn sự kiện ===
   document.getElementById('orderBtn')?.addEventListener('click', async () => {
-    // nếu đang có nhiều sản phẩm → vô hiệu hoá ngoài HTML, ở đây vẫn kiểm tra dự phòng
-    const singleBox = document.getElementById('singleDetailBox');
-    const isSingleVisible = singleBox && getComputedStyle(singleBox).display !== 'none' && !!CURRENT_MASP;
-    if (!isSingleVisible) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+  const singleBox = document.getElementById('singleDetailBox');
+  const isSingleVisible = singleBox && getComputedStyle(singleBox).display !== 'none' && !!CURRENT_MASP;
+  if (!isSingleVisible) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
 
-    // nếu chưa có ảnh → mở chọn ảnh; sau khi người dùng bấm "💾 Lưu ảnh" xong thì họ bấm lại Đặt hàng
-    if (!uiHasProductImage()) {
-      showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
-      document.getElementById('imgFileInput')?.click();
-      return;
-    }
+  if (!uiHasProductImage()) {
+    // NEW: bật cờ auto-flow, mời người dùng chụp/chọn ảnh
+    _orderAutoFlow = true;
+    showToast('⚠️ Sản phẩm chưa có ảnh. Mời chụp/chọn ảnh, hệ thống sẽ tự lưu & mở đặt hàng.', 'warn');
+    document.getElementById('imgFileInput')?.click();
+    return;
+  }
 
-    await openDatHangPopup();
-  });
+  await openDatHangPopup();
+});
+
 
   // Popup Đặt hàng: nút/enter điều hướng
   document.getElementById('dhCloseBtn')?.addEventListener('click', closeDatHangPopup);
@@ -1123,7 +1143,8 @@ const STORAGE_BUCKET = 'anhsanpham';
 
 let CURRENT_MASP = null;        // đang hiển thị 1 sản phẩm nào
 let _pendingBlob = null;        // blob đã resize (để upload)
-
+// NEW: cờ điều khiển luồng tự lưu ảnh + mở đặt hàng
+let _orderAutoFlow = false;  // true khi bấm Đặt hàng mà chưa có ảnh
 
 
 // Thử .JPG → .jpg → .PNG → .png
