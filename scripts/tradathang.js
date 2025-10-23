@@ -188,55 +188,54 @@ function renderTable() {
 
 /** ========= LƯU DỮ LIỆU (trahang + nvtrahang) ========= **/
 /** ========= LƯU DỮ LIỆU (trahang + nvtrahang + diadiem) ========= **/
+// ===== LƯU DỮ LIỆU: UPDATE theo sohd (không dùng upsert) =====
 async function saveData() {
   if (!hot) return;
   const nowRows = hot.getSourceData();
   const oldMap = new Map(originalRows.map(r => [r.sohd, r.trahang || '']));
 
-  const tennv = (localStorage.getItem('tennv') || '').trim();
+  const tennv   = (localStorage.getItem('tennv')   || '').trim();
   const diadiem = (localStorage.getItem('diadiem') || '').trim();
   if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập hoặc thiếu địa điểm', 'warn'); return; }
 
   const changed = [];
   for (const r of nowRows) {
     const sohd = (r.sohd || '').trim();
-    if (!sohd) continue; // bỏ dòng rác
+    if (!sohd) continue;
 
     const oldVal = (oldMap.get(sohd) ?? '').trim();
     let newVal = (r.trahang || '').trim().toUpperCase();
-    if (newVal !== 'OK' && newVal !== 'HET') newVal = ''; // chỉ chấp nhận OK/HET, còn lại coi như rỗng
+    if (newVal !== 'OK' && newVal !== 'HET') newVal = ''; // chuẩn hóa
 
     if (oldVal !== newVal) {
-      changed.push({
-        sohd,
-        trahang: newVal || null,
-        nvtrahang: tennv,
-        diadiem: diadiem   // 🔹 thêm dòng này
-      });
+      changed.push({ sohd, trahang: newVal || null, nvtrahang: tennv, diadiem });
     }
   }
-
   if (!changed.length) { showToast('Không có gì để lưu'); return; }
 
   document.getElementById('btnSave').disabled = true;
-  const { error } = await supabase
-    .from('dathang')
-    .upsert(changed, { onConflict: 'sohd', ignoreDuplicates: false, returning: 'minimal' });
+
+  // UPDATE từng dòng theo sohd để không đụng NOT NULL các cột khác
+  const results = await Promise.all(changed.map(u =>
+    supabase.from('dathang')
+      .update({ trahang: u.trahang, nvtrahang: u.nvtrahang, diadiem: u.diadiem })
+      .eq('sohd', u.sohd)
+  ));
+
   document.getElementById('btnSave').disabled = false;
 
-  if (error) {
-    console.error(error);
-    showToast('❌ Lưu dữ liệu thất bại: ' + (error.message || ''), 'warn');
+  // kiểm tra lỗi nào (nếu có)
+  const err = results.find(r => r.error);
+  if (err) {
+    console.error(err.error);
+    showToast('❌ Lưu dữ liệu thất bại: ' + (err.error.message || ''), 'warn');
     return;
   }
 
-  // cập nhật snapshot gốc + hiển thị nvtrahang trên bảng
+  // cập nhật snapshot & cột nvtrahang trên UI
   for (const u of changed) {
     const i = originalRows.findIndex(x => x.sohd === u.sohd);
-    if (i >= 0) {
-      originalRows[i].trahang = u.trahang;
-      originalRows[i].nvtrahang = u.nvtrahang;
-    }
+    if (i >= 0) { originalRows[i].trahang = u.trahang; originalRows[i].nvtrahang = u.nvtrahang; }
   }
   const cur = hot.getSourceData();
   for (const u of changed) {
