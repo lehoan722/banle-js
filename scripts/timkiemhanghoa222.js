@@ -984,7 +984,7 @@ window.onload = async function () {
   if (!uiHasProductImage()) {
     // NEW: bật cờ auto-flow, mời người dùng chụp/chọn ảnh
     _orderAutoFlow = true;
-    showToast('⚠️ Sản phẩm chưa có ảnh. Mời chụp/chọn ảnh, hệ thống sẽ tự lưu & mở đặt hàng.', 'warn');
+    //showToast('⚠️ Sản phẩm chưa có ảnh. Mời chụp/chọn ảnh, hệ thống sẽ tự lưu & mở đặt hàng.', 'warn');
     document.getElementById('imgFileInput')?.click();
     return;
   }
