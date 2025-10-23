@@ -956,7 +956,45 @@ window.onload = async function () {
         }
     }
 
+      // === ĐẶT HÀNG: gắn sự kiện ===
+  document.getElementById('orderBtn')?.addEventListener('click', async () => {
+    // nếu đang có nhiều sản phẩm → vô hiệu hoá ngoài HTML, ở đây vẫn kiểm tra dự phòng
+    const singleBox = document.getElementById('singleDetailBox');
+    const isSingleVisible = singleBox && getComputedStyle(singleBox).display !== 'none' && !!CURRENT_MASP;
+    if (!isSingleVisible) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+
+    // nếu chưa có ảnh → mở chọn ảnh; sau khi người dùng bấm "💾 Lưu ảnh" xong thì họ bấm lại Đặt hàng
+    if (!uiHasProductImage()) {
+      showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+      document.getElementById('imgFileInput')?.click();
+      return;
+    }
+
+    await openDatHangPopup();
+  });
+
+  // Popup Đặt hàng: nút/enter điều hướng
+  document.getElementById('dhCloseBtn')?.addEventListener('click', closeDatHangPopup);
+  document.getElementById('dhSaveBtn')?.addEventListener('click', saveDatHang);
+
+  // Enter chuyển ô: Màu → Còn size → Hết size → Ghi chú → Lưu
+  document.getElementById('dhMau')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhConSize').focus(); }});
+  document.getElementById('dhConSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhHetSize').focus(); }});
+  document.getElementById('dhHetSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhGhichu').focus(); }});
+  document.getElementById('dhGhichu')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhSaveBtn').focus(); }});
+
+  // Popup chọn Màu/Size
+  document.getElementById('pickMauBtn')?.addEventListener('click', openPickMau);
+  document.getElementById('mauCloseBtn')?.addEventListener('click', () => { document.getElementById('popupPickMau').style.display='none'; });
+
+  document.getElementById('pickConSizeBtn')?.addEventListener('click', () => openPickSize('con'));
+  document.getElementById('pickHetSizeBtn')?.addEventListener('click', () => openPickSize('het'));
+  document.getElementById('sizeDoneBtn')?.addEventListener('click', closePickSizeAndFill);
+
+
 };
+
+
 
 // ====== XNT HOT (Handsontable) ======
 const xntHotInstances = {};  // thay vì let xntHot = null
@@ -1161,5 +1199,192 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
         document.getElementById('clearBulkBtn')?.click();
     }
 });
+
+// === ĐẶT HÀNG: cấu hình ===
+const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
+const PAD5 = (n) => String(n).padStart(5, '0');
+
+// Lấy tennv/diadiem từ localStorage
+function getCurrentUserInfo() {
+  const tennv = localStorage.getItem('tennv') || '';
+  const diadiem = localStorage.getItem('diadiem') || '';
+  return { tennv, diadiem };
+}
+
+// Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
+function uiHasProductImage() {
+  const img = document.getElementById('productImage');
+  return !!(img && img.complete && img.naturalWidth > 0);
+}
+
+// Sinh số HĐ (lấy max theo prefix rồi +1; 5 chữ số)
+async function getNextSohd(diadiem) {
+  const prefix = SOHD_PREFIX(diadiem);
+  const { data, error } = await supabase.from('dathang')
+    .select('sohd').ilike('sohd', `${prefix}%`)
+    .order('sohd', { ascending: false }).limit(1);
+  if (error) throw error;
+
+  let next = 1;
+  if (data && data.length) {
+    const cur = data[0].sohd || '';
+    const m = cur.match(/_(\d{1,5})$/);
+    if (m) next = parseInt(m[1], 10) + 1;
+  }
+  return `${prefix}${PAD5(next)}`;
+}
+
+// Mở popup đặt hàng (đổ sẵn dữ liệu và focus đúng ô)
+async function openDatHangPopup() {
+  const { tennv, diadiem } = getCurrentUserInfo();
+  if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
+
+  // phải có đúng 1 sản phẩm đang hiển thị
+  if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+
+  // yêu cầu có ảnh trên UI (nếu chưa thì người dùng phải bấm Lưu ảnh trước)
+  if (!uiHasProductImage()) {
+    showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+    // gợi ý bấm chọn file để người dùng tải ảnh lên
+    document.getElementById('imgFileInput')?.click();
+    return;
+  }
+
+  // sinh số HĐ
+  const sohd = await getNextSohd(diadiem).catch(() => null);
+  if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
+
+  // đổ dữ liệu
+  document.getElementById('dhSohd').value   = sohd;
+  document.getElementById('dhMasp').value   = CURRENT_MASP || '';
+  document.getElementById('dhMau').value    = '';
+  document.getElementById('dhConSize').value= '';
+  document.getElementById('dhHetSize').value= '';
+  document.getElementById('dhGhichu').value = '';
+
+  // mở popup + focus vào ô Màu
+  document.getElementById('popupDatHang').style.display = 'block';
+  setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
+}
+
+function closeDatHangPopup() {
+  document.getElementById('popupDatHang').style.display = 'none';
+}
+
+// --- Popup Màu (chọn một) ---
+async function openPickMau() {
+  const wrap = document.getElementById('mauList');
+  wrap.innerHTML = '<div style="padding:10px">Đang tải...</div>';
+  document.getElementById('popupPickMau').style.display = 'block';
+  const { data, error } = await supabase.from('dmmausac').select('tenmau').order('tenmau');
+  if (error) { wrap.innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục màu</div>'; return; }
+  wrap.innerHTML = (data || []).map(r =>
+    `<div class="row" style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer"
+          onclick="document.getElementById('dhMau').value='${(r.tenmau||'').replace(/'/g,"\\'")}';
+                   document.getElementById('popupPickMau').style.display='none';
+                   document.getElementById('dhConSize').focus();">
+       ${r.tenmau || ''}
+     </div>`
+  ).join('');
+}
+
+// --- Popup Size (đa chọn, chung cho Còn/Hết) ---
+let SIZE_PICK_TARGET = null;     // 'con' | 'het'
+let SIZE_PICK_SELECTED = new Set();
+let SIZE_PICK_DATA = [];
+
+function renderSizeList(filter = '') {
+  const list = document.getElementById('sizeList');
+  const q = (filter || '').toLowerCase();
+  const rows = SIZE_PICK_DATA.filter(x => !q || (x.mota||'').toLowerCase().includes(q));
+  list.innerHTML = rows.map(x => {
+    const key = x.mota || '';
+    const on = SIZE_PICK_SELECTED.has(key);
+    return `<div onclick="togglePickSize('${key.replace(/'/g,"\\'")}')"
+                 style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;">
+              <span>${key}</span>
+              <span>${on ? '✓' : ''}</span>
+            </div>`;
+  }).join('') || '<div style="padding:10px">Không có dữ liệu</div>';
+}
+
+window.togglePickSize = function(key) {
+  if (SIZE_PICK_SELECTED.has(key)) SIZE_PICK_SELECTED.delete(key);
+  else SIZE_PICK_SELECTED.add(key);
+  renderSizeList(document.getElementById('sizeFilter').value);
+};
+
+async function openPickSize(which) {
+  SIZE_PICK_TARGET = which; // 'con' | 'het'
+  SIZE_PICK_SELECTED = new Set();
+  document.getElementById('popupPickSize').style.display = 'block';
+  document.getElementById('sizeFilter').value = '';
+  document.getElementById('sizeFilter').oninput = (e) => renderSizeList(e.target.value);
+
+  const { data, error } = await supabase.from('dm_size').select('mota').order('mota');
+  if (error) { document.getElementById('sizeList').innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục size</div>'; return; }
+  SIZE_PICK_DATA = data || [];
+  renderSizeList('');
+}
+
+function closePickSizeAndFill() {
+  const arr = Array.from(SIZE_PICK_SELECTED);
+  const val = arr.join(', ');
+  if (SIZE_PICK_TARGET === 'con') document.getElementById('dhConSize').value = val;
+  else if (SIZE_PICK_TARGET === 'het') document.getElementById('dhHetSize').value = val;
+  document.getElementById('popupPickSize').style.display = 'none';
+  if (SIZE_PICK_TARGET === 'con') document.getElementById('dhHetSize').focus();
+  else document.getElementById('dhGhichu').focus();
+}
+
+// --- Lưu đặt hàng ---
+async function saveDatHang() {
+  const { tennv, diadiem } = getCurrentUserInfo();
+  const sohd    = document.getElementById('dhSohd').value.trim();
+  const masp    = document.getElementById('dhMasp').value.trim().toUpperCase();
+  const mau     = document.getElementById('dhMau').value.trim();
+  const conSize = document.getElementById('dhConSize').value.trim();
+  const hetSize = document.getElementById('dhHetSize').value.trim();
+  const ghichu  = document.getElementById('dhGhichu').value.trim();
+
+  if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
+  if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+  if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
+  if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
+
+  // cố gắng insert; nếu trùng sohd thì +1
+  let attempt = 0;
+  let curSohd = sohd;
+  while (attempt < 2) {
+    const { error } = await supabase.from('dathang').insert([{
+      sohd: curSohd, diadiem, masp, mau,
+      con_size: conSize, het_size: hetSize,
+      tennv, ghichu
+    }]);
+    if (!error) {
+      showToast('✅ Đặt hàng thành công!');
+      closeDatHangPopup();
+      return;
+    }
+    // nếu trùng unique, sinh lại số
+    if (String(error.message || '').toLowerCase().includes('duplicate')) {
+      curSohd = await getNextSohd(diadiem);
+      attempt++;
+      continue;
+    }
+    showToast('❌ Lỗi lưu đặt hàng!', 'warn');
+    return;
+  }
+  // thử thêm lần cuối
+  const { error: err3 } = await supabase.from('dathang').insert([{
+    sohd: curSohd, diadiem, masp, mau,
+    con_size: conSize, het_size: hetSize,
+    tennv, ghichu
+  }]);
+  if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
+  showToast('✅ Đặt hàng thành công!');
+  closeDatHangPopup();
+}
+
 
 
