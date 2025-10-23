@@ -71,20 +71,20 @@ function pushCodeToTextareaAndSearch(raw) {
 
     // feedback nhẹ để biết đã quét
     showFlash();
-    try { haptic(70); } catch (_) {}
-    try { playSuccessBeep(); } catch (_) {}
-    try { showToast(`✅ Đã quét ${code}`, 'info'); } catch (_) {}
+    try { haptic(70); } catch (_) { }
+    try { playSuccessBeep(); } catch (_) { }
+    try { showToast(`✅ Đã quét ${code}`, 'info'); } catch (_) { }
 
     // ✅ Chỉ đẩy vào ô nhập mã
     const ip = document.getElementById('maspInput');
     if (ip) {
         ip.value = code;
         ip.focus();
-        try { ip.select(); } catch(_) {}
+        try { ip.select(); } catch (_) { }
     }
 
     // Đóng scanner (nếu đang mở) và tìm ngay
-    try { closeScanner(); } catch (_) {}
+    try { closeScanner(); } catch (_) { }
     if (typeof triggerSearch === 'function') triggerSearch();
 }
 
@@ -672,71 +672,91 @@ const resizeCheckbox = document.getElementById('resizeCheckbox');
 const uploadStatus = document.getElementById('uploadStatus');
 
 fileInput?.addEventListener('change', async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const imgEl = document.getElementById('productImage');
+    const imgEl = document.getElementById('productImage');
 
-  // luôn chuẩn hoá kích thước trước khi upload
-  _pendingBlob = await resizeToStandardBlob(file);
-  if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob);
+    // luôn chuẩn hoá kích thước trước khi upload
+    _pendingBlob = await resizeToStandardBlob(file);
+    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob);
 
-  const sts = document.getElementById('uploadStatus');
-  if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
+    const sts = document.getElementById('uploadStatus');
+    if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
 
-  // NEW: nếu đang đi theo luồng Đặt hàng → tự upload ngay và mở popup
-  if (_orderAutoFlow) {
-    await uploadCurrentPendingImage(/*autoOpenAfter=*/true);
-  }
+    // NEW: nếu đang đi theo luồng Đặt hàng → tự upload ngay và mở popup
+    if (_orderAutoFlow) {
+        await uploadCurrentPendingImage(/*autoOpenAfter=*/true);
+    }
 });
 
 
 saveImgBtn?.addEventListener('click', async () => {
-  await uploadCurrentPendingImage(/*autoOpenAfter=*/false);
+    await uploadCurrentPendingImage(/*autoOpenAfter=*/false);
 });
- 
+
+function waitForProductImageLoad() {
+  return new Promise((resolve) => {
+    const img = document.getElementById('productImage');
+    if (!img) return resolve(false);
+    if (img.complete && img.naturalWidth > 0) return resolve(true);
+
+    const onLoad = () => { cleanup(); resolve(true); };
+    const onErr  = () => { cleanup(); resolve(false); };
+    const cleanup = () => {
+      img.removeEventListener('load', onLoad);
+      img.removeEventListener('error', onErr);
+    };
+
+    img.addEventListener('load', onLoad, { once: true });
+    img.addEventListener('error', onErr, { once: true });
+  });
+}
+
+
 async function uploadCurrentPendingImage(autoOpenAfter = false) {
-  try {
-    uploadStatus.style.color = '#c62828';
-    if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
-    if (!_pendingBlob)   { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
+    try {
+        uploadStatus.style.color = '#c62828';
+        if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
+        if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
 
-    const fileName = `${CURRENT_MASP}.JPG`;
-    uploadStatus.textContent = 'Đang lưu ảnh...';
+        const fileName = `${CURRENT_MASP}.JPG`;
+        uploadStatus.textContent = 'Đang lưu ảnh...';
 
-    const { error } = await supabase
-      .storage.from(STORAGE_BUCKET)
-      .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
+        const { error } = await supabase
+            .storage.from(STORAGE_BUCKET)
+            .upload(fileName, _pendingBlob, { upsert: true, contentType: 'image/jpeg' });
 
-    if (error) throw error;
+        if (error) throw error;
 
-    // refresh ảnh với cache-busting
-    const imgEl = document.getElementById('productImage');
-    imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
+        // refresh ảnh với cache-busting
+        const imgEl = document.getElementById('productImage');
+        imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
+        // CHỜ ảnh thật sự load để uiHasProductImage() trả true
+        await waitForProductImageLoad();
+        uploadStatus.style.color = 'green';
+        uploadStatus.textContent = 'Đã lưu ảnh thành công!';
 
-    uploadStatus.style.color = 'green';
-    uploadStatus.textContent = 'Đã lưu ảnh thành công!';
+        // dọn trạng thái chọn file
+        const fi = document.getElementById('imgFileInput'); if (fi) fi.value = '';
+        _pendingBlob = null;
 
-    // dọn trạng thái chọn file
-    const fi = document.getElementById('imgFileInput'); if (fi) fi.value = '';
-    _pendingBlob = null;
-
-    // nếu là luồng tự lưu → mở popup đặt hàng luôn
-    if (autoOpenAfter) {
-      try { await openDatHangPopup(); } catch (_) {}
-    } else {
-      // thủ công thì chỉ focus về ô mã cho tiện
-      const ip = document.getElementById('maspInput');
-      if (ip) { ip.focus(); ip.select(); }
+        // nếu là luồng tự lưu → mở popup đặt hàng luôn
+        if (autoOpenAfter) {
+            try { await openDatHangPopup(); } catch (_) { }
+        } else {
+            // thủ công thì chỉ focus về ô mã cho tiện
+            const ip = document.getElementById('maspInput');
+            if (ip) { ip.focus(); ip.select(); }
+        }
+    } catch (e) {
+        console.error(e);
+        uploadStatus.style.color = '#c62828';
+        uploadStatus.textContent = 'Lưu ảnh thất bại!';
+    } finally {
+        // tắt cờ auto flow (nếu có)
+        _orderAutoFlow = false;
     }
-  } catch (e) {
-    console.error(e);
-    uploadStatus.style.color = '#c62828';
-    uploadStatus.textContent = 'Lưu ảnh thất bại!';
-  } finally {
-    // tắt cờ auto flow (nếu có)
-    _orderAutoFlow = false;
-  }
 }
 
 
@@ -872,8 +892,8 @@ window.openScanner = async function () {
         video.style.maxHeight = '62vh';
         video.style.borderRadius = '10px';
         video.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)';
-    } 
-   
+    }
+
 
 
     const status = document.getElementById('scannerStatus');
@@ -975,41 +995,41 @@ window.onload = async function () {
         }
     }
 
-      // === ĐẶT HÀNG: gắn sự kiện ===
-  document.getElementById('orderBtn')?.addEventListener('click', async () => {
-  const singleBox = document.getElementById('singleDetailBox');
-  const isSingleVisible = singleBox && getComputedStyle(singleBox).display !== 'none' && !!CURRENT_MASP;
-  if (!isSingleVisible) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+    // === ĐẶT HÀNG: gắn sự kiện ===
+    document.getElementById('orderBtn')?.addEventListener('click', async () => {
+        const singleBox = document.getElementById('singleDetailBox');
+        const isSingleVisible = singleBox && getComputedStyle(singleBox).display !== 'none' && !!CURRENT_MASP;
+        if (!isSingleVisible) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
 
-  if (!uiHasProductImage()) {
-    // NEW: bật cờ auto-flow, mời người dùng chụp/chọn ảnh
-    _orderAutoFlow = true;
-    //showToast('⚠️ Sản phẩm chưa có ảnh. Mời chụp/chọn ảnh, hệ thống sẽ tự lưu & mở đặt hàng.', 'warn');
-    document.getElementById('imgFileInput')?.click();
-    return;
-  }
+        if (!uiHasProductImage()) {
+            // NEW: bật cờ auto-flow, mời người dùng chụp/chọn ảnh
+            _orderAutoFlow = true;
+            //showToast('⚠️ Sản phẩm chưa có ảnh. Mời chụp/chọn ảnh, hệ thống sẽ tự lưu & mở đặt hàng.', 'warn');
+            document.getElementById('imgFileInput')?.click();
+            return;
+        }
 
-  await openDatHangPopup();
-});
+        await openDatHangPopup();
+    });
 
 
-  // Popup Đặt hàng: nút/enter điều hướng
-  document.getElementById('dhCloseBtn')?.addEventListener('click', closeDatHangPopup);
-  document.getElementById('dhSaveBtn')?.addEventListener('click', saveDatHang);
+    // Popup Đặt hàng: nút/enter điều hướng
+    document.getElementById('dhCloseBtn')?.addEventListener('click', closeDatHangPopup);
+    document.getElementById('dhSaveBtn')?.addEventListener('click', saveDatHang);
 
-  // Enter chuyển ô: Màu → Còn size → Hết size → Ghi chú → Lưu
-  document.getElementById('dhMau')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhConSize').focus(); }});
-  document.getElementById('dhConSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhHetSize').focus(); }});
-  document.getElementById('dhHetSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhGhichu').focus(); }});
-  document.getElementById('dhGhichu')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhSaveBtn').focus(); }});
+    // Enter chuyển ô: Màu → Còn size → Hết size → Ghi chú → Lưu
+    document.getElementById('dhMau')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhConSize').focus(); } });
+    document.getElementById('dhConSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhHetSize').focus(); } });
+    document.getElementById('dhHetSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhGhichu').focus(); } });
+    document.getElementById('dhGhichu')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhSaveBtn').focus(); } });
 
-  // Popup chọn Màu/Size
-  document.getElementById('pickMauBtn')?.addEventListener('click', openPickMau);
-  document.getElementById('mauCloseBtn')?.addEventListener('click', () => { document.getElementById('popupPickMau').style.display='none'; });
+    // Popup chọn Màu/Size
+    document.getElementById('pickMauBtn')?.addEventListener('click', openPickMau);
+    document.getElementById('mauCloseBtn')?.addEventListener('click', () => { document.getElementById('popupPickMau').style.display = 'none'; });
 
-  document.getElementById('pickConSizeBtn')?.addEventListener('click', () => openPickSize('con'));
-  document.getElementById('pickHetSizeBtn')?.addEventListener('click', () => openPickSize('het'));
-  document.getElementById('sizeDoneBtn')?.addEventListener('click', closePickSizeAndFill);
+    document.getElementById('pickConSizeBtn')?.addEventListener('click', () => openPickSize('con'));
+    document.getElementById('pickHetSizeBtn')?.addEventListener('click', () => openPickSize('het'));
+    document.getElementById('sizeDoneBtn')?.addEventListener('click', closePickSizeAndFill);
 
 
 };
@@ -1227,86 +1247,88 @@ const PAD5 = (n) => String(n).padStart(5, '0');
 
 // Lấy tennv/diadiem từ localStorage
 function getCurrentUserInfo() {
-  const tennv = localStorage.getItem('tennv') || '';
-  const diadiem = localStorage.getItem('diadiem') || '';
-  return { tennv, diadiem };
+    const tennv = localStorage.getItem('tennv') || '';
+    const diadiem = localStorage.getItem('diadiem') || '';
+    return { tennv, diadiem };
 }
 
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
 function uiHasProductImage() {
-  const img = document.getElementById('productImage');
-  return !!(img && img.complete && img.naturalWidth > 0);
+    const img = document.getElementById('productImage');
+    return !!(img && img.complete && img.naturalWidth > 0);
 }
 
 // Sinh số HĐ (lấy max theo prefix rồi +1; 5 chữ số)
 async function getNextSohd(diadiem) {
-  const prefix = SOHD_PREFIX(diadiem);
-  const { data, error } = await supabase.from('dathang')
-    .select('sohd').ilike('sohd', `${prefix}%`)
-    .order('sohd', { ascending: false }).limit(1);
-  if (error) throw error;
+    const prefix = SOHD_PREFIX(diadiem);
+    const { data, error } = await supabase.from('dathang')
+        .select('sohd').ilike('sohd', `${prefix}%`)
+        .order('sohd', { ascending: false }).limit(1);
+    if (error) throw error;
 
-  let next = 1;
-  if (data && data.length) {
-    const cur = data[0].sohd || '';
-    const m = cur.match(/_(\d{1,5})$/);
-    if (m) next = parseInt(m[1], 10) + 1;
-  }
-  return `${prefix}${PAD5(next)}`;
+    let next = 1;
+    if (data && data.length) {
+        const cur = data[0].sohd || '';
+        const m = cur.match(/_(\d{1,5})$/);
+        if (m) next = parseInt(m[1], 10) + 1;
+    }
+    return `${prefix}${PAD5(next)}`;
 }
 
 // Mở popup đặt hàng (đổ sẵn dữ liệu và focus đúng ô)
 async function openDatHangPopup() {
-  const { tennv, diadiem } = getCurrentUserInfo();
-  if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
+    const { tennv, diadiem } = getCurrentUserInfo();
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
 
-  // phải có đúng 1 sản phẩm đang hiển thị
-  if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+    // phải có đúng 1 sản phẩm đang hiển thị
+    if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
 
-  // yêu cầu có ảnh trên UI (nếu chưa thì người dùng phải bấm Lưu ảnh trước)
-  if (!uiHasProductImage()) {
-    showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
-    // gợi ý bấm chọn file để người dùng tải ảnh lên
-    document.getElementById('imgFileInput')?.click();
-    return;
-  }
+    // yêu cầu có ảnh trên UI
+if (!uiHasProductImage()) {
+  // NEW: nếu đang auto-flow, KHÔNG cảnh báo/không click input, chỉ return (caller sẽ gọi lại sau khi ảnh sẵn sàng)
+  if (_orderAutoFlow) return;
 
-  // sinh số HĐ
-  const sohd = await getNextSohd(diadiem).catch(() => null);
-  if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
+  showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+  document.getElementById('imgFileInput')?.click();
+  return;
+}
 
-  // đổ dữ liệu
-  document.getElementById('dhSohd').value   = sohd;
-  document.getElementById('dhMasp').value   = CURRENT_MASP || '';
-  document.getElementById('dhMau').value    = '';
-  document.getElementById('dhConSize').value= '';
-  document.getElementById('dhHetSize').value= '';
-  document.getElementById('dhGhichu').value = '';
+    // sinh số HĐ
+    const sohd = await getNextSohd(diadiem).catch(() => null);
+    if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
 
-  // mở popup + focus vào ô Màu
-  document.getElementById('popupDatHang').style.display = 'block';
-  setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
+    // đổ dữ liệu
+    document.getElementById('dhSohd').value = sohd;
+    document.getElementById('dhMasp').value = CURRENT_MASP || '';
+    document.getElementById('dhMau').value = '';
+    document.getElementById('dhConSize').value = '';
+    document.getElementById('dhHetSize').value = '';
+    document.getElementById('dhGhichu').value = '';
+
+    // mở popup + focus vào ô Màu
+    document.getElementById('popupDatHang').style.display = 'block';
+    setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
 }
 
 function closeDatHangPopup() {
-  document.getElementById('popupDatHang').style.display = 'none';
+    document.getElementById('popupDatHang').style.display = 'none';
 }
 
 // --- Popup Màu (chọn một) ---
 async function openPickMau() {
-  const wrap = document.getElementById('mauList');
-  wrap.innerHTML = '<div style="padding:10px">Đang tải...</div>';
-  document.getElementById('popupPickMau').style.display = 'block';
-  const { data, error } = await supabase.from('dmmausac').select('tenmau').order('tenmau');
-  if (error) { wrap.innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục màu</div>'; return; }
-  wrap.innerHTML = (data || []).map(r =>
-    `<div class="row" style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer"
-          onclick="document.getElementById('dhMau').value='${(r.tenmau||'').replace(/'/g,"\\'")}';
+    const wrap = document.getElementById('mauList');
+    wrap.innerHTML = '<div style="padding:10px">Đang tải...</div>';
+    document.getElementById('popupPickMau').style.display = 'block';
+    const { data, error } = await supabase.from('dmmausac').select('tenmau').order('tenmau');
+    if (error) { wrap.innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục màu</div>'; return; }
+    wrap.innerHTML = (data || []).map(r =>
+        `<div class="row" style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer"
+          onclick="document.getElementById('dhMau').value='${(r.tenmau || '').replace(/'/g, "\\'")}';
                    document.getElementById('popupPickMau').style.display='none';
                    document.getElementById('dhConSize').focus();">
        ${r.tenmau || ''}
      </div>`
-  ).join('');
+    ).join('');
 }
 
 // --- Popup Size (đa chọn, chung cho Còn/Hết) ---
@@ -1315,97 +1337,98 @@ let SIZE_PICK_SELECTED = new Set();
 let SIZE_PICK_DATA = [];
 
 function renderSizeList(filter = '') {
-  const list = document.getElementById('sizeList');
-  const q = (filter || '').toLowerCase();
-  const rows = SIZE_PICK_DATA.filter(x => !q || (x.mota||'').toLowerCase().includes(q));
-  list.innerHTML = rows.map(x => {
-    const key = x.mota || '';
-    const on = SIZE_PICK_SELECTED.has(key);
-    return `<div onclick="togglePickSize('${key.replace(/'/g,"\\'")}')"
+    const list = document.getElementById('sizeList');
+    const q = (filter || '').toLowerCase();
+    const rows = SIZE_PICK_DATA.filter(x => !q || (x.mota || '').toLowerCase().includes(q));
+    list.innerHTML = rows.map(x => {
+        const key = x.mota || '';
+        const on = SIZE_PICK_SELECTED.has(key);
+        return `<div onclick="togglePickSize('${key.replace(/'/g, "\\'")}')"
                  style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;">
               <span>${key}</span>
               <span>${on ? '✓' : ''}</span>
             </div>`;
-  }).join('') || '<div style="padding:10px">Không có dữ liệu</div>';
+    }).join('') || '<div style="padding:10px">Không có dữ liệu</div>';
 }
 
-window.togglePickSize = function(key) {
-  if (SIZE_PICK_SELECTED.has(key)) SIZE_PICK_SELECTED.delete(key);
-  else SIZE_PICK_SELECTED.add(key);
-  renderSizeList(document.getElementById('sizeFilter').value);
+window.togglePickSize = function (key) {
+    if (SIZE_PICK_SELECTED.has(key)) SIZE_PICK_SELECTED.delete(key);
+    else SIZE_PICK_SELECTED.add(key);
+    renderSizeList(document.getElementById('sizeFilter').value);
 };
 
 async function openPickSize(which) {
-  SIZE_PICK_TARGET = which; // 'con' | 'het'
-  SIZE_PICK_SELECTED = new Set();
-  document.getElementById('popupPickSize').style.display = 'block';
-  document.getElementById('sizeFilter').value = '';
-  document.getElementById('sizeFilter').oninput = (e) => renderSizeList(e.target.value);
+    SIZE_PICK_TARGET = which; // 'con' | 'het'
+    SIZE_PICK_SELECTED = new Set();
+    document.getElementById('popupPickSize').style.display = 'block';
+    document.getElementById('sizeFilter').value = '';
+    document.getElementById('sizeFilter').oninput = (e) => renderSizeList(e.target.value);
 
-  const { data, error } = await supabase.from('dm_size').select('mota').order('mota');
-  if (error) { document.getElementById('sizeList').innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục size</div>'; return; }
-  SIZE_PICK_DATA = data || [];
-  renderSizeList('');
+    const { data, error } = await supabase.from('dm_size').select('mota').order('mota');
+    if (error) { document.getElementById('sizeList').innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục size</div>'; return; }
+    SIZE_PICK_DATA = data || [];
+    renderSizeList('');
 }
 
 function closePickSizeAndFill() {
-  const arr = Array.from(SIZE_PICK_SELECTED);
-  const val = arr.join(', ');
-  if (SIZE_PICK_TARGET === 'con') document.getElementById('dhConSize').value = val;
-  else if (SIZE_PICK_TARGET === 'het') document.getElementById('dhHetSize').value = val;
-  document.getElementById('popupPickSize').style.display = 'none';
-  if (SIZE_PICK_TARGET === 'con') document.getElementById('dhHetSize').focus();
-  else document.getElementById('dhGhichu').focus();
+    const arr = Array.from(SIZE_PICK_SELECTED);
+    const val = arr.join(', ');
+    if (SIZE_PICK_TARGET === 'con') document.getElementById('dhConSize').value = val;
+    else if (SIZE_PICK_TARGET === 'het') document.getElementById('dhHetSize').value = val;
+    document.getElementById('popupPickSize').style.display = 'none';
+    if (SIZE_PICK_TARGET === 'con') document.getElementById('dhHetSize').focus();
+    else document.getElementById('dhGhichu').focus();
 }
 
 // --- Lưu đặt hàng ---
 async function saveDatHang() {
-  const { tennv, diadiem } = getCurrentUserInfo();
-  const sohd    = document.getElementById('dhSohd').value.trim();
-  const masp    = document.getElementById('dhMasp').value.trim().toUpperCase();
-  const mau     = document.getElementById('dhMau').value.trim();
-  const conSize = document.getElementById('dhConSize').value.trim();
-  const hetSize = document.getElementById('dhHetSize').value.trim();
-  const ghichu  = document.getElementById('dhGhichu').value.trim();
+    const { tennv, diadiem } = getCurrentUserInfo();
+    const sohd = document.getElementById('dhSohd').value.trim();
+    const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
+    const mau = document.getElementById('dhMau').value.trim();
+    const conSize = document.getElementById('dhConSize').value.trim();
+    const hetSize = document.getElementById('dhHetSize').value.trim();
+    const ghichu = document.getElementById('dhGhichu').value.trim();
 
-  if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
-  if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
-  if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
-  if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
+    if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
+    if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+    if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
+    if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
 
-  // cố gắng insert; nếu trùng sohd thì +1
-  let attempt = 0;
-  let curSohd = sohd;
-  while (attempt < 2) {
-    const { error } = await supabase.from('dathang').insert([{
-      sohd: curSohd, diadiem, masp, mau,
-      con_size: conSize, het_size: hetSize,
-      tennv, ghichu
+    // cố gắng insert; nếu trùng sohd thì +1
+    let attempt = 0;
+    let curSohd = sohd;
+    while (attempt < 2) {
+        const { error } = await supabase.from('dathang').insert([{
+            sohd: curSohd, diadiem, masp, mau,
+            con_size: conSize, het_size: hetSize,
+            tennv, ghichu
+        }]);
+        if (!error) {
+            showToast('✅ Đặt hàng thành công!');
+            closeDatHangPopup();
+            return;
+        }
+        // nếu trùng unique, sinh lại số
+        if (String(error.message || '').toLowerCase().includes('duplicate')) {
+            curSohd = await getNextSohd(diadiem);
+            attempt++;
+            continue;
+        }
+        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
+        return;
+    }
+    // thử thêm lần cuối
+    const { error: err3 } = await supabase.from('dathang').insert([{
+        sohd: curSohd, diadiem, masp, mau,
+        con_size: conSize, het_size: hetSize,
+        tennv, ghichu
     }]);
-    if (!error) {
-      showToast('✅ Đặt hàng thành công!');
-      closeDatHangPopup();
-      return;
-    }
-    // nếu trùng unique, sinh lại số
-    if (String(error.message || '').toLowerCase().includes('duplicate')) {
-      curSohd = await getNextSohd(diadiem);
-      attempt++;
-      continue;
-    }
-    showToast('❌ Lỗi lưu đặt hàng!', 'warn');
-    return;
-  }
-  // thử thêm lần cuối
-  const { error: err3 } = await supabase.from('dathang').insert([{
-    sohd: curSohd, diadiem, masp, mau,
-    con_size: conSize, het_size: hetSize,
-    tennv, ghichu
-  }]);
-  if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
-  showToast('✅ Đặt hàng thành công!');
-  closeDatHangPopup();
+    if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
+    showToast('✅ Đặt hàng thành công!');
+    closeDatHangPopup();
 }
+
 
 
 
