@@ -555,8 +555,9 @@
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
+                            
+                            <label><input id="nhapsize" checked="" type="checkbox" /> nhap size lien tiep</label>
+                            <label><input type="checkbox"  id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
                 </div>
@@ -1739,7 +1740,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!btn) return;
 
   btn.addEventListener('click', () => {
-    // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM
+    // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
       window.capNhatBangKetQuaTuDOM();
     }
@@ -1774,4 +1775,5 @@ document.addEventListener('DOMContentLoaded', () => {
 </body>
 
 </html>
+
 
