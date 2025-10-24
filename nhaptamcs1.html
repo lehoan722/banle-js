@@ -1730,51 +1730,18 @@
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
-    
     <script type="module">
         import { uiLock } from './scripts/uiLock.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             uiLock.mount({
-                toggleButtonId: 'btnChuyenBang',   // id nút chuyển bảng của bạn
-                pivotButtonId: 'btnChuyenBang',    // dùng chung vì nút này xử lý pivot luôn
+                toggleButtonId: 'btnChuyenBang',
+                pivotButtonId: 'btnChuyenBang',
                 message: '🔒 Chế độ xem (đã khóa). Nhấn “Chuyển” để nhập liệu.'
             });
-            uiLock.whitelist(['btnChuyenBang', 'btnCopy']); // luôn bấm được khi khóa
+            uiLock.whitelist(['btnChuyenBang', 'btn-logout']);  // thêm ID nút khác nếu muốn
         });
     </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btnChuyenBang');
-            const table = document.getElementById('bangketqua');
-
-            if (!btn || !table) return;
-
-            // nếu cần mờ vùng nội dung khi khóa:
-            document.getElementById('app-container')?.classList.add('uiLock__dimTarget');
-
-            // nếu load trang mà đang để sẵn data-mode="ngang" → phát event để khóa ngay
-            (function syncOnLoad() {
-                const mode0 = table.dataset.mode || 'doc';
-                document.dispatchEvent(new CustomEvent('app:view-mode-changed', { detail: { mode: mode0 } }));
-                btn.textContent = (mode0 === 'ngang') ? '🔁 dọc' : '🔁 ngang';
-            })();
-
-            btn.addEventListener('click', () => {
-                const cur = table.dataset.mode || 'doc';
-                const next = (cur === 'doc') ? 'ngang' : 'doc';
-                table.dataset.mode = next;
-
-                // đổi nhãn nút cho dễ hiểu
-                btn.textContent = (next === 'ngang') ? '🔁 dọc' : '🔁 ngang';
-
-                // ✅ phát tín hiệu cho uiLock (và các module khác) biết để khóa/mở
-                document.dispatchEvent(new CustomEvent('app:view-mode-changed', { detail: { mode: next } }));
-            });
-        });
-    </script>
-
 
 </body>
 
