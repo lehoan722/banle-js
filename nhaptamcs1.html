@@ -481,7 +481,7 @@
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
             <button id="ghivitri">✏️</button>
-        </div>        
+        </div>
 
         <div class="main">
             <div class="table-area">
@@ -599,8 +599,8 @@
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
-            <button id="btnChuyenBang" class="btnChuyen">🔁 ngang</button>
-        </div>
+                <button id="btnChuyenBang" class="btnChuyen">🔁 ngang</button>
+            </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
@@ -1731,18 +1731,17 @@
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script type="module">
-  import { uiLock } from './scripts/uiLock.js';
+        import { uiLock } from './scripts/uiLock.js';
 
-  document.addEventListener('DOMContentLoaded', () => {
-    uiLock.mount({
-      toggleButtonId: 'btnChuyenBang',
-      message: '🔒 Chế độ xem (đã khóa). Nhấn “Chuyển” để nhập liệu.'
-    });
-
-    // ✅ Cho phép bấm các nút này khi đang khóa
-    uiLock.whitelist(['btnChuyenBang','btnChuyen']);  // thêm ID nút khác nếu muốn
-  });
-</script>
+        document.addEventListener('DOMContentLoaded', () => {
+            uiLock.mount({
+                toggleButtonId: 'btnChuyenBang',
+                pivotButtonId: 'btnChuyenBang',
+                message: '🔒 Chế độ xem (đã khóa). Nhấn “Chuyển” để nhập liệu.'
+            });
+            uiLock.whitelist(['btnChuyenBang', 'btn-logout']);  // thêm ID nút khác nếu muốn
+        });
+    </script>
 
 </body>
 
