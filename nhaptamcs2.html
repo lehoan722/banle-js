@@ -481,7 +481,7 @@
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
             <button id="ghivitri">✏️</button>
-        </div>        
+        </div>
 
         <div class="main">
             <div class="table-area">
@@ -599,8 +599,8 @@
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
-            <button id="btnChuyenBang" class="btnChuyen">🔁 ngang</button>
-        </div>
+                <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+            </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
@@ -1729,6 +1729,44 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
+
+    <script type="module">
+        import { popupNgang } from './scripts/popupNgang.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('btnChuyenngang');
+            if (!btn) return;
+
+            btn.addEventListener('click', () => {
+                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
+                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                    window.capNhatBangKetQuaTuDOM();
+                }
+
+                // 2️⃣ Lấy dữ liệu dọc hiện tại
+                const bang = window.bangKetQua || {};
+                const rows = [];
+                Object.values(bang).forEach(item => {
+                    item.sizes.forEach((sz, i) => {
+                        rows.push({
+                            masp: item.masp,
+                            tenhang: item.tensp || '',
+                            size: sz,
+                            sl: item.soluongs[i] || 0
+                        });
+                    });
+                });
+
+                if (rows.length === 0) {
+                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
+                    return;
+                }
+
+                // 3️⃣ Gọi popup để hiển thị bảng ngang
+                popupNgang.open(rows);
+            });
+        });
+    </script>
 
 </body>
 
