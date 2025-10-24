@@ -341,7 +341,7 @@
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>                
+                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
 
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
@@ -357,7 +357,7 @@
                 <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
                 <button class="btnTaoNhapTam" id="btnCreateNhaptamcs2">Tạo HĐ nhập tạm</button>
 
-                <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 222</button>
+                <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 111</button>
 
             </div>
             <div class="preview-area" id="previewArea"></div>
@@ -477,7 +477,7 @@
         window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-        const PAGE_MARGIN_TOP_MM = 2.5;      // Lề trên của toàn bộ khối tem (mm)
+        const PAGE_MARGIN_TOP_MM = 3;      // Lề trên của toàn bộ khối tem (mm)
         const PAGE_MARGIN_LEFT_MM = 11;   // Lề trái của toàn bộ khối tem (mm)
         const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
         const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
@@ -713,7 +713,7 @@
         row-gap: 1.4mm;        
     ">`;
 
-            // Blank cho trang đầu  //row-gap: 1.8mm;  voi cs1  row-gap: 1.4mm; voi cs2
+            // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
             for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
             for (let i = 0; i < maxTems; i++) {
                 const t = pageTems[i] || null;
@@ -991,7 +991,7 @@
             }
         }
 
-         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
+        // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
         function openNhaptamcs2(items) {
             const payload = { source: 'in-tem', cs: 'cs2', items }; // cs: bạn đổi cs2 nếu cần
             const json = JSON.stringify(payload);
@@ -1194,6 +1194,8 @@
             document.getElementById('addProductMessage').textContent = '';
             document.getElementById('addProductForm').style.border = '';
             isEditMode = false;
+            // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
+            syncQuanLyKichCoByGiaLe();
         }
 
         // ==== Validate các trường bắt buộc ====
@@ -1233,6 +1235,8 @@
                 document.getElementById('addProductMessage').textContent = msg;
                 return;
             }
+            // NEW: chốt lại trạng thái QLKC trước khi đọc checked
+            syncQuanLyKichCoByGiaLe();
 
             // Chuẩn hóa dữ liệu
             const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
@@ -1483,6 +1487,8 @@
                 } else {
                     inp.value = '';
                 }
+                // NEW
+                syncQuanLyKichCoByGiaLe();
             });
             inp.addEventListener('focus', function () {
                 inp.value = inp.value.replace(/\./g, '');
@@ -1867,9 +1873,25 @@
 
         // Gắn vào nút "Tạo HĐ nhập tạm"
         document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
+
+        // 2) Mỗi khi quay lại tab, làm “refresh nhẹ”
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                supabase.auth.refreshSession().catch(() => { });
+            }
+        });
+
+        // 3) Gia cố: canh thời điểm gần hết hạn thì refresh sớm
+        const REFRESH_EARLY_SEC = 300; // 5 phút trước khi hết hạn
+        setInterval(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            const expMs = session?.expires_at ? session.expires_at * 1000 : 0;
+            if (expMs && expMs - Date.now() < REFRESH_EARLY_SEC * 1000) {
+                await supabase.auth.refreshSession().catch(() => { });
+            }
+        }, 60 * 1000);
+
     </script>
-
-
 
 </body>
 
