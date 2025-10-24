@@ -1734,20 +1734,15 @@
   import { uiLock } from './scripts/uiLock.js';
 
   document.addEventListener('DOMContentLoaded', () => {
-    // gắn vào nút chuyển của trang (id bạn đang dùng)
-    uiLock.mount({ toggleButtonId: 'btnChuyenBang',
-                   message: '🔒 Chế độ xem (đã khóa). Nhấn “Chuyển” để nhập liệu.' });
+    uiLock.mount({
+      toggleButtonId: 'btnChuyenBang',
+      message: '🔒 Chế độ xem (đã khóa). Nhấn “Chuyển” để nhập liệu.'
+    });
 
-    // (không bắt buộc) mờ vùng chính khi khóa:
-    // document.querySelector('#bangketqua')?.classList.add('uiLock__dimTarget');
-
-    // Nếu ban đầu trang đang ở "dọc" (nhập liệu) -> để mở
-    // Nếu bạn muốn khóa ngay khi chuyển sang "ngang", chỉ cần gọi uiLock.lock() khi đổi mode:
-    // Ví dụ: trong code pivot của bạn, sau khi set sang 'ngang': uiLock.lock();
-    // và khi set lại 'doc': uiLock.unlock();
+    // ✅ Cho phép bấm các nút này khi đang khóa
+    uiLock.whitelist(['btnChuyenBang','btn-logout']);  // thêm ID nút khác nếu muốn
   });
 </script>
-
 
 </body>
 
