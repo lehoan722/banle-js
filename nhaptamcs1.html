@@ -339,6 +339,29 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+      
+  /* Lớp phủ chặn mọi thao tác */
+  #viewLockOverlay{
+    position: fixed; inset: 0;
+    z-index: 9998;                 /* thấp hơn nút Chuyển */
+    background: transparent;       /* không làm mờ giao diện */
+    display: none;                 /* chỉ bật khi khóa */
+  }
+  /* Mờ nhẹ để người dùng biết đang khóa (tuỳ thích) */
+  body.view-locked .lock-dim{
+    filter: grayscale(.2) brightness(.96);
+    opacity: .85;
+  }
+  /* Đưa nút Chuyển lên trên overlay để luôn bấm được */
+  #btnChuyenBang{
+    position: relative;
+    z-index: 10000 !important;
+  }
+
+
+
+
     </style>
 
 
@@ -481,7 +504,10 @@
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
             <button id="ghivitri">✏️</button>
-        </div>
+        </div>  
+        
+        <!-- Overlay -->
+<div id="viewLockOverlay"></div>
 
         <div class="main">
             <div class="table-area">
@@ -599,8 +625,8 @@
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
-                <button id="btnChuyenBang" class="btnChuyen">🔁 ngang</button>
-            </div>
+            <button id="btnChuyenBang" class="btnChuyen">🔁 ngang</button>
+        </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
@@ -1730,18 +1756,76 @@
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
-    <script type="module">
-        import { uiLock } from './scripts/uiLock.js';
+    <script>
+(function(){
+  const overlay = document.getElementById('viewLockOverlay');
+  const btn     = document.getElementById('btnChuyenBang');
+  const table   = document.getElementById('bangketqua'); // nơi giữ data-mode='doc'|'ngang'
+  const dimTargets = [
+    document.querySelector('#bangketqua'),
+    document.querySelector('#app-container') || document.body
+  ].filter(Boolean);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            uiLock.mount({
-                toggleButtonId: 'btnChuyenBang',
-                pivotButtonId: 'btnChuyenBang',
-                message: '🔒 Chế độ xem (đã khóa). Nhấn “Chuyển” để nhập liệu.'
-            });
-            uiLock.whitelist(['btnChuyenBang', 'btn-logout']);  // thêm ID nút khác nếu muốn
-        });
-    </script>
+  // gắn class để khi khóa thì mờ (tuỳ thích)
+  dimTargets.forEach(el => el.classList.add('lock-dim'));
+
+  // chặn phím tắt/nhập liệu khi đang khóa (trừ nút Chuyển)
+  function keyGuard(e){
+    if (!document.body.classList.contains('view-locked')) return;
+    if (e.target && e.target.id === 'btnChuyenBang') return; // cho phép
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+
+  function lockView(){
+    // bỏ focus khỏi input hiện tại (nếu đang dở)
+    if (document.activeElement) document.activeElement.blur();
+
+    document.body.classList.add('view-locked');
+    overlay.style.display = 'block';
+
+    // chặn toàn bộ click vào nền
+    overlay.addEventListener('click', block, true);
+    overlay.addEventListener('wheel', block, {passive:false});
+    document.addEventListener('keydown', keyGuard, true);
+  }
+
+  function unlockView(){
+    document.body.classList.remove('view-locked');
+    overlay.style.display = 'none';
+
+    overlay.removeEventListener('click', block, true);
+    overlay.removeEventListener('wheel', block, {passive:false});
+    document.removeEventListener('keydown', keyGuard, true);
+  }
+
+  function block(e){ e.preventDefault(); e.stopPropagation(); }
+
+  // Khi trang load, đồng bộ theo trạng thái hiện tại của bảng
+  function syncByMode(){
+    const mode = (table && table.dataset && table.dataset.mode) ? table.dataset.mode : 'doc';
+    if (mode === 'ngang') lockView(); else unlockView();
+  }
+  document.addEventListener('DOMContentLoaded', syncByMode);
+
+  // Bắt nút Chuyển: sau khi pivot xong (0ms) -> đọc lại data-mode để khóa/mở
+  if (btn) {
+    btn.addEventListener('click', () => {
+      // pivot của bạn đã chạy qua listener gốc của nút này
+      // đợi 1 nhịp để data-mode cập nhật rồi mới khóa/mở
+      setTimeout(syncByMode, 0);
+    });
+  }
+
+  // Phòng khi pivot phát event tùy biến (nếu có), ta cũng bắt để đồng bộ
+  document.addEventListener('app:view-mode-changed', (e) => {
+    const mode = (e && e.detail && e.detail.mode) || 'doc';
+    if (mode === 'ngang') lockView(); else unlockView();
+  });
+})();
+</script>
+
 
 </body>
 
