@@ -660,7 +660,7 @@
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs2" selected>Cơ sở 1</option>
+                    <option value="cs2" selected>Cơ sở 2</option>
                 </select>
 
                 <div class="login-field">
@@ -696,7 +696,7 @@
             if (!email) return "";
             email = email.trim().toLowerCase();
             if (email === "khohangcs2@gmail.com") return "cs2";
-            if (email === "khohangcs1@gmail.com") return "cs1";
+            if (email === "khohangcs2@gmail.com") return "cs2";
             // Thêm các ánh xạ email → cơ sở khác tại đây nếu cần
             return "";
         }
