@@ -5,12 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Nhap doi cs2</title>
-    <!-- Backup: các thư viện ngoài -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
+    <title>NHAP DOI CS2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
@@ -23,7 +18,7 @@
         }
 
         .header {
-            background-color: #0078d7;
+            background: #6fcdb9;
             color: white;
             text-align: center;
             padding: 10px;
@@ -35,7 +30,7 @@
             display: flex;
             padding: 5px;
             gap: 5px;
-            background: #f4f4f4;
+            background: #6fcdb9;
             align-items: center;
         }
 
@@ -62,24 +57,24 @@
 
         #masp {
             width: 250px;
-            background: cyan;
+            background: #6fcdb9;
         }
 
         #soluong {
             width: 60px;
-           background: cyan;
+            background: #6fcdb9;
             text-align: center;
         }
 
         #dvt {
             width: 60px;
-            background: cyan;
+            background: #6fcdb9;
         }
 
         #size {
             width: 60px;
             text-align: center;
-            background: cyan;
+            background: #6fcdb9;
         }
 
         #gia,
@@ -87,12 +82,12 @@
         #thanhtien {
             width: 150px;
             text-align: right;
-            background: cyan;
+            background: #6fcdb9;
         }
 
         #ghichu {
             flex: 1;
-            background: cyan;
+            background: #6fcdb9;
         }
 
         .main {
@@ -372,6 +367,7 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
 
+
 </head>
 
 <body>
@@ -456,7 +452,7 @@
 
             <label>
                 <select id="diadiem">
-                    <option value="cs1">Cơ sở 1</option>
+                    
                     <option value="cs2">Cơ sở 2</option>
                 </select>
             </label>
@@ -469,14 +465,8 @@
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
-        
-       
-        
-        <label>
-            <input type="checkbox" id="quanlysizetheogia" />
-            QL170
-        </label>
 
+        <label><input id="size45" type="checkbox" />QL SIZE</label>
 
     </div>
 
@@ -486,7 +476,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="nhap doi cs2" autocomplete="off" />
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -564,7 +554,7 @@
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
-                            <label><input id="size45" type="checkbox" />QL SIZE</label>
+
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
@@ -742,7 +732,7 @@
                         required />
                 </div>
                 <label>Mật khẩu:</label><br />
-                <input type="password" id="login-password" ...><br /><br />
+                <input type="password" id="login-password" value="369369"><br /><br />
 
                 <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
                 <p id="login-error" style="color:red; margin-top:10px;"></p>
@@ -872,17 +862,43 @@
             import('./scripts/main.js').then(module => {
                 if (module.khoiTaoUngDung) module.khoiTaoUngDung();
             });
-            // ======= Thêm vào đây ========= quanlysizetheogia
+            // ======= Thêm vào đây =========
             switchTab("thongtin");
             document.getElementById("size45").checked = true;
-            document.getElementById("quanlysizetheogia").checked = true;
-
             // ==============================
         };
 
 
 
+        // dang xuat
+        document.getElementById('btn-logout').onclick = async function () {
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
 
+            }
+            //document.getElementById('login-email').value = "";
+            //document.getElementById('login-password').value = "";
+            document.getElementById('login-manv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            // XÓA TRẮNG LƯỚI DỮ LIỆU HÓA ĐƠN SAU ĐĂNG XUẤT
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+
+            document.getElementById('login-manv').focus();
+        };
 
         function capNhatQuyenGiaoDien() {
             // Lấy quyền từ localStorage 
@@ -1039,7 +1055,7 @@
             const img = document.querySelector('.product-image');
             if (img) {
                 img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
+                    window.open('https://banle-js.vercel.app/xemhoadon.html', '_blank');
                 });
             }
         });
@@ -1066,59 +1082,6 @@
 
     </script>
 
-    <!-- Overlay loading khi backup -->
-    <div id="backup-overlay" style="
-    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
-    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
-        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
-            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
-            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-        import { backupAllTablesToZip } from './scripts/backup.js';
-
-        document.getElementById('btn-logout').onclick = async function () {
-
-            document.getElementById('backup-overlay').style.display = "block";
-            try {
-                await backupAllTablesToZip();
-                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
-            } catch (err) {
-                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
-            }
-            document.getElementById('backup-overlay').style.display = "none";
-            await dangXuatApp();
-        };
-
-        async function dangXuatApp() {
-            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
-            }
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-            document.getElementById('login-manv').focus();
-        }
-    </script>
-
     <script>  //<!-- banlemobile -->
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
@@ -1131,9 +1094,11 @@
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });
+        });</script>
 
-    </script>
+
+
+    <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
