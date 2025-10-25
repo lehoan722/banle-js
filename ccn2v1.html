@@ -614,12 +614,9 @@
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
             </div>
-            
-            <div style="margin-bottom:6px;">
-            <button id="btnChuyenBang" class="btnChuyen">🔁 ngang</button>
         </div>
 
-            <!-- Popup tìm khách hàng
+        <!-- Popup tìm khách hàng
              <button onclick="luuHoaDonccn2v1()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
@@ -628,103 +625,103 @@
             
             -->
 
-        </div>
+    </div>
 
-        <div class="top-inputs">
-            ----------------------------------------------------------
-        </div>
-        <div class="top-inputs">
-            ----------------------------------------------------------
-        </div>
+    <div class="top-inputs">
+        ----------------------------------------------------------
+    </div>
+    <div class="top-inputs">
+        ----------------------------------------------------------
+    </div>
 
 
-        <div class="popup" id="popupDanhMuc">
-            <div class="popup-content">
-                <strong>Tìm kiếm mã sản phẩm</strong>
-                <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
-                <div class="popup-list" id="danhSachSP"></div>
-                <button onclick="dongPopupDM()">Đóng</button>
-            </div>
+    <div class="popup" id="popupDanhMuc">
+        <div class="popup-content">
+            <strong>Tìm kiếm mã sản phẩm</strong>
+            <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
+            <div class="popup-list" id="danhSachSP"></div>
+            <button onclick="dongPopupDM()">Đóng</button>
         </div>
-        <!-- ✅ Popup xác thực sửa hóa đơn -->
-        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+    </div>
+    <!-- ✅ Popup xác thực sửa hóa đơn -->
+    <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
   background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-            <h3>Xác thực sửa hóa đơn</h3>
-            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
-                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
-                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
-        </div>
+        <h3>Xác thực sửa hóa đơn</h3>
+        <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+            style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+        <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+            style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+        <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+        <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+    </div>
 
-        <!-- Popup xác nhận thêm mới -->
-        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+    <!-- Popup xác nhận thêm mới -->
+    <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
   background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-            <h3>Bạn có thực sự muốn thêm mới?</h3>
-            <div style="text-align:center; margin-top:10px;">
-                <button id="btnThemMoiCo">✅ Có</button>
-                <button onclick="dongTatCaPopup()">❌ Không</button>
-            </div>
+        <h3>Bạn có thực sự muốn thêm mới?</h3>
+        <div style="text-align:center; margin-top:10px;">
+            <button id="btnThemMoiCo">✅ Có</button>
+            <button onclick="dongTatCaPopup()">❌ Không</button>
         </div>
+    </div>
 
-        <!-- Popup nhập mã sản phẩm mới -->
-        <div id="popupNhapMaMoi" class="popup-confirm"
-            style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
+    <!-- Popup nhập mã sản phẩm mới -->
+    <div id="popupNhapMaMoi" class="popup-confirm"
+        style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
   background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
-            <h3>Thêm mã sản phẩm mới</h3>
-            <div id="formFields"></div>
-            <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
-            <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
-            <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
-        </div>
+        <h3>Thêm mã sản phẩm mới</h3>
+        <div id="formFields"></div>
+        <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
+        <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
+        <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
+    </div>
 
-        <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+    <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
   background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
-            <h3>Cấu hình trường hiển thị</h3>
-            <div id="dsCauHinhTruong"></div>
-            <div style="text-align:right; margin-top:10px;">
-                <button onclick="luuCauHinhTruong()">Lưu</button>
-                <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
-            </div>
+        <h3>Cấu hình trường hiển thị</h3>
+        <div id="dsCauHinhTruong"></div>
+        <div style="text-align:right; margin-top:10px;">
+            <button onclick="luuCauHinhTruong()">Lưu</button>
+            <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
         </div>
+    </div>
 
 
 
-        <div id="popupBangDanhMuc" class="popup"
-            style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
-            <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                <strong>Danh mục hàng hóa</strong>
-                <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
-            </div>
-            <div style="padding: 0 10px 10px;">
-                <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
-                    style="width: 300px; padding: 4px;" />
-                <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
-
-            </div>
-            <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
+    <div id="popupBangDanhMuc" class="popup"
+        style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
+        <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <strong>Danh mục hàng hóa</strong>
+            <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
         </div>
+        <div style="padding: 0 10px 10px;">
+            <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
+                style="width: 300px; padding: 4px;" />
+            <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
 
-        <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
-        <div id="popupNhapHangHoa"
-            style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+        </div>
+        <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
+    </div>
+
+    <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
+    <div id="popupNhapHangHoa"
+        style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
   background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
-            <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
+        <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
 
-            <div id="fieldsNhapHangHoa"></div>
+        <div id="fieldsNhapHangHoa"></div>
 
-            <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
+        <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
 
-            <div style="margin-top:14px; text-align:center;">
-                <button onclick="themTiepSanPham()">➕ Thêm mới</button>
-                <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
-                <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
-                <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
-            </div>
-
-
+        <div style="margin-top:14px; text-align:center;">
+            <button onclick="themTiepSanPham()">➕ Thêm mới</button>
+            <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
+            <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
+            <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
         </div>
+
+
+    </div>
     </div>
 
     <!-- Đăng nhập Supabase -->
@@ -1301,43 +1298,43 @@
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
-     <script type="module">
-import { popupNgang } from './scripts/popupNgang.js';
+    <script type="module">
+        import { popupNgang } from './scripts/popupNgang.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnChuyenngang');
-  if (!btn) return;
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('btnChuyenngang');
+            if (!btn) return;
 
-  btn.addEventListener('click', () => {
-    // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
-    if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-      window.capNhatBangKetQuaTuDOM();
-    }
+            btn.addEventListener('click', () => {
+                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
+                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                    window.capNhatBangKetQuaTuDOM();
+                }
 
-    // 2️⃣ Lấy dữ liệu dọc hiện tại
-    const bang = window.bangKetQua || {};
-    const rows = [];
-    Object.values(bang).forEach(item => {
-      item.sizes.forEach((sz, i) => {
-        rows.push({
-          masp: item.masp,
-          tenhang: item.tensp || '',
-          size: sz,
-          sl: item.soluongs[i] || 0
+                // 2️⃣ Lấy dữ liệu dọc hiện tại
+                const bang = window.bangKetQua || {};
+                const rows = [];
+                Object.values(bang).forEach(item => {
+                    item.sizes.forEach((sz, i) => {
+                        rows.push({
+                            masp: item.masp,
+                            tenhang: item.tensp || '',
+                            size: sz,
+                            sl: item.soluongs[i] || 0
+                        });
+                    });
+                });
+
+                if (rows.length === 0) {
+                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
+                    return;
+                }
+
+                // 3️⃣ Gọi popup để hiển thị bảng ngang
+                popupNgang.open(rows);
+            });
         });
-      });
-    });
-
-    if (rows.length === 0) {
-      alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
-      return;
-    }
-
-    // 3️⃣ Gọi popup để hiển thị bảng ngang
-    popupNgang.open(rows);
-  });
-});
-</script>
+    </script>
 
 </body>
 
