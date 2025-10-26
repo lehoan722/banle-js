@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo XNT18 (Nguồn: tonkho_saldo)</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script type="module" src="scripts/baocaoxnt18.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+  <style>
+    body{font-family:sans-serif;margin:8px}
+    #hot{height: calc(100vh - 220px);}
+  </style>
+</head>
+<body>
+  <h2>Báo cáo XNT18 (đọc nhanh từ <code>tonkho_saldo</code>)</h2>
+
+  <div class="filters">
+    <label>Địa điểm:
+      <select id="diadiemSelect">
+        <option value="">Tất cả</option>
+        <option value="cs1">Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+    </label>
+    <label>Từ ngày: <input type="date" id="tuNgay"></label>
+    <label>Đến ngày: <input type="date" id="denNgay"></label>
+
+    <input id="nhomhangInput" placeholder="Nhóm hàng">
+    <input id="chungloaiInput" placeholder="Chủng loại">
+    <input id="mausacInput" placeholder="Màu sắc">
+    <input id="sizeInput" placeholder="Kích cỡ">
+    <input id="khachhangInput" placeholder="Khách hàng/NCC">
+    <label style="font-weight:normal;">
+      <input type="checkbox" id="locNCCCheckbox"> Lọc theo nhà cung cấp
+    </label>
+    <input id="nhanvienInput" placeholder="Nhân viên">
+    <input id="maspInput" placeholder="Mã hàng">
+    <label>Từ giá: <input type="number" id="tuGia" min="0" step="1000" style="width:100px"></label>
+    <label>Đến giá: <input type="number" id="denGia" min="0" step="1000" style="width:100px"></label>
+    <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
+    <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
+    <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
+    <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
+    <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
+    <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
+
+    <button class="main" onclick="taiBaoCaoXNT18()">Xem báo cáo</button>
+    <span id="loadingMsg" style="color:red;margin-left:8px"></span>
+  </div>
+
+  <div style="display:flex; gap:10px; align-items:center; margin:8px 0;">
+    <label>Số dòng/trang:
+      <select id="pageSize" onchange="taiBaoCaoXNT18()">
+        <option value="500">500</option>
+        <option value="1000" selected>1000</option>
+        <option value="2000">2000</option>
+        <option value="5000">5000</option>
+        <option value="10000">10000</option>
+      </select>
+    </label>
+    <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
+    <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
+    <span id="pageInfo">Trang 0/0 (Tổng: 0)</span>
+    <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+    <button class="main" onclick="window.gotoPage()">Đi</button>
+  </div>
+
+  <textarea id="maspList" rows="6" style="width: 100%;"
+    placeholder="Nhập/dán danh sách mã (mỗi dòng 1 mã)..."></textarea>
+
+  <div id="hot"></div>
+</body>
+</html>
