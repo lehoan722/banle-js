@@ -231,3 +231,5 @@ export function capNhatBangKetQuaTuDOM() {
 }
 
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
+window.capNhatBangHTML = capNhatBangHTML;
+
