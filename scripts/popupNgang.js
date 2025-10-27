@@ -16,7 +16,7 @@ export const popupNgang = (() => {
           box-shadow:0 20px 60px rgba(0,0,0,.25);z-index:9998;display:flex;flex-direction:column;overflow:hidden;
           font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
           /* (NEW) kích thước cột qua biến: Mã = 3×sizeW */
-          --sizeW: 40px;
+          --sizeW: 72px;
         }
         .pn-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#0aa;color:#fff}
         .pn-title{font-weight:600;font-size:16px;flex:1}
@@ -32,8 +32,8 @@ export const popupNgang = (() => {
 
         /* (NEW) kiểm soát độ rộng cột bằng colgroup */
         .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 2); }
-        .pn-table .pn-col-size{ width: var(--sizeW) * 1); }
-        .pn-table .pn-col-total{ width: var(--sizeW) * 1); }
+        .pn-table .pn-col-size{ width: var(--sizeW); }
+        .pn-table .pn-col-total{ width: var(--sizeW); }
 
         /* (4) Ô nhập như text: borderless, trong suốt */
         .pn-input{width:100%;max-width:100%;border:0;background:transparent;padding:0;text-align:center;font:inherit;-webkit-appearance:none;appearance:none;height:28px}
@@ -44,7 +44,7 @@ export const popupNgang = (() => {
 
         /* Mobile: co nhỏ một chút vẫn giữ tỉ lệ Mã = 3× size */
         @media (max-width: 480px){
-          .pn-wrap{ --sizeW: 60px; }
+          .pn-wrap{ --sizeW: 30px; }
         }
       `;
       document.head.appendChild(styleEl);
