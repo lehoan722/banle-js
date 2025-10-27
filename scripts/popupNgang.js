@@ -133,7 +133,7 @@ export const popupNgang = (() => {
     const colM = document.createElement('col');
     colM.className = 'pn-col-masp';
     colgroup.appendChild(colM);
-    
+
     sizes.forEach(() => {
       const c = document.createElement('col');
       c.className = 'pn-col-size';
@@ -153,9 +153,12 @@ export const popupNgang = (() => {
     trh.appendChild(h0);
     sizes.forEach(s => {
       const th = document.createElement('th');
-      th.textContent = String(s);
+      const label = SIZE_LABELS.get(s) || String(s);
+      // “38/S/46” -> 3 dòng
+      th.innerHTML = label.includes('/') ? label.split('/').map(x => `<div>${x}</div>`).join('') : label;
       trh.appendChild(th);
     });
+
     const ht = document.createElement('th');
     ht.textContent = 'Tổng SL';
     trh.appendChild(ht);
