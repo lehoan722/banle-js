@@ -1,8 +1,8 @@
 // popupNgang.js — Popup bảng ngang (NHẬP NHANH size + Lưu về bangKetQua)
-// Nâng cấp từ phiên bản chỉ xem: thêm ô nhập size, tổng theo dòng & tổng cuối bảng, Enter để nhảy ô, và nút Lưu.
+// Bản tối giản: chỉ chạm vào file này. Không yêu cầu chỉnh main.js hay bangketqua.js
 export const popupNgang = (() => {
-  let styleEl, wrap, tableEl, closeBtn, overlay, saveBtn, titleEl;
-  const DEFAULT_SIZES = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+  let styleEl, wrap, tableEl, overlay, saveBtn, closeBtn;
+  let currentSizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
   function ensureDom() {
     if (!styleEl) {
@@ -10,16 +10,16 @@ export const popupNgang = (() => {
       styleEl.textContent = `
         .pn-overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);z-index:9997;}
         .pn-wrap{
-          position:fixed;inset:auto;left:50%;top:6%;
-          transform:translateX(-50%);width:min(1150px,96vw);height:88vh;
-          background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);
-          z-index:9998;display:flex;flex-direction:column;overflow:hidden;
+          position:fixed;left:50%;top:6%;transform:translateX(-50%);
+          width:min(1150px,96vw);height:88vh;background:#fff;border-radius:12px;
+          box-shadow:0 20px 60px rgba(0,0,0,.25);z-index:9998;display:flex;flex-direction:column;overflow:hidden;
           font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif
         }
-        .pn-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#0aa; color:#fff;}
+        .pn-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#0aa;color:#fff}
         .pn-title{font-weight:600;font-size:16px;flex:1}
-        .pn-close,.pn-save{border:0;background:#fff;color:#0aa;border-radius:8px;padding:6px 10px;cursor:pointer}
-        .pn-save{background:#ffe066;color:#5a3d00;font-weight:600}
+        .pn-status{margin-left:8px;font-weight:600}
+        .pn-btn{border:0;background:#fff;color:#0aa;border-radius:8px;padding:6px 10px;cursor:pointer}
+        .pn-btn-save{background:#ffe066;color:#5a3d00;font-weight:600}
         .pn-body{padding:10px;overflow:auto;background:#f8fafc}
         .pn-table{width:100%;border-collapse:collapse;background:#fff;table-layout:fixed}
         .pn-table th,.pn-table td{border:1px solid #e5e7eb;padding:6px 8px;text-align:center;white-space:nowrap}
@@ -47,40 +47,42 @@ export const popupNgang = (() => {
       wrap.innerHTML = `
         <div class="pn-head">
           <div class="pn-title">Bảng ngang (nhập nhanh size)</div>
-          <button class="pn-save" type="button">💾 Lưu dữ liệu</button>
-          <button class="pn-close" type="button">Đóng (Esc)</button>
+          <div class="pn-status"></div>
+          <button type="button" class="pn-btn pn-btn-save">💾 Lưu dữ liệu</button>
+          <button type="button" class="pn-btn pn-btn-close">Đóng (Esc)</button>
         </div>
         <div class="pn-body"></div>
       `;
       document.body.appendChild(wrap);
-      titleEl = wrap.querySelector('.pn-title');
-      closeBtn = wrap.querySelector('.pn-close');
-      saveBtn = wrap.querySelector('.pn-save');
+
+      saveBtn = wrap.querySelector('.pn-btn-save');
+      closeBtn = wrap.querySelector('.pn-btn-close');
+
+      saveBtn.addEventListener('click', onSaveClick);
       closeBtn.addEventListener('click', close);
       document.addEventListener('keydown', (e) => {
         if (wrap.style.display === 'none') return;
         if (e.key === 'Escape') close();
       }, true);
-      saveBtn.addEventListener('click', onSaveClick);
     }
   }
 
-  function groupToWide(rows, sizes = DEFAULT_SIZES) {
-    // rows: [{masp, size, sl, tenhang?}]
+  // rows: [{masp, size, sl, tensp/tenhang?}]
+  function groupToWide(rows, sizes = currentSizes) {
     const map = new Map();
-    rows.forEach(r => {
+    for (const r of rows || []) {
       const masp = String(r.masp || '').trim().toUpperCase();
-      if (!masp) return;
+      if (!masp) continue;
       const size = parseInt(r.size, 10);
       const sl = Number(r.sl) || 0;
       if (!map.has(masp)) {
-        map.set(masp, { masp, tenhang: r.tenhang || '', bySize: new Map(), total: 0 });
+        map.set(masp, { masp, tenhang: r.tenhang || r.tensp || '', bySize: new Map(), total: 0 });
       }
       const obj = map.get(masp);
       obj.bySize.set(size, (obj.bySize.get(size) || 0) + sl);
       obj.total += sl;
-      if (r.tenhang && !obj.tenhang) obj.tenhang = r.tenhang;
-    });
+      if ((r.tenhang || r.tensp) && !obj.tenhang) obj.tenhang = r.tenhang || r.tensp;
+    }
     const out = [];
     for (const obj of map.values()) {
       const row = { masp: obj.masp, tenhang: obj.tenhang, total: obj.total };
@@ -90,7 +92,7 @@ export const popupNgang = (() => {
     return out;
   }
 
-  function renderTableEditable(wideRows, sizes = DEFAULT_SIZES) {
+  function renderTableEditable(wideRows, sizes = currentSizes) {
     const body = wrap.querySelector('.pn-body');
     body.innerHTML = '';
     const table = document.createElement('table');
@@ -142,10 +144,10 @@ export const popupNgang = (() => {
         inp.dataset.row = String(rowIdx);
         inp.dataset.col = String(colIdx);
 
-        // Bôi đen khi focus
-        inp.addEventListener('focus', () => { inp.select(); });
+        // Chọn hết khi focus
+        inp.addEventListener('focus', () => inp.select());
 
-        // Chuẩn hoá & tính lại tổng khi nhập
+        // Chuẩn hóa & tính lại tổng
         const normalize = () => {
           let val = inp.value.replace(/[^0-9]/g, '');
           if (val === '') val = '';
@@ -157,7 +159,7 @@ export const popupNgang = (() => {
         inp.addEventListener('input', normalize);
         inp.addEventListener('blur', normalize);
 
-        // Enter để nhảy ô (0→38→…→45); hết hàng → xuống hàng dưới size 0
+        // Enter → nhảy ô size kế tiếp; hết hàng → sang hàng dưới, size đầu
         inp.addEventListener('keydown', (e) => {
           if (e.key !== 'Enter') return;
           e.preventDefault();
@@ -177,7 +179,7 @@ export const popupNgang = (() => {
       tbody.appendChild(tr);
     });
 
-    // footer totals row
+    // footer totals
     const tfoot = document.createElement('tfoot');
     const trf = document.createElement('tr');
     const tf0 = document.createElement('td');
@@ -203,9 +205,7 @@ export const popupNgang = (() => {
     table.appendChild(tfoot);
     body.appendChild(table);
 
-    // initial totals
     recalcFooterTotals();
-    // focus ô đầu tiên
     const firstInput = table.querySelector('tbody input.pn-input');
     if (firstInput) firstInput.focus();
   }
@@ -222,10 +222,8 @@ export const popupNgang = (() => {
 
   function recalcFooterTotals() {
     if (!tableEl) return;
-    const sizes = DEFAULT_SIZES;
     let grand = 0;
-    // per column
-    sizes.forEach((s) => {
+    currentSizes.forEach((s) => {
       let csum = 0;
       tableEl.querySelectorAll('tbody tr').forEach(tr => {
         const inp = tr.querySelector(`input.pn-input[data-size="${s}"]`);
@@ -243,31 +241,26 @@ export const popupNgang = (() => {
   function moveFocusToNext(inp, sizes) {
     const row = parseInt(inp.dataset.row, 10);
     const col = parseInt(inp.dataset.col, 10);
-    const nextCol = col + 1;
-    const tbody = tableEl.querySelector('tbody');
-    const rowCount = tbody ? tbody.rows.length : 0;
+    let targetRow = row, targetCol = col + 1;
 
-    let targetRow = row, targetCol = nextCol;
-    if (nextCol >= sizes.length) {
+    if (targetCol >= sizes.length) {
       targetRow = row + 1;
       targetCol = 0;
     }
-    if (targetRow >= rowCount) return;
     const next = tableEl.querySelector(`input.pn-input[data-row="${targetRow}"][data-col="${targetCol}"]`);
     if (next) next.focus();
   }
 
+  // Đọc DOM → mảng wide [{masp, [size], total}]
   function readTableAsWide() {
-    // DOM → [{masp, [size], total}]
     const wide = [];
-    const tbody = tableEl.querySelector('tbody');
+    const tbody = tableEl?.querySelector('tbody');
     if (!tbody) return wide;
-    const sizes = DEFAULT_SIZES;
     Array.from(tbody.rows).forEach(tr => {
       const masp = (tr.cells[0]?.textContent || '').trim().toUpperCase();
       if (!masp) return;
       const row = { masp, tenhang: '', total: 0 };
-      sizes.forEach((s) => {
+      currentSizes.forEach((s) => {
         const inp = tr.querySelector(`input.pn-input[data-size="${s}"]`);
         const v = Number(inp && inp.value ? inp.value : 0) || 0;
         row[s] = v;
@@ -278,66 +271,80 @@ export const popupNgang = (() => {
     return wide;
   }
 
-  function onSaveClick() {
-    // 1) Đọc bảng popup → wideRows
-    const wide = readTableAsWide(); // [{masp, [size], total}]
-    // 2) Ghi về window.bangKetQua (dọc): mỗi (masp, size) với sl>0 là một entry
+  // Ghi về window.bangKetQua và refresh bảng dọc
+  function updateBangKetQuaFromWide(wide) {
     const bang = window.bangKetQua || {};
-    const sizes = DEFAULT_SIZES;
-
-    function ensureMasP(masp) {
-      if (!bang[masp]) {
-        // Thử lấy meta từ window.sanPhamData nếu có
-        const sp = (window.sanPhamData && window.sanPhamData[masp]) || {};
-        bang[masp] = {
-          masp,
-          tensp: sp.tensp || '',
-          sizes: [],
-          soluongs: [],
-          gia: sp.gianhap || 0,
-          km: 0,
-          dvt: sp.dvt || ''
-        };
-      }
-    }
-
-    // Ghi đè hoàn toàn theo số đang có ở popup (giữ bangKetQua gọn)
-    wide.forEach(row => {
+    const sanPhamData = window.sanPhamData || {};
+    for (const row of wide) {
       const masp = row.masp;
-      ensureMasP(masp);
-      bang[masp].sizes = [];
-      bang[masp].soluongs = [];
-      sizes.forEach(s => {
+      // Giữ meta cũ nếu có; nếu chưa thì lấy từ sanPhamData
+      const existed = bang[masp] || {};
+      const sp = sanPhamData[masp] || {};
+      const tensp = existed.tensp || sp.tensp || '';
+      const gia = existed.gia ?? sp.gianhap ?? 0;
+      const dvt = existed.dvt || sp.dvt || '';
+      const km = existed.km ?? 0;
+
+      const sizes = [];
+      const soluongs = [];
+      currentSizes.forEach(s => {
         const sl = Number(row[s]) || 0;
         if (sl > 0) {
-          bang[masp].sizes.push(String(s));
-          bang[masp].soluongs.push(sl);
+          sizes.push(String(s));
+          soluongs.push(sl);
         }
       });
-    });
 
+      bang[masp] = { masp, tensp, sizes, soluongs, gia, km, dvt };
+    }
     window.bangKetQua = bang;
-
-    // 3) Render lại bảng dọc + tổng nếu có hàm
-    if (typeof window.capNhatBangHTML === 'function') {
-      window.capNhatBangHTML(window.bangKetQua);
-    }
-    if (typeof window.capNhatThongTinTong === 'function') {
-      window.capNhatThongTinTong(window.bangKetQua);
-    }
-    // Không auto-đóng để bạn có thể nhập tiếp. Muốn đóng ngay thì gọi close();
   }
 
-  function renderTable(wideRows, sizes = DEFAULT_SIZES) {
-    // API cũ: nếu nơi khác gọi renderTable, vẫn hoạt động
-    renderTableEditable(wideRows, sizes);
+  function flashStatus(msg = '', ms = 2000) {
+    const st = wrap?.querySelector('.pn-status');
+    if (!st) return;
+    st.textContent = msg;
+    if (ms > 0) {
+      setTimeout(() => { if (st.textContent === msg) st.textContent = ''; }, ms);
+    }
+  }
+
+  function callRendersIfAny() {
+    let ok = false;
+    try {
+      if (typeof window.capNhatBangHTML === 'function') {
+        window.capNhatBangHTML(window.bangKetQua);
+        ok = true;
+      }
+    } catch(e) {}
+    try {
+      if (typeof window.capNhatThongTinTong === 'function') {
+        window.capNhatThongTinTong(window.bangKetQua);
+      }
+    } catch(e) {}
+    return ok;
+  }
+
+  async function onSaveClick() {
+    try {
+      flashStatus('Đang lưu…', 0);
+      const wide = readTableAsWide();
+      updateBangKetQuaFromWide(wide);
+      const refreshed = callRendersIfAny();
+      flashStatus(refreshed ? 'Đã lưu vào bảng kết quả ✓' : 'Đã lưu ✓ (chưa refresh bảng dọc)');
+      // Không tự đóng popup để nhập tiếp; nếu muốn thì gọi close();
+    } catch (err) {
+      console.error('[popupNgang] Lỗi khi lưu:', err);
+      flashStatus('Lỗi khi lưu! Xem console.', 3000);
+      alert('Không lưu được dữ liệu. Vui lòng mở Console để xem chi tiết lỗi.');
+    }
   }
 
   function open(rows, opts = {}) {
     ensureDom();
-    const sizes = Array.isArray(opts.sizes) && opts.sizes.length ? opts.sizes : DEFAULT_SIZES;
-    const wide = groupToWide(rows, sizes);
-    renderTableEditable(wide, sizes);
+    currentSizes = Array.isArray(opts.sizes) && opts.sizes.length ? opts.sizes.slice() : currentSizes;
+    const wide = groupToWide(rows, currentSizes);
+    renderTableEditable(wide, currentSizes);
     document.body.classList.add('pn-locked');
     overlay.style.display = 'block';
     wrap.style.display = 'flex';
@@ -350,5 +357,5 @@ export const popupNgang = (() => {
     document.body.classList.remove('pn-locked');
   }
 
-  return { open, close, groupToWide, renderTable };
+  return { open, close, groupToWide };
 })();
