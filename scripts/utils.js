@@ -62,3 +62,6 @@ export function capNhatThongTinTong(bangKetQua) {
   conlaiInput.value = conlai.toLocaleString();
   
 }
+
+window.capNhatThongTinTong = capNhatThongTinTong;
+
