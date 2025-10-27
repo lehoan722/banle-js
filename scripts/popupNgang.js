@@ -3,7 +3,7 @@
 // và colgroup/biến --sizeW để cột Mã rộng gấp 3 lần các cột size.
 export const popupNgang = (() => {
   let styleEl, wrap, tableEl, overlay, saveBtn, closeBtn;
-  let currentSizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+  let currentSizes = [0, 38/S/46, 39/M/48, 40/L/50, 41/X/52, 42/2X/54, 43/3X/56, 44/4X, 45];
 
   function ensureDom() {
     if (!styleEl) {
@@ -397,3 +397,4 @@ export const popupNgang = (() => {
 
   return { open, close, groupToWide };
 })();
+
