@@ -31,9 +31,9 @@ export const popupNgang = (() => {
         .pn-col-left{text-align:left;white-space:normal;word-break:break-word;line-height:1.2}
 
         /* (NEW) kiểm soát độ rộng cột bằng colgroup */
-        .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 3); }
-        .pn-table .pn-col-size{ width: var(--sizeW); }
-        .pn-table .pn-col-total{ width: var(--sizeW); }
+        .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 2); }
+        .pn-table .pn-col-size{ width: var(--sizeW) * 0.7); }
+        .pn-table .pn-col-total{ width: var(--sizeW) * 0.7); }
 
         /* (4) Ô nhập như text: borderless, trong suốt */
         .pn-input{width:100%;max-width:100%;border:0;background:transparent;padding:0;text-align:center;font:inherit;-webkit-appearance:none;appearance:none;height:28px}
