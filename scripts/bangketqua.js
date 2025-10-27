@@ -135,7 +135,7 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
     capNhatThongTinTong(bangKetQua);
 }
 
-
+window.capNhatBangHTML = capNhatBangHTML;
 
 function highlightRow(selectedRow) {
     document.querySelectorAll("#bangketqua tbody tr").forEach(row => {
@@ -231,5 +231,5 @@ export function capNhatBangKetQuaTuDOM() {
 }
 
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
-window.capNhatBangHTML = capNhatBangHTML;
+
 
