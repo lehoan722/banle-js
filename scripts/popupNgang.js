@@ -133,14 +133,12 @@ export const popupNgang = (() => {
     const colM = document.createElement('col');
     colM.className = 'pn-col-masp';
     colgroup.appendChild(colM);
-    sizes.forEach(s => {
-      const th = document.createElement('th');
-      const label = SIZE_LABELS.get(s) || String(s);
-      // “38/S/46” -> 3 dòng
-      th.innerHTML = label.includes('/') ? label.split('/').map(x => `<div>${x}</div>`).join('') : label;
-      trh.appendChild(th);
+    
+    sizes.forEach(() => {
+      const c = document.createElement('col');
+      c.className = 'pn-col-size';
+      colgroup.appendChild(c);
     });
-
     const colT = document.createElement('col');
     colT.className = 'pn-col-total';
     colgroup.appendChild(colT);
@@ -413,4 +411,3 @@ export const popupNgang = (() => {
 
   return { open, close, groupToWide };
 })();
-
