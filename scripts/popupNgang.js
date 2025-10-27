@@ -5,6 +5,20 @@ export const popupNgang = (() => {
   let styleEl, wrap, tableEl, overlay, saveBtn, closeBtn;
   let currentSizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
 
+  // Xác định base URL của file hiện tại để import() đúng thư mục
+  const MODULE_BASE = (() => {
+    try {
+      // Nếu file được load kiểu ES module
+      return new URL('./', import.meta.url).href;
+    } catch (e) {
+      // Fallback: tìm thẻ <script src=".../popupNgang.js">
+      const me = Array.from(document.scripts || []).find(s => (s.src || '').endsWith('popupNgang.js'));
+      if (me && me.src) return me.src.slice(0, me.src.lastIndexOf('/') + 1);
+      return './';
+    }
+  })();
+
+
   function ensureDom() {
     if (!styleEl) {
       styleEl = document.createElement('style');
@@ -384,14 +398,34 @@ export const popupNgang = (() => {
       flashStatus('Đang lưu…', 0);
       const wide = readTableAsWide();
       updateBangKetQuaFromWide(wide);
-      const refreshed = callRendersIfAny();
-      flashStatus(refreshed ? 'Đã lưu vào bảng kết quả ✓' : 'Đã lưu ✓ (chưa refresh bảng dọc)');
-      // Đóng popup ngay sau khi lưu để quay về bảng kết quả
-      close();
+      await refreshAfterSave();     // ← gọi render qua dynamic import
+      flashStatus('Đã lưu vào bảng kết quả ✓', 1200);
+      close();                      // ← đóng popup ngay sau khi lưu
     } catch (err) {
       console.error('[popupNgang] Lỗi khi lưu:', err);
       flashStatus('Lỗi khi lưu! Xem console.', 3000);
       alert('Không lưu được dữ liệu. Vui lòng mở Console để xem chi tiết lỗi.');
+    }
+  }
+
+  async function refreshAfterSave() {
+    // Gọi capNhatBangHTML + capNhatThongTinTong mà KHÔNG cần global
+    try {
+      const mod = await import(MODULE_BASE + 'bangketqua.js');
+      if (mod && typeof mod.capNhatBangHTML === 'function') {
+        mod.capNhatBangHTML(window.bangKetQua);
+      }
+    } catch (e) {
+      console.warn('[popupNgang] import bangketqua.js thất bại:', e);
+    }
+
+    try {
+      const utils = await import(MODULE_BASE + 'utils.js');
+      if (utils && typeof utils.capNhatThongTinTong === 'function') {
+        utils.capNhatThongTinTong(window.bangKetQua);
+      }
+    } catch (e) {
+      console.warn('[popupNgang] import utils.js thất bại:', e);
     }
   }
 
