@@ -31,7 +31,7 @@ export const popupNgang = (() => {
         .pn-col-left{text-align:left;white-space:normal;word-break:break-word;line-height:1.2}
 
         /* (NEW) kiểm soát độ rộng cột bằng colgroup */
-        .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 2); }
+        .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 3); }
         .pn-table .pn-col-size{ width: var(--sizeW); }
         .pn-table .pn-col-total{ width: var(--sizeW); }
 
@@ -44,7 +44,7 @@ export const popupNgang = (() => {
 
         /* Mobile: co nhỏ một chút vẫn giữ tỉ lệ Mã = 3× size */
         @media (max-width: 480px){
-          .pn-wrap{ --sizeW: 30px; }
+          .pn-wrap{ --sizeW: 25px; }
         }
       `;
       document.head.appendChild(styleEl);
