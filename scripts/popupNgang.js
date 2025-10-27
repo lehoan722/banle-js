@@ -108,6 +108,19 @@ export const popupNgang = (() => {
     return out;
   }
 
+  // Map hiển thị nhãn tiêu đề cho từng size
+  const SIZE_LABELS = new Map([
+    [0, '0'],
+    [38, '38/S/46'],
+    [39, '39/M/48'],
+    [40, '40/L/50'],
+    [41, '41/XL/52'],
+    [42, '42/2X/54'],
+    [43, '43/3X/56'],
+    [44, '44'],
+    [45, '45'],
+  ]);
+
   function renderTableEditable(wideRows, sizes = currentSizes) {
     const body = wrap.querySelector('.pn-body');
     body.innerHTML = '';
@@ -120,11 +133,14 @@ export const popupNgang = (() => {
     const colM = document.createElement('col');
     colM.className = 'pn-col-masp';
     colgroup.appendChild(colM);
-    sizes.forEach(() => {
-      const c = document.createElement('col');
-      c.className = 'pn-col-size';
-      colgroup.appendChild(c);
+    sizes.forEach(s => {
+      const th = document.createElement('th');
+      const label = SIZE_LABELS.get(s) || String(s);
+      // “38/S/46” -> 3 dòng
+      th.innerHTML = label.includes('/') ? label.split('/').map(x => `<div>${x}</div>`).join('') : label;
+      trh.appendChild(th);
     });
+
     const colT = document.createElement('col');
     colT.className = 'pn-col-total';
     colgroup.appendChild(colT);
@@ -353,12 +369,12 @@ export const popupNgang = (() => {
         window.capNhatBangHTML(window.bangKetQua);
         ok = true;
       }
-    } catch(e) {}
+    } catch (e) { }
     try {
       if (typeof window.capNhatThongTinTong === 'function') {
         window.capNhatThongTinTong(window.bangKetQua);
       }
-    } catch(e) {}
+    } catch (e) { }
     return ok;
   }
 
@@ -397,5 +413,3 @@ export const popupNgang = (() => {
 
   return { open, close, groupToWide };
 })();
-
-
