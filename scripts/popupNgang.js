@@ -44,7 +44,7 @@ export const popupNgang = (() => {
 
         /* Mobile: co nhỏ một chút vẫn giữ tỉ lệ Mã = 3× size */
         @media (max-width: 480px){
-          .pn-wrap{ --sizeW: 30px; }
+          .pn-wrap{ --sizeW: 40px; }
         }
       `;
       document.head.appendChild(styleEl);
