@@ -31,7 +31,7 @@ export const popupNgang = (() => {
         .pn-col-left{text-align:left;white-space:normal;word-break:break-word;line-height:1.2}
 
         /* (NEW) kiểm soát độ rộng cột bằng colgroup */
-        .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 4); }
+        .pn-table .pn-col-masp{ width: calc(var(--sizeW) * 3); }
         .pn-table .pn-col-size{ width: var(--sizeW); }
         .pn-table .pn-col-total{ width: var(--sizeW); }
 
