@@ -133,25 +133,18 @@ export const popupNgang = (() => {
     const colM = document.createElement('col');
     colM.className = 'pn-col-masp';
     colgroup.appendChild(colM);
-
     sizes.forEach(s => {
       const th = document.createElement('th');
       const label = SIZE_LABELS.get(s) || String(s);
-      // Hiển thị 3 dòng cho nhãn có dấu '/'
-      if (label.includes('/')) {
-        th.innerHTML = label.split('/').map(x => `<div>${x}</div>`).join('');
-      } else {
-        th.textContent = label;
-      }
+      // “38/S/46” -> 3 dòng
+      th.innerHTML = label.includes('/') ? label.split('/').map(x => `<div>${x}</div>`).join('') : label;
       trh.appendChild(th);
     });
-
 
     const colT = document.createElement('col');
     colT.className = 'pn-col-total';
     colgroup.appendChild(colT);
     table.appendChild(colgroup);
-
 
     // header
     const thead = document.createElement('thead');
