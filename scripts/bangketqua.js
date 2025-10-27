@@ -135,8 +135,6 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
     capNhatThongTinTong(bangKetQua);
 }
 
-window.capNhatBangHTML = capNhatBangHTML;
-
 function highlightRow(selectedRow) {
     document.querySelectorAll("#bangketqua tbody tr").forEach(row => {
         row.style.backgroundColor = row === selectedRow ? "#e6f3ff" : "";
