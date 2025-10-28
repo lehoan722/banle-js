@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Phân quyền nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:16px;}
+    .wrap{max-width:780px;margin:0 auto}
+    .row{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+    input[type=text]{padding:8px;border:1px solid #ccc;border-radius:8px;width:100%}
+    button{padding:10px 14px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer}
+    button.primary{background:#0b84ff;color:#fff;border-color:#0b84ff}
+    .card{border:1px solid #eee;border-radius:12px;padding:12px;margin-top:14px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px dashed #eee}
+    th{text-align:left}
+    .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+    .hint{color:#777;font-size:13px}
+    .ok{color:#0a7a0a}
+    .err{color:#b00020}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Phân quyền nhân viên</h2>
+
+  <!-- Cấu hình Supabase: thay bằng giá trị thật của bạn -->
+  <script>
+    window.SUPABASE_URL  = window.SUPABASE_URL  || "https://YOUR-PROJECT.supabase.co";
+    window.SUPABASE_ANON = window.SUPABASE_ANON || "YOUR-ANON-KEY";
+  </script>
+
+  <div class="card">
+    <div class="row">
+      <label>Mã NV</label>
+      <input id="manv" type="text" placeholder="vd: NV001 / 33" />
+    </div>
+    <div class="row">
+      <label>Tên NV</label>
+      <input id="tennv" type="text" placeholder="(tuỳ chọn – để ghi chú)" />
+    </div>
+    <div class="row">
+      <label></label>
+      <div>
+        <button id="btnLoad">Tải danh sách trang</button>
+        <span class="hint">Nhập mã NV rồi bấm “Tải” để hiện danh sách trang.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="pagesCard" style="display:none">
+    <table id="pagesTable">
+      <thead>
+        <tr>
+          <th style="width:60px">Chọn</th>
+          <th>Trang được sử dụng</th>
+          <th class="hint">Đường dẫn</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="footer">
+      <button id="btnUncheckAll">Bỏ chọn hết</button>
+      <button id="btnCheckAll">Chọn hết</button>
+      <button class="primary" id="btnSave">Lưu dữ liệu</button>
+    </div>
+    <div id="msg" class="hint" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON, {
+  auth: { persistSession: true }
+});
+
+const elManv  = document.getElementById('manv');
+const elTennv = document.getElementById('tennv');
+const elLoad  = document.getElementById('btnLoad');
+const elPages = document.getElementById('pagesCard');
+const elTableBody = document.querySelector('#pagesTable tbody');
+const elSave  = document.getElementById('btnSave');
+const elCheckAll = document.getElementById('btnCheckAll');
+const elUncheckAll = document.getElementById('btnUncheckAll');
+const elMsg   = document.getElementById('msg');
+
+let currentRows = []; // [{code, path, title, checked}...]
+
+async function requireLogin() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    alert('Bạn cần đăng nhập trước.');
+    // nếu có trang login riêng:
+    // location.href = '/login.html?redirect=' + encodeURIComponent(location.pathname);
+  }
+}
+requireLogin();
+
+function renderRows(rows){
+  elTableBody.innerHTML = '';
+  rows.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+
+    const tdCheck = document.createElement('td');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!r.checked;
+    cb.dataset.idx = idx;
+    cb.addEventListener('change', (e)=>{
+      const i = Number(e.target.dataset.idx);
+      currentRows[i].checked = e.target.checked;
+    });
+    tdCheck.appendChild(cb);
+
+    const tdTitle = document.createElement('td');
+    tdTitle.textContent = r.title || r.path;
+
+    const tdPath = document.createElement('td');
+    tdPath.className = 'hint';
+    tdPath.textContent = r.path;
+
+    tr.appendChild(tdCheck);
+    tr.appendChild(tdTitle);
+    tr.appendChild(tdPath);
+    elTableBody.appendChild(tr);
+  });
+}
+
+elLoad.addEventListener('click', async ()=>{
+  elMsg.textContent = '';
+  const manv = elManv.value.trim();
+  if (!manv) { alert('Hãy nhập Mã NV.'); return; }
+
+  const { data, error } = await supabase.rpc('get_pages_for_manv', { p_manv: manv });
+  if (error) {
+    elMsg.className = 'err';
+    elMsg.textContent = 'Lỗi tải danh sách trang: ' + error.message;
+    return;
+  }
+  currentRows = data || [];
+  renderRows(currentRows);
+  elPages.style.display = 'block';
+});
+
+elCheckAll.addEventListener('click', ()=>{
+  currentRows.forEach(r => r.checked = true);
+  renderRows(currentRows);
+});
+
+elUncheckAll.addEventListener('click', ()=>{
+  currentRows.forEach(r => r.checked = false);
+  renderRows(currentRows);
+});
+
+elSave.addEventListener('click', async ()=>{
+  elMsg.textContent = '';
+  const manv = elManv.value.trim();
+  if (!manv) { alert('Chưa có Mã NV'); return; }
+
+  const codes = currentRows.filter(r => r.checked).map(r => r.code);
+  const { error } = await supabase.rpc('set_pages_for_manv', {
+    p_manv: manv,
+    p_codes: codes,
+    p_can_edit: false  // nếu muốn tất cả có thể edit, đổi thành true
+  });
+
+  if (error) {
+    elMsg.className = 'err';
+    elMsg.textContent = 'Lỗi lưu dữ liệu: ' + error.message;
+  } else {
+    elMsg.className = 'ok hint';
+    elMsg.textContent = 'Đã lưu phân quyền cho nhân viên ' + manv + ' (' + codes.length + ' trang).';
+  }
+});
+</script>
+</body>
+</html>
