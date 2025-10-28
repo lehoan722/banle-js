@@ -1488,6 +1488,7 @@ async function saveDatHang() {
   const { tennv, diadiem } = getCurrentUserInfo();
   const sohd    = document.getElementById('dhSohd').value.trim();
   const masp    = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
+  window.CURRENT_MASP = masp; // đảm bảo biến toàn cục khớp mã đang đặt
   const mau     = (document.getElementById('dhMau').value || '').trim();
   const conSize = (document.getElementById('dhConSize').value || '').trim();
   const hetSize = (document.getElementById('dhHetSize').value || '').trim();
@@ -1497,11 +1498,11 @@ async function saveDatHang() {
   if (!sohd || !masp) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
   if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
 
-  // Điện thoại: bắt buộc có ảnh; Máy tính: cho phép không có ảnh
-  if (!isDesktopDevice() && !uiHasProductImage()) {
-    showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
-    return;
-  }
+  // Điện thoại: BẮT BUỘC phải có ảnh; Máy tính: CHO PHÉP không có ảnh
+if (!isDesktopDevice() && !uiHasProductImage(CURRENT_MASP)) {
+  showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
+  return;
+}  
 
   // Bắt buộc có "Hết size"; tách nhiều size -> mảng
   const hetSizes = parseHetSizes(hetSize);
