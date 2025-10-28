@@ -248,7 +248,7 @@ export const popupNgang = (() => {
             return;
           }
           // Tuỳ chọn: coi '.' hoặc ',' là Enter (một số layout số có phím '.')
-          if (e.inputType === 'insertText' && (e.data === '.' || e.data === ',')) {
+          if (e.inputType === 'insertText' && (e.data === '.' || e.data === ','|| e.data === '00')) {
             e.preventDefault();
             moveFocusToNext(inp, sizes);
           }
