@@ -200,7 +200,7 @@ export const popupNgang = (() => {
 
         const inp = document.createElement('input');
         inp.type = 'text';
-        inp.inputMode = 'numeric';
+        inp.inputMode = 'text';
         inp.className = 'pn-input';
         inp.value = v > 0 ? String(v) : '';
         inp.dataset.masp = r.masp;
