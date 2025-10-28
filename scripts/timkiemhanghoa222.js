@@ -63,22 +63,22 @@ function normCode(s) {
 
 // === Parse nhiều size từ ô "Hết size": tách theo , . ; khoảng trắng; loại rỗng; loại trùng; giữ thứ tự ===
 function parseHetSizes(raw) {
-  if (!raw) return [];
-  // thay các dấu chấm thành phẩy để đồng nhất, rồi tách
-  const tokens = String(raw)
-    .replace(/[，。．｡]/g, ',')         // vài dấu chấm/phẩy kiểu fullwidth
-    .replace(/\./g, ',')               // chấm -> phẩy
-    .split(/[,\s]+/);                  // tách theo phẩy hoặc khoảng trắng
-  const seen = new Set();
-  const out = [];
-  for (let t of tokens) {
-    t = t.trim();
-    if (!t) continue;
-    if (seen.has(t)) continue;
-    seen.add(t);
-    out.push(t);
-  }
-  return out;
+    if (!raw) return [];
+    // thay các dấu chấm thành phẩy để đồng nhất, rồi tách
+    const tokens = String(raw)
+        .replace(/[，。．｡]/g, ',')         // vài dấu chấm/phẩy kiểu fullwidth
+        .replace(/\./g, ',')               // chấm -> phẩy
+        .split(/[,\s]+/);                  // tách theo phẩy hoặc khoảng trắng
+    const seen = new Set();
+    const out = [];
+    for (let t of tokens) {
+        t = t.trim();
+        if (!t) continue;
+        if (seen.has(t)) continue;
+        seen.add(t);
+        out.push(t);
+    }
+    return out;
 }
 
 
@@ -109,27 +109,38 @@ function pushCodeToTextareaAndSearch(raw) {
     if (typeof triggerSearch === 'function') triggerSearch();
 }
 
+// Ảnh đã load (hoàn tất) ?
+function _hasLoadedImg(img) {
+    return img && img.tagName === 'IMG' && img.complete && img.naturalWidth > 0;
+}
 
-//Gọi rung trong addToScanBuffer + Flash + Toast
-function addToScanBuffer(raw) {
-    const code = normCode(raw);
-    if (!code) return false;
+/**
+ * Kiểm tra UI có ảnh sản phẩm đã load hay chưa.
+ * - Ưu tiên: ảnh lớn chế độ 1-mã (#productImage, #previewImg...)
+ * - Sau đó: ảnh trong danh sách nhiều-mã (.detail-grid .img-wrap img, .product-card img, img.product-thumb)
+ * - Nếu truyền masp: cố gắng khớp theo src chứa tên file mã SP
+ */
+function uiHasProductImage(masp) {
+    const maspUpper = (masp || '').toUpperCase();
 
-    showFlash();
-
-    if (!window.scanBuffer.includes(code)) {
-        window.scanBuffer.unshift(code);
-        renderScanBuffer();
-        showToast(`✅ Đã quét ${code}`, 'info');
-        haptic(70);
-        playSuccessBeep();   // ✅ beep khi mã mới
-        return true;
-    } else {
-        showToast(`⚠️ Mã ${code} đã tồn tại`, 'warn');
-        haptic([40, 80, 40]);
-        playAlertBeep();     // ⚠️ beep cảnh báo khi trùng
-        return false;
+    // 1) Ảnh lớn (1-mã)
+    const bigImg = document.querySelector('#productImage, #previewImg, img#productImg, img#previewImage');
+    if (_hasLoadedImg(bigImg)) {
+        if (!maspUpper) return true;
+        const src = (bigImg.src || '').toUpperCase();
+        if (src.includes(encodeURIComponent(maspUpper)) || src.includes(maspUpper)) return true;
     }
+
+    // 2) Ảnh trong danh sách (nhiều-mã)
+    const candidates = document.querySelectorAll('.detail-grid .img-wrap img, .product-card img, img.product-thumb, .detail-grid img');
+    for (const img of candidates) {
+        if (_hasLoadedImg(img)) {
+            if (!maspUpper) return true;
+            const src = (img.src || '').toUpperCase();
+            if (src.includes(encodeURIComponent(maspUpper)) || src.includes(maspUpper)) return true;
+        }
+    }
+    return false;
 }
 
 
@@ -1485,94 +1496,95 @@ function closePickSizeAndFill() {
 // --- Lưu đặt hàng ---
 // --- Lưu đặt hàng (hỗ trợ nhiều size trong "Hết size") ---
 async function saveDatHang() {
-  const { tennv, diadiem } = getCurrentUserInfo();
-  const sohd    = document.getElementById('dhSohd').value.trim();
-  const masp    = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
-  const mau     = (document.getElementById('dhMau').value || '').trim();
-  const conSize = (document.getElementById('dhConSize').value || '').trim();
-  const hetSize = (document.getElementById('dhHetSize').value || '').trim();
-  const ghichu  = (document.getElementById('dhGhichu').value || '').trim();
+    const { tennv, diadiem } = getCurrentUserInfo();
+    const sohd = document.getElementById('dhSohd').value.trim();
 
-  if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập!', 'warn'); return; }
-  if (!sohd || !masp) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
-  if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+    const masp = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
+    window.CURRENT_MASP = masp; // đảm bảo biến toàn cục khớp mã đang đặt
+    const mau = (document.getElementById('dhMau').value || '').trim();
+    const conSize = (document.getElementById('dhConSize').value || '').trim();
+    const hetSize = (document.getElementById('dhHetSize').value || '').trim();
+    const ghichu = (document.getElementById('dhGhichu').value || '').trim();
 
-  // Điện thoại: bắt buộc có ảnh; Máy tính: cho phép không có ảnh
-  if (!isDesktopDevice() && !uiHasProductImage()) {
-    showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
-    return;
-  }
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập!', 'warn'); return; }
+    if (!sohd || !masp) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
+    if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
 
-  // Bắt buộc có "Hết size"; tách nhiều size -> mảng
-  const hetSizes = parseHetSizes(hetSize);
-  if (hetSizes.length === 0) {
-    showToast('⚠️ Cần nhập Hết size (có thể nhập nhiều, ngăn bằng dấu , hoặc .)', 'warn');
-    return;
-  }
-
-  // Chuẩn bị payload: mỗi size -> 1 dòng; cùng 1 số HĐ
-  const buildRows = (sohdUse) => hetSizes.map(sz => ({
-    sohd: sohdUse,
-    diadiem,
-    masp,
-    mau,
-    con_size: conSize || null,
-    het_size: sz || null,
-    tennv,
-    ghichu: ghichu || null,
-    // nếu bảng có default now() thì có thể bỏ "ngaygio"
-    // ngaygio: new Date().toISOString()
-  }));
-
-  // Thử insert 1 phát; nếu trùng sohd thì xin số mới và insert lại
-  let curSohd = sohd;
-  let attempt = 0;
-
-  while (attempt < 2) {
-    const rows = buildRows(curSohd);
-    const { error } = await supabase.from('dathang').insert(rows);
-
-    if (!error) {
-      showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`, 'ok');
-      closeDatHangPopup();
-
-      // reset form cho lần đặt tiếp
-      document.getElementById('dhMau').value = '';
-      document.getElementById('dhConSize').value = '';
-      document.getElementById('dhHetSize').value = '';
-      document.getElementById('dhGhichu').value = '';
-      return;
-    }
-
-    // Nếu lỗi trùng số HĐ (duplicate) → xin số mới rồi thử lại
-    const msg = String(error.message || '').toLowerCase();
-    if (msg.includes('duplicate') || msg.includes('unique')) {
-      try {
-        curSohd = await getNextSohd(diadiem);
-      } catch (_) {
-        showToast('❌ Không sinh được số HĐ mới!', 'warn');
+    // Điện thoại: BẮT BUỘC phải có ảnh; Máy tính: CHO PHÉP không có ảnh
+    if (!isDesktopDevice() && !uiHasProductImage(CURRENT_MASP)) {
+        showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
         return;
-      }
-      attempt++;
-      continue;
+    }
+    // Bắt buộc có "Hết size"; tách nhiều size -> mảng
+    const hetSizes = parseHetSizes(hetSize);
+    if (hetSizes.length === 0) {
+        showToast('⚠️ Cần nhập Hết size (có thể nhập nhiều, ngăn bằng dấu , hoặc .)', 'warn');
+        return;
     }
 
-    // Lỗi khác → báo và dừng
-    console.error('Insert dathang error:', error);
-    showToast('❌ Lưu đặt hàng thất bại!', 'warn');
-    return;
-  }
+    // Chuẩn bị payload: mỗi size -> 1 dòng; cùng 1 số HĐ
+    const buildRows = (sohdUse) => hetSizes.map(sz => ({
+        sohd: sohdUse,
+        diadiem,
+        masp,
+        mau,
+        con_size: conSize || null,
+        het_size: sz || null,
+        tennv,
+        ghichu: ghichu || null,
+        // nếu bảng có default now() thì có thể bỏ "ngaygio"
+        // ngaygio: new Date().toISOString()
+    }));
 
-  // Thử lần cuối cùng (cực kỳ hiếm khi cần tới)
-  const rows = buildRows(curSohd);
-  const { error: err3 } = await supabase.from('dathang').insert(rows);
-  if (err3) {
-    console.error('Insert dathang error (final):', err3);
-    showToast('❌ Lưu đặt hàng thất bại (final)!', 'warn');
-    return;
-  }
-  showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`, 'ok');
-  closeDatHangPopup();
+    // Thử insert 1 phát; nếu trùng sohd thì xin số mới và insert lại
+    let curSohd = sohd;
+    let attempt = 0;
+
+    while (attempt < 2) {
+        const rows = buildRows(curSohd);
+        const { error } = await supabase.from('dathang').insert(rows);
+
+        if (!error) {
+            showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`, 'ok');
+            closeDatHangPopup();
+
+            // reset form cho lần đặt tiếp
+            document.getElementById('dhMau').value = '';
+            document.getElementById('dhConSize').value = '';
+            document.getElementById('dhHetSize').value = '';
+            document.getElementById('dhGhichu').value = '';
+            return;
+        }
+
+        // Nếu lỗi trùng số HĐ (duplicate) → xin số mới rồi thử lại
+        const msg = String(error.message || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('unique')) {
+            try {
+                curSohd = await getNextSohd(diadiem);
+            } catch (_) {
+                showToast('❌ Không sinh được số HĐ mới!', 'warn');
+                return;
+            }
+            attempt++;
+            continue;
+        }
+
+        // Lỗi khác → báo và dừng
+        console.error('Insert dathang error:', error);
+        showToast('❌ Lưu đặt hàng thất bại!', 'warn');
+        return;
+    }
+
+    // Thử lần cuối cùng (cực kỳ hiếm khi cần tới)
+    const rows = buildRows(curSohd);
+    const { error: err3 } = await supabase.from('dathang').insert(rows);
+    if (err3) {
+        console.error('Insert dathang error (final):', err3);
+        showToast('❌ Lưu đặt hàng thất bại (final)!', 'warn');
+        return;
+    }
+    showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`, 'ok');
+    closeDatHangPopup();
 }
 
 
