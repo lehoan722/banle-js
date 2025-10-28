@@ -337,6 +337,7 @@ async function loadData() {
   if (tt === 'OK' || tt === 'HET') q = q.eq('trahang', tt);
   if (tt === 'TRONG') q = q.or('trahang.is.null,trahang.eq.');
 
+  const { data, error } = await q;
   document.getElementById('btnFilter').disabled = false;
 
   if (error) { showToast('❌ Lỗi tải dữ liệu', 'warn'); return; }
