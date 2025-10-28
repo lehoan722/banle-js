@@ -208,6 +208,11 @@ export const popupNgang = (() => {
         inp.dataset.row = String(rowIdx);
         inp.dataset.col = String(colIdx);
 
+        // NEW: gợi ý “Next” và bắt phím Return của iOS
+        inp.setAttribute('enterkeyhint', 'next');   // iOS 15+
+        inp.autocapitalize = 'off';
+        inp.autocorrect = 'off';
+
         // Chọn hết khi focus
         inp.addEventListener('focus', () => inp.select());
 
@@ -233,6 +238,21 @@ export const popupNgang = (() => {
         };
         inp.addEventListener('input', normalize);
         inp.addEventListener('blur', normalize);
+
+        // NEW: iOS Return (phím trống) -> move next
+        inp.addEventListener('beforeinput', (e) => {
+          // Người dùng bấm Return trên iOS
+          if (e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak') {
+            e.preventDefault();
+            moveFocusToNext(inp, sizes);
+            return;
+          }
+          // Tuỳ chọn: coi '.' hoặc ',' là Enter (một số layout số có phím '.')
+          if (e.inputType === 'insertText' && (e.data === '.' || e.data === ',')) {
+            e.preventDefault();
+            moveFocusToNext(inp, sizes);
+          }
+        });
 
         // Enter → nhảy ô; hết hàng → xuống hàng dưới, size đầu
         inp.addEventListener('keydown', (e) => {
