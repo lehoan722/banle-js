@@ -1334,29 +1334,33 @@ async function openDatHangPopup() {
 }
 
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ TRONG CHẾ ĐỘ NHIỀU MÃ =====
+// ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ (hỗ trợ cả 1-mã & nhiều-mã) =====
 window.openDatHangFor = async function (masp, anchorEl) {
-    // Lấy ảnh hiển thị trong đúng block để kiểm tra "đã có ảnh hay chưa"
-    const block = anchorEl?.closest('.detail-grid');
-    const imgEl = block ? block.querySelector('img') : null;
-
-    // Lấy thông tin người dùng (đã đăng nhập lưu trong localStorage)
     const { tennv, diadiem } = getCurrentUserInfo();
     if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return false; }
 
-    // Kiểm tra có ảnh ngay trong block (không gọi DB)
-    const hasImg = !!(imgEl && imgEl.complete && imgEl.naturalWidth > 0);
+    CURRENT_MASP = (masp || '').toUpperCase();
+
+    // 1) Thử tìm ảnh ngay trong block (nhiều mã)
+    let hasImg = false;
+    let block = anchorEl ? anchorEl.closest('.detail-grid') : null;
+    if (block) {
+        const imgEl = block.querySelector('.img-wrap img');
+        hasImg = !!(imgEl && imgEl.complete && imgEl.naturalWidth > 0);
+    } else {
+        // 2) Không ở chế độ nhiều mã → fallback về ảnh lớn của trang (1 mã)
+        hasImg = uiHasProductImage();
+    }
+
     if (!hasImg) {
-        showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
-        // lưu mã vào ô nhập để người dùng chọn ảnh/lưu ảnh nhanh rồi đặt lại
-        CURRENT_MASP = (masp || '').toUpperCase();
-        setProductImageByMasp(CURRENT_MASP); // đồng bộ khung ảnh chuẩn bên phải nếu cần
+        // Gắn ảnh đúng mã lên khung lớn để người dùng chọn/chụp rồi tự mở lại
+        setProductImageByMasp(CURRENT_MASP);
+        _orderAutoFlow = true; // lưu ảnh xong tự mở popup
         document.getElementById('imgFileInput')?.click();
         return false;
     }
 
-    // Sinh số HĐ và mở popup giống openDatHangPopup()
-    CURRENT_MASP = (masp || '').toUpperCase();
-
+    // Sinh số HĐ & mở popup
     const sohd = await getNextSohd(diadiem).catch(() => null);
     if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
 
@@ -1367,7 +1371,6 @@ window.openDatHangFor = async function (masp, anchorEl) {
     document.getElementById('dhHetSize').value = '';
     document.getElementById('dhGhichu').value = '';
 
-    // mở popup + focus
     document.getElementById('popupDatHang').style.display = 'block';
     setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
     return true;
