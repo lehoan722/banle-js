@@ -379,6 +379,9 @@ html, body, #popupDatHang {
   overflow: auto;      /* cuộn bên trong nếu nội dung dài */
 }
 
+.order-link { color:#1565c0; font-weight:700; text-decoration:underline; cursor:pointer; }
+.order-link:active { opacity: .8; }
+
     </style>
 
 
@@ -440,7 +443,7 @@ html, body, #popupDatHang {
                         style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
                         🧹 Xoá DL
                     </button>
-                    <button id="orderBtn" class="popup-btn" style="font-weight:700">🛒 Đặt hàng</button>
+                   
                 </div>
             </div>
         </div>
@@ -642,6 +645,61 @@ html, body, #popupDatHang {
     <div id="sizeList" style="max-height:60vh;overflow:auto;"></div>
   </div>
 </div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+window.supabase = createClient(supabaseUrl, supabaseKey);
+
+window.dangNhap = async function() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const password = document.getElementById('login-password').value.trim();
+  const cs = document.getElementById('login-cs').value;
+  const manv = document.getElementById('login-manv').value.trim().toUpperCase();
+  const statusEl = document.getElementById('login-error');
+
+  if (!email || !password || !cs || !manv) {
+    statusEl.textContent = '⚠️ Điền đầy đủ thông tin đăng nhập.';
+    statusEl.style.color = 'red';
+    return;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`;
+    statusEl.style.color = 'red';
+    return;
+  }
+
+  // kiểm tra mã NV
+  const { data: nv, error: errNV } = await supabase
+    .from('dmnhanvien')
+    .select('manv, tennv')
+    .eq('manv', manv)
+    .maybeSingle();
+
+  if (errNV || !nv) {
+    statusEl.textContent = '❌ Mã nhân viên không tồn tại!';
+    statusEl.style.color = 'red';
+    await supabase.auth.signOut();
+    return;
+  }
+
+  // lưu thông tin người dùng
+  localStorage.setItem('diadiem', cs);
+  localStorage.setItem('manv', nv.manv);
+  localStorage.setItem('tennv', nv.tennv);
+
+  statusEl.textContent = '✅ Đăng nhập thành công!';
+  statusEl.style.color = 'green';
+
+  document.getElementById('login-container').style.display = 'none';
+  document.getElementById('app-container')?.style?.setProperty('display', ''); // nếu trang có app-container
+  showToast('Đăng nhập thành công!', 'ok');
+};
+</script>
 
 
 </body>
