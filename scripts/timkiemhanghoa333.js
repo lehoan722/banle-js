@@ -511,15 +511,15 @@ async function renderProductDetailHTML(masp) {
               <th class="red">ND</th><th class="red">NC</th><th class="red">Kiểm CS1</th><th class="red">Kiểm CS2</th>
             </tr>
             <tr>
-              
-            <td>
-           <a href="#"
-           class="order-link"
-           onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-           ${(hanghoa.masp || '')}
-           </a>
-           </td>
+              <td>
+  <a href="#"
+     class="order-link"
+     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+     ${(hanghoa.masp || '')}
+  </a>
+</td>
 
+              
               <td>${hanghoa.vitrikho1 || ""}</td><td>${hanghoa.vitrikho2 || ""}</td>
               <td>${hanghoa.giale?.toLocaleString() || ""}</td>
               <td>${formatDateOnly(ngay_nhapdau) || ""}</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
@@ -550,7 +550,14 @@ async function renderProductDetailHTML(masp) {
             <th class="red">ND</th><th class="red">NC</th><th class="red">Kiểm CS1</th><th class="red">Kiểm CS2</th>
           </tr>
           <tr>
-            <td>${hanghoa.masp || ""}</td>
+            <td>
+  <a href="#"
+     class="order-link"
+     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+     ${(hanghoa.masp || '')}
+  </a>
+</td>
+
             <td>${hanghoa.vitrikho1 || ""}</td>
             <td>${hanghoa.vitrikho2 || ""}</td>
             <td>${hanghoa.giale?.toLocaleString() || ""}</td>
