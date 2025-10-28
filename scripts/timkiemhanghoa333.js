@@ -61,27 +61,6 @@ function normCode(s) {
     return (s || "").trim().toUpperCase();
 }
 
-// === Parse nhiều size từ ô "Hết size": tách theo , . ; khoảng trắng; loại rỗng; loại trùng; giữ thứ tự ===
-function parseHetSizes(raw) {
-  if (!raw) return [];
-  // thay các dấu chấm thành phẩy để đồng nhất, rồi tách
-  const tokens = String(raw)
-    .replace(/[，。．｡]/g, ',')         // vài dấu chấm/phẩy kiểu fullwidth
-    .replace(/\./g, ',')               // chấm -> phẩy
-    .split(/[,\s]+/);                  // tách theo phẩy hoặc khoảng trắng
-  const seen = new Set();
-  const out = [];
-  for (let t of tokens) {
-    t = t.trim();
-    if (!t) continue;
-    if (seen.has(t)) continue;
-    seen.add(t);
-    out.push(t);
-  }
-  return out;
-}
-
-
 // === CHẾ ĐỘ QUÉT 1 MÃ → ĐẨY VÀO TEXTAREA & TÌM NGAY (CẮT HẬU TỐ _SIZE) ===
 function pushCodeToTextareaAndSearch(raw) {
     const strip = (typeof window !== 'undefined' && typeof window.stripSizeSuffixAtEnd === 'function')
@@ -1483,97 +1462,56 @@ function closePickSizeAndFill() {
 }
 
 // --- Lưu đặt hàng ---
-// --- Lưu đặt hàng (hỗ trợ nhiều size trong "Hết size") ---
 async function saveDatHang() {
-  const { tennv, diadiem } = getCurrentUserInfo();
-  const sohd    = document.getElementById('dhSohd').value.trim();
-  const masp    = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
-  window.CURRENT_MASP = masp; // đảm bảo biến toàn cục khớp mã đang đặt
-  const mau     = (document.getElementById('dhMau').value || '').trim();
-  const conSize = (document.getElementById('dhConSize').value || '').trim();
-  const hetSize = (document.getElementById('dhHetSize').value || '').trim();
-  const ghichu  = (document.getElementById('dhGhichu').value || '').trim();
+    const { tennv, diadiem } = getCurrentUserInfo();
+    const sohd = document.getElementById('dhSohd').value.trim();
+    const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
+    const mau = document.getElementById('dhMau').value.trim();
+    const conSize = document.getElementById('dhConSize').value.trim();
+    const hetSize = document.getElementById('dhHetSize').value.trim();
+    const ghichu = document.getElementById('dhGhichu').value.trim();
 
-  if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập!', 'warn'); return; }
-  if (!sohd || !masp) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
-  if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+    if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
+    if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
 
-  // Điện thoại: BẮT BUỘC phải có ảnh; Máy tính: CHO PHÉP không có ảnh
-if (!isDesktopDevice() && !uiHasProductImage(CURRENT_MASP)) {
-  showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
-  return;
-}  
+    //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
+    if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
+    if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
 
-  // Bắt buộc có "Hết size"; tách nhiều size -> mảng
-  const hetSizes = parseHetSizes(hetSize);
-  if (hetSizes.length === 0) {
-    showToast('⚠️ Cần nhập Hết size (có thể nhập nhiều, ngăn bằng dấu , hoặc .)', 'warn');
-    return;
-  }
-
-  // Chuẩn bị payload: mỗi size -> 1 dòng; cùng 1 số HĐ
-  const buildRows = (sohdUse) => hetSizes.map(sz => ({
-    sohd: sohdUse,
-    diadiem,
-    masp,
-    mau,
-    con_size: conSize || null,
-    het_size: sz || null,
-    tennv,
-    ghichu: ghichu || null,
-    // nếu bảng có default now() thì có thể bỏ "ngaygio"
-    // ngaygio: new Date().toISOString()
-  }));
-
-  // Thử insert 1 phát; nếu trùng sohd thì xin số mới và insert lại
-  let curSohd = sohd;
-  let attempt = 0;
-
-  while (attempt < 2) {
-    const rows = buildRows(curSohd);
-    const { error } = await supabase.from('dathang').insert(rows);
-
-    if (!error) {
-      showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`, 'ok');
-      closeDatHangPopup();
-
-      // reset form cho lần đặt tiếp
-      document.getElementById('dhMau').value = '';
-      document.getElementById('dhConSize').value = '';
-      document.getElementById('dhHetSize').value = '';
-      document.getElementById('dhGhichu').value = '';
-      return;
-    }
-
-    // Nếu lỗi trùng số HĐ (duplicate) → xin số mới rồi thử lại
-    const msg = String(error.message || '').toLowerCase();
-    if (msg.includes('duplicate') || msg.includes('unique')) {
-      try {
-        curSohd = await getNextSohd(diadiem);
-      } catch (_) {
-        showToast('❌ Không sinh được số HĐ mới!', 'warn');
+    // cố gắng insert; nếu trùng sohd thì +1
+    let attempt = 0;
+    let curSohd = sohd;
+    while (attempt < 2) {
+        const { error } = await supabase.from('dathang').insert([{
+            sohd: curSohd, diadiem, masp, mau,
+            con_size: conSize, het_size: hetSize,
+            tennv, ghichu
+        }]);
+        if (!error) {
+            showToast('✅ Đặt hàng thành công!');
+            closeDatHangPopup();
+            return;
+        }
+        // nếu trùng unique, sinh lại số
+        if (String(error.message || '').toLowerCase().includes('duplicate')) {
+            curSohd = await getNextSohd(diadiem);
+            attempt++;
+            continue;
+        }
+        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
         return;
-      }
-      attempt++;
-      continue;
     }
-
-    // Lỗi khác → báo và dừng
-    console.error('Insert dathang error:', error);
-    showToast('❌ Lưu đặt hàng thất bại!', 'warn');
-    return;
-  }
-
-  // Thử lần cuối cùng (cực kỳ hiếm khi cần tới)
-  const rows = buildRows(curSohd);
-  const { error: err3 } = await supabase.from('dathang').insert(rows);
-  if (err3) {
-    console.error('Insert dathang error (final):', err3);
-    showToast('❌ Lưu đặt hàng thất bại (final)!', 'warn');
-    return;
-  }
-  showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`, 'ok');
-  closeDatHangPopup();
+    // thử thêm lần cuối
+    const { error: err3 } = await supabase.from('dathang').insert([{
+        sohd: curSohd, diadiem, masp, mau,
+        con_size: conSize, het_size: hetSize,
+        tennv, ghichu
+    }]);
+    if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
+    showToast('✅ Đặt hàng thành công!');
+    closeDatHangPopup();
 }
+
+
 
 
