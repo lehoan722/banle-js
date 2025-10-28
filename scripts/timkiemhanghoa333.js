@@ -61,6 +61,34 @@ function normCode(s) {
     return (s || "").trim().toUpperCase();
 }
 
+// === CHẾ ĐỘ QUÉT 1 MÃ → ĐẨY VÀO TEXTAREA & TÌM NGAY (CẮT HẬU TỐ _SIZE) ===
+function pushCodeToTextareaAndSearch(raw) {
+    const strip = (typeof window !== 'undefined' && typeof window.stripSizeSuffixAtEnd === 'function')
+        ? window.stripSizeSuffixAtEnd
+        : function (s) { return String(s || ''); };
+    const code = normCode(strip(raw));
+    if (!code) return;
+
+    // feedback nhẹ để biết đã quét
+    showFlash();
+    try { haptic(70); } catch (_) { }
+    try { playSuccessBeep(); } catch (_) { }
+    try { showToast(`✅ Đã quét ${code}`, 'info'); } catch (_) { }
+
+    // ✅ Chỉ đẩy vào ô nhập mã
+    const ip = document.getElementById('maspInput');
+    if (ip) {
+        ip.value = code;
+        ip.focus();
+        try { ip.select(); } catch (_) { }
+    }
+
+    // Đóng scanner (nếu đang mở) và tìm ngay
+    try { closeScanner(); } catch (_) { }
+    if (typeof triggerSearch === 'function') triggerSearch();
+}
+
+
 //Gọi rung trong addToScanBuffer + Flash + Toast
 function addToScanBuffer(raw) {
     const code = normCode(raw);
@@ -211,7 +239,7 @@ async function triggerSearch(_masp = null) {
 
     document.getElementById("maspInput").select();
 
-    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên
+    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên 
     const bulkCodes = parseBulkMasp(); // [ '11376-GDM', ... ]
     let candidates = [];
 
@@ -395,7 +423,14 @@ async function renderOneProductDetail(masp) {
       <th class="red">Kiểm CS2</th>
     </tr>
     <tr>
-      <td>${hanghoa.masp || ""}</td>
+      <td>
+     <a href="#"
+     class="order-link"
+     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+     ${(hanghoa.masp || '')}
+     </a>
+     </td>
+
       <td>${hanghoa.vitrikho1 || ""}</td>
       <td>${hanghoa.vitrikho2 || ""}</td>
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -650,21 +685,49 @@ fileInput?.addEventListener('change', async (e) => {
     const imgEl = document.getElementById('productImage');
 
     // luôn chuẩn hoá kích thước trước khi upload
-    _pendingBlob = await resizeToStandardBlob(file);   // → Blob JPEG 640x480 or 480x640
-    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob); // xem trước đè lên ảnh cũ
+    _pendingBlob = await resizeToStandardBlob(file);
+    if (imgEl) imgEl.src = URL.createObjectURL(_pendingBlob);
 
     const sts = document.getElementById('uploadStatus');
     if (sts) { sts.style.color = '#444'; sts.textContent = 'Đã chọn ảnh (chưa lưu)'; }
+
+    // NEW: nếu đang đi theo luồng Đặt hàng → tự upload ngay và mở popup
+    if (_orderAutoFlow) {
+        await uploadCurrentPendingImage(/*autoOpenAfter=*/true);
+    }
 });
 
 
 saveImgBtn?.addEventListener('click', async () => {
+    await uploadCurrentPendingImage(/*autoOpenAfter=*/false);
+});
+
+function waitForProductImageLoad() {
+    return new Promise((resolve) => {
+        const img = document.getElementById('productImage');
+        if (!img) return resolve(false);
+        if (img.complete && img.naturalWidth > 0) return resolve(true);
+
+        const onLoad = () => { cleanup(); resolve(true); };
+        const onErr = () => { cleanup(); resolve(false); };
+        const cleanup = () => {
+            img.removeEventListener('load', onLoad);
+            img.removeEventListener('error', onErr);
+        };
+
+        img.addEventListener('load', onLoad, { once: true });
+        img.addEventListener('error', onErr, { once: true });
+    });
+}
+
+
+async function uploadCurrentPendingImage(autoOpenAfter = false) {
     try {
         uploadStatus.style.color = '#c62828';
         if (!CURRENT_MASP) { uploadStatus.textContent = 'Chưa có mã sản phẩm!'; return; }
         if (!_pendingBlob) { uploadStatus.textContent = 'Chưa chọn ảnh!'; return; }
 
-        const fileName = `${CURRENT_MASP}.JPG`; // luôn in hoa
+        const fileName = `${CURRENT_MASP}.JPG`;
         uploadStatus.textContent = 'Đang lưu ảnh...';
 
         const { error } = await supabase
@@ -676,22 +739,33 @@ saveImgBtn?.addEventListener('click', async () => {
         // refresh ảnh với cache-busting
         const imgEl = document.getElementById('productImage');
         imgEl.src = `${IMG_BASE}${encodeURIComponent(CURRENT_MASP)}.JPG?t=${Date.now()}`;
-
+        // CHỜ ảnh thật sự load để uiHasProductImage() trả true
+        await waitForProductImageLoad();
         uploadStatus.style.color = 'green';
         uploadStatus.textContent = 'Đã lưu ảnh thành công!';
-        // NEW: dọn trạng thái + focus & bôi đen ô nhập mã để nhập tiếp
-        const fi = document.getElementById('imgFileInput');
-        if (fi) fi.value = '';
+
+        // dọn trạng thái chọn file
+        const fi = document.getElementById('imgFileInput'); if (fi) fi.value = '';
         _pendingBlob = null;
 
-        const ip = document.getElementById('maspInput');
-        if (ip) { ip.focus(); ip.select(); }   // <<< bôi đen để gõ mã tiếp
+        // nếu là luồng tự lưu → mở popup đặt hàng luôn
+        if (autoOpenAfter) {
+            try { await openDatHangPopup(); } catch (_) { }
+        } else {
+            // thủ công thì chỉ focus về ô mã cho tiện
+            const ip = document.getElementById('maspInput');
+            if (ip) { ip.focus(); ip.select(); }
+        }
     } catch (e) {
         console.error(e);
         uploadStatus.style.color = '#c62828';
         uploadStatus.textContent = 'Lưu ảnh thất bại!';
+    } finally {
+        // tắt cờ auto flow (nếu có)
+        _orderAutoFlow = false;
     }
-});
+}
+
 
 async function resizeToStandardBlob(file) {
     // đọc file → Image
@@ -733,10 +807,7 @@ async function resizeToStandardBlob(file) {
 function onScanResult(result, err, controls) {
     if (result) {
         const text = result.getText ? result.getText() : (result.rawValue || '');
-        if (text) {
-            addToScanBuffer(text);
-            // KHÔNG closeScanner(), KHÔNG triggerSearch() ở đây
-        }
+        if (text) { pushCodeToTextareaAndSearch(text); }
     }
     // lỗi decode thì bỏ qua
 }
@@ -797,11 +868,7 @@ async function decodeFromFile(file) {
     try {
         const res = await reader.decodeFromImageUrl(url);
         const text = res.getText ? res.getText() : (res.rawValue || '');
-        if (text) {
-            addToScanBuffer(text);        // ✅ thêm vào buffer
-            renderScanBuffer();           // cập nhật panel
-            return;                       // ❌ KHÔNG đóng, KHÔNG tìm tại đây
-        }
+        if (text) { pushCodeToTextareaAndSearch(text); }
         document.getElementById('scannerStatus').textContent = 'Không đọc được mã từ ảnh.';
     } catch (e) {
         console.error('decodeFromFile error:', e);
@@ -834,34 +901,6 @@ window.openScanner = async function () {
         video.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)';
     }
 
-    // ====== PANEL BUFFER TRONG GIAO DIỆN QUÉT ======
-    let panel = document.getElementById('scanSidePanel');
-    if (!panel) {
-        panel = document.createElement('div');
-        panel.id = 'scanSidePanel';
-        panel.style.cssText = `
-    position:absolute; right:10px; top:10px;
-    width:min(42vw, 300px); max-height:70vh; overflow:auto;
-    background:#ffffffee; backdrop-filter:saturate(180%) blur(6px);
-    border:1px solid #cfd8dc; border-radius:10px; padding:10px;
-    z-index:10001; box-shadow:0 6px 22px rgba(0,0,0,.15);
-  `;
-        panel.innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px;color:#1565c0">Mã đã quét</div>
-    <div id="scanBufferBox" style="max-height:40vh; overflow:auto; border:1px dashed #90caf9; border-radius:6px; padding:6px; background:#fff"></div>
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="scanClearBtn"  style="background:#ffeaea; color:#c62828; border:1px solid #ef9a9a; padding:8px 10px; border-radius:6px; cursor:pointer;">Xoá hết</button>
-      <button id="scanCloseBtn"  style="background:#eceff1; color:#37474f; border:1px solid #cfd8dc; padding:8px 10px; border-radius:6px; cursor:pointer;">Đóng</button>
-      <button id="scanCommitBtn" style="flex:1; background:#1976d2; color:#fff; border:none; padding:8px 10px; border-radius:6px; font-weight:700; cursor:pointer;">Tìm kiếm</button>
-    </div>
-  `;
-        modal.appendChild(panel);
-
-        panel.querySelector('#scanCommitBtn').onclick = flushScanBufferToTextareaAndSearch;
-        panel.querySelector('#scanClearBtn').onclick = clearScanBuffer;
-        panel.querySelector('#scanCloseBtn').onclick = () => { closeScanner(); /* KHÔNG xoá buffer */ };
-    }
-    renderScanBuffer();
 
 
     const status = document.getElementById('scannerStatus');
@@ -963,7 +1002,46 @@ window.onload = async function () {
         }
     }
 
+    // === ĐẶT HÀNG: gắn sự kiện ===
+    document.getElementById('orderBtn')?.addEventListener('click', async () => {
+        const singleBox = document.getElementById('singleDetailBox');
+        const isSingleVisible = singleBox && getComputedStyle(singleBox).display !== 'none' && !!CURRENT_MASP;
+        if (!isSingleVisible) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+
+        if (!uiHasProductImage()) {
+            // NEW: bật cờ auto-flow, mời người dùng chụp/chọn ảnh
+            _orderAutoFlow = true;
+            //showToast('⚠️ Sản phẩm chưa có ảnh. Mời chụp/chọn ảnh, hệ thống sẽ tự lưu & mở đặt hàng.', 'warn');
+            document.getElementById('imgFileInput')?.click();
+            return;
+        }
+
+        await openDatHangPopup();
+    });
+
+
+    // Popup Đặt hàng: nút/enter điều hướng
+    document.getElementById('dhCloseBtn')?.addEventListener('click', closeDatHangPopup);
+    document.getElementById('dhSaveBtn')?.addEventListener('click', saveDatHang);
+
+    // Enter chuyển ô: Màu → Còn size → Hết size → Ghi chú → Lưu
+    document.getElementById('dhMau')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhConSize').focus(); } });
+    document.getElementById('dhConSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhHetSize').focus(); } });
+    document.getElementById('dhHetSize')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhGhichu').focus(); } });
+    document.getElementById('dhGhichu')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('dhSaveBtn').focus(); } });
+
+    // Popup chọn Màu/Size
+    document.getElementById('pickMauBtn')?.addEventListener('click', openPickMau);
+    document.getElementById('mauCloseBtn')?.addEventListener('click', () => { document.getElementById('popupPickMau').style.display = 'none'; });
+
+    document.getElementById('pickConSizeBtn')?.addEventListener('click', () => openPickSize('con'));
+    document.getElementById('pickHetSizeBtn')?.addEventListener('click', () => openPickSize('het'));
+    document.getElementById('sizeDoneBtn')?.addEventListener('click', closePickSizeAndFill);
+
+
 };
+
+
 
 // ====== XNT HOT (Handsontable) ======
 const xntHotInstances = {};  // thay vì let xntHot = null
@@ -1092,7 +1170,8 @@ const STORAGE_BUCKET = 'anhsanpham';
 
 let CURRENT_MASP = null;        // đang hiển thị 1 sản phẩm nào
 let _pendingBlob = null;        // blob đã resize (để upload)
-
+// NEW: cờ điều khiển luồng tự lưu ảnh + mở đặt hàng
+let _orderAutoFlow = false;  // true khi bấm Đặt hàng mà chưa có ảnh
 
 
 // Thử .JPG → .jpg → .PNG → .png
@@ -1168,5 +1247,237 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
         document.getElementById('clearBulkBtn')?.click();
     }
 });
+
+// === ĐẶT HÀNG: cấu hình ===
+const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
+const PAD5 = (n) => String(n).padStart(5, '0');
+
+// Lấy tennv/diadiem từ localStorage
+function getCurrentUserInfo() {
+    const tennv = localStorage.getItem('tennv') || '';
+    const diadiem = localStorage.getItem('diadiem') || '';
+    return { tennv, diadiem };
+}
+
+// Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
+function uiHasProductImage() {
+    const img = document.getElementById('productImage');
+    return !!(img && img.complete && img.naturalWidth > 0);
+}
+
+// Sinh số HĐ (lấy max theo prefix rồi +1; 5 chữ số)
+async function getNextSohd(diadiem) {
+    const prefix = SOHD_PREFIX(diadiem);
+    const { data, error } = await supabase.from('dathang')
+        .select('sohd').ilike('sohd', `${prefix}%`)
+        .order('sohd', { ascending: false }).limit(1);
+    if (error) throw error;
+
+    let next = 1;
+    if (data && data.length) {
+        const cur = data[0].sohd || '';
+        const m = cur.match(/_(\d{1,5})$/);
+        if (m) next = parseInt(m[1], 10) + 1;
+    }
+    return `${prefix}${PAD5(next)}`;
+}
+
+// Mở popup đặt hàng (đổ sẵn dữ liệu và focus đúng ô)
+async function openDatHangPopup() {
+    const { tennv, diadiem } = getCurrentUserInfo();
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
+
+    // phải có đúng 1 sản phẩm đang hiển thị
+    if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
+
+    // yêu cầu có ảnh trên UI
+    if (!uiHasProductImage()) {
+        // NEW: nếu đang auto-flow, KHÔNG cảnh báo/không click input, chỉ return (caller sẽ gọi lại sau khi ảnh sẵn sàng)
+        if (_orderAutoFlow) return;
+
+        showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+        document.getElementById('imgFileInput')?.click();
+        return;
+    }
+
+    // sinh số HĐ
+    const sohd = await getNextSohd(diadiem).catch(() => null);
+    if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
+
+    // đổ dữ liệu
+    document.getElementById('dhSohd').value = sohd;
+    document.getElementById('dhMasp').value = CURRENT_MASP || '';
+    document.getElementById('dhMau').value = '';
+    document.getElementById('dhConSize').value = '';
+    document.getElementById('dhHetSize').value = '';
+    document.getElementById('dhGhichu').value = '';
+
+    // mở popup + focus vào ô Màu
+    document.getElementById('popupDatHang').style.display = 'block';
+    setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
+}
+
+// ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ TRONG CHẾ ĐỘ NHIỀU MÃ =====
+window.openDatHangFor = async function (masp, anchorEl) {
+    // Lấy ảnh hiển thị trong đúng block để kiểm tra "đã có ảnh hay chưa"
+    const block = anchorEl?.closest('.detail-grid');
+    const imgEl = block ? block.querySelector('img') : null;
+
+    // Lấy thông tin người dùng (đã đăng nhập lưu trong localStorage)
+    const { tennv, diadiem } = getCurrentUserInfo();
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return false; }
+
+    // Kiểm tra có ảnh ngay trong block (không gọi DB)
+    const hasImg = !!(imgEl && imgEl.complete && imgEl.naturalWidth > 0);
+    if (!hasImg) {
+        showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+        // lưu mã vào ô nhập để người dùng chọn ảnh/lưu ảnh nhanh rồi đặt lại
+        CURRENT_MASP = (masp || '').toUpperCase();
+        setProductImageByMasp(CURRENT_MASP); // đồng bộ khung ảnh chuẩn bên phải nếu cần
+        document.getElementById('imgFileInput')?.click();
+        return false;
+    }
+
+    // Sinh số HĐ và mở popup giống openDatHangPopup()
+    CURRENT_MASP = (masp || '').toUpperCase();
+
+    const sohd = await getNextSohd(diadiem).catch(() => null);
+    if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
+
+    document.getElementById('dhSohd').value = sohd;
+    document.getElementById('dhMasp').value = CURRENT_MASP;
+    document.getElementById('dhMau').value = '';
+    document.getElementById('dhConSize').value = '';
+    document.getElementById('dhHetSize').value = '';
+    document.getElementById('dhGhichu').value = '';
+
+    // mở popup + focus
+    document.getElementById('popupDatHang').style.display = 'block';
+    setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
+    return true;
+};
+
+function closeDatHangPopup() {
+    document.getElementById('popupDatHang').style.display = 'none';
+}
+
+// --- Popup Màu (chọn một) ---
+async function openPickMau() {
+    const wrap = document.getElementById('mauList');
+    wrap.innerHTML = '<div style="padding:10px">Đang tải...</div>';
+    document.getElementById('popupPickMau').style.display = 'block';
+    const { data, error } = await supabase.from('dmmausac').select('tenmau').order('tenmau');
+    if (error) { wrap.innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục màu</div>'; return; }
+    wrap.innerHTML = (data || []).map(r =>
+        `<div class="row" style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer"
+          onclick="document.getElementById('dhMau').value='${(r.tenmau || '').replace(/'/g, "\\'")}';
+                   document.getElementById('popupPickMau').style.display='none';
+                   document.getElementById('dhConSize').focus();">
+       ${r.tenmau || ''}
+     </div>`
+    ).join('');
+}
+
+// --- Popup Size (đa chọn, chung cho Còn/Hết) ---
+let SIZE_PICK_TARGET = null;     // 'con' | 'het'
+let SIZE_PICK_SELECTED = new Set();
+let SIZE_PICK_DATA = [];
+
+function renderSizeList(filter = '') {
+    const list = document.getElementById('sizeList');
+    const q = (filter || '').toLowerCase();
+    const rows = SIZE_PICK_DATA.filter(x => !q || (x.mota || '').toLowerCase().includes(q));
+    list.innerHTML = rows.map(x => {
+        const key = x.mota || '';
+        const on = SIZE_PICK_SELECTED.has(key);
+        return `<div onclick="togglePickSize('${key.replace(/'/g, "\\'")}')"
+                 style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;">
+              <span>${key}</span>
+              <span>${on ? '✓' : ''}</span>
+            </div>`;
+    }).join('') || '<div style="padding:10px">Không có dữ liệu</div>';
+}
+
+window.togglePickSize = function (key) {
+    if (SIZE_PICK_SELECTED.has(key)) SIZE_PICK_SELECTED.delete(key);
+    else SIZE_PICK_SELECTED.add(key);
+    renderSizeList(document.getElementById('sizeFilter').value);
+};
+
+async function openPickSize(which) {
+    SIZE_PICK_TARGET = which; // 'con' | 'het'
+    SIZE_PICK_SELECTED = new Set();
+    document.getElementById('popupPickSize').style.display = 'block';
+    document.getElementById('sizeFilter').value = '';
+    document.getElementById('sizeFilter').oninput = (e) => renderSizeList(e.target.value);
+
+    const { data, error } = await supabase.from('dm_size').select('mota').order('mota');
+    if (error) { document.getElementById('sizeList').innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục size</div>'; return; }
+    SIZE_PICK_DATA = data || [];
+    renderSizeList('');
+}
+
+function closePickSizeAndFill() {
+    const arr = Array.from(SIZE_PICK_SELECTED);
+    const val = arr.join(', ');
+    if (SIZE_PICK_TARGET === 'con') document.getElementById('dhConSize').value = val;
+    else if (SIZE_PICK_TARGET === 'het') document.getElementById('dhHetSize').value = val;
+    document.getElementById('popupPickSize').style.display = 'none';
+    if (SIZE_PICK_TARGET === 'con') document.getElementById('dhHetSize').focus();
+    else document.getElementById('dhGhichu').focus();
+}
+
+// --- Lưu đặt hàng ---
+async function saveDatHang() {
+    const { tennv, diadiem } = getCurrentUserInfo();
+    const sohd = document.getElementById('dhSohd').value.trim();
+    const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
+    const mau = document.getElementById('dhMau').value.trim();
+    const conSize = document.getElementById('dhConSize').value.trim();
+    const hetSize = document.getElementById('dhHetSize').value.trim();
+    const ghichu = document.getElementById('dhGhichu').value.trim();
+
+    if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
+    if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+
+    //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
+    if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
+    if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
+
+    // cố gắng insert; nếu trùng sohd thì +1
+    let attempt = 0;
+    let curSohd = sohd;
+    while (attempt < 2) {
+        const { error } = await supabase.from('dathang').insert([{
+            sohd: curSohd, diadiem, masp, mau,
+            con_size: conSize, het_size: hetSize,
+            tennv, ghichu
+        }]);
+        if (!error) {
+            showToast('✅ Đặt hàng thành công!');
+            closeDatHangPopup();
+            return;
+        }
+        // nếu trùng unique, sinh lại số
+        if (String(error.message || '').toLowerCase().includes('duplicate')) {
+            curSohd = await getNextSohd(diadiem);
+            attempt++;
+            continue;
+        }
+        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
+        return;
+    }
+    // thử thêm lần cuối
+    const { error: err3 } = await supabase.from('dathang').insert([{
+        sohd: curSohd, diadiem, masp, mau,
+        con_size: conSize, het_size: hetSize,
+        tennv, ghichu
+    }]);
+    if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
+    showToast('✅ Đặt hàng thành công!');
+    closeDatHangPopup();
+}
+
+
 
 
