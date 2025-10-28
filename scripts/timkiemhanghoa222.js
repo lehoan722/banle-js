@@ -1394,7 +1394,7 @@ async function saveDatHang() {
     if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
 
     //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
-    if (!conSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
+    if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
     if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
 
     // cố gắng insert; nếu trùng sohd thì +1
