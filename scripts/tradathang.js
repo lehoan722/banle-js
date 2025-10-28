@@ -28,6 +28,32 @@ function getUser() {
   };
 }
 
+// Tách nhiều size trong "het_size" theo , . hoặc khoảng trắng; loại rỗng; giữ thứ tự
+function parseHetSizesUI(raw) {
+  if (!raw) return [];
+  return String(raw)
+    .replace(/[，。．｡]/g, ',')  // các dấu fullwidth -> phẩy
+    .replace(/\./g, ',')        // chấm -> phẩy
+    .split(/[,\s]+/)            // tách theo phẩy hoặc khoảng trắng
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+// Nổ nhiều dòng theo het_size
+function explodeRowsByHetSize(rows) {
+  const out = [];
+  for (const r of rows) {
+    const list = parseHetSizesUI(r.het_size);
+    if (list.length <= 1) {
+      out.push(r);
+    } else {
+      for (const sz of list) out.push({ ...r, het_size: sz });
+    }
+  }
+  return out;
+}
+
+
 /** ========= STATE ========= **/
 let hot = null;
 let originalRows = [];
@@ -311,13 +337,19 @@ async function loadData() {
   if (tt === 'OK' || tt === 'HET') q = q.eq('trahang', tt);
   if (tt === 'TRONG') q = q.or('trahang.is.null,trahang.eq.');
 
-  const { data, error } = await q;
   document.getElementById('btnFilter').disabled = false;
 
   if (error) { showToast('❌ Lỗi tải dữ liệu', 'warn'); return; }
-  originalRows = (data || []).map(r => ({ ...r }));
-  currentRows = (data || []).map(r => ({ ...r }));
+
+  // NỔ DÒNG theo het_size trước khi đẩy vào bảng
+  const base = (data || []).map(r => ({ ...r }));
+  const expanded = explodeRowsByHetSize(base);
+
+  originalRows = expanded.map(r => ({ ...r }));
+  currentRows = expanded.map(r => ({ ...r }));
+
   renderTable();
+
 }
 
 /** ========= HIỂN THỊ BẢNG ========= **/
