@@ -20,6 +20,15 @@ window.onload = function () {
     initUI();
 };
 
+function uniqueMasps(rows) {
+    const s = new Set();
+    for (const r of rows) {
+        const m = (r.masp || '').toUpperCase().trim();
+        if (m) s.add(m);
+    }
+    return Array.from(s);
+}
+
 function initUI() {
     //document.getElementById('cosoSelect').addEventListener('change', onChangeCoSo);
     document.getElementById('manvInput').addEventListener('blur', onManvBlur);
@@ -356,6 +365,48 @@ async function onLuu() {
                 .eq('sohd', sohd_kiem);
         }
     }
+
+    // 2.x ĐÁNH DẤU quản lý kích cỡ cho các mã vừa kiểm
+    try {
+        // Lấy danh sách mã từ các dòng "Kiểm thực tế" vừa lưu
+        const maspToMark = uniqueMasps(
+            hot.getSourceData().filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế"))
+        );
+
+        // Nếu muốn chỉ đánh dấu những mã có SL kiểm > 0, dùng dòng dưới thay cho dòng trên:
+        // const maspToMark = uniqueMasps(
+        //   hot.getSourceData().filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế") && (Number(r.tong)||0) > 0)
+        // );
+
+        // Chunk để tránh mệnh đề IN quá dài (an toàn khi nhiều mã)
+        const chunks = [];
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < maspToMark.length; i += CHUNK_SIZE) {
+            chunks.push(maspToMark.slice(i, i + CHUNK_SIZE));
+        }
+
+        let updatedCount = 0;
+        const nowIso = new Date().toISOString();
+        for (const c of chunks) {
+            const { data, error } = await supabase
+                .from('dmhanghoa')
+                .update({ quanlykichco: true, ngaysua: nowIso })
+                .in('masp', c)
+                .select('masp'); // để đếm số dòng cập nhật
+
+            if (error) {
+                errorMsg += "- Lỗi cập nhật 'quanlykichco' trong dmhanghoa: " + error.message + "<br>";
+            } else {
+                updatedCount += (data?.length || 0);
+            }
+        }
+        if (updatedCount > 0) {
+            showMsg((errorMsg || "") + `Đã bật quản lý kích cỡ cho ${updatedCount} mã trong dmhanghoa...`);
+        }
+    } catch (e) {
+        errorMsg += "- Lỗi đánh dấu 'quanlykichco': " + (e.message || e) + "<br>";
+    }
+
 
     // 3. Thông báo và reload
     showMsg((errorMsg ? errorMsg : "✔️ Lưu dữ liệu thành công!") + "<br><span style='color:red'>Trang sẽ tự động tải lại để làm mới dữ liệu!</span>");
