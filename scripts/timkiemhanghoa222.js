@@ -423,7 +423,14 @@ async function renderOneProductDetail(masp) {
       <th class="red">Kiểm CS2</th>
     </tr>
     <tr>
-      <td>${hanghoa.masp || ""}</td>
+      <td>
+     <a href="#"
+     class="order-link"
+     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+     ${(hanghoa.masp || '')}
+     </a>
+     </td>
+
       <td>${hanghoa.vitrikho1 || ""}</td>
       <td>${hanghoa.vitrikho2 || ""}</td>
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -696,21 +703,21 @@ saveImgBtn?.addEventListener('click', async () => {
 });
 
 function waitForProductImageLoad() {
-  return new Promise((resolve) => {
-    const img = document.getElementById('productImage');
-    if (!img) return resolve(false);
-    if (img.complete && img.naturalWidth > 0) return resolve(true);
+    return new Promise((resolve) => {
+        const img = document.getElementById('productImage');
+        if (!img) return resolve(false);
+        if (img.complete && img.naturalWidth > 0) return resolve(true);
 
-    const onLoad = () => { cleanup(); resolve(true); };
-    const onErr  = () => { cleanup(); resolve(false); };
-    const cleanup = () => {
-      img.removeEventListener('load', onLoad);
-      img.removeEventListener('error', onErr);
-    };
+        const onLoad = () => { cleanup(); resolve(true); };
+        const onErr = () => { cleanup(); resolve(false); };
+        const cleanup = () => {
+            img.removeEventListener('load', onLoad);
+            img.removeEventListener('error', onErr);
+        };
 
-    img.addEventListener('load', onLoad, { once: true });
-    img.addEventListener('error', onErr, { once: true });
-  });
+        img.addEventListener('load', onLoad, { once: true });
+        img.addEventListener('error', onErr, { once: true });
+    });
 }
 
 
@@ -1284,14 +1291,14 @@ async function openDatHangPopup() {
     if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
 
     // yêu cầu có ảnh trên UI
-if (!uiHasProductImage()) {
-  // NEW: nếu đang auto-flow, KHÔNG cảnh báo/không click input, chỉ return (caller sẽ gọi lại sau khi ảnh sẵn sàng)
-  if (_orderAutoFlow) return;
+    if (!uiHasProductImage()) {
+        // NEW: nếu đang auto-flow, KHÔNG cảnh báo/không click input, chỉ return (caller sẽ gọi lại sau khi ảnh sẵn sàng)
+        if (_orderAutoFlow) return;
 
-  showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
-  document.getElementById('imgFileInput')?.click();
-  return;
-}
+        showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+        document.getElementById('imgFileInput')?.click();
+        return;
+    }
 
     // sinh số HĐ
     const sohd = await getNextSohd(diadiem).catch(() => null);
@@ -1309,6 +1316,46 @@ if (!uiHasProductImage()) {
     document.getElementById('popupDatHang').style.display = 'block';
     setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
 }
+
+// ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ TRONG CHẾ ĐỘ NHIỀU MÃ =====
+window.openDatHangFor = async function (masp, anchorEl) {
+    // Lấy ảnh hiển thị trong đúng block để kiểm tra "đã có ảnh hay chưa"
+    const block = anchorEl?.closest('.detail-grid');
+    const imgEl = block ? block.querySelector('img') : null;
+
+    // Lấy thông tin người dùng (đã đăng nhập lưu trong localStorage)
+    const { tennv, diadiem } = getCurrentUserInfo();
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return false; }
+
+    // Kiểm tra có ảnh ngay trong block (không gọi DB)
+    const hasImg = !!(imgEl && imgEl.complete && imgEl.naturalWidth > 0);
+    if (!hasImg) {
+        showToast('⚠️ Sản phẩm chưa có ảnh. Hãy chụp/chọn và Lưu ảnh trước!', 'warn');
+        // lưu mã vào ô nhập để người dùng chọn ảnh/lưu ảnh nhanh rồi đặt lại
+        CURRENT_MASP = (masp || '').toUpperCase();
+        setProductImageByMasp(CURRENT_MASP); // đồng bộ khung ảnh chuẩn bên phải nếu cần
+        document.getElementById('imgFileInput')?.click();
+        return false;
+    }
+
+    // Sinh số HĐ và mở popup giống openDatHangPopup()
+    CURRENT_MASP = (masp || '').toUpperCase();
+
+    const sohd = await getNextSohd(diadiem).catch(() => null);
+    if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
+
+    document.getElementById('dhSohd').value = sohd;
+    document.getElementById('dhMasp').value = CURRENT_MASP;
+    document.getElementById('dhMau').value = '';
+    document.getElementById('dhConSize').value = '';
+    document.getElementById('dhHetSize').value = '';
+    document.getElementById('dhGhichu').value = '';
+
+    // mở popup + focus
+    document.getElementById('popupDatHang').style.display = 'block';
+    setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
+    return true;
+};
 
 function closeDatHangPopup() {
     document.getElementById('popupDatHang').style.display = 'none';
