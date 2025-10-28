@@ -129,6 +129,15 @@ function showToast(msg, type = 'info') {
     setTimeout(() => { toast.style.opacity = '0'; }, 1800); // tự ẩn sau 1.8s
 }
 
+// ========== Device helpers ==========
+function isDesktopDevice() {
+    const ua = navigator.userAgent || '';
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Windows Phone/i.test(ua);
+    const hasTouchOnly = navigator.maxTouchPoints > 0 && !/Macintosh/.test(ua); // iPadOS có thể giả Mac
+    return !(isMobileUA || hasTouchOnly);
+}
+
+
 // ====== HAPTIC (rung) ======
 function haptic(pattern = 60) {
     try {
@@ -1353,12 +1362,18 @@ window.openDatHangFor = async function (masp, anchorEl) {
     }
 
     if (!hasImg) {
-        // Gắn ảnh đúng mã lên khung lớn để người dùng chọn/chụp rồi tự mở lại
-        setProductImageByMasp(CURRENT_MASP);
-        _orderAutoFlow = true; // lưu ảnh xong tự mở popup
-        document.getElementById('imgFileInput')?.click();
-        return false;
+        if (isDesktopDevice()) {
+            // Cho phép đặt hàng không ảnh khi dùng máy tính
+            showToast('ℹ️ Đặt hàng trên máy tính: cho phép không có ảnh sản phẩm.', 'ok');
+        } else {
+            // Điện thoại: vẫn buộc chụp/chọn ảnh trước
+            setProductImageByMasp(CURRENT_MASP);
+            _orderAutoFlow = true; // lưu xong tự mở popup
+            document.getElementById('imgFileInput')?.click();
+            return false;
+        }
     }
+
 
     // Sinh số HĐ & mở popup
     const sohd = await getNextSohd(diadiem).catch(() => null);
