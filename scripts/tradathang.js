@@ -97,6 +97,15 @@ document.getElementById('imgClose').addEventListener('click', () => {
   document.getElementById('imgModal').style.display = 'none';
 });
 
+function escHtml(s = '') {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /** ========= POPUP GALLERY ẢNH CHO TOÀN BỘ DÒNG ========= **/
 const galleryModal = document.getElementById('galleryModal');
 const galGrid = document.getElementById('galGrid');
@@ -154,10 +163,20 @@ function buildGalleryCards(rows) {
     };
     pic.appendChild(img);
 
-    // caption + link
+    // caption + link (đổi theo yêu cầu)
     const cap = document.createElement('div');
     cap.className = 'cap';
-    cap.innerHTML = `Mã SP: <a target="_blank" href="${SEARCH_PAGE}?masp=${encodeURIComponent(masp)}">${masp || '(trống)'}</a><br><small>SOHD: ${sohd}</small>`;
+
+    const mau = r.mau || '';
+    const hetsize = r.het_size || '';
+    const ghichu = r.ghichu || '';
+
+    cap.innerHTML = `
+  <div><b>Mã SP:</b> <a target="_blank" href="${SEARCH_PAGE}?masp=${encodeURIComponent(masp)}">${masp || '(trống)'}</a></div>
+  <div><b>Màu:</b> ${escHtml(mau) || '—'}</div>
+  <div><b>Hết size:</b> ${escHtml(hetsize) || '—'}</div>
+  <div><b>Ghi chú:</b> ${escHtml(ghichu) || '—'}</div>
+`;
 
     // lựa chọn OK / HET (mutually exclusive)
     const opts = document.createElement('div');
