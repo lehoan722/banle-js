@@ -1420,9 +1420,9 @@ let SIZE_PICK_DATA = [];
 function renderSizeList(filter = '') {
     const list = document.getElementById('sizeList');
     const q = (filter || '').toLowerCase();
-    const rows = SIZE_PICK_DATA.filter(x => !q || (x.mota || '').toLowerCase().includes(q));
+    const rows = SIZE_PICK_DATA.filter(x => !q || (x.size || '').toLowerCase().includes(q));
     list.innerHTML = rows.map(x => {
-        const key = x.mota || '';
+        const key = x.size || '';
         const on = SIZE_PICK_SELECTED.has(key);
         return `<div onclick="togglePickSize('${key.replace(/'/g, "\\'")}')"
                  style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;">
@@ -1445,7 +1445,7 @@ async function openPickSize(which) {
     document.getElementById('sizeFilter').value = '';
     document.getElementById('sizeFilter').oninput = (e) => renderSizeList(e.target.value);
 
-    const { data, error } = await supabase.from('dm_size').select('mota').order('mota');
+    const { data, error } = await supabase.from('dm_size').select('size').order('size');
     if (error) { document.getElementById('sizeList').innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục size</div>'; return; }
     SIZE_PICK_DATA = data || [];
     renderSizeList('');
@@ -1476,7 +1476,7 @@ async function saveDatHang() {
 
     //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
     if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
-    if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
+    //if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
 
     // cố gắng insert; nếu trùng sohd thì +1
     let attempt = 0;
