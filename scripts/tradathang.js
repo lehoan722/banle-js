@@ -343,8 +343,10 @@ async function loadData() {
   if (error) { showToast('❌ Lỗi tải dữ liệu', 'warn'); return; }
 
   // NỔ DÒNG theo het_size trước khi đẩy vào bảng
+
   const base = (data || []).map(r => ({ ...r }));
-  const expanded = explodeRowsByHetSize(base);
+  const expanded = explodeRowsByHetSize(base).map(r => ({ __del: false, ...r })); // ⟵ thêm __del:false
+
 
   originalRows = expanded.map(r => ({ ...r }));
   currentRows = expanded.map(r => ({ ...r }));
@@ -357,18 +359,19 @@ async function loadData() {
 function renderTable() {
   const gridEl = document.getElementById('grid');
   const columns = [
+    { data: '__del', type: 'checkbox', width: 42 },        // ⟵ CỘT TICK XÓA
     { data: 'masp', renderer: linkRenderer, readOnly: true, width: 140 },
     { data: 'mau', readOnly: true, width: 90 },
     { data: 'con_size', readOnly: true, width: 180 },
     { data: 'het_size', readOnly: true, width: 180 },
     { data: 'trahang', type: 'dropdown', source: ['OK', 'HET'], strict: false, allowEmpty: true, width: 90 },
     { data: 'tennv', readOnly: true, width: 120 },        // người đặt
-    { data: 'nvtrahang', readOnly: true, width: 130 },    // người trả (mới)
+    { data: 'nvtrahang', readOnly: true, width: 130 },    // người trả
     { data: 'ghichu', readOnly: true, width: 160 },
     { data: 'ngaygio', readOnly: true, width: 160 },
     { data: 'sohd', readOnly: true, width: 160 },
   ];
-  const colHeaders = ['ma sp', 'mau', 'con size', 'het size', 'tra hang', 'ten nv', 'nv trả', 'ghi chu', 'ngay gio', 'so hd'];
+  const colHeaders = ['xóa', 'ma sp', 'mau', 'con size', 'het size', 'tra hang', 'ten nv', 'nv trả', 'ghi chu', 'ngay gio', 'so hd'];
 
   if (hot) { hot.loadData(currentRows); return; }
 
@@ -457,6 +460,52 @@ async function saveData() {
   showToast('✅ Lưu dữ liệu thành công', 'ok');
 }
 
+/** ========= XÓA DỮ LIỆU (theo tick) ========= **/
+async function deleteSelected() {
+  if (!hot) return;
+
+  // gom các sohd từ những dòng được tick
+  const rows = hot.getSourceData();
+  const sohdSet = new Set();
+  for (const r of rows) {
+    if (r.__del) {
+      const s = (r.sohd || '').trim();
+      if (s) sohdSet.add(s);
+    }
+  }
+  const list = Array.from(sohdSet);
+  if (!list.length) { showToast('⚠️ Chưa chọn dòng nào để xóa', 'warn'); return; }
+
+  // cảnh báo người dùng
+  const msg = `Bạn chắc chắn muốn xóa ${list.length} hóa đơn đặt hàng?\n(Lưu ý: sẽ xóa toàn bộ các bản ghi cùng số HĐ)`;
+  if (!confirm(msg)) return;
+
+  // khóa nút trong lúc xóa
+  const btn = document.getElementById('btnDelete');
+  if (btn) btn.disabled = true;
+
+  // xóa tại DB: DELETE FROM dathang WHERE sohd IN (...)
+  const { error } = await supabase.from('dathang').delete().in('sohd', list);
+
+  if (btn) btn.disabled = false;
+
+  if (error) {
+    console.error(error);
+    showToast('❌ Xóa dữ liệu thất bại: ' + (error.message || ''), 'warn');
+    return;
+  }
+
+  // Xóa khỏi UI: lọc bỏ các dòng có sohd vừa xóa
+  const delSet = new Set(list);
+  const after = rows.filter(r => !delSet.has(r.sohd));
+  originalRows = originalRows.filter(r => !delSet.has(r.sohd));
+  currentRows = after;
+  hot.loadData(currentRows);
+
+  showToast('✅ Đã xóa dữ liệu thành công', 'ok');
+}
+
+
 /** ========= INIT ========= **/
 function initPage() {
   // mặc định 7 ngày gần nhất
@@ -467,6 +516,7 @@ function initPage() {
 
   document.getElementById('btnFilter').addEventListener('click', loadData);
   document.getElementById('btnSave').addEventListener('click', saveData);
+  document.getElementById('btnDelete').addEventListener('click', deleteSelected);
   ['fMasp', 'fTennv'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
   });
