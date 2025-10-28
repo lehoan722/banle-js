@@ -1,429 +1,183 @@
-/** ========= CẤU HÌNH ========= **/
-const IMG_BASE = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
-const SEARCH_PAGE = 'timkiemhanghoa222.html'; // mở tab mới với ?masp=...
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>TRA DAT HANG</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
+  <!-- Handsontable CE --> 
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.1.0/dist/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@13.1.0/dist/handsontable.full.min.js"></script>
 
-// ==== Supabase client (giống xemhoadon111) ====
-const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-/** ========= TIỆN ÍCH ========= **/
-function showToast(msg, type = 'info') {
-  const el = document.createElement('div');
-  el.textContent = msg;
-  el.style.cssText = `position:fixed;left:50%;top:18px;transform:translateX(-50%);padding:10px 14px;border-radius:8px;
-  color:#fff;z-index:5000;box-shadow:0 6px 18px rgba(0,0,0,.2);transition:opacity .2s;`;
-  el.style.background = type === 'warn' ? '#e57373' : (type === 'ok' ? '#43a047' : '#1976d2');
-  document.body.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, 1900);
-}
-function fmtDateInput(d) { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
-
-function getUser() {
-  return {
-    diadiem: localStorage.getItem('diadiem') || '',
-    manv: localStorage.getItem('manv') || '',
-    tennv: localStorage.getItem('tennv') || ''
-  };
-}
-
-/** ========= STATE ========= **/
-let hot = null;
-let originalRows = [];
-let currentRows = [];
-
-/** ========= ĐĂNG NHẬP (giống trang bán lẻ) ========= **/
-const EMAIL_MAP = { cs1: 'khohangcs1@gmail.com', cs2: 'khohangcs2@gmail.com' };
-
-async function doLogin() {
-  const csSel = document.getElementById('login-cs').value;
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const manv = document.getElementById('login-manv').value.trim().toUpperCase();
-  const pass = document.getElementById('login-password').value.trim();
-  const msgEl = document.getElementById('loginMsg');
-
-  if (!email || !pass || !manv) { msgEl.textContent = 'Vui lòng nhập đủ email, mật khẩu, mã NV'; return; }
-
-  msgEl.textContent = 'Đang đăng nhập...';
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-  if (error) { msgEl.textContent = `❌ ${error.message}`; return; }
-
-  // Tra bảng nhân viên lấy tên
-  const { data: nv, error: e2 } = await supabase.from('dmnhanvien').select('manv, tennv').eq('manv', manv).limit(1);
-  if (e2 || !nv || !nv.length) { msgEl.textContent = '❌ Mã NV không hợp lệ'; return; }
-
-  localStorage.setItem('diadiem', csSel);
-  localStorage.setItem('manv', nv[0].manv);
-  localStorage.setItem('tennv', nv[0].tennv);
-
-  // đồng bộ email gợi ý theo cơ sở lần sau
-  if (EMAIL_MAP[csSel]) document.getElementById('login-email').value = EMAIL_MAP[csSel];
-
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('appRoot').style.display = '';
-  initPage(); // khởi tạo bộ lọc & load dữ liệu
-}
-
-function ensureLogin() {
-  const { diadiem, manv, tennv } = getUser();
-  if (diadiem && manv && tennv) {
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('appRoot').style.display = '';
-    initPage();
-  } else {
-    // gợi ý email theo cơ sở
-    const csEl = document.getElementById('login-cs');
-    const emailEl = document.getElementById('login-email');
-    csEl.addEventListener('change', () => {
-      const m = EMAIL_MAP[csEl.value]; if (m) emailEl.value = m;
-    });
-    const m = EMAIL_MAP[csEl.value]; if (m) emailEl.value = m;
-    document.getElementById('btnLogin').addEventListener('click', doLogin);
-    document.getElementById('loginOverlay').style.display = 'flex';
-  }
-}
-
-/** ========= POPUP ẢNH ========= **/
-function showImagePopup(masp) {
-  const modal = document.getElementById('imgModal');
-  document.getElementById('pimg').src = `${IMG_BASE}${encodeURIComponent(masp)}.JPG?t=${Date.now()}`;
-  document.getElementById('cap').innerHTML =
-    `Mã sản phẩm: <a class="link" target="_blank" href="${SEARCH_PAGE}?masp=${encodeURIComponent(masp)}">${masp}</a>`;
-  modal.style.display = 'block';
-  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
-}
-document.getElementById('imgClose').addEventListener('click', () => {
-  document.getElementById('imgModal').style.display = 'none';
-});
-
-/** ========= POPUP GALLERY ẢNH CHO TOÀN BỘ DÒNG ========= **/
-const galleryModal = document.getElementById('galleryModal');
-const galGrid = document.getElementById('galGrid');
-const galSearch = document.getElementById('galSearch');
-const btnShowGallery = document.getElementById('btnShowGallery');
-const btnGalClose = document.getElementById('galClose');
-const btnGalApply = document.getElementById('galApply');
-const btnGalAllOK = document.getElementById('galAllOK');
-const btnGalAllHET = document.getElementById('galAllHET');
-const btnGalClear = document.getElementById('galClear');
-
-function openGallery() {
-  if (!currentRows || !currentRows.length) {
-    showToast('⚠️ Chưa có dữ liệu để hiển thị ảnh', 'warn');
-    return;
-  }
-  buildGalleryCards(currentRows);
-  galleryModal.style.display = 'block';
-}
-
-function closeGallery() {
-  galleryModal.style.display = 'none';
-  galGrid.innerHTML = '';
-  galSearch.value = '';
-}
-
-function buildGalleryCards(rows) {
-  // rows: MỖI DÒNG LÀ MỘT THẺ ẢNH (không gom theo masp)
-  galGrid.innerHTML = '';
-  // giữ trật tự giống bảng: card nào -> dòng đó (match theo sohd)
-  rows.forEach((r, idx) => {
-    const sohd = r.sohd || '';
-    const masp = r.masp || '';
-    const trahang = (r.trahang || '').toUpperCase();
-
-    const card = document.createElement('div');
-    card.className = 'gitem';
-    card.dataset.sohd = sohd;
-    card.dataset.masp = masp;
-
-    // khung ảnh
-    const pic = document.createElement('div');
-    pic.className = 'pic';
-
-    const img = document.createElement('img');
-    img.alt = masp;
-    img.loading = 'lazy';
-    img.src = `${IMG_BASE}${encodeURIComponent(masp)}.JPG?t=${Date.now()}`;
-    img.onerror = () => {
-      img.remove(); // bỏ img hỏng
-      const ph = document.createElement('div');
-      ph.style.cssText = 'padding:16px; text-align:center;';
-      ph.innerHTML = '<div class="miss">⛔ Chưa có ảnh</div>';
-      pic.appendChild(ph);
-    };
-    pic.appendChild(img);
-
-    // caption + link
-    const cap = document.createElement('div');
-    cap.className = 'cap';
-    cap.innerHTML = `Mã SP: <a target="_blank" href="${SEARCH_PAGE}?masp=${encodeURIComponent(masp)}">${masp || '(trống)'}</a><br><small>SOHD: ${sohd}</small>`;
-
-    // lựa chọn OK / HET (mutually exclusive)
-    const opts = document.createElement('div');
-    opts.className = 'opts';
-    // dùng radio theo từng card (name duy nhất ở từng card)
-    const name = `opt_${idx}`;
-    opts.innerHTML = `
-      <label><input type="radio" name="${name}" value="OK"> OK</label>
-      <label><input type="radio" name="${name}" value="HET"> HET</label>
-      <label><input type="radio" name="${name}" value=""> Bỏ chọn</label>
-    `;
-
-    // set trạng thái ban đầu theo dòng
-    setTimeout(() => {
-      const radios = opts.querySelectorAll(`input[name="${name}"]`);
-      if (trahang === 'OK') radios[0].checked = true;
-      else if (trahang === 'HET') radios[1].checked = true;
-      else radios[2].checked = true;
-    });
-
-    card.appendChild(pic);
-    card.appendChild(cap);
-    card.appendChild(opts);
-    galGrid.appendChild(card);
-  });
-}
-
-// lọc nhanh theo mã SP
-galSearch.addEventListener('input', () => {
-  const kw = galSearch.value.trim().toUpperCase();
-  [...galGrid.children].forEach(card => {
-    const masp = (card.dataset.masp || '').toUpperCase();
-    card.style.display = !kw || masp.includes(kw) ? '' : 'none';
-  });
-});
-
-// Tool chọn nhanh
-btnGalAllOK.addEventListener('click', () => {
-  [...galGrid.children].forEach((card, i) => {
-    if (card.style.display === 'none') return;
-    const name = `opt_${i}`;
-    const r = card.querySelector(`input[name="${name}"][value="OK"]`);
-    if (r) r.checked = true;
-  });
-});
-btnGalAllHET.addEventListener('click', () => {
-  [...galGrid.children].forEach((card, i) => {
-    if (card.style.display === 'none') return;
-    const name = `opt_${i}`;
-    const r = card.querySelector(`input[name="${name}"][value="HET"]`);
-    if (r) r.checked = true;
-  });
-});
-btnGalClear.addEventListener('click', () => {
-  [...galGrid.children].forEach((card, i) => {
-    if (card.style.display === 'none') return;
-    const name = `opt_${i}`;
-    const r = card.querySelector(`input[name="${name}"][value=""]`);
-    if (r) r.checked = true;
-  });
-});
-
-// Áp lựa chọn → bảng (chỉ ghi vào lưới; lưu DB vẫn dùng nút LƯU DL)
-btnGalApply.addEventListener('click', () => {
-  if (!hot) return;
-  const map = new Map(); // sohd -> 'OK'|'HET'|''
-
-  [...galGrid.children].forEach((card, i) => {
-    const sohd = card.dataset.sohd || '';
-    const name = `opt_${i}`;
-    const checked = card.querySelector(`input[name="${name}"]:checked`);
-    const val = checked ? checked.value : '';
-    if (sohd) map.set(sohd, val);
-  });
-
-  // Áp vào source data (match theo sohd, không đụng cột khác)
-  const rows = hot.getSourceData();
-  rows.forEach(r => {
-    const v = map.get(r.sohd);
-    if (typeof v !== 'undefined') {
-      r.trahang = v || null; // '' -> null
+  <style>
+    :root { --blue:#1976d2; --bd:#d9e5ff; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f7fafc; margin:0; }
+    .wrap { max-width: 1180px; margin: 18px auto; padding: 0 12px; }
+    h2 { margin: 8px 0 14px; color: var(--blue); letter-spacing: .5px; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:#fff; padding:10px; border:1px solid #e5ecff; border-radius:10px; }
+    .toolbar label { color:#333; font-weight:600; margin-right:4px; }
+    .toolbar input[type="date"],
+    .toolbar input[type="text"],
+    .toolbar select {
+      height:36px; padding:6px 10px; border:1px solid var(--bd); border-radius:8px; outline:none; font-size:16px; background:#fff;
     }
-  });
-  hot.loadData(rows); // refresh màu dòng
-  closeGallery();
-  showToast('Đã áp trạng thái lên bảng. Nhấn "LƯU DL" để ghi vào CSDL.', 'ok');
-});
+    .btn { height:36px; border-radius:8px; border:1px solid var(--blue); background:var(--blue); color:#fff; font-weight:700; padding:0 14px; cursor:pointer; }
+    .btn.secondary { background:#e3f2fd; color:#0b60b3; border-color:#90caf9; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    #grid { margin-top:12px; background:#fff; border:1px solid #e5ecff; border-radius:12px; overflow:hidden; }
+    .foot { display:flex; gap:10px; justify-content:flex-end; margin:12px 0 24px; }
 
-btnGalClose.addEventListener('click', closeGallery);
-galleryModal.addEventListener('click', (e) => {
-  if (e.target === galleryModal) closeGallery(); // click ra ngoài để đóng
-});
+    /* Popup ảnh */
+    #imgModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:4000; }
+    #imgModal .card { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; border-radius:12px; overflow:hidden; width:min(92vw, 720px); box-shadow:0 12px 40px rgba(0,0,0,.25); }
+    #imgModal .head { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#f7f9ff; border-bottom:1px solid #eef3ff; }
+    #imgModal .body { padding:12px; max-height:76vh; overflow:auto; }
+    #imgModal img { max-width:100%; height:auto; border-radius:8px; display:block; margin:auto; }
+    #imgModal .cap { text-align:center; padding:8px 12px 12px; color:#333; }
+    a.link { color: var(--blue); text-decoration: none; }
+    a.link:hover { text-decoration: underline; }
 
-// nút mở gallery
-btnShowGallery.addEventListener('click', openGallery);
+    /* iOS chống auto-zoom khi focus input */
+    input, select, button { font-size:16px; }
+
+    /* màu dòng theo trạng thái */
+    .row-ok  { background: #e8f5e9 !important; }
+    .row-het { background: #fff8e1 !important; }
+
+    /* Đăng nhập overlay */
+    #loginOverlay { position:fixed; inset:0; background:#fff; display:none; align-items:center; justify-content:center; z-index:99999; }
+    #loginBox { background:#f9f9f9; padding:24px; border-radius:10px; width:min(92vw, 380px); box-shadow:0 8px 30px rgba(0,0,0,.15); }
+    #loginBox h3 { margin-top:0; color:#333; }
+    #loginBox input, #loginBox select, #loginBox button { width:100%; margin:6px 0; padding:8px 10px; border:1px solid #cfe1ff; border-radius:8px; }
+    #loginBox button { background:#1976d2; color:#fff; font-weight:700; cursor:pointer; }
+    #loginBox small { color:#666; }
+
+    .gitem { border:1px solid #e8eefc; border-radius:12px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+.gitem .pic { background:#f8faff; display:flex; align-items:center; justify-content:center; min-height:180px; }
+.gitem .pic img { max-width:100%; max-height:240px; display:block; }
+.gitem .cap { padding:8px 10px; border-top:1px solid #eef3ff; font-size:14px; }
+.gitem .cap a { color:#1976d2; text-decoration:none; }
+.gitem .cap a:hover { text-decoration:underline; }
+.gitem .opts { display:flex; gap:10px; align-items:center; padding:8px 10px 12px; }
+.gitem .miss { color:#c62828; font-size:12px; margin-top:6px; }
+
+  </style>
+</head>
+<body>
+  <div class="wrap" id="appRoot" style="display:none;">
+    <h2>TRA DAT HANG</h2>
+
+    <div class="toolbar">
+      <div>
+        <label>Địa điểm:</label>
+        <select id="fDiaDiem">
+          <option value="ALL">Tất cả</option>
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
+      </div>
+      <div>
+        <label>Từ ngày:</label>
+        <input type="date" id="fFrom">
+      </div>
+      <div>
+        <label>Đến ngày:</label>
+        <input type="date" id="fTo">
+      </div>
+      <div>
+        <label>Mã SP:</label>
+        <input type="text" id="fMasp" placeholder="nhập mã...">
+      </div>
+      <div>
+        <label>Tên NV:</label>
+        <input type="text" id="fTennv" placeholder="nhập tên...">
+      </div>
+      <div>
+        <label>Trạng thái:</label>
+        <select id="fTrangThai">
+          <option value="ALL">Tất cả</option>
+          <option value="OK">OK</option>
+          <option value="HET">HET</option>
+          <option value="TRONG">Trống</option>
+        </select>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+          
+        <button id="btnFilter" class="btn secondary">LOC DL</button>
+        <button id="btnShowGallery" class="btn secondary">HIỂN THỊ ẢNH</button>
+        <button id="btnSave" class="btn">LƯU DL</button>
+      </div>
+    </div>
+
+    <div id="grid"></div>
+
+    <!-- Popup ảnh -->
+    <div id="imgModal">
+      <div class="card">
+        <div class="head">
+          <b>Ảnh sản phẩm</b>
+          <button id="imgClose" class="btn secondary">Đóng</button>
+        </div>
+        <div class="body">
+          <img id="pimg" src="" alt="product">
+          <div class="cap" id="cap"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup Gallery Ảnh cho toàn bộ dòng -->
+<div id="galleryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000;">
+  <div class="gcard" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+       width:min(96vw,1200px); height:min(92vh,860px); background:#fff; border-radius:14px; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="ghead" style="display:flex; gap:10px; align-items:center; padding:10px 12px; background:#f6f9ff; border-bottom:1px solid #e6eeff;">
+      <b style="font-size:18px; color:#1b5dbf;"></b>
+      <input id="galSearch" placeholder="Tìm nhanh theo mã SP..." style="margin-left:auto; height:34px; padding:6px 10px; border:1px solid #cfe1ff; border-radius:8px; width:100px;">
+      <button id="galAllOK"  class="btn secondary" style="height:34px;">Chọn tất cả OK</button>
+      <button id="galAllHET" class="btn secondary" style="height:34px;">Chọn tất cả HET</button>
+      <button id="galClear"  class="btn secondary" style="height:34px;">Xóa chọn</button>
+    </div>
+
+    <div id="galBody" style="padding:12px; overflow:auto; flex:1;">
+      <div id="galGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:12px;"></div>
+    </div>
+
+    <div class="gfoot" style="display:flex; gap:10px; justify-content:flex-end; padding:10px 12px; border-top:1px solid #e6eeff;">
+      <button id="galClose" class="btn secondary">Đóng</button>
+      <button id="galApply" class="btn">Lưu</button>
+    </div>
+  </div>
+</div>
 
 
-/** ========= HOT RENDERER ========= **/
-function linkRenderer(instance, td, row, col, prop, value) {
-  Handsontable.dom.empty(td);
-  if (value) {
-    const a = document.createElement('a');
-    a.href = '#';
-    a.textContent = value;
-    a.className = 'link';
-    a.addEventListener('click', (e) => { e.preventDefault(); showImagePopup(value); });
-    td.appendChild(a);
-  }
-}
+  <!-- Đăng nhập (tái dùng mô hình trang bán lẻ CS1) -->
+  <div id="loginOverlay">
+    <div id="loginBox">
+      <h3>Đăng nhập hệ thống</h3>
+      <label>Cơ sở</label>
+      <select id="login-cs">
+        <option value="cs1" selected>Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
 
-/** ========= LOAD DỮ LIỆU ========= **/
-async function loadData() {
-  const dia = document.getElementById('fDiaDiem').value;  // 'ALL'|'cs1'|'cs2'
-  const d1 = document.getElementById('fFrom').value;     // 'YYYY-MM-DD'
-  const d2 = document.getElementById('fTo').value;       // 'YYYY-MM-DD'
-  const masp = document.getElementById('fMasp').value.trim();
-  const nv = document.getElementById('fTennv').value.trim();
-  const tt = document.getElementById('fTrangThai').value; // 'ALL'|'OK'|'HET'|'TRONG'
+      <label>Email</label>
+      <input id="login-email" placeholder="Email" value="khohangcs1@gmail.com">
 
-  document.getElementById('btnFilter').disabled = true;
+      <label>Mã nhân viên</label>
+      <input id="login-manv" type="text" placeholder="VD: HOAN" autocomplete="off">
 
-  let q = supabase.from('dathang')
-    .select('sohd,diadiem,masp,mau,con_size,het_size,trahang,tennv,ghichu,ngaygio,nvtrahang', { count: 'exact' })
-    .gte('ngaygio', `${d1} 00:00:00`)
-    .lte('ngaygio', `${d2} 23:59:59`)
-    .order('ngaygio', { ascending: false });
+      <label>Mật khẩu</label>
+      <input id="login-password" type="password" placeholder="••••••••">
 
-  if (dia !== 'ALL') q = q.eq('diadiem', dia);
-  if (masp) q = q.ilike('masp', `%${masp}%`);
-  if (nv) q = q.ilike('tennv', `%${nv}%`);
+      <button id="btnLogin">Đăng nhập</button>
+      <div id="loginMsg" style="color:#c62828; font-weight:600;"></div>
+      <small>Email dùng cho Supabase; Mã NV sẽ tra bảng nhân viên để lấy tên NV.</small>
+    </div>
+  </div>
 
-  if (tt === 'OK' || tt === 'HET') q = q.eq('trahang', tt);
-  if (tt === 'TRONG') q = q.or('trahang.is.null,trahang.eq.');
-
-  const { data, error } = await q;
-  document.getElementById('btnFilter').disabled = false;
-
-  if (error) { showToast('❌ Lỗi tải dữ liệu', 'warn'); return; }
-  originalRows = (data || []).map(r => ({ ...r }));
-  currentRows = (data || []).map(r => ({ ...r }));
-  renderTable();
-}
-
-/** ========= HIỂN THỊ BẢNG ========= **/
-function renderTable() {
-  const gridEl = document.getElementById('grid');
-  const columns = [
-    { data: 'masp', renderer: linkRenderer, readOnly: true, width: 140 },
-    { data: 'mau', readOnly: true, width: 90 },
-    { data: 'con_size', readOnly: true, width: 180 },
-    { data: 'het_size', readOnly: true, width: 180 },
-    { data: 'trahang', type: 'dropdown', source: ['OK', 'HET'], strict: false, allowEmpty: true, width: 90 },
-    { data: 'tennv', readOnly: true, width: 120 },        // người đặt
-    { data: 'nvtrahang', readOnly: true, width: 130 },    // người trả (mới)
-    { data: 'ghichu', readOnly: true, width: 160 },
-    { data: 'ngaygio', readOnly: true, width: 160 },
-    { data: 'sohd', readOnly: true, width: 160 },
-  ];
-  const colHeaders = ['ma sp', 'mau', 'con size', 'het size', 'tra hang', 'ten nv', 'nv trả', 'ghi chu', 'ngay gio', 'so hd'];
-
-  if (hot) { hot.loadData(currentRows); return; }
-
-  hot = new Handsontable(gridEl, {
-    data: currentRows,
-    columns, colHeaders, rowHeaders: true,
-    width: '100%',
-    height: 'calc(100vh - 240px)',
-    manualColumnResize: true,
-    licenseKey: 'non-commercial-and-evaluation',
-    cells: function (row) {
-      const r = this.instance.getSourceDataAtRow(row);
-      const cellProperties = {};
-      if (r && r.trahang) {
-        const v = String(r.trahang).toUpperCase();
-        if (v === 'OK') cellProperties.className = 'row-ok';
-        if (v === 'HET') cellProperties.className = 'row-het';
-      }
-      return cellProperties;
-    },
-    afterChange(changes, src) {
-      if (!changes || src === 'loadData') return;
-      currentRows = this.getSourceData();
-    }
-  });
-}
-
-/** ========= LƯU DỮ LIỆU (trahang + nvtrahang) ========= **/
-/** ========= LƯU DỮ LIỆU (trahang + nvtrahang + diadiem) ========= **/
-// ===== LƯU DỮ LIỆU: UPDATE theo sohd (không dùng upsert) =====
-async function saveData() {
-  if (!hot) return;
-  const nowRows = hot.getSourceData();
-  const oldMap = new Map(originalRows.map(r => [r.sohd, r.trahang || '']));
-
-  const tennv = (localStorage.getItem('tennv') || '').trim();
-  const diadiem = (localStorage.getItem('diadiem') || '').trim();
-  if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập hoặc thiếu địa điểm', 'warn'); return; }
-
-  const changed = [];
-  for (const r of nowRows) {
-    const sohd = (r.sohd || '').trim();
-    if (!sohd) continue;
-
-    const oldVal = (oldMap.get(sohd) ?? '').trim();
-    let newVal = (r.trahang || '').trim().toUpperCase();
-    if (newVal !== 'OK' && newVal !== 'HET') newVal = ''; // chuẩn hóa
-
-    if (oldVal !== newVal) {
-      changed.push({ sohd, trahang: newVal || null, nvtrahang: tennv, diadiem });
-    }
-  }
-  if (!changed.length) { showToast('Không có gì để lưu'); return; }
-
-  document.getElementById('btnSave').disabled = true;
-
-  // UPDATE từng dòng theo sohd để không đụng NOT NULL các cột khác
-  const results = await Promise.all(changed.map(u =>
-    supabase.from('dathang')
-      .update({ trahang: u.trahang, nvtrahang: u.nvtrahang, diadiem: u.diadiem })
-      .eq('sohd', u.sohd)
-  ));
-
-  document.getElementById('btnSave').disabled = false;
-
-  // kiểm tra lỗi nào (nếu có)
-  const err = results.find(r => r.error);
-  if (err) {
-    console.error(err.error);
-    showToast('❌ Lưu dữ liệu thất bại: ' + (err.error.message || ''), 'warn');
-    return;
-  }
-
-  // cập nhật snapshot & cột nvtrahang trên UI
-  for (const u of changed) {
-    const i = originalRows.findIndex(x => x.sohd === u.sohd);
-    if (i >= 0) { originalRows[i].trahang = u.trahang; originalRows[i].nvtrahang = u.nvtrahang; }
-  }
-  const cur = hot.getSourceData();
-  for (const u of changed) {
-    const i = cur.findIndex(x => x.sohd === u.sohd);
-    if (i >= 0) cur[i].nvtrahang = u.nvtrahang;
-  }
-  hot.loadData(cur);
-
-  showToast('✅ Lưu dữ liệu thành công', 'ok');
-}
-
-/** ========= INIT ========= **/
-function initPage() {
-  // mặc định 7 ngày gần nhất
-  const to = new Date();
-  const from = new Date(); from.setDate(from.getDate() - 7);
-  document.getElementById('fFrom').value = fmtDateInput(from);
-  document.getElementById('fTo').value = fmtDateInput(to);
-
-  document.getElementById('btnFilter').addEventListener('click', loadData);
-  document.getElementById('btnSave').addEventListener('click', saveData);
-  ['fMasp', 'fTennv'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
-  });
-
-  // gợi ý địa điểm theo login
-  const { diadiem } = getUser();
-  if (diadiem) document.getElementById('fDiaDiem').value = diadiem;
-
-  loadData();
-}
-
-window.addEventListener('load', ensureLogin);
+  <script src="scripts/tradathang.js"></script>
+</body>
+</html>
