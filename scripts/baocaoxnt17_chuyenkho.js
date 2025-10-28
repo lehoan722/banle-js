@@ -43,22 +43,64 @@ const CFG = {
 
 // Trả về SL chuyển mặc định cho 1 dòng size
 // Trả về SL chuyển mặc định cho 1 dòng size
+// Trả về SL chuyển cho 1 dòng size — phiên bản theo tỷ lệ mới
 function calcMoveQty(cs1, cs2, goiy) {
     const keep = CFG.keep_min_src;
-    const dest = CFG.dest_min;
     const maxm = CFG.max_move;
 
-    // ======= ƯU TIÊN ĐƠN GIẢN BẠN YÊU CẦU =======
-    // Nếu cơ sở 1 = 0 và cơ sở 2 > 1 (>=2) thì cho phép chuyển 1 về CS1
-    // (vẫn tôn trọng giữ tối thiểu tại nguồn)
+    const total = (cs1 || 0) + (cs2 || 0);
+
+    // ==== QUY TẮC ĐẶC BIỆT BẠN YÊU CẦU ====
+
+    // (A) Tổng = 1  → chuyển về CS2 (nếu món đang ở CS1 và hướng là 1v2)
+    if (total === 1) {
+        if (goiy === '1v2' && cs1 === 1) {
+            // Cho phép vượt qua keep_min_src trong case đặc biệt này để đảm bảo về CS2
+            return Math.min(1, maxm);
+        }
+        return 0; // đã ở CS2 hoặc không đúng hướng hiển thị
+    }
+
+    // (B) Tổng = 5  → mục tiêu sau chuyển: CS1=2, CS2=3
+    if (total === 5) {
+        const t1 = 2; // target CS1
+        if (goiy === '1v2') {
+            const srcCap = Math.max(0, cs1 - keep);
+            return Math.max(0, Math.min(cs1 - t1, srcCap, maxm));
+        }
+        if (goiy === '2v1') {
+            const srcCap = Math.max(0, cs2 - keep);
+            return Math.max(0, Math.min(t1 - cs1, srcCap, maxm));
+        }
+        return 0;
+    }
+
+    // (C) Tổng > 5 → mục tiêu ~ CS1 ≈ 1/3, CS2 ≈ 2/3 tổng
+    if (total > 5) {
+        // Dùng làm tròn gần nhất cho "≈ 1/3"
+        const t1 = Math.round(total / 3); // target cho CS1
+        if (goiy === '1v2') {
+            // Chuyển từ CS1 -> CS2 để đưa CS1 về ≈ 1/3
+            const srcCap = Math.max(0, cs1 - keep);
+            return Math.max(0, Math.min(cs1 - t1, srcCap, maxm));
+        }
+        if (goiy === '2v1') {
+            // Chuyển từ CS2 -> CS1 để kéo CS1 lên ≈ 1/3
+            const srcCap = Math.max(0, cs2 - keep);
+            return Math.max(0, Math.min(t1 - cs1, srcCap, maxm));
+        }
+        return 0;
+    }
+
+    // ==== CÒN LẠI (tổng < 5 nhưng không phải 1): GIỮ NGUYÊN LOGIC CŨ ====
+    // Ưu tiên đơn giản: nếu CS1=0 và CS2>1 thì bơm 1 về CS1 (giữ nguyên hành vi trước)
     if (cs1 === 0 && cs2 > 1) {
-        const srcCap = Math.max(0, cs2 - keep); // ví dụ keep=1, cs2=2 -> srcCap=1
+        const srcCap = Math.max(0, cs2 - keep);
         return Math.min(1, srcCap);
     }
-    // ============================================
 
     if (goiy === '1v2') {
-        const need_min = Math.max(0, dest - cs2);
+        const need_min = Math.max(0, CFG.dest_min - cs2);
         const need_bias = CFG.prefer_cs2
             ? Math.ceil((cs1 - cs2 + 1) / 2)   // sau chuyển CS2 > CS1
             : Math.ceil((cs1 - cs2) / 2);      // cho phép bằng
@@ -68,7 +110,7 @@ function calcMoveQty(cs1, cs2, goiy) {
     }
 
     if (goiy === '2v1') {
-        const need_min = Math.max(0, dest - cs1);
+        const need_min = Math.max(0, CFG.dest_min - cs1);
         const bias_limit = CFG.prefer_cs2
             ? Math.floor((cs2 - cs1 - 1) / 2)  // giữ CS2 > CS1
             : Math.floor((cs2 - cs1) / 2);     // cho phép bằng
@@ -77,9 +119,8 @@ function calcMoveQty(cs1, cs2, goiy) {
         return Math.max(0, Math.min(q0, bias_limit, srcCap, maxm));
     }
 
-    return 0; // cân bằng
+    return 0; // "cân bằng"
 }
-
 
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
