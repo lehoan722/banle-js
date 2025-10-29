@@ -7,6 +7,17 @@ import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 import { guiHoaDonViettel } from './viettelInvoice.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
+async function hoaDonDaTonTai(sohd) {
+    if (!sohd) return false;
+    const { data, error } = await supabase
+        .from("hoadon_banle")
+        .select("sohd")
+        .eq("sohd", sohd)
+        .maybeSingle();
+    return !!data;
+}
+
+
 // === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
 window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 
@@ -248,8 +259,34 @@ export async function luuHoaDonQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
+    // ... sau khi có const sohd = ...; const tennv = ...;
+
+    const existed = await hoaDonDaTonTai(sohd);
+
+    // Nếu số HĐ đã tồn tại mà chưa xác thực sửa → bật popup và dừng lại (không cho chạy nhánh NEW)
+    if (existed && window.HD_CTX?.mode !== 'EDIT' && !choPhepSua) {
+        const p = document.getElementById("popupXacThucSua");
+        if (p) {
+            p.style.display = "block";
+            document.getElementById("xacmanv")?.focus();
+        }
+        return; // ❗Rất quan trọng: dừng ở đây
+    }
+
+    // Xác định trạng thái thật sự: tồn tại trong DB hoặc đã set EDIT
+    const IS_EDIT = existed || (window.HD_CTX?.mode === 'EDIT');
+
+    // === NHÁNH NEW ===
+    if (!IS_EDIT) {
+        // (giữ nguyên toàn bộ code nhánh NEW của bạn ở dưới đây: lấy loai từ #sohd, header, RPC save_new_header, insert chi tiết, in, lamMoiSauKhiLuu, return)
+    }
+
+    // === NHÁNH EDIT ===
+    // (giữ nguyên toàn bộ code EDIT hiện có của bạn – xoá ct_hoadon_banle & hoadon_banle, rồi insert lại, in, lamMoiSauKhiLuu)
+
+
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
+
     if (!IS_EDIT) {
         // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
         let loai = getLoaiFromSoHDInput();
@@ -449,8 +486,28 @@ export async function luuHoaDonNhapQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
+    const existed = await hoaDonDaTonTai(sohd);
+
+    if (existed && window.HD_CTX?.mode !== 'EDIT' && !choPhepSua) {
+        const p = document.getElementById("popupXacThucSua");
+        if (p) {
+            p.style.display = "block";
+            document.getElementById("xacmanv")?.focus();
+        }
+        return;
+    }
+
+    const IS_EDIT = existed || (window.HD_CTX?.mode === 'EDIT');
+
+    if (!IS_EDIT) {
+        // (giữ nguyên nhánh NEW nhập của bạn: lấy loai theo #sohd, RPC save_new_header, insert ct, in, lamMoiSauKhiLuu, return)
+    }
+
+    // (giữ nguyên nhánh EDIT nhập của bạn)
+
+
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
+
     if (!IS_EDIT) {
         // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
         let loai = getLoaiFromSoHDInput();
