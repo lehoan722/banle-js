@@ -263,6 +263,28 @@ export async function luuHoaDonQuaAPI() {
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
+    // ... sau khi có const sohd = ...; const tennv = ...;
+
+    // Nếu ĐANG Ở CHẾ ĐỘ NEW và số đang gõ TRÙNG với HĐ đã có → hỏi người dùng
+    if (!IS_EDIT) {
+        const existed = await hoaDonDaTonTai(sohd);
+        if (existed) {
+            const taoMoi = confirm(
+                "⚠️ Số hóa đơn này đã tồn tại.\n\nOK = Tạo hóa đơn mới (tự cấp số mới)\nCancel = Sửa hóa đơn này (yêu cầu xác thực)"
+            );
+            if (!taoMoi) {
+                // Người dùng chọn SỬA → bật popup xác thực và dừng
+                const p = document.getElementById("popupXacThucSua");
+                if (p) {
+                    p.style.display = "block";
+                    document.getElementById("xacmanv")?.focus();
+                }
+                return;
+            }
+            // Người dùng chọn TẠO MỚI → vẫn giữ IS_EDIT=false để đi nhánh NEW (RPC sẽ cấp số mới)
+        }
+    }
+
 
 
     // === NHÁNH NEW ===
@@ -479,6 +501,23 @@ export async function luuHoaDonNhapQuaAPI() {
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
+
+    if (!IS_EDIT) {
+        const existed = await hoaDonDaTonTai(sohd);
+        if (existed) {
+            const taoMoi = confirm(
+                "⚠️ Số hóa đơn này đã tồn tại.\n\nOK = Tạo hóa đơn mới (tự cấp số mới)\nCancel = Sửa hóa đơn này (yêu cầu xác thực)"
+            );
+            if (!taoMoi) {
+                const p = document.getElementById("popupXacThucSua");
+                if (p) {
+                    p.style.display = "block";
+                    document.getElementById("xacmanv")?.focus();
+                }
+                return;
+            }
+        }
+    }
 
 
     // (giữ nguyên nhánh EDIT nhập của bạn)
