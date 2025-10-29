@@ -21,6 +21,79 @@ async function hoaDonDaTonTai(sohd) {
 // === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
 window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 
+// ===== Modal "Số hóa đơn đã tồn tại" với 2 nút to (Tạo mới / Sửa) =====
+function ensureExistDialog() {
+  if (document.getElementById('exist-dialog')) return;
+
+  const css = document.createElement('style');
+  css.id = 'exist-dialog-css';
+  css.textContent = `
+  .exist-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998}
+  .exist-box{position:fixed;z-index:9999;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:560px;max-width:92vw;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);
+    font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  .exist-hd{padding:14px 18px;border-bottom:1px solid #eee;font-weight:700;font-size:16px}
+  .exist-bd{padding:16px 18px;line-height:1.5;color:#333}
+  .exist-actions{display:flex;gap:16px;justify-content:center;padding:16px 18px 22px}
+  .exist-btn{min-width:210px;padding:12px 18px;border-radius:999px;border:2px solid transparent;
+    font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+  .exist-btn.new{background:#1e88e5;color:#fff}
+  .exist-btn.new:focus,.exist-btn.new:hover{filter:brightness(1.05)}
+  .exist-btn.edit{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
+  .exist-btn.edit:focus,.exist-btn.edit:hover{filter:brightness(1.03)}
+  .exist-note{margin-top:8px;color:#666;font-size:13px}
+  `;
+  document.head.appendChild(css);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'exist-dialog';
+  wrap.style.display = 'none';
+  wrap.innerHTML = `
+    <div class="exist-mask" data-role="mask"></div>
+    <div class="exist-box" role="dialog" aria-modal="true" aria-labelledby="exist-title">
+      <div class="exist-hd" id="exist-title">Số hóa đơn đã tồn tại</div>
+      <div class="exist-bd">
+        <div>Hóa đơn có số <b id="exist-sohd"></b> đã có trong hệ thống.</div>
+        <div class="exist-note">Chọn <b>Tạo hóa đơn mới</b> để hệ thống tự cấp số mới, hoặc
+        <b>Sửa hóa đơn này</b> (yêu cầu xác thực) nếu bạn muốn chỉnh hóa đơn cũ.</div>
+      </div>
+      <div class="exist-actions">
+        <button class="exist-btn new"  id="exist-new-btn">Tạo hóa đơn mới</button>
+        <button class="exist-btn edit" id="exist-edit-btn">Sửa hóa đơn này</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  // Đóng khi click nền mờ
+  wrap.querySelector('[data-role="mask"]').addEventListener('click', () => {
+    wrap.style.display = 'none';
+  });
+}
+
+function showExistDialog(sohd) {
+  ensureExistDialog();
+  const wrap = document.getElementById('exist-dialog');
+  document.getElementById('exist-sohd').textContent = sohd;
+  wrap.style.display = 'block';
+
+  return new Promise(resolve => {
+    const ok  = document.getElementById('exist-new-btn');
+    const edt = document.getElementById('exist-edit-btn');
+
+    const cleanup = () => {
+      ok.removeEventListener('click', onNew);
+      edt.removeEventListener('click', onEdit);
+      wrap.style.display = 'none';
+    };
+    const onNew  = () => { cleanup(); resolve('new');  };
+    const onEdit = () => { cleanup(); resolve('edit'); };
+
+    ok.addEventListener('click', onNew);
+    edt.addEventListener('click', onEdit);
+  });
+}
+
+
 function getLoaiFromSoHDInput() {
     const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
     if (!raw) return '';                      // chưa có số → để caller tự xử lý
@@ -267,24 +340,20 @@ export async function luuHoaDonQuaAPI() {
 
     // Nếu ĐANG Ở CHẾ ĐỘ NEW và số đang gõ TRÙNG với HĐ đã có → hỏi người dùng
     if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const taoMoi = confirm(
-                "⚠️ Số hóa đơn này đã tồn tại.\n\nOK = Tạo hóa đơn mới (tự cấp số mới)\nCancel = Sửa hóa đơn này (yêu cầu xác thực)"
-            );
-            if (!taoMoi) {
-                // Người dùng chọn SỬA → bật popup xác thực và dừng
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return;
-            }
-            // Người dùng chọn TẠO MỚI → vẫn giữ IS_EDIT=false để đi nhánh NEW (RPC sẽ cấp số mới)
-        }
+  const existed = await hoaDonDaTonTai(sohd);
+  if (existed) {
+    const choice = await showExistDialog(sohd); // 'new' | 'edit'
+    if (choice === 'edit') {
+      const p = document.getElementById("popupXacThucSua");
+      if (p) {
+        p.style.display = "block";
+        document.getElementById("xacmanv")?.focus();
+      }
+      return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
     }
-
+    // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
+  }
+}
 
 
     // === NHÁNH NEW ===
@@ -501,24 +570,21 @@ export async function luuHoaDonNhapQuaAPI() {
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-
     if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const taoMoi = confirm(
-                "⚠️ Số hóa đơn này đã tồn tại.\n\nOK = Tạo hóa đơn mới (tự cấp số mới)\nCancel = Sửa hóa đơn này (yêu cầu xác thực)"
-            );
-            if (!taoMoi) {
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return;
-            }
-        }
+  const existed = await hoaDonDaTonTai(sohd);
+  if (existed) {
+    const choice = await showExistDialog(sohd); // 'new' | 'edit'
+    if (choice === 'edit') {
+      const p = document.getElementById("popupXacThucSua");
+      if (p) {
+        p.style.display = "block";
+        document.getElementById("xacmanv")?.focus();
+      }
+      return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
     }
-
+    // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
+  }
+}
 
     // (giữ nguyên nhánh EDIT nhập của bạn)
 
