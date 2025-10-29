@@ -13,8 +13,11 @@ window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 // ==== EDIT MODE FLAG (UI + logic) ====
 // Gắn/bỏ nhãn "SỬA" lên thanh menu (nếu có #menu-bar, .menu-bar, #topbar, header, .topbar) và set dataset cho body
 function setEditUI(on = true) {
-  const bar = document.getElementById('menu-bar') 
-           || document.querySelector('.menu-bar, #topbar, header, .topbar');
+  // Ưu tiên đặt badge vào vùng menu ứng dụng để dễ thấy
+  const host = document.getElementById('app-menu')
+           || document.getElementById('menu-bar')
+           || document.querySelector('.menu-bar, #topbar, header, .topbar')
+           || document.body;
 
   let badge = document.getElementById('hd-edit-flag');
 
@@ -24,8 +27,7 @@ function setEditUI(on = true) {
       badge.id = 'hd-edit-flag';
       badge.textContent = 'SỬA';
       badge.className = 'edit-badge';
-      if (bar) bar.appendChild(badge);
-      else document.body.appendChild(badge); // fallback nếu chưa có thanh menu
+      host.appendChild(badge);
     }
     document.body.dataset.hdmode = 'EDIT';
   } else {
@@ -33,6 +35,7 @@ function setEditUI(on = true) {
     delete document.body.dataset.hdmode;
   }
 }
+
 
 // Trả về true nếu đang ở chế độ sửa (có nhãn SỬA hoặc dataset)
 function isEditUI() {
@@ -905,6 +908,9 @@ export async function xacNhanSuaHoaDon() {
         }
     }
 }
+
+window.xacNhanSuaHoaDon = xacNhanSuaHoaDon;   // << cho onclick="xacNhanSuaHoaDon()" hoạt động
+
 
 function inHoaDon(hoadon, chitiet) {
     const data = { hoadon, chitiet };
