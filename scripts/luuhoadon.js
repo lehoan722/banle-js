@@ -7,6 +7,22 @@ import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 import { guiHoaDonViettel } from './viettelInvoice.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
+// ĐÁNH DẤU NGUỒN CỦA SỐ HÓA ĐƠN TRÊN FORM
+function setSoHDSourceDB() {
+    const el = document.getElementById('sohd');
+    if (el) el.dataset.source = 'db';  // số đến từ DB (đang EDIT)
+}
+function clearSoHDSource() {
+    const el = document.getElementById('sohd');
+    if (el && el.dataset) delete el.dataset.source; // không có = mặc định NEW
+}
+function isFormEditing() {
+    const el = document.getElementById('sohd');
+    const fromDB = el?.dataset?.source === 'db';
+    return (window.HD_CTX?.mode === 'EDIT') && fromDB;
+}
+
+
 async function hoaDonDaTonTai(sohd) {
     if (!sohd) return false;
     const { data, error } = await supabase
@@ -262,29 +278,7 @@ export async function luuHoaDonQuaAPI() {
     // ... sau khi có const sohd = ...; const tennv = ...;
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-    // ... sau khi có const sohd = ...; const tennv = ...;
-
-    // Nếu ĐANG Ở CHẾ ĐỘ NEW và số đang gõ TRÙNG với HĐ đã có → hỏi người dùng
-    if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const taoMoi = confirm(
-                "⚠️ Số hóa đơn này đã tồn tại.\n\nOK = Tạo hóa đơn mới (tự cấp số mới)\nCancel = Sửa hóa đơn này (yêu cầu xác thực)"
-            );
-            if (!taoMoi) {
-                // Người dùng chọn SỬA → bật popup xác thực và dừng
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return;
-            }
-            // Người dùng chọn TẠO MỚI → vẫn giữ IS_EDIT=false để đi nhánh NEW (RPC sẽ cấp số mới)
-        }
-    }
-
+    const IS_EDIT = isFormEditing(); // chỉ EDIT khi: đã set EDIT và #sohd đến từ DB
 
 
     // === NHÁNH NEW ===
@@ -500,24 +494,7 @@ export async function luuHoaDonNhapQuaAPI() {
     if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-
-    if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const taoMoi = confirm(
-                "⚠️ Số hóa đơn này đã tồn tại.\n\nOK = Tạo hóa đơn mới (tự cấp số mới)\nCancel = Sửa hóa đơn này (yêu cầu xác thực)"
-            );
-            if (!taoMoi) {
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return;
-            }
-        }
-    }
+    const IS_EDIT = isFormEditing(); // chỉ EDIT khi: đã set EDIT và #sohd đến từ DB
 
 
     // (giữ nguyên nhánh EDIT nhập của bạn)
@@ -886,6 +863,7 @@ async function lamMoiSauKhiLuu() {
     document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
     // Reset mode về NEW sau khi lưu
     window.HD_CTX = { mode: "NEW", version: null };
+    clearSoHDSource();                       // <<< quay về mặc định NEW
     await capNhatSoHoaDonTuDong();
     document.getElementById("masp").focus();
 }
@@ -930,6 +908,8 @@ export async function xacNhanSuaHoaDon() {
     choPhepSua = true;
     // Đặt chế độ EDIT để các hàm lưu rẽ nhánh đúng
     window.HD_CTX = { mode: "EDIT", version: (hd && hd.updated_at) ? hd.updated_at : null };
+    setSoHDSourceDB();                 // <<< đánh dấu số trên form là lấy từ DB
+    // (nếu bạn có hàm nạp chi tiết ra bảng, vẫn chạy như cũ)
     document.getElementById("popupXacThucSua").style.display = "none";
     alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
 
