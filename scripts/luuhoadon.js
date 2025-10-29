@@ -764,7 +764,7 @@ export async function luuHoaDonCaHaiBan() {
     }
 }
 
-function lamMoiSauKhiLuu() {
+async function lamMoiSauKhiLuu() {
     const diadiemVal = document.getElementById("diadiem").value;
     const manvVal = document.getElementById("manv").value;
     const tennvVal = document.getElementById("tennv").value;
