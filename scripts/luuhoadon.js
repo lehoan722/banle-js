@@ -52,6 +52,29 @@ async function ensureCatalogsReady() {
     }
 }
 
+// [ADD – đặt gần đầu file luuhoadon.js, trước khi dùng tới trong xacNhanSuaHoaDon()]
+function getDiaDiemFromPageName() {
+    const t = ((document?.title || '') + ' ' + (window?.location?.pathname || '')).toLowerCase();
+
+    // Ưu tiên pathname có 'cs1'/'cs2' (vd: /banlemtcs1.html, /nhaptamcs2.html)
+    if (t.includes('cs2')) return 'cs2';
+    if (t.includes('cs1')) return 'cs1';
+
+    // Fallback: tiêu đề trang chứa 'cơ sở 1/2' (không dấu)
+    const normalized = t
+        .replace(/cơ\s*sở/gi, 'co so')
+        .replace(/[^\w\s]/g, ' ') // bỏ ký tự đặc biệt
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (normalized.includes('co so 2')) return 'cs2';
+    if (normalized.includes('co so 1')) return 'cs1';
+
+    // Cuối cùng: nếu không đoán được, trả rỗng để caller tự xử lý
+    return '';
+}
+
+
 /***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
 /* ========================= CCN CONTEXT (ĐÓNG BĂNG CHIỀU CHUYỂN) ========================= */
 /* [MỚI] Đóng băng bối cảnh CCN theo chính tên trang, không dùng localStorage ở trang CCN */
@@ -657,9 +680,14 @@ export async function xacNhanSuaHoaDon() {
         return;
     }
 
-    const diadiemDangNhap = localStorage.getItem("diadiem");
-    if (hd.diadiem !== diadiemDangNhap) {
-        alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
+    // ĐOẠN MỚI – so sánh với cơ sở suy ra từ tên trang/URL
+    const diadiemTrang = getDiaDiemFromPageName() || ''; // 'cs1' | 'cs2' | ''
+    if (!diadiemTrang) {
+        alert("❗ Không xác định được cơ sở từ tên trang/URL. Vui lòng đặt tên file kèm 'cs1' hoặc 'cs2' (vd: banlemtcs1.html).");
+        return;
+    }
+    if ((hd.diadiem || '').toLowerCase() !== diadiemTrang) {
+        alert(`🚫 Trang này thuộc ${diadiemTrang.toUpperCase()}, nhưng hóa đơn lại ở ${(hd.diadiem || '').toUpperCase()}. Không được phép sửa!`);
         return;
     }
 
