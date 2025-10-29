@@ -1103,12 +1103,46 @@ export async function luuHoaDonccn1v2() {
                 }
                 return;
             }
-            // Người dùng chọn TẠO MỚI → "trượt số" sang số trống tiếp theo
-            const prefixOnly = sohd.split('_')[0];           // vd: xcncs1 / xcncs2
-            const sohdMoi = await phatSinhSoHDTMoi(prefixOnly);
-            if (!sohdMoi) { alert("❗Không phát sinh được số hóa đơn mới."); return; }
-            document.getElementById('sohd').value = sohdMoi; // cập nhật UI
-            sohd = sohdMoi;                                  // cập nhật biến làm việc
+            // Người dùng chọn TẠO MỚI → NHỜ RPC cấp số mới CHUẨN theo loaihd_thucte
+            {
+                const getInt = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+
+                // Header tạm để RPC ghi dòng header và trả về sohd mới (đúng prefix)
+                const headerTmp = {
+                    ngay: document.getElementById("ngay").value,
+                    manv: document.getElementById("manv").value,
+                    tennv: document.getElementById("tennv").value,
+                    diadiem: diadiemSRC,                  // 'cs1' hoặc 'cs2' theo CCN_CTX
+                    khachhang: document.getElementById("khachhang").value,
+                    tongsl: getInt("tongsl"),
+                    tongkm: getInt("tongkm"),
+                    chietkhau: getInt("chietkhau"),
+                    thanhtoan: getInt("phaithanhtoan"),
+                    hinhthuctt: document.getElementById("hinhthuctt").value,
+                    ghichu: document.getElementById("ghichu")?.value || "",
+                    dvt: "",
+                    loaihd: loaihd_thucte,                // xcncs1 hoặc xcncs2
+                    loai: loaihd_thucte,
+                    nhacc: ""
+                };
+
+                const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
+                    p_loai: loaihd_thucte,                // <<< QUAN TRỌNG: loại CCN thật sự
+                    p_diadiem: diadiemSRC,                // 'cs1'/'cs2'
+                    p_header: headerTmp
+                });
+
+                if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
+                    console.error(rpcErr);
+                    alert("❌ Không cấp được số hóa đơn mới cho chứng từ chuyển chi nhánh.");
+                    return;
+                }
+
+                const sohdMoi = rpcRes[0].sohd;        // ví dụ: xcncs1_00052
+                document.getElementById('sohd').value = sohdMoi; // cập nhật UI
+                sohd = sohdMoi;                        // cập nhật biến làm việc
+            }
+
         }
     } else {
         // EDIT: đảm bảo số đang sửa thực sự tồn tại, nếu không thì báo lỗi
