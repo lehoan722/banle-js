@@ -7,6 +7,9 @@ import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
 import { guiHoaDonViettel } from './viettelInvoice.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
+// === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
+window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
+
 
 let choPhepSua = false;
 
@@ -237,19 +240,90 @@ export async function luuHoaDonQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-    //const diadiem = localStorage.getItem("diadiem");
-    const prefix = sohd.split("_")[0] || "";
-    let diadiem = "cs1";
-    if (prefix.includes("cs2")) diadiem = "cs2";
-    else if (prefix.includes("cs1")) diadiem = "cs1";
+    // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
+    const diadiemTrang = getDiaDiemFromPageName() || 'cs1';
+    if (!IS_EDIT) {
+        const loai = (diadiemTrang === 'cs2') ? 'bancs2' : 'bancs1';
 
-    // ---- CHỈ GỌI CHO HÓA ĐƠN MỚI, KHÔNG PHẢI SỬA ----
+        const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+        const header = {
+            ngay: document.getElementById("ngay").value,
+            manv: document.getElementById("manv").value,
+            tennv: document.getElementById("tennv").value,
+            diadiem: diadiemTrang,
+            khachhang: document.getElementById("khachhang").value,
+            tongsl: getIntValue("tongsl"),
+            tongkm: getIntValue("tongkm"),
+            chietkhau: getIntValue("chietkhau"),
+            thanhtoan: getIntValue("phaithanhtoan"),
+            hinhthuctt: document.getElementById("hinhthuctt").value,
+            ghichu: document.getElementById("ghichu")?.value || "",
+            dvt: "",
+            loaihd: loai,
+            loai: loai,
+            nhacc: ""
+        };
+
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
+            p_loai: loai,
+            p_diadiem: diadiemTrang,
+            p_header: header
+        });
+
+        if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
+            console.error(rpcErr);
+            alert("❌ Lưu hóa đơn thất bại (cấp số).");
+            return;
+        }
+
+        const sohdThucTe = rpcRes[0].sohd;
+        document.getElementById("sohd").value = sohdThucTe;
+
+        const createdAt = new Date().toISOString();
+        const bangKetQuaNEW = getBangKetQua();
+        const chitiet = [];
+        Object.values(bangKetQuaNEW).forEach(item => {
+            item.sizes.forEach((sz, i) => {
+                const sl = item.soluongs[i];
+                chitiet.push({
+                    sohd: sohdThucTe,
+                    masp: item.masp,
+                    tensp: item.tensp,
+                    size: sz,
+                    soluong: sl,
+                    gia: item.gia,
+                    km: item.km,
+                    thanhtien: (item.gia - item.km) * sl,
+                    dvt: item.dvt || '',
+                    diadiem: diadiemTrang,
+                    created_at: createdAt,
+                    ngay: document.getElementById("ngay").value
+                });
+            });
+        });
+
+        const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
+        if (errCT) {
+            alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
+            console.error(errCT);
+            return;
+        }
+
+        inHoaDon({ ...header, sohd: sohdThucTe }, chitiet);
+        await lamMoiSauKhiLuu();
+        choPhepSua = false;
+        return;
+    }
+
+    // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
         .select("sohd")
         .eq("sohd", sohd)
         .maybeSingle();
 
+    // Các nhánh/logic EDIT gốc của bạn giữ nguyên…
     if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
 
     if (tonTai && !choPhepSua) {
@@ -265,7 +339,6 @@ export async function luuHoaDonQuaAPI() {
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
 
-
     const createdAt = new Date().toISOString();
 
     const getIntValue = (id) =>
@@ -276,7 +349,7 @@ export async function luuHoaDonQuaAPI() {
         ngay: document.getElementById("ngay").value,
         manv: document.getElementById("manv").value,
         tennv: document.getElementById("tennv").value,
-        diadiem: diadiem,
+        diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongkm: getIntValue("tongkm"),
@@ -287,11 +360,9 @@ export async function luuHoaDonQuaAPI() {
         created_at: createdAt,
         loai: "",
         dvt: "",
-        loaihd: sohd.split("_")[0],   // <-- CHỈNH ĐOẠN NÀY!
+        loaihd: sohd.split("_")[0],
         nhacc: ""
     };
-
-
 
     const chitiet = [];
     Object.values(bangKetQua).forEach(item => {
@@ -307,11 +378,10 @@ export async function luuHoaDonQuaAPI() {
                 km: item.km,
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
-                diadiem: diadiem,
+                diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
                 created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
-
         });
     });
 
@@ -323,14 +393,12 @@ export async function luuHoaDonQuaAPI() {
         const [loai, so] = sohd.split('_');
         const soMoi = parseInt(so, 10);
 
-        // Đọc số hiện tại của loại này từ bảng sochungtu
         const { data: currSoChungTu } = await supabase
             .from("sochungtu")
             .select("so_hientai")
             .eq("loai", loai)
             .single();
 
-        // Chỉ update nếu số mới lớn hơn số hiện tại
         if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
             await supabase
                 .from("sochungtu")
@@ -338,7 +406,6 @@ export async function luuHoaDonQuaAPI() {
                 .eq("loai", loai);
         }
 
-        //alert("✅ Đã lưu hóa đơn thành công!");
         inHoaDon(hoadon, chitiet);
         await lamMoiSauKhiLuu();
         choPhepSua = false;
@@ -352,7 +419,6 @@ export async function luuHoaDonQuaAPI() {
 
 export async function luuHoaDonNhapQuaAPI() {
     capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
-    // BỔ SUNG CHẶN LƯU Ở ĐÂY:
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -367,13 +433,89 @@ export async function luuHoaDonNhapQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
-    // Lấy cơ sở từ localStorage, không lấy từ input
-    //const diadiem = localStorage.getItem("diadiem");
-    const prefix = sohd.split("_")[0] || "";
-    let diadiem = "cs1";
-    if (prefix.includes("cs2")) diadiem = "cs2";
-    else if (prefix.includes("cs1")) diadiem = "cs1";
+    // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
+    const diadiemTrang = getDiaDiemFromPageName() || 'cs1';
+    if (!IS_EDIT) {
+        const loai = (diadiemTrang === 'cs2') ? 'nmcs2' : 'nmcs1';
 
+        const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
+        const header = {
+            ngay: document.getElementById("ngay").value,
+            manv: document.getElementById("manv").value,
+            tennv: document.getElementById("tennv").value,
+            diadiem: diadiemTrang,
+            khachhang: document.getElementById("khachhang").value,
+            tongsl: getIntValue("tongsl"),
+            tongkm: 0,
+            chietkhau: getIntValue("chietkhau"),
+            thanhtoan: getIntValue("phaithanhtoan"),
+            hinhthuctt: document.getElementById("hinhthuctt").value,
+            ghichu: document.getElementById("ghichu")?.value || "",
+            dvt: "",
+            loaihd: loai,
+            loai: loai,
+            nhacc: ""
+        };
+
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
+            p_loai: loai,
+            p_diadiem: diadiemTrang,
+            p_header: header
+        });
+
+        if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
+            console.error(rpcErr);
+            alert("❌ Lưu HĐ nhập thất bại (cấp số).");
+            return;
+        }
+
+        const sohdThucTe = rpcRes[0].sohd;
+        document.getElementById("sohd").value = sohdThucTe;
+
+        const createdAt = new Date().toISOString();
+        const bangKetQuaNEW = getBangKetQua();
+        const chitiet = [];
+        Object.values(bangKetQuaNEW).forEach(item => {
+            item.sizes.forEach((sz, i) => {
+                const sl = item.soluongs[i];
+                let gia = 0;
+                if (window.sanPhamData && window.sanPhamData[item.masp]) {
+                    gia = window.sanPhamData[item.masp].gianhap || 0;
+                }
+                const km = 0;
+                chitiet.push({
+                    sohd: sohdThucTe,
+                    masp: item.masp,
+                    tensp: item.tensp,
+                    size: sz,
+                    soluong: sl,
+                    gia,
+                    km,
+                    thanhtien: (gia - km) * sl,
+                    dvt: item.dvt || '',
+                    diadiem: diadiemTrang,
+                    created_at: createdAt,
+                    ngay: document.getElementById("ngay").value
+                });
+            });
+        });
+
+        const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
+        if (errCT) {
+            alert("❌ Lỗi khi lưu chi tiết nhập.");
+            console.error(errCT);
+            return;
+        }
+
+        alert("✅ Đã lưu hóa đơn nhập thành công!");
+        inHoaDon({ ...header, sohd: sohdThucTe }, chitiet);
+        await lamMoiSauKhiLuu();
+        choPhepSua = false;
+        return;
+    }
+
+    // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
         .select("sohd")
@@ -402,7 +544,7 @@ export async function luuHoaDonNhapQuaAPI() {
         ngay: document.getElementById("ngay").value,
         manv: document.getElementById("manv").value,
         tennv: document.getElementById("tennv").value,
-        diadiem: diadiem,
+        diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongkm: 0, // Nhập mới không có khuyến mại
@@ -413,23 +555,21 @@ export async function luuHoaDonNhapQuaAPI() {
         created_at: createdAt,
         loai: "",
         dvt: "",
-        loaihd: sohd.split("_")[0],   // <-- CHỈNH ĐOẠN NÀY!
+        loaihd: sohd.split("_")[0],
         nhacc: ""
     };
 
-    const chitiet = [];
+    const chitiet2 = [];
     Object.values(bangKetQua).forEach(item => {
         item.sizes.forEach((sz, i) => {
             const sl = item.soluongs[i];
-
-            // --- LUÔN ÉP LẠI GIÁ NHẬP, KHUYẾN MẠI = 0 ---
+            // Ép giá nhập từ dmhanghoa nếu có
             let gia = 0;
             if (window.sanPhamData && window.sanPhamData[item.masp]) {
                 gia = window.sanPhamData[item.masp].gianhap || 0;
             }
             const km = 0;
-
-            chitiet.push({
+            chitiet2.push({
                 sohd,
                 masp: item.masp,
                 tensp: item.tensp,
@@ -439,30 +579,27 @@ export async function luuHoaDonNhapQuaAPI() {
                 km,
                 thanhtien: (gia - km) * sl,
                 dvt: item.dvt || '',
-                diadiem: diadiem,
+                diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
                 created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
-
         });
     });
 
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
+    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet2);
 
     if (!errHD && !errCT) {
         // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
         const [loai, so] = sohd.split('_');
         const soMoi = parseInt(so, 10);
 
-        // Đọc số hiện tại của loại này từ bảng sochungtu
         const { data: currSoChungTu } = await supabase
             .from("sochungtu")
             .select("so_hientai")
             .eq("loai", loai)
             .single();
 
-        // Chỉ update nếu số mới lớn hơn số hiện tại
         if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
             await supabase
                 .from("sochungtu")
@@ -471,7 +608,7 @@ export async function luuHoaDonNhapQuaAPI() {
         }
 
         alert("✅ Đã lưu hóa đơn nhập thành công!");
-        inHoaDon(hoadon, chitiet);
+        inHoaDon(hoadon, chitiet2);
         await lamMoiSauKhiLuu();
         choPhepSua = false;
     }
@@ -480,8 +617,6 @@ export async function luuHoaDonNhapQuaAPI() {
         console.error(errHD || errCT);
     }
 }
-
-
 
 export async function luuHoaDonCaHaiBan() {
     const sohd = document.getElementById("sohd").value.trim();
@@ -629,7 +764,7 @@ export async function luuHoaDonCaHaiBan() {
     }
 }
 
-async function lamMoiSauKhiLuu() {
+function lamMoiSauKhiLuu() {
     const diadiemVal = document.getElementById("diadiem").value;
     const manvVal = document.getElementById("manv").value;
     const tennvVal = document.getElementById("tennv").value;
@@ -645,6 +780,8 @@ async function lamMoiSauKhiLuu() {
     document.getElementById("manv").value = manvVal;
     document.getElementById("tennv").value = tennvVal;
     document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+    // Reset mode về NEW sau khi lưu
+    window.HD_CTX = { mode: "NEW", version: null };
     await capNhatSoHoaDonTuDong();
     document.getElementById("masp").focus();
 }
@@ -671,7 +808,7 @@ export async function xacNhanSuaHoaDon() {
 
     const { data: hd, error: errHD } = await supabase
         .from("hoadon_banle")
-        .select("diadiem")
+        .select("diadiem, updated_at")
         .eq("sohd", sohd)
         .maybeSingle();
 
@@ -680,18 +817,15 @@ export async function xacNhanSuaHoaDon() {
         return;
     }
 
-    // ĐOẠN MỚI – so sánh với cơ sở suy ra từ tên trang/URL
-    const diadiemTrang = getDiaDiemFromPageName() || ''; // 'cs1' | 'cs2' | ''
-    if (!diadiemTrang) {
-        alert("❗ Không xác định được cơ sở từ tên trang/URL. Vui lòng đặt tên file kèm 'cs1' hoặc 'cs2' (vd: banlemtcs1.html).");
-        return;
-    }
-    if ((hd.diadiem || '').toLowerCase() !== diadiemTrang) {
-        alert(`🚫 Trang này thuộc ${diadiemTrang.toUpperCase()}, nhưng hóa đơn lại ở ${(hd.diadiem || '').toUpperCase()}. Không được phép sửa!`);
+    const diadiemTrang = getDiaDiemFromPageName();
+    if ((hd.diadiem || "").toLowerCase() !== diadiemTrang) {
+        alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
         return;
     }
 
     choPhepSua = true;
+    // Đặt chế độ EDIT để các hàm lưu rẽ nhánh đúng
+    window.HD_CTX = { mode: "EDIT", version: (hd && hd.updated_at) ? hd.updated_at : null };
     document.getElementById("popupXacThucSua").style.display = "none";
     alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
 
@@ -701,8 +835,8 @@ export async function xacNhanSuaHoaDon() {
         await luuHoaDonccn1v2();
     } else {
         // Lấy loại chứng từ từ số hoá đơn để xác định
-        const sohd = document.getElementById("sohd").value.trim();
-        const prefix = sohd.split("_")[0] || "";
+        const sohdNow = document.getElementById("sohd").value.trim();
+        const prefix = sohdNow.split("_")[0] || "";
 
         if (prefix.includes("nmcs1") || prefix.includes("nmcs2")) {
             // Hoá đơn nhập mới
@@ -732,8 +866,9 @@ function inHoaDon(hoadon, chitiet) {
                 iframe.contentWindow.print();
             } catch (e) {
                 console.error("Không thể gọi print() từ iframe:", e);
+            } finally {
+                iframe.remove();
             }
-            document.body.removeChild(iframe);
         }, 500);
     };
 }
