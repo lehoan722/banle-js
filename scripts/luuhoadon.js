@@ -10,6 +10,36 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 // === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
 window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 
+// ==== EDIT MODE FLAG (UI + logic) ====
+// Gắn/bỏ nhãn "SỬA" lên thanh menu (nếu có #menu-bar, .menu-bar, #topbar, header, .topbar) và set dataset cho body
+function setEditUI(on = true) {
+  const bar = document.getElementById('menu-bar') 
+           || document.querySelector('.menu-bar, #topbar, header, .topbar');
+
+  let badge = document.getElementById('hd-edit-flag');
+
+  if (on) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'hd-edit-flag';
+      badge.textContent = 'SỬA';
+      badge.className = 'edit-badge';
+      if (bar) bar.appendChild(badge);
+      else document.body.appendChild(badge); // fallback nếu chưa có thanh menu
+    }
+    document.body.dataset.hdmode = 'EDIT';
+  } else {
+    if (badge) badge.remove();
+    delete document.body.dataset.hdmode;
+  }
+}
+
+// Trả về true nếu đang ở chế độ sửa (có nhãn SỬA hoặc dataset)
+function isEditUI() {
+  return document.body.dataset.hdmode === 'EDIT' || !!document.getElementById('hd-edit-flag');
+}
+
+
 function getLoaiFromSoHDInput() {
     const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
     if (!raw) return '';                      // chưa có số → để caller tự xử lý
@@ -249,7 +279,7 @@ export async function luuHoaDonQuaAPI() {
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
+    const IS_EDIT = isEditUI(); // chỉ EDIT khi UI đang gắn nhãn SỬA
     if (!IS_EDIT) {
         // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
         let loai = getLoaiFromSoHDInput();
@@ -450,7 +480,7 @@ export async function luuHoaDonNhapQuaAPI() {
     if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
+    const IS_EDIT = isEditUI(); // chỉ EDIT khi UI đang gắn nhãn SỬA
     if (!IS_EDIT) {
         // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
         let loai = getLoaiFromSoHDInput();
@@ -805,6 +835,7 @@ async function lamMoiSauKhiLuu() {
     document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
     // Reset mode về NEW sau khi lưu
     window.HD_CTX = { mode: "NEW", version: null };
+    setEditUI(false); // <<<<<<<<<<<<<<<<<< thêm dòng này
     await capNhatSoHoaDonTuDong();
     document.getElementById("masp").focus();
 }
@@ -849,6 +880,7 @@ export async function xacNhanSuaHoaDon() {
     choPhepSua = true;
     // Đặt chế độ EDIT để các hàm lưu rẽ nhánh đúng
     window.HD_CTX = { mode: "EDIT", version: (hd && hd.updated_at) ? hd.updated_at : null };
+    setEditUI(true); // <<<<<<<<<<<<<<<<<< thêm dòng này
     document.getElementById("popupXacThucSua").style.display = "none";
     alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
 
