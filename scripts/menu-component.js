@@ -335,8 +335,8 @@
           qrImg.src = SIZE_QR_IMAGES[neck];
           qrImg.alt = `QR ${neck}`;
           // Kích thước vật lý ≥ 1cm: đặt 1.2cm để dư biên khi màn hình thu phóng
-          qrImg.style.width = '0.8cm';
-          qrImg.style.height = '0.8cm';
+          qrImg.style.width = '1.2cm';
+          qrImg.style.height = '1.2cm';
           qrImg.style.display = 'block';
           qrImg.style.margin = '6px auto';
           // giữ pixel gọn khi thu/phóng
