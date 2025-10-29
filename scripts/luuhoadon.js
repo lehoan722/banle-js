@@ -23,11 +23,11 @@ window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 
 // ===== Modal "Số hóa đơn đã tồn tại" với 2 nút to (Tạo mới / Sửa) =====
 function ensureExistDialog() {
-  if (document.getElementById('exist-dialog')) return;
+    if (document.getElementById('exist-dialog')) return;
 
-  const css = document.createElement('style');
-  css.id = 'exist-dialog-css';
-  css.textContent = `
+    const css = document.createElement('style');
+    css.id = 'exist-dialog-css';
+    css.textContent = `
   .exist-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998}
   .exist-box{position:fixed;z-index:9999;left:50%;top:50%;transform:translate(-50%,-50%);
     width:560px;max-width:92vw;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);
@@ -43,12 +43,12 @@ function ensureExistDialog() {
   .exist-btn.edit:focus,.exist-btn.edit:hover{filter:brightness(1.03)}
   .exist-note{margin-top:8px;color:#666;font-size:13px}
   `;
-  document.head.appendChild(css);
+    document.head.appendChild(css);
 
-  const wrap = document.createElement('div');
-  wrap.id = 'exist-dialog';
-  wrap.style.display = 'none';
-  wrap.innerHTML = `
+    const wrap = document.createElement('div');
+    wrap.id = 'exist-dialog';
+    wrap.style.display = 'none';
+    wrap.innerHTML = `
     <div class="exist-mask" data-role="mask"></div>
     <div class="exist-box" role="dialog" aria-modal="true" aria-labelledby="exist-title">
       <div class="exist-hd" id="exist-title">Số hóa đơn đã tồn tại</div>
@@ -62,35 +62,35 @@ function ensureExistDialog() {
         <button class="exist-btn edit" id="exist-edit-btn">Sửa hóa đơn này</button>
       </div>
     </div>`;
-  document.body.appendChild(wrap);
+    document.body.appendChild(wrap);
 
-  // Đóng khi click nền mờ
-  wrap.querySelector('[data-role="mask"]').addEventListener('click', () => {
-    wrap.style.display = 'none';
-  });
+    // Đóng khi click nền mờ
+    wrap.querySelector('[data-role="mask"]').addEventListener('click', () => {
+        wrap.style.display = 'none';
+    });
 }
 
 function showExistDialog(sohd) {
-  ensureExistDialog();
-  const wrap = document.getElementById('exist-dialog');
-  document.getElementById('exist-sohd').textContent = sohd;
-  wrap.style.display = 'block';
+    ensureExistDialog();
+    const wrap = document.getElementById('exist-dialog');
+    document.getElementById('exist-sohd').textContent = sohd;
+    wrap.style.display = 'block';
 
-  return new Promise(resolve => {
-    const ok  = document.getElementById('exist-new-btn');
-    const edt = document.getElementById('exist-edit-btn');
+    return new Promise(resolve => {
+        const ok = document.getElementById('exist-new-btn');
+        const edt = document.getElementById('exist-edit-btn');
 
-    const cleanup = () => {
-      ok.removeEventListener('click', onNew);
-      edt.removeEventListener('click', onEdit);
-      wrap.style.display = 'none';
-    };
-    const onNew  = () => { cleanup(); resolve('new');  };
-    const onEdit = () => { cleanup(); resolve('edit'); };
+        const cleanup = () => {
+            ok.removeEventListener('click', onNew);
+            edt.removeEventListener('click', onEdit);
+            wrap.style.display = 'none';
+        };
+        const onNew = () => { cleanup(); resolve('new'); };
+        const onEdit = () => { cleanup(); resolve('edit'); };
 
-    ok.addEventListener('click', onNew);
-    edt.addEventListener('click', onEdit);
-  });
+        ok.addEventListener('click', onNew);
+        edt.addEventListener('click', onEdit);
+    });
 }
 
 
@@ -340,20 +340,20 @@ export async function luuHoaDonQuaAPI() {
 
     // Nếu ĐANG Ở CHẾ ĐỘ NEW và số đang gõ TRÙNG với HĐ đã có → hỏi người dùng
     if (!IS_EDIT) {
-  const existed = await hoaDonDaTonTai(sohd);
-  if (existed) {
-    const choice = await showExistDialog(sohd); // 'new' | 'edit'
-    if (choice === 'edit') {
-      const p = document.getElementById("popupXacThucSua");
-      if (p) {
-        p.style.display = "block";
-        document.getElementById("xacmanv")?.focus();
-      }
-      return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
+        const existed = await hoaDonDaTonTai(sohd);
+        if (existed) {
+            const choice = await showExistDialog(sohd); // 'new' | 'edit'
+            if (choice === 'edit') {
+                const p = document.getElementById("popupXacThucSua");
+                if (p) {
+                    p.style.display = "block";
+                    document.getElementById("xacmanv")?.focus();
+                }
+                return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
+            }
+            // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
+        }
     }
-    // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
-  }
-}
 
 
     // === NHÁNH NEW ===
@@ -571,20 +571,20 @@ export async function luuHoaDonNhapQuaAPI() {
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
     if (!IS_EDIT) {
-  const existed = await hoaDonDaTonTai(sohd);
-  if (existed) {
-    const choice = await showExistDialog(sohd); // 'new' | 'edit'
-    if (choice === 'edit') {
-      const p = document.getElementById("popupXacThucSua");
-      if (p) {
-        p.style.display = "block";
-        document.getElementById("xacmanv")?.focus();
-      }
-      return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
+        const existed = await hoaDonDaTonTai(sohd);
+        if (existed) {
+            const choice = await showExistDialog(sohd); // 'new' | 'edit'
+            if (choice === 'edit') {
+                const p = document.getElementById("popupXacThucSua");
+                if (p) {
+                    p.style.display = "block";
+                    document.getElementById("xacmanv")?.focus();
+                }
+                return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
+            }
+            // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
+        }
     }
-    // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
-  }
-}
 
     // (giữ nguyên nhánh EDIT nhập của bạn)
 
@@ -1075,7 +1075,7 @@ export async function luuHoaDonccn1v2() {
         });
     }
 
-    const sohd = document.getElementById("sohd").value.trim();
+    let sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên.");
@@ -1086,45 +1086,61 @@ export async function luuHoaDonccn1v2() {
         return;
     }
 
-    const { data: tonTai } = await supabase
-        .from("hoadon_banle")
-        .select("sohd")
-        .eq("sohd", sohd)
-        .maybeSingle();
+    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
 
-    if (tonTai && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        p.style.display = "block";
-        const manvEl = document.getElementById("xacmanv");
-        if (manvEl) { manvEl.focus(); manvEl.select(); }
-        return;
-    }
+    if (!IS_EDIT) {
+        // NEW: nếu số đang nhập đã tồn tại → hỏi người dùng
+        const existed = await hoaDonDaTonTai(sohd);
+        if (existed) {
+            const choice = await showExistDialog(sohd); // 'new' | 'edit'
+            if (choice === 'edit') {
+                // Người dùng chọn SỬA → bật popup xác thực và dừng
+                const p = document.getElementById("popupXacThucSua");
+                if (p) {
+                    p.style.display = "block";
+                    document.getElementById("xacmanv")?.focus();
+                }
+                return;
+            }
+            // Người dùng chọn TẠO MỚI → "trượt số" sang số trống tiếp theo
+            const prefixOnly = sohd.split('_')[0];           // vd: xcncs1 / xcncs2
+            const sohdMoi = await phatSinhSoHDTMoi(prefixOnly);
+            if (!sohdMoi) { alert("❗Không phát sinh được số hóa đơn mới."); return; }
+            document.getElementById('sohd').value = sohdMoi; // cập nhật UI
+            sohd = sohdMoi;                                  // cập nhật biến làm việc
+        }
+    } else {
+        // EDIT: đảm bảo số đang sửa thực sự tồn tại, nếu không thì báo lỗi
+        const existed = await hoaDonDaTonTai(sohd);
+        if (!existed) { alert("❌ Không tìm thấy hóa đơn để sửa (CCN)."); return; }
 
-    if (tonTai && choPhepSua) {
+        // Cho phép xoá để ghi lại (giữ nguyên logic xoá phiếu gốc + đối ứng của bạn)
+        // --- COPY từ khối 'if (tonTai && choPhepSua) { ... }' cũ ---
         // Xoá phiếu gốc
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
 
         // Xoá phiếu đối ứng
         const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-        const parts = base.split("_");
-        const so = parts[parts.length - 1];
-        const loaiGoc = parts.slice(0, -1).join("_");
-        const loaiDoiUng = (loaiGoc === "xcncs1") ? "ncncs2" : "ncncs1";
-        const sohdDoiUng = `${loaiDoiUng}_${so}`;
+        const parts__ = base.split("_");
+        const so__ = parts__[parts__.length - 1];
+        const loaiGoc__ = parts__.slice(0, -1).join("_");
+        const loaiDoiUng__ = (loaiGoc__ === "xcncs1") ? "ncncs2" : "ncncs1";
+        const sohdDoiUng__ = `${loaiDoiUng__}_${so__}`;
 
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng);
+        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng__);
+        await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng__);
 
-        // Nối ghi chú sửa
+        // Nối ghi chú sửa (giữ nguyên đoạn bạn đã có)
         let oldNote = document.getElementById("ghichu")?.value || "";
-        const manv = document.getElementById("manv").value.trim();
-        const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
-        const oldEdits = (oldNote.match(/Sửa lần/g) || []).length;
-        const newEditCount = oldEdits + 1;
-        const newNoteEntry = `Sửa lần ${newEditCount} – ${timestamp} – ${manv}`;
-        const finalNote = oldNote ? oldNote + "\n" + newNoteEntry : newNoteEntry;
-        document.getElementById("ghichu").value = finalNote;
+        const manv2 = document.getElementById("manv").value.trim();
+        const timestamp2 = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const oldEdits2 = (oldNote.match(/Sửa lần/g) || []).length;
+        const newEditCount2 = oldEdits2 + 1;
+        const newNoteEntry2 = `Sửa lần ${newEditCount2} – ${timestamp2} – ${manv2}`;
+        const finalNote2 = oldNote ? oldNote + "\n" + newNoteEntry2 : newNoteEntry2;
+        document.getElementById("ghichu").value = finalNote2;
     }
 
     const createdAt = new Date().toISOString();
