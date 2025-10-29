@@ -10,6 +10,14 @@ import { napLaiChiTietHoaDon } from './hoadon.js';
 // === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
 window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 
+function getLoaiFromSoHDInput() {
+    const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
+    if (!raw) return '';                      // chưa có số → để caller tự xử lý
+    const pre = raw.split('_')[0] || '';      // vd: bancs1, nmcs2, ntcs1, xcncs2, ...
+    return pre;
+}
+
+
 
 let choPhepSua = false;
 
@@ -242,9 +250,17 @@ export async function luuHoaDonQuaAPI() {
 
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
-    const diadiemTrang = getDiaDiemFromPageName() || 'cs1';
     if (!IS_EDIT) {
-        const loai = (diadiemTrang === 'cs2') ? 'bancs2' : 'bancs1';
+        // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
+        let loai = getLoaiFromSoHDInput();
+        if (!loai) {
+            // nếu ô #sohd chưa có, phát sinh lại rồi lấy
+            await capNhatSoHoaDonTuDong();
+            loai = getLoaiFromSoHDInput();
+            if (!loai) { alert("❗Chưa xác định được loại chứng từ từ số hóa đơn."); return; }
+        }
+        const diadiemTrang = loai.includes('cs2') ? 'cs2' : 'cs1';
+
 
         const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
         const header = {
@@ -435,9 +451,16 @@ export async function luuHoaDonNhapQuaAPI() {
 
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT');
-    const diadiemTrang = getDiaDiemFromPageName() || 'cs1';
     if (!IS_EDIT) {
-        const loai = (diadiemTrang === 'cs2') ? 'nmcs2' : 'nmcs1';
+        // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
+        let loai = getLoaiFromSoHDInput();
+        if (!loai) {
+            await capNhatSoHoaDonTuDong();
+            loai = getLoaiFromSoHDInput();
+            if (!loai) { alert("❗Chưa xác định được loại chứng từ từ số hóa đơn."); return; }
+        }
+        const diadiemTrang = loai.includes('cs2') ? 'cs2' : 'cs1';
+
 
         const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
         const header = {
