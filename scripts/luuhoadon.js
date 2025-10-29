@@ -261,20 +261,9 @@ export async function luuHoaDonQuaAPI() {
 
     // ... sau khi có const sohd = ...; const tennv = ...;
 
-    const existed = await hoaDonDaTonTai(sohd);
+    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
 
-    // Nếu số HĐ đã tồn tại mà chưa xác thực sửa → bật popup và dừng lại (không cho chạy nhánh NEW)
-    if (existed && window.HD_CTX?.mode !== 'EDIT' && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        if (p) {
-            p.style.display = "block";
-            document.getElementById("xacmanv")?.focus();
-        }
-        return; // ❗Rất quan trọng: dừng ở đây
-    }
-
-    // Xác định trạng thái thật sự: tồn tại trong DB hoặc đã set EDIT
-    const IS_EDIT = existed || (window.HD_CTX?.mode === 'EDIT');
 
     // === NHÁNH NEW ===
     if (!IS_EDIT) {
@@ -376,8 +365,10 @@ export async function luuHoaDonQuaAPI() {
         .eq("sohd", sohd)
         .maybeSingle();
 
-    // Các nhánh/logic EDIT gốc của bạn giữ nguyên…
-    if (!tonTai && await handleSpecialSoHoaDon(sohd)) return;
+    if (!tonTai) {
+        alert("❌ Không tìm thấy hóa đơn để sửa. Vui lòng kiểm tra lại số HĐ hoặc chuyển sang tạo mới.");
+        return;
+    }
 
     if (tonTai && !choPhepSua) {
         const p = document.getElementById("popupXacThucSua");
@@ -486,22 +477,9 @@ export async function luuHoaDonNhapQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
 
-    const existed = await hoaDonDaTonTai(sohd);
+    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
 
-    if (existed && window.HD_CTX?.mode !== 'EDIT' && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        if (p) {
-            p.style.display = "block";
-            document.getElementById("xacmanv")?.focus();
-        }
-        return;
-    }
-
-    const IS_EDIT = existed || (window.HD_CTX?.mode === 'EDIT');
-
-    if (!IS_EDIT) {
-        // (giữ nguyên nhánh NEW nhập của bạn: lấy loai theo #sohd, RPC save_new_header, insert ct, in, lamMoiSauKhiLuu, return)
-    }
 
     // (giữ nguyên nhánh EDIT nhập của bạn)
 
@@ -596,11 +574,18 @@ export async function luuHoaDonNhapQuaAPI() {
     }
 
     // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
+
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
         .select("sohd")
         .eq("sohd", sohd)
         .maybeSingle();
+
+    if (!tonTai) {
+        alert("❌ Không tìm thấy hóa đơn để sửa (nhập).");
+        return;
+    }
+
 
     if (tonTai && !choPhepSua) {
         const p = document.getElementById("popupXacThucSua");
