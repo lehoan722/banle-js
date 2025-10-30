@@ -389,13 +389,15 @@
       </select>
 
       <label>Email</label>
-      <input id="login-email" placeholder="Email" value="">
+      <input id="login-email" placeholder="Email" value="khohangcs1@gmail.com">
 
       <label>Mật khẩu</label>
-      <input id="login-password" type="password" placeholder="••••••••">     
+      <input id="login-password" type="password" placeholder="••••••••">
 
       <label>Mã nhân viên</label>
-      <input id="login-manv" type="text" placeholder="VD: HOAN" autocomplete="off">      
+      <input id="login-manv" type="text" placeholder="VD: HOAN" autocomplete="off">
+
+      
 
       <button id="btnLogin">Đăng nhập</button>
       <div id="loginMsg" style="color:#c62828; font-weight:600;"></div>
