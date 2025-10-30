@@ -2,52 +2,25 @@ import { supabase } from "./supabaseClient.js";
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
-// === ĐĂNG NHẬP GIỐNG BÁN LẺ CS1 ===
 window.dangNhap = async function () {
-  const email = (document.getElementById('login-email').value || '').trim().toLowerCase();
-  const password = (document.getElementById('login-password').value || '').trim();
-  const cs = document.getElementById('login-cs').value;
-  const manv = (document.getElementById('login-manv').value || '').trim().toUpperCase();
-  const statusEl = document.getElementById('login-error');
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const status = document.getElementById("authStatus");
+    status.textContent = "";
 
-  // Validate đầu vào
-  if (!email || !password) { statusEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu'; statusEl.style.color='red'; return; }
-  if (!cs) { statusEl.textContent = 'Vui lòng chọn cơ sở bán hàng!'; statusEl.style.color='red'; return; }
-  if (!manv) { statusEl.textContent = 'Vui lòng nhập mã nhân viên!'; statusEl.style.color='red'; return; }
+    if (!email || !password) {
+        status.textContent = "Nhập đầy đủ email và mật khẩu!";
+        return;
+    }
 
-  // 1) Đăng nhập Supabase
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) { statusEl.textContent = `❌ Đăng nhập thất bại: ${error.message}`; statusEl.style.color='red'; return; }
-
-  // 2) Lấy thông tin nhân viên theo manv
-  // (đúng flow của bán lẻ: kiểm tra dmnhanvien trước khi cho vào app)
-  const { data: nvArr, error: errNV } = await supabase
-      .from('dmnhanvien').select('manv, tennv, sua_hoadon').eq('manv', manv);
-
-  if (errNV || !nvArr || nvArr.length === 0) {
-    statusEl.textContent = '❌ Mã nhân viên không đúng hoặc không tồn tại!';
-    statusEl.style.color = 'red';
-    await supabase.auth.signOut();
-    localStorage.clear(); sessionStorage.clear();
-    document.getElementById('login-container').style.display = '';
-    document.getElementById('app-container').style.display = 'none';
-    document.getElementById('login-manv').focus();
-    return;
-  }
-
-  const nv = nvArr[0];
-
-  // 3) Lưu state phiên làm việc
-  localStorage.setItem('diadiem', cs);
-  localStorage.setItem('manv', nv.manv);
-  localStorage.setItem('tennv', nv.tennv);
-  localStorage.setItem('quyen_sua_hoadon', nv.sua_hoadon ? 'true' : 'false');
-
-  // 4) Ẩn login, mở app
-  statusEl.textContent = '✅ Đăng nhập thành công!';
-  statusEl.style.color = 'green';
-  document.getElementById('login-container').style.display = 'none';
-  document.getElementById('app-container').style.display = '';
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        status.textContent = "Sai email hoặc mật khẩu!";
+        return;
+    }
+    status.style.color = "green";
+    status.textContent = "Đăng nhập thành công!";
+    document.getElementById("authBox").style.display = "none";
 };
 
 // ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ==== 
