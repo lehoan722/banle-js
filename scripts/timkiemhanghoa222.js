@@ -1277,117 +1277,12 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
 const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
 const PAD5 = (n) => String(n).padStart(5, '0');
 
-
-//2.1. Thêm helpers (đặt ở khu utils)
-// mutually-exclusive checkbox (giữ đúng "2 checkbox" như yêu cầu nhưng hành vi như radio)
-function bindCSCheckboxes() {
-    const cs1 = document.getElementById('dhCS1');
-    const cs2 = document.getElementById('dhCS2');
-    if (!cs1 || !cs2) return;
-    const sync = (who) => () => {
-        if (who.checked) (who === cs1 ? cs2 : cs1).checked = false;
-        persistOrderUserState(); // lưu lại mỗi lần đổi CS
-        maybeEnsureSohd();       // nếu NV đã hợp lệ thì sinh số HĐ ngay
-    };
-    cs1.onchange = sync(cs1);
-    cs2.onchange = sync(cs2);
+// Lấy tennv/diadiem từ localStorage
+function getCurrentUserInfo() {
+    const tennv = localStorage.getItem('tennv') || '';
+    const diadiem = localStorage.getItem('diadiem') || '';
+    return { tennv, diadiem };
 }
-
-function getSelectedCS() {
-    const cs1 = document.getElementById('dhCS1')?.checked;
-    const cs2 = document.getElementById('dhCS2')?.checked;
-    if (cs1 && !cs2) return 'cs1';
-    if (cs2 && !cs1) return 'cs2';
-    return '';
-}
-
-function setSelectedCS(cs) {
-    const cs1 = document.getElementById('dhCS1');
-    const cs2 = document.getElementById('dhCS2');
-    if (!cs1 || !cs2) return;
-    cs1.checked = cs === 'cs1';
-    cs2.checked = cs === 'cs2';
-}
-
-function persistOrderUserState() {
-    const cs = getSelectedCS();
-    const manv = (document.getElementById('dhMaNV')?.value || '').trim().toUpperCase();
-    const tennv = (document.getElementById('dhTenNV')?.dataset?.tennv || '') || '';
-    if (cs) localStorage.setItem('dh_cs', cs); else localStorage.removeItem('dh_cs');
-    if (manv) localStorage.setItem('dh_manv', manv); else localStorage.removeItem('dh_manv');
-    if (tennv) localStorage.setItem('dh_tennv', tennv); else localStorage.removeItem('dh_tennv');
-}
-
-function restoreOrderUserState() {
-    const cs = localStorage.getItem('dh_cs') || '';
-    const manv = localStorage.getItem('dh_manv') || '';
-    const tennv = localStorage.getItem('dh_tennv') || '';
-    setSelectedCS(cs);
-    if (manv) document.getElementById('dhMaNV').value = manv;
-    if (tennv) {
-        const el = document.getElementById('dhTenNV');
-        el.textContent = tennv;
-        el.dataset.tennv = tennv;
-    }
-}
-// 2.2. Kiểm tra NV từ bảng dmnhanvien và sinh số HĐ
-async function checkNhanVien() {
-    const manv = (document.getElementById('dhMaNV').value || '').trim().toUpperCase();
-    const cs = getSelectedCS();
-    const nameEl = document.getElementById('dhTenNV');
-
-    if (!cs) { showToast('⚠️ Vui lòng chọn CS1/CS2 trước.', 'warn'); return; }
-    if (!manv) { showToast('⚠️ Vui lòng nhập mã NV.', 'warn'); return; }
-
-    nameEl.textContent = 'Đang kiểm tra...';
-    nameEl.style.color = '#444';
-
-    const { data, error } = await supabase
-        .from('dmnhanvien')
-        .select('manv, tennv')
-        .eq('manv', manv)
-        .maybeSingle();
-
-    if (error || !data) {
-        nameEl.textContent = 'Mã NV không tồn tại';
-        nameEl.style.color = '#c62828';
-        nameEl.dataset.tennv = '';
-        showToast('❌ Mã NV không tồn tại!', 'warn');
-        return;
-    }
-
-    nameEl.textContent = data.tennv;
-    nameEl.style.color = '#1565c0';
-    nameEl.dataset.tennv = data.tennv;
-
-    persistOrderUserState();
-    await maybeEnsureSohd(); // NV ok + CS ok -> xin số HĐ
-}
-
-function wireOrderPopupUserArea() {
-    bindCSCheckboxes();
-    document.getElementById('btnCheckNV').onclick = checkNhanVien;
-    document.getElementById('dhMaNV').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') checkNhanVien();
-    });
-    restoreOrderUserState();
-}
-
-
-async function maybeEnsureSohd() {
-    const cs = getSelectedCS();
-    const tennv = document.getElementById('dhTenNV')?.dataset?.tennv || '';
-    if (!cs || !tennv) return; // cần đủ cả 2
-
-    try {
-        const sohd = await getNextSohd(cs);
-        document.getElementById('dhSohd').value = sohd;
-    } catch (e) {
-        console.warn(e);
-        showToast('❌ Không sinh được số HĐ.', 'warn');
-    }
-}
-
 
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
 function uiHasProductImage() {
@@ -1414,7 +1309,7 @@ async function getNextSohd(diadiem) {
 
 // Mở popup đặt hàng (đổ sẵn dữ liệu và focus đúng ô)
 async function openDatHangPopup() {
-
+    const { tennv, diadiem } = getCurrentUserInfo();
     if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
 
     // phải có đúng 1 sản phẩm đang hiển thị
@@ -1444,14 +1339,13 @@ async function openDatHangPopup() {
 
     // mở popup + focus vào ô Màu
     document.getElementById('popupDatHang').style.display = 'block';
-    wireOrderPopupUserArea();
     setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
 }
 
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ TRONG CHẾ ĐỘ NHIỀU MÃ =====
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ (hỗ trợ cả 1-mã & nhiều-mã) =====
 window.openDatHangFor = async function (masp, anchorEl) {
-
+    const { tennv, diadiem } = getCurrentUserInfo();
     if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return false; }
 
     CURRENT_MASP = (masp || '').toUpperCase();
@@ -1493,7 +1387,6 @@ window.openDatHangFor = async function (masp, anchorEl) {
     document.getElementById('dhGhichu').value = '';
 
     document.getElementById('popupDatHang').style.display = 'block';
-    wireOrderPopupUserArea();
     setTimeout(() => document.getElementById('dhMau')?.focus(), 0);
     return true;
 };
@@ -1582,15 +1475,7 @@ function splitSizes(raw) {
 // --- Lưu đặt hàng (tách HẾT SIZE thành nhiều dòng) ---
 // Lưu đặt hàng: mỗi size -> một hóa đơn (sohd khác nhau)
 async function saveDatHang() {
-
-    // LẤY CS & NV TỪ POPUP
-    const diadiem = getSelectedCS();              // 'cs1' hoặc 'cs2'
-    const manv = (document.getElementById('dhMaNV').value || '').trim().toUpperCase();
-    const tennv = document.getElementById('dhTenNV')?.dataset?.tennv || '';
-
-    if (!diadiem) { showToast('⚠️ Chưa chọn cơ sở (CS1/CS2).', 'warn'); return; }
-    if (!manv || !tennv) { showToast('⚠️ Chưa xác thực mã NV.', 'warn'); return; }
-
+    const { tennv, diadiem } = getCurrentUserInfo();
     const sohdPreview = (document.getElementById('dhSohd').value || '').trim(); // chỉ là gợi ý
     const masp = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
     const mau = (document.getElementById('dhMau').value || '').trim();
@@ -1685,5 +1570,6 @@ async function saveDatHang() {
     document.getElementById('dhHetSize').value = '';
     document.getElementById('dhGhichu').value = '';
 }
+
 
 
