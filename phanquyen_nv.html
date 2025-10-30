@@ -2,58 +2,67 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Phân quyền nhân viên</title>
+  <title>Phân quyền nhân viên (ADMIN)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:16px;}
-    .wrap{max-width:780px;margin:0 auto}
-    .row{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;margin-bottom:10px}
-    input[type=text]{padding:8px;border:1px solid #ccc;border-radius:8px;width:100%}
-    button{padding:10px 14px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer}
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:16px;background:#fafbfc}
+    .wrap{max-width:820px;margin:0 auto}
+    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .badge{font-size:12px;padding:4px 8px;border-radius:20px;background:#eef6ff;color:#0b5cd9}
+    .danger{color:#b00020}
+    .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-top:14px;box-shadow:0 2px 10px rgba(0,0,0,.02)}
+    .row{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+    input[type=text]{padding:10px;border:1px solid #dcdfe4;border-radius:10px;width:100%}
+    input[readonly]{background:#f6f7f9}
+    button{padding:10px 14px;border:1px solid #d0d7de;border-radius:10px;background:#fff;cursor:pointer}
     button.primary{background:#0b84ff;color:#fff;border-color:#0b84ff}
-    .card{border:1px solid #eee;border-radius:12px;padding:12px;margin-top:14px}
     table{width:100%;border-collapse:collapse}
     th,td{padding:8px;border-bottom:1px dashed #eee}
     th{text-align:left}
-    .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
-    .hint{color:#777;font-size:13px}
+    .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+    .hint{color:#6b7280;font-size:13px}
     .ok{color:#0a7a0a}
-    .err{color:#b00020}
   </style>
 </head>
 <body>
 <div class="wrap">
-  <h2>Phân quyền nhân viên</h2>
+  <div class="top">
+    <h2>Phân quyền nhân viên</h2>
+    <span id="who" class="badge">Đang kiểm tra…</span>
+  </div>
 
-  <!-- Cấu hình Supabase: thay bằng giá trị thật của bạn -->
+  <!-- Điền cấu hình thật -->
   <script>
-    window.SUPABASE_URL  = window.SUPABASE_URL  || "https://rddjrmbyftlcvrgzlyby.supabase.co";
+   window.SUPABASE_URL  = window.SUPABASE_URL  || "https://rddjrmbyftlcvrgzlyby.supabase.co";
     window.SUPABASE_ANON = window.SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
   </script>
 
-  <div class="card">
+  <!-- Khối nhập mã NV cần phân quyền -->
+  <div class="card" id="searchCard" style="display:none">
     <div class="row">
-      <label>Mã NV</label>
-      <input id="manv" type="text" placeholder="vd: NV001 / 33" />
+      <label>Mã nhân viên</label>
+      <input id="manv" type="text" placeholder="vd: 33 / NV001" />
     </div>
     <div class="row">
-      <label>Tên NV</label>
-      <input id="tennv" type="text" placeholder="(tuỳ chọn – để ghi chú)" />
+      <label>Tên nhân viên</label>
+      <input id="tennv" type="text" readonly placeholder="(tự điền sau khi nhập mã)" />
     </div>
     <div class="row">
       <label></label>
       <div>
         <button id="btnLoad">Tải danh sách trang</button>
-        <span class="hint">Nhập mã NV rồi bấm “Tải” để hiện danh sách trang.</span>
+        <span class="hint">Nhập mã NV → tên NV tự hiện nếu tồn tại.</span>
       </div>
     </div>
+    <div id="msgSearch" class="hint" style="margin-top:6px"></div>
   </div>
 
+  <!-- Khối danh sách trang -->
   <div class="card" id="pagesCard" style="display:none">
     <table id="pagesTable">
       <thead>
         <tr>
-          <th style="width:60px">Chọn</th>
+          <th style="width:70px">Chọn</th>
           <th>Trang được sử dụng</th>
           <th class="hint">Đường dẫn</th>
         </tr>
@@ -72,32 +81,53 @@
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON, { auth:{persistSession:true} });
 
-const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON, {
-  auth: { persistSession: true }
-});
-
+const elWho   = document.getElementById('who');
+const elSearch= document.getElementById('searchCard');
 const elManv  = document.getElementById('manv');
 const elTennv = document.getElementById('tennv');
-const elLoad  = document.getElementById('btnLoad');
+const elBtnLoad = document.getElementById('btnLoad');
+const elMsgSearch = document.getElementById('msgSearch');
 const elPages = document.getElementById('pagesCard');
 const elTableBody = document.querySelector('#pagesTable tbody');
-const elSave  = document.getElementById('btnSave');
 const elCheckAll = document.getElementById('btnCheckAll');
 const elUncheckAll = document.getElementById('btnUncheckAll');
+const elSave  = document.getElementById('btnSave');
 const elMsg   = document.getElementById('msg');
 
-let currentRows = []; // [{code, path, title, checked}...]
+let currentRows = []; // [{code,path,title,checked,can_edit}...]
 
-async function requireLogin() {
-  const { data: { user } } = await supabase.auth.getUser();
+async function requireAdmin() {
+  // Bắt buộc đăng nhập
+  const { data:{ user } } = await supabase.auth.getUser();
   if (!user) {
+    elWho.className = 'badge danger';
+    elWho.textContent = 'Chưa đăng nhập';
     alert('Bạn cần đăng nhập trước.');
-    // nếu có trang login riêng:
     // location.href = '/login.html?redirect=' + encodeURIComponent(location.pathname);
+    return false;
   }
+  // Kiểm tra admin
+  const { data:isAdmin, error } = await supabase.rpc('me_is_admin');
+  if (error) {
+    elWho.className = 'badge danger';
+    elWho.textContent = 'Lỗi kiểm tra quyền';
+    alert('Không kiểm tra được quyền admin: ' + error.message);
+    return false;
+  }
+  if (!isAdmin) {
+    elWho.className = 'badge danger';
+    elWho.textContent = 'Không phải ADMIN';
+    alert('Bạn không có quyền truy cập trang này.');
+    // location.href = '/403.html';
+    return false;
+  }
+  // Hiển thị ai đang đăng nhập (không lộ khoá bí mật)
+  elWho.className = 'badge';
+  elWho.textContent = 'Đang đăng nhập: ' + (user.email || user.phone) + ' (ADMIN)';
+  return true;
 }
-requireLogin();
 
 function renderRows(rows){
   elTableBody.innerHTML = '';
@@ -109,10 +139,7 @@ function renderRows(rows){
     cb.type = 'checkbox';
     cb.checked = !!r.checked;
     cb.dataset.idx = idx;
-    cb.addEventListener('change', (e)=>{
-      const i = Number(e.target.dataset.idx);
-      currentRows[i].checked = e.target.checked;
-    });
+    cb.addEventListener('change',(e)=>{ currentRows[Number(e.target.dataset.idx)].checked = e.target.checked; });
     tdCheck.appendChild(cb);
 
     const tdTitle = document.createElement('td');
@@ -122,21 +149,41 @@ function renderRows(rows){
     tdPath.className = 'hint';
     tdPath.textContent = r.path;
 
-    tr.appendChild(tdCheck);
-    tr.appendChild(tdTitle);
-    tr.appendChild(tdPath);
+    tr.appendChild(tdCheck); tr.appendChild(tdTitle); tr.appendChild(tdPath);
     elTableBody.appendChild(tr);
   });
 }
 
-elLoad.addEventListener('click', async ()=>{
-  elMsg.textContent = '';
+async function loadNvName(manv){
+  elMsgSearch.textContent = '';
+  if (!manv) { elTennv.value=''; return; }
+  const { data, error } = await supabase.rpc('get_nv_info', { p_manv: manv });
+  if (error) {
+    elMsgSearch.className = 'hint danger';
+    elMsgSearch.textContent = 'Lỗi lấy tên NV: ' + error.message;
+    elTennv.value = '';
+    return;
+  }
+  if (!data || !data[0] || !data[0].exists) {
+    elMsgSearch.className = 'hint danger';
+    elMsgSearch.textContent = 'Mã NV không tồn tại trong danh mục.';
+    elTennv.value = '';
+    return;
+  }
+  elMsgSearch.className = 'hint';
+  elMsgSearch.textContent = '';
+  elTennv.value = data[0].tennv || '';
+}
+
+elManv.addEventListener('blur', ()=> loadNvName(elManv.value.trim()));
+elBtnLoad.addEventListener('click', async ()=>{
   const manv = elManv.value.trim();
-  if (!manv) { alert('Hãy nhập Mã NV.'); return; }
+  if (!manv) { alert('Hãy nhập Mã NV'); return; }
+  await loadNvName(manv);
 
   const { data, error } = await supabase.rpc('get_pages_for_manv', { p_manv: manv });
   if (error) {
-    elMsg.className = 'err';
+    elMsg.className = 'hint danger';
     elMsg.textContent = 'Lỗi tải danh sách trang: ' + error.message;
     return;
   }
@@ -145,36 +192,30 @@ elLoad.addEventListener('click', async ()=>{
   elPages.style.display = 'block';
 });
 
-elCheckAll.addEventListener('click', ()=>{
-  currentRows.forEach(r => r.checked = true);
-  renderRows(currentRows);
-});
-
-elUncheckAll.addEventListener('click', ()=>{
-  currentRows.forEach(r => r.checked = false);
-  renderRows(currentRows);
-});
+elCheckAll.addEventListener('click', ()=>{ currentRows.forEach(r=>r.checked=true); renderRows(currentRows); });
+elUncheckAll.addEventListener('click', ()=>{ currentRows.forEach(r=>r.checked=false); renderRows(currentRows); });
 
 elSave.addEventListener('click', async ()=>{
   elMsg.textContent = '';
   const manv = elManv.value.trim();
   if (!manv) { alert('Chưa có Mã NV'); return; }
+  const codes = currentRows.filter(r=>r.checked).map(r=>r.code);
 
-  const codes = currentRows.filter(r => r.checked).map(r => r.code);
   const { error } = await supabase.rpc('set_pages_for_manv', {
-    p_manv: manv,
-    p_codes: codes,
-    p_can_edit: false  // nếu muốn tất cả có thể edit, đổi thành true
+    p_manv: manv, p_codes: codes, p_can_edit: false
   });
-
   if (error) {
-    elMsg.className = 'err';
-    elMsg.textContent = 'Lỗi lưu dữ liệu: ' + error.message;
+    elMsg.className = 'hint danger';
+    elMsg.textContent = 'Lỗi lưu: ' + error.message;
   } else {
-    elMsg.className = 'ok hint';
-    elMsg.textContent = 'Đã lưu phân quyền cho nhân viên ' + manv + ' (' + codes.length + ' trang).';
+    elMsg.className = 'hint ok';
+    elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manv) + ' (' + codes.length + ' trang).';
   }
 });
+
+if (await requireAdmin()) {
+  elSearch.style.display = 'block';
+}
 </script>
 </body>
 </html>
