@@ -1,257 +1,376 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <title>Phân quyền nhân viên</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:16px;background:#fafbfc}
-    .wrap{max-width:820px;margin:0 auto}
-    .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-    .badge{font-size:12px;padding:4px 8px;border-radius:20px;background:#eef6ff;color:#0b5cd9}
-    .danger{color:#b00020}
-    .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-top:14px;box-shadow:0 2px 10px rgba(0,0,0,.02)}
-    .row{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:center;margin-bottom:10px}
-    input[type=text], input[type=password]{padding:10px;border:1px solid #dcdfe4;border-radius:10px;width:100%}
-    input[readonly]{background:#f6f7f9}
-    button{padding:10px 14px;border:1px solid #d0d7de;border-radius:10px;background:#fff;cursor:pointer}
-    button.primary{background:#0b84ff;color:#fff;border-color:#0b84ff}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px dashed #eee}
-    th{text-align:left}
-    .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
-    .hint{color:#6b7280;font-size:13px}
-    .ok{color:#0a7a0a}
+    body {
+      font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      margin: 16px;
+      background: #fafbfc
+    }
+
+    .wrap {
+      max-width: 820px;
+      margin: 0 auto
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 20px;
+      background: #eef6ff;
+      color: #0b5cd9
+    }
+
+    .danger {
+      color: #b00020
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 14px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .02)
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px
+    }
+
+    input[type=text],
+    input[type=password] {
+      padding: 10px;
+      border: 1px solid #dcdfe4;
+      border-radius: 10px;
+      width: 100%
+    }
+
+    input[readonly] {
+      background: #f6f7f9
+    }
+
+    button {
+      padding: 10px 14px;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer
+    }
+
+    button.primary {
+      background: #0b84ff;
+      color: #fff;
+      border-color: #0b84ff
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    th,
+    td {
+      padding: 8px;
+      border-bottom: 1px dashed #eee
+    }
+
+    th {
+      text-align: left
+    }
+
+    .footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 12px
+    }
+
+    .hint {
+      color: #6b7280;
+      font-size: 13px
+    }
+
+    .ok {
+      color: #0a7a0a
+    }
 
     /* Login overlay */
-    #login-container{
-      position:fixed; inset:0; background:#fff; display:flex; flex-direction:column;
-      align-items:center; justify-content:center; z-index:99999;
+    #login-container {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
     }
-    #login-box{background:#f9f9f9; padding:26px; border-radius:10px; box-shadow:0 4px 22px rgba(0,0,0,.08); width:340px}
-    #login-box h2{margin:0 0 10px 0}
+
+    #login-box {
+      background: #f9f9f9;
+      padding: 26px;
+      border-radius: 10px;
+      box-shadow: 0 4px 22px rgba(0, 0, 0, .08);
+      width: 340px
+    }
+
+    #login-box h2 {
+      margin: 0 0 10px 0
+    }
   </style>
 </head>
+
 <body>
-<div class="wrap" id="app" style="display:none">
-  <div class="top">
-    <h2>Phân quyền nhân viên</h2>
-    <span id="who" class="badge">Đang kiểm tra…</span>
+  <div class="wrap" id="app" style="display:none">
+    <div class="top">
+      <h2>Phân quyền nhân viên</h2>
+      <span id="who" class="badge">Đang kiểm tra…</span>
+    </div>
+
+    <!-- Khối tìm NV cần phân quyền -->
+    <div class="card" id="searchCard">
+      <div class="row">
+        <label>Mã nhân viên</label>
+        <input id="manv" type="text" placeholder="vd: 33 / NV001" />
+      </div>
+      <div class="row">
+        <label>Tên nhân viên</label>
+        <input id="tennv" type="text" readonly placeholder="(tự điền sau khi nhập mã)" />
+      </div>
+      <div class="row">
+        <label></label>
+        <div>
+          <button id="btnLoad">Tải danh sách trang</button>
+          <span class="hint">Nhập mã NV → tên NV tự hiện nếu tồn tại.</span>
+        </div>
+      </div>
+      <div id="msgSearch" class="hint" style="margin-top:6px"></div>
+    </div>
+
+    <!-- Khối danh sách trang -->
+    <div class="card" id="pagesCard" style="display:none">
+      <table id="pagesTable">
+        <thead>
+          <tr>
+            <th style="width:70px">Chọn</th>
+            <th>Trang được sử dụng</th>
+            <th class="hint">Đường dẫn</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="footer">
+        <button id="btnUncheckAll">Bỏ chọn hết</button>
+        <button id="btnCheckAll">Chọn hết</button>
+        <button class="primary" id="btnSave">Lưu dữ liệu</button>
+      </div>
+      <div id="msg" class="hint" style="margin-top:8px"></div>
+    </div>
   </div>
 
-  <!-- Khối tìm NV cần phân quyền -->
-  <div class="card" id="searchCard">
-    <div class="row">
-      <label>Mã nhân viên</label>
-      <input id="manv" type="text" placeholder="vd: 33 / NV001" />
+  <!-- LOGIN OVERLAY: mã NV + mật khẩu (không dùng email) -->
+  <div id="login-container">
+    <div id="login-box">
+      <h2>Đăng nhập</h2>
+      <form id="form-login">
+        <div class="row" style="grid-template-columns:1fr">
+          <input type="text" id="login-manv" placeholder="Mã nhân viên (vd: 33)" autocomplete="username" />
+        </div>
+        <div class="row" style="grid-template-columns:1fr">
+          <input type="password" id="login-password" placeholder="Mật khẩu" autocomplete="current-password" />
+        </div>
+        <div class="row" style="grid-template-columns:1fr">
+          <button type="submit" class="primary">Đăng nhập</button>
+        </div>
+        <div id="login-error" class="hint danger"></div>
+      </form>
     </div>
-    <div class="row">
-      <label>Tên nhân viên</label>
-      <input id="tennv" type="text" readonly placeholder="(tự điền sau khi nhập mã)" />
-    </div>
-    <div class="row">
-      <label></label>
-      <div>
-        <button id="btnLoad">Tải danh sách trang</button>
-        <span class="hint">Nhập mã NV → tên NV tự hiện nếu tồn tại.</span>
-      </div>
-    </div>
-    <div id="msgSearch" class="hint" style="margin-top:6px"></div>
   </div>
 
-  <!-- Khối danh sách trang -->
-  <div class="card" id="pagesCard" style="display:none">
-    <table id="pagesTable">
-      <thead>
-        <tr>
-          <th style="width:70px">Chọn</th>
-          <th>Trang được sử dụng</th>
-          <th class="hint">Đường dẫn</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <!-- Cấu hình Supabase -->
+  <script>
+    // Bạn có thể giữ nguyên nếu đúng project của bạn
+    window.SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
+    window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
+  </script>
 
-    <div class="footer">
-      <button id="btnUncheckAll">Bỏ chọn hết</button>
-      <button id="btnCheckAll">Chọn hết</button>
-      <button class="primary" id="btnSave">Lưu dữ liệu</button>
-    </div>
-    <div id="msg" class="hint" style="margin-top:8px"></div>
-  </div>
-</div>
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
 
-<!-- LOGIN OVERLAY: mã NV + mật khẩu (không dùng email) -->
-<div id="login-container">
-  <div id="login-box">
-    <h2>Đăng nhập</h2>
-    <form id="form-login">
-      <div class="row" style="grid-template-columns:1fr">
-        <input type="text" id="login-manv" placeholder="Mã nhân viên (vd: 33)" autocomplete="username" />
-      </div>
-      <div class="row" style="grid-template-columns:1fr">
-        <input type="password" id="login-password" placeholder="Mật khẩu" autocomplete="current-password" />
-      </div>
-      <div class="row" style="grid-template-columns:1fr">
-        <button type="submit" class="primary">Đăng nhập</button>
-      </div>
-      <div id="login-error" class="hint danger"></div>
-    </form>
-  </div>
-</div>
+    const el = (id) => document.getElementById(id);
+    const elWho = el('who');
+    const elManvL = el('login-manv');
+    const elPassL = el('login-password');
 
-<!-- Cấu hình Supabase -->
-<script>
-  // Bạn có thể giữ nguyên nếu đúng project của bạn
-  window.SUPABASE_URL  = "https://rddjrmbyftlcvrgzlyby.supabase.co";
-  window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
-</script>
+    let ACTOR = { manv: null, tennv: null, is_admin: false }; // người đang đăng nhập trang này
 
-<script type="module">
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
-
-const el = (id)=>document.getElementById(id);
-const elWho   = el('who');
-const elManvL = el('login-manv');
-const elPassL = el('login-password');
-
-let ACTOR = { manv: null, tennv: null, is_admin: false }; // người đang đăng nhập trang này
-
-async function doLogin(manv, password){
-  const { data, error } = await supabase.rpc('nv_login', { p_manv: manv, p_password: password });
-  if (error) throw new Error(error.message);
-  const row = (data && data[0]) || null;
-  if (!row || !row.ok) throw new Error('Sai mã nhân viên hoặc mật khẩu');
-  return { manv: row.manv, tennv: row.tennv, is_admin: row.is_admin };
-}
-
-el('form-login').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  el('login-error').textContent = '';
-  const manv = (elManvL.value||'').trim();
-  const pass = (elPassL.value||'').trim();
-  if (!manv || !pass) { el('login-error').textContent = 'Nhập đủ mã NV và mật khẩu.'; return; }
-
-  try{
-    ACTOR = await doLogin(manv, pass);
-    el('login-container').style.display = 'none';
-    el('app').style.display = '';
-    elWho.textContent = `Đang đăng nhập: ${ACTOR.tennv || ACTOR.manv}` + (ACTOR.is_admin ? ' (ADMIN)' : '');
-    // Lưu tạm mật khẩu để gửi cho RPC lưu quyền (cần xác thực người thực hiện)
-    ACTOR._pass = pass;
-    // Nếu không phải admin -> khóa nút Lưu
-    if (!ACTOR.is_admin) {
-      el('btnSave').disabled = true;
-      el('btnSave').title = 'Chỉ ADMIN mới được phép lưu phân quyền';
+    async function doLogin(manv, password) {
+      const { data, error } = await supabase.rpc('nv_login', { p_manv: manv, p_password: password });
+      if (error) throw new Error(error.message);
+      const row = (data && data[0]) || null;
+      if (!row || !row.ok) throw new Error('Sai mã nhân viên hoặc mật khẩu');
+      return { manv: row.manv, tennv: row.tennv, is_admin: row.is_admin };
     }
-  }catch(err){
-    el('login-error').textContent = 'Đăng nhập thất bại: ' + err.message;
-  }
-});
 
-/* ---------- UI phân quyền ---------- */
-const elSearch= el('searchCard');
-const elManv  = el('manv');
-const elTennv = el('tennv');
-const elBtnLoad = el('btnLoad');
-const elMsgSearch = el('msgSearch');
-const elPages = el('pagesCard');
-const elTableBody = document.querySelector('#pagesTable tbody');
-const elCheckAll = el('btnCheckAll');
-const elUncheckAll = el('btnUncheckAll');
-const elSave  = el('btnSave');
-const elMsg   = el('msg');
+    el('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      el('login-error').textContent = '';
+      const manv = (elManvL.value || '').trim();
+      const pass = (elPassL.value || '').trim();
+      if (!manv || !pass) { el('login-error').textContent = 'Nhập đủ mã NV và mật khẩu.'; return; }
 
-let currentRows = []; // [{code,path,title,checked,can_edit}...]
+      try {
+        ACTOR = await doLogin(manv, pass);
+        el('login-container').style.display = 'none';
+        el('app').style.display = '';
+        elWho.textContent = `Đang đăng nhập: ${ACTOR.tennv || ACTOR.manv}` + (ACTOR.is_admin ? ' (ADMIN)' : '');
+        // Lưu tạm mật khẩu để gửi cho RPC lưu quyền (cần xác thực người thực hiện)
+        ACTOR._pass = pass;
+        // Nếu không phải admin -> khóa nút Lưu
+        if (!ACTOR.is_admin) {
+          el('btnSave').disabled = true;
+          el('btnSave').title = 'Chỉ ADMIN mới được phép lưu phân quyền';
+        }
+      } catch (err) {
+        el('login-error').textContent = 'Đăng nhập thất bại: ' + err.message;
+      }
+    });
 
-function renderRows(rows){
-  elTableBody.innerHTML = '';
-  rows.forEach((r, idx) => {
-    const tr = document.createElement('tr');
+    /* ---------- UI phân quyền ---------- */
+    const elSearch = el('searchCard');
+    const elManv = el('manv');
+    const elTennv = el('tennv');
+    const elBtnLoad = el('btnLoad');
+    const elMsgSearch = el('msgSearch');
+    const elPages = el('pagesCard');
+    const elTableBody = document.querySelector('#pagesTable tbody');
+    const elCheckAll = el('btnCheckAll');
+    const elUncheckAll = el('btnUncheckAll');
+    const elSave = el('btnSave');
+    const elMsg = el('msg');
 
-    const tdCheck = document.createElement('td');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = !!r.checked;
-    cb.dataset.idx = idx;
-    cb.addEventListener('change',(e)=>{ currentRows[Number(e.target.dataset.idx)].checked = e.target.checked; });
-    tdCheck.appendChild(cb);
+    let currentRows = []; // [{code,path,title,checked,can_edit}...]
 
-    const tdTitle = document.createElement('td');
-    tdTitle.textContent = r.title || r.path;
+    function renderRows(rows) {
+      elTableBody.innerHTML = '';
+      rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
 
-    const tdPath = document.createElement('td');
-    tdPath.className = 'hint';
-    tdPath.textContent = r.path;
+        const tdCheck = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!r.checked;
+        cb.dataset.idx = idx;
+        cb.addEventListener('change', (e) => { currentRows[Number(e.target.dataset.idx)].checked = e.target.checked; });
+        tdCheck.appendChild(cb);
 
-    tr.appendChild(tdCheck); tr.appendChild(tdTitle); tr.appendChild(tdPath);
-    elTableBody.appendChild(tr);
-  });
-}
+        const tdTitle = document.createElement('td');
+        tdTitle.textContent = r.title || r.path;
 
-async function loadNvName(manv){
-  elMsgSearch.textContent = '';
-  if (!manv) { elTennv.value=''; return; }
-  const { data, error } = await supabase.rpc('get_nv_info', { p_manv: manv });
-  if (error) {
-    elMsgSearch.className = 'hint danger';
-    elMsgSearch.textContent = 'Lỗi lấy tên NV: ' + error.message;
-    elTennv.value = '';
-    return;
-  }
-  if (!data || !data[0] || !data[0].found) {
-    elMsgSearch.className = 'hint danger';
-    elMsgSearch.textContent = 'Mã NV không tồn tại trong danh mục.';
-    elTennv.value = '';
-    return;
-  }
-  elMsgSearch.className = 'hint';
-  elMsgSearch.textContent = '';
-  elTennv.value = data[0].tennv || '';
-}
+        const tdPath = document.createElement('td');
+        tdPath.className = 'hint';
+        tdPath.textContent = r.path;
 
-elManv.addEventListener('blur', ()=> loadNvName(elManv.value.trim()));
-elBtnLoad.addEventListener('click', async ()=>{
-  const manv = elManv.value.trim();
-  if (!manv) { alert('Hãy nhập Mã NV'); return; }
-  await loadNvName(manv);
+        tr.appendChild(tdCheck); tr.appendChild(tdTitle); tr.appendChild(tdPath);
+        elTableBody.appendChild(tr);
+      });
+    }
 
-  const { data, error } = await supabase.rpc('get_pages_for_manv', { p_manv: manv });
-  if (error) {
-    elMsg.className = 'hint danger';
-    elMsg.textContent = 'Lỗi tải danh sách trang: ' + error.message;
-    return;
-  }
-  currentRows = data || [];
-  renderRows(currentRows);
-  elPages.style.display = 'block';
-});
+    async function loadNvName(manv) {
+      elMsgSearch.textContent = '';
+      if (!manv) { elTennv.value = ''; return; }
+      const { data, error } = await supabase.rpc('get_nv_info', { p_manv: manv });
+      if (error) {
+        elMsgSearch.className = 'hint danger';
+        elMsgSearch.textContent = 'Lỗi lấy tên NV: ' + error.message;
+        elTennv.value = '';
+        return;
+      }
+      if (!data || !data[0] || !data[0].found) {
+        elMsgSearch.className = 'hint danger';
+        elMsgSearch.textContent = 'Mã NV không tồn tại trong danh mục.';
+        elTennv.value = '';
+        return;
+      }
+      elMsgSearch.className = 'hint';
+      elMsgSearch.textContent = '';
+      elTennv.value = data[0].tennv || '';
+    }
 
-elCheckAll.addEventListener('click', ()=>{ currentRows.forEach(r=>r.checked=true); renderRows(currentRows); });
-elUncheckAll.addEventListener('click', ()=>{ currentRows.forEach(r=>r.checked=false); renderRows(currentRows); });
+    elManv.addEventListener('blur', () => loadNvName(elManv.value.trim()));
+    elBtnLoad.addEventListener('click', async () => {
+      const manv = elManv.value.trim();
+      if (!manv) { alert('Hãy nhập Mã NV'); return; }
+      await loadNvName(manv);
 
-elSave.addEventListener('click', async ()=>{
-  elMsg.textContent = '';
-  const manvTarget = elManv.value.trim();
-  if (!manvTarget) { alert('Chưa có Mã NV'); return; }
-  const codes = currentRows.filter(r=>r.checked).map(r=>r.code);
+      const { data, error } = await supabase.rpc('get_pages_for_manv', { p_manv: manv });
+      if (error) {
+        elMsg.className = 'hint danger';
+        elMsg.textContent = 'Lỗi tải danh sách trang: ' + error.message;
+        return;
+      }
+      currentRows = data || [];
+      renderRows(currentRows);
+      elPages.style.display = 'block';
+    });
 
-  const { error } = await supabase.rpc('set_pages_for_manv_nvauth', {
-    p_actor_manv:  ACTOR.manv,
-    p_actor_pass:  ACTOR._pass,
-    p_target_manv: manvTarget,
-    p_codes:       codes,
-    p_can_edit:    false
-  });
-  if (error) {
-    elMsg.className = 'hint danger';
-    elMsg.textContent = 'Lỗi lưu: ' + error.message;
-  } else {
-    elMsg.className = 'hint ok';
-    elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manvTarget) + ' (' + codes.length + ' trang).';
-  }
-});
-</script>
+    elCheckAll.addEventListener('click', () => { currentRows.forEach(r => r.checked = true); renderRows(currentRows); });
+    elUncheckAll.addEventListener('click', () => { currentRows.forEach(r => r.checked = false); renderRows(currentRows); });
+
+    elSave.addEventListener('click', async () => {
+      elMsg.textContent = '';
+      const manvTarget = elManv.value.trim();
+      if (!manvTarget) { alert('Chưa có Mã NV'); return; }
+
+      // bảo đảm gửi mảng text[] đúng chuẩn
+      const codes = currentRows.filter(r => r.checked).map(r => r.code);
+      const payload = {
+        p_actor_manv: ACTOR.manv,
+        p_actor_pass: ACTOR._pass,
+        p_target_manv: manvTarget,
+        p_codes: codes.length ? codes : null,
+        p_can_edit: false
+      };
+
+      const { data, error } = await supabase.rpc('set_pages_for_manv_nvauth', payload);
+
+      if (error) {
+        console.error('RPC error:', error);
+        elMsg.className = 'hint danger';
+        elMsg.textContent = 'Lỗi RPC: ' + (error.message || 'Bad Request');
+        return;
+      }
+
+      const row = (data && data[0]) || {};
+      if (!row.ok) {
+        elMsg.className = 'hint danger';
+        elMsg.textContent = 'Không lưu được: ' + (row.reason || 'Không rõ nguyên nhân');
+        return;
+      }
+
+      elMsg.className = 'hint ok';
+      elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manvTarget) + ' (' + (codes.length || 0) + ' trang).';
+    });
+
+  </script>
 </body>
+
 </html>
