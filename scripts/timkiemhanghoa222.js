@@ -1473,56 +1473,102 @@ function splitSizes(raw) {
 
 // --- Lưu đặt hàng ---
 // --- Lưu đặt hàng (tách HẾT SIZE thành nhiều dòng) ---
+// Lưu đặt hàng: mỗi size -> một hóa đơn (sohd khác nhau)
 async function saveDatHang() {
     const { tennv, diadiem } = getCurrentUserInfo();
-    const sohd = document.getElementById('dhSohd').value.trim();
-    const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
-    const mau = document.getElementById('dhMau').value.trim();
-    const conSize = document.getElementById('dhConSize').value.trim();
-    const hetRaw = document.getElementById('dhHetSize').value.trim();
-    const ghichu = document.getElementById('dhGhichu').value.trim();
+    const sohdPreview = (document.getElementById('dhSohd').value || '').trim(); // chỉ là gợi ý
+    const masp = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
+    const mau = (document.getElementById('dhMau').value || '').trim();
+    const conSize = (document.getElementById('dhConSize').value || '').trim();
+    const hetRaw = (document.getElementById('dhHetSize').value || '').trim();
+    const ghichu = (document.getElementById('dhGhichu').value || '').trim();
 
-    if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập!', 'warn'); return; }
+    if (!masp) { showToast('❌ Thiếu mã SP!', 'warn'); return; }
     if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
-    if (!hetRaw) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
 
-    // TÁCH HẾT SIZE → mỗi size một dòng
-    const hetList = splitSizes(hetRaw);
-    if (hetList.length === 0) { showToast('⚠️ Hết size trống!', 'warn'); return; }
+    // Máy tính: cho phép không có ảnh; Điện thoại: bắt buộc có ảnh
+    if (!isDesktopDevice() && !uiHasProductImage(masp)) {
+        showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
+        return;
+    }
 
-    // Cho phép sohd bị trùng giữa các dòng (một phiếu có nhiều dòng)
-    // Nếu bạn vẫn muốn auto +1 khi đụng trùng toàn bộ phiếu,
-    // hãy giữ nguyên block “retry + getNextSohd” như trước.
-    const rows = hetList.map(sz => ({
-        sohd, diadiem, masp, mau,
-        con_size: conSize,      // vẫn lưu nguyên chuỗi người dùng gõ (nếu có)
-        het_size: sz,           // ✔ mỗi dòng một size đã tách
-        tennv, ghichu
-    }));
+    // Tách nhiều size bởi , . ; / hoặc khoảng trắng
+    const sizes = (typeof splitSizes === 'function' ? splitSizes(hetRaw) :
+        String(hetRaw).split(/[,\.;\/\s]+/).map(s => s.trim()).filter(Boolean));
+    if (!sizes.length) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
 
-    try {
-        const { error } = await supabase.from('dathang').insert(rows);
-        if (error) {
-            // Nếu lỗi do trùng SỐ HĐ bị unique ở DB (ít gặp), bạn chỉ cần
-            // sinh lại số HĐ rồi thử lại một lần:
-            if ((error.message || '').toLowerCase().includes('duplicate')) {
-                const newSohd = await getNextSohd(diadiem);
-                rows.forEach(r => r.sohd = newSohd);
-                const { error: err2 } = await supabase.from('dathang').insert(rows);
-                if (err2) throw err2;
-            } else {
-                throw error;
+    // Lưu tuần tự: mỗi size xin 1 số HĐ mới và insert 1 dòng
+    let okCount = 0, failCount = 0, firstSohdUsed = null;
+
+    for (let i = 0; i < sizes.length; i++) {
+        const sz = sizes[i];
+        let useSohd = null;
+        let attempts = 0;
+
+        while (attempts < 3) {
+            try {
+                // size đầu tiên ưu tiên dùng số HĐ đang hiển thị (nếu trống sẽ xin mới)
+                if (attempts === 0 && i === 0 && sohdPreview) {
+                    useSohd = sohdPreview;
+                } else {
+                    useSohd = await getNextSohd(diadiem); // sinh số mới theo cơ sở
+                }
+
+                const row = {
+                    sohd: useSohd,
+                    diadiem,
+                    masp,
+                    mau,
+                    con_size: conSize || null,
+                    het_size: sz,
+                    tennv,
+                    ghichu: ghichu || null,
+                };
+
+                const { error } = await supabase.from('dathang').insert(row);
+                if (!error) {
+                    okCount++;
+                    if (!firstSohdUsed) firstSohdUsed = useSohd;
+                    break; // xong size này
+                }
+
+                // Nếu trùng số HĐ (23505) -> thử xin số mới và lặp lại
+                const msg = (error.message || '').toLowerCase();
+                if (msg.includes('duplicate') || msg.includes('23505')) {
+                    attempts++;
+                    continue;
+                } else {
+                    console.error('Insert failed:', error);
+                    failCount++;
+                    break;
+                }
+            } catch (e) {
+                console.error('Insert exception:', e);
+                attempts++;
+                if (attempts >= 3) failCount++;
             }
         }
-        showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`);
-        closeDatHangPopup();
-    } catch (e) {
-        console.error(e);
-        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
     }
+
+    if (okCount > 0) {
+        showToast(`✅ Đã lưu ${okCount} hóa đơn (mỗi size 1 số HĐ).`, 'ok');
+        closeDatHangPopup();
+        // cập nhật số HĐ gợi ý cho lần kế tiếp
+        try {
+            const nextSohd = await getNextSohd(diadiem);
+            document.getElementById('dhSohd').value = nextSohd;
+        } catch { }
+    }
+    if (failCount > 0) {
+        showToast(`⚠️ Có ${failCount} dòng không lưu được. Kiểm tra console.`, 'warn');
+    }
+
+    // reset các ô nhập trong popup (tuỳ ý)
+    document.getElementById('dhMau').value = '';
+    document.getElementById('dhConSize').value = '';
+    document.getElementById('dhHetSize').value = '';
+    document.getElementById('dhGhichu').value = '';
 }
-
-
-
 
 
