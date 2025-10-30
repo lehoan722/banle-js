@@ -12,7 +12,7 @@
     .danger{color:#b00020}
     .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-top:14px;box-shadow:0 2px 10px rgba(0,0,0,.02)}
     .row{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:center;margin-bottom:10px}
-    input[type=text]{padding:10px;border:1px solid #dcdfe4;border-radius:10px;width:100%}
+    input[type=text], input[type=email], input[type=password]{padding:10px;border:1px solid #dcdfe4;border-radius:10px;width:100%}
     input[readonly]{background:#f6f7f9}
     button{padding:10px 14px;border:1px solid #d0d7de;border-radius:10px;background:#fff;cursor:pointer}
     button.primary{background:#0b84ff;color:#fff;border-color:#0b84ff}
@@ -22,23 +22,25 @@
     .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
     .hint{color:#6b7280;font-size:13px}
     .ok{color:#0a7a0a}
+
+    /* Login overlay */
+    #login-container{
+      position:fixed; inset:0; background:#fff; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; z-index:99999;
+    }
+    #login-box{background:#f9f9f9; padding:26px; border-radius:10px; box-shadow:0 4px 22px rgba(0,0,0,.08); width:340px}
+    #login-box h2{margin:0 0 10px 0}
   </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="app" style="display:none">
   <div class="top">
     <h2>Phân quyền nhân viên</h2>
     <span id="who" class="badge">Đang kiểm tra…</span>
   </div>
 
-  <!-- Điền cấu hình thật -->
-  <script>
-   window.SUPABASE_URL  = window.SUPABASE_URL  || "https://rddjrmbyftlcvrgzlyby.supabase.co";
-    window.SUPABASE_ANON = window.SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
-  </script>
-
-  <!-- Khối nhập mã NV cần phân quyền -->
-  <div class="card" id="searchCard" style="display:none">
+  <!-- Khối tìm NV cần phân quyền -->
+  <div class="card" id="searchCard">
     <div class="row">
       <label>Mã nhân viên</label>
       <input id="manv" type="text" placeholder="vd: 33 / NV001" />
@@ -79,55 +81,104 @@
   </div>
 </div>
 
+<!-- LOGIN OVERLAY (giống phong cách trang bán lẻ MT CS1) -->
+<div id="login-container">
+  <div id="login-box">
+    <h2>Đăng nhập ADMIN</h2>
+    <form id="form-login">
+      <div class="row" style="grid-template-columns:1fr">
+        <input type="email" id="login-email" placeholder="Email đăng nhập" autocomplete="username" />
+      </div>
+      <div class="row" style="grid-template-columns:1fr">
+        <input type="password" id="login-password" placeholder="Mật khẩu" autocomplete="current-password" />
+      </div>
+      <div class="row" style="grid-template-columns:1fr">
+        <button type="submit" class="primary">Đăng nhập</button>
+      </div>
+      <div id="login-error" class="hint danger"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Cấu hình Supabase -->
+<script>
+  // DỰ ÁN CỦA BẠN
+  window.SUPABASE_URL  = "https://rddjrmbyftlcvrgzlyby.supabase.co";
+  window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
+</script>
+
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON, { auth:{persistSession:true} });
 
-const elWho   = document.getElementById('who');
-const elSearch= document.getElementById('searchCard');
-const elManv  = document.getElementById('manv');
-const elTennv = document.getElementById('tennv');
-const elBtnLoad = document.getElementById('btnLoad');
-const elMsgSearch = document.getElementById('msgSearch');
-const elPages = document.getElementById('pagesCard');
-const elTableBody = document.querySelector('#pagesTable tbody');
-const elCheckAll = document.getElementById('btnCheckAll');
-const elUncheckAll = document.getElementById('btnUncheckAll');
-const elSave  = document.getElementById('btnSave');
-const elMsg   = document.getElementById('msg');
+/* ---------- utils ---------- */
+const el = (id)=>document.getElementById(id);
+const maskEmail = (email)=>{
+  if(!email) return "";
+  const [u, d] = email.split("@");
+  if(!d) return email;
+  return (u.length<=2 ? u[0] : u.slice(0,2)) + "•••@" + d;
+};
 
-let currentRows = []; // [{code,path,title,checked,can_edit}...]
-
-async function requireAdmin() {
-  // Bắt buộc đăng nhập
+/* ---------- login flow ---------- */
+async function tryAutoLogin(){
   const { data:{ user } } = await supabase.auth.getUser();
-  if (!user) {
-    elWho.className = 'badge danger';
-    elWho.textContent = 'Chưa đăng nhập';
-    alert('Bạn cần đăng nhập trước.');
-    // location.href = '/login.html?redirect=' + encodeURIComponent(location.pathname);
-    return false;
-  }
-  // Kiểm tra admin
+  if(!user) return false;
+  return await guardAdminAfterLogin(user);
+}
+
+async function guardAdminAfterLogin(user){
   const { data:isAdmin, error } = await supabase.rpc('me_is_admin');
-  if (error) {
-    elWho.className = 'badge danger';
-    elWho.textContent = 'Lỗi kiểm tra quyền';
-    alert('Không kiểm tra được quyền admin: ' + error.message);
+  if(error){
+    el('login-error').textContent = 'Không kiểm tra được quyền admin: ' + error.message;
     return false;
   }
-  if (!isAdmin) {
-    elWho.className = 'badge danger';
-    elWho.textContent = 'Không phải ADMIN';
-    alert('Bạn không có quyền truy cập trang này.');
-    // location.href = '/403.html';
+  if(!isAdmin){
+    el('login-error').textContent = 'Bạn không có quyền ADMIN để vào trang này.';
     return false;
   }
-  // Hiển thị ai đang đăng nhập (không lộ khoá bí mật)
-  elWho.className = 'badge';
-  elWho.textContent = 'Đang đăng nhập: ' + (user.email || user.phone) + ' (ADMIN)';
+  // ok admin
+  el('login-container').style.display = 'none';
+  el('app').style.display = '';
+  el('who').textContent = 'Đang đăng nhập: ' + maskEmail(user.email||user.phone) + ' (ADMIN)';
   return true;
 }
+
+el('form-login').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  el('login-error').textContent = '';
+  const email = el('login-email').value.trim().toLowerCase();
+  const password = el('login-password').value.trim();
+  if(!email || !password){
+    el('login-error').textContent = 'Hãy nhập đầy đủ email và mật khẩu.';
+    return;
+  }
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){
+    el('login-error').textContent = 'Đăng nhập thất bại: ' + error.message;
+    return;
+  }
+  // có user rồi
+  await guardAdminAfterLogin(data.user);
+});
+
+// Thử khôi phục phiên nếu đã đăng nhập trước đó
+await tryAutoLogin();
+
+/* ---------- UI phân quyền ---------- */
+const elSearch= el('searchCard');
+const elManv  = el('manv');
+const elTennv = el('tennv');
+const elBtnLoad = el('btnLoad');
+const elMsgSearch = el('msgSearch');
+const elPages = el('pagesCard');
+const elTableBody = document.querySelector('#pagesTable tbody');
+const elCheckAll = el('btnCheckAll');
+const elUncheckAll = el('btnUncheckAll');
+const elSave  = el('btnSave');
+const elMsg   = el('msg');
+
+let currentRows = []; // [{code,path,title,checked,can_edit}...]
 
 function renderRows(rows){
   elTableBody.innerHTML = '';
@@ -212,10 +263,6 @@ elSave.addEventListener('click', async ()=>{
     elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manv) + ' (' + codes.length + ' trang).';
   }
 });
-
-if (await requireAdmin()) {
-  elSearch.style.display = 'block';
-}
 </script>
 </body>
 </html>
