@@ -15,7 +15,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep } from './soundBeep.js';
 import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
-
+import { ensureAccess } from './auth_guard.js';
 
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
@@ -24,6 +24,11 @@ export async function khoiTaoUngDung() {
   window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
 
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
+  // === GUARD QUYỀN TRUY CẬP TRANG (DÙNG CHUNG CHO TẤT CẢ CÁC TRANG) ===
+  const manvDangNhap = localStorage.getItem('manv');           // bạn đã set sau khi login
+  const ok = await ensureAccess({ supabase, manv: manvDangNhap });
+  if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
+  // === HẾT GUARD ===
 
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
   if (error) {
@@ -212,10 +217,10 @@ export async function khoiTaoUngDung() {
       return;
     }
     window.sanPhamData = {};
-dssp.forEach(sp => {
-  const key = String(sp.masp || "").toUpperCase().trim();
-  window.sanPhamData[key] = sp;
-});
+    dssp.forEach(sp => {
+      const key = String(sp.masp || "").toUpperCase().trim();
+      window.sanPhamData[key] = sp;
+    });
     //alert('✅ Đã tải lại danh mục sản phẩm!');
   };
 
