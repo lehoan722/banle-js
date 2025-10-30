@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Phân quyền nhân viên (ADMIN)</title>
+  <title>Phân quyền nhân viên</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:16px;background:#fafbfc}
@@ -12,7 +12,7 @@
     .danger{color:#b00020}
     .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-top:14px;box-shadow:0 2px 10px rgba(0,0,0,.02)}
     .row{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:center;margin-bottom:10px}
-    input[type=text], input[type=email], input[type=password]{padding:10px;border:1px solid #dcdfe4;border-radius:10px;width:100%}
+    input[type=text], input[type=password]{padding:10px;border:1px solid #dcdfe4;border-radius:10px;width:100%}
     input[readonly]{background:#f6f7f9}
     button{padding:10px 14px;border:1px solid #d0d7de;border-radius:10px;background:#fff;cursor:pointer}
     button.primary{background:#0b84ff;color:#fff;border-color:#0b84ff}
@@ -81,13 +81,13 @@
   </div>
 </div>
 
-<!-- LOGIN OVERLAY (giống phong cách trang bán lẻ MT CS1) -->
+<!-- LOGIN OVERLAY: mã NV + mật khẩu (không dùng email) -->
 <div id="login-container">
   <div id="login-box">
-    <h2>Đăng nhập ADMIN</h2>
+    <h2>Đăng nhập</h2>
     <form id="form-login">
       <div class="row" style="grid-template-columns:1fr">
-        <input type="email" id="login-email" placeholder="Email đăng nhập" autocomplete="username" />
+        <input type="text" id="login-manv" placeholder="Mã nhân viên (vd: 33)" autocomplete="username" />
       </div>
       <div class="row" style="grid-template-columns:1fr">
         <input type="password" id="login-password" placeholder="Mật khẩu" autocomplete="current-password" />
@@ -102,68 +102,53 @@
 
 <!-- Cấu hình Supabase -->
 <script>
-  // DỰ ÁN CỦA BẠN
+  // Bạn có thể giữ nguyên nếu đúng project của bạn
   window.SUPABASE_URL  = "https://rddjrmbyftlcvrgzlyby.supabase.co";
   window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
 </script>
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON, { auth:{persistSession:true} });
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
 
-/* ---------- utils ---------- */
 const el = (id)=>document.getElementById(id);
-const maskEmail = (email)=>{
-  if(!email) return "";
-  const [u, d] = email.split("@");
-  if(!d) return email;
-  return (u.length<=2 ? u[0] : u.slice(0,2)) + "•••@" + d;
-};
+const elWho   = el('who');
+const elManvL = el('login-manv');
+const elPassL = el('login-password');
 
-/* ---------- login flow ---------- */
-async function tryAutoLogin(){
-  const { data:{ user } } = await supabase.auth.getUser();
-  if(!user) return false;
-  return await guardAdminAfterLogin(user);
-}
+let ACTOR = { manv: null, tennv: null, is_admin: false }; // người đang đăng nhập trang này
 
-async function guardAdminAfterLogin(user){
-  const { data:isAdmin, error } = await supabase.rpc('me_is_admin');
-  if(error){
-    el('login-error').textContent = 'Không kiểm tra được quyền admin: ' + error.message;
-    return false;
-  }
-  if(!isAdmin){
-    el('login-error').textContent = 'Bạn không có quyền ADMIN để vào trang này.';
-    return false;
-  }
-  // ok admin
-  el('login-container').style.display = 'none';
-  el('app').style.display = '';
-  el('who').textContent = 'Đang đăng nhập: ' + maskEmail(user.email||user.phone) + ' (ADMIN)';
-  return true;
+async function doLogin(manv, password){
+  const { data, error } = await supabase.rpc('nv_login', { p_manv: manv, p_password: password });
+  if (error) throw new Error(error.message);
+  const row = (data && data[0]) || null;
+  if (!row || !row.ok) throw new Error('Sai mã nhân viên hoặc mật khẩu');
+  return { manv: row.manv, tennv: row.tennv, is_admin: row.is_admin };
 }
 
 el('form-login').addEventListener('submit', async (e)=>{
   e.preventDefault();
   el('login-error').textContent = '';
-  const email = el('login-email').value.trim().toLowerCase();
-  const password = el('login-password').value.trim();
-  if(!email || !password){
-    el('login-error').textContent = 'Hãy nhập đầy đủ email và mật khẩu.';
-    return;
-  }
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if(error){
-    el('login-error').textContent = 'Đăng nhập thất bại: ' + error.message;
-    return;
-  }
-  // có user rồi
-  await guardAdminAfterLogin(data.user);
-});
+  const manv = (elManvL.value||'').trim();
+  const pass = (elPassL.value||'').trim();
+  if (!manv || !pass) { el('login-error').textContent = 'Nhập đủ mã NV và mật khẩu.'; return; }
 
-// Thử khôi phục phiên nếu đã đăng nhập trước đó
-await tryAutoLogin();
+  try{
+    ACTOR = await doLogin(manv, pass);
+    el('login-container').style.display = 'none';
+    el('app').style.display = '';
+    elWho.textContent = `Đang đăng nhập: ${ACTOR.tennv || ACTOR.manv}` + (ACTOR.is_admin ? ' (ADMIN)' : '');
+    // Lưu tạm mật khẩu để gửi cho RPC lưu quyền (cần xác thực người thực hiện)
+    ACTOR._pass = pass;
+    // Nếu không phải admin -> khóa nút Lưu
+    if (!ACTOR.is_admin) {
+      el('btnSave').disabled = true;
+      el('btnSave').title = 'Chỉ ADMIN mới được phép lưu phân quyền';
+    }
+  }catch(err){
+    el('login-error').textContent = 'Đăng nhập thất bại: ' + err.message;
+  }
+});
 
 /* ---------- UI phân quyền ---------- */
 const elSearch= el('searchCard');
@@ -215,7 +200,7 @@ async function loadNvName(manv){
     elTennv.value = '';
     return;
   }
-  if (!data || !data[0] || !data[0].exists) {
+  if (!data || !data[0] || !data[0].found) {
     elMsgSearch.className = 'hint danger';
     elMsgSearch.textContent = 'Mã NV không tồn tại trong danh mục.';
     elTennv.value = '';
@@ -248,19 +233,23 @@ elUncheckAll.addEventListener('click', ()=>{ currentRows.forEach(r=>r.checked=fa
 
 elSave.addEventListener('click', async ()=>{
   elMsg.textContent = '';
-  const manv = elManv.value.trim();
-  if (!manv) { alert('Chưa có Mã NV'); return; }
+  const manvTarget = elManv.value.trim();
+  if (!manvTarget) { alert('Chưa có Mã NV'); return; }
   const codes = currentRows.filter(r=>r.checked).map(r=>r.code);
 
-  const { error } = await supabase.rpc('set_pages_for_manv', {
-    p_manv: manv, p_codes: codes, p_can_edit: false
+  const { error } = await supabase.rpc('set_pages_for_manv_nvauth', {
+    p_actor_manv:  ACTOR.manv,
+    p_actor_pass:  ACTOR._pass,
+    p_target_manv: manvTarget,
+    p_codes:       codes,
+    p_can_edit:    false
   });
   if (error) {
     elMsg.className = 'hint danger';
     elMsg.textContent = 'Lỗi lưu: ' + error.message;
   } else {
     elMsg.className = 'hint ok';
-    elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manv) + ' (' + codes.length + ' trang).';
+    elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manvTarget) + ' (' + codes.length + ' trang).';
   }
 });
 </script>
