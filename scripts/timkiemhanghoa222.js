@@ -23,7 +23,7 @@ window.dangNhap = async function () {
     document.getElementById("authBox").style.display = "none";
 };
 
-// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ====
+// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ==== 
 window.onload = async function () {
     // Tự động ẩn/hiện box đăng nhập nếu đã đăng nhập
     const { data: { session } } = await supabase.auth.getSession();
@@ -1461,56 +1461,67 @@ function closePickSizeAndFill() {
     else document.getElementById('dhGhichu').focus();
 }
 
+// Tách chuỗi size bởi dấu phẩy, chấm, chấm phẩy, gạch chéo hoặc khoảng trắng
+function splitSizes(raw) {
+    if (!raw) return [];
+    return String(raw)
+        .split(/[,\.;\/\s]+/g)
+        .map(s => s.trim())
+        .filter(Boolean);
+}
+
+
 // --- Lưu đặt hàng ---
+// --- Lưu đặt hàng (tách HẾT SIZE thành nhiều dòng) ---
 async function saveDatHang() {
     const { tennv, diadiem } = getCurrentUserInfo();
     const sohd = document.getElementById('dhSohd').value.trim();
     const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
     const mau = document.getElementById('dhMau').value.trim();
     const conSize = document.getElementById('dhConSize').value.trim();
-    const hetSize = document.getElementById('dhHetSize').value.trim();
+    const hetRaw = document.getElementById('dhHetSize').value.trim();
     const ghichu = document.getElementById('dhGhichu').value.trim();
 
     if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
     if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+    if (!hetRaw) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
 
-    //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
-    if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
-    //if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
+    // TÁCH HẾT SIZE → mỗi size một dòng
+    const hetList = splitSizes(hetRaw);
+    if (hetList.length === 0) { showToast('⚠️ Hết size trống!', 'warn'); return; }
 
-    // cố gắng insert; nếu trùng sohd thì +1
-    let attempt = 0;
-    let curSohd = sohd;
-    while (attempt < 2) {
-        const { error } = await supabase.from('dathang').insert([{
-            sohd: curSohd, diadiem, masp, mau,
-            con_size: conSize, het_size: hetSize,
-            tennv, ghichu
-        }]);
-        if (!error) {
-            showToast('✅ Đặt hàng thành công!');
-            closeDatHangPopup();
-            return;
-        }
-        // nếu trùng unique, sinh lại số
-        if (String(error.message || '').toLowerCase().includes('duplicate')) {
-            curSohd = await getNextSohd(diadiem);
-            attempt++;
-            continue;
-        }
-        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
-        return;
-    }
-    // thử thêm lần cuối
-    const { error: err3 } = await supabase.from('dathang').insert([{
-        sohd: curSohd, diadiem, masp, mau,
-        con_size: conSize, het_size: hetSize,
+    // Cho phép sohd bị trùng giữa các dòng (một phiếu có nhiều dòng)
+    // Nếu bạn vẫn muốn auto +1 khi đụng trùng toàn bộ phiếu,
+    // hãy giữ nguyên block “retry + getNextSohd” như trước.
+    const rows = hetList.map(sz => ({
+        sohd, diadiem, masp, mau,
+        con_size: conSize,      // vẫn lưu nguyên chuỗi người dùng gõ (nếu có)
+        het_size: sz,           // ✔ mỗi dòng một size đã tách
         tennv, ghichu
-    }]);
-    if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
-    showToast('✅ Đặt hàng thành công!');
-    closeDatHangPopup();
+    }));
+
+    try {
+        const { error } = await supabase.from('dathang').insert(rows);
+        if (error) {
+            // Nếu lỗi do trùng SỐ HĐ bị unique ở DB (ít gặp), bạn chỉ cần
+            // sinh lại số HĐ rồi thử lại một lần:
+            if ((error.message || '').toLowerCase().includes('duplicate')) {
+                const newSohd = await getNextSohd(diadiem);
+                rows.forEach(r => r.sohd = newSohd);
+                const { error: err2 } = await supabase.from('dathang').insert(rows);
+                if (err2) throw err2;
+            } else {
+                throw error;
+            }
+        }
+        showToast(`✅ Đặt hàng thành công (${rows.length} dòng)!`);
+        closeDatHangPopup();
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
+    }
 }
+
 
 
 
