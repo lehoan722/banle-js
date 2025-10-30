@@ -2,7 +2,6 @@ import { supabase } from "./supabaseClient.js";
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
-
 // === ĐĂNG NHẬP GIỐNG BÁN LẺ CS1 ===
 window.dangNhap = async function () {
   const email = (document.getElementById('login-email').value || '').trim().toLowerCase();
@@ -50,7 +49,6 @@ window.dangNhap = async function () {
   document.getElementById('login-container').style.display = 'none';
   document.getElementById('app-container').style.display = '';
 };
-
 
 // ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ==== 
 window.onload = async function () {
@@ -1313,6 +1311,7 @@ function getCurrentUserInfo() {
     return { tennv, diadiem };
 }
 
+
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
 function uiHasProductImage() {
     const img = document.getElementById('productImage');
@@ -1599,6 +1598,5 @@ async function saveDatHang() {
     document.getElementById('dhHetSize').value = '';
     document.getElementById('dhGhichu').value = '';
 }
-
 
 
