@@ -2,7 +2,6 @@ import { supabase } from "./supabaseClient.js";
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
 // ==== 1. ĐĂNG NHẬP SUPABASE ====
-// === ĐĂNG NHẬP GIỐNG BÁN LẺ CS1 ===
 window.dangNhap = async function () {
   const email = (document.getElementById('login-email').value || '').trim().toLowerCase();
   const password = (document.getElementById('login-password').value || '').trim();
@@ -50,7 +49,7 @@ window.dangNhap = async function () {
   document.getElementById('app-container').style.display = '';
 };
 
-// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ==== 
+// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ====
 window.onload = async function () {
     // Tự động ẩn/hiện box đăng nhập nếu đã đăng nhập
     const { data: { session } } = await supabase.auth.getSession();
@@ -1311,7 +1310,6 @@ function getCurrentUserInfo() {
     return { tennv, diadiem };
 }
 
-
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
 function uiHasProductImage() {
     const img = document.getElementById('productImage');
@@ -1489,114 +1487,57 @@ function closePickSizeAndFill() {
     else document.getElementById('dhGhichu').focus();
 }
 
-// Tách chuỗi size bởi dấu phẩy, chấm, chấm phẩy, gạch chéo hoặc khoảng trắng
-function splitSizes(raw) {
-    if (!raw) return [];
-    return String(raw)
-        .split(/[,\.;\/\s]+/g)
-        .map(s => s.trim())
-        .filter(Boolean);
-}
-
-
 // --- Lưu đặt hàng ---
-// --- Lưu đặt hàng (tách HẾT SIZE thành nhiều dòng) ---
-// Lưu đặt hàng: mỗi size -> một hóa đơn (sohd khác nhau)
 async function saveDatHang() {
     const { tennv, diadiem } = getCurrentUserInfo();
-    const sohdPreview = (document.getElementById('dhSohd').value || '').trim(); // chỉ là gợi ý
-    const masp = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
-    const mau = (document.getElementById('dhMau').value || '').trim();
-    const conSize = (document.getElementById('dhConSize').value || '').trim();
-    const hetRaw = (document.getElementById('dhHetSize').value || '').trim();
-    const ghichu = (document.getElementById('dhGhichu').value || '').trim();
+    const sohd = document.getElementById('dhSohd').value.trim();
+    const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
+    const mau = document.getElementById('dhMau').value.trim();
+    const conSize = document.getElementById('dhConSize').value.trim();
+    const hetSize = document.getElementById('dhHetSize').value.trim();
+    const ghichu = document.getElementById('dhGhichu').value.trim();
 
-    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập!', 'warn'); return; }
-    if (!masp) { showToast('❌ Thiếu mã SP!', 'warn'); return; }
+    if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
     if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
 
-    // Máy tính: cho phép không có ảnh; Điện thoại: bắt buộc có ảnh
-    if (!isDesktopDevice() && !uiHasProductImage(masp)) {
-        showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
+    //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
+    if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
+    //if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
+
+    // cố gắng insert; nếu trùng sohd thì +1
+    let attempt = 0;
+    let curSohd = sohd;
+    while (attempt < 2) {
+        const { error } = await supabase.from('dathang').insert([{
+            sohd: curSohd, diadiem, masp, mau,
+            con_size: conSize, het_size: hetSize,
+            tennv, ghichu
+        }]);
+        if (!error) {
+            showToast('✅ Đặt hàng thành công!');
+            closeDatHangPopup();
+            return;
+        }
+        // nếu trùng unique, sinh lại số
+        if (String(error.message || '').toLowerCase().includes('duplicate')) {
+            curSohd = await getNextSohd(diadiem);
+            attempt++;
+            continue;
+        }
+        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
         return;
     }
-
-    // Tách nhiều size bởi , . ; / hoặc khoảng trắng
-    const sizes = (typeof splitSizes === 'function' ? splitSizes(hetRaw) :
-        String(hetRaw).split(/[,\.;\/\s]+/).map(s => s.trim()).filter(Boolean));
-    if (!sizes.length) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
-
-    // Lưu tuần tự: mỗi size xin 1 số HĐ mới và insert 1 dòng
-    let okCount = 0, failCount = 0, firstSohdUsed = null;
-
-    for (let i = 0; i < sizes.length; i++) {
-        const sz = sizes[i];
-        let useSohd = null;
-        let attempts = 0;
-
-        while (attempts < 3) {
-            try {
-                // size đầu tiên ưu tiên dùng số HĐ đang hiển thị (nếu trống sẽ xin mới)
-                if (attempts === 0 && i === 0 && sohdPreview) {
-                    useSohd = sohdPreview;
-                } else {
-                    useSohd = await getNextSohd(diadiem); // sinh số mới theo cơ sở
-                }
-
-                const row = {
-                    sohd: useSohd,
-                    diadiem,
-                    masp,
-                    mau,
-                    con_size: conSize || null,
-                    het_size: sz,
-                    tennv,
-                    ghichu: ghichu || null,
-                };
-
-                const { error } = await supabase.from('dathang').insert(row);
-                if (!error) {
-                    okCount++;
-                    if (!firstSohdUsed) firstSohdUsed = useSohd;
-                    break; // xong size này
-                }
-
-                // Nếu trùng số HĐ (23505) -> thử xin số mới và lặp lại
-                const msg = (error.message || '').toLowerCase();
-                if (msg.includes('duplicate') || msg.includes('23505')) {
-                    attempts++;
-                    continue;
-                } else {
-                    console.error('Insert failed:', error);
-                    failCount++;
-                    break;
-                }
-            } catch (e) {
-                console.error('Insert exception:', e);
-                attempts++;
-                if (attempts >= 3) failCount++;
-            }
-        }
-    }
-
-    if (okCount > 0) {
-        showToast(`✅ Đã lưu ${okCount} hóa đơn (mỗi size 1 số HĐ).`, 'ok');
-        closeDatHangPopup();
-        // cập nhật số HĐ gợi ý cho lần kế tiếp
-        try {
-            const nextSohd = await getNextSohd(diadiem);
-            document.getElementById('dhSohd').value = nextSohd;
-        } catch { }
-    }
-    if (failCount > 0) {
-        showToast(`⚠️ Có ${failCount} dòng không lưu được. Kiểm tra console.`, 'warn');
-    }
-
-    // reset các ô nhập trong popup (tuỳ ý)
-    document.getElementById('dhMau').value = '';
-    document.getElementById('dhConSize').value = '';
-    document.getElementById('dhHetSize').value = '';
-    document.getElementById('dhGhichu').value = '';
+    // thử thêm lần cuối
+    const { error: err3 } = await supabase.from('dathang').insert([{
+        sohd: curSohd, diadiem, masp, mau,
+        con_size: conSize, het_size: hetSize,
+        tennv, ghichu
+    }]);
+    if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
+    showToast('✅ Đặt hàng thành công!');
+    closeDatHangPopup();
 }
+
+
 
 
