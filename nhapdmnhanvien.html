@@ -164,6 +164,11 @@ async function loadNvList() {
   }
 }
 
+async function ensureNvList() {
+  if (nvCache.length) return;
+  if (!nvLoading) nvLoading = loadNvList();
+  await nvLoading;                 // ĐỢI tải xong rồi mới lọc/hiển thị
+}
 
 function pickNv(code) {
   setVal('manv', code);
@@ -178,21 +183,21 @@ function renderNvSuggest(list) {
   const box = document.getElementById('nvSuggest');
   if (!list.length) {
     box.innerHTML = '<div class="empty">Không có kết quả</div>';
-    box.style.display = '';
+    box.style.display = 'block';   // <-- ép hiện
     return;
   }
-  const html = list.slice(0, 100) // giới hạn hiển thị cho mượt
+  const html = list.slice(0, 100)
     .map((r, i) => `
       <div class="item${i === nvIndex ? ' active' : ''}" data-manv="${r.manv}">
         ${r.manv} — ${r.tennv || ''}
       </div>`).join('');
   box.innerHTML = html;
-  box.style.display = '';
-  // Dùng mousedown để không mất focus trước khi pick
+  box.style.display = 'block';     // <-- ép hiện
   box.querySelectorAll('.item').forEach(el => {
     el.addEventListener('mousedown', e => { e.preventDefault(); pickNv(el.dataset.manv); });
   });
 }
+
 function hideNvSuggest() {
   const box = document.getElementById('nvSuggest');
   box.style.display = 'none';
