@@ -321,7 +321,9 @@
             <div class="dropdown-button">☰ MENU2</div>
             <div class="dropdown-content">
 
-                <button onclick="loadDataFromKiemHang()">Lấy kiểm hàng</button>
+                <button onclick="loadDataFromKiemHangcs1()">Lấy kiểm hàng</button>
+                <button onclick="loadDataFromKiemHangcs2()">Lấy kiểm hàng</button>
+
                 <button onclick="loadDataFrombaymaucs1()">Lấy baymaucs1</button>
                 <button onclick="loadDataFrombaymaucs2()">Lấy baymaucs2</button>
                 <button onclick="loadDataFrom2v1()">Lấy 2v1</button>
@@ -912,9 +914,49 @@
 
         //---------------------lenh--tai ve du lieu kiem hang -------------------------------
 
-        async function loadDataFromKiemHang() {
+        async function loadDataFromKiemHangcs1() {
             const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-            const url = `${baseURL}?sheet=kiemhang`;
+            const url = `${baseURL}?sheet=kiemhangcs1`;
+
+            try {
+                document.getElementById("loading").style.display = "block";
+
+                const response = await fetch(url);
+                const json = await response.json();
+
+                const formattedData = json.map(row => [
+                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
+                ]);
+
+                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
+                hot.updateSettings({
+                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
+                    columns: [
+                        { data: 0, type: 'text' },
+                        { data: 1, type: 'numeric' },
+                        { data: 2, type: 'numeric' },
+                        { data: 3, type: 'numeric' }
+                    ]
+                });
+                hot.loadData([...formattedData, ...emptyRows]);
+            } catch (err) {
+                console.error("Lỗi khi tải dữ liệu:", err);
+                alert("❌ Không thể tải dữ liệu Kiểm hàng.");
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+
+            searchImages();
+
+            alert("da tai xong kiem hang.");
+
+        }
+
+         //---------------------lenh--tai ve du lieu kiem hang -------------------------------
+
+        async function loadDataFromKiemHangcs2() {
+            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+            const url = `${baseURL}?sheet=kiemhangcs2`;
 
             try {
                 document.getElementById("loading").style.display = "block";
