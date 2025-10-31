@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
-    <meta name="app:page_path" content="nhapvitrikhocs1.html">    
+    <meta name="app:page_path" content="nhapvitrikhocs1.html">
     <script src="scripts/page_guard.js"></script>
     <style>
         html,
@@ -178,9 +178,62 @@
                 font-size: .95rem;
             }
         }
+
+        .typeahead-wrap {
+            position: relative;
+            display: inline-block;
+            min-width: 260px;
+            margin: 8px 10px 0 0
+        }
+
+        .typeahead-wrap input {
+            width: 100%;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #bcd;
+            outline: none;
+            padding: 0 10px
+        }
+
+        .typeahead-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #d8e0ee;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+            max-height: 280px;
+            overflow: auto;
+            z-index: 1000
+        }
+
+        .typeahead-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f6fb;
+            line-height: 1.2
+        }
+
+        .typeahead-item:last-child {
+            border-bottom: none
+        }
+
+        .typeahead-item b {
+            font-weight: 700
+        }
+
+        .typeahead-item small {
+            opacity: .7
+        }
+
+        .typeahead-item.active {
+            background: #eaf2ff
+        }
     </style>
 
-    
+
     <script>
         PageGuard.enforce({
             url: 'https://rddjrmbyftlcvrgzlyby.supabase.co',
@@ -207,6 +260,14 @@
         <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
         <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
     </div>
+
+    <!-- Ô nhập MASP có gợi ý -->
+    <div class="typeahead-wrap">
+        <input id="maspSearch" type="text" placeholder="Nhập mã sản phẩm..." autocomplete="off"
+            inputmode="latin-prose" />
+        <div id="maspSuggest" class="typeahead-list" hidden></div>
+    </div>
+
 
     <div id="preview"></div>
 
@@ -329,6 +390,217 @@
             initTable();
             document.getElementById('preview').innerHTML = "";
         }
+
+       // 3) Thêm JS (lọc gợi ý + ghi vào HOT)
+        (() => {
+            // ====== Cấu hình ======
+            const HOT_COL_MASP = 0;                     // Cột "Mã sản phẩm"
+            const MAX_SUGGESTIONS = 50;                 // Tối đa gợi ý hiển thị
+            const DEBOUNCE_MS = 120;
+            const CACHE_KEY = 'dmhanghoa_cache_v1';
+            const CACHE_TTL_MS = 60 * 60 * 1000;        // 60 phút
+
+            const $input = document.getElementById('maspSearch');
+            const $list = document.getElementById('maspSuggest');
+
+            let cache = null;           // [{masp, tensp, _MASP, _TENSP}]
+            let filtered = [];          // danh sách đang hiển thị
+            let activeIndex = -1;       // item đang chọn bằng phím
+            let debTimer = null;
+
+            // ====== Helpers ======
+            function getHOT() {
+                return window.hot || window.hotTable || window.HOT || null;
+            }
+            function norm(s) { return (s || '').toString().trim(); }
+            function up(s) { return norm(s).toUpperCase(); }
+            function saveCache(data) {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+            }
+            function loadCache() {
+                try {
+                    const raw = localStorage.getItem(CACHE_KEY);
+                    if (!raw) return null;
+                    const obj = JSON.parse(raw);
+                    if (!obj || !obj.data) return null;
+                    if (Date.now() - (obj.ts || 0) > CACHE_TTL_MS) return null;
+                    return obj.data;
+                } catch (e) { return null; }
+            }
+
+            async function ensureCatalog() {
+                if (cache) return;
+                const local = loadCache();
+                if (local) { cache = local; return; }
+
+                if (!window.supabase) {
+                    console.warn('Supabase chưa sẵn sàng. Hãy nạp supabaseClient.js trước khối script này.');
+                    cache = []; return;
+                }
+                // Lấy danh mục mã từ Supabase
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp,tensp')
+                    .eq('active', true)            // nếu bạn không dùng cột active, bỏ dòng này
+                    .limit(8000);
+                if (error) { console.error(error); cache = []; return; }
+
+                cache = (data || []).map(r => ({
+                    masp: norm(r.masp),
+                    tensp: norm(r.tensp),
+                    _MASP: up(r.masp),
+                    _TENSP: up(r.tensp)
+                })).filter(r => r.masp);
+
+                saveCache(cache);
+            }
+
+            function renderList(items) {
+                $list.innerHTML = '';
+                activeIndex = -1;
+                if (!items.length) { $list.hidden = true; return; }
+                const frag = document.createDocumentFragment();
+                items.forEach((it, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'typeahead-item';
+                    div.dataset.index = idx;
+                    div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` <small>— ${it.tensp}</small>` : ''}`;
+                    div.addEventListener('mousedown', (e) => {  // dùng mousedown để không mất focus trước khi click
+                        e.preventDefault(); chooseItem(idx);
+                    });
+                    frag.appendChild(div);
+                });
+                $list.appendChild(frag);
+                $list.hidden = false;
+            }
+
+            function moveActive(delta) {
+                if ($list.hidden || !filtered.length) return;
+                activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
+                [...$list.children].forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+                // Auto scroll
+                const el = $list.children[activeIndex];
+                if (el) {
+                    const r = el.getBoundingClientRect();
+                    const lr = $list.getBoundingClientRect();
+                    if (r.bottom > lr.bottom) $list.scrollTop += (r.bottom - lr.bottom);
+                    else if (r.top < lr.top) $list.scrollTop -= (lr.top - r.top);
+                }
+            }
+
+            function hideList() { $list.hidden = true; activeIndex = -1; }
+
+            function getMaspsInHOT() {
+                const hot = getHOT(); if (!hot) return [];
+                const rows = hot.countRows();
+                const arr = [];
+                for (let r = 0; r < rows; r++) {
+                    const v = norm(hot.getDataAtCell(r, HOT_COL_MASP));
+                    if (v) arr.push(up(v));
+                }
+                return arr;
+            }
+
+            function jumpToExistingRow(maspUpper) {
+                const hot = getHOT(); if (!hot) return;
+                const rows = hot.countRows();
+                for (let r = 0; r < rows; r++) {
+                    const v = up(hot.getDataAtCell(r, HOT_COL_MASP));
+                    if (v === maspUpper) {
+                        hot.selectCell(r, HOT_COL_MASP);
+                        // nháy nhẹ
+                        const cell = hot.getCell(r, HOT_COL_MASP);
+                        if (cell) {
+                            cell.style.transition = 'background 0.15s';
+                            cell.style.background = '#fff2cc';
+                            setTimeout(() => { cell.style.background = ''; }, 350);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function insertToNextEmpty(masp) {
+                const hot = getHOT(); if (!hot) return;
+                let targetRow = -1;
+                const rows = hot.countRows();
+                for (let r = 0; r < rows; r++) {
+                    const v = norm(hot.getDataAtCell(r, HOT_COL_MASP));
+                    if (!v) { targetRow = r; break; }
+                }
+                if (targetRow === -1) {
+                    targetRow = rows;
+                    hot.alter('insert_row', targetRow, 1);
+                }
+                hot.setDataAtCell(targetRow, HOT_COL_MASP, masp);
+                hot.selectCell(targetRow, HOT_COL_MASP + 1); // move sang cột vị trí nếu muốn
+            }
+
+            function chooseItem(idx) {
+                const it = filtered[idx];
+                if (!it) return;
+                const masp = up(it.masp);
+
+                // Nếu mã đã có → nhảy tới dòng cũ; nếu chưa → chèn vào dòng trống tiếp theo
+                const exists = jumpToExistingRow(masp);
+                if (!exists) insertToNextEmpty(masp);
+
+                // Reset input cho lần nhập tiếp theo
+                $input.value = '';
+                hideList();
+                // Focus lại ô nhập
+                setTimeout(() => $input.focus(), 10);
+            }
+
+            function doFilter(q) {
+                const Q = up(q);
+                if (!Q) { hideList(); return; }
+                // Ưu tiên bắt đầu bằng Q, sau đó chứa Q
+                const starts = [];
+                const contains = [];
+                for (const it of (cache || [])) {
+                    if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) {
+                        starts.push(it);
+                    } else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) {
+                        contains.push(it);
+                    }
+                    if (starts.length >= MAX_SUGGESTIONS) break;
+                }
+                const arr = starts.concat(contains).slice(0, MAX_SUGGESTIONS);
+                filtered = arr;
+                renderList(arr);
+            }
+
+            // ====== Events ======
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.typeahead-wrap')) hideList();
+            });
+
+            $input.addEventListener('input', async () => {
+                clearTimeout(debTimer);
+                debTimer = setTimeout(async () => {
+                    await ensureCatalog();
+                    doFilter($input.value);
+                }, DEBOUNCE_MS);
+            });
+
+            $input.addEventListener('keydown', (e) => {
+                if ($list.hidden) return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+                else if (e.key === 'Enter') {
+                    if (activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
+                } else if (e.key === 'Escape') { hideList(); }
+            });
+
+            // Expose nhỏ để debug (tùy)
+            window.typeahead_masp = { ensureCatalog, doFilter };
+
+            // Autopreload nhẹ để lần đầu gõ không chậm
+            ensureCatalog();
+        })();
+
 
         // Kiểm tra vị trí kho
         async function kiemTraViTri() {
