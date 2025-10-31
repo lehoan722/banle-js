@@ -164,11 +164,6 @@ async function loadNvList() {
   }
 }
 
-async function ensureNvList() {
-  if (nvCache.length) return;
-  if (!nvLoading) nvLoading = loadNvList();
-  await nvLoading;                 // ĐỢI tải xong rồi mới lọc/hiển thị
-}
 
 function pickNv(code) {
   setVal('manv', code);
