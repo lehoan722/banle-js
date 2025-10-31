@@ -123,6 +123,19 @@
             background: #e6f4e7;
             border-radius: 6px;
         }
+
+        /* --- Gợi ý Mã NV --- */
+.manv-wrap { position: relative; width: 100%; }
+#nvSuggest {
+  position: absolute; top: 38px; left: 0; right: 0;
+  background: #fff; border: 1px solid #cdd5e1; border-radius: 8px;
+  box-shadow: 0 6px 18px #1f2a4422; max-height: 220px; overflow: auto;
+  z-index: 1000; display: none;
+}
+#nvSuggest .item { padding: 6px 10px; cursor: pointer; font-size: .95em; }
+#nvSuggest .item:hover, #nvSuggest .item.active { background: #eef5ff; }
+#nvSuggest .empty { padding: 8px 10px; color: #6b7280; }
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -132,17 +145,122 @@
         const TABLE = "dmnhanvien";
         let supabase = null, session = null, editingOld = false;
 
+        // ---- Gợi ý Mã NV (cache danh sách) ----
+let nvCache = [];     // [{manv, tennv, trangthai}, ...]
+let nvIndex = -1;     // vị trí đang chọn trong danh sách
+
+async function loadNvList() {
+  // Chỉ lấy cột cần dùng để nhanh – ưu tiên NV đang hoạt động
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('manv, tennv, trangthai')
+    .order('manv', { ascending: true })
+    .limit(5000);
+  if (!error && Array.isArray(data)) {
+    // Mặc định chỉ hiển thị NV đang hoạt động
+    nvCache = data.filter(r => r.trangthai !== false);
+  }
+}
+function ensureNvList() { if (!nvCache.length) loadNvList(); }
+
+function pickNv(code) {
+  setVal('manv', code);
+  hideNvSuggest();
+  // Sau khi chọn, tự fetch đầy đủ thông tin
+  fetchNV();
+  // Và di chuyển focus xuống tên NV cho tiện sửa
+  setTimeout(() => document.getElementById('tennv').focus(), 0);
+}
+
+function renderNvSuggest(list) {
+  const box = document.getElementById('nvSuggest');
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">Không có kết quả</div>';
+    box.style.display = '';
+    return;
+  }
+  const html = list.slice(0, 100) // giới hạn hiển thị cho mượt
+    .map((r, i) => `
+      <div class="item${i === nvIndex ? ' active' : ''}" data-manv="${r.manv}">
+        ${r.manv} — ${r.tennv || ''}
+      </div>`).join('');
+  box.innerHTML = html;
+  box.style.display = '';
+  // Dùng mousedown để không mất focus trước khi pick
+  box.querySelectorAll('.item').forEach(el => {
+    el.addEventListener('mousedown', e => { e.preventDefault(); pickNv(el.dataset.manv); });
+  });
+}
+function hideNvSuggest() {
+  const box = document.getElementById('nvSuggest');
+  box.style.display = 'none';
+  nvIndex = -1;
+}
+
+function onManvInput() {
+  ensureNvList();
+  const q = getVal('manv').trim().toUpperCase();
+  const box = document.getElementById('nvSuggest');
+  if (!q) { hideNvSuggest(); return; }
+  const list = nvCache.filter(r =>
+    r.manv.toUpperCase().includes(q) ||
+    (r.tennv || '').toUpperCase().includes(q)
+  );
+  nvIndex = -1;
+  renderNvSuggest(list);
+}
+
+function onManvKey(e) {
+  const box = document.getElementById('nvSuggest');
+  const items = Array.from(box.querySelectorAll('.item'));
+  if (e.key === 'ArrowDown') {
+    if (!items.length) return;
+    e.preventDefault();
+    nvIndex = (nvIndex + 1) % items.length;
+    items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
+    items[nvIndex].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    if (!items.length) return;
+    e.preventDefault();
+    nvIndex = (nvIndex <= 0 ? items.length - 1 : nvIndex - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
+    items[nvIndex].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    if (nvIndex >= 0 && items[nvIndex]) {
+      e.preventDefault();
+      pickNv(items[nvIndex].dataset.manv);
+    } else {
+      // Không chọn item nào -> Enter để nạp dữ liệu theo mã đã gõ
+      fetchNV();
+      hideNvSuggest();
+    }
+  } else if (e.key === 'Escape') {
+    hideNvSuggest();
+  }
+}
+
+// Ẩn danh sách nếu click ra ngoài
+document.addEventListener('click', (e) => {
+  if (!document.querySelector('.manv-wrap')?.contains(e.target)) hideNvSuggest();
+});
+
+
         function showLogin() {
             document.getElementById("loginbox").style.display = "";
             document.getElementById("mainform").style.display = "none";
             document.getElementById("msgLogin").textContent = "";
         }
+        
         function showMain() {
-            document.getElementById("loginbox").style.display = "none";
-            document.getElementById("mainform").style.display = "";
-            document.getElementById("msgBox").textContent = "";
-            document.getElementById("manv").focus();
-        }
+    document.getElementById("loginbox").style.display = "none";
+    document.getElementById("mainform").style.display = "";
+    document.getElementById("msgBox").textContent = "";
+    document.getElementById("manv").focus();
+
+    // >>> thêm dòng này
+    loadNvList();
+}
+
         function setSession(ses) {
             session = ses;
             if (ses) {
@@ -301,7 +419,17 @@
 
     <div id="mainform" class="center-box" style="display:none">
         <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
-        <div class="row"><label class="required">Mã NV *</label><input id="manv" onblur="fetchNV()"></div>
+
+        <div class="row">
+  <label class="required">Mã NV *</label>
+  <div class="manv-wrap">
+    <input id="manv" autocomplete="off"
+           oninput="onManvInput()" onkeydown="onManvKey(event)">
+    <div id="nvSuggest"></div>
+  </div>
+</div>
+
+
         <div class="row"><label class="required">Tên NV *</label><input id="tennv"></div>
         <div class="row"><label>Trạng thái</label><select id="trangthai">
                 <option value="true">Đang hoạt động</option>
