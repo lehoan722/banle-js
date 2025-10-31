@@ -378,35 +378,44 @@
         let suggestIndex = -1; // dùng cho điều hướng bàn phím
 
         async function suggestKH() {
-            let inp = document.getElementById('makh');
-            let txt = inp.value.trim().toUpperCase();
-            let popup = document.getElementById('makhSuggestList');
-            if (txt.length === 0) { popup.style.display = "none"; return; }
-            // Tránh gọi lại nếu nhập giống lần trước
-            if (khSuggestList.lastTxt === txt) { popup.style.display = khSuggestList.length ? "" : "none"; return; }
-            khSuggestList = [];
-            suggestIndex = -1;
-            // Lọc theo makh hoặc tenkh chứa txt
-            const { data, error } = await supabase
-                .from("dmkhachhang")
+            const inp = document.getElementById('makh');
+            const txt = (inp.value || "").trim().toUpperCase();
+            const popup = document.getElementById('makhSuggestList');
+
+            // Nếu không có chữ gì -> show toàn bộ 200 KH đầu tiên (mã + tên)
+            let query = supabase.from("dmkhachhang")
                 .select("makh, tenkh, dienthoai")
-                .or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`)
                 .order("makh", { ascending: true })
-                .limit(30);
-            if (error || !data || !data.length) { popup.style.display = "none"; return; }
+                .limit(200);
+
+            if (txt) {
+                query = supabase.from("dmkhachhang")
+                    .select("makh, tenkh, dienthoai")
+                    .or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`)
+                    .order("makh", { ascending: true })
+                    .limit(50);
+            }
+
+            const { data, error } = await query;
+            if (error || !data || !data.length) {
+                popup.style.display = "none";
+                return;
+            }
+
             khSuggestList = data;
-            khSuggestList.lastTxt = txt;
-            // Vẽ popup
-            popup.innerHTML = data.map((r, i) =>
-                `<div class="suggest-item${i === 0 ? ' active' : ''}" data-idx="${i}" onclick="chooseKHFromSuggest(${i})">
+            suggestIndex = 0;
+
+            popup.innerHTML = data.map((r, i) => `
+    <div class="suggest-item${i === 0 ? ' active' : ''}" 
+         data-idx="${i}" onclick="chooseKHFromSuggest(${i})">
       <span class="suggest-makh">${r.makh}</span>
       <span class="suggest-tenkh">${r.tenkh || ''}</span>
       <span class="suggest-note">${r.dienthoai || ''}</span>
-    </div>`
-            ).join("");
-            popup.style.display = "";
-            suggestIndex = 0;
+    </div>`).join("");
+
+            popup.style.display = "block"; // ép hiện (tránh bị rule CSS/inline ẩn)
         }
+
 
         // Chọn dòng từ popup (bằng chuột)
         function chooseKHFromSuggest(idx) {
@@ -554,7 +563,7 @@
             <label>CCCD/CMND</label>
             <input id="cccd" maxlength="20">
         </div>
-        
+
         <div class="actions">
             <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
             <button class="new" onclick="resetForm()">Thêm mới</button>
