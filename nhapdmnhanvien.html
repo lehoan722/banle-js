@@ -145,23 +145,30 @@
         const TABLE = "dmnhanvien";
         let supabase = null, session = null, editingOld = false;
 
-        // ---- Gợi ý Mã NV (cache danh sách) ----
-let nvCache = [];     // [{manv, tennv, trangthai}, ...]
-let nvIndex = -1;     // vị trí đang chọn trong danh sách
+        // --- Gợi ý Mã NV (bản chuẩn: đợi tải xong + hiển thị mọi trạng thái) ---
+let nvCache = [];      // [{manv, tennv, trangthai}, ...]
+let nvIndex = -1;      // vị trí đang chọn
+let nvLoading = null;  // promise tải
 
 async function loadNvList() {
-  // Chỉ lấy cột cần dùng để nhanh – ưu tiên NV đang hoạt động
   const { data, error } = await supabase
     .from(TABLE)
     .select('manv, tennv, trangthai')
     .order('manv', { ascending: true })
     .limit(5000);
   if (!error && Array.isArray(data)) {
-    // Mặc định chỉ hiển thị NV đang hoạt động
-    nvCache = data.filter(r => r.trangthai !== false);
+    // KHÔNG lọc theo trạng thái -> hiển thị tất cả nhân viên
+    nvCache = data;
+  } else {
+    nvCache = [];
   }
 }
-function ensureNvList() { if (!nvCache.length) loadNvList(); }
+
+async function ensureNvList() {
+  if (nvCache.length) return;
+  if (!nvLoading) nvLoading = loadNvList();
+  await nvLoading;                 // ĐỢI tải xong rồi mới lọc/hiển thị
+}
 
 function pickNv(code) {
   setVal('manv', code);
@@ -197,15 +204,19 @@ function hideNvSuggest() {
   nvIndex = -1;
 }
 
-function onManvInput() {
-  ensureNvList();
+async function onManvInput() {
+  await ensureNvList();
   const q = getVal('manv').trim().toUpperCase();
   const box = document.getElementById('nvSuggest');
-  if (!q) { hideNvSuggest(); return; }
-  const list = nvCache.filter(r =>
-    r.manv.toUpperCase().includes(q) ||
-    (r.tennv || '').toUpperCase().includes(q)
-  );
+
+  // Nếu trống -> show toàn bộ (giới hạn 200 dòng cho mượt)
+  const list = !q
+    ? nvCache.slice(0, 200)
+    : nvCache.filter(r =>
+        r.manv?.toUpperCase().includes(q) ||
+        (r.tennv || '').toUpperCase().includes(q)
+      );
+
   nvIndex = -1;
   renderNvSuggest(list);
 }
@@ -423,8 +434,11 @@ document.addEventListener('click', (e) => {
         <div class="row">
   <label class="required">Mã NV *</label>
   <div class="manv-wrap">
+
     <input id="manv" autocomplete="off"
-           oninput="onManvInput()" onkeydown="onManvKey(event)">
+       oninput="onManvInput()" onkeydown="onManvKey(event)"
+       onfocus="onManvInput()">
+    
     <div id="nvSuggest"></div>
   </div>
 </div>
