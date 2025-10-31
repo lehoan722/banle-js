@@ -232,14 +232,15 @@
             background: #eaf2ff
         }
     </style>
-
-
     <script>
-        PageGuard.enforce({
-            url: 'https://rddjrmbyftlcvrgzlyby.supabase.co',
-            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+        document.addEventListener('DOMContentLoaded', () => {
+            PageGuard.enforce({
+                url: 'https://rddjrmbyftlcvrgzlyby.supabase.co',
+                key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+            });
         });
     </script>
+
 
 </head>
 
@@ -341,6 +342,7 @@
                     return cellProperties;
                 }
             });
+            window.hot = hot;   // ✅ expose ra global để getHOT() lấy được
             // Ban đầu chỉ nhập mã sản phẩm
             window.editableMASP = true;
             window.editableVITRI = false;
@@ -540,23 +542,21 @@
                 const local = loadCache();
                 if (local) { cache = local; return; }
 
-                if (!window.supabase) {
-                    console.warn('Supabase chưa sẵn sàng. Hãy nạp supabaseClient.js trước khối script này.');
-                    cache = []; return;
-                }
-                // Lấy danh mục mã từ Supabase
-                const { data, error } = await supabase
+                const sb = getSupabaseClient();              // ✅ lấy client đúng cách
+                if (!sb) { console.warn('Supabase client chưa sẵn sàng'); cache = []; return; }
+
+                const { data, error } = await sb
                     .from('dmhanghoa')
                     .select('masp,tensp')
-                    .eq('active', true)            // nếu bạn không dùng cột active, bỏ dòng này
-                    .limit(8000);
+                    .limit(8000);                              // nếu bạn dùng cột active thì thêm .eq('active', true)
+
                 if (error) { console.error(error); cache = []; return; }
 
                 cache = (data || []).map(r => ({
-                    masp: norm(r.masp),
-                    tensp: norm(r.tensp),
-                    _MASP: up(r.masp),
-                    _TENSP: up(r.tensp)
+                    masp: (r.masp || '').trim(),
+                    tensp: (r.tensp || '').trim(),
+                    _MASP: (r.masp || '').trim().toUpperCase(),
+                    _TENSP: (r.tensp || '').trim().toUpperCase(),
                 })).filter(r => r.masp);
 
                 saveCache(cache);
