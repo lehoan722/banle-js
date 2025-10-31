@@ -77,7 +77,7 @@
             display: inline-block;
             margin: 5px 7px 5px 0;
             font-size: 1.08rem;
-            padding: 10px 14px;
+            padding: 6px 6px;
             font-weight: 500;
             border: none;
             border-radius: 20px;
@@ -263,9 +263,17 @@
 
     <!-- Ô nhập MASP có gợi ý -->
     <div class="typeahead-wrap">
+
         <input id="maspSearch" type="text" placeholder="Nhập mã sản phẩm..." autocomplete="off"
             inputmode="latin-prose" />
         <div id="maspSuggest" class="typeahead-list" hidden></div>
+
+        <button id="btnFetchSheet" class="btn btn-info"
+            style="background:#4aa3ff;color:#fff;border:none;border-radius:12px;padding:10px 16px;margin:4px 8px;">
+            📥 Lấy dữ liệu
+        </button>
+
+
     </div>
 
 
@@ -391,7 +399,106 @@
             document.getElementById('preview').innerHTML = "";
         }
 
-       // 3) Thêm JS (lọc gợi ý + ghi vào HOT)
+        // 2) JS – đọc Google Sheet + ghi vào HOT
+        (() => {
+            // ===== Cấu hình =====
+            const SHEET_ID = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
+            const SHEET_TAB = 'ghivitrikhocs1';  // tên sheet trong file
+            const HOT_COL_MASP = 0;               // cột "Mã sản phẩm" trong HOT
+            const MAKE_UPPERCASE = true;          // in hoa mã sản phẩm
+            const DEDUP = false;                  // có loại trùng không (mặc định KHÔNG)
+            const CLEAR_BEFORE_INSERT = true;     // xóa dữ liệu cũ trước khi nạp
+
+            const $btn = document.getElementById('btnFetchSheet');
+
+            function getHOT() {
+                return window.hot || window.hotTable || window.HOT || null;
+            }
+
+            // Parse JSON kiểu GViz: /*O_o*/ google.visualization.Query.setResponse({...});
+            function parseGvizJson(txt) {
+                const start = txt.indexOf('(');
+                const end = txt.lastIndexOf(')');
+                if (start === -1 || end === -1) return [];
+                const payload = JSON.parse(txt.slice(start + 1, end));
+                const rows = payload?.table?.rows || [];
+                const out = [];
+                for (const r of rows) {
+                    const v = r?.c?.[0]?.v; // cột A
+                    if (v != null) out.push(String(v));
+                }
+                return out;
+            }
+
+            async function fetchMaspsFromGoogleSheet() {
+                // Yêu cầu: file Sheets để chế độ "Anyone with the link can view" hoặc Publish to web
+                const urlJSON = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
+                    `tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&range=A:A&headers=0`;
+                // Ưu tiên JSON vì tách header gọn; có thể fallback CSV nếu cần
+                const resp = await fetch(urlJSON, { cache: 'no-store' });
+                if (!resp.ok) throw new Error(`Fetch Google Sheet lỗi: HTTP ${resp.status}`);
+                const text = await resp.text();
+                let arr = parseGvizJson(text);
+
+                // Làm sạch
+                arr = arr.map(s => (s ?? '').toString().trim()).filter(s => s.length > 0);
+                if (MAKE_UPPERCASE) arr = arr.map(s => s.toUpperCase());
+                if (DEDUP) {
+                    const set = new Set(); const tmp = [];
+                    for (const v of arr) { if (!set.has(v)) { set.add(v); tmp.push(v); } }
+                    arr = tmp;
+                }
+                return arr;
+            }
+
+            function loadMaspsIntoHOT(masps) {
+                const hot = getHOT();
+                if (!hot) { alert('Không tìm thấy bảng dữ liệu (Handsontable).'); return; }
+
+                if (CLEAR_BEFORE_INSERT) {
+                    // Xóa toàn bộ dòng cũ
+                    const old = hot.countRows();
+                    if (old > 0) hot.alter('remove_row', 0, old);
+                }
+
+                // Chèn đủ dòng
+                if (masps.length > 0) {
+                    hot.alter('insert_row', 0, masps.length);
+                    // Ghi vào cột MASP
+                    const ops = [];
+                    for (let i = 0; i < masps.length; i++) {
+                        ops.push([i, HOT_COL_MASP, masps[i]]);
+                    }
+                    hot.setDataAtCell(ops);
+                    hot.render();
+                }
+
+                // Thông báo nhỏ
+                const msg = `Đã nạp ${masps.length} mã từ Google Sheet (${SHEET_TAB}).`;
+                console.log(msg);
+                // nếu bạn có toast riêng, thay alert bằng toast
+                alert(msg);
+            }
+
+            async function handleFetchClick() {
+                try {
+                    $btn.disabled = true; $btn.textContent = 'Đang lấy...';
+                    const masps = await fetchMaspsFromGoogleSheet();
+                    loadMaspsIntoHOT(masps);
+                } catch (err) {
+                    console.error(err);
+                    alert('Không lấy được dữ liệu từ Google Sheet. Kiểm tra quyền chia sẻ & tên sheet.');
+                } finally {
+                    $btn.disabled = false; $btn.textContent = '📥 Lấy dữ liệu';
+                }
+            }
+
+            if ($btn) $btn.addEventListener('click', handleFetchClick);
+        })();
+
+
+
+        // 3) Thêm JS (lọc gợi ý + ghi vào HOT)
         (() => {
             // ====== Cấu hình ======
             const HOT_COL_MASP = 0;                     // Cột "Mã sản phẩm"
