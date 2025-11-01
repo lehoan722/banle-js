@@ -15,7 +15,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep } from './soundBeep.js';
 import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
-import { ensureAccess } from './auth_guard.js';
+
 
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
