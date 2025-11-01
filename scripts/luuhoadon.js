@@ -94,12 +94,23 @@ function showExistDialog(sohd) {
 }
 
 
+
 function getLoaiFromSoHDInput() {
-    const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
-    if (!raw) return '';                      // chưa có số → để caller tự xử lý
-    const pre = raw.split('_')[0] || '';      // vd: bancs1, nmcs2, ntcs1, xcncs2, ...
-    return pre;
+  const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
+  if (raw && raw.includes('_')) {
+    // nếu ô sohd đã có dạng hợp lệ thì cứ cắt prefix
+    return raw.split('_')[0];
+  }
+  // Fallback theo đường dẫn trang – KHÔNG phụ thuộc ô #sohd
+  const path = location.pathname.toLowerCase();
+  if (path.includes('nhaptamcs1')) return 'ntcs1';
+  if (path.includes('nhapmoimtcs1')) return 'nmcs1';
+  if (path.includes('nhaptamcs2')) return 'ntcs2';
+  if (path.includes('nhapmoimtcs2')) return 'nmcs2';
+  // thêm các trang khác nếu cần …
+  return '';
 }
+
 
 
 
