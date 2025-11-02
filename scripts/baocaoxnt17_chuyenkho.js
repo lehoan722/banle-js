@@ -497,7 +497,7 @@ function onTaoPhieuChuyenCN() {
     console.log('[XNT17→CCN] Gửi payload:', { dir, count: items.length, sample: items[0] });
 
     // Mở đúng trang đích
-    const url = (dir === '1v2') ? 'ccn1v2.html' : 'ccn2v1.html';
+    const url = (dir === '1v2') ? 'ccn1v2cs1.html' : 'ccn2v1cs2.html';
     window.open(url, '_blank');
 
 }
