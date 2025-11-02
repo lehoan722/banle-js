@@ -303,7 +303,7 @@
         let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs2', 'Trạng thái'];
         let columns = [
             { data: 'masp', type: 'text', width: 150 },
-            { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
+            { data: 'vitrikho2', type: 'text', width: 150, readOnly: true },
             { data: 'trangthai', type: 'text', width: 110, readOnly: true }
         ];
 
@@ -311,7 +311,7 @@
             const container = document.getElementById('hot');
             if (hot) hot.destroy();
             hot = new Handsontable(container, {
-                data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
+                data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho2: null, trangthai: null })),
                 columns,
                 colHeaders,
                 rowHeaders: true,
@@ -364,7 +364,7 @@
                 const uniq = Array.from(new Set(
                     list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)
                 ));
-                const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
+                const rows = uniq.map(masp => ({ masp, vitrikho2: null, trangthai: null }));
                 hot.loadData(rows);
 
                 // Dọn khóa sau khi dùng để tránh dính ca sau
@@ -724,7 +724,7 @@
                 if (masp && !seen[masp]) {
                     seen[masp] = true;
                     uniqueMasps.push(masp);
-                    uniqueRows.push({ masp, vitrikho1: null, trangthai: null });
+                    uniqueRows.push({ masp, vitrikho2: null, trangthai: null });
                 }
             }
             if (uniqueMasps.length === 0) {
@@ -739,14 +739,14 @@
             const sb = getSupabaseClient();
             const { data: found, error } = await sb
                 .from(TABLE_NAME)
-                .select('masp,vitrikho1')
+                .select('masp,vitrikho2')
                 .in('masp', uniqueMasps);
 
             if (error) return alert('Lỗi kết nối Supabase!');
 
             // Tạo map: mã tồn tại => vị trí kho
             const maspMap = {};
-            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
+            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho2; });
 
             hot.batch(() => {
                 for (let r = 0; r < hot.countRows(); r++) {
@@ -787,7 +787,7 @@
                 row.masp && row.trangthai !== "BỎ QUA" // chi xoa dong bo qua
             );
             // Nếu không còn dòng nào, thêm dòng trống mới
-            if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
+            if (tableData.length === 0) tableData.push({ masp: null, vitrikho2: null, trangthai: null });
             hot.loadData(tableData);
 
             // Cho phép nhập cột mã và cột vị trí
@@ -817,9 +817,9 @@
                 let row = rows[idx];
                 // Chỉ update vị trí nếu chưa có (nghiệp vụ)
                 const { data, error } = await sb.from(TABLE_NAME)
-                    .update({ vitrikho1: row.vitrikho1 })
+                    .update({ vitrikho2: row.vitrikho2 })
                     .eq('masp', row.masp.toString().trim().toUpperCase())
-                    .is('vitrikho1', null)
+                    .is('vitrikho2', null)
                     .select(); // dùng select để lấy dòng bị ảnh hưởng!
 
                 if (!error && data && data.length === 1) {
