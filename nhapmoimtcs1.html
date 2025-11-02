@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>nhapmoics1</title>
+    <title>nhaptamcs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -61,7 +61,7 @@
 
         #masp {
             width: 250px;
-            background: rgb(255, 0, 238);
+            background: cyan;
         }
 
         #soluong {
@@ -370,7 +370,7 @@
 
     <style>
         .menu-bar {
-            background: #cc009c;
+            background: #70cc00;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -487,6 +487,7 @@
             <div class="table-area">
 
                 <table id="bangketqua" data-mode="doc">
+
                     <thead>
                         <tr>
                             <th>Mã hàng</th>
@@ -597,9 +598,9 @@
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
-             <div style="margin-bottom:6px;">
-  <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
-</div>
+            <div style="margin-bottom:6px;">
+                <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+            </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
@@ -694,110 +695,111 @@
 
         // === tu dong dang nhap ================================
 
-// Kênh broadcast để đồng bộ đăng xuất giữa các tab/trang
-window.authChannel = new BroadcastChannel('auth');
-authChannel.onmessage = (ev) => {
-  if (ev?.data?.type === 'signed_out') {
-    try {
-      document.getElementById('app-container').style.display = 'none';
-      document.getElementById('login-container').style.display = '';
-    } catch {}
-  }
-};
+        // Kênh broadcast để đồng bộ đăng xuất giữa các tab/trang
+        window.authChannel = new BroadcastChannel('auth');
+        authChannel.onmessage = (ev) => {
+            if (ev?.data?.type === 'signed_out') {
+                try {
+                    document.getElementById('app-container').style.display = 'none';
+                    document.getElementById('login-container').style.display = '';
+                } catch { }
+            }
+        };
 
-// Điền NV vào UI (nếu có)
-function fillNhanVienUI(nv) {
-  const manvEl = document.getElementById('manv');
-  if (manvEl && nv?.manv) { manvEl.value = nv.manv; manvEl.readOnly = true; }
-  const tennvEl = document.getElementById('tennv');
-  if (tennvEl && nv?.tennv) { tennvEl.value = nv.tennv; tennvEl.readOnly = true; }
-}
+        // Điền NV vào UI (nếu có)
+        function fillNhanVienUI(nv) {
+            const manvEl = document.getElementById('manv');
+            if (manvEl && nv?.manv) { manvEl.value = nv.manv; manvEl.readOnly = true; }
+            const tennvEl = document.getElementById('tennv');
+            if (tennvEl && nv?.tennv) { tennvEl.value = nv.tennv; tennvEl.readOnly = true; }
+        }
 
-// Sau khi “đã đăng nhập” → ẩn form, hiện app, khởi tạo logic
-async function afterLogin(nv) {
-  try {
-    document.getElementById('login-container').style.display = 'none';
-    document.getElementById('app-container').style.display = '';
+        // Sau khi “đã đăng nhập” → ẩn form, hiện app, khởi tạo logic
+        async function afterLogin(nv) {
+            try {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('app-container').style.display = '';
 
-    fillNhanVienUI(nv);
-    if (typeof capNhatQuyenGiaoDien === 'function') capNhatQuyenGiaoDien();
+                fillNhanVienUI(nv);
+                if (typeof capNhatQuyenGiaoDien === 'function') capNhatQuyenGiaoDien();
 
-    // Khởi tạo app như luồng đăng nhập thủ công
-    const m = await import('./scripts/main.js');
-    if (m && m.khoiTaoUngDung) m.khoiTaoUngDung();
+                // Khởi tạo app như luồng đăng nhập thủ công
+                const m = await import('./scripts/main.js');
+                if (m && m.khoiTaoUngDung) m.khoiTaoUngDung();
 
-    if (typeof switchTab === 'function') switchTab('thongtin');
-    const s45 = document.getElementById('size45'); if (s45) s45.checked = true;
-    const qn  = document.getElementById('quanlysizetheonhom'); if (qn) qn.checked = true;
-  } catch (e) {
-    console.error('[SSO] afterLogin error:', e);
-  }
-}
+                if (typeof switchTab === 'function') switchTab('thongtin');
+                const s45 = document.getElementById('size45'); if (s45) s45.checked = true;
+                const qn = document.getElementById('quanlysizetheonhom'); if (qn) qn.checked = true;
+            } catch (e) {
+                console.error('[SSO] afterLogin error:', e);
+            }
+        }
 
-// Tự đăng nhập nếu đã có session Supabase
-async function tryAutoLogin() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
+        // Tự đăng nhập nếu đã có session Supabase
+        async function tryAutoLogin() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
-      // Chưa có session → chỉ prefll nhanh form login nếu có dữ liệu cũ
-      const manvLS = localStorage.getItem('manv') || '';
-      const manvInput = document.getElementById('login-manv');
-      if (manvInput && manvLS) manvInput.value = manvLS;
+                if (!session) {
+                    // Chưa có session → chỉ prefll nhanh form login nếu có dữ liệu cũ
+                    const manvLS = localStorage.getItem('manv') || '';
+                    const manvInput = document.getElementById('login-manv');
+                    if (manvInput && manvLS) manvInput.value = manvLS;
 
-      const csLS = localStorage.getItem('diadiem') || 'cs1';
-      const csSelect = document.getElementById('login-cs');
-      if (csSelect && csLS) csSelect.value = csLS;
-      return;
-    }
+                    const csLS = localStorage.getItem('diadiem') || 'cs1';
+                    const csSelect = document.getElementById('login-cs');
+                    if (csSelect && csLS) csSelect.value = csLS;
+                    return;
+                }
 
-    // ĐÃ có session → dựng thông tin NV từ localStorage hoặc truy vấn lại
-    let manv = localStorage.getItem('manv');
-    const urlManv = new URLSearchParams(location.search).get('manv');
-    if (!manv && urlManv) { manv = urlManv.toUpperCase(); localStorage.setItem('manv', manv); }
+                // ĐÃ có session → dựng thông tin NV từ localStorage hoặc truy vấn lại
+                let manv = localStorage.getItem('manv');
+                const urlManv = new URLSearchParams(location.search).get('manv');
+                if (!manv && urlManv) { manv = urlManv.toUpperCase(); localStorage.setItem('manv', manv); }
 
-    // Đảm bảo có cơ sở
-    const cs = localStorage.getItem('diadiem') || 'cs1';
-    localStorage.setItem('diadiem', cs);
+                // Đảm bảo có cơ sở
+                const cs = localStorage.getItem('diadiem') || 'cs1';
+                localStorage.setItem('diadiem', cs);
 
-    let tennv = localStorage.getItem('tennv');
-    let quyen = localStorage.getItem('quyen_sua_hoadon');
+                let tennv = localStorage.getItem('tennv');
+                let quyen = localStorage.getItem('quyen_sua_hoadon');
 
-    if (manv && (!tennv || quyen === null)) {
-      const { data: nv, error } = await supabase
-        .from('dmnhanvien')
-        .select('manv, tennv, sua_hoadon')
-        .eq('manv', manv)
-        .single();
+                if (manv && (!tennv || quyen === null)) {
+                    const { data: nv, error } = await supabase
+                        .from('dmnhanvien')
+                        .select('manv, tennv, sua_hoadon')
+                        .eq('manv', manv)
+                        .single();
 
-      if (!error && nv) {
-        tennv = nv.tennv;
-        localStorage.setItem('tennv', tennv);
-        localStorage.setItem('quyen_sua_hoadon', nv.sua_hoadon ? 'true' : 'false');
-        await afterLogin({ manv, tennv });
-        return;
-      }
-    }
+                    if (!error && nv) {
+                        tennv = nv.tennv;
+                        localStorage.setItem('tennv', tennv);
+                        localStorage.setItem('quyen_sua_hoadon', nv.sua_hoadon ? 'true' : 'false');
+                        await afterLogin({ manv, tennv });
+                        return;
+                    }
+                }
 
-    await afterLogin({ manv, tennv });
-  } catch (e) {
-    console.error('[SSO] tryAutoLogin error:', e);
-  }
-}
+                await afterLogin({ manv, tennv });
+            } catch (e) {
+                console.error('[SSO] tryAutoLogin error:', e);
+            }
+        }
 
-// Thử auto-login khi DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', tryAutoLogin);
+        // Thử auto-login khi DOM sẵn sàng
+        document.addEventListener('DOMContentLoaded', tryAutoLogin);
 
-// Bắt sự kiện thay đổi phiên (hết hạn token, đăng xuất ở tab khác, v.v.)
-supabase.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_OUT') {
-    try {
-      document.getElementById('app-container').style.display = 'none';
-      document.getElementById('login-container').style.display = '';
-    } catch {}
-  }
-});
-// === het tu dong dang nhap [/SSO] ==============================================================
+        // Bắt sự kiện thay đổi phiên (hết hạn token, đăng xuất ở tab khác, v.v.)
+        supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT') {
+                try {
+                    document.getElementById('app-container').style.display = 'none';
+                    document.getElementById('login-container').style.display = '';
+                } catch { }
+            }
+        });
+        // === het tu dong dang nhap [/SSO] ==============================================================
+
         // Đặt ở đầu file/script chính
         window.dangLuu = false;
 
@@ -928,7 +930,7 @@ supabase.auth.onAuthStateChange((event) => {
             // Lấy quyền từ localStorage 
             const quyenSua = localStorage.getItem("quyen_sua_hoadon") === "true";
             // Nút quay lại
-            //document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
+            document.getElementById('quaylai') && (document.getElementById('quaylai').disabled = !quyenSua);
             // Nút tiếp tục
             document.getElementById('tieptuc') && (document.getElementById('tieptuc').disabled = !quyenSua);
             // Nút lưu
@@ -1274,62 +1276,122 @@ supabase.auth.onAuthStateChange((event) => {
     </script>
 
     <script>
+        // Tránh "URI malformed" khi có % không hợp lệ
+        function safeDecodeURIComponent(str) {
+            if (typeof str !== 'string') return '';
+            try {
+                // Ép encode các dấu % không theo sau là 2 ký tự hex
+                // ... rồi mới decode bình thường
+                const protectedStr = str.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
+                return decodeURIComponent(protectedStr.replace(/\+/g, ' ')); // '+' -> space
+            } catch (e) {
+                // Nếu vẫn lỗi (do bị decode 2 lần hoặc không phải URI), trả về nguyên bản
+                return str;
+            }
+        }
+    </script>
+
+    <script>
         // ===== script nhap xuat du lieu tu in ma vavh Parse payload từ hash/localStorage → trả về bangObj { MASP:{...sizes,soluongs} } =====
-        window.parseImportPayload = function () {
-            const hash = location.hash || '';
-            if (!hash) return null;
-
-            const params = new URLSearchParams(hash.slice(1));
-            let payload = null;
-
-            // 1) Base64 hash
-            if (params.get('imp')) {
-                try {
-                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
-                    payload = JSON.parse(json);
-                } catch (e) { console.error('Decode imp error', e); }
-            }
-
-            // 2) localStorage key
-            if (!payload && params.get('impkey')) {
-                const key = params.get('impkey');
-                try {
-                    const json = localStorage.getItem(key);
-                    if (json) {
-                        payload = JSON.parse(json);
-                        localStorage.removeItem(key);
-                    }
-                } catch (e) { console.error('Load impkey error', e); }
-            }
-
-            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return null;
-
-            // Gộp theo MASP@@SIZE → rồi quy về bangObj { MASP:{sizes,soluongs,...} }
-            const perKey = new Map();
-            payload.items.forEach(it => {
-                const masp = (it.masp || '').toUpperCase();
-                const size = ((it.size ?? '').toString().trim()) || '0';
-                const key = masp + '@@' + size;
-
-                const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
-                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
-                const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
-                const sl = Number(it.sl) || 1;
-
-                if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
-                else perKey.get(key).sl += sl;
-            });
-
-            const bangObj = {};
-            for (const o of perKey.values()) {
-                if (!bangObj[o.masp]) {
-                    bangObj[o.masp] = { masp: o.masp, tensp: o.tensp, dvt: o.dvt, gia: o.gia, km: 0, sizes: [], soluongs: [] };
+        window.parseImportPayload = function (urlLike) {
+            // Lấy param `imp` từ URL hoặc từ hash
+            let raw = '';
+            try {
+                const u = new URL(urlLike || window.location.href);
+                raw = u.searchParams.get('imp') || '';
+                if (!raw && window.location.hash.startsWith('#imp=')) {
+                    raw = window.location.hash.slice(5); // sau '#imp='
                 }
-                bangObj[o.masp].sizes.push(o.size);
-                bangObj[o.masp].soluongs.push(o.sl);
+            } catch {
+                // Fallback thô từ hash nếu URL() không parse được
+                if (window.location.hash.startsWith('#imp=')) {
+                    raw = window.location.hash.slice(5);
+                }
             }
-            return bangObj;
+
+            if (!raw) return null;
+
+            // 1) decode an toàn (không vỡ vì %)
+            let s = safeDecodeURIComponent(raw);
+
+            // 2) Thử parse JSON trực tiếp
+            try {
+                return JSON.parse(s);
+            } catch { }
+
+            // 3) Nếu không phải JSON thuần, thử base64 → JSON
+            try {
+                const b64 = s.replace(/-/g, '+').replace(/_/g, '/'); // support base64url
+                return JSON.parse(atob(b64));
+            } catch { }
+
+            // 4) Trường hợp là TSV được encode: tách theo dòng/tab
+            if (s.includes('\t') || s.includes('\n')) {
+                const rows = s.trim().split(/\r?\n/).map(r => r.split('\t'));
+                return { type: 'tsv', rows };
+            }
+
+            // Không nhận diện được
+            return null;
         };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const payload = window.parseImportPayload();
+
+            if (!payload) return;
+
+            // Nếu payload là mảng object JSON (ví dụ [{masp, tensp, size, soluong, dvt, gia, km, vitri}, ...])
+            if (Array.isArray(payload)) {
+                const tbody = document.querySelector('#bangketqua tbody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                payload.forEach(row => {
+                    const tr = document.createElement('tr');
+                    // Tùy cột trên bảng của bạn:
+                    // Mã hàng | Tên | Size | SL | ĐVT | Giá | KM | Thành tiền | Vị trí
+                    const cells = [
+                        row.masp || '',
+                        row.tensp || '',
+                        row.size || '',
+                        row.soluong ?? '',
+                        row.dvt || '',
+                        row.gia ?? '',
+                        row.km ?? '',
+                        '',                 // thành tiền sẽ tự tính sau
+                        row.vitri || ''
+                    ];
+                    cells.forEach(v => {
+                        const td = document.createElement('td');
+                        td.textContent = v;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                // Cập nhật lại state JS và tổng
+                window.capNhatBangKetQuaTuDOM?.();
+                window.capNhatThongTinTong?.(window.bangKetQua || {});
+                return;
+            }
+
+            // Nếu payload là TSV
+            if (payload && payload.type === 'tsv' && Array.isArray(payload.rows)) {
+                const tbody = document.querySelector('#bangketqua tbody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                payload.rows.forEach(rowArr => {
+                    if (!rowArr || rowArr.length < 2) return;
+                    const tr = document.createElement('tr');
+                    rowArr.forEach(cell => {
+                        const td = document.createElement('td');
+                        td.textContent = cell;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                window.capNhatBangKetQuaTuDOM?.();
+                window.capNhatThongTinTong?.(window.bangKetQua || {});
+            }
+        });
 
         // ===== Tiêu thụ payload sau khi app sẵn sàng (được gọi sau login/khởi tạo) =====
         window.consumeImportPayload = function () {
@@ -1728,43 +1790,46 @@ supabase.auth.onAuthStateChange((event) => {
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
+
     <script type="module">
-import { popupNgang } from './scripts/popupNgang.js';
+        import { popupNgang } from './scripts/popupNgang.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnChuyenngang');
-  if (!btn) return;
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('btnChuyenngang');
+            if (!btn) return;
 
-  btn.addEventListener('click', () => {
-    // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM
-    if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-      window.capNhatBangKetQuaTuDOM();
-    }
+            btn.addEventListener('click', () => {
+                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
+                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                    window.capNhatBangKetQuaTuDOM();
+                }
 
-    // 2️⃣ Lấy dữ liệu dọc hiện tại
-    const bang = window.bangKetQua || {};
-    const rows = [];
-    Object.values(bang).forEach(item => {
-      item.sizes.forEach((sz, i) => {
-        rows.push({
-          masp: item.masp,
-          tenhang: item.tensp || '',
-          size: sz,
-          sl: item.soluongs[i] || 0
+                // 2️⃣ Lấy dữ liệu dọc hiện tại
+                const bang = window.bangKetQua || {};
+                const rows = [];
+                Object.values(bang).forEach(item => {
+                    item.sizes.forEach((sz, i) => {
+                        rows.push({
+                            masp: item.masp,
+                            tenhang: item.tensp || '',
+                            size: sz,
+                            sl: item.soluongs[i] || 0
+                        });
+                    });
+                });
+
+                if (rows.length === 0) {
+                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
+                    return;
+                }
+
+                // 3️⃣ Gọi popup để hiển thị bảng ngang
+                popupNgang.open(rows);
+            });
         });
-      });
-    });
+    </script>
 
-    if (rows.length === 0) {
-      alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
-      return;
-    }
 
-    // 3️⃣ Gọi popup để hiển thị bảng ngang
-    popupNgang.open(rows);
-  });
-});
-</script>
 
 </body>
 
