@@ -200,7 +200,7 @@ async function luuDuLieu() {
     let rows = hot.getSourceData().filter(r =>
         r.masp && r[colname]
     );
-    if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
+    //if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
     if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè dữ liệu cũ của cột "${colLabel}" không?`)) {
         document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
         return;
