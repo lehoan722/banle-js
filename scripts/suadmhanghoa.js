@@ -187,63 +187,112 @@ document.getElementById('btn-backup').onclick = async function () {
     }
 };
 
+// 1) Thêm hàm chuẩn hóa giá trị trước khi ghi
+function resolveUpdateValue(colname, rawVal) {
+    // Trả về null nếu người dùng để trống (xóa dữ liệu cũ)
+    if (rawVal === undefined || rawVal === null) return null;
+    const s = rawVal.toString().trim();
+    if (s === '') return null;
+
+    // Cột kiểu ngày dùng chuẩn hóa sẵn có
+    if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
+        return normalizeDate(s); // normalizeDate đã có sẵn, rỗng -> null
+    }
+
+    // Nếu có cột boolean (vd: active, quanlykichco) muốn hỗ trợ:
+    if (["active", "quanlykichco"].includes(colname)) {
+        // chấp nhận true/false, 1/0, "true"/"false"
+        if (s === '1' || s.toLowerCase() === 'true') return true;
+        if (s === '0' || s.toLowerCase() === 'false') return false;
+        // để trống đã xử lý ở trên -> null
+    }
+
+    // Mặc định: giữ nguyên chuỗi đã trim
+    return s;
+}
+
 
 // ==== Lưu dữ liệu (PATCH từng dòng, chia chunk 100 dòng) ====
 document.getElementById('btn-luu').onclick = luuDuLieu;
 async function luuDuLieu() {
-    const colname = document.getElementById('col-select').value;
-    if (!colname) {
-        alert("Bạn cần chọn mục cần ghi vào trước khi thực hiện thao tác này!");
-        return;
-    }
-    const colLabel = COLS.find(c => c.name === colname)?.label || colname;
-    let rows = hot.getSourceData().filter(r =>
-        r.masp && r[colname]
-    );
-    //if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
-    if (!confirm(`⚠️ Bạn chắc chắn muốn ghi đè dữ liệu cũ của cột "${colLabel}" không?`)) {
-        document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
-        return;
-    }
-    const chunkSize = 100;
-    const chunks = chunkArray(rows, chunkSize);
-    let success = 0, fail = 0, errorMsg = [];
-    for (let i = 0; i < chunks.length; i++) {
-        document.getElementById('preview').innerHTML = `<span>⏳ Đang ghi nhóm ${i + 1}/${chunks.length}...</span>`;
-        let promises = chunks[i].map((row, idx) => {
-            let updateObj = { [colname]: row[colname] };
-            if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
-                updateObj[colname] = normalizeDate(row[colname]);
-            }
-            return supabase
-                .from('dmhanghoa')
-                .update(updateObj)
-                .eq('masp', row.masp.toString().trim().toUpperCase())
-                .select()
-                .then(({ data, error }) => ({
-                    idx: i * chunkSize + idx,
-                    masp: row.masp,
-                    success: !error && data && data.length === 1,
-                    error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
-                }));
-        });
-        let results = await Promise.all(promises);
-        results.forEach(res => {
-            if (res.success) {
-                hot.setDataAtCell(res.idx, 2, "OK");
-                success++;
-            } else {
-                hot.setDataAtCell(res.idx, 2, "LỖI");
-                fail++;
-                errorMsg.push(`Dòng ${res.idx + 1} (${res.masp}): ${res.error}`);
-            }
-        });
-    }
-    let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
-    if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
-    document.getElementById('preview').innerHTML = html;
-    hot.updateSettings({ cells: hot.getSettings().cells });
+  const colname = document.getElementById('col-select').value;
+  if (!colname) {
+    alert("Bạn cần chọn mục cần ghi vào trước khi thực hiện thao tác này!");
+    return;
+  }
+  const colLabel = COLS.find(c => c.name === colname)?.label || colname;
+
+  // LẤY TOÀN BỘ DÒNG CÓ MÃ, KỂ CẢ Ô RỖNG (để cho phép xóa)
+  const source = hot.getSourceData();
+  let rows = source
+    .map((r, rowIndex) => ({
+      rowIndex,
+      masp: (r.masp || '').toString().trim().toUpperCase(),
+      rawVal: r[colname]
+    }))
+    .filter(r => r.masp); // chỉ cần có mã
+
+  if (rows.length === 0) {
+    alert("Không có dữ liệu hợp lệ để ghi.");
+    return;
+  }
+
+  // Nhắc người dùng: sẽ GHI ĐÈ và có thể XÓA dữ liệu cũ (ghi null)
+  if (!confirm(`⚠️ Hành động này sẽ ghi đè cột "${colLabel}" cho các mã đã nhập.\nNếu ô để trống, hệ thống sẽ xóa giá trị cũ (ghi NULL).\nBạn chắc chắn muốn tiếp tục?`)) {
+    document.getElementById('preview').innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
+    return;
+  }
+
+  const chunkSize = 100;
+  const chunks = [];
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    chunks.push(rows.slice(i, i + chunkSize));
+  }
+
+  let success = 0, fail = 0, errorMsg = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    document.getElementById('preview').innerHTML = `<span>⏳ Đang ghi nhóm ${i + 1}/${chunks.length}...</span>`;
+
+    const promises = chunks[i].map((row) => {
+      const updateObj = {};
+      updateObj[colname] = resolveUpdateValue(colname, row.rawVal); // rỗng -> null
+
+      return supabase
+        .from('dmhanghoa')
+        .update(updateObj)
+        .eq('masp', row.masp)
+        .select()
+        .then(({ data, error }) => ({
+          rowIndex: row.rowIndex,
+          masp: row.masp,
+          success: !error && data && data.length === 1,
+          error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
+        }));
+    });
+
+    const results = await Promise.all(promises);
+
+    results.forEach(res => {
+      if (res.success) {
+        hot.setDataAtCell(res.rowIndex, 2, "OK");     // dùng rowIndex gốc
+        success++;
+      } else {
+        hot.setDataAtCell(res.rowIndex, 2, "LỖI");    // dùng rowIndex gốc
+        fail++;
+        errorMsg.push(`Dòng ${res.rowIndex + 1} (${res.masp}): ${res.error}`);
+      }
+    });
+  }
+
+  let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+  if (fail) {
+    html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+  }
+  document.getElementById('preview').innerHTML = html;
+  hot.updateSettings({ cells: hot.getSettings().cells });
 }
+
 
 // ==== Phục hồi từ backup (import lại từ file CSV) ====
 // Bạn bổ sung sau nếu thực sự cần, mình sẽ gửi riêng hàm parse file zip và ghi batch
