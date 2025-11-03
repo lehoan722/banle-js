@@ -537,10 +537,87 @@
                 } catch (e) { return null; }
             }
 
-            async function ensureCatalog() {
-                if (cache) return;
-                const local = loadCache();
-                if (local) { cache = local; return; }
+            async function ensureCatalog(){ return; }
+
+// === Incremental suggestion loader (prefix cache + paginated fetch) ===
+const PAGE_SIZE = 200;                 // 200 rows per request
+const CACHE_TTL_MS = 60 * 60 * 1000;   // 60 minutes
+const PREFIX_LEN = 2;                  // cache by 2-char prefix
+let prefixCache = new Map();           // key: prefix (UPPER), value: {ts, data:[], done:boolean, lastOffset:number}
+let activeFetch = null;                // prevent race conditions
+
+function keyPrefix(Q){ return (Q||'').slice(0, PREFIX_LEN); }
+
+function normalizeRow(r){
+  const masp = (r.masp||'').trim();
+  const tensp = (r.tensp||'').trim();
+  return { masp, tensp, _MASP: masp.toUpperCase(), _TENSP: tensp.toUpperCase() };
+}
+
+function isFresh(entry){
+  return entry && (Date.now() - entry.ts) < CACHE_TTL_MS;
+}
+
+async function fetchOnePage(Q, offset){
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('dmhanghoa')
+    .select('masp,tensp')
+    .or(`masp.ilike.%${Q}%,tensp.ilike.%${Q}%`)
+    .order('masp', { ascending: true })
+    .range(offset, offset + PAGE_SIZE - 1);
+
+  if (error) throw error;
+  return (data||[]).map(normalizeRow).filter(r => r.masp);
+}
+
+async function getSuggestionsEnsure(Q){
+  const P = keyPrefix(Q);
+  let entry = prefixCache.get(P);
+  if (!isFresh(entry)) {
+    entry = { ts: Date.now(), data: [], done: false, lastOffset: -PAGE_SIZE };
+    prefixCache.set(P, entry);
+  }
+
+  const filterFromCache = () => {
+    const starts = [];
+    const contains = [];
+    for (const it of entry.data) {
+      if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) starts.push(it);
+      else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) contains.push(it);
+      if (starts.length >= MAX_SUGGESTIONS) break;
+    }
+    return starts.concat(contains).slice(0, MAX_SUGGESTIONS);
+  };
+
+  let current = filterFromCache();
+  if (current.length >= MAX_SUGGESTIONS || entry.done) return current;
+
+  if (activeFetch) await activeFetch;
+
+  let needed = MAX_SUGGESTIONS - current.length;
+
+  activeFetch = (async () => {
+    while (!entry.done && needed > 0) {
+      const nextOffset = entry.lastOffset + PAGE_SIZE;
+      const page = await fetchOnePage(Q, nextOffset);
+      entry.lastOffset = nextOffset;
+      if (page.length < PAGE_SIZE) entry.done = true;
+
+      const existing = new Set(entry.data.map(x => x._MASP));
+      for (const r of page) if (!existing.has(r._MASP)) entry.data.push(r);
+
+      current = filterFromCache();
+      needed = MAX_SUGGESTIONS - current.length;
+    }
+    entry.ts = Date.now();
+  })();
+
+  await activeFetch;
+  activeFetch = null;
+  return current;
+}
+
 
                 const sb = getSupabaseClient();              // ✅ lấy client đúng cách
                 if (!sb) { console.warn('Supabase client chưa sẵn sàng'); cache = []; return; }
@@ -687,8 +764,7 @@
             $input.addEventListener('input', async () => {
                 clearTimeout(debTimer);
                 debTimer = setTimeout(async () => {
-                    await ensureCatalog();
-                    doFilter($input.value);
+                    doFilterAsync($input.value);
                 }, DEBOUNCE_MS);
             });
 
