@@ -505,7 +505,7 @@
 
         // === FULL CATALOG PRELOAD (auto on page load) ===
         // Đặt các biến log & state ở phạm vi global (window.*) để typeahead dùng chung
-        const CATALOG_PAGE_SIZE = 100000;               // có thể đổi 5000/20000 tùy tốc độ
+        const CATALOG_PAGE_SIZE = 10000;               // có thể đổi 5000/20000 tùy tốc độ
         window.catalogAll = [];                        // [{masp,tensp,_MASP,_TENSP}]
         window.catalogTotal = 0;
         window.catalogLoaded = 0;
@@ -561,7 +561,7 @@
                 console.log(`[DM] loaded ${window.catalogLoaded}/${window.catalogTotal} (${pct}%)`);
 
                 if (page.length < CATALOG_PAGE_SIZE) break;          // hết dữ liệu
-                await new Promise(r => setTimeout(r, 600));              // throttle nhẹ cho server
+                await new Promise(r => setTimeout(r, 60));              // throttle nhẹ cho server
             }
             window.catalogAllReady = true;
             console.timeEnd('[DM] full preload');
