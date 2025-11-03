@@ -341,7 +341,7 @@
                 <button class="btn" onclick="checkLoaiTemAndRender()">Xem in</button>
                 <button class="btn" onclick="checkLoaiTemAndPrint()">In</button>
                 <button class="btn" onclick="exportExcel()">Xuất Excel</button>
-                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>                
+                <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
 
                 <!-- MODULE ĐĂNG NHẬP SUPABASE -->
                 <div id="loginModule" style="display:inline-block; margin-left:16px;">
@@ -477,7 +477,7 @@
         window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
         // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-        const PAGE_MARGIN_TOP_MM = 3.5;      // Lề trên của toàn bộ khối tem (mm)
+        const PAGE_MARGIN_TOP_MM = 2.5;      // Lề trên của toàn bộ khối tem (mm)
         const PAGE_MARGIN_LEFT_MM = 11;   // Lề trái của toàn bộ khối tem (mm)
         const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
         const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
@@ -710,7 +710,7 @@
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
         column-gap: 5mm;
-        row-gap: 1.9mm;        
+        row-gap: 1.8mm;        
     ">`;
 
             // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
@@ -754,8 +754,14 @@
               height:100%; margin:0; padding:0;">
     <div style="width:100%; margin:0; padding:0;">
 
+        <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
+      <div style="font-size:9pt; line-height:1; white-space:nowrap;
+                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
+        ${t.masp}
+      </div>
+
         <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
-      <div style="font-size:7pt; font-weight:bold; line-height:1;
+      <div style="font-size:6pt;  line-height:1;
                   white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
         Shop Hoàn Tuyết
       </div>
@@ -766,11 +772,7 @@
       ${infoChung}
     </div>    
 
-      <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
-      <div style="font-size:8pt; line-height:1; white-space:nowrap;
-                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
-        ${t.masp}
-      </div>
+      
 
       <!-- GIÁ (không xuống dòng, cắt bên phải) -->
       <div style="font-size:12pt; font-weight:bold; line-height:1;
@@ -788,7 +790,7 @@
   <div style="grid-column:2; grid-row:3; 
               display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
               height:100%; margin:0; padding:0;">
-  <canvas class="qr" style="width:9mm; height:9mm;"></canvas>
+  <canvas class="qr" style="width:8.5mm; height:8.5mm;"></canvas>
 
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
@@ -991,7 +993,7 @@
             }
         }
 
-         // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
+        // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
         function openNhaptamcs1(items) {
             const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
             const json = JSON.stringify(payload);
@@ -1194,6 +1196,8 @@
             document.getElementById('addProductMessage').textContent = '';
             document.getElementById('addProductForm').style.border = '';
             isEditMode = false;
+            // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
+            syncQuanLyKichCoByGiaLe();
         }
 
         // ==== Validate các trường bắt buộc ====
@@ -1233,6 +1237,8 @@
                 document.getElementById('addProductMessage').textContent = msg;
                 return;
             }
+            // NEW: chốt lại trạng thái QLKC trước khi đọc checked
+            syncQuanLyKichCoByGiaLe();
 
             // Chuẩn hóa dữ liệu
             const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
@@ -1483,6 +1489,8 @@
                 } else {
                     inp.value = '';
                 }
+                // NEW
+                syncQuanLyKichCoByGiaLe();
             });
             inp.addEventListener('focus', function () {
                 inp.value = inp.value.replace(/\./g, '');
@@ -1867,9 +1875,25 @@
 
         // Gắn vào nút "Tạo HĐ nhập tạm"
         document.getElementById("btnTaoNhapTam")?.addEventListener("click", createNhapTamFromInTem);
+
+        // 2) Mỗi khi quay lại tab, làm “refresh nhẹ”
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                supabase.auth.refreshSession().catch(() => { });
+            }
+        });
+
+        // 3) Gia cố: canh thời điểm gần hết hạn thì refresh sớm
+        const REFRESH_EARLY_SEC = 300; // 5 phút trước khi hết hạn
+        setInterval(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            const expMs = session?.expires_at ? session.expires_at * 1000 : 0;
+            if (expMs && expMs - Date.now() < REFRESH_EARLY_SEC * 1000) {
+                await supabase.auth.refreshSession().catch(() => { });
+            }
+        }, 60 * 1000);
+
     </script>
-
-
 
 </body>
 
