@@ -290,14 +290,28 @@
         const TABLE_NAME = 'dmhanghoa';
 
         // Khởi tạo Supabase client (token đăng nhập)
+        // SINGLETON Supabase client (tránh tạo nhiều GoTrueClient)
+        let __sbClient = null;
         function getSupabaseClient() {
+            if (__sbClient) return __sbClient;
             const token = localStorage.getItem('supabase_access_token');
-            return window.supabase.createClient(
+
+            __sbClient = window.supabase.createClient(
                 SUPABASE_URL,
                 SUPABASE_KEY,
-                token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}
+                {
+                    auth: {
+                        // khóa riêng cho trang này để tránh va chạm giữa nhiều tab/ứng dụng
+                        storageKey: 'nhapvitrikhocs1_auth'
+                    },
+                    global: {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    }
+                }
             );
+            return __sbClient;
         }
+
 
         // Cấu hình bảng
         let hot;
@@ -505,7 +519,7 @@
 
         // === FULL CATALOG PRELOAD (auto on page load) ===
         // Đặt các biến log & state ở phạm vi global (window.*) để typeahead dùng chung
-        const CATALOG_PAGE_SIZE = 10000;               // có thể đổi 5000/20000 tùy tốc độ
+        const CATALOG_PAGE_SIZE = 1000;   // Supabase/PostgREST mặc định page-size tối đa 1.000 // có thể đổi 5000/20000 tùy tốc độ
         window.catalogAll = [];                        // [{masp,tensp,_MASP,_TENSP}]
         window.catalogTotal = 0;
         window.catalogLoaded = 0;
@@ -540,6 +554,8 @@
         }
 
         async function preloadAllCatalog() {
+            console.log('[DM] preload start… (will page through all dmhanghoa)');
+
             console.time('[DM] full preload');
             window.catalogTotal = await countDmhanghoa();
             console.log('[DM] total (RLS):', window.catalogTotal);
@@ -560,10 +576,14 @@
                 const pct = window.catalogTotal ? Math.round(window.catalogLoaded / window.catalogTotal * 100) : 0;
                 console.log(`[DM] loaded ${window.catalogLoaded}/${window.catalogTotal} (${pct}%)`);
 
-                if (page.length < CATALOG_PAGE_SIZE) break;          // hết dữ liệu
+                if (page.length === 0) break; // chỉ dừng khi không còn dòng nào trả về
+                offset += page.length;   // tăng đúng theo số hàng thực tế nhận được
+
                 await new Promise(r => setTimeout(r, 60));              // throttle nhẹ cho server
             }
             window.catalogAllReady = true;
+            console.log('[DM] FINISHED total loaded:', window.catalogLoaded, '/', window.catalogTotal);
+
             console.timeEnd('[DM] full preload');
         }
 
