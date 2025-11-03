@@ -754,11 +754,13 @@
               height:100%; margin:0; padding:0;">
     <div style="width:100%; margin:0; padding:0;">
 
-        <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
-      <div style="font-size:10pt; line-height:1; white-space:nowrap;
-                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
-        ${t.masp}
-      </div>
+        <!-- MÃ SP (span 2 cột, không cắt bên phải) -->
+<div style="grid-column:1 / span 2;
+            font-size:10pt; line-height:1; white-space:nowrap;
+            overflow:visible; text-overflow:clip; margin:0;">
+  ${t.masp}
+</div>
+      
 
         <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
       <div style="font-size:6pt;  line-height:1;
@@ -791,7 +793,7 @@
   
   <div style="grid-column:2; grid-row:3; 
               display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
-               margin:0; padding:0; margin-top:2mm;">
+               margin:0; padding:0; margin-top:2.5mm;">
   <canvas class="qr" style="width:8mm; height:8mm;"></canvas>
 
   ${(() => {
