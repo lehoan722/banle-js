@@ -332,7 +332,7 @@
           gridTemplateColumns: '1fr 1fr 1fr 1fr', // 1 hàng 4 thẻ: 42–45
           columnGap: '36px',
           rowGap: '24px',
-          marginTop: '150px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
+          marginTop: '100px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
         });
 
         // cardsWrap chứa 2 tầng
@@ -470,12 +470,12 @@
           card.append(qr2Wrap, c1c, c2c, c3c);
 
           // Thay vì: this.cardsWrap.appendChild(card);
-const neckNum = Number(neck);
-if (neckNum <= 41) {
-  this.topGrid.appendChild(card);    // 38..41 -> tầng trên
-} else {
-  this.bottomRow.appendChild(card);  // 42..45 -> hàng đáy
-}
+          const neckNum = Number(neck);
+          if (neckNum <= 41) {
+            this.topGrid.appendChild(card);    // 38..41 -> tầng trên
+          } else {
+            this.bottomRow.appendChild(card);  // 42..45 -> hàng đáy
+          }
 
           //moi
         }
@@ -522,7 +522,8 @@ if (neckNum <= 41) {
           this.cardsWrap.style.columnGap = '24px';
           this.cardsWrap.style.rowGap = '24px';
           this.list.style.display = 'none';
-this.cardsWrap.style.display = 'block'; // hoặc 'grid' đều ok vì bên trong đã là grid
+          this.cardsWrap.style.display = 'block'; // hoặc 'grid' đều ok vì bên trong đã là grid
+          this.bottomRow.style.marginTop = '100px';
 
 
         } else {
