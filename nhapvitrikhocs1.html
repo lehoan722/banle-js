@@ -290,29 +290,19 @@
         const TABLE_NAME = 'dmhanghoa';
 
         // Khởi tạo Supabase client (token đăng nhập)
-        // SINGLETON Supabase client (tránh tạo nhiều GoTrueClient)
-        let __sbClient = null;
         function getSupabaseClient() {
-            if (__sbClient) return __sbClient;
+            if (window.__sbClient) return window.__sbClient;
             const token = localStorage.getItem('supabase_access_token');
-
-            __sbClient = window.supabase.createClient(
+            window.__sbClient = window.supabase.createClient(
                 SUPABASE_URL,
                 SUPABASE_KEY,
                 {
-                    auth: {
-                        // khóa riêng cho trang này để tránh va chạm giữa nhiều tab/ứng dụng
-                        storageKey: 'nhapvitrikhocs1_auth'
-                    },
-                    global: {
-                        headers: token ? { Authorization: `Bearer ${token}` } : {}
-                    }
+                    auth: { storageKey: 'nhapvitrikhocs1_auth' },
+                    global: { headers: token ? { Authorization: `Bearer ${token}` } : {} }
                 }
             );
-            return __sbClient;
+            return window.__sbClient;
         }
-
-
         // Cấu hình bảng
         let hot;
         let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
@@ -514,207 +504,193 @@
 
 
 
-        // 3) Thêm JS (lọc gợi ý + ghi vào HOT)
+        // 3) Thêm JS (lọc gợi ý + ghi vào HOT) — kiểu query liên tục như trang in mã vạch
+(() => {
+    // ====== Cấu hình ======
+    const HOT_COL_MASP = 0;               // Cột "Mã sản phẩm"
+    const MAX_SUGGESTIONS = 50;           // Tối đa gợi ý hiển thị
+    const DEBOUNCE_MS = 120;
+    const PAGE_SIZE = 100;                // mỗi lần nạp 100 dòng như trang in mã vạch
+    const MIN_LEN = 2;                    // gõ >= 2 ký tự mới tìm
 
+    const $input = document.getElementById('maspSearch');
+    const $list  = document.getElementById('maspSuggest');
 
-        // === FULL CATALOG PRELOAD (auto on page load) ===
-        // Đặt các biến log & state ở phạm vi global (window.*) để typeahead dùng chung
-        const CATALOG_PAGE_SIZE = 1000;   // Supabase/PostgREST mặc định page-size tối đa 1.000 // có thể đổi 5000/20000 tùy tốc độ
-        window.catalogAll = [];                        // [{masp,tensp,_MASP,_TENSP}]
-        window.catalogTotal = 0;
-        window.catalogLoaded = 0;
-        window.catalogAllReady = false;
+    let currentQuery = '';
+    let page         = 0;
+    let loading      = false;
+    let endReached   = false;
+    let results      = [];    // cache tạm cho 1 query đang gõ
+    let filtered     = [];
+    let activeIndex  = -1;
+    let debTimer     = null;
 
-        function _norm(s) { return (s || '').toString().trim(); }
-        function _up(s) { return _norm(s).toUpperCase(); }
-        function _normalizeRow(r) {
-            const masp = _norm(r.masp), tensp = _norm(r.tensp);
-            return { masp, tensp, _MASP: _up(masp), _TENSP: _up(tensp) };
-        }
+    // ===== Helpers =====
+    function getHOT(){ return window.hot || window.hotTable || window.HOT || null; }
+    function norm(s){ return (s||'').toString().trim(); }
+    function up(s){ return norm(s).toUpperCase(); }
+    function buildLike(q){
+        const qq = q.replace(/[%_]/g, ''); // tránh wildcard
+        return `%${qq}%`;
+    }
 
-        // Đếm tổng theo quyền RLS (để log % chính xác)
-        async function countDmhanghoa() {
-            try {
-                const sb = getSupabaseClient();
-                const { count, error } = await sb.from('dmhanghoa').select('masp', { count: 'exact', head: true });
-                if (error) { console.warn('[DM] count error:', error.message); return 0; }
-                return count || 0;
-            } catch (e) { console.warn('[DM] count exception:', e); return 0; }
-        }
+    async function fetchPage(q, pageIndex){
+        const sb = getSupabaseClient();
+        const from = pageIndex * PAGE_SIZE;
+        const to   = from + PAGE_SIZE - 1;
+        const { data, error } = await sb
+            .from('dmhanghoa')
+            .select('masp,tensp')
+            .or(`masp.ilike.${buildLike(q)},tensp.ilike.${buildLike(q)}`)
+            .order('masp', { ascending: true })
+            .range(from, to);
+        if (error){ console.warn('[search] error:', error.message); return []; }
+        const seen = new Set(results.map(x => x._MASP));
+        const rows = (data||[]).map(r => ({
+            masp: norm(r.masp),
+            tensp: norm(r.tensp),
+            _MASP: up(r.masp),
+            _TENSP: up(r.tensp)
+        })).filter(r => r.masp && !seen.has(r._MASP));
+        return rows;
+    }
 
-        async function loadCatalogPage(offset) {
-            const sb = getSupabaseClient();
-            const { data, error } = await sb
-                .from('dmhanghoa')
-                .select('masp,tensp')
-                .order('masp', { ascending: true })
-                .range(offset, offset + CATALOG_PAGE_SIZE - 1);
-            if (error) { console.warn('[DM] page error@', offset, error.message); return []; }
-            return (data || []).map(_normalizeRow).filter(r => r.masp);
-        }
-
-        async function preloadAllCatalog() {
-            console.log('[DM] preload start… (will page through all dmhanghoa)');
-
-            console.time('[DM] full preload');
-            window.catalogTotal = await countDmhanghoa();
-            console.log('[DM] total (RLS):', window.catalogTotal);
-
-            let offset = 0;
-            const seen = new Set();
-            while (true) {
-                const page = await loadCatalogPage(offset);
-                if (!page.length) break;
-
-                // push unique theo _MASP
-                for (const r of page) {
-                    if (!seen.has(r._MASP)) { window.catalogAll.push(r); seen.add(r._MASP); }
-                }
-
-                offset += page.length;
-                window.catalogLoaded = window.catalogAll.length;
-                const pct = window.catalogTotal ? Math.round(window.catalogLoaded / window.catalogTotal * 100) : 0;
-                console.log(`[DM] loaded ${window.catalogLoaded}/${window.catalogTotal} (${pct}%)`);
-
-                if (page.length === 0) break; // chỉ dừng khi không còn dòng nào trả về
-                offset += page.length;   // tăng đúng theo số hàng thực tế nhận được
-
-                await new Promise(r => setTimeout(r, 60));              // throttle nhẹ cho server
-            }
-            window.catalogAllReady = true;
-            console.log('[DM] FINISHED total loaded:', window.catalogLoaded, '/', window.catalogTotal);
-
-            console.timeEnd('[DM] full preload');
-        }
-
-        // Gọi preload ngay khi mở trang
-        document.addEventListener('DOMContentLoaded', () => {
-            try { preloadAllCatalog(); } catch (e) { console.warn('[DM] preload failed:', e); }
+    function renderList(items){
+        $list.innerHTML=''; activeIndex=-1;
+        if (!items.length){ $list.hidden = true; return; }
+        const frag = document.createDocumentFragment();
+        items.forEach((it, idx) => {
+            const div = document.createElement('div');
+            div.className = 'typeahead-item';
+            div.dataset.index = idx;
+            div.innerHTML = `<b>${it.masp}</b>${it.tensp?` <small>— ${it.tensp}</small>`:''}`;
+            div.addEventListener('mousedown', (e)=>{ e.preventDefault(); chooseItem(idx); });
+            frag.appendChild(div);
         });
+        $list.appendChild(frag);
+        $list.hidden = false;
+    }
 
+    function moveActive(delta){
+        if ($list.hidden || !filtered.length) return;
+        activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
+        [...$list.children].forEach((el,i)=> el.classList.toggle('active', i===activeIndex));
+        const el=$list.children[activeIndex]; if(!el) return;
+        const r=el.getBoundingClientRect(), lr=$list.getBoundingClientRect();
+        if (r.bottom>lr.bottom) $list.scrollTop += (r.bottom-lr.bottom);
+        else if (r.top<lr.top)  $list.scrollTop  -= (lr.top-r.top);
+    }
 
-        // 3) Thêm JS (lọc gợi ý + ghi vào HOT) — phiên bản tải phân trang theo từ khóa (dmhanghoa)
-        (() => {
-            // CẤU HÌNH (đặt trong scope để tránh trùng tên)
-            const INV_CFG = {
-                PAGE_SIZE: 200,
-                CACHE_TTL_MS: 60 * 60 * 1000, // 60 phút
-                PREFIX_LEN: 2,
-                MAX_SUGGESTIONS: 50,
-                DEBOUNCE_MS: 120
-            };
-
-            // Nếu đã có full catalog (window.catalogAllReady), lọc trực tiếp trên đó
-            function filterFromFullCatalog(Q, MAX) {
-                const starts = [], contains = [];
-                const U = Q; // đã upper ở chỗ gọi
-                const src = Array.isArray(window.catalogAll) ? window.catalogAll : [];
-                for (const it of src) {
-                    if (it._MASP.startsWith(U) || it._TENSP.startsWith(U)) starts.push(it);
-                    else if (it._MASP.includes(U) || it._TENSP.includes(U)) contains.push(it);
-                    if (starts.length >= MAX) break;
-                }
-                return starts.concat(contains).slice(0, MAX);
+    function jumpToExistingRow(m){ const hot=getHOT(); if(!hot) return false;
+        const rows=hot.countRows();
+        for(let r=0;r<rows;r++){
+            if(up(hot.getDataAtCell(r,HOT_COL_MASP))===m){
+                hot.selectCell(r,HOT_COL_MASP);
+                const cell=hot.getCell(r,HOT_COL_MASP);
+                if(cell){ cell.style.transition='background .15s'; cell.style.background='#fff2cc'; setTimeout(()=>{cell.style.background='';},350); }
+                return true;
             }
+        }
+        return false;
+    }
+    function insertToNextEmpty(m){ const hot=getHOT(); if(!hot) return;
+        let target=-1; const rows=hot.countRows();
+        for(let r=0;r<rows;r++){ const v=norm(hot.getDataAtCell(r,HOT_COL_MASP)); if(!v){ target=r; break; } }
+        if(target===-1){ target=rows; hot.alter('insert_row', target, 1); }
+        hot.setDataAtCell(target, HOT_COL_MASP, m);
+        hot.selectCell(target, HOT_COL_MASP+1);
+    }
+    function chooseItem(idx){
+        const it=filtered[idx]; if(!it) return;
+        const masp=up(it.masp);
+        const exists=jumpToExistingRow(masp);
+        if(!exists) insertToNextEmpty(masp);
+        $input.value=''; $list.hidden=true; setTimeout(()=> $input.focus(),10);
+    }
 
+    async function startNewSearch(q){
+        currentQuery = q;
+        page       = 0;
+        endReached = false;
+        results    = [];
+        filtered   = [];
+        $list.scrollTop = 0;
 
-            const $input = document.getElementById('maspSearch');
-            const $list = document.getElementById('maspSuggest');
+        if (q.length < MIN_LEN){ $list.hidden = true; return; }
 
-            // STATE (local scope, tránh leak ra global)
-            let filtered = [];
-            let activeIndex = -1;
-            let debTimer = null;
-            let prefixCache = new Map();  // key=prefix, value={ts, data:[{masp,tensp,_MASP,_TENSP}], done:boolean, lastOffset:number}
-            let activeFetch = null;
+        loading = true;
+        const pageRows = await fetchPage(q, page);
+        loading = false;
 
-            // HELPERS
-            function norm(s) { return (s || '').toString().trim(); }
-            function up(s) { return norm(s).toUpperCase(); }
-            function keyPrefix(Q) { return (Q || '').slice(0, INV_CFG.PREFIX_LEN); }
-            function isFresh(entry) { return entry && (Date.now() - entry.ts) < INV_CFG.CACHE_TTL_MS; }
-            function normalizeRow(r) {
-                const masp = norm(r.masp);
-                const tensp = norm(r.tensp);
-                return { masp, tensp, _MASP: masp.toUpperCase(), _TENSP: tensp.toUpperCase() };
-            }
-            function getHotColMasp() { return (typeof HOT_COL_MASP === 'number') ? HOT_COL_MASP : 0; }
+        results.push(...pageRows);
+        filtered = results.slice(0, MAX_SUGGESTIONS);
+        renderList(filtered);
 
-            function getHOT() {
-                return window.hot || window.hotTable || window.HOT || null;
-            }
+        if (pageRows.length < PAGE_SIZE) endReached = true;
+    }
 
-            // DB: lấy 1 trang theo keyword Q (UPPER), range offset..offset+PAGE_SIZE-1
-            async function fetchOnePage(Q, offset) {
-                const sb = getSupabaseClient();
-                if (!sb) return [];
+    async function maybeLoadMore(){
+        if (loading || endReached || currentQuery.length < MIN_LEN) return;
+        const nearBottom = ($list.scrollTop + $list.clientHeight) >= ($list.scrollHeight - 8);
+        if (!nearBottom) return;
+
+        loading = true;
+        page += 1;
+        const more = await fetchPage(currentQuery, page);
+        loading = false;
+
+        if (!more.length){ endReached = true; return; }
+
+        results.push(...more);
+        filtered = results.slice(0, MAX_SUGGESTIONS);
+        renderList(filtered);
+
+        if (more.length < PAGE_SIZE) endReached = true;
+    }
+
+    // ===== Events =====
+    document.addEventListener('click', (e) => { if (!e.target.closest('.typeahead-wrap')) { $list.hidden = true; } });
+
+    $input.addEventListener('input', () => {
+        clearTimeout(debTimer);
+        debTimer = setTimeout(() => {
+            const q = up($input.value);
+            startNewSearch(q);
+        }, DEBOUNCE_MS);
+    });
+
+    $input.addEventListener('keydown', (e) => {
+        if ($list.hidden) return;
+        if (e.key==='ArrowDown'){ e.preventDefault(); moveActive(1); }
+        else if (e.key==='ArrowUp'){ e.preventDefault(); moveActive(-1); }
+        else if (e.key==='Enter' && activeIndex>=0){ e.preventDefault(); chooseItem(activeIndex); }
+        else if (e.key==='Escape'){ $list.hidden=true; }
+    });
+
+    $list.addEventListener('scroll', () => { maybeLoadMore(); });
+})();\n
+                if (local) { cache = local; return; }
+
+                const sb = getSupabaseClient();              // ✅ lấy client đúng cách
+                if (!sb) { console.warn('Supabase client chưa sẵn sàng'); cache = []; return; }
+
                 const { data, error } = await sb
                     .from('dmhanghoa')
                     .select('masp,tensp')
-                    .or(`masp.ilike.%${Q}%,tensp.ilike.%${Q}%`)
-                    .order('masp', { ascending: true })
-                    .range(offset, offset + INV_CFG.PAGE_SIZE - 1);
-                if (error) { console.error(error); return []; }
-                return (data || []).map(normalizeRow).filter(r => r.masp);
+                    .limit(8000);                              // nếu bạn dùng cột active thì thêm .eq('active', true)
+
+                if (error) { console.error(error); cache = []; return; }
+
+                cache = (data || []).map(r => ({
+                    masp: (r.masp || '').trim(),
+                    tensp: (r.tensp || '').trim(),
+                    _MASP: (r.masp || '').trim().toUpperCase(),
+                    _TENSP: (r.tensp || '').trim().toUpperCase(),
+                })).filter(r => r.masp);
+
+                saveCache(cache);
             }
 
-            // Lấy gợi ý đảm bảo đủ INV_CFG.MAX_SUGGESTIONS, tải nối tiếp nếu cần 
-            async function getSuggestionsEnsure(Q) {
-
-                // ƯU TIÊN: nếu đã preload đủ danh mục, bỏ qua gọi DB theo prefix → lọc trực tiếp
-                if (window.catalogAllReady && window.catalogAll && window.catalogAll.length) {
-                    const arr = filterFromFullCatalog(Q, INV_CFG.MAX_SUGGESTIONS);
-                    console.log('[DM] filter(full) hits:', arr.length, 'on', window.catalogAll.length);
-                    return arr;
-                }
-
-
-                const P = keyPrefix(Q);
-                let entry = prefixCache.get(P);
-                if (!isFresh(entry)) {
-                    entry = { ts: Date.now(), data: [], done: false, lastOffset: -INV_CFG.PAGE_SIZE };
-                    prefixCache.set(P, entry);
-                }
-
-                const filterFromCache = () => {
-                    const starts = [];
-                    const contains = [];
-                    for (const it of entry.data) {
-                        if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) starts.push(it);
-                        else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) contains.push(it);
-                        if (starts.length >= INV_CFG.MAX_SUGGESTIONS) break;
-                    }
-                    return starts.concat(contains).slice(0, INV_CFG.MAX_SUGGESTIONS);
-                };
-
-                let current = filterFromCache();
-                if (current.length >= INV_CFG.MAX_SUGGESTIONS || entry.done) return current;
-
-                if (activeFetch) await activeFetch; // đợi request trước (tránh đua)
-                let needed = INV_CFG.MAX_SUGGESTIONS - current.length;
-
-                activeFetch = (async () => {
-                    while (!entry.done && needed > 0) {
-                        const nextOffset = entry.lastOffset + INV_CFG.PAGE_SIZE;
-                        const page = await fetchOnePage(Q, nextOffset);
-                        entry.lastOffset = nextOffset;
-                        if (page.length < INV_CFG.PAGE_SIZE) entry.done = true;
-
-                        const exist = new Set(entry.data.map(x => x._MASP));
-                        for (const r of page) if (!exist.has(r._MASP)) entry.data.push(r);
-
-                        current = filterFromCache();
-                        needed = INV_CFG.MAX_SUGGESTIONS - current.length;
-                    }
-                    entry.ts = Date.now();
-                })();
-
-                await activeFetch;
-                activeFetch = null;
-                return current;
-            }
-
-            function hideList() { $list.hidden = true; $list.innerHTML = ''; activeIndex = -1; }
             function renderList(items) {
                 $list.innerHTML = '';
                 activeIndex = -1;
@@ -725,7 +701,9 @@
                     div.className = 'typeahead-item';
                     div.dataset.index = idx;
                     div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` <small>— ${it.tensp}</small>` : ''}`;
-                    div.addEventListener('mousedown', (e) => { e.preventDefault(); chooseItem(idx); });
+                    div.addEventListener('mousedown', (e) => {  // dùng mousedown để không mất focus trước khi click
+                        e.preventDefault(); chooseItem(idx);
+                    });
                     frag.appendChild(div);
                 });
                 $list.appendChild(frag);
@@ -736,6 +714,7 @@
                 if ($list.hidden || !filtered.length) return;
                 activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
                 [...$list.children].forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+                // Auto scroll
                 const el = $list.children[activeIndex];
                 if (el) {
                     const r = el.getBoundingClientRect();
@@ -745,68 +724,118 @@
                 }
             }
 
+            function hideList() { $list.hidden = true; activeIndex = -1; }
+
+            function getMaspsInHOT() {
+                const hot = getHOT(); if (!hot) return [];
+                const rows = hot.countRows();
+                const arr = [];
+                for (let r = 0; r < rows; r++) {
+                    const v = norm(hot.getDataAtCell(r, HOT_COL_MASP));
+                    if (v) arr.push(up(v));
+                }
+                return arr;
+            }
+
+            function jumpToExistingRow(maspUpper) {
+                const hot = getHOT(); if (!hot) return;
+                const rows = hot.countRows();
+                for (let r = 0; r < rows; r++) {
+                    const v = up(hot.getDataAtCell(r, HOT_COL_MASP));
+                    if (v === maspUpper) {
+                        hot.selectCell(r, HOT_COL_MASP);
+                        // nháy nhẹ
+                        const cell = hot.getCell(r, HOT_COL_MASP);
+                        if (cell) {
+                            cell.style.transition = 'background 0.15s';
+                            cell.style.background = '#fff2cc';
+                            setTimeout(() => { cell.style.background = ''; }, 350);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function insertToNextEmpty(masp) {
+                const hot = getHOT(); if (!hot) return;
+                let targetRow = -1;
+                const rows = hot.countRows();
+                for (let r = 0; r < rows; r++) {
+                    const v = norm(hot.getDataAtCell(r, HOT_COL_MASP));
+                    if (!v) { targetRow = r; break; }
+                }
+                if (targetRow === -1) {
+                    targetRow = rows;
+                    hot.alter('insert_row', targetRow, 1);
+                }
+                hot.setDataAtCell(targetRow, HOT_COL_MASP, masp);
+                hot.selectCell(targetRow, HOT_COL_MASP + 1); // move sang cột vị trí nếu muốn
+            }
+
             function chooseItem(idx) {
                 const it = filtered[idx];
                 if (!it) return;
                 const masp = up(it.masp);
-                const hot = getHOT();
-                if (!hot) { hideList(); return; }
 
-                const col = getHotColMasp();
-                // Tìm dòng đã có mã → nhảy tới; nếu chưa có → chèn vào dòng trống tiếp theo
-                let found = -1;
-                const rows = hot.countRows();
-                for (let r = 0; r < rows; r++) {
-                    const v = up(norm(hot.getDataAtCell(r, col)));
-                    if (v === masp) { found = r; break; }
-                }
-                if (found >= 0) {
-                    hot.selectCell(found, col);  // focus vào dòng hiện có
-                } else {
-                    // chèn/ghi vào dòng trống kế tiếp
-                    let target = -1;
-                    for (let r = 0; r < rows; r++) {
-                        const v = norm(hot.getDataAtCell(r, col));
-                        if (!v) { target = r; break; }
-                    }
-                    if (target === -1) { hot.alter('insert_row', rows, 1); target = rows; }
-                    hot.setDataAtCell(target, col, masp);
-                    hot.render();
-                    hot.selectCell(target, col);
-                }
+                // Nếu mã đã có → nhảy tới dòng cũ; nếu chưa → chèn vào dòng trống tiếp theo
+                const exists = jumpToExistingRow(masp);
+                if (!exists) insertToNextEmpty(masp);
 
+                // Reset input cho lần nhập tiếp theo
                 $input.value = '';
                 hideList();
+                // Focus lại ô nhập
                 setTimeout(() => $input.focus(), 10);
             }
 
-            async function doFilterAsync(q) {
+            function doFilter(q) {
                 const Q = up(q);
                 if (!Q) { hideList(); return; }
-                filtered = await getSuggestionsEnsure(Q);
-                renderList(filtered);
+                // Ưu tiên bắt đầu bằng Q, sau đó chứa Q
+                const starts = [];
+                const contains = [];
+                for (const it of (cache || [])) {
+                    if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) {
+                        starts.push(it);
+                    } else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) {
+                        contains.push(it);
+                    }
+                    if (starts.length >= MAX_SUGGESTIONS) break;
+                }
+                const arr = starts.concat(contains).slice(0, MAX_SUGGESTIONS);
+                filtered = arr;
+                renderList(arr);
             }
 
-            if ($input) {
-                $input.addEventListener('input', () => {
-                    clearTimeout(debTimer);
-                    debTimer = setTimeout(() => { doFilterAsync($input.value); }, INV_CFG.DEBOUNCE_MS);
-                });
-                $input.addEventListener('keydown', (e) => {
-                    if ($list.hidden) return;
-                    if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
-                    else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
-                    else if (e.key === 'Enter') {
-                        if (activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
-                    } else if (e.key === 'Escape') { hideList(); }
-                });
-            }
+            // ====== Events ======
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.typeahead-wrap')) hideList();
+            });
 
-            // Không autopreload catalog nữa (chỉ khi người dùng gõ mới tải)
-            window.typeahead_masp = { resetCache: () => { prefixCache = new Map(); } };
+            $input.addEventListener('input', async () => {
+                clearTimeout(debTimer);
+                debTimer = setTimeout(async () => {
+                    await ensureCatalog();
+                    doFilter($input.value);
+                }, DEBOUNCE_MS);
+            });
+
+            $input.addEventListener('keydown', (e) => {
+                if ($list.hidden) return;
+                if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+                else if (e.key === 'Enter') {
+                    if (activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
+                } else if (e.key === 'Escape') { hideList(); }
+            });
+
+            // Expose nhỏ để debug (tùy)
+            window.typeahead_masp = { ensureCatalog, doFilter };
+
+            // Autopreload nhẹ để lần đầu gõ không chậm
+            ensureCatalog();
         })();
-
-
 
 
         // Kiểm tra vị trí kho
