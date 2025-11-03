@@ -154,8 +154,8 @@ export function khoiTaoShortcut() {
       // 3) Xác định trang nguồn để áp dụng ngoại lệ
       const path = (location.pathname || "").toLowerCase();
       let target_cs = origin_cs; // mặc định thuận chiều
-      if (path.endsWith("ccn2v1cs1.html")) target_cs = "cs2"; // ngoại lệ: CS2 -> mở CS1
-      if (path.endsWith("ccn1v2cs2.html")) target_cs = "cs1"; // ngoại lệ: CS1 -> mở CS2
+      if (path.endsWith("ccn2v1cs2.html")) target_cs = "cs1"; // ngoại lệ: CS2 -> mở CS1
+      if (path.endsWith("ccn1v2cs1.html")) target_cs = "cs2"; // ngoại lệ: CS1 -> mở CS2
 
       // 4) Lưu payload vào localStorage
       const payload = {
