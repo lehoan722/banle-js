@@ -332,7 +332,7 @@
           gridTemplateColumns: '1fr 1fr 1fr 1fr', // 1 hàng 4 thẻ: 42–45
           columnGap: '36px',
           rowGap: '24px',
-          marginTop: '64px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
+          marginTop: '100px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
         });
 
         // cardsWrap chứa 2 tầng
