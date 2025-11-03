@@ -332,7 +332,7 @@
           gridTemplateColumns: '1fr 1fr 1fr 1fr', // 1 hàng 4 thẻ: 42–45
           columnGap: '36px',
           rowGap: '24px',
-          marginTop: '100px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
+          marginTop: '150px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
         });
 
         // cardsWrap chứa 2 tầng
@@ -419,6 +419,8 @@
           // ==== CARD cho Desktop: 1 "hàng lớn" chứa QR + 3 ô text ====
           const card = document.createElement('div');
           card.className = 'sz-card';
+          // NGĂN blur khi bấm nhanh: giữ focus ở #size
+          card.addEventListener('mousedown', (e) => e.preventDefault());
           Object.assign(card.style, {
             display: 'grid',
             gridTemplateColumns: 'auto 1fr 1fr 1fr',
@@ -458,6 +460,8 @@
 
           // Hover highlight đồng bộ
           const parts = [qr2Wrap, c1c, c2c, c3c];
+          parts.forEach(el => el.addEventListener('mousedown', (e) => e.preventDefault()));
+
           parts.forEach(el => el.style.transition = 'background 0.15s');
           parts.forEach(el => {
             el.addEventListener('mouseenter', () => parts.forEach(p => p.style.background = '#ebeb64ff'));
@@ -484,12 +488,19 @@
         this.onPick = null;
 
         // click ngoài để đóng
-        document.addEventListener('mousedown', (e) => {
+        // pointerdown ngoài để đóng (ổn định hơn click/mousedown)
+        document.addEventListener('pointerdown', (e) => {
           if (this.root.style.display === 'none') return;
-          if (!this.root.contains(e.target) && e.target !== __sizeInput) {
-            this.close();
-          }
-        });
+          const path = (typeof e.composedPath === 'function') ? e.composedPath() : [];
+          const inside = this.root.contains(e.target) || path.includes(this.root);
+          if (!inside && e.target !== __sizeInput) this.close();
+        }, true);
+
+        // Ngăn nổi bọt khi bấm bên trong popup
+        this.root.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+        }, true);
+
       }
 
       //moi
@@ -515,6 +526,18 @@
             display: 'block'
           });
 
+          this.root.style.zIndex = '999999';      // chắc chắn nổi trên mọi lớp
+          this.root.style.pointerEvents = 'auto';  // đảm bảo nhận click
+
+          // Nếu lỡ vượt mép phải (do thanh cuộn, scale…), đẩy trái lại 1 chút
+
+          let leftPx = parseFloat(this.root.style.left);
+          if (leftPx + w > window.innerWidth - pad) {
+            leftPx = Math.max(pad, window.innerWidth - pad - w);
+            this.root.style.left = `${leftPx}px`;
+          }
+
+
           // Bật layout 3 cột rộng
           this.list.style.display = 'none';
           this.cardsWrap.style.display = 'grid';
@@ -523,7 +546,6 @@
           this.cardsWrap.style.rowGap = '24px';
           this.list.style.display = 'none';
           this.cardsWrap.style.display = 'block'; // hoặc 'grid' đều ok vì bên trong đã là grid
-          this.bottomRow.style.marginTop = '100px';
 
 
         } else {
