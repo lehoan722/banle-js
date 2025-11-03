@@ -2,452 +2,836 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Nhập vị trí kho CS1 — Unlimited Catalog</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
-  <meta name="app:page_path" content="nhapvitrikhocs1.html">
-  <script src="scripts/page_guard.js"></script>
-  <style>
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: #f7fafc;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Nhập vị trí kho hàng hóa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
+    <meta name="app:page_path" content="nhapvitrikhocs1.html">
+    <script src="scripts/page_guard.js"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'SF Pro Display', 'Roboto', Arial, sans-serif;
+            background: #f7fafc;
+        }
 
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    h2 {
-      margin: 18px 0 8px 0;
-      font-size: 1.25rem;
-      text-align: center;
-    }
+        h2 {
+            margin: 18px 0 8px 0;
+            font-size: 1.25rem;
+            text-align: center;
+            letter-spacing: 1px;
+        }
 
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin: 6px 0 10px 0;
-    }
+        #loginModule {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            max-width: 460px;
+            margin: 6px 0 10px 0;
+            gap: 7px;
+        }
 
-    .main-btn {
-      padding: 8px 12px;
-      border-radius: 12px;
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      background: #2f80ed;
-    }
+        #loginModule input {
+            border-radius: 12px;
+            padding: 7px 11px;
+            border: 1px solid #dedede;
+            font-size: 1rem;
+            background: #fff;
+            width: 44vw;
+            max-width: 160px;
+        }
 
-    #hot {
-      width: 99vw;
-      max-width: 520px;
-      margin: 8px auto;
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 2px 18px rgba(0, 0, 0, .06);
-    }
+        #login-submit {
+            background: linear-gradient(90deg, #ff5858 0%, #f857a6 100%);
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            padding: 7px 16px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(255, 87, 166, 0.11);
+            cursor: pointer;
+            transition: 0.18s;
+        }
 
-    .typeahead-wrap {
-      position: relative;
-      display: inline-block;
-      min-width: 280px;
-    }
+        #login-submit:active {
+            filter: brightness(0.93);
+            transform: scale(0.97);
+        }
 
-    .typeahead-wrap input {
-      width: 100%;
-      height: 38px;
-      border-radius: 8px;
-      border: 1px solid #cfd7e6;
-      padding: 0 10px;
-    }
+        .main-btn {
+            display: inline-block;
+            margin: 5px 7px 5px 0;
+            font-size: 1.08rem;
+            padding: 6px 6px;
+            font-weight: 500;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(72, 52, 212, 0.07);
+            color: #fff;
+            background: linear-gradient(100deg, #56ccf2 0%, #2f80ed 100%);
+            cursor: pointer;
+            outline: none;
+            transition: background 0.23s, transform 0.18s;
+        }
 
-    .typeahead-list {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border: 1px solid #d8e0ee;
-      border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
-      max-height: 300px;
-      overflow: auto;
-      z-index: 1000;
-    }
+        .main-btn:active {
+            background: linear-gradient(100deg, #4a95ff 0%, #395985 100%);
+            transform: scale(0.97);
+        }
 
-    .typeahead-item {
-      padding: 10px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #f3f6fb;
-      line-height: 1.2
-    }
+        .main-btn:nth-child(3) {
+            /* nút xóa */
+            background: linear-gradient(100deg, #f7971e 0%, #ffd200 100%);
+            color: #4a3a08;
+            box-shadow: 0 2px 10px rgba(255, 215, 0, 0.09);
+        }
 
-    .typeahead-item:last-child {
-      border-bottom: none
-    }
+        .main-btn:nth-child(4) {
+            /* nút lưu */
+            background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+            color: #134a2d;
+            box-shadow: 0 2px 10px rgba(67, 233, 123, 0.13);
+        }
 
-    .typeahead-item.active {
-      background: #eaf2ff
-    }
+        #hot {
+            width: 99vw;
+            max-width: 480px;
+            margin: 0 auto 8px auto;
+            touch-action: auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 2px 18px rgba(70, 130, 180, 0.07);
+            overflow-x: auto;
+        }
 
-    .diag {
-      font-size: 12px;
-      color: #465;
-      margin-top: 6px
-    }
+        .ht_master table {
+            font-size: 1.05rem;
+        }
 
-    .progress {
-      width: 200px;
-      height: 6px;
-      background: #eef3ff;
-      border-radius: 999px;
-      overflow: hidden;
-      display: inline-block;
-      vertical-align: middle;
-      margin-left: 6px;
-    }
+        #preview {
+            min-height: 36px;
+            font-size: 1.06rem;
+            text-align: center;
+            color: #2f80ed;
+            margin: 7px 0 0 0;
+        }
 
-    .progress>span {
-      display: block;
-      height: 100%;
-      width: 0;
-      background: #5b8cff;
-      transition: width .2s;
-    }
+        /* Trangthai màu */
+        .trangthai-ok {
+            color: #e53935 !important;
+        }
 
-    .status {
-      font-size: 12px;
-      margin-left: 6px;
-      color: #345
-    }
+        .trangthai-boqua {
+            color: #039be5 !important;
+        }
 
-    .trangthai-ok {
-      color: #e53935 !important;
-    }
+        .trangthai-loi {
+            color: orange !important;
+        }
 
-    .trangthai-boqua {
-      color: #039be5 !important;
-    }
+        .trangthai-khongtontai {
+            color: #e53935 !important;
 
-    .trangthai-loi {
-      color: orange !important;
-    }
+        }
 
-    .trangthai-khongtontai {
-      color: #e53935 !important;
-    }
+        .trangthai-chuacovitri {
+            color: #e67e22 !important;
 
-    .trangthai-chuacovitri {
-      color: #e67e22 !important;
-    }
-  </style>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      PageGuard.enforce({
-        url: 'https://rddjrmbyftlcvrgzlyby.supabase.co',
-        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-      });
-    });
-  </script>
+        }
+
+
+        @media (max-width: 500px) {
+            h2 {
+                font-size: 1.04rem;
+            }
+
+            #hot {
+                max-width: 99vw;
+            }
+
+            #loginModule input {
+                font-size: .98rem;
+                width: 42vw;
+            }
+
+            .main-btn {
+                font-size: .99rem;
+                padding: 9px 10px;
+            }
+
+            #preview {
+                font-size: .95rem;
+            }
+        }
+
+        .typeahead-wrap {
+            position: relative;
+            display: inline-block;
+            min-width: 260px;
+            margin: 8px 10px 0 0
+        }
+
+        .typeahead-wrap input {
+            width: 100%;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #bcd;
+            outline: none;
+            padding: 0 10px
+        }
+
+        .typeahead-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #d8e0ee;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+            max-height: 280px;
+            overflow: auto;
+            z-index: 1000
+        }
+
+        .typeahead-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f6fb;
+            line-height: 1.2
+        }
+
+        .typeahead-item:last-child {
+            border-bottom: none
+        }
+
+        .typeahead-item b {
+            font-weight: 700
+        }
+
+        .typeahead-item small {
+            opacity: .7
+        }
+
+        .typeahead-item.active {
+            background: #eaf2ff
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            PageGuard.enforce({
+                url: 'https://rddjrmbyftlcvrgzlyby.supabase.co',
+                key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+            });
+        });
+    </script>
+
+
 </head>
 
 <body>
-  <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
+    <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
+    <div id="loginModule">
+        <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
+        <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
+        <input id="login-password" type="password" value="123123" placeholder="Mật khẩu" style="display:none">
 
-  <div class="toolbar">
-    <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
-    <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
-    <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
-    <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
-  </div>
-
-  <div class="typeahead-wrap">
-    <input id="maspSearch" type="text" placeholder="Nhập mã/tên sản phẩm để tìm..." autocomplete="off" />
-    <div id="maspSuggest" class="typeahead-list" hidden></div>
-    <div class="diag">
-      <span>Đã nạp: <b id="countLoaded">0</b> / <span id="countTotal">…</span> mã</span>
-      <span class="progress"><span id="progressBar"></span></span>
-      <span class="status" id="statusText">Chờ nhập để bắt đầu nạp toàn bộ…</span>
+        <button id="login-submit">Đăng nhập</button>
+        <span id="login-status"></span>
     </div>
-  </div>
 
-  <div id="preview"></div>
-  <div id="hot"></div>
+    <div style="display:flex;justify-content:center;margin-bottom:7px;">
+        <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
+        <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
+        <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
+        <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
+    </div>
 
-  <script>
-    // ===== Supabase =====
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-    const TABLE_NAME = 'dmhanghoa';
-    function getSupabaseClient() {
-      const token = localStorage.getItem('supabase_access_token');
-      return window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {});
-    }
+    <!-- Ô nhập MASP có gợi ý -->
+    <div class="typeahead-wrap">
 
-    // ===== HOT =====
-    let hot;
-    let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
-    let columns = [
-      { data: 'masp', type: 'text', width: 150 },
-      { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
-      { data: 'trangthai', type: 'text', width: 110, readOnly: true }
-    ];
-    function initTable() {
-      const container = document.getElementById('hot');
-      if (hot) hot.destroy();
-      hot = new Handsontable(container, {
-        data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
-        columns, colHeaders, rowHeaders: true, minSpareRows: 1,
-        width: '100%', height: 420, stretchH: 'all', manualColumnResize: true,
-        licenseKey: 'non-commercial-and-evaluation',
-        cells: function (row, col) {
-          const cellProperties = {};
-          if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
-          if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
-          if (col === 2) cellProperties.readOnly = true;
-          if (col === 2) {
-            const val = this.instance.getDataAtCell(row, col);
-            if (val === "OK") cellProperties.className = "trangthai-ok";
-            if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
-            if (val === "LỖI") cellProperties.className = "trangthai-loi";
-            if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
-            if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
-          }
-          return cellProperties;
+        <input id="maspSearch" type="text" placeholder="Nhập mã sản phẩm..." autocomplete="off"
+            inputmode="latin-prose" />
+        <div id="maspSuggest" class="typeahead-list" hidden></div>
+
+        <button id="btnFetchSheet" class="btn btn-info"
+            style="background:#4aa3ff;color:#fff;border:none;border-radius:12px;padding:10px 16px;margin:4px 8px;">
+            📥 Lấy dữ liệu
+        </button> từ trang ghivitrikhocs1/ kiem kho cs1
+
+
+    </div>
+
+
+    <div id="preview"></div>
+
+    <div id="hot"></div>
+
+    <script>
+        // Thông tin Supabase
+        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+        const TABLE_NAME = 'dmhanghoa';
+
+        // Khởi tạo Supabase client (token đăng nhập)
+        function getSupabaseClient() {
+            const token = localStorage.getItem('supabase_access_token');
+            return window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_KEY,
+                token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}
+            );
         }
-      });
-      window.hot = hot;
-      window.editableMASP = true;
-      window.editableVITRI = false;
-    }
-    initTable();
 
-    // ===== Autocomplete + Nạp toàn bộ (paginated, tự động sau khi gõ) =====
-    (() => {
-      const PAGE_SIZE = 5000;           // tải 5000 mã mỗi trang (đổi 10.000 nếu bạn muốn)
-      const MAX_SUGGESTIONS = 50;       // số dòng hiển thị trong dropdown
-      const $input = document.getElementById('maspSearch');
-      const $list = document.getElementById('maspSuggest');
-      const $loaded = document.getElementById('countLoaded');
-      const $total = document.getElementById('countTotal');
-      const $bar = document.getElementById('progressBar');
-      const $status = document.getElementById('statusText');
+        // Cấu hình bảng
+        let hot;
+        let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
+        let columns = [
+            { data: 'masp', type: 'text', width: 150 },
+            { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
+            { data: 'trangthai', type: 'text', width: 110, readOnly: true }
+        ];
 
-      // state catalog
-      let catalog = [];                 // [{masp,tensp,_MASP,_TENSP}]
-      let loadedCount = 0;
-      let totalCount = 0;
-      let nextOffset = 0;
-      let allDone = false;
-      let loading = false;
-      let started = false;              // bắt đầu nạp sau lần gõ đầu tiên
-      let activeIndex = -1;
-      let filtered = [];
+        function initTable() {
+            const container = document.getElementById('hot');
+            if (hot) hot.destroy();
+            hot = new Handsontable(container, {
+                data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
+                columns,
+                colHeaders,
+                rowHeaders: true,
+                minSpareRows: 1,
+                width: '100%',
+                height: 420,
+                stretchH: 'all',
+                manualColumnResize: true,
+                licenseKey: 'non-commercial-and-evaluation',
+                cells: function (row, col) {
+                    const cellProperties = {};
+                    // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
+                    if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
+                    if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
+                    if (col === 2) cellProperties.readOnly = true;
 
-      const sb = getSupabaseClient();
+                    // Màu cho trạng thái
+                    if (col === 2) {
+                        const val = this.instance.getDataAtCell(row, col);
+                        if (val === "OK") cellProperties.className = "trangthai-ok";
+                        if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
+                        if (val === "LỖI") cellProperties.className = "trangthai-loi";
+                        if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
+                        if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
+                    }
 
-      function norm(s) { return (s || '').toString().trim(); }
-      function up(s) { return norm(s).toUpperCase(); }
-
-      async function fetchTotal() {
-        try {
-          const { count } = await sb.from(TABLE_NAME).select('masp', { count: 'exact', head: true });
-          return count || 0;
-        } catch (e) { return 0; }
-      }
-
-      function updateUI() {
-        $loaded.textContent = loadedCount.toLocaleString('vi-VN');
-        $total.textContent = (totalCount || '…');
-        const pct = totalCount ? Math.round((loadedCount / totalCount) * 100) : 0;
-        $bar.style.width = pct + '%';
-        $status.textContent = allDone ? 'Đã nạp đủ danh mục theo quyền' :
-          loading ? 'Đang nạp thêm…' :
-            started ? 'Đang nạp (nhập để tiếp tục lọc)…' :
-              'Chờ nhập để bắt đầu nạp toàn bộ…';
-      }
-
-      async function loadNextPage() {
-        if (loading || allDone) return;
-        loading = true; updateUI();
-        try {
-          const { data, error } = await sb
-            .from(TABLE_NAME)
-            .select('masp,tensp')
-            .order('masp', { ascending: true })
-            .range(nextOffset, nextOffset + PAGE_SIZE - 1);
-          if (error) throw error;
-          const rows = (data || []).map(r => ({
-            masp: norm(r.masp),
-            tensp: norm(r.tensp),
-            _MASP: up(r.masp),
-            _TENSP: up(r.tensp)
-          })).filter(r => r.masp);
-
-          // unique theo _MASP
-          const seen = new Set(catalog.map(x => x._MASP));
-          for (const r of rows) if (!seen.has(r._MASP)) { catalog.push(r); seen.add(r._MASP); }
-
-          nextOffset += rows.length;
-          loadedCount = catalog.length;
-          if (rows.length < PAGE_SIZE) allDone = true;
-        } finally {
-          loading = false; updateUI();
+                    return cellProperties;
+                }
+            });
+            window.hot = hot;   // ✅ expose ra global để getHOT() lấy được
+            // Ban đầu chỉ nhập mã sản phẩm
+            window.editableMASP = true;
+            window.editableVITRI = false;
         }
-      }
 
-      async function ensureStarted() {
-        if (started) return;
-        started = true;
-        totalCount = await fetchTotal();
-        updateUI();
-        // bắt đầu nạp trang đầu, sau đó tự nạp nền các trang tiếp
-        await loadNextPage();
-        // nạp nền liên tục cho đến khi đủ (không chặn gõ/lọc)
-        (async function backgroundFill() {
-          while (!allDone) {
-            await loadNextPage();
-            // sau mỗi trang, nếu người dùng đang gõ, re-filter để “bổ sung” kết quả mới
-            if ($input.value.trim()) {
-              doFilter($input.value);
+        initTable();
+
+        // === BỔ SUNG: tự đọc danh sách mã do F8 đẩy sang và chạy kiểm tra ===
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const raw = localStorage.getItem('VITRIKHO_IMPORT');
+                if (!raw) return;
+                const payload = JSON.parse(raw);
+                // Chỉ xử lý nếu không ghi cs hoặc cs === 'cs1'
+                if (payload?.cs && payload.cs.toLowerCase() !== 'cs1') return;
+
+                const list = Array.isArray(payload?.list) ? payload.list : [];
+                if (!list.length) return;
+
+                const uniq = Array.from(new Set(
+                    list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)
+                ));
+                const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
+                hot.loadData(rows);
+
+                // Dọn khóa sau khi dùng để tránh dính ca sau
+                localStorage.removeItem('VITRIKHO_IMPORT');
+
+                // Tự chạy kiểm tra vị trí
+                setTimeout(() => kiemTraViTri(), 0);
+            } catch (err) {
+                console.error('VITRIKHO_IMPORT parse error:', err);
             }
-            // nhỏ delay để không dồn API quá gắt
-            await new Promise(r => setTimeout(r, 60));
-          }
-        })();
-      }
-
-      function renderList(items) {
-        $list.innerHTML = ''; activeIndex = -1;
-        if (!items.length) { $list.hidden = true; return; }
-        const frag = document.createDocumentFragment();
-        items.forEach((it, idx) => {
-          const div = document.createElement('div');
-          div.className = 'typeahead-item';
-          div.dataset.index = idx;
-          div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` — <small>${it.tensp}</small>` : ''}`;
-          div.addEventListener('mousedown', (e) => { e.preventDefault(); chooseItem(idx); });
-          frag.appendChild(div);
         });
-        $list.appendChild(frag);
-        $list.hidden = false;
-      }
+        // Đăng nhập Supabase (bắt buộc)
+        document.getElementById('login-submit').onclick = async function () {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const sb = getSupabaseClient();
+            document.getElementById('login-status').textContent = 'Đang đăng nhập...';
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+                document.getElementById('login-status').textContent = 'Sai tài khoản hoặc mật khẩu!';
+            } else {
+                document.getElementById('login-status').textContent = 'Đăng nhập thành công!';
+                localStorage.setItem('supabase_access_token', data.session.access_token);
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        };
 
-      function doFilter(q) {
-        const Q = up(q);
-        if (!Q) { $list.hidden = true; return; }
-        const starts = [], contains = [];
-        for (const it of catalog) {
-          if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) starts.push(it);
-          else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) contains.push(it);
-          if (starts.length >= MAX_SUGGESTIONS) break;
+        // Làm lại bảng
+        function resetTable() {
+            window.editableMASP = true;
+            window.editableVITRI = false;
+            initTable();
+            document.getElementById('preview').innerHTML = "";
         }
-        filtered = starts.concat(contains).slice(0, MAX_SUGGESTIONS);
-        renderList(filtered);
-      }
 
-      function moveActive(delta) {
-        if ($list.hidden || !filtered.length) return;
-        activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
-        [...$list.children].forEach((el, i) => el.classList.toggle('active', i === activeIndex));
-        const el = $list.children[activeIndex]; if (!el) return;
-        const r = el.getBoundingClientRect(), lr = $list.getBoundingClientRect();
-        if (r.bottom > lr.bottom) $list.scrollTop += (r.bottom - lr.bottom);
-        else if (r.top < lr.top) $list.scrollTop -= (lr.top - r.top);
-      }
+        // 2) JS – đọc Google Sheet + ghi vào HOT
+        (() => {
+            // ===== Cấu hình =====
+            const SHEET_ID = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
+            const SHEET_TAB = 'ghivitrikhocs1';  // tên sheet trong file
+            const HOT_COL_MASP = 0;               // cột "Mã sản phẩm" trong HOT
+            const MAKE_UPPERCASE = true;          // in hoa mã sản phẩm
+            const DEDUP = false;                  // có loại trùng không (mặc định KHÔNG)
+            const CLEAR_BEFORE_INSERT = true;     // xóa dữ liệu cũ trước khi nạp
 
-      function getHOT() { return window.hot || window.hotTable || window.HOT || null; }
-      function jumpToExistingRow(m) { const hot = getHOT(); if (!hot) return false; const rows = hot.countRows(); for (let r = 0; r < rows; r++) { const v = up(hot.getDataAtCell(r, 0)); if (v === m) { hot.selectCell(r, 0); const cell = hot.getCell(r, 0); if (cell) { cell.style.transition = 'background .15s'; cell.style.background = '#fff2cc'; setTimeout(() => { cell.style.background = ''; }, 350); } return true; } } return false; }
-      function insertToNextEmpty(m) { const hot = getHOT(); if (!hot) return; let target = -1; const rows = hot.countRows(); for (let r = 0; r < rows; r++) { const v = norm(hot.getDataAtCell(r, 0)); if (!v) { target = r; break; } } if (target === -1) { target = rows; hot.alter('insert_row', target, 1); } hot.setDataAtCell(target, 0, m); hot.selectCell(target, 1); }
-      function chooseItem(idx) { const it = filtered[idx]; if (!it) return; const masp = up(it.masp); const exists = jumpToExistingRow(masp); if (!exists) insertToNextEmpty(masp); $input.value = ''; $list.hidden = true; setTimeout(() => $input.focus(), 10); }
+            const $btn = document.getElementById('btnFetchSheet');
 
-      // Events
-      let debTimer = null;
-      function debounce(fn, ms = 120) { clearTimeout(debTimer); debTimer = setTimeout(fn, ms); }
-      $input.addEventListener('input', () => { ensureStarted(); debounce(() => doFilter($input.value), 80); });
-      $input.addEventListener('focus', () => { ensureStarted(); if ($input.value) doFilter($input.value); });
+            function getHOT() {
+                return window.hot || window.hotTable || window.HOT || null;
+            }
 
-      document.addEventListener('click', (e) => { if (!e.target.closest('.typeahead-wrap')) { $list.hidden = true; } });
-      $input.addEventListener('keydown', (e) => {
-        if ($list.hidden) return;
-        if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
-        else if (e.key === 'Escape') { $list.hidden = true; }
-        else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
-      });
-    })();
+            // Parse JSON kiểu GViz: /*O_o*/ google.visualization.Query.setResponse({...});
+            function parseGvizJson(txt) {
+                const start = txt.indexOf('(');
+                const end = txt.lastIndexOf(')');
+                if (start === -1 || end === -1) return [];
+                const payload = JSON.parse(txt.slice(start + 1, end));
+                const rows = payload?.table?.rows || [];
+                const out = [];
+                for (const r of rows) {
+                    const v = r?.c?.[0]?.v; // cột A
+                    if (v != null) out.push(String(v));
+                }
+                return out;
+            }
 
-    // ===== Business logic: kiểm tra / lưu =====
-    async function kiemTraViTri() {
-      window.editableMASP = false; window.editableVITRI = false; hot.updateSettings({ cells: hot.getSettings().cells });
-      let allRows = hot.getSourceData();
-      let uniqueMasps = [], uniqueRows = [], seen = {};
-      for (let row of allRows) {
-        let masp = (row.masp || "").toString().trim().toUpperCase();
-        if (masp && !seen[masp]) { seen[masp] = true; uniqueMasps.push(masp); uniqueRows.push({ masp, vitrikho1: null, trangthai: null }); }
-      }
-      if (uniqueMasps.length === 0) { alert("Nhập mã sản phẩm để kiểm tra!"); return; }
-      hot.loadData(uniqueRows);
-      const sb = getSupabaseClient();
-      const { data: found, error } = await sb.from(TABLE_NAME).select('masp,vitrikho1').in('masp', uniqueMasps);
-      if (error) return alert('Lỗi kết nối Supabase!');
-      const maspMap = {}; (found || []).forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
-      hot.batch(() => {
-        for (let r = 0; r < hot.countRows(); r++) {
-          const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
-          hot.setDataAtCell(r, 0, masp);
-          if (!masp) { hot.setDataAtCell(r, 1, null); hot.setDataAtCell(r, 2, null); continue; }
-          if (typeof maspMap[masp] === "undefined") { hot.setDataAtCell(r, 1, null); hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI"); }
-          else if (maspMap[masp]) { hot.setDataAtCell(r, 1, maspMap[masp]); hot.setDataAtCell(r, 2, "BỎ QUA"); }
-          else { hot.setDataAtCell(r, 1, null); hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ"); }
+            async function fetchMaspsFromGoogleSheet() {
+                // Yêu cầu: file Sheets để chế độ "Anyone with the link can view" hoặc Publish to web
+                const urlJSON = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
+                    `tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&range=A:A&headers=0`;
+                // Ưu tiên JSON vì tách header gọn; có thể fallback CSV nếu cần
+                const resp = await fetch(urlJSON, { cache: 'no-store' });
+                if (!resp.ok) throw new Error(`Fetch Google Sheet lỗi: HTTP ${resp.status}`);
+                const text = await resp.text();
+                let arr = parseGvizJson(text);
+
+                // Làm sạch
+                arr = arr.map(s => (s ?? '').toString().trim()).filter(s => s.length > 0);
+                if (MAKE_UPPERCASE) arr = arr.map(s => s.toUpperCase());
+                if (DEDUP) {
+                    const set = new Set(); const tmp = [];
+                    for (const v of arr) { if (!set.has(v)) { set.add(v); tmp.push(v); } }
+                    arr = tmp;
+                }
+                return arr;
+            }
+
+            function loadMaspsIntoHOT(masps) {
+                const hot = getHOT();
+                if (!hot) { alert('Không tìm thấy bảng dữ liệu (Handsontable).'); return; }
+
+                if (CLEAR_BEFORE_INSERT) {
+                    // Xóa toàn bộ dòng cũ
+                    const old = hot.countRows();
+                    if (old > 0) hot.alter('remove_row', 0, old);
+                }
+
+                // Chèn đủ dòng
+                if (masps.length > 0) {
+                    hot.alter('insert_row', 0, masps.length);
+                    // Ghi vào cột MASP
+                    const ops = [];
+                    for (let i = 0; i < masps.length; i++) {
+                        ops.push([i, HOT_COL_MASP, masps[i]]);
+                    }
+                    hot.setDataAtCell(ops);
+                    hot.render();
+                }
+
+                // Thông báo nhỏ
+                const msg = `Đã nạp ${masps.length} mã từ Google Sheet (${SHEET_TAB}).`;
+                console.log(msg);
+                // nếu bạn có toast riêng, thay alert bằng toast
+                alert(msg);
+            }
+
+            async function handleFetchClick() {
+                try {
+                    $btn.disabled = true; $btn.textContent = 'Đang lấy...';
+                    const masps = await fetchMaspsFromGoogleSheet();
+                    loadMaspsIntoHOT(masps);
+                } catch (err) {
+                    console.error(err);
+                    alert('Không lấy được dữ liệu từ Google Sheet. Kiểm tra quyền chia sẻ & tên sheet.');
+                } finally {
+                    $btn.disabled = false; $btn.textContent = '📥 Lấy dữ liệu';
+                }
+            }
+
+            if ($btn) $btn.addEventListener('click', handleFetchClick);
+        })();
+
+
+
+        // 3) Thêm JS (lọc gợi ý + ghi vào HOT)
+
+        // 3) Thêm JS (lọc gợi ý + ghi vào HOT) — phiên bản tải phân trang theo từ khóa (dmhanghoa)
+        (() => {
+            // CẤU HÌNH (đặt trong scope để tránh trùng tên)
+            const INV_CFG = {
+                PAGE_SIZE: 200,
+                CACHE_TTL_MS: 60 * 60 * 1000, // 60 phút
+                PREFIX_LEN: 2,
+                MAX_SUGGESTIONS: 50,
+                DEBOUNCE_MS: 120
+            };
+
+            const $input = document.getElementById('maspSearch');
+            const $list = document.getElementById('maspSuggest');
+
+            // STATE (local scope, tránh leak ra global)
+            let filtered = [];
+            let activeIndex = -1;
+            let debTimer = null;
+            let prefixCache = new Map();  // key=prefix, value={ts, data:[{masp,tensp,_MASP,_TENSP}], done:boolean, lastOffset:number}
+            let activeFetch = null;
+
+            // HELPERS
+            function norm(s) { return (s || '').toString().trim(); }
+            function up(s) { return norm(s).toUpperCase(); }
+            function keyPrefix(Q) { return (Q || '').slice(0, INV_CFG.PREFIX_LEN); }
+            function isFresh(entry) { return entry && (Date.now() - entry.ts) < INV_CFG.CACHE_TTL_MS; }
+            function normalizeRow(r) {
+                const masp = norm(r.masp);
+                const tensp = norm(r.tensp);
+                return { masp, tensp, _MASP: masp.toUpperCase(), _TENSP: tensp.toUpperCase() };
+            }
+            function getHotColMasp() { return (typeof HOT_COL_MASP === 'number') ? HOT_COL_MASP : 0; }
+
+            function getHOT() {
+                return window.hot || window.hotTable || window.HOT || null;
+            }
+
+            // DB: lấy 1 trang theo keyword Q (UPPER), range offset..offset+PAGE_SIZE-1
+            async function fetchOnePage(Q, offset) {
+                const sb = getSupabaseClient();
+                if (!sb) return [];
+                const { data, error } = await sb
+                    .from('dmhanghoa')
+                    .select('masp,tensp')
+                    .or(`masp.ilike.%${Q}%,tensp.ilike.%${Q}%`)
+                    .order('masp', { ascending: true })
+                    .range(offset, offset + INV_CFG.PAGE_SIZE - 1);
+                if (error) { console.error(error); return []; }
+                return (data || []).map(normalizeRow).filter(r => r.masp);
+            }
+
+            // Lấy gợi ý đảm bảo đủ INV_CFG.MAX_SUGGESTIONS, tải nối tiếp nếu cần 
+            async function getSuggestionsEnsure(Q) {
+                const P = keyPrefix(Q);
+                let entry = prefixCache.get(P);
+                if (!isFresh(entry)) {
+                    entry = { ts: Date.now(), data: [], done: false, lastOffset: -INV_CFG.PAGE_SIZE };
+                    prefixCache.set(P, entry);
+                }
+
+                const filterFromCache = () => {
+                    const starts = [];
+                    const contains = [];
+                    for (const it of entry.data) {
+                        if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) starts.push(it);
+                        else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) contains.push(it);
+                        if (starts.length >= INV_CFG.MAX_SUGGESTIONS) break;
+                    }
+                    return starts.concat(contains).slice(0, INV_CFG.MAX_SUGGESTIONS);
+                };
+
+                let current = filterFromCache();
+                if (current.length >= INV_CFG.MAX_SUGGESTIONS || entry.done) return current;
+
+                if (activeFetch) await activeFetch; // đợi request trước (tránh đua)
+                let needed = INV_CFG.MAX_SUGGESTIONS - current.length;
+
+                activeFetch = (async () => {
+                    while (!entry.done && needed > 0) {
+                        const nextOffset = entry.lastOffset + INV_CFG.PAGE_SIZE;
+                        const page = await fetchOnePage(Q, nextOffset);
+                        entry.lastOffset = nextOffset;
+                        if (page.length < INV_CFG.PAGE_SIZE) entry.done = true;
+
+                        const exist = new Set(entry.data.map(x => x._MASP));
+                        for (const r of page) if (!exist.has(r._MASP)) entry.data.push(r);
+
+                        current = filterFromCache();
+                        needed = INV_CFG.MAX_SUGGESTIONS - current.length;
+                    }
+                    entry.ts = Date.now();
+                })();
+
+                await activeFetch;
+                activeFetch = null;
+                return current;
+            }
+
+            function hideList() { $list.hidden = true; $list.innerHTML = ''; activeIndex = -1; }
+            function renderList(items) {
+                $list.innerHTML = '';
+                activeIndex = -1;
+                if (!items.length) { $list.hidden = true; return; }
+                const frag = document.createDocumentFragment();
+                items.forEach((it, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'typeahead-item';
+                    div.dataset.index = idx;
+                    div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` <small>— ${it.tensp}</small>` : ''}`;
+                    div.addEventListener('mousedown', (e) => { e.preventDefault(); chooseItem(idx); });
+                    frag.appendChild(div);
+                });
+                $list.appendChild(frag);
+                $list.hidden = false;
+            }
+
+            function moveActive(delta) {
+                if ($list.hidden || !filtered.length) return;
+                activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
+                [...$list.children].forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+                const el = $list.children[activeIndex];
+                if (el) {
+                    const r = el.getBoundingClientRect();
+                    const lr = $list.getBoundingClientRect();
+                    if (r.bottom > lr.bottom) $list.scrollTop += (r.bottom - lr.bottom);
+                    else if (r.top < lr.top) $list.scrollTop -= (lr.top - r.top);
+                }
+            }
+
+            function chooseItem(idx) {
+                const it = filtered[idx];
+                if (!it) return;
+                const masp = up(it.masp);
+                const hot = getHOT();
+                if (!hot) { hideList(); return; }
+
+                const col = getHotColMasp();
+                // Tìm dòng đã có mã → nhảy tới; nếu chưa có → chèn vào dòng trống tiếp theo
+                let found = -1;
+                const rows = hot.countRows();
+                for (let r = 0; r < rows; r++) {
+                    const v = up(norm(hot.getDataAtCell(r, col)));
+                    if (v === masp) { found = r; break; }
+                }
+                if (found >= 0) {
+                    hot.selectCell(found, col);  // focus vào dòng hiện có
+                } else {
+                    // chèn/ghi vào dòng trống kế tiếp
+                    let target = -1;
+                    for (let r = 0; r < rows; r++) {
+                        const v = norm(hot.getDataAtCell(r, col));
+                        if (!v) { target = r; break; }
+                    }
+                    if (target === -1) { hot.alter('insert_row', rows, 1); target = rows; }
+                    hot.setDataAtCell(target, col, masp);
+                    hot.render();
+                    hot.selectCell(target, col);
+                }
+
+                $input.value = '';
+                hideList();
+                setTimeout(() => $input.focus(), 10);
+            }
+
+            async function doFilterAsync(q) {
+                const Q = up(q);
+                if (!Q) { hideList(); return; }
+                filtered = await getSuggestionsEnsure(Q);
+                renderList(filtered);
+            }
+
+            if ($input) {
+                $input.addEventListener('input', () => {
+                    clearTimeout(debTimer);
+                    debTimer = setTimeout(() => { doFilterAsync($input.value); }, INV_CFG.DEBOUNCE_MS);
+                });
+                $input.addEventListener('keydown', (e) => {
+                    if ($list.hidden) return;
+                    if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+                    else if (e.key === 'Enter') {
+                        if (activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
+                    } else if (e.key === 'Escape') { hideList(); }
+                });
+            }
+
+            // Không autopreload catalog nữa (chỉ khi người dùng gõ mới tải)
+            window.typeahead_masp = { resetCache: () => { prefixCache = new Map(); } };
+        })();
+
+        
+
+
+        // Kiểm tra vị trí kho
+        async function kiemTraViTri() {
+            window.editableMASP = false;
+            window.editableVITRI = false;
+            hot.updateSettings({ cells: hot.getSettings().cells });
+
+            // Lấy dữ liệu, chuẩn hóa mã sản phẩm thành in hoa, loại trùng
+            let allRows = hot.getSourceData();
+            let uniqueMasps = [];
+            let uniqueRows = [];
+            let seen = {};
+            for (let row of allRows) {
+                let masp = (row.masp || "").toString().trim().toUpperCase();
+                if (masp && !seen[masp]) {
+                    seen[masp] = true;
+                    uniqueMasps.push(masp);
+                    uniqueRows.push({ masp, vitrikho1: null, trangthai: null });
+                }
+            }
+            if (uniqueMasps.length === 0) {
+                alert("Nhập mã sản phẩm để kiểm tra!");
+                return;
+            }
+
+            // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
+            hot.loadData(uniqueRows);
+
+            // Truy vấn Supabase để lấy cả mã tồn tại và vị trí kho
+            const sb = getSupabaseClient();
+            const { data: found, error } = await sb
+                .from(TABLE_NAME)
+                .select('masp,vitrikho1')
+                .in('masp', uniqueMasps);
+
+            if (error) return alert('Lỗi kết nối Supabase!');
+
+            // Tạo map: mã tồn tại => vị trí kho
+            const maspMap = {};
+            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
+
+            hot.batch(() => {
+                for (let r = 0; r < hot.countRows(); r++) {
+                    const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
+                    hot.setDataAtCell(r, 0, masp); // Đảm bảo in hoa
+
+                    if (!masp) {
+                        hot.setDataAtCell(r, 1, null);
+                        hot.setDataAtCell(r, 2, null);
+                        continue;
+                    }
+                    if (typeof maspMap[masp] === "undefined") {
+                        // Không tồn tại trong danh mục
+                        hot.setDataAtCell(r, 1, null);
+                        hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI");
+                    } else if (maspMap[masp]) {
+                        // Đã có vị trí kho
+                        hot.setDataAtCell(r, 1, maspMap[masp]);
+                        hot.setDataAtCell(r, 2, "BỎ QUA");
+                    } else {
+                        // Có mã, chưa có vị trí
+                        hot.setDataAtCell(r, 1, null);
+                        hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ");
+                    }
+                }
+            });
+
+            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
+            hot.updateSettings({ cells: hot.getSettings().cells });
         }
-      });
-      document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra xong.</span>`;
-      hot.updateSettings({ cells: hot.getSettings().cells });
-    }
 
-    function xoaDaCoViTri() {
-      let tableData = hot.getSourceData();
-      tableData = tableData.filter(row => row.masp && row.trangthai !== "BỎ QUA");
-      if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
-      hot.loadData(tableData);
-      window.editableMASP = true; window.editableVITRI = true; hot.updateSettings({ cells: hot.getSettings().cells });
-      document.getElementById('preview').innerHTML = `<span>👉 Nhập <b>vị trí kho</b> cho sản phẩm chưa có vị trí.</span>`;
-    }
 
-    async function luuDuLieu() {
-      let rows = hot.getSourceData().filter(r => r.masp && r.vitrikho1 && r.trangthai === "CHƯA CÓ VỊ TRÍ");
-      if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
-      if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
-      const sb = getSupabaseClient();
-      let success = 0, fail = 0, errorMsg = [];
-      for (let idx = 0; idx < rows.length; idx++) {
-        let row = rows[idx];
-        const { data, error } = await sb.from(TABLE_NAME)
-          .update({ vitrikho1: row.vitrikho1 })
-          .eq('masp', row.masp.toString().trim().toUpperCase())
-          .is('vitrikho1', null)
-          .select();
-        if (!error && data && data.length === 1) { hot.setDataAtCell(idx, 2, "OK"); success++; }
-        else { hot.setDataAtCell(idx, 2, "LỖI"); fail++; let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)'; errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`); }
-      }
-      let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
-      if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
-      document.getElementById('preview').innerHTML = html;
-      window.editableMASP = false; window.editableVITRI = false; hot.updateSettings({ cells: hot.getSettings().cells });
-    }
-  </script>
 
+        // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
+        function xoaDaCoViTri() {
+            let tableData = hot.getSourceData();
+            tableData = tableData.filter(row =>
+                row.masp && row.trangthai !== "BỎ QUA" // chi xoa dong bo qua
+            );
+            // Nếu không còn dòng nào, thêm dòng trống mới
+            if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
+            hot.loadData(tableData);
+
+            // Cho phép nhập cột mã và cột vị trí
+            window.editableMASP = true;
+            window.editableVITRI = true;
+            hot.updateSettings({ cells: hot.getSettings().cells });
+            document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
+        }
+
+        // Lưu dữ liệu mới
+        // Lưu dữ liệu mới
+        async function luuDuLieu() {
+            // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
+            let rows = hot.getSourceData().filter(r =>
+                r.masp &&
+                r.vitrikho1 &&
+                r.trangthai === "CHƯA CÓ VỊ TRÍ"
+            );
+            if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
+
+            if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
+            const sb = getSupabaseClient();
+
+            let success = 0, fail = 0, errorMsg = [];
+            // Dùng for...of tuần tự để đánh đúng dòng
+            for (let idx = 0; idx < rows.length; idx++) {
+                let row = rows[idx];
+                // Chỉ update vị trí nếu chưa có (nghiệp vụ)
+                const { data, error } = await sb.from(TABLE_NAME)
+                    .update({ vitrikho1: row.vitrikho1 })
+                    .eq('masp', row.masp.toString().trim().toUpperCase())
+                    .is('vitrikho1', null)
+                    .select(); // dùng select để lấy dòng bị ảnh hưởng!
+
+                if (!error && data && data.length === 1) {
+                    // Đánh dấu OK
+                    hot.setDataAtCell(idx, 2, "OK");
+                    success++;
+                } else {
+                    // Có lỗi hoặc không có dòng nào update được
+                    hot.setDataAtCell(idx, 2, "LỖI");
+                    fail++;
+                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)';
+                    errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
+                }
+            }
+
+            let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+            if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+            document.getElementById('preview').innerHTML = html;
+            // Sau lưu lại khóa cột vị trí
+            window.editableMASP = false;
+            window.editableVITRI = false;
+            hot.updateSettings({ cells: hot.getSettings().cells });
+        }
+
+    </script>
 </body>
 
 </html>
