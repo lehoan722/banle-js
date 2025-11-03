@@ -505,7 +505,7 @@
 
         // === FULL CATALOG PRELOAD (auto on page load) ===
         // Đặt các biến log & state ở phạm vi global (window.*) để typeahead dùng chung
-        const CATALOG_PAGE_SIZE = 10000;               // có thể đổi 5000/20000 tùy tốc độ
+        const CATALOG_PAGE_SIZE = 100000;               // có thể đổi 5000/20000 tùy tốc độ
         window.catalogAll = [];                        // [{masp,tensp,_MASP,_TENSP}]
         window.catalogTotal = 0;
         window.catalogLoaded = 0;
