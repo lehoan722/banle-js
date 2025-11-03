@@ -330,9 +330,9 @@
         Object.assign(this.bottomRow.style, {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr 1fr', // 1 hàng 4 thẻ: 42–45
-          columnGap: '36px',
+          columnGap: '24px',
           rowGap: '24px',
-          marginTop: '150px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
+          marginTop: '180px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
         });
 
         // cardsWrap chứa 2 tầng
