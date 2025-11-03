@@ -590,8 +590,11 @@
 
     // Thêm cuối constructor SizeDropdown:
     window.addEventListener('resize', () => {
-      if (this.isOpen() && __sizeInput) this.openFor(__sizeInput);
+      if (__sizeDD && __sizeDD.isOpen() && __sizeInput) {
+        __sizeDD.openFor(__sizeInput);
+      }
     });
+
 
 
     function initGlobalSizeDropdown() {
