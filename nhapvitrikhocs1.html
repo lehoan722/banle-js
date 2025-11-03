@@ -502,6 +502,77 @@
 
         // 3) Thêm JS (lọc gợi ý + ghi vào HOT)
 
+
+        // === FULL CATALOG PRELOAD (auto on page load) ===
+        // Đặt các biến log & state ở phạm vi global (window.*) để typeahead dùng chung
+        const CATALOG_PAGE_SIZE = 10000;               // có thể đổi 5000/20000 tùy tốc độ
+        window.catalogAll = [];                        // [{masp,tensp,_MASP,_TENSP}]
+        window.catalogTotal = 0;
+        window.catalogLoaded = 0;
+        window.catalogAllReady = false;
+
+        function _norm(s) { return (s || '').toString().trim(); }
+        function _up(s) { return _norm(s).toUpperCase(); }
+        function _normalizeRow(r) {
+            const masp = _norm(r.masp), tensp = _norm(r.tensp);
+            return { masp, tensp, _MASP: _up(masp), _TENSP: _up(tensp) };
+        }
+
+        // Đếm tổng theo quyền RLS (để log % chính xác)
+        async function countDmhanghoa() {
+            try {
+                const sb = getSupabaseClient();
+                const { count, error } = await sb.from('dmhanghoa').select('masp', { count: 'exact', head: true });
+                if (error) { console.warn('[DM] count error:', error.message); return 0; }
+                return count || 0;
+            } catch (e) { console.warn('[DM] count exception:', e); return 0; }
+        }
+
+        async function loadCatalogPage(offset) {
+            const sb = getSupabaseClient();
+            const { data, error } = await sb
+                .from('dmhanghoa')
+                .select('masp,tensp')
+                .order('masp', { ascending: true })
+                .range(offset, offset + CATALOG_PAGE_SIZE - 1);
+            if (error) { console.warn('[DM] page error@', offset, error.message); return []; }
+            return (data || []).map(_normalizeRow).filter(r => r.masp);
+        }
+
+        async function preloadAllCatalog() {
+            console.time('[DM] full preload');
+            window.catalogTotal = await countDmhanghoa();
+            console.log('[DM] total (RLS):', window.catalogTotal);
+
+            let offset = 0;
+            const seen = new Set();
+            while (true) {
+                const page = await loadCatalogPage(offset);
+                if (!page.length) break;
+
+                // push unique theo _MASP
+                for (const r of page) {
+                    if (!seen.has(r._MASP)) { window.catalogAll.push(r); seen.add(r._MASP); }
+                }
+
+                offset += page.length;
+                window.catalogLoaded = window.catalogAll.length;
+                const pct = window.catalogTotal ? Math.round(window.catalogLoaded / window.catalogTotal * 100) : 0;
+                console.log(`[DM] loaded ${window.catalogLoaded}/${window.catalogTotal} (${pct}%)`);
+
+                if (page.length < CATALOG_PAGE_SIZE) break;          // hết dữ liệu
+                await new Promise(r => setTimeout(r, 60));              // throttle nhẹ cho server
+            }
+            window.catalogAllReady = true;
+            console.timeEnd('[DM] full preload');
+        }
+
+        // Gọi preload ngay khi mở trang
+        document.addEventListener('DOMContentLoaded', () => {
+            try { preloadAllCatalog(); } catch (e) { console.warn('[DM] preload failed:', e); }
+        });
+
+
         // 3) Thêm JS (lọc gợi ý + ghi vào HOT) — phiên bản tải phân trang theo từ khóa (dmhanghoa)
         (() => {
             // CẤU HÌNH (đặt trong scope để tránh trùng tên)
@@ -512,6 +583,20 @@
                 MAX_SUGGESTIONS: 50,
                 DEBOUNCE_MS: 120
             };
+
+            // Nếu đã có full catalog (window.catalogAllReady), lọc trực tiếp trên đó
+            function filterFromFullCatalog(Q, MAX) {
+                const starts = [], contains = [];
+                const U = Q; // đã upper ở chỗ gọi
+                const src = Array.isArray(window.catalogAll) ? window.catalogAll : [];
+                for (const it of src) {
+                    if (it._MASP.startsWith(U) || it._TENSP.startsWith(U)) starts.push(it);
+                    else if (it._MASP.includes(U) || it._TENSP.includes(U)) contains.push(it);
+                    if (starts.length >= MAX) break;
+                }
+                return starts.concat(contains).slice(0, MAX);
+            }
+
 
             const $input = document.getElementById('maspSearch');
             const $list = document.getElementById('maspSuggest');
@@ -555,6 +640,15 @@
 
             // Lấy gợi ý đảm bảo đủ INV_CFG.MAX_SUGGESTIONS, tải nối tiếp nếu cần 
             async function getSuggestionsEnsure(Q) {
+
+                // ƯU TIÊN: nếu đã preload đủ danh mục, bỏ qua gọi DB theo prefix → lọc trực tiếp
+                if (window.catalogAllReady && window.catalogAll && window.catalogAll.length) {
+                    const arr = filterFromFullCatalog(Q, INV_CFG.MAX_SUGGESTIONS);
+                    console.log('[DM] filter(full) hits:', arr.length, 'on', window.catalogAll.length);
+                    return arr;
+                }
+
+
                 const P = keyPrefix(Q);
                 let entry = prefixCache.get(P);
                 if (!isFresh(entry)) {
@@ -692,7 +786,7 @@
             window.typeahead_masp = { resetCache: () => { prefixCache = new Map(); } };
         })();
 
-        
+
 
 
         // Kiểm tra vị trí kho
