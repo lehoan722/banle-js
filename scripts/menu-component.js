@@ -317,6 +317,28 @@
         // ép fill theo cột: 2 cột đầu nhiều hàng (38..43), cột cuối (44..45)
         this.cardsWrap.style.gridAutoFlow = 'column';   // đổ theo cột
 
+        // === 2 vùng: top (38..41) và bottom (42..45) ===
+        this.topGrid = document.createElement('div');
+        Object.assign(this.topGrid.style, {
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr 1fr', // 4 cột cho 38–41
+          columnGap: '24px',
+          rowGap: '24px',
+        });
+
+        this.bottomRow = document.createElement('div');
+        Object.assign(this.bottomRow.style, {
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr 1fr', // 1 hàng 4 thẻ: 42–45
+          columnGap: '36px',
+          rowGap: '24px',
+          marginTop: '64px',    // tạo khoảng cách lớn với tầng trên để tránh quét nhầm
+        });
+
+        // cardsWrap chứa 2 tầng
+        this.cardsWrap.appendChild(this.topGrid);
+        this.cardsWrap.appendChild(this.bottomRow);
+
 
         // header row
         const mkHeadCell = (txt) => {
@@ -446,7 +468,15 @@
           card.addEventListener('click', () => this.pick(rIdx, 'mouse'));
 
           card.append(qr2Wrap, c1c, c2c, c3c);
-          this.cardsWrap.appendChild(card);
+
+          // Thay vì: this.cardsWrap.appendChild(card);
+const neckNum = Number(neck);
+if (neckNum <= 41) {
+  this.topGrid.appendChild(card);    // 38..41 -> tầng trên
+} else {
+  this.bottomRow.appendChild(card);  // 42..45 -> hàng đáy
+}
+
           //moi
         }
 
@@ -491,6 +521,9 @@
           this.cardsWrap.style.gridTemplateColumns = '1fr 1fr 1fr';
           this.cardsWrap.style.columnGap = '24px';
           this.cardsWrap.style.rowGap = '24px';
+          this.list.style.display = 'none';
+this.cardsWrap.style.display = 'block'; // hoặc 'grid' đều ok vì bên trong đã là grid
+
 
         } else {
           // Mobile: layout cũ (list dọc), khung nhỏ gọn
