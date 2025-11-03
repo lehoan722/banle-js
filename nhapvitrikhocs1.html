@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Nhập vị trí kho hàng hóa</title>
+  <title>Nhập vị trí kho CS1 — Unlimited Catalog</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
@@ -16,7 +16,7 @@
       height: 100%;
       margin: 0;
       padding: 0;
-      font-family: 'SF Pro Display', 'Roboto', Arial, sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       background: #f7fafc;
     }
 
@@ -25,108 +25,110 @@
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding: 0;
-      box-sizing: border-box;
     }
 
     h2 {
       margin: 18px 0 8px 0;
       font-size: 1.25rem;
       text-align: center;
-      letter-spacing: 1px;
     }
 
-    #loginModule {
+    .toolbar {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100vw;
-      max-width: 460px;
+      gap: 8px;
       margin: 6px 0 10px 0;
-      gap: 7px;
-    }
-
-    #loginModule input {
-      border-radius: 12px;
-      padding: 7px 11px;
-      border: 1px solid #dedede;
-      font-size: 1rem;
-      background: #fff;
-      width: 44vw;
-      max-width: 160px;
-    }
-
-    #login-submit {
-      background: linear-gradient(90deg, #ff5858 0%, #f857a6 100%);
-      color: #fff;
-      font-weight: 600;
-      border: none;
-      padding: 7px 16px;
-      border-radius: 16px;
-      box-shadow: 0 2px 8px rgba(255, 87, 166, .11);
-      cursor: pointer;
-      transition: .18s;
-    }
-
-    #login-submit:active {
-      filter: brightness(.93);
-      transform: scale(.97);
     }
 
     .main-btn {
-      display: inline-block;
-      margin: 5px 7px 5px 0;
-      font-size: 1.08rem;
-      padding: 6px 6px;
-      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: 12px;
       border: none;
-      border-radius: 20px;
-      box-shadow: 0 2px 10px rgba(72, 52, 212, .07);
       color: #fff;
-      background: linear-gradient(100deg, #56ccf2 0%, #2f80ed 100%);
       cursor: pointer;
-      outline: none;
-      transition: background .23s, transform .18s;
-    }
-
-    .main-btn:active {
-      background: linear-gradient(100deg, #4a95ff 0%, #395985 100%);
-      transform: scale(.97);
-    }
-
-    .main-btn:nth-child(3) {
-      background: linear-gradient(100deg, #f7971e 0%, #ffd200 100%);
-      color: #4a3a08;
-      box-shadow: 0 2px 10px rgba(255, 215, 0, .09);
-    }
-
-    .main-btn:nth-child(4) {
-      background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
-      color: #134a2d;
-      box-shadow: 0 2px 10px rgba(67, 233, 123, .13);
+      background: #2f80ed;
     }
 
     #hot {
       width: 99vw;
-      max-width: 480px;
-      margin: 0 auto 8px auto;
-      touch-action: auto;
+      max-width: 520px;
+      margin: 8px auto;
       background: #fff;
-      border-radius: 18px;
-      box-shadow: 0 2px 18px rgba(70, 130, 180, .07);
-      overflow-x: auto;
+      border-radius: 14px;
+      box-shadow: 0 2px 18px rgba(0, 0, 0, .06);
     }
 
-    .ht_master table {
-      font-size: 1.05rem;
+    .typeahead-wrap {
+      position: relative;
+      display: inline-block;
+      min-width: 280px;
     }
 
-    #preview {
-      min-height: 36px;
-      font-size: 1.06rem;
-      text-align: center;
-      color: #2f80ed;
-      margin: 7px 0 0 0;
+    .typeahead-wrap input {
+      width: 100%;
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid #cfd7e6;
+      padding: 0 10px;
+    }
+
+    .typeahead-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #d8e0ee;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+      max-height: 300px;
+      overflow: auto;
+      z-index: 1000;
+    }
+
+    .typeahead-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f3f6fb;
+      line-height: 1.2
+    }
+
+    .typeahead-item:last-child {
+      border-bottom: none
+    }
+
+    .typeahead-item.active {
+      background: #eaf2ff
+    }
+
+    .diag {
+      font-size: 12px;
+      color: #465;
+      margin-top: 6px
+    }
+
+    .progress {
+      width: 200px;
+      height: 6px;
+      background: #eef3ff;
+      border-radius: 999px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+
+    .progress>span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: #5b8cff;
+      transition: width .2s;
+    }
+
+    .status {
+      font-size: 12px;
+      margin-left: 6px;
+      color: #345
     }
 
     .trangthai-ok {
@@ -148,118 +150,6 @@
     .trangthai-chuacovitri {
       color: #e67e22 !important;
     }
-
-    @media (max-width:500px) {
-      h2 {
-        font-size: 1.04rem;
-      }
-
-      #hot {
-        max-width: 99vw;
-      }
-
-      #loginModule input {
-        font-size: .98rem;
-        width: 42vw;
-      }
-
-      .main-btn {
-        font-size: .99rem;
-        padding: 9px 10px;
-      }
-
-      #preview {
-        font-size: .95rem;
-      }
-    }
-
-    .typeahead-wrap {
-      position: relative;
-      display: inline-block;
-      min-width: 260px;
-      margin: 8px 10px 0 0
-    }
-
-    .typeahead-wrap input {
-      width: 100%;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px solid #bcd;
-      outline: none;
-      padding: 0 10px
-    }
-
-    .typeahead-list {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border: 1px solid #d8e0ee;
-      border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
-      max-height: 280px;
-      overflow: auto;
-      z-index: 1000
-    }
-
-    .typeahead-item {
-      padding: 10px 12px;
-      cursor: pointer;
-      border-bottom: 1px solid #f3f6fb;
-      line-height: 1.2
-    }
-
-    .typeahead-item:last-child {
-      border-bottom: none
-    }
-
-    .typeahead-item b {
-      font-weight: 700
-    }
-
-    .typeahead-item small {
-      opacity: .7
-    }
-
-    .typeahead-item.active {
-      background: #eaf2ff
-    }
-
-    /* Full-catalog controls */
-    .catalog-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-      font-size: 12px;
-      color: #444;
-    }
-
-    .catalog-bar button {
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 10px;
-      border: 1px solid #d6e4ff;
-      background: #eef5ff;
-      cursor: pointer;
-    }
-
-    .progress {
-      height: 6px;
-      background: #eef3ff;
-      border-radius: 999px;
-      overflow: hidden;
-      width: 180px;
-    }
-
-    .progress>span {
-      display: block;
-      height: 100%;
-      width: 0;
-      background: #5b8cff;
-      transition: width .2s;
-    }
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -273,14 +163,8 @@
 
 <body>
   <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
-  <div id="loginModule">
-    <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
-    <input id="login-password" type="password" value="123123" placeholder="Mật khẩu" style="display:none">
-    <button id="login-submit">Đăng nhập</button>
-    <span id="login-status"></span>
-  </div>
 
-  <div style="display:flex;justify-content:center;margin-bottom:7px;">
+  <div class="toolbar">
     <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
     <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
     <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
@@ -288,27 +172,20 @@
   </div>
 
   <div class="typeahead-wrap">
-    <input id="maspSearch" type="text" placeholder="Nhập mã sản phẩm..." autocomplete="off" inputmode="latin-prose" />
+    <input id="maspSearch" type="text" placeholder="Nhập mã/tên sản phẩm để tìm..." autocomplete="off" />
     <div id="maspSuggest" class="typeahead-list" hidden></div>
-
-    <div class="catalog-bar">
-      <button id="btnLoadAll">Tải toàn bộ danh mục</button>
-      <div class="progress"><span id="catalogProgress"></span></div>
-      <span id="catalogStatus">Chưa tải</span>
-      <button id="btnClearCache" title="Xóa cache tại trình duyệt">Xóa cache</button>
+    <div class="diag">
+      <span>Đã nạp: <b id="countLoaded">0</b> / <span id="countTotal">…</span> mã</span>
+      <span class="progress"><span id="progressBar"></span></span>
+      <span class="status" id="statusText">Chờ nhập để bắt đầu nạp toàn bộ…</span>
     </div>
-
-    <button id="btnFetchSheet" class="btn btn-info"
-      style="background:#4aa3ff;color:#fff;border:none;border-radius:12px;padding:10px 16px;margin:6px 8px;">
-      📥 Lấy dữ liệu
-    </button> từ trang ghivitrikhocs1/ kiem kho cs1
   </div>
 
   <div id="preview"></div>
   <div id="hot"></div>
 
   <script>
-    // Supabase
+    // ===== Supabase =====
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
     const TABLE_NAME = 'dmhanghoa';
@@ -317,7 +194,7 @@
       return window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {});
     }
 
-    // HOT
+    // ===== HOT =====
     let hot;
     let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
     let columns = [
@@ -355,188 +232,99 @@
     }
     initTable();
 
-    // Auto-import từ localStorage (F8)
-    document.addEventListener('DOMContentLoaded', () => {
-      try {
-        const raw = localStorage.getItem('VITRIKHO_IMPORT');
-        if (!raw) return;
-        const payload = JSON.parse(raw);
-        if (payload?.cs && payload.cs.toLowerCase() !== 'cs1') return;
-        const list = Array.isArray(payload?.list) ? payload.list : [];
-        if (!list.length) return;
-        const uniq = Array.from(new Set(list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)));
-        const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
-        hot.loadData(rows);
-        localStorage.removeItem('VITRIKHO_IMPORT');
-        setTimeout(() => kiemTraViTri(), 0);
-      } catch (err) { console.error('VITRIKHO_IMPORT parse error:', err); }
-    });
-
-    // Đăng nhập
-    document.getElementById('login-submit').onclick = async function () {
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value.trim();
-      const sb = getSupabaseClient();
-      document.getElementById('login-status').textContent = 'Đang đăng nhập...';
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) {
-        document.getElementById('login-status').textContent = 'Sai tài khoản hoặc mật khẩu!';
-      } else {
-        document.getElementById('login-status').textContent = 'Đăng nhập thành công!';
-        localStorage.setItem('supabase_access_token', data.session.access_token);
-        setTimeout(() => window.location.reload(), 1000);
-      }
-    };
-
-    function resetTable() {
-      window.editableMASP = true; window.editableVITRI = false; initTable(); document.getElementById('preview').innerHTML = "";
-    }
-
-    // Nút lấy từ Google Sheet (giữ y nguyên logic cũ)
+    // ===== Autocomplete + Nạp toàn bộ (paginated, tự động sau khi gõ) =====
     (() => {
-      const SHEET_ID = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
-      const SHEET_TAB = 'ghivitrikhocs1';
-      const HOT_COL_MASP = 0;
-      const MAKE_UPPERCASE = true;
-      const DEDUP = false;
-      const CLEAR_BEFORE_INSERT = true;
-      const $btn = document.getElementById('btnFetchSheet');
-      function getHOT() { return window.hot || window.hotTable || window.HOT || null; }
-      function parseGvizJson(txt) { const s = txt.indexOf('('), e = txt.lastIndexOf(')'); if (s === -1 || e === -1) return []; const payload = JSON.parse(txt.slice(s + 1, e)); const rows = payload?.table?.rows || []; const out = []; for (const r of rows) { const v = r?.c?.[0]?.v; if (v != null) out.push(String(v)); } return out; }
-      async function fetchMaspsFromGoogleSheet() {
-        const urlJSON = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&range=A:A&headers=0`;
-        const resp = await fetch(urlJSON, { cache: 'no-store' }); if (!resp.ok) throw new Error(`Fetch Google Sheet lỗi: HTTP ${resp.status}`);
-        const text = await resp.text(); let arr = parseGvizJson(text);
-        arr = arr.map(s => (s ?? '').toString().trim()).filter(s => s.length > 0);
-        if (MAKE_UPPERCASE) arr = arr.map(s => s.toUpperCase());
-        if (DEDUP) { const set = new Set(), tmp = []; for (const v of arr) { if (!set.has(v)) { set.add(v); tmp.push(v); } } arr = tmp; }
-        return arr;
-      }
-      function loadMaspsIntoHOT(masps) {
-        const hot = getHOT(); if (!hot) { alert('Không tìm thấy bảng dữ liệu (Handsontable).'); return; }
-        if (CLEAR_BEFORE_INSERT) { const old = hot.countRows(); if (old > 0) hot.alter('remove_row', 0, old); }
-        if (masps.length > 0) { hot.alter('insert_row', 0, masps.length); const ops = []; for (let i = 0; i < masps.length; i++) ops.push([i, HOT_COL_MASP, masps[i]]); hot.setDataAtCell(ops); hot.render(); }
-        const msg = `Đã nạp ${masps.length} mã từ Google Sheet (${SHEET_TAB}).`; console.log(msg); alert(msg);
-      }
-      async function handleFetchClick() {
-        try { $btn.disabled = true; $btn.textContent = 'Đang lấy...'; const masps = await fetchMaspsFromGoogleSheet(); loadMaspsIntoHOT(masps); }
-        catch (err) { console.error(err); alert('Không lấy được dữ liệu từ Google Sheet. Kiểm tra quyền chia sẻ & tên sheet.'); }
-        finally { $btn.disabled = false; $btn.textContent = '📥 Lấy dữ liệu'; }
-      }
-      if ($btn) $btn.addEventListener('click', handleFetchClick);
-    })();
-
-    // ===== Gợi ý theo cache + TẢI TOÀN BỘ DANH MỤC (phân trang) =====
-    (() => {
-      const HOT_COL_MASP = 0;
-      const MAX_SUGGESTIONS = 50;
-      const DEBOUNCE_MS = 120;
-      const CACHE_KEY = 'dmhanghoa_cache_full_v1';
-      const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 giờ
-      const PAGE_SIZE = 2000;
-
+      const PAGE_SIZE = 5000;           // tải 5000 mã mỗi trang (đổi 10.000 nếu bạn muốn)
+      const MAX_SUGGESTIONS = 50;       // số dòng hiển thị trong dropdown
       const $input = document.getElementById('maspSearch');
       const $list = document.getElementById('maspSuggest');
-      const $btnAll = document.getElementById('btnLoadAll');
-      const $btnClear = document.getElementById('btnClearCache');
-      const $prog = document.getElementById('catalogProgress');
-      const $status = document.getElementById('catalogStatus');
+      const $loaded = document.getElementById('countLoaded');
+      const $total = document.getElementById('countTotal');
+      const $bar = document.getElementById('progressBar');
+      const $status = document.getElementById('statusText');
 
-      let cache = null;      // [{masp,tensp,_MASP,_TENSP}]
-      let filtered = [];
+      // state catalog
+      let catalog = [];                 // [{masp,tensp,_MASP,_TENSP}]
+      let loadedCount = 0;
+      let totalCount = 0;
+      let nextOffset = 0;
+      let allDone = false;
+      let loading = false;
+      let started = false;              // bắt đầu nạp sau lần gõ đầu tiên
       let activeIndex = -1;
-      let debTimer = null;
-      let cancelToken = { cancel: false };
+      let filtered = [];
+
+      const sb = getSupabaseClient();
 
       function norm(s) { return (s || '').toString().trim(); }
       function up(s) { return norm(s).toUpperCase(); }
-      function saveCache(data) { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
-      function loadCache() {
-        try {
-          const raw = localStorage.getItem(CACHE_KEY); if (!raw) return null;
-          const obj = JSON.parse(raw); if (!obj || !obj.data) return null;
-          if (Date.now() - (obj.ts || 0) > CACHE_TTL_MS) return null;
-          return obj.data;
-        } catch (e) { return null; }
-      }
-      function setProgress(pct) { $prog.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
 
-      async function countTotal() {
+      async function fetchTotal() {
         try {
-          const sb = getSupabaseClient();
-          const { count, error } = await sb.from(TABLE_NAME).select('masp', { count: 'exact', head: true });
-          if (error) throw error;
+          const { count } = await sb.from(TABLE_NAME).select('masp', { count: 'exact', head: true });
           return count || 0;
         } catch (e) { return 0; }
       }
 
-      async function loadFullCatalog() {
-        const sb = getSupabaseClient();
-        const total = await countTotal();
-        if (!total) { $status.textContent = 'Không đọc được tổng số (hoặc 0)'; }
+      function updateUI() {
+        $loaded.textContent = loadedCount.toLocaleString('vi-VN');
+        $total.textContent = (totalCount || '…');
+        const pct = totalCount ? Math.round((loadedCount / totalCount) * 100) : 0;
+        $bar.style.width = pct + '%';
+        $status.textContent = allDone ? 'Đã nạp đủ danh mục theo quyền' :
+          loading ? 'Đang nạp thêm…' :
+            started ? 'Đang nạp (nhập để tiếp tục lọc)…' :
+              'Chờ nhập để bắt đầu nạp toàn bộ…';
+      }
 
-        $status.textContent = 'Đang tải toàn bộ...';
-        setProgress(0);
-        $btnAll.disabled = true;
-        cancelToken.cancel = false;
-
-        const out = [];
-        let offset = 0;
-        while (true) {
-          if (cancelToken.cancel) { $status.textContent = 'Đã hủy'; break; }
+      async function loadNextPage() {
+        if (loading || allDone) return;
+        loading = true; updateUI();
+        try {
           const { data, error } = await sb
             .from(TABLE_NAME)
             .select('masp,tensp')
             .order('masp', { ascending: true })
-            .range(offset, offset + PAGE_SIZE - 1);
-          if (error) { console.error(error); $status.textContent = 'Lỗi khi tải'; break; }
-
+            .range(nextOffset, nextOffset + PAGE_SIZE - 1);
+          if (error) throw error;
           const rows = (data || []).map(r => ({
-            masp: norm(r.masp), tensp: norm(r.tensp),
-            _MASP: up(r.masp), _TENSP: up(r.tensp)
+            masp: norm(r.masp),
+            tensp: norm(r.tensp),
+            _MASP: up(r.masp),
+            _TENSP: up(r.tensp)
           })).filter(r => r.masp);
 
-          out.push(...rows);
-          offset += rows.length;
+          // unique theo _MASP
+          const seen = new Set(catalog.map(x => x._MASP));
+          for (const r of rows) if (!seen.has(r._MASP)) { catalog.push(r); seen.add(r._MASP); }
 
-          const pct = total ? Math.round(offset / total * 100) : Math.min(100, Math.round(out.length / PAGE_SIZE) * (PAGE_SIZE / (PAGE_SIZE * 1.0)));
-          setProgress(pct);
-
-          if (rows.length < PAGE_SIZE) break;
+          nextOffset += rows.length;
+          loadedCount = catalog.length;
+          if (rows.length < PAGE_SIZE) allDone = true;
+        } finally {
+          loading = false; updateUI();
         }
-
-        // unique theo MASP
-        const seen = new Set();
-        const uniq = [];
-        for (const r of out) {
-          if (seen.has(r._MASP)) continue;
-          seen.add(r._MASP);
-          uniq.push(r);
-        }
-
-        cache = uniq;
-        saveCache(cache);
-        $status.textContent = `Đã tải đủ: ${cache.length.toLocaleString('vi-VN')} mã`;
-        $btnAll.disabled = false;
-        setProgress(100);
       }
 
-      async function ensureCatalog() {
-        if (cache) return;
-        const local = loadCache();
-        if (local) {
-          cache = local;
-          $status.textContent = `Đã có cache: ${cache.length.toLocaleString('vi-VN')} mã`;
-          setProgress(100);
-          return;
-        }
-        // Nếu chưa bấm "Tải toàn bộ", vẫn có thể tìm bằng cách tải nhanh 1 trang đầu để gõ đỡ trống
-        const sb = getSupabaseClient();
-        const { data, error } = await sb.from(TABLE_NAME).select('masp,tensp').order('masp', { ascending: true }).range(0, PAGE_SIZE - 1);
-        if (error) { console.error(error); cache = []; $status.textContent = 'Không thể nạp nhanh'; return; }
-        cache = (data || []).map(r => ({ masp: norm(r.masp), tensp: norm(r.tensp), _MASP: up(r.masp), _TENSP: up(r.tensp) })).filter(r => r.masp);
-        $status.textContent = `Đang dùng cache tạm: ${cache.length.toLocaleString('vi-VN')} mã (hãy bấm "Tải toàn bộ")`;
-        setProgress(Math.min(100, Math.round((cache.length) / (await countTotal() || cache.length) * 100)));
+      async function ensureStarted() {
+        if (started) return;
+        started = true;
+        totalCount = await fetchTotal();
+        updateUI();
+        // bắt đầu nạp trang đầu, sau đó tự nạp nền các trang tiếp
+        await loadNextPage();
+        // nạp nền liên tục cho đến khi đủ (không chặn gõ/lọc)
+        (async function backgroundFill() {
+          while (!allDone) {
+            await loadNextPage();
+            // sau mỗi trang, nếu người dùng đang gõ, re-filter để “bổ sung” kết quả mới
+            if ($input.value.trim()) {
+              doFilter($input.value);
+            }
+            // nhỏ delay để không dồn API quá gắt
+            await new Promise(r => setTimeout(r, 60));
+          }
+        })();
       }
 
       function renderList(items) {
@@ -547,13 +335,27 @@
           const div = document.createElement('div');
           div.className = 'typeahead-item';
           div.dataset.index = idx;
-          div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` <small>— ${it.tensp}</small>` : ''}`;
+          div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` — <small>${it.tensp}</small>` : ''}`;
           div.addEventListener('mousedown', (e) => { e.preventDefault(); chooseItem(idx); });
           frag.appendChild(div);
         });
         $list.appendChild(frag);
         $list.hidden = false;
       }
+
+      function doFilter(q) {
+        const Q = up(q);
+        if (!Q) { $list.hidden = true; return; }
+        const starts = [], contains = [];
+        for (const it of catalog) {
+          if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) starts.push(it);
+          else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) contains.push(it);
+          if (starts.length >= MAX_SUGGESTIONS) break;
+        }
+        filtered = starts.concat(contains).slice(0, MAX_SUGGESTIONS);
+        renderList(filtered);
+      }
+
       function moveActive(delta) {
         if ($list.hidden || !filtered.length) return;
         activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
@@ -563,45 +365,29 @@
         if (r.bottom > lr.bottom) $list.scrollTop += (r.bottom - lr.bottom);
         else if (r.top < lr.top) $list.scrollTop -= (lr.top - r.top);
       }
-      function hideList() { $list.hidden = true; activeIndex = -1; }
+
       function getHOT() { return window.hot || window.hotTable || window.HOT || null; }
       function jumpToExistingRow(m) { const hot = getHOT(); if (!hot) return false; const rows = hot.countRows(); for (let r = 0; r < rows; r++) { const v = up(hot.getDataAtCell(r, 0)); if (v === m) { hot.selectCell(r, 0); const cell = hot.getCell(r, 0); if (cell) { cell.style.transition = 'background .15s'; cell.style.background = '#fff2cc'; setTimeout(() => { cell.style.background = ''; }, 350); } return true; } } return false; }
       function insertToNextEmpty(m) { const hot = getHOT(); if (!hot) return; let target = -1; const rows = hot.countRows(); for (let r = 0; r < rows; r++) { const v = norm(hot.getDataAtCell(r, 0)); if (!v) { target = r; break; } } if (target === -1) { target = rows; hot.alter('insert_row', target, 1); } hot.setDataAtCell(target, 0, m); hot.selectCell(target, 1); }
-      function chooseItem(idx) { const it = filtered[idx]; if (!it) return; const masp = up(it.masp); const exists = jumpToExistingRow(masp); if (!exists) insertToNextEmpty(masp); $input.value = ''; hideList(); setTimeout(() => $input.focus(), 10); }
-      function doFilter(q) {
-        const Q = up(q); if (!Q) { hideList(); return; }
-        const starts = [], contains = [];
-        for (const it of (cache || [])) {
-          if (it._MASP.startsWith(Q) || it._TENSP.startsWith(Q)) starts.push(it);
-          else if (it._MASP.includes(Q) || it._TENSP.includes(Q)) contains.push(it);
-          if (starts.length >= MAX_SUGGESTIONS) break;
-        }
-        const arr = starts.concat(contains).slice(0, MAX_SUGGESTIONS);
-        filtered = arr; renderList(arr);
-      }
+      function chooseItem(idx) { const it = filtered[idx]; if (!it) return; const masp = up(it.masp); const exists = jumpToExistingRow(masp); if (!exists) insertToNextEmpty(masp); $input.value = ''; $list.hidden = true; setTimeout(() => $input.focus(), 10); }
 
-      document.addEventListener('click', (e) => { if (!e.target.closest('.typeahead-wrap')) hideList(); });
-      $input.addEventListener('input', async () => { clearTimeout(debTimer); debTimer = setTimeout(async () => { await ensureCatalog(); doFilter($input.value); }, DEBOUNCE_MS); });
+      // Events
+      let debTimer = null;
+      function debounce(fn, ms = 120) { clearTimeout(debTimer); debTimer = setTimeout(fn, ms); }
+      $input.addEventListener('input', () => { ensureStarted(); debounce(() => doFilter($input.value), 80); });
+      $input.addEventListener('focus', () => { ensureStarted(); if ($input.value) doFilter($input.value); });
+
+      document.addEventListener('click', (e) => { if (!e.target.closest('.typeahead-wrap')) { $list.hidden = true; } });
       $input.addEventListener('keydown', (e) => {
         if ($list.hidden) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
-        else if (e.key === 'Enter') { if (activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); } }
-        else if (e.key === 'Escape') { hideList(); }
+        else if (e.key === 'Escape') { $list.hidden = true; }
+        else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
       });
-
-      // Buttons
-      $btnAll.addEventListener('click', async () => { cancelToken.cancel = false; await loadFullCatalog(); });
-      $btnClear.addEventListener('click', () => {
-        localStorage.removeItem(CACHE_KEY);
-        cache = null; setProgress(0); $status.textContent = 'Đã xóa cache';
-      });
-
-      // Autopreload nhẹ
-      ensureCatalog();
     })();
 
-    // Nghiệp vụ
+    // ===== Business logic: kiểm tra / lưu =====
     async function kiemTraViTri() {
       window.editableMASP = false; window.editableVITRI = false; hot.updateSettings({ cells: hot.getSettings().cells });
       let allRows = hot.getSourceData();
@@ -626,7 +412,7 @@
           else { hot.setDataAtCell(r, 1, null); hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ"); }
         }
       });
-      document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
+      document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra xong.</span>`;
       hot.updateSettings({ cells: hot.getSettings().cells });
     }
 
@@ -636,7 +422,7 @@
       if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
       hot.loadData(tableData);
       window.editableMASP = true; window.editableVITRI = true; hot.updateSettings({ cells: hot.getSettings().cells });
-      document.getElementById('preview').innerHTML = `<span>👉 Nhập <b>vị trí kho</b> cho sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
+      document.getElementById('preview').innerHTML = `<span>👉 Nhập <b>vị trí kho</b> cho sản phẩm chưa có vị trí.</span>`;
     }
 
     async function luuDuLieu() {
@@ -650,7 +436,8 @@
         const { data, error } = await sb.from(TABLE_NAME)
           .update({ vitrikho1: row.vitrikho1 })
           .eq('masp', row.masp.toString().trim().toUpperCase())
-          .is('vitrikho1', null).select();
+          .is('vitrikho1', null)
+          .select();
         if (!error && data && data.length === 1) { hot.setDataAtCell(idx, 2, "OK"); success++; }
         else { hot.setDataAtCell(idx, 2, "LỖI"); fail++; let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)'; errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`); }
       }
@@ -660,6 +447,7 @@
       window.editableMASP = false; window.editableVITRI = false; hot.updateSettings({ cells: hot.getSettings().cells });
     }
   </script>
+
 </body>
 
 </html>
