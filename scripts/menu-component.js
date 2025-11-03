@@ -19,6 +19,10 @@
     return !!(cb && cb.checked);
   }
 
+  function isDesktopWide() {
+    // Ngưỡng màn hình rộng cho PC (bạn có thể chỉnh 1200 → 1024 tùy ý)
+    return window.innerWidth >= 1200;
+  }
 
   function buildCsvUrl(sheetId, sheetName) {
     const base = "https://docs.google.com/spreadsheets/d/";
@@ -299,6 +303,21 @@
         this.list.style.alignItems = 'center';
         this.root.appendChild(this.list);
 
+        // --- WRAP dạng "thẻ" 3 cột cho Desktop rộng ---
+        this.cardsWrap = document.createElement('div');
+        // Mặc định ẩn (chỉ bật khi ở Desktop)
+        this.cardsWrap.style.display = 'none';
+        this.cardsWrap.style.padding = '4px';
+        // Grid 3 cột (mỗi thẻ là 1 “hàng lớn” có QR + text)
+        this.cardsWrap.style.gridTemplateColumns = '1fr 1fr 1fr';
+        this.cardsWrap.style.columnGap = '24px';
+        this.cardsWrap.style.rowGap = '24px';
+        this.root.appendChild(this.cardsWrap);
+
+        // ép fill theo cột: 2 cột đầu nhiều hàng (38..43), cột cuối (44..45)
+        this.cardsWrap.style.gridAutoFlow = 'column';   // đổ theo cột
+
+
         // header row
         const mkHeadCell = (txt) => {
           const c = document.createElement('div');
@@ -374,6 +393,61 @@
           this.list.appendChild(c3el);
 
           this.rows.push({ neck, alpha, c3, cells: [qrWrap, c1, c2, c3el] });
+          //moi
+          // ==== CARD cho Desktop: 1 "hàng lớn" chứa QR + 3 ô text ====
+          const card = document.createElement('div');
+          card.className = 'sz-card';
+          Object.assign(card.style, {
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr 1fr 1fr',
+            alignItems: 'center',
+            gap: '16px',
+            padding: '14px',
+            margin: '6px',
+            borderRadius: '10px',
+            background: '#fffbe6',
+            boxShadow: '0 0 0 1px #e5e7eb inset',
+            cursor: 'pointer',
+            // Giữ khoảng cách rộng, hạn chế quét nhầm
+          });
+
+          // Tạo lại QR img riêng cho card (không lấy khỏi list)
+          const qrImg2 = document.createElement('img');
+          qrImg2.src = SIZE_QR_IMAGES[neck];
+          qrImg2.alt = `QR ${neck}`;
+          qrImg2.style.width = '1.5cm';
+          qrImg2.style.height = '1.5cm';
+          qrImg2.style.display = 'block';
+          qrImg2.style.margin = '6px auto';
+          qrImg2.style.imageRendering = 'pixelated';
+          const qr2Wrap = document.createElement('div');
+          qr2Wrap.style.textAlign = 'center';
+          qr2Wrap.appendChild(qrImg2);
+
+          // 3 ô text (clone style “makeCell” nhưng độc lập)
+          const mk = (txt) => {
+            const c = document.createElement('div');
+            c.textContent = txt;
+            c.style.padding = '10px 8px';
+            c.style.textAlign = 'center';
+            return c;
+          };
+          const c1c = mk(neck), c2c = mk(alpha), c3c = mk(c3 || '');
+
+          // Hover highlight đồng bộ
+          const parts = [qr2Wrap, c1c, c2c, c3c];
+          parts.forEach(el => el.style.transition = 'background 0.15s');
+          parts.forEach(el => {
+            el.addEventListener('mouseenter', () => parts.forEach(p => p.style.background = '#ebeb64ff'));
+            el.addEventListener('mouseleave', () => parts.forEach(p => p.style.background = ''));
+          });
+
+          // Click card = pick
+          card.addEventListener('click', () => this.pick(rIdx, 'mouse'));
+
+          card.append(qr2Wrap, c1c, c2c, c3c);
+          this.cardsWrap.appendChild(card);
+          //moi
         }
 
         document.body.appendChild(this.root);
@@ -388,19 +462,55 @@
         });
       }
 
+      //moi
       openFor(inputEl) {
         const r = inputEl.getBoundingClientRect();
         const top = r.bottom + 8;
-        const left = Math.min(r.left, window.innerWidth - Math.max(280, r.width));
-        this.root.style.top = `${top}px`;
-        this.root.style.left = `${left}px`;
-        this.root.style.minWidth = `${Math.max(260, r.width)}px`;
-        // Cho phép popup mở rộng tối đa theo nội dung
-        this.root.style.maxWidth = 'none';
-        this.root.style.maxHeight = 'none';
-        this.root.style.display = 'block';
-        // KHÔNG auto-highlight bất kỳ dòng nào
+        const left = r.left;
+
+        if (isDesktopWide()) {
+          // Desktop: mở lớn từ vị trí ô SIZE, phủ phần màn hình còn lại
+          const pad = 12; // chừa biên
+          const w = Math.max(420, window.innerWidth - left - pad);
+          const h = Math.max(260, window.innerHeight - top - pad);
+
+          Object.assign(this.root.style, {
+            top: `${top}px`,
+            left: `${left}px`,
+            width: `${w}px`,
+            height: `${h}px`,
+            maxWidth: 'none',
+            maxHeight: 'none',
+            overflow: 'auto',
+            display: 'block'
+          });
+
+          // Bật layout 3 cột rộng
+          this.list.style.display = 'none';
+          this.cardsWrap.style.display = 'grid';
+          this.cardsWrap.style.gridTemplateColumns = '1fr 1fr 1fr';
+          this.cardsWrap.style.columnGap = '24px';
+          this.cardsWrap.style.rowGap = '24px';
+
+        } else {
+          // Mobile: layout cũ (list dọc), khung nhỏ gọn
+          Object.assign(this.root.style, {
+            top: `${top}px`,
+            left: `${Math.min(left, window.innerWidth - Math.max(280, r.width))}px`,
+            minWidth: `${Math.max(260, r.width)}px`,
+            maxWidth: 'none',
+            maxHeight: 'none',
+            width: '',
+            height: '',
+            overflow: 'visible',
+            display: 'block'
+          });
+
+          this.list.style.display = 'grid';
+          this.cardsWrap.style.display = 'none';
+        }
       }
+      //moi
 
       close() { this.root.style.display = 'none'; }
       isOpen() { return this.root.style.display !== 'none'; }
@@ -421,6 +531,12 @@
         return i >= 0 ? i : null;
       }
     }
+
+    // Thêm cuối constructor SizeDropdown:
+    window.addEventListener('resize', () => {
+      if (this.isOpen() && __sizeInput) this.openFor(__sizeInput);
+    });
+
 
     function initGlobalSizeDropdown() {
       if (__sizeDDInited) return;
@@ -529,7 +645,7 @@
         document.addEventListener('DOMContentLoaded', boot, { once: true });
       } else {
         boot();
-      }     
+      }
 
     }
     // Nút refresh
