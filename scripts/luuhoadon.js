@@ -343,7 +343,15 @@ export async function luuHoaDonQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-    // ... sau khi có const sohd = ...; const tennv = ...;
+    // Nếu đang ở chế độ NEW và số HĐ hiện tại CHƯA tồn tại → thử kích hoạt cơ chế "số đặc biệt → lưu 2 bản"
+if (!IS_EDIT) {
+  const existed = await hoaDonDaTonTai(sohd);
+  // handleSpecialSoHoaDon() sẽ tự gọi luuHoaDonCaHaiBan() khi điều kiện đúng và trả về true.
+  // Khi đã lưu xong 2 bản thì ta RETURN để không chạy tiếp nhánh lưu đơn.
+  if (!existed && await handleSpecialSoHoaDon(sohd)) {
+    return;
+  }
+}
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
