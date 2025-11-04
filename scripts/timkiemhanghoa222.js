@@ -69,16 +69,26 @@ function installBranchPicker() {
 }
 
 // Mở khóa column vị trí đúng với CURRENT_BRANCH, còn cột cơ sở kia thì readonly
+let CURRENT_BRANCH = ''; // '' = chưa chọn; 'cs1' | 'cs2'
+
 function toggleVitriInputsByBranch() {
-  const picked = (window.CURRENT_BRANCH || '');
-  const inputs = document.querySelectorAll('input.vitri-input');
+  const inputs = document.querySelectorAll('.vitri-input');
+  const picked = CURRENT_BRANCH || ''; // '' = chưa chọn => khoá tất cả
+
   inputs.forEach(ip => {
-    const b = ip.getAttribute('data-branch');
-    const enable = picked && b === picked;
-    ip.readOnly = !enable;
-    ip.style.background = enable ? '#fff' : '#f4f4f4';
+    const branch = ip.getAttribute('data-branch');
+    const val = (ip.value || '').trim();
+
+    // Mặc định: khóa hết
+    ip.disabled = true;
+
+    // Chỉ mở khi: đã CHỌN CS + ô thuộc CS đó + ô đang TRỐNG
+    if (picked && branch === picked && val === '') {
+      ip.disabled = false;
+    }
   });
 }
+
 
 async function saveAllVitriForPickedBranch() {
   const stt = document.getElementById('saveVitriStatus');
@@ -543,17 +553,20 @@ async function renderOneProductDetail(masp) {
      </td>
 
      <td>
-  <input class="vitri-input" data-branch="cs1"
-         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
-         value="${hanghoa.vitrikho1 || ''}" placeholder="Vị trí CS1"
-         style="width:100px">
+  <input class="vitri-input"
+         data-masp="${hanghoa.masp}"
+         data-branch="cs1"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
 </td>
 <td>
-  <input class="vitri-input" data-branch="cs2"
-         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
-         value="${hanghoa.vitrikho2 || ''}" placeholder="Vị trí CS2"
-         style="width:100px">
+  <input class="vitri-input"
+         data-masp="${hanghoa.masp}"
+         data-branch="cs2"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
 </td>
+
 
 
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -643,18 +656,21 @@ async function renderProductDetailHTML(masp) {
 </td>
 
               
-              <td>
-  <input class="vitri-input" data-branch="cs1"
-         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
-         value="${hanghoa.vitrikho1 || ''}" placeholder="Vị trí CS1"
-         style="width:100px">
+             <td>
+  <input class="vitri-input"
+         data-masp="${hanghoa.masp}"
+         data-branch="cs1"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
 </td>
 <td>
-  <input class="vitri-input" data-branch="cs2"
-         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
-         value="${hanghoa.vitrikho2 || ''}" placeholder="Vị trí CS2"
-         style="width:100px">
+  <input class="vitri-input"
+         data-masp="${hanghoa.masp}"
+         data-branch="cs2"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
 </td>
+
 
 
               <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -695,17 +711,20 @@ async function renderProductDetailHTML(masp) {
 </td>
 
             <td>
-  <input class="vitri-input" data-branch="cs1"
-         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
-         value="${hanghoa.vitrikho1 || ''}" placeholder="Vị trí CS1"
-         style="width:100px">
+  <input class="vitri-input"
+         data-masp="${hanghoa.masp}"
+         data-branch="cs1"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
 </td>
 <td>
-  <input class="vitri-input" data-branch="cs2"
-         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
-         value="${hanghoa.vitrikho2 || ''}" placeholder="Vị trí CS2"
-         style="width:100px">
+  <input class="vitri-input"
+         data-masp="${hanghoa.masp}"
+         data-branch="cs2"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
 </td>
+
 
 
             <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -1418,12 +1437,13 @@ const PAD5 = (n) => String(n).padStart(5, '0');
 
 
 // ƯU TIÊN lấy địa điểm từ dropdown (CURRENT_BRANCH)
+// LẤY THÔNG TIN NGƯỜI DÙNG + ĐỊA ĐIỂM TỪ DROPDOWN
 function getCurrentUserInfo() {
   const tennv = localStorage.getItem('tennv') || '';
-  const diadiem = (window.CURRENT_BRANCH || '').trim(); // 'cs1' | 'cs2' | ''
+  const sel = document.getElementById('branchPicker');
+  const diadiem = sel && sel.value ? sel.value : ''; // '' = chưa chọn
   return { tennv, diadiem };
 }
-
 
 
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
