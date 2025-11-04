@@ -43,21 +43,15 @@ function installBranchPicker() {
     const stt = document.getElementById('saveVitriStatus');
 
     if (!sel) return;
-
-    // Khôi phục lựa chọn trước
-    const saved = localStorage.getItem('picked_branch') || '';
-    if (saved && (saved === 'cs1' || saved === 'cs2')) {
-        sel.value = saved;
-        window.CURRENT_BRANCH = saved;
-    }
-
+    sel.value = '';
+ window.CURRENT_BRANCH = '';
+    
     // Khi đổi dropdown
     sel.addEventListener('change', () => {
-        window.CURRENT_BRANCH = sel.value || null;
-        localStorage.setItem('picked_branch', window.CURRENT_BRANCH || '');
-        toggleVitriInputsByBranch();           // khóa/mở đúng cột vị trí
-        if (stt) stt.textContent = '';
-    });
+     window.CURRENT_BRANCH = sel.value || ''; // 'cs1' | 'cs2' | ''
+     toggleVitriInputsByBranch();
+     if (stt) stt.textContent = '';
+ });
 
     // Nút lưu vị trí
     if (btn) {
@@ -69,11 +63,11 @@ function installBranchPicker() {
 }
 
 // Mở khóa column vị trí đúng với CURRENT_BRANCH, còn cột cơ sở kia thì readonly
-let CURRENT_BRANCH = ''; // '' = chưa chọn; 'cs1' | 'cs2'
+
 
 function toggleVitriInputsByBranch() {
   const inputs = document.querySelectorAll('.vitri-input');
-  const picked = CURRENT_BRANCH || ''; // '' = chưa chọn => khoá tất cả
+  const picked = (window.CURRENT_BRANCH || ''); // '' = chưa chọn => khoá tất cả
 
   inputs.forEach(ip => {
     const branch = ip.getAttribute('data-branch');
@@ -440,6 +434,7 @@ async function triggerSearch(_masp = null) {
         const wrap = document.createElement("div");
         wrap.innerHTML = html;
         multi.appendChild(wrap);
+        toggleVitriInputsByBranch();
 
         const safeId = _safeIdFromMasp(m);
         const el = wrap.querySelector(`#xntHot_${safeId}`);
@@ -533,6 +528,7 @@ async function renderOneProductDetail(masp) {
     // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
     const top = document.getElementById("infoTopTable");
     top.innerHTML = `
+    toggleVitriInputsByBranch();
     <tr>
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
