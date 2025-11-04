@@ -379,6 +379,15 @@ html, body, #popupDatHang {
   overflow: auto;      /* cuộn bên trong nếu nội dung dài */
 }
 
+/* —— Hàng chọn cơ sở + lưu vị trí —— */
+.branch-row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+.branch-row .branch-title { font-weight:700; color:#1976d2; margin-right:6px; }
+.branch-row .branch-group { display:flex; gap:14px; align-items:center; }
+.branch-row .save-wrap { display:flex; gap:10px; align-items:center; }
+#btnSaveVitri { background:#1976d2; border-color:#1976d2; color:#fff; font-weight:700; }
+#saveVitriStatus { font-weight:600; color:#c62828; }
+
+
     </style>
 
 
@@ -445,20 +454,23 @@ html, body, #popupDatHang {
 
             </div>
 
-            <!-- Hàng 4: chọn cơ sở và lưu vị trí -->
+      <!-- Hàng 4: chọn cơ sở và lưu vị trí -->
 <div class="input-row">
   <div class="input-group">
-    <label>Chọn cơ sở</label>
-    <div style="display:flex;gap:14px;align-items:center;">
-      <label><input type="radio" name="branch" id="pickCS1" value="cs1" checked> CS1</label>
-      <label><input type="radio" name="branch" id="pickCS2" value="cs2"> CS2</label>
-      <button id="btnSaveVitri" class="popup-btn" style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
-        💾 Lưu vị trí
-      </button>
-      <span id="saveVitriStatus" style="font-weight:600;color:#c62828"></span>
+    <div class="branch-row">
+      <span class="branch-title">Chọn cơ sở</span>
+      <div class="branch-group">
+        <label><input type="radio" name="branch" id="pickCS1" value="cs1" checked> CS1</label>
+        <label><input type="radio" name="branch" id="pickCS2" value="cs2"> CS2</label>
+      </div>
+      <div class="save-wrap">
+        <button id="btnSaveVitri" class="popup-btn">💾 Lưu vị trí</button>
+        <span id="saveVitriStatus"></span>
+      </div>
     </div>
   </div>
 </div>
+
 
 
         </div>
