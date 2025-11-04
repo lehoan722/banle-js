@@ -27,59 +27,59 @@ window.dangNhap = async function () {
 let CURRENT_BRANCH = 'cs1'; // mặc định
 
 function getPickedBranch() {
-  const r2 = document.getElementById('pickCS2');
-  return (r2 && r2.checked) ? 'cs2' : 'cs1';
+    const r2 = document.getElementById('pickCS2');
+    return (r2 && r2.checked) ? 'cs2' : 'cs1';
 }
 
 function bindBranchUI() {
-  const r1 = document.getElementById('pickCS1');
-  const r2 = document.getElementById('pickCS2');
-  [r1, r2].forEach(r => r && r.addEventListener('change', () => {
-    CURRENT_BRANCH = getPickedBranch();
-    toggleVitriInputsByBranch();
-  }));
-  document.getElementById('btnSaveVitri')?.addEventListener('click', saveAllVitriForPickedBranch);
+    const r1 = document.getElementById('pickCS1');
+    const r2 = document.getElementById('pickCS2');
+    [r1, r2].forEach(r => r && r.addEventListener('change', () => {
+        CURRENT_BRANCH = getPickedBranch();
+        toggleVitriInputsByBranch();
+    }));
+    document.getElementById('btnSaveVitri')?.addEventListener('click', saveAllVitriForPickedBranch);
 }
 
 // Khóa/mở input: chỉ mở ô TRỐNG của cơ sở đang chọn
 function toggleVitriInputsByBranch() {
-  const inputs = document.querySelectorAll('input.vitri-input');
-  inputs.forEach(ip => {
-    const branch = ip.getAttribute('data-branch');
-    const val = (ip.value || '').trim();
-    ip.disabled = true; ip.style.background = '#f7f7f7';
-    if (branch === CURRENT_BRANCH && !val) { ip.disabled = false; ip.style.background = '#fff'; }
-  });
+    const inputs = document.querySelectorAll('input.vitri-input');
+    inputs.forEach(ip => {
+        const branch = ip.getAttribute('data-branch');
+        const val = (ip.value || '').trim();
+        ip.disabled = true; ip.style.background = '#f7f7f7';
+        if (branch === CURRENT_BRANCH && !val) { ip.disabled = false; ip.style.background = '#fff'; }
+    });
 }
 
 // Lưu toàn bộ ô vị trí vừa nhập của cơ sở đang chọn
 async function saveAllVitriForPickedBranch() {
-  const status = document.getElementById('saveVitriStatus');
-  status.style.color = '#c62828'; status.textContent = '';
+    const status = document.getElementById('saveVitriStatus');
+    status.style.color = '#c62828'; status.textContent = '';
 
-  const branch = CURRENT_BRANCH;
-  const field = branch === 'cs1' ? 'vitrikho1' : 'vitrikho2';
+    const branch = CURRENT_BRANCH;
+    const field = branch === 'cs1' ? 'vitrikho1' : 'vitrikho2';
 
-  const ips = Array.from(document.querySelectorAll(`input.vitri-input[data-branch="${branch}"]`));
-  const todo = ips.filter(ip => !ip.disabled && (ip.value || '').trim())
-                  .map(ip => ({ masp: ip.getAttribute('data-masp'), val: ip.value.trim() }));
+    const ips = Array.from(document.querySelectorAll(`input.vitri-input[data-branch="${branch}"]`));
+    const todo = ips.filter(ip => !ip.disabled && (ip.value || '').trim())
+        .map(ip => ({ masp: ip.getAttribute('data-masp'), val: ip.value.trim() }));
 
-  if (todo.length === 0) { status.textContent = 'Không có ô nào để lưu.'; return; }
+    if (todo.length === 0) { status.textContent = 'Không có ô nào để lưu.'; return; }
 
-  try {
-    for (const row of todo) {
-      const patch = {}; patch[field] = row.val;
-      const { error } = await supabase.from('dmhanghoa').update(patch).eq('masp', row.masp);
-      if (error) throw error;
+    try {
+        for (const row of todo) {
+            const patch = {}; patch[field] = row.val;
+            const { error } = await supabase.from('dmhanghoa').update(patch).eq('masp', row.masp);
+            if (error) throw error;
+        }
+        status.style.color = 'green';
+        status.textContent = `Đã lưu ${todo.length} vị trí cho ${branch.toUpperCase()}.`;
+        toggleVitriInputsByBranch(); // khóa lại sau khi lưu
+    } catch (e) {
+        console.error(e);
+        status.style.color = '#c62828';
+        status.textContent = 'Lưu vị trí thất bại!';
     }
-    status.style.color = 'green';
-    status.textContent = `Đã lưu ${todo.length} vị trí cho ${branch.toUpperCase()}.`;
-    toggleVitriInputsByBranch(); // khóa lại sau khi lưu
-  } catch (e) {
-    console.error(e);
-    status.style.color = '#c62828';
-    status.textContent = 'Lưu vị trí thất bại!';
-  }
 }
 
 
@@ -510,14 +510,14 @@ async function renderOneProductDetail(masp) {
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 
@@ -613,14 +613,14 @@ async function renderProductDetailHTML(masp) {
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 
@@ -666,14 +666,14 @@ async function renderProductDetailHTML(masp) {
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 
@@ -1178,9 +1178,9 @@ window.onload = async function () {
 // —— Nối đuôi onload để khởi tạo controls cơ sở ——
 const _oldOnload_branch = window.onload;
 window.onload = async function () {
-  if (typeof _oldOnload_branch === 'function') await _oldOnload_branch();
-  CURRENT_BRANCH = getPickedBranch();
-  bindBranchUI();
+    if (typeof _oldOnload_branch === 'function') await _oldOnload_branch();
+    CURRENT_BRANCH = getPickedBranch();
+    bindBranchUI();
 };
 
 
@@ -1425,8 +1425,9 @@ async function getNextSohd(diadiem) {
 
 // Mở popup đặt hàng (đổ sẵn dữ liệu và focus đúng ô)
 async function openDatHangPopup() {
-    const { tennv, diadiem } = getCurrentUserInfo();
-    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
+    const { tennv } = getCurrentUserInfo();
+    const diadiem = CURRENT_BRANCH; // lấy theo checkbox CS1/CS2
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa chọn cơ sở hoặc chưa có nhân viên!', 'warn'); return; }
 
     // phải có đúng 1 sản phẩm đang hiển thị
     if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
@@ -1461,8 +1462,9 @@ async function openDatHangPopup() {
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ TRONG CHẾ ĐỘ NHIỀU MÃ =====
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ (hỗ trợ cả 1-mã & nhiều-mã) =====
 window.openDatHangFor = async function (masp, anchorEl) {
-    const { tennv, diadiem } = getCurrentUserInfo();
-    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return false; }
+    const { tennv } = getCurrentUserInfo();
+    const diadiem = CURRENT_BRANCH;
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa chọn cơ sở hoặc chưa có nhân viên!', 'warn'); return false; }
 
     CURRENT_MASP = (masp || '').toUpperCase();
 
@@ -1579,7 +1581,8 @@ function closePickSizeAndFill() {
 
 // --- Lưu đặt hàng ---
 async function saveDatHang() {
-    const { tennv, diadiem } = getCurrentUserInfo();
+    const { tennv } = getCurrentUserInfo();
+    const diadiem = CURRENT_BRANCH;
     const sohd = document.getElementById('dhSohd').value.trim();
     const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
     const mau = document.getElementById('dhMau').value.trim();
