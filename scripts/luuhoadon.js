@@ -298,7 +298,7 @@ async function handleSpecialSoHoaDon(sohd) {
 
     // Giới hạn tiền theo cơ sở
     const ngay = document.getElementById("ngay").value;
-    let hanMuc = (diadiem === "cs1") ? 1900000 : 6500000;
+    let hanMuc = (diadiem === "cs1") ? 2500000 : 7000000;
 
     // Tổng đã lưu trong ngày của bảng T tại cơ sở này
     const { data, error } = await supabase
