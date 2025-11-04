@@ -3,14 +3,14 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Tìm kiếm thông tin hàng hóa</title>
+    <title>Tìm kiếm hàng hóa</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
-    <script type="module" src="scripts/timkiemhanghoa333.js"></script>
+    <script type="module" src="scripts/timkiemhanghoa222.js"></script>
     <style>
         body {
             background: #f6f8fa;
@@ -379,15 +379,6 @@ html, body, #popupDatHang {
   overflow: auto;      /* cuộn bên trong nếu nội dung dài */
 }
 
-/* —— Hàng chọn cơ sở + lưu vị trí —— */
-.branch-row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-.branch-row .branch-title { font-weight:700; color:#1976d2; margin-right:6px; }
-.branch-row .branch-group { display:flex; gap:14px; align-items:center; }
-.branch-row .save-wrap { display:flex; gap:10px; align-items:center; }
-#btnSaveVitri { background:#1976d2; border-color:#1976d2; color:#fff; font-weight:700; }
-#saveVitriStatus { font-weight:600; color:#c62828; }
-
-
     </style>
 
 
@@ -449,35 +440,25 @@ html, body, #popupDatHang {
                         style="margin-top:6px;width:100%;background:#ffeaea;border-color:#ef9a9a;color:#c62828;font-weight:700;">
                         🧹 Xoá DL
                     </button>
-                   
+                    <button id="orderBtn" class="popup-btn" style="font-weight:700">🛒 Đặt hàng</button>
                 </div>
-
             </div>
+        </div>
 
-      <!-- Hàng 4: chọn cơ sở và lưu vị trí -->
-<div class="input-row">
-  <div class="input-group">
-    <label>Chọn cơ sở</label>
-    <div style="display:flex;gap:14px;align-items:center;">
-      <select id="branchSelect" class="branch-select" style="min-width:120px;padding:6px;border:1px solid #90caf9;border-radius:6px;">
-        <option value="">— Chưa chọn —</option>
-        <option value="cs1">CS1</option>
-        <option value="cs2">CS2</option>
-      </select>
 
-      <button id="btnSaveVitri" class="popup-btn"
-        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
-        💾 Lưu vị trí
-      </button>
-      <span id="saveVitriStatus" style="font-weight:600;color:#c62828"></span>
-    </div>
-  </div>
+      <!-- Chọn cơ sở + Lưu vị trí -->
+<div id="branchBox" style="display:flex;gap:8px;align-items:center;margin:6px 0;">
+  <label for="branchPicker" style="font-weight:600">Chọn cơ sở:</label>
+  <select id="branchPicker">
+    <option value="">-- Chưa chọn --</option>
+    <option value="cs1">CS1</option>
+    <option value="cs2">CS2</option>
+  </select>
+
+  <button id="saveVitriBtn" title="Lưu vị trí cho cơ sở đang chọn">💾 Lưu vị trí</button>
+  <span id="saveVitriStatus" style="font-style:italic;color:#888"></span>
 </div>
 
-
-
-
-        </div>
 
         <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
