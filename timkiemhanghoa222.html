@@ -445,6 +445,27 @@ html, body, #popupDatHang {
             </div>
         </div>
 
+
+        <!-- Hàng 4: chọn cơ sở và lưu vị trí -->
+<div class="input-row">
+  <div class="input-group">
+    <label>Chọn cơ sở</label>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <select id="branchSelect" class="branch-select" style="min-width:120px;padding:6px;border:1px solid #90caf9;border-radius:6px;">
+        <option value="">— Chưa chọn —</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+
+      <button id="btnSaveVitri" class="popup-btn"
+        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">
+        💾 Lưu vị trí
+      </button>
+      <span id="saveVitriStatus" style="font-weight:600;color:#c62828"></span>
+    </div>
+  </div>
+</div>
+
         <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
         <!-- nhiều mã (giữ nguyên vùng) -->
