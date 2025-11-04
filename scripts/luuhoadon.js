@@ -96,19 +96,19 @@ function showExistDialog(sohd) {
 
 
 function getLoaiFromSoHDInput() {
-  const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
-  if (raw && raw.includes('_')) {
-    // nếu ô sohd đã có dạng hợp lệ thì cứ cắt prefix
-    return raw.split('_')[0];
-  }
-  // Fallback theo đường dẫn trang – KHÔNG phụ thuộc ô #sohd
-  const path = location.pathname.toLowerCase();
-  if (path.includes('nhaptamcs1')) return 'ntcs1';
-  if (path.includes('nhapmoimtcs1')) return 'nmcs1';
-  if (path.includes('nhaptamcs2')) return 'ntcs2';
-  if (path.includes('nhapmoimtcs2')) return 'nmcs2';
-  // thêm các trang khác nếu cần …
-  return '';
+    const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
+    if (raw && raw.includes('_')) {
+        // nếu ô sohd đã có dạng hợp lệ thì cứ cắt prefix
+        return raw.split('_')[0];
+    }
+    // Fallback theo đường dẫn trang – KHÔNG phụ thuộc ô #sohd
+    const path = location.pathname.toLowerCase();
+    if (path.includes('nhaptamcs1')) return 'ntcs1';
+    if (path.includes('nhapmoimtcs1')) return 'nmcs1';
+    if (path.includes('nhaptamcs2')) return 'ntcs2';
+    if (path.includes('nhapmoimtcs2')) return 'nmcs2';
+    // thêm các trang khác nếu cần …
+    return '';
 }
 
 
@@ -343,36 +343,37 @@ export async function luuHoaDonQuaAPI() {
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-    // Nếu đang ở chế độ NEW và số HĐ hiện tại CHƯA tồn tại → thử kích hoạt cơ chế "số đặc biệt → lưu 2 bản"
-if (!IS_EDIT) {
-  const existed = await hoaDonDaTonTai(sohd);
-  // handleSpecialSoHoaDon() sẽ tự gọi luuHoaDonCaHaiBan() khi điều kiện đúng và trả về true.
-  // Khi đã lưu xong 2 bản thì ta RETURN để không chạy tiếp nhánh lưu đơn.
-  if (!existed && await handleSpecialSoHoaDon(sohd)) {
-    return;
-  }
-}
-
-    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
     // ... sau khi có const sohd = ...; const tennv = ...;
 
-    // Nếu ĐANG Ở CHẾ ĐỘ NEW và số đang gõ TRÙNG với HĐ đã có → hỏi người dùng
+    // ... đã có sohd, tennv, bangKetQua ...
+
+    // 1) Khai báo trước
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
+
+    // 2) KHỐI SỐ ĐẶC BIỆT (phải đứng SAU dòng trên)
+    if (!IS_EDIT) {
+        const existed = await hoaDonDaTonTai(sohd);
+        if (!existed && await handleSpecialSoHoaDon(sohd)) {
+            return; // đã lưu 2 bản xong thì thoát sớm
+        }
+    }
+
+    // 3) Hỏi nếu số đang gõ bị trùng (vẫn đứng SAU)
     if (!IS_EDIT) {
         const existed = await hoaDonDaTonTai(sohd);
         if (existed) {
-            const choice = await showExistDialog(sohd); // 'new' | 'edit'
+            const choice = await showExistDialog(sohd);
             if (choice === 'edit') {
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
+                document.getElementById("popupXacThucSua").style.display = "block";
+                document.getElementById("xacmanv")?.focus();
+                return;
             }
-            // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
+            // choice === 'new' → để NEW tiếp, RPC sẽ cấp số mới
         }
     }
+
+    // → các nhánh NEW/EDIT giữ nguyên như bạn đang có
+
 
 
     // === NHÁNH NEW ===
