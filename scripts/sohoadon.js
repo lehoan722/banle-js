@@ -43,6 +43,12 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("xuathuy")) {
             loai = diadiem === "cs1" ? "xuathuycs1" : "xuathuycs2";
 
+        } else if (pathname.includes("xuatkiem")) {
+            loai = diadiem === "cs1" ? "xuatkiemcs1" : "xuatkiemcs2";
+        } else if (pathname.includes("nhapkiem")) {
+            loai = diadiem === "cs1" ? "nhapkiemcs1" : "nhapkiemcs2";
+
+
         } else if (pathname.includes("ccn1v2")) {
             loai = "xcncs1";
         } else if (pathname.includes("ccn2v1")) {
@@ -65,7 +71,7 @@ export async function capNhatSoHoaDonTuDong() {
             .from("sochungtu")
             .select("so_hientai")
             .eq("loai", loai)
-            .maybeSingle(); 
+            .maybeSingle();
 
         let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
 
@@ -111,7 +117,7 @@ export async function phatSinhSoHDTMoi() {
             .maybeSingle();  // <-- KHÔNG 406 khi 0 dòng
 
         let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
-       
+
         if (!error && data) {
             soMoi = data.so_hientai + 1;
             await supabase
