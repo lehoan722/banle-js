@@ -23,34 +23,51 @@ window.dangNhap = async function () {
     document.getElementById("authBox").style.display = "none";
 };
 
+
 // ===== Chọn cơ sở thao tác vị trí & lưu vị trí =====
-let CURRENT_BRANCH = ''; // mặc định
+let CURRENT_BRANCH = ''; // mặc định chưa chọn gì
 
 function getPickedBranch() {
-    const r2 = document.getElementById('pickCS2');
-    return (r2 && r2.checked) ? 'cs2' : 'cs1';
+    const sel = document.getElementById('branchSelect');
+    return sel ? (sel.value || '') : '';
 }
 
 function bindBranchUI() {
-    const r1 = document.getElementById('pickCS1');
-    const r2 = document.getElementById('pickCS2');
-    [r1, r2].forEach(r => r && r.addEventListener('change', () => {
-        CURRENT_BRANCH = getPickedBranch();
-        toggleVitriInputsByBranch();
-    }));
+    const sel = document.getElementById('branchSelect');
+    if (sel) {
+        sel.addEventListener('change', () => {
+            CURRENT_BRANCH = getPickedBranch();
+            toggleVitriInputsByBranch();
+        });
+    }
     document.getElementById('btnSaveVitri')?.addEventListener('click', saveAllVitriForPickedBranch);
 }
 
+
 // Khóa/mở input: chỉ mở ô TRỐNG của cơ sở đang chọn
 function toggleVitriInputsByBranch() {
+    const btn = document.getElementById('btnSaveVitri');
     const inputs = document.querySelectorAll('input.vitri-input');
+
+    // Chưa chọn cơ sở → khoá tất cả và disable nút lưu
+    if (!CURRENT_BRANCH) {
+        inputs.forEach(ip => { ip.disabled = true; ip.style.background = '#f7f7f7'; });
+        if (btn) btn.disabled = true;
+        return;
+    }
+
+    // Đã chọn → chỉ mở các ô TRỐNG của đúng cơ sở đó
     inputs.forEach(ip => {
         const branch = ip.getAttribute('data-branch');
         const val = (ip.value || '').trim();
         ip.disabled = true; ip.style.background = '#f7f7f7';
-        if (branch === CURRENT_BRANCH && !val) { ip.disabled = false; ip.style.background = '#fff'; }
+        if (branch === CURRENT_BRANCH && !val) {
+            ip.disabled = false; ip.style.background = '#fff';
+        }
     });
+    if (btn) btn.disabled = false;
 }
+
 
 // Lưu toàn bộ ô vị trí vừa nhập của cơ sở đang chọn
 async function saveAllVitriForPickedBranch() {
@@ -58,10 +75,16 @@ async function saveAllVitriForPickedBranch() {
     status.style.color = '#c62828'; status.textContent = '';
 
     const branch = CURRENT_BRANCH;
+    if (branch !== 'cs1' && branch !== 'cs2') {
+        status.textContent = 'Vui lòng chọn cơ sở trước khi lưu.';
+        return;
+    }
+
     const field = branch === 'cs1' ? 'vitrikho1' : 'vitrikho2';
 
     const ips = Array.from(document.querySelectorAll(`input.vitri-input[data-branch="${branch}"]`));
-    const todo = ips.filter(ip => !ip.disabled && (ip.value || '').trim())
+    const todo = ips
+        .filter(ip => !ip.disabled && (ip.value || '').trim())
         .map(ip => ({ masp: ip.getAttribute('data-masp'), val: ip.value.trim() }));
 
     if (todo.length === 0) { status.textContent = 'Không có ô nào để lưu.'; return; }
@@ -74,13 +97,14 @@ async function saveAllVitriForPickedBranch() {
         }
         status.style.color = 'green';
         status.textContent = `Đã lưu ${todo.length} vị trí cho ${branch.toUpperCase()}.`;
-        toggleVitriInputsByBranch(); // khóa lại sau khi lưu
+        toggleVitriInputsByBranch();
     } catch (e) {
         console.error(e);
         status.style.color = '#c62828';
         status.textContent = 'Lưu vị trí thất bại!';
     }
 }
+
 
 
 // ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ====
@@ -93,6 +117,13 @@ window.onload = async function () {
         document.getElementById("authBox").style.display = "block";
     }
 };
+
+// Khởi tạo UI cơ sở sau khi DOM sẵn sàng
+document.addEventListener('DOMContentLoaded', () => {
+    bindBranchUI();
+    CURRENT_BRANCH = getPickedBranch(); // sẽ là '' nếu chưa chọn
+    toggleVitriInputsByBranch();
+});
 
 
 // ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
@@ -1494,6 +1525,13 @@ window.openDatHangFor = async function (masp, anchorEl) {
 
 
     // Sinh số HĐ & mở popup
+
+
+    if (diadiem !== 'cs1' && diadiem !== 'cs2') {
+        showToast('Vui lòng chọn cơ sở trước khi đặt hàng.', 'warn');
+        return false;
+    }
+
     const sohd = await getNextSohd(diadiem).catch(() => null);
     if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
 
