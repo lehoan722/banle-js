@@ -106,7 +106,7 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         <td>${item.masp}</td>
         <td>${item.tensp}</td>
         <td contenteditable="true" data-col="size">${sz}</td>
-        <td>${sl}</td>
+        <td contenteditable="true" data-col="sl">${sl}</td>
         <td>${item.dvt || ""}</td>
         <td>${gia}</td>
         <td>${km}</td>
