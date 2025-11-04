@@ -34,6 +34,108 @@ window.onload = async function () {
     }
 };
 
+// ====== CƠ SỞ ĐANG CHỌN (ưu tiên từ dropdown, nhớ lại qua localStorage) ======
+window.CURRENT_BRANCH = null;
+
+function installBranchPicker() {
+    const sel = document.getElementById('branchPicker');
+    const btn = document.getElementById('saveVitriBtn');
+    const stt = document.getElementById('saveVitriStatus');
+
+    if (!sel) return;
+
+    // Khôi phục lựa chọn trước
+    const saved = localStorage.getItem('picked_branch') || '';
+    if (saved && (saved === 'cs1' || saved === 'cs2')) {
+        sel.value = saved;
+        window.CURRENT_BRANCH = saved;
+    }
+
+    // Khi đổi dropdown
+    sel.addEventListener('change', () => {
+        window.CURRENT_BRANCH = sel.value || null;
+        localStorage.setItem('picked_branch', window.CURRENT_BRANCH || '');
+        toggleVitriInputsByBranch();           // khóa/mở đúng cột vị trí
+        if (stt) stt.textContent = '';
+    });
+
+    // Nút lưu vị trí
+    if (btn) {
+        btn.addEventListener('click', () => saveAllVitriForPickedBranch());
+    }
+
+    // Lần đầu vào cũng set state khóa/mở input
+    toggleVitriInputsByBranch();
+}
+
+// Mở khóa column vị trí đúng với CURRENT_BRANCH, còn cột cơ sở kia thì readonly
+function toggleVitriInputsByBranch() {
+  const picked = (window.CURRENT_BRANCH || '');
+  const inputs = document.querySelectorAll('input.vitri-input');
+  inputs.forEach(ip => {
+    const b = ip.getAttribute('data-branch');
+    const enable = picked && b === picked;
+    ip.readOnly = !enable;
+    ip.style.background = enable ? '#fff' : '#f4f4f4';
+  });
+}
+
+async function saveAllVitriForPickedBranch() {
+  const stt = document.getElementById('saveVitriStatus');
+  if (stt) stt.textContent = '';
+
+  const diadiem = (window.CURRENT_BRANCH || '').trim();
+  if (!diadiem) {
+    showToast('⚠️ Chưa chọn cơ sở trong dropdown!', 'warn');
+    return;
+  }
+
+  // Gom các input thuộc cơ sở đang chọn (ô còn lại đang readonly, sẽ bỏ qua)
+  const ips = Array.from(document.querySelectorAll('input.vitri-input'))
+    .filter(ip => ip.getAttribute('data-branch') === diadiem);
+
+  if (!ips.length) {
+    showToast('Không có ô vị trí nào để lưu.', 'info');
+    return;
+  }
+
+  // Dọn dữ liệu theo { masp, vitrikho1|2 }
+  const updates = [];
+  for (const ip of ips) {
+    const masp = (ip.getAttribute('data-masp') || '').trim().toUpperCase();
+    if (!masp) continue;
+    const val = (ip.value || '').trim();
+
+    if (diadiem === 'cs1') {
+      updates.push({ masp, vitrikho1: val });
+    } else {
+      updates.push({ masp, vitrikho2: val });
+    }
+  }
+
+  if (!updates.length) {
+    showToast('Không có thay đổi vị trí.', 'info');
+    return;
+  }
+
+  try {
+    // Upsert theo khóa chính masp
+    const { error } = await supabase.from('dmhanghoa').upsert(updates, { onConflict: 'masp' });
+    if (error) throw error;
+
+    showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
+    if (stt) { stt.style.color = 'green'; stt.textContent = 'Đã lưu!'; }
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lưu vị trí thất bại!', 'error');
+    if (stt) { stt.style.color = 'crimson'; stt.textContent = 'Lỗi lưu vị trí'; }
+  }
+}
+
+
+// Gắn lắp đặt sau khi DOM sẵn sàng
+window.addEventListener('DOMContentLoaded', installBranchPicker);
+
 
 // ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
 window.openPopupSearch = async function (type) {
@@ -440,8 +542,20 @@ async function renderOneProductDetail(masp) {
      </a>
      </td>
 
-      <td>${hanghoa.vitrikho1 || ""}</td>
-      <td>${hanghoa.vitrikho2 || ""}</td>
+     <td>
+  <input class="vitri-input" data-branch="cs1"
+         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
+         value="${hanghoa.vitrikho1 || ''}" placeholder="Vị trí CS1"
+         style="width:100px">
+</td>
+<td>
+  <input class="vitri-input" data-branch="cs2"
+         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
+         value="${hanghoa.vitrikho2 || ''}" placeholder="Vị trí CS2"
+         style="width:100px">
+</td>
+
+
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
       <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
       <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
@@ -529,7 +643,20 @@ async function renderProductDetailHTML(masp) {
 </td>
 
               
-              <td>${hanghoa.vitrikho1 || ""}</td><td>${hanghoa.vitrikho2 || ""}</td>
+              <td>
+  <input class="vitri-input" data-branch="cs1"
+         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
+         value="${hanghoa.vitrikho1 || ''}" placeholder="Vị trí CS1"
+         style="width:100px">
+</td>
+<td>
+  <input class="vitri-input" data-branch="cs2"
+         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
+         value="${hanghoa.vitrikho2 || ''}" placeholder="Vị trí CS2"
+         style="width:100px">
+</td>
+
+
               <td>${hanghoa.giale?.toLocaleString() || ""}</td>
               <td>${formatDateOnly(ngay_nhapdau) || ""}</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
               <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
@@ -567,8 +694,20 @@ async function renderProductDetailHTML(masp) {
   </a>
 </td>
 
-            <td>${hanghoa.vitrikho1 || ""}</td>
-            <td>${hanghoa.vitrikho2 || ""}</td>
+            <td>
+  <input class="vitri-input" data-branch="cs1"
+         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
+         value="${hanghoa.vitrikho1 || ''}" placeholder="Vị trí CS1"
+         style="width:100px">
+</td>
+<td>
+  <input class="vitri-input" data-branch="cs2"
+         data-masp="${(hanghoa.masp || '').replace(/"/g,'&quot;')}"
+         value="${hanghoa.vitrikho2 || ''}" placeholder="Vị trí CS2"
+         style="width:100px">
+</td>
+
+
             <td>${hanghoa.giale?.toLocaleString() || ""}</td>
             <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
             <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
@@ -1277,12 +1416,14 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
 const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
 const PAD5 = (n) => String(n).padStart(5, '0');
 
-// Lấy tennv/diadiem từ localStorage
+
+// ƯU TIÊN lấy địa điểm từ dropdown (CURRENT_BRANCH)
 function getCurrentUserInfo() {
-    const tennv = localStorage.getItem('tennv') || '';
-    const diadiem = localStorage.getItem('diadiem') || '';
-    return { tennv, diadiem };
+  const tennv = localStorage.getItem('tennv') || '';
+  const diadiem = (window.CURRENT_BRANCH || '').trim(); // 'cs1' | 'cs2' | ''
+  return { tennv, diadiem };
 }
+
 
 
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
