@@ -23,6 +23,38 @@ window.dangNhap = async function () {
     document.getElementById("authBox").style.display = "none";
 };
 
+// ===== Chọn cơ sở thao tác vị trí =====
+let CURRENT_BRANCH = 'cs1'; // mặc định CS1
+
+function getPickedBranch() {
+  const r1 = document.getElementById('pickCS1');
+  const r2 = document.getElementById('pickCS2');
+  if (r2 && r2.checked) return 'cs2';
+  return 'cs1';
+}
+
+function bindBranchUI() {
+  const r1 = document.getElementById('pickCS1');
+  const r2 = document.getElementById('pickCS2');
+  [r1, r2].forEach(r => r?.addEventListener('change', () => {
+    CURRENT_BRANCH = getPickedBranch();
+    // Sau khi đổi cơ sở → khoá/mở input vị trí tương ứng
+    toggleVitriInputsByBranch();
+  }));
+
+  document.getElementById('btnSaveVitri')?.addEventListener('click', saveAllVitriForPickedBranch);
+}
+
+// Gọi sau các onload cũ
+const _oldOnload_branch = window.onload;
+window.onload = async function () {
+  if (typeof _oldOnload_branch === 'function') await _oldOnload_branch();
+  CURRENT_BRANCH = getPickedBranch();
+  bindBranchUI();
+  // Khi mới vào trang (chưa có dữ liệu) thì thôi; mỗi lần render xong sẽ gọi toggleVitriInputsByBranch()
+};
+
+
 // ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ====
 window.onload = async function () {
     // Tự động ẩn/hiện box đăng nhập nếu đã đăng nhập
@@ -328,6 +360,8 @@ async function triggerSearch(_masp = null) {
         const wrap = document.createElement("div");
         wrap.innerHTML = html;
         multi.appendChild(wrap);
+        toggleVitriInputsByBranch();
+
 
         const safeId = _safeIdFromMasp(m);
         const el = wrap.querySelector(`#xntHot_${safeId}`);
@@ -349,6 +383,48 @@ async function triggerSearch(_masp = null) {
 
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
+}
+
+async function saveAllVitriForPickedBranch() {
+  const status = document.getElementById('saveVitriStatus');
+  status.style.color = '#c62828';
+  status.textContent = '';
+
+  const branch = CURRENT_BRANCH; // 'cs1' | 'cs2'
+  const field = branch === 'cs1' ? 'vitrikho1' : 'vitrikho2';
+
+  // Thu thập mọi input của branch đang chọn (kể cả đang khóa – nhưng chỉ input mở mới có giá trị mới)
+  const ips = Array.from(document.querySelectorAll(`input.vitri-input[data-branch="${branch}"]`));
+
+  // Chỉ lấy những ô đang mở (editable) và có giá trị (vừa nhập)
+  const todo = ips
+    .filter(ip => !ip.disabled)
+    .map(ip => ({ masp: ip.getAttribute('data-masp'), val: (ip.value || '').trim() }))
+    .filter(x => x.masp && x.val);
+
+  if (todo.length === 0) {
+    status.textContent = 'Không có ô trống nào vừa được nhập để lưu.';
+    return;
+  }
+
+  try {
+    // Lưu lần lượt (đơn giản, an toàn RLS). Có thể tối ưu batch sau.
+    for (const row of todo) {
+      const patch = {}; patch[field] = row.val;
+      const { error } = await supabase.from('dmhanghoa').update(patch).eq('masp', row.masp);
+      if (error) throw error;
+    }
+
+    status.style.color = 'green';
+    status.textContent = `Đã lưu ${todo.length} vị trí cho ${branch.toUpperCase()}.`;
+
+    // Sau khi lưu xong → khoá lại các ô vừa điền
+    toggleVitriInputsByBranch();
+  } catch (e) {
+    console.error(e);
+    status.style.color = '#c62828';
+    status.textContent = 'Lưu vị trí thất bại!';
+  }
 }
 
 
@@ -440,8 +516,23 @@ async function renderOneProductDetail(masp) {
      </a>
      </td>
 
-      <td>${hanghoa.vitrikho1 || ""}</td>
-      <td>${hanghoa.vitrikho2 || ""}</td>
+     <td>
+  <input class="vitri-input" 
+         data-masp="${hanghoa.masp}" 
+         data-branch="cs1"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
+</td>
+<td>
+  <input class="vitri-input" 
+         data-masp="${hanghoa.masp}" 
+         data-branch="cs2"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
+</td>
+
+
+
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
       <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
       <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
@@ -463,6 +554,9 @@ async function renderOneProductDetail(masp) {
     // Ảnh sản phẩm dưới bảng
     setProductImageByMasp(hanghoa.masp);
     document.getElementById("maspInput").select();
+
+    toggleVitriInputsByBranch();
+    
 }
 // Lưu rowMap tạm để khởi tạo HOT sau khi gán HTML vào DOM
 window.XNT_ROW_MAPS = window.XNT_ROW_MAPS || {};
@@ -567,8 +661,19 @@ async function renderProductDetailHTML(masp) {
   </a>
 </td>
 
-            <td>${hanghoa.vitrikho1 || ""}</td>
-            <td>${hanghoa.vitrikho2 || ""}</td>
+            <td>
+  <input class="vitri-input" data-masp="${hanghoa.masp}" data-branch="cs1"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
+</td>
+<td>
+  <input class="vitri-input" data-masp="${hanghoa.masp}" data-branch="cs2"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
+         style="width:120px;text-align:center;">
+</td>
+
+
+
             <td>${hanghoa.giale?.toLocaleString() || ""}</td>
             <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
             <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
@@ -586,7 +691,27 @@ async function renderProductDetailHTML(masp) {
       </div>
     </div>
   `;
+
+  
 }
+ // D) Khóa/mở input theo quy tắc
+function toggleVitriInputsByBranch() {
+  const inputs = document.querySelectorAll('input.vitri-input');
+  inputs.forEach(ip => {
+    const branch = ip.getAttribute('data-branch');   // 'cs1' | 'cs2'
+    const val = (ip.value || '').trim();
+    // Mặc định: khóa hết
+    ip.disabled = true;
+    ip.style.background = '#f7f7f7';
+
+    // Chỉ mở nếu: đúng cơ sở đang chọn + ô đang TRỐNG
+    if (branch === CURRENT_BRANCH && !val) {
+      ip.disabled = false;
+      ip.style.background = '#fff';
+    }
+  });
+}
+
 
 function formatDateOnly(val) {
     if (!val) return "";
