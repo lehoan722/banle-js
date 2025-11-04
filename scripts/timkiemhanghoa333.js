@@ -24,25 +24,30 @@ window.dangNhap = async function () {
 };
 
 // ===== Chọn cơ sở thao tác vị trí =====
-let CURRENT_BRANCH = 'cs1'; // mặc định CS1
-
 function getPickedBranch() {
-  const r1 = document.getElementById('pickCS1');
   const r2 = document.getElementById('pickCS2');
-  if (r2 && r2.checked) return 'cs2';
-  return 'cs1';
+  return (r2 && r2.checked) ? 'cs2' : 'cs1';
 }
 
 function bindBranchUI() {
   const r1 = document.getElementById('pickCS1');
   const r2 = document.getElementById('pickCS2');
-  [r1, r2].forEach(r => r?.addEventListener('change', () => {
+  [r1, r2].forEach(r => r && r.addEventListener('change', () => {
     CURRENT_BRANCH = getPickedBranch();
-    // Sau khi đổi cơ sở → khoá/mở input vị trí tương ứng
     toggleVitriInputsByBranch();
   }));
-
   document.getElementById('btnSaveVitri')?.addEventListener('click', saveAllVitriForPickedBranch);
+}
+
+// Khóa/mở input theo quy tắc: chỉ mở ô TRỐNG của cơ sở đang chọn
+function toggleVitriInputsByBranch() {
+  const inputs = document.querySelectorAll('input.vitri-input');
+  inputs.forEach(ip => {
+    const branch = ip.getAttribute('data-branch');
+    const val = (ip.value || '').trim();
+    ip.disabled = true; ip.style.background = '#f7f7f7';
+    if (branch === CURRENT_BRANCH && !val) { ip.disabled = false; ip.style.background = '#fff'; }
+  });
 }
 
 // Gọi sau các onload cũ
@@ -694,23 +699,7 @@ async function renderProductDetailHTML(masp) {
 
   
 }
- // D) Khóa/mở input theo quy tắc
-function toggleVitriInputsByBranch() {
-  const inputs = document.querySelectorAll('input.vitri-input');
-  inputs.forEach(ip => {
-    const branch = ip.getAttribute('data-branch');   // 'cs1' | 'cs2'
-    const val = (ip.value || '').trim();
-    // Mặc định: khóa hết
-    ip.disabled = true;
-    ip.style.background = '#f7f7f7';
 
-    // Chỉ mở nếu: đúng cơ sở đang chọn + ô đang TRỐNG
-    if (branch === CURRENT_BRANCH && !val) {
-      ip.disabled = false;
-      ip.style.background = '#fff';
-    }
-  });
-}
 
 
 function formatDateOnly(val) {
