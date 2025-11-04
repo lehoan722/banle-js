@@ -24,7 +24,7 @@ window.dangNhap = async function () {
 };
 
 // ===== Chọn cơ sở thao tác vị trí & lưu vị trí =====
-let CURRENT_BRANCH = 'cs1'; // mặc định
+let CURRENT_BRANCH = ''; // mặc định
 
 function getPickedBranch() {
     const r2 = document.getElementById('pickCS2');
