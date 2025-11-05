@@ -78,6 +78,9 @@ function formatDateTimeCell(instance, td, row, col, prop, value) {
 
 // ===== CHÍNH: TẢI BÁO CÁO (bản T) =====
 window.taiBaoCaoChiTiet = async function () {
+    const chungloai = document.getElementById("chungloaiSelect").value || null;
+    const nhomhang = document.getElementById("nhomhangSelect").value || null;
+
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
@@ -104,6 +107,11 @@ window.taiBaoCaoChiTiet = async function () {
     onlyOneProduct = Array.isArray(finalMaspList) && finalMaspList.length === 1;
 
     const f = {
+
+        p_chungloai: chungloai,
+        p_nhomhang: nhomhang,
+
+
         tu_ngay: tuNgay,
         den_ngay: denNgay,
         p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
@@ -388,6 +396,7 @@ window.searchPopup = async function (keyword) {
 
 // Auto-fill ngày hôm nay
 window.onload = function () {
+
     const today = new Date().toISOString().slice(0, 10);
     document.getElementById('tuNgay').value = today;
     document.getElementById('denNgay').value = today;
@@ -402,4 +411,38 @@ window.onload = function () {
             await taiTrang(currentPage);
         });
     }
+
+    // nạp options chungloai / nhomhang từ dmhanghoa
+    (async () => {
+        try {
+            const clSel = document.getElementById('chungloaiSelect');
+            const nhSel = document.getElementById('nhomhangSelect');
+
+            // lấy distinct chungloai
+            let { data: clData } = await supabase
+                .from('dmhanghoa')
+                .select('chungloai')
+                .not('chungloai', 'is', null)
+                .order('chungloai', { ascending: true })
+                .limit(1000);
+
+            // lấy distinct nhomhang
+            let { data: nhData } = await supabase
+                .from('dmhanghoa')
+                .select('nhomhang')
+                .not('nhomhang', 'is', null)
+                .order('nhomhang', { ascending: true })
+                .limit(1000);
+
+            const uniq = (arr, key) => Array.from(new Set((arr || []).map(r => r[key])));
+
+            for (const v of uniq(clData, 'chungloai')) {
+                const opt = document.createElement('option'); opt.value = v; opt.textContent = v; clSel.appendChild(opt);
+            }
+            for (const v of uniq(nhData, 'nhomhang')) {
+                const opt = document.createElement('option'); opt.value = v; opt.textContent = v; nhSel.appendChild(opt);
+            }
+        } catch (e) { console.warn('Load CL/NH error', e); }
+    })();
+
 };
