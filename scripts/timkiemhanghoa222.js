@@ -543,9 +543,10 @@ async function renderOneProductDetail(masp) {
 
     // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
 
-    top.innerHTML = `
-    
-   
+    const top = document.getElementById("infoTopTable");
+if (!top) return; // phòng khi thiếu phần tử
+
+    top.innerHTML = `   
 
     <tr>
       <th>Mã hàng</th>
@@ -590,6 +591,8 @@ async function renderOneProductDetail(masp) {
       <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
     </tr>
   `;
+
+  toggleVitriInputsByBranch();
 
     // Bảng XNT
     // Bảng XNT (Editable)
