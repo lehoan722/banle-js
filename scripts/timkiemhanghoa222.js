@@ -1254,7 +1254,8 @@ function recalcXntTotals(rows) {
 
 // Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
 function buildXntRows(rowMap) {
-     const SIZE_LIST = ['Tổng', '0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
+    const SIZE_LIST = ['0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
+    
     const rows = [{
         size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0
     }];
