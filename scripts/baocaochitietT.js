@@ -121,7 +121,9 @@ window.taiBaoCaoChiTiet = async function () {
   pageSize = Number(document.getElementById("pageSize").value) || 1000;
   currentPage = 1;
 
-  const { data: cnt, error: errCnt } = await supabase.rpc("baocaochitiet_bhT_count", currentFilters);
+  const { data: cnt, error: errCnt } =
+  await supabase.rpc("baocaochitiet_bht_count", currentFilters); // tất cả chữ thường
+
   if (errCnt){ console.error(errCnt); alert("Lỗi đếm dữ liệu!"); return; }
   totalRows = Number(cnt || 0);
 
@@ -136,7 +138,8 @@ async function taiTrang(page){
   const offset = (page - 1) * pageSize;
   const params = { ...currentFilters, p_limit: pageSize, p_offset: offset };
 
-  const { data, error } = await supabase.rpc("baocaochitiet_bhT_page", params);
+  const { data, error } = await supabase.rpc("baocaochitiet_bht_page", params);
+
   if (error){ console.error(error); alert("Lỗi tải dữ liệu trang!"); return; }
 
   const startIndex = offset + 1;
