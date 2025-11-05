@@ -545,7 +545,7 @@ async function renderOneProductDetail(masp) {
 
     top.innerHTML = `
     
-    toggleVitriInputsByBranch();
+   
 
     <tr>
       <th>Mã hàng</th>
