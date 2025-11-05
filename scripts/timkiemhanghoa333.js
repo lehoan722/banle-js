@@ -23,91 +23,7 @@ window.dangNhap = async function () {
     document.getElementById("authBox").style.display = "none";
 };
 
-
-// ===== Chọn cơ sở thao tác vị trí & lưu vị trí =====
-let CURRENT_BRANCH = ''; // mặc định chưa chọn gì
-
-function getPickedBranch() {
-    const sel = document.getElementById('branchSelect');
-    return sel ? (sel.value || '') : '';
-}
-
-function bindBranchUI() {
-    const sel = document.getElementById('branchSelect');
-    if (sel) {
-        sel.addEventListener('change', () => {
-            CURRENT_BRANCH = getPickedBranch();
-            toggleVitriInputsByBranch();
-        });
-    }
-    document.getElementById('btnSaveVitri')?.addEventListener('click', saveAllVitriForPickedBranch);
-}
-
-
-// Khóa/mở input: chỉ mở ô TRỐNG của cơ sở đang chọn
-function toggleVitriInputsByBranch() {
-    const btn = document.getElementById('btnSaveVitri');
-    const inputs = document.querySelectorAll('input.vitri-input');
-
-    // Chưa chọn cơ sở → khoá tất cả và disable nút lưu
-    if (!CURRENT_BRANCH) {
-        inputs.forEach(ip => { ip.disabled = true; ip.style.background = '#f7f7f7'; });
-        if (btn) btn.disabled = true;
-        return;
-    }
-
-    // Đã chọn → chỉ mở các ô TRỐNG của đúng cơ sở đó
-    inputs.forEach(ip => {
-        const branch = ip.getAttribute('data-branch');
-        const val = (ip.value || '').trim();
-        ip.disabled = true; ip.style.background = '#f7f7f7';
-        if (branch === CURRENT_BRANCH && !val) {
-            ip.disabled = false; ip.style.background = '#fff';
-        }
-    });
-    if (btn) btn.disabled = false;
-}
-
-
-// Lưu toàn bộ ô vị trí vừa nhập của cơ sở đang chọn
-async function saveAllVitriForPickedBranch() {
-    const status = document.getElementById('saveVitriStatus');
-    status.style.color = '#c62828'; status.textContent = '';
-
-    const branch = CURRENT_BRANCH;
-    if (branch !== 'cs1' && branch !== 'cs2') {
-        status.textContent = 'Vui lòng chọn cơ sở trước khi lưu.';
-        return;
-    }
-
-    const field = branch === 'cs1' ? 'vitrikho1' : 'vitrikho2';
-
-    const ips = Array.from(document.querySelectorAll(`input.vitri-input[data-branch="${branch}"]`));
-    const todo = ips
-        .filter(ip => !ip.disabled && (ip.value || '').trim())
-        .map(ip => ({ masp: ip.getAttribute('data-masp'), val: ip.value.trim() }));
-
-    if (todo.length === 0) { status.textContent = 'Không có ô nào để lưu.'; return; }
-
-    try {
-        for (const row of todo) {
-            const patch = {}; patch[field] = row.val;
-            const { error } = await supabase.from('dmhanghoa').update(patch).eq('masp', row.masp);
-            if (error) throw error;
-        }
-        status.style.color = 'green';
-        status.textContent = `Đã lưu ${todo.length} vị trí cho ${branch.toUpperCase()}.`;
-        toggleVitriInputsByBranch();
-    } catch (e) {
-        console.error(e);
-        status.style.color = '#c62828';
-        status.textContent = 'Lưu vị trí thất bại!';
-    }
-}
-
-
-
-// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ====
+// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ==== 
 window.onload = async function () {
     // Tự động ẩn/hiện box đăng nhập nếu đã đăng nhập
     const { data: { session } } = await supabase.auth.getSession();
@@ -118,12 +34,111 @@ window.onload = async function () {
     }
 };
 
-// Khởi tạo UI cơ sở sau khi DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', () => {
-    bindBranchUI();
-    CURRENT_BRANCH = getPickedBranch(); // sẽ là '' nếu chưa chọn
+// ====== CƠ SỞ ĐANG CHỌN (ưu tiên từ dropdown, nhớ lại qua localStorage) ======
+window.CURRENT_BRANCH = null;
+
+function installBranchPicker() {
+    const sel = document.getElementById('branchPicker');
+    const btn = document.getElementById('saveVitriBtn');
+    const stt = document.getElementById('saveVitriStatus');
+
+    if (!sel) return;
+    sel.value = '';
+ window.CURRENT_BRANCH = '';
+    
+    // Khi đổi dropdown
+    sel.addEventListener('change', () => {
+     window.CURRENT_BRANCH = sel.value || ''; // 'cs1' | 'cs2' | ''
+     toggleVitriInputsByBranch();
+     if (stt) stt.textContent = '';
+ });
+
+    // Nút lưu vị trí
+    if (btn) {
+        btn.addEventListener('click', () => saveAllVitriForPickedBranch());
+    }
+
+    // Lần đầu vào cũng set state khóa/mở input
     toggleVitriInputsByBranch();
-});
+}
+
+// Mở khóa column vị trí đúng với CURRENT_BRANCH, còn cột cơ sở kia thì readonly
+
+
+function toggleVitriInputsByBranch() {
+  const inputs = document.querySelectorAll('.vitri-input');
+  const picked = (window.CURRENT_BRANCH || ''); // '' = chưa chọn => khoá tất cả
+
+  inputs.forEach(ip => {
+    const branch = ip.getAttribute('data-branch');
+    const val = (ip.value || '').trim();
+
+    // Mặc định: khóa hết
+    ip.disabled = true;
+
+    // Chỉ mở khi: đã CHỌN CS + ô thuộc CS đó + ô đang TRỐNG
+    if (picked && branch === picked && val === '') {
+      ip.disabled = false;
+    }
+  });
+}
+
+
+async function saveAllVitriForPickedBranch() {
+  const stt = document.getElementById('saveVitriStatus');
+  if (stt) stt.textContent = '';
+
+  const diadiem = (window.CURRENT_BRANCH || '').trim();
+  if (!diadiem) {
+    showToast('⚠️ Chưa chọn cơ sở trong dropdown!', 'warn');
+    return;
+  }
+
+  // Gom các input thuộc cơ sở đang chọn (ô còn lại đang readonly, sẽ bỏ qua)
+  const ips = Array.from(document.querySelectorAll('input.vitri-input'))
+    .filter(ip => ip.getAttribute('data-branch') === diadiem);
+
+  if (!ips.length) {
+    showToast('Không có ô vị trí nào để lưu.', 'info');
+    return;
+  }
+
+  // Dọn dữ liệu theo { masp, vitrikho1|2 }
+  const updates = [];
+  for (const ip of ips) {
+    const masp = (ip.getAttribute('data-masp') || '').trim().toUpperCase();
+    if (!masp) continue;
+    const val = (ip.value || '').trim();
+
+    if (diadiem === 'cs1') {
+      updates.push({ masp, vitrikho1: val });
+    } else {
+      updates.push({ masp, vitrikho2: val });
+    }
+  }
+
+  if (!updates.length) {
+    showToast('Không có thay đổi vị trí.', 'info');
+    return;
+  }
+
+  try {
+    // Upsert theo khóa chính masp
+    const { error } = await supabase.from('dmhanghoa').upsert(updates, { onConflict: 'masp' });
+    if (error) throw error;
+
+    showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
+    if (stt) { stt.style.color = 'green'; stt.textContent = 'Đã lưu!'; }
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lưu vị trí thất bại!', 'error');
+    if (stt) { stt.style.color = 'crimson'; stt.textContent = 'Lỗi lưu vị trí'; }
+  }
+}
+
+
+// Gắn lắp đặt sau khi DOM sẵn sàng
+window.addEventListener('DOMContentLoaded', installBranchPicker);
 
 
 // ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
@@ -419,9 +434,7 @@ async function triggerSearch(_masp = null) {
         const wrap = document.createElement("div");
         wrap.innerHTML = html;
         multi.appendChild(wrap);
-
         toggleVitriInputsByBranch();
-
 
         const safeId = _safeIdFromMasp(m);
         const el = wrap.querySelector(`#xntHot_${safeId}`);
@@ -515,9 +528,7 @@ async function renderOneProductDetail(masp) {
     // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
     const top = document.getElementById("infoTopTable");
     top.innerHTML = `
-
     toggleVitriInputsByBranch();
-
     <tr>
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
@@ -537,20 +548,21 @@ async function renderOneProductDetail(masp) {
      </a>
      </td>
 
-      <td>
+     <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
+
 
 
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -640,20 +652,21 @@ async function renderProductDetailHTML(masp) {
 </td>
 
               
-              <td>
+             <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
+
 
 
               <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -697,16 +710,17 @@ async function renderProductDetailHTML(masp) {
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
+
 
 
             <td>${hanghoa.giale?.toLocaleString() || ""}</td>
@@ -1206,13 +1220,6 @@ window.onload = async function () {
 
 };
 
-// —— Nối đuôi onload để khởi tạo controls cơ sở ——
-const _oldOnload_branch = window.onload;
-window.onload = async function () {
-    if (typeof _oldOnload_branch === 'function') await _oldOnload_branch();
-    CURRENT_BRANCH = getPickedBranch();
-    bindBranchUI();
-};
 
 
 // ====== XNT HOT (Handsontable) ======
@@ -1424,12 +1431,16 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
 const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
 const PAD5 = (n) => String(n).padStart(5, '0');
 
-// Lấy tennv/diadiem từ localStorage
+
+// ƯU TIÊN lấy địa điểm từ dropdown (CURRENT_BRANCH)
+// LẤY THÔNG TIN NGƯỜI DÙNG + ĐỊA ĐIỂM TỪ DROPDOWN
 function getCurrentUserInfo() {
-    const tennv = localStorage.getItem('tennv') || '';
-    const diadiem = localStorage.getItem('diadiem') || '';
-    return { tennv, diadiem };
+  const tennv = localStorage.getItem('tennv') || '';
+  const sel = document.getElementById('branchPicker');
+  const diadiem = sel && sel.value ? sel.value : ''; // '' = chưa chọn
+  return { tennv, diadiem };
 }
+
 
 // Kiểm tra UI đã có ảnh hay chưa (không gọi DB)
 function uiHasProductImage() {
@@ -1456,9 +1467,8 @@ async function getNextSohd(diadiem) {
 
 // Mở popup đặt hàng (đổ sẵn dữ liệu và focus đúng ô)
 async function openDatHangPopup() {
-    const { tennv } = getCurrentUserInfo();
-    const diadiem = CURRENT_BRANCH; // lấy theo checkbox CS1/CS2
-    if (!tennv || !diadiem) { showToast('⚠️ Chưa chọn cơ sở hoặc chưa có nhân viên!', 'warn'); return; }
+    const { tennv, diadiem } = getCurrentUserInfo();
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return; }
 
     // phải có đúng 1 sản phẩm đang hiển thị
     if (!CURRENT_MASP) { showToast('⚠️ Vui lòng tìm đúng 1 sản phẩm!', 'warn'); return; }
@@ -1493,9 +1503,8 @@ async function openDatHangPopup() {
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ TRONG CHẾ ĐỘ NHIỀU MÃ =====
 // ===== MỞ POPUP ĐẶT HÀNG CHO 1 MÃ (hỗ trợ cả 1-mã & nhiều-mã) =====
 window.openDatHangFor = async function (masp, anchorEl) {
-    const { tennv } = getCurrentUserInfo();
-    const diadiem = CURRENT_BRANCH;
-    if (!tennv || !diadiem) { showToast('⚠️ Chưa chọn cơ sở hoặc chưa có nhân viên!', 'warn'); return false; }
+    const { tennv, diadiem } = getCurrentUserInfo();
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập địa điểm/nhân viên!', 'warn'); return false; }
 
     CURRENT_MASP = (masp || '').toUpperCase();
 
@@ -1525,13 +1534,6 @@ window.openDatHangFor = async function (masp, anchorEl) {
 
 
     // Sinh số HĐ & mở popup
-
-
-    if (diadiem !== 'cs1' && diadiem !== 'cs2') {
-        showToast('Vui lòng chọn cơ sở trước khi đặt hàng.', 'warn');
-        return false;
-    }
-
     const sohd = await getNextSohd(diadiem).catch(() => null);
     if (!sohd) { showToast('❌ Không sinh được số HĐ!', 'warn'); return; }
 
@@ -1576,9 +1578,9 @@ let SIZE_PICK_DATA = [];
 function renderSizeList(filter = '') {
     const list = document.getElementById('sizeList');
     const q = (filter || '').toLowerCase();
-    const rows = SIZE_PICK_DATA.filter(x => !q || (x.mota || '').toLowerCase().includes(q));
+    const rows = SIZE_PICK_DATA.filter(x => !q || (x.size || '').toLowerCase().includes(q));
     list.innerHTML = rows.map(x => {
-        const key = x.mota || '';
+        const key = x.size || '';
         const on = SIZE_PICK_SELECTED.has(key);
         return `<div onclick="togglePickSize('${key.replace(/'/g, "\\'")}')"
                  style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;">
@@ -1601,7 +1603,7 @@ async function openPickSize(which) {
     document.getElementById('sizeFilter').value = '';
     document.getElementById('sizeFilter').oninput = (e) => renderSizeList(e.target.value);
 
-    const { data, error } = await supabase.from('dm_size').select('mota').order('mota');
+    const { data, error } = await supabase.from('dm_size').select('size').order('size');
     if (error) { document.getElementById('sizeList').innerHTML = '<div style="padding:10px;color:red">Lỗi tải danh mục size</div>'; return; }
     SIZE_PICK_DATA = data || [];
     renderSizeList('');
@@ -1617,58 +1619,114 @@ function closePickSizeAndFill() {
     else document.getElementById('dhGhichu').focus();
 }
 
-// --- Lưu đặt hàng ---
-async function saveDatHang() {
-    const { tennv } = getCurrentUserInfo();
-    const diadiem = CURRENT_BRANCH;
-    const sohd = document.getElementById('dhSohd').value.trim();
-    const masp = document.getElementById('dhMasp').value.trim().toUpperCase();
-    const mau = document.getElementById('dhMau').value.trim();
-    const conSize = document.getElementById('dhConSize').value.trim();
-    const hetSize = document.getElementById('dhHetSize').value.trim();
-    const ghichu = document.getElementById('dhGhichu').value.trim();
-
-    if (!masp || !sohd) { showToast('❌ Thiếu Số HĐ hoặc Mã SP!', 'warn'); return; }
-    if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
-
-    //if (!conSize && !hetSize) { showToast('⚠️ Cần nhập Còn size hoặc Hết size!', 'warn'); return; }
-    if (!hetSize) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
-    if (!uiHasProductImage()) { showToast('⚠️ Chưa có ảnh trên giao diện!', 'warn'); return; }
-
-    // cố gắng insert; nếu trùng sohd thì +1
-    let attempt = 0;
-    let curSohd = sohd;
-    while (attempt < 2) {
-        const { error } = await supabase.from('dathang').insert([{
-            sohd: curSohd, diadiem, masp, mau,
-            con_size: conSize, het_size: hetSize,
-            tennv, ghichu
-        }]);
-        if (!error) {
-            showToast('✅ Đặt hàng thành công!');
-            closeDatHangPopup();
-            return;
-        }
-        // nếu trùng unique, sinh lại số
-        if (String(error.message || '').toLowerCase().includes('duplicate')) {
-            curSohd = await getNextSohd(diadiem);
-            attempt++;
-            continue;
-        }
-        showToast('❌ Lỗi lưu đặt hàng!', 'warn');
-        return;
-    }
-    // thử thêm lần cuối
-    const { error: err3 } = await supabase.from('dathang').insert([{
-        sohd: curSohd, diadiem, masp, mau,
-        con_size: conSize, het_size: hetSize,
-        tennv, ghichu
-    }]);
-    if (err3) { showToast('❌ Lỗi lưu đặt hàng!', 'warn'); return; }
-    showToast('✅ Đặt hàng thành công!');
-    closeDatHangPopup();
+// Tách chuỗi size bởi dấu phẩy, chấm, chấm phẩy, gạch chéo hoặc khoảng trắng
+function splitSizes(raw) {
+    if (!raw) return [];
+    return String(raw)
+        .split(/[,\.;\/\s]+/g)
+        .map(s => s.trim())
+        .filter(Boolean);
 }
 
 
+// --- Lưu đặt hàng ---
+// --- Lưu đặt hàng (tách HẾT SIZE thành nhiều dòng) ---
+// Lưu đặt hàng: mỗi size -> một hóa đơn (sohd khác nhau)
+async function saveDatHang() {
+    const { tennv, diadiem } = getCurrentUserInfo();
+    const sohdPreview = (document.getElementById('dhSohd').value || '').trim(); // chỉ là gợi ý
+    const masp = (document.getElementById('dhMasp').value || '').trim().toUpperCase();
+    const mau = (document.getElementById('dhMau').value || '').trim();
+    const conSize = (document.getElementById('dhConSize').value || '').trim();
+    const hetRaw = (document.getElementById('dhHetSize').value || '').trim();
+    const ghichu = (document.getElementById('dhGhichu').value || '').trim();
+
+    if (!tennv || !diadiem) { showToast('⚠️ Chưa đăng nhập!', 'warn'); return; }
+    if (!masp) { showToast('❌ Thiếu mã SP!', 'warn'); return; }
+    if (!mau) { showToast('⚠️ Chưa chọn/nhập màu!', 'warn'); return; }
+
+    // Máy tính: cho phép không có ảnh; Điện thoại: bắt buộc có ảnh
+    if (!isDesktopDevice() && !uiHasProductImage(masp)) {
+        showToast('⚠️ Chưa có ảnh trên giao diện! Hãy chụp/chọn & lưu ảnh trước.', 'warn');
+        return;
+    }
+
+    // Tách nhiều size bởi , . ; / hoặc khoảng trắng
+    const sizes = (typeof splitSizes === 'function' ? splitSizes(hetRaw) :
+        String(hetRaw).split(/[,\.;\/\s]+/).map(s => s.trim()).filter(Boolean));
+    if (!sizes.length) { showToast('⚠️ Cần nhập Hết size!', 'warn'); return; }
+
+    // Lưu tuần tự: mỗi size xin 1 số HĐ mới và insert 1 dòng
+    let okCount = 0, failCount = 0, firstSohdUsed = null;
+
+    for (let i = 0; i < sizes.length; i++) {
+        const sz = sizes[i];
+        let useSohd = null;
+        let attempts = 0;
+
+        while (attempts < 3) {
+            try {
+                // size đầu tiên ưu tiên dùng số HĐ đang hiển thị (nếu trống sẽ xin mới)
+                if (attempts === 0 && i === 0 && sohdPreview) {
+                    useSohd = sohdPreview;
+                } else {
+                    useSohd = await getNextSohd(diadiem); // sinh số mới theo cơ sở
+                }
+
+                const row = {
+                    sohd: useSohd,
+                    diadiem,
+                    masp,
+                    mau,
+                    con_size: conSize || null,
+                    het_size: sz,
+                    tennv,
+                    ghichu: ghichu || null,
+                };
+
+                const { error } = await supabase.from('dathang').insert(row);
+                if (!error) {
+                    okCount++;
+                    if (!firstSohdUsed) firstSohdUsed = useSohd;
+                    break; // xong size này
+                }
+
+                // Nếu trùng số HĐ (23505) -> thử xin số mới và lặp lại
+                const msg = (error.message || '').toLowerCase();
+                if (msg.includes('duplicate') || msg.includes('23505')) {
+                    attempts++;
+                    continue;
+                } else {
+                    console.error('Insert failed:', error);
+                    failCount++;
+                    break;
+                }
+            } catch (e) {
+                console.error('Insert exception:', e);
+                attempts++;
+                if (attempts >= 3) failCount++;
+            }
+        }
+    }
+
+    if (okCount > 0) {
+        showToast(`✅ Đã lưu ${okCount} hóa đơn (mỗi size 1 số HĐ).`, 'ok');
+        closeDatHangPopup();
+        // cập nhật số HĐ gợi ý cho lần kế tiếp
+        try {
+            const nextSohd = await getNextSohd(diadiem);
+            document.getElementById('dhSohd').value = nextSohd;
+        } catch { }
+    }
+    if (failCount > 0) {
+        showToast(`⚠️ Có ${failCount} dòng không lưu được. Kiểm tra console.`, 'warn');
+    }
+
+    // reset các ô nhập trong popup (tuỳ ý)
+    document.getElementById('dhMau').value = '';
+    document.getElementById('dhConSize').value = '';
+    document.getElementById('dhHetSize').value = '';
+    document.getElementById('dhGhichu').value = '';
+}
 
 
