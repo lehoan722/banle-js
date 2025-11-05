@@ -44,14 +44,14 @@ function installBranchPicker() {
 
     if (!sel) return;
     sel.value = '';
-    window.CURRENT_BRANCH = '';
-
+ window.CURRENT_BRANCH = '';
+    
     // Khi đổi dropdown
     sel.addEventListener('change', () => {
-        window.CURRENT_BRANCH = sel.value || ''; // 'cs1' | 'cs2' | ''
-        toggleVitriInputsByBranch();
-        if (stt) stt.textContent = '';
-    });
+     window.CURRENT_BRANCH = sel.value || ''; // 'cs1' | 'cs2' | ''
+     toggleVitriInputsByBranch();
+     if (stt) stt.textContent = '';
+ });
 
     // Nút lưu vị trí
     if (btn) {
@@ -66,74 +66,74 @@ function installBranchPicker() {
 
 
 function toggleVitriInputsByBranch() {
-    const inputs = document.querySelectorAll('.vitri-input');
-    const picked = (window.CURRENT_BRANCH || ''); // '' = chưa chọn => khoá tất cả
+  const inputs = document.querySelectorAll('.vitri-input');
+  const picked = (window.CURRENT_BRANCH || ''); // '' = chưa chọn => khoá tất cả
 
-    inputs.forEach(ip => {
-        const branch = ip.getAttribute('data-branch');
-        const val = (ip.value || '').trim();
+  inputs.forEach(ip => {
+    const branch = ip.getAttribute('data-branch');
+    const val = (ip.value || '').trim();
 
-        // Mặc định: khóa hết
-        ip.disabled = true;
+    // Mặc định: khóa hết
+    ip.disabled = true;
 
-        // Chỉ mở khi: đã CHỌN CS + ô thuộc CS đó + ô đang TRỐNG
-        if (picked && branch === picked && val === '') {
-            ip.disabled = false;
-        }
-    });
+    // Chỉ mở khi: đã CHỌN CS + ô thuộc CS đó + ô đang TRỐNG
+    if (picked && branch === picked && val === '') {
+      ip.disabled = false;
+    }
+  });
 }
 
 
 async function saveAllVitriForPickedBranch() {
-    const stt = document.getElementById('saveVitriStatus');
-    if (stt) stt.textContent = '';
+  const stt = document.getElementById('saveVitriStatus');
+  if (stt) stt.textContent = '';
 
-    const diadiem = (window.CURRENT_BRANCH || '').trim();
-    if (!diadiem) {
-        showToast('⚠️ Chưa chọn cơ sở trong dropdown!', 'warn');
-        return;
+  const diadiem = (window.CURRENT_BRANCH || '').trim();
+  if (!diadiem) {
+    showToast('⚠️ Chưa chọn cơ sở trong dropdown!', 'warn');
+    return;
+  }
+
+  // Gom các input thuộc cơ sở đang chọn (ô còn lại đang readonly, sẽ bỏ qua)
+  const ips = Array.from(document.querySelectorAll('input.vitri-input'))
+    .filter(ip => ip.getAttribute('data-branch') === diadiem);
+
+  if (!ips.length) {
+    showToast('Không có ô vị trí nào để lưu.', 'info');
+    return;
+  }
+
+  // Dọn dữ liệu theo { masp, vitrikho1|2 }
+  const updates = [];
+  for (const ip of ips) {
+    const masp = (ip.getAttribute('data-masp') || '').trim().toUpperCase();
+    if (!masp) continue;
+    const val = (ip.value || '').trim();
+
+    if (diadiem === 'cs1') {
+      updates.push({ masp, vitrikho1: val });
+    } else {
+      updates.push({ masp, vitrikho2: val });
     }
+  }
 
-    // Gom các input thuộc cơ sở đang chọn (ô còn lại đang readonly, sẽ bỏ qua)
-    const ips = Array.from(document.querySelectorAll('input.vitri-input'))
-        .filter(ip => ip.getAttribute('data-branch') === diadiem);
+  if (!updates.length) {
+    showToast('Không có thay đổi vị trí.', 'info');
+    return;
+  }
 
-    if (!ips.length) {
-        showToast('Không có ô vị trí nào để lưu.', 'info');
-        return;
-    }
+  try {
+    // Upsert theo khóa chính masp
+    const { error } = await supabase.from('dmhanghoa').upsert(updates, { onConflict: 'masp' });
+    if (error) throw error;
 
-    // Dọn dữ liệu theo { masp, vitrikho1|2 }
-    const updates = [];
-    for (const ip of ips) {
-        const masp = (ip.getAttribute('data-masp') || '').trim().toUpperCase();
-        if (!masp) continue;
-        const val = (ip.value || '').trim();
-
-        if (diadiem === 'cs1') {
-            updates.push({ masp, vitrikho1: val });
-        } else {
-            updates.push({ masp, vitrikho2: val });
-        }
-    }
-
-    if (!updates.length) {
-        showToast('Không có thay đổi vị trí.', 'info');
-        return;
-    }
-
-    try {
-        // Upsert theo khóa chính masp
-        const { error } = await supabase.from('dmhanghoa').upsert(updates, { onConflict: 'masp' });
-        if (error) throw error;
-
-        showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
-        if (stt) { stt.style.color = 'green'; stt.textContent = 'Đã lưu!'; }
-    } catch (err) {
-        console.error(err);
-        showToast('❌ Lưu vị trí thất bại!', 'error');
-        if (stt) { stt.style.color = 'crimson'; stt.textContent = 'Lỗi lưu vị trí'; }
-    }
+    showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
+    if (stt) { stt.style.color = 'green'; stt.textContent = 'Đã lưu!'; }
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lưu vị trí thất bại!', 'error');
+    if (stt) { stt.style.color = 'crimson'; stt.textContent = 'Lỗi lưu vị trí'; }
+  }
 }
 
 
@@ -419,7 +419,6 @@ async function triggerSearch(_masp = null) {
         document.getElementById("singleDetailBox").style.display = "";
         await renderOneProductDetail(productWithXNT[0]);
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
-        clearBulkTextareaAfterSuccess(); 
         return;
     }
 
@@ -457,7 +456,6 @@ async function triggerSearch(_masp = null) {
 
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
-    clearBulkTextareaAfterSuccess();
 }
 
 
@@ -519,35 +517,18 @@ async function renderOneProductDetail(masp) {
     }
 
     // map size & tổng dòng đầu
-
-    // EU/US/JP/height (dùng EU làm key tính toán)
-    const SIZE_LIST = ['0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
-
-    // Tách metadata để vừa có "key" (EU) vừa có "label" (US/JP/height)
-    const SIZE_META = SIZE_LIST.map(x => {
-        const parts = String(x).split('/');
-        const eu = parts[0];                      // key cột (EU)
-        const label = parts.slice(1).join('/');   // nhãn phụ để hiển thị
-        return { key: eu, label };                // vd: {key:'38', label:'S/46/165'}
-    });
-
-    const SIZE_KEYS = SIZE_META.map(s => s.key);   // ['0','38','39',...]
-
+    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
     const rowMap = {};
     xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
     const totalRow = {};
-    const KEYS_NO_ZERO = SIZE_KEYS.filter(k => k !== '0');
     ["nhapmua", "xuatban", "toncuoi", "ban_cs1", "ton_cs1", "ton_cs2", "ban_cs2"].forEach(f => {
-        totalRow[f] = KEYS_NO_ZERO.reduce((s, k) => s + (Number(rowMap[k]?.[f]) || 0), 0);
+        totalRow[f] = SIZE_LIST.slice(1).reduce((s, sz) => s + (Number(rowMap[sz]?.[f]) || 0), 0);
     });
 
     // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
-
     const top = document.getElementById("infoTopTable");
-if (!top) return; // phòng khi thiếu phần tử
-
-    top.innerHTML = `   
-
+    top.innerHTML = `
+    toggleVitriInputsByBranch();
     <tr>
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
@@ -571,14 +552,14 @@ if (!top) return; // phòng khi thiếu phần tử
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 
@@ -591,8 +572,6 @@ if (!top) return; // phòng khi thiếu phần tử
       <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
     </tr>
   `;
-
-  toggleVitriInputsByBranch();
 
     // Bảng XNT
     // Bảng XNT (Editable)
@@ -677,14 +656,14 @@ async function renderProductDetailHTML(masp) {
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 
@@ -731,14 +710,14 @@ async function renderProductDetailHTML(masp) {
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho1 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 <td>
   <input class="vitri-input"
          data-masp="${hanghoa.masp}"
          data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+         value="${(hanghoa.vitrikho2 || '').replace(/"/g,'&quot;')}"
          style="width:120px;text-align:center;">
 </td>
 
@@ -1275,32 +1254,14 @@ function recalcXntTotals(rows) {
 
 // Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
 function buildXntRows(rowMap) {
-    // EU/US/JP/height
-    const SIZE_LIST = ['0',
-        '38/S/46/165', '39/M/48/170', '40/L/50/175',
-        '41/XL/52/180', '42/2X/54/185', '43/3X/56/190',
-        '44/4X/58/195', '45/5X/60/200'
-    ];
-
-    // Tách key (EU) để TRA DỮ LIỆU, nhãn để HIỂN THỊ
-    const SIZE_META = SIZE_LIST.map(x => {
-        const parts = String(x).split('/');
-        const eu = parts[0];               // key thực tế trong rowMap: '38','39',...
-        const label = parts.slice(1).join('/'); // 'S/46/165' ...
-        // size hiển thị = '38/S/46/165' (giống bạn đang thấy trên UI)
-        const display = parts.length > 1 ? `${eu}/${label}` : eu;
-        return { key: eu, display };
-    });
-
+    const SIZE_LIST = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
     const rows = [{
         size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0
     }];
-
-    // HÀNG SIZE: lấy số liệu bằng EU key
-    for (const s of SIZE_META) {
-        const r = rowMap[s.key] || {};
+    for (const sz of SIZE_LIST) {
+        const r = rowMap[sz] || {};
         rows.push({
-            size: s.display,                 // hiển thị nhãn mới
+            size: sz,
             ton_cs1: Number(r.ton_cs1) || 0,
             ton_cs2: Number(r.ton_cs2) || 0,
             ban_cs1: Number(r.ban_cs1) || 0,
@@ -1310,14 +1271,7 @@ function buildXntRows(rowMap) {
             toncuoi: Number(r.toncuoi) || 0,
         });
     }
-
-    // CỘNG TỔNG (bỏ dòng 0 – 'Tổng')
-    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
-    for (let i = 1; i < rows.length; i++) {
-        for (const k in total) total[k] += rows[i][k] || 0;
-    }
-    Object.assign(rows[0], total);
-
+    recalcXntTotals(rows);
     return rows;
 }
 
@@ -1344,7 +1298,7 @@ function initXntHot(containerEl, rowMap, masp) {
     const hot = new Handsontable(containerEl, {
         data,
         columns,
-        rowHeaders: false,
+        rowHeaders: true,
         colHeaders: XNT_COLS.map(c => c.header),
         licenseKey: 'non-commercial-and-evaluation',
         stretchH: 'all',
@@ -1473,12 +1427,6 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
     }
 });
 
-function clearBulkTextareaAfterSuccess() {
-  const ta = document.getElementById('bulkTextarea');
-  if (ta) ta.value = '';
-}
-
-
 // === ĐẶT HÀNG: cấu hình ===
 const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
 const PAD5 = (n) => String(n).padStart(5, '0');
@@ -1487,10 +1435,10 @@ const PAD5 = (n) => String(n).padStart(5, '0');
 // ƯU TIÊN lấy địa điểm từ dropdown (CURRENT_BRANCH)
 // LẤY THÔNG TIN NGƯỜI DÙNG + ĐỊA ĐIỂM TỪ DROPDOWN
 function getCurrentUserInfo() {
-    const tennv = localStorage.getItem('tennv') || '';
-    const sel = document.getElementById('branchPicker');
-    const diadiem = sel && sel.value ? sel.value : ''; // '' = chưa chọn
-    return { tennv, diadiem };
+  const tennv = localStorage.getItem('tennv') || '';
+  const sel = document.getElementById('branchPicker');
+  const diadiem = sel && sel.value ? sel.value : ''; // '' = chưa chọn
+  return { tennv, diadiem };
 }
 
 
