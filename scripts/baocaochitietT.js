@@ -78,8 +78,8 @@ function formatDateTimeCell(instance, td, row, col, prop, value) {
 
 // ===== CHÍNH: TẢI BÁO CÁO (bản T) =====
 window.taiBaoCaoChiTiet = async function () {
-    const chungloai = document.getElementById("chungloaiSelect").value || null;
-    const nhomhang = document.getElementById("nhomhangSelect").value || null;
+    const chungloai = (document.getElementById("chungloaiInput").value || "").trim() || null;
+    const nhomhang = (document.getElementById("nhomhangInput").value || "").trim() || null;
 
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
