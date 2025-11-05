@@ -540,10 +540,11 @@ async function renderOneProductDetail(masp) {
     });
 
     // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
-    
+
     top.innerHTML = `
     
     toggleVitriInputsByBranch();
+
     <tr>
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
@@ -1269,27 +1270,32 @@ function recalcXntTotals(rows) {
 
 // Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
 function buildXntRows(rowMap) {
+    // EU/US/JP/height
+    const SIZE_LIST = ['0',
+        '38/S/46/165', '39/M/48/170', '40/L/50/175',
+        '41/XL/52/180', '42/2X/54/185', '43/3X/56/190',
+        '44/4X/58/195', '45/5X/60/200'
+    ];
 
-    // EU/US/JP/height (dùng EU làm key tính toán)
-    const SIZE_LIST = ['0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
-
-    // Tách metadata để vừa có "key" (EU) vừa có "label" (US/JP/height)
+    // Tách key (EU) để TRA DỮ LIỆU, nhãn để HIỂN THỊ
     const SIZE_META = SIZE_LIST.map(x => {
         const parts = String(x).split('/');
-        const eu = parts[0];                      // key cột (EU)
-        const label = parts.slice(1).join('/');   // nhãn phụ để hiển thị
-        return { key: eu, label };                // vd: {key:'38', label:'S/46/165'}
+        const eu = parts[0];               // key thực tế trong rowMap: '38','39',...
+        const label = parts.slice(1).join('/'); // 'S/46/165' ...
+        // size hiển thị = '38/S/46/165' (giống bạn đang thấy trên UI)
+        const display = parts.length > 1 ? `${eu}/${label}` : eu;
+        return { key: eu, display };
     });
-
-    const SIZE_KEYS = SIZE_META.map(s => s.key);   // ['0','38','39',...]
 
     const rows = [{
         size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0
     }];
-    for (const sz of SIZE_LIST) {
-        const r = rowMap[sz] || {};
+
+    // HÀNG SIZE: lấy số liệu bằng EU key
+    for (const s of SIZE_META) {
+        const r = rowMap[s.key] || {};
         rows.push({
-            size: sz,
+            size: s.display,                 // hiển thị nhãn mới
             ton_cs1: Number(r.ton_cs1) || 0,
             ton_cs2: Number(r.ton_cs2) || 0,
             ban_cs1: Number(r.ban_cs1) || 0,
@@ -1299,7 +1305,14 @@ function buildXntRows(rowMap) {
             toncuoi: Number(r.toncuoi) || 0,
         });
     }
-    recalcXntTotals(rows);
+
+    // CỘNG TỔNG (bỏ dòng 0 – 'Tổng')
+    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
+    for (let i = 1; i < rows.length; i++) {
+        for (const k in total) total[k] += rows[i][k] || 0;
+    }
+    Object.assign(rows[0], total);
+
     return rows;
 }
 
