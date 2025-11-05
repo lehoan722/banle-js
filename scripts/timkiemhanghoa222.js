@@ -419,6 +419,7 @@ async function triggerSearch(_masp = null) {
         document.getElementById("singleDetailBox").style.display = "";
         await renderOneProductDetail(productWithXNT[0]);
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
+        clearBulkTextareaAfterSuccess(); 
         return;
     }
 
@@ -456,6 +457,7 @@ async function triggerSearch(_masp = null) {
 
     multi.style.display = "";
     msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
+    clearBulkTextareaAfterSuccess();
 }
 
 
@@ -1467,6 +1469,12 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
         document.getElementById('clearBulkBtn')?.click();
     }
 });
+
+function clearBulkTextareaAfterSuccess() {
+  const ta = document.getElementById('bulkTextarea');
+  if (ta) ta.value = '';
+}
+
 
 // === ĐẶT HÀNG: cấu hình ===
 const SOHD_PREFIX = (diadiem) => `dathang${String(diadiem || '').toLowerCase()}_`; // vd: 'dathangcs1_'
