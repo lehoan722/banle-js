@@ -517,7 +517,19 @@ async function renderOneProductDetail(masp) {
     }
 
     // map size & tổng dòng đầu
-    const SIZE_LIST = ['Tổng', '0', '38', '39', '40', '41', '42', '43', '44', '45'];
+
+    // EU/US/JP/height (dùng EU làm key tính toán)
+const SIZE_LIST = ['0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
+
+// Tách metadata để vừa có "key" (EU) vừa có "label" (US/JP/height)
+const SIZE_META = SIZE_LIST.map(x => {
+  const parts = String(x).split('/');
+  const eu = parts[0];                      // key cột (EU)
+  const label = parts.slice(1).join('/');   // nhãn phụ để hiển thị
+  return { key: eu, label };                // vd: {key:'38', label:'S/46/165'}
+});
+
+    
     const rowMap = {};
     xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
     const totalRow = {};
@@ -1254,7 +1266,19 @@ function recalcXntTotals(rows) {
 
 // Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
 function buildXntRows(rowMap) {
-    const SIZE_LIST = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+
+    // EU/US/JP/height (dùng EU làm key tính toán)
+const SIZE_LIST = ['0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
+
+// Tách metadata để vừa có "key" (EU) vừa có "label" (US/JP/height)
+const SIZE_META = SIZE_LIST.map(x => {
+  const parts = String(x).split('/');
+  const eu = parts[0];                      // key cột (EU)
+  const label = parts.slice(1).join('/');   // nhãn phụ để hiển thị
+  return { key: eu, label };                // vd: {key:'38', label:'S/46/165'}
+});
+
+    
     const rows = [{
         size: 'Tổng', ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0
     }];
