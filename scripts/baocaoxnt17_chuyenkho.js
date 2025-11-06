@@ -31,6 +31,8 @@ import { supabase } from './supabaseClient.js'; // dùng chung client đã có
 
 
 let hot;
+let currentRows = []; // tập dòng hiện đang hiển thị trong HOT (để các hàm filter/ảnh dùng)
+
 const SIZE_ORDER = ['size 0', 'size 38', 'size 39', 'size 40', 'size 41', 'size 42', 'size 43', 'size 44', 'size 45']; // 9 dòng/1 mã
 
 // --- Cấu hình mặc định cho tính SL chuyển ---
@@ -167,8 +169,18 @@ function buildTransferTable(rows) {
         const g = map.get(masp);
 
         const szKey = normalizeSize(r.size);     // ⬅️ dùng chuẩn hoá
-        const cs1 = Number(r.ton_cs1 || 0);
-        const cs2 = Number(r.ton_cs2 || 0);
+
+        function getNum(o, keys, def = 0) {
+  for (const k of keys) {
+    if (o != null && o[k] != null && o[k] !== '') return Number(o[k]);
+  }
+  return def;
+}
+const cs1 = getNum(r, ['ton_cs1','toncs1','cs1','cs_1']);
+const cs2 = getNum(r, ['ton_cs2','toncs2','cs2','cs_2']);
+
+
+        
 
         g[szKey] = { masp, size: szKey || (r.size || ''), cs1, cs2 };
     }
@@ -297,7 +309,9 @@ function renderOnlySizeNumber(instance, td, row, col, prop, value) {
 // ===== 4) Render Handsontable + đồng bộ ảnh =====
 function renderHOT(rows) {
     const container = document.getElementById('hot');
-    if (hot) hot.destroy();
+    if (hot && !hot.isDestroyed) { hot.destroy(); }
+hot = null;
+
 
     hot = new Handsontable(container, {
         data: rows,
@@ -321,31 +335,53 @@ function renderHOT(rows) {
         columnSorting: true,
         height: '100%',
         stretchH: 'all',
-        cells: (row, col) => {
-            const cell = {};
-            const r = rows[row];
-            if (r?.__isSum) {
-                cell.className = 'sumRow';
-                if (hot && hot.colToProp(col) === 'sl_chuyen') cell.readOnly = true; // khoá ở dòng Tổng
-            }
-            return cell;
-        },
+        cells: (row, col, prop) => {
+  const cell = {};
+  const r = rows[row];
+  if (r && r.__isSum) {
+    cell.className = 'sumRow';
+    if (prop === 'sl_chuyen') cell.readOnly = true; // khoá ở dòng Tổng
+  }
+  return cell;
+},
 
-        afterSelectionEnd: (r) => {
-            if (!hot) return;
 
-            // Lấy mã SP theo hàng đang HIỂN THỊ trong HOT (an toàn khi có lọc/sắp xếp)
-            const colMasp = hot.propToCol('masp');
-            const masp = String(hot.getDataAtCell(r, colMasp) || '').toUpperCase();
-            if (!masp) return;
+        afterSelectionEnd(r) {
+  // 'this' là instance hiện tại của Handsontable
+  const inst = this;
+  if (!inst || inst.isDestroyed) return;
 
-            // Đưa ảnh mã này lên vị trí đầu + cuộn panel ảnh
-            promotePreviewToTop(masp);
+  const colMasp = inst.propToCol('masp');
+  const masp = String(inst.getDataAtCell(r, colMasp) || '').toUpperCase();
+  if (!masp) return;
 
-            // (giữ hành vi cuộn bảng như cũ)
-            const tr = hot.getCell(r, 0)?.parentElement;
-            if (tr) tr.scrollIntoView({ block: 'center' });
-        }
+  promotePreviewToTop(masp);
+
+  const tr = inst.getCell(r, 0)?.parentElement;
+  if (tr) tr.scrollIntoView({ block: 'center' });
+},
+afterChange(changes, source) {
+  if (!changes || source === 'loadData') return;
+
+  // nếu có thay đổi ở cột sl_chuyen => cộng lại dòng Tổng của mã đó
+  for (const [rIdx, prop] of changes.map(c => [c[0], c[1]])) {
+    if (prop !== 'sl_chuyen') continue;
+    const r = rows[rIdx];
+    if (!r || r.__isSum) continue;
+
+    // tìm dòng "Tổng" liền sau block 9 size
+    let sumIndex = rIdx;
+    while (sumIndex < rows.length && rows[sumIndex].masp === r.masp && !rows[sumIndex].__isSum) sumIndex++;
+    if (sumIndex < rows.length && rows[sumIndex].__isSum && rows[sumIndex].masp === r.masp) {
+      let s = 0;
+      for (let i = sumIndex - SIZE_ORDER.length; i < sumIndex; i++) s += Number(rows[i]?.sl_chuyen || 0);
+      rows[sumIndex].sl_chuyen = s;
+      this.render();
+      updateStatusTotals(rows);
+    }
+  }
+},
+
 
     });
 
@@ -368,32 +404,7 @@ function renderHOT(rows) {
         XLSX.writeFile(wb, `goi_y_chuyen_kho_${Date.now()}.xlsx`);
     };
 
-    afterChange: (changes, source) => {
-        if (!changes || source === 'loadData') return;
-
-        // nếu có thay đổi ở cột sl_chuyen => cộng lại dòng Tổng của mã đó
-        for (const [rIdx, prop] of changes.map(c => [c[0], c[1]])) {
-            if (prop !== 'sl_chuyen') continue;
-            const r = rows[rIdx];
-            if (!r || r.__isSum) continue;
-
-            // tìm block của mã hiện tại: 9 size + 1 Tổng
-            // giả định: các dòng của 1 mã nằm kề nhau theo buildTransferTable
-            // đi xuống để tìm dòng "Tổng"
-            let sumIndex = rIdx;
-            while (sumIndex < rows.length && rows[sumIndex].masp === r.masp && !rows[sumIndex].__isSum) sumIndex++;
-            if (sumIndex < rows.length && rows[sumIndex].__isSum && rows[sumIndex].masp === r.masp) {
-                // tính lại tổng sl_chuyen 9 size
-                let s = 0;
-                for (let i = sumIndex - SIZE_ORDER.length; i < sumIndex; i++) {
-                    s += Number(rows[i]?.sl_chuyen || 0);
-                }
-                rows[sumIndex].sl_chuyen = s;
-                hot.render();
-                updateStatusTotals(rows); // cập nhật tổng hướng 1→2 và 2→1 trên thanh trạng thái
-            }
-        }
-    };
+    
 
     // Sau khi khởi tạo HOT
     const btn1v2 = document.getElementById('btnFilter1v2');
@@ -406,10 +417,13 @@ function renderHOT(rows) {
     if (btn2v1) btn2v1.onclick = () => applyGoiyFilter('2v1');
     if (btnShowAll) btnShowAll.onclick = clearAllFilters;
 
+    currentRows = rows; // cập nhật dữ liệu đang hiển thị cho các hàm filter/ảnh
+
 }
 
 function clearAllFilters() {
-    if (!hot) return;
+    if (!hot || hot.isDestroyed) return;
+
     const filters = hot.getPlugin('filters');
     filters.clearConditions();
     filters.filter();
@@ -446,7 +460,8 @@ function getFilteredMaspsByGoiy(value) {
 
 // Áp bộ lọc theo cột "goiy" và ẩn dòng Tổng ("size" !== "Tổng")
 function applyGoiyFilter(value) {
-    if (!hot) return;
+    if (!hot || hot.isDestroyed) return;
+
     const filters = hot.getPlugin('filters');
     filters.clearConditions();
 
@@ -579,6 +594,9 @@ async function onChuyenKhoFromTextarea() {
 
   // dựng bảng + render
   const rows = buildTransferTable(raw);
+
+  currentRows = rows;
+
 
   // cập nhật lưới ảnh theo danh sách masp mới
   allMasps = Array.from(new Set(raw.map(r => r.masp)));
@@ -800,6 +818,9 @@ async function boot() {
 
     // 2) Dựng bảng chuyển kho
     const rows = buildTransferTable(raw);   // 9 dòng size + 1 dòng “Tổng”
+
+    currentRows = rows;
+
 
     // Lập danh sách MASP duy nhất theo thứ tự xuất hiện trong raw
     const masps = Array.from(new Map((raw || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
