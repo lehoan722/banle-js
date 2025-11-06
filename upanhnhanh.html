@@ -84,7 +84,10 @@
     const PATH_PREFIX = window.PATH_PREFIX || ''; // ví dụ 'products/' nếu bạn để trong thư mục con của bucket
 
     // Tên file theo chuẩn trang 222 (tùy biến nếu cần)
-    const FILE_NAMER = (masp) => `${masp.trim().toUpperCase()}.jpg`;
+    // Tên file khi UPLOAD: thống nhất .JPG để khớp hệ thống cũ
+const FILE_NAMER = (masp) => `${masp.trim().toUpperCase()}.JPG`;
+// Các đuôi ảnh có thể đã tồn tại từ trước
+const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
 
     // Đường dẫn ảnh public (tùy trang 222). Nếu trước nay bạn dùng publicURL + fileName thì giữ nguyên:
     const publicUrlFromKey = (fileName) => {
@@ -126,53 +129,68 @@
     const CACHE_KEY = 'image_keys_v1';
     const MAX_LIST = 5000; // điều chỉnh theo bucket
     let imageKeySet = new Set();
+    let imageKeySetLower = new Set(); // giữ bản viết thường để tra cứu O(1)
+
 
     function loadCache() {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (raw) {
-          const obj = JSON.parse(raw);
-          if (Array.isArray(obj.keys)) imageKeySet = new Set(obj.keys);
-        }
-      } catch { /* ignore */ }
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (Array.isArray(obj.keys)) {
+        imageKeySet = new Set(obj.keys);
+        imageKeySetLower = new Set(obj.keys.map(k => String(k).toLowerCase()));
+      }
     }
+  } catch { /* ignore */ }
+}
+
     function saveCache() {
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] })); } catch {}
     }
 
     async function refreshKeysFromBucket() {
-      let offset = 0; const page = 1000; // Supabase Storage list hỗ trợ limit/offset
-      const keys = [];
-      while (offset < MAX_LIST) {
-        const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX, {
-          limit: page, offset, sortBy: { column: 'name', order: 'asc' }
-        });
-        if (error) { console.warn('list error', error); break; }
-        if (!data || data.length === 0) break;
-        for (const f of data) {
-          if (f?.name && !f?.metadata?.isDirectory) keys.push(f.name);
-        }
-        offset += data.length;
-        if (data.length < page) break;
-      }
-      if (keys.length) {
-        imageKeySet = new Set(keys);
-        saveCache();
-      }
-    }
+  let offset = 0; const page = 1000;
+  const keys = [];
+  while (offset < MAX_LIST) {
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX, {
+      limit: page, offset, sortBy: { column: 'name', order: 'asc' }
+    });
+    if (error) { console.warn('list error', error); break; }
+    if (!data || data.length === 0) break;
+    for (const f of data) { if (f?.name) keys.push(f.name); }
+    offset += data.length;
+    if (data.length < page) break;
+  }
+  if (keys.length) {
+    imageKeySet = new Set(keys);
+    imageKeySetLower = new Set(keys.map(k => k.toLowerCase()));
+    saveCache();
+  }
+}
+
 
     function hasImageFor(masp) {
-      const key = FILE_NAMER(masp);
-      return imageKeySet.has(key);
-    }
+  const base = masp.trim().toUpperCase();
+  for (const ext of EXT_CANDIDATES) {
+    if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
+  }
+  return false;
+}
+
 
     function updateThumb(masp) {
-      const key = FILE_NAMER(masp);
-      if (!hasImageFor(masp)) { thumb.style.display = 'none'; return; }
-      thumb.style.display = 'flex';
-      thumbImg.src = publicUrlFromKey(key);
-      thumbMeta.textContent = key;
-    }
+  const base = masp.trim().toUpperCase();
+  let found = null;
+  for (const ext of EXT_CANDIDATES) {
+    if (imageKeySetLower.has((base + ext).toLowerCase())) { found = base + ext; break; }
+  }
+  if (!found) { thumb.style.display = 'none'; return; }
+  thumb.style.display = 'flex';
+  thumbImg.src = publicUrlFromKey(found);
+  thumbMeta.textContent = found;
+}
+
 
     /********************
      * Mở camera & xử lý ảnh
@@ -194,7 +212,10 @@
           .from(STORAGE_BUCKET)
           .upload(PATH_PREFIX + key, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
         if (error) throw error;
-        imageKeySet.add(key); saveCache();
+        imageKeySet.add(key);
+imageKeySetLower.add(key.toLowerCase());
+saveCache();
+
         setStatus('Lưu ảnh thành công', 'ok');
         showToast('✔ Đã lưu');
         updateThumb(masp);
