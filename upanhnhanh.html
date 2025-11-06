@@ -144,21 +144,30 @@
       padding-bottom: 10px;
     }
 
-    .thumb img { width: 200px; height: 200px; object-fit: cover; cursor: pointer; }
+    .thumb img { width: 300px; height: 300px; object-fit: cover; cursor: pointer; }
+
+    /* Thanh đáy cố định và layout 2 hàng */
+.bottombar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0; z-index: 50;
+  background: #fff;
+  box-shadow: 0 -6px 16px rgba(0,0,0,.08);
+  padding: 10px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* iPhone safe area */
+}
+.bottombar .bb-row1 { display: grid; grid-template-columns: 1fr; }
+.bottombar .bb-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+
+/* Chừa chỗ cho thanh đáy để nội dung không bị che */
+.wrap { padding-bottom: 140px; }
+
 
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <div class="row">
-      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
-        aria-label="Mã sản phẩm" />
-      <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
-      <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
-
-    </div>
-
+    
     <div class="status" id="status"></div>
 
     <div class="thumb" id="thumb" style="display:none;">
@@ -172,6 +181,19 @@
   </div>
 
   <!-- input camera ẩn, mở ngay khi cần -->
+
+  <div class="bottombar">
+  <div class="bb-row1">
+    <input id="masp" inputmode="latin" autocomplete="off"
+      placeholder="Nhập MÃ SP rồi Enter…" aria-label="Mã sản phẩm" />
+  </div>
+  <div class="bb-row2">
+    <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
+    <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
+  </div>
+</div>
+
+
   <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
