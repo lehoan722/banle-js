@@ -6,7 +6,7 @@ import fetch from 'node-fetch';
 const viettelAccounts = {
   cs1: {
     username: '4600370592',
-    password: '123456aA*',
+    password: 'Ght225#$56',
     mst: '4600370592',
     invoiceSeries: 'C25MLH',
     templateCode: '2/001',
@@ -14,7 +14,7 @@ const viettelAccounts = {
   },
   cs2: {
     username: '4600960665',
-    password: '123456aA*',
+    password: 'Ght225#$56',
     mst: '4600960665',
     invoiceSeries: 'C25MAT',
     templateCode: '2/001',
