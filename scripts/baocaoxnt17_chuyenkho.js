@@ -239,6 +239,54 @@ async function patchVitri(outArr) {
     }
 }
 
+// === SNAPSHOT TỒN THẬT (RPC) + OVERLAY VÀO RAW ===
+async function rpcTonSnapshot(masps, denNgay, tonghopSize = false) {
+  if (!Array.isArray(masps) || masps.length === 0) return [];
+  const { data, error } = await supabase.rpc('xnt17_ton_snapshot', {
+    p_masps: masps,
+    p_den_ngay: denNgay,
+    p_tonghop_size: tonghopSize
+  });
+  if (error) { console.warn('xnt17_ton_snapshot error:', error); return []; }
+  return (data || []).map(r => ({
+    masp: String(r.masp || '').toUpperCase(),
+    size: normalizeSize(r.size),
+    ton_cs1: Number(r.ton_cs1 || 0),
+    ton_cs2: Number(r.ton_cs2 || 0)
+  }));
+}
+
+// Lấy danh sách masp từ raw, gọi snapshot tồn thật, rồi ghi đè/thêm size còn thiếu
+async function overlayTonThat(raw, denNgay) {
+  const masps = Array.from(new Set((raw || [])
+                  .map(r => String(r.masp || '').toUpperCase())
+                  .filter(Boolean)));
+  if (!masps.length) return raw;
+
+  const snap = await rpcTonSnapshot(masps, denNgay, false);
+
+  // map raw theo key "MASP|size"
+  const byKey = new Map((raw || []).map(r => {
+    const masp = String(r.masp || '').toUpperCase();
+    const size = normalizeSize(r.size);
+    return [masp + '|' + size, { ...r, masp, size }];
+  }));
+
+  // merge snapshot: có thì ghi đè ton_cs1/ton_cs2, chưa có thì thêm dòng mới
+  for (const s of snap) {
+    const k = s.masp + '|' + normalizeSize(s.size);
+    if (byKey.has(k)) {
+      const it = byKey.get(k);
+      it.ton_cs1 = s.ton_cs1;
+      it.ton_cs2 = s.ton_cs2;
+    } else {
+      byKey.set(k, { masp: s.masp, size: normalizeSize(s.size), ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2 });
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+
 function renderOnlySizeNumber(instance, td, row, col, prop, value) {
     const s = String(value ?? '');
     const m = s.match(/\d{1,2}/);
@@ -502,6 +550,50 @@ function onTaoPhieuChuyenCN() {
 
 }
 
+// Chuyển kho theo danh sách MASP trong textarea (độc lập với XNT17)
+async function onChuyenKhoFromTextarea() {
+  const ta = document.getElementById('maspTextarea');
+  if (!ta) { alert('Không tìm thấy ô nhập mã sản phẩm'); return; }
+
+  const masps = Array.from(new Set(
+    ta.value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean)
+  ));
+
+  if (masps.length === 0) {
+    alert('Vui lòng nhập danh sách mã sản phẩm (mỗi mã một dòng)');
+    return;
+  }
+
+  document.getElementById('status').textContent = 'Đang tính tồn thật…';
+
+  const filters4den = getFilters() || {};
+  const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0,10);
+
+  // lấy snapshot tồn thật cho list MASP
+  const snap = await rpcTonSnapshot(masps, denNgay, false);
+
+  // chuyển snapshot thành raw giống cấu trúc buildTransferTable đang dùng
+  const raw = snap.map(s => ({
+    masp: s.masp, size: s.size, ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2
+  }));
+
+  // dựng bảng + render
+  const rows = buildTransferTable(raw);
+
+  // cập nhật lưới ảnh theo danh sách masp mới
+  allMasps = Array.from(new Set(raw.map(r => r.masp)));
+  renderPreviewForMasps(allMasps);
+
+  await patchVitri(rows);
+  renderHOT(rows);
+  if (allMasps.length) focusPreview(allMasps[0]);
+  updateStatusTotals(rows);
+
+  document.getElementById('status').textContent =
+    `Đã tải ${rows.length} dòng từ danh sách MASP (tồn thật)`;
+}
+
+
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
 // ==== ẢNH: copy từ XNT17 ====
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -700,6 +792,12 @@ async function boot() {
         raw = await fetchAllRows(filters); // giữ lại hàm này như phương án B
     }
 
+        // 1.5) Vá TỒN THẬT cho tất cả size của các mã đã nhận
+    const filters4den = getFilters() || {};
+    const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0,10);
+    raw = await overlayTonThat(raw, denNgay);
+
+
     // 2) Dựng bảng chuyển kho
     const rows = buildTransferTable(raw);   // 9 dòng size + 1 dòng “Tổng”
 
@@ -726,6 +824,10 @@ async function boot() {
 
 document.getElementById('btnReload').onclick = boot;
 boot();
+
+const btnCK = document.getElementById('btnChuyenKho');
+if (btnCK) btnCK.onclick = onChuyenKhoFromTextarea;
+
 
 function normalizeSize(v) {
     const s = String(v ?? '').trim().toLowerCase();
