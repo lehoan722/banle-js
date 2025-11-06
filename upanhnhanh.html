@@ -195,6 +195,26 @@ const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
     /********************
      * Mở camera & xử lý ảnh
      ********************/
+
+     // Kiểm tra tồn tại bằng HEAD để chắc chắn (không tải nội dung ảnh)
+async function headExists(url) {
+  try {
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.ok; // 200..299
+  } catch { return false; }
+}
+
+// Thử tất cả đuôi .JPG/.jpg/.PNG/.png, trả về {exists, keyFound}
+async function existsOnServer(masp) {
+  const base = masp.trim().toUpperCase();
+  for (const ext of EXT_CANDIDATES) {
+    const key = base + ext;
+    const url = publicUrlFromKey(key);
+    if (await headExists(url)) return { exists: true, keyFound: key };
+  }
+  return { exists: false, keyFound: null };
+}
+
     function openCamera() {
       cameraInput.value = '';
       cameraInput.click();
@@ -254,21 +274,38 @@ saveCache();
      * Kiểm tra mã & điều hướng luồng
      ********************/
     async function handleCheck() {
-      const masp = maspInput.value.trim();
-      if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelectInput(); return; }
-      // Bôi đen ô để gõ tiếp
-      focusSelectInput();
+  const masp = maspInput.value.trim();
+  if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelectInput(); return; }
+  // Bôi đen để nhập tiếp
+  focusSelectInput();
 
-      // Kiểm tra gần như tức thì từ cache
-      if (hasImageFor(masp)) {
-        setStatus('ĐÃ CÓ ẢNH', 'ok');
-        updateThumb(masp);
-        return;
-      }
-      setStatus('Chưa có ảnh → mở camera…');
-      updateThumb('');
-      openCamera();
-    }
+  // 1) Fast-path: tra cache O(1)
+  if (hasImageFor(masp)) {
+    setStatus('ĐÃ CÓ ẢNH', 'ok');
+    updateThumb(masp);
+    return;
+  }
+
+  // 2) Safe-path: HEAD trực tiếp lên server để chắc chắn
+  setStatus('Đang kiểm tra ảnh trên server…');
+  const { exists, keyFound } = await existsOnServer(masp);
+  if (exists) {
+    // Bổ sung vào cache để lần sau chạy siêu nhanh
+    imageKeySet.add(keyFound);
+    imageKeySetLower.add(keyFound.toLowerCase());
+    saveCache();
+
+    setStatus('ĐÃ CÓ ẢNH', 'ok');
+    updateThumb(masp);
+    return;
+  }
+
+  // 3) Không có thật → mở camera
+  setStatus('Chưa có ảnh → mở camera…');
+  updateThumb('');
+  openCamera();
+}
+
 
     maspInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
