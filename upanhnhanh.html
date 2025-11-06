@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
+  <!-- Tối ưu iPhone 13 Pro Max dọc, chống zoom khi focus -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <style>
+    :root { --pad: 14px; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      background: #f7f7f8; color: #111; -webkit-text-size-adjust: 100%;
+    }
+    .wrap { min-height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; gap: 10px; padding: var(--pad); }
+
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    label { font-size: 14px; color: #444; }
+
+    #masp {
+      font-size: 18px; padding: 14px 12px; border: 1px solid #ddd; border-radius: 10px;
+      background: #fff; width: 100%; outline: none;
+    }
+    #masp:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.15); }
+
+    button {
+      font-size: 16px; padding: 12px 14px; border: none; border-radius: 12px; background: #111; color: #fff;
+    }
+    button.secondary { background: #e5e7eb; color: #111; }
+    button:disabled { opacity: .6; }
+
+    .status { font-size: 14px; min-height: 24px; }
+    .status.ok { color: #16a34a; }
+    .status.warn { color: #ef4444; }
+    .thumb { display: flex; align-items: center; gap: 10px; }
+    .thumb img { width: 82px; height: 82px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; }
+
+    .ghost { display:none; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+      background: rgba(17,17,17,.92); color: #fff; padding: 10px 14px; border-radius: 12px; font-size: 14px; opacity: 0;
+      transition: opacity .25s ease, transform .25s ease; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+    .footer { color:#666; font-size:12px; text-align:center; padding-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="row">
+      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…" aria-label="Mã sản phẩm" />
+      <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="thumb" id="thumb" style="display:none;">
+      <img id="thumbImg" alt="ảnh sản phẩm" />
+      <div id="thumbMeta" style="font-size:13px;color:#555"></div>
+    </div>
+
+    <div></div> <!-- spacer -->
+
+    <div class="footer">Chụp & lưu siêu nhanh • Tối ưu iPhone 13 Pro Max</div>
+  </div>
+
+  <!-- input camera ẩn, mở ngay khi cần -->
+  <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    /********************
+     * CẤU HÌNH – hãy sửa cho khớp dự án của bạn
+     ********************/
+    const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co';
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+    const STORAGE_BUCKET = window.STORAGE_BUCKET || 'anhsanpham'; // tên bucket lưu ảnh
+    const PATH_PREFIX = window.PATH_PREFIX || ''; // ví dụ 'products/' nếu bạn để trong thư mục con của bucket
+
+    // Tên file theo chuẩn trang 222 (tùy biến nếu cần)
+    const FILE_NAMER = (masp) => `${masp.trim().toUpperCase()}.jpg`;
+
+    // Đường dẫn ảnh public (tùy trang 222). Nếu trước nay bạn dùng publicURL + fileName thì giữ nguyên:
+    const publicUrlFromKey = (fileName) => {
+      // Gợi ý 1: dùng getPublicUrl (chuẩn Supabase v2)
+      const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(PATH_PREFIX + fileName);
+      return (data?.publicUrl || '') + `?t=${Date.now()}`;
+    };
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /********************
+     * UI tiện ích
+     ********************/
+    const $ = (s) => document.querySelector(s);
+    const maspInput = $('#masp');
+    const btnCheck = $('#btnCheck');
+    const statusEl = $('#status');
+    const cameraInput = $('#camera');
+    const toastEl = $('#toast');
+    const thumb = $('#thumb');
+    const thumbImg = $('#thumbImg');
+    const thumbMeta = $('#thumbMeta');
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 1500);
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+    }
+    function setStatus(msg, kind = '') {
+      statusEl.className = 'status ' + (kind || '');
+      statusEl.textContent = msg || '';
+    }
+    function focusSelectInput() { maspInput.focus({ preventScroll:true }); maspInput.select(); }
+
+    /********************
+     * Cache key ảnh – tải nhanh, kiểm tra O(1)
+     ********************/
+    const CACHE_KEY = 'image_keys_v1';
+    const MAX_LIST = 5000; // điều chỉnh theo bucket
+    let imageKeySet = new Set();
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const obj = JSON.parse(raw);
+          if (Array.isArray(obj.keys)) imageKeySet = new Set(obj.keys);
+        }
+      } catch { /* ignore */ }
+    }
+    function saveCache() {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] })); } catch {}
+    }
+
+    async function refreshKeysFromBucket() {
+      let offset = 0; const page = 1000; // Supabase Storage list hỗ trợ limit/offset
+      const keys = [];
+      while (offset < MAX_LIST) {
+        const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX, {
+          limit: page, offset, sortBy: { column: 'name', order: 'asc' }
+        });
+        if (error) { console.warn('list error', error); break; }
+        if (!data || data.length === 0) break;
+        for (const f of data) {
+          if (f?.name && !f?.metadata?.isDirectory) keys.push(f.name);
+        }
+        offset += data.length;
+        if (data.length < page) break;
+      }
+      if (keys.length) {
+        imageKeySet = new Set(keys);
+        saveCache();
+      }
+    }
+
+    function hasImageFor(masp) {
+      const key = FILE_NAMER(masp);
+      return imageKeySet.has(key);
+    }
+
+    function updateThumb(masp) {
+      const key = FILE_NAMER(masp);
+      if (!hasImageFor(masp)) { thumb.style.display = 'none'; return; }
+      thumb.style.display = 'flex';
+      thumbImg.src = publicUrlFromKey(key);
+      thumbMeta.textContent = key;
+    }
+
+    /********************
+     * Mở camera & xử lý ảnh
+     ********************/
+    function openCamera() {
+      cameraInput.value = '';
+      cameraInput.click();
+    }
+
+    cameraInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      const masp = maspInput.value.trim();
+      if (!file || !masp) return;
+      try {
+        setStatus('Đang xử lý & lưu ảnh…');
+        const blob = await resizeImage(file, 1024, 1024, 0.82); // nén vừa phải
+        const key = FILE_NAMER(masp);
+        const { error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(PATH_PREFIX + key, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+        if (error) throw error;
+        imageKeySet.add(key); saveCache();
+        setStatus('Lưu ảnh thành công', 'ok');
+        showToast('✔ Đã lưu');
+        updateThumb(masp);
+      } catch (err) {
+        console.error(err);
+        setStatus('Lưu ảnh KHÔNG thành công', 'warn');
+        showToast('✖ Lỗi lưu ảnh');
+      } finally {
+        focusSelectInput();
+      }
+    });
+
+    function fileToImage(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+    async function resizeImage(file, maxW, maxH, quality = 0.85) {
+      const img = await fileToImage(file);
+      const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img, 0, 0, w, h);
+      return await new Promise((res) => canvas.toBlob((b) => res(b), 'image/jpeg', quality));
+    }
+
+    /********************
+     * Kiểm tra mã & điều hướng luồng
+     ********************/
+    async function handleCheck() {
+      const masp = maspInput.value.trim();
+      if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelectInput(); return; }
+      // Bôi đen ô để gõ tiếp
+      focusSelectInput();
+
+      // Kiểm tra gần như tức thì từ cache
+      if (hasImageFor(masp)) {
+        setStatus('ĐÃ CÓ ẢNH', 'ok');
+        updateThumb(masp);
+        return;
+      }
+      setStatus('Chưa có ảnh → mở camera…');
+      updateThumb('');
+      openCamera();
+    }
+
+    maspInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleCheck();
+      }
+    });
+    maspInput.addEventListener('blur', () => { if (maspInput.value.trim()) handleCheck(); });
+    btnCheck.addEventListener('click', handleCheck);
+
+    /********************
+     * Khởi động
+     ********************/
+    loadCache(); // dùng cache ngay để kiểm tra tức thì
+    focusSelectInput();
+    // Làm mới danh sách key ở nền (không chặn UI)
+    refreshKeysFromBucket().catch(console.warn);
+  </script>
+</body>
+</html>
