@@ -143,6 +143,9 @@
       text-align: center;
       padding-bottom: 10px;
     }
+
+    .thumb img { width: 120px; height: 120px; object-fit: cover; cursor: pointer; }
+
   </style>
 </head>
 
@@ -152,6 +155,8 @@
       <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
         aria-label="Mã sản phẩm" />
       <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
+      <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
+
     </div>
 
     <div class="status" id="status"></div>
@@ -202,12 +207,25 @@
     const $ = (s) => document.querySelector(s);
     const maspInput = $('#masp');
     const btnCheck = $('#btnCheck');
+    const btnRetake = $('#btnRetake');
     const statusEl = $('#status');
     const cameraInput = $('#camera');
     const toastEl = $('#toast');
     const thumb = $('#thumb');
     const thumbImg = $('#thumbImg');
     const thumbMeta = $('#thumbMeta');
+
+    thumbImg?.addEventListener('click', () => {
+  if (!thumbImg.src) return;
+  window.open(thumbImg.src, '_blank'); // xem ảnh lớn
+});
+
+btnRetake.addEventListener('click', () => {
+  const masp = maspInput.value.trim();
+  if (!masp) { setStatus('Nhập MÃ SP trước', 'warn'); maspInput.focus(); return; }
+  setStatus('Chụp ảnh mới để ghi đè…');
+  openCamera(); // user gesture trực tiếp → iOS mở camera ổn định
+});
 
     function showToast(msg) {
       toastEl.textContent = msg;
