@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
@@ -8,51 +9,148 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="format-detection" content="telephone=no" />
   <style>
-    :root { --pad: 14px; }
-    html, body { height: 100%; }
-    body {
-      margin: 0; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial;
-      background: #f7f7f8; color: #111; -webkit-text-size-adjust: 100%;
+    :root {
+      --pad: 14px;
     }
-    .wrap { min-height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; gap: 10px; padding: var(--pad); }
 
-    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
-    label { font-size: 14px; color: #444; }
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      background: #f7f7f8;
+      color: #111;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      padding: var(--pad);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    label {
+      font-size: 14px;
+      color: #444;
+    }
 
     #masp {
-      font-size: 18px; padding: 14px 12px; border: 1px solid #ddd; border-radius: 10px;
-      background: #fff; width: 100%; outline: none;
+      font-size: 18px;
+      padding: 14px 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+      width: 100%;
+      outline: none;
     }
-    #masp:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.15); }
+
+    #masp:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, .15);
+    }
 
     button {
-      font-size: 16px; padding: 12px 14px; border: none; border-radius: 12px; background: #111; color: #fff;
+      font-size: 16px;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      background: #111;
+      color: #fff;
     }
-    button.secondary { background: #e5e7eb; color: #111; }
-    button:disabled { opacity: .6; }
 
-    .status { font-size: 14px; min-height: 24px; }
-    .status.ok { color: #16a34a; }
-    .status.warn { color: #ef4444; }
-    .thumb { display: flex; align-items: center; gap: 10px; }
-    .thumb img { width: 82px; height: 82px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111;
+    }
 
-    .ghost { display:none; }
+    button:disabled {
+      opacity: .6;
+    }
+
+    .status {
+      font-size: 14px;
+      min-height: 24px;
+    }
+
+    .status.ok {
+      color: #16a34a;
+    }
+
+    .status.warn {
+      color: #ef4444;
+    }
+
+    .thumb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .thumb img {
+      width: 82px;
+      height: 82px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+    }
+
+    /* Ẩn nhưng vẫn được click theo chuẩn iOS */
+    .ghost {
+      position: fixed;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
 
     .toast {
-      position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
-      background: rgba(17,17,17,.92); color: #fff; padding: 10px 14px; border-radius: 12px; font-size: 14px; opacity: 0;
-      transition: opacity .25s ease, transform .25s ease; pointer-events: none;
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      background: rgba(17, 17, 17, .92);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events: none;
     }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
 
-    .footer { color:#666; font-size:12px; text-align:center; padding-bottom: 10px; }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    .footer {
+      color: #666;
+      font-size: 12px;
+      text-align: center;
+      padding-bottom: 10px;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="row">
-      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…" aria-label="Mã sản phẩm" />
+      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
+        aria-label="Mã sản phẩm" />
       <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
     </div>
 
@@ -85,9 +183,9 @@
 
     // Tên file theo chuẩn trang 222 (tùy biến nếu cần)
     // Tên file khi UPLOAD: thống nhất .JPG để khớp hệ thống cũ
-const FILE_NAMER = (masp) => `${masp.trim().toUpperCase()}.JPG`;
-// Các đuôi ảnh có thể đã tồn tại từ trước
-const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
+    const FILE_NAMER = (masp) => `${masp.trim().toUpperCase()}.JPG`;
+    // Các đuôi ảnh có thể đã tồn tại từ trước
+    const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
 
     // Đường dẫn ảnh public (tùy trang 222). Nếu trước nay bạn dùng publicURL + fileName thì giữ nguyên:
     const publicUrlFromKey = (fileName) => {
@@ -115,13 +213,13 @@ const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
       toastEl.textContent = msg;
       toastEl.classList.add('show');
       setTimeout(() => toastEl.classList.remove('show'), 1500);
-      if (navigator.vibrate) try { navigator.vibrate(15); } catch {}
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch { }
     }
     function setStatus(msg, kind = '') {
       statusEl.className = 'status ' + (kind || '');
       statusEl.textContent = msg || '';
     }
-    function focusSelectInput() { maspInput.focus({ preventScroll:true }); maspInput.select(); }
+    function focusSelectInput() { maspInput.focus({ preventScroll: true }); maspInput.select(); }
 
     /********************
      * Cache key ảnh – tải nhanh, kiểm tra O(1)
@@ -133,87 +231,87 @@ const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
 
 
     function loadCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (raw) {
-      const obj = JSON.parse(raw);
-      if (Array.isArray(obj.keys)) {
-        imageKeySet = new Set(obj.keys);
-        imageKeySetLower = new Set(obj.keys.map(k => String(k).toLowerCase()));
-      }
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const obj = JSON.parse(raw);
+          if (Array.isArray(obj.keys)) {
+            imageKeySet = new Set(obj.keys);
+            imageKeySetLower = new Set(obj.keys.map(k => String(k).toLowerCase()));
+          }
+        }
+      } catch { /* ignore */ }
     }
-  } catch { /* ignore */ }
-}
 
     function saveCache() {
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] })); } catch {}
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] })); } catch { }
     }
 
     async function refreshKeysFromBucket() {
-  let offset = 0; const page = 1000;
-  const keys = [];
-  while (offset < MAX_LIST) {
-    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX, {
-      limit: page, offset, sortBy: { column: 'name', order: 'asc' }
-    });
-    if (error) { console.warn('list error', error); break; }
-    if (!data || data.length === 0) break;
-    for (const f of data) { if (f?.name) keys.push(f.name); }
-    offset += data.length;
-    if (data.length < page) break;
-  }
-  if (keys.length) {
-    imageKeySet = new Set(keys);
-    imageKeySetLower = new Set(keys.map(k => k.toLowerCase()));
-    saveCache();
-  }
-}
+      let offset = 0; const page = 1000;
+      const keys = [];
+      while (offset < MAX_LIST) {
+        const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX, {
+          limit: page, offset, sortBy: { column: 'name', order: 'asc' }
+        });
+        if (error) { console.warn('list error', error); break; }
+        if (!data || data.length === 0) break;
+        for (const f of data) { if (f?.name) keys.push(f.name); }
+        offset += data.length;
+        if (data.length < page) break;
+      }
+      if (keys.length) {
+        imageKeySet = new Set(keys);
+        imageKeySetLower = new Set(keys.map(k => k.toLowerCase()));
+        saveCache();
+      }
+    }
 
 
     function hasImageFor(masp) {
-  const base = masp.trim().toUpperCase();
-  for (const ext of EXT_CANDIDATES) {
-    if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
-  }
-  return false;
-}
+      const base = masp.trim().toUpperCase();
+      for (const ext of EXT_CANDIDATES) {
+        if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
+      }
+      return false;
+    }
 
 
     function updateThumb(masp) {
-  const base = masp.trim().toUpperCase();
-  let found = null;
-  for (const ext of EXT_CANDIDATES) {
-    if (imageKeySetLower.has((base + ext).toLowerCase())) { found = base + ext; break; }
-  }
-  if (!found) { thumb.style.display = 'none'; return; }
-  thumb.style.display = 'flex';
-  thumbImg.src = publicUrlFromKey(found);
-  thumbMeta.textContent = found;
-}
+      const base = masp.trim().toUpperCase();
+      let found = null;
+      for (const ext of EXT_CANDIDATES) {
+        if (imageKeySetLower.has((base + ext).toLowerCase())) { found = base + ext; break; }
+      }
+      if (!found) { thumb.style.display = 'none'; return; }
+      thumb.style.display = 'flex';
+      thumbImg.src = publicUrlFromKey(found);
+      thumbMeta.textContent = found;
+    }
 
 
     /********************
      * Mở camera & xử lý ảnh
      ********************/
 
-     // Kiểm tra tồn tại bằng HEAD để chắc chắn (không tải nội dung ảnh)
-async function headExists(url) {
-  try {
-    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-    return res.ok; // 200..299
-  } catch { return false; }
-}
+    // Kiểm tra tồn tại bằng HEAD để chắc chắn (không tải nội dung ảnh)
+    async function headExists(url) {
+      try {
+        const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+        return res.ok; // 200..299
+      } catch { return false; }
+    }
 
-// Thử tất cả đuôi .JPG/.jpg/.PNG/.png, trả về {exists, keyFound}
-async function existsOnServer(masp) {
-  const base = masp.trim().toUpperCase();
-  for (const ext of EXT_CANDIDATES) {
-    const key = base + ext;
-    const url = publicUrlFromKey(key);
-    if (await headExists(url)) return { exists: true, keyFound: key };
-  }
-  return { exists: false, keyFound: null };
-}
+    // Thử tất cả đuôi .JPG/.jpg/.PNG/.png, trả về {exists, keyFound}
+    async function existsOnServer(masp) {
+      const base = masp.trim().toUpperCase();
+      for (const ext of EXT_CANDIDATES) {
+        const key = base + ext;
+        const url = publicUrlFromKey(key);
+        if (await headExists(url)) return { exists: true, keyFound: key };
+      }
+      return { exists: false, keyFound: null };
+    }
 
     function openCamera() {
       cameraInput.value = '';
@@ -233,8 +331,8 @@ async function existsOnServer(masp) {
           .upload(PATH_PREFIX + key, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
         if (error) throw error;
         imageKeySet.add(key);
-imageKeySetLower.add(key.toLowerCase());
-saveCache();
+        imageKeySetLower.add(key.toLowerCase());
+        saveCache();
 
         setStatus('Lưu ảnh thành công', 'ok');
         showToast('✔ Đã lưu');
@@ -265,7 +363,7 @@ saveCache();
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d', { alpha: false });
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       return await new Promise((res) => canvas.toBlob((b) => res(b), 'image/jpeg', quality));
     }
@@ -273,39 +371,39 @@ saveCache();
     /********************
      * Kiểm tra mã & điều hướng luồng
      ********************/
-    async function handleCheck() {
+   async function handleCheck() {
   const masp = maspInput.value.trim();
   if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelectInput(); return; }
-  // Bôi đen để nhập tiếp
   focusSelectInput();
 
-  // 1) Fast-path: tra cache O(1)
+  // 1) Fast-path: cache
   if (hasImageFor(masp)) {
     setStatus('ĐÃ CÓ ẢNH', 'ok');
     updateThumb(masp);
     return;
   }
 
-  // 2) Safe-path: HEAD trực tiếp lên server để chắc chắn
-  setStatus('Đang kiểm tra ảnh trên server…');
-  const { exists, keyFound } = await existsOnServer(masp);
-  if (exists) {
-    // Bổ sung vào cache để lần sau chạy siêu nhanh
-    imageKeySet.add(keyFound);
-    imageKeySetLower.add(keyFound.toLowerCase());
-    saveCache();
+  // 2) MỞ CAMERA NGAY (giữ user gesture)
+  setStatus('Đang kiểm tra… nếu chưa có sẽ chụp');
+  openCamera(); // <— mở ngay lập tức
 
-    setStatus('ĐÃ CÓ ẢNH', 'ok');
-    updateThumb(masp);
-    return;
-  }
+  // 3) Kiểm tra chắc chắn ở nền (HEAD)
+  existsOnServer(masp).then(({ exists, keyFound }) => {
+    if (exists) {
+      // Đồng bộ cache để lần sau nhanh
+      imageKeySet.add(keyFound);
+      imageKeySetLower.add(keyFound.toLowerCase());
+      saveCache();
 
-  // 3) Không có thật → mở camera
-  setStatus('Chưa có ảnh → mở camera…');
-  updateThumb('');
-  openCamera();
+      setStatus('ĐÃ CÓ ẢNH (camera đang mở — có thể HUỶ nếu không muốn ghi đè)', 'ok');
+      updateThumb(masp);
+    } else {
+      setStatus('Chưa có ảnh → hãy chụp và lưu');
+    }
+  }).catch(() => {
+    // Không làm gì thêm: camera đã mở, người dùng vẫn có thể chụp
+  });
 }
-
 
     maspInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -325,4 +423,5 @@ saveCache();
     refreshKeysFromBucket().catch(console.warn);
   </script>
 </body>
+
 </html>
