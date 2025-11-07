@@ -1,43 +1,169 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="format-detection" content="telephone=no" />
   <style>
-    :root{ --pad:14px; }
-    html,body{ height:100%; }
-    body{ margin:0; font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:#f7f7f8; color:#111; -webkit-text-size-adjust:100%; }
-    .wrap{ min-height:100%; display:grid; grid-template-rows:auto auto 1fr auto; gap:10px; padding:var(--pad); padding-bottom:140px; }
+    :root {
+      --pad: 14px;
+    }
 
-    .status{ font-size:14px; min-height:24px; }
-    .status.ok{ color:#16a34a; }
-    .status.warn{ color:#ef4444; }
+    html,
+    body {
+      height: 100%;
+    }
 
-    .thumb{ display:flex; align-items:center; gap:10px; }
-    .thumb img{ width:300px; height:300px; object-fit:cover; border-radius:10px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      background: #f7f7f8;
+      color: #111;
+      -webkit-text-size-adjust: 100%;
+    }
 
-    .footer{ color:#666; font-size:12px; text-align:center; padding-bottom:10px; }
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      padding: var(--pad);
+      padding-bottom: 140px;
+    }
 
-    .ghost{ position:fixed; left:-9999px; width:1px; height:1px; opacity:0; }
+    .status {
+      font-size: 14px;
+      min-height: 24px;
+    }
 
-    .bottombar{ position:fixed; left:0; right:0; bottom:0; z-index:50; background:#fff; box-shadow:0 -6px 16px rgba(0,0,0,.08); padding:10px; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
-    .bottombar .bb-row1{ display:grid; grid-template-columns:1fr; }
-    .bottombar .bb-row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+    .status.ok {
+      color: #16a34a;
+    }
 
-    #masp{ font-size:18px; padding:14px 12px; border:1px solid #ddd; border-radius:10px; background:#fff; width:100%; outline:none; }
-    #masp:focus{ border-color:#3b82f6; box-shadow:0 0 0 4px rgba(59,130,246,.15); }
+    .status.warn {
+      color: #ef4444;
+    }
 
-    button{ font-size:16px; padding:12px 14px; border:none; border-radius:12px; background:#111; color:#fff; }
-    button.secondary{ background:#e5e7eb; color:#111; }
-    button:disabled{ opacity:.6; }
+    .thumb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-    .toast{ position:fixed; left:50%; bottom:16px; transform:translateX(-50%); background:rgba(17,17,17,.92); color:#fff; padding:10px 14px; border-radius:12px; font-size:14px; opacity:0; transition:opacity .25s ease, transform .25s ease; pointer-events:none; }
-    .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+    .thumb img {
+      width: 300px;
+      height: 300px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .footer {
+      color: #666;
+      font-size: 12px;
+      text-align: center;
+      padding-bottom: 10px;
+    }
+
+    .ghost {
+      position: fixed;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    .bottombar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: #fff;
+      box-shadow: 0 -6px 16px rgba(0, 0, 0, .08);
+      padding: 10px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+
+    .bottombar .bb-row1 {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .bottombar .bb-row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    #masp {
+      font-size: 18px;
+      padding: 14px 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+      width: 100%;
+      outline: none;
+    }
+
+    #masp:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, .15);
+    }
+
+    button {
+      font-size: 16px;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      background: #111;
+      color: #fff;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111;
+    }
+
+    button:disabled {
+      opacity: .6;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      background: rgba(17, 17, 17, .92);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* Luôn fit màn hình iPhone, tôn trọng safe-area */
+body{ min-height:100svh; }
+* { -webkit-tap-highlight-color: transparent; }
+
+
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="status" id="status"></div>
@@ -51,7 +177,8 @@
 
   <div class="bottombar">
     <div class="bb-row1">
-      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…" aria-label="Mã sản phẩm" />
+      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
+        aria-label="Mã sản phẩm" />
     </div>
     <div class="bb-row2">
       <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
@@ -66,13 +193,13 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
     /******** CẤU HÌNH ********/
-    const SUPABASE_URL   = window.SUPABASE_URL   || 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_ANON  = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+    const SUPABASE_URL = window.SUPABASE_URL || 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_ANON = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
     const STORAGE_BUCKET = window.STORAGE_BUCKET || 'anhsanpham';
-    const PATH_PREFIX    = window.PATH_PREFIX    || '';
+    const PATH_PREFIX = window.PATH_PREFIX || '';
 
     // Tự mở camera sau khi CHẮC CHẮN chưa có ảnh
-    const AUTO_OPEN_CAMERA  = true;  // Android/Desktop: auto
+    const AUTO_OPEN_CAMERA = true;  // Android/Desktop: auto
     const FORCE_AUTO_ON_IOS = true;  // ÉP iOS cũng auto (có máy có thể chặn)
 
     // Đuôi ảnh có thể tồn tại
@@ -83,158 +210,158 @@
     /******** TIỆN ÍCH ********/
     const $ = (s) => document.querySelector(s);
     const maspInput = $('#masp');
-    const btnCheck  = $('#btnCheck');
+    const btnCheck = $('#btnCheck');
     const btnRetake = $('#btnRetake');
-    const statusEl  = $('#status');
+    const statusEl = $('#status');
     const cameraInp = $('#camera');
-    const thumb     = $('#thumb');
-    const thumbImg  = $('#thumbImg');
+    const thumb = $('#thumb');
+    const thumbImg = $('#thumbImg');
     const thumbMeta = $('#thumbMeta');
 
-    function setStatus(msg, kind=''){ statusEl.className = 'status ' + (kind||''); statusEl.textContent = msg||''; }
-    function focusSelect(){ maspInput.focus({preventScroll:true}); maspInput.select(); }
+    function setStatus(msg, kind = '') { statusEl.className = 'status ' + (kind || ''); statusEl.textContent = msg || ''; }
+    function focusSelect() { maspInput.focus({ preventScroll: true }); maspInput.select(); }
 
     // Bỏ phần size sau "_" (VD: TL589-TD/DEN_39 -> TL589-TD/DEN)
-    function stripSizeSuffix(masp){ const s=String(masp||'').trim(); const i=s.indexOf('_'); return i===-1? s : s.slice(0,i); }
-    // Giữ A-Z 0-9 và các ký tự hợp lệ: - / ~ ; ký tự khác -> '-'
-    
-
-// Giữ A–Z 0–9 và các ký tự hợp lệ: dấu gạch '-' , dấu chấm '.', dấu '/'
-function sanitizeBaseName(str) {
-  const up = String(str || '').trim().toUpperCase();
-  // Cho phép . - / ; ký tự khác -> '-'
-  let out = up.replace(/[^A-Z0-9\/.\s_-]+/g, '-').replace(/-+/g, '-');
-  // Làm sạch quanh '/'
-  out = out.replace(/\/-+/g, '/').replace(/-+\//g, '/').replace(/\/{2,}/g, '/');
-  // Bỏ '-' thừa đầu/cuối
-  out = out.replace(/^-+/, '').replace(/-+$/, '');
-  // Bỏ khoảng trắng quanh dấu chấm
-  out = out.replace(/\s*\.\s*/g, '.');
-  return out;
-}
-
-// LUÔN lưu đuôi IN HOA .JPG và đã bỏ _SIZE
-const FILE_NAMER = (masp) => `${sanitizeBaseName(stripSizeSuffix(masp))}.JPG`;
+    function stripSizeSuffix(masp) { const s = String(masp || '').trim(); const i = s.indexOf('_'); return i === -1 ? s : s.slice(0, i); }
 
 
-    function publicUrlFromKey(fileName){
+    // Giữ A–Z 0–9 và các ký tự hợp lệ: dấu gạch '-' , dấu chấm '.', dấu '/'
+    function sanitizeBaseName(str) {
+      const up = String(str || '').trim().toUpperCase();
+      // Cho phép . - / ; ký tự khác -> '-'
+      let out = up.replace(/[^A-Z0-9\/.\s_-]+/g, '-').replace(/-+/g, '-');
+      // Làm sạch quanh '/'
+      out = out.replace(/\/-+/g, '/').replace(/-+\//g, '/').replace(/\/{2,}/g, '/');
+      // Bỏ '-' thừa đầu/cuối
+      out = out.replace(/^-+/, '').replace(/-+$/, '');
+      // Bỏ khoảng trắng quanh dấu chấm
+      out = out.replace(/\s*\.\s*/g, '.');
+      return out;
+    }
+
+    // LUÔN lưu đuôi IN HOA .JPG và đã bỏ _SIZE
+    const FILE_NAMER = (masp) => `${sanitizeBaseName(stripSizeSuffix(masp))}.JPG`;
+
+
+    function publicUrlFromKey(fileName) {
       const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(PATH_PREFIX + fileName);
       return (data?.publicUrl || '') + `?t=${Date.now()}`; // bust cache
     }
 
-    function isIOS(){ return /iP(hone|od|ad)/.test(navigator.platform) || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document); }
-    function shouldAutoOpen(){ return AUTO_OPEN_CAMERA && (FORCE_AUTO_ON_IOS || !isIOS()); }
+    function isIOS() { return /iP(hone|od|ad)/.test(navigator.platform) || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document); }
+    function shouldAutoOpen() { return AUTO_OPEN_CAMERA && (FORCE_AUTO_ON_IOS || !isIOS()); }
 
     const toastEl = $('#toast');
-    function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),1500); }
+    function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(() => toastEl.classList.remove('show'), 1500); }
 
-    thumbImg?.addEventListener('click',()=>{ if(thumbImg.src) window.open(thumbImg.src,'_blank'); });
+    thumbImg?.addEventListener('click', () => { if (thumbImg.src) window.open(thumbImg.src, '_blank'); });
 
     /******** CACHE TÊN ẢNH ********/
-    const CACHE_KEY='image_keys_v3'; const MAX_LIST=5000;
+    const CACHE_KEY = 'image_keys_v3'; const MAX_LIST = 5000;
     let imageKeySet = new Set();
     let imageKeySetLower = new Set();
-    function loadCache(){ try{ const raw=localStorage.getItem(CACHE_KEY); if(raw){ const o=JSON.parse(raw); if(Array.isArray(o.keys)){ imageKeySet=new Set(o.keys); imageKeySetLower=new Set(o.keys.map(k=>String(k).toLowerCase())); } } }catch{} }
-    function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify({keys:[...imageKeySet]})); }catch{} }
-    function updateGlobalNames(){ window.ANH_KEYS = Array.from(imageKeySet); }
+    function loadCache() { try { const raw = localStorage.getItem(CACHE_KEY); if (raw) { const o = JSON.parse(raw); if (Array.isArray(o.keys)) { imageKeySet = new Set(o.keys); imageKeySetLower = new Set(o.keys.map(k => String(k).toLowerCase())); } } } catch { } }
+    function saveCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] })); } catch { } }
+    function updateGlobalNames() { window.ANH_KEYS = Array.from(imageKeySet); }
 
-    async function refreshKeysFromBucket(){
-      let offset=0; const page=1000; const keys=[];
-      while(offset<MAX_LIST){
-        const {data,error}=await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX,{limit:page,offset,sortBy:{column:'name',order:'asc'}});
-        if(error) break; if(!data||!data.length) break;
-        for(const f of data){ if(f?.name) keys.push(f.name); }
-        offset+=data.length; if(data.length<page) break;
+    async function refreshKeysFromBucket() {
+      let offset = 0; const page = 1000; const keys = [];
+      while (offset < MAX_LIST) {
+        const { data, error } = await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX, { limit: page, offset, sortBy: { column: 'name', order: 'asc' } });
+        if (error) break; if (!data || !data.length) break;
+        for (const f of data) { if (f?.name) keys.push(f.name); }
+        offset += data.length; if (data.length < page) break;
       }
-      if(keys.length){ imageKeySet=new Set(keys); imageKeySetLower=new Set(keys.map(k=>k.toLowerCase())); saveCache(); updateGlobalNames(); }
+      if (keys.length) { imageKeySet = new Set(keys); imageKeySetLower = new Set(keys.map(k => k.toLowerCase())); saveCache(); updateGlobalNames(); }
     }
 
     function hasImageFor(masp) {
-  const base = sanitizeBaseName(stripSizeSuffix(masp));
-  for (const ext of EXT_CANDIDATES) {
-    if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
-  }
-  return false;
-}
+      const base = sanitizeBaseName(stripSizeSuffix(masp));
+      for (const ext of EXT_CANDIDATES) {
+        if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
+      }
+      return false;
+    }
 
 
     function updateThumb(masp) {
-  const base = sanitizeBaseName(stripSizeSuffix(masp));
-  let found = null;
-  for (const ext of EXT_CANDIDATES) {
-    const key = base + ext;
-    if (imageKeySetLower.has(key.toLowerCase())) { found = key; break; }
-  }
-  if (!found) { thumb.style.display = 'none'; return; }
-  thumb.style.display = 'flex';
-  thumbImg.src = publicUrlFromKey(found);
-  thumbMeta.textContent = found;
-}
+      const base = sanitizeBaseName(stripSizeSuffix(masp));
+      let found = null;
+      for (const ext of EXT_CANDIDATES) {
+        const key = base + ext;
+        if (imageKeySetLower.has(key.toLowerCase())) { found = key; break; }
+      }
+      if (!found) { thumb.style.display = 'none'; return; }
+      thumb.style.display = 'flex';
+      thumbImg.src = publicUrlFromKey(found);
+      thumbMeta.textContent = found;
+    }
 
 
     /******** KIỂM TRA TỒN TẠI (batch) ********/
     async function existsOnServer(masp) {
-  const base = sanitizeBaseName(stripSizeSuffix(masp));
-  const paths = EXT_CANDIDATES.map(ext => PATH_PREFIX + base + ext);
-  const { data, error } = await supabase
-    .storage.from(STORAGE_BUCKET)
-    .createSignedUrls(paths, 1);
+      const base = sanitizeBaseName(stripSizeSuffix(masp));
+      const paths = EXT_CANDIDATES.map(ext => PATH_PREFIX + base + ext);
+      const { data, error } = await supabase
+        .storage.from(STORAGE_BUCKET)
+        .createSignedUrls(paths, 1);
 
-  if (!error && Array.isArray(data)) {
-    for (let i = 0; i < data.length; i++) {
-      if (data[i]?.signedUrl) {
-        const full = paths[i];
-        const key = full.startsWith(PATH_PREFIX) ? full.slice(PATH_PREFIX.length) : full;
-        return { exists: true, keyFound: key };
+      if (!error && Array.isArray(data)) {
+        for (let i = 0; i < data.length; i++) {
+          if (data[i]?.signedUrl) {
+            const full = paths[i];
+            const key = full.startsWith(PATH_PREFIX) ? full.slice(PATH_PREFIX.length) : full;
+            return { exists: true, keyFound: key };
+          }
+        }
       }
+      return { exists: false, keyFound: null };
     }
-  }
-  return { exists: false, keyFound: null };
-}
 
 
     /******** MỞ CAMERA & UPLOAD ********/
-    function openCamera(){ cameraInp.value=''; cameraInp.click(); }
+    function openCamera() { cameraInp.value = ''; cameraInp.click(); }
 
-    cameraInp.addEventListener('change', async (e)=>{
-      const file = e.target.files?.[0]; const masp = maspInput.value.trim(); if(!file||!masp) return;
-      try{
+    cameraInp.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0]; const masp = maspInput.value.trim(); if (!file || !masp) return;
+      try {
         setStatus('Đang xử lý & lưu ảnh…');
         const blob = await resizeImage(file, 1024, 1024, 0.82);
-        const key  = FILE_NAMER(masp);
-        const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(PATH_PREFIX+key, blob, { upsert:true, contentType:'image/jpeg', cacheControl:'3600' });
-        if(error) throw error;
+        const key = FILE_NAMER(masp);
+        const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(PATH_PREFIX + key, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+        if (error) throw error;
         imageKeySet.add(key); imageKeySetLower.add(key.toLowerCase()); saveCache(); updateGlobalNames();
-        setStatus('Lưu ảnh thành công','ok'); toast('✔ Đã lưu'); updateThumb(masp);
-      }catch(err){
+        setStatus('Lưu ảnh thành công', 'ok'); toast('✔ Đã lưu'); updateThumb(masp);
+      } catch (err) {
         console.error('Upload error:', err);
-        const msg = (err && (err.message||err.error_description||err.error)) ? String(err.message||err.error_description||err.error) : 'KHÔNG rõ nguyên nhân';
-        setStatus('Lưu ảnh KHÔNG thành công: '+msg,'warn'); toast('✖ Lỗi lưu ảnh: '+msg);
-      }finally{ focusSelect(); }
+        const msg = (err && (err.message || err.error_description || err.error)) ? String(err.message || err.error_description || err.error) : 'KHÔNG rõ nguyên nhân';
+        setStatus('Lưu ảnh KHÔNG thành công: ' + msg, 'warn'); toast('✖ Lỗi lưu ảnh: ' + msg);
+      } finally { focusSelect(); }
     });
 
-    function fileToImage(file){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=URL.createObjectURL(file); }); }
-    async function resizeImage(file,maxW,maxH,quality=0.85){ const img=await fileToImage(file); const ratio=Math.min(maxW/img.width,maxH/img.height,1); const w=Math.round(img.width*ratio); const h=Math.round(img.height*ratio); const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h; const ctx=canvas.getContext('2d',{alpha:false}); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h); return await new Promise(res=>canvas.toBlob(b=>res(b),'image/jpeg',quality)); }
+    function fileToImage(file) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(file); }); }
+    async function resizeImage(file, maxW, maxH, quality = 0.85) { const img = await fileToImage(file); const ratio = Math.min(maxW / img.width, maxH / img.height, 1); const w = Math.round(img.width * ratio); const h = Math.round(img.height * ratio); const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d', { alpha: false }); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h); return await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', quality)); }
 
     /******** LUỒNG KIỂM TRA ********/
-    async function handleCheck(){
-      const masp = maspInput.value.trim(); if(!masp||masp.length<2){ setStatus('Mã sản phẩm chưa hợp lệ','warn'); focusSelect(); return; }
+    async function handleCheck() {
+      const masp = maspInput.value.trim(); if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelect(); return; }
       focusSelect();
-      if(hasImageFor(masp)){ setStatus('ĐÃ CÓ ẢNH','ok'); updateThumb(masp); return; }
+      if (hasImageFor(masp)) { setStatus('ĐÃ CÓ ẢNH', 'ok'); updateThumb(masp); return; }
       setStatus('Đang kiểm tra ảnh trên server…');
       const { exists, keyFound } = await existsOnServer(masp);
-      if(exists){ imageKeySet.add(keyFound); imageKeySetLower.add(keyFound.toLowerCase()); saveCache(); updateGlobalNames(); setStatus('ĐÃ CÓ ẢNH','ok'); updateThumb(masp); return; }
-      setStatus('Chưa có ảnh. Sẽ mở camera để chụp…'); thumb.style.display='none';
-      if(shouldAutoOpen()) openCamera(); else setStatus('Chưa có ảnh. Bấm "Chèn ảnh mới" để chụp (iPhone chế độ an toàn).');
+      if (exists) { imageKeySet.add(keyFound); imageKeySetLower.add(keyFound.toLowerCase()); saveCache(); updateGlobalNames(); setStatus('ĐÃ CÓ ẢNH', 'ok'); updateThumb(masp); return; }
+      setStatus('Chưa có ảnh. Sẽ mở camera để chụp…'); thumb.style.display = 'none';
+      if (shouldAutoOpen()) openCamera(); else setStatus('Chưa có ảnh. Bấm "Chèn ảnh mới" để chụp (iPhone chế độ an toàn).');
     }
 
-    maspInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); handleCheck(); } });
-    maspInput.addEventListener('blur',()=>{ if(maspInput.value.trim()) handleCheck(); });
-    btnCheck.addEventListener('click',handleCheck);
-    btnRetake.addEventListener('click',()=>{ const masp=maspInput.value.trim(); if(!masp){ setStatus('Nhập MÃ SP trước','warn'); maspInput.focus(); return; } setStatus('Chụp ảnh mới để ghi đè…'); openCamera(); });
+    maspInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleCheck(); } });
+    maspInput.addEventListener('blur', () => { if (maspInput.value.trim()) handleCheck(); });
+    btnCheck.addEventListener('click', handleCheck);
+    btnRetake.addEventListener('click', () => { const masp = maspInput.value.trim(); if (!masp) { setStatus('Nhập MÃ SP trước', 'warn'); maspInput.focus(); return; } setStatus('Chụp ảnh mới để ghi đè…'); openCamera(); });
 
     /******** KHỞI ĐỘNG ********/
     loadCache(); updateGlobalNames(); focusSelect(); refreshKeysFromBucket().catch(console.warn);
   </script>
 </body>
+
 </html>
