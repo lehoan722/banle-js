@@ -144,30 +144,49 @@
       padding-bottom: 10px;
     }
 
-    .thumb img { width: 300px; height: 300px; object-fit: cover; cursor: pointer; }
+    .thumb img {
+      width: 300px;
+      height: 300px;
+      object-fit: cover;
+      cursor: pointer;
+    }
 
     /* Thanh đáy cố định và layout 2 hàng */
-.bottombar {
-  position: fixed;
-  left: 0; right: 0; bottom: 0; z-index: 50;
-  background: #fff;
-  box-shadow: 0 -6px 16px rgba(0,0,0,.08);
-  padding: 10px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom)); /* iPhone safe area */
-}
-.bottombar .bb-row1 { display: grid; grid-template-columns: 1fr; }
-.bottombar .bb-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .bottombar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: #fff;
+      box-shadow: 0 -6px 16px rgba(0, 0, 0, .08);
+      padding: 10px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      /* iPhone safe area */
+    }
 
-/* Chừa chỗ cho thanh đáy để nội dung không bị che */
-.wrap { padding-bottom: 140px; }
+    .bottombar .bb-row1 {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
 
+    .bottombar .bb-row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
 
+    /* Chừa chỗ cho thanh đáy để nội dung không bị che */
+    .wrap {
+      padding-bottom: 140px;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    
+
     <div class="status" id="status"></div>
 
     <div class="thumb" id="thumb" style="display:none;">
@@ -183,15 +202,15 @@
   <!-- input camera ẩn, mở ngay khi cần -->
 
   <div class="bottombar">
-  <div class="bb-row1">
-    <input id="masp" inputmode="latin" autocomplete="off"
-      placeholder="Nhập MÃ SP rồi Enter…" aria-label="Mã sản phẩm" />
+    <div class="bb-row1">
+      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
+        aria-label="Mã sản phẩm" />
+    </div>
+    <div class="bb-row2">
+      <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
+      <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
+    </div>
   </div>
-  <div class="bb-row2">
-    <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
-    <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
-  </div>
-</div>
 
 
   <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
@@ -238,16 +257,16 @@
     const thumbMeta = $('#thumbMeta');
 
     thumbImg?.addEventListener('click', () => {
-  if (!thumbImg.src) return;
-  window.open(thumbImg.src, '_blank'); // xem ảnh lớn
-});
+      if (!thumbImg.src) return;
+      window.open(thumbImg.src, '_blank'); // xem ảnh lớn
+    });
 
-btnRetake.addEventListener('click', () => {
-  const masp = maspInput.value.trim();
-  if (!masp) { setStatus('Nhập MÃ SP trước', 'warn'); maspInput.focus(); return; }
-  setStatus('Chụp ảnh mới để ghi đè…');
-  openCamera(); // user gesture trực tiếp → iOS mở camera ổn định
-});
+    btnRetake.addEventListener('click', () => {
+      const masp = maspInput.value.trim();
+      if (!masp) { setStatus('Nhập MÃ SP trước', 'warn'); maspInput.focus(); return; }
+      setStatus('Chụp ảnh mới để ghi đè…');
+      openCamera(); // user gesture trực tiếp → iOS mở camera ổn định
+    });
 
     function showToast(msg) {
       toastEl.textContent = msg;
@@ -334,24 +353,24 @@ btnRetake.addEventListener('click', () => {
      * Mở camera & xử lý ảnh
      ********************/
 
-    // Kiểm tra tồn tại bằng HEAD để chắc chắn (không tải nội dung ảnh)
-    async function headExists(url) {
-      try {
-        const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-        return res.ok; // 200..299
-      } catch { return false; }
-    }
-
-    // Thử tất cả đuôi .JPG/.jpg/.PNG/.png, trả về {exists, keyFound}
+    // Kiểm tra tồn tại ảnh bằng Supabase API (ổn định hơn HEAD CDN)
     async function existsOnServer(masp) {
       const base = masp.trim().toUpperCase();
       for (const ext of EXT_CANDIDATES) {
         const key = base + ext;
-        const url = publicUrlFromKey(key);
-        if (await headExists(url)) return { exists: true, keyFound: key };
+        // Gọi API ký URL; nếu file không tồn tại sẽ trả error
+        const { data, error } = await supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .createSignedUrl(PATH_PREFIX + key, 1); // 1 giây đủ để biết có/không
+
+        if (!error && data?.signedUrl) {
+          return { exists: true, keyFound: key };
+        }
       }
       return { exists: false, keyFound: null };
     }
+
 
     function openCamera() {
       cameraInput.value = '';
@@ -378,10 +397,12 @@ btnRetake.addEventListener('click', () => {
         showToast('✔ Đã lưu');
         updateThumb(masp);
       } catch (err) {
-        console.error(err);
-        setStatus('Lưu ảnh KHÔNG thành công', 'warn');
-        showToast('✖ Lỗi lưu ảnh');
+        console.error('Upload error:', err);
+        const msg = (err && (err.message || err.error_description || err.error)) ? String(err.message || err.error_description || err.error) : 'KHÔNG rõ nguyên nhân';
+        setStatus('Lưu ảnh KHÔNG thành công: ' + msg, 'warn');
+        showToast('✖ Lỗi lưu ảnh: ' + msg);
       } finally {
+
         focusSelectInput();
       }
     });
@@ -411,39 +432,43 @@ btnRetake.addEventListener('click', () => {
     /********************
      * Kiểm tra mã & điều hướng luồng
      ********************/
-   async function handleCheck() {
-  const masp = maspInput.value.trim();
-  if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelectInput(); return; }
-  focusSelectInput();
+    async function handleCheck() {
+      const masp = maspInput.value.trim();
+      if (!masp || masp.length < 2) { setStatus('Mã sản phẩm chưa hợp lệ', 'warn'); focusSelectInput(); return; }
+      focusSelectInput();
 
-  // 1) Fast-path: cache
-  if (hasImageFor(masp)) {
-    setStatus('ĐÃ CÓ ẢNH', 'ok');
-    updateThumb(masp);
-    return;
-  }
+      // 1) Tra nhanh trong cache
+      if (hasImageFor(masp)) {
+        setStatus('ĐÃ CÓ ẢNH', 'ok');
+        updateThumb(masp);
+        return;
+      }
 
-  // 2) MỞ CAMERA NGAY (giữ user gesture)
-  setStatus('Đang kiểm tra… nếu chưa có sẽ chụp');
-  openCamera(); // <— mở ngay lập tức
+      // 2) Kiểm tra chắc chắn trên server (ổn định, tránh mở camera nhầm)
+      setStatus('Đang kiểm tra ảnh trên server…');
+      const { exists, keyFound } = await existsOnServer(masp);
 
-  // 3) Kiểm tra chắc chắn ở nền (HEAD)
-  existsOnServer(masp).then(({ exists, keyFound }) => {
-    if (exists) {
-      // Đồng bộ cache để lần sau nhanh
-      imageKeySet.add(keyFound);
-      imageKeySetLower.add(keyFound.toLowerCase());
-      saveCache();
+      if (exists) {
+        // Đồng bộ cache để lần sau nhanh tức thì
+        imageKeySet.add(keyFound);
+        imageKeySetLower.add(keyFound.toLowerCase());
+        saveCache();
 
-      setStatus('ĐÃ CÓ ẢNH (camera đang mở — có thể HUỶ nếu không muốn ghi đè)', 'ok');
-      updateThumb(masp);
-    } else {
-      setStatus('Chưa có ảnh → hãy chụp và lưu');
+        setStatus('ĐÃ CÓ ẢNH', 'ok');
+        updateThumb(masp);
+        return;
+      }
+
+      // 3) Không có ảnh thật → mở camera
+      setStatus('Chưa có ảnh. Bấm “Chèn ảnh mới” để chụp và lưu.');
+      updateThumb('');
+
+      if (AUTO_OPEN_CAMERA) {
+        // Tùy chọn: tự động mở camera (có thể bị iOS chặn nếu không còn trong user gesture)
+        openCamera();
+      }
+      // Mặc định: chờ người dùng bấm nút "Chèn ảnh mới" (ổn định nhất trên iOS)
     }
-  }).catch(() => {
-    // Không làm gì thêm: camera đã mở, người dùng vẫn có thể chụp
-  });
-}
 
     maspInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
