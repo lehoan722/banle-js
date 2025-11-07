@@ -97,12 +97,7 @@
     // Bỏ phần size sau "_" (VD: TL589-TD/DEN_39 -> TL589-TD/DEN)
     function stripSizeSuffix(masp){ const s=String(masp||'').trim(); const i=s.indexOf('_'); return i===-1? s : s.slice(0,i); }
     // Giữ A-Z 0-9 và các ký tự hợp lệ: - / ~ ; ký tự khác -> '-'
-    // Bỏ phần size sau "_" (VD: TL589-TD.DEN_38 -> TL589-TD.DEN)
-function stripSizeSuffix(masp) {
-  const s = String(masp || '').trim();
-  const idx = s.indexOf('_');
-  return idx === -1 ? s : s.slice(0, idx);
-}
+    
 
 // Giữ A–Z 0–9 và các ký tự hợp lệ: dấu gạch '-' , dấu chấm '.', dấu '/'
 function sanitizeBaseName(str) {
