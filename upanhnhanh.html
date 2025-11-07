@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8" />
   <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
-  <!-- Tối ưu iPhone 13 Pro Max dọc, chống zoom khi focus -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="format-detection" content="telephone=no" />
@@ -22,10 +21,8 @@
 
     .footer{ color:#666; font-size:12px; text-align:center; padding-bottom:10px; }
 
-    /* Ẩn nhưng vẫn có thể click (hợp lệ với iOS) */
     .ghost{ position:fixed; left:-9999px; width:1px; height:1px; opacity:0; }
 
-    /* Thanh đáy 2 hàng: MÃ SP (hàng 1) + 2 nút (hàng 2) */
     .bottombar{ position:fixed; left:0; right:0; bottom:0; z-index:50; background:#fff; box-shadow:0 -6px 16px rgba(0,0,0,.08); padding:10px; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
     .bottombar .bb-row1{ display:grid; grid-template-columns:1fr; }
     .bottombar .bb-row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
@@ -36,6 +33,9 @@
     button{ font-size:16px; padding:12px 14px; border:none; border-radius:12px; background:#111; color:#fff; }
     button.secondary{ background:#e5e7eb; color:#111; }
     button:disabled{ opacity:.6; }
+
+    .toast{ position:fixed; left:50%; bottom:16px; transform:translateX(-50%); background:rgba(17,17,17,.92); color:#fff; padding:10px 14px; border-radius:12px; font-size:14px; opacity:0; transition:opacity .25s ease, transform .25s ease; pointer-events:none; }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
   </style>
 </head>
 <body>
@@ -49,7 +49,6 @@
     <div class="footer">Chụp & lưu siêu nhanh • Tối ưu iPhone 13 Pro Max</div>
   </div>
 
-  <!-- Thanh đáy nhập MÃ & nút thao tác -->
   <div class="bottombar">
     <div class="bb-row1">
       <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…" aria-label="Mã sản phẩm" />
@@ -60,7 +59,6 @@
     </div>
   </div>
 
-  <!-- input camera ẩn, mở ngay khi cần -->
   <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -74,8 +72,8 @@
     const PATH_PREFIX    = window.PATH_PREFIX    || '';
 
     // Tự mở camera sau khi CHẮC CHẮN chưa có ảnh
-    const AUTO_OPEN_CAMERA  = true;      // Android/Desktop
-    const FORCE_AUTO_ON_IOS = true;     // iOS có thể chặn; bật true nếu muốn ép
+    const AUTO_OPEN_CAMERA  = true;  // Android/Desktop: auto
+    const FORCE_AUTO_ON_IOS = true;  // ÉP iOS cũng auto (có máy có thể chặn)
 
     // Đuôi ảnh có thể tồn tại
     const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
@@ -98,33 +96,34 @@
 
     // Bỏ phần size sau "_" (VD: TL589-TD/DEN_39 -> TL589-TD/DEN)
     function stripSizeSuffix(masp){ const s=String(masp||'').trim(); const i=s.indexOf('_'); return i===-1? s : s.slice(0,i); }
-    // Giữ A-Z 0-9 và các ký tự đặc biệt hợp lệ: - / ~ ; các ký tự khác -> '-'
+    // Giữ A-Z 0-9 và các ký tự hợp lệ: - / ~ ; ký tự khác -> '-'
     function sanitizeBaseName(str){
       const up = String(str||'').trim().toUpperCase();
       let out = up.replace(/[^A-Z0-9\/~_-]+/g,'-').replace(/-+/g,'-');
       out = out.replace(/\/-+/g,'/').replace(/-+\//g,'/').replace(/\/{2,}/g,'/');
-      out = out.replace(/^-+/,'').replace(/-+$/,'');
+      out = out.replace(/^-+/, '').replace(/-+$/, '');
       return out;
     }
-    const FILE_NAMER = (masp) => `${sanitizeBaseName(stripSizeSuffix(masp))}.JPG`;
+    // Base dùng để LƯU TRỮ: Supabase Storage KHÔNG chấp nhận '~' ⇒ ánh xạ '~' -> '-' khi ghi
+    function storageSafeBaseName(str){ return sanitizeBaseName(str).replace(/~/g, '-'); }
+
+    const FILE_NAMER = (masp) => `${storageSafeBaseName(stripSizeSuffix(masp))}.JPG`;
 
     function publicUrlFromKey(fileName){
       const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(PATH_PREFIX + fileName);
-      return (data?.publicUrl || '') + `?t=${Date.now()}`; // bust cache sau khi vừa upsert
+      return (data?.publicUrl || '') + `?t=${Date.now()}`; // bust cache
     }
 
     function isIOS(){ return /iP(hone|od|ad)/.test(navigator.platform) || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document); }
     function shouldAutoOpen(){ return AUTO_OPEN_CAMERA && (FORCE_AUTO_ON_IOS || !isIOS()); }
 
-    // Toast nhỏ
     const toastEl = $('#toast');
     function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),1500); }
 
-    // Xem ảnh lớn khi chạm thumb
     thumbImg?.addEventListener('click',()=>{ if(thumbImg.src) window.open(thumbImg.src,'_blank'); });
 
-    /******** CACHE TÊN ẢNH (RAM + localStorage + biến toàn cục) ********/
-    const CACHE_KEY='image_keys_v2'; const MAX_LIST=5000;
+    /******** CACHE TÊN ẢNH ********/
+    const CACHE_KEY='image_keys_v3'; const MAX_LIST=5000;
     let imageKeySet = new Set();
     let imageKeySetLower = new Set();
     function loadCache(){ try{ const raw=localStorage.getItem(CACHE_KEY); if(raw){ const o=JSON.parse(raw); if(Array.isArray(o.keys)){ imageKeySet=new Set(o.keys); imageKeySetLower=new Set(o.keys.map(k=>String(k).toLowerCase())); } } }catch{} }
@@ -132,7 +131,6 @@
     function updateGlobalNames(){ window.ANH_KEYS = Array.from(imageKeySet); }
 
     async function refreshKeysFromBucket(){
-      // Lưu ý: list chỉ list 1 cấp; các mã có '/' sẽ nằm trong thư mục con ⇒ ta vẫn dựa vào API exists() để chắc chắn
       let offset=0; const page=1000; const keys=[];
       while(offset<MAX_LIST){
         const {data,error}=await supabase.storage.from(STORAGE_BUCKET).list(PATH_PREFIX,{limit:page,offset,sortBy:{column:'name',order:'asc'}});
@@ -144,27 +142,29 @@
     }
 
     function hasImageFor(masp){
-      const base = sanitizeBaseName(stripSizeSuffix(masp));
-      for(const ext of EXT_CANDIDATES){ if(imageKeySetLower.has((base+ext).toLowerCase())) return true; }
+      const b1 = storageSafeBaseName(stripSizeSuffix(masp));
+      const b2 = sanitizeBaseName(stripSizeSuffix(masp));
+      for(const base of [b1,b2]){ for(const ext of EXT_CANDIDATES){ if(imageKeySetLower.has((base+ext).toLowerCase())) return true; } }
       return false;
     }
 
     function updateThumb(masp){
-      const base = sanitizeBaseName(stripSizeSuffix(masp));
-      let found=null; for(const ext of EXT_CANDIDATES){ if(imageKeySetLower.has((base+ext).toLowerCase())){ found=base+ext; break; } }
+      const candidates = []; const b1 = storageSafeBaseName(stripSizeSuffix(masp)); const b2 = sanitizeBaseName(stripSizeSuffix(masp));
+      for(const base of [b1,b2]){ for(const ext of EXT_CANDIDATES){ candidates.push(base+ext); } }
+      let found=null; for(const k of candidates){ if(imageKeySetLower.has(k.toLowerCase())){ found=k; break; } }
       if(!found){ thumb.style.display='none'; return; }
       thumb.style.display='flex'; thumbImg.src=publicUrlFromKey(found); thumbMeta.textContent=found;
     }
 
-    /******** KIỂM TRA TỒN TẠI ẢNH BẰNG SUPABASE API ********/
+    /******** KIỂM TRA TỒN TẠI (batch) ********/
     async function existsOnServer(masp){
-      const baseCandidates = [ sanitizeBaseName(stripSizeSuffix(masp)), String(stripSizeSuffix(masp)||'').trim().toUpperCase() ];
-      for(const base of baseCandidates){
-        for(const ext of EXT_CANDIDATES){
-          const key = base + ext;
-          const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(PATH_PREFIX+key, 1);
-          if(!error && data?.signedUrl){ return { exists:true, keyFound:key }; }
-        }
+      const b1 = storageSafeBaseName(stripSizeSuffix(masp));
+      const b2 = sanitizeBaseName(stripSizeSuffix(masp));
+      const bases = Array.from(new Set([b1,b2]));
+      const paths = []; for(const base of bases){ for(const ext of EXT_CANDIDATES){ paths.push(PATH_PREFIX+base+ext); } }
+      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 1);
+      if(!error && Array.isArray(data)){
+        for(let i=0;i<data.length;i++){ if(data[i]?.signedUrl){ const full=paths[i]; const key=full.startsWith(PATH_PREFIX)? full.slice(PATH_PREFIX.length):full; return { exists:true, keyFound:key }; } }
       }
       return { exists:false, keyFound:null };
     }
