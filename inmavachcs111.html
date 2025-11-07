@@ -119,11 +119,27 @@
                 padding: 0 !important;
             }
 
-            .print-preview * {
-                box-sizing: border-box;
-                margin: 0 !important;
-                padding: 0 !important;
+            @media print {
+                …
+
+                /* Giữ lại padding/margin của .print-preview (để canh lề mm không bị xóa) */
+                .print-preview * {
+                    box-sizing: border-box;
+                }
+
+                /* Chỉ reset margin/padding bên trong từng tem nếu muốn gọn */
+                .print-preview .tem,
+                .print-preview .tem * {
+                    margin: 0;
+                    padding: 0;
+                }
+
+                /* Bắt buộc giữ lùi xuống 2.5mm cho cột QR khi in */
+                .print-preview .qr-col {
+                    margin-top: 2.8mm !important;
+                }
             }
+
 
 
         }
@@ -754,11 +770,13 @@
               height:100%; margin:0; padding:0;">
     <div style="width:100%; margin:0; padding:0;">
 
-        <!-- MÃ SP (không xuống dòng, cắt bên trái) -->
-      <div style="font-size:9pt; line-height:1; white-space:nowrap;
-                  overflow:hidden; text-overflow:clip; direction:rtl; unicode-bidi:plaintext; margin:0;">
-        ${t.masp}
-      </div>
+        <!-- MÃ SP (span 2 cột, không cắt bên phải) -->
+<div style="grid-column:1 / span 2;
+            font-size:11pt; line-height:1; white-space:nowrap;
+            overflow:visible; text-overflow:clip; margin:0;">
+  ${t.masp}
+</div>
+      
 
         <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
       <div style="font-size:6pt;  line-height:1;
@@ -787,10 +805,12 @@
   </div>
 
   <!-- CỘT PHẢI: chỉ QR, ở hàng 3, cột 2 -->
-  <div style="grid-column:2; grid-row:3; 
-              display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
-              height:100%; margin:0; padding:0;">
-  <canvas class="qr" style="width:8.5mm; height:8.5mm;"></canvas>
+
+  
+  <div class="qr-col" style="grid-column:2; grid-row:3;
+            display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
+            margin:0; padding:0; margin-top:2.8mm;">
+  <canvas class="qr" style="width:8mm; height:8mm;"></canvas>
 
   ${(() => {
                         const s = (t.size ?? '').toString().trim();
@@ -1429,41 +1449,39 @@
         const mausacInput = document.getElementById('mausacInput');
         const maspInputEl = document.getElementById('maspInput');
 
-
         function updateMaspWithColorSuffix() {
-            if (!mausacInput || !maspInputEl) return;
+  if (!mausacInput || !maspInputEl) return;
 
-            const color = (mausacInput.value || '').trim();     // giữ nguyên người dùng gõ (không ép HOA)
-            if (!color) {
-                // Không nhập màu -> không thay MASP; chỉ đóng popup gợi ý mã SP nếu đang mở
-                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-                return;
-            }
+  const color = (mausacInput.value || '').trim(); // giữ nguyên người dùng gõ
+  if (!color) {
+    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+    return;
+  }
 
-            let masp = (maspInputEl.value || '').trim();
-            if (!masp) {
-                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-                return;
-            }
+  let masp = (maspInputEl.value || '').trim();
+  if (!masp) {
+    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+    return;
+  }
 
-            const slashIdx = masp.indexOf('/');
-            if (slashIdx === -1) {
-                masp = masp + '/' + color;
-            } else {
-                masp = masp.slice(0, slashIdx + 1) + color;
-            }
-            maspInputEl.value = masp;
+  // Dùng ~ làm ký tự phân màu. Nếu trước đây có '/', chuẩn hoá luôn về '~'
+  masp = masp.replace(/\//g, '~');
 
-            // 🔧 Quan trọng: đổi MASP rồi thì coi như trạng thái THÊM MỚI
-            // Tránh nhánh update chạy vào mã mới (chưa tồn tại)
-            isEditMode = false;
-            window.isEditMode = false;
-            // bỏ khung màu xanh sửa (nếu có)
-            document.getElementById('addProductForm').style.border = '';
+  const tildeIdx = masp.indexOf('~');
+  if (tildeIdx === -1) {
+    masp = masp + '~' + color;
+  } else {
+    masp = masp.slice(0, tildeIdx + 1) + color;
+  }
+  maspInputEl.value = masp;
 
-            // Đóng popup gợi ý mã sản phẩm theo yêu cầu
-            if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-        }
+  // Chuyển sang trạng thái THÊM MỚI
+  isEditMode = false;
+  window.isEditMode = false;
+  document.getElementById('addProductForm').style.border = '';
+
+  if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+}
 
         // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
         mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
