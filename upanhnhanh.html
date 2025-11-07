@@ -97,17 +97,30 @@
     // Bỏ phần size sau "_" (VD: TL589-TD/DEN_39 -> TL589-TD/DEN)
     function stripSizeSuffix(masp){ const s=String(masp||'').trim(); const i=s.indexOf('_'); return i===-1? s : s.slice(0,i); }
     // Giữ A-Z 0-9 và các ký tự hợp lệ: - / ~ ; ký tự khác -> '-'
-    function sanitizeBaseName(str){
-      const up = String(str||'').trim().toUpperCase();
-      let out = up.replace(/[^A-Z0-9\/~_-]+/g,'-').replace(/-+/g,'-');
-      out = out.replace(/\/-+/g,'/').replace(/-+\//g,'/').replace(/\/{2,}/g,'/');
-      out = out.replace(/^-+/, '').replace(/-+$/, '');
-      return out;
-    }
-    // Base dùng để LƯU TRỮ: Supabase Storage KHÔNG chấp nhận '~' ⇒ ánh xạ '~' -> '-' khi ghi
-    function storageSafeBaseName(str){ return sanitizeBaseName(str).replace(/~/g, '-'); }
+    // Bỏ phần size sau "_" (VD: TL589-TD.DEN_38 -> TL589-TD.DEN)
+function stripSizeSuffix(masp) {
+  const s = String(masp || '').trim();
+  const idx = s.indexOf('_');
+  return idx === -1 ? s : s.slice(0, idx);
+}
 
-    const FILE_NAMER = (masp) => `${storageSafeBaseName(stripSizeSuffix(masp))}.JPG`;
+// Giữ A–Z 0–9 và các ký tự hợp lệ: dấu gạch '-' , dấu chấm '.', dấu '/'
+function sanitizeBaseName(str) {
+  const up = String(str || '').trim().toUpperCase();
+  // Cho phép . - / ; ký tự khác -> '-'
+  let out = up.replace(/[^A-Z0-9\/.\s_-]+/g, '-').replace(/-+/g, '-');
+  // Làm sạch quanh '/'
+  out = out.replace(/\/-+/g, '/').replace(/-+\//g, '/').replace(/\/{2,}/g, '/');
+  // Bỏ '-' thừa đầu/cuối
+  out = out.replace(/^-+/, '').replace(/-+$/, '');
+  // Bỏ khoảng trắng quanh dấu chấm
+  out = out.replace(/\s*\.\s*/g, '.');
+  return out;
+}
+
+// LUÔN lưu đuôi IN HOA .JPG và đã bỏ _SIZE
+const FILE_NAMER = (masp) => `${sanitizeBaseName(stripSizeSuffix(masp))}.JPG`;
+
 
     function publicUrlFromKey(fileName){
       const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(PATH_PREFIX + fileName);
@@ -141,33 +154,49 @@
       if(keys.length){ imageKeySet=new Set(keys); imageKeySetLower=new Set(keys.map(k=>k.toLowerCase())); saveCache(); updateGlobalNames(); }
     }
 
-    function hasImageFor(masp){
-      const b1 = storageSafeBaseName(stripSizeSuffix(masp));
-      const b2 = sanitizeBaseName(stripSizeSuffix(masp));
-      for(const base of [b1,b2]){ for(const ext of EXT_CANDIDATES){ if(imageKeySetLower.has((base+ext).toLowerCase())) return true; } }
-      return false;
-    }
+    function hasImageFor(masp) {
+  const base = sanitizeBaseName(stripSizeSuffix(masp));
+  for (const ext of EXT_CANDIDATES) {
+    if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
+  }
+  return false;
+}
 
-    function updateThumb(masp){
-      const candidates = []; const b1 = storageSafeBaseName(stripSizeSuffix(masp)); const b2 = sanitizeBaseName(stripSizeSuffix(masp));
-      for(const base of [b1,b2]){ for(const ext of EXT_CANDIDATES){ candidates.push(base+ext); } }
-      let found=null; for(const k of candidates){ if(imageKeySetLower.has(k.toLowerCase())){ found=k; break; } }
-      if(!found){ thumb.style.display='none'; return; }
-      thumb.style.display='flex'; thumbImg.src=publicUrlFromKey(found); thumbMeta.textContent=found;
-    }
+
+    function updateThumb(masp) {
+  const base = sanitizeBaseName(stripSizeSuffix(masp));
+  let found = null;
+  for (const ext of EXT_CANDIDATES) {
+    const key = base + ext;
+    if (imageKeySetLower.has(key.toLowerCase())) { found = key; break; }
+  }
+  if (!found) { thumb.style.display = 'none'; return; }
+  thumb.style.display = 'flex';
+  thumbImg.src = publicUrlFromKey(found);
+  thumbMeta.textContent = found;
+}
+
 
     /******** KIỂM TRA TỒN TẠI (batch) ********/
-    async function existsOnServer(masp){
-      const b1 = storageSafeBaseName(stripSizeSuffix(masp));
-      const b2 = sanitizeBaseName(stripSizeSuffix(masp));
-      const bases = Array.from(new Set([b1,b2]));
-      const paths = []; for(const base of bases){ for(const ext of EXT_CANDIDATES){ paths.push(PATH_PREFIX+base+ext); } }
-      const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 1);
-      if(!error && Array.isArray(data)){
-        for(let i=0;i<data.length;i++){ if(data[i]?.signedUrl){ const full=paths[i]; const key=full.startsWith(PATH_PREFIX)? full.slice(PATH_PREFIX.length):full; return { exists:true, keyFound:key }; } }
+    async function existsOnServer(masp) {
+  const base = sanitizeBaseName(stripSizeSuffix(masp));
+  const paths = EXT_CANDIDATES.map(ext => PATH_PREFIX + base + ext);
+  const { data, error } = await supabase
+    .storage.from(STORAGE_BUCKET)
+    .createSignedUrls(paths, 1);
+
+  if (!error && Array.isArray(data)) {
+    for (let i = 0; i < data.length; i++) {
+      if (data[i]?.signedUrl) {
+        const full = paths[i];
+        const key = full.startsWith(PATH_PREFIX) ? full.slice(PATH_PREFIX.length) : full;
+        return { exists: true, keyFound: key };
       }
-      return { exists:false, keyFound:null };
     }
+  }
+  return { exists: false, keyFound: null };
+}
+
 
     /******** MỞ CAMERA & UPLOAD ********/
     function openCamera(){ cameraInp.value=''; cameraInp.click(); }
