@@ -1449,13 +1449,11 @@
         const mausacInput = document.getElementById('mausacInput');
         const maspInputEl = document.getElementById('maspInput');
 
-
         function updateMaspWithColorSuffix() {
             if (!mausacInput || !maspInputEl) return;
 
-            const color = (mausacInput.value || '').trim();     // giữ nguyên người dùng gõ (không ép HOA)
+            const color = (mausacInput.value || '').trim(); // giữ nguyên người dùng gõ
             if (!color) {
-                // Không nhập màu -> không thay MASP; chỉ đóng popup gợi ý mã SP nếu đang mở
                 if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
                 return;
             }
@@ -1466,25 +1464,24 @@
                 return;
             }
 
-            const slashIdx = masp.indexOf('/');
-            if (slashIdx === -1) {
-                masp = masp + '/' + color;
+            // Dùng . làm ký tự phân màu. Nếu trước đây có '/', chuẩn hoá luôn về '.'
+            masp = masp.replace(/\//g, '.');
+
+            const tildeIdx = masp.indexOf('.');
+            if (tildeIdx === -1) {
+                masp = masp + '.' + color;
             } else {
-                masp = masp.slice(0, slashIdx + 1) + color;
+                masp = masp.slice(0, tildeIdx + 1) + color;
             }
             maspInputEl.value = masp;
 
-            // 🔧 Quan trọng: đổi MASP rồi thì coi như trạng thái THÊM MỚI
-            // Tránh nhánh update chạy vào mã mới (chưa tồn tại)
+            // Chuyển sang trạng thái THÊM MỚI
             isEditMode = false;
             window.isEditMode = false;
-            // bỏ khung màu xanh sửa (nếu có)
             document.getElementById('addProductForm').style.border = '';
 
-            // Đóng popup gợi ý mã sản phẩm theo yêu cầu
             if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
         }
-
         // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
         mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
 
