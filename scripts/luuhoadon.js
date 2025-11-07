@@ -1,11 +1,12 @@
 // luuhoadon.js
 import { supabase } from './supabaseClient.js';
 import { resetBangKetQua, getBangKetQua } from './hoadon.js';
-import { capNhatBangHTML } from './bangketqua.js';
+
 import { capNhatThongTinTong } from './utils.js';
-import { capNhatSoHoaDonTuDong, phatSinhSoHDTMoi } from './sohoadon.js';
+import { capNhatSoHoaDonTuDong } from './sohoadon.js';
+
 import { guiHoaDonViettel } from './viettelInvoice.js';
-import { napLaiChiTietHoaDon } from './hoadon.js';
+
 
 async function hoaDonDaTonTai(sohd) {
     if (!sohd) return false;
@@ -20,6 +21,38 @@ async function hoaDonDaTonTai(sohd) {
 
 // === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
 window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
+
+// === Helpers chung, dùng lại toàn file ===
+const getInt = (id) => parseInt((document.getElementById(id)?.value || "").replace(/[.,]/g, "") || "0", 10);
+
+// Chuẩn hoá mảng size: rỗng -> "0"
+function normalizeBangKetQua(bkq) {
+    if (!bkq) return;
+    Object.values(bkq).forEach(item => {
+        if (Array.isArray(item?.sizes)) {
+            item.sizes = item.sizes.map(sz => {
+                const s = String(sz ?? "").trim();
+                return s === "" ? "0" : s;
+            });
+        }
+    });
+}
+
+// Lấy địa điểm từ prefix loại
+function getDiaDiemFromLoai(loai) {
+    return (String(loai).toLowerCase().includes("cs2")) ? "cs2" : "cs1";
+}
+
+// Kiểm tra trùng số ở cả 2 bảng bán lẻ (chính và T)
+async function hoaDonDaTonTaiAny(sohd) {
+    if (!sohd) return false;
+    const [r1, r2] = await Promise.all([
+        supabase.from("hoadon_banle").select("sohd").eq("sohd", sohd).maybeSingle(),
+        supabase.from("hoadon_banleT").select("sohd").eq("sohd", sohd).maybeSingle()
+    ]);
+    return !!(r1?.data || r2?.data);
+}
+
 
 // ===== Modal "Số hóa đơn đã tồn tại" với 2 nút to (Tạo mới / Sửa) =====
 function ensureExistDialog() {
@@ -352,7 +385,7 @@ export async function luuHoaDonQuaAPI() {
 
     // 2) KHỐI SỐ ĐẶC BIỆT (phải đứng SAU dòng trên)
     if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
+        const existed = await hoaDonDaTonTaiAny(sohd);
         if (!existed && await handleSpecialSoHoaDon(sohd)) {
             return; // đã lưu 2 bản xong thì thoát sớm
         }
@@ -360,7 +393,7 @@ export async function luuHoaDonQuaAPI() {
 
     // 3) Hỏi nếu số đang gõ bị trùng (vẫn đứng SAU)
     if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
+        const existed = await hoaDonDaTonTaiAny(sohd);
         if (existed) {
             const choice = await showExistDialog(sohd);
             if (choice === 'edit') {
@@ -371,19 +404,7 @@ export async function luuHoaDonQuaAPI() {
             // choice === 'new' → để NEW tiếp, RPC sẽ cấp số mới
         }
     }
-
-    // → các nhánh NEW/EDIT giữ nguyên như bạn đang có
-
-
-
-    // === NHÁNH NEW ===
-    if (!IS_EDIT) {
-        // (giữ nguyên toàn bộ code nhánh NEW của bạn ở dưới đây: lấy loai từ #sohd, header, RPC save_new_header, insert chi tiết, in, lamMoiSauKhiLuu, return)
-    }
-
-    // === NHÁNH EDIT ===
-    // (giữ nguyên toàn bộ code EDIT hiện có của bạn – xoá ct_hoadon_banle & hoadon_banle, rồi insert lại, in, lamMoiSauKhiLuu)
-
+   
 
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
 
@@ -433,8 +454,10 @@ export async function luuHoaDonQuaAPI() {
         const sohdThucTe = rpcRes[0].sohd;
         document.getElementById("sohd").value = sohdThucTe;
 
+        normalizeBangKetQua(getBangKetQua());
         const createdAt = new Date().toISOString();
         const bangKetQuaNEW = getBangKetQua();
+
         const chitiet = [];
         Object.values(bangKetQuaNEW).forEach(item => {
             item.sizes.forEach((sz, i) => {
@@ -460,6 +483,7 @@ export async function luuHoaDonQuaAPI() {
         if (errCT) {
             alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
             console.error(errCT);
+            await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
             return;
         }
 
@@ -586,7 +610,7 @@ export async function luuHoaDonNhapQuaAPI() {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌nhap Bạn chưa nhập tên nhân viên nhập hàng.");
+    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên nhập hàng.");
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
@@ -652,12 +676,15 @@ export async function luuHoaDonNhapQuaAPI() {
             alert("❌ Lưu HĐ nhập thất bại (cấp số).");
             return;
         }
+        
 
         const sohdThucTe = rpcRes[0].sohd;
         document.getElementById("sohd").value = sohdThucTe;
-
+        normalizeBangKetQua(getBangKetQua());
         const createdAt = new Date().toISOString();
         const bangKetQuaNEW = getBangKetQua();
+
+       
         const chitiet = [];
         Object.values(bangKetQuaNEW).forEach(item => {
             item.sizes.forEach((sz, i) => {
@@ -688,6 +715,7 @@ export async function luuHoaDonNhapQuaAPI() {
         if (errCT) {
             alert("❌ Lỗi khi lưu chi tiết nhập.");
             console.error(errCT);
+            await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
             return;
         }
 
@@ -811,6 +839,14 @@ export async function luuHoaDonNhapQuaAPI() {
 export async function luuHoaDonCaHaiBan() {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
+    // Chuẩn hoá size trước khi build chi tiết
+    normalizeBangKetQua(getBangKetQua());
+
+    // Chặn trùng số ở cả 2 bảng ngay từ đầu
+    if (await hoaDonDaTonTaiAny(sohd)) {
+        alert("🚫 Số hóa đơn đã tồn tại ở hệ thống (bảng bán lẻ hoặc bán lẻ T). Vui lòng đổi số khác!");
+        return;
+    }
 
     // ==== CHẶN LƯU 2 BẢN NẾU LÀ HÓA ĐƠN CŨ (<=) NGAY ĐẦU HÀM ====
     const [loai, soStr] = sohd.split('_');
@@ -943,15 +979,24 @@ export async function luuHoaDonCaHaiBan() {
     const { error: errHDT } = await supabase.from("hoadon_banleT").insert([hoadonPhu]);
     const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
 
-    if (!errHD && !errCT && !errHDT && !errCTT) {
-        alert("✅ Đã lưu hóa đơn thành công!");
-        //alert(`✅ Đã lưu hóa đơn vào cả hai bảng!\nSố CT chính: ${sohd}\nSố CT phụ: ${sohdT}`);
-        inHoaDon(hoadonChinh, chitietChinh);
-        await lamMoiSauKhiLuu();
+    if (errHD || errCT || errHDT || errCTT) {
+        // 🧹 Rollback bồi hoàn 4 bảng (an toàn khi một số lệnh có thể chưa chèn được)
+        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        await supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohdT);
+        await supabase.from("hoadon_banleT").delete().eq("sohd", sohdT);
 
-        // ✅ Gửi hóa đơn điện tử sau khi lưu bảng T thành công
-        guiHoaDonViettel(sohdT);
+        alert("❌ Lưu 2 bản thất bại, đã hoàn tác các bản ghi liên quan. Vui lòng thử lại.");
+        console.error({ errHD, errCT, errHDT, errCTT });
+        return;
     }
+
+    // ✅ Thành công
+    alert("✅ Đã lưu hóa đơn thành công!");
+    inHoaDon(hoadonChinh, chitietChinh);
+    await lamMoiSauKhiLuu();
+    guiHoaDonViettel(sohdT);
+
 }
 
 async function lamMoiSauKhiLuu() {
@@ -1073,6 +1118,7 @@ export async function luuHoaDonccn1v2() {
     const diadiemSRC = CCN_CTX.src.toLowerCase();
 
     capNhatThongTinTong(getBangKetQua());
+    normalizeBangKetQua(getBangKetQua());
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
