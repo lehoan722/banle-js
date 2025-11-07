@@ -1464,12 +1464,12 @@
     return;
   }
 
-  // Dùng ~ làm ký tự phân màu. Nếu trước đây có '/', chuẩn hoá luôn về '~'
-  masp = masp.replace(/\//g, '~');
+  // Dùng . làm ký tự phân màu. Nếu trước đây có '/', chuẩn hoá luôn về '.'
+  masp = masp.replace(/\//g, '.');
 
-  const tildeIdx = masp.indexOf('~');
+  const tildeIdx = masp.indexOf('.');
   if (tildeIdx === -1) {
-    masp = masp + '~' + color;
+    masp = masp + '.' + color;
   } else {
     masp = masp.slice(0, tildeIdx + 1) + color;
   }
