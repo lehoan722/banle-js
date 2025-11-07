@@ -306,6 +306,13 @@ function renderOnlySizeNumber(instance, td, row, col, prop, value) {
     td.className = 'htDimmed';
 }
 
+// Hiển thị trống nếu giá trị là 0 (không đụng dữ liệu gốc)
+function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
+  const display = (value === 0 || value === '0') ? '' : value;
+  Handsontable.renderers.TextRenderer.apply(this, [instance, td, row, col, prop, display, cellProperties]);
+}
+
+
 // ===== 4) Render Handsontable + đồng bộ ảnh =====
 function renderHOT(rows) {
     const container = document.getElementById('hot');
@@ -335,15 +342,30 @@ hot = null;
         columnSorting: true,
         height: '100%',
         stretchH: 'all',
-        cells: (row, col, prop) => {
+       cells(row, col, prop) {
   const cell = {};
   const r = rows[row];
+
+  // DÒNG TỔNG: giữ readonly cho cột sl_chuyen nếu bạn đã có logic này
   if (r && r.__isSum) {
     cell.className = 'sumRow';
-    if (prop === 'sl_chuyen') cell.readOnly = true; // khoá ở dòng Tổng
+    if (prop === 'sl_chuyen') cell.readOnly = true;
+  }
+
+  // Áp renderer 0→trống cho các cột số
+  const numericProps = [
+    'cs1','cs2','tong','sl_chuyen',
+    'nhapmua','cuoiky',
+    'xuatban_cs1','xuatban_cs2',
+    'xuatchinhanh_cs1','xuatchinhanh_cs2'
+  ];
+  if (numericProps.includes(prop)) {
+    cell.renderer = zeroBlankRenderer;
+    cell.type = 'numeric'; // vẫn để type numeric để tính toán/sort/validate như cũ
   }
   return cell;
 },
+
 
 
         afterSelectionEnd(r) {
