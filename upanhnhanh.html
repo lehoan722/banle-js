@@ -227,9 +227,22 @@
     const STORAGE_BUCKET = window.STORAGE_BUCKET || 'anhsanpham'; // tên bucket lưu ảnh
     const PATH_PREFIX = window.PATH_PREFIX || ''; // ví dụ 'products/' nếu bạn để trong thư mục con của bucket
 
+    const AUTO_OPEN_CAMERA = true;     // Tự mở camera khi chắc chắn chưa có ảnh
+const FORCE_AUTO_ON_IOS = false;   // Nếu muốn ép iOS cũng auto, đổi thành true (có thể bị chặn)
+
+
+    // Chuẩn hoá key lưu file: CHỈ giữ A-Z 0-9 - _
+    function sanitizeBaseName(str) {
+      const up = String(str || '').trim().toUpperCase();
+      return up.replace(/[^A-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^[-_]+|[-_]+$/g, '');
+    }
+
+
     // Tên file theo chuẩn trang 222 (tùy biến nếu cần)
     // Tên file khi UPLOAD: thống nhất .JPG để khớp hệ thống cũ
-    const FILE_NAMER = (masp) => `${masp.trim().toUpperCase()}.JPG`;
+
+    const FILE_NAMER = (masp) => `${sanitizeBaseName(masp)}.JPG`;
+
     // Các đuôi ảnh có thể đã tồn tại từ trước
     const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
 
@@ -306,6 +319,12 @@
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] })); } catch { }
     }
 
+    function updateGlobalNames() {
+  // Mảng tên file hiện có (để bạn kiểm tra nhanh trong console hoặc dùng lại)
+  window.ANH_KEYS = Array.from(imageKeySet);
+}
+
+
     async function refreshKeysFromBucket() {
       let offset = 0; const page = 1000;
       const keys = [];
@@ -323,8 +342,17 @@
         imageKeySet = new Set(keys);
         imageKeySetLower = new Set(keys.map(k => k.toLowerCase()));
         saveCache();
+        updateGlobalNames();
       }
     }
+
+    function isIOS() {
+  return /iP(hone|od|ad)/.test(navigator.platform)
+      || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document);
+}
+function shouldAutoOpenCamera() {
+  return AUTO_OPEN_CAMERA && (FORCE_AUTO_ON_IOS || !isIOS());
+}
 
 
     function hasImageFor(masp) {
@@ -353,19 +381,19 @@
      * Mở camera & xử lý ảnh
      ********************/
 
-    // Kiểm tra tồn tại ảnh bằng Supabase API (ổn định hơn HEAD CDN)
+    // Kiểm tra tồn tại ảnh bằng Supabase API (ổn định, không dùng HEAD CDN)
     async function existsOnServer(masp) {
-      const base = masp.trim().toUpperCase();
-      for (const ext of EXT_CANDIDATES) {
-        const key = base + ext;
-        // Gọi API ký URL; nếu file không tồn tại sẽ trả error
-        const { data, error } = await supabase
-          .storage
-          .from(STORAGE_BUCKET)
-          .createSignedUrl(PATH_PREFIX + key, 1); // 1 giây đủ để biết có/không
-
-        if (!error && data?.signedUrl) {
-          return { exists: true, keyFound: key };
+      const bases = [
+        sanitizeBaseName(masp),           // chuẩn hoá (khuyên dùng)
+        String(masp || '').trim().toUpperCase() // nguyên bản in hoa
+      ];
+      for (const base of bases) {
+        for (const ext of EXT_CANDIDATES) {
+          const key = base + ext;
+          const { data, error } = await supabase
+            .storage.from(STORAGE_BUCKET)
+            .createSignedUrl(PATH_PREFIX + key, 1); // có = tồn tại, lỗi = không có
+          if (!error && data?.signedUrl) return { exists: true, keyFound: key };
         }
       }
       return { exists: false, keyFound: null };
@@ -392,6 +420,7 @@
         imageKeySet.add(key);
         imageKeySetLower.add(key.toLowerCase());
         saveCache();
+        updateGlobalNames();
 
         setStatus('Lưu ảnh thành công', 'ok');
         showToast('✔ Đã lưu');
@@ -460,13 +489,15 @@
       }
 
       // 3) Không có ảnh thật → mở camera
-      setStatus('Chưa có ảnh. Bấm “Chèn ảnh mới” để chụp và lưu.');
-      updateThumb('');
+      setStatus('Chưa có ảnh. Sẽ mở camera để chụp…');
+updateThumb('');
 
-      if (AUTO_OPEN_CAMERA) {
-        // Tùy chọn: tự động mở camera (có thể bị iOS chặn nếu không còn trong user gesture)
-        openCamera();
-      }
+if (shouldAutoOpenCamera()) {
+  openCamera();                    // Android/Desktop: auto mở
+} else {
+  setStatus('Chưa có ảnh. Bấm “Chèn ảnh mới” để chụp (iPhone chế độ an toàn).');
+}
+
       // Mặc định: chờ người dùng bấm nút "Chèn ảnh mới" (ổn định nhất trên iOS)
     }
 
@@ -483,6 +514,7 @@
      * Khởi động
      ********************/
     loadCache(); // dùng cache ngay để kiểm tra tức thì
+    updateGlobalNames();
     focusSelectInput();
     // Làm mới danh sách key ở nền (không chặn UI)
     refreshKeysFromBucket().catch(console.warn);
