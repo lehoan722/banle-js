@@ -239,6 +239,47 @@
                     onclick="toggleTools()">⋯</button>
             </div>
 
+            <!-- Popup tìm kiếm dùng chung -->
+        <div id="popupSearch">
+            <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+                <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus />
+                <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+            </div>
+            <div id="popupSearchList"></div>
+        </div>
+
+        <!-- Scanner Modal (giữ nguyên) -->
+        <div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;">
+            <div
+                style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,720px);background:#000;border-radius:12px;overflow:hidden">
+                <div style="position:relative;background:#000">
+                    <video id="scannerVideo" playsinline autoplay muted
+                        style="width:100%;height:auto;background:#000"></video>
+                    <div
+                        style="position:absolute;inset:12% 12%;border:2px solid rgba(255,255,255,.8);border-radius:10px;pointer-events:none;">
+                    </div>
+                    <div id="scannerStatus"
+                        style="position:absolute;left:12px;bottom:10px;color:#fff;font-weight:600;text-shadow:0 1px 2px #000">
+                    </div>
+                </div>
+                <div
+                    style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px;background:#111;color:#eee">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select id="cameraSelect" style="max-width:48vw"></select>
+                        <button id="flashBtn" class="popup-btn" style="background:#222;border-color:#666;color:#eee">🔦
+                            Đèn</button>
+                        <label class="popup-btn" style="background:#222;border-color:#666;color:#eee;cursor:pointer">
+                            Ảnh có sẵn
+                            <input id="filePicker" type="file" accept="image/*" capture="environment" hidden />
+                        </label>
+                    </div>
+                    <button id="closeScanner" class="popup-btn"
+                        style="background:#e57373;border-color:#c62828;color:#fff">Đóng</button>
+                </div>
+            </div>
+        </div>
+
+
             <!-- Dòng thông báo (tự ẩn khi trống) -->
             <div id="statusMsg" class="status-line"></div>
             <div id="flashOverlay"></div>
@@ -297,49 +338,7 @@
             <div class="img-wrap">
                 <img id="productImage" alt="Ảnh sản phẩm" />
             </div>
-        </div>
-
-
-        <!-- Popup tìm kiếm dùng chung -->
-        <div id="popupSearch">
-            <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-                <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus />
-                <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
-            </div>
-            <div id="popupSearchList"></div>
-        </div>
-
-        <!-- Scanner Modal (giữ nguyên) -->
-        <div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;">
-            <div
-                style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,720px);background:#000;border-radius:12px;overflow:hidden">
-                <div style="position:relative;background:#000">
-                    <video id="scannerVideo" playsinline autoplay muted
-                        style="width:100%;height:auto;background:#000"></video>
-                    <div
-                        style="position:absolute;inset:12% 12%;border:2px solid rgba(255,255,255,.8);border-radius:10px;pointer-events:none;">
-                    </div>
-                    <div id="scannerStatus"
-                        style="position:absolute;left:12px;bottom:10px;color:#fff;font-weight:600;text-shadow:0 1px 2px #000">
-                    </div>
-                </div>
-                <div
-                    style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px;background:#111;color:#eee">
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select id="cameraSelect" style="max-width:48vw"></select>
-                        <button id="flashBtn" class="popup-btn" style="background:#222;border-color:#666;color:#eee">🔦
-                            Đèn</button>
-                        <label class="popup-btn" style="background:#222;border-color:#666;color:#eee;cursor:pointer">
-                            Ảnh có sẵn
-                            <input id="filePicker" type="file" accept="image/*" capture="environment" hidden />
-                        </label>
-                    </div>
-                    <button id="closeScanner" class="popup-btn"
-                        style="background:#e57373;border-color:#c62828;color:#fff">Đóng</button>
-                </div>
-            </div>
-        </div>
-
+        </div>       
 
 
         <script>
