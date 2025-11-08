@@ -659,70 +659,89 @@
     </script>
 
     <script>
-/* Gom nhóm mỗi sản phẩm trong #multiDetailBox thành 1 .multi-item (trái: bảng, phải: ảnh) */
+/* Gom nhóm mỗi sản phẩm trong #multiDetailBox thành 1 .multi-item (trái: bảng, phải: ảnh) – phiên bản an toàn */
 (function normalizeMulti(){
   const box = document.getElementById('multiDetailBox');
   if (!box) return;
 
   function rebuild(){
-    // Bỏ wrapper cũ nếu có (tránh lồng nhiều lần)
-    Array.from(box.querySelectorAll('.multi-item')).forEach(w => {
-      const frag = document.createDocumentFragment();
-      while (w.firstChild) frag.appendChild(w.firstChild);
-      w.replaceWith(frag);
-    });
+    try{
+      // Bỏ wrapper cũ nếu có (tránh lồng nhiều lần)
+      Array.from(box.querySelectorAll('.multi-item')).forEach(w => {
+        const frag = document.createDocumentFragment();
+        while (w.firstChild) frag.appendChild(w.firstChild);
+        w.replaceWith(frag);
+      });
 
-    const children = Array.from(box.children);
-    let i = 0;
-    while (i < children.length){
-      // Nếu phần tử hiện tại đã là wrapper mới thì bỏ qua
-      if (children[i].classList && children[i].classList.contains('multi-item')) { i++; continue; }
+      // Duyệt tuần tự các node con hiện tại
+      let node = box.firstChild;
+      while (node){
+        // Bỏ qua wrapper mới (nếu còn sót)
+        if (node.nodeType === 1 && node.classList.contains('multi-item')){
+          node = node.nextSibling;
+          continue;
+        }
 
-      // Gom phần "trái" cho tới khi gặp IMG (ảnh) hoặc hết
-      const leftParts = [];
-      while (i < children.length &&
-             children[i].tagName !== 'IMG' &&
-             !(children[i].classList && children[i].classList.contains('multi-item'))){
-        leftParts.push(children[i]);
-        i++;
+        // Gom các phần tử "bảng/thông tin" cho tới khi gặp IMG hoặc hết
+        const leftParts = [];
+        let cursor = node;
+        while (cursor && !(cursor.nodeType === 1 && cursor.tagName === 'IMG') &&
+               !(cursor.nodeType === 1 && cursor.classList.contains('multi-item'))){
+          const next = cursor.nextSibling;     // lưu next trước khi di chuyển
+          leftParts.push(cursor);
+          cursor = next;
+        }
+
+        // Nếu không gom được gì thì thoát vòng (tránh lặp vô hạn)
+        if (leftParts.length === 0){
+          node = cursor || null;
+          continue;
+        }
+
+        // Ảnh (nếu phần tử kế tiếp là IMG)
+        let imgEl = null;
+        if (cursor && cursor.nodeType === 1 && cursor.tagName === 'IMG'){
+          imgEl = cursor;
+          cursor = cursor.nextSibling;
+        }
+
+        // Tạo wrapper & cột trái/phải
+        const wrap  = document.createElement('div');
+        wrap.className = 'multi-item';
+        const left  = document.createElement('div');
+        left.className = 'mi-left';
+        const right = document.createElement('aside');
+        right.className = 'mi-right';
+
+        // Chèn wrapper VÀO VỊ TRÍ CỦA PHẦN TỬ ĐẦU TIÊN (anchor)
+        const anchor = leftParts[0];
+        box.insertBefore(wrap, anchor);
+
+        // Di chuyển các phần tử sang bên trái
+        leftParts.forEach(el => left.appendChild(el));
+
+        // Di chuyển ảnh (nếu có) sang bên phải
+        if (imgEl) right.appendChild(imgEl);
+
+        // Gắn trái/phải vào wrapper
+        wrap.appendChild(left);
+        wrap.appendChild(right);
+
+        // Tiếp tục duyệt từ node hiện tại (cursor đã là phần tử sau nhóm)
+        node = cursor;
       }
-      // Ảnh (nếu có)
-      let imgEl = null;
-      if (i < children.length && children[i].tagName === 'IMG'){
-        imgEl = children[i];
-        i++;
-      }
-
-      if (leftParts.length === 0 && !imgEl) break; // không có gì để gom
-
-      // Tạo wrapper 2 cột
-      const wrap = document.createElement('div');
-      wrap.className = 'multi-item';
-
-      const left = document.createElement('div');
-      left.className = 'mi-left';
-      leftParts.forEach(el => left.appendChild(el));
-
-      const right = document.createElement('aside');
-      right.className = 'mi-right';
-      if (imgEl) right.appendChild(imgEl);
-
-      wrap.appendChild(left);
-      wrap.appendChild(right);
-
-      // Chèn wrapper tại vị trí cũ của phần tử đầu tiên trong nhóm
-      const anchor = leftParts[0] || imgEl;
-      if (anchor) box.insertBefore(wrap, anchor);
+    }catch(err){
+      console.error('normalizeMulti error:', err);
+      // Nếu có lỗi, không làm gì thêm để tránh "trắng trang"
     }
   }
 
   // Chạy ngay và tự rebuild khi kết quả multi thay đổi
   rebuild();
   new MutationObserver(() => { setTimeout(rebuild, 0); })
-    .observe(box, { childList: true, subtree: false });
+    .observe(box, { childList: true });
 })();
 </script>
-
 
 
 
