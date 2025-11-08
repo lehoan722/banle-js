@@ -7,6 +7,30 @@ let coSo = window.coSo || 'cs1'; // Lấy từ HTML truyền vào
 //let coSo = 'cs1'; // cs1 hoặc cs2
 
 const SIZE_FIELDS = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+
+// Cho phép dấu . và / trong mã
+const MASP_ALLOWED_REGEX = /^[A-Z0-9.\-\/]+$/;
+
+// Chuẩn hóa 1 dòng: cắt hậu tố _SIZE (nếu có) và đưa về UPPER
+function normalizeMaspLine(line) {
+  let s = (line || "").toUpperCase().trim();
+  // Nếu có dạng NG200_40 hoặc 5572-K/XANH_39 thì cắt phần sau dấu _
+  const idx = s.lastIndexOf("_");
+  if (idx > 0) {
+    const tail = s.substring(idx + 1);
+    if (SIZE_FIELDS.includes(tail)) {
+      s = s.substring(0, idx);
+    }
+  }
+  return s;
+}
+
+// Dòng này có phải là "mã sp" hợp lệ? (không phải size rời, và ký tự nằm trong whitelist)
+function isMaspLine(line) {
+  const s = normalizeMaspLine(line);
+  return !SIZE_FIELDS.includes(s) && MASP_ALLOWED_REGEX.test(s);
+}
+
 const COLS = [
     { data: 'masp', type: 'text', title: 'Mã SP', width: 100 },
     { data: 'tong', type: 'numeric', title: 'Tổng', readOnly: true, width: 48 },
@@ -131,43 +155,56 @@ function onTextareaTab(e) {
 }
 
 // Phân tích dữ liệu nhập nhanh: từ textarea => mảng kiểm kho [{masp, size0, size38...}]
+// Phân tích dữ liệu nhập nhanh: từ textarea => mảng kiểm kho [{masp, size0, size38...}]
 function parseTextareaData() {
-    const lines = document.getElementById('danhsachTextarea').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-    const validSizes = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-    const itemsMap = {}; // Dùng object để gộp mã trùng
-    let current = null;
-    for (let line of lines) {
-        if (/^[\w\-]+$/i.test(line) && !validSizes.includes(line)) { // là mã sp
-            if (current) {
-                // Gộp mã nếu đã có
-                const key = current.masp.toUpperCase();
-                if (!itemsMap[key]) {
-                    itemsMap[key] = { ...current };
-                } else {
-                    SIZE_FIELDS.forEach(s => itemsMap[key]['size' + s] += current['size' + s]);
-                }
-            }
-            current = { masp: line.toUpperCase() };
-            SIZE_FIELDS.forEach(s => current['size' + s] = 0);
-        } else if (validSizes.includes(line)) {
-            if (current) current['size' + line] = (current['size' + line] || 0) + 1;
-        }
+  const lines = document
+    .getElementById('danhsachTextarea')
+    .value.split(/\r?\n/)
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const itemsMap = {}; // gộp mã trùng
+  let current = null;
+
+  for (let raw of lines) {
+    const line = raw.toUpperCase().trim();
+
+    if (isMaspLine(line)) {
+      // là mã sp: chuẩn hóa (cắt _SIZE nếu có)
+      const masp = normalizeMaspLine(line);
+
+      // kết sổ mã trước (nếu có)
+      if (current) {
+        const key = current.masp;
+        if (!itemsMap[key]) itemsMap[key] = { ...current };
+        else SIZE_FIELDS.forEach(s => itemsMap[key]['size' + s] += current['size' + s]);
+      }
+
+      current = { masp };
+      SIZE_FIELDS.forEach(s => current['size' + s] = 0);
+      continue;
     }
-    if (current) {
-        const key = current.masp.toUpperCase();
-        if (!itemsMap[key]) {
-            itemsMap[key] = { ...current };
-        } else {
-            SIZE_FIELDS.forEach(s => itemsMap[key]['size' + s] += current['size' + s]);
-        }
+
+    // nếu đúng là 1 dòng size (0, 38..45) thì cộng số lượng
+    if (SIZE_FIELDS.includes(line)) {
+      if (current) current['size' + line] = (current['size' + line] || 0) + 1;
     }
-    // Convert object về mảng và tính tổng
-    const items = Object.values(itemsMap);
-    items.forEach(it => { it.tong = SIZE_FIELDS.reduce((sum, s) => sum + (Number(it['size' + s]) || 0), 0); });
-    return items;
+    // các dòng khác bỏ qua (ghi sai quy ước)
+  }
+
+  // dồn nốt mã cuối
+  if (current) {
+    const key = current.masp;
+    if (!itemsMap[key]) itemsMap[key] = { ...current };
+    else SIZE_FIELDS.forEach(s => itemsMap[key]['size' + s] += current['size' + s]);
+  }
+
+  const items = Object.values(itemsMap);
+  items.forEach(it => {
+    it.tong = SIZE_FIELDS.reduce((sum, s) => sum + (Number(it['size' + s]) || 0), 0);
+  });
+  return items;
 }
-
-
 
 // Xử lý nút "Kiểm tra" – đẩy dữ liệu từ textarea xuống bảng kiểm kho
 async function onKiemTra() {
