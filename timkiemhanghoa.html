@@ -417,13 +417,8 @@
 
                     </div>
                 </div>
-                <button id="searchBtn" onclick="preCleanThenSearch()">Tìm kiếm</button>
 
-
-                <button class="popup-btn" id="scanBtn">📷 Quét</button>
-            </div>
-
-            <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
+                <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
         <!-- nhiều mã (giữ nguyên vùng) -->
         <div id="multiDetailBox"></div>
@@ -441,7 +436,11 @@
                 <img id="productImage" alt="Ảnh sản phẩm" />
             </div>
 
-        </div>
+                <button id="searchBtn" onclick="preCleanThenSearch()">Tìm kiếm</button>
+
+
+                <button class="popup-btn" id="scanBtn">📷 Quét</button>
+            </div>
 
             <!-- Hàng 2: upload ảnh -->
             <div class="input-row">
@@ -485,7 +484,25 @@
         </div>
 
 
+        <div id="statusMsg" style="color:#c62828;font-weight:bold;min-height:30px;"></div>
 
+        <!-- nhiều mã (giữ nguyên vùng) -->
+        <div id="multiDetailBox"></div>
+
+        <!-- 1 mã: hai dòng/8 cột + bảng XNT + ảnh -->
+        <div id="singleDetailBox">
+            <div class="top-info">
+                <table id="infoTopTable" class="info-table"></table>
+            </div>
+
+            <div class="right-xnt">
+                <table id="infoTableRight" class="info-table"></table>
+            </div>
+            <div class="img-wrap">
+                <img id="productImage" alt="Ảnh sản phẩm" />
+            </div>
+
+        </div>
     </div>
 
     <!-- Popup tìm kiếm dùng chung -->
