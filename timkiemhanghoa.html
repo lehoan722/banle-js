@@ -465,8 +465,7 @@
                 <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
                 <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off"
                     onkeydown="if((event.key==='Enter'||event.keyCode===13)){event.preventDefault(); preCleanThenSearch(); return false;}" />
-                <button id="searchBtn" class="popup-btn" onclick="preCleanThenSearch()">Tìm kiếm</button>
-                <button id="scanBtn" class="popup-btn">📷 Quét</button>
+                
             </div>
 
             <!-- DÒNG 3: Chọn ảnh / Lưu ảnh / Xoá dữ liệu -->
@@ -479,6 +478,8 @@
                     style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">💾 Lưu ảnh</button>
                 <button id="clearBulkBtn" class="popup-btn" title="Xoá dữ liệu dán ở ô textarea bên dưới">🧹 Xoá
                     DL</button>
+                    <button id="searchBtn" class="popup-btn" onclick="preCleanThenSearch()">Tìm kiếm</button>
+                <button id="scanBtn" class="popup-btn">📷 Quét</button>
                 <span id="uploadStatus" style="font-weight:600;color:#c62828;margin-left:6px;"></span>
             </div>
 
