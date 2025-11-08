@@ -13,10 +13,7 @@
     <script type="module" src="scripts/timkiemhanghoa222.js"></script>
     <style>
 /* ====== Cơ bản ====== */
-:root{
-  --card-gap:16px;
-  --img-max:420px;
-}
+:root{--card-gap:16px;--img-max:360px}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -68,9 +65,7 @@ body{
 
 /* ====== SINGLE (1 sản phẩm) ====== */
 /* markup theo file: #singleDetailBox.detail-layout > .left-pane + .right-pane  */
-.detail-layout{
-  display:grid;grid-template-columns:1fr minmax(320px,420px);gap:var(--card-gap);align-items:start
-}
+.detail-layout{display:grid;grid-template-columns:1fr minmax(280px,var(--img-max));gap:var(--card-gap);align-items:start}
 .detail-layout .left-pane{min-width:0}
 .detail-layout .right-pane{position:sticky;top:72px} /* ảnh đứng yên nhẹ khi cuộn bảng dài */
 @media (max-width: 900px){
@@ -113,6 +108,23 @@ body{
 #flashOverlay{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20000;transition:.25s}
 #toastMsg{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:rgba(0,0,0,.82);
   color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;opacity:0;z-index:20001;transition:.3s}
+  /* Giữ toolbar 1 hàng trên điện thoại */
+@media (max-width: 480px){
+  .toolbar{
+    display:grid;
+    grid-template-columns: 40px 1fr 40px 40px 40px; /* 🔍 | input | ↩︎ | 📷 | ⋯ */
+    gap:6px;
+  }
+  #maspInput{min-width:0;width:100%;height:40px} /* cho phép co lại, không đẩy nút xuống dòng */
+  .icon-btn{width:40px;height:40px;padding:0}
+}
+
+/* Máy cực nhỏ (≤360px) thu nhỏ nút thêm chút */
+@media (max-width: 360px){
+  .toolbar{grid-template-columns:36px 1fr 36px 36px 36px;gap:4px}
+  .icon-btn{width:36px;height:36px}
+}
+
 </style>
 
 
