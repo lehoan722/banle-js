@@ -277,11 +277,7 @@
 
 
         <!-- KHU HIỂN THỊ SẢN PHẨM / BẢNG / ẢNH -->
-        <div id="toolsPanel" class="tools">
-            <div id="multiDetailBox"></div>
-
-        </div>
-
+        <div id="multiDetailBox"></div>
 
         <div id="singleDetailBox">
             <div class="top-info">
@@ -290,6 +286,9 @@
 
             <!-- Bảng có thể trượt ngang trên mobile -->
             <div class="scroll-x">
+                <table id="infoTableRight" class="info-table"></table>
+            </div>
+            <div class="right-xnt">
                 <table id="infoTableRight" class="info-table"></table>
             </div>
 
@@ -499,6 +498,8 @@
             }
 
 
+        </script>
+        <script>
             // Lưu trạng thái Tools (mở/đóng) để lần sau giữ nguyên
             (function () {
                 const panel = document.getElementById('toolsPanel');
@@ -512,12 +513,8 @@
                 const isOpen = panel.classList.toggle('open');
                 localStorage.setItem('tk_tools_open', isOpen ? '1' : '0');
             }
-
-
-
-            window.addEventListener('load', applyToolsMode);
-            window.addEventListener('resize', applyToolsMode);
         </script>
+
 
 
 
