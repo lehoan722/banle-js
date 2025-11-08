@@ -260,6 +260,45 @@
                 position: static;
             }
         }
+
+        /* ===== NHIỀU SẢN PHẨM (multi) – Desktop ===== */
+        #multiDetailBox {
+            overflow-x: auto;
+            /* cuộn ngang toàn khối khi bảng rộng */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+        }
+
+        #multiDetailBox table {
+            width: max-content;
+            /* bảng rộng tới đâu tính tới đó */
+            border-collapse: collapse;
+        }
+
+        #multiDetailBox th,
+        #multiDetailBox td {
+            white-space: nowrap;
+            padding: 8px 10px;
+            border: 1px solid #e9eef3;
+            background: #fff;
+        }
+
+        /* Ảnh trong danh sách nhiều sản phẩm: giới hạn kích thước trên desktop */
+        @media (min-width: 900px) {
+            #multiDetailBox img {
+                max-width: 420px;
+                max-height: 70vh;
+                height: auto;
+                width: 100%;
+                object-fit: contain;
+                border-radius: 12px;
+                float: right;
+                /* đẩy ảnh sang phải danh sách */
+                margin-left: 16px;
+            }
+        }
+
+        /* Mobile giữ nguyên hành vi hiện tại */
     </style>
 
 
@@ -584,7 +623,24 @@
         })();
     </script>
 
+    <script>
+        /* Ẩn #singleDetailBox khi #multiDetailBox có nội dung (nhiều sản phẩm) */
+        (function () {
+            const multi = document.getElementById('multiDetailBox');
+            const single = document.getElementById('singleDetailBox');
+            if (!multi || !single) return;
 
+            function toggle() {
+                // có phần tử con nào không?
+                const hasMulti = !!multi.querySelector('*') && multi.innerHTML.trim() !== '';
+                single.style.display = hasMulti ? 'none' : '';
+            }
+
+            // chạy ngay + theo dõi thay đổi danh sách
+            toggle();
+            new MutationObserver(toggle).observe(multi, { childList: true, subtree: true });
+        })();
+    </script>
 
 
 
