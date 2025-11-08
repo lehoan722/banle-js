@@ -12,118 +12,293 @@
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa222.js"></script>
     <style>
-/* ============ BASE ============ */
-:root{ --r:12px; --gap:8px; }
-*{ box-sizing:border-box; }
-html,body{ height:100%; }
-body{
-  margin:0; background:#f6f8fb;
-  font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  color:#0f172a; overflow-x:hidden;   /* chặn trượt ngang toàn trang */
-}
-.main-container{ max-width:1100px; margin:10px auto; padding:8px; }
+        /* ============ BASE ============ */
+        :root {
+            --r: 12px;
+            --gap: 8px;
+        }
 
-/* ============ TOPBAR (STICKY) ============ */
-.topbar-compact{
-  position:sticky; top:0; z-index:1000;
-  background:#fff; border-bottom:1px solid #e9eef3;
-}
-.topbar-compact .toolbar{
-  display:grid; grid-template-columns:auto 1fr auto auto auto;
-  gap:6px; padding:8px;
-}
-.icon-btn{
-  width:40px; height:40px; border-radius:10px;
-  border:1px solid #cfd8dc; background:#f7f9fb;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:18px; cursor:pointer;
-}
-#maspInput{
-  height:40px; padding:0 10px; border-radius:10px;
-  border:1px solid #90caf9; font-size:16px; /* tránh iOS auto-zoom */
-}
-.status-line{ padding:0 10px 8px; font-weight:600; color:#c62828; }
-.status-line:empty{ display:none; }
+        * {
+            box-sizing: border-box;
+        }
 
-/* ============ TOOLS PANEL (⋯) ============ */
-.tools{ display:none; padding:8px; border-top:1px solid #e9eef3; }
-.tools.open{ display:block; }
-.tool-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
-.chip{
-  border:1px solid #cfd8dc; background:#f7f9fb; border-radius:999px;
-  height:34px; padding:0 12px; display:inline-flex; align-items:center; cursor:pointer;
-}
-.chip-select{
-  height:34px; padding:0 8px; border:1px solid #cfd8dc; border-radius:999px; background:#fff;
-}
-#bulkTextarea{
-  width:100%; min-height:96px; resize:vertical; background:#fff;
-  border:1px solid #cfd8dc; border-radius:10px; padding:8px 10px;
-  font:14px ui-monospace,Menlo,Consolas,monospace;
-}
-.muted{ color:#78909c; font-size:12px; }
+        html,
+        body {
+            height: 100%;
+        }
 
-/* ============ SINGLE PRODUCT (2 CỘT) ============ */
-.detail-layout{
-  display:grid; grid-template-columns:auto 1fr; /* trái theo nội dung, phải chiếm phần còn lại */
-  gap:16px; align-items:start;
-}
-.left-pane{ width:max-content; }   /* co đúng theo 8 ô */
-.top-info{ width:max-content; }
+        body {
+            margin: 0;
+            background: #f6f8fb;
+            font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            color: #0f172a;
+            overflow-x: hidden;
+            /* chặn trượt ngang toàn trang */
+        }
 
-.right-xnt, .scroll-x{
-  width:100%; max-width:100%;
-  overflow-x:auto; overflow-y:visible;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior-x:contain;
-  touch-action:pan-x;
-  background:#fff; border:1px solid #e9eef3; border-radius:12px;
-  padding:6px; margin:8px 0;
-}
-.right-xnt > table, .scroll-x > table{
-  width:max-content; min-width:720px;  /* điều chỉnh 680–820 nếu cần */
-  border-collapse:collapse;
-}
-.scroll-x th, .scroll-x td, .right-xnt th, .right-xnt td{
-  padding:8px 10px; border:1px solid #e9eef3; white-space:nowrap; background:#fff;
-}
-.scroll-x th, .right-xnt th{ background:#e8f2ff; font-weight:700; color:#0b5394; }
+        .main-container {
+            max-width: 1100px;
+            margin: 10px auto;
+            padding: 8px;
+        }
 
-/* Cột ảnh phải (single) */
-.right-pane{ max-width:520px; width:100%; }
-.right-pane .img-wrap{ position:sticky; top:70px; }
-.img-wrap img{ width:100%; height:auto; border-radius:12px; display:block; }
+        /* ============ TOPBAR (STICKY) ============ */
+        .topbar-compact {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: #fff;
+            border-bottom: 1px solid #e9eef3;
+        }
 
-/* ============ MULTI PRODUCTS (GIỐNG TRANG 222) ============ */
-/* Bảng trong multi chỉ cuộn trong chính khối multi */
-#multiDetailBox{
-  overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
-}
-#multiDetailBox table{ width:max-content; border-collapse:collapse; }
-#multiDetailBox th, #multiDetailBox td{
-  white-space:nowrap; padding:8px 10px; border:1px solid #e9eef3; background:#fff;
-}
+        .topbar-compact .toolbar {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto auto;
+            gap: 6px;
+            padding: 8px;
+        }
 
-/* Desktop: ảnh đứng bên phải bảng ngay dòng của nó (float:right) */
-@media (min-width:900px){
-  #multiDetailBox img{
-    float:right;                   /* chìa khóa như file 222 */
-    max-width:420px; width:100%;
-    max-height:70vh; height:auto; object-fit:contain;
-    border-radius:12px; margin-left:16px;
-  }
-}
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid #cfd8dc;
+            background: #f7f9fb;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+        }
 
-/* ============ MOBILE TINH GỌN ============ */
-@media (max-width:900px){
-  .detail-layout{ display:block; }
-  .right-pane .img-wrap{ position:static; }
-}
-@media (max-width:700px){
-  .topbar-compact .toolbar{ padding:6px; gap:6px; }
-  .icon-btn,#maspInput{ height:44px; }
-}
-</style>
+        #maspInput {
+            height: 40px;
+            padding: 0 10px;
+            border-radius: 10px;
+            border: 1px solid #90caf9;
+            font-size: 16px;
+            /* tránh iOS auto-zoom */
+        }
+
+        .status-line {
+            padding: 0 10px 8px;
+            font-weight: 600;
+            color: #c62828;
+        }
+
+        .status-line:empty {
+            display: none;
+        }
+
+        /* ============ TOOLS PANEL (⋯) ============ */
+        .tools {
+            display: none;
+            padding: 8px;
+            border-top: 1px solid #e9eef3;
+        }
+
+        .tools.open {
+            display: block;
+        }
+
+        .tool-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .chip {
+            border: 1px solid #cfd8dc;
+            background: #f7f9fb;
+            border-radius: 999px;
+            height: 34px;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .chip-select {
+            height: 34px;
+            padding: 0 8px;
+            border: 1px solid #cfd8dc;
+            border-radius: 999px;
+            background: #fff;
+        }
+
+        #bulkTextarea {
+            width: 100%;
+            min-height: 96px;
+            resize: vertical;
+            background: #fff;
+            border: 1px solid #cfd8dc;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font: 14px ui-monospace, Menlo, Consolas, monospace;
+        }
+
+        .muted {
+            color: #78909c;
+            font-size: 12px;
+        }
+
+        /* ============ SINGLE PRODUCT (2 CỘT) ============ */
+        .detail-layout {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            /* trái theo nội dung, phải chiếm phần còn lại */
+            gap: 16px;
+            align-items: start;
+        }
+
+        .left-pane {
+            width: max-content;
+        }
+
+        /* co đúng theo 8 ô */
+        .top-info {
+            width: max-content;
+        }
+
+        .right-xnt,
+        .scroll-x {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            touch-action: pan-x;
+            background: #fff;
+            border: 1px solid #e9eef3;
+            border-radius: 12px;
+            padding: 6px;
+            margin: 8px 0;
+        }
+
+        .right-xnt>table,
+        .scroll-x>table {
+            width: max-content;
+            min-width: 720px;
+            /* điều chỉnh 680–820 nếu cần */
+            border-collapse: collapse;
+        }
+
+        .scroll-x th,
+        .scroll-x td,
+        .right-xnt th,
+        .right-xnt td {
+            padding: 8px 10px;
+            border: 1px solid #e9eef3;
+            white-space: nowrap;
+            background: #fff;
+        }
+
+        .scroll-x th,
+        .right-xnt th {
+            background: #e8f2ff;
+            font-weight: 700;
+            color: #0b5394;
+        }
+
+        /* Cột ảnh phải (single) */
+        .right-pane {
+            max-width: 520px;
+            width: 100%;
+        }
+
+        .right-pane .img-wrap {
+            position: sticky;
+            top: 70px;
+        }
+
+        .img-wrap img {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
+        }
+
+        /* ============ MULTI PRODUCTS (GIỐNG TRANG 222) ============ */
+        /* Bảng trong multi chỉ cuộn trong chính khối multi */
+
+        /* ============ MULTI PRODUCTS (desktop = Grid 2 cột; mobile = xếp dọc) ============ */
+
+        /* Mobile mặc định: xếp dọc, bảng có thể cuộn ngang toàn khối */
+        #multiDetailBox {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+        }
+
+        /* Desktop: biến multi thành lưới 2 cột: [bảng | ảnh] lặp theo cặp */
+        @media (min-width:900px) {
+            #multiDetailBox {
+                display: grid;
+                grid-template-columns: minmax(640px, 1fr) 420px;
+                /* trái co giãn, phải cố định */
+                gap: 16px;
+                align-items: start;
+            }
+
+            /* Mặc định: phần tử chẵn (ảnh) tự rơi vào cột 2 cùng hàng với bảng đứng trước */
+            #multiDetailBox>table {
+                grid-column: 1;
+                width: max-content;
+                /* bảng rộng tới đâu tính tới đó */
+                display: block;
+                /* để enable overflow cho chính bảng */
+                overflow: auto;
+                /* scrollbar ngang RIÊNG mỗi bảng */
+                border-collapse: collapse;
+            }
+
+            #multiDetailBox>img {
+                grid-column: 2;
+                width: 100%;
+                max-width: 420px;
+                height: auto;
+                max-height: 70vh;
+                object-fit: contain;
+                border-radius: 12px;
+            }
+        }
+
+        /* Ô bảng trong multi */
+        #multiDetailBox th,
+        #multiDetailBox td {
+            white-space: nowrap;
+            padding: 8px 10px;
+            border: 1px solid #e9eef3;
+            background: #fff;
+        }
+
+
+        /* ============ MOBILE TINH GỌN ============ */
+        @media (max-width:900px) {
+            .detail-layout {
+                display: block;
+            }
+
+            .right-pane .img-wrap {
+                position: static;
+            }
+        }
+
+        @media (max-width:700px) {
+            .topbar-compact .toolbar {
+                padding: 6px;
+                gap: 6px;
+            }
+
+            .icon-btn,
+            #maspInput {
+                height: 44px;
+            }
+        }
+    </style>
 
 
 
