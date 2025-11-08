@@ -204,33 +204,62 @@
         }
 
         /* ===== Desktop: 2 cột (trái = đúng bề rộng 8 ô) ===== */
-.detail-layout{
-  display:grid;
-  grid-template-columns:auto 1fr;   /* trái theo nội dung, phải chiếm phần còn lại */
-  gap:16px; align-items:start;
-}
+        .detail-layout {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            /* trái theo nội dung, phải chiếm phần còn lại */
+            gap: 16px;
+            align-items: start;
+        }
 
-.left-pane{ width:max-content; }    /* ăn theo phần tử con rộng nhất */
-.top-info{ width:max-content; }     /* 8 ô thông tin quyết định bề rộng cột trái */
+        .left-pane {
+            width: max-content;
+        }
 
-/* Bảng chỉ rộng bằng cột trái; nhiều cột -> scroll ngang trong khung */
-.scroll-x{ width:100%; max-width:100%; }  /* khớp bề rộng cột trái */
-.scroll-x > table{
-  width:max-content;
-  min-width:720px;                   /* có thể chỉnh 680–820 tuỳ 8 ô của bạn */
-  border-collapse:collapse;
-}
+        /* ăn theo phần tử con rộng nhất */
+        .top-info {
+            width: max-content;
+        }
 
-/* Ảnh ở cột phải */
-.right-pane .img-wrap{ position:sticky; top:70px; }
-.img-wrap img{ width:100%; height:auto; border-radius:12px; display:block; }
+        /* 8 ô thông tin quyết định bề rộng cột trái */
 
-/* Mobile: giữ nguyên (xếp dọc) */
-@media (max-width:900px){
-  .detail-layout{ display:block; }
-  .right-pane .img-wrap{ position:static; }
-}
+        /* Bảng chỉ rộng bằng cột trái; nhiều cột -> scroll ngang trong khung */
+        .scroll-x {
+            width: 100%;
+            max-width: 100%;
+        }
 
+        /* khớp bề rộng cột trái */
+        .scroll-x>table {
+            width: max-content;
+            min-width: 720px;
+            /* có thể chỉnh 680–820 tuỳ 8 ô của bạn */
+            border-collapse: collapse;
+        }
+
+        /* Ảnh ở cột phải */
+        .right-pane .img-wrap {
+            position: sticky;
+            top: 70px;
+        }
+
+        .img-wrap img {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
+        }
+
+        /* Mobile: giữ nguyên (xếp dọc) */
+        @media (max-width:900px) {
+            .detail-layout {
+                display: block;
+            }
+
+            .right-pane .img-wrap {
+                position: static;
+            }
+        }
     </style>
 
 
@@ -317,61 +346,65 @@
             <div id="flashOverlay"></div>
             <div id="toastMsg"></div>
 
-            <!-- Bảng Công cụ: thu gọn mặc định trên mobile -->
-            <div id="toolsPanel" class="tools"></div>
-            <div class="tool-row">
-                <label class="chip icon-chip" title="Chọn ảnh">
-                    📁 Chọn ảnh
-                    <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
-                </label>
-                <button id="saveImgBtn" class="chip" title="Lưu ảnh">💾 Lưu ảnh</button>
-                <button id="clearBulkBtn" class="chip" title="Xoá dữ liệu dán">🧹 Xoá DL</button>
-                <span id="uploadStatus" class="muted"></span>
+            <!-- Bảng Công cụ: ẩn mặc định (desktop + mobile), bấm ⋯ để mở -->
+            <div id="toolsPanel" class="tools">
+                <div class="tool-row">
+                    <label class="chip icon-chip" title="Chọn ảnh">
+                        📁 Chọn ảnh
+                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
+                    </label>
+                    <button id="saveImgBtn" class="chip" title="Lưu ảnh">💾 Lưu ảnh</button>
+                    <button id="clearBulkBtn" class="chip" title="Xoá dữ liệu dán">🧹 Xoá DL</button>
+                    <span id="uploadStatus" class="muted"></span>
+                </div>
+
+                <div class="tool-row">
+                    <button id="orderBtn" class="chip" title="Đặt hàng">🛒 Đặt hàng</button>
+                    <select id="branchPicker" class="chip-select" title="Chọn cơ sở">
+                        <option value="">-- Chưa chọn --</option>
+                        <option value="cs1">CS1</option>
+                        <option value="cs2">CS2</option>
+                    </select>
+                    <button id="saveVitriBtn" class="chip" title="Lưu vị trí">💾 Lưu vị trí</button>
+                    <span id="saveVitriStatus" class="muted"></span>
+                </div>
+
+                <div class="tool-row">
+                    <textarea id="bulkTextarea" placeholder="Dán 1 cột mã (mỗi dòng 1 mã)
+                      VD:
+                      11376-GDM
+                        60252-GDE"></textarea>
+                </div>
             </div>
 
-            <div class="tool-row">
-                <button id="orderBtn" class="chip" title="Đặt hàng">🛒 Đặt hàng</button>
-                <select id="branchPicker" class="chip-select" title="Chọn cơ sở">
-                    <option value="">-- Chưa chọn --</option>
-                    <option value="cs1">CS1</option>
-                    <option value="cs2">CS2</option>
-                </select>
-                <button id="saveVitriBtn" class="chip" title="Lưu vị trí">💾 Lưu vị trí</button>
-                <span id="saveVitriStatus" class="muted"></span>
-            </div>
-
-            <div class="tool-row">
-                <textarea id="bulkTextarea" placeholder="Dán 1 cột mã (mỗi dòng 1 mã)
-                         VD:
-                     11376-GDM
-                       60252-GDE"></textarea>
-            </div>
-        </div>
-    </div>
-    <!-- ===== END COMPACT TOPBAR ===== -->
-
-
-    <!-- KHU HIỂN THỊ SẢN PHẨM / BẢNG / ẢNH -->
-    <div id="multiDetailBox"></div>
-
-    <!-- DESKTOP: 2 cột; MOBILE: xếp dọc -->
-    <div id="singleDetailBox" class="detail-layout">
-        <!-- Cột trái: 8 ô + bảng -->
-        <div class="left-pane">
-            <div class="top-info">
-                <table id="infoTopTable" class="info-table"></table>
-            </div>
-            <div class="scroll-x">
-                <table id="infoTableRight" class="info-table"></table>
-            </div>
         </div>
 
-        <!-- Cột phải: ảnh -->
-        <aside class="right-pane">
-            <div class="img-wrap">
-                <img id="productImage" alt="Ảnh sản phẩm" />
+        <!-- ===== END COMPACT TOPBAR ===== -->
+
+
+        <!-- KHU HIỂN THỊ SẢN PHẨM / BẢNG / ẢNH -->
+        <div id="multiDetailBox"></div>
+
+        <!-- DESKTOP: 2 cột; MOBILE: xếp dọc -->
+        <div id="singleDetailBox" class="detail-layout">
+            <!-- Cột trái: 8 ô + bảng -->
+            <div class="left-pane">
+                <div class="top-info">
+                    <table id="infoTopTable" class="info-table"></table>
+                </div>
+                <div class="scroll-x">
+                    <table id="infoTableRight" class="info-table"></table>
+                </div>
             </div>
-        </aside>
+
+            <!-- Cột phải: ảnh -->
+            <aside class="right-pane">
+                <div class="img-wrap">
+                    <img id="productImage" alt="Ảnh sản phẩm" />
+                </div>
+            </aside>
+        </div>
+
     </div>
 
     <script>
@@ -537,18 +570,18 @@
     </script>
 
     <script>
-(function syncLeftWidth(){
-  const topInfo = document.getElementById('infoTopTable');
-  const leftPane = document.querySelector('.detail-layout .left-pane');
-  if (!topInfo || !leftPane) return;
-  function apply(){
-    const w = topInfo.offsetWidth;
-    if (w) leftPane.style.width = w + 'px';
-  }
-  apply();
-  window.addEventListener('resize', apply);
-})();
-</script>
+        (function syncLeftWidth() {
+            const topInfo = document.getElementById('infoTopTable');
+            const leftPane = document.querySelector('.detail-layout .left-pane');
+            if (!topInfo || !leftPane) return;
+            function apply() {
+                const w = topInfo.offsetWidth;
+                if (w) leftPane.style.width = w + 'px';
+            }
+            apply();
+            window.addEventListener('resize', apply);
+        })();
+    </script>
 
 
 
