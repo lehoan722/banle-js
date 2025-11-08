@@ -11,375 +11,109 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa222.js"></script>
-     <style>
-        body {
-            background: #f6f8fa;
-            font-family: Segoe UI, Arial, sans-serif;
-            margin: 0
-        }
-
-        .main-container {
-            max-width: 900px;
-            background: #fff;
-            margin: 32px auto 0;
-            border-radius: 16px;
-            box-shadow: 0 3px 18px #d2d8e3;
-            padding: 10px 10px 10px
-        }
-
-        h2 {
-            margin: 0 0 20px;
-            text-align: center;
-            color: #1976d2;
-            font-size: 2rem
-        }
-
-        .input-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: flex-end;
-            margin-bottom: 20px
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column
-        }
-
-        .input-group label {
-            font-weight: 600;
-            color: #1976d2;
-            margin-bottom: 5px
-        }
-
-        .input-group input {
-            font-size: 1.15rem;
-            padding: 5px 5px;
-            border-radius: 5px;
-            border: 1px solid #90caf9;
-            width: 200px;
-            transition: box-shadow .2s
-        }
-
-        .input-group input:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px #90caf9
-        }
-
-        .popup-btn {
-            background: #e3f0ff;
-            border: 1px solid #1976d2;
-            color: #1976d2;
-            font-weight: 600;
-            padding: 3px 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px
-        }
-
-        .popup-btn:hover {
-            background: #bbdefb
-        }
-
-        /* Bảng thông tin */
-        .info-table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 8px;
-            background: #fafbfc;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 1px 10px #ececec
-        }
-
-        .info-table th,
-        .info-table td {
-            padding: 5px 5px;
-            border: 1px solid #dbe9fd;
-            text-align: center
-        }
-
-        .info-table th {
-            background: #e3f0ff;
-            color: #1976d2;
-            font-weight: 700
-        }
-
-        .info-table th.red {
-            color: #d32f2f
-        }
-
-        .info-table td.size {
-            font-weight: 600;
-            background: #f4f9fd
-        }
-
-        .info-table td.number {
-            font-variant-numeric: tabular-nums
-        }
-
-        .info-table .blue {
-            color: #1565c0;
-            font-weight: 700
-        }
-
-        .info-table .red {
-            color: #d32f2f;
-            font-weight: 700
-        }
-
-        .right-xnt {
-            width: 100%;
-            overflow-x: auto
-        }
-
-        .top-info {
-            margin-top: 8px
-        }
-
-        /* TOP BAR: trái form – phải textarea */
-        .topbar {
-            display: grid;
-            grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
-            gap: 16px;
-            align-items: start
-        }
-
-        .bulk-box {
-            min-width: 120px;
-            max-width: 120px
-        }
-
-        #bulkTextarea {
-            width: 100%;
-            height: 3.5em;
-            overflow: auto;
-            resize: vertical;
-            border: 1px solid #cfd8dc;
-            border-radius: 8px;
-            padding: 5px 5px;
-            font-family: Consolas, monospace;
-            background: #fff
-        }
-
-        /* ===== Layout CHUẨN bạn chọn ===== */
-        /* 1 mã: cột trái = thông tin + XNT; cột phải = ảnh (ảnh cao bằng 2 hàng) */
-        #singleDetailBox {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-auto-rows: min-content;
-            gap: 16px
-        }
-
-        #singleDetailBox .top-info {
-            grid-column: 1/2
-        }
-
-        #singleDetailBox .right-xnt {
-            grid-column: 1/2
-        }
-
-        #singleDetailBox .img-wrap {
-            grid-column: 2/3;
-            grid-row: 1/span 2;
-            align-self: start;
-            margin-top: 0
-        }
-
-        /* nhiều mã: mỗi block .detail-grid giống hệt bố cục trên */
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-auto-rows: min-content;
-            gap: 16px
-        }
-
-        .detail-grid .top-info {
-            grid-column: 1
-        }
-
-        .detail-grid .right-xnt {
-            grid-column: 1
-        }
-
-        .detail-grid .img-wrap {
-            grid-column: 2;
-            grid-row: 1/span 2;
-            align-self: start;
-            margin-top: 0
-        }
-
-        /* Ảnh: thu nhỏ 60% bằng width (KHÔNG dùng transform để tránh chiều cao ảo) */
-        #singleDetailBox .img-wrap img,
-        .detail-grid .img-wrap img {
-            width: 80%;
-            height: auto;
-            display: block
-        }
-
-        /* Mobile (iPhone dọc): xếp theo thứ tự Thông tin → XNT → Ảnh, ảnh full width */
-        @media (max-width:700px) {
-
-            #singleDetailBox,
-            .detail-grid {
-                grid-template-columns: 1fr
-            }
-
-            #singleDetailBox .img-wrap,
-            .detail-grid .img-wrap {
-                grid-column: 1;
-                grid-row: auto
-            }
-
-            #singleDetailBox .img-wrap img,
-            .detail-grid .img-wrap img {
-                width: 50%
-            }
-        }
-
-        /* ===== Desktop tweaks (giữ bố cục gọn hàng 1) ===== */
-        .topbar .input-row:first-child .input-group {
-            flex: 1;
-            min-width: 260px;
-        }
-
-        .topbar .input-row:first-child #maspInput {
-            width: 100%;
-        }
-
-        /* ===== Mobile (iPhone dọc) — xếp topbar theo cột, không chồng chéo ===== */
-        @media (max-width: 700px) {
-
-            /* 1 cột cho toàn bộ topbar */
-            .topbar {
-                grid-template-columns: 1fr;
-            }
-
-            /* Các hàng trong topbar giãn cách vừa phải và full width */
-            .topbar .input-row {
-                gap: 8px;
-            }
-
-            .topbar .input-row>* {
-                width: 100%;
-            }
-
-            /* nút + input full width */
-            .topbar .input-group input {
-                width: 100%;
-            }
-
-            /* ô nhập mã full width */
-            #searchBtn,
-            #scanBtn {
-                width: 100%;
-                height: 44px;
-            }
-
-            /* Hàng 2 (upload ảnh): cho 2 nút nằm cùng một hàng, trạng thái xuống dòng dưới */
-            .topbar .input-row:nth-child(2) {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-
-            .topbar .input-row:nth-child(2) .popup-btn {
-                width: 100%;
-            }
-
-            #uploadStatus {
-                grid-column: 1 / -1;
-            }
-
-            /* chiếm trọn dòng để không đè nút */
-
-            /* Hàng 3 (textarea nhiều mã) chiếm trọn chiều ngang */
-            .bulk-box {
-                min-width: 0;
-                max-width: 100%;
-            }
-
-            #bulkTextarea {
-                width: 100%;
-                height: 6.5em;
-            }
-        }
-
-        #popupSearch {
-            display: none;
-            position: fixed;
-            top: 16%;
-            left: 50%;
-            padding: 5px 10px;
-            transform: translate(-50%, 0);
-            background: #fff;
-            z-index: 2000;
-            border: 1px solid #ccc;
-            min-width: 340px;
-            max-width: 96vw;
-            box-shadow: 0 0 12px #888;
-            border-radius: 8px;
-        }
-
-        /* Hiệu ứng flash toàn màn hình */
-        #flashOverlay {
-            position: fixed;
-            inset: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 20000;
-            transition: opacity 0.25s ease;
-        }
-
-        /* Thông báo nhanh (toast) */
-        #toastMsg {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            opacity: 0;
-            z-index: 20001;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        /* Ngăn iOS Safari auto-zoom khi focus input bằng cách đảm bảo font-size >= 16px */
-#popupDatHang input,
-#popupDatHang textarea,
-#popupDatHang select,
-#popupDatHang button {
-  font-size: 16px;        /* quan trọng: >=16px */
-  line-height: 1.25;
+    <style>
+/* ====== Cơ bản ====== */
+:root{
+  --card-gap:16px;
+  --img-max:420px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:#f6f8fa;font-family:Segoe UI,Arial,sans-serif;color:#1f2937
+}
+.main-container{
+  max-width:1100px;margin:24px auto;padding:12px;border-radius:16px;background:#fff;
+  box-shadow:0 4px 18px rgba(30,41,59,.08)
 }
 
-/* Nếu có ô tìm nhanh trong popup chọn size/màu */
-#popupPickSize input#sizeFilter,
-#popupPickMau input {
-  font-size: 16px;
-  line-height: 1.25;
+/* ====== Topbar gọn + panel ⋯ (theo trang 222) ====== */
+.topbar-compact{position:sticky;top:0;z-index:9;background:#fff;padding:8px 8px 0;border-radius:12px}
+.toolbar{
+  display:flex;gap:8px;align-items:center;justify-content:flex-start;flex-wrap:wrap
+}
+.icon-btn{
+  border:1px solid #d0d7de;background:#f6f8fa;border-radius:8px;padding:8px;cursor:pointer
+}
+#maspInput{
+  flex:1 1 360px;min-width:260px;height:38px;padding:0 10px;border:1px solid #d0d7de;border-radius:8px
+}
+.tools{
+  display:none;margin-top:8px;padding:8px;border:1px dashed #e0e6ef;border-radius:12px;background:#fbfdff
+}
+.tools.open{display:block}
+.tool-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.chip,.chip-select{
+  border:1px solid #cfd8dc;background:#f3f7ff;border-radius:10px;padding:6px 10px
+}
+#bulkTextarea{
+  width:min(920px,100%);height:6.5em;border:1px solid #cfd8dc;border-radius:10px;padding:8px;
+  font-family:Consolas,monospace
+}
+.muted{color:#6b7280}
+
+/* ====== Bảng thông tin + XNT ====== */
+.info-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;background:#fafbfc}
+.info-table th,.info-table td{border:1px solid #e5eefc;padding:6px 8px;text-align:center}
+.info-table th{background:#eaf2ff;color:#0f5cc4;font-weight:700}
+.right-xnt{width:100%;overflow-x:auto} /* CHỈ vùng bảng cuộn ngang */
+.scroll-x{overflow-x:auto}
+
+/* ====== Ảnh ====== */
+.img-wrap{display:flex;align-items:flex-start;justify-content:center}
+.img-wrap img{
+  width:100%;max-width:var(--img-max);height:auto;display:block;border-radius:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08)
 }
 
-html, body, #popupDatHang {
-  -webkit-text-size-adjust: 100%;
-  touch-action: manipulation; /* hạn chế double-tap zoom trên mobile */
+/* ====== SINGLE (1 sản phẩm) ====== */
+/* markup theo file: #singleDetailBox.detail-layout > .left-pane + .right-pane  */
+.detail-layout{
+  display:grid;grid-template-columns:1fr minmax(320px,420px);gap:var(--card-gap);align-items:start
+}
+.detail-layout .left-pane{min-width:0}
+.detail-layout .right-pane{position:sticky;top:72px} /* ảnh đứng yên nhẹ khi cuộn bảng dài */
+@media (max-width: 900px){
+  .detail-layout{grid-template-columns:1fr}
+  .detail-layout .right-pane{position:static}
 }
 
-#popupDatHang {
-  position: fixed;
-  inset: 0;
-  height: 100vh;       /* luôn chiếm toàn màn hình */
-  overflow: auto;      /* cuộn bên trong nếu nội dung dài */
+/* ====== MULTI (nhiều sản phẩm) ====== */
+/* Container chỉ 1 cột: các thẻ xếp DỌC, KHÔNG song song 2 cột */
+#multiDetailBox{
+  display:grid;grid-template-columns:1fr;gap:24px;margin-top:12px
 }
 
-    </style>
+/* Mỗi thẻ “sản phẩm” dựng y như SINGLE: trái = info+xnt, phải = ảnh */
+#multiDetailBox .detail-grid{
+  display:grid;grid-template-columns:1fr minmax(300px,var(--img-max));
+  gap:var(--card-gap);align-items:start;background:#fff;border:1px solid #eef2f7;border-radius:14px;
+  padding:12px;box-shadow:0 2px 12px rgba(15,23,42,.04)
+}
+#multiDetailBox .detail-grid .top-info{grid-column:1}
+#multiDetailBox .detail-grid .right-xnt{grid-column:1}
+#multiDetailBox .detail-grid .img-wrap{grid-column:2;grid-row:1/span 2}
+@media (max-width: 900px){
+  #multiDetailBox .detail-grid{grid-template-columns:1fr}
+  #multiDetailBox .detail-grid .img-wrap{grid-column:1;grid-row:auto}
+}
+
+/* ====== Mobile tối ưu nhập liệu & popup ====== */
+@media (max-width:700px){
+  .toolbar{gap:6px}
+  #maspInput{flex-basis:100%}
+  .icon-btn{padding:10px}
+  .tools{padding:10px}
+}
+
+/* ====== Phụ: flash/toast/popup sẵn có ====== */
+#popupSearch{display:none;position:fixed;top:16%;left:50%;transform:translateX(-50%);
+  min-width:320px;max-width:96vw;background:#fff;border:1px solid #e5e7eb;border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:2000}
+#flashOverlay{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20000;transition:.25s}
+#toastMsg{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:rgba(0,0,0,.82);
+  color:#fff;padding:10px 16px;border-radius:10px;font-weight:700;opacity:0;z-index:20001;transition:.3s}
+</style>
 
 
 
