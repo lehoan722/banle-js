@@ -409,16 +409,14 @@
             <!-- Hàng 1: nhập mã + tìm kiếm + quét -->
             <div class="input-row">
                 <div class="input-group">
-                    <label for="maspInput">Nhập mã hàng</label>
+                    <div id="statusMsg" style="color:#c62828;font-weight:bold;"></div>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <button class="popup-btn" onclick="openPopupSearch('mahang')">🔍</button>
                         <input id="maspInput" placeholder="Nhập mã sản phẩm, ví dụ 66862-AP" autocomplete="off"
                             onkeydown="if((event.key==='Enter'||event.keyCode===13)){event.preventDefault(); preCleanThenSearch(); return false;}" />
 
                     </div>
-                </div>
-
-                <div id="statusMsg" style="color:#c62828;font-weight:bold;"></div>
+                </div>                
 
                 <!-- nhiều mã (giữ nguyên vùng) -->
                 <div id="multiDetailBox"></div>
