@@ -12,204 +12,87 @@
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa222.js"></script>
     <style>
-        /* ===== Reset ngắn gọn ===== */
-        :root {
-            --radius: 12px;
-            --gap: 8px;
-            --h40: 40px;
-        }
+/* ===== Reset ngắn gọn ===== */
+:root{ --radius:12px; --gap:8px; --h40:40px; }
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  color:#0f172a; background:#f6f8fb;
+  overflow-x:hidden;                  /* Ngăn màn hình trượt ngang */
+}
 
-        * {
-            box-sizing: border-box;
-        }
+/* ===== Topbar compact (sticky) ===== */
+.topbar-compact{
+  position:sticky; top:0; z-index:1000; background:#fff;
+  border-bottom:1px solid #e9eef3;
+}
+.topbar-compact .toolbar{
+  display:grid; grid-template-columns:auto 1fr auto auto auto;
+  gap:6px; padding:8px;
+}
+.icon-btn{
+  width:40px;height:40px;border-radius:10px;border:1px solid #cfd8dc;
+  background:#f7f9fb; display:inline-flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;
+}
+#maspInput{
+  height:40px;padding:0 10px;border-radius:10px;border:1px solid #90caf9;font-size:16px;
+}
+.status-line{ padding:0 10px 8px; font-weight:600; color:#c62828; }
+.status-line:empty{ display:none; }
 
-        html,
-        body {
-            height: 100%;
-        }
+/* ===== Tools panel (thu gọn mặc định) ===== */
+.tools{ padding:8px; border-top:1px solid #e9eef3; display:none; }
+.tools.open{ display:block; }
+.tool-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
 
-        body {
-            margin: 0;
-            font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            color: #0f172a;
-            background: #f6f8fb;
-            overflow-x: hidden;
-            /* Ngăn màn hình trượt ngang */
-        }
+.chip{
+  border:1px solid #cfd8dc; background:#f7f9fb; border-radius:999px;
+  height:34px; padding:0 12px; cursor:pointer; display:inline-flex; align-items:center;
+}
+.chip-select{
+  height:34px; padding:0 8px; border:1px solid #cfd8dc; border-radius:999px; background:#fff;
+}
+#bulkTextarea{
+  width:100%; min-height:96px; resize:vertical; background:#fff;
+  border:1px solid #cfd8dc; border-radius:10px; padding:8px 10px;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:14px;
+}
+.muted{ color:#78909c; font-size:12px; }
 
-        /* ===== Topbar compact (sticky) ===== */
-        .topbar-compact {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background: #fff;
-            border-bottom: 1px solid #e9eef3;
-        }
+/* ===== Khu dữ liệu: bảng trượt ngang trong khung riêng ===== */
+/* Bọc các bảng trong .table-scroll để chỉ khung đó kéo ngang, không kéo cả trang */
+.table-scroll{
+  overflow-x:auto; overflow-y:visible;          /* chỉ trượt ngang */
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;                /* chặn cuộn ngang “dính” sang body */
+  touch-action: pan-x;                          /* ưu tiên kéo ngang trong khung */
+  background:#fff; border-radius:12px; border:1px solid #e9eef3;
+  padding:6px; margin:8px 0;
+}
+/* đảm bảo bảng rộng hơn khung -> có thanh trượt ngang */
+.table-scroll > table{ width:max-content; min-width:900px; border-collapse:collapse; }
+.table-scroll th, .table-scroll td{
+  padding:8px 10px; border:1px solid #e9eef3; white-space:nowrap; background:#fff;
+}
+.table-scroll th{ background:#e8f2ff; font-weight:700; color:#0b5394; }
 
-        .topbar-compact .toolbar {
-            display: grid;
-            grid-template-columns: auto 1fr auto auto auto;
-            gap: 6px;
-            padding: 8px;
-        }
+/* layout các card/ảnh nếu có */
+.img-wrap img{ max-width:100%; height:auto; border-radius:12px; display:block; }
 
-        .icon-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            border: 1px solid #cfd8dc;
-            background: #f7f9fb;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-        }
+/* Mobile tinh gọn */
+@media (max-width:700px){
+  .topbar-compact .toolbar{ gap:6px; padding:6px; }
+  .icon-btn,#maspInput{ height:44px; }
+  .status-line{ padding:0 8px 6px; }
+}
 
-        #maspInput {
-            height: 40px;
-            padding: 0 10px;
-            border-radius: 10px;
-            border: 1px solid #90caf9;
-            font-size: 16px;
-        }
-
-        .status-line {
-            padding: 0 10px 8px;
-            font-weight: 600;
-            color: #c62828;
-        }
-
-        .status-line:empty {
-            display: none;
-        }
-
-        /* ===== Tools panel (thu gọn mặc định) ===== */
-        .tools {
-            padding: 8px;
-            border-top: 1px solid #e9eef3;
-            display: none;
-        }
-
-        .tools.open {
-            display: block;
-        }
-
-        .tool-row {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-
-        .chip {
-            border: 1px solid #cfd8dc;
-            background: #f7f9fb;
-            border-radius: 999px;
-            height: 34px;
-            padding: 0 12px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .chip-select {
-            height: 34px;
-            padding: 0 8px;
-            border: 1px solid #cfd8dc;
-            border-radius: 999px;
-            background: #fff;
-        }
-
-        #bulkTextarea {
-            width: 100%;
-            min-height: 96px;
-            resize: vertical;
-            background: #fff;
-            border: 1px solid #cfd8dc;
-            border-radius: 10px;
-            padding: 8px 10px;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 14px;
-        }
-
-        .muted {
-            color: #78909c;
-            font-size: 12px;
-        }
-
-        /* ===== Khu dữ liệu: bảng trượt ngang trong khung riêng ===== */
-        /* Bọc các bảng trong .table-scroll để chỉ khung đó kéo ngang, không kéo cả trang */
-        .table-scroll {
-            overflow-x: auto;
-            overflow-y: visible;
-            /* chỉ trượt ngang */
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior-x: contain;
-            /* chặn cuộn ngang “dính” sang body */
-            touch-action: pan-x;
-            /* ưu tiên kéo ngang trong khung */
-            background: #fff;
-            border-radius: 12px;
-            border: 1px solid #e9eef3;
-            padding: 6px;
-            margin: 8px 0;
-        }
-
-        /* đảm bảo bảng rộng hơn khung -> có thanh trượt ngang */
-        .table-scroll>table {
-            width: max-content;
-            min-width: 900px;
-            border-collapse: collapse;
-        }
-
-        .table-scroll th,
-        .table-scroll td {
-            padding: 8px 10px;
-            border: 1px solid #e9eef3;
-            white-space: nowrap;
-            background: #fff;
-        }
-
-        .table-scroll th {
-            background: #e8f2ff;
-            font-weight: 700;
-            color: #0b5394;
-        }
-
-        /* layout các card/ảnh nếu có */
-        .img-wrap img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 12px;
-            display: block;
-        }
-
-        /* Mobile tinh gọn */
-        @media (max-width:700px) {
-            .topbar-compact .toolbar {
-                gap: 6px;
-                padding: 6px;
-            }
-
-            .icon-btn,
-            #maspInput {
-                height: 44px;
-            }
-
-            .status-line {
-                padding: 0 8px 6px;
-            }
-        }
-
-        /* Tùy chọn “không bành ra toàn màn hình” cho block nội dung chính */
-        .main-container {
-            max-width: 1100px;
-            margin: 10px auto;
-            padding: 8px;
-        }
-    </style>
+/* Tùy chọn “không bành ra toàn màn hình” cho block nội dung chính */
+.main-container{
+  max-width:1100px; margin:10px auto; padding:8px;
+}
+</style>
 
 
 
@@ -232,45 +115,54 @@
 
         <!-- ===== COMPACT TOPBAR (sticky) ===== -->
         <div id="compactTopbar" class="topbar-compact">
+
+            <!-- Thanh công cụ siêu gọn -->
             <div class="toolbar">
                 <button class="icon-btn" title="Tìm nhanh" onclick="openPopupSearch('mahang')">🔍</button>
+
                 <input id="maspInput" placeholder="Nhập mã… (VD 66862-AP)" autocomplete="off"
-                    onkeydown="if((event.key==='Enter'||event.keyCode===13)){event.preventDefault(); preCleanThenSearch();}">
+                    onkeydown="if((event.key==='Enter'||event.keyCode===13)){event.preventDefault(); preCleanThenSearch();}" />
+
                 <button id="searchBtn" class="icon-btn" title="Tìm" onclick="preCleanThenSearch()">↩︎</button>
                 <button id="scanBtn" class="icon-btn" title="Quét">📷</button>
-                <button id="moreBtn" class="icon-btn" title="Công cụ" onclick="toggleTools()">⋯</button>
+                <button id="moreBtn" class="icon-btn" title="Công cụ" aria-expanded="false"
+                    onclick="toggleTools()">⋯</button>
             </div>
+
+            <!-- Dòng thông báo (tự ẩn khi trống) -->
             <div id="statusMsg" class="status-line"></div>
 
-            <!-- Tools: luôn thu gọn mặc định (desktop & mobile) -->
-            <div id="toolsPanel" class="tools">
+            <!-- Bảng Công cụ: thu gọn mặc định trên mobile -->
+            <div id="toolsPanel" class="tools collapsed">
                 <div class="tool-row">
-                    <label class="chip" style="gap:8px;cursor:pointer">📁 Chọn ảnh
+                    <label class="chip icon-chip" title="Chọn ảnh">
+                        📁 Chọn ảnh
                         <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
                     </label>
-                    <button id="saveImgBtn" class="chip">💾 Lưu ảnh</button>
-                    <button id="clearBulkBtn" class="chip">🧹 Xoá DL</button>
+                    <button id="saveImgBtn" class="chip" title="Lưu ảnh">💾 Lưu ảnh</button>
+                    <button id="clearBulkBtn" class="chip" title="Xoá dữ liệu dán">🧹 Xoá DL</button>
                     <span id="uploadStatus" class="muted"></span>
                 </div>
+
                 <div class="tool-row">
-                    <button id="orderBtn" class="chip">🛒 Đặt hàng</button>
-                    <select id="branchPicker" class="chip-select">
+                    <button id="orderBtn" class="chip" title="Đặt hàng">🛒 Đặt hàng</button>
+                    <select id="branchPicker" class="chip-select" title="Chọn cơ sở">
                         <option value="">-- Chưa chọn --</option>
                         <option value="cs1">CS1</option>
                         <option value="cs2">CS2</option>
                     </select>
-                    <button id="saveVitriBtn" class="chip">💾 Lưu vị trí</button>
+                    <button id="saveVitriBtn" class="chip" title="Lưu vị trí">💾 Lưu vị trí</button>
                     <span id="saveVitriStatus" class="muted"></span>
                 </div>
+
                 <div class="tool-row">
                     <textarea id="bulkTextarea" placeholder="Dán 1 cột mã (mỗi dòng 1 mã)
-                     VD:
+                         VD:
                      11376-GDM
-                        60252-GDE"></textarea>
+                       60252-GDE"></textarea>
                 </div>
             </div>
         </div>
-
         <!-- ===== END COMPACT TOPBAR ===== -->
 
 
@@ -485,29 +377,29 @@
 
 
         <script>
-            function toggleTools() {
-                const panel = document.getElementById('toolsPanel');
-                const btn = document.getElementById('moreBtn');
-                const collapsed = panel.classList.toggle('collapsed');
-                btn.setAttribute('aria-expanded', (!collapsed).toString());
-            }
+  function toggleTools(){
+    const panel = document.getElementById('toolsPanel');
+    const btn = document.getElementById('moreBtn');
+    const collapsed = panel.classList.toggle('collapsed');
+    btn.setAttribute('aria-expanded', (!collapsed).toString());
+  }
 
-            function applyToolsMode() {
-                const panel = document.getElementById('toolsPanel');
-                const btn = document.getElementById('moreBtn');
-                if (!panel || !btn) return;
-                if (window.innerWidth <= 900) {
-                    panel.classList.add('collapsed');           // mobile: thu gọn mặc định
-                    btn.style.display = 'inline-flex';
-                } else {
-                    panel.classList.remove('collapsed');        // desktop: luôn mở
-                    btn.style.display = 'none';
-                }
-            }
+  function applyToolsMode(){
+    const panel = document.getElementById('toolsPanel');
+    const btn = document.getElementById('moreBtn');
+    if (!panel || !btn) return;
+    if (window.innerWidth <= 900){
+      panel.classList.add('collapsed');           // mobile: thu gọn mặc định
+      btn.style.display = 'inline-flex';
+    }else{
+      panel.classList.remove('collapsed');        // desktop: luôn mở
+      btn.style.display = 'none';
+    }
+  }
 
-            window.addEventListener('load', applyToolsMode);
-            window.addEventListener('resize', applyToolsMode);
-        </script>
+  window.addEventListener('load', applyToolsMode);
+  window.addEventListener('resize', applyToolsMode);
+</script>
 
 
 
