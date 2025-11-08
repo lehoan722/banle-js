@@ -1057,10 +1057,10 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ nut luu du lieu goi f2
         //document.getElementById('btn-luu')?.addEventListener('click', () => {
-           // const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-           // dispatchTarget.dispatchEvent(ev);
+        // const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+        // dispatchTarget.dispatchEvent(ev);
         //});
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
@@ -1123,7 +1123,7 @@
         });
     </script>
 
-     <script>
+    <script>
 
         // Sau khi DOMContentLoaded hoặc ở script type="module"
         document.getElementById('btn-luu').onclick = async function () {
@@ -1145,17 +1145,25 @@
 
     </script>
 
+    <script>function dongTatCaPopup() {
+            document.querySelectorAll(".popup-confirm").forEach(popup => {
+                popup.style.display = "none";
+            });
+        }
+    </script>
+
     <script>
+        // nut luu du lieu goi f2
         //document.addEventListener('DOMContentLoaded', () => {
-            //const btnLuu = document.getElementById('btn-luu');
-            //if (btnLuu) {
-               // btnLuu.addEventListener('click', (e) => {
-                    //e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
-                //});
-           // }
+        //const btnLuu = document.getElementById('btn-luu');
+        //if (btnLuu) {
+        // btnLuu.addEventListener('click', (e) => {
+        //e.preventDefault();
+        // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
+        //moPopupXacThucSua();
+        // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+        //});
+        // }
 
         //});
     </script>
