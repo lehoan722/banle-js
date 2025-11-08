@@ -283,6 +283,35 @@
             background: #fff;
         }
 
+        /* ===== Multi-item: 2 cột như single ===== */
+.multi-item{
+  display: grid;
+  grid-template-columns: auto 1fr;   /* trái theo nội dung, phải chiếm phần còn lại */
+  gap: 16px;
+  align-items: start;
+  margin: 12px 0 18px;
+}
+.multi-item .mi-left{ width: max-content; }  /* bề rộng theo bảng/8 ô của item */
+.multi-item .mi-right{ max-width: 520px; width: 100%; }
+
+.multi-item .mi-right img{
+  width: 100%; height: auto; max-height: 70vh;
+  object-fit: contain; border-radius: 12px; display: block;
+}
+
+/* Bảng trong mỗi item: chỉ cuộn ngang trong khung */
+.multi-item .scroll-x{ width: 100%; max-width: 100%; }
+.multi-item .scroll-x > table{
+  width: max-content; border-collapse: collapse; min-width: 720px;  /* điều chỉnh nếu cần */
+}
+
+/* Mobile: xếp dọc, giữ như hiện tại */
+@media (max-width: 900px){
+  .multi-item{ display: block; }
+  .multi-item .mi-right{ max-width: none; }
+}
+
+
         
 
         /* Mobile giữ nguyên hành vi hiện tại */
