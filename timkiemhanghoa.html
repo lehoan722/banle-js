@@ -12,50 +12,51 @@
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/timkiemhanghoa222.js"></script>
     <style>
-        /* ============ BASE ============ */
+        /* ===== Base sạch ===== */
         :root {
             --r: 12px;
-            --gap: 8px
+            --gap: 8px;
         }
 
         * {
-            box-sizing: border-box
+            box-sizing: border-box;
         }
 
         html,
         body {
-            height: 100%
+            height: 100%;
         }
 
         body {
             margin: 0;
             background: #f6f8fb;
-            color: #0f172a;
             font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            color: #0f172a;
             overflow-x: hidden;
-            /* chặn trượt ngang toàn trang */
+            /* chặn body trượt ngang */
         }
 
+        /* Khung chính */
         .main-container {
             max-width: 1100px;
             margin: 10px auto;
-            padding: 8px
+            padding: 8px;
         }
 
-        /* ============ TOPBAR GỌN (giữ như bản 222) ============ */
+        /* ===== Topbar compact (sticky) ===== */
         .topbar-compact {
             position: sticky;
             top: 0;
             z-index: 1000;
             background: #fff;
-            border-bottom: 1px solid #e9eef3
+            border-bottom: 1px solid #e9eef3;
         }
 
         .topbar-compact .toolbar {
             display: grid;
             grid-template-columns: auto 1fr auto auto auto;
             gap: 6px;
-            padding: 8px
+            padding: 8px;
         }
 
         .icon-btn {
@@ -68,7 +69,7 @@
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            cursor: pointer
+            cursor: pointer;
         }
 
         #maspInput {
@@ -76,28 +77,29 @@
             padding: 0 10px;
             border-radius: 10px;
             border: 1px solid #90caf9;
-            font-size: 16px
+            font-size: 16px;
+            /* tránh iOS auto-zoom */
         }
 
         .status-line {
             padding: 0 10px 8px;
             font-weight: 600;
-            color: #c62828
+            color: #c62828;
         }
 
         .status-line:empty {
-            display: none
+            display: none;
         }
 
-        /* ============ TOOLS (bấm ⋯ mới mở) ============ */
+        /* ===== Tools panel (ẩn mặc định trên mọi thiết bị) ===== */
         .tools {
             display: none;
             padding: 8px;
-            border-top: 1px solid #e9eef3
+            border-top: 1px solid #e9eef3;
         }
 
         .tools.open {
-            display: block
+            display: block;
         }
 
         .tool-row {
@@ -105,7 +107,7 @@
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
-            margin-top: 8px
+            margin-top: 8px;
         }
 
         .chip {
@@ -116,7 +118,7 @@
             padding: 0 12px;
             display: inline-flex;
             align-items: center;
-            cursor: pointer
+            cursor: pointer;
         }
 
         .chip-select {
@@ -124,7 +126,7 @@
             padding: 0 8px;
             border: 1px solid #cfd8dc;
             border-radius: 999px;
-            background: #fff
+            background: #fff;
         }
 
         #bulkTextarea {
@@ -135,171 +137,168 @@
             border: 1px solid #cfd8dc;
             border-radius: 10px;
             padding: 8px 10px;
-            font: 14px ui-monospace, Menlo, Consolas, monospace
+            font: 14px ui-monospace, Menlo, Consolas, monospace;
         }
 
         .muted {
             color: #78909c;
-            font-size: 12px
+            font-size: 12px;
         }
 
-        /* ============ SINGLE PRODUCT (2 CỘT) ============ */
-        .detail-layout {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 16px;
-            align-items: start
-        }
-
-        .left-pane {
-            width: max-content
-        }
-
-        .top-info {
-            width: max-content
-        }
-
-        .right-xnt,
+        /* ===== Bảng trượt ngang chỉ trong khung riêng ===== */
         .scroll-x {
-            width: 100%;
-            max-width: 100%;
             overflow-x: auto;
             overflow-y: visible;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-x: contain;
+            /* ngăn “dính” sang body */
             touch-action: pan-x;
+            /* ưu tiên kéo ngang trong khung */
             background: #fff;
             border: 1px solid #e9eef3;
             border-radius: 12px;
             padding: 6px;
-            margin: 8px 0
+            margin: 8px 0;
         }
 
-        .right-xnt>table,
+        /* bảng rộng hơn khung -> xuất hiện thanh trượt ngang */
         .scroll-x>table {
             width: max-content;
-            min-width: 720px;
-            border-collapse: collapse
+            min-width: 960px;
+            border-collapse: collapse;
         }
 
         .scroll-x th,
-        .scroll-x td,
-        .right-xnt th,
-        .right-xnt td {
+        .scroll-x td {
             padding: 8px 10px;
             border: 1px solid #e9eef3;
             white-space: nowrap;
-            background: #fff
+            background: #fff;
         }
 
-        .scroll-x th,
-        .right-xnt th {
+        .scroll-x th {
             background: #e8f2ff;
             font-weight: 700;
-            color: #0b5394
+            color: #0b5394;
         }
 
-        .right-pane {
-            max-width: 520px;
-            width: 100%
+        /* Giữ style ảnh gọn */
+        .img-wrap img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
         }
 
+        /* Mobile tinh gọn */
+        @media (max-width:700px) {
+            .topbar-compact .toolbar {
+                padding: 6px;
+                gap: 6px;
+            }
+
+            .icon-btn,
+            #maspInput {
+                height: 44px;
+            }
+        }
+
+        /* ===== Desktop: 2 cột (trái = đúng bề rộng 8 ô) ===== */
+        .detail-layout {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            /* trái theo nội dung, phải chiếm phần còn lại */
+            gap: 16px;
+            align-items: start;
+        }
+
+        .left-pane {
+            width: max-content;
+        }
+
+        /* ăn theo phần tử con rộng nhất */
+        .top-info {
+            width: max-content;
+        }
+
+        /* 8 ô thông tin quyết định bề rộng cột trái */
+
+        /* Bảng chỉ rộng bằng cột trái; nhiều cột -> scroll ngang trong khung */
+        .scroll-x {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* khớp bề rộng cột trái */
+        .scroll-x>table {
+            width: max-content;
+            min-width: 720px;
+            /* có thể chỉnh 680–820 tuỳ 8 ô của bạn */
+            border-collapse: collapse;
+        }
+
+        /* Ảnh ở cột phải */
         .right-pane .img-wrap {
             position: sticky;
-            top: 70px
+            top: 70px;
         }
 
         .img-wrap img {
             width: 100%;
             height: auto;
             border-radius: 12px;
-            display: block
+            display: block;
         }
 
-        /* ============ MULTI PRODUCTS (Desktop = Grid 2 cột; Mobile = xếp dọc) ============ */
-        /* Mobile: xếp dọc, bảng có thể cuộn ngang */
+        /* Mobile: giữ nguyên (xếp dọc) */
+        @media (max-width:900px) {
+            .detail-layout {
+                display: block;
+            }
+
+            .right-pane .img-wrap {
+                position: static;
+            }
+        }
+
+        /* ===== NHIỀU SẢN PHẨM (multi) – Desktop ===== */
         #multiDetailBox {
             overflow-x: auto;
+            /* cuộn ngang toàn khối khi bảng rộng */
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-x: contain
+            overscroll-behavior-x: contain;
         }
 
-        /* Desktop: GHÉP CẶP tự động theo (bảng|ảnh). Hỗ trợ cả wrapper <div> quanh bảng/ảnh */
-        @media (min-width:900px) {
-            #multiDetailBox {
-                display: grid;
-                grid-template-columns: minmax(640px, 1fr) 420px;
-                /* trái co giãn, phải cố định */
-                gap: 16px;
-                align-items: start;
-                grid-auto-flow: row
-            }
-
-            /* Bảng: có thể là <table> trực tiếp hoặc nằm trong <div> */
-            #multiDetailBox>table,
-            #multiDetailBox>div:has(>table) {
-                grid-column: 1;
-                overflow: auto
-                    /* thanh trượt ngang riêng cho từng bảng */
-            }
-
-            #multiDetailBox>div:has(>table)>table {
-                width: max-content;
-                border-collapse: collapse;
-                display: block
-            }
-
-            /* Ảnh: có thể là <img> trực tiếp hoặc nằm trong <div>/<figure> */
-            #multiDetailBox>img,
-            #multiDetailBox>figure,
-            #multiDetailBox>div:has(>img) {
-                grid-column: 2
-            }
-
-            #multiDetailBox>img,
-            #multiDetailBox>figure>img,
-            #multiDetailBox>div:has(>img)>img {
-                width: 100%;
-                max-width: 420px;
-                height: auto;
-                max-height: 70vh;
-                object-fit: contain;
-                border-radius: 12px;
-                display: block
-            }
+        #multiDetailBox table {
+            width: max-content;
+            /* bảng rộng tới đâu tính tới đó */
+            border-collapse: collapse;
         }
 
-        /* Ô bảng trong multi */
         #multiDetailBox th,
         #multiDetailBox td {
             white-space: nowrap;
             padding: 8px 10px;
             border: 1px solid #e9eef3;
-            background: #fff
+            background: #fff;
         }
 
-        /* ============ MOBILE TINH GỌN ============ */
-        @media (max-width:900px) {
-            .detail-layout {
-                display: block
-            }
-
-            .right-pane .img-wrap {
-                position: static
-            }
-        }
-
-        @media (max-width:700px) {
-            .topbar-compact .toolbar {
-                padding: 6px;
-                gap: 6px
-            }
-
-            .icon-btn,
-            #maspInput {
-                height: 44px
+        /* Ảnh trong danh sách nhiều sản phẩm: giới hạn kích thước trên desktop */
+        @media (min-width: 900px) {
+            #multiDetailBox img {
+                max-width: 420px;
+                max-height: 70vh;
+                height: auto;
+                width: 100%;
+                object-fit: contain;
+                border-radius: 12px;
+                float: right;
+                /* đẩy ảnh sang phải danh sách */
+                margin-left: 16px;
             }
         }
+
+        /* Mobile giữ nguyên hành vi hiện tại */
     </style>
 
 
