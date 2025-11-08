@@ -275,25 +275,12 @@
 
 
         <!-- KHU HIỂN THỊ SẢN PHẨM / BẢNG / ẢNH -->
+        <div id="multiDetailBox"></div>
 
-        <!-- ví dụ bảng phải -->
-        <div class="table-scroll">
-            <table id="infoTableRight" class="info-table"></table>
-        </div>
-
-        <!-- nếu bạn có nhiều bảng (multi detail) cũng bọc tương tự -->
-        <div id="multiDetailBox">
-            <div class="table-scroll">
-                <table id="multiTopTable"></table>
-            </div>
-        </div>
-
-        <!-- ví dụ bảng phải -->
         <div id="singleDetailBox">
-            <div class="table-scroll">
-                <table id="infoTableRight" class="info-table"></table>
+            <div class="top-info">
+                <table id="infoTopTable" class="info-table"></table>
             </div>
-
 
             <!-- Bảng có thể trượt ngang trên mobile -->
             <div class="right-xnt">
@@ -521,15 +508,6 @@
             window.addEventListener('load', applyToolsMode);
             window.addEventListener('resize', applyToolsMode);
         </script>
-
-        <script>
-            function toggleTools() {
-                const p = document.getElementById('toolsPanel');
-                if (!p) return;
-                p.classList.toggle('open');   // mặc định đóng; bấm ⋯ để mở/đóng
-            }
-        </script>
-
 
 
 
