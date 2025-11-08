@@ -222,73 +222,63 @@
         }
 
         /* ============ MULTI PRODUCTS (GIỐNG TRANG 222) ============ */
-       /* ============ MULTI PRODUCTS (desktop = Grid 2 cột; mobile = xếp dọc) ============ */
+        /* ============ MULTI PRODUCTS (desktop = Grid 2 cột; mobile = xếp dọc) ============ */
 
-/* Mobile: xếp dọc; bảng có thể cuộn ngang toàn khối */
-#multiDetailBox{
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior-x:contain;
-}
+        /* Mobile: xếp dọc; bảng có thể cuộn ngang toàn khối */
+        #multiDetailBox {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+        }
 
-/* --- DESKTOP: 2 cột [bảng | ảnh] cho cả 2 kiểu DOM --- */
-@media (min-width:900px){
-  /* Kiểu A: phần tử con trực tiếp là <table> và <img> */
-  #multiDetailBox{
-    display:grid;
-    grid-template-columns: minmax(640px,1fr) 420px; /* trái co giãn, phải cố định */
-    gap:16px;
-    align-items:start;
-  }
-  #multiDetailBox > table{
-    grid-column:1;
-    width:max-content;
-    display:block;          /* để có scrollbar ngang riêng cho MỖI bảng */
-    overflow:auto;
-    border-collapse:collapse;
-  }
-  #multiDetailBox > img{
-    grid-column:2;
-    width:100%;
-    max-width:420px;
-    height:auto;
-    max-height:70vh;
-    object-fit:contain;
-    border-radius:12px;
-  }
+        /* DESKTOP: 2 cột [bảng | ảnh] ghép theo thứ tự phần tử */
+        @media (min-width:900px) {
+            #multiDetailBox {
+                display: grid;
+                grid-template-columns: minmax(640px, 1fr) 420px;
+                /* trái co giãn, phải cố định */
+                gap: 16px;
+                align-items: start;
+                grid-auto-flow: row;
+                /* lần lượt: div (col1,row1) -> img (col2,row1) -> div (col1,row2) -> img (col2,row2) */
+            }
 
-  /* Kiểu B: MỖI SẢN PHẨM bọc trong 1 <div> (wrapper) chứa <table> + <img> */
-  #multiDetailBox > div{
-    display:grid;
-    grid-template-columns: minmax(640px,1fr) 420px;
-    gap:16px;
-    align-items:start;
-  }
-  #multiDetailBox > div > table{
-    grid-column:1;
-    width:max-content;
-    display:block;
-    overflow:auto;
-    border-collapse:collapse;
-  }
-  #multiDetailBox > div > img{
-    grid-column:2;
-    width:100%;
-    max-width:420px;
-    height:auto;
-    max-height:70vh;
-    object-fit:contain;
-    border-radius:12px;
-  }
-}
+            /* Mỗi BẢNG trong multi thực chất đang bọc trong 1 <div class="scroll-x"> */
+            #multiDetailBox>div {
+                grid-column: 1;
+                /* luôn vào cột trái */
+                overflow: auto;
+                /* scrollbar ngang RIÊNG cho từng bảng */
+            }
 
-/* Ô bảng trong multi */
-#multiDetailBox th, #multiDetailBox td{
-  white-space:nowrap;
-  padding:8px 10px;
-  border:1px solid #e9eef3;
-  background:#fff;
-}
+            #multiDetailBox>div>table {
+                width: max-content;
+                border-collapse: collapse;
+                display: block;
+                /* để overflow hoạt động với bảng */
+            }
+
+            /* ẢNH của từng sản phẩm là một <img> đứng ngay sau bảng */
+            #multiDetailBox>img {
+                grid-column: 2;
+                /* luôn vào cột phải, cùng hàng với bảng trước đó */
+                width: 100%;
+                max-width: 420px;
+                height: auto;
+                max-height: 70vh;
+                object-fit: contain;
+                border-radius: 12px;
+            }
+        }
+
+        /* Ô bảng trong multi */
+        #multiDetailBox th,
+        #multiDetailBox td {
+            white-space: nowrap;
+            padding: 8px 10px;
+            border: 1px solid #e9eef3;
+            background: #fff;
+        }
 
         /* ============ MOBILE TINH GỌN ============ */
         @media (max-width:900px) {
