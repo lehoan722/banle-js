@@ -283,20 +283,7 @@
             background: #fff;
         }
 
-        /* Ảnh trong danh sách nhiều sản phẩm: giới hạn kích thước trên desktop */
-        @media (min-width: 900px) {
-            #multiDetailBox img {
-                max-width: 420px;
-                max-height: 70vh;
-                height: auto;
-                width: 100%;
-                object-fit: contain;
-                border-radius: 12px;
-                float: right;
-                /* đẩy ảnh sang phải danh sách */
-                margin-left: 16px;
-            }
-        }
+        
 
         /* Mobile giữ nguyên hành vi hiện tại */
     </style>
@@ -641,6 +628,72 @@
             new MutationObserver(toggle).observe(multi, { childList: true, subtree: true });
         })();
     </script>
+
+    <script>
+/* Gom nhóm mỗi sản phẩm trong #multiDetailBox thành 1 .multi-item (trái: bảng, phải: ảnh) */
+(function normalizeMulti(){
+  const box = document.getElementById('multiDetailBox');
+  if (!box) return;
+
+  function rebuild(){
+    // Bỏ wrapper cũ nếu có (tránh lồng nhiều lần)
+    Array.from(box.querySelectorAll('.multi-item')).forEach(w => {
+      const frag = document.createDocumentFragment();
+      while (w.firstChild) frag.appendChild(w.firstChild);
+      w.replaceWith(frag);
+    });
+
+    const children = Array.from(box.children);
+    let i = 0;
+    while (i < children.length){
+      // Nếu phần tử hiện tại đã là wrapper mới thì bỏ qua
+      if (children[i].classList && children[i].classList.contains('multi-item')) { i++; continue; }
+
+      // Gom phần "trái" cho tới khi gặp IMG (ảnh) hoặc hết
+      const leftParts = [];
+      while (i < children.length &&
+             children[i].tagName !== 'IMG' &&
+             !(children[i].classList && children[i].classList.contains('multi-item'))){
+        leftParts.push(children[i]);
+        i++;
+      }
+      // Ảnh (nếu có)
+      let imgEl = null;
+      if (i < children.length && children[i].tagName === 'IMG'){
+        imgEl = children[i];
+        i++;
+      }
+
+      if (leftParts.length === 0 && !imgEl) break; // không có gì để gom
+
+      // Tạo wrapper 2 cột
+      const wrap = document.createElement('div');
+      wrap.className = 'multi-item';
+
+      const left = document.createElement('div');
+      left.className = 'mi-left';
+      leftParts.forEach(el => left.appendChild(el));
+
+      const right = document.createElement('aside');
+      right.className = 'mi-right';
+      if (imgEl) right.appendChild(imgEl);
+
+      wrap.appendChild(left);
+      wrap.appendChild(right);
+
+      // Chèn wrapper tại vị trí cũ của phần tử đầu tiên trong nhóm
+      const anchor = leftParts[0] || imgEl;
+      if (anchor) box.insertBefore(wrap, anchor);
+    }
+  }
+
+  // Chạy ngay và tự rebuild khi kết quả multi thay đổi
+  rebuild();
+  new MutationObserver(() => { setTimeout(rebuild, 0); })
+    .observe(box, { childList: true, subtree: false });
+})();
+</script>
+
 
 
 
