@@ -15,23 +15,23 @@
         /* ============ BASE ============ */
         :root {
             --r: 12px;
-            --gap: 8px;
+            --gap: 8px
         }
 
         * {
-            box-sizing: border-box;
+            box-sizing: border-box
         }
 
         html,
         body {
-            height: 100%;
+            height: 100%
         }
 
         body {
             margin: 0;
             background: #f6f8fb;
-            font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial;
             color: #0f172a;
+            font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial;
             overflow-x: hidden;
             /* chặn trượt ngang toàn trang */
         }
@@ -39,23 +39,23 @@
         .main-container {
             max-width: 1100px;
             margin: 10px auto;
-            padding: 8px;
+            padding: 8px
         }
 
-        /* ============ TOPBAR (STICKY) ============ */
+        /* ============ TOPBAR GỌN (giữ như bản 222) ============ */
         .topbar-compact {
             position: sticky;
             top: 0;
             z-index: 1000;
             background: #fff;
-            border-bottom: 1px solid #e9eef3;
+            border-bottom: 1px solid #e9eef3
         }
 
         .topbar-compact .toolbar {
             display: grid;
             grid-template-columns: auto 1fr auto auto auto;
             gap: 6px;
-            padding: 8px;
+            padding: 8px
         }
 
         .icon-btn {
@@ -68,7 +68,7 @@
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            cursor: pointer;
+            cursor: pointer
         }
 
         #maspInput {
@@ -76,29 +76,28 @@
             padding: 0 10px;
             border-radius: 10px;
             border: 1px solid #90caf9;
-            font-size: 16px;
-            /* tránh iOS auto-zoom */
+            font-size: 16px
         }
 
         .status-line {
             padding: 0 10px 8px;
             font-weight: 600;
-            color: #c62828;
+            color: #c62828
         }
 
         .status-line:empty {
-            display: none;
+            display: none
         }
 
-        /* ============ TOOLS PANEL (⋯) ============ */
+        /* ============ TOOLS (bấm ⋯ mới mở) ============ */
         .tools {
             display: none;
             padding: 8px;
-            border-top: 1px solid #e9eef3;
+            border-top: 1px solid #e9eef3
         }
 
         .tools.open {
-            display: block;
+            display: block
         }
 
         .tool-row {
@@ -106,7 +105,7 @@
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
-            margin-top: 8px;
+            margin-top: 8px
         }
 
         .chip {
@@ -117,7 +116,7 @@
             padding: 0 12px;
             display: inline-flex;
             align-items: center;
-            cursor: pointer;
+            cursor: pointer
         }
 
         .chip-select {
@@ -125,7 +124,7 @@
             padding: 0 8px;
             border: 1px solid #cfd8dc;
             border-radius: 999px;
-            background: #fff;
+            background: #fff
         }
 
         #bulkTextarea {
@@ -136,30 +135,28 @@
             border: 1px solid #cfd8dc;
             border-radius: 10px;
             padding: 8px 10px;
-            font: 14px ui-monospace, Menlo, Consolas, monospace;
+            font: 14px ui-monospace, Menlo, Consolas, monospace
         }
 
         .muted {
             color: #78909c;
-            font-size: 12px;
+            font-size: 12px
         }
 
         /* ============ SINGLE PRODUCT (2 CỘT) ============ */
         .detail-layout {
             display: grid;
             grid-template-columns: auto 1fr;
-            /* trái theo nội dung, phải chiếm phần còn lại */
             gap: 16px;
-            align-items: start;
+            align-items: start
         }
 
         .left-pane {
-            width: max-content;
+            width: max-content
         }
 
-        /* co đúng theo 8 ô */
         .top-info {
-            width: max-content;
+            width: max-content
         }
 
         .right-xnt,
@@ -175,15 +172,14 @@
             border: 1px solid #e9eef3;
             border-radius: 12px;
             padding: 6px;
-            margin: 8px 0;
+            margin: 8px 0
         }
 
         .right-xnt>table,
         .scroll-x>table {
             width: max-content;
             min-width: 720px;
-            /* điều chỉnh 680–820 nếu cần */
-            border-collapse: collapse;
+            border-collapse: collapse
         }
 
         .scroll-x th,
@@ -193,45 +189,42 @@
             padding: 8px 10px;
             border: 1px solid #e9eef3;
             white-space: nowrap;
-            background: #fff;
+            background: #fff
         }
 
         .scroll-x th,
         .right-xnt th {
             background: #e8f2ff;
             font-weight: 700;
-            color: #0b5394;
+            color: #0b5394
         }
 
-        /* Cột ảnh phải (single) */
         .right-pane {
             max-width: 520px;
-            width: 100%;
+            width: 100%
         }
 
         .right-pane .img-wrap {
             position: sticky;
-            top: 70px;
+            top: 70px
         }
 
         .img-wrap img {
             width: 100%;
             height: auto;
             border-radius: 12px;
-            display: block;
+            display: block
         }
 
-        /* ============ MULTI PRODUCTS (GIỐNG TRANG 222) ============ */
-        /* ============ MULTI PRODUCTS (desktop = Grid 2 cột; mobile = xếp dọc) ============ */
-
-        /* Mobile: xếp dọc; bảng có thể cuộn ngang toàn khối */
+        /* ============ MULTI PRODUCTS (Desktop = Grid 2 cột; Mobile = xếp dọc) ============ */
+        /* Mobile: xếp dọc, bảng có thể cuộn ngang */
         #multiDetailBox {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-x: contain;
+            overscroll-behavior-x: contain
         }
 
-        /* DESKTOP: 2 cột [bảng | ảnh] ghép theo thứ tự phần tử */
+        /* Desktop: GHÉP CẶP tự động theo (bảng|ảnh). Hỗ trợ cả wrapper <div> quanh bảng/ảnh */
         @media (min-width:900px) {
             #multiDetailBox {
                 display: grid;
@@ -239,35 +232,40 @@
                 /* trái co giãn, phải cố định */
                 gap: 16px;
                 align-items: start;
-                grid-auto-flow: row;
-                /* lần lượt: div (col1,row1) -> img (col2,row1) -> div (col1,row2) -> img (col2,row2) */
+                grid-auto-flow: row
             }
 
-            /* Mỗi BẢNG trong multi thực chất đang bọc trong 1 <div class="scroll-x"> */
-            #multiDetailBox>div {
+            /* Bảng: có thể là <table> trực tiếp hoặc nằm trong <div> */
+            #multiDetailBox>table,
+            #multiDetailBox>div:has(>table) {
                 grid-column: 1;
-                /* luôn vào cột trái */
-                overflow: auto;
-                /* scrollbar ngang RIÊNG cho từng bảng */
+                overflow: auto
+                    /* thanh trượt ngang riêng cho từng bảng */
             }
 
-            #multiDetailBox>div>table {
+            #multiDetailBox>div:has(>table)>table {
                 width: max-content;
                 border-collapse: collapse;
-                display: block;
-                /* để overflow hoạt động với bảng */
+                display: block
             }
 
-            /* ẢNH của từng sản phẩm là một <img> đứng ngay sau bảng */
-            #multiDetailBox>img {
-                grid-column: 2;
-                /* luôn vào cột phải, cùng hàng với bảng trước đó */
+            /* Ảnh: có thể là <img> trực tiếp hoặc nằm trong <div>/<figure> */
+            #multiDetailBox>img,
+            #multiDetailBox>figure,
+            #multiDetailBox>div:has(>img) {
+                grid-column: 2
+            }
+
+            #multiDetailBox>img,
+            #multiDetailBox>figure>img,
+            #multiDetailBox>div:has(>img)>img {
                 width: 100%;
                 max-width: 420px;
                 height: auto;
                 max-height: 70vh;
                 object-fit: contain;
                 border-radius: 12px;
+                display: block
             }
         }
 
@@ -277,29 +275,29 @@
             white-space: nowrap;
             padding: 8px 10px;
             border: 1px solid #e9eef3;
-            background: #fff;
+            background: #fff
         }
 
         /* ============ MOBILE TINH GỌN ============ */
         @media (max-width:900px) {
             .detail-layout {
-                display: block;
+                display: block
             }
 
             .right-pane .img-wrap {
-                position: static;
+                position: static
             }
         }
 
         @media (max-width:700px) {
             .topbar-compact .toolbar {
                 padding: 6px;
-                gap: 6px;
+                gap: 6px
             }
 
             .icon-btn,
             #maspInput {
-                height: 44px;
+                height: 44px
             }
         }
     </style>
