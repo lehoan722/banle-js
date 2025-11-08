@@ -202,6 +202,35 @@
                 height: 44px;
             }
         }
+
+        /* ===== Desktop: 2 cột (trái = đúng bề rộng 8 ô) ===== */
+.detail-layout{
+  display:grid;
+  grid-template-columns:auto 1fr;   /* trái theo nội dung, phải chiếm phần còn lại */
+  gap:16px; align-items:start;
+}
+
+.left-pane{ width:max-content; }    /* ăn theo phần tử con rộng nhất */
+.top-info{ width:max-content; }     /* 8 ô thông tin quyết định bề rộng cột trái */
+
+/* Bảng chỉ rộng bằng cột trái; nhiều cột -> scroll ngang trong khung */
+.scroll-x{ width:100%; max-width:100%; }  /* khớp bề rộng cột trái */
+.scroll-x > table{
+  width:max-content;
+  min-width:720px;                   /* có thể chỉnh 680–820 tuỳ 8 ô của bạn */
+  border-collapse:collapse;
+}
+
+/* Ảnh ở cột phải */
+.right-pane .img-wrap{ position:sticky; top:70px; }
+.img-wrap img{ width:100%; height:auto; border-radius:12px; display:block; }
+
+/* Mobile: giữ nguyên (xếp dọc) */
+@media (max-width:900px){
+  .detail-layout{ display:block; }
+  .right-pane .img-wrap{ position:static; }
+}
+
     </style>
 
 
@@ -240,279 +269,287 @@
             </div>
 
             <!-- Popup tìm kiếm dùng chung -->
-        <div id="popupSearch">
-            <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-                <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus />
-                <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+            <div id="popupSearch">
+                <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+                    <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus />
+                    <button onclick="closePopupSearch()"
+                        style="float:right;background:#e57373;color:#fff;">Đóng</button>
+                </div>
+                <div id="popupSearchList"></div>
             </div>
-            <div id="popupSearchList"></div>
-        </div>
 
-        <!-- Scanner Modal (giữ nguyên) -->
-        <div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;">
-            <div
-                style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,720px);background:#000;border-radius:12px;overflow:hidden">
-                <div style="position:relative;background:#000">
-                    <video id="scannerVideo" playsinline autoplay muted
-                        style="width:100%;height:auto;background:#000"></video>
-                    <div
-                        style="position:absolute;inset:12% 12%;border:2px solid rgba(255,255,255,.8);border-radius:10px;pointer-events:none;">
-                    </div>
-                    <div id="scannerStatus"
-                        style="position:absolute;left:12px;bottom:10px;color:#fff;font-weight:600;text-shadow:0 1px 2px #000">
-                    </div>
-                </div>
+            <!-- Scanner Modal (giữ nguyên) -->
+            <div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;">
                 <div
-                    style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px;background:#111;color:#eee">
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select id="cameraSelect" style="max-width:48vw"></select>
-                        <button id="flashBtn" class="popup-btn" style="background:#222;border-color:#666;color:#eee">🔦
-                            Đèn</button>
-                        <label class="popup-btn" style="background:#222;border-color:#666;color:#eee;cursor:pointer">
-                            Ảnh có sẵn
-                            <input id="filePicker" type="file" accept="image/*" capture="environment" hidden />
-                        </label>
+                    style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,720px);background:#000;border-radius:12px;overflow:hidden">
+                    <div style="position:relative;background:#000">
+                        <video id="scannerVideo" playsinline autoplay muted
+                            style="width:100%;height:auto;background:#000"></video>
+                        <div
+                            style="position:absolute;inset:12% 12%;border:2px solid rgba(255,255,255,.8);border-radius:10px;pointer-events:none;">
+                        </div>
+                        <div id="scannerStatus"
+                            style="position:absolute;left:12px;bottom:10px;color:#fff;font-weight:600;text-shadow:0 1px 2px #000">
+                        </div>
                     </div>
-                    <button id="closeScanner" class="popup-btn"
-                        style="background:#e57373;border-color:#c62828;color:#fff">Đóng</button>
+                    <div
+                        style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px;background:#111;color:#eee">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <select id="cameraSelect" style="max-width:48vw"></select>
+                            <button id="flashBtn" class="popup-btn"
+                                style="background:#222;border-color:#666;color:#eee">🔦
+                                Đèn</button>
+                            <label class="popup-btn"
+                                style="background:#222;border-color:#666;color:#eee;cursor:pointer">
+                                Ảnh có sẵn
+                                <input id="filePicker" type="file" accept="image/*" capture="environment" hidden />
+                            </label>
+                        </div>
+                        <button id="closeScanner" class="popup-btn"
+                            style="background:#e57373;border-color:#c62828;color:#fff">Đóng</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
 
             <!-- Dòng thông báo (tự ẩn khi trống) -->
             <div id="statusMsg" class="status-line"></div>
             <div id="flashOverlay"></div>
             <div id="toastMsg"></div>
-            
+
             <!-- Bảng Công cụ: thu gọn mặc định trên mobile -->
-            <div id="toolsPanel" class="tools collapsed">
-                <div class="tool-row">
-                    <label class="chip icon-chip" title="Chọn ảnh">
-                        📁 Chọn ảnh
-                        <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
-                    </label>
-                    <button id="saveImgBtn" class="chip" title="Lưu ảnh">💾 Lưu ảnh</button>
-                    <button id="clearBulkBtn" class="chip" title="Xoá dữ liệu dán">🧹 Xoá DL</button>
-                    <span id="uploadStatus" class="muted"></span>
-                </div>
+            <div id="toolsPanel" class="tools"></div>
+            <div class="tool-row">
+                <label class="chip icon-chip" title="Chọn ảnh">
+                    📁 Chọn ảnh
+                    <input id="imgFileInput" type="file" accept="image/*" capture="environment" hidden>
+                </label>
+                <button id="saveImgBtn" class="chip" title="Lưu ảnh">💾 Lưu ảnh</button>
+                <button id="clearBulkBtn" class="chip" title="Xoá dữ liệu dán">🧹 Xoá DL</button>
+                <span id="uploadStatus" class="muted"></span>
+            </div>
 
-                <div class="tool-row">
-                    <button id="orderBtn" class="chip" title="Đặt hàng">🛒 Đặt hàng</button>
-                    <select id="branchPicker" class="chip-select" title="Chọn cơ sở">
-                        <option value="">-- Chưa chọn --</option>
-                        <option value="cs1">CS1</option>
-                        <option value="cs2">CS2</option>
-                    </select>
-                    <button id="saveVitriBtn" class="chip" title="Lưu vị trí">💾 Lưu vị trí</button>
-                    <span id="saveVitriStatus" class="muted"></span>
-                </div>
+            <div class="tool-row">
+                <button id="orderBtn" class="chip" title="Đặt hàng">🛒 Đặt hàng</button>
+                <select id="branchPicker" class="chip-select" title="Chọn cơ sở">
+                    <option value="">-- Chưa chọn --</option>
+                    <option value="cs1">CS1</option>
+                    <option value="cs2">CS2</option>
+                </select>
+                <button id="saveVitriBtn" class="chip" title="Lưu vị trí">💾 Lưu vị trí</button>
+                <span id="saveVitriStatus" class="muted"></span>
+            </div>
 
-                <div class="tool-row">
-                    <textarea id="bulkTextarea" placeholder="Dán 1 cột mã (mỗi dòng 1 mã)
+            <div class="tool-row">
+                <textarea id="bulkTextarea" placeholder="Dán 1 cột mã (mỗi dòng 1 mã)
                          VD:
                      11376-GDM
                        60252-GDE"></textarea>
-                </div>
             </div>
         </div>
-        <!-- ===== END COMPACT TOPBAR ===== -->
+    </div>
+    <!-- ===== END COMPACT TOPBAR ===== -->
 
 
-        <!-- KHU HIỂN THỊ SẢN PHẨM / BẢNG / ẢNH -->
-        <div id="multiDetailBox"></div>
+    <!-- KHU HIỂN THỊ SẢN PHẨM / BẢNG / ẢNH -->
+    <div id="multiDetailBox"></div>
 
-        <div id="singleDetailBox">
+    <!-- DESKTOP: 2 cột; MOBILE: xếp dọc -->
+    <div id="singleDetailBox" class="detail-layout">
+        <!-- Cột trái: 8 ô + bảng -->
+        <div class="left-pane">
             <div class="top-info">
                 <table id="infoTopTable" class="info-table"></table>
             </div>
-
-            <!-- Bảng có thể trượt ngang trên mobile -->
             <div class="scroll-x">
                 <table id="infoTableRight" class="info-table"></table>
             </div>
-            <div class="right-xnt">
-                <table id="infoTableRight" class="info-table"></table>
-            </div>
+        </div>
 
+        <!-- Cột phải: ảnh -->
+        <aside class="right-pane">
             <div class="img-wrap">
                 <img id="productImage" alt="Ảnh sản phẩm" />
             </div>
-        </div>       
+        </aside>
+    </div>
 
+    <script>
+        // CẮT HẬU TỐ _SIZE Ở CUỐI CHUỖI. VD: "ABC12-DG38_38" -> "ABC12-DG38"
+        function stripSizeSuffixAtEnd(s) {
+            if (!s) return "";
+            s = String(s).trim();
+            // chỉ cắt đoạn _... nếu NẰM Ở CUỐI
+            const m = s.match(/^(.*)_[A-Za-z0-9.\-]+$/);
+            return m ? m[1] : s;
+        }
 
-        <script>
-            // CẮT HẬU TỐ _SIZE Ở CUỐI CHUỖI. VD: "ABC12-DG38_38" -> "ABC12-DG38"
-            function stripSizeSuffixAtEnd(s) {
-                if (!s) return "";
-                s = String(s).trim();
-                // chỉ cắt đoạn _... nếu NẰM Ở CUỐI
-                const m = s.match(/^(.*)_[A-Za-z0-9.\-]+$/);
-                return m ? m[1] : s;
+        // Làm sạch tất cả input/textarea liên quan rồi gọi hàm tìm kiếm cũ
+        function preCleanThenSearch() {
+            // 1) Ô nhập 1 mã (nếu có)
+            var ip = document.getElementById('maspInput');
+            if (ip && ip.value) {
+                ip.value = stripSizeSuffixAtEnd(ip.value);
             }
 
-            // Làm sạch tất cả input/textarea liên quan rồi gọi hàm tìm kiếm cũ
-            function preCleanThenSearch() {
-                // 1) Ô nhập 1 mã (nếu có)
-                var ip = document.getElementById('maspInput');
-                if (ip && ip.value) {
-                    ip.value = stripSizeSuffixAtEnd(ip.value);
-                }
-
-                // 2) Textarea nhiều mã (nếu có)
-                var ta = document.getElementById('bulkTextarea');
-                if (ta && ta.value) {
-                    var cleaned = ta.value
-                        .split(/[\r\n,;\t]+/)
-                        .map(function (x) { return stripSizeSuffixAtEnd(x); })
-                        .map(function (x) { return x.trim(); })
-                        .filter(Boolean);
-                    // không tự động loại trùng/đổi thứ tự — giữ nguyên “đơn giản”
-                    ta.value = cleaned.join('\n');
-                }
-
-                // 3) Gọi lại hàm tìm kiếm cũ (nếu có tham số tuỳ trang thì để nguyên)
-                if (typeof window.triggerSearch === 'function') {
-                    window.triggerSearch();
-                }
+            // 2) Textarea nhiều mã (nếu có)
+            var ta = document.getElementById('bulkTextarea');
+            if (ta && ta.value) {
+                var cleaned = ta.value
+                    .split(/[\r\n,;\t]+/)
+                    .map(function (x) { return stripSizeSuffixAtEnd(x); })
+                    .map(function (x) { return x.trim(); })
+                    .filter(Boolean);
+                // không tự động loại trùng/đổi thứ tự — giữ nguyên “đơn giản”
+                ta.value = cleaned.join('\n');
             }
-        </script>
 
-        <script>
-            // lang nghe enter trong o maspInput
-            document.addEventListener('DOMContentLoaded', function () {
-                var ip = document.getElementById('maspInput');
-                if (!ip) return;
-                ip.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();          // chặn submit form / reload trang
-                        preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
-                    }
-                });
+            // 3) Gọi lại hàm tìm kiếm cũ (nếu có tham số tuỳ trang thì để nguyên)
+            if (typeof window.triggerSearch === 'function') {
+                window.triggerSearch();
+            }
+        }
+    </script>
 
-                // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
-                var form = ip.closest('form');
-                if (form) {
-                    form.addEventListener('submit', function (e) {
-                        e.preventDefault();
-                        preCleanThenSearch();
-                    });
+    <script>
+        // lang nghe enter trong o maspInput
+        document.addEventListener('DOMContentLoaded', function () {
+            var ip = document.getElementById('maspInput');
+            if (!ip) return;
+            ip.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();          // chặn submit form / reload trang
+                    preCleanThenSearch();        // làm sạch _SIZE rồi gọi triggerSearch()
                 }
             });
-        </script>
 
-        <!-- Popup Đặt hàng -->
-        <div id="popupDatHang" style="display:none;position:fixed;inset:0;background:#f5f7fb;z-index:4000;">
-            <div style="max-width:820px;margin:10px auto;padding:12px 14px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <h3 style="margin:0;color:#1976d2">Phiếu đặt hàng</h3>
-                    <button id="dhCloseBtn" class="popup-btn" style="background:#e57373;color:#fff;">Trở về</button>
-                </div>
+            // Nếu ô này nằm trong <form>, đảm bảo submit cũng đi qua "làm sạch"
+            var form = ip.closest('form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    preCleanThenSearch();
+                });
+            }
+        });
+    </script>
 
-                <div style="display:grid;grid-template-columns:1fr;gap:10px">
+    <!-- Popup Đặt hàng -->
+    <div id="popupDatHang" style="display:none;position:fixed;inset:0;background:#f5f7fb;z-index:4000;">
+        <div style="max-width:820px;margin:10px auto;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <h3 style="margin:0;color:#1976d2">Phiếu đặt hàng</h3>
+                <button id="dhCloseBtn" class="popup-btn" style="background:#e57373;color:#fff;">Trở về</button>
+            </div>
 
-                    <label> Số HĐ
-                        <input id="dhSohd" readonly
-                            style="width:100%;padding:8px;border:1px solid #90caf9;border-radius:6px;font-weight:700">
-                    </label>
+            <div style="display:grid;grid-template-columns:1fr;gap:10px">
 
-                    <label> Mã SP
-                        <input id="dhMasp" readonly
-                            style="width:100%;padding:8px;border:1px solid #90caf9;border-radius:6px">
-                    </label>
+                <label> Số HĐ
+                    <input id="dhSohd" readonly
+                        style="width:100%;padding:8px;border:1px solid #90caf9;border-radius:6px;font-weight:700">
+                </label>
 
-                    <label> Màu (chọn 1 hoặc gõ)
-                        <div style="display:flex;gap:6px;">
-                            <input id="dhMau" placeholder="gõ màu..."
-                                style="flex:1;padding:8px;border:1px solid #90caf9;border-radius:6px">
-                            <button id="pickMauBtn" class="popup-btn">Chọn</button>
-                        </div>
-                    </label>
+                <label> Mã SP
+                    <input id="dhMasp" readonly
+                        style="width:100%;padding:8px;border:1px solid #90caf9;border-radius:6px">
+                </label>
 
-                    <label> Còn size (chọn nhiều theo mô tả hoặc gõ thủ công, ngăn cách dấu phẩy)
-                        <div style="display:flex;gap:6px;">
-                            <input id="dhConSize" placeholder="ví dụ: S-38-46-240-165, M-39-48-245-170"
-                                style="flex:1;padding:8px;border:1px solid #90caf9;border-radius:6px">
-                            <button id="pickConSizeBtn" class="popup-btn">Chọn</button>
-                        </div>
-                    </label>
-
-                    <label> Hết size (chọn nhiều theo mô tả hoặc gõ thủ công, ngăn cách dấu phẩy)
-                        <div style="display:flex;gap:6px;">
-                            <input id="dhHetSize" placeholder="ví dụ: XL-41-52-255-180"
-                                style="flex:1;padding:8px;border:1px solid #90caf9;border-radius:6px">
-                            <button id="pickHetSizeBtn" class="popup-btn">Chọn</button>
-                        </div>
-                    </label>
-
-                    <label> Ghi chú
-                        <input id="dhGhichu" placeholder="ghi chú..."
-                            style="width:100%;padding:8px;border:1px solid #90caf9;border-radius:6px">
-                    </label>
-
-                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
-                        <button id="dhSaveBtn" class="popup-btn"
-                            style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">💾 Lưu dữ
-                            liệu</button>
+                <label> Màu (chọn 1 hoặc gõ)
+                    <div style="display:flex;gap:6px;">
+                        <input id="dhMau" placeholder="gõ màu..."
+                            style="flex:1;padding:8px;border:1px solid #90caf9;border-radius:6px">
+                        <button id="pickMauBtn" class="popup-btn">Chọn</button>
                     </div>
+                </label>
+
+                <label> Còn size (chọn nhiều theo mô tả hoặc gõ thủ công, ngăn cách dấu phẩy)
+                    <div style="display:flex;gap:6px;">
+                        <input id="dhConSize" placeholder="ví dụ: S-38-46-240-165, M-39-48-245-170"
+                            style="flex:1;padding:8px;border:1px solid #90caf9;border-radius:6px">
+                        <button id="pickConSizeBtn" class="popup-btn">Chọn</button>
+                    </div>
+                </label>
+
+                <label> Hết size (chọn nhiều theo mô tả hoặc gõ thủ công, ngăn cách dấu phẩy)
+                    <div style="display:flex;gap:6px;">
+                        <input id="dhHetSize" placeholder="ví dụ: XL-41-52-255-180"
+                            style="flex:1;padding:8px;border:1px solid #90caf9;border-radius:6px">
+                        <button id="pickHetSizeBtn" class="popup-btn">Chọn</button>
+                    </div>
+                </label>
+
+                <label> Ghi chú
+                    <input id="dhGhichu" placeholder="ghi chú..."
+                        style="width:100%;padding:8px;border:1px solid #90caf9;border-radius:6px">
+                </label>
+
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px;">
+                    <button id="dhSaveBtn" class="popup-btn"
+                        style="background:#1976d2;border-color:#1976d2;color:#fff;font-weight:700">💾 Lưu dữ
+                        liệu</button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Popup chọn Màu -->
-        <div id="popupPickMau" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:4500;">
+    <!-- Popup chọn Màu -->
+    <div id="popupPickMau" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:4500;">
+        <div
+            style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,420px);background:#fff;border-radius:10px;overflow:hidden;">
             <div
-                style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,420px);background:#fff;border-radius:10px;overflow:hidden;">
-                <div
-                    style="padding:8px;background:#f6f8fa;border-bottom:1px solid #eee;display:flex;justify-content:space-between;">
-                    <b>Chọn màu</b>
-                    <button id="mauCloseBtn" class="popup-btn">Đóng</button>
-                </div>
-                <div id="mauList" style="max-height:60vh;overflow:auto;"></div>
+                style="padding:8px;background:#f6f8fa;border-bottom:1px solid #eee;display:flex;justify-content:space-between;">
+                <b>Chọn màu</b>
+                <button id="mauCloseBtn" class="popup-btn">Đóng</button>
             </div>
+            <div id="mauList" style="max-height:60vh;overflow:auto;"></div>
         </div>
+    </div>
 
-        <!-- Popup chọn Size (dùng chung cho Còn & Hết) -->
-        <div id="popupPickSize" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:4500;">
+    <!-- Popup chọn Size (dùng chung cho Còn & Hết) -->
+    <div id="popupPickSize" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:4500;">
+        <div
+            style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);background:#fff;border-radius:10px;overflow:hidden;">
             <div
-                style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);background:#fff;border-radius:10px;overflow:hidden;">
-                <div
-                    style="padding:8px;background:#f6f8fa;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;">
-                    <b style="flex:0 0 auto;">Chọn size</b>
-                    <input id="sizeFilter" placeholder="Tìm nhanh theo mô tả..."
-                        style="flex:1;padding:6px;border:1px solid #90caf9;border-radius:6px">
-                    <button id="sizeDoneBtn" class="popup-btn">Xong</button>
-                </div>
-                <div id="sizeList" style="max-height:60vh;overflow:auto;"></div>
+                style="padding:8px;background:#f6f8fa;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center;">
+                <b style="flex:0 0 auto;">Chọn size</b>
+                <input id="sizeFilter" placeholder="Tìm nhanh theo mô tả..."
+                    style="flex:1;padding:6px;border:1px solid #90caf9;border-radius:6px">
+                <button id="sizeDoneBtn" class="popup-btn">Xong</button>
             </div>
+            <div id="sizeList" style="max-height:60vh;overflow:auto;"></div>
         </div>
+    </div>
 
+    <script>
+        // Lưu trạng thái Tools (mở/đóng) để lần sau giữ nguyên
+        (function () {
+            const panel = document.getElementById('toolsPanel');
+            const saved = localStorage.getItem('tk_tools_open') === '1';
+            if (panel && saved) panel.classList.add('open');
+        })();
 
-        <script>
-            function toggleTools() {
-                const panel = document.getElementById('toolsPanel');
-                const btn = document.getElementById('moreBtn');
-                const collapsed = panel.classList.toggle('collapsed');
-                btn.setAttribute('aria-expanded', (!collapsed).toString());
-            }
+        function toggleTools() {
+            const panel = document.getElementById('toolsPanel');
+            if (!panel) return;
+            const isOpen = panel.classList.toggle('open');
+            localStorage.setItem('tk_tools_open', isOpen ? '1' : '0');
+        }
+    </script>
 
+    <script>
+(function syncLeftWidth(){
+  const topInfo = document.getElementById('infoTopTable');
+  const leftPane = document.querySelector('.detail-layout .left-pane');
+  if (!topInfo || !leftPane) return;
+  function apply(){
+    const w = topInfo.offsetWidth;
+    if (w) leftPane.style.width = w + 'px';
+  }
+  apply();
+  window.addEventListener('resize', apply);
+})();
+</script>
 
-        </script>
-        <script>
-            // Lưu trạng thái Tools (mở/đóng) để lần sau giữ nguyên
-            (function () {
-                const panel = document.getElementById('toolsPanel');
-                const saved = localStorage.getItem('tk_tools_open') === '1';
-                if (panel && saved) panel.classList.add('open');
-            })();
-
-            function toggleTools() {
-                const panel = document.getElementById('toolsPanel');
-                if (!panel) return;
-                const isOpen = panel.classList.toggle('open');
-                localStorage.setItem('tk_tools_open', isOpen ? '1' : '0');
-            }
-        </script>
 
 
 
