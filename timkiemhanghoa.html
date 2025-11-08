@@ -261,44 +261,39 @@
             }
         }
 
-        /* ===== NHIỀU SẢN PHẨM (multi) – Desktop ===== */
-        #multiDetailBox {
-            overflow-x: auto;
-            /* cuộn ngang toàn khối khi bảng rộng */
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior-x: contain;
-        }
+        /* ===== NHIỀU SẢN PHẨM (multi) – cùng cách với timkiemhanghoa222 ===== */
+#multiDetailBox{
+  overflow-x: auto;                 /* bảng rộng -> chỉ cuộn ngang trong khối này */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+#multiDetailBox table{
+  width: max-content;               /* bảng rộng tới đâu tính tới đó */
+  border-collapse: collapse;
+}
+#multiDetailBox th, #multiDetailBox td{
+  white-space: nowrap;
+  padding: 8px 10px;
+  border: 1px solid #e9eef3;
+  background: #fff;
+}
 
-        #multiDetailBox table {
-            width: max-content;
-            /* bảng rộng tới đâu tính tới đó */
-            border-collapse: collapse;
-        }
+/* Desktop: ảnh đứng bên PHẢI bảng, cùng một “dòng” */
+@media (min-width:900px){
+  #multiDetailBox img{
+    float: right;                   /* chìa khóa để ảnh đứng cạnh bảng như 222 */
+    max-width: 420px;
+    width: 100%;
+    max-height: 70vh;
+    height: auto;
+    object-fit: contain;
+    border-radius: 12px;
+    margin-left: 16px;              /* chừa khoảng cách với bảng */
+  }
+}
 
-        #multiDetailBox th,
-        #multiDetailBox td {
-            white-space: nowrap;
-            padding: 8px 10px;
-            border: 1px solid #e9eef3;
-            background: #fff;
-        }
+/* Mobile: giữ nguyên hành vi hiện tại (xếp dọc) — không cần rule riêng */
 
-        /* Ảnh trong danh sách nhiều sản phẩm: giới hạn kích thước trên desktop */
-        @media (min-width: 900px) {
-            #multiDetailBox img {
-                max-width: 420px;
-                max-height: 70vh;
-                height: auto;
-                width: 100%;
-                object-fit: contain;
-                border-radius: 12px;
-                float: right;
-                /* đẩy ảnh sang phải danh sách */
-                margin-left: 16px;
-            }
-        }
-
-        /* Mobile giữ nguyên hành vi hiện tại */
     </style>
 
 
