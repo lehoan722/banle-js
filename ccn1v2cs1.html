@@ -1384,86 +1384,97 @@ async function ensureSanPhamDataFor(masps = []) {
 
 <script>
 async function importFromGoogleSheet() {
-  // 👉 ĐỔI 2 dòng sau theo Sheet bạn muốn dùng cho CCN 1→2:
+  // ====== cấu hình nguồn Google Sheet (đổi cho phù hợp) ======
   const sheetId   = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA"; // ví dụ
-  const sheetName = "kiemkhocs1";                                  // ví dụ
+  const sheetName = "kiemkhocs1";                                   // ví dụ
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
 
   try {
+    // 1) Tải CSV
     const res = await fetch(url);
     const raw = await res.text();
-
-    // 1) Parse CSV như Nhập Mới
-    const csv   = raw.replace(/^\uFEFF/, '');
+    const csv   = raw.replace(/^\uFEFF/, '');                  // bỏ BOM
     const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
 
-    // Bỏ header nếu có chữ "mã/masp/size"
-    let start = 0;
-    const first = (lines[0]||'').toLowerCase();
-    if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
+    // 2) Parse 1 cột theo quy tắc: Mã (>=3 ký tự) -> các SIZE (2 chữ số) theo sau
+    const isSize2 = s => /^\d{2}$/.test(String(s).trim());
+    const isMasP  = s => String(s).trim().length >= 3;
+    const skipHdr = s => /(mã|masp|size)/i.test(String(s));
 
-    // 2) -> rows: [{masp,size,sl}]
-    const rows = [];
-    for (let i=start; i<lines.length; i++) {
-      const cols = splitCSVLine(lines[i]).map(unquote);
-      const masp = (cols[0]||'').toUpperCase().trim();
-      const size = (cols[1]||'0').trim();
-      const sl   = Number(String(cols[2]||'0').replace(/\s/g,'')) || 0;
-      if (!masp) continue;
-      rows.push({ masp, size, sl, __row: i+1 });
+    let currentMasP = '';
+    const agg = new Map(); // key = `${masp}||${size}` -> sl
+
+    for (let i = 0; i < lines.length; i++) {
+      const token = unquote((splitCSVLine(lines[i])[0] || '')).trim();
+      if (!token) continue;
+      if (skipHdr(token)) continue;
+
+      if (isMasP(token) && !isSize2(token)) {
+        currentMasP = token.toUpperCase();
+        continue;
+      }
+      if (currentMasP && isSize2(token)) {
+        const size = token;
+        const key = `${currentMasP}||${size}`;
+        agg.set(key, (agg.get(key) || 0) + 1); // mỗi lần xuất hiện = +1
+      }
+      // token lẻ không khớp quy tắc -> bỏ qua
     }
 
-    // 3) Nạp danh mục để có Tên hàng/ĐVT/Giá
+    // 3) Chuyển sang rows [{masp,size,sl}]
+    const rows = Array.from(agg.entries()).map(([key, sl]) => {
+      const [masp, size] = key.split('||');
+      return { masp, size, sl };
+    });
+
+    // 4) Lấy thông tin danh mục để render đủ tên/ĐVT/giá
     await ensureSanPhamDataFor(rows.map(r => r.masp));
 
-    // 3b) Tô đỏ các mã không có trong danh mục (nếu có)
-    const invalid = rows.filter(r => !(window.sanPhamData && window.sanPhamData[r.masp]));
-    if (invalid.length) {
-      console.warn('Mã không có trong danh mục:', invalid.map(x=>x.masp));
-    }
-
-    // 4) Đổ vào bảng (xoá cũ hay nối thêm tuỳ nghiệp vụ; ở đây mình CHỌN xoá cũ để bạn dễ kiểm tra)
+    // 5) Đổ vào bảng CCN1V2
     const tbody = document.querySelector('#bangketqua tbody');
+    if (!tbody) { alert('Không tìm thấy bảng #bangketqua'); return; }
     tbody.innerHTML = '';
 
+    const _fmt = (typeof fmt === 'function') ? fmt : (n => (Number(n)||0).toLocaleString('vi-VN'));
+
     for (const r of rows) {
-  const sp  = (window.sanPhamData || {})[r.masp] || {};
-  const gia = Number(sp.gianhap) || 0;          // đơn giá (đổi sang sp.giaban nếu cần)
-  const km  = 0;                                // khuyến mại = 0
-  const tt  = gia * (Number(r.sl) || 0);        // thành tiền = đơn giá * SL
+      const sp  = (window.sanPhamData || {})[r.masp] || {};
+      const gia = Number(sp.gianhap) || 0;                 // dùng gianhap; đổi sang sp.giaban nếu cần
+      const km  = 0;                                       // khuyến mại = 0
+      const tt  = gia * (Number(r.sl) || 0);               // thành tiền = đơn giá * SL
 
-  const tr = document.createElement('tr');
-  if (!sp.masp) tr.style.backgroundColor = '#f8d7da'; // tô đỏ nếu ko có trong DM
+      const tr = document.createElement('tr');
+      if (!sp.masp) tr.style.backgroundColor = '#f8d7da'; // tô đỏ nếu mã không có trong DM
 
-  // Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
-  tr.innerHTML = `
-  <td>${r.masp}</td>
-  <td>${sp.tensp || ''}</td>
-  <td>${r.size}</td>
-  <td>${r.sl}</td>
-  <td>${sp.dvt || ''}</td>
-  <td style="text-align:right">${fmt(gia)}</td>
-  <td style="text-align:right">${fmt(km)}</td>
-  <td style="text-align:right">${fmt(tt)}</td>
-  <td></td>         
-  <td></td>         
-  <td></td>`;     
-  tbody.appendChild(tr);
-}
+      // Cột: Mã | Tên | size | SL | ĐVT | Đơn giá | KM | Thành tiền | Vị trí | T1 | T2
+      tr.innerHTML = `
+        <td>${r.masp}</td>
+        <td>${sp.tensp || ''}</td>
+        <td>${r.size}</td>
+        <td>${r.sl}</td>
+        <td>${sp.dvt || ''}</td>
+        <td style="text-align:right">${_fmt(gia)}</td>
+        <td style="text-align:right">${_fmt(km)}</td>
+        <td style="text-align:right">${_fmt(tt)}</td>
+        <td></td>
+        <td></td>
+        <td></td>`;
+      tbody.appendChild(tr);
+    }
 
-    // 5) Cập nhật object và tổng
+    // 6) Cập nhật object/tổng nếu trang có các hàm này
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') window.capNhatBangKetQuaTuDOM();
     if (typeof window.capNhatThongTinTong   === 'function') window.capNhatThongTinTong(window.bangKetQua || {});
 
-    alert(`✅ Đã nạp ${rows.length} dòng từ Google Sheet vào bảng.`);
-    console.log('[CCN1v2][GS] rows:', rows);
+    alert(`✅ Đã nạp ${rows.length} dòng (mã-size) từ Google Sheet.`);
+    console.log('[CCN1v2][GS][1-col] rows:', rows);
   } catch (err) {
     console.error('Import Google Sheet error:', err);
     alert('Không thể lấy dữ liệu từ Google Sheet.');
   }
 }
-
 </script>
+
 
 <script>
   document.getElementById('btnImportFromGS')?.addEventListener('click', importFromGoogleSheet);
