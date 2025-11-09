@@ -1437,16 +1437,17 @@ async function importFromGoogleSheet() {
 
   // Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
   tr.innerHTML = `
-    <td>${r.masp}</td>
-    <td>${sp.tensp || ''}</td>
-    <td>${r.size}</td>
-    <td>${r.sl}</td>
-    <td>${sp.dvt || ''}</td>
-    <td style="text-align:right">${fmt(gia)}</td>
-    <td style="text-align:right">${fmt(km)}</td>
-    <td style="text-align:right">${fmt(tt)}</td>
-    
-    <td></td>`;
+  <td>${r.masp}</td>
+  <td>${sp.tensp || ''}</td>
+  <td>${r.size}</td>
+  <td>${r.sl}</td>
+  <td>${sp.dvt || ''}</td>
+  <td style="text-align:right">${fmt(gia)}</td>
+  <td style="text-align:right">${fmt(km)}</td>
+  <td style="text-align:right">${fmt(tt)}</td>
+  <td></td>         
+  <td></td>         
+  <td></td>`;     
   tbody.appendChild(tr);
 }
 
