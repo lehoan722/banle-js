@@ -1385,92 +1385,85 @@ async function ensureSanPhamDataFor(masps = []) {
 <script>
 async function importFromGoogleSheet() {
   try {
-    // ——— 1) Lấy URL sheet (nhớ sheet tab đã mở) ———
-    let url = prompt("Dán URL Google Sheet (tab đang dùng):", localStorage.getItem("gs_url_ccn") || "");
-    if (!url) return;
-    localStorage.setItem("gs_url_ccn", url);
+    // 1) Dùng URL nhớ sẵn nếu có, nếu chưa có thì hỏi 1 lần
+    let url = localStorage.getItem("gs_url_ccn") || "";
+    if (!url) {
+      url = prompt("Dán URL Google Sheet (tab đang dùng):", "");
+      if (!url) return;
+      localStorage.setItem("gs_url_ccn", url);
+    }
 
-    // Tách id & gid để xuất CSV cột A
+    // 2) Tách id & gid để xuất CSV cột A
     const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
     const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
     const sheetId = idMatch ? idMatch[1] : null;
     const gid = gidMatch ? gidMatch[1] : "0";
-    if (!sheetId) {
-      alert("URL không hợp lệ!");
-      return;
-    }
+    if (!sheetId) { alert("URL không hợp lệ!"); return; }
     const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
 
-    // ——— 2) Tải CSV và lấy duy nhất cột A ———
+    // 3) Tải CSV và lấy duy nhất cột A
     const res = await fetch(csvUrl);
     const text = await res.text();
     const lines = text
       .split(/\r?\n/)
-      .map(x => (x.split(",")[0] || "").trim()) // cột A
-      .filter(x => x !== ""); // bỏ dòng trống
+      .map(x => (x.split(",")[0] || "").trim())
+      .filter(x => x !== "");
 
-    // ——— 3) Parser theo luật mới ———
+    // 4) Parser mới: GOM DỒN TOÀN BỘ THEO MÃ
     const SIZES = new Set(["0","38","39","40","41","42","43","44","45"]);
-    const rows = [];                       // kết quả [{masp,size,sl}]
-    const orphanSizes = [];                // size mồ côi (chưa có mã)
-    const skuNoSize = [];                  // các mã không có size
-    let current = null;                    // {masp -> Map(size -> sl)}
+    const totals = new Map();    // Map<masp, Map<size, sl>>
+    const orphanSizes = [];      // size mồ côi (trước khi có mã)
+    const skuNoSize = [];        // mã không có size nào
+    let currentMasp = null;
 
-    const pushCurrent = () => {
-      if (!current) return;
-      const { masp, sizes } = current;
-      if (sizes.size === 0) {
-        skuNoSize.push(masp);
-        // vẫn đẩy 1 dòng SL=0 để nhìn thấy mã đó
-        rows.push({ masp, size: "", sl: 0 });
-      } else {
-        for (const [sz, sl] of sizes.entries()) {
-          rows.push({ masp, size: sz, sl });
-        }
-      }
-      current = null;
+    const add = (m,s,inc=1) => {
+      if (!totals.has(m)) totals.set(m, new Map());
+      const mp = totals.get(m);
+      mp.set(s, (mp.get(s) || 0) + inc);
     };
 
     for (let raw of lines) {
-      const token = raw.toUpperCase().trim();
+      const token = String(raw || "").trim().toUpperCase();
 
       if (SIZES.has(token)) {
-        // gặp size
-        if (!current) {
-          orphanSizes.push(token);
-          continue;
-        }
-        const old = current.sizes.get(token) || 0;
-        current.sizes.set(token, old + 1);
+        if (!currentMasp) { orphanSizes.push(token); continue; }
+        add(currentMasp, token, 1);
         continue;
       }
 
-      // token là MÃ nếu độ dài >= 3 (cho phép toàn số, chữ, '-', '/', '.')
+      // token là MÃ nếu độ dài >= 3 (chấp nhận toàn số, chữ, -, /, .)
       if (token.length >= 3) {
-        // chuyển mã cũ (nếu có) sang rows trước khi bắt đầu mã mới
-        if (current) pushCurrent();
-        current = { masp: token, sizes: new Map() };
+        currentMasp = token;
+        if (!totals.has(currentMasp)) totals.set(currentMasp, new Map());
         continue;
       }
-
-      // các trường hợp khác: bỏ qua
+      // còn lại: bỏ qua
     }
 
-    // đẩy mã cuối
-    if (current) pushCurrent();
+    // 5) Kết xuất rows từ totals
+    const rows = [];
+    for (const [masp, mp] of totals.entries()) {
+      if (mp.size === 0) {
+        skuNoSize.push(masp);
+        rows.push({ masp, size: "", sl: 0 });
+      } else {
+        for (const [sz, sl] of mp.entries()) {
+          rows.push({ masp, size: sz, sl });
+        }
+      }
+    }
 
-    // ——— 4) Render vào bảng & thông báo ———
     if (rows.length === 0) {
       alert("Đã nạp 0 dòng (mã-size) từ Google Sheet.");
       return;
     }
 
-    // Dổ trực tiếp vào bảng (giữ nguyên cơ chế đang dùng của trang)
+    // 6) Render trực tiếp
     if (typeof renderRowsDirectIntoTable === "function") {
-      renderRowsDirectIntoTable(rows);
+      await renderRowsDirectIntoTable(rows); // (PATCH 2 sẽ cho phép await)
     }
 
-    // Thông báo lỗi (nếu có)
+    // 7) Thông báo
     let msg = `✔ Đã nạp ${rows.length} dòng (mã-size) từ Google Sheet.`;
     const parts = [];
     if (skuNoSize.length) parts.push(`• Mã chưa có size: ${skuNoSize.join(", ")}`);
@@ -1483,6 +1476,7 @@ async function importFromGoogleSheet() {
   }
 }
 </script>
+
 
 
 
