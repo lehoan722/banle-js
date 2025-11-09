@@ -1385,29 +1385,31 @@ async function ensureSanPhamDataFor(masps = []) {
 <script>
 
 async function importFromGoogleSheet() {
-  // ===== Config Google Sheet =====
-  const SHEET_ID   = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA'; // đổi đúng ID của bạn
-  const SHEET_NAME = 'kiemkhocs1';                                    // đổi đúng tên sheet
+  // --- Config Google Sheet (đổi lại cho đúng của bạn) ---
+  const SHEET_ID   = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
+  const SHEET_NAME = 'kiemkhocs1';
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
 
-  // Cấu hình nhận diện MASP/SIZE giống kiểm kho
+  // --- Nhận diện size/mã theo rule mới (chắc ăn) ---
   const SIZE_FIELDS = ['0','38','39','40','41','42','43','44','45'];
-  const MASP_ALLOWED_REGEX = /^[A-Z0-9.\-\/]+$/;
   const isSizeToken = s => SIZE_FIELDS.includes(String(s).trim());
   const fmtSafe = (typeof window.fmt === 'function') ? window.fmt : (n => (Number(n)||0).toLocaleString('vi-VN'));
 
-  function normalizeMaspLine(line) {
-    let s = String(line||'').toUpperCase().trim();
-    const idx = s.lastIndexOf('_');
+  // chuẩn hoá mã (giữ đồng bộ với cách bạn đang dùng)
+  function normalizeMasp(line) {
+    let s = String(line||'').toUpperCase().trim().replace(/\s+/g,' ');
+    // Nếu mã có hậu tố "_SIZE" → bỏ hậu tố
+    const idx = s.lastIndexOf("_");
     if (idx > 0) {
       const tail = s.substring(idx+1);
       if (SIZE_FIELDS.includes(tail)) s = s.substring(0, idx);
     }
     return s;
   }
-  function isMaspLine(line) {
-    const s = normalizeMaspLine(line);
-    return s.length >= 3 && !isSizeToken(s) && MASP_ALLOWED_REGEX.test(s);
+  // Với rule mới: mã hợp lệ = token không phải size và có >=3 ký tự
+  function isMaspLine(token) {
+    const s = normalizeMasp(token);
+    return !isSizeToken(s) && s.length >= 3;
   }
 
   try {
@@ -1415,30 +1417,23 @@ async function importFromGoogleSheet() {
     const textRaw = await res.text();
     const text = textRaw.replace(/^\uFEFF/, '');
 
-    // 1) Phát hiện không phải CSV (sheet chưa public hoặc sai link)
-    if (
-      /<html/i.test(text) ||
-      /you need permission/i.test(text) ||
-      /signin/i.test(text) ||
-      /DOCTYPE html/i.test(text)
-    ) {
+    // Nếu Sheet chưa public/sai link → Google trả HTML
+    if (/<html|DOCTYPE html|need permission|signin/i.test(text)) {
       alert('⚠️ Không đọc được CSV. Hãy đặt Google Sheet ở chế độ “Anyone with the link – Viewer” hoặc kiểm tra lại SHEET_ID/SHEET_NAME.');
-      console.warn('[GS response snippet]', text.slice(0, 200));
+      console.warn('[GS response snippet]', text.slice(0,200));
       return;
     }
 
-    // 2) Parse an toàn: dùng splitCSVLine + unquote để lấy cột A
-    const rawLines = text.split(/\r?\n/).filter(x => x.trim().length);
-    const colA = rawLines.map(line => {
-      const firstCol = (splitCSVLine(line)[0] ?? '');
-      return unquote(firstCol).replace(/\s+/g, ' ').trim();
-    }).filter(s => s.length > 0);
+    // Lấy cột A an toàn (parser CSV)
+    const lines = text.split(/\r?\n/).filter(x => x.trim().length);
+    const colA = lines.map(line => unquote((splitCSVLine(line)[0] ?? '')) )
+                      .map(s => s.replace(/\s+/g,' ').trim())
+                      .filter(Boolean);
 
-    // 3) Gom theo block: MÃ → các SIZE ngay sau
+    // Duyệt: MÃ → các SIZE ngay sau đó
     let current = null; // { masp, sizes:{'38':3,...}, firstLine }
-    const resultMap = new Map();   // key `${masp}||${size}` -> sl
-    const errorRows = [];
-    const errorNotes = [];
+    const resultMap = new Map(); // key `${masp}||${size}` -> sl
+    const errorRows = [], errorNotes = [];
 
     function flushCurrent() {
       if (!current) return;
@@ -1451,7 +1446,7 @@ async function importFromGoogleSheet() {
         }
       } else {
         errorRows.push({ masp: current.masp, size:'', sl:0, __error:true });
-        errorNotes.push(`• ${current.masp} (sau dòng ${current.firstLine})`);
+        errorNotes.push(`• ${current.masp} (không có size sau khi khai báo)`);
       }
       current = null;
     }
@@ -1460,9 +1455,10 @@ async function importFromGoogleSheet() {
     for (const token of colA) {
       lineNo++;
       if (isMaspLine(token)) {
+        // nếu 2 mã liền nhau → mã trước không có size ⇒ báo lỗi
         flushCurrent();
-        current = { masp: normalizeMaspLine(token), sizes:{}, firstLine: lineNo };
-        SIZE_FIELDS.forEach(s => current.sizes[s]=0);
+        current = { masp: normalizeMasp(token), sizes:{}, firstLine: lineNo };
+        for (const s of SIZE_FIELDS) current.sizes[s] = 0;
         continue;
       }
       if (current && isSizeToken(token)) {
@@ -1470,33 +1466,48 @@ async function importFromGoogleSheet() {
         current.sizes[sz] = (current.sizes[sz]||0) + 1;
         continue;
       }
-      // token lẻ -> bỏ qua
+      // token khác (không phải mã, không phải size) → bỏ qua
     }
+    // mã cuối cùng
     flushCurrent();
 
+    // Chuyển map → rows
     const rows = Array.from(resultMap.entries()).map(([key, sl]) => {
       const [masp, size] = key.split('||');
-      return { masp, size, sl };
+      return { masp, size, sl: Number(sl)||0 };
     });
     rows.push(...errorRows);
 
-    // 4) Render
+    // ===== LẤY TÊN HÀNG, ĐVT, GIÁ NHẬP TỪ danh mục rồi render =====
+    const allMasps = Array.from(new Set(rows.filter(r=>!r.__error).map(r=>r.masp)));
+    await ensureSanPhamDataFor(allMasps);  // đã có sẵn trong file của bạn
+    const spData = (window.sanPhamData || {});
+
     const tbody = document.querySelector('#bangketqua tbody');
     if (!tbody) { alert('Không tìm thấy #bangketqua'); return; }
     tbody.innerHTML = '';
+
     for (const r of rows) {
+      const info = spData[r.masp] || { tensp:'', dvt:'', gianhap:0 };
+      const gia = Number(info.gianhap)||0;
+      const km  = 0;
+      const tt  = (gia * (Number(r.sl)||0));
+
       const tr = document.createElement('tr');
       if (r.__error) tr.style.backgroundColor = '#f8d7da';
+
+      // Thứ tự cột: Mã | Tên | size | SL | ĐVT | Đơn giá | KM | Thành tiền | Vị trí | T1 | T2
       tr.innerHTML = `
-        <td>${r.masp}</td>
-        <td></td>
-        <td>${r.size}</td>
-        <td>${r.sl}</td>
-        <td></td>
-        <td style="text-align:right">${fmtSafe(0)}</td>
-        <td style="text-align:right">${fmtSafe(0)}</td>
-        <td style="text-align:right">${fmtSafe(0)}</td>
-        <td></td><td></td><td></td>`;
+        <td>${r.masp||''}</td>
+        <td>${info.tensp||''}</td>
+        <td>${r.size||''}</td>
+        <td>${r.sl||0}</td>
+        <td>${info.dvt||''}</td>
+        <td style="text-align:right">${fmtSafe(gia)}</td>
+        <td style="text-align:right">${fmtSafe(km)}</td>
+        <td style="text-align:right">${fmtSafe(tt)}</td>
+        <td></td><td></td><td></td>
+      `;
       tbody.appendChild(tr);
     }
 
@@ -1504,13 +1515,10 @@ async function importFromGoogleSheet() {
     if (typeof window.capNhatThongTinTong   === 'function') window.capNhatThongTinTong(window.bangKetQua || {});
 
     if (rows.length === 0) {
-      // Debug nhanh 5 token đầu để bạn nhìn thấy ngay
-      const peek = colA.slice(0, 5).map((t,i)=>`${i+1}. “${t}”`).join('\n');
-      alert(`⚠️ Đọc được 0 dòng.\nHãy kiểm tra:\n- SHEET_ID/SHEET_NAME đúng chưa\n- Sheet đã “Anyone with the link – Viewer” chưa\n- Cột A có dữ liệu chưa\n---\n5 token đầu:\n${peek}`);
-      console.warn('Peek tokens:', colA.slice(0, 10));
+      const peek = colA.slice(0,5).map((t,i)=>`${i+1}. “${t}”`).join('\n');
+      alert(`⚠️ Đọc được 0 dòng. Kiểm tra Sheet & cột A.\n5 token đầu:\n${peek}`);
       return;
     }
-
     if (errorNotes.length) {
       alert(`⚠️ Các mã chưa có size:\n${errorNotes.join('\n')}`);
     } else {
