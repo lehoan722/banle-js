@@ -1378,6 +1378,11 @@ async function ensureSanPhamDataFor(masps = []) {
 }
 </script>
 <script>
+  // Định dạng số theo vi-VN
+  function fmt(n) { return (Number(n) || 0).toLocaleString('vi-VN'); }
+</script>
+
+<script>
 async function importFromGoogleSheet() {
   // 👉 ĐỔI 2 dòng sau theo Sheet bạn muốn dùng cho CCN 1→2:
   const sheetId   = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA"; // ví dụ
@@ -1440,7 +1445,7 @@ async function importFromGoogleSheet() {
         <td></td>
         <td></td>`;
       tbody.appendChild(tr);
-    }    
+    }
 
     // 5) Cập nhật object và tổng
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') window.capNhatBangKetQuaTuDOM();
