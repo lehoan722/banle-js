@@ -613,6 +613,7 @@
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
             </div>
+            <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
             <!-- Popup tìm khách hàng
              <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
@@ -1337,6 +1338,143 @@
             });
         });
     </script>
+
+    <script>
+  // Tách 1 dòng CSV thành mảng cột, có xử lý dấu ngoặc kép
+  function splitCSVLine(line = '') {
+    const out = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === ',' && !inQuotes) {
+        out.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+  // Bỏ ngoặc kép bao ngoài + trim
+  function unquote(s) {
+    if (s == null) return '';
+    s = String(s).trim();
+    if (s.startsWith('"') && s.endsWith('"')) {
+      s = s.slice(1, -1).replace(/""/g, '"');
+    }
+    return s.trim();
+  }
+</script>
+<script>
+  async function ensureSanPhamDataFor(masps = []) {
+    if (!Array.isArray(masps) || masps.length === 0) return;
+    const need = Array.from(new Set(masps.map(m => (m || '').toUpperCase())))
+      .filter(m => m && !(window.sanPhamData && window.sanPhamData[m]));
+    if (need.length === 0) return;
+
+    const chunk = (arr, n = 100) => arr.reduce((a, _, i) => (i % n ? a : [...a, arr.slice(i, i + n)]), []);
+    const batches = chunk(need, 100);
+    window.sanPhamData = window.sanPhamData || {};
+
+    for (const list of batches) {
+      const { data, error } = await window.supabase
+        .from('dmhanghoa')
+        .select('masp,tensp,dvt,gianhap')
+        .in('masp', list);
+      if (error) { console.warn('ensureSanPhamDataFor error:', error); continue; }
+      (data || []).forEach(sp => {
+        const k = (sp.masp || '').toUpperCase();
+        window.sanPhamData[k] = {
+          masp: k,
+          tensp: sp.tensp || '',
+          dvt: sp.dvt || 'sp',
+          gianhap: Number(sp.gianhap) || 0
+        };
+      });
+    }
+  }
+</script>
+<script>
+  async function importFromGoogleSheet() {
+    // 👉 ĐỔI 2 dòng này theo sheet bạn muốn đọc cho chuyển CN 1→2:
+    const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA"; // ví dụ
+    const sheetName = "kiemkhocs1"; // ví dụ
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+
+    try {
+      const res = await fetch(url);
+      const raw = await res.text();
+
+      // Chuẩn hóa CSV
+      const csv = raw.replace(/^\uFEFF/, '');
+      const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
+
+      // Bỏ dòng tiêu đề nếu có chữ "mã"/"masp"/"size"
+      let start = 0;
+      const first = (lines[0] || '').toLowerCase();
+      if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
+
+      // Parse → rows = [{masp,size,sl}]
+      const rows = [];
+      for (let i = start; i < lines.length; i++) {
+        const cols = splitCSVLine(lines[i]).map(unquote);
+        const masp = (cols[0] || '').toUpperCase().trim();
+        const size = (cols[1] || '0').trim();
+        const sl = Number(String(cols[2] || '0').replace(/\s/g, '')) || 0;
+        if (!masp) continue;
+        rows.push({ masp, size, sl, __row: i + 1 });
+      }
+
+      // (Tuỳ chọn) Bổ sung thông tin từ dmhanghoa để render đủ cột
+      if (typeof ensureSanPhamDataFor === 'function') {
+        await ensureSanPhamDataFor(rows.map(r => r.masp));
+      }
+
+      // === ĐỔ VÀO BẢNG ccn1v2 ===
+      const tbody = document.querySelector('#bangketqua tbody');
+      // ⚠️ Không xoá dữ liệu cũ: nối thêm
+      for (const r of rows) {
+        const sp = (window.sanPhamData || {})[r.masp] || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.masp}</td>
+          <td>${sp.tensp || ''}</td>
+          <td>${r.size}</td>
+          <td>${r.sl}</td>
+          <td>${sp.dvt || ''}</td>
+          <td>${sp.gianhap || ''}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>`;
+        tbody.appendChild(tr);
+      }
+
+      // Cập nhật lại object & tổng (nếu có)
+      if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+        window.capNhatBangKetQuaTuDOM();
+      }
+      if (typeof window.capNhatThongTinTong === 'function') {
+        window.capNhatThongTinTong(window.bangKetQua || {});
+      }
+
+      alert(`✅ Đã nạp ${rows.length} dòng từ Google Sheet vào bảng.`);
+      console.log('[CCN1v2][GS] rows:', rows);
+    } catch (err) {
+      console.error('Import Google Sheet error:', err);
+      alert('Không thể lấy dữ liệu từ Google Sheet.');
+    }
+  }
+</script>
+<script>
+  document.getElementById('btnImportFromGS')?.addEventListener('click', importFromGoogleSheet);
+</script>
+
+
 
 </body>
 
