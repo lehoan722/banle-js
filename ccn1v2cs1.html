@@ -613,6 +613,7 @@
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
             </div>
+            <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
             <!-- Popup tìm khách hàng
              <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
@@ -1339,6 +1340,9 @@
     </script>
 
     <script>
+
+        // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
+        
         // ===== Helper: tách 1 dòng CSV có dấu "..." và dấu phẩy trong chuỗi 
         function splitCSVLine(line) {
             const out = [];
@@ -1411,8 +1415,6 @@
                 });
             }
         }
-
-
 
         // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
 
