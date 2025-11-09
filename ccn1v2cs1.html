@@ -1388,16 +1388,16 @@ async function importFromGoogleSheet() {
     const res = await fetch(url);
     const raw = await res.text();
 
-    // 1) Parse CSV (chuẩn BOM/quote) như Nhập Mới
+    // 1) Parse CSV như Nhập Mới
     const csv   = raw.replace(/^\uFEFF/, '');
     const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
 
-    // Bỏ header nếu có "mã/masp/size"
+    // Bỏ header nếu có chữ "mã/masp/size"
     let start = 0;
     const first = (lines[0]||'').toLowerCase();
     if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
 
-    // 2) Đọc từng dòng -> rows: [{masp,size,sl}]
+    // 2) -> rows: [{masp,size,sl}]
     const rows = [];
     for (let i=start; i<lines.length; i++) {
       const cols = splitCSVLine(lines[i]).map(unquote);
@@ -1408,14 +1408,25 @@ async function importFromGoogleSheet() {
       rows.push({ masp, size, sl, __row: i+1 });
     }
 
-    // 3) Nạp danh mục cho các mã để hiển thị đủ cột
+    // 3) Nạp danh mục để có Tên hàng/ĐVT/Giá
     await ensureSanPhamDataFor(rows.map(r => r.masp));
 
-    // 4) Đổ thẳng vào bảng CCN (KHÔNG xoá dữ liệu cũ – nối thêm)
+    // 3b) Tô đỏ các mã không có trong danh mục (nếu có)
+    const invalid = rows.filter(r => !(window.sanPhamData && window.sanPhamData[r.masp]));
+    if (invalid.length) {
+      console.warn('Mã không có trong danh mục:', invalid.map(x=>x.masp));
+    }
+
+    // 4) Đổ vào bảng (xoá cũ hay nối thêm tuỳ nghiệp vụ; ở đây mình CHỌN xoá cũ để bạn dễ kiểm tra)
     const tbody = document.querySelector('#bangketqua tbody');
+    tbody.innerHTML = '';
+
     for (const r of rows) {
       const sp = (window.sanPhamData||{})[r.masp] || {};
       const tr = document.createElement('tr');
+      if (!sp.masp) tr.style.backgroundColor = '#f8d7da'; // tô đỏ nếu không có trong DM
+
+      // Thứ tự cột: Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
       tr.innerHTML = `
         <td>${r.masp}</td>
         <td>${sp.tensp||''}</td>
@@ -1427,7 +1438,7 @@ async function importFromGoogleSheet() {
       tbody.appendChild(tr);
     }
 
-    // 5) Cập nhật lại object và tổng (nếu trang có các hàm này)
+    // 5) Cập nhật object và tổng
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') window.capNhatBangKetQuaTuDOM();
     if (typeof window.capNhatThongTinTong   === 'function') window.capNhatThongTinTong(window.bangKetQua || {});
 
@@ -1439,27 +1450,9 @@ async function importFromGoogleSheet() {
   }
 }
 </script>
+
 <script>
   document.getElementById('btnImportFromGS')?.addEventListener('click', importFromGoogleSheet);
-</script>
-<script>
-    // Sau await ensureSanPhamDataFor(...)
-const invalid = [];
-for (const r of rows) {
-  if (!window.sanPhamData?.[r.masp]) invalid.push(r);
-}
-if (invalid.length) {
-  const tbody = document.querySelector('#bangketqua tbody');
-  invalid.forEach(item => {
-    const tr = document.createElement('tr');
-    tr.style.backgroundColor = '#f8d7da'; // đỏ nhạt
-    tr.innerHTML = `<td>${item.masp}</td><td></td><td>${item.size}</td><td>${item.sl}</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>`;
-    tbody.appendChild(tr);
-  });
-  alert("⚠ Có mã sản phẩm không tồn tại trong danh mục. Vui lòng kiểm tra lại.");
-}
-
 </script>
 
 </body>
