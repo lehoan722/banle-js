@@ -1427,25 +1427,29 @@ async function importFromGoogleSheet() {
     tbody.innerHTML = '';
 
     for (const r of rows) {
-      const sp = (window.sanPhamData||{})[r.masp] || {};
-      const tr = document.createElement('tr');
-      if (!sp.masp) tr.style.backgroundColor = '#f8d7da'; // tô đỏ nếu không có trong DM
+  const sp  = (window.sanPhamData || {})[r.masp] || {};
+  const gia = Number(sp.gianhap) || 0;          // đơn giá (đổi sang sp.giaban nếu cần)
+  const km  = 0;                                // khuyến mại = 0
+  const tt  = gia * (Number(r.sl) || 0);        // thành tiền = đơn giá * SL
 
-      // Thứ tự cột: Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
-       tr.innerHTML = `
-        <td>${r.masp}</td>
-        <td>${sp.tensp || ''}</td>
-        <td>${r.size}</td>
-        <td>${r.sl}</td>
-        <td>${sp.dvt || ''}</td>
-        <td style="text-align:right">${fmt(gia)}</td>
-        <td style="text-align:right">${fmt(km)}</td>
-        <td style="text-align:right">${fmt(tt)}</td>
-        <td></td>
-        <td></td>
-        <td></td>`;
-      tbody.appendChild(tr);
-    }
+  const tr = document.createElement('tr');
+  if (!sp.masp) tr.style.backgroundColor = '#f8d7da'; // tô đỏ nếu ko có trong DM
+
+  // Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
+  tr.innerHTML = `
+    <td>${r.masp}</td>
+    <td>${sp.tensp || ''}</td>
+    <td>${r.size}</td>
+    <td>${r.sl}</td>
+    <td>${sp.dvt || ''}</td>
+    <td style="text-align:right">${fmt(gia)}</td>
+    <td style="text-align:right">${fmt(km)}</td>
+    <td style="text-align:right">${fmt(tt)}</td>
+    <td></td>
+    <td></td>
+    <td></td>`;
+  tbody.appendChild(tr);
+}
 
     // 5) Cập nhật object và tổng
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') window.capNhatBangKetQuaTuDOM();
