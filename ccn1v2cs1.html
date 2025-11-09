@@ -1383,149 +1383,155 @@ async function ensureSanPhamDataFor(masps = []) {
 </script>
 
 <script>
-async function importFromGoogleSheet() {
-  // ====== CHẾ ĐỘ A: CỐ ĐỊNH SHEET ID + SHEET NAME (khuyến nghị) ======
-  // Điền 2 biến này nếu muốn chạy thẳng không cần hỏi URL:
-  const FIXED_SHEET_ID   = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA'; // ← điền ID
-  const FIXED_SHEET_NAME = 'kiemkhocs1';                                      // ← điền tên tab
+function splitCSVLine(line=''){const o=[];let c='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch=='"'){if(q&&line[i+1]=='"'){c+='"';i++;}else{q=!q;}}else if(ch==','&&!q){o.push(c);c='';}else{c+=ch;}}o.push(c);return o;}
+function unquote(s){if(s==null)return'';s=String(s).trim();if(s.startsWith('"')&&s.endsWith('"'))s=s.slice(1,-1).replace(/""/g,'"');return s.trim();}
+function fmt(n){return (Number(n)||0).toLocaleString('vi-VN');}
 
-  // ====== Quy tắc nhận diện ======
+async function ensureSanPhamDataFor(masps=[]){
+  if(!Array.isArray(masps)||!masps.length)return;
+  window.sanPhamData=window.sanPhamData||{};
+  const need=[...new Set(masps.map(m=>String(m||'').toUpperCase()))]
+     .filter(m=>m && !window.sanPhamData[m]);
+  if(!need.length)return;
+  const chunk=(a,n=100)=>a.reduce((r,_,i)=>(i%n?r:[...r,a.slice(i,i+n)]),[]);
+  for(const part of chunk(need,100)){
+    const {data,error}=await window.supabase
+      .from('dmhanghoa').select('masp,tensp,dvt,gianhap').in('masp',part);
+    if(error) {console.warn('ensureSanPhamDataFor:',error);continue;}
+    (data||[]).forEach(sp=>{
+      const k=String(sp.masp||'').toUpperCase();
+      window.sanPhamData[k]={tensp:sp.tensp||'',dvt:sp.dvt||'sp',gianhap:Number(sp.gianhap)||0};
+    });
+  }
+}
+
+async function importFromGoogleSheet(){
+  // ---- KHÔNG CẦN DÁN LINK: điền sẵn ID + tên tab ----
+  const FIXED_SHEET_ID   = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
+  const FIXED_SHEET_NAME = 'kiemkhocs1';
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${FIXED_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(FIXED_SHEET_NAME)}`;
+
+  // ---- Rule nhận diện ----
   const SIZE_SET = new Set(['0','38','39','40','41','42','43','44','45']);
-  const isSizeToken = s => SIZE_SET.has(String(s).trim());
-  const isMaspToken = t => String(t||'').trim().length >= 3; // chấp nhận toàn số
+  const isSizeToken = (s)=>{
+    const t=String(s||'').trim().toUpperCase();
+    if (SIZE_SET.has(t)) return true;
+    // “SIZE 40”, “size40”, “Size:41”...
+    const m=t.match(/(^|\s)SIZE\s*:?(\d{1,2})$/);
+    return !!(m && SIZE_SET.has(m[2]));
+  };
+  const MASP_REGEX=/^[A-Z0-9][A-Z0-9._-]*(?:\/[A-Z0-9._-]+)?$/; // chấp nhận -,_,.,/
+  const isMaspToken = (s)=>{
+    const t=String(s||'').trim().toUpperCase();
+    if (!t) return false;
+    if (isSizeToken(t)) return false;
+    // mã chuẩn (có chữ/số, có thể kèm -_. /), hoặc toàn số >= 3 ký tự
+    return MASP_REGEX.test(t) || /^\d{3,}$/.test(t);
+  };
 
-  // Helpers sẵn có trong file:
-  const fmtSafe = (typeof window.fmt === 'function') ? window.fmt : (n => (Number(n)||0).toLocaleString('vi-VN'));
-
-  try {
-    // ====== Lấy CSV cột A ======
-    let csvUrl = '';
-    if (FIXED_SHEET_ID && FIXED_SHEET_NAME) {
-      // A1: dùng gviz để lấy đúng tab theo tên
-      csvUrl = `https://docs.google.com/spreadsheets/d/${FIXED_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(FIXED_SHEET_NAME)}`;
-    } else {
-      // B1: dùng URL đã lưu/nhập 1 lần
-      let url = localStorage.getItem('gs_url_ccn') || '';
-      if (!url) {
-        url = prompt('Dán URL Google Sheet (tab đang dùng):', '');
-        if (!url) return;
-        localStorage.setItem('gs_url_ccn', url);
-      }
-      const idMatch = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-      const gidMatch = url.match(/[#&?]gid=([0-9]+)/);
-      const sheetId = idMatch ? idMatch[1] : null;
-      const gid = gidMatch ? gidMatch[1] : '0';
-      if (!sheetId) { alert('URL không hợp lệ!'); return; }
-      csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-    }
-
+  try{
     const res = await fetch(csvUrl);
     let text = await res.text();
     text = text.replace(/^\uFEFF/,'');
     if (/<html|DOCTYPE html|need permission|signin/i.test(text)) {
-      alert('⚠️ Không đọc được CSV. Hãy public Sheet (Anyone with the link – Viewer) hoặc kiểm tra link.');
+      alert('⚠️ Không đọc được CSV. Hãy mở quyền “Anyone with the link – Viewer”.');
       return;
     }
 
-    // Chỉ lấy CỘT A an toàn (parser CSV đã có trong file: splitCSVLine + unquote)
-    const lines = text.split(/\r?\n/).filter(r => r.trim().length);
+    // Lấy duy nhất cột A
+    const lines = text.split(/\r?\n/).filter(r=>r.trim().length);
     const colA = lines.map(line => {
       const first = (splitCSVLine(line)[0] ?? '');
       return unquote(first).replace(/\s+/g,' ').trim();
     }).filter(Boolean);
 
-    // ====== Gom dồn theo 1 cột: MÃ → các SIZE sau đó ======
-    const totals = new Map(); // Map<masp, Map<size, sl>>
-    const orphanSizes = [];   // size mồ côi
-    const skuNoSize  = [];    // mã không có size
-    let current = null;       // mã hiện tại
-
-    const add = (m, s, inc = 1) => {
-      if (!totals.has(m)) totals.set(m, new Map());
-      const mp = totals.get(m);
-      mp.set(s, (mp.get(s)||0) + inc);
+    // Gom dồn: MÃ → các SIZE “sát sau”
+    const totals = new Map();     // Map<masp, Map<size, sl>>
+    const skuNoSize=[];           // báo mã không có size
+    const orphanSizes=[];         // size mồ côi
+    let current=null;
+    const add = (m, s, inc=1)=>{
+      if(!totals.has(m)) totals.set(m,new Map());
+      const mp=totals.get(m);
+      mp.set(s,(mp.get(s)||0)+inc);
     };
 
-    for (const raw of colA) {
-      const token = String(raw||'').toUpperCase().trim();
-      if (isSizeToken(token)) {
-        if (!current) { orphanSizes.push(token); continue; }
-        add(current, token, 1);
+    for (const raw of colA){
+      const token=String(raw||'').toUpperCase().trim();
+      if (isMaspToken(token)){
+        current = token;                   // ← CHUYỂN sang mã mới NGAY LẬP TỨC
+        if (!totals.has(current)) totals.set(current,new Map());
         continue;
       }
-      if (isMaspToken(token)) {
-        current = token;
-        if (!totals.has(current)) totals.set(current, new Map());
+      if (isSizeToken(token)){
+        if (!current){ orphanSizes.push(token); continue; } // size mồ côi
+        const m = token.match(/\d{1,2}/); // bắt đúng “40” từ “size 40”
+        add(current, m?m[0]:token, 1);
         continue;
       }
       // token lạ: bỏ qua
     }
 
     // Xuất rows
-    const rows = [];
-    for (const [masp, mp] of totals.entries()) {
-      if (mp.size === 0) {
-        skuNoSize.push(masp);
-        rows.push({ masp, size: '', sl: 0, __error: true });
-      } else {
-        for (const [sz, sl] of mp.entries()) {
-          rows.push({ masp, size: sz, sl: Number(sl)||0 });
-        }
-      }
+    const rows=[];
+    for (const [masp, mp] of totals.entries()){
+      if (mp.size===0){ skuNoSize.push(masp); rows.push({masp,size:'',sl:0,__error:true}); continue; }
+      for (const [sz,sl] of mp.entries()) rows.push({masp,size:sz,sl:Number(sl)||0});
     }
-    if (rows.length === 0) { alert('Đã nạp 0 dòng (mã-size) từ Google Sheet.'); return; }
+    if (!rows.length){ alert('Đã nạp 0 dòng (mã-size) từ Google Sheet.'); return; }
 
-    // ====== Lấy thông tin hàng (tên, ĐVT, giá) từ Supabase/dmhanghoa ======
-    const allMasps = Array.from(new Set(rows.filter(r => !r.__error).map(r => r.masp)));
-    if (typeof ensureSanPhamDataFor === 'function') {
-      await ensureSanPhamDataFor(allMasps);
-    }
-    const spData = (window.sanPhamData || {});
+    // Lấy thông tin hàng hoá
+    const listMasps=[...new Set(rows.filter(r=>!r.__error).map(r=>r.masp))];
+    await ensureSanPhamDataFor(listMasps);
+    const spData = window.sanPhamData || {};
 
-    // ====== Đổ trực tiếp vào bảng #bangketqua đầy đủ cột ======
+    // Đổ đủ cột vào bảng
     const tbody = document.querySelector('#bangketqua tbody');
-    if (!tbody) { alert('Không tìm thấy bảng #bangketqua'); return; }
-    tbody.innerHTML = '';
+    if (!tbody){ alert('Không tìm thấy #bangketqua'); return; }
+    tbody.innerHTML='';
 
-    for (const r of rows) {
-      const info = spData[r.masp] || { tensp:'', dvt:'', gianhap:0 };
-      const gia = Number(info.gianhap)||0;
-      const km  = 0;
-      const tt  = gia * (Number(r.sl)||0);
+    for (const r of rows){
+      const info = spData[r.masp] || {tensp:'', dvt:'sp', gianhap:0};
+      const gia  = Number(info.gianhap)||0;
+      const km   = 0;
+      const tt   = gia * (Number(r.sl)||0);
 
       const tr = document.createElement('tr');
       if (r.__error) tr.style.backgroundColor = '#f8d7da';
       tr.innerHTML = `
-        <td>${r.masp||''}</td>
-        <td>${info.tensp||''}</td>
-        <td>${r.size||''}</td>
-        <td>${r.sl||0}</td>
-        <td>${info.dvt||'sp'}</td>
-        <td style="text-align:right">${fmtSafe(gia)}</td>
-        <td style="text-align:right">${fmtSafe(km)}</td>
-        <td style="text-align:right">${fmtSafe(tt)}</td>
-        <td></td><td></td><td></td>
-      `;
+        <td>${r.masp}</td>
+        <td>${info.tensp}</td>
+        <td>${r.size}</td>
+        <td>${r.sl}</td>
+        <td>${info.dvt}</td>
+        <td style="text-align:right">${fmt(gia)}</td>
+        <td style="text-align:right">${fmt(km)}</td>
+        <td style="text-align:right">${fmt(tt)}</td>
+        <td></td><td></td><td></td>`;
       tbody.appendChild(tr);
     }
 
-    // Đồng bộ lại cấu trúc dữ liệu + tính tổng nếu app có sẵn các hàm này
+    // Đồng bộ cấu trúc + tính tổng nếu có hàm sẵn
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') window.capNhatBangKetQuaTuDOM();
-    if (typeof window.capNhatThongTinTong   === 'function') window.capNhatThongTinTong(window.bangKetQua || {});
+    if (typeof window.capNhatThongTinTong === 'function')   window.capNhatThongTinTong(window.bangKetQua||{});
 
     // Thông báo
     let msg = `✅ Đã nạp ${rows.length} dòng (mã-size) từ Google Sheet.`;
-    const warn = [];
+    const warn=[];
     if (skuNoSize.length)   warn.push(`• Mã chưa có size: ${skuNoSize.join(', ')}`);
     if (orphanSizes.length) warn.push(`• Size mồ côi (bỏ qua): ${orphanSizes.join(', ')}`);
     if (warn.length) msg += `\n\nCảnh báo:\n${warn.join('\n')}`;
     alert(msg);
-  } catch (e) {
+  }catch(e){
     console.error('Import Google Sheet error:', e);
     alert('Không thể lấy dữ liệu từ Google Sheet.');
   }
 }
+
+// Gắn nút
+document.getElementById('btnImportFromGS')?.addEventListener('click', importFromGoogleSheet);
 </script>
+
 
 
 
