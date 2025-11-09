@@ -1057,39 +1057,41 @@
         };
 
 
-        // Dán từ clipboard (Excel) vào bảng web
+        // Dán từ clipboard (Excel) vào bảng web 
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            tbody.innerHTML = '';
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            // ❌ KHÔNG xoá dữ liệu cũ nữa
+            // tbody.innerHTML = '';
+
+            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
                 const tr = document.createElement('tr');
-                rowArr.forEach(cell => {
+                rowArr.forEach((cell) => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
-            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
-            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
-            if (typeof capNhatThongTinTong === "function") {
+            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            // ✅ Cập nhật tổng
+            if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log để kiểm tra
-            console.log("window.bangKetQua:", window.bangKetQua);
-            if (typeof bangKetQua !== "undefined") {
-                console.log("bangKetQua:", bangKetQua);
-            }
+            // Log kiểm tra
+            console.log('window.bangKetQua:', window.bangKetQua);
         });
-
-
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
