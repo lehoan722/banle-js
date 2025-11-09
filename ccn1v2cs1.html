@@ -1372,122 +1372,158 @@ async function ensureSanPhamDataFor(masps = []) {
 
 <script>
 async function importFromGoogleSheet() {
-  // --- Lấy URL Google Sheet ---
-  // Ưu tiên URL đã lưu sẵn trong localStorage (khỏi phải dán lại mỗi lần)
+  // 1) URL: auto (không cần dán tay nữa). Nếu bạn muốn đổi tab, chỉ sửa SHEET_NAME.
   let url = localStorage.getItem('ccn_gs_url');
   if (!url) {
     const SHEET_ID   = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
     const SHEET_NAME = 'kiemkhocs1';
     url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
-    // Lưu lại để lần sau tự chạy
     localStorage.setItem('ccn_gs_url', url);
   }
 
-  // Tiện ích
-  const normalize = x => String(x||'').replace(/^\uFEFF/,'').replace(/[\u200B-\u200D\u2060]/g,'').trim();
-  const compactDigits = s => normalize(s).replace(/\s+/g,'');
+  // 2) Tiện ích chuẩn hoá
+  const norm = s => String(s||'').replace(/^\uFEFF/,'').replace(/[\u200B-\u200D\u2060]/g,'').trim();
+  const compactDigits = s => norm(s).replace(/\s+/g,'');
   const isSizeToken = (s) => {
     const t = compactDigits(s);
     if (!/^\d{1,2}$/.test(t)) return false;
     const n = Number(t);
-    return [0,38,39,40,41,42,43,44,45].includes(n);   // size hợp lệ
+    return [0,38,39,40,41,42,43,44,45].includes(n);
   };
   const isMaspToken = (s) => {
-    const t = normalize(s);
-    return t.length >= 3 && !isSizeToken(t);          // >=3 ký tự, có thể toàn số
+    const t = norm(s);
+    return t.length >= 3 && !isSizeToken(t); // >=3 ký tự, có thể toàn số
   };
-  const normSize = s => String(Number(compactDigits(s))); // ' 39 ' -> '39'
+  const toSize = s => String(Number(compactDigits(s))); // ' 39 ' -> '39'
+
+  // CSV helpers (đã có trong file; nếu thiếu thì dùng block này)
+  function splitCSVLine(line='') {
+    const out=[]; let cur='', inQ=false;
+    for (let i=0;i<line.length;i++){
+      const ch=line[i];
+      if (ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; }
+      else if (ch===',' && !inQ){ out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+    out.push(cur);
+    return out;
+  }
+  const unquote = s => {
+    if (s==null) return '';
+    s = String(s).trim();
+    if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1,-1).replace(/""/g,'"');
+    return s.trim();
+  };
 
   try {
+    // 3) Tải CSV
     const res = await fetch(url);
     const text = await res.text();
     if (/<html|DOCTYPE html|need permission|signin/i.test(text)) {
-      alert('⚠️ Không đọc được CSV (Sheet chưa public?). Bật "Anyone with the link – Viewer" hoặc kiểm tra URL.');
-      console.warn('[GS response snippet]', text.slice(0,200));
+      alert('⚠️ Không đọc được CSV (Sheet chưa public?). Hãy bật "Anyone with the link – Viewer" hoặc kiểm tra URL.');
       return;
     }
 
-    // Parse CSV
     const csv   = text.replace(/^\uFEFF/,'');
     const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
 
-    // Bỏ header nếu có chữ khoá
+    if (lines.length === 0) { alert('⚠️ Sheet trống.'); return; }
+
+    // 4) Bỏ header nếu có chữ khoá
     let start = 0;
     const first = (lines[0]||'').toLowerCase();
     if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
 
-    // Kiểm tra cấu trúc: 3 cột (masp,size,sl) hay 1 cột (chuỗi đan xen)
-    const colsFirst = lines[start] ? lines[start].split(',') : [];
-    let rows = [];
+    // 5) Quyết định 1 cột hay 3 cột (chống nhầm do dấu phẩy rỗng)
+    let countTwoPlus = 0, sampled = 0;
+    for (let i = start; i < lines.length && sampled < 40; i++, sampled++) {
+      const cols = splitCSVLine(lines[i]).map(unquote).map(norm);
+      if (cols.length >= 2 && (cols[1] || cols[2])) countTwoPlus++;
+    }
+    const isThreeCols = (countTwoPlus >= 3);
 
-    if (colsFirst.length >= 2) {
-      // --- CHẾ ĐỘ BẢNG 3 CỘT ---
-      for (let i=start;i<lines.length;i++){
-        const cols = lines[i].split(',').map(s => normalize(s).replace(/^"|"$/g,'').replace(/""/g,'"'));
-        const masp = (cols[0]||'').toUpperCase();
-        const size = cols[1]||'0';
-        const sl   = Number(compactDigits(cols[2]||'1')) || 1;
-        if (!masp) continue;
-        rows.push({ masp, size: normSize(size), sl, __row: i+1 });
+    // 6) Gom dữ liệu toàn cục (masp -> size -> sl)
+    const order = [];                 // thứ tự xuất hiện mã
+    const seen  = new Set();
+    const agg   = new Map();          // Map(masp -> Map(size -> sl))
+    const errors = [];
+
+    if (isThreeCols) {
+      // ----- BẢNG 3 CỘT -----
+      for (let i = start; i < lines.length; i++) {
+        const cols = splitCSVLine(lines[i]).map(unquote).map(norm);
+        const masp = (cols[0] || '').toUpperCase();
+        const size = toSize(cols[1] || '0');
+        const sl   = Number(compactDigits(cols[2] || '1')) || 1;
+        if (!masp) continue;               // bỏ dòng rỗng
+        if (!seen.has(masp)) { seen.add(masp); order.push(masp); }
+        if (!agg.has(masp)) agg.set(masp, new Map());
+        const m = agg.get(masp);
+        m.set(size, (m.get(size)||0) + sl);
       }
     } else {
-      // --- CHẾ ĐỘ 1 CỘT (đan xen mã/size/size/...) ---
-      // Gom TOÀN CỤC theo (masp,size) để dù khai ở nhiều đoạn vẫn về chung 1 dòng
+      // ----- CỘT ĐƠN (đan xen mã / size / size …) -----
       const tokens = [];
-      for (let i=start;i<lines.length;i++){
-        const t = normalize(lines[i].split(',')[0] || '');
-        if (t) tokens.push({t, line:i+1});
+      for (let i = start; i < lines.length; i++) {
+        const t = norm(unquote(splitCSVLine(lines[i])[0] || ''));
+        if (t) tokens.push({ t, line: i+1 });
       }
 
-      const order = [];                        // giữ thứ tự gặp mã lần đầu
-      const seen  = new Set();
-      const agg   = new Map();                 // masp -> Map(size -> sl)
-      const errors = [];
+      let current = null;      // mã hiện hành
+      let lastWasMasp = false;
 
-      let current = null;
-      for (const {t,line} of tokens){
+      for (const { t, line } of tokens) {
         if (isMaspToken(t)) {
+          if (lastWasMasp && current) {
+            // hai mã liền nhau
+            errors.push(`• Mã “${current}” (dòng trước) chưa có size`);
+          }
           current = t.toUpperCase();
+          lastWasMasp = true;
           if (!seen.has(current)) { seen.add(current); order.push(current); }
           if (!agg.has(current)) agg.set(current, new Map());
         } else if (isSizeToken(t)) {
           if (!current) {
-            errors.push(`• size ${t} (dòng ${line}) không có mã phía trước`);
-          } else {
-            const size = normSize(t);
-            const map = agg.get(current);
-            map.set(size, (map.get(size)||0) + 1);
+            errors.push(`• Size ${t} (dòng ${line}) không có mã phía trước`);
+            continue;
           }
-        } // token khác bỏ qua
+          const sz = toSize(t);
+          const m  = agg.get(current);
+          m.set(sz, (m.get(sz)||0) + 1);
+          lastWasMasp = false;
+        } else {
+          // token khác: bỏ qua
+          lastWasMasp = false;
+        }
       }
-
-      // Chuyển agg -> rows (giữ thứ tự mã; size sắp xếp tăng dần)
-      for (const m of order){
-        const msize = Array.from(agg.get(m).entries()).sort((a,b)=>Number(a[0])-Number(b[0]));
-        for (const [sz, sl] of msize) rows.push({ masp:m, size:sz, sl });
+      if (lastWasMasp && current) {
+        errors.push(`• Mã “${current}” ở cuối danh sách chưa có size`);
       }
-
-      if (errors.length) alert(`⚠️ Dòng lỗi:\n${errors.join('\n')}`);
     }
 
+    // 7) Đưa agg → rows (giữ thứ tự mã; size tăng dần)
+    const rows = [];
+    for (const masp of order) {
+      const m = agg.get(masp);
+      const sizes = Array.from(m.entries()).sort((a,b)=>Number(a[0])-Number(b[0]));
+      for (const [size, sl] of sizes) rows.push({ masp, size, sl });
+    }
     if (rows.length === 0) {
       const peek = lines.slice(0,5).map((t,i)=>`${i+1}. “${t}”`).join('\n');
       alert(`⚠️ Đọc được 0 dòng. Kiểm tra lại sheet/URL.\n---\n5 dòng đầu:\n${peek}`);
       return;
     }
 
-    // Nạp DM để có tên hàng/ĐVT/giá
+    // 8) Nạp DM để có tên hàng/đvt/giá rồi render
     await ensureSanPhamDataFor(rows.map(r=>r.masp));
 
-    // Đổ bảng (xoá cũ để dễ nhìn)
     const tbody = document.querySelector('#bangketqua tbody');
     tbody.innerHTML = '';
-    for (const r of rows){
+    for (const r of rows) {
       const sp  = (window.sanPhamData||{})[r.masp] || {};
       const gia = Number(sp.gianhap)||0;
       const tt  = gia * Number(r.sl||0);
-
-      const tr = document.createElement('tr');
+      const tr  = document.createElement('tr');
       tr.innerHTML = `
         <td>${r.masp}</td>
         <td>${sp.tensp||''}</td>
@@ -1501,17 +1537,21 @@ async function importFromGoogleSheet() {
       tbody.appendChild(tr);
     }
 
-    // Cập nhật object/tổng nếu trang đã có các hàm này
     if (typeof window.capNhatBangKetQuaTuDOM === 'function') window.capNhatBangKetQuaTuDOM();
     if (typeof window.capNhatThongTinTong   === 'function') window.capNhatThongTinTong(window.bangKetQua||{});
 
-    alert(`✅ Đã nạp ${rows.length} dòng (mã-size) từ Google Sheet.`);
+    if (errors.length) {
+      alert(`✅ Đã nạp ${rows.length} dòng.\n⚠️ Cảnh báo:\n${errors.join('\n')}`);
+    } else {
+      alert(`✅ Đã nạp ${rows.length} dòng (mã-size) từ Google Sheet.`);
+    }
   } catch (e) {
     console.error('Import Google Sheet error:', e);
     alert('Không thể lấy dữ liệu từ Google Sheet.');
   }
 }
 </script>
+
 
 
 
