@@ -953,7 +953,16 @@
 
     </script>
 
-    <script src="scripts/bangketqua.js"></script>
+    <script type="module">
+        import * as BKQ from './scripts/bangketqua.js';
+
+        // Xuất các hàm module ra global để các đoạn code cũ (gọi window.*) dùng được
+        window.capNhatBangHTML = BKQ.capNhatBangHTML;
+        window.resetFormBang = BKQ.resetFormBang?.bind(BKQ) || (() => { });
+        window.resetFormSauKhiNhapSize = BKQ.resetFormSauKhiNhapSize?.bind(BKQ) || (() => { });
+        window.toggleBangKetQua = BKQ.toggleBangKetQua?.bind(BKQ) || (() => { });
+    </script>
+
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
