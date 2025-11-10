@@ -559,11 +559,15 @@
             left: `${leftPos}px`,
             minWidth: `${desiredWidth}px`,
             maxWidth: 'none',
-            maxHeight: '200',
             width: '',
             height: '',
-            overflow: 'visible',
-            display: 'block'
+            // CHÌA KHÓA: rút ngắn popup còn ~2/3 màn hình + cuộn
+            maxHeight: '66vh',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            display: 'block',
+            // siết tổng padding khung nếu đang có
+            padding: '6px'
           });
 
           // Chỉ áp dụng trên mobile: giảm khoảng cách cột/dòng xuống 1/2
