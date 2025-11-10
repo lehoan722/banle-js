@@ -165,6 +165,9 @@ function _getPopupInner(popupEl) {
 let _popupOutsideHandler = null;
 
 window.openPopupSearch = async function (type) {
+
+    
+  window.currentPopupType = type || 'mahang';
     window.currentPopupType = type;
 
     const popup = document.getElementById('popupSearch');
