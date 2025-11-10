@@ -812,62 +812,64 @@ const item = data[masp];
 }
 
 
+// hoadon.js
 export function suaDongDangChon() {
-    // ✅ Đồng bộ lại dữ liệu từ bảng DOM (trường hợp vừa “nhập ngang”)
-    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
+  // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
+  try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) {}
 
-    let dangChon = getMaspspDangChon();
+  // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
+  let dangChon = getMaspspDangChon();
+  if (!dangChon) {
+    const firstRow = document.querySelector("#bangketqua tbody tr");
+    if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
+    const tds = firstRow.querySelectorAll("td");
+    const masp = (tds[0]?.textContent || "").trim();
+    const size = (tds[2]?.textContent || "").trim();
+    if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
+    setMaspspDangChon({ masp, size });
+    dangChon = { masp, size };
+  }
 
-    // Nếu chưa chọn gì → lấy dòng đầu
-    if (!dangChon) {
-        const firstRow = document.querySelector("#bangketqua tbody tr");
-        if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
-        const tds = firstRow.querySelectorAll("td");
-        const masp = (tds[0]?.textContent || "").trim();
-        const size = (tds[2]?.textContent || "").trim();
-        if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
-        setMaspspDangChon({ masp, size });
-        dangChon = { masp, size };
-    }
+  const masp = String(dangChon.masp || "").trim();
+  const size = String(dangChon.size || "").trim();
 
-    const masp = String(dangChon.masp || "").trim();
-    const size = String(dangChon.size || "").trim();
-    const data = _data();
-const item = data[masp]; 
-    if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
+  const data = _data();
+  const item = data[masp];
+  if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
 
-    // 🔧 So khớp size có trim để ổn định
-    const idx = item.sizes.findIndex(s => String(s).trim() === size);
-    if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
+  const idx = item.sizes.findIndex(s => String(s).trim() === size);
+  if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
 
-    // Đưa thông tin về form
-    const maspEl = document.getElementById("masp");
-    document.getElementById("size").value = item.sizes[idx] || "";
-    document.getElementById("soluong").value = item.soluongs[idx] || "1";
-    document.getElementById("dvt").value = item.dvt || "";
-    document.getElementById("gia").value = item.gia || "";
-    document.getElementById("khuyenmai").value = item.km || "";
-    (function recalc() {
-        const sl = (parseInt(document.getElementById("soluong").value) || 0);
-        const gia = (parseInt(String(document.getElementById("gia").value).replace(/[.,\s]/g, "")) || 0);
-        const km = (parseInt(String(document.getElementById("khuyenmai").value).replace(/[.,\s]/g, "")) || 0);
-        const tt = (gia - km) * sl;
-        const ttEl = document.getElementById("thanhtien");
-        if (ttEl) ttEl.value = tt.toLocaleString();
-    })();
-    maspEl.value = item.masp || "";
-    const slEl = document.getElementById("soluong");
-    if (slEl) { slEl.focus(); slEl.select(); }
+  // 3) Đẩy dữ liệu lên form
+  document.getElementById("size").value      = item.sizes[idx] || "";
+  document.getElementById("soluong").value   = item.soluongs[idx] || "1";
+  document.getElementById("dvt").value       = item.dvt || "";
+  document.getElementById("gia").value       = item.gia || "";
+  document.getElementById("khuyenmai").value = item.km || "";
+  (function recalc() {
+    const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
+    const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g,"")) || 0;
+    const km  = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g,"")) || 0;
+    const tt  = (gia - km) * sl;
+    const ttEl = document.getElementById("thanhtien");
+    if (ttEl) ttEl.value = tt.toLocaleString();
+  })();
+  const slEl = document.getElementById("soluong");
+  if (slEl) { slEl.focus(); slEl.select(); }
 
-    // Cắt đúng size đang sửa ra khỏi nhóm
-    item.sizes.splice(idx, 1);
-    item.soluongs.splice(idx, 1);
-    item.tong = Math.max(0, (item.tong || 0) - (parseInt(document.getElementById("soluong").value) || 0));
-    if (item.sizes.length === 0) delete data[masp];  
+  // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
+  const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
+  item.sizes.splice(idx, 1);
+  item.soluongs.splice(idx, 1);
+  item.tong = Math.max(0, (item.tong || 0) - slCu);
+  if (item.sizes.length === 0) delete data[masp];
 
-    setMaspspDangChon(null);
-    capNhatBangHTML(bangKetQua, window.lastAdded);
+  // 5) Ghi state & render
+  setMaspspDangChon(null);
+  _sync(data);
+  capNhatBangHTML(data, window.lastAdded);
 }
+
 
 
 
