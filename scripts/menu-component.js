@@ -629,11 +629,14 @@
       move() { /* noop */ }
 
       pick(idx, source = 'mouse') {
-        if (idx == null || idx < 0 || idx >= this.rows.length) return;
-        const value = this.rows[idx].neck; // ghi cột 1 vào #size
-        if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx], source);
-        this.close();
-      }
+  if (idx == null || idx < 0 || idx >= this.rows.length) return;
+  const value = this.rows[idx].neck; // ghi cột 1 vào #size
+  if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx], source);
+
+  // ⬇️ Chỉ đóng khi KHÔNG bật nhập size liên tiếp
+  if (!isNhapSizeLienTiep()) this.close();
+}
+
 
       findIndexByValue(v) {
         const i = this.rows.findIndex(r => r.neck === v);
@@ -688,17 +691,7 @@
             }, ENTER_DELAY_MS);
           }
 
-          // Nếu đang bật "nhập size liên tiếp": sau khi pick xong, đưa focus về #size và MỞ LẠI popup
-          if (isNhapSizeLienTiep()) {
-            // Chờ qua thời điểm blur-đóng (120ms) và Enter mô phỏng (ENTER_DELAY_MS) để tránh mở–đóng chéo
-            const OPEN_BACK_DELAY = Math.max(ENTER_DELAY_MS, 130) + 40; // ví dụ: 180 + 40 = 220ms
-            setTimeout(() => {
-              __sizeInput.focus({ preventScroll: true });
-              if (document.activeElement === __sizeInput && isNhapSizeLienTiep()) {
-                __sizeDD.openFor(__sizeInput);
-              }
-            }, OPEN_BACK_DELAY);
-          }
+          
 
         };
 
@@ -733,11 +726,11 @@
           switch (e.key) {
             case 'ArrowDown': /* không di chuyển dòng */ e.preventDefault(); break;
             case 'ArrowUp':   /* không di chuyển dòng */ e.preventDefault(); break;
-            case 'Enter':
-              // Nếu dropdown đang mở, chỉ việc đóng dropdown và CHO PHÉP Enter tự nhiên đi tiếp
-              if (__sizeDD.isOpen()) __sizeDD.close();
-              // không preventDefault -> để scanner / Enter thật chạy handler của bạn
-              break;
+             case 'Enter':
+      // Giữ popup mở khi bật nhập size liên tiếp để tránh chớp nháy
+      if (__sizeDD.isOpen() && !isNhapSizeLienTiep()) __sizeDD.close();
+      // KHÔNG preventDefault: để handler Enter của bạn chạy bình thường (đẩy vào bảng)
+      break;
             case 'Escape':
               __sizeDD.close();
               break;
@@ -749,8 +742,11 @@
 
         // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
         __sizeInput.addEventListener('blur', () => {
-          setTimeout(() => __sizeDD.close(), 120);
-        });
+  if (!isNhapSizeLienTiep()) {
+    setTimeout(() => __sizeDD.close(), 120);
+  }
+});
+
       };
 
       if (document.readyState === 'loading') {
