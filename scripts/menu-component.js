@@ -548,12 +548,16 @@
           this.cardsWrap.style.display = 'block'; // hoặc 'grid' đều ok vì bên trong đã là grid
 
 
-        } else {
-          // Mobile: layout cũ (list dọc), khung nhỏ gọn
+        } else // Mobile: layout cũ (list dọc), khung nhỏ gọn – ép sát mép phải + giảm khoảng cách
+        {
+          const pad = 8; // khoảng đệm sát mép phải
+          const desiredWidth = Math.max(260, r.width);
+          const leftPos = Math.max(pad, window.innerWidth - desiredWidth - pad);
+
           Object.assign(this.root.style, {
             top: `${top}px`,
-            left: `${Math.min(left, window.innerWidth - Math.max(280, r.width))}px`,
-            minWidth: `${Math.max(260, r.width)}px`,
+            left: `${leftPos}px`,
+            minWidth: `${desiredWidth}px`,
             maxWidth: 'none',
             maxHeight: 'none',
             width: '',
@@ -562,9 +566,16 @@
             display: 'block'
           });
 
+          // Chỉ áp dụng trên mobile: giảm khoảng cách cột/dòng xuống 1/2
+          // (cột: 24px -> 12px; dòng: 18px -> 9px)
           this.list.style.display = 'grid';
+          this.list.style.columnGap = '12px';
+          this.list.style.rowGap = '9px';
+
+          // Tắt layout thẻ 3 cột desktop
           this.cardsWrap.style.display = 'none';
         }
+
       }
       //moi
 
