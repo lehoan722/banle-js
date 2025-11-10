@@ -149,21 +149,95 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// dong mo popup
 
-// ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
 window.openPopupSearch = async function (type) {
-    window.currentPopupType = type;
+
+    
+  window.currentPopupType = type || 'mahang';
+    
+
     const popup = document.getElementById('popupSearch');
     const input = document.getElementById('popupSearchInput');
+    if (!popup || !input) return;
+
+    // Hiển thị popup
     popup.style.display = 'block';
+
+    // Tăng kích cỡ & độ rộng ô nhập trong popup
+    // (18px cho "lớn hơn nữa"; có thể chỉnh lại 16–20 tùy ý)
+    input.style.fontSize = '18px';
+    input.style.lineHeight = '1.4';
+    input.style.padding = '10px 12px';
+
+    // Mở rộng độ rộng: cố gắng ~ gấp đôi bình thường, nhưng không tràn màn hình
+    // - min(92vw, 700px): rất rộng trên điện thoại & vừa phải trên desktop
+    input.style.minWidth = 'min(92vw, 700px)';
+
+    // Nếu khung trong có giới hạn, nới ra luôn cho đồng bộ
+    const inner = _getPopupInner(popup);
+    if (inner && inner !== popup) {
+        inner.style.maxWidth = 'min(96vw, 760px)';
+        inner.style.width = 'auto';
+    }
+
+    // Reset & focus
     input.value = "";
     input.focus();
     searchPopup("");
+
+    // Bấm ESC để đóng
+    const _escHandler = (e) => {
+        if (e.key === 'Escape') {
+            window.closePopupSearch();
+        }
+    };
+    document.addEventListener('keydown', _escHandler, { once: true });
+
+       
+
+    // Click ra ngoài popup -> đóng (đặt sau khi render)
+    _popupOutsideHandler = (e) => {
+        const popupEl = document.getElementById('popupSearch');
+        if (!popupEl) return;
+
+        const t = e.target;
+        // Nếu click nằm TRONG popup => không đóng
+        if (popupEl.contains(t)) return;
+
+        // Click thật sự ra ngoài => đóng
+        window.closePopupSearch();
+    };
+
+    // Luôn dọn handler cũ trước khi gắn mới (tránh nhân bản)
+if (_popupOutsideHandler) {
+  document.removeEventListener('click', _popupOutsideHandler);
+  _popupOutsideHandler = null;
+}
+
+// Đăng ký sau một tick để không “ăn” cú click mở popup
+setTimeout(() => {
+  document.addEventListener('click', _popupOutsideHandler);
+}, 0);
+
+    // Đăng ký sau một tick để tránh bắt sự kiện click mở popup
+    setTimeout(() => {
+        document.addEventListener('click', _popupOutsideHandler); // dùng click, không dùng mousedown/touchstart
+    }, 0);
+
 };
 
 window.closePopupSearch = function () {
-    document.getElementById('popupSearch').style.display = 'none';
+  const popup = document.getElementById('popupSearch');
+  if (popup) popup.style.display = 'none';
+
+  // Gỡ đúng listener đã đăng ký
+  if (_popupOutsideHandler) {
+    document.removeEventListener('click', _popupOutsideHandler);
+    _popupOutsideHandler = null;
+  }
 };
+
 
 document.getElementById('popupSearchInput').addEventListener('input', function () {
     searchPopup(this.value.trim());
