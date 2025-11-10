@@ -4,32 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Đang mở Google Sheet…</title>
-  <!-- Auto-redirect ngay khi tải trang -->
-  <meta http-equiv="refresh" content="0;url=https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?rm=minimal#gid=1515651334&range=A2">
+  <!-- Auto-redirect (dùng dạng URL chuẩn đơn giản nhất) -->
+  <meta http-equiv="refresh" content="0;url=https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334">
   <style>
     html,body{height:100%;margin:0;background:#0b0b0b;color:#eaeaea;font-family:system-ui,Arial}
     .wrap{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
-    .card{max-width:640px;width:100%;background:#151515;border:1px solid #262626;border-radius:16px;padding:24px}
+    .card{max-width:680px;width:100%;background:#151515;border:1px solid #262626;border-radius:16px;padding:24px}
     a{color:#7db3ff}
+    code{background:#111;padding:2px 6px;border-radius:6px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <h1>Đang mở bảng “nhap lieu cs1”…</h1>
-      <p>Nếu trình duyệt không tự chuyển, bấm vào liên kết bên dưới:</p>
+      <p>Nếu trình duyệt không tự chuyển, bấm một trong hai liên kết dự phòng:</p>
       <p>
-        <a href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?rm=minimal#gid=1515651334&range=A2" rel="noopener" target="_self">
-          Mở Google Sheet (UI gọn cho điện thoại)
+        1) Dạng chuẩn: <br>
+        <a href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334" target="_self" rel="noopener">
+          /edit#gid=1515651334
         </a>
       </p>
-      <p style="opacity:.75;font-size:12px">Mẹo: thêm trang này lên màn hình chính để mở cực nhanh.</p>
+      <p>
+        2) Dạng có <code>range=A2</code>: <br>
+        <a href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334&range=A2" target="_self" rel="noopener">
+          /edit#gid=1515651334&range=A2
+        </a>
+      </p>
+      <p style="opacity:.75;font-size:12px">Lưu ý: một số tài khoản bị 404 khi dùng <code>?rm=minimal</code>. Bản này đã bỏ tham số đó.</p>
     </div>
   </div>
-
-  <!-- Fallback JS redirect (trong trường hợp meta-refresh bị chặn) -->
   <script>
-    window.location.replace("https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?rm=minimal#gid=1515651334&range=A2");
+    // Thêm redirect bằng JS (nếu meta-refresh bị chặn)
+    window.location.replace("https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334");
   </script>
 </body>
 </html>
