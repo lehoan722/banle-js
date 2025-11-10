@@ -156,8 +156,8 @@ window.addEventListener('DOMContentLoaded', () => {
 function _getPopupInner(popupEl) {
     if (!popupEl) return null;
     // thử các class đặt tên thường gặp; nếu không có thì lấy phần tử con đầu tiên
-    return popupEl.querySelector('.popup-content, .popup-inner, .content, .dialog, .modal, .box') 
-        || popupEl.firstElementChild 
+    return popupEl.querySelector('.popup-content, .popup-inner, .content, .dialog, .modal, .box')
+        || popupEl.firstElementChild
         || popupEl;
 }
 
@@ -204,20 +204,26 @@ window.openPopupSearch = async function (type) {
     };
     document.addEventListener('keydown', _escHandler, { once: true });
 
-    // Click ra ngoài khung trong -> đóng popup
+       
+
+    // Click ra ngoài popup -> đóng (đặt sau khi render)
     _popupOutsideHandler = (e) => {
-        const target = e.target;
-        const contentEl = _getPopupInner(popup);
-        // nếu click không nằm trong contentEl (và không phải input search) => đóng
-        if (contentEl && !contentEl.contains(target)) {
-            window.closePopupSearch();
-        }
+        const popupEl = document.getElementById('popupSearch');
+        if (!popupEl) return;
+
+        const t = e.target;
+        // Nếu click nằm TRONG popup => không đóng
+        if (popupEl.contains(t)) return;
+
+        // Click thật sự ra ngoài => đóng
+        window.closePopupSearch();
     };
-    // Dùng mousedown để “ăn” trước khi focus lại input
+
+    // Đăng ký sau một tick để tránh bắt sự kiện click mở popup
     setTimeout(() => {
-        document.addEventListener('mousedown', _popupOutsideHandler);
-        document.addEventListener('touchstart', _popupOutsideHandler, { passive: true });
+        document.addEventListener('click', _popupOutsideHandler); // dùng click, không dùng mousedown/touchstart
     }, 0);
+
 };
 
 window.closePopupSearch = function () {
@@ -496,7 +502,7 @@ async function triggerSearch(_masp = null) {
         document.getElementById("singleDetailBox").style.display = "";
         await renderOneProductDetail(productWithXNT[0]);
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
-        clearBulkTextareaAfterSuccess(); 
+        clearBulkTextareaAfterSuccess();
         return;
     }
 
@@ -621,7 +627,7 @@ async function renderOneProductDetail(masp) {
     // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
 
     const top = document.getElementById("infoTopTable");
-if (!top) return; // phòng khi thiếu phần tử
+    if (!top) return; // phòng khi thiếu phần tử
 
     top.innerHTML = `   
 
@@ -669,7 +675,7 @@ if (!top) return; // phòng khi thiếu phần tử
     </tr>
   `;
 
-  toggleVitriInputsByBranch();
+    toggleVitriInputsByBranch();
 
     // Bảng XNT
     // Bảng XNT (Editable)
@@ -1551,8 +1557,8 @@ document.getElementById('bulkTextarea')?.addEventListener('keydown', (e) => {
 });
 
 function clearBulkTextareaAfterSuccess() {
-  const ta = document.getElementById('bulkTextarea');
-  if (ta) ta.value = '';
+    const ta = document.getElementById('bulkTextarea');
+    if (ta) ta.value = '';
 }
 
 
