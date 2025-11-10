@@ -105,8 +105,8 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
             tr.innerHTML = `
         <td>${item.masp}</td>
         <td>${item.tensp}</td>
-        <td contenteditable="true" data-col="size">${sz}</td>
-        <td contenteditable="true" data-col="sl">${sl}</td>
+        <td>${sz}</td>
+        <td>${sl}</td>
         <td>${item.dvt || ""}</td>
         <td>${gia}</td>
         <td>${km}</td>
@@ -227,98 +227,6 @@ export function capNhatBangKetQuaTuDOM() {
     // Gán vào window để getBangKetQua() có thể đọc
     window.bangKetQua = bang;
 }
-
-// Gắn 1 lần cho #bangketqua: sửa ô -> tính lại & đồng bộ
-(function ensureEditableHandlers() {
-    if (window._bkqEditBound) return;
-    window._bkqEditBound = true;
-
-    const table = document.getElementById("bangketqua");
-    if (!table) return;
-
-    function toNumber(x) {
-        if (x == null) return 0;
-        const s = String(x).replace(/[.,\s]/g, "");
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-
-    // Chuẩn hoá ngay khi người dùng gõ
-    table.addEventListener("input", (e) => {
-        const td = e.target.closest('td[contenteditable="true"]');
-        if (!td) return;
-
-        // MASP luôn in hoa & không khoảng trắng thừa
-        if (td.dataset.col === "masp") {
-            td.innerText = (td.innerText || "").toUpperCase().trim();
-        }
-
-        // Cột số: chỉ cho phép số (và dấu , . để người dùng dán), nhưng không định dạng ngay để tránh nhảy con trỏ
-        if (["sl", "gia", "km"].includes(td.dataset.col)) {
-            const raw = td.innerText;
-            // Cho phép số, dấu phẩy/chấm và khoảng trắng tạm thời
-            if (!/^[\d\s.,-]*$/.test(raw)) {
-                td.innerText = raw.replace(/[^\d\s.,-]/g, "");
-            }
-        }
-    });
-
-    // Khi rời ô (blur): chuẩn hoá, tính lại thành tiền, cập nhật tổng & object
-    table.addEventListener("blur", (e) => {
-        const td = e.target.closest('td[contenteditable="true"]');
-        if (!td) return;
-
-        const tr = td.parentElement;
-        const cells = tr.cells;
-        // Map theo thứ tự cột đang dùng:
-        const maspCell = cells[0], tenspCell = cells[1], sizeCell = cells[2],
-            slCell = cells[3], dvtCell = cells[4], giaCell = cells[5],
-            kmCell = cells[6], ttCell = cells[7], vitriCell = cells[8];
-
-        // Chuẩn hoá MASP -> tự điền tên, dvt, giá & vị trí nếu có trong danh mục
-        if (td.dataset.col === "masp") {
-            const masp = (maspCell.innerText || "").toUpperCase().trim();
-            if (masp && window.sanPhamData && window.sanPhamData[masp]) {
-                const sp = window.sanPhamData[masp];
-                // nếu Tên/ĐVT/Giá đang rỗng thì tự lấp
-                if (!tenspCell.innerText.trim()) tenspCell.innerText = sp.tensp || tenspCell.innerText;
-                if (!dvtCell.innerText.trim()) dvtCell.innerText = sp.dvt || dvtCell.innerText;
-                if (!giaCell.innerText.trim() || toNumber(giaCell.innerText) === 0) {
-                    giaCell.innerText = (sp.gianhap || 0);
-                }
-                // vị trí theo cơ sở hiện tại
-                if (typeof getVitriTheoKho === "function") {
-                    vitriCell.innerText = getVitriTheoKho(masp) || vitriCell.innerText;
-                }
-            }
-        }
-
-        // Chuẩn hoá số ở SL/Giá/KM
-        const sl = toNumber(slCell.innerText);
-        const gia = toNumber(giaCell.innerText);
-        const km = toNumber(kmCell.innerText);
-
-        // Ghi lại số ở dạng “thô” (không chấm phẩy) để copy/paste ổn định
-        if (["sl", "gia", "km"].includes(td.dataset.col)) {
-            if (td.dataset.col === "sl") slCell.innerText = String(sl);
-            if (td.dataset.col === "gia") giaCell.innerText = String(gia);
-            if (td.dataset.col === "km") kmCell.innerText = String(km);
-        }
-
-        // Tính lại Thành tiền = (giá - km) * sl
-        const thanhtien = Math.max(0, (gia - km) * sl);
-        ttCell.innerText = thanhtien.toLocaleString("vi-VN");
-
-        // Cập nhật object & tổng
-        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-            window.capNhatBangKetQuaTuDOM(); // đọc lại từ DOM -> window.bangKetQua
-        }
-        if (typeof window.capNhatThongTinTong === "function") {
-            window.capNhatThongTinTong(window.bangKetQua || {});
-        }
-    }, true);
-})();
-
 
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
 
