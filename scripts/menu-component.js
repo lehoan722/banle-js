@@ -570,7 +570,7 @@
           // (cột: 24px -> 12px; dòng: 18px -> 9px)
           this.list.style.display = 'grid';
           this.list.style.columnGap = '8px';
-          this.list.style.rowGap = '9px';
+          this.list.style.rowGap = '6px';
 
           // Tắt layout thẻ 3 cột desktop
           this.cardsWrap.style.display = 'none';
