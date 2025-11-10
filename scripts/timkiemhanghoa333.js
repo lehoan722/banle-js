@@ -143,9 +143,9 @@ window.addEventListener('DOMContentLoaded', installBranchPicker);
 window.addEventListener('DOMContentLoaded', () => {
     const ip = document.getElementById('maspInput');
     if (ip) {
-        ip.style.fontSize = '16px';
-        ip.style.lineHeight = '1.5';
-        ip.style.height = '45px'; // cho dễ bấm trên mobile
+        ip.style.fontSize = '18px';
+        ip.style.lineHeight = '2.5';
+        ip.style.height = '60px'; // cho dễ bấm trên mobile
     }
 });
 
