@@ -743,7 +743,7 @@
         // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
         __sizeInput.addEventListener('blur', () => {
   if (!isNhapSizeLienTiep()) {
-    setTimeout(() => __sizeDD.close(), 120);
+    setTimeout(() => __sizeDD.close(), 0);
   }
 });
 
