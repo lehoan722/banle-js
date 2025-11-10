@@ -139,22 +139,99 @@ async function saveAllVitriForPickedBranch() {
 
 // Gắn lắp đặt sau khi DOM sẵn sàng
 window.addEventListener('DOMContentLoaded', installBranchPicker);
+// Set cỡ chữ ô nhập mã sản phẩm chính
+window.addEventListener('DOMContentLoaded', () => {
+    const ip = document.getElementById('maspInput');
+    if (ip) {
+        ip.style.fontSize = '14px';
+        ip.style.lineHeight = '1.35';
+        ip.style.height = '36px'; // cho dễ bấm trên mobile
+    }
+});
+
 
 
 // ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
+// --- Helper: đoán "khung trong" của popup để bắt click ngoài ---
+function _getPopupInner(popupEl) {
+    if (!popupEl) return null;
+    // thử các class đặt tên thường gặp; nếu không có thì lấy phần tử con đầu tiên
+    return popupEl.querySelector('.popup-content, .popup-inner, .content, .dialog, .modal, .box') 
+        || popupEl.firstElementChild 
+        || popupEl;
+}
+
+// Lưu handle của listener để remove đúng
+let _popupOutsideHandler = null;
+
 window.openPopupSearch = async function (type) {
     window.currentPopupType = type;
+
     const popup = document.getElementById('popupSearch');
     const input = document.getElementById('popupSearchInput');
+    if (!popup || !input) return;
+
+    // Hiển thị popup
     popup.style.display = 'block';
+
+    // Tăng kích cỡ & độ rộng ô nhập trong popup
+    // (18px cho "lớn hơn nữa"; có thể chỉnh lại 16–20 tùy ý)
+    input.style.fontSize = '18px';
+    input.style.lineHeight = '1.4';
+    input.style.padding = '10px 12px';
+
+    // Mở rộng độ rộng: cố gắng ~ gấp đôi bình thường, nhưng không tràn màn hình
+    // - min(92vw, 700px): rất rộng trên điện thoại & vừa phải trên desktop
+    input.style.minWidth = 'min(92vw, 700px)';
+
+    // Nếu khung trong có giới hạn, nới ra luôn cho đồng bộ
+    const inner = _getPopupInner(popup);
+    if (inner && inner !== popup) {
+        inner.style.maxWidth = 'min(96vw, 760px)';
+        inner.style.width = 'auto';
+    }
+
+    // Reset & focus
     input.value = "";
     input.focus();
     searchPopup("");
+
+    // Bấm ESC để đóng
+    const _escHandler = (e) => {
+        if (e.key === 'Escape') {
+            window.closePopupSearch();
+        }
+    };
+    document.addEventListener('keydown', _escHandler, { once: true });
+
+    // Click ra ngoài khung trong -> đóng popup
+    _popupOutsideHandler = (e) => {
+        const target = e.target;
+        const contentEl = _getPopupInner(popup);
+        // nếu click không nằm trong contentEl (và không phải input search) => đóng
+        if (contentEl && !contentEl.contains(target)) {
+            window.closePopupSearch();
+        }
+    };
+    // Dùng mousedown để “ăn” trước khi focus lại input
+    setTimeout(() => {
+        document.addEventListener('mousedown', _popupOutsideHandler);
+        document.addEventListener('touchstart', _popupOutsideHandler, { passive: true });
+    }, 0);
 };
 
 window.closePopupSearch = function () {
-    document.getElementById('popupSearch').style.display = 'none';
+    const popup = document.getElementById('popupSearch');
+    if (popup) popup.style.display = 'none';
+
+    // Gỡ listener click ngoài
+    if (_popupOutsideHandler) {
+        document.removeEventListener('mousedown', _popupOutsideHandler);
+        document.removeEventListener('touchstart', _popupOutsideHandler);
+        _popupOutsideHandler = null;
+    }
 };
+
 
 document.getElementById('popupSearchInput').addEventListener('input', function () {
     searchPopup(this.value.trim());
