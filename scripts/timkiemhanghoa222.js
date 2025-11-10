@@ -168,7 +168,7 @@ window.openPopupSearch = async function (type) {
 
     
   window.currentPopupType = type || 'mahang';
-    window.currentPopupType = type;
+    
 
     const popup = document.getElementById('popupSearch');
     const input = document.getElementById('popupSearchInput');
@@ -222,6 +222,17 @@ window.openPopupSearch = async function (type) {
         window.closePopupSearch();
     };
 
+    // Luôn dọn handler cũ trước khi gắn mới (tránh nhân bản)
+if (_popupOutsideHandler) {
+  document.removeEventListener('click', _popupOutsideHandler);
+  _popupOutsideHandler = null;
+}
+
+// Đăng ký sau một tick để không “ăn” cú click mở popup
+setTimeout(() => {
+  document.addEventListener('click', _popupOutsideHandler);
+}, 0);
+
     // Đăng ký sau một tick để tránh bắt sự kiện click mở popup
     setTimeout(() => {
         document.addEventListener('click', _popupOutsideHandler); // dùng click, không dùng mousedown/touchstart
@@ -230,16 +241,16 @@ window.openPopupSearch = async function (type) {
 };
 
 window.closePopupSearch = function () {
-    const popup = document.getElementById('popupSearch');
-    if (popup) popup.style.display = 'none';
+  const popup = document.getElementById('popupSearch');
+  if (popup) popup.style.display = 'none';
 
-    // Gỡ listener click ngoài
-    if (_popupOutsideHandler) {
-        document.removeEventListener('mousedown', _popupOutsideHandler);
-        document.removeEventListener('touchstart', _popupOutsideHandler);
-        _popupOutsideHandler = null;
-    }
+  // Gỡ đúng listener đã đăng ký
+  if (_popupOutsideHandler) {
+    document.removeEventListener('click', _popupOutsideHandler);
+    _popupOutsideHandler = null;
+  }
 };
+
 
 
 document.getElementById('popupSearchInput').addEventListener('input', function () {
