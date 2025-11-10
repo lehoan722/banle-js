@@ -1403,18 +1403,19 @@
             }
 
             // Render (chờ hàm sẵn sàng)
-            const tryRender = () => {
-                if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
-                    window.capNhatBangHTML(window.bangKetQua);
-                    window.capNhatThongTinTong(window.bangKetQua);
-                    window.bangKetQua = bangObj;
+            if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
+    // 1) cập nhật state thật
+    window.bangKetQua = bangObj;
 
-                    // Xoá hash sau khi nạp xong để tránh nạp lại
-                    history.replaceState(null, '', location.pathname);
-                    return true;
-                }
-                return false;
-            };
+    // 2) render & tổng theo state mới
+    window.capNhatBangHTML(window.bangKetQua);
+    window.capNhatThongTinTong(window.bangKetQua);
+
+    // 3) dọn hash
+    history.replaceState(null, '', location.pathname);
+    return true;
+}
+
 
             if (!tryRender()) {
                 const tm = setInterval(() => { if (tryRender()) clearInterval(tm); }, 200);
