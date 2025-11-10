@@ -953,6 +953,8 @@
 
     </script>
 
+    <script src="scripts/bangketqua.js"></script>
+
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
@@ -1018,19 +1020,17 @@
 
 
 
-        // Dán từ Excel/Google Sheets → cập nhật trực tiếp window.bangKetQua rồi render
+
+        // Dán từ Excel/Sheet → cập nhật window.bangKetQua → vẽ bảng
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
 
             const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
-            // Mỗi dòng là 1 record, cột phân tách bằng tab
-            const rows = text
-                .trim()
-                .split(/\r?\n/)
+            const rows = text.trim().split(/\r?\n/)
                 .map(r => r.split('\t'))
                 .filter(r => r.length && r.some(c => String(c).trim() !== ''));
 
-            // Đồng bộ phần đang có (nếu trước đó bạn có chỉnh tay trên bảng)
+            // (tùy chọn) nếu bạn có sửa tay trên ô trước đó:
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
                 window.capNhatBangKetQuaTuDOM();
             }
@@ -1044,7 +1044,7 @@
             };
 
             for (const r of rows) {
-                // Kỳ vọng: MASP | Tên hàng | Size | SL | DVT? | Giá? | KM?
+                // MASP | Tên | Size | SL | DVT? | Giá? | KM?
                 const masp = String(r[0] || '').toUpperCase().trim();
                 if (!masp) continue;
 
@@ -1052,7 +1052,6 @@
                 const size = String((r[2] ?? '0')).trim();
                 const sl = toInt(r[3] ?? 1);
 
-                // meta (có thể thiếu → lấy từ bản cũ nếu có)
                 const dvt = String(r[4] || (bang[masp]?.dvt ?? 'sp')).trim();
                 const gia = toInt(r[5] ?? (bang[masp]?.gia ?? 0));
                 const km = toInt(r[6] ?? (bang[masp]?.km ?? 0));
@@ -1060,25 +1059,25 @@
                 if (!bang[masp]) {
                     bang[masp] = { masp, tensp, dvt, gia, km, sizes: [], soluongs: [], tong: 0 };
                 } else {
-                    // điền phần còn trống
                     if (!bang[masp].tensp) bang[masp].tensp = tensp;
                     if (!bang[masp].dvt) bang[masp].dvt = dvt;
                     if (!bang[masp].gia) bang[masp].gia = gia;
                     if (!bang[masp].km) bang[masp].km = km;
                 }
 
-                // Ghép size
                 const i = bang[masp].sizes.findIndex(s => String(s).trim() === size);
                 if (i >= 0) bang[masp].soluongs[i] = sl;
                 else { bang[masp].sizes.push(size); bang[masp].soluongs.push(sl); }
 
-                // Tính lại tổng SL theo size
                 bang[masp].tong = (bang[masp].soluongs || []).reduce((a, b) => a + (Number(b) || 0), 0);
             }
 
             window.bangKetQua = bang;
 
-            // Render lại bảng + tổng (dùng hàm chuẩn)
+            // --- VẼ BẢNG ---
+            const tbody = document.querySelector('#bangketqua tbody');
+            const before = tbody ? tbody.children.length : 0;
+
             if (typeof window.capNhatBangHTML === 'function') {
                 window.capNhatBangHTML(window.bangKetQua, null);
             }
@@ -1086,9 +1085,21 @@
                 window.capNhatThongTinTong(window.bangKetQua);
             }
 
+            // Fallback: nếu chưa có dòng nào → tự render
+            setTimeout(() => {
+                const after = tbody ? tbody.children.length : 0;
+                if (after === before) {
+                    if (typeof window.renderBangKetQua === 'function') {
+                        window.renderBangKetQua(window.bangKetQua);
+                    }
+                    if (typeof window.capNhatTongTien === 'function') {
+                        window.capNhatTongTien(window.bangKetQua);
+                    }
+                }
+            }, 30);
+
             console.log('[PASTE] merged → window.bangKetQua =', window.bangKetQua);
         });
-
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
@@ -1796,68 +1807,68 @@
     </script>
 
     <script>
-  // Nhận rows ở dạng: [{ masp, tenhang, size, sl }, ...]
-  window.handlePopupNgangSave = function(rows = []) {
-    if (!Array.isArray(rows) || rows.length === 0) return;
+        // Nhận rows ở dạng: [{ masp, tenhang, size, sl }, ...]
+        window.handlePopupNgangSave = function (rows = []) {
+            if (!Array.isArray(rows) || rows.length === 0) return;
 
-    // Đồng bộ dữ liệu hiện có về object (phòng trường hợp đang nhập dở)
-    try { window.capNhatBangKetQuaTuDOM?.(); } catch(_) {}
+            // Đồng bộ dữ liệu hiện có về object (phòng trường hợp đang nhập dở)
+            try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
-    const bang = window.bangKetQua || {};
-    for (const r of rows) {
-      const key = String(r.masp || '').toUpperCase().trim();
-      if (!key) continue;
+            const bang = window.bangKetQua || {};
+            for (const r of rows) {
+                const key = String(r.masp || '').toUpperCase().trim();
+                if (!key) continue;
 
-      // Lấy lại thông tin DM nếu có
-      const dm = (window.sanPhamData && window.sanPhamData[key]) || {};
-      const tensp = (r.tenhang ?? dm.tensp ?? '');
-      const dvt   = (dm.dvt ?? 'sp');
-      const gia   = Number(dm.gianhap ?? 0) || 0;
+                // Lấy lại thông tin DM nếu có
+                const dm = (window.sanPhamData && window.sanPhamData[key]) || {};
+                const tensp = (r.tenhang ?? dm.tensp ?? '');
+                const dvt = (dm.dvt ?? 'sp');
+                const gia = Number(dm.gianhap ?? 0) || 0;
 
-      // Khởi tạo dòng nếu chưa có
-      if (!bang[key]) {
-        bang[key] = { masp: key, tensp, dvt, gia, km: 0, sizes: [], soluongs: [], tong: 0 };
-      } else {
-        // Bổ sung tên/DVT/giá nếu đang trống
-        bang[key].tensp = bang[key].tensp || tensp;
-        if (!bang[key].dvt) bang[key].dvt = dvt;
-        if (!bang[key].gia) bang[key].gia = gia;
-      }
+                // Khởi tạo dòng nếu chưa có
+                if (!bang[key]) {
+                    bang[key] = { masp: key, tensp, dvt, gia, km: 0, sizes: [], soluongs: [], tong: 0 };
+                } else {
+                    // Bổ sung tên/DVT/giá nếu đang trống
+                    bang[key].tensp = bang[key].tensp || tensp;
+                    if (!bang[key].dvt) bang[key].dvt = dvt;
+                    if (!bang[key].gia) bang[key].gia = gia;
+                }
 
-      const s = String(r.size ?? '0').trim();
-      const sl = Number(r.sl) || 0;
-      if (!s || sl === 0) continue;
+                const s = String(r.size ?? '0').trim();
+                const sl = Number(r.sl) || 0;
+                if (!s || sl === 0) continue;
 
-      const i = bang[key].sizes.findIndex(x => String(x).trim() === s);
-      if (i >= 0) {
-        bang[key].soluongs[i] = sl;               // cập nhật số lượng size đã có
-      } else {
-        bang[key].sizes.push(s);                   // thêm size mới
-        bang[key].soluongs.push(sl);
-      }
+                const i = bang[key].sizes.findIndex(x => String(x).trim() === s);
+                if (i >= 0) {
+                    bang[key].soluongs[i] = sl;               // cập nhật số lượng size đã có
+                } else {
+                    bang[key].sizes.push(s);                   // thêm size mới
+                    bang[key].soluongs.push(sl);
+                }
 
-      // Recalc tổng SL theo kích cỡ
-      bang[key].tong = (bang[key].soluongs || []).reduce((a,b)=>a+(Number(b)||0),0);
-    }
+                // Recalc tổng SL theo kích cỡ
+                bang[key].tong = (bang[key].soluongs || []).reduce((a, b) => a + (Number(b) || 0), 0);
+            }
 
-    window.bangKetQua = bang;
+            window.bangKetQua = bang;
 
-    // Render lại bảng + tổng (nếu các hàm có sẵn)
-    if (typeof window.capNhatBangHTML === 'function') {
-      window.capNhatBangHTML(window.bangKetQua, null);
-    } else if (typeof window.renderBangKetQua === 'function') {
-      window.renderBangKetQua(window.bangKetQua);
-    }
+            // Render lại bảng + tổng (nếu các hàm có sẵn)
+            if (typeof window.capNhatBangHTML === 'function') {
+                window.capNhatBangHTML(window.bangKetQua, null);
+            } else if (typeof window.renderBangKetQua === 'function') {
+                window.renderBangKetQua(window.bangKetQua);
+            }
 
-    if (typeof window.capNhatThongTinTong === 'function') {
-      window.capNhatThongTinTong(window.bangKetQua);
-    } else if (typeof window.capNhatTongTien === 'function') {
-      window.capNhatTongTien(window.bangKetQua);
-    }
+            if (typeof window.capNhatThongTinTong === 'function') {
+                window.capNhatThongTinTong(window.bangKetQua);
+            } else if (typeof window.capNhatTongTien === 'function') {
+                window.capNhatTongTien(window.bangKetQua);
+            }
 
-    console.log('[popup-ngang] merged → window.bangKetQua =', window.bangKetQua);
-  };
-</script>
+            console.log('[popup-ngang] merged → window.bangKetQua =', window.bangKetQua);
+        };
+    </script>
 
 
 </body>
