@@ -559,7 +559,7 @@
             left: `${leftPos}px`,
             minWidth: `${desiredWidth}px`,
             maxWidth: 'none',
-            maxHeight: 'none',
+            maxHeight: '200',
             width: '',
             height: '',
             overflow: 'visible',
