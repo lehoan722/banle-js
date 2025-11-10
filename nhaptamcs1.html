@@ -1018,69 +1018,78 @@
 
 
 
-        // Dán từ clipboard (Excel) vào bảng web
+        // Dán từ Excel/Google Sheets → cập nhật trực tiếp window.bangKetQua rồi render
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
-            const text = e.clipboardData.getData('text/plain');
-            const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.querySelector('#bangketqua tbody');
 
-            // ❌ KHÔNG xoá dữ liệu cũ nữa
-            // tbody.innerHTML = '';
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
+            // Mỗi dòng là 1 record, cột phân tách bằng tab
+            const rows = text
+                .trim()
+                .split(/\r?\n/)
+                .map(r => r.split('\t'))
+                .filter(r => r.length && r.some(c => String(c).trim() !== ''));
 
-            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
-            rows.forEach(rowArr => {
-                if (rowArr.length < 2) return;
-                const tr = document.createElement('tr');
-                rowArr.forEach((cell) => {
-                    const td = document.createElement('td');
-                    td.innerText = cell;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-
-            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
+            // Đồng bộ phần đang có (nếu trước đó bạn có chỉnh tay trên bảng)
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            // ✅ Cập nhật tổng
-            if (typeof capNhatThongTinTong === 'function') {
-                capNhatThongTinTong(window.bangKetQua || {});
+            const bang = window.bangKetQua || {};
+            const toInt = v => {
+                if (v == null) return 0;
+                const s = String(v).replace(/[^\d-]/g, '');
+                const n = parseInt(s, 10);
+                return isNaN(n) ? 0 : n;
+            };
+
+            for (const r of rows) {
+                // Kỳ vọng: MASP | Tên hàng | Size | SL | DVT? | Giá? | KM?
+                const masp = String(r[0] || '').toUpperCase().trim();
+                if (!masp) continue;
+
+                const tensp = String(r[1] || '').trim();
+                const size = String((r[2] ?? '0')).trim();
+                const sl = toInt(r[3] ?? 1);
+
+                // meta (có thể thiếu → lấy từ bản cũ nếu có)
+                const dvt = String(r[4] || (bang[masp]?.dvt ?? 'sp')).trim();
+                const gia = toInt(r[5] ?? (bang[masp]?.gia ?? 0));
+                const km = toInt(r[6] ?? (bang[masp]?.km ?? 0));
+
+                if (!bang[masp]) {
+                    bang[masp] = { masp, tensp, dvt, gia, km, sizes: [], soluongs: [], tong: 0 };
+                } else {
+                    // điền phần còn trống
+                    if (!bang[masp].tensp) bang[masp].tensp = tensp;
+                    if (!bang[masp].dvt) bang[masp].dvt = dvt;
+                    if (!bang[masp].gia) bang[masp].gia = gia;
+                    if (!bang[masp].km) bang[masp].km = km;
+                }
+
+                // Ghép size
+                const i = bang[masp].sizes.findIndex(s => String(s).trim() === size);
+                if (i >= 0) bang[masp].soluongs[i] = sl;
+                else { bang[masp].sizes.push(size); bang[masp].soluongs.push(sl); }
+
+                // Tính lại tổng SL theo size
+                bang[masp].tong = (bang[masp].soluongs || []).reduce((a, b) => a + (Number(b) || 0), 0);
             }
 
-            // Log kiểm tra
-            console.log('window.bangKetQua:', window.bangKetQua);
+            window.bangKetQua = bang;
+
+            // Render lại bảng + tổng (dùng hàm chuẩn)
+            if (typeof window.capNhatBangHTML === 'function') {
+                window.capNhatBangHTML(window.bangKetQua, null);
+            }
+            if (typeof window.capNhatThongTinTong === 'function') {
+                window.capNhatThongTinTong(window.bangKetQua);
+            }
+
+            console.log('[PASTE] merged → window.bangKetQua =', window.bangKetQua);
         });
 
-        function capNhatBangKetQuaTuDOM() {
-            const tbody = document.querySelector("#bangketqua tbody");
-            const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
-            const bangObj = {};
 
-            rows.forEach(tr => {
-                const cells = tr.querySelectorAll("td");
-                if (cells.length >= 6) {
-                    const masp = (cells[0].innerText || "").toUpperCase();
-                    const tensp = cells[1].innerText || "";
-                    const size = cells[2].innerText || "0";
-                    const sl = Number(cells[3].innerText) || 0;
-                    const dvt = cells[4].innerText || "sp";
-                    const gia = Number(cells[5].innerText) || 0;
-
-                    if (!bangObj[masp]) {
-                        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
-                    }
-                    bangObj[masp].sizes.push(size);
-                    bangObj[masp].soluongs.push(sl);
-                }
-            });
-
-            window.bangKetQua = bangObj;
-            console.log("🔎 [capNhatBangKetQuaTuDOM] ->", bangObj);
-            return bangObj;
-        }
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
