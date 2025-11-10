@@ -61,7 +61,7 @@
 
         #masp {
             width: 250px;
-            background: cyan;
+            background: rgb(230, 0, 255);
         }
 
         #soluong {
@@ -370,7 +370,7 @@
 
     <style>
         .menu-bar {
-            background: #70cc00;
+            background: #cc00cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -487,7 +487,6 @@
             <div class="table-area">
 
                 <table id="bangketqua" data-mode="doc">
-
                     <thead>
                         <tr>
                             <th>Mã hàng</th>
@@ -664,7 +663,7 @@
                 <!-- Thêm đoạn sau: -->
                 <label>Cơ sở bán hàng:</label><br />
                 <select id="login-cs" style="width:200px; padding:6px;" disabled>
-                    <option value="cs2" selected>Cơ sở 2</option>
+                    <option value="cs1" selected>Cơ sở 2</option>
                 </select>
 
                 <div class="login-field">
@@ -799,7 +798,6 @@
             }
         });
         // === het tu dong dang nhap [/SSO] ==============================================================
-
         // Đặt ở đầu file/script chính
         window.dangLuu = false;
 
@@ -1021,6 +1019,7 @@
 
 
         // Dán từ clipboard (Excel) vào bảng web
+
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
