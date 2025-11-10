@@ -149,7 +149,20 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// dong mo popup
+
+// ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
+// ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
+// --- Helper: đoán "khung trong" của popup để bắt click ngoài ---
+function _getPopupInner(popupEl) {
+    if (!popupEl) return null;
+    // thử các class đặt tên thường gặp; nếu không có thì lấy phần tử con đầu tiên
+    return popupEl.querySelector('.popup-content, .popup-inner, .content, .dialog, .modal, .box')
+        || popupEl.firstElementChild
+        || popupEl;
+}
+
+// Lưu handle của listener để remove đúng
+let _popupOutsideHandler = null;
 
 window.openPopupSearch = async function (type) {
 
@@ -237,6 +250,7 @@ window.closePopupSearch = function () {
     _popupOutsideHandler = null;
   }
 };
+
 
 
 document.getElementById('popupSearchInput').addEventListener('input', function () {
