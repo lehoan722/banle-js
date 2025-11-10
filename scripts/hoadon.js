@@ -5,6 +5,17 @@ import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangk
 import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
+function _data() {
+  return (window.bangKetQua && Object.keys(window.bangKetQua).length)
+    ? window.bangKetQua
+    : bangKetQua;
+}
+function _sync(obj) {
+  window.bangKetQua = obj;
+  bangKetQua = obj;
+}
+
+
 // === BRANCH RESOLVER (ưu tiên tên trang/biến toàn cục), Fallback: localStorage (tương thích cũ) ===
 function currentBranchUpper() {
     // 1) Ưu tiên window.diadiem do trang đã cài cứng (banlemtcs111: "cs1")
@@ -774,7 +785,8 @@ export function xoaDongDangChon() {
     const size = (dang.size != null) ? String(dang.size).trim() : null;
     if (!masp) { alert("Không xác định được mã sản phẩm đang chọn để xóa."); return; }
 
-    const item = bangKetQua[masp];
+    const data = _data();
+const item = data[masp];
     if (!item) { alert("Không tìm thấy dòng để xóa."); return; }
 
     const msg = size
@@ -790,13 +802,13 @@ export function xoaDongDangChon() {
             item.sizes.splice(idx, 1);
             item.soluongs.splice(idx, 1);
         }
-        if (item.sizes.length === 0) delete bangKetQua[masp];
+        if (item.sizes.length === 0) delete data[masp];
     } else {
-        delete bangKetQua[masp];
+        delete data[masp];
     }
 
     setMaspspDangChon(null);
-    capNhatBangHTML(bangKetQua, window.lastAdded);
+    capNhatBangHTML(data, window.lastAdded);
 }
 
 
@@ -820,7 +832,8 @@ export function suaDongDangChon() {
 
     const masp = String(dangChon.masp || "").trim();
     const size = String(dangChon.size || "").trim();
-    const item = bangKetQua[masp];
+    const data = _data();
+const item = data[masp]; 
     if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
 
     // 🔧 So khớp size có trim để ổn định
@@ -850,7 +863,7 @@ export function suaDongDangChon() {
     item.sizes.splice(idx, 1);
     item.soluongs.splice(idx, 1);
     item.tong = Math.max(0, (item.tong || 0) - (parseInt(document.getElementById("soluong").value) || 0));
-    if (item.sizes.length === 0) delete bangKetQua[masp];
+    if (item.sizes.length === 0) delete data[masp];  
 
     setMaspspDangChon(null);
     capNhatBangHTML(bangKetQua, window.lastAdded);
