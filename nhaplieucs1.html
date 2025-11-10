@@ -3,14 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Đang mở Google Sheet…</title>
-  <!-- Auto-redirect (dùng dạng URL chuẩn đơn giản nhất) -->
-  <meta http-equiv="refresh" content="0;url=https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334">
+  <title>Mở Google Sheet – bản chuyển hướng nhiều bước</title>
   <style>
     html,body{height:100%;margin:0;background:#0b0b0b;color:#eaeaea;font-family:system-ui,Arial}
     .wrap{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
-    .card{max-width:680px;width:100%;background:#151515;border:1px solid #262626;border-radius:16px;padding:24px}
-    a{color:#7db3ff}
+    .card{max-width:760px;width:100%;background:#151515;border:1px solid #262626;border-radius:16px;padding:24px}
+    a{color:#7db3ff;word-break:break-all}
+    ol{text-align:left;max-width:700px;margin:8px auto 0;line-height:1.5}
     code{background:#111;padding:2px 6px;border-radius:6px}
   </style>
 </head>
@@ -18,25 +17,21 @@
   <div class="wrap">
     <div class="card">
       <h1>Đang mở bảng “nhap lieu cs1”…</h1>
-      <p>Nếu trình duyệt không tự chuyển, bấm một trong hai liên kết dự phòng:</p>
-      <p>
-        1) Dạng chuẩn: <br>
-        <a href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334" target="_self" rel="noopener">
-          /edit#gid=1515651334
-        </a>
-      </p>
-      <p>
-        2) Dạng có <code>range=A2</code>: <br>
-        <a href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334&range=A2" target="_self" rel="noopener">
-          /edit#gid=1515651334&range=A2
-        </a>
-      </p>
-      <p style="opacity:.75;font-size:12px">Lưu ý: một số tài khoản bị 404 khi dùng <code>?rm=minimal</code>. Bản này đã bỏ tham số đó.</p>
+      <p>Trang sẽ thử chuyển hướng qua nhiều dạng link để tránh lỗi 404.</p>
+      <ol>
+        <li><a id="u1" href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334" target="_self" rel="noopener">Dạng 1: /edit#gid=1515651334</a></li>
+        <li><a id="u2" href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?gid=1515651334#gid=1515651334" target="_self" rel="noopener">Dạng 2: /edit?gid=1515651334#gid=1515651334</a></li>
+        <li><a id="u3" href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?usp=sharing#gid=1515651334" target="_self" rel="noopener">Dạng 3: /edit?usp=sharing#gid=1515651334</a></li>
+        <li><a id="u4" href="https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit" target="_self" rel="noopener">Dạng 4: /edit (không gid)</a></li>
+      </ol>
+      <p style="opacity:.75;font-size:12px">Nếu vẫn lỗi 404, thử mở tab ẩn danh, hoặc đăng xuất/đăng nhập Google, hoặc dùng Chrome.</p>
     </div>
   </div>
   <script>
-    // Thêm redirect bằng JS (nếu meta-refresh bị chặn)
-    window.location.replace("https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334");
+    const urls = ["https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit#gid=1515651334","https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?gid=1515651334#gid=1515651334","https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit?usp=sharing#gid=1515651334","https://docs.google.com/spreadsheets/d/1x0z6SyTOvfrKcxMG1_Mo7vDCm8O5BX7_YUG9yALcR64/edit"];
+    let i = 0;
+    function go() { if (i < urls.length) { location.replace(urls[i++]); setTimeout(go, 1500); } }
+    window.addEventListener('load', go);
   </script>
 </body>
 </html>
