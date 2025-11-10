@@ -548,9 +548,9 @@
           this.cardsWrap.style.display = 'block'; // hoặc 'grid' đều ok vì bên trong đã là grid
 
 
-        } else // Mobile: layout cũ (list dọc), khung nhỏ gọn – ép sát mép phải + giảm khoảng cách
-        {
-          const pad = 8; // khoảng đệm sát mép phải
+        } // Mobile: layout cũ (list dọc), ép sát mép phải + giảm khoảng cách thực sự
+        else {
+          const pad = 8; // đệm sát mép phải
           const desiredWidth = Math.max(260, r.width);
           const leftPos = Math.max(pad, window.innerWidth - desiredWidth - pad);
 
@@ -570,15 +570,53 @@
             padding: '6px'
           });
 
-          // Chỉ áp dụng trên mobile: giảm khoảng cách cột/dòng xuống 1/2
-          // (cột: 24px -> 12px; dòng: 18px -> 9px)
+          // Grid 4 cột, gap nhỏ
           this.list.style.display = 'grid';
-          this.list.style.columnGap = '8px';
-          this.list.style.rowGap = '6px';
+          this.list.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
+          this.list.style.columnGap = '8px';  // bạn đang dùng 8px là ok
+          this.list.style.rowGap = '6px';     // bạn đang dùng 6px là ok
 
           // Tắt layout thẻ 3 cột desktop
           this.cardsWrap.style.display = 'none';
+
+          // === SIẾT Ô/CELL để hàng sát hơn thực sự ===
+          // 1) Xóa margin/padding “thừa” của từng dòng/ô
+          Array.from(this.list.children).forEach(row => {
+            row.style.margin = '0';
+            row.style.padding = '0';
+            row.style.gap = '6px'; // nếu row là grid/flex
+            // nếu row có border, có thể mỏng lại:
+            row.style.borderWidth = '0';
+          });
+
+          // 2) Giảm padding + line-height + font-size trong mọi ô
+          // (giảm mạnh để thấy khác biệt rõ rệt; có thể chỉnh 5–6px tùy ý)
+          const tightenCells = el => {
+            el.style.padding = '4px 4px';
+            el.style.lineHeight = '1.1';   // siết chiều cao dòng
+            el.style.fontSize = '13px';    // chữ nhỏ lại một chút
+            el.style.minHeight = '0';      // tránh min-height đẩy cao ô
+          };
+          // áp cho mọi phần tử con trong list (an toàn khi không biết class cụ thể)
+          Array.from(this.list.querySelectorAll('*')).forEach(tightenCells);
+
+          // 3) Nếu có ảnh/QR trong ô → thu nhỏ để khỏi đội chiều cao
+          Array.from(this.list.querySelectorAll('img, canvas')).forEach(img => {
+            img.style.display = 'block';
+            img.style.width = '18px';
+            img.style.height = '18px';
+            img.style.margin = '2px auto';
+          });
+
+          // 4) Nếu có nút/checkbox… thì ép chiều cao thấp
+          Array.from(this.list.querySelectorAll('button, input[type="checkbox"], input[type="radio"]')).forEach(ctrl => {
+            ctrl.style.margin = '0';
+            ctrl.style.padding = '0';
+            ctrl.style.height = '22px';
+            ctrl.style.minHeight = '22px';
+          });
         }
+
 
       }
       //moi
