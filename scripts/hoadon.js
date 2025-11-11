@@ -5,6 +5,17 @@ import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangk
 import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
+function _data() {
+  return (window.bangKetQua && Object.keys(window.bangKetQua).length)
+    ? window.bangKetQua
+    : bangKetQua;
+}
+function _sync(obj) {
+  window.bangKetQua = obj;
+  bangKetQua = obj;
+}
+
+
 // === BRANCH RESOLVER (ưu tiên tên trang/biến toàn cục), Fallback: localStorage (tương thích cũ) ===
 function currentBranchUpper() {
     // 1) Ưu tiên window.diadiem do trang đã cài cứng (banlemtcs111: "cs1")
@@ -764,39 +775,26 @@ export function ganTenNV() {
 }
 
 export function xoaDongDangChon() {
-    if (!maspDangChon) {
-        alert("Vui lòng chọn dòng cần xóa.");
-        return;
-    }
+    // ✅ Đồng bộ lại dữ liệu từ bảng DOM (trường hợp vừa “nhập ngang”)
+    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
-    // Chuẩn hóa: cho phép maspDangChon là string hoặc {masp, size}
-    let masp = null, size = null;
-    if (typeof maspDangChon === "string") {
-        masp = maspDangChon.trim();
-    } else if (maspDangChon && typeof maspDangChon === "object") {
-        masp = String(maspDangChon.masp || "").trim();
-        size = maspDangChon.size != null ? String(maspDangChon.size).trim() : null;
-    }
+    const dang = getMaspspDangChon();
+    if (!dang) { alert("Vui lòng chọn dòng cần xóa."); return; }
 
-    if (!masp) {
-        alert("Không xác định được mã sản phẩm đang chọn để xóa.");
-        return;
-    }
+    const masp = String(dang.masp || "").trim();
+    const size = (dang.size != null) ? String(dang.size).trim() : null;
+    if (!masp) { alert("Không xác định được mã sản phẩm đang chọn để xóa."); return; }
 
-    const item = bangKetQua[masp];
-    if (!item) {
-        alert("Không tìm thấy dòng để xóa.");
-        return;
-    }
+    const data = _data();
+const item = data[masp];
+    if (!item) { alert("Không tìm thấy dòng để xóa."); return; }
 
     const msg = size
         ? `Bạn có chắc muốn xóa size "${size}" của mã "${masp}"?`
         : `Bạn có chắc muốn xóa toàn bộ mã "${masp}"?`;
-
     if (!confirm(msg)) return;
 
     if (size) {
-        // Xóa 1 size trong nhóm mã
         const idx = item.sizes.findIndex(s => String(s).trim() === size);
         if (idx !== -1) {
             const sl = parseInt(item.soluongs[idx] || 0, 10) || 0;
@@ -804,81 +802,75 @@ export function xoaDongDangChon() {
             item.sizes.splice(idx, 1);
             item.soluongs.splice(idx, 1);
         }
-        if (item.sizes.length === 0) {
-            delete bangKetQua[masp];
-        }
+        if (item.sizes.length === 0) delete data[masp];
     } else {
-        // Xóa cả nhóm mã
-        delete bangKetQua[masp];
+        delete data[masp];
     }
 
-    maspDangChon = null; // reset chọn
-    capNhatBangHTML(bangKetQua, window.lastAdded);
-}
-
-
-export function suaDongDangChon() {
-    let dangChon = getMaspspDangChon();
-
-    // Nếu chưa chọn dòng nào -> tự lấy dòng đầu
-    if (!dangChon) {
-        const firstRow = document.querySelector("#bangketqua tbody tr");
-        if (!firstRow) {
-            alert("Không có dòng nào để sửa.");
-            return;
-        }
-        const tds = firstRow.querySelectorAll("td");
-        const masp = (tds[0]?.textContent || "").trim();
-        const size = (tds[2]?.textContent || "").trim();
-        if (!masp || !size) {
-            alert("Không đọc được dữ liệu dòng đầu tiên để sửa.");
-            return;
-        }
-        setMaspspDangChon({ masp, size });
-        dangChon = { masp, size };
-    }
-
-    const { masp, size } = dangChon;
-    const item = bangKetQua[masp];
-    if (!item) {
-        alert("Không tìm thấy dòng để sửa.");
-        return;
-    }
-    const idx = item.sizes.findIndex(s => s == size);
-    if (idx === -1) {
-        alert("Không tìm thấy size để sửa.");
-        return;
-    }
-
-    // Đưa thông tin về form nhập
-    const maspEl = document.getElementById("masp");
-    document.getElementById("size").value = item.sizes[idx] || "";
-    document.getElementById("soluong").value = item.soluongs[idx] || "1";
-    document.getElementById("dvt").value = item.dvt || "";
-    document.getElementById("gia").value = item.gia || "";
-    document.getElementById("khuyenmai").value = item.km || "";
-    // ✅ tính lại thành tiền đưa lên form
-    recalcThanhtienFromForm();   // <— THÊM DÒNG NÀY
-    // Gán mã & BÔI ĐEN ngay để người dùng có thể nhấn Delete là xoá toàn bộ mã 🔴
-    maspEl.value = item.masp || "";
-    // Thay vì focus về #masp, ta chuyển sang #soluong để người dùng gõ số lượng ngay
-    const slEl = document.getElementById("soluong");
-    if (slEl) {
-        slEl.focus();
-        slEl.select();  // ✅ bôi đen để gõ luôn
-
-    }
-
-    // Xoá đúng dòng đang chọn khỏi bảng (mã/size)
-    item.sizes.splice(idx, 1);
-    item.soluongs.splice(idx, 1);
-    item.tong -= parseInt(document.getElementById("soluong").value) || 0;
-    if (item.sizes.length === 0) delete bangKetQua[masp];
-
-    // Clear trạng thái chọn + render lại bảng
     setMaspspDangChon(null);
-    capNhatBangHTML(bangKetQua, window.lastAdded);
+    capNhatBangHTML(data, window.lastAdded);
 }
+
+
+// hoadon.js
+export function suaDongDangChon() {
+  // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
+  try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) {}
+
+  // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
+  let dangChon = getMaspspDangChon();
+  if (!dangChon) {
+    const firstRow = document.querySelector("#bangketqua tbody tr");
+    if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
+    const tds = firstRow.querySelectorAll("td");
+    const masp = (tds[0]?.textContent || "").trim();
+    const size = (tds[2]?.textContent || "").trim();
+    if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
+    setMaspspDangChon({ masp, size });
+    dangChon = { masp, size };
+  }
+
+  const masp = String(dangChon.masp || "").trim();
+  const size = String(dangChon.size || "").trim();
+
+  const data = _data();
+  const item = data[masp];
+  if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
+
+  const idx = item.sizes.findIndex(s => String(s).trim() === size);
+  if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
+
+  // 3) Đẩy dữ liệu lên form
+  document.getElementById("size").value      = item.sizes[idx] || "";
+  document.getElementById("soluong").value   = item.soluongs[idx] || "1";
+  document.getElementById("dvt").value       = item.dvt || "";
+  document.getElementById("gia").value       = item.gia || "";
+  document.getElementById("khuyenmai").value = item.km || "";
+  (function recalc() {
+    const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
+    const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g,"")) || 0;
+    const km  = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g,"")) || 0;
+    const tt  = (gia - km) * sl;
+    const ttEl = document.getElementById("thanhtien");
+    if (ttEl) ttEl.value = tt.toLocaleString();
+  })();
+  const slEl = document.getElementById("soluong");
+  if (slEl) { slEl.focus(); slEl.select(); }
+
+  // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
+  const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
+  item.sizes.splice(idx, 1);
+  item.soluongs.splice(idx, 1);
+  item.tong = Math.max(0, (item.tong || 0) - slCu);
+  if (item.sizes.length === 0) delete data[masp];
+
+  // 5) Ghi state & render
+  setMaspspDangChon(null);
+  _sync(data);
+  capNhatBangHTML(data, window.lastAdded);
+}
+
+
 
 
 export async function napLaiChiTietHoaDon(sohd) {
