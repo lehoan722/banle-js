@@ -16,9 +16,22 @@ function _sync(obj) {
 }
 
 // === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM, đồng bộ về state trước khi thao tác
+// === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM,
+// đồng bộ về state trước khi thao tác
 function ensureStateFromDOM() {
     try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
+    // CHỐT: nếu popup/Import đã cập nhật window.bangKetQua thì nhập về biến module luôn
+    try {
+        if (window.bangKetQua && typeof window.bangKetQua === 'object') {
+            _sync(window.bangKetQua); // giữ 1 nguồn sự thật cho mọi hàm trong module
+        }
+    } catch (_) { }
 }
+
+// Cho phép module khác (popupNgang) chủ động sync từ window vào biến module
+window.hoadonSyncFromWindow = () => {
+    try { _sync(window.bangKetQua || {}); } catch (_) { }
+};
 
 
 // === BRANCH RESOLVER (ưu tiên tên trang/biến toàn cục), Fallback: localStorage (tương thích cũ) ===
