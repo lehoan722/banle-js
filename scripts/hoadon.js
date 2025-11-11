@@ -6,13 +6,18 @@ import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
 function _data() {
-  return (window.bangKetQua && Object.keys(window.bangKetQua).length)
-    ? window.bangKetQua
-    : bangKetQua;
+    return (window.bangKetQua && Object.keys(window.bangKetQua).length)
+        ? window.bangKetQua
+        : bangKetQua;
 }
 function _sync(obj) {
-  window.bangKetQua = obj;
-  bangKetQua = obj;
+    window.bangKetQua = obj;
+    bangKetQua = obj;
+}
+
+// === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM, đồng bộ về state trước khi thao tác
+function ensureStateFromDOM() {
+    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 }
 
 
@@ -197,6 +202,9 @@ export async function chuyenFocus(e) {
 
         const isValidSize = val && dsSize.includes(val);
         const nhapSizeMode = document.getElementById("nhapsize")?.checked === true; // 🔴 CHẾ ĐỘ NHẬP SIZE LIÊN TIẾP
+        ensureStateFromDOM();
+        themVaoBang(sizeChosen, { afterAdd: "keepMaspFocusSize" });
+
 
         if (nhapSizeMode) {
             // ====== MODE A: Đang bật nhập size liên tiếp ======
@@ -553,6 +561,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 export function themVaoBang(forcedSize = null, opts = {}) {
     // luôn đóng popup ngay khi bắt đầu thêm
     window.closePopupMasp && window.closePopupMasp();
+    // 🔒 CHỐT: luôn đồng bộ state từ DOM (trường hợp vừa dán Excel / nhập ngang / edit trực tiếp)
+    ensureStateFromDOM();
     const masp = layMaspGoc(document.getElementById("masp").value);
     const isNewGroup = !bangKetQua[masp]; // 🔔 nhóm mới hay không
 
@@ -786,7 +796,7 @@ export function xoaDongDangChon() {
     if (!masp) { alert("Không xác định được mã sản phẩm đang chọn để xóa."); return; }
 
     const data = _data();
-const item = data[masp];
+    const item = data[masp];
     if (!item) { alert("Không tìm thấy dòng để xóa."); return; }
 
     const msg = size
@@ -814,62 +824,67 @@ const item = data[masp];
 
 // hoadon.js
 export function suaDongDangChon() {
-  // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
-  try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) {}
+    // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
+    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
-  // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
-  let dangChon = getMaspspDangChon();
-  if (!dangChon) {
-    const firstRow = document.querySelector("#bangketqua tbody tr");
-    if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
-    const tds = firstRow.querySelectorAll("td");
-    const masp = (tds[0]?.textContent || "").trim();
-    const size = (tds[2]?.textContent || "").trim();
-    if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
-    setMaspspDangChon({ masp, size });
-    dangChon = { masp, size };
-  }
+    // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
+    let dangChon = getMaspspDangChon();
+    if (!dangChon) {
+        const firstRow = document.querySelector("#bangketqua tbody tr");
+        if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
+        const tds = firstRow.querySelectorAll("td");
+        const masp = (tds[0]?.textContent || "").trim();
+        const size = (tds[2]?.textContent || "").trim();
+        if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
+        setMaspspDangChon({ masp, size });
+        dangChon = { masp, size };
+    }
 
-  const masp = String(dangChon.masp || "").trim();
-  const size = String(dangChon.size || "").trim();
+    const masp = String(dangChon.masp || "").trim();
+    const size = String(dangChon.size || "").trim();
 
-  const data = _data();
-  const item = data[masp];
-  if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
+    const data = _data();
+    const item = data[masp];
+    if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
 
-  const idx = item.sizes.findIndex(s => String(s).trim() === size);
-  if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
+    const idx = item.sizes.findIndex(s => String(s).trim() === size);
+    if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
 
-  // 3) Đẩy dữ liệu lên form
-  document.getElementById("size").value      = item.sizes[idx] || "";
-  document.getElementById("soluong").value   = item.soluongs[idx] || "1";
-  document.getElementById("dvt").value       = item.dvt || "";
-  document.getElementById("gia").value       = item.gia || "";
-  document.getElementById("khuyenmai").value = item.km || "";
-  (function recalc() {
-    const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
-    const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g,"")) || 0;
-    const km  = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g,"")) || 0;
-    const tt  = (gia - km) * sl;
-    const ttEl = document.getElementById("thanhtien");
-    if (ttEl) ttEl.value = tt.toLocaleString();
-  })();
-  const slEl = document.getElementById("soluong");
-  if (slEl) { slEl.focus(); slEl.select(); }
+    // 3) Đẩy dữ liệu lên form
+    document.getElementById("size").value = item.sizes[idx] || "";
+    document.getElementById("soluong").value = item.soluongs[idx] || "1";
+    document.getElementById("dvt").value = item.dvt || "";
+    document.getElementById("gia").value = item.gia || "";
+    document.getElementById("khuyenmai").value = item.km || "";
+    (function recalc() {
+        const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
+        const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g, "")) || 0;
+        const km = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g, "")) || 0;
+        const tt = (gia - km) * sl;
+        const ttEl = document.getElementById("thanhtien");
+        if (ttEl) ttEl.value = tt.toLocaleString();
+    })();
+    const slEl = document.getElementById("soluong");
+    if (slEl) { slEl.focus(); slEl.select(); }
 
-  // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
-  const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
-  item.sizes.splice(idx, 1);
-  item.soluongs.splice(idx, 1);
-  item.tong = Math.max(0, (item.tong || 0) - slCu);
-  if (item.sizes.length === 0) delete bangKetQua[masp];
+    // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
+    const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
+    item.sizes.splice(idx, 1);
+    item.soluongs.splice(idx, 1);
+    item.tong = Math.max(0, (item.tong || 0) - slCu);
+    if (item.sizes.length === 0) delete bangKetQua[masp];
 
-  // 5) Ghi state & render
-  setMaspspDangChon(null);
-  _sync(data);
-  capNhatBangHTML(data, window.lastAdded);
+    // 5) Ghi state & render
+    setMaspspDangChon(null);
+    _sync(data);
+    capNhatBangHTML(data, window.lastAdded);
 }
 
+// Chạy Sửa với lớp bọc _wrapEnsureState (nếu trang đã khai báo), fallback gọi trực tiếp
+export function runSuaDongDangChon() {
+    const runner = window._wrapEnsureState ? window._wrapEnsureState(suaDongDangChon) : suaDongDangChon;
+    return runner();
+}
 
 
 
@@ -934,6 +949,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+});
+
+// F3 → Sửa dòng đang chọn (luôn bọc ensure)
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F3') {
+        e.preventDefault();
+        runSuaDongDangChon();
+    }
 });
 
 
