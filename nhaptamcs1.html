@@ -1404,17 +1404,17 @@
 
             // Render (chờ hàm sẵn sàng)
             if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
-                // 1) cập nhật state thật
-                window.bangKetQua = bangObj;
+    // 1) cập nhật state thật
+    window.bangKetQua = bangObj;
 
-                // 2) render & tổng theo state mới
-                window.capNhatBangHTML(window.bangKetQua);
-                window.capNhatThongTinTong(window.bangKetQua);
+    // 2) render & tổng theo state mới
+    window.capNhatBangHTML(window.bangKetQua);
+    window.capNhatThongTinTong(window.bangKetQua);
 
-                // 3) dọn hash
-                history.replaceState(null, '', location.pathname);
-                return true;
-            }
+    // 3) dọn hash
+    history.replaceState(null, '', location.pathname);
+    return true;
+}
 
 
             if (!tryRender()) {
@@ -1635,47 +1635,42 @@
         // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
 
         async function importFromGoogleSheet() {
-            const sheetId = "1x0z6SyTOvfrKcxMG1_Mo7VdCm8O5BX7_YUG9yALcR64";
-            const sheetName = "nhaplieucs1";
+            const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
+            const sheetName = "kiemkhocs1";
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
-
-            // Cột cần đọc (0-based): C=2, D=3, E=4; bắt đầu từ hàng 4 (0-based index = 3)
-            const START_ROW = 3;     // đọc từ dòng số 4 trở đi
-            const COL_MASP = 2;     // C
-            const COL_SIZE = 3;     // D
-            const COL_SL = 4;     // E
 
             try {
                 const res = await fetch(url);
                 const raw = await res.text();
 
-                // Dùng các helper sẵn có trong file: splitCSVLine, unquote
+                // 1) Parse CSV chuẩn (đã có splitCSVLine / unquote ở file của bạn)
                 const csv = raw.replace(/^\uFEFF/, '');
                 const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
 
-                // Ép đọc cố định từ hàng 4, bỏ qua mọi header/ghi chú phía trên
+                let start = 0;
+                const first = (lines[0] || '').toLowerCase();
+                if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
+
+                // Lưu tạm tất cả dòng đọc được
                 const rows = [];
-                for (let i = START_ROW; i < lines.length; i++) {
+                for (let i = start; i < lines.length; i++) {
                     const cols = splitCSVLine(lines[i]).map(unquote);
-
-                    const masp = (cols[COL_MASP] || '').toUpperCase().trim();
-                    if (!masp) continue; // bỏ dòng trống/không có mã
-
-                    const size = (cols[COL_SIZE] ?? '0').toString().trim();
-                    const sl = Number(String(cols[COL_SL] ?? '0').replace(/[^\d\-.,]/g, '').replace(/\s/g, '').replace(',', '.')) || 0;
-
+                    const masp = (cols[0] || '').toUpperCase().trim();
+                    const size = (cols[1] || '0').trim();
+                    const sl = Number(String(cols[2] || '0').replace(/\s/g, '')) || 0;
+                    if (!masp) continue;
                     rows.push({ masp, size, sl, __row: i + 1 });
                 }
 
-                // Nạp bổ sung danh mục còn thiếu
+                // 2) Pha 1: đảm bảo danh mục đã có đủ mã (nếu thiếu thì gọi Supabase nạp thêm)
                 await ensureSanPhamDataFor(rows.map(r => r.masp));
 
-                // Build bangObj + gom size/SL; ghi nhận các mã không có trong DM
+                // 3) Pha 2: build bangObj + gom size/SL; đồng thời ghi nhận các mã thật sự không có
                 const bangObj = {};
                 const invalid = [];
 
                 for (const r of rows) {
-                    const sp = window.sanPhamData?.[r.masp];
+                    const sp = window.sanPhamData?.[r.masp]; // sau pha 1 đã cố gắng nạp
                     if (!sp) { invalid.push(r); continue; }
 
                     if (!bangObj[r.masp]) {
@@ -1694,23 +1689,29 @@
                     else { bangObj[r.masp].sizes.push(r.size); bangObj[r.masp].soluongs.push(r.sl); }
                 }
 
-                // Đẩy vào bangKetQua + render
+                // 4) Đẩy vào bangKetQua + render
                 window.bangKetQua = bangObj;
                 if (typeof window.capNhatBangHTML === "function") window.capNhatBangHTML(window.bangKetQua);
                 if (typeof window.capNhatThongTinTong === "function") window.capNhatThongTinTong(window.bangKetQua);
-
+                // --- Fallback: nếu bảng chưa có dòng nào, tự render ---
                 const tbody = document.querySelector("#bangketqua tbody");
                 const beforeCount = tbody ? tbody.children.length : 0;
 
+                // Đợi một nhịp cho capNhatBangHTML (nếu có) vẽ xong:
                 setTimeout(() => {
                     const afterCount = tbody ? tbody.children.length : 0;
+                    console.log("[GS] tbody rows before/after capNhatBangHTML:", beforeCount, "→", afterCount);
+
+                    // Nếu vẫn chưa có dữ liệu → tự render + tính tổng
                     if (afterCount === beforeCount) {
+                        console.warn("[GS] capNhatBangHTML không vẽ ra bảng – dùng renderBangKetQua fallback.");
                         if (typeof window.renderBangKetQua === "function") window.renderBangKetQua(window.bangKetQua);
                         if (typeof window.capNhatTongTien === "function") window.capNhatTongTien(window.bangKetQua);
                     }
                 }, 50);
 
-                // Tô đỏ các mã không tồn tại
+                // 5) Tô đỏ & cảnh báo cho phần còn lại (thật sự không có trong CSDL)
+
                 if (invalid.length) {
                     invalid.forEach(item => {
                         const tr = document.createElement('tr');
@@ -1727,10 +1728,16 @@
                         tbody.appendChild(tr);
                     });
                     alert("⚠ Có mã sản phẩm không tồn tại trong danh mục. Vui lòng kiểm tra lại.");
+                    // (tùy chọn) chặn lưu khi còn dòng đỏ:
+                    // document.getElementById('btn-luu').disabled = true;
+                } else {
+                    // document.getElementById('btn-luu').disabled = false;
                 }
 
-                console.log('[GS:C4-D-E] rows:', rows);
-                console.log('[GS:C4-D-E] bangKetQua:', window.bangKetQua);
+                // Log hỗ trợ debug
+                console.log('[GS] rows:', rows);
+                console.log('[GS] bangKetQua:', window.bangKetQua);
+                console.log('[GS] invalid:', invalid);
 
             } catch (err) {
                 console.error("Import Google Sheet error:", err);
@@ -1738,9 +1745,6 @@
             }
         }
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
-
-
-
     </script>
 
     <!-- Overlay quét -->
@@ -1877,9 +1881,9 @@
     </script>
 
     <!-- nhaptamcs1.html (cuối body), theo đúng thứ tự -->
-    <script type="module" src="bangketqua.js"></script>
-    <script type="module" src="hoadon.js"></script>
-    <script type="module" src="main.js"></script>
+<script type="module" src="bangketqua.js"></script>
+<script type="module" src="hoadon.js"></script>
+<script type="module" src="main.js"></script>
 
 
 
