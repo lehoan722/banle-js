@@ -861,6 +861,11 @@ export function suaDongDangChon() {
     if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
 
     // 3) Đẩy dữ liệu lên form
+    const maspEl = document.getElementById("masp");
+    if (maspEl) {
+        maspEl.value = masp.toUpperCase();                 // ghi lại MASP
+        try { maspEl.dispatchEvent(new Event("change", { bubbles: true })); } catch (_) { }
+    }
     document.getElementById("size").value = item.sizes[idx] || "";
     document.getElementById("soluong").value = item.soluongs[idx] || "1";
     document.getElementById("dvt").value = item.dvt || "";
