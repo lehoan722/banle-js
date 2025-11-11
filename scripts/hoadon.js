@@ -203,9 +203,6 @@ export async function chuyenFocus(e) {
         const isValidSize = val && dsSize.includes(val);
         const nhapSizeMode = document.getElementById("nhapsize")?.checked === true; // 🔴 CHẾ ĐỘ NHẬP SIZE LIÊN TIẾP
         ensureStateFromDOM();
-        themVaoBang(sizeChosen, { afterAdd: "keepMaspFocusSize" });
-
-
         if (nhapSizeMode) {
             // ====== MODE A: Đang bật nhập size liên tiếp ======
             if (isValidSize) {
