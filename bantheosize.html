@@ -705,6 +705,55 @@
 })();
 </script>
 
+<script>
+/** Tắt auto-run báo cáo lúc mở trang + không auto-check "Phát sinh bán trong kỳ" */
+(function () {
+  // 1) Khóa auto-run lần đầu nếu có script ngoài gọi taiBaoCaoXNT() trên DOMContentLoaded
+  let allowRun = false;
+  const installGuard = () => {
+    // Nếu hàm chưa sẵn sàng, thử lại chút nữa (vì file ngoài là module)
+    if (typeof window.taiBaoCaoXNT !== 'function') {
+      setTimeout(installGuard, 50);
+      return;
+    }
+    const original = window.taiBaoCaoXNT;
+    // Chặn mọi lời gọi KHÔNG DO NGƯỜI DÙNG
+    window.taiBaoCaoXNT = function (...args) {
+      if (!allowRun) {
+        // Bị chặn: do auto-run khi vừa mở trang
+        return;
+      }
+      return original.apply(this, args);
+    };
+
+    // Gắn lại onclick của nút "Xem báo cáo" để bật allowRun trước khi chạy
+    const btn = document.querySelector('button[onclick="taiBaoCaoXNT()"]');
+    if (btn) {
+      btn.onclick = function (ev) {
+        allowRun = true;           // chỉ khi người dùng bấm mới cho phép chạy
+        return original();
+      };
+    }
+  };
+
+  // 2) Luôn bỏ check "Phát sinh bán trong kỳ" khi tải trang
+  const uncheckPhatSinhBan = () => {
+    const cb = document.getElementById('locPhatSinhXuat');
+    if (cb) {
+      cb.checked = false;
+      // Nếu script ngoài cố thao tác lại, ta vẫn hạ về false sau 1 tick
+      setTimeout(() => { cb.checked = false; }, 0);
+    }
+  };
+
+  // Cài guard sớm (trước khi DOMContentLoaded fire)
+  installGuard();
+
+  // Khi DOM sẵn sàng: đảm bảo checkbox không bị tick
+  document.addEventListener('DOMContentLoaded', uncheckPhatSinhBan);
+})();
+</script>
+
 
 
 </body>
