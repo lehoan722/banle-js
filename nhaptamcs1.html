@@ -950,8 +950,28 @@
             // ===============================================
         }
 
+        // === Ensure state sync từ DOM khi có khả năng vừa dán / vừa sửa thủ công ===
+        function ensureStateFromDOM() {
+            try { window.capNhatBangKetQuaTuDOM && window.capNhatBangKetQuaTuDOM(); } catch (e) { }
+        }
+
+        // 2.1 Bắt sự kiện PASTE vào bảng → sync state ngay
+        document.addEventListener('DOMContentLoaded', () => {
+            const tb = document.querySelector('#bangketqua tbody');
+            if (tb) {
+                tb.addEventListener('paste', () => {
+                    // đợi browser hoàn tất dán xong rồi mới đọc DOM
+                    setTimeout(() => ensureStateFromDOM(), 0);
+                });
+            }
+        });
+
+        // 2.2 Trước mọi thao tác có thể render lại bảng, ép sync state
+        window._wrapEnsureState = (fn) => (...args) => { ensureStateFromDOM(); return fn(...args); };
+
 
     </script>
+
 
     <script type="module">
         import * as BKQ from './scripts/bangketqua.js';
@@ -962,6 +982,8 @@
         window.resetFormSauKhiNhapSize = BKQ.resetFormSauKhiNhapSize?.bind(BKQ) || (() => { });
         window.toggleBangKetQua = BKQ.toggleBangKetQua?.bind(BKQ) || (() => { });
     </script>
+
+
 
 
     <script type="module">
@@ -1404,17 +1426,17 @@
 
             // Render (chờ hàm sẵn sàng)
             if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
-    // 1) cập nhật state thật
-    window.bangKetQua = bangObj;
+                // 1) cập nhật state thật
+                window.bangKetQua = bangObj;
 
-    // 2) render & tổng theo state mới
-    window.capNhatBangHTML(window.bangKetQua);
-    window.capNhatThongTinTong(window.bangKetQua);
+                // 2) render & tổng theo state mới
+                window.capNhatBangHTML(window.bangKetQua);
+                window.capNhatThongTinTong(window.bangKetQua);
 
-    // 3) dọn hash
-    history.replaceState(null, '', location.pathname);
-    return true;
-}
+                // 3) dọn hash
+                history.replaceState(null, '', location.pathname);
+                return true;
+            }
 
 
             if (!tryRender()) {
@@ -1881,9 +1903,9 @@
     </script>
 
     <!-- nhaptamcs1.html (cuối body), theo đúng thứ tự -->
-<script type="module" src="bangketqua.js"></script>
-<script type="module" src="hoadon.js"></script>
-<script type="module" src="main.js"></script>
+    <script type="module" src="bangketqua.js"></script>
+    <script type="module" src="hoadon.js"></script>
+    <script type="module" src="main.js"></script>
 
 
 
