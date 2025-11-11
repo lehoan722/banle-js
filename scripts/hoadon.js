@@ -948,13 +948,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// F3 → Sửa dòng đang chọn (luôn bọc ensure)
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'F3') {
-        e.preventDefault();
-        runSuaDongDangChon();
-    }
-});
+
 
 
 
