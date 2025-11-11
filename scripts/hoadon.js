@@ -813,78 +813,61 @@ const item = data[masp];
 
 
 // hoadon.js
-// THAY TOÀN BỘ HÀM NÀY
 export function suaDongDangChon() {
-  // 1) Đồng bộ data từ DOM nếu có
+  // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
   try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) {}
 
-  // 2) Lấy selection hiện tại, nếu chưa có thì lấy dòng đầu
-  let sel = getMaspspDangChon();
-  if (!sel) {
-    const first = document.querySelector("#bangketqua tbody tr");
-    if (!first) { alert("Không có dòng nào để sửa."); return; }
-    const tds = first.querySelectorAll("td");
-    const maspAuto = (tds[0]?.textContent || "").trim();
-    const sizeAuto = (tds[2]?.textContent || "").trim();
-    if (!maspAuto || !sizeAuto) { alert("Không đọc được dòng đầu tiên."); return; }
-    sel = { masp: maspAuto, size: sizeAuto };
-    setMaspspDangChon(sel);
+  // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
+  let dangChon = getMaspspDangChon();
+  if (!dangChon) {
+    const firstRow = document.querySelector("#bangketqua tbody tr");
+    if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
+    const tds = firstRow.querySelectorAll("td");
+    const masp = (tds[0]?.textContent || "").trim();
+    const size = (tds[2]?.textContent || "").trim();
+    if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
+    setMaspspDangChon({ masp, size });
+    dangChon = { masp, size };
   }
 
-  const masp = String(sel.masp || "").trim();
-  const size = String(sel.size || "").trim();
+  const masp = String(dangChon.masp || "").trim();
+  const size = String(dangChon.size || "").trim();
 
-  // 3) Lấy state hiện tại
-  const data = (window.bangKetQua && Object.keys(window.bangKetQua).length)
-    ? window.bangKetQua : (typeof bangKetQua !== "undefined" ? bangKetQua : {});
-
+  const data = _data();
   const item = data[masp];
   if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
 
   const idx = item.sizes.findIndex(s => String(s).trim() === size);
   if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
 
-  // 4) Đẩy dữ liệu lên form (NHỚ gán MASP)
-  const maspEl = document.getElementById("masp");
-  if (maspEl) {
-    maspEl.value = masp.toUpperCase();
-    try { maspEl.dispatchEvent(new Event("change", { bubbles: true })); } catch (_) {}
-  }
+  // 3) Đẩy dữ liệu lên form
   document.getElementById("size").value      = item.sizes[idx] || "";
-  document.getElementById("soluong").value   = item.soluongs[idx] ?? "1";
+  document.getElementById("soluong").value   = item.soluongs[idx] || "1";
   document.getElementById("dvt").value       = item.dvt || "";
   document.getElementById("gia").value       = item.gia || "";
   document.getElementById("khuyenmai").value = item.km || "";
-  // tính nhanh thành tiền
-  (function() {
-    const sl  = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
+  (function recalc() {
+    const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
     const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g,"")) || 0;
     const km  = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g,"")) || 0;
     const tt  = (gia - km) * sl;
     const ttEl = document.getElementById("thanhtien");
     if (ttEl) ttEl.value = tt.toLocaleString();
   })();
-
-  // 5) CẮT đúng 1 size khỏi dữ liệu + cập nhật tổng
-  const slCu = Number(item.soluongs[idx]) || 0;
-  item.sizes.splice(idx, 1);
-  item.soluongs.splice(idx, 1);
-  // trừ tổng hoặc tính lại để chắc
-  if (typeof item.tong === "number") {
-    item.tong = Math.max(0, (item.tong || 0) - slCu);
-  } else {
-    item.tong = (item.soluongs || []).reduce((a,b)=>a+(Number(b)||0),0);
-  }
-  if (item.sizes.length === 0) delete bangKetQua[masp];
-
-  // 6) Ghi state & render lại
-  window.bangKetQua = data;
-  if (typeof capNhatBangHTML === "function") capNhatBangHTML(data, window.lastAdded);
-  if (typeof capNhatThongTinTong === "function") capNhatThongTinTong(data);
-
-  setMaspspDangChon(null);
   const slEl = document.getElementById("soluong");
   if (slEl) { slEl.focus(); slEl.select(); }
+
+  // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
+  const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
+  item.sizes.splice(idx, 1);
+  item.soluongs.splice(idx, 1);
+  item.tong = Math.max(0, (item.tong || 0) - slCu);
+  if (item.sizes.length === 0) delete bangKetQua[masp];
+
+  // 5) Ghi state & render
+  setMaspspDangChon(null);
+  _sync(data);
+  capNhatBangHTML(data, window.lastAdded);
 }
 
 
