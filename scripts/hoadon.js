@@ -869,7 +869,7 @@ export function suaDongDangChon() {
     item.sizes.splice(idx, 1);
     item.soluongs.splice(idx, 1);
     item.tong = Math.max(0, (item.tong || 0) - slCu);
-    if (item.sizes.length === 0) delete bangKetQua[masp];
+    if (item.sizes.length === 0) delete data[masp];
 
     // 5) Ghi state & render
     setMaspspDangChon(null);
