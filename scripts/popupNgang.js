@@ -248,7 +248,7 @@ export const popupNgang = (() => {
             return;
           }
           // Tuỳ chọn: coi '.' hoặc ',' là Enter (một số layout số có phím '.')
-          if (e.inputType === 'insertText' && (e.data === '.' || e.data === ','|| e.data === '00')) {
+          if (e.inputType === 'insertText' && (e.data === '.' || e.data === ',' || e.data === '00')) {
             e.preventDefault();
             moveFocusToNext(inp, sizes);
           }
@@ -418,15 +418,22 @@ export const popupNgang = (() => {
       flashStatus('Đang lưu…', 0);
       const wide = readTableAsWide();
       updateBangKetQuaFromWide(wide);
-      await refreshAfterSave();     // ← gọi render qua dynamic import
+
+      // NEW: đồng bộ ngược về biến module của hoadon.js
+      try { window.hoadonSyncFromWindow?.(); } catch (e) { }
+
+      await refreshAfterSave();     // vẫn gọi render an toàn (import động)
       flashStatus('Đã lưu vào bảng kết quả ✓', 1200);
-      close();                      // ← đóng popup ngay sau khi lưu
+
+      // ❌ Bỏ auto-close để đúng yêu cầu: chỉ đóng khi bấm nút “Đóng”
+      // close();
     } catch (err) {
       console.error('[popupNgang] Lỗi khi lưu:', err);
       flashStatus('Lỗi khi lưu! Xem console.', 3000);
       alert('Không lưu được dữ liệu. Vui lòng mở Console để xem chi tiết lỗi.');
     }
   }
+
 
   async function refreshAfterSave() {
     // Gọi capNhatBangHTML + capNhatThongTinTong mà KHÔNG cần global
