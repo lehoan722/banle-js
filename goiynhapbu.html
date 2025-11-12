@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gợi Ý Nhập Bù</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
   <style>
     :root {
@@ -324,12 +324,18 @@
         max-height: none;
       }
     }
+
+    .table-wrap {
+      overflow: visible;
+    }
+
+    /* tránh “cắt” vùng HOT */
   </style>
 </head>
 
 <body>
   <div class="container">
-    -Nếu bán chạy → tăng dự trữ lên 21, dự phòng 1,4;  Nếu lọc tra ve quá ít mã → giảm % Bán/Nhập hoặc Bán/ngày  
+    -Nếu bán chạy → tăng dự trữ lên 21, dự phòng 1,4; Nếu lọc tra ve quá ít mã → giảm % Bán/Nhập hoặc Bán/ngày
 
     <!-- Tóm tắt điều kiện đã áp dụng từ XNT17 -->
     <div class="summary">
@@ -346,7 +352,7 @@
     <div class="card" style="margin-top:16px">
       <h3>Tham số gợi ý</h3>
       <div class="params">
-        <div class="field">              
+        <div class="field">
           <label for="inpSellThroughMin">60 là tỷ lệ bán=60% nhập</label>
           <input id="inpSellThroughMin" type="number" step="1" min="0" max="100" placeholder="60" value="60">
         </div>
@@ -389,12 +395,12 @@
             </div>
           </div>
 
-          <div style="overflow:auto; max-height:70vh">
-
-            <div id="hotGoiY" style="width:100%; height:70vh;"></div>
-            
+          <!-- NEW: wrapper cố định chiều cao cho HOT -->
+          <div id="hotWrap" style="height:70vh; min-height:480px; overflow:auto;">
+            <div id="hotGoiY" style="height:100%; width:100%"></div>
           </div>
         </div>
+
       </div>
 
       <!-- CỘT PHẢI: ẢNH NHANH -->
@@ -418,7 +424,7 @@
 
       import "./scripts/goiynhapbu.js?v=20251112a";  // đường dẫn đúng chỗ bạn để file
     </script>
-   
+
 
     <!-- Lightbox -->
     <div id="lb" class="lb-backdrop">
