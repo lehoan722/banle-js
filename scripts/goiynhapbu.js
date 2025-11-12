@@ -201,6 +201,18 @@ function computeMetrics(rows, filters, options) {
     out.sort((a, b) => (b.rank - a.rank) || (b.sell_per_day - a.sell_per_day));
     return { rows: out, avgST, days };
 }
+async function ensureHOTLoaded() {
+  if (window.Handsontable) return true;
+  // Nếu vì lý do nào đó script UMD chưa sẵn sàng, tự nạp lại:
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return !!window.Handsontable;
+}
+
 
 /* =========================
  * 5.9) Handsontable for result table
@@ -240,57 +252,56 @@ function buildHotData(rows) {
 }
 
 function renderHOT(rows) {
-    hotData = buildHotData(rows);
-    const container = document.getElementById('hotGoiY');
-    if (!container) return;
+  hotData = buildHotData(rows);
+  const container = document.getElementById('hotGoiY');
+  if (!container) return;
 
-    if (hot) {
-        hot.updateSettings({ data: hotData });
-        hot.render();
-        return;
-    }
+  const HOT = window.Handsontable;   // <— lấy từ global
+  if (!HOT) { console.warn('Handsontable chưa sẵn sàng'); return; }
 
-    hot = new Handsontable(container, {
-        data: hotData,
-        columns: hotCols,
-        colHeaders: hotCols.map(c => c.title),
-        rowHeaders: true,
-        stretchH: 'all',
-        height: '100%',
-        licenseKey: 'non-commercial-and-evaluation',
-        filters: true,
-        dropdownMenu: true,
-        columnSorting: true,
-        manualColumnMove: true,
-        manualColumnResize: true,
-        contextMenu: ['copy', 'cut', '---------', 'freeze_column', 'unfreeze_column', '---------', 'alignment'],
-        hiddenColumns: { indicators: true },
-        // định dạng canh phải cho số
-        cells: (row, col) => {
-            const props = {};
-            const key = hotCols[col]?.data;
-            if (['nhap_dau_ky', 'nhap_ky', 'ban_ky', 'ton_cuoi', 'pct_bn', 'ban_ngay', 'rank', 'goi_y', 'stt'].includes(key)) {
-                props.className = 'htRight';
-            }
-            return props;
-        },
-        afterSelection: (r1, c1, r2, c2) => {
-            // click chọn 1 dòng → đẩy ảnh mã đó lên đầu panel
-            const rowIndex = r1;
-            const rec = hot.getSourceDataAtRow(rowIndex);
-            if (rec?.masp) promotePreviewToTop(rec.masp);
-        },
-        afterOnCellMouseDown: (event, coords) => {
-            // double-click mở chi tiết XNT17
-            if (coords?.row != null) {
-                const rec = hot.getSourceDataAtRow(coords.row);
-                if (rec?.masp && event?.domEvent?.detail >= 2) {
-                    sessionStorage.setItem('xnt17_focus_masp', rec.masp);
-                    location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
-                }
-            }
+  if (hot) {
+    hot.updateSettings({ data: hotData });
+    hot.render();
+    return;
+  }
+
+  hot = new HOT(container, {
+    data: hotData,
+    columns: hotCols,
+    colHeaders: hotCols.map(c => c.title),
+    rowHeaders: true,
+    stretchH: 'all',
+    height: '100%',
+    licenseKey: 'non-commercial-and-evaluation',
+    filters: true,
+    dropdownMenu: true,
+    columnSorting: true,
+    manualColumnMove: true,
+    manualColumnResize: true,
+    contextMenu: ['copy','cut','---------','freeze_column','unfreeze_column','---------','alignment'],
+    hiddenColumns: { indicators: true },
+    cells: (row, col) => {
+      const props = {};
+      const key = hotCols[col]?.data;
+      if (['nhap_dau_ky','nhap_ky','ban_ky','ton_cuoi','pct_bn','ban_ngay','rank','goi_y','stt'].includes(key)) {
+        props.className = 'htRight';
+      }
+      return props;
+    },
+    afterSelection: (r1) => {
+      const rec = hot.getSourceDataAtRow(r1);
+      if (rec?.masp) promotePreviewToTop(rec.masp);
+    },
+    afterOnCellMouseDown: (event, coords) => {
+      if (coords?.row != null) {
+        const rec = hot.getSourceDataAtRow(coords.row);
+        if (rec?.masp && event?.domEvent?.detail >= 2) {
+          sessionStorage.setItem('xnt17_focus_masp', rec.masp);
+          location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
         }
-    });
+      }
+    }
+  });
 }
 
 
@@ -381,6 +392,8 @@ function promotePreviewToTop(masp) {
  * 7) Khởi tạo trang
  * ========================= */
 async function main() {
+
+     await ensureHOTLoaded(); 
     // Đọc dataset
     let ctx = readDatasetFromSession();
     if (!ctx) {
@@ -432,7 +445,7 @@ async function main() {
         const res = computeMetrics(ctx.rows, ctx.filters, opts);
         res.rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
         renderHOT(res.rows);
-        document.getElementById('countRows').textContent = `${rows.length} dòng`;
+        document.getElementById('countRows').textContent = `${res.rows.length} dòng`;
 
         // CẬP NHẬT preview ảnh theo kết quả mới
         currentRows = res.rows;
