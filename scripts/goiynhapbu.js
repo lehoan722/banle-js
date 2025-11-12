@@ -202,15 +202,15 @@ function computeMetrics(rows, filters, options) {
     return { rows: out, avgST, days };
 }
 async function ensureHOTLoaded() {
-  if (window.Handsontable) return true;
-  // Nếu vì lý do nào đó script UMD chưa sẵn sàng, tự nạp lại:
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js';
-    s.onload = resolve; s.onerror = reject;
-    document.head.appendChild(s);
-  });
-  return !!window.Handsontable;
+    if (window.Handsontable) return true;
+    // Nếu vì lý do nào đó script UMD chưa sẵn sàng, tự nạp lại:
+    await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+    });
+    return !!window.Handsontable;
 }
 
 
@@ -252,56 +252,60 @@ function buildHotData(rows) {
 }
 
 function renderHOT(rows) {
-  hotData = buildHotData(rows);
-  const container = document.getElementById('hotGoiY');
-  if (!container) return;
+    hotData = buildHotData(rows);
+    const container = document.getElementById('hotGoiY');
+    if (!container) return;
 
-  const HOT = window.Handsontable;   // <— lấy từ global
-  if (!HOT) { console.warn('Handsontable chưa sẵn sàng'); return; }
+    const HOT = window.Handsontable;
+    if (!HOT) { console.warn('Handsontable chưa sẵn sàng'); return; }
 
-  if (hot) {
-    hot.updateSettings({ data: hotData });
-    hot.render();
-    return;
-  }
+    // TÍNH CHIỀU CAO THỰC
+    const wrap = document.getElementById('hotWrap');
+    const h = Math.max(360, (wrap?.clientHeight || 0));
 
-  hot = new HOT(container, {
-    data: hotData,
-    columns: hotCols,
-    colHeaders: hotCols.map(c => c.title),
-    rowHeaders: true,
-    stretchH: 'all',
-    height: '100%',
-    licenseKey: 'non-commercial-and-evaluation',
-    filters: true,
-    dropdownMenu: true,
-    columnSorting: true,
-    manualColumnMove: true,
-    manualColumnResize: true,
-    contextMenu: ['copy','cut','---------','freeze_column','unfreeze_column','---------','alignment'],
-    hiddenColumns: { indicators: true },
-    cells: (row, col) => {
-      const props = {};
-      const key = hotCols[col]?.data;
-      if (['nhap_dau_ky','nhap_ky','ban_ky','ton_cuoi','pct_bn','ban_ngay','rank','goi_y','stt'].includes(key)) {
-        props.className = 'htRight';
-      }
-      return props;
-    },
-    afterSelection: (r1) => {
-      const rec = hot.getSourceDataAtRow(r1);
-      if (rec?.masp) promotePreviewToTop(rec.masp);
-    },
-    afterOnCellMouseDown: (event, coords) => {
-      if (coords?.row != null) {
-        const rec = hot.getSourceDataAtRow(coords.row);
-        if (rec?.masp && event?.domEvent?.detail >= 2) {
-          sessionStorage.setItem('xnt17_focus_masp', rec.masp);
-          location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
-        }
-      }
+    if (hot) {
+        hot.updateSettings({ data: hotData, height: h });
+        hot.render();
+        return;
     }
-  });
+
+    hot = new HOT(container, {
+        data: hotData,
+        columns: hotCols,
+        colHeaders: hotCols.map(c => c.title),
+        rowHeaders: true,
+        stretchH: 'all',
+        height: h,                              // <— dùng chiều cao thật
+        licenseKey: 'non-commercial-and-evaluation',
+        filters: true,
+        dropdownMenu: true,
+        columnSorting: true,
+        manualColumnMove: true,
+        manualColumnResize: true,
+        contextMenu: ['copy', 'cut', '---------', 'freeze_column', 'unfreeze_column', '---------', 'alignment'],
+        hiddenColumns: { indicators: true },
+        cells: (row, col) => {
+            const props = {};
+            const key = hotCols[col]?.data;
+            if (['nhap_dau_ky', 'nhap_ky', 'ban_ky', 'ton_cuoi', 'pct_bn', 'ban_ngay', 'rank', 'goi_y', 'stt'].includes(key)) {
+                props.className = 'htRight';
+            }
+            return props;
+        },
+        afterSelection: (r1) => {
+            const rec = hot.getSourceDataAtRow(r1);
+            if (rec?.masp) promotePreviewToTop(rec.masp);
+        },
+        afterOnCellMouseDown: (event, coords) => {
+            if (coords?.row != null) {
+                const rec = hot.getSourceDataAtRow(coords.row);
+                if (rec?.masp && event?.domEvent?.detail >= 2) {
+                    sessionStorage.setItem('xnt17_focus_masp', rec.masp);
+                    location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
+                }
+            }
+        }
+    });
 }
 
 
@@ -393,7 +397,10 @@ function promotePreviewToTop(masp) {
  * ========================= */
 async function main() {
 
-     await ensureHOTLoaded(); 
+    await ensureHOTLoaded();
+    await new Promise(r => requestAnimationFrame(r));   // đợi layout ổn định
+
+
     // Đọc dataset
     let ctx = readDatasetFromSession();
     if (!ctx) {
@@ -450,7 +457,7 @@ async function main() {
         // CẬP NHẬT preview ảnh theo kết quả mới
         currentRows = res.rows;
         renderPreviewForMasps(Array.from(new Set(currentRows.map(r => r.masp))).filter(Boolean));
-    });    
+    });
 
 
 
@@ -478,7 +485,7 @@ async function main() {
         download(`goi_y_nhap_bu_${Date.now()}.csv`, csv);
     });
 
-  
+
 
 
 }
