@@ -6,7 +6,8 @@
   <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -205,8 +206,8 @@
     const PATH_PREFIX = window.PATH_PREFIX || '';
 
     // Tự mở camera sau khi CHẮC CHẮN chưa có ảnh
-    const AUTO_OPEN_CAMERA = true;  // Android/Desktop: auto
-    const FORCE_AUTO_ON_IOS = true;  // ÉP iOS cũng auto (có máy có thể chặn)
+    const AUTO_OPEN_CAMERA = true;      // giữ nguyên (tự mở sau khi kiểm tra xong)
+    const FORCE_AUTO_ON_IOS = false;    // ⬅️ đổi thành false để không ép iOS mở quá sớm
 
 
     // Đuôi ảnh có thể tồn tại
@@ -215,18 +216,18 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
     // --- STATE MACHINE chống chồng lệnh ---
-let STATE = 'idle'; // 'idle' | 'checking' | 'waiting_capture' | 'uploading'
-let nextMaspQueued = null;
-let waitingPickerTimer = null;
+    let STATE = 'idle'; // 'idle' | 'checking' | 'waiting_capture' | 'uploading'
+    let nextMaspQueued = null;
+    let waitingPickerTimer = null;
 
-function setState(s) {
-  // console.debug('STATE:', STATE, '->', s);
-  STATE = s;
-}
+    function setState(s) {
+      // console.debug('STATE:', STATE, '->', s);
+      STATE = s;
+    }
 
-function queueNextMasp(masp) {
-  nextMaspQueued = String(masp || '').trim() || null;
-}
+    function queueNextMasp(masp) {
+      nextMaspQueued = String(masp || '').trim() || null;
+    }
 
 
     /******** TIỆN ÍCH ********/
@@ -241,37 +242,38 @@ function queueNextMasp(masp) {
     const thumbMeta = $('#thumbMeta');
 
     // Mở camera NGAY khi cache không có (trong thao tác Enter/Click)
-    const INSTANT_AUTO_ON_CACHE_MISS = true;
+    const INSTANT_AUTO_ON_CACHE_MISS = false; // ⬅️ đổi false để luôn chờ kết quả server
+    //const INSTANT_AUTO_ON_CACHE_MISS = true;
 
     // Ưu tiên showPicker (iOS >=16.4), fallback click()
     function openCameraPicker() {
-  // reset chọn cũ
-  cameraInp.value = '';
+      // reset chọn cũ
+      cameraInp.value = '';
 
-  // đặt state chờ người dùng chụp
-  setState('waiting_capture');
+      // đặt state chờ người dùng chụp
+      setState('waiting_capture');
 
-  // nếu người dùng hủy/không chọn gì: thoát chờ sau 8 giây
-  clearTimeout(waitingPickerTimer);
-  waitingPickerTimer = setTimeout(() => {
-    if (STATE === 'waiting_capture') {
-      setStatus('Đã hủy camera hoặc không chọn ảnh.', 'warn');
-      setState('idle');
-      // nếu có mã tiếp theo đã xếp hàng, chạy luôn
-      if (nextMaspQueued) {
-        maspInput.value = nextMaspQueued;
-        nextMaspQueued = null;
-        handleCheck();
-      } else {
-        focusSelect();
-      }
+      // nếu người dùng hủy/không chọn gì: thoát chờ sau 8 giây
+      clearTimeout(waitingPickerTimer);
+      waitingPickerTimer = setTimeout(() => {
+        if (STATE === 'waiting_capture') {
+          setStatus('Đã hủy camera hoặc không chọn ảnh.', 'warn');
+          setState('idle');
+          // nếu có mã tiếp theo đã xếp hàng, chạy luôn
+          if (nextMaspQueued) {
+            maspInput.value = nextMaspQueued;
+            nextMaspQueued = null;
+            handleCheck();
+          } else {
+            focusSelect();
+          }
+        }
+      }, 8000);
+
+      // mở picker
+      if (cameraInp.showPicker) cameraInp.showPicker();
+      else cameraInp.click();
     }
-  }, 8000);
-
-  // mở picker
-  if (cameraInp.showPicker) cameraInp.showPicker();
-  else cameraInp.click();
-}
 
     // Chỉ auto mở nếu: đang trong user-activation (iOS yêu cầu) + cho phép auto
     function canInstantAutoOpen() {
@@ -387,162 +389,162 @@ function queueNextMasp(masp) {
     function openCamera() { cameraInp.value = ''; cameraInp.click(); }
 
     cameraInp.addEventListener('change', async (e) => {
-  clearTimeout(waitingPickerTimer);
+      clearTimeout(waitingPickerTimer);
 
-  const file = e.target.files?.[0];
-  const masp = maspInput.value.trim();
+      const file = e.target.files?.[0];
+      const masp = maspInput.value.trim();
 
-  if (!file) {
-    // user hủy
-    if (STATE === 'waiting_capture') {
-      setStatus('Đã hủy camera hoặc không chọn ảnh.', 'warn');
-      setState('idle');
-      if (nextMaspQueued) { maspInput.value = nextMaspQueued; nextMaspQueued = null; handleCheck(); }
-      else focusSelect();
-    }
-    return;
-  }
-  if (!masp) {
-    setStatus('Mã sản phẩm rỗng', 'warn');
-    setState('idle');
-    focusSelect();
-    return;
-  }
+      if (!file) {
+        // user hủy
+        if (STATE === 'waiting_capture') {
+          setStatus('Đã hủy camera hoặc không chọn ảnh.', 'warn');
+          setState('idle');
+          if (nextMaspQueued) { maspInput.value = nextMaspQueued; nextMaspQueued = null; handleCheck(); }
+          else focusSelect();
+        }
+        return;
+      }
+      if (!masp) {
+        setStatus('Mã sản phẩm rỗng', 'warn');
+        setState('idle');
+        focusSelect();
+        return;
+      }
 
-  try {
-    setState('uploading');
-    setStatus('Đang xử lý & lưu ảnh…');
+      try {
+        setState('uploading');
+        setStatus('Đang xử lý & lưu ảnh…');
 
-    const blob = await resizeImage(file, 1024, 1024, 0.82);
-    const key = FILE_NAMER(masp);
+        const blob = await resizeImage(file, 1024, 1024, 0.82);
+        const key = FILE_NAMER(masp);
 
-    const { error } = await supabase.storage.from(STORAGE_BUCKET)
-      .upload(PATH_PREFIX + key, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+        const { error } = await supabase.storage.from(STORAGE_BUCKET)
+          .upload(PATH_PREFIX + key, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
 
-    if (error) throw error;
+        if (error) throw error;
 
-    imageKeySet.add(key); imageKeySetLower.add(key.toLowerCase()); saveCache(); updateGlobalNames();
-    setStatus('Lưu ảnh thành công', 'ok'); toast('✔ Đã lưu'); updateThumb(masp);
-  } catch (err) {
-    console.error('Upload error:', err);
-    const msg = (err && (err.message || err.error_description || err.error))
-      ? String(err.message || err.error_description || err.error)
-      : 'KHÔNG rõ nguyên nhân';
-    setStatus('Lưu ảnh KHÔNG thành công: ' + msg, 'warn'); toast('✖ Lỗi lưu ảnh: ' + msg);
-  } finally {
-    setState('idle');
-    // Nếu có mã tiếp theo đã xếp hàng, xử lý luôn
-    if (nextMaspQueued) {
-      maspInput.value = nextMaspQueued;
-      nextMaspQueued = null;
-      handleCheck();
-    } else {
-      focusSelect();
-    }
-  }
-});
+        imageKeySet.add(key); imageKeySetLower.add(key.toLowerCase()); saveCache(); updateGlobalNames();
+        setStatus('Lưu ảnh thành công', 'ok'); toast('✔ Đã lưu'); updateThumb(masp);
+      } catch (err) {
+        console.error('Upload error:', err);
+        const msg = (err && (err.message || err.error_description || err.error))
+          ? String(err.message || err.error_description || err.error)
+          : 'KHÔNG rõ nguyên nhân';
+        setStatus('Lưu ảnh KHÔNG thành công: ' + msg, 'warn'); toast('✖ Lỗi lưu ảnh: ' + msg);
+      } finally {
+        setState('idle');
+        // Nếu có mã tiếp theo đã xếp hàng, xử lý luôn
+        if (nextMaspQueued) {
+          maspInput.value = nextMaspQueued;
+          nextMaspQueued = null;
+          handleCheck();
+        } else {
+          focusSelect();
+        }
+      }
+    });
 
 
     function fileToImage(file) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(file); }); }
     async function resizeImage(file, maxW, maxH, quality = 0.85) { const img = await fileToImage(file); const ratio = Math.min(maxW / img.width, maxH / img.height, 1); const w = Math.round(img.width * ratio); const h = Math.round(img.height * ratio); const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d', { alpha: false }); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h); return await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', quality)); }
 
     /******** LUỒNG KIỂM TRA ********/
-   async function handleCheck() {
-  const masp = maspInput.value.trim();
-  if (!masp || masp.length < 2) {
-    setStatus('Mã sản phẩm chưa hợp lệ', 'warn');
-    focusSelect();
-    return;
-  }
+    async function handleCheck() {
+      const masp = maspInput.value.trim();
+      if (!masp || masp.length < 2) {
+        setStatus('Mã sản phẩm chưa hợp lệ', 'warn');
+        focusSelect();
+        return;
+      }
 
-  // Nếu đang bận: xếp hàng mã để chạy ngay khi xong
-  if (STATE === 'checking' || STATE === 'waiting_capture' || STATE === 'uploading') {
-    queueNextMasp(masp);
-    setStatus('Đang bận thao tác trước, sẽ xử lý mã mới ngay sau đó…');
-    return;
-  }
+      // Nếu đang bận: xếp hàng mã để chạy ngay khi xong
+      if (STATE === 'checking' || STATE === 'waiting_capture' || STATE === 'uploading') {
+        queueNextMasp(masp);
+        setStatus('Đang bận thao tác trước, sẽ xử lý mã mới ngay sau đó…');
+        return;
+      }
 
-  // Bắt đầu kiểm tra
-  setState('checking');
-  focusSelect();
+      // Bắt đầu kiểm tra
+      setState('checking');
+      focusSelect();
 
-  // 1) Kiểm tra cache local
-  if (hasImageFor(masp)) {
-    setStatus('ĐÃ CÓ ẢNH', 'ok');
-    updateThumb(masp);
-    setState('idle');
-    // nếu có hàng đợi, xử lý tiếp
-    if (nextMaspQueued) {
-      maspInput.value = nextMaspQueued; nextMaspQueued = null;
-      handleCheck();
-    }
-    return;
-  }
+      // 1) Kiểm tra cache local
+      if (hasImageFor(masp)) {
+        setStatus('ĐÃ CÓ ẢNH', 'ok');
+        updateThumb(masp);
+        setState('idle');
+        // nếu có hàng đợi, xử lý tiếp
+        if (nextMaspQueued) {
+          maspInput.value = nextMaspQueued; nextMaspQueued = null;
+          handleCheck();
+        }
+        return;
+      }
 
-  // 2) Mở camera ngay (và kiểm tra server ở nền) nếu cho phép (tránh 2 lần mở)
-  if (canInstantAutoOpen()) {
-    setStatus('Chưa có trong cache → mở camera và đang kiểm tra server…');
-    thumb.style.display = 'none';
-    openCameraPicker(); // đổi state -> waiting_capture
+      // 2) Mở camera ngay (và kiểm tra server ở nền) nếu cho phép (tránh 2 lần mở)
+      if (canInstantAutoOpen()) {
+        setStatus('Chưa có trong cache → mở camera và đang kiểm tra server…');
+        thumb.style.display = 'none';
+        openCameraPicker(); // đổi state -> waiting_capture
 
-    // kiểm tra server song song (không đổi state nếu chưa có ảnh)
-    existsOnServer(masp).then(({ exists, keyFound }) => {
+        // kiểm tra server song song (không đổi state nếu chưa có ảnh)
+        existsOnServer(masp).then(({ exists, keyFound }) => {
+          if (exists) {
+            imageKeySet.add(keyFound);
+            imageKeySetLower.add(keyFound.toLowerCase());
+            saveCache(); updateGlobalNames();
+            setStatus('ĐÃ CÓ ẢNH', 'ok');
+            updateThumb(masp);
+            // nếu user vẫn đang trong waiting_capture mà server báo có ảnh -> cho về idle
+            if (STATE === 'waiting_capture') {
+              clearTimeout(waitingPickerTimer);
+              setState('idle');
+              // nếu có hàng đợi, xử lý tiếp
+              if (nextMaspQueued) {
+                maspInput.value = nextMaspQueued; nextMaspQueued = null;
+                handleCheck();
+              } else {
+                focusSelect();
+              }
+            }
+          } else {
+            setStatus('Chưa có ảnh. Mời chụp và lưu.');
+          }
+        }).catch(() => { /* im lặng lỗi nhẹ */ });
+
+        return; // kết thúc để tránh mở lần 2
+      }
+
+      // 3) Trường hợp không thể mở ngay (iOS chặn/ cấu hình)
+      setStatus('Đang kiểm tra ảnh trên server…');
+      const { exists, keyFound } = await existsOnServer(masp);
       if (exists) {
         imageKeySet.add(keyFound);
         imageKeySetLower.add(keyFound.toLowerCase());
         saveCache(); updateGlobalNames();
         setStatus('ĐÃ CÓ ẢNH', 'ok');
         updateThumb(masp);
-        // nếu user vẫn đang trong waiting_capture mà server báo có ảnh -> cho về idle
-        if (STATE === 'waiting_capture') {
-          clearTimeout(waitingPickerTimer);
-          setState('idle');
-          // nếu có hàng đợi, xử lý tiếp
-          if (nextMaspQueued) {
-            maspInput.value = nextMaspQueued; nextMaspQueued = null;
-            handleCheck();
-          } else {
-            focusSelect();
-          }
-        }
-      } else {
-        setStatus('Chưa có ảnh. Mời chụp và lưu.');
+        setState('idle');
+        if (nextMaspQueued) { maspInput.value = nextMaspQueued; nextMaspQueued = null; handleCheck(); }
+        return;
       }
-    }).catch(() => { /* im lặng lỗi nhẹ */ });
 
-    return; // kết thúc để tránh mở lần 2
-  }
-
-  // 3) Trường hợp không thể mở ngay (iOS chặn/ cấu hình)
-  setStatus('Đang kiểm tra ảnh trên server…');
-  const { exists, keyFound } = await existsOnServer(masp);
-  if (exists) {
-    imageKeySet.add(keyFound);
-    imageKeySetLower.add(keyFound.toLowerCase());
-    saveCache(); updateGlobalNames();
-    setStatus('ĐÃ CÓ ẢNH', 'ok');
-    updateThumb(masp);
-    setState('idle');
-    if (nextMaspQueued) { maspInput.value = nextMaspQueued; nextMaspQueued = null; handleCheck(); }
-    return;
-  }
-
-  setStatus('Chưa có ảnh. Sẽ mở camera để chụp…');
-  thumb.style.display = 'none';
-  if (shouldAutoOpen()) openCameraPicker(); // state -> waiting_capture
-  else {
-    setStatus('Chưa có ảnh. Bấm "Chèn ảnh mới" để chụp (iPhone chế độ an toàn).');
-    setState('idle');
-  }
-}
+      setStatus('Chưa có ảnh. Sẽ mở camera để chụp…');
+      thumb.style.display = 'none';
+      if (shouldAutoOpen()) openCameraPicker(); // state -> waiting_capture
+      else {
+        setStatus('Chưa có ảnh. Bấm "Chèn ảnh mới" để chụp (iPhone chế độ an toàn).');
+        setState('idle');
+      }
+    }
 
     maspInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleCheck(); } });
-    
+
     maspInput.addEventListener('blur', () => {
-  if (!maspInput.value.trim()) return;
-  // chỉ chạy khi idle để tránh chồng lệnh lúc mở picker
-  if (STATE === 'idle') handleCheck();
-});
+      if (!maspInput.value.trim()) return;
+      // chỉ chạy khi idle để tránh chồng lệnh lúc mở picker
+      if (STATE === 'idle') handleCheck();
+    });
 
     btnCheck.addEventListener('click', handleCheck);
     btnRetake.addEventListener('click', () => { const masp = maspInput.value.trim(); if (!masp) { setStatus('Nhập MÃ SP trước', 'warn'); maspInput.focus(); return; } setStatus('Chụp ảnh mới để ghi đè…'); openCamera(); });
