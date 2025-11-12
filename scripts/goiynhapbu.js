@@ -423,6 +423,14 @@ async function main() {
         if (masp) promotePreviewToTop(masp);
     });
 
+    document.querySelector('#tblGoiYNhapBu').addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-masp]');
+  if (!a) return;
+  e.preventDefault();
+  promotePreviewToTop(a.dataset.masp);
+});
+
+
 }
 
 // Khởi chạy
