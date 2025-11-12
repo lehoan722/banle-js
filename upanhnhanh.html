@@ -534,7 +534,9 @@
       if (shouldAutoOpen()) openCameraPicker(); // state -> waiting_capture
       else {
         setStatus('Chưa có ảnh. Bấm "Chèn ảnh mới" để chụp (iPhone chế độ an toàn).');
+        if (shouldAutoOpen()) openCameraPicker(); // state -> waiting_capture
         setState('idle');
+        
       }
     }
 
