@@ -381,9 +381,7 @@ async function main() {
         res.rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
         renderTable(res.rows);
     });
-
-    const maspsUnique2 = Array.from(new Set(res.rows.map(r => r.masp))).filter(Boolean);
-    renderPreviewForMasps(maspsUnique2);
+ 
 
 
     $('#btnMacDinh').addEventListener('click', () => {
