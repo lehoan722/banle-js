@@ -5,9 +5,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gợi Ý Nhập Bù</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
-
   <style>
     :root {
       --bg: #f7f7f8;
@@ -390,9 +387,56 @@
           </div>
 
           <div style="overflow:auto; max-height:70vh">
-
-            <div id="hotGoiY" style="width:100%; height:70vh;"></div>
-            
+            <table class="table" id="tblGoiYNhapBu">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th class="nowrap">MÃ SP</th>
+                  <th class="nowrap">NHÀ CC</th>
+                  <th class="num nowrap">NHẬP ĐẦU KỲ</th>
+                  <th class="num nowrap">NHẬP KỲ</th>
+                  <th class="num nowrap">BÁN KỲ</th>
+                  <th class="num nowrap">TỒN CUỐI</th>
+                  <th class="num nowrap">% BÁN/NHẬP</th>
+                  <th class="num nowrap">BÁN/NGÀY</th>
+                  <th class="num nowrap">ĐIỂM</th>
+                  <th class="num nowrap">GỢI Ý</th>
+                  <th class="nowrap">CHI TIẾT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- HÀNG MẪU (placeholder) — JS sẽ render thật sau -->
+                <tr>
+                  <td>1</td>
+                  <td>8806-LHDM/DEN</td>
+                  <td>ABC CO.</td>
+                  <td class="num">5</td>
+                  <td class="num">10</td>
+                  <td class="num">8</td>
+                  <td class="num">7</td>
+                  <td class="num">80.0</td>
+                  <td class="num">0.6</td>
+                  <td class="num">1.25</td>
+                  <td class="num">9</td>
+                  <td><a class="link" href="#" data-masp="8806-LHDM/DEN">Xem</a></td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>7322-QB</td>
+                  <td>XYZ SUPPLY</td>
+                  <td class="num">2</td>
+                  <td class="num">6</td>
+                  <td class="num">4</td>
+                  <td class="num">4</td>
+                  <td class="num">66.7</td>
+                  <td class="num">0.3</td>
+                  <td class="num">1.05</td>
+                  <td class="num">3</td>
+                  <td><a class="link" href="#" data-masp="7322-QB">Xem</a></td>
+                </tr>
+                <!-- /placeholder -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
