@@ -502,7 +502,34 @@ async function main() {
         download(`goi_y_nhap_bu_${Date.now()}.csv`, csv);
     });
 
-  
+
+    // Gắn handler "Xem" chi tiết (mở XNT17 lọc theo mã)
+    $('#tblGoiYNhapBu').addEventListener('click', (e) => {
+        const a = e.target.closest('a[data-masp]');
+        if (!a) return;
+        e.preventDefault();
+        const masp = a.getAttribute('data-masp');
+        // Lưu nhanh để XNT17 đọc (tuỳ bạn đang triển khai filter như nào)
+        sessionStorage.setItem('xnt17_focus_masp', masp);
+        // Điều hướng (cập nhật đúng path của bạn)
+        location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(masp);
+    });
+
+    // Đưa ảnh mã được click lên đầu lưới ảnh
+    $('#tblGoiYNhapBu tbody').addEventListener('click', (e) => {
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        // cột 2 = MASP theo renderTable()
+        const masp = tr.children?.[1]?.textContent?.trim();
+        if (masp) promotePreviewToTop(masp);
+    });
+
+    document.querySelector('#tblGoiYNhapBu').addEventListener('click', (e) => {
+        const a = e.target.closest('a[data-masp]');
+        if (!a) return;
+        e.preventDefault();
+        promotePreviewToTop(a.dataset.masp);
+    });
 
 
 }
