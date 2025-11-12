@@ -229,6 +229,56 @@
         padding: 8px 10px
       }
     }
+
+    /* ====== 2 cột: bảng trái 70% | ảnh phải 30% ====== */
+.layout-2cols{
+  display:grid;
+  grid-template-columns: 1fr 0.42fr; /* ~70% | 30% (tuỳ khung max-width của bạn) */
+  gap: 16px;
+  align-items:start;
+  margin-top: 16px;
+}
+
+/* cột trái (bảng) giữ nguyên */
+.col-main{ min-width: 0; }
+
+/* cột phải (ảnh) sticky bên phải */
+.col-preview{
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 120px);
+  overflow:auto;
+  background:#fff;
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,.06);
+  padding:12px;
+}
+
+/* tiêu đề ảnh */
+.section-title{ margin:4px 0 10px; font-weight:800; font-size:16px }
+
+/* grid ảnh: 1 cột dọc để cuộn */
+#previewGrid{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:10px;
+}
+
+/* card ảnh giữ nguyên từ trước */
+.preview-card{ border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
+.preview-card.selected{ box-shadow:0 0 0 2px #3b82f6 inset; }
+.preview-card img{ width:100%; height:auto; aspect-ratio:4/3; object-fit:cover; border-radius:8px; display:block; cursor:zoom-in; }
+.preview-cap{ margin-top:6px; font-size:13px; color:#374151; text-align:center; }
+.preview-cap .cap-link{ font-weight:700; color:#111; text-decoration:none; cursor:pointer; }
+.preview-cap .cap-link:hover{ text-decoration:underline; }
+
+/* Mobile: stack 1 cột như cũ */
+@media (max-width: 1024px){
+  .layout-2cols{ grid-template-columns: 1fr; }
+  .col-preview{ position:static; max-height:none; }
+  #previewGrid{ grid-template-columns: 1fr 1fr; } /* mobile có thể 2 cột nhỏ cho đỡ dài */
+}
+
   </style>
 </head>
 
@@ -279,21 +329,23 @@
     </div>
 
     <!-- Bảng kết quả gợi ý nhập bù -->
-    <div class="layout">
-      <div class="table-wrap">
-        <div class="toolbar">
-          <div class="left">
-            <strong>Gợi ý nhập bù</strong>
-            <span id="countRows" class="chip">0 dòng</span>
-          </div>
-          <div class="right">
-            <button class="btn secondary" id="btnBackXNT17">Quay lại Báo cáo XNT17</button>
-            <button class="btn" id="btnExportExcel">Xuất Excel</button>
-          </div>
+    <div class="layout-2cols">
+  <!-- CỘT TRÁI: BẢNG -->
+  <div class="col-main">
+    <div class="table-wrap">
+      <div class="toolbar">
+        <div class="left">
+          <strong>Gợi ý nhập bù</strong>
+          <span id="countRows" class="chip">0 dòng</span>
         </div>
+        <div class="right">
+          <button class="btn secondary" id="btnBackXNT17">Quay lại Báo cáo XNT17</button>
+          <button class="btn" id="btnExportExcel">Xuất Excel</button>
+        </div>
+      </div>
 
-        <div style="overflow:auto; max-height:70vh">
-          <table class="table" id="tblGoiYNhapBu">
+      <div style="overflow:auto; max-height:70vh">
+        <table class="table" id="tblGoiYNhapBu">
             <thead>
               <tr>
                 <th>STT</th>
@@ -342,17 +394,16 @@
               </tr>
               <!-- /placeholder -->
             </tbody>
-          </table>
-
-          <section style="margin-top:18px">
-  <h3 id="previewTitle" class="section-title">Ảnh nhanh (0 mã)</h3>
-  <div id="previewGrid"></div>
-</section>
-
-
+            </table>
         </div>
       </div>
     </div>
+
+    <!-- CỘT PHẢI: ẢNH NHANH -->
+  <aside class="col-preview">
+    <h3 id="previewTitle" class="section-title">Ảnh nhanh (0 mã)</h3>
+    <div id="previewGrid"></div>
+  </aside>
 
   </div>
  
