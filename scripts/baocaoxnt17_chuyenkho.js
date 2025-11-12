@@ -493,6 +493,7 @@ function applyGoiyFilter(value) {
     // Lọc theo gợi ý + ẩn dòng Tổng
     filters.addCondition(colGoiy, 'eq', [value]);
     filters.addCondition(colSize, 'neq', ['Tổng']);
+    filters.addCondition(colSize, 'neq',  ['size 0']); // ⬅️ mới thêm
     filters.filter();
 
     // Đồng bộ ảnh đúng với dữ liệu đang hiển thị
@@ -512,7 +513,6 @@ function getVisibleDirection() {
     for (let r = 0; r < n; r++) {
         const size = hot.getDataAtCell(r, colSize);
         if (size === 'Tổng') continue; // bỏ dòng Tổng
-        if (size === '0') continue; // bỏ dòng size 0
         anyRow = true;
         const g = hot.getDataAtCell(r, colGoiy);
         if (g === '1v2') has1v2 = true;
