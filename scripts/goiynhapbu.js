@@ -203,6 +203,98 @@ function computeMetrics(rows, filters, options) {
 }
 
 /* =========================
+ * 5.9) Handsontable for result table
+ * ========================= */
+let hot = null;           // instance Handsontable
+let hotData = [];         // dữ liệu đang hiển thị (sau tính toán)
+const hotCols = [
+    { data: 'stt', title: 'STT', type: 'numeric', width: 60 },
+    { data: 'masp', title: 'MÃ SP', type: 'text', width: 160 },
+    { data: 'nhacc', title: 'NHÀ CC', type: 'text', width: 160 },
+    { data: 'nhap_dau_ky', title: 'NHẬP ĐẦU KỲ', type: 'numeric', width: 120 },
+    { data: 'nhap_ky', title: 'NHẬP KỲ', type: 'numeric', width: 100 },
+    { data: 'ban_ky', title: 'BÁN KỲ', type: 'numeric', width: 100 },
+    { data: 'ton_cuoi', title: 'TỒN CUỐI', type: 'numeric', width: 100 },
+    { data: 'pct_bn', title: '% BÁN/NHẬP', type: 'numeric', width: 110, numericFormat: { pattern: '0.0' } },
+    { data: 'ban_ngay', title: 'BÁN/NGÀY', type: 'numeric', width: 110, numericFormat: { pattern: '0.0' } },
+    { data: 'rank', title: 'ĐIỂM', type: 'numeric', width: 90, numericFormat: { pattern: '0.00' } },
+    { data: 'goi_y', title: 'GỢI Ý', type: 'numeric', width: 90 },
+    // cột ẩn “Xem” sẽ mở chi tiết/đẩy ảnh khi click hàng
+];
+
+function buildHotData(rows) {
+    // Chuẩn hoá dữ liệu cho HOT
+    return rows.map((r, i) => ({
+        stt: i + 1,
+        masp: r.masp,
+        nhacc: r.nhacc || '',
+        nhap_dau_ky: r.nhap_dau_ky ?? 0,
+        nhap_ky: r.nhap_ky ?? 0,
+        ban_ky: r.ban_ky ?? 0,
+        ton_cuoi: r.ton_cuoi ?? 0,
+        pct_bn: +(r.sell_through * 100).toFixed(1),
+        ban_ngay: +(+r.sell_per_day).toFixed(1),
+        rank: +(+r.rank).toFixed(2),
+        goi_y: r.goi_y ?? 0
+    }));
+}
+
+function renderHOT(rows) {
+    hotData = buildHotData(rows);
+    const container = document.getElementById('hotGoiY');
+    if (!container) return;
+
+    if (hot) {
+        hot.updateSettings({ data: hotData });
+        hot.render();
+        return;
+    }
+
+    hot = new Handsontable(container, {
+        data: hotData,
+        columns: hotCols,
+        colHeaders: hotCols.map(c => c.title),
+        rowHeaders: true,
+        stretchH: 'all',
+        height: '100%',
+        licenseKey: 'non-commercial-and-evaluation',
+        filters: true,
+        dropdownMenu: true,
+        columnSorting: true,
+        manualColumnMove: true,
+        manualColumnResize: true,
+        contextMenu: ['copy', 'cut', '---------', 'freeze_column', 'unfreeze_column', '---------', 'alignment'],
+        hiddenColumns: { indicators: true },
+        // định dạng canh phải cho số
+        cells: (row, col) => {
+            const props = {};
+            const key = hotCols[col]?.data;
+            if (['nhap_dau_ky', 'nhap_ky', 'ban_ky', 'ton_cuoi', 'pct_bn', 'ban_ngay', 'rank', 'goi_y', 'stt'].includes(key)) {
+                props.className = 'htRight';
+            }
+            return props;
+        },
+        afterSelection: (r1, c1, r2, c2) => {
+            // click chọn 1 dòng → đẩy ảnh mã đó lên đầu panel
+            const rowIndex = r1;
+            const rec = hot.getSourceDataAtRow(rowIndex);
+            if (rec?.masp) promotePreviewToTop(rec.masp);
+        },
+        afterOnCellMouseDown: (event, coords) => {
+            // double-click mở chi tiết XNT17
+            if (coords?.row != null) {
+                const rec = hot.getSourceDataAtRow(coords.row);
+                if (rec?.masp && event?.domEvent?.detail >= 2) {
+                    sessionStorage.setItem('xnt17_focus_masp', rec.masp);
+                    location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
+                }
+            }
+        }
+    });
+}
+
+
+/* =========================
  * 6) Render giao diện
  * ========================= */
 function fillChips(filters, totalRows) {
@@ -213,29 +305,7 @@ function fillChips(filters, totalRows) {
     $('#chipBoLocKhac').textContent = `Bộ lọc: ${totalRows ?? 0} dòng nền`;
 }
 
-function renderTable(rows) {
-    const tbody = $('#tblGoiYNhapBu tbody');
-    tbody.innerHTML = '';
-    rows.forEach((r, idx) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td class="nowrap">${r.masp}</td>
-      <td class="nowrap">${r.nhacc || ''}</td>
-      <td class="num">${number(r.nhap_dau_ky)}</td>
-      <td class="num">${number(r.nhap_ky)}</td>
-      <td class="num">${number(r.ban_ky)}</td>
-      <td class="num">${number(r.ton_cuoi)}</td>
-      <td class="num">${number(r.sell_through * 100, 1)}</td>
-      <td class="num">${number(r.sell_per_day, 1)}</td>
-      <td class="num">${number(r.rank, 2)}</td>
-      <td class="num">${number(r.goi_y)}</td>
-      <td><a class="link" href="#" data-masp="${r.masp}">Xem</a></td>
-    `;
-        tbody.appendChild(tr);
-    });
-    $('#countRows').textContent = `${rows.length} dòng`;
-}
+
 
 /* =========================
  * 6.5) ẢNH NHANH (reuse từ Chuyển kho)
@@ -341,7 +411,9 @@ async function main() {
     // ❶ Sau khi tính toán lần đầu
     let { rows } = computeMetrics(ctx.rows, ctx.filters, options);
     rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
-    renderTable(rows);
+    renderHOT(rows);
+    document.getElementById('countRows').textContent = `${res.rows.length} dòng`;
+
 
     // giữ danh sách hiện hành để export/preview
     let currentRows = rows;
@@ -360,28 +432,15 @@ async function main() {
         };
         const res = computeMetrics(ctx.rows, ctx.filters, opts);
         res.rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
-        renderTable(res.rows);
+        renderHOT(res.rows);
+        document.getElementById('countRows').textContent = `${res.rows.length} dòng`;
+
 
         // CẬP NHẬT preview ảnh theo kết quả mới
         currentRows = res.rows;
         renderPreviewForMasps(Array.from(new Set(currentRows.map(r => r.masp))).filter(Boolean));
-    });
+    });    
 
-
-    // SỰ KIỆN: Áp dụng / Về mặc định
-    $('#btnApDung').addEventListener('click', () => {
-        const opts = {
-            stMin: +$('#inpSellThroughMin').value || 0,
-            perDayMin: +($('#inpBanNgayMin').value || '0'.replace(',', '.')),
-            targetDays: +$('#inpTargetDays').value || 14,
-            safety: +($('#inpSafetyFactor').value || '1'.replace(',', '.')),
-            nhapMin: +$('#inpNhapToiThieu').value || 0
-        };
-        const res = computeMetrics(ctx.rows, ctx.filters, opts);
-        res.rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
-        renderTable(res.rows);
-    });
- 
 
 
     $('#btnMacDinh').addEventListener('click', () => {
@@ -402,46 +461,13 @@ async function main() {
 
     // Xuất CSV nhanh
     $('#btnExportExcel').addEventListener('click', () => {
-        const header = ['STT', 'MASP', 'NHACC', 'NHAP_DAU_KY', 'NHAP_KY', 'BAN_KY', 'TON_CUOI', 'PCT_BAN_NHAP', 'BAN_NGAY', 'RANK', 'GOIY'];
-        const body = rows.map((r, i) => ([
-            i + 1, r.masp, r.nhacc,
-            r.nhap_dau_ky, r.nhap_ky, r.ban_ky, r.ton_cuoi,
-            +(r.sell_through * 100).toFixed(1),
-            +r.sell_per_day.toFixed(2),
-            +r.rank.toFixed(2),
-            r.goi_y
-        ]));
+        const header = hotCols.map(c => c.title);
+        const body = hotData.map(r => hotCols.map(c => r[c.data]));
         const csv = toCsv([header, ...body]);
         download(`goi_y_nhap_bu_${Date.now()}.csv`, csv);
     });
 
-    // Gắn handler "Xem" chi tiết (mở XNT17 lọc theo mã)
-    $('#tblGoiYNhapBu').addEventListener('click', (e) => {
-        const a = e.target.closest('a[data-masp]');
-        if (!a) return;
-        e.preventDefault();
-        const masp = a.getAttribute('data-masp');
-        // Lưu nhanh để XNT17 đọc (tuỳ bạn đang triển khai filter như nào)
-        sessionStorage.setItem('xnt17_focus_masp', masp);
-        // Điều hướng (cập nhật đúng path của bạn)
-        location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(masp);
-    });
-
-    // Đưa ảnh mã được click lên đầu lưới ảnh
-    $('#tblGoiYNhapBu tbody').addEventListener('click', (e) => {
-        const tr = e.target.closest('tr');
-        if (!tr) return;
-        // cột 2 = MASP theo renderTable()
-        const masp = tr.children?.[1]?.textContent?.trim();
-        if (masp) promotePreviewToTop(masp);
-    });
-
-    document.querySelector('#tblGoiYNhapBu').addEventListener('click', (e) => {
-        const a = e.target.closest('a[data-masp]');
-        if (!a) return;
-        e.preventDefault();
-        promotePreviewToTop(a.dataset.masp);
-    });
+  
 
 
 }
