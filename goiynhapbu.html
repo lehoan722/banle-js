@@ -29,10 +29,11 @@
     }
 
     .container {
-      max-width: 1280px;
+      max-width: 100%;
       margin: 24px auto;
-      padding: 0 16px
+      padding: 0 16px;
     }
+
 
     /* Header summary */
     .page-title {
@@ -231,54 +232,95 @@
     }
 
     /* ====== 2 cột: bảng trái 70% | ảnh phải 30% ====== */
-.layout-2cols{
-  display:grid;
-  grid-template-columns: 1fr 0.42fr; /* ~70% | 30% (tuỳ khung max-width của bạn) */
-  gap: 16px;
-  align-items:start;
-  margin-top: 16px;
-}
+    .layout-2cols {
+      display: grid;
+      grid-template-columns: 70% 30%;
+      gap: 16px;
+      align-items: start;
+      margin-top: 16px;
+    }
 
-/* cột trái (bảng) giữ nguyên */
-.col-main{ min-width: 0; }
+    .col-main {
+      min-width: 0;
+    }
 
-/* cột phải (ảnh) sticky bên phải */
-.col-preview{
-  position: sticky;
-  top: 14px;
-  max-height: calc(100vh - 120px);
-  overflow:auto;
-  background:#fff;
-  border-radius:14px;
-  box-shadow:0 6px 20px rgba(0,0,0,.06);
-  padding:12px;
-}
+    .col-preview {
+      position: sticky;
+      top: 14px;
+      max-height: calc(100vh - 120px);
+      overflow: auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+      padding: 12px;
+    }
 
-/* tiêu đề ảnh */
-.section-title{ margin:4px 0 10px; font-weight:800; font-size:16px }
 
-/* grid ảnh: 1 cột dọc để cuộn */
-#previewGrid{
-  display:grid;
-  grid-template-columns: 1fr;
-  gap:10px;
-}
+    /* tiêu đề ảnh */
+    .section-title {
+      margin: 4px 0 10px;
+      font-weight: 800;
+      font-size: 16px
+    }
 
-/* card ảnh giữ nguyên từ trước */
-.preview-card{ border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
-.preview-card.selected{ box-shadow:0 0 0 2px #3b82f6 inset; }
-.preview-card img{ width:100%; height:auto; aspect-ratio:4/3; object-fit:cover; border-radius:8px; display:block; cursor:zoom-in; }
-.preview-cap{ margin-top:6px; font-size:13px; color:#374151; text-align:center; }
-.preview-cap .cap-link{ font-weight:700; color:#111; text-decoration:none; cursor:pointer; }
-.preview-cap .cap-link:hover{ text-decoration:underline; }
+    /* grid ảnh: 1 cột dọc để cuộn */
+    #previewGrid {
+      display: grid;
+      grid-template-columns: 1fr;
+      /* CHỈ 1 CỘT ẢNH */
+      gap: 10px;
+    }
 
-/* Mobile: stack 1 cột như cũ */
-@media (max-width: 1024px){
-  .layout-2cols{ grid-template-columns: 1fr; }
-  .col-preview{ position:static; max-height:none; }
-  #previewGrid{ grid-template-columns: 1fr 1fr; } /* mobile có thể 2 cột nhỏ cho đỡ dài */
-}
+    .preview-card {
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 0 0 1px #eee inset;
+      padding: 8px;
+    }
 
+    .preview-card.selected {
+      box-shadow: 0 0 0 2px #3b82f6 inset;
+    }
+
+    .preview-card img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+      cursor: zoom-in;
+    }
+
+    .preview-cap {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #374151;
+      text-align: center;
+    }
+
+    .preview-cap .cap-link {
+      font-weight: 700;
+      color: #111;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .preview-cap .cap-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Mobile: chuyển sang 1 cột (ảnh dưới bảng) */
+    @media (max-width: 1024px) {
+      .layout-2cols {
+        grid-template-columns: 1fr;
+      }
+
+      .col-preview {
+        position: static;
+        max-height: none;
+      }
+    }
   </style>
 </head>
 
@@ -330,134 +372,213 @@
 
     <!-- Bảng kết quả gợi ý nhập bù -->
     <div class="layout-2cols">
-  <!-- CỘT TRÁI: BẢNG -->
-  <div class="col-main">
-    <div class="table-wrap">
-      <div class="toolbar">
-        <div class="left">
-          <strong>Gợi ý nhập bù</strong>
-          <span id="countRows" class="chip">0 dòng</span>
-        </div>
-        <div class="right">
-          <button class="btn secondary" id="btnBackXNT17">Quay lại Báo cáo XNT17</button>
-          <button class="btn" id="btnExportExcel">Xuất Excel</button>
+      <!-- CỘT TRÁI: BẢNG -->
+      <div class="col-main">
+        <div class="table-wrap">
+          <div class="toolbar">
+            <div class="left">
+              <strong>Gợi ý nhập bù</strong>
+              <span id="countRows" class="chip">0 dòng</span>
+            </div>
+            <div class="right">
+              <button class="btn secondary" id="btnBackXNT17">Quay lại Báo cáo XNT17</button>
+              <button class="btn" id="btnExportExcel">Xuất Excel</button>
+            </div>
+          </div>
+
+          <div style="overflow:auto; max-height:70vh">
+            <table class="table" id="tblGoiYNhapBu">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th class="nowrap">MÃ SP</th>
+                  <th class="nowrap">NHÀ CC</th>
+                  <th class="num nowrap">NHẬP ĐẦU KỲ</th>
+                  <th class="num nowrap">NHẬP KỲ</th>
+                  <th class="num nowrap">BÁN KỲ</th>
+                  <th class="num nowrap">TỒN CUỐI</th>
+                  <th class="num nowrap">% BÁN/NHẬP</th>
+                  <th class="num nowrap">BÁN/NGÀY</th>
+                  <th class="num nowrap">RANK</th>
+                  <th class="num nowrap">GỢI Ý</th>
+                  <th class="nowrap">CHI TIẾT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- HÀNG MẪU (placeholder) — JS sẽ render thật sau -->
+                <tr>
+                  <td>1</td>
+                  <td>8806-LHDM/DEN</td>
+                  <td>ABC CO.</td>
+                  <td class="num">5</td>
+                  <td class="num">10</td>
+                  <td class="num">8</td>
+                  <td class="num">7</td>
+                  <td class="num">80.0</td>
+                  <td class="num">0.6</td>
+                  <td class="num">1.25</td>
+                  <td class="num">9</td>
+                  <td><a class="link" href="#" data-masp="8806-LHDM/DEN">Xem</a></td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>7322-QB</td>
+                  <td>XYZ SUPPLY</td>
+                  <td class="num">2</td>
+                  <td class="num">6</td>
+                  <td class="num">4</td>
+                  <td class="num">4</td>
+                  <td class="num">66.7</td>
+                  <td class="num">0.3</td>
+                  <td class="num">1.05</td>
+                  <td class="num">3</td>
+                  <td><a class="link" href="#" data-masp="7322-QB">Xem</a></td>
+                </tr>
+                <!-- /placeholder -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div style="overflow:auto; max-height:70vh">
-        <table class="table" id="tblGoiYNhapBu">
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th class="nowrap">MÃ SP</th>
-                <th class="nowrap">NHÀ CC</th>
-                <th class="num nowrap">NHẬP ĐẦU KỲ</th>
-                <th class="num nowrap">NHẬP KỲ</th>
-                <th class="num nowrap">BÁN KỲ</th>
-                <th class="num nowrap">TỒN CUỐI</th>
-                <th class="num nowrap">% BÁN/NHẬP</th>
-                <th class="num nowrap">BÁN/NGÀY</th>
-                <th class="num nowrap">RANK</th>
-                <th class="num nowrap">GỢI Ý</th>
-                <th class="nowrap">CHI TIẾT</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- HÀNG MẪU (placeholder) — JS sẽ render thật sau -->
-              <tr>
-                <td>1</td>
-                <td>8806-LHDM/DEN</td>
-                <td>ABC CO.</td>
-                <td class="num">5</td>
-                <td class="num">10</td>
-                <td class="num">8</td>
-                <td class="num">7</td>
-                <td class="num">80.0</td>
-                <td class="num">0.6</td>
-                <td class="num">1.25</td>
-                <td class="num">9</td>
-                <td><a class="link" href="#" data-masp="8806-LHDM/DEN">Xem</a></td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>7322-QB</td>
-                <td>XYZ SUPPLY</td>
-                <td class="num">2</td>
-                <td class="num">6</td>
-                <td class="num">4</td>
-                <td class="num">4</td>
-                <td class="num">66.7</td>
-                <td class="num">0.3</td>
-                <td class="num">1.05</td>
-                <td class="num">3</td>
-                <td><a class="link" href="#" data-masp="7322-QB">Xem</a></td>
-              </tr>
-              <!-- /placeholder -->
-            </tbody>
-            </table>
-        </div>
-      </div>
+      <!-- CỘT PHẢI: ẢNH NHANH -->
+      <aside class="col-preview">
+        <h3 id="previewTitle" class="section-title">Ảnh nhanh (0 mã)</h3>
+        <div id="previewGrid"></div>
+      </aside>
+
     </div>
 
-    <!-- CỘT PHẢI: ẢNH NHANH -->
-  <aside class="col-preview">
-    <h3 id="previewTitle" class="section-title">Ảnh nhanh (0 mã)</h3>
-    <div id="previewGrid"></div>
-  </aside>
 
-  </div>
- 
+    <script type="module">
+      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-<script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
- const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+      const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
 
-  // dùng đúng tên biến SUPABASE_KEY
-  window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+      // dùng đúng tên biến SUPABASE_KEY
+      window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  import "./scripts/goiynhapbu.js?v=20251112a";  // đường dẫn đúng chỗ bạn để file
-</script>
+      import "./scripts/goiynhapbu.js?v=20251112a";  // đường dẫn đúng chỗ bạn để file
+    </script>
 
-<style>
-  /* Lưới ảnh */
-  #previewGrid { display:grid; gap:10px; overflow:auto; }
-  .preview-card { border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
-  .preview-card.selected { box-shadow:0 0 0 2px #3b82f6 inset; }
-  .preview-card img { width:100%; height:auto; aspect-ratio:4/3; object-fit:cover; border-radius:8px; display:block; cursor: zoom-in; }
-  .preview-cap { margin-top:6px; font-size:13px; color:#374151; text-align:center; }
-  .preview-cap .cap-link { font-weight:700; color:#111; text-decoration:none; cursor:pointer; }
-  .preview-cap .cap-link:hover { text-decoration:underline; }
+    <style>
+      /* Lưới ảnh */
+      #previewGrid {
+        display: grid;
+        gap: 10px;
+        overflow: auto;
+      }
 
-  /* Responsive cột ảnh */
-  @media (min-width: 1024px){ #previewGrid{ grid-template-columns: repeat(3, minmax(0,1fr)); } }
-  @media (min-width: 640px) and (max-width: 1023px){ #previewGrid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
-  @media (max-width: 639px){ #previewGrid{ grid-template-columns: repeat(1, minmax(0,1fr)); } }
+      .preview-card {
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 0 0 1px #eee inset;
+        padding: 8px;
+      }
 
-  /* Lightbox */
-  .lb-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; z-index: 9999; }
-  .lb-backdrop.show { display:flex; }
-  .lb-wrap { max-width: 92vw; max-height: 92vh; }
-  .lb-wrap img { width:100%; height:100%; object-fit:contain; }
-  .lb-close { position:absolute; top:14px; right:18px; font-size:22px; color:#fff; cursor:pointer; }
-</style>
+      .preview-card.selected {
+        box-shadow: 0 0 0 2px #3b82f6 inset;
+      }
 
-<!-- Lightbox -->
-<div id="lb" class="lb-backdrop">
-  <div class="lb-close" title="Đóng">✕</div>
-  <div class="lb-wrap"><img alt="Ảnh lớn"></div>
-</div>
-<script>
-  (function () {
-    const lb = document.getElementById('lb');
-    lb.addEventListener('click', (e) => {
-      if (e.target.id === 'lb' || e.target.classList.contains('lb-close')) lb.classList.remove('show');
-    });
-    window.openLightbox = (src) => { lb.querySelector('img').src = src; lb.classList.add('show'); };
-  })();
-</script>
+      .preview-card img {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4/3;
+        object-fit: cover;
+        border-radius: 8px;
+        display: block;
+        cursor: zoom-in;
+      }
+
+      .preview-cap {
+        margin-top: 6px;
+        font-size: 13px;
+        color: #374151;
+        text-align: center;
+      }
+
+      .preview-cap .cap-link {
+        font-weight: 700;
+        color: #111;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .preview-cap .cap-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Responsive cột ảnh */
+      @media (min-width: 1024px) {
+        #previewGrid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      @media (min-width: 640px) and (max-width: 1023px) {
+        #previewGrid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 639px) {
+        #previewGrid {
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+      }
+
+      /* Lightbox */
+      .lb-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+
+      .lb-backdrop.show {
+        display: flex;
+      }
+
+      .lb-wrap {
+        max-width: 92vw;
+        max-height: 92vh;
+      }
+
+      .lb-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .lb-close {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        font-size: 22px;
+        color: #fff;
+        cursor: pointer;
+      }
+    </style>
+
+    <!-- Lightbox -->
+    <div id="lb" class="lb-backdrop">
+      <div class="lb-close" title="Đóng">✕</div>
+      <div class="lb-wrap"><img alt="Ảnh lớn"></div>
+    </div>
+    <script>
+      (function () {
+        const lb = document.getElementById('lb');
+        lb.addEventListener('click', (e) => {
+          if (e.target.id === 'lb' || e.target.classList.contains('lb-close')) lb.classList.remove('show');
+        });
+        window.openLightbox = (src) => { lb.querySelector('img').src = src; lb.classList.add('show'); };
+      })();
+    </script>
 
 
 
