@@ -338,19 +338,34 @@ async function main() {
         safety: +($('#inpSafetyFactor').value || '1.2'.replace(',', '.')),
         nhapMin: +$('#inpNhapToiThieu').value || 3
     };
-
-    // TÍNH toán
+    // ❶ Sau khi tính toán lần đầu
     let { rows } = computeMetrics(ctx.rows, ctx.filters, options);
-
-    // Gắn NHÀ CC vào dòng
     rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
-
-    // Render
     renderTable(rows);
 
-    // Vẽ ảnh theo danh sách mã đang hiển thị
-    const maspsUnique = Array.from(new Set(rows.map(r => r.masp))).filter(Boolean);
-    renderPreviewForMasps(maspsUnique);
+    // giữ danh sách hiện hành để export/preview
+    let currentRows = rows;
+
+    // vẽ ảnh lần đầu
+    renderPreviewForMasps(Array.from(new Set(currentRows.map(r => r.masp))).filter(Boolean));
+
+    // ❷ Handler Áp dụng
+    $('#btnApDung').addEventListener('click', () => {
+        const opts = {
+            stMin: +$('#inpSellThroughMin').value || 0,
+            perDayMin: +($('#inpBanNgayMin').value || '0'.replace(',', '.')),
+            targetDays: +$('#inpTargetDays').value || 14,
+            safety: +($('#inpSafetyFactor').value || '1'.replace(',', '.')),
+            nhapMin: +$('#inpNhapToiThieu').value || 0
+        };
+        const res = computeMetrics(ctx.rows, ctx.filters, opts);
+        res.rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
+        renderTable(res.rows);
+
+        // CẬP NHẬT preview ảnh theo kết quả mới
+        currentRows = res.rows;
+        renderPreviewForMasps(Array.from(new Set(currentRows.map(r => r.masp))).filter(Boolean));
+    });
 
 
     // SỰ KIỆN: Áp dụng / Về mặc định
@@ -424,11 +439,11 @@ async function main() {
     });
 
     document.querySelector('#tblGoiYNhapBu').addEventListener('click', (e) => {
-  const a = e.target.closest('a[data-masp]');
-  if (!a) return;
-  e.preventDefault();
-  promotePreviewToTop(a.dataset.masp);
-});
+        const a = e.target.closest('a[data-masp]');
+        if (!a) return;
+        e.preventDefault();
+        promotePreviewToTop(a.dataset.masp);
+    });
 
 
 }
