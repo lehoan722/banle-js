@@ -348,22 +348,20 @@
     </div>
 
   </div>
-  <script type="module">
-    // 1) Tải supabase-js dạng ESM
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+ 
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // 2) Khởi tạo client (điền đúng URL & anon key của bạn)
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+  // Điền thông tin dự án Supabase của bạn
+  const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
-    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Khởi tạo và gắn global để file JS của bạn dùng window.supabase
+  window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 3) Gắn global để goiynhapbu.js đang dùng window.supabase có thể chạy
-    window.supabase = client;
-
-    // 4) Nạp script logic (file của bạn hiện KHÔNG dùng import, chỉ cần load sau khi có window.supabase)
-    import "./goiynhapbu.js?v=20251112a";
-  </script>
+  // QUAN TRỌNG: sửa đường dẫn cho đúng thư mục đang chứa file
+  import "./scripts/goiynhapbu.js?v=20251112a";
+</script>
 
 
 </body>
