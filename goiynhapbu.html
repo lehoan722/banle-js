@@ -1,62 +1,237 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gợi Ý Nhập Bù</title>
   <style>
-    :root{
-      --bg:#f7f7f8; --card:#fff; --text:#111; --muted:#666; --primary:#2563eb;
-      --br:14px; --shadow:0 6px 20px rgba(0,0,0,.06);
-      --gap:16px;
+    :root {
+      --bg: #f7f7f8;
+      --card: #fff;
+      --text: #111;
+      --muted: #666;
+      --primary: #2563eb;
+      --br: 14px;
+      --shadow: 0 6px 20px rgba(0, 0, 0, .06);
+      --gap: 16px;
     }
-    *{box-sizing:border-box}
-    body{margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    .container{max-width:1280px; margin:24px auto; padding:0 16px}
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 24px auto;
+      padding: 0 16px
+    }
 
     /* Header summary */
-    .page-title{font-size:28px; font-weight:800; margin:0 0 16px}
-    .summary{display:flex; flex-wrap:wrap; gap:8px; padding:12px 14px; background:var(--card); border-radius:var(--br); box-shadow:var(--shadow); align-items:center}
-    .chip{padding:6px 10px; background:#eef2ff; border-radius:999px; color:#334155; font-weight:600}
-    .grow{flex:1}
-    .btn{appearance:none; border:0; border-radius:10px; background:var(--primary); color:#fff; padding:10px 14px; font-weight:700; cursor:pointer}
-    .btn.secondary{background:#e5e7eb; color:#111}
-    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .page-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 16px
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 14px;
+      background: var(--card);
+      border-radius: var(--br);
+      box-shadow: var(--shadow);
+      align-items: center
+    }
+
+    .chip {
+      padding: 6px 10px;
+      background: #eef2ff;
+      border-radius: 999px;
+      color: #334155;
+      font-weight: 600
+    }
+
+    .grow {
+      flex: 1
+    }
+
+    .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer
+    }
+
+    .btn.secondary {
+      background: #e5e7eb;
+      color: #111
+    }
+
+    .btn:disabled {
+      opacity: .6;
+      cursor: not-allowed
+    }
 
     /* Panel tham số gợi ý */
-    .card{background:var(--card); border-radius:var(--br); box-shadow:var(--shadow); padding:16px}
-    .card h3{margin:0 0 12px}
-    .params{display:grid; grid-template-columns:repeat(5, minmax(140px,1fr)); gap:12px}
-    .field{display:flex; flex-direction:column; gap:6px}
-    .field label{font-size:12px; color:var(--muted); font-weight:700}
-    .field input{padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; outline:none}
-    .actions{margin-top:10px; display:flex; gap:10px}
+    .card {
+      background: var(--card);
+      border-radius: var(--br);
+      box-shadow: var(--shadow);
+      padding: 16px
+    }
+
+    .card h3 {
+      margin: 0 0 12px
+    }
+
+    .params {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      gap: 12px
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700
+    }
+
+    .field input {
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      outline: none
+    }
+
+    .actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px
+    }
 
     /* Layout chính: bảng + (sau này có thể thêm panel chi tiết) */
-    .layout{display:grid; grid-template-columns:1fr; gap:var(--gap); margin-top:var(--gap)}
-    /* Bảng */
-    .table-wrap{background:var(--card); border-radius:var(--br); box-shadow:var(--shadow); overflow:hidden}
-    .toolbar{display:flex; gap:8px; align-items:center; justify-content:space-between; padding:12px 12px; border-bottom:1px solid #eee}
-    .toolbar .left{display:flex; gap:8px; align-items:center}
-    .toolbar .right{display:flex; gap:8px}
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--gap);
+      margin-top: var(--gap)
+    }
 
-    .table{width:100%; border-collapse:separate; border-spacing:0}
-    .table th, .table td{padding:10px 12px; border-bottom:1px solid #f0f0f0; text-align:left; white-space:nowrap}
-    .table thead th{position:sticky; top:0; background:#fafafa; z-index:2; font-size:12px; color:#374151; letter-spacing:.02em; border-bottom:1px solid #e5e7eb}
-    .table tbody tr:hover{background:#fafafa}
-    .num{text-align:right}
-    .nowrap{white-space:nowrap}
-    .link{color:var(--primary); cursor:pointer; text-decoration:none; font-weight:600}
+    /* Bảng */
+    .table-wrap {
+      background: var(--card);
+      border-radius: var(--br);
+      box-shadow: var(--shadow);
+      overflow: hidden
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      border-bottom: 1px solid #eee
+    }
+
+    .toolbar .left {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .toolbar .right {
+      display: flex;
+      gap: 8px
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0
+    }
+
+    .table th,
+    .table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      text-align: left;
+      white-space: nowrap
+    }
+
+    .table thead th {
+      position: sticky;
+      top: 0;
+      background: #fafafa;
+      z-index: 2;
+      font-size: 12px;
+      color: #374151;
+      letter-spacing: .02em;
+      border-bottom: 1px solid #e5e7eb
+    }
+
+    .table tbody tr:hover {
+      background: #fafafa
+    }
+
+    .num {
+      text-align: right
+    }
+
+    .nowrap {
+      white-space: nowrap
+    }
+
+    .link {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 600
+    }
 
     /* Responsive */
-    @media (max-width: 900px){
-      .params{grid-template-columns:repeat(2, minmax(140px,1fr))}
-      .summary{gap:6px}
-      .toolbar{flex-direction:column; align-items:flex-start; gap:10px}
-      .table th, .table td{padding:8px 10px}
+    @media (max-width: 900px) {
+      .params {
+        grid-template-columns: repeat(2, minmax(140px, 1fr))
+      }
+
+      .summary {
+        gap: 6px
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px
+      }
+
+      .table th,
+      .table td {
+        padding: 8px 10px
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1 class="page-title">Gợi Ý Nhập Bù</h1>
@@ -173,13 +348,24 @@
     </div>
 
   </div>
+  <script type="module">
+    // 1) Tải supabase-js dạng ESM
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <script src="scripts/supabaseClient.js" defer></script>
-<script src="scripts/goiynhapbu.js" defer></script>
-  
-  
+    // 2) Khởi tạo client (điền đúng URL & anon key của bạn)
+    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 3) Gắn global để goiynhapbu.js đang dùng window.supabase có thể chạy
+    window.supabase = client;
+
+    // 4) Nạp script logic (file của bạn hiện KHÔNG dùng import, chỉ cần load sau khi có window.supabase)
+    import "./goiynhapbu.js?v=20251112a";
+  </script>
 
 
- 
 </body>
+
 </html>
