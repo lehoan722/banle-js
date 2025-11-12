@@ -412,8 +412,7 @@ async function main() {
     let { rows } = computeMetrics(ctx.rows, ctx.filters, options);
     rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
     renderHOT(rows);
-    document.getElementById('countRows').textContent = `${res.rows.length} dòng`;
-
+    document.getElementById('countRows').textContent = `${rows.length} dòng`;
 
     // giữ danh sách hiện hành để export/preview
     let currentRows = rows;
@@ -433,8 +432,7 @@ async function main() {
         const res = computeMetrics(ctx.rows, ctx.filters, opts);
         res.rows.forEach(r => { r.nhacc = nhaccMap[r.masp] || ''; });
         renderHOT(res.rows);
-        document.getElementById('countRows').textContent = `${res.rows.length} dòng`;
-
+        document.getElementById('countRows').textContent = `${rows.length} dòng`;
 
         // CẬP NHẬT preview ảnh theo kết quả mới
         currentRows = res.rows;
