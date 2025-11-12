@@ -363,7 +363,7 @@ window.taiBaoCaoXNT = async function () {
     } catch (err) {
         console.error(err);
         loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
-    }    
+    }
 };
 
 // ===================== EXCEL EXPORT (song song) =====================
@@ -924,5 +924,57 @@ window.moTrangChuyenKho = async () => {
     window.open('baocaoxnt17_chuyenkho.html', '_blank');
 };
 
+// === MỞ TRANG GỢI Ý NHẬP BÙ (gom toàn bộ dữ liệu đã lọc, tổng hợp theo mã) ===
+window.moTrangGoiYNhapBu = async () => {
+    try {
+        // 1) Lấy filter hiện tại
+        const p0 = buildParams(1);
 
+        // 2) Ép tổng hợp theo MÃ (không tách size) cho nhu cầu nhập bù
+        const p = { ...p0, p_tonghop_size: true };
+
+        // 3) Đếm tổng số dòng
+        const totalRows = await fetchCount(p);
+
+        // 4) Lấy toàn bộ dữ liệu (gộp size) theo trang
+        const pageSizeAll = 10000;
+        const all = [];
+        for (let offset = 0; offset < totalRows; offset += pageSizeAll) {
+            const pageParams = { ...p, p_limit: pageSizeAll, p_offset: offset };
+            const page = await fetchPaged(pageParams);
+            all.push(...(page || []));
+        }
+
+        // 5) Lưu dataset & filter vào sessionStorage để trang mới đọc
+        const filters = {
+            tu_ngay: p.tu_ngay,
+            den_ngay: p.den_ngay,
+            diadiem: p.p_diadiem_filter || 'Tất cả',
+            nhomhang: p.p_nhomhang_filter || 'Tất cả',
+            raw: p
+        };
+        sessionStorage.setItem('xnt17_rows', JSON.stringify(all));
+        sessionStorage.setItem('xnt17_filters', JSON.stringify(filters));
+        sessionStorage.setItem('xnt17_url', window.location.href);
+
+        // 6) Fallback: truyền filter tối thiểu qua query string (đề phòng refresh trang mới)
+        const qs = new URLSearchParams({
+            tu_ngay: filters.tu_ngay || '',
+            den_ngay: filters.den_ngay || '',
+            diadiem: filters.diadiem || '',
+            nhomhang: filters.nhomhang || ''
+        }).toString();
+
+        window.open(`/goiynhapbu.html?${qs}`, '_blank');
+    } catch (err) {
+        console.error(err);
+        alert('Không mở được trang Gợi ý nhập bù: ' + (err?.message || err));
+    }
+};
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btnGoiYNhapBu');
+  if (btn) btn.addEventListener('click', window.moTrangGoiYNhapBu);
+});
 
