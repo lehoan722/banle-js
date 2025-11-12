@@ -115,17 +115,21 @@ async function fetchXNT17ViaRPC(params) {
  * ========================= */
 async function fetchNhaccMapByMasps(masps) {
   if (!masps || !masps.length) return {};
-  const uniq = Array.from(new Set(masps)).slice(0, 10000); // safety
-  // Query dmhanghoa lấy masp, nhacc
+  if (!window.supabase || !window.supabase.from) {
+    console.warn('Supabase client chưa sẵn sàng — bỏ qua ghép Nhà CC.');
+    return {};
+  }
+  const uniq = Array.from(new Set(masps)).slice(0, 10000);
   const { data, error } = await window.supabase
-      .from('dmhanghoa')
-      .select('masp, nhacc')
-      .in('masp', uniq);
+    .from('dmhanghoa')
+    .select('masp, nhacc')
+    .in('masp', uniq);
   if (error) { console.warn('fetchNhaccMap error', error); return {}; }
   const map = {};
   (data || []).forEach(r => { map[r.masp] = r.nhacc || ''; });
   return map;
 }
+
 
 /* =========================
  * 5) Tính toán chỉ số nhập bù
