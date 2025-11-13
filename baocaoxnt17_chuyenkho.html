@@ -104,12 +104,15 @@
   background: #fff;
   border-radius: 0;
   width: 100vw;
-  height: 100vh;
+  /* lấy đúng chiều cao của popup, tránh bug 100vh trên mobile */
+  height: 100%;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 14px 40px rgba(0,0,0,.25);
 }
+
 
 /* Header: tiêu đề + tìm kiếm + nút */
 .ck-ghead {
@@ -229,9 +232,10 @@
   padding: 8px 10px;
   border-top: 1px solid #e6eeff;
   background: #fdfdfd;
-  position: sticky;
-  bottom: 0;
+  /* không dùng sticky nữa, để flex giữ nó ở đáy */
+  flex-shrink: 0;
 }
+
 
 /* Text thông tin nhỏ bên trái */
 .ck-info {
@@ -241,10 +245,25 @@
 
 /* Mobile: lưới 1 cột cho dễ xem */
 @media (max-width: 768px) {
+  /* Lưới 1 cột cho dễ xem trên điện thoại */
   #ckGalGrid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* Kéo khung popup căng hết màn hình, không canh giữa */
+  #ckGalleryModal {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  #ckGalleryModal .ck-gcard {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
 }
+
 
 
    </style>
