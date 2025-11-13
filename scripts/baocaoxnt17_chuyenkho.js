@@ -560,6 +560,8 @@ function collectVisibleTransferItems(dir) {
 }
 
 // Gom dữ liệu hiển thị để dùng cho popup ảnh chuyển CN
+// Gom dữ liệu hiển thị để dùng cho popup ảnh chuyển CN
+// Mỗi size có SL chuyển > 0 sẽ thành 1 bản ghi riêng
 function buildCkGalleryData() {
     const dir = getVisibleDirection();
     if (!dir) {
@@ -567,11 +569,16 @@ function buildCkGalleryData() {
         return null;
     }
 
-    const items = collectVisibleTransferItems(dir); // [{masp, items:[{size,sl}]}]
+    // collectVisibleTransferItems vẫn trả [{ masp, items:[{size, sl}] }, ...]
+    const groups = collectVisibleTransferItems(dir);
+    if (!groups.length) {
+        alert('Không có dòng nào có "SL chuyển" > 0 để hiển thị trong popup ảnh.');
+        return null;
+    }
 
     // map lấy vị trí cs1/cs2 của từng mã từ currentRows
     const vitriMap = new Map();
-    for (const r of currentRows) {
+    for (const r of currentRows || []) {
         if (!r || r.__isSum) continue;
         const k = String(r.masp || '').toUpperCase();
         if (!k || vitriMap.has(k)) continue;
@@ -581,20 +588,31 @@ function buildCkGalleryData() {
         });
     }
 
-    ckGalleryData = items.map(it => {
-        const masp = String(it.masp || '').toUpperCase();
+    // ckGalleryData: mỗi phần tử = 1 mã + 1 size
+    ckGalleryData = [];
+    for (const g of groups) {
+        const masp = String(g.masp || '').toUpperCase();
         const vitri = vitriMap.get(masp) || { vitri_cs1: '', vitri_cs2: '' };
-        const total = (it.items || []).reduce((s, x) => s + Number(x.sl || 0), 0);
 
-        return {
-            masp,
-            dir,
-            sizes: it.items || [],        // [{size, sl}]
-            vitri_cs1: vitri.vitri_cs1,
-            vitri_cs2: vitri.vitri_cs2,
-            total
-        };
-    });
+        for (const it of (g.items || [])) {
+            const sl = Number(it.sl || 0);
+            if (!sl || sl <= 0) continue; // chỉ lấy size có SL chuyển > 0
+
+            ckGalleryData.push({
+                masp,
+                dir,
+                size: it.size,          // ví dụ "size 39"
+                sl_chuyen: sl,          // số lượng chuyển cho size này
+                vitri_cs1: vitri.vitri_cs1 || '',
+                vitri_cs2: vitri.vitri_cs2 || ''
+            });
+        }
+    }
+
+    if (!ckGalleryData.length) {
+        alert('Không có size nào có SL chuyển > 0 để hiển thị trong popup.');
+        return null;
+    }
 
     return { dir, list: ckGalleryData };
 }
@@ -869,6 +887,7 @@ function focusPreview(masp) {
 }
 
 // ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
+// ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
 function openAnhChuyenPopup() {
     const data = buildCkGalleryData();
     if (!data) return;
@@ -883,20 +902,20 @@ function openAnhChuyenPopup() {
         return;
     }
 
-    title.textContent = `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} mã`;
+    // đếm thêm số mã duy nhất để hiển thị cho dễ hiểu
+    const uniqMasps = Array.from(new Set(list.map(it => it.masp)));
+    title.textContent =
+        `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} ảnh / ${uniqMasps.length} mã`;
 
     const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
 
     grid.innerHTML = list.map(item => {
         const masp = item.masp;
-        const sizesText = (item.sizes || [])
-            .map(x => `${displaySizeLabel(x.size)}: ${x.sl}`)
-            .join(', ');
-
+        const sizeLabel = displaySizeLabel(item.size);   // "size 39" -> "39"
         const src = getImageUrl(masp);
 
         return `
-      <div class="ck-item" data-masp="${masp}">
+      <div class="ck-item" data-masp="${masp}" data-size="${item.size}">
         <div class="ck-pic">
           <img loading="lazy"
                src="${src}" data-try="0" alt="${masp}"
@@ -911,11 +930,11 @@ function openAnhChuyenPopup() {
             <label><input type="checkbox" class="ck-create" checked> tạo phiếu</label>
           </div>
           <div class="ck-row">
-            <b>Size:</b> <span class="ck-size">${sizesText || '-'}</span>
+            <b>Size:</b> <span class="ck-size">${sizeLabel}</span>
           </div>
           <div class="ck-row">
             <b>SL chuyển:</b>
-            <input type="number" class="ck-sl" min="0" value="${item.total}">
+            <input type="number" class="ck-sl" min="0" value="${item.sl_chuyen}">
           </div>
           <div class="ck-row">
             <b>Vị trí CS1:</b> <span class="ck-v1">${item.vitri_cs1 || ''}</span>
@@ -928,10 +947,14 @@ function openAnhChuyenPopup() {
     `;
     }).join("");
 
-    if (info) info.textContent = `Đang hiển thị ${list.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
+    if (info) {
+        info.textContent =
+            `Đang hiển thị ${list.length} ảnh của ${uniqMasps.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
+    }
 
     modal.style.display = 'flex';
 }
+
 
 function closeAnhChuyenPopup() {
     const modal = document.getElementById('ckGalleryModal');
@@ -955,6 +978,7 @@ function ckSelectAll(val) {
     });
 }
 
+// Tạo phiếu từ dữ liệu đã chỉnh sửa trong popup (mỗi card = 1 size)
 function applyAnhChuyenToPhieu() {
     if (!ckGalleryData || !ckGalleryData.length) {
         alert('Không có dữ liệu trong popup.');
@@ -968,42 +992,30 @@ function applyAnhChuyenToPhieu() {
     }
 
     const cards = document.querySelectorAll('#ckGalGrid .ck-item');
-    const payloadItems = [];
+    const byMasp = new Map();   // masp -> [{size, sl}, ...]
 
     cards.forEach(card => {
         const chk = card.querySelector('.ck-create');
         if (!chk || !chk.checked) return;
 
         const masp = String(card.dataset.masp || '').toUpperCase();
-        if (!masp) return;
+        const size = card.dataset.size || '';
+        if (!masp || !size) return;
 
-        let total = Number(card.querySelector('.ck-sl')?.value || 0);
-        if (!total || total <= 0) return;
+        const sl = Number(card.querySelector('.ck-sl')?.value || 0);
+        if (!sl || sl <= 0) return; // bỏ size không có SL chuyển
 
-        const base = ckGalleryData.find(x => x.masp === masp);
-        if (!base) return;
-
-        const sizes = base.sizes || [];
-        const sumOrig = sizes.reduce((s, x) => s + Number(x.sl || 0), 0) || 1;
-
-        // Scale theo tỉ lệ, đảm bảo tổng đúng bằng total
-        const factor = total / sumOrig;
-        const newItems = sizes.map(x => ({
-            size: x.size,
-            sl: Math.max(0, Math.round(Number(x.sl || 0) * factor))
-        }));
-
-        // chỉnh lại sai số làm tròn
-        let diff = total - newItems.reduce((s, x) => s + Number(x.sl || 0), 0);
-        if (diff !== 0 && newItems.length > 0) {
-            newItems[0].sl = Math.max(0, Number(newItems[0].sl || 0) + diff);
-        }
-
-        payloadItems.push({ masp, items: newItems });
+        if (!byMasp.has(masp)) byMasp.set(masp, []);
+        byMasp.get(masp).push({ size, sl });
     });
 
+    const payloadItems = Array.from(byMasp.entries()).map(([masp, items]) => ({
+        masp,
+        items
+    }));
+
     if (!payloadItems.length) {
-        alert('Chưa chọn sản phẩm nào hoặc tất cả SL chuyển = 0.');
+        alert('Chưa chọn size nào có SL chuyển > 0 để tạo phiếu.');
         return;
     }
 
@@ -1014,13 +1026,16 @@ function applyAnhChuyenToPhieu() {
     };
     localStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
 
+    console.log('[XNT17→CCN từ POPUP] Gửi payload:', {
+        dir,
+        countMasps: payloadItems.length,
+        sample: payloadItems[0]
+    });
+
     const url = (dir === '1v2') ? 'ccn1v2cs1.html' : 'ccn2v1cs2.html';
+    // Mở trang chuyển chi nhánh ở TAB MỚI, KHÔNG đóng popup để người dùng đối chiếu
     window.open(url, '_blank');
-
-    // đóng popup sau khi tạo phiếu
-    closeAnhChuyenPopup();
 }
-
 
 
 // ===== 6) Entry point =====
