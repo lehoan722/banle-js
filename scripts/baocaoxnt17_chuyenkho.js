@@ -171,16 +171,16 @@ function buildTransferTable(rows) {
         const szKey = normalizeSize(r.size);     // ⬅️ dùng chuẩn hoá
 
         function getNum(o, keys, def = 0) {
-  for (const k of keys) {
-    if (o != null && o[k] != null && o[k] !== '') return Number(o[k]);
-  }
-  return def;
-}
-const cs1 = getNum(r, ['ton_cs1','toncs1','cs1','cs_1']);
-const cs2 = getNum(r, ['ton_cs2','toncs2','cs2','cs_2']);
+            for (const k of keys) {
+                if (o != null && o[k] != null && o[k] !== '') return Number(o[k]);
+            }
+            return def;
+        }
+        const cs1 = getNum(r, ['ton_cs1', 'toncs1', 'cs1', 'cs_1']);
+        const cs2 = getNum(r, ['ton_cs2', 'toncs2', 'cs2', 'cs_2']);
 
 
-        
+
 
         g[szKey] = { masp, size: szKey || (r.size || ''), cs1, cs2 };
     }
@@ -234,7 +234,7 @@ async function patchVitri(outArr) {
 
     const { data, error } = await supabase
         .from('dmhanghoa')
-        .select('masp, vitri_cs1:vitrikho1, vitri_cs2:vitrikho2') // alias về tên chuẩn dùng trong bảng kết quả
+        .select('masp, vitri_cs1:vitrikho1, vitri_cs2:vitrikho2') // alias về tên chuẩn dùng trong bảng kết quả 
         .in('masp', uniq);
 
     if (error) {
@@ -253,49 +253,49 @@ async function patchVitri(outArr) {
 
 // === SNAPSHOT TỒN THẬT (RPC) + OVERLAY VÀO RAW ===
 async function rpcTonSnapshot(masps, denNgay, tonghopSize = false) {
-  if (!Array.isArray(masps) || masps.length === 0) return [];
-  const { data, error } = await supabase.rpc('xnt17_ton_snapshot', {
-    p_masps: masps,
-    p_den_ngay: denNgay,
-    p_tonghop_size: tonghopSize
-  });
-  if (error) { console.warn('xnt17_ton_snapshot error:', error); return []; }
-  return (data || []).map(r => ({
-    masp: String(r.masp || '').toUpperCase(),
-    size: normalizeSize(r.size),
-    ton_cs1: Number(r.ton_cs1 || 0),
-    ton_cs2: Number(r.ton_cs2 || 0)
-  }));
+    if (!Array.isArray(masps) || masps.length === 0) return [];
+    const { data, error } = await supabase.rpc('xnt17_ton_snapshot', {
+        p_masps: masps,
+        p_den_ngay: denNgay,
+        p_tonghop_size: tonghopSize
+    });
+    if (error) { console.warn('xnt17_ton_snapshot error:', error); return []; }
+    return (data || []).map(r => ({
+        masp: String(r.masp || '').toUpperCase(),
+        size: normalizeSize(r.size),
+        ton_cs1: Number(r.ton_cs1 || 0),
+        ton_cs2: Number(r.ton_cs2 || 0)
+    }));
 }
 
 // Lấy danh sách masp từ raw, gọi snapshot tồn thật, rồi ghi đè/thêm size còn thiếu
 async function overlayTonThat(raw, denNgay) {
-  const masps = Array.from(new Set((raw || [])
-                  .map(r => String(r.masp || '').toUpperCase())
-                  .filter(Boolean)));
-  if (!masps.length) return raw;
+    const masps = Array.from(new Set((raw || [])
+        .map(r => String(r.masp || '').toUpperCase())
+        .filter(Boolean)));
+    if (!masps.length) return raw;
 
-  const snap = await rpcTonSnapshot(masps, denNgay, false);
+    const snap = await rpcTonSnapshot(masps, denNgay, false);
 
-  // map raw theo key "MASP|size"
-  const byKey = new Map((raw || []).map(r => {
-    const masp = String(r.masp || '').toUpperCase();
-    const size = normalizeSize(r.size);
-    return [masp + '|' + size, { ...r, masp, size }];
-  }));
+    // map raw theo key "MASP|size"
+    const byKey = new Map((raw || []).map(r => {
+        const masp = String(r.masp || '').toUpperCase();
+        const size = normalizeSize(r.size);
+        return [masp + '|' + size, { ...r, masp, size }];
+    }));
 
-  // merge snapshot: có thì ghi đè ton_cs1/ton_cs2, chưa có thì thêm dòng mới
-  for (const s of snap) {
-    const k = s.masp + '|' + normalizeSize(s.size);
-    if (byKey.has(k)) {
-      const it = byKey.get(k);
-      it.ton_cs1 = s.ton_cs1;
-      it.ton_cs2 = s.ton_cs2;
-    } else {
-      byKey.set(k, { masp: s.masp, size: normalizeSize(s.size), ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2 });
+    // merge snapshot: có thì ghi đè ton_cs1/ton_cs2, chưa có thì thêm dòng mới
+    for (const s of snap) {
+        const k = s.masp + '|' + normalizeSize(s.size);
+        if (byKey.has(k)) {
+            const it = byKey.get(k);
+            it.ton_cs1 = s.ton_cs1;
+            it.ton_cs2 = s.ton_cs2;
+        } else {
+            byKey.set(k, { masp: s.masp, size: normalizeSize(s.size), ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2 });
+        }
     }
-  }
-  return Array.from(byKey.values());
+    return Array.from(byKey.values());
 }
 
 
@@ -308,8 +308,8 @@ function renderOnlySizeNumber(instance, td, row, col, prop, value) {
 
 // Hiển thị trống nếu giá trị là 0 (không đụng dữ liệu gốc)
 function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
-  const display = (value === 0 || value === '0') ? '' : value;
-  Handsontable.renderers.TextRenderer.apply(this, [instance, td, row, col, prop, display, cellProperties]);
+    const display = (value === 0 || value === '0') ? '' : value;
+    Handsontable.renderers.TextRenderer.apply(this, [instance, td, row, col, prop, display, cellProperties]);
 }
 
 
@@ -317,7 +317,7 @@ function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) 
 function renderHOT(rows) {
     const container = document.getElementById('hot');
     if (hot && !hot.isDestroyed) { hot.destroy(); }
-hot = null;
+    hot = null;
 
 
     hot = new Handsontable(container, {
@@ -342,67 +342,67 @@ hot = null;
         columnSorting: true,
         height: '100%',
         stretchH: 'all',
-       cells(row, col, prop) {
-  const cell = {};
-  const r = rows[row];
+        cells(row, col, prop) {
+            const cell = {};
+            const r = rows[row];
 
-  // DÒNG TỔNG: giữ readonly cho cột sl_chuyen nếu bạn đã có logic này
-  if (r && r.__isSum) {
-    cell.className = 'sumRow';
-    if (prop === 'sl_chuyen') cell.readOnly = true;
-  }
+            // DÒNG TỔNG: giữ readonly cho cột sl_chuyen nếu bạn đã có logic này
+            if (r && r.__isSum) {
+                cell.className = 'sumRow';
+                if (prop === 'sl_chuyen') cell.readOnly = true;
+            }
 
-  // Áp renderer 0→trống cho các cột số
-  const numericProps = [
-    'cs1','cs2','tong','sl_chuyen',
-    'nhapmua','cuoiky',
-    'xuatban_cs1','xuatban_cs2',
-    'xuatchinhanh_cs1','xuatchinhanh_cs2'
-  ];
-  if (numericProps.includes(prop)) {
-    cell.renderer = zeroBlankRenderer;
-    cell.type = 'numeric'; // vẫn để type numeric để tính toán/sort/validate như cũ
-  }
-  return cell;
-},
+            // Áp renderer 0→trống cho các cột số
+            const numericProps = [
+                'cs1', 'cs2', 'tong', 'sl_chuyen',
+                'nhapmua', 'cuoiky',
+                'xuatban_cs1', 'xuatban_cs2',
+                'xuatchinhanh_cs1', 'xuatchinhanh_cs2'
+            ];
+            if (numericProps.includes(prop)) {
+                cell.renderer = zeroBlankRenderer;
+                cell.type = 'numeric'; // vẫn để type numeric để tính toán/sort/validate như cũ
+            }
+            return cell;
+        },
 
 
 
         afterSelectionEnd(r) {
-  // 'this' là instance hiện tại của Handsontable
-  const inst = this;
-  if (!inst || inst.isDestroyed) return;
+            // 'this' là instance hiện tại của Handsontable
+            const inst = this;
+            if (!inst || inst.isDestroyed) return;
 
-  const colMasp = inst.propToCol('masp');
-  const masp = String(inst.getDataAtCell(r, colMasp) || '').toUpperCase();
-  if (!masp) return;
+            const colMasp = inst.propToCol('masp');
+            const masp = String(inst.getDataAtCell(r, colMasp) || '').toUpperCase();
+            if (!masp) return;
 
-  promotePreviewToTop(masp);
+            promotePreviewToTop(masp);
 
-  const tr = inst.getCell(r, 0)?.parentElement;
-  if (tr) tr.scrollIntoView({ block: 'center' });
-},
-afterChange(changes, source) {
-  if (!changes || source === 'loadData') return;
+            const tr = inst.getCell(r, 0)?.parentElement;
+            if (tr) tr.scrollIntoView({ block: 'center' });
+        },
+        afterChange(changes, source) {
+            if (!changes || source === 'loadData') return;
 
-  // nếu có thay đổi ở cột sl_chuyen => cộng lại dòng Tổng của mã đó
-  for (const [rIdx, prop] of changes.map(c => [c[0], c[1]])) {
-    if (prop !== 'sl_chuyen') continue;
-    const r = rows[rIdx];
-    if (!r || r.__isSum) continue;
+            // nếu có thay đổi ở cột sl_chuyen => cộng lại dòng Tổng của mã đó
+            for (const [rIdx, prop] of changes.map(c => [c[0], c[1]])) {
+                if (prop !== 'sl_chuyen') continue;
+                const r = rows[rIdx];
+                if (!r || r.__isSum) continue;
 
-    // tìm dòng "Tổng" liền sau block 9 size
-    let sumIndex = rIdx;
-    while (sumIndex < rows.length && rows[sumIndex].masp === r.masp && !rows[sumIndex].__isSum) sumIndex++;
-    if (sumIndex < rows.length && rows[sumIndex].__isSum && rows[sumIndex].masp === r.masp) {
-      let s = 0;
-      for (let i = sumIndex - SIZE_ORDER.length; i < sumIndex; i++) s += Number(rows[i]?.sl_chuyen || 0);
-      rows[sumIndex].sl_chuyen = s;
-      this.render();
-      updateStatusTotals(rows);
-    }
-  }
-},
+                // tìm dòng "Tổng" liền sau block 9 size
+                let sumIndex = rIdx;
+                while (sumIndex < rows.length && rows[sumIndex].masp === r.masp && !rows[sumIndex].__isSum) sumIndex++;
+                if (sumIndex < rows.length && rows[sumIndex].__isSum && rows[sumIndex].masp === r.masp) {
+                    let s = 0;
+                    for (let i = sumIndex - SIZE_ORDER.length; i < sumIndex; i++) s += Number(rows[i]?.sl_chuyen || 0);
+                    rows[sumIndex].sl_chuyen = s;
+                    this.render();
+                    updateStatusTotals(rows);
+                }
+            }
+        },
 
 
     });
@@ -426,7 +426,7 @@ afterChange(changes, source) {
         XLSX.writeFile(wb, `goi_y_chuyen_kho_${Date.now()}.xlsx`);
     };
 
-    
+
 
     // Sau khi khởi tạo HOT
     const btn1v2 = document.getElementById('btnFilter1v2');
@@ -493,7 +493,7 @@ function applyGoiyFilter(value) {
     // Lọc theo gợi ý + ẩn dòng Tổng
     filters.addCondition(colGoiy, 'eq', [value]);
     filters.addCondition(colSize, 'neq', ['Tổng']);
-    filters.addCondition(colSize, 'neq',  ['size 0']); // ⬅️ mới thêm
+    filters.addCondition(colSize, 'neq', ['size 0']); // ⬅️ mới thêm
     filters.filter();
 
     // Đồng bộ ảnh đúng với dữ liệu đang hiển thị
@@ -559,6 +559,47 @@ function collectVisibleTransferItems(dir) {
     return list;
 }
 
+// Gom dữ liệu hiển thị để dùng cho popup ảnh chuyển CN
+function buildCkGalleryData() {
+    const dir = getVisibleDirection();
+    if (!dir) {
+        alert('Vui lòng lọc cột "Gợi ý" sao cho chỉ còn 1 hướng (1v2 hoặc 2v1) và đã ẩn dòng "Tổng".');
+        return null;
+    }
+
+    const items = collectVisibleTransferItems(dir); // [{masp, items:[{size,sl}]}]
+
+    // map lấy vị trí cs1/cs2 của từng mã từ currentRows
+    const vitriMap = new Map();
+    for (const r of currentRows) {
+        if (!r || r.__isSum) continue;
+        const k = String(r.masp || '').toUpperCase();
+        if (!k || vitriMap.has(k)) continue;
+        vitriMap.set(k, {
+            vitri_cs1: r.vitri_cs1 || '',
+            vitri_cs2: r.vitri_cs2 || ''
+        });
+    }
+
+    ckGalleryData = items.map(it => {
+        const masp = String(it.masp || '').toUpperCase();
+        const vitri = vitriMap.get(masp) || { vitri_cs1: '', vitri_cs2: '' };
+        const total = (it.items || []).reduce((s, x) => s + Number(x.sl || 0), 0);
+
+        return {
+            masp,
+            dir,
+            sizes: it.items || [],        // [{size, sl}]
+            vitri_cs1: vitri.vitri_cs1,
+            vitri_cs2: vitri.vitri_cs2,
+            total
+        };
+    });
+
+    return { dir, list: ckGalleryData };
+}
+
+
 function onTaoPhieuChuyenCN() {
     const dir = getVisibleDirection();
     if (!dir) {
@@ -590,48 +631,48 @@ function onTaoPhieuChuyenCN() {
 
 // Chuyển kho theo danh sách MASP trong textarea (độc lập với XNT17)
 async function onChuyenKhoFromTextarea() {
-  const ta = document.getElementById('maspTextarea');
-  if (!ta) { alert('Không tìm thấy ô nhập mã sản phẩm'); return; }
+    const ta = document.getElementById('maspTextarea');
+    if (!ta) { alert('Không tìm thấy ô nhập mã sản phẩm'); return; }
 
-  const masps = Array.from(new Set(
-    ta.value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean)
-  ));
+    const masps = Array.from(new Set(
+        ta.value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean)
+    ));
 
-  if (masps.length === 0) {
-    alert('Vui lòng nhập danh sách mã sản phẩm (mỗi mã một dòng)');
-    return;
-  }
+    if (masps.length === 0) {
+        alert('Vui lòng nhập danh sách mã sản phẩm (mỗi mã một dòng)');
+        return;
+    }
 
-  document.getElementById('status').textContent = 'Đang tính tồn thật…';
+    document.getElementById('status').textContent = 'Đang tính tồn thật…';
 
-  const filters4den = getFilters() || {};
-  const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0,10);
+    const filters4den = getFilters() || {};
+    const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
 
-  // lấy snapshot tồn thật cho list MASP
-  const snap = await rpcTonSnapshot(masps, denNgay, false);
+    // lấy snapshot tồn thật cho list MASP
+    const snap = await rpcTonSnapshot(masps, denNgay, false);
 
-  // chuyển snapshot thành raw giống cấu trúc buildTransferTable đang dùng
-  const raw = snap.map(s => ({
-    masp: s.masp, size: s.size, ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2
-  }));
+    // chuyển snapshot thành raw giống cấu trúc buildTransferTable đang dùng
+    const raw = snap.map(s => ({
+        masp: s.masp, size: s.size, ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2
+    }));
 
-  // dựng bảng + render
-  const rows = buildTransferTable(raw);
+    // dựng bảng + render
+    const rows = buildTransferTable(raw);
 
-  currentRows = rows;
+    currentRows = rows;
 
 
-  // cập nhật lưới ảnh theo danh sách masp mới
-  allMasps = Array.from(new Set(raw.map(r => r.masp)));
-  renderPreviewForMasps(allMasps);
+    // cập nhật lưới ảnh theo danh sách masp mới
+    allMasps = Array.from(new Set(raw.map(r => r.masp)));
+    renderPreviewForMasps(allMasps);
 
-  await patchVitri(rows);
-  renderHOT(rows);
-  if (allMasps.length) focusPreview(allMasps[0]);
-  updateStatusTotals(rows);
+    await patchVitri(rows);
+    renderHOT(rows);
+    if (allMasps.length) focusPreview(allMasps[0]);
+    updateStatusTotals(rows);
 
-  document.getElementById('status').textContent =
-    `Đã tải ${rows.length} dòng từ danh sách MASP (tồn thật)`;
+    document.getElementById('status').textContent =
+        `Đã tải ${rows.length} dòng từ danh sách MASP (tồn thật)`;
 }
 
 
@@ -697,6 +738,9 @@ const IMAGES_PER_ROW = 1; // số cột trong lưới ảnh
 // Lưu danh sách mã của panel ảnh để scroll/focus
 let currentMaspsList = [];
 let allMasps = []; // danh sách mã đầy đủ dùng để vẽ lại ảnh khi "Hiện tất cả"
+// Dữ liệu dùng cho popup ảnh chuyển CN
+let ckGalleryData = []; // [{masp, dir, sizes:[{size,sl}], vitri_cs1, vitri_cs2, total}]
+
 
 // Lấy danh sách MASP đang hiển thị sau khi lọc (đọc trực tiếp từ HOT)
 function getVisibleMaspsByGoiy(value) {
@@ -721,6 +765,14 @@ function getVisibleMaspsByGoiy(value) {
     // Giữ thứ tự như lưới ảnh ban đầu
     return allMasps.filter(m => picked.has(m));
 }
+
+function displaySizeLabel(size) {
+    // size đang ở dạng "size 39" -> trả "39"
+    const s = String(size || '').toLowerCase();
+    const m = s.match(/(\d{1,2})/);
+    return m ? m[1] : size;
+}
+
 
 function renderPreviewForMasps(list) {
     currentMaspsList = (list || []).map(x => String(x || "").toUpperCase());
@@ -816,6 +868,160 @@ function focusPreview(masp) {
     }
 }
 
+// ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
+function openAnhChuyenPopup() {
+    const data = buildCkGalleryData();
+    if (!data) return;
+    const { dir, list } = data;
+
+    const modal = document.getElementById('ckGalleryModal');
+    const grid = document.getElementById('ckGalGrid');
+    const title = document.getElementById('ckGalTitle');
+    const info = document.getElementById('ckInfo');
+    if (!modal || !grid || !title) {
+        alert('Không tìm thấy popup ảnh trên trang.');
+        return;
+    }
+
+    title.textContent = `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} mã`;
+
+    const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+
+    grid.innerHTML = list.map(item => {
+        const masp = item.masp;
+        const sizesText = (item.sizes || [])
+            .map(x => `${displaySizeLabel(x.size)}: ${x.sl}`)
+            .join(', ');
+
+        const src = getImageUrl(masp);
+
+        return `
+      <div class="ck-item" data-masp="${masp}">
+        <div class="ck-pic">
+          <img loading="lazy"
+               src="${src}" data-try="0" alt="${masp}"
+               onerror="(function(img,masp){handleImageError(img,masp,'');})(this,'${masp}')">
+        </div>
+        <div class="ck-body">
+          <div class="ck-row">
+            <b>Mã SP:</b>
+            <a href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" target="_blank">${masp}</a>
+          </div>
+          <div class="ck-row">
+            <label><input type="checkbox" class="ck-create" checked> tạo phiếu</label>
+          </div>
+          <div class="ck-row">
+            <b>Size:</b> <span class="ck-size">${sizesText || '-'}</span>
+          </div>
+          <div class="ck-row">
+            <b>SL chuyển:</b>
+            <input type="number" class="ck-sl" min="0" value="${item.total}">
+          </div>
+          <div class="ck-row">
+            <b>Vị trí CS1:</b> <span class="ck-v1">${item.vitri_cs1 || ''}</span>
+          </div>
+          <div class="ck-row">
+            <b>Vị trí CS2:</b> <span class="ck-v2">${item.vitri_cs2 || ''}</span>
+          </div>
+        </div>
+      </div>
+    `;
+    }).join("");
+
+    if (info) info.textContent = `Đang hiển thị ${list.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
+
+    modal.style.display = 'flex';
+}
+
+function closeAnhChuyenPopup() {
+    const modal = document.getElementById('ckGalleryModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Tìm nhanh theo mã SP trong popup
+function onCkSearchInput() {
+    const q = String(this.value || '').trim().toUpperCase();
+    const cards = document.querySelectorAll('#ckGalGrid .ck-item');
+    cards.forEach(card => {
+        const masp = String(card.dataset.masp || '').toUpperCase();
+        card.style.display = (!q || masp.includes(q)) ? '' : 'none';
+    });
+}
+
+// Chọn tất cả / Bỏ chọn
+function ckSelectAll(val) {
+    document.querySelectorAll('#ckGalGrid .ck-create').forEach(chk => {
+        chk.checked = !!val;
+    });
+}
+
+function applyAnhChuyenToPhieu() {
+    if (!ckGalleryData || !ckGalleryData.length) {
+        alert('Không có dữ liệu trong popup.');
+        return;
+    }
+
+    const dir = ckGalleryData[0]?.dir || getVisibleDirection();
+    if (!dir) {
+        alert('Không xác định được hướng chuyển (1v2 / 2v1).');
+        return;
+    }
+
+    const cards = document.querySelectorAll('#ckGalGrid .ck-item');
+    const payloadItems = [];
+
+    cards.forEach(card => {
+        const chk = card.querySelector('.ck-create');
+        if (!chk || !chk.checked) return;
+
+        const masp = String(card.dataset.masp || '').toUpperCase();
+        if (!masp) return;
+
+        let total = Number(card.querySelector('.ck-sl')?.value || 0);
+        if (!total || total <= 0) return;
+
+        const base = ckGalleryData.find(x => x.masp === masp);
+        if (!base) return;
+
+        const sizes = base.sizes || [];
+        const sumOrig = sizes.reduce((s, x) => s + Number(x.sl || 0), 0) || 1;
+
+        // Scale theo tỉ lệ, đảm bảo tổng đúng bằng total
+        const factor = total / sumOrig;
+        const newItems = sizes.map(x => ({
+            size: x.size,
+            sl: Math.max(0, Math.round(Number(x.sl || 0) * factor))
+        }));
+
+        // chỉnh lại sai số làm tròn
+        let diff = total - newItems.reduce((s, x) => s + Number(x.sl || 0), 0);
+        if (diff !== 0 && newItems.length > 0) {
+            newItems[0].sl = Math.max(0, Number(newItems[0].sl || 0) + diff);
+        }
+
+        payloadItems.push({ masp, items: newItems });
+    });
+
+    if (!payloadItems.length) {
+        alert('Chưa chọn sản phẩm nào hoặc tất cả SL chuyển = 0.');
+        return;
+    }
+
+    const payload = {
+        dir,
+        items: payloadItems,
+        created_at: new Date().toISOString()
+    };
+    localStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
+
+    const url = (dir === '1v2') ? 'ccn1v2cs1.html' : 'ccn2v1cs2.html';
+    window.open(url, '_blank');
+
+    // đóng popup sau khi tạo phiếu
+    closeAnhChuyenPopup();
+}
+
+
 
 // ===== 6) Entry point =====
 async function boot() {
@@ -833,9 +1039,9 @@ async function boot() {
         raw = await fetchAllRows(filters); // giữ lại hàm này như phương án B
     }
 
-        // 1.5) Vá TỒN THẬT cho tất cả size của các mã đã nhận
+    // 1.5) Vá TỒN THẬT cho tất cả size của các mã đã nhận
     const filters4den = getFilters() || {};
-    const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0,10);
+    const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
     raw = await overlayTonThat(raw, denNgay);
 
 
@@ -871,6 +1077,26 @@ boot();
 
 const btnCK = document.getElementById('btnChuyenKho');
 if (btnCK) btnCK.onclick = onChuyenKhoFromTextarea;
+
+// Gắn sự kiện cho popup ảnh chuyển CN
+const btnAnh = document.getElementById('btnAnhChuyen');
+if (btnAnh) btnAnh.onclick = openAnhChuyenPopup;
+
+const ckSearch = document.getElementById('ckSearch');
+if (ckSearch) ckSearch.oninput = onCkSearchInput;
+
+const ckClose = document.getElementById('ckClose');
+if (ckClose) ckClose.onclick = closeAnhChuyenPopup;
+
+const ckSelectAllBtn = document.getElementById('ckSelectAll');
+if (ckSelectAllBtn) ckSelectAllBtn.onclick = () => ckSelectAll(true);
+
+const ckClearAllBtn = document.getElementById('ckClearAll');
+if (ckClearAllBtn) ckClearAllBtn.onclick = () => ckSelectAll(false);
+
+const ckApplyBtn = document.getElementById('ckApply');
+if (ckApplyBtn) ckApplyBtn.onclick = applyAnhChuyenToPhieu;
+
 
 
 function normalizeSize(v) {
