@@ -168,107 +168,30 @@
     * {
       -webkit-tap-highlight-color: transparent;
     }
-
-        /* Popup gợi ý mã sản phẩm (giống trang in mã vạch) */
-    #maspSuggestList {
-      position: fixed;
-      z-index: 9999;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
-      max-height: 280px;
-      overflow-y: auto;
-      font-size: 13px;
-    }
-
-    #maspSuggestList table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-
-    #maspSuggestList tr {
-      cursor: pointer;
-    }
-
-    #maspSuggestList tr:hover {
-      background: #eff6ff;
-    }
-
-    #maspSuggestList td {
-      padding: 4px 8px;
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    #maspSuggestList .col-masp {
-      font-weight: 600;
-      width: 110px;
-      white-space: nowrap;
-    }
-
-    #maspSuggestList .col-tensp {
-      color: #4b5563;
-    }
-
-    /* Nhỏ gọn module đăng nhập trên mobile */
-    #loginModule {
-      font-size: 12px;
-      color: #374151;
-      margin-top: 4px;
-      margin-bottom: 4px;
-    }
-
-    #loginModule button {
-      font-size: 12px;
-      padding: 6px 8px;
-      border-radius: 8px;
-    }
-
   </style>
 </head>
 
 <body>
-    <div class="wrap">
+  <div class="wrap">
     <div class="status" id="status"></div>
-
-    <!-- MODULE ĐĂNG NHẬP SUPABASE (dùng chung với trang in mã vạch) -->
-    <div id="loginModule">
-      <input type="email" id="login-email" value="khohangcs1@gmail.com" readonly
-             style="background:#eee; display:none; width:140px; margin-right:4px;" />
-      <input type="password" id="login-password" value="123123"
-             style="width:110px; margin-right:4px; display:none;">
-      <button id="login-submit" class="secondary">Đăng nhập</button>
-      <span id="login-status"
-            style="margin-left:6px;font-size:12px;color:#ad3a2b; display:none;"></span>
-    </div>
-
     <div class="thumb" id="thumb" style="display:none;">
       <img id="thumbImg" alt="ảnh sản phẩm" />
       <div id="thumbMeta" style="font-size:13px;color:#555"></div>
-
-      <div class="bb-row1">
-      <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
-        aria-label="Mã sản phẩm" />
-      <!-- Popup gợi ý mã sản phẩm -->
-      <div id="maspSuggestList" style="display:none;"></div>
     </div>
-    
-    </div>
+    <div></div>
+    <div class="footer">Chụp & lưu siêu nhanh • Tối ưu iPhone 13 Pro Max</div>
+  </div>
 
-
-    <div class="bottombar">
+  <div class="bottombar">
     <div class="bb-row1">
       <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
         aria-label="Mã sản phẩm" />
-      <!-- Popup gợi ý mã sản phẩm -->
-      <div id="maspSuggestList" style="display:none;"></div>
     </div>
     <div class="bb-row2">
       <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
       <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
     </div>
   </div>
-
 
   <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -317,100 +240,6 @@
     const thumb = $('#thumb');
     const thumbImg = $('#thumbImg');
     const thumbMeta = $('#thumbMeta');
-
-        // ===== GỢI Ý MÃ SẢN PHẨM (dmhanghoa) – giống trang in mã vạch =====
-    const maspSuggestDiv = document.getElementById('maspSuggestList');
-
-    function positionMaspSuggestList() {
-      if (!maspSuggestDiv || !maspInput) return;
-      const rect = maspInput.getBoundingClientRect();
-      maspSuggestDiv.style.left = (rect.left + window.scrollX) + 'px';
-      maspSuggestDiv.style.top  = (rect.bottom + 4 + window.scrollY) + 'px';
-      maspSuggestDiv.style.minWidth = rect.width + 'px';
-    }
-
-    function hideMaspSuggest() {
-      if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-    }
-
-    async function loadMaspSuggest(keyword) {
-      if (!maspSuggestDiv) return;
-      const q = (keyword || '').trim();
-      if (!q || q.length < 1) {
-        hideMaspSuggest();
-        return;
-      }
-
-      // Tìm trong dmhanghoa: masp hoặc tensp chứa chuỗi nhập vào
-      const { data, error } = await supabase
-        .from('dmhanghoa')
-        .select('masp, tensp')
-        .or(`masp.ilike.%${q}%,tensp.ilike.%${q}%`)
-        .order('masp')
-        .limit(100);
-
-      if (error) {
-        console.warn('Lỗi load gợi ý mã SP:', error);
-        hideMaspSuggest();
-        return;
-      }
-
-      if (!data || !data.length) {
-        hideMaspSuggest();
-        return;
-      }
-
-      let html = '<table><tbody>';
-      for (const row of data) {
-        const masp = (row.masp || '').toUpperCase();
-        const tensp = row.tensp || '';
-        html += `
-          <tr data-masp="${masp}" data-tensp="${tensp.replace(/"/g, '&quot;')}">
-            <td class="col-masp">${masp}</td>
-            <td class="col-tensp">${tensp}</td>
-          </tr>`;
-      }
-      html += '</tbody></table>';
-
-      maspSuggestDiv.innerHTML = html;
-      positionMaspSuggestList();
-      maspSuggestDiv.style.display = 'block';
-
-      // Click vào 1 dòng -> chọn mã & chạy luôn handleCheck()
-      maspSuggestDiv.querySelectorAll('tr').forEach(tr => {
-        tr.addEventListener('click', () => {
-          const masp = tr.dataset.masp || '';
-          const tensp = tr.dataset.tensp || '';
-          maspInput.value = masp;
-          hideMaspSuggest();
-          setStatus(`${masp} - ${tensp}`, '');
-          // Sau khi chọn từ danh sách, kiểm tra luôn (nếu đã có ảnh sẽ hiện, chưa có sẽ mở camera)
-          handleCheck();
-        });
-      });
-    }
-
-    // Khi gõ MÃ SP -> load gợi ý
-    maspInput.addEventListener('input', () => {
-      const v = maspInput.value || '';
-      if (!v.trim()) {
-        hideMaspSuggest();
-        return;
-      }
-      loadMaspSuggest(v).catch(() => { });
-    });
-
-    // Cập nhật vị trí popup khi resize / scroll
-    window.addEventListener('resize', positionMaspSuggestList);
-    window.addEventListener('scroll', positionMaspSuggestList, true);
-
-    // Click ra ngoài thì ẩn popup
-    document.addEventListener('click', (ev) => {
-      if (!maspSuggestDiv || maspSuggestDiv.style.display === 'none') return;
-      if (ev.target === maspInput || maspSuggestDiv.contains(ev.target)) return;
-      hideMaspSuggest();
-    });
-
 
     // Mở camera NGAY khi cache không có (trong thao tác Enter/Click)
     //const INSTANT_AUTO_ON_CACHE_MISS = false; // ⬅️ đổi false để luôn chờ kết quả server
