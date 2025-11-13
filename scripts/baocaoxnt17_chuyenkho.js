@@ -601,31 +601,298 @@ function buildCkGalleryData() {
 
 
 function onTaoPhieuChuyenCN() {
-    const dir = getVisibleDirection();
-    if (!dir) {
-        alert('Vui lòng lọc cột "Gợi ý" sao cho chỉ còn 1 hướng (1v2 hoặc 2v1) và đã ẩn dòng "Tổng".');
-        return;
+    // ====== DỮ LIỆU & HÀM DÙNG CHUNG CHO POPUP ẢNH CHUYỂN CN ======
+    let ckGalleryData = [];
+
+    // Chuyển "size 38" / "38" thành số "38" để hiển thị gọn trong ô size
+    function extractSizeNumber(sizeLabel) {
+        const s = String(sizeLabel || '');
+        const m = s.match(/(\d{1,2})/);
+        return m ? m[1] : s;
     }
-    const items = collectVisibleTransferItems(dir);
-    if (!items.length) {
-        alert('Không có dòng nào có "SL chuyển" > 0 để tạo phiếu.');
-        return;
+
+    // Format mảng size -> chuỗi "38:1, 39:2"
+    function formatSizeText(items) {
+        if (!items || !items.length) return '';
+        const map = new Map(); // gộp các size trùng
+        for (const it of items) {
+            const num = extractSizeNumber(it.size);
+            const qty = Number(it.sl || 0) || 0;
+            if (!qty || qty <= 0) continue;
+            map.set(num, (map.get(num) || 0) + qty);
+        }
+        return Array.from(map.entries())
+            .map(([num, qty]) => `${num}:${qty}`)
+            .join(', ');
     }
 
-    // Lưu payload sang localStorage (để dùng được ở tab mới)
-    const payload = {
-        dir,                       // '1v2' hoặc '2v1'
-        items,                     // [{masp, items:[{size, sl}]}]
-        created_at: new Date().toISOString()
-    };
-    localStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
+    // Parse chuỗi size -> [{size:'size 38', sl:1}, ...]
+    function parseSizeInput(str) {
+        const raw = String(str || '').trim();
+        if (!raw) {
+            return { items: [], total: 0, error: 'empty' };
+        }
 
-    // Log kiểm tra
-    console.log('[XNT17→CCN] Gửi payload:', { dir, count: items.length, sample: items[0] });
+        // Chuẩn hoá ; và xuống dòng thành dấu phẩy
+        let s = raw.replace(/[;\n]+/g, ',');
 
-    // Mở đúng trang đích
-    const url = (dir === '1v2') ? 'ccn1v2cs1.html' : 'ccn2v1cs2.html';
-    window.open(url, '_blank');
+        // Regex: (size|SIZE)? 38 : 1  hoặc 38-1, 38=1
+        const re = /(?:size\s*)?(\d{1,2})\s*[:=\-]\s*(\d+)/gi;
+        let m;
+        const map = new Map(); // sizeNum -> qty
+        while ((m = re.exec(s)) !== null) {
+            const sizeNum = m[1];
+            const qty = Number(m[2]);
+            if (!qty || qty <= 0) continue;
+            map.set(sizeNum, (map.get(sizeNum) || 0) + qty);
+        }
+
+        if (!map.size) {
+            return { items: [], total: 0, error: 'no_pairs' };
+        }
+
+        const items = [];
+        let total = 0;
+        for (const [num, qty] of map.entries()) {
+            const v = Number(qty) || 0;
+            if (!v || v <= 0) continue;
+            const label = num === '0' ? 'size 0' : ('size ' + num);
+            items.push({ size: label, sl: v });
+            total += v;
+        }
+        if (!items.length || total <= 0) {
+            return { items: [], total: 0, error: 'no_valid_qty' };
+        }
+        return { items, total, error: null };
+    }
+
+    // Đổi trạng thái ô nhập size theo kết quả parse
+    function updateSizeInputState(textarea, parseResult) {
+        if (!textarea) return;
+        if (!parseResult || parseResult.error) {
+            textarea.classList.add('ck-error');
+        } else {
+            textarea.classList.remove('ck-error');
+        }
+    }
+
+    // Xử lý khi người dùng sửa ô size
+    function onSizeInputChange(e) {
+        const textarea = e.target;
+        const card = textarea.closest('.ck-item');
+        if (!card) return;
+        const res = parseSizeInput(textarea.value);
+        const slInput = card.querySelector('.ck-sl');
+        if (res.error) {
+            updateSizeInputState(textarea, res);
+            if (slInput) slInput.value = '';
+            card.dataset.sizeError = '1';
+        } else {
+            updateSizeInputState(textarea, res);
+            if (slInput) slInput.value = String(res.total);
+            delete card.dataset.sizeError;
+        }
+    }
+
+    // Gom dữ liệu hiện có trong HOT để dùng cho popup
+    function buildCkGalleryData() {
+        const dir = getVisibleDirection();
+        if (!dir) {
+            alert('Vui lòng lọc cột "Gợi ý" sao cho chỉ còn 1 hướng (1v2 hoặc 2v1) và đã ẩn dòng "Tổng".');
+            return null;
+        }
+        const items = collectVisibleTransferItems(dir);
+        if (!items.length) {
+            alert('Không có dòng nào có "SL chuyển" > 0 để hiển thị trong popup ảnh.');
+            return null;
+        }
+
+        // map mã -> vị trí CS1/CS2 từ currentRows
+        const vitriMap = new Map();
+        for (const r of currentRows || []) {
+            if (!r || r.__isSum) continue;
+            const k = String(r.masp || '').toUpperCase();
+            if (!k || vitriMap.has(k)) continue;
+            vitriMap.set(k, {
+                vitri_cs1: r.vitri_cs1 || '',
+                vitri_cs2: r.vitri_cs2 || ''
+            });
+        }
+
+        ckGalleryData = items.map(it => {
+            const masp = String(it.masp || '').toUpperCase();
+            const v = vitriMap.get(masp) || { vitri_cs1: '', vitri_cs2: '' };
+            const total = (it.items || []).reduce((s, x) => s + Number(x.sl || 0), 0);
+            return {
+                masp,
+                dir,
+                sizes: it.items || [],
+                vitri_cs1: v.vitri_cs1,
+                vitri_cs2: v.vitri_cs2,
+                total
+            };
+        });
+
+        return { dir, list: ckGalleryData };
+    }
+
+    // Mở popup ảnh chuyển CN
+    function openAnhChuyenPopup() {
+        const data = buildCkGalleryData();
+        if (!data) return;
+        const { dir, list } = data;
+
+        const modal = document.getElementById('ckGalleryModal');
+        const grid = document.getElementById('ckGalGrid');
+        const title = document.getElementById('ckGalTitle');
+        const info = document.getElementById('ckInfo');
+        if (!modal || !grid || !title) {
+            alert('Không tìm thấy popup ảnh trên trang.');
+            return;
+        }
+
+        title.textContent = `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} mã`;
+
+        const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+
+        grid.innerHTML = list.map(item => {
+            const masp = item.masp;
+            const sizeText = formatSizeText(item.sizes);
+            const src = getImageUrl(masp);
+
+            return `
+      <div class="ck-item" data-masp="${masp}">
+        <div class="ck-pic">
+          <img loading="lazy"
+               src="${src}" data-try="0" alt="${masp}"
+               onerror="(function(img,masp){handleImageError(img,masp,'');})(this,'${masp}')">
+        </div>
+        <div class="ck-body">
+          <div class="ck-row">
+            <b>Mã SP:</b>
+            <a href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" target="_blank">${masp}</a>
+          </div>
+          <div class="ck-row">
+            <label><input type="checkbox" class="ck-create" checked> tạo phiếu</label>
+          </div>
+          <div class="ck-row">
+            <b>Size &amp; SL:</b>
+            <textarea class="ck-size-input" rows="2"
+              placeholder="VD: 38:1, 39:2, 43:1">${sizeText}</textarea>
+          </div>
+          <div class="ck-row">
+            <b>SL chuyển:</b>
+            <input type="number" class="ck-sl" min="0" value="${item.total}" readonly>
+          </div>
+          <div class="ck-row">
+            <b>Vị trí CS1:</b> <span class="ck-v1">${item.vitri_cs1 || ''}</span>
+          </div>
+          <div class="ck-row">
+            <b>Vị trí CS2:</b> <span class="ck-v2">${item.vitri_cs2 || ''}</span>
+          </div>
+        </div>
+      </div>
+    `;
+        }).join("");
+
+        // Gắn sự kiện onchange cho tất cả ô size
+        grid.querySelectorAll('.ck-size-input').forEach(el => {
+            el.addEventListener('input', onSizeInputChange);
+            const res = parseSizeInput(el.value);
+            updateSizeInputState(el, res);
+        });
+
+        if (info) info.textContent = `Đang hiển thị ${list.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
+
+        modal.style.display = 'flex';
+    }
+
+    function closeAnhChuyenPopup() {
+        const modal = document.getElementById('ckGalleryModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Tìm nhanh theo mã SP trong popup
+    function onCkSearchInput() {
+        const q = String(this.value || '').trim().toUpperCase();
+        const cards = document.querySelectorAll('#ckGalGrid .ck-item');
+        cards.forEach(card => {
+            const masp = String(card.dataset.masp || '').toUpperCase();
+            card.style.display = (!q || masp.includes(q)) ? '' : 'none';
+        });
+    }
+
+    // Chọn tất cả / Bỏ chọn
+    function ckSelectAll(val) {
+        document.querySelectorAll('#ckGalGrid .ck-create').forEach(chk => {
+            chk.checked = !!val;
+        });
+    }
+
+    // Tạo phiếu từ dữ liệu đã chỉnh sửa trong popup
+    function applyAnhChuyenToPhieu() {
+        if (!ckGalleryData || !ckGalleryData.length) {
+            alert('Không có dữ liệu trong popup.');
+            return;
+        }
+
+        const dir = ckGalleryData[0]?.dir || getVisibleDirection();
+        if (!dir) {
+            alert('Không xác định được hướng chuyển (1v2 / 2v1).');
+            return;
+        }
+
+        const cards = document.querySelectorAll('#ckGalGrid .ck-item');
+        const payloadItems = [];
+        const invalidMasps = [];
+
+        cards.forEach(card => {
+            const chk = card.querySelector('.ck-create');
+            if (!chk || !chk.checked) return;
+
+            const masp = String(card.dataset.masp || '').toUpperCase();
+            if (!masp) return;
+
+            const sizeField = card.querySelector('.ck-size-input');
+            if (!sizeField) return;
+
+            const res = parseSizeInput(sizeField.value);
+            if (res.error || !res.items.length || res.total <= 0) {
+                invalidMasps.push(masp);
+                updateSizeInputState(sizeField, res);
+                return;
+            }
+
+            payloadItems.push({
+                masp,
+                items: res.items
+            });
+        });
+
+        if (!payloadItems.length) {
+            alert('Không có mã hợp lệ để tạo phiếu (có thể tất cả size đang sai định dạng).');
+            return;
+        }
+
+        if (invalidMasps.length) {
+            alert('Các mã sau đang nhập size sai định dạng và sẽ bị bỏ qua khi tạo phiếu:\n' + invalidMasps.join(', '));
+        }
+
+        const payload = {
+            dir,
+            items: payloadItems,
+            created_at: new Date().toISOString()
+        };
+        localStorage.setItem('ccn_prefill_payload', JSON.stringify(payload));
+
+        console.log('[XNT17→CCN từ POPUP] Gửi payload:', { dir, count: payloadItems.length, sample: payloadItems[0] });
+
+        const url = (dir === '1v2') ? 'ccn1v2cs1.html' : 'ccn2v1cs2.html';
+        window.open(url, '_blank');
+
+        closeAnhChuyenPopup();
+    }
+
 
 }
 
@@ -1096,6 +1363,8 @@ if (ckClearAllBtn) ckClearAllBtn.onclick = () => ckSelectAll(false);
 
 const ckApplyBtn = document.getElementById('ckApply');
 if (ckApplyBtn) ckApplyBtn.onclick = applyAnhChuyenToPhieu;
+
+
 
 
 
