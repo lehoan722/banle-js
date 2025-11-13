@@ -244,13 +244,12 @@
 }
 
 /* Mobile: lưới 1 cột cho dễ xem */
-@media (max-width: 768px) {
-  /* Lưới 1 cột cho dễ xem trên điện thoại */
+/* Điện thoại DỌC: 1 cột ảnh */
+@media (max-width: 768px) and (orientation: portrait) {
   #ckGalGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Kéo khung popup căng hết màn hình, không canh giữa */
   #ckGalleryModal {
     align-items: stretch;
     justify-content: stretch;
@@ -264,6 +263,24 @@
   }
 }
 
+/* Điện thoại XOAY NGANG: 4 cột ảnh (giống PC thu nhỏ) */
+@media (max-width: 1024px) and (orientation: landscape) {
+  #ckGalGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  #ckGalleryModal {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  #ckGalleryModal .ck-gcard {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+}
 
 
    </style>
