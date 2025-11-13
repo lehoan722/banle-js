@@ -99,17 +99,19 @@
   justify-content: center;
 }
 
+/* Khung trắng full màn hình */
 #ckGalleryModal .ck-gcard {
   background: #fff;
-  border-radius: 14px;
-  width: min(96vw, 1200px);
-  height: min(92vh, 860px);
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 14px 40px rgba(0,0,0,.25);
 }
 
+/* Header: tiêu đề + tìm kiếm + nút */
 .ck-ghead {
   display: flex;
   align-items: center;
@@ -133,6 +135,7 @@
   min-width: 120px;
 }
 
+/* Thân popup: lưới ảnh, phần này cuộn */
 .ck-gbody {
   flex: 1;
   overflow: auto;
@@ -146,6 +149,7 @@
   gap: 10px;
 }
 
+/* Card ảnh */
 .ck-item {
   border-radius: 12px;
   border: 1px solid #e6eeff;
@@ -200,10 +204,23 @@
   font-size: 14px;
 }
 
-.ck-row label {
-  cursor: pointer;
+/* Ô nhập size + SL trong popup */
+.ck-size-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  border: 1px solid #cfe1ff;
+  font-size: 13px;
+  resize: vertical;
 }
 
+.ck-size-input.ck-error {
+  border-color: #e53935;
+  background: #fff5f5;
+}
+
+/* Footer: text + nút tạo phiếu, dính đáy */
 .ck-gfoot {
   display: flex;
   align-items: center;
@@ -212,6 +229,8 @@
   padding: 8px 10px;
   border-top: 1px solid #e6eeff;
   background: #fdfdfd;
+  position: sticky;
+  bottom: 0;
 }
 
 /* Text thông tin nhỏ bên trái */
@@ -220,23 +239,13 @@
   color: #555;
 }
 
-/* Mobile: popup full màn, 1 cột ảnh, thanh nút dính đáy */
+/* Mobile: lưới 1 cột cho dễ xem */
 @media (max-width: 768px) {
-  #ckGalleryModal .ck-gcard {
-    width: 100vw;
-    height: 100vh;
-    border-radius: 0;
-  }
-
   #ckGalGrid {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .ck-gfoot {
-    position: sticky;
-    bottom: 0;
-  }
 }
+
 
    </style>
 </head>
