@@ -246,23 +246,34 @@
     /* Mobile: lưới 1 cột cho dễ xem */
     /* Điện thoại DỌC: 1 cột ảnh */
     /* Điện thoại DỌC: luôn 1 cột ảnh */
+    /* Điện thoại DỌC: 1 cột, ảnh to hết chiều ngang */
     @media (orientation: portrait) {
+
+      /* 1 cột đã có rồi, nhưng mình nhắc lại cho chắc */
       #ckGalGrid {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      #ckGalleryModal {
-        align-items: stretch;
-        justify-content: stretch;
+      /* Card co lại vừa màn, canh giữa */
+      .ck-item {
+        max-width: 520px;
+        margin: 0 auto 12px;
       }
 
-      #ckGalleryModal .ck-gcard {
+      /* Tăng chiều cao khung ảnh một chút */
+      .ck-pic {
+        min-height: 260px;
+      }
+
+      /* Ảnh phóng to full chiều ngang thẻ, không bị giới hạn 240px nữa */
+      .ck-pic img {
         width: 100%;
-        height: 100%;
-        max-height: 100%;
-        border-radius: 0;
+        height: auto;
+        max-height: none;
+        object-fit: contain;
       }
     }
+
 
     /* Điện thoại XOAY NGANG: 4 cột ảnh */
     @media (orientation: landscape) {
