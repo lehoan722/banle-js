@@ -257,7 +257,7 @@
       /* Card co lại vừa màn, canh giữa */
       .ck-item {
         max-width: 620px;
-        
+
       }
 
       /* Tăng chiều cao khung ảnh một chút */
@@ -272,6 +272,23 @@
         max-height: none;
         object-fit: contain;
       }
+
+      /* NÚT TRONG POPUP – cho to, dễ bấm trên điện thoại dọc */
+      #ckGalleryModal .ck-ghead button,
+      #ckGalleryModal .ck-gfoot button {
+        font-size: 15px;
+        /* chữ to hơn */
+        padding: 6px 14px;
+        /* nút dày & rộng gấp đôi */
+        border-radius: 8px;
+      }
+
+      /* Riêng nút "Tạo phiếu (popup)" ở đáy cho to hơn một chút */
+      #ckGalleryModal #ckApply {
+        min-width: 140px;
+        font-weight: 600;
+      }
+
     }
 
 
