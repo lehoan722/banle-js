@@ -87,203 +87,202 @@
     }
   </style>
 
-   <style>
+  <style>
     /* ===== Popup ẢNH CHUYỂN CHI NHÁNH (CK) ===== */
-#ckGalleryModal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.55);
-  z-index: 5000;
-  align-items: center;
-  justify-content: center;
-}
+    #ckGalleryModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .55);
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+    }
 
-/* Khung trắng full màn hình */
-#ckGalleryModal .ck-gcard {
-  background: #fff;
-  border-radius: 0;
-  width: 100vw;
-  /* lấy đúng chiều cao của popup, tránh bug 100vh trên mobile */
-  height: 100%;
-  max-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 14px 40px rgba(0,0,0,.25);
-}
-
-
-/* Header: tiêu đề + tìm kiếm + nút */
-.ck-ghead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: #f6f9ff;
-  border-bottom: 1px solid #e6eeff;
-}
-
-#ckGalTitle {
-  font-size: 16px;
-  color: #1b5dbf;
-}
-
-#ckSearch {
-  margin-left: auto;
-  height: 32px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid #cfe1ff;
-  min-width: 120px;
-}
-
-/* Thân popup: lưới ảnh, phần này cuộn */
-.ck-gbody {
-  flex: 1;
-  overflow: auto;
-  padding: 10px;
-}
-
-/* Lưới ảnh */
-#ckGalGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
-}
-
-/* Card ảnh */
-.ck-item {
-  border-radius: 12px;
-  border: 1px solid #e6eeff;
-  overflow: hidden;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-}
-
-.ck-pic {
-  background: #f8faff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 180px;
-}
-
-.ck-pic img {
-  max-width: 100%;
-  max-height: 240px;
-  display: block;
-}
-
-.ck-body {
-  padding: 6px 9px 10px;
-  font-size: 14px;
-}
-
-.ck-row {
-  margin: 2px 0;
-  line-height: 1.3;
-}
-
-.ck-row b {
-  color: #333;
-}
-
-.ck-row a {
-  color: #1976d2;
-  text-decoration: none;
-}
-
-.ck-row a:hover {
-  text-decoration: underline;
-}
-
-.ck-row input[type="number"] {
-  width: 80px;
-  padding: 2px 4px;
-  border-radius: 6px;
-  border: 1px solid #cfe1ff;
-  font-size: 14px;
-}
-
-/* Ô nhập size + SL trong popup */
-.ck-size-input {
-  width: 100%;
-  min-height: 38px;
-  padding: 3px 5px;
-  border-radius: 6px;
-  border: 1px solid #cfe1ff;
-  font-size: 13px;
-  resize: vertical;
-}
-
-.ck-size-input.ck-error {
-  border-color: #e53935;
-  background: #fff5f5;
-}
-
-/* Footer: text + nút tạo phiếu, dính đáy */
-.ck-gfoot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-top: 1px solid #e6eeff;
-  background: #fdfdfd;
-  /* không dùng sticky nữa, để flex giữ nó ở đáy */
-  flex-shrink: 0;
-}
+    /* Khung trắng full màn hình */
+    #ckGalleryModal .ck-gcard {
+      background: #fff;
+      border-radius: 0;
+      width: 100vw;
+      /* lấy đúng chiều cao của popup, tránh bug 100vh trên mobile */
+      height: 100%;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, .25);
+    }
 
 
-/* Text thông tin nhỏ bên trái */
-.ck-info {
-  font-size: 13px;
-  color: #555;
-}
+    /* Header: tiêu đề + tìm kiếm + nút */
+    .ck-ghead {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #f6f9ff;
+      border-bottom: 1px solid #e6eeff;
+    }
 
-/* Mobile: lưới 1 cột cho dễ xem */
-/* Điện thoại DỌC: 1 cột ảnh */
-@media (max-width: 768px) and (orientation: portrait) {
-  #ckGalGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+    #ckGalTitle {
+      font-size: 16px;
+      color: #1b5dbf;
+    }
 
-  #ckGalleryModal {
-    align-items: stretch;
-    justify-content: stretch;
-  }
+    #ckSearch {
+      margin-left: auto;
+      height: 32px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #cfe1ff;
+      min-width: 120px;
+    }
 
-  #ckGalleryModal .ck-gcard {
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
-  }
-}
+    /* Thân popup: lưới ảnh, phần này cuộn */
+    .ck-gbody {
+      flex: 1;
+      overflow: auto;
+      padding: 10px;
+    }
 
-/* Điện thoại XOAY NGANG: 4 cột ảnh (giống PC thu nhỏ) */
-@media (max-width: 1024px) and (orientation: landscape) {
-  #ckGalGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+    /* Lưới ảnh */
+    #ckGalGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 10px;
+    }
 
-  #ckGalleryModal {
-    align-items: stretch;
-    justify-content: stretch;
-  }
+    /* Card ảnh */
+    .ck-item {
+      border-radius: 12px;
+      border: 1px solid #e6eeff;
+      overflow: hidden;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
 
-  #ckGalleryModal .ck-gcard {
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
-  }
-}
+    .ck-pic {
+      background: #f8faff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+    }
+
+    .ck-pic img {
+      max-width: 100%;
+      max-height: 240px;
+      display: block;
+    }
+
+    .ck-body {
+      padding: 6px 9px 10px;
+      font-size: 14px;
+    }
+
+    .ck-row {
+      margin: 2px 0;
+      line-height: 1.3;
+    }
+
+    .ck-row b {
+      color: #333;
+    }
+
+    .ck-row a {
+      color: #1976d2;
+      text-decoration: none;
+    }
+
+    .ck-row a:hover {
+      text-decoration: underline;
+    }
+
+    .ck-row input[type="number"] {
+      width: 80px;
+      padding: 2px 4px;
+      border-radius: 6px;
+      border: 1px solid #cfe1ff;
+      font-size: 14px;
+    }
+
+    /* Ô nhập size + SL trong popup */
+    .ck-size-input {
+      width: 100%;
+      min-height: 38px;
+      padding: 3px 5px;
+      border-radius: 6px;
+      border: 1px solid #cfe1ff;
+      font-size: 13px;
+      resize: vertical;
+    }
+
+    .ck-size-input.ck-error {
+      border-color: #e53935;
+      background: #fff5f5;
+    }
+
+    /* Footer: text + nút tạo phiếu, dính đáy */
+    .ck-gfoot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-top: 1px solid #e6eeff;
+      background: #fdfdfd;
+      /* không dùng sticky nữa, để flex giữ nó ở đáy */
+      flex-shrink: 0;
+    }
 
 
-   </style>
+    /* Text thông tin nhỏ bên trái */
+    .ck-info {
+      font-size: 13px;
+      color: #555;
+    }
+
+    /* Mobile: lưới 1 cột cho dễ xem */
+    /* Điện thoại DỌC: 1 cột ảnh */
+    /* Điện thoại DỌC: luôn 1 cột ảnh */
+    @media (orientation: portrait) {
+      #ckGalGrid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      #ckGalleryModal {
+        align-items: stretch;
+        justify-content: stretch;
+      }
+
+      #ckGalleryModal .ck-gcard {
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+      }
+    }
+
+    /* Điện thoại XOAY NGANG: 4 cột ảnh */
+    @media (orientation: landscape) {
+      #ckGalGrid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      #ckGalleryModal {
+        align-items: stretch;
+        justify-content: stretch;
+      }
+
+      #ckGalleryModal .ck-gcard {
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -299,17 +298,16 @@
     <button id="btnAnhChuyen" class="btn secondary">ảnh chuyen</button>
 
     <div style="margin:10px 0;">
-  <label for="maspTextarea" style="display:block;font-weight:600;margin-bottom:4px;">
-    Danh sách mã sản phẩm (mỗi mã 1 dòng):
-  </label>
-  <textarea id="maspTextarea" rows="5"
-            style="width:100%;max-width:680px;display:block;margin-bottom:6px;"
-            placeholder="VD:
+      <label for="maspTextarea" style="display:block;font-weight:600;margin-bottom:4px;">
+        Danh sách mã sản phẩm (mỗi mã 1 dòng):
+      </label>
+      <textarea id="maspTextarea" rows="5" style="width:100%;max-width:680px;display:block;margin-bottom:6px;"
+        placeholder="VD:
 A123
 B456
 C789"></textarea>
-  <button id="btnChuyenKho">Chuyển kho</button>
-</div>
+      <button id="btnChuyenKho">Chuyển kho</button>
+    </div>
 
 
     <div class="spacer"></div>
@@ -332,34 +330,31 @@ C789"></textarea>
   </div>
 
   <!-- Popup ẢNH CHUYỂN CHI NHÁNH -->
-<div id="ckGalleryModal"
-     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000;">
-  <div class="ck-gcard">
-    <!-- Header -->
-    <div class="ck-ghead">
-      <b id="ckGalTitle">Ảnh chuyển chi nhánh</b>
+  <div id="ckGalleryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000;">
+    <div class="ck-gcard">
+      <!-- Header -->
+      <div class="ck-ghead">
+        <b id="ckGalTitle">Ảnh chuyển chi nhánh</b>
 
-      <input id="ckSearch"
-             placeholder="Tìm nhanh mã SP..."
-             autocomplete="off">
+        <input id="ckSearch" placeholder="Tìm nhanh mã SP..." autocomplete="off">
 
-      <button id="ckSelectAll" class="btn secondary">Chọn tất cả</button>
-      <button id="ckClearAll" class="btn secondary">Bỏ chọn</button>
-      <button id="ckClose" class="btn secondary">Đóng</button>
-    </div>
+        <button id="ckSelectAll" class="btn secondary">Chọn tất cả</button>
+        <button id="ckClearAll" class="btn secondary">Bỏ chọn</button>
+        <button id="ckClose" class="btn secondary">Đóng</button>
+      </div>
 
-    <!-- Thân popup: lưới ảnh -->
-    <div class="ck-gbody">
-      <div id="ckGalGrid"></div>
-    </div>
+      <!-- Thân popup: lưới ảnh -->
+      <div class="ck-gbody">
+        <div id="ckGalGrid"></div>
+      </div>
 
-    <!-- Thanh nút luôn ở đáy màn hình (mobile/PC đều thấy) -->
-    <div class="ck-gfoot">
-      <span id="ckInfo" class="ck-info"></span>
-      <button id="ckApply" class="btn">Tạo phiếu (popup)</button>
+      <!-- Thanh nút luôn ở đáy màn hình (mobile/PC đều thấy) -->
+      <div class="ck-gfoot">
+        <span id="ckInfo" class="ck-info"></span>
+        <button id="ckApply" class="btn">Tạo phiếu (popup)</button>
+      </div>
     </div>
   </div>
-</div>
 
 
   <!-- Logic riêng của trang -->
