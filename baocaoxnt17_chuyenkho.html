@@ -248,24 +248,19 @@
     /* Điện thoại DỌC: luôn 1 cột ảnh */
     /* Điện thoại DỌC: 1 cột, ảnh to hết chiều ngang */
     @media (orientation: portrait) {
-
-      /* 1 cột đã có rồi, nhưng mình nhắc lại cho chắc */
       #ckGalGrid {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      /* Card co lại vừa màn, canh giữa */
       .ck-item {
-        max-width: 620px;
-
+        max-width: 520px;
+        margin: 0 auto 12px;
       }
 
-      /* Tăng chiều cao khung ảnh một chút */
       .ck-pic {
         min-height: 260px;
       }
 
-      /* Ảnh phóng to full chiều ngang thẻ, không bị giới hạn 240px nữa */
       .ck-pic img {
         width: 100%;
         height: auto;
@@ -273,22 +268,31 @@
         object-fit: contain;
       }
 
-      /* NÚT TRONG POPUP – cho to, dễ bấm trên điện thoại dọc */
+      /* Header cao, thoáng */
+      #ckGalleryModal .ck-ghead {
+        padding: 10px 8px;
+        min-height: 52px;
+      }
+
+      /* Ô tìm kiếm to hơn */
+      #ckGalleryModal #ckSearch {
+        height: 40px;
+        padding: 6px 10px;
+        font-size: 15px;
+      }
+
+      /* Nút to hơn, dễ bấm */
       #ckGalleryModal .ck-ghead button,
       #ckGalleryModal .ck-gfoot button {
         font-size: 15px;
-        /* chữ to hơn */
-        padding: 6px 14px;
-        /* nút dày & rộng gấp đôi */
+        padding: 8px 16px;
         border-radius: 8px;
       }
 
-      /* Riêng nút "Tạo phiếu (popup)" ở đáy cho to hơn một chút */
       #ckGalleryModal #ckApply {
         min-width: 140px;
         font-weight: 600;
       }
-
     }
 
 
