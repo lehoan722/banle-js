@@ -706,6 +706,7 @@ const PLACEHOLDER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(
 );
 
 // Thử lần lượt các đuôi ảnh
+// Thử lần lượt các đuôi ảnh
 function handleImageError(img, masp, suffix = "") {
     const next = (parseInt(img.dataset.try || "0", 10) + 1);
     if (next < IMG_EXTS.length) {
@@ -716,6 +717,10 @@ function handleImageError(img, masp, suffix = "") {
         img.src = PLACEHOLDER_SVG;
     }
 }
+// cho inline onerror trong HTML nhìn thấy được (vì file là type="module")
+window.handleImageError = handleImageError;
+
+
 function getImageUrl(masp, suffix = "") {
     // Thử JPG trước, onerror sẽ thử đuôi khác
     return IMG_BASE + encodeURIComponent(masp + suffix) + ".JPG";
