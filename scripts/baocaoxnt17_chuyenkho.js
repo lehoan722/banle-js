@@ -891,48 +891,168 @@ function focusPreview(masp) {
     }
 }
 
+// ===== Popup tồn kho theo size cho từng mã trong popup ảnh =====
+
+// Lấy toàn bộ dòng tồn kho (9 size + Tổng) theo MASP từ currentRows
+function getTonKhoRowsByMasp(masp) {
+  const M = String(masp || '').toUpperCase();
+  if (!M || !Array.isArray(currentRows)) return [];
+  return currentRows.filter(r => String(r.masp || '').toUpperCase() === M);
+}
+
+// Dựng HTML bảng tồn kho theo size cho MASP
+function buildTonKhoTableHtml(masp) {
+  const rows = getTonKhoRowsByMasp(masp);
+  if (!rows.length) {
+    return `
+      <div class="ck-stock-popup">
+        <div>Không có dữ liệu tồn kho.</div>
+      </div>
+    `;
+  }
+
+  const body = rows.map(r => {
+    const isSum = !!r.__isSum;
+    const sizeLabel = (r.size === 'Tổng')
+      ? 'Tổng'
+      : displaySizeLabel(r.size); // “size 38” -> “38”
+
+    const cs1 = r.cs1 ?? 0;
+    const cs2 = r.cs2 ?? 0;
+
+    return `
+      <tr class="${isSum ? 'sum-row' : ''}">
+        <td>${sizeLabel}</td>
+        <td class="num">${cs1 || ''}</td>
+        <td class="num">${cs2 || ''}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <div class="ck-stock-popup">
+      <table>
+        <thead>
+          <tr>
+            <th>Size</th>
+            <th>CS1</th>
+            <th>CS2</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${body}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Phát hiện thiết bị cảm ứng (điện thoại/tablet)
+function isTouchDevice() {
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+}
+
+function hideAllStockPopups() {
+  document.querySelectorAll('.ck-stock-popup.show').forEach(p => {
+    p.classList.remove('show');
+  });
+}
+
+function showStockPopupForCard(card) {
+  if (!card) return;
+  hideAllStockPopups();
+  const popup = card.querySelector('.ck-stock-popup');
+  if (popup) popup.classList.add('show');
+}
+
+function hideStockPopupForCard(card) {
+  if (!card) return;
+  const popup = card.querySelector('.ck-stock-popup');
+  if (popup) popup.classList.remove('show');
+}
+
+function attachStockPopupEvents() {
+  const touch = isTouchDevice();
+  const cards = document.querySelectorAll('#ckGalGrid .ck-item');
+
+  cards.forEach(card => {
+    const img = card.querySelector('.ck-pic img');
+    if (!img) return;
+
+    if (!touch) {
+      // PC: hover chuột để xem tồn kho
+      card.addEventListener('mouseenter', () => showStockPopupForCard(card));
+      card.addEventListener('mouseleave', () => hideStockPopupForCard(card));
+    } else {
+      // Điện thoại: chạm 1 lần mở, chạm lại đóng / chạm ảnh khác thì đổi
+      img.addEventListener('click', () => {
+        const popup = card.querySelector('.ck-stock-popup');
+        const isShown = popup && popup.classList.contains('show');
+        hideAllStockPopups();
+        if (!isShown) {
+          showStockPopupForCard(card);
+        }
+      });
+    }
+  });
+
+  // Trên mobile: chạm nền đen ngoài card để đóng hết popup tồn kho
+  const modal = document.getElementById('ckGalleryModal');
+  if (touch && modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        hideAllStockPopups();
+      }
+    });
+  }
+}
+
 // ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
+
 // ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
 function openAnhChuyenPopup() {
-    const data = buildCkGalleryData();
-    if (!data) return;
-    const { dir, list } = data;
+  const data = buildCkGalleryData();
+  if (!data) return;
+  const { dir, list } = data;
 
-    const modal = document.getElementById('ckGalleryModal');
-    const grid = document.getElementById('ckGalGrid');
-    const title = document.getElementById('ckGalTitle');
-    const info = document.getElementById('ckInfo');
-    if (!modal || !grid || !title) {
-        alert('Không tìm thấy popup ảnh trên trang.');
-        return;
-    }
+  const modal = document.getElementById('ckGalleryModal');
+  const grid = document.getElementById('ckGalGrid');
+  const title = document.getElementById('ckGalTitle');
+  const info = document.getElementById('ckInfo');
+  if (!modal || !grid || !title) {
+    alert('Không tìm thấy popup ảnh trên trang.');
+    return;
+  }
 
-    // đếm thêm số mã duy nhất để hiển thị cho dễ hiểu
-    const uniqMasps = Array.from(new Set(list.map(it => it.masp)));
-    title.textContent =
-        `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} ảnh / ${uniqMasps.length} mã`;
+  // đếm thêm số mã duy nhất để hiển thị cho dễ hiểu
+  const uniqMasps = Array.from(new Set(list.map(it => it.masp)));
+  title.textContent =
+    `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} ảnh / ${uniqMasps.length} mã`;
 
-    const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+  const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
 
-    grid.innerHTML = list.map(item => {
-        const masp = item.masp;
-        const sizeLabel = displaySizeLabel(item.size);   // "size 39" -> "39"
-        const src = getImageUrl(masp);
+  grid.innerHTML = list.map(item => {
+    const masp = item.masp;
+    const sizeLabel = displaySizeLabel(item.size);   // "size 39" -> "39"
+    const src = getImageUrl(masp);
+    const tonKhoHtml = buildTonKhoTableHtml(masp);   // 👈 bảng tồn kho theo size
 
-        return `
+    return `
       <div class="ck-item" data-masp="${masp}" data-size="${item.size}">
         <div class="ck-pic">
           <img loading="lazy"
                src="${src}" data-try="0" alt="${masp}"
                onerror="(function(img,masp){handleImageError(img,masp,'');})(this,'${masp}')">
         </div>
+        ${tonKhoHtml}
         <div class="ck-body">
           <div class="ck-row">
             <b>Mã SP:</b>
             <a href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" target="_blank">${masp}</a>
           </div>
           <div class="ck-row">
-            <label><input type="checkbox" class="ck-create" checked> tạo phiếu</label>
+            <!-- ❌ BỎ checked: không còn tự chọn tạo phiếu cho tất cả -->
+            <label><input type="checkbox" class="ck-create"> tạo phiếu</label>
           </div>
           <div class="ck-row">
             <b>Size:</b> <span class="ck-size">${sizeLabel}</span>
@@ -950,15 +1070,19 @@ function openAnhChuyenPopup() {
         </div>
       </div>
     `;
-    }).join("");
+  }).join("");
 
-    if (info) {
-        info.textContent =
-            `Đang hiển thị ${list.length} ảnh của ${uniqMasps.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
-    }
+  if (info) {
+    info.textContent =
+      `Đang hiển thị ${list.length} ảnh của ${uniqMasps.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
+  }
 
-    modal.style.display = 'flex';
+  modal.style.display = 'flex';
+
+  // Gắn sự kiện hover / click để hiển thị popup tồn kho theo size
+  attachStockPopupEvents();
 }
+
 
 
 function closeAnhChuyenPopup() {
