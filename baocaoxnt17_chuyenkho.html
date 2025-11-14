@@ -162,6 +162,53 @@
       flex-direction: column;
     }
 
+    /* Popup tồn kho theo size trong card ảnh */
+.ck-stock-popup {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #d4d4d8;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
+  padding: 6px 8px;
+  font-size: 12px;
+  z-index: 20;
+  max-width: 230px;
+  display: none;               /* mặc định ẩn */
+}
+
+.ck-stock-popup.show {
+  display: block;
+}
+
+.ck-stock-popup table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.ck-stock-popup th,
+.ck-stock-popup td {
+  padding: 2px 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ck-stock-popup th {
+  text-align: left;
+  font-weight: 600;
+  color: #111827;
+}
+
+.ck-stock-popup td.num {
+  text-align: right;
+}
+
+.ck-stock-popup tr.sum-row {
+  font-weight: 600;
+  background: #f3f4ff;
+}
+
+
     .ck-pic {
       background: #f8faff;
       display: flex;
