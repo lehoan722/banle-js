@@ -5,7 +5,7 @@
  *  - Lấy dataset XNT17 từ sessionStorage (key: xnt17_rows / xnt17_filters)
  *  - Nếu không có → đọc query string → gọi RPC baocaoxnt17_paged để tái tạo dataset
  *  - Ghép nhà cung cấp từ dmhanghoa (map masp -> nhacc)
- *  - Tính sell-through, bán/ngày, rank, gợi ý, nhập đầu kỳ (ước tính)
+ *  - Tính sell-through, bán/ngày, rank, gợi ý, nhập đầu kỳ (ước tính) 
  *  - Render bảng
  */
 
@@ -422,7 +422,7 @@ async function main() {
 
     // ĐỌC tham số gợi ý từ form
     const options = {
-        stMin: +$('#inpSellThroughMin').value || 60,
+        stMin: +$('#inpSellThroughMin').value || 40, // ty le ban/ nhap 
         perDayMin: +($('#inpBanNgayMin').value || '0.3'.replace(',', '.')),
         targetDays: +$('#inpTargetDays').value || 14,
         safety: +($('#inpSafetyFactor').value || '1.2'.replace(',', '.')),
