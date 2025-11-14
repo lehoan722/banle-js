@@ -901,6 +901,7 @@ function getTonKhoRowsByMasp(masp) {
 }
 
 // Dựng HTML bảng tồn kho theo size cho MASP
+// Dựng HTML bảng tồn kho theo size cho MASP
 function buildTonKhoTableHtml(masp) {
   const rows = getTonKhoRowsByMasp(masp);
   if (!rows.length) {
@@ -911,10 +912,14 @@ function buildTonKhoTableHtml(masp) {
     `;
   }
 
+  const upperMasp = String(masp || '').toUpperCase();
+
   const body = rows.map(r => {
     const isSum = !!r.__isSum;
-    const sizeLabel = (r.size === 'Tổng')
-      ? 'Tổng'
+
+    // Dòng cuối (Tổng) => hiển thị MÃ SẢN PHẨM để dễ nhận biết
+    const sizeLabel = isSum
+      ? upperMasp
       : displaySizeLabel(r.size); // “size 38” -> “38”
 
     const cs1 = r.cs1 ?? 0;
@@ -946,6 +951,7 @@ function buildTonKhoTableHtml(masp) {
     </div>
   `;
 }
+
 
 // Phát hiện thiết bị cảm ứng (điện thoại/tablet)
 function isTouchDevice() {
