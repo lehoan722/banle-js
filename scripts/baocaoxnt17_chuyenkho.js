@@ -998,6 +998,7 @@ function getTonKhoRowsByMasp(masp) {
 // Dựng HTML bảng tồn kho theo size cho MASP
 // Dựng HTML bảng tồn kho theo size cho MASP
 // Dựng HTML bảng tồn kho theo size cho MASP
+// Dựng HTML bảng tồn kho theo size cho MASP
 function buildTonKhoTableHtml(masp) {
   const rows = getTonKhoRowsByMasp(masp);
   if (!rows.length) {
@@ -1020,16 +1021,16 @@ function buildTonKhoTableHtml(masp) {
 
     const ban1 = r.ban_cs1 ?? r.xuatban_cs1 ?? 0;
     const ban2 = r.ban_cs2 ?? r.xuatban_cs2 ?? 0;
-    const cs1  = r.cs1 ?? 0;
-    const cs2  = r.cs2 ?? 0;
+    const cs1  = r.ton_cs1 ?? r.cs1 ?? 0;
+    const cs2  = r.ton_cs2 ?? r.cs2 ?? 0;
 
     return `
       <tr class="${isSum ? 'sum-row' : ''}">
         <td>${sizeLabel}</td>
-        <td class="num">${ban1 || ''}</td>
-        <td class="num">${ban2 || ''}</td>
         <td class="num">${cs1  || ''}</td>
         <td class="num">${cs2  || ''}</td>
+        <td class="num">${ban1 || ''}</td>
+        <td class="num">${ban2 || ''}</td>
       </tr>
     `;
   }).join('');
@@ -1040,10 +1041,10 @@ function buildTonKhoTableHtml(masp) {
         <thead>
           <tr>
             <th>Size / Mã</th>
-            <th>Bán CS1</th>
-            <th>Bán CS2</th>
             <th>CS1</th>
             <th>CS2</th>
+            <th>Bán CS1</th>
+            <th>Bán CS2</th>
           </tr>
         </thead>
         <tbody>
