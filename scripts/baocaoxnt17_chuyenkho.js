@@ -327,33 +327,69 @@ async function rpcTonSnapshot(masps, denNgay, tonghopSize = false) {
     }));
 }
 
+// Snapshot TỒN + BÁN all-time từ RPC mới xnt17_tonban_snapshot
+async function rpcTonBanSnapshot(masps, denNgay, tonghopSize = false) {
+    if (!Array.isArray(masps) || masps.length === 0) return [];
+
+    const { data, error } = await supabase.rpc('xnt17_tonban_snapshot', {
+        p_masps: masps,
+        p_den_ngay: denNgay,
+        p_tonghop_size: tonghopSize
+    });
+
+    if (error) {
+        console.warn('xnt17_tonban_snapshot error:', error);
+        return [];
+    }
+
+    return (data || []).map(r => ({
+        masp: String(r.masp || '').toUpperCase(),
+        size: normalizeSize(r.size),
+        ton_cs1: Number(r.ton_cs1 || 0),
+        ton_cs2: Number(r.ton_cs2 || 0),
+        ban_cs1: Number(r.ban_cs1 || 0),
+        ban_cs2: Number(r.ban_cs2 || 0)
+    }));
+}
+
+
 // Lấy danh sách masp từ raw, gọi snapshot tồn thật, rồi ghi đè/thêm size còn thiếu
+// Ghi đè tồn thật + bán all-time cho từng mã/size
 async function overlayTonThat(raw, denNgay) {
-    const masps = Array.from(new Set((raw || [])
-        .map(r => String(r.masp || '').toUpperCase())
-        .filter(Boolean)));
+    const masps = Array.from(new Set(
+        (raw || [])
+            .map(r => String(r.masp || '').toUpperCase())
+            .filter(Boolean)
+    ));
     if (!masps.length) return raw;
 
-    const snap = await rpcTonSnapshot(masps, denNgay, false);
+    // Lấy snapshot TỒN + BÁN all-time (bancs1/bancs2) đến denNgay
+    const snap = await rpcTonBanSnapshot(masps, denNgay, false);
 
-    // map raw theo key "MASP|size"
+    // Map raw theo key "MASP|size"
     const byKey = new Map((raw || []).map(r => {
         const masp = String(r.masp || '').toUpperCase();
         const size = normalizeSize(r.size);
         return [masp + '|' + size, { ...r, masp, size }];
     }));
 
-    // merge snapshot: có thì ghi đè ton_cs1/ton_cs2, chưa có thì thêm dòng mới
+    // Ghép snapshot: có thì ghi đè ton_cs1/2 + ban_cs1/2, chưa có thì thêm dòng mới
     for (const s of snap) {
-        const k = s.masp + '|' + normalizeSize(s.size);
-        if (byKey.has(k)) {
-            const it = byKey.get(k);
-            it.ton_cs1 = s.ton_cs1;
-            it.ton_cs2 = s.ton_cs2;
-        } else {
-            byKey.set(k, { masp: s.masp, size: normalizeSize(s.size), ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2 });
-        }
+        const key = s.masp + '|' + s.size;
+        const existing = byKey.get(key) || {
+            masp: s.masp,
+            size: s.size
+        };
+
+        existing.ton_cs1 = s.ton_cs1;
+        existing.ton_cs2 = s.ton_cs2;
+        existing.ban_cs1 = s.ban_cs1;
+        existing.ban_cs2 = s.ban_cs2;
+
+        byKey.set(key, existing);
     }
+
+    // Trả về mảng raw mới đã được “vá” tồn + bán all-time
     return Array.from(byKey.values());
 }
 
