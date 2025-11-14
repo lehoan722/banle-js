@@ -961,6 +961,7 @@ function getTonKhoRowsByMasp(masp) {
 
 // Dựng HTML bảng tồn kho theo size cho MASP
 // Dựng HTML bảng tồn kho theo size cho MASP
+// Dựng HTML bảng tồn kho theo size cho MASP
 function buildTonKhoTableHtml(masp) {
   const rows = getTonKhoRowsByMasp(masp);
   if (!rows.length) {
@@ -976,19 +977,23 @@ function buildTonKhoTableHtml(masp) {
   const body = rows.map(r => {
     const isSum = !!r.__isSum;
 
-    // Dòng cuối (Tổng) => hiển thị MÃ SẢN PHẨM để dễ nhận biết
+    // Dòng cuối: hiển thị MÃ SẢN PHẨM để tránh nhầm mã
     const sizeLabel = isSum
       ? upperMasp
-      : displaySizeLabel(r.size); // “size 38” -> “38”
+      : displaySizeLabel(r.size);   // "size 38" -> "38"
 
-    const cs1 = r.cs1 ?? 0;
-    const cs2 = r.cs2 ?? 0;
+    const ban1 = r.ban_cs1 ?? r.xuatban_cs1 ?? 0;
+    const ban2 = r.ban_cs2 ?? r.xuatban_cs2 ?? 0;
+    const cs1  = r.cs1 ?? 0;
+    const cs2  = r.cs2 ?? 0;
 
     return `
       <tr class="${isSum ? 'sum-row' : ''}">
         <td>${sizeLabel}</td>
-        <td class="num">${cs1 || ''}</td>
-        <td class="num">${cs2 || ''}</td>
+        <td class="num">${ban1 || ''}</td>
+        <td class="num">${ban2 || ''}</td>
+        <td class="num">${cs1  || ''}</td>
+        <td class="num">${cs2  || ''}</td>
       </tr>
     `;
   }).join('');
@@ -998,7 +1003,9 @@ function buildTonKhoTableHtml(masp) {
       <table>
         <thead>
           <tr>
-            <th>Size</th>
+            <th>Size / Mã</th>
+            <th>Bán CS1</th>
+            <th>Bán CS2</th>
             <th>CS1</th>
             <th>CS2</th>
           </tr>
