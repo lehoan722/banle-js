@@ -422,7 +422,7 @@ async function main() {
 
     // ĐỌC tham số gợi ý từ form
     const options = {
-        stMin: +$('#inpSellThroughMin').value || 40, // ty le ban/ nhap 
+        stMin: +$('#inpSellThroughMin').value || 60, // ty le ban/ nhap 
         perDayMin: +($('#inpBanNgayMin').value || '0.3'.replace(',', '.')),
         targetDays: +$('#inpTargetDays').value || 14,
         safety: +($('#inpSafetyFactor').value || '1.2'.replace(',', '.')),
