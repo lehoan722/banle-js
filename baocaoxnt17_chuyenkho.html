@@ -163,6 +163,7 @@
     }
 
     /* Popup tồn kho theo size trong card ảnh */
+/* Popup tồn kho theo size trong card ảnh */
 .ck-stock-popup {
   position: absolute;
   top: 8px;
@@ -171,12 +172,13 @@
   border-radius: 8px;
   border: 1px solid #d4d4d8;
   box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
-  padding: 6px 8px;
-  font-size: 12px;
+  padding: 8px 10px;
+  font-size: 16px;      /* chữ to hơn */
   z-index: 20;
-  max-width: 230px;
-  display: none;               /* mặc định ẩn */
+  max-width: 460px;     /* rộng ~ gấp đôi so với trước (230px) */
+  display: none;        /* mặc định ẩn */
 }
+
 
 .ck-stock-popup.show {
   display: block;
