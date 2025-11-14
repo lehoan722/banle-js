@@ -160,15 +160,17 @@ function buildCountParams(params) {
 
 
 // ===== 3) Gom theo masp → 9 size + 1 dòng “Tổng” =====
+// ===== 3) Gom theo masp → 9 size + 1 dòng “Tổng” =====
 function buildTransferTable(rows) {
     const map = new Map();
+
     for (const r of rows) {
         const masp = String(r.masp || '').toUpperCase();
         if (!masp) continue;
         if (!map.has(masp)) map.set(masp, {});
         const g = map.get(masp);
 
-        const szKey = normalizeSize(r.size);     // ⬅️ dùng chuẩn hoá
+        const szKey = normalizeSize(r.size); // chuẩn hóa size
 
         function getNum(o, keys, def = 0) {
             for (const k of keys) {
@@ -176,47 +178,104 @@ function buildTransferTable(rows) {
             }
             return def;
         }
+
+        // Tồn kho 2 cơ sở
         const cs1 = getNum(r, ['ton_cs1', 'toncs1', 'cs1', 'cs_1']);
         const cs2 = getNum(r, ['ton_cs2', 'toncs2', 'cs2', 'cs_2']);
 
+        // Bán theo 2 cơ sở (từ XNT17 gốc)
+        const ban_cs1 = getNum(r, ['ban_cs1', 'xuatban_cs1']);
+        const ban_cs2 = getNum(r, ['ban_cs2', 'xuatban_cs2']);
 
+        if (!g[szKey]) {
+            g[szKey] = {
+                masp,
+                size: szKey || (r.size || ''),
+                cs1: 0,
+                cs2: 0,
+                ban_cs1: 0,
+                ban_cs2: 0
+            };
+        }
 
-
-        g[szKey] = { masp, size: szKey || (r.size || ''), cs1, cs2 };
+        g[szKey].cs1 += cs1;
+        g[szKey].cs2 += cs2;
+        g[szKey].ban_cs1 += ban_cs1;
+        g[szKey].ban_cs2 += ban_cs2;
     }
 
     const out = [];
+
     for (const [masp, sizes] of map) {
-        let sum1 = 0, sum2 = 0;
+        let sum1 = 0,
+            sum2 = 0,
+            sumBan1 = 0,
+            sumBan2 = 0;
+
+        // 9 size chuẩn
         for (const s of SIZE_ORDER) {
-            const it = sizes[s] || { masp, size: s, cs1: 0, cs2: 0 };
+            const it = sizes[s] || {
+                masp,
+                size: s,
+                cs1: 0,
+                cs2: 0,
+                ban_cs1: 0,
+                ban_cs2: 0
+            };
+
             const goiy = calcGoiy(it.cs1, it.cs2);
             const sl = calcMoveQty(it.cs1, it.cs2, goiy);
-            out.push({
-                masp, size: it.size, cs1: it.cs1, cs2: it.cs2,
-                goiy, sl_chuyen: sl,
-                tong: it.cs1 + it.cs2, vitri_cs1: '', vitri_cs2: '', __isSum: false
-            });
 
-            sum1 += it.cs1; sum2 += it.cs2;
+            sum1 += it.cs1;
+            sum2 += it.cs2;
+            sumBan1 += it.ban_cs1 || 0;
+            sumBan2 += it.ban_cs2 || 0;
+
+            out.push({
+                masp,
+                size: it.size,
+                ban_cs1: it.ban_cs1 || 0,
+                ban_cs2: it.ban_cs2 || 0,
+                cs1: it.cs1,
+                cs2: it.cs2,
+                tong: (it.cs1 || 0) + (it.cs2 || 0),
+                goiy,
+                sl_chuyen: sl,
+                vitri_cs1: '', // patchVitri sẽ điền sau
+                vitri_cs2: '',
+                __isSum: false
+            });
         }
-        // tính tổng SL chuyển của 9 size trong block vừa add
+
+        // Tính tổng SL chuyển của 9 dòng size
         const startIdx = out.length - SIZE_ORDER.length;
         let sumMove = 0;
         for (let i = 0; i < SIZE_ORDER.length; i++) {
             sumMove += Number(out[startIdx + i].sl_chuyen || 0);
         }
 
-        out.push({
-            masp, size: 'Tổng', cs1: sum1, cs2: sum2,
-            goiy: calcGoiy(sum1, sum2),
-            sl_chuyen: sumMove,     // tổng SL chuyển cho mã này
-            tong: sum1 + sum2, vitri_cs1: '', vitri_cs2: '', __isSum: true
-        });
+        const sumGoiy = calcGoiy(sum1, sum2);
 
+        // Dòng “Tổng” (size = 'Tổng', __isSum = true)
+        out.push({
+            masp,
+            size: 'Tổng',
+            ban_cs1: sumBan1,
+            ban_cs2: sumBan2,
+            cs1: sum1,
+            cs2: sum2,
+            tong: sum1 + sum2,
+            goiy: sumGoiy,
+            sl_chuyen: sumMove,
+            vitri_cs1: '',
+            vitri_cs2: '',
+            __isSum: true
+        });
     }
+
     return out;
 }
+
 
 // Quy tắc gợi ý giữ nguyên tinh thần file chuyển kho Google Sheet  :contentReference[oaicite:7]{index=7}
 function calcGoiy(cs1, cs2) {
