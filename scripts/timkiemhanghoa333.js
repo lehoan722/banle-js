@@ -143,14 +143,14 @@ window.addEventListener('DOMContentLoaded', installBranchPicker);
 window.addEventListener('DOMContentLoaded', () => {
     const ip = document.getElementById('maspInput');
     if (ip) {
-        ip.style.fontSize = '14px';
-        ip.style.lineHeight = '1.35';
-        ip.style.height = '36px'; // cho dễ bấm trên mobile
+        ip.style.fontSize = '18px';
+        ip.style.lineHeight = '2.5';
+        ip.style.height = '60px'; // cho dễ bấm trên mobile
     }
 });
 
 
-
+// ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
 // ==== Popup tìm kiếm mã sản phẩm (dùng chung) ====
 // --- Helper: đoán "khung trong" của popup để bắt click ngoài ---
 function _getPopupInner(popupEl) {
@@ -166,9 +166,9 @@ let _popupOutsideHandler = null;
 
 window.openPopupSearch = async function (type) {
 
-    
-  window.currentPopupType = type || 'mahang';
-    
+
+    window.currentPopupType = type || 'mahang';
+
 
     const popup = document.getElementById('popupSearch');
     const input = document.getElementById('popupSearchInput');
@@ -207,7 +207,7 @@ window.openPopupSearch = async function (type) {
     };
     document.addEventListener('keydown', _escHandler, { once: true });
 
-       
+
 
     // Click ra ngoài popup -> đóng (đặt sau khi render)
     _popupOutsideHandler = (e) => {
@@ -223,15 +223,15 @@ window.openPopupSearch = async function (type) {
     };
 
     // Luôn dọn handler cũ trước khi gắn mới (tránh nhân bản)
-if (_popupOutsideHandler) {
-  document.removeEventListener('click', _popupOutsideHandler);
-  _popupOutsideHandler = null;
-}
+    if (_popupOutsideHandler) {
+        document.removeEventListener('click', _popupOutsideHandler);
+        _popupOutsideHandler = null;
+    }
 
-// Đăng ký sau một tick để không “ăn” cú click mở popup
-setTimeout(() => {
-  document.addEventListener('click', _popupOutsideHandler);
-}, 0);
+    // Đăng ký sau một tick để không “ăn” cú click mở popup
+    setTimeout(() => {
+        document.addEventListener('click', _popupOutsideHandler);
+    }, 0);
 
     // Đăng ký sau một tick để tránh bắt sự kiện click mở popup
     setTimeout(() => {
@@ -241,14 +241,14 @@ setTimeout(() => {
 };
 
 window.closePopupSearch = function () {
-  const popup = document.getElementById('popupSearch');
-  if (popup) popup.style.display = 'none';
+    const popup = document.getElementById('popupSearch');
+    if (popup) popup.style.display = 'none';
 
-  // Gỡ đúng listener đã đăng ký
-  if (_popupOutsideHandler) {
-    document.removeEventListener('click', _popupOutsideHandler);
-    _popupOutsideHandler = null;
-  }
+    // Gỡ đúng listener đã đăng ký
+    if (_popupOutsideHandler) {
+        document.removeEventListener('click', _popupOutsideHandler);
+        _popupOutsideHandler = null;
+    }
 };
 
 
@@ -1362,13 +1362,27 @@ function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) 
 }
 
 // Tổng từ các hàng size (index 1..n) vào hàng 0
+// Tổng từ các hàng size (index 1..n) vào hàng 0
+// => Tổng tồn cuối = Tổng mua - Tổng bán
 function recalcXntTotals(rows) {
-    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
+    // chỉ cộng các cột cần thiết
+    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0 };
+
     for (let i = 1; i < rows.length; i++) {
-        for (const k of Object.keys(total)) total[k] += Number(rows[i][k]) || 0;
+        for (const k of Object.keys(total)) {
+            total[k] += Number(rows[i][k]) || 0;
+        }
     }
+
+    // Gán lại cho hàng "Tổng"
     Object.assign(rows[0], total);
+
+    // TÍNH LẠI TỔNG TỒN = TỔNG MUA - TỔNG BÁN
+    rows[0].toncuoi =
+        (Number(rows[0].nhapmua) || 0) -
+        (Number(rows[0].xuatban) || 0);
 }
+
 
 // Tạo data (hàng 0 là Tổng, dưới là các size chuẩn)
 function buildXntRows(rowMap) {
@@ -1394,28 +1408,41 @@ function buildXntRows(rowMap) {
     }];
 
     // HÀNG SIZE: lấy số liệu bằng EU key
+    // HÀNG SIZE: lấy số liệu bằng EU key
     for (const s of SIZE_META) {
         const r = rowMap[s.key] || {};
+        const nhapmua = Number(r.nhapmua) || 0;
+        const xuatban = Number(r.xuatban) || 0;
+
         rows.push({
             size: s.display,                 // hiển thị nhãn mới
             ton_cs1: Number(r.ton_cs1) || 0,
             ton_cs2: Number(r.ton_cs2) || 0,
             ban_cs1: Number(r.ban_cs1) || 0,
             ban_cs2: Number(r.ban_cs2) || 0,
-            nhapmua: Number(r.nhapmua) || 0,
-            xuatban: Number(r.xuatban) || 0,
-            toncuoi: Number(r.toncuoi) || 0,
+            nhapmua,
+            xuatban,
+            // Tồn theo size = Tổng mua - Tổng bán size đó
+            toncuoi: nhapmua - xuatban,
         });
     }
 
     // CỘNG TỔNG (bỏ dòng 0 – 'Tổng')
-    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0, toncuoi: 0 };
+    const total = { ton_cs1: 0, ton_cs2: 0, ban_cs1: 0, ban_cs2: 0, nhapmua: 0, xuatban: 0 };
     for (let i = 1; i < rows.length; i++) {
-        for (const k in total) total[k] += rows[i][k] || 0;
+        for (const k in total) {
+            total[k] += Number(rows[i][k]) || 0;
+        }
     }
     Object.assign(rows[0], total);
 
+    // Tổng tồn cuối = Tổng mua - Tổng bán
+    rows[0].toncuoi =
+        (Number(rows[0].nhapmua) || 0) -
+        (Number(rows[0].xuatban) || 0);
+
     return rows;
+
 }
 
 function initXntHot(containerEl, rowMap, masp) {
