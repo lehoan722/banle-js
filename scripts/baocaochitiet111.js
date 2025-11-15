@@ -5,7 +5,7 @@ let currentFilters = null;
 let totalRows = 0;
 let pageSize = 1000;
 let currentPage = 1;
-let onlyOneProduct = false; // <== thêm biến toàn cục để xác định
+let onlyOneProduct = false; // <== thêm biến toàn cục để xác định 
 let isCompactMode = false;
 
 // ở CUỐI FILE, thêm:
@@ -20,6 +20,8 @@ function getFiltersFromUI() {
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = document.getElementById("khachhangInput").value.trim() || null;
     const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
+
+    const sohd = (document.getElementById("sohdInput")?.value || "").trim() || null; // <== THÊM DÒNG NÀY
 
     const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
     const finalMaspList = masp ? masp.split(/[,\s]+/).map(x => x.trim()).filter(Boolean) : null;
@@ -36,6 +38,7 @@ function getFiltersFromUI() {
         p_diadiem: diadiem,
         p_khachhang: khachhang,
         p_nhanvien: nhanvien,
+        p_sohd: sohd,               // <== THÊM DÒNG NÀY
         p_masp_list: finalMaspList,
         p_tensp: tensp,
         p_size: size,
@@ -43,6 +46,7 @@ function getFiltersFromUI() {
         p_den_gia: denGia
     };
 }
+
 
 function safeDestroyHot() {
     if (!hotInstance) return;
@@ -66,6 +70,7 @@ window.taiBaoCaoChiTiet = async function () {
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
     const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
+     const sohd = (document.getElementById("sohdInput")?.value || "").trim() || null;  // <== THÊM DÒNG NÀY
     const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
     const tensp = (document.getElementById("tenspInput").value || "").trim() || null;
     const size = (document.getElementById("sizeInput").value || "").trim() || null;
@@ -100,6 +105,7 @@ window.taiBaoCaoChiTiet = async function () {
         p_diadiem: diadiem,
         p_khachhang: khachhang,
         p_nhanvien: nhanvien,
+         p_sohd: sohd,                 // <== THÊM DÒNG NÀY
         p_masp_list: finalMaspList,
         p_tensp: tensp,
         p_size: size,
@@ -107,6 +113,8 @@ window.taiBaoCaoChiTiet = async function () {
         p_den_gia: denGia,
         p_tinh_ton: onlyOneProduct   // <== truyền thêm tham số
     };
+
+
     currentFilters = f;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
     currentPage = 1;
