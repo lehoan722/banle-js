@@ -1351,7 +1351,7 @@ const XNT_COLS = [
     { header: 'Bán CS2', key: 'ban_cs2' },
     { header: 'Tổng mua', key: 'nhapmua' },
     { header: 'Tổng bán', key: 'xuatban' },
-    { header: 'Tổng tồn', key: 'toncuoi' },
+    { header: 'Mua-Bán', key: 'toncuoi' },
 ];
 
 // 0 -> hiển thị rỗng (dữ liệu vẫn là số)
