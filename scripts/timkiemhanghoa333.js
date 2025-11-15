@@ -1345,12 +1345,12 @@ const xntHotInstances = {};  // thay vì let xntHot = null
 
 const XNT_COLS = [
     { header: 'Size', key: 'size' },
-    { header: 'Tồn1', key: 'ton_cs1' },
-    { header: 'Tồn2', key: 'ton_cs2' },
-    { header: 'Bán1', key: 'ban_cs1' },
-    { header: 'Bán2', key: 'ban_cs2' },
-    { header: 'mua', key: 'nhapmua' },
-    { header: 'bán', key: 'xuatban' },
+    { header: 'Tồn CS1', key: 'ton_cs1' },
+    { header: 'Tồn CS2', key: 'ton_cs2' },
+    { header: 'Bán CS1', key: 'ban_cs1' },
+    { header: 'Bán CS2', key: 'ban_cs2' },
+    { header: 'Tổng mua', key: 'nhapmua' },
+    { header: 'Tổng bán', key: 'xuatban' },
     { header: 'Mua-Bán', key: 'toncuoi' },
 ];
 
