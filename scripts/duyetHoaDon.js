@@ -20,6 +20,32 @@ function applyLoaihdFilter(query) {
   }
   return query.in('loaihd', allowed);
 }
+
+function applyLoaihdFilter(query) {
+  const allowed = getAllowedLoaihd();
+  if (!allowed || allowed.length === 0) return query;
+
+  if (allowed.length === 1) {
+    return query.eq('loaihd', allowed[0]);
+  }
+  return query.in('loaihd', allowed);
+}
+
+// ====== THÊM MỚI: khóa theo prefix số chứng từ ======
+function getSohdPrefix(sohd) {
+  if (!sohd) return null;
+  const idx = sohd.indexOf('_');
+  if (idx === -1) return null;
+  return sohd.substring(0, idx);
+}
+
+function applySohdPrefixFilter(query, sohd) {
+  const prefix = getSohdPrefix(sohd);
+  if (!prefix) return query;
+  return query.like('sohd', `${prefix}_%`);
+}
+// ====================================================
+
 // ================================================================
 
 export function ganSuKienDuyetHoaDon() {
@@ -50,12 +76,18 @@ async function taiHoaDonTuSo() {
 
 async function taiHoaDonTruoc() {
   const sohd = document.getElementById("sohd").value;
+  if (!sohd) return;
 
   let query = supabase
     .from("hoadon_banle")
     .select("*");
 
-  query = applyLoaihdFilter(query);              // <== LỌC THEO LOẠI
+  // 1) Khóa theo loại hóa đơn (nếu có cấu hình)
+  query = applyLoaihdFilter(query);
+
+  // 2) Khóa thêm theo prefix số chứng từ của trang hiện tại
+  query = applySohdPrefixFilter(query, sohd);
+
   query = query
     .lt("sohd", sohd)
     .order("sohd", { ascending: false })
@@ -63,19 +95,29 @@ async function taiHoaDonTruoc() {
 
   const { data, error } = await query;
 
-  if (!error && data.length) napHoaDonVaoTrang(data[0]);
-  else alert("❌ Không còn hóa đơn trước đó.");
+  if (!error && data && data.length) {
+    napHoaDonVaoTrang(data[0]);
+  } else {
+    alert("❌ Không còn hóa đơn trước đó.");
+  }
 }
+
 
 
 async function taiHoaDonTiep() {
   const sohd = document.getElementById("sohd").value;
+  if (!sohd) return;
 
   let query = supabase
     .from("hoadon_banle")
     .select("*");
 
-  query = applyLoaihdFilter(query);            // <== LỌC THEO LOẠI
+  // 1) Khóa theo loại hóa đơn (nếu trang có cấu hình)
+  query = applyLoaihdFilter(query);
+
+  // 2) Khóa thêm theo prefix số chứng từ hiện tại
+  query = applySohdPrefixFilter(query, sohd);
+
   query = query
     .gt("sohd", sohd)
     .order("sohd", { ascending: true })
@@ -83,9 +125,13 @@ async function taiHoaDonTiep() {
 
   const { data, error } = await query;
 
-  if (!error && data.length) napHoaDonVaoTrang(data[0]);
-  else alert("❌ Không còn hóa đơn tiếp theo.");
+  if (!error && data && data.length) {
+    napHoaDonVaoTrang(data[0]);
+  } else {
+    alert("❌ Không còn hóa đơn tiếp theo.");
+  }
 }
+
 
 
 async function napHoaDonVaoTrang(hoadon) {
