@@ -115,6 +115,7 @@
         Không tìm thấy danh sách mã từ XNT14. Hãy quay lại và bấm “Hiển thị ảnh”.
     </div>
 
+
     <script>
         // Base lưu ảnh (giống file 4cotdathangMT.html)
         const BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/"; // .JPG -> .png nếu lỗi
@@ -160,21 +161,28 @@
                 const cap = document.createElement("div");
                 cap.className = "cap";
                 const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
-                
-                cap.className = "cap";
+
                 cap.innerHTML =
                     `<a class="cap-link" href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" 
-      target="_blank" rel="noopener">
-      ${masp} / ${fmtVND(giale)}
-    </a>`;
-
+               target="_blank" rel="noopener">
+                  ${masp} / ${fmtVND(giale)}
+                </a>`;
 
                 card.appendChild(a);
                 card.appendChild(cap);
                 grid.appendChild(card);
+
+                // 👉 GẮN POPUP BÁN/TỒN cho card này (dùng module mới)
+                if (window.StockQuick) {
+                    window.StockQuick.attach(card, masp);
+                }
             });
+
         }
     </script>
+
+    <script type="module" src="scripts/stockQuickPopup.js"></script>
+
 </body>
 
 
