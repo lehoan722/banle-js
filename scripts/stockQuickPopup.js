@@ -1,134 +1,111 @@
-// StockQuickPopup: popup xem bán/tồn nhanh theo mã + size
-// Dùng chung cho nhiều trang (xem ảnh XNT14, gợi ý nhập bù, v.v.)
-// Yêu cầu: trên trang đã load supabaseClientGlobal.js (tạo biến global `supabase`)
+// stockQuickPopup.js
+// Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xnt17_tonban_snapshot
+// LƯU Ý: supabase được tạo global trong supabaseClient.js
 
 (function () {
-  const STYLE_ID = 'stock-quick-popup-style';
-
-  function injectStyles() {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = `
-    .sq-stock-popup {
-      position: fixed;
-      left: 50%;
-      bottom: 10px;
-      transform: translateX(-50%);
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-      z-index: 99999;
-      padding: 8px 10px 10px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      min-width: 360px;
-      max-width: 420px;
-    }
-    .sq-stock-popup .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #111827;
-    }
-    .sq-stock-popup .header span {
-      margin-right: 16px;
-    }
-    .sq-close-btn {
-      border: none;
-      background: transparent;
-      font-size: 18px;
-      cursor: pointer;
-      line-height: 1;
-      padding: 0 4px;
-      color: #6b7280;
-    }
-    .sq-close-btn:hover {
-      color: #111827;
-    }
-    .sq-stock-popup table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    .sq-stock-popup th,
-    .sq-stock-popup td {
-      border-bottom: 1px solid #e5e7eb;
-      padding: 3px 4px;
-      text-align: right;
-      white-space: nowrap;
-    }
-    .sq-stock-popup th:first-child,
-    .sq-stock-popup td:first-child {
-      text-align: left;
-    }
-    .sq-stock-popup thead th {
-      background: #f3f4f6;
-      font-weight: 600;
-      border-bottom: 1px solid #d1d5db;
-    }
-    .sq-stock-popup tbody tr:last-child td {
-      border-bottom: none;
-    }
-    .sq-stock-popup .sum-row td {
-      font-weight: 600;
-      background: #f9fafb;
-    }
-    .sq-stock-popup tr.vitri-row td {
-      font-weight: 500;
-      font-size: 11px;
-      text-align: left;
-      color: #b91c1c;
-      border-bottom: none;
-    }
-    @media (max-width: 768px) {
-      .sq-stock-popup {
-        left: 8px;
-        right: 8px;
-        transform: none;
-        bottom: 8px;
-        min-width: auto;
-        max-width: none;
-      }
-    }`;
-    document.head.appendChild(style);
+  if (typeof supabase === "undefined") {
+    console.warn("stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClient.js trước.");
   }
 
+  // ===== CSS cho popup trên từng card ảnh =====
+  const css = `
+  .card {
+    position: relative; /* để popup bám theo card */
+  }
+  .sq-stock-popup {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    background: rgba(255,255,255,0.97);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    border: 1px solid #e5e7eb;
+    padding: 6px 8px;
+    font-size: 11px;
+    line-height: 1.3;
+    display: none;
+    max-height: 220px;
+    overflow: auto;
+    z-index: 5;
+  }
+  .sq-stock-popup.show { display: block; }
+  .sq-stock-popup table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .sq-stock-popup th,
+  .sq-stock-popup td {
+    padding: 2px 4px;
+    text-align: center;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .sq-stock-popup th {
+    background: #f3f4f6;
+    font-weight: 600;
+  }
+  .sq-stock-popup td.num { text-align: right; }
+  .sq-stock-popup tr.sum-row td {
+    font-weight: 600;
+    border-top: 1px solid #d1d5db;
+  }
+  .sq-stock-popup-header {
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-align: left;
+  }
+  .sq-close {
+    position:absolute;
+    top:2px;
+    right:4px;
+    font-size:13px;
+    cursor:pointer;
+    opacity:.6;
+  }
+  .sq-close:hover { opacity:1; }
+  `;
+
+  const s = document.createElement('style');
+  s.textContent = css;
+  document.head.appendChild(s);
+
+  // ===== Helpers =====
+  function normalizeSize(v) {
+    const s = String(v ?? '').trim().toLowerCase();
+    if (!s) return '';
+    if (/^\d+$/.test(s)) return 'size ' + s;
+    if (s.startsWith('size ')) return s;
+    return 'size ' + s.replace(/^size\s*/, '').trim();
+  }
+
+  function displaySizeLabel(size) {
+    const s = String(size || '').toLowerCase();
+    const m = s.match(/(\d{1,2})/);
+    return m ? m[1] : size;
+  }
+
+  function isTouchDevice() {
+    return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  }
+
+  // Lấy den_ngay từ filter XNT14 nếu có, không thì dùng hôm nay
   function getDenNgay() {
-    const input = document.getElementById('denNgay');
-    if (!input || !input.value) {
-      return new Date().toISOString().slice(0, 10);
-    }
-    return input.value;
+    try {
+      const raw = sessionStorage.getItem('XNT14_FILTERS');
+      if (raw) {
+        const f = JSON.parse(raw);
+        if (f.den_ngay) return f.den_ngay;
+      }
+    } catch (e) { }
+    return new Date().toISOString().slice(0, 10);
   }
 
-  // chuẩn hóa size từ RPC
-  function normalizeSize(sizeRaw) {
-    if (sizeRaw === null || sizeRaw === undefined || sizeRaw === '') return '';
-    const s = String(sizeRaw).trim();
-    if (/^\d+$/.test(s)) {
-      return 'size ' + s;
-    }
-    if (/^size\s*\d+$/i.test(s)) return s.toLowerCase();
-    return s.toLowerCase();
-  }
-
-  function displaySizeLabel(sizeNorm) {
-    if (!sizeNorm) return '';
-    const m = /(\d+)$/.exec(sizeNorm);
-    return m ? m[1] : sizeNorm;
-  }
-
-  // Lấy snapshot tồn + bán theo 1 mã SP
+  // ===== Gọi RPC xnt17_tonban_snapshot cho 1 mã =====
+  // ===== Gọi RPC xnt17_tonban_snapshot cho 1 mã =====
   async function fetchTonBanByMasp(maspRaw) {
-    const masp = String(maspRaw || '').toUpperCase();
-
-    if (typeof supabase === 'undefined') {
-      console.warn('stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClientGlobal.js trước.');
-      return { masp, rows: [], vitri_cs1: '', vitri_cs2: '' };
-    }
+    // Chuẩn hoá mã sản phẩm giống bên XNT17
+    const masp = String(maspRaw || '').trim().toUpperCase();
+    if (!masp) return [];
 
     const denNgay = getDenNgay();
     console.log('[StockQuickPopup] Gọi xnt17_tonban_snapshot', { masp, denNgay });
@@ -139,12 +116,19 @@
       p_tonghop_size: false
     });
 
+    console.log('[StockQuickPopup] Kết quả RPC', { masp, denNgay, data, error });
+
     if (error) {
       console.warn('xnt17_tonban_snapshot error:', error);
-      return { masp, rows: [], vitri_cs1: '', vitri_cs2: '' };
+      return [];
     }
 
-    const rows = (data || []).map(r => ({
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // map giống bên baocaoxnt17_chuyenkho.js
+    const rows = data.map(r => ({
       masp: String(r.masp || '').toUpperCase(),
       size: normalizeSize(r.size),
       ton_cs1: Number(r.ton_cs1 || 0),
@@ -153,94 +137,55 @@
       ban_cs2: Number(r.ban_cs2 || 0)
     }));
 
-    // Lấy vị trí kho từ dmhanghoa (vitrikho1/vitrikho2)
-    let vitri_cs1 = '';
-    let vitri_cs2 = '';
-    try {
-      const { data: vitriData, error: vitriErr } = await supabase
-        .from('dmhanghoa')
-        .select('vitri_cs1:vitrikho1, vitri_cs2:vitrikho2')
-        .eq('masp', masp);
-
-      if (vitriErr) {
-        console.warn('[StockQuickPopup] Lỗi đọc vị trí kho:', vitriErr);
-      } else if (Array.isArray(vitriData) && vitriData.length > 0) {
-        vitri_cs1 = vitriData[0].vitri_cs1 || '';
-        vitri_cs2 = vitriData[0].vitri_cs2 || '';
-      }
-    } catch (e) {
-      console.warn('[StockQuickPopup] Exception đọc vị trí kho:', e);
-    }
-
-    console.log('[StockQuickPopup] Kết quả RPC', { masp, denNgay, rows, vitri_cs1, vitri_cs2 });
-
-    return { masp, rows, vitri_cs1, vitri_cs2 };
+    // 👉 TRẢ VỀ MẢNG rows THUẦN
+    return rows;
   }
 
-  // Build HTML popup từ dữ liệu snapshot
-  function buildTableHtml(masp, payload) {
-    const rows = (payload && Array.isArray(payload.rows)) ? payload.rows : (Array.isArray(payload) ? payload : []);
-    const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : '';
-    const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : '';
-
-    const SIZE_ORDER = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-
-    // Map size -> record
-    const mapBySize = new Map();
-    if (Array.isArray(rows)) {
-      for (const r of rows) {
-        const lbl = displaySizeLabel(r.size);
-        if (!lbl) continue;
-        mapBySize.set(lbl, r);
-      }
+  function buildTableHtml(masp, rows) {
+    if (!rows.length) {
+      return `
+        <div class="sq-stock-popup">
+          <span class="sq-close">✕</span>
+          <div class="sq-stock-popup-header">Mã: ${masp}</div>
+          <div>Không có dữ liệu tồn kho.</div>
+        </div>`;
     }
 
-    let sumTon1 = 0, sumTon2 = 0, sumBan1 = 0, sumBan2 = 0;
+    const upper = String(masp || '').toUpperCase();
 
-    const bodyRows = SIZE_ORDER.map(lbl => {
-      const r = mapBySize.get(lbl);
-      if (r) {
-        sumTon1 += r.ton_cs1;
-        sumTon2 += r.ton_cs2;
-        sumBan1 += r.ban_cs1;
-        sumBan2 += r.ban_cs2;
-      }
+    // gom thêm dòng Tổng
+    let sum1 = 0, sum2 = 0, sumBan1 = 0, sumBan2 = 0;
+
+    const body = rows.map(r => {
+      const sizeLabel = displaySizeLabel(r.size);
+      sum1 += r.ton_cs1;
+      sum2 += r.ton_cs2;
+      sumBan1 += r.ban_cs1;
+      sumBan2 += r.ban_cs2;
+
       return `
         <tr>
-          <td>${lbl}</td>
-          <td>${r && r.ton_cs1 ? r.ton_cs1 : ''}</td>
-          <td>${r && r.ton_cs2 ? r.ton_cs2 : ''}</td>
-          <td>${r && r.ban_cs1 ? r.ban_cs1 : ''}</td>
-          <td>${r && r.ban_cs2 ? r.ban_cs2 : ''}</td>
+          <td>${sizeLabel}</td>
+          <td class="num">${r.ton_cs1 || ''}</td>
+          <td class="num">${r.ton_cs2 || ''}</td>
+          <td class="num">${r.ban_cs1 || ''}</td>
+          <td class="num">${r.ban_cs2 || ''}</td>
         </tr>`;
     }).join('');
 
-    const sumRowHtml = `
+    const sumRow = `
       <tr class="sum-row">
-        <td>${masp}</td>
-        <td>${sumTon1 || ''}</td>
-        <td>${sumTon2 || ''}</td>
-        <td>${sumBan1 || ''}</td>
-        <td>${sumBan2 || ''}</td>
+        <td>${upper}</td>
+        <td class="num">${sum1 || ''}</td>
+        <td class="num">${sum2 || ''}</td>
+        <td class="num">${sumBan1 || ''}</td>
+        <td class="num">${sumBan2 || ''}</td>
       </tr>`;
-
-    const vitriParts = [];
-    if (vitri_cs1) vitriParts.push('CS1: ' + vitri_cs1);
-    if (vitri_cs2) vitriParts.push('CS2: ' + vitri_cs2);
-    const vitriRowHtml = vitriParts.length
-      ? `<tr class="vitri-row"><td colspan="5">Vị trí: ${vitriParts.join(' , ')}</td></tr>`
-      : '';
-
-    // Nếu hoàn toàn không có dòng nào (không phát sinh), vẫn hiển thị bảng size + dòng vị trí
-    const hasAnyData = rows && rows.length > 0;
-    const titleSuffix = hasAnyData ? 'bán/tồn đến ' + getDenNgay() : 'không có dữ liệu tồn kho';
 
     return `
       <div class="sq-stock-popup">
-        <div class="header">
-          <span>Mã: ${masp} – ${titleSuffix}</span>
-          <button class="sq-close-btn" type="button">×</button>
-        </div>
+        <span class="sq-close">✕</span>
+        <div class="sq-stock-popup-header">Mã: ${upper} – bán/tồn đến ${getDenNgay()}</div>
         <table>
           <thead>
             <tr>
@@ -252,109 +197,68 @@
             </tr>
           </thead>
           <tbody>
-            ${bodyRows}
-            ${hasAnyData ? sumRowHtml : ''}
-            ${vitriRowHtml}
+            ${body}
+            ${sumRow}
           </tbody>
         </table>
       </div>`;
   }
 
-  // Tạo / update popup
-  async function ensurePopup(masp) {
-    injectStyles();
-
-    let card = document.querySelector('.sq-stock-popup');
-    if (card && card.parentNode) {
-      card.parentNode.removeChild(card);
-    }
-
-    card = document.createElement('div');
-    document.body.appendChild(card);
-
-    card.innerHTML = `
-      <div class="sq-stock-popup">
-        <div class="header">
-          <span>Đang tải dữ liệu cho mã: ${masp}...</span>
-          <button class="sq-close-btn" type="button">×</button>
-        </div>
-      </div>`;
-
-    const closeBtn = card.querySelector('.sq-close-btn');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        card.parentNode.removeChild(card);
-      });
-    }
-
-    try {
-      const payload = await fetchTonBanByMasp(masp);
-      card.innerHTML = buildTableHtml(masp, payload);
-      const closeBtn2 = card.querySelector('.sq-close-btn');
-      if (closeBtn2) {
-        closeBtn2.addEventListener('click', () => {
-          card.parentNode.removeChild(card);
-        });
-      }
-    } catch (e) {
-      console.error('ensurePopup error:', e);
-      card.innerHTML = `
-        <div class="sq-stock-popup">
-          <div class="header">
-            <span>Lỗi khi tải dữ liệu tồn kho.</span>
-            <button class="sq-close-btn" type="button">×</button>
-          </div>
-          <div style="font-size:12px;color:#b91c1c;">${e.message || e}</div>
-        </div>`;
-      const closeBtn3 = card.querySelector('.sq-close-btn');
-      if (closeBtn3) {
-        closeBtn3.addEventListener('click', () => {
-          card.parentNode.removeChild(card);
-        });
-      }
-    }
-  }
-
-  // Gắn vào ảnh sản phẩm (class .product-card hoặc div chứa ảnh)
-  function attachEventsForContainer(container) {
-    if (!container) return;
-
-    const selector = '.product-card, .xnt14-card, .anh-san-pham, .card';
-    const cards = container.querySelectorAll(selector);
-
-    cards.forEach(card => {
-      if (card.dataset.sqBound === '1') return;
-      card.dataset.sqBound = '1';
-
-      const masp =
-        card.dataset.masp ||
-        card.getAttribute('data-masp') ||
-        (card.querySelector('[data-masp]') && card.querySelector('[data-masp]').dataset.masp) ||
-        (card.querySelector('.masp') && card.querySelector('.masp').textContent.trim().split(' ')[0]);
-
-      if (!masp) return;
-
-      const handler = (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        ensurePopup(masp);
-      };
-
-      card.addEventListener('click', handler);
-      card.addEventListener('touchend', handler);
+  function hideAllPopups() {
+    document.querySelectorAll('.sq-stock-popup.show').forEach(p => {
+      p.classList.remove('show');
     });
   }
 
-  window.StockQuickPopup = {
-    attachTo(container) {
-      attachEventsForContainer(container || document);
-    },
-    openFor(masp) {
-      ensurePopup(masp);
+  async function ensurePopup(card, masp) {
+    if (!card) return;
+    let popup = card.querySelector('.sq-stock-popup');
+    if (!popup) {
+      // lần đầu: fetch dữ liệu rồi dựng popup
+      const rows = await fetchTonBanByMasp(masp);
+      card.insertAdjacentHTML('beforeend', buildTableHtml(masp, rows));
+      popup = card.querySelector('.sq-stock-popup');
+      const closeBtn = popup.querySelector('.sq-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          popup.classList.remove('show');
+        });
+      }
     }
-  };
+    hideAllPopups();
+    popup.classList.add('show');
+  }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    attachEventsForContainer(document);
-  });
+  function attach(card, masp) {
+    if (!card || !masp) return;
+    const touch = isTouchDevice();
+
+    if (touch) {
+      // Điện thoại / tablet: chạm để mở, chạm lại để đóng
+      card.addEventListener('click', async () => {
+        const popup = card.querySelector('.sq-stock-popup');
+        const isOpen = popup && popup.classList.contains('show');
+        if (isOpen) {
+          popup.classList.remove('show');
+        } else {
+          await ensurePopup(card, masp);
+        }
+      });
+    } else {
+      // PC: hover để xem, rời chuột để ẩn
+      card.addEventListener('mouseenter', () => {
+        ensurePopup(card, masp);
+      });
+      card.addEventListener('mouseleave', () => {
+        const popup = card.querySelector('.sq-stock-popup');
+        if (popup) popup.classList.remove('show');
+      });
+    }
+  }
+
+  // API dùng chung
+  window.StockQuick = {
+    attach
+  };
 })();
