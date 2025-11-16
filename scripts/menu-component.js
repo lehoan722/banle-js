@@ -247,7 +247,7 @@
     // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3] 
     const SIZE_ROWS = [
       ['38', 'S', '46/ 240/ 165'],
-      ['39', 'M', '48,,245,  170'],
+      ['39', 'M', '48/ 245,  170'],
       ['40', 'L', '50/ 250/ 175'],
       ['41', 'XL', '52/ 255/ 180'],
       ['42', '2X', '54/ 260/ 185'],
@@ -562,7 +562,7 @@
             width: '',
             height: '',
             // CHÌA KHÓA: rút ngắn popup còn ~2/3 màn hình + cuộn
-            maxHeight: '80vh',
+            maxHeight: '78vh',
             overflowY: 'auto',
             overflowX: 'hidden',
             display: 'block',
@@ -594,7 +594,7 @@
           const tightenCells = el => {
             el.style.padding = '4px 4px';
             el.style.lineHeight = '1.5';   // siết chiều cao dòng
-            el.style.fontSize = '18px';    // chữ nhỏ lại một chút
+            el.style.fontSize = '22px';    // chữ nhỏ lại một chút
             el.style.minHeight = '0';      // tránh min-height đẩy cao ô
           };
           // áp cho mọi phần tử con trong list (an toàn khi không biết class cụ thể)
