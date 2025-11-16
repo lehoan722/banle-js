@@ -109,17 +109,21 @@
             <small id="count"></small>
         </div>
     </header>
-
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty" style="display:none">
         Không tìm thấy danh sách mã từ XNT14. Hãy quay lại và bấm “Hiển thị ảnh”.
     </div>
 
-    <script type="module" src="scripts/stockQuickPopup.js"></script>
+    <!-- 1. Supabase client (global supabase) -->
+    <script src="scripts/supabaseClient.js"></script>
 
+    <!-- 2. Module popup bán/tồn (dùng supabase global, gắn window.StockQuick) -->
+    <script src="scripts/stockQuickPopup.js"></script>
+
+    <!-- 3. Script tạo grid ảnh -->
     <script>
-        // Base lưu ảnh (giống file 4cotdathangMT.html)
-        const BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/"; // .JPG -> .png nếu lỗi
+        // Base lưu ảnh ...
+        const BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
         function fmtVND(n) {
             if (n == null || isNaN(n)) return "";
@@ -165,24 +169,24 @@
 
                 cap.innerHTML =
                     `<a class="cap-link" href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" 
-               target="_blank" rel="noopener">
-                  ${masp} / ${fmtVND(giale)}
-                </a>`;
+                       target="_blank" rel="noopener">
+                       ${masp} / ${fmtVND(giale)}
+                     </a>`;
 
                 card.appendChild(a);
                 card.appendChild(cap);
                 grid.appendChild(card);
 
-                // 👉 GẮN POPUP BÁN/TỒN cho card này (dùng module mới)
+                // 👉 GẮN POPUP BÁN/TỒN cho card này
                 if (window.StockQuick) {
                     window.StockQuick.attach(card, masp);
                 }
             });
-
         }
     </script>
 
-    
+
+
 
 </body>
 
