@@ -115,7 +115,7 @@
     </div>
 
     <!-- 1. Load supabase dạng module + gắn window.supabase -->
-     
+
     <script src="scripts/supabaseClientGlobal.js"></script>
 
     <!-- 2. Popup bán/tồn (script thường, dùng window.supabase) -->
@@ -143,10 +143,7 @@
                 const card = document.createElement("div");
                 card.className = "card";
 
-                const a = document.createElement("a");
-                a.href = BASE + masp + ".JPG";
-                a.target = "_blank";
-
+                // KHÔNG dùng <a>, chỉ dùng div bọc ảnh
                 const imgwrap = document.createElement("div");
                 imgwrap.className = "imgwrap";
 
@@ -163,7 +160,6 @@
                 };
 
                 imgwrap.appendChild(img);
-                a.appendChild(imgwrap);
 
                 const cap = document.createElement("div");
                 cap.className = "cap";
@@ -171,19 +167,21 @@
 
                 cap.innerHTML =
                     `<a class="cap-link" href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" 
-                       target="_blank" rel="noopener">
-                       ${masp} / ${fmtVND(giale)}
-                     </a>`;
+           target="_blank" rel="noopener">
+           ${masp} / ${fmtVND(giale)}
+         </a>`;
 
-                card.appendChild(a);
+                // gắn vào card
+                card.appendChild(imgwrap);
                 card.appendChild(cap);
                 grid.appendChild(card);
 
-                // 👉 GẮN POPUP BÁN/TỒN cho card này
+                // gắn popup bán/tồn cho card
                 if (window.StockQuick) {
                     window.StockQuick.attach(card, masp);
                 }
             });
+
         }
     </script>
 
