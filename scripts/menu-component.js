@@ -563,7 +563,7 @@
             height: '',
             // CHÌA KHÓA: rút ngắn popup còn ~2/3 màn hình + cuộn
             maxHeight: '75vh',
-            overflowY: 'auto',
+           
             overflowX: 'hidden',
             display: 'block',
             // siết tổng padding khung nếu đang có
