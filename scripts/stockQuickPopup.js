@@ -1,9 +1,12 @@
 // stockQuickPopup.js
 // Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xnt17_tonban_snapshot
-
-import { supabase } from './supabaseClient.js';
+// LƯU Ý: supabase được tạo global trong supabaseClient.js
 
 (function () {
+  if (typeof supabase === "undefined") {
+    console.warn("stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClient.js trước.");
+  }
+
   // ===== CSS cho popup trên từng card ảnh =====
   const css = `
   .card {
@@ -99,6 +102,7 @@ import { supabase } from './supabaseClient.js';
 
   // ===== Gọi RPC xnt17_tonban_snapshot cho 1 mã =====
   async function fetchTonBanByMasp(masp) {
+    if (typeof supabase === "undefined") return [];
     const denNgay = getDenNgay();
     const { data, error } = await supabase.rpc('xnt17_tonban_snapshot', {
       p_masps: [masp],
@@ -123,9 +127,9 @@ import { supabase } from './supabaseClient.js';
     if (!rows.length) {
       return `
         <div class="sq-stock-popup">
+          <span class="sq-close">✕</span>
           <div class="sq-stock-popup-header">Mã: ${masp}</div>
           <div>Không có dữ liệu tồn kho.</div>
-          <span class="sq-close">✕</span>
         </div>`;
     }
 
