@@ -553,22 +553,20 @@
           const pad = 8; // đệm sát mép phải
           const desiredWidth = Math.max(260, r.width);
           const leftPos = Math.max(pad, window.innerWidth - desiredWidth - pad);
-
           Object.assign(this.root.style, {
             top: `${top}px`,
-            left: `${leftPos}px`,
-            minWidth: `${desiredWidth}px`,
+            left: `${Math.min(left, window.innerWidth - Math.max(280, r.width))}px`,
+            minWidth: `${Math.max(260, r.width)}px`,
             maxWidth: 'none',
+            maxHeight: 'none',
             width: '',
             height: '',
-            // CHÌA KHÓA: rút ngắn popup còn ~2/3 màn hình + cuộn
             maxHeight: '75vh',
-           
-            overflowX: 'hidden',
-            display: 'block',
-            // siết tổng padding khung nếu đang có
-            padding: '6px'
+            overflow: 'visible',
+            display: 'block'
           });
+
+          
 
           // Grid 4 cột, gap nhỏ
           this.list.style.display = 'grid';
