@@ -553,20 +553,22 @@
           const pad = 8; // đệm sát mép phải
           const desiredWidth = Math.max(260, r.width);
           const leftPos = Math.max(pad, window.innerWidth - desiredWidth - pad);
+
           Object.assign(this.root.style, {
             top: `${top}px`,
-            left: `${Math.min(left, window.innerWidth - Math.max(280, r.width))}px`,
-            minWidth: `${Math.max(260, r.width)}px`,
+            left: `${leftPos}px`,
+            minWidth: `${desiredWidth}px`,
             maxWidth: 'none',
-            maxHeight: 'none',
             width: '',
             height: '',
-            maxHeight: '75vh',
-            overflow: 'visible',
-            display: 'block'
+            // CHÌA KHÓA: rút ngắn popup còn ~2/3 màn hình + cuộn
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            display: 'block',
+            // siết tổng padding khung nếu đang có
+            padding: '6px'
           });
-
-          
 
           // Grid 4 cột, gap nhỏ
           this.list.style.display = 'grid';
@@ -591,8 +593,8 @@
           // (giảm mạnh để thấy khác biệt rõ rệt; có thể chỉnh 5–6px tùy ý)
           const tightenCells = el => {
             el.style.padding = '4px 4px';
-            el.style.lineHeight = '1.1';   // siết chiều cao dòng
-            el.style.fontSize = '13px';    // chữ nhỏ lại một chút
+            el.style.lineHeight = '1.5';   // siết chiều cao dòng
+            el.style.fontSize = '18px';    // chữ nhỏ lại một chút
             el.style.minHeight = '0';      // tránh min-height đẩy cao ô
           };
           // áp cho mọi phần tử con trong list (an toàn khi không biết class cụ thể)
@@ -601,8 +603,8 @@
           // 3) Nếu có ảnh/QR trong ô → thu nhỏ để khỏi đội chiều cao
           Array.from(this.list.querySelectorAll('img, canvas')).forEach(img => {
             img.style.display = 'block';
-            img.style.width = '18px';
-            img.style.height = '18px';
+            img.style.width = '25px';
+            img.style.height = '25px';
             img.style.margin = '2px auto';
           });
 
