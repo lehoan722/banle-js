@@ -114,11 +114,12 @@
         Không tìm thấy danh sách mã từ XNT14. Hãy quay lại và bấm “Hiển thị ảnh”.
     </div>
 
-    <!-- 1. Supabase client (global supabase) -->
-    <script src="scripts/supabaseClient.js"></script>
+    <!-- 1. Load supabase dạng module + gắn window.supabase -->
+    <script type="module" src="scripts/supabaseClientGlobal.js"></script>
 
-    <!-- 2. Module popup bán/tồn (dùng supabase global, gắn window.StockQuick) -->
+    <!-- 2. Popup bán/tồn (script thường, dùng window.supabase) -->
     <script src="scripts/stockQuickPopup.js"></script>
+
 
     <!-- 3. Script tạo grid ảnh -->
     <script>
