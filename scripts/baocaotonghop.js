@@ -7,7 +7,7 @@ let currentPage = 1;
 let pageSize = 1000;
 let totalRows = 0;
 
-// ===================== AUTH =====================  
+// ===================== AUTH =====================   
 (function injectQuickViewCss() {
     const css = `
     #previewGrid { display:grid; gap:10px; overflow:auto; }
@@ -114,8 +114,22 @@ function getDSMasp() {
 }
 
 
-
 function buildParams(page = 1) {
+    // 1) Lấy danh sách loại chứng từ (tiền tố sohd) giống xemhoadon111
+    let loaiPrefixes = null;
+    const loaiSel = document.getElementById("loaiChungTuXNT17");
+    if (loaiSel) {
+        const arr = Array.from(loaiSel.selectedOptions)
+            .map(o => o.value)
+            .filter(Boolean);
+        if (arr.length) loaiPrefixes = arr;
+    }
+
+    // 2) Lọc theo chuỗi số HĐ (có thể là toàn bộ hoặc 1 phần)
+    const sohdEl = document.getElementById("locSoHDXNT17");
+    const sohdFilter = sohdEl ? sohdEl.value.trim() : "";
+
+    // 3) Các tham số còn lại giữ nguyên
     return {
         tu_ngay: val("tuNgay") || null,
         den_ngay: val("denNgay") || null,
@@ -136,10 +150,17 @@ function buildParams(page = 1) {
         loc_phatsinh_nhap: bool("locPhatSinhNhap"),
         loc_phatsinh_xuat: bool("locPhatSinhXuat"),
         p_tonghop_size: bool("tonghopSizeCheckbox"),
+
+        // 4) Tham số lọc mới
+        p_loai_prefixes: loaiPrefixes,         // mảng tiền tố: ['bancs1','nmcs1',...]
+        p_sohd_filter: sohdFilter || null,     // chuỗi lọc số hóa đơn
+
+        // 5) Phân trang
         p_limit: pageSize,
         p_offset: (page - 1) * pageSize
     };
 }
+
 
 // chỉ giữ đúng tham số mà baocaoxnt16_count cần (KHÔNG có p_limit, p_offset)
 function buildCountParams(params) {
@@ -151,7 +172,9 @@ function buildCountParams(params) {
         p_tu_gia, p_den_gia,
         loc_duong, loc_am, loc_het,
         loc_phatsinh_nhap, loc_phatsinh_xuat,
-        p_tonghop_size
+        p_tonghop_size,
+        p_loai_prefixes,
+        p_sohd_filter
     } = params;
 
     return {
@@ -162,9 +185,12 @@ function buildCountParams(params) {
         p_tu_gia, p_den_gia,
         loc_duong, loc_am, loc_het,
         loc_phatsinh_nhap, loc_phatsinh_xuat,
-        p_tonghop_size
+        p_tonghop_size,
+        p_loai_prefixes,
+        p_sohd_filter
     };
 }
+
 
 
 function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -316,7 +342,7 @@ window.gotoPage = async function () {
 
 // ===================== LOAD DATA =====================
 async function fetchCount(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt17_count", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaotonghop_count", buildCountParams(params));
     if (error) throw error;
     return data;
 }
@@ -324,7 +350,7 @@ async function fetchCount(params) {
 
 
 async function fetchPaged(params) {
-    const fn = "baocaoxnt17_paged";
+    const fn = "baocaotonghop_paged";
     const { data, error } = await supabase.rpc(fn, params);
     if (error) throw error;
     return data || [];
@@ -371,7 +397,7 @@ window.xuatExcelToanBoXNT17 = async function () {
     if (typeof XLSX === "undefined") { alert("Thiếu thư viện XLSX."); return; }
     const psEl = document.getElementById("pageSize");
     const ps = psEl ? Number(psEl.value) || 1000 : 1000;
-    const fn = "baocaoxnt17_paged";
+    const fn = "baocaotonghop_paged";
     const ok = confirm(`Xuất XLSX nhanh (song song 3 luồng, ${ps}/trang). Tiếp tục?`);
     if (!ok) return;
 
@@ -382,7 +408,7 @@ window.xuatExcelToanBoXNT17 = async function () {
             const msg = error?.message || String(error || "");
             // PostgREST 404 / PGRST202: hàm chưa có trong schema cache
             if (msg.includes("PGRST202") || msg.includes("Not Found")) {
-                alert("Không tìm thấy RPC 'baocaoxnt17_paged'. Hãy tạo hàm và cấp quyền EXECUTE.");
+                alert("Không tìm thấy RPC 'baocaotonghop_paged'. Hãy tạo hàm và cấp quyền EXECUTE.");
                 throw error;
             }
             throw error;
@@ -904,7 +930,7 @@ window.moTrangChuyenKho = async () => {
 
     // 3) Đếm + lấy toàn bộ dữ liệu theo size
     const countParams = buildCountParams(p);
-    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt17_count', countParams);
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaotonghop_count', countParams);
     if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
     const total = Number(cntData || 0);
 
@@ -912,7 +938,7 @@ window.moTrangChuyenKho = async () => {
     const all = [];
     for (let offset = 0; offset < total; offset += pageSize) {
         const pageParams = { ...p, p_limit: pageSize, p_offset: offset };
-        const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
+        const { data, error } = await supabase.rpc('baocaotonghop_paged', pageParams);
         if (error) { alert('Lỗi Paged: ' + error.message); return; }
         all.push(...(data || []));
     }
