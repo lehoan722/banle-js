@@ -114,6 +114,15 @@ function normalizeMasp(raw) {
   return String(raw || '').trim().toUpperCase();
 }
 
+// ===== HÀM CẬP NHẬT DÒNG TRẠNG THÁI ẢNH / CẢNH BÁO =====
+function setStatusAnh(text, color) {
+  const el = document.getElementById('statusAnh');
+  if (!el) return;
+  el.textContent = text || '';
+  // màu mặc định = đen đậm
+  el.style.color = color || '#111827';
+}
+
 function extractBaseSize(sizeStr) {
   const m = String(sizeStr || '').match(/(\d{1,2})/);
   return m ? m[1] : null;
@@ -156,7 +165,10 @@ async function loadImagePreview(masp) {
 
   const img = document.getElementById('productImage');
   const ph = document.getElementById('imagePlaceholder');
+
   ph.textContent = 'Đang kiểm tra ảnh...';
+  // thông báo lên dòng trạng thái
+  setStatusAnh('Đang kiểm tra ảnh sản phẩm...', '#2563eb'); // xanh dương
 
   for (const ext of IMAGE_EXTS) {
     const path = `${IMAGE_PATH_PREFIX}${masp}.${ext}`;
@@ -171,13 +183,21 @@ async function loadImagePreview(masp) {
       img.style.display = 'block';
       ph.style.display = 'none';
       currentImageHasPhoto = true;
+
+      // có ảnh → báo "ĐÃ CÓ ẢNH"
+      setStatusAnh('ĐÃ CÓ ẢNH', '#16a34a'); // xanh lá
       return;
     }
   }
 
+  // không tải được ảnh nào
   ph.textContent = 'Chưa tìm thấy ảnh cho mã ' + masp;
   currentImageHasPhoto = false;
+
+  // không có ảnh → báo "CHƯA CÓ ẢNH"
+  setStatusAnh('CHƯA CÓ ẢNH', '#b91c1c'); // đỏ
 }
+
 
 let hiddenFileInput = null;
 
@@ -325,6 +345,7 @@ async function loadMaspSuggest(keyword) {
 // ========== XỬ LÝ MÃ SẢN PHẨM / SIZE ==========
 
 // ====== CHỌN MÃ SẢN PHẨM (có fallback query 1 dòng) ======
+// ===== CHỌN MÃ SẢN PHẨM (có fallback query 1 dòng, chỉ hiển thị trạng thái) =====
 async function onMaspSelected(raw) {
   const masp = normalizeMasp(raw);
   const input = document.getElementById('masp');
@@ -334,18 +355,23 @@ async function onMaspSelected(raw) {
   if (!masp) {
     CURRENT_SP = null;
     resetImagePreview();
+    setStatusAnh('', '#111827');
     return;
   }
 
-  // Đảm bảo đã cố gắng load cache trước
+  // Báo cho người dùng biết đang kiểm tra mã
+  setStatusAnh('Đang kiểm tra mã sản phẩm...', '#2563eb');
+
+  // 1) Đảm bảo đã load cache danh mục
   await ensureCatalogsReady();
 
-  // 1) Thử lấy trong cache sanPhamData
+  // 2) Thử lấy trong cache sanPhamData
   let sp = window.sanPhamData?.[masp];
 
-  // 2) Nếu vẫn không có -> fallback: query trực tiếp 1 dòng từ dmhanghoa
+  // 3) Nếu chưa có → hỏi trực tiếp bảng dmhanghoa 1 dòng
   if (!sp) {
-    console.warn('[bannvcs1nhanh] Không tìm thấy trong sanPhamData, fallback query 1 dòng dmhanghoa cho', masp);
+    console.warn('[bannvcs1nhanh] Không có trong sanPhamData, fallback dmhanghoa cho', masp);
+
     const { data, error } = await supabase
       .from('dmhanghoa')
       .select('*')
@@ -354,26 +380,27 @@ async function onMaspSelected(raw) {
 
     if (!error && data) {
       sp = data;
-      // Lưu ngược vào cache để lần sau dùng lại
+      // Lưu lại vào cache để lần sau khỏi hỏi nữa
       window.sanPhamData = window.sanPhamData || {};
       window.sanPhamData[masp] = sp;
     } else {
-      console.error('Lỗi load 1 dòng dmhanghoa:', error);
+      console.error('Lỗi load 1 dòng dmhanghoa:', error || null);
     }
   }
 
   CURRENT_SP = sp || null;
 
-  // 3) Nếu vẫn không có thì đúng là không tìm được sản phẩm
+  // 4) Nếu thực sự không có trong danh mục → chỉ báo ở dòng trạng thái, không alert
   if (!sp) {
-    alert('Không tìm thấy sản phẩm trong danh mục.');
+    setStatusAnh('Mã sản phẩm không có trong danh mục.', '#b91c1c'); // đỏ
     resetImagePreview();
     return;
   }
 
-  // ===== Đoạn phía dưới giữ nguyên như cũ =====
+  // 5) Có sản phẩm → cập nhật thông tin, trạng thái ảnh sẽ do loadImagePreview xử lý
+  setStatusAnh('Đang kiểm tra ảnh sản phẩm...', '#2563eb');
 
-  // Gía & khuyến mãi
+  // Giá & khuyến mãi
   const giaEl = document.getElementById('gia_sp');
   const kmEl = document.getElementById('khuyen_mai');
   giaEl.value = sp.giale || sp.giaban || 0;
