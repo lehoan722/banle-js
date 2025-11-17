@@ -150,6 +150,13 @@
   </style>
 </head>
 <body>
+
+  <!-- Khung login: authModule.js sẽ vẽ form đăng nhập vào đây -->
+  <div id="login-container"></div>
+
+  <!-- App chính: chỉ hiện sau khi đăng nhập -->
+  <div id="app-container" style="display:none;">
+    
   <div class="sheet-wrapper">
     <!-- Hàng trên: cơ sở / ngày / tên NV -->
     <div class="top-row">
@@ -161,6 +168,8 @@
     <!-- Hàng: trạng thái ảnh + mã SP -->
     <div class="label-small">ĐÃ CÓ ẢNH</div>
     <input id="masp" placeholder="Nhập mã sản phẩm..." />
+    <!-- THÊM popup gợi ý mã sản phẩm ngay bên dưới -->
+      <div id="maspSuggestList" style="display:none;"></div>
 
     <!-- Khu ảnh + click xem tồn kho (StockQuick.attach) -->
     <div id="imageCard" class="card">
