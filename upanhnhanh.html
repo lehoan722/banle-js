@@ -169,7 +169,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-        /* Popup gợi ý mã sản phẩm (giống trang in mã vạch) */
+    /* Popup gợi ý mã sản phẩm (giống trang in mã vạch) */
     #maspSuggestList {
       position: fixed;
       z-index: 9999;
@@ -223,7 +223,6 @@
       padding: 6px 8px;
       border-radius: 8px;
     }
-
   </style>
 </head>
 
@@ -267,7 +266,7 @@
 
     /******** CẤU HÌNH ********/
     const STORAGE_BUCKET = window.STORAGE_BUCKET || 'anhsanpham';
-    const PATH_PREFIX   = window.PATH_PREFIX   || '';
+    const PATH_PREFIX = window.PATH_PREFIX || '';
 
     // Tự mở camera sau khi CHẮC CHẮN chưa có ảnh
     const AUTO_OPEN_CAMERA = true;      // giữ nguyên (tự mở sau khi kiểm tra xong)
@@ -299,7 +298,7 @@
       if (!maspSuggestDiv || !maspInput) return;
       const rect = maspInput.getBoundingClientRect();
       maspSuggestDiv.style.left = (rect.left + window.scrollX) + 'px';
-      maspSuggestDiv.style.top  = (rect.bottom + 4 + window.scrollY) + 'px';
+      maspSuggestDiv.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
       maspSuggestDiv.style.minWidth = rect.width + 'px';
     }
 
@@ -803,10 +802,9 @@
       loginContainerId: 'login-container',
       appContainerId: 'app-container',
       macDinhDiaDiem: 'cs1',
-      emailMacDinh: 'khohangcs1@gmail.com',
       tuDongKhoaCoSo: true,
+      loginApiPath: '/api/login-cs1',
       onLoginSuccess: () => {
-        // Đăng nhập xong mới khởi động app
         initUpAnhNhanh();
       }
     });
