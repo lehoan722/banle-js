@@ -199,7 +199,30 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const form = document.getElementById('form-login-dungchung');
   form.addEventListener('submit', xuLyDangNhap);
 
-  // Tự focus vào ô mã NV
+  // 🔹 Enter ở ô MÃ NV -> nhảy sang ô MẬT KHẨU
+  manvInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (passNVInput) {
+        passNVInput.focus();
+      }
+    }
+  });
+
+  // 🔹 Enter ở ô MẬT KHẨU -> gửi form đăng nhập
+  passNVInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // requestSubmit giúp trigger submit như bấm nút
+      if (form && typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        form.submit(); // fallback cho trình duyệt rất cũ
+      }
+    }
+  });
+
+  // Tự focus vào ô mã NV khi mở form
   manvInput.focus();
 }
 
