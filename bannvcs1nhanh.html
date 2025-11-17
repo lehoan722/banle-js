@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <title>Bán NV nhanh CS1</title>
@@ -12,6 +13,7 @@
       padding: 8px;
       background: #f5f5f5;
     }
+
     .sheet-wrapper {
       max-width: 480px;
       margin: 0 auto;
@@ -20,22 +22,26 @@
       padding: 6px;
       box-sizing: border-box;
     }
+
     .top-row {
       display: grid;
       grid-template-columns: 70px 1fr 1fr;
       gap: 4px;
       margin-bottom: 4px;
     }
+
     .top-row input {
       width: 100%;
       box-sizing: border-box;
       padding: 3px 4px;
     }
+
     .label-small {
       font-size: 11px;
       color: #4b5563;
       margin: 2px 0;
     }
+
     #masp {
       width: 100%;
       box-sizing: border-box;
@@ -55,11 +61,13 @@
       justify-content: center;
       position: relative;
     }
+
     #productImage {
       max-width: 100%;
       max-height: 220px;
       display: block;
     }
+
     #imagePlaceholder {
       padding: 12px;
       color: #6b7280;
@@ -71,17 +79,20 @@
       border-collapse: collapse;
       margin-top: 6px;
     }
+
     table.form-table td {
       border: 1px solid #d1d5db;
       padding: 4px;
       vertical-align: middle;
     }
+
     table.form-table td.label {
       width: 90px;
       background: #f3f4f6;
       font-weight: 600;
       font-size: 12px;
     }
+
     table.form-table input,
     table.form-table select {
       width: 100%;
@@ -91,6 +102,7 @@
       padding: 3px 4px;
       font-size: 13px;
     }
+
     table.form-table input[readonly] {
       background: #f9fafb;
     }
@@ -100,9 +112,11 @@
       align-items: center;
       gap: 4px;
     }
+
     .makh-row input {
       flex: 1 1 auto;
     }
+
     .btn-icon {
       padding: 3px 6px;
       font-size: 12px;
@@ -116,6 +130,7 @@
       gap: 4px;
       justify-content: space-between;
     }
+
     .buttons-row button {
       flex: 1 1 0px;
       padding: 6px 4px;
@@ -124,20 +139,25 @@
       border: none;
       cursor: pointer;
     }
+
     #btnLuu {
       background: #111827;
       color: #fff;
     }
+
     #btnLuu.saving {
       opacity: 0.7;
       cursor: default;
     }
+
     #btnThemMoi {
       background: #e5e7eb;
     }
+
     #btnKiemTraAnh {
       background: #f3f4f6;
     }
+
     #btnChenAnhMoi {
       background: #d1fae5;
     }
@@ -149,6 +169,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <!-- Khung login: authModule.js sẽ vẽ form đăng nhập vào đây -->
@@ -156,99 +177,102 @@
 
   <!-- App chính: chỉ hiện sau khi đăng nhập -->
   <div id="app-container" style="display:none;">
-    
-  <div class="sheet-wrapper">
-    <!-- Hàng trên: cơ sở / ngày / tên NV -->
-    <div class="top-row">
-      <input id="diadiem" readonly />
-      <input id="ngay" />
-      <input id="tennv" readonly />
-    </div>
 
-    <!-- Hàng: trạng thái ảnh + mã SP -->
-    <div class="label-small">ĐÃ CÓ ẢNH</div>
-    <input id="masp" placeholder="Nhập mã sản phẩm..." />
-    <!-- THÊM popup gợi ý mã sản phẩm ngay bên dưới -->
+    <div class="sheet-wrapper">
+      <!-- Hàng trên: cơ sở / ngày / tên NV -->
+      <div class="top-row">
+        <input id="diadiem" readonly />
+        <input id="ngay" />
+        <input id="tennv" readonly />
+      </div>
+
+      <!-- Hàng: trạng thái ảnh + mã SP -->
+      <!-- Hàng: trạng thái ảnh + mã SP -->
+      <div class="label-small" id="statusAnh">ĐÃ CÓ ẢNH</div>
+      <input id="masp" placeholder="Nhập mã sản phẩm..." />
+
+      <!-- THÊM popup gợi ý mã sản phẩm ngay bên dưới -->
       <div id="maspSuggestList" style="display:none;"></div>
 
-    <!-- Khu ảnh + click xem tồn kho (StockQuick.attach) -->
-    <div id="imageCard" class="card">
-      <div id="imagePlaceholder">Chưa có ảnh sản phẩm.</div>
-      <img id="productImage" src="" alt="" style="display:none;" />
+      <!-- Khu ảnh + click xem tồn kho (StockQuick.attach) -->
+      <div id="imageCard" class="card">
+        <div id="imagePlaceholder">Chưa có ảnh sản phẩm.</div>
+        <img id="productImage" src="" alt="" style="display:none;" />
+      </div>
+
+      <!-- Bảng thông tin sản phẩm + khách hàng -->
+      <table class="form-table">
+        <tr>
+          <td class="label">size:</td>
+          <td>
+            <input id="size" list="sizeList" />
+            <datalist id="sizeList">
+              <option value="0"></option>
+              <option value="38"></option>
+              <option value="39"></option>
+              <option value="40"></option>
+              <option value="41"></option>
+              <option value="42"></option>
+              <option value="43"></option>
+              <option value="44"></option>
+              <option value="45"></option>
+            </datalist>
+          </td>
+        </tr>
+        <tr>
+          <td class="label">GIA SP:</td>
+          <td><input id="gia_sp" /></td>
+        </tr>
+        <tr>
+          <td class="label">KHUYEN MAI:</td>
+          <td><input id="khuyen_mai" /></td>
+        </tr>
+        <tr>
+          <td class="label">vi tri kho:</td>
+          <td><input id="vitrikho" readonly /></td>
+        </tr>
+        <tr>
+          <td class="label">mã khách</td>
+          <td>
+            <div class="makh-row">
+              <input id="makh" placeholder="Mã KH" />
+              <button type="button" id="btnTimKH" class="btn-icon">🔍</button>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="label">TEN KHACH</td>
+          <td><input id="tenkh" readonly /></td>
+        </tr>
+      </table>
+
+      <!-- Nút thao tác -->
+      <div class="buttons-row">
+        <button id="btnLuu">LƯU</button>
+        <button id="btnThemMoi">THEM MOI</button>
+      </div>
+      <div class="buttons-row">
+        <button id="btnKiemTraAnh">KIEM TRA ANH</button>
+        <button id="btnChenAnhMoi">CHEN ANH MOI</button>
+      </div>
+
+      <div class="note">
+        • Hình thức thanh toán: <b>NV</b> (cố định).<br />
+        • Bấm vào vùng ảnh để xem nhanh tồn kho / bán theo size.
+      </div>
+
+      <!-- hidden -->
+      <input type="hidden" id="sohd" />
+      <input type="hidden" id="manv" />
+      <input type="hidden" id="gio" />
+      <input type="hidden" id="hinhthuctt" value="NV" />
     </div>
 
-    <!-- Bảng thông tin sản phẩm + khách hàng -->
-    <table class="form-table">
-      <tr>
-        <td class="label">size:</td>
-        <td>
-          <input id="size" list="sizeList" />
-          <datalist id="sizeList">
-            <option value="0"></option>
-            <option value="38"></option>
-            <option value="39"></option>
-            <option value="40"></option>
-            <option value="41"></option>
-            <option value="42"></option>
-            <option value="43"></option>
-            <option value="44"></option>
-            <option value="45"></option>
-          </datalist>
-        </td>
-      </tr>
-      <tr>
-        <td class="label">GIA SP:</td>
-        <td><input id="gia_sp" /></td>
-      </tr>
-      <tr>
-        <td class="label">KHUYEN MAI:</td>
-        <td><input id="khuyen_mai" /></td>
-      </tr>
-      <tr>
-        <td class="label">vi tri kho:</td>
-        <td><input id="vitrikho" readonly /></td>
-      </tr>
-      <tr>
-        <td class="label">mã khách</td>
-        <td>
-          <div class="makh-row">
-            <input id="makh" placeholder="Mã KH" />
-            <button type="button" id="btnTimKH" class="btn-icon">🔍</button>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td class="label">TEN KHACH</td>
-        <td><input id="tenkh" readonly /></td>
-      </tr>
-    </table>
+    <!-- JS: Supabase / stockQuick / trang bán NV nhanh -->
+    <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
-    <!-- Nút thao tác -->
-    <div class="buttons-row">
-      <button id="btnLuu">LƯU</button>
-      <button id="btnThemMoi">THEM MOI</button>
-    </div>
-    <div class="buttons-row">
-      <button id="btnKiemTraAnh">KIEM TRA ANH</button>
-      <button id="btnChenAnhMoi">CHEN ANH MOI</button>
-    </div>
-
-    <div class="note">
-      • Hình thức thanh toán: <b>NV</b> (cố định).<br />
-      • Bấm vào vùng ảnh để xem nhanh tồn kho / bán theo size.
-    </div>
-
-    <!-- hidden -->
-    <input type="hidden" id="sohd" />
-    <input type="hidden" id="manv" />
-    <input type="hidden" id="gio" />
-    <input type="hidden" id="hinhthuctt" value="NV" />
-  </div>
-
-  <!-- JS: Supabase / stockQuick / trang bán NV nhanh -->
-  <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được --> 
-   <script src="scripts/stockQuickPopup.js"></script>
-  
-  <script type="module" src="scripts/bannvcs1nhanh.js"></script>
+    <script type="module" src="scripts/bannvcs1nhanh.js"></script>
 </body>
+
 </html>
