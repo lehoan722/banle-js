@@ -6,10 +6,15 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
-// Chỉ tạo 1 lần trên window
-if (!window.supabase) {
+// Chỉ tạo 1 lần trên window – nhưng phải chắc chắn là CLIENT, không phải chỉ là namespace thư viện
+if (
+  !window.supabase ||                    // chưa có
+  !window.supabase.auth ||               // có nhưng không phải client
+  typeof window.supabase.auth.setSession !== 'function'
+) {
   window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
+
 
 // ==== 2. MODULE ĐĂNG NHẬP DÙNG CHUNG ====
 // options:
@@ -84,10 +89,10 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     </div>
   `;
 
-  const csSelect   = document.getElementById('login-cs');
-  const manvInput  = document.getElementById('login-manv');
-  const passNVInput= document.getElementById('login-password-nv');
-  const errorEl    = document.getElementById('login-error');
+  const csSelect = document.getElementById('login-cs');
+  const manvInput = document.getElementById('login-manv');
+  const passNVInput = document.getElementById('login-password-nv');
+  const errorEl = document.getElementById('login-error');
 
   // Giá trị mặc định cơ sở
   if (macDinhDiaDiem) {
@@ -99,7 +104,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
   async function xuLyDangNhap(e) {
     e.preventDefault();
-    const cs  = csSelect.value;
+    const cs = csSelect.value;
     const manv = (manvInput.value || '').trim().toUpperCase();
     const passwordNV = (passNVInput.value || '').trim();
 
