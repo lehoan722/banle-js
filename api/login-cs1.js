@@ -1,6 +1,6 @@
-// api/login-cs1.js - phiên bản CommonJS cho Vercel
+// api/login-cs1.js - phiên bản ESM cho dự án "type": "module"
 
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_ANON_KEY;
@@ -15,8 +15,8 @@ function createServerSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-module.exports = async (req, res) => {
-  // Chỉ cho POST
+export default async function handler(req, res) {
+  // Chỉ cho phép POST
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
@@ -25,18 +25,18 @@ module.exports = async (req, res) => {
   try {
     const { manv, passwordNV, diadiem } = req.body || {};
 
+    // Tạm thời chỉ bắt buộc có manv, passwordNV để hợp lệ form
     if (!manv || !passwordNV) {
       return res.status(400).json({ ok: false, error: 'Thiếu mã nhân viên hoặc mật khẩu' });
     }
 
     const supabase = createServerSupabase();
-
-    // 1. Kiểm tra nhân viên
     const manvUpper = String(manv).trim().toUpperCase();
 
+    // 1. Kiểm tra nhân viên (chỉ cần tồn tại là cho qua; sau này ta thêm cột mật khẩu riêng)
     const { data: nvArr, error: errNV } = await supabase
       .from('dmnhanvien')
-      .select('manv, tennv, sua_hoadon, matkhau')
+      .select('manv, tennv, sua_hoadon')
       .eq('manv', manvUpper)
       .limit(1);
 
@@ -50,12 +50,7 @@ module.exports = async (req, res) => {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên không tồn tại' });
     }
 
-    //const matkhauDB = nv.matkhau || '';
-    //if (String(matkhauDB) !== String(passwordNV)) {
-    //  return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
-    //}
-
-    // 2. Đăng nhập tài khoản kho CS1 bằng email + password từ ENV
+    // 2. Đăng nhập tài khoản kho CS1 bằng email + password trong ENV
     if (!WAREHOUSE_EMAIL || !WAREHOUSE_PASSWORD) {
       console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD');
       return res.status(500).json({ ok: false, error: 'Chưa cấu hình email/mật khẩu kho CS1 trên server' });
@@ -76,7 +71,7 @@ module.exports = async (req, res) => {
       return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
     }
 
-    // 3. Trả về session + thông tin nhân viên
+    // 3. Trả về session + thông tin nhân viên cho frontend
     return res.status(200).json({
       ok: true,
       diadiem: diadiem || 'cs1',
@@ -96,4 +91,4 @@ module.exports = async (req, res) => {
     console.error('Lỗi general trong login-cs1:', err);
     return res.status(500).json({ ok: false, error: 'Lỗi máy chủ khi đăng nhập CS1' });
   }
-};
+}
