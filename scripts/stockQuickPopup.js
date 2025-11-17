@@ -1,10 +1,13 @@
 // stockQuickPopup.js
-// Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xnt17_tonban_snapshot
-// LƯU Ý: supabase được tạo global trong supabaseClient.js
+// Phiên bản kết hợp:
+// - Giao diện & cách bám card giống popup11 (PC: hover, mobile: click).
+// - Dữ liệu: lấy từ xnt17_tonban_snapshot, hiển thị đủ size 0,38..45.
+// - Thêm dòng "Vị trí: CS1..., CS2..." lấy từ bảng dmhanghoa (vitrikho1, vitrikho2).
+// YÊU CẦU: supabase đã là biến global (từ supabaseClient.js hoặc supabaseClientGlobal.js).
 
 (function () {
   if (typeof supabase === "undefined") {
-    console.warn("stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClient.js trước.");
+    console.warn("stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClient trước.");
   }
 
   // ===== CSS cho popup trên từng card ảnh =====
@@ -21,11 +24,11 @@
     border-radius: 8px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.25);
     border: 1px solid #e5e7eb;
-    padding: 6px 8px;
+    padding: 6px 8px 6px;
     font-size: 11px;
     line-height: 1.3;
     display: none;
-    max-height: 220px;
+    max-height: 230px;
     overflow: auto;
     z-index: 5;
   }
@@ -39,6 +42,7 @@
     padding: 2px 4px;
     text-align: center;
     border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
   }
   .sq-stock-popup th {
     background: #f3f4f6;
@@ -48,6 +52,7 @@
   .sq-stock-popup tr.sum-row td {
     font-weight: 600;
     border-top: 1px solid #d1d5db;
+    background: #f9fafb;
   }
   .sq-stock-popup-header {
     font-weight: 600;
@@ -63,6 +68,13 @@
     opacity:.6;
   }
   .sq-close:hover { opacity:1; }
+  .sq-vitri-row td {
+    font-weight: 500;
+    font-size: 10px;
+    text-align: left;
+    color: #b91c1c;
+    border-bottom: none;
+  }
   `;
 
   const s = document.createElement('style');
@@ -100,92 +112,137 @@
     return new Date().toISOString().slice(0, 10);
   }
 
-  // ===== Gọi RPC xnt17_tonban_snapshot cho 1 mã =====
-  // ===== Gọi RPC xnt17_tonban_snapshot cho 1 mã =====
+  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho cho 1 mã =====
   async function fetchTonBanByMasp(maspRaw) {
-    // Chuẩn hoá mã sản phẩm giống bên XNT17
     const masp = String(maspRaw || '').trim().toUpperCase();
-    if (!masp) return [];
+    if (!masp) {
+      return { masp: '', rows: [], vitri_cs1: '', vitri_cs2: '' };
+    }
 
     const denNgay = getDenNgay();
     console.log('[StockQuickPopup] Gọi xnt17_tonban_snapshot', { masp, denNgay });
 
-    const { data, error } = await supabase.rpc('xnt17_tonban_snapshot', {
-      p_masps: [masp],
-      p_den_ngay: denNgay,
-      p_tonghop_size: false
-    });
+    let rows = [];
+    let vitri_cs1 = '';
+    let vitri_cs2 = '';
 
-    console.log('[StockQuickPopup] Kết quả RPC', { masp, denNgay, data, error });
+    // 1) Snapshot bán/tồn
+    if (typeof supabase !== 'undefined') {
+      const { data, error } = await supabase.rpc('xnt17_tonban_snapshot', {
+        p_masps: [masp],
+        p_den_ngay: denNgay,
+        p_tonghop_size: false
+      });
 
-    if (error) {
-      console.warn('xnt17_tonban_snapshot error:', error);
-      return [];
+      if (error) {
+        console.warn('xnt17_tonban_snapshot error:', error);
+      } else if (data && data.length) {
+        rows = data.map(r => ({
+          masp: String(r.masp || '').toUpperCase(),
+          size: normalizeSize(r.size),
+          ton_cs1: Number(r.ton_cs1 || 0),
+          ton_cs2: Number(r.ton_cs2 || 0),
+          ban_cs1: Number(r.ban_cs1 || 0),
+          ban_cs2: Number(r.ban_cs2 || 0)
+        }));
+      }
     }
 
-    if (!data || data.length === 0) {
-      return [];
+    // 2) Vị trí kho từ dmhanghoa (vitrikho1/vitrikho2)
+    try {
+      if (typeof supabase !== 'undefined') {
+        const { data: vitriData, error: vitriErr } = await supabase
+          .from('dmhanghoa')
+          .select('vitrikho1, vitrikho2')
+          .eq('masp', masp);
+
+        if (vitriErr) {
+          console.warn('[StockQuickPopup] Lỗi đọc vị trí kho:', vitriErr);
+        } else if (Array.isArray(vitriData) && vitriData.length > 0) {
+          vitri_cs1 = vitriData[0].vitrikho1 || '';
+          vitri_cs2 = vitriData[0].vitrikho2 || '';
+        }
+      }
+    } catch (e) {
+      console.warn('[StockQuickPopup] Exception đọc vị trí kho:', e);
     }
 
-    // map giống bên baocaoxnt17_chuyenkho.js
-    const rows = data.map(r => ({
-      masp: String(r.masp || '').toUpperCase(),
-      size: normalizeSize(r.size),
-      ton_cs1: Number(r.ton_cs1 || 0),
-      ton_cs2: Number(r.ton_cs2 || 0),
-      ban_cs1: Number(r.ban_cs1 || 0),
-      ban_cs2: Number(r.ban_cs2 || 0)
-    }));
-
-    // 👉 TRẢ VỀ MẢNG rows THUẦN
-    return rows;
+    console.log('[StockQuickPopup] Kết quả RPC', { masp, denNgay, rows, vitri_cs1, vitri_cs2 });
+    return { masp, rows, vitri_cs1, vitri_cs2 };
   }
 
-  function buildTableHtml(masp, rows) {
-    if (!rows.length) {
-      return `
-        <div class="sq-stock-popup">
-          <span class="sq-close">✕</span>
-          <div class="sq-stock-popup-header">Mã: ${masp}</div>
-          <div>Không có dữ liệu tồn kho.</div>
-        </div>`;
-    }
-
+  // ===== Build HTML popup: full size 0,38..45 + dòng vị trí =====
+  function buildTableHtml(masp, payload) {
     const upper = String(masp || '').toUpperCase();
+    const rows = (payload && Array.isArray(payload.rows)) ? payload.rows : [];
+    const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : '';
+    const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : '';
 
-    // gom thêm dòng Tổng
+    const SIZE_ORDER = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+
+    // Map sizeLabel -> record
+    const mapBySize = new Map();
+    rows.forEach(r => {
+      const lbl = displaySizeLabel(r.size);
+      if (!lbl) return;
+      mapBySize.set(lbl, r);
+    });
+
     let sum1 = 0, sum2 = 0, sumBan1 = 0, sumBan2 = 0;
 
-    const body = rows.map(r => {
-      const sizeLabel = displaySizeLabel(r.size);
-      sum1 += r.ton_cs1;
-      sum2 += r.ton_cs2;
-      sumBan1 += r.ban_cs1;
-      sumBan2 += r.ban_cs2;
-
+    const body = SIZE_ORDER.map(lbl => {
+      const r = mapBySize.get(lbl);
+      if (r) {
+        sum1 += r.ton_cs1;
+        sum2 += r.ton_cs2;
+        sumBan1 += r.ban_cs1;
+        sumBan2 += r.ban_cs2;
+      }
       return `
         <tr>
-          <td>${sizeLabel}</td>
-          <td class="num">${r.ton_cs1 || ''}</td>
-          <td class="num">${r.ton_cs2 || ''}</td>
-          <td class="num">${r.ban_cs1 || ''}</td>
-          <td class="num">${r.ban_cs2 || ''}</td>
+          <td>${lbl}</td>
+          <td class="num">${r && r.ton_cs1 ? r.ton_cs1 : ''}</td>
+          <td class="num">${r && r.ton_cs2 ? r.ton_cs2 : ''}</td>
+          <td class="num">${r && r.ban_cs1 ? r.ban_cs1 : ''}</td>
+          <td class="num">${r && r.ban_cs2 ? r.ban_cs2 : ''}</td>
         </tr>`;
     }).join('');
 
-    const sumRow = `
+    const hasAnyData = rows && rows.length > 0;
+
+    const sumRow = hasAnyData ? `
       <tr class="sum-row">
         <td>${upper}</td>
         <td class="num">${sum1 || ''}</td>
         <td class="num">${sum2 || ''}</td>
         <td class="num">${sumBan1 || ''}</td>
         <td class="num">${sumBan2 || ''}</td>
-      </tr>`;
+      </tr>` : '';
+
+    const vitriParts = [];
+    if (vitri_cs1) vitriParts.push('CS1: ' + vitri_cs1);
+    if (vitri_cs2) vitriParts.push('CS2: ' + vitri_cs2);
+    const vitriRow = vitriParts.length ? `
+      <tr class="sq-vitri-row">
+        <td colspan="5">Vị trí: ${vitriParts.join(' , ')}</td>
+      </tr>` : '';
+
+    if (!hasAnyData && !vitriParts.length) {
+      // Trường hợp hoàn toàn không có dữ liệu
+      return `
+        <div class="sq-stock-popup">
+          <span class="sq-close">✕</span>
+          <div class="sq-stock-popup-header">Mã: ${upper}</div>
+          <div>Không có dữ liệu tồn kho.</div>
+        </div>`;
+    }
 
     return `
       <div class="sq-stock-popup">
         <span class="sq-close">✕</span>
-        <div class="sq-stock-popup-header">Mã: ${upper} – bán/tồn đến ${getDenNgay()}</div>
+        <div class="sq-stock-popup-header">
+          Mã: ${upper} – ${hasAnyData ? 'bán/tồn đến ' + getDenNgay() : 'không có dữ liệu tồn kho'}
+        </div>
         <table>
           <thead>
             <tr>
@@ -199,6 +256,7 @@
           <tbody>
             ${body}
             ${sumRow}
+            ${vitriRow}
           </tbody>
         </table>
       </div>`;
@@ -214,9 +272,8 @@
     if (!card) return;
     let popup = card.querySelector('.sq-stock-popup');
     if (!popup) {
-      // lần đầu: fetch dữ liệu rồi dựng popup
-      const rows = await fetchTonBanByMasp(masp);
-      card.insertAdjacentHTML('beforeend', buildTableHtml(masp, rows));
+      const payload = await fetchTonBanByMasp(masp);
+      card.insertAdjacentHTML('beforeend', buildTableHtml(masp, payload));
       popup = card.querySelector('.sq-stock-popup');
       const closeBtn = popup.querySelector('.sq-close');
       if (closeBtn) {
@@ -236,7 +293,9 @@
 
     if (touch) {
       // Điện thoại / tablet: chạm để mở, chạm lại để đóng
-      card.addEventListener('click', async () => {
+      card.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const popup = card.querySelector('.sq-stock-popup');
         const isOpen = popup && popup.classList.contains('show');
         if (isOpen) {
@@ -257,7 +316,7 @@
     }
   }
 
-  // API dùng chung
+  // API dùng chung – giữ đúng tên như popup11
   window.StockQuick = {
     attach
   };
