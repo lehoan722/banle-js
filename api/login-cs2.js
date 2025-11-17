@@ -5,8 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_ANON_KEY;
 
-const WAREHOUSE_EMAIL    = process.env.WAREHOUSE_cs2_EMAIL;
-const WAREHOUSE_PASSWORD = process.env.WAREHOUSE_cs2_PASSWORD;
+// ✅ DÙNG ĐÚNG TÊN ENV ĐÃ TẠO TRÊN VERCEL
+const WAREHOUSE_EMAIL    = process.env.WAREHOUSE_CS2_EMAIL;
+const WAREHOUSE_PASSWORD = process.env.WAREHOUSE_CS2_PASSWORD;
 
 function createServerSupabase() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -16,7 +17,6 @@ function createServerSupabase() {
 }
 
 export default async function handler(req, res) {
-  // Chỉ cho phép POST
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     const supabase = createServerSupabase();
     const manvUpper = String(manv).trim().toUpperCase();
 
-    // 1. Lấy thông tin nhân viên + mật khẩu từ bảng dmnhanvien
+    // 1. Lấy NV + mật khẩu
     const { data: nvArr, error: errNV } = await supabase
       .from('dmnhanvien')
       .select('manv, tennv, sua_hoadon, matkhau')
@@ -49,18 +49,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên không tồn tại' });
     }
 
-    // 1b. So sánh mật khẩu nhân viên
-    const matkhauDB = (nv.matkhau ?? '').toString().trim();
+    // 1b. So sánh mật khẩu NV
+    const matkhauDB   = (nv.matkhau ?? '').toString().trim();
     const matkhauNhap = passwordNV.toString().trim();
 
     if (!matkhauDB || matkhauDB !== matkhauNhap) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
     }
 
-    // 2. Đăng nhập tài khoản kho cs2 bằng email + password từ ENV
+    // 2. Đăng nhập tài khoản kho CS2
     if (!WAREHOUSE_EMAIL || !WAREHOUSE_PASSWORD) {
-      console.error('Thiếu WAREHOUSE_cs2_EMAIL hoặc WAREHOUSE_cs2_PASSWORD');
-      return res.status(500).json({ ok: false, error: 'Chưa cấu hình email/mật khẩu kho cs2 trên server' });
+      console.error('Thiếu WAREHOUSE_CS2_EMAIL hoặc WAREHOUSE_CS2_PASSWORD');
+      return res.status(500).json({ ok: false, error: 'Chưa cấu hình email/mật khẩu kho CS2 trên server' });
     }
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -69,8 +69,8 @@ export default async function handler(req, res) {
     });
 
     if (authError) {
-      console.error('Đăng nhập tài khoản kho cs2 thất bại:', authError);
-      return res.status(500).json({ ok: false, error: 'Không đăng nhập được tài khoản kho cs2' });
+      console.error('Đăng nhập tài khoản kho CS2 thất bại:', authError);
+      return res.status(500).json({ ok: false, error: 'Không đăng nhập được tài khoản kho CS2' });
     }
 
     const session = authData?.session;
@@ -79,22 +79,19 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
     }
 
-    // 3. Trả về session + thông tin nhân viên cho frontend
+    // 3. Trả kết quả cho frontend
     return res.status(200).json({
       ok: true,
-      session: {
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      },
       nhanvien: {
         manv: nv.manv,
         tennv: nv.tennv,
         sua_hoadon: nv.sua_hoadon
       },
-      diadiem: diadiem || 'cs2'
+      session
     });
+
   } catch (err) {
-    console.error('Lỗi không xác định trong login-cs2:', err);
-    return res.status(500).json({ ok: false, error: 'Lỗi server trong login-cs2' });
+    console.error('Lỗi không xác định ở login-cs2:', err);
+    return res.status(500).json({ ok: false, error: 'Lỗi server không xác định' });
   }
 }
