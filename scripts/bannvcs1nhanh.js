@@ -10,7 +10,7 @@ import './stockQuickPopup.js'; // :contentReference[oaicite:7]{index=7}
 // ===== CẤU HÌNH ẢNH – chỉnh cho đúng với dự án của bạn =====
 const IMAGE_BUCKET = 'anhhanghoa'; // TODO: đổi thành bucket thật
 const IMAGE_PATH_PREFIX = '';       // ví dụ 'sanpham/' nếu có thư mục con
-const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
+const IMAGE_EXTS = ['JPG', 'jpg', 'png', 'webp'];
 
 // ===== BIẾN TOÀN CỤC =====
 let CURRENT_MASP = '';
