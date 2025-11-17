@@ -324,6 +324,7 @@ async function loadMaspSuggest(keyword) {
 
 // ========== XỬ LÝ MÃ SẢN PHẨM / SIZE ==========
 
+// ====== CHỌN MÃ SẢN PHẨM (có fallback query 1 dòng) ======
 async function onMaspSelected(raw) {
   const masp = normalizeMasp(raw);
   const input = document.getElementById('masp');
@@ -336,15 +337,41 @@ async function onMaspSelected(raw) {
     return;
   }
 
+  // Đảm bảo đã cố gắng load cache trước
   await ensureCatalogsReady();
-  const sp = window.sanPhamData?.[masp]; 
+
+  // 1) Thử lấy trong cache sanPhamData
+  let sp = window.sanPhamData?.[masp];
+
+  // 2) Nếu vẫn không có -> fallback: query trực tiếp 1 dòng từ dmhanghoa
+  if (!sp) {
+    console.warn('[bannvcs1nhanh] Không tìm thấy trong sanPhamData, fallback query 1 dòng dmhanghoa cho', masp);
+    const { data, error } = await supabase
+      .from('dmhanghoa')
+      .select('*')
+      .eq('masp', masp)
+      .maybeSingle();
+
+    if (!error && data) {
+      sp = data;
+      // Lưu ngược vào cache để lần sau dùng lại
+      window.sanPhamData = window.sanPhamData || {};
+      window.sanPhamData[masp] = sp;
+    } else {
+      console.error('Lỗi load 1 dòng dmhanghoa:', error);
+    }
+  }
+
   CURRENT_SP = sp || null;
 
+  // 3) Nếu vẫn không có thì đúng là không tìm được sản phẩm
   if (!sp) {
     alert('Không tìm thấy sản phẩm trong danh mục.');
     resetImagePreview();
     return;
   }
+
+  // ===== Đoạn phía dưới giữ nguyên như cũ =====
 
   // Gía & khuyến mãi
   const giaEl = document.getElementById('gia_sp');
@@ -376,6 +403,7 @@ async function onMaspSelected(raw) {
   await loadImagePreview(masp);
   attachStockPopupForCurrentMasp(masp);
 }
+
 
 function attachStockPopupForCurrentMasp(masp) {
   const card = document.getElementById('imageCard');
