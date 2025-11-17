@@ -1,4 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+// api/login-cs1.js - phiên bản CommonJS cho Vercel
+
+const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_ANON_KEY;
@@ -13,7 +15,8 @@ function createServerSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // Chỉ cho POST
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
@@ -27,6 +30,8 @@ export default async function handler(req, res) {
     }
 
     const supabase = createServerSupabase();
+
+    // 1. Kiểm tra nhân viên
     const manvUpper = String(manv).trim().toUpperCase();
 
     const { data: nvArr, error: errNV } = await supabase
@@ -45,10 +50,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên không tồn tại' });
     }
 
-    if (String(nv.matkhau || '') !== String(passwordNV)) {
+    const matkhauDB = nv.matkhau || '';
+    if (String(matkhauDB) !== String(passwordNV)) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
     }
 
+    // 2. Đăng nhập tài khoản kho CS1 bằng email + password từ ENV
     if (!WAREHOUSE_EMAIL || !WAREHOUSE_PASSWORD) {
       console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD');
       return res.status(500).json({ ok: false, error: 'Chưa cấu hình email/mật khẩu kho CS1 trên server' });
@@ -69,6 +76,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
     }
 
+    // 3. Trả về session + thông tin nhân viên
     return res.status(200).json({
       ok: true,
       diadiem: diadiem || 'cs1',
@@ -88,4 +96,4 @@ export default async function handler(req, res) {
     console.error('Lỗi general trong login-cs1:', err);
     return res.status(500).json({ ok: false, error: 'Lỗi máy chủ khi đăng nhập CS1' });
   }
-}
+};
