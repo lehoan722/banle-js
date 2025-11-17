@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -657,34 +657,33 @@
             tuDongKhoaCoSo: true,
             loginApiPath: "/api/login-cs1", // API backend mới
 
-            onLoginSuccess: ({ nhanvien, diadiem, session }) => {
-                // 1. Lưu thông tin vào localStorage giống logic cũ
-                localStorage.setItem("diadiem", diadiem);
-                localStorage.setItem("supabase_access_token", session.access_token);
-                localStorage.setItem("manv", nhanvien.manv);
-                localStorage.setItem("tennv", nhanvien.tennv);
-                localStorage.setItem("quyen_sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+            // nhanvien = tham số 1, context = tham số 2
+            onLoginSuccess: (nhanvien, { diadiem, session }) => {
+                // 🔹 authModule.js đã tự lưu localStorage + setSession rồi,
+                // ở đây ta chỉ cần cập nhật UI + biến toàn cục nếu cần thêm.
 
-                // 2. Cho các script khác trên trang dùng
+                // Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
 
-                // Hiển thị tên nhân viên trên giao diện nếu có ô
+                // Hiển thị tên nhân viên trên giao diện
                 const tennvEl = document.getElementById("tennv");
                 if (tennvEl) {
-                    tennvEl.value = nhanvien.tennv;
+                    tennvEl.value = nhanvien.tennv || "";
                 }
 
-                // Ẩn form login, hiện app (authModule đã làm, nhưng bạn có thể bổ sung nếu cần)
+                // Hiện app nếu cần (thực ra authModule cũng đã bật sẵn)
                 const app = document.getElementById("app-container");
                 if (app) app.style.display = "";
 
-                // Nếu sau này bạn có hàm khởi tạo sau đăng nhập:
+                // Nếu sau này có hàm khởi tạo sau đăng nhập
                 if (typeof window.afterLoginInit === "function") {
                     window.afterLoginInit();
                 }
             }
         });
+
+
     </script>
 
 
