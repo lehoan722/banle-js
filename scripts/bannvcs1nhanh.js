@@ -2,6 +2,8 @@
 import { supabase } from './supabaseClient.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { showPopupTimKH } from './popupKhachhang.js'; // popup chọn khách :contentReference[oaicite:6]{index=6}
+import { khoiTaoDangNhapDungChung } from './authModule.js';
+
 // StockQuickPopup chỉ xuất ra window.StockQuick qua side-effect
 import './stockQuickPopup.js'; // :contentReference[oaicite:7]{index=7}
 
@@ -15,6 +17,10 @@ let CURRENT_MASP = '';
 let CURRENT_SP = null;
 let currentImageHasPhoto = false;
 let IS_SAVING = false;
+// Biến dùng cho popup gợi ý mã SP
+let maspInputEl = null;
+let maspSuggestDiv = null;
+
 
 // ========== HÀM LOAD DANH MỤC + QUẢN LÝ SIZE (copy từ luuhoadon.js, rút gọn) ==========
 
@@ -242,6 +248,79 @@ async function initPage() {
   // Phát sinh trước 1 số hóa đơn – để chắc chắn struct hoạt động
   await capNhatSoHoaDonTuDong();
 }
+
+// ========== GỢI Ý MÃ SẢN PHẨM (dmhanghoa) ==========
+
+function positionMaspSuggestList() {
+  if (!maspSuggestDiv || !maspInputEl) return;
+  const rect = maspInputEl.getBoundingClientRect();
+  maspSuggestDiv.style.left = (rect.left + window.scrollX) + 'px';
+  maspSuggestDiv.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
+  maspSuggestDiv.style.minWidth = rect.width + 'px';
+}
+
+function hideMaspSuggest() {
+  if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+}
+
+async function loadMaspSuggest(keyword) {
+  if (!maspSuggestDiv || !maspInputEl) return;
+
+  const q = (keyword || '').trim();
+  if (!q) {
+    hideMaspSuggest();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('dmhanghoa')
+    .select('masp, tensp')
+    .or(`masp.ilike.%${q}%,tensp.ilike.%${q}%`)
+    .order('masp')
+    .limit(100);
+
+  if (error) {
+    console.warn('Lỗi load gợi ý mã SP:', error);
+    hideMaspSuggest();
+    return;
+  }
+
+  if (!data || !data.length) {
+    hideMaspSuggest();
+    return;
+  }
+
+  let html = '<table style="border-collapse:collapse;width:100%;font-size:13px;"><tbody>';
+  for (const row of data) {
+    const masp = String(row.masp || '').toUpperCase();
+    const tensp = row.tensp || '';
+    html += `
+      <tr data-masp="${masp}" data-tensp="${tensp.replace(/"/g, '&quot;')}"
+          style="cursor:pointer;">
+        <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;font-weight:600;width:110px;white-space:nowrap;">
+          ${masp}
+        </td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;color:#4b5563;">
+          ${tensp}
+        </td>
+      </tr>`;
+  }
+  html += '</tbody></table>';
+
+  maspSuggestDiv.innerHTML = html;
+  positionMaspSuggestList();
+  maspSuggestDiv.style.display = 'block';
+
+  maspSuggestDiv.querySelectorAll('tr').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const masp = tr.dataset.masp || '';
+      maspInputEl.value = masp;
+      hideMaspSuggest();
+      onMaspSelected(masp); // chọn xong → load thông tin SP
+    });
+  });
+}
+
 
 // ========== XỬ LÝ MÃ SẢN PHẨM / SIZE ==========
 
@@ -490,6 +569,28 @@ async function resetFormBanNhanh() {
 
 function bindEvents() {
   const maspEl = document.getElementById('masp');
+  maspInputEl = maspEl;
+  maspSuggestDiv = document.getElementById('maspSuggestList');
+
+  // Gợi ý mã SP khi gõ
+  maspEl.addEventListener('input', () => {
+    const v = maspEl.value || '';
+    if (!v.trim()) {
+      hideMaspSuggest();
+      return;
+    }
+    loadMaspSuggest(v).catch(() => {});
+  });
+
+  window.addEventListener('resize', positionMaspSuggestList);
+
+  document.addEventListener('click', (ev) => {
+    if (!maspSuggestDiv || maspSuggestDiv.style.display === 'none') return;
+    if (ev.target === maspEl || maspSuggestDiv.contains(ev.target)) return;
+    hideMaspSuggest();
+  });
+
+  // Phần cũ: Enter / change → chọn mã SP
   maspEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -555,9 +656,21 @@ function bindEvents() {
 
 // ========== KHỞI ĐỘNG ==========
 
+// ========== KHỞI ĐỘNG VỚI ĐĂNG NHẬP ==========
+
 document.addEventListener('DOMContentLoaded', () => {
-  initPage().catch(err => {
-    console.error(err);
-    alert('Lỗi khởi tạo trang bán NV nhanh.');
+  khoiTaoDangNhapDungChung({
+    loginContainerId: 'login-container',
+    appContainerId: 'app-container',
+    macDinhDiaDiem: 'cs1',
+    tuDongKhoaCoSo: true,
+    loginApiPath: '/api/login-cs1',
+    onLoginSuccess: () => {
+      // authModule sẽ lưu manv, tennv, diadiem vào localStorage
+      initPage().catch(err => {
+        console.error(err);
+        alert('Lỗi khởi tạo trang bán NV nhanh.');
+      });
+    }
   });
 });
