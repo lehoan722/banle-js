@@ -25,7 +25,6 @@ export default async function handler(req, res) {
   try {
     const { manv, passwordNV, diadiem } = req.body || {};
 
-    // Tạm thời chỉ bắt buộc có manv, passwordNV để hợp lệ form
     if (!manv || !passwordNV) {
       return res.status(400).json({ ok: false, error: 'Thiếu mã nhân viên hoặc mật khẩu' });
     }
@@ -33,10 +32,10 @@ export default async function handler(req, res) {
     const supabase = createServerSupabase();
     const manvUpper = String(manv).trim().toUpperCase();
 
-    // 1. Kiểm tra nhân viên (chỉ cần tồn tại là cho qua; sau này ta thêm cột mật khẩu riêng)
+    // 1. Lấy thông tin nhân viên + mật khẩu từ bảng dmnhanvien
     const { data: nvArr, error: errNV } = await supabase
       .from('dmnhanvien')
-      .select('manv, tennv, sua_hoadon')
+      .select('manv, tennv, sua_hoadon, matkhau')
       .eq('manv', manvUpper)
       .limit(1);
 
@@ -50,7 +49,15 @@ export default async function handler(req, res) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên không tồn tại' });
     }
 
-    // 2. Đăng nhập tài khoản kho CS1 bằng email + password trong ENV
+    // 1b. So sánh mật khẩu nhân viên
+    const matkhauDB = (nv.matkhau ?? '').toString().trim();
+    const matkhauNhap = passwordNV.toString().trim();
+
+    if (!matkhauDB || matkhauDB !== matkhauNhap) {
+      return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
+    }
+
+    // 2. Đăng nhập tài khoản kho CS1 bằng email + password từ ENV
     if (!WAREHOUSE_EMAIL || !WAREHOUSE_PASSWORD) {
       console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD');
       return res.status(500).json({ ok: false, error: 'Chưa cấu hình email/mật khẩu kho CS1 trên server' });
@@ -66,29 +73,28 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'Không đăng nhập được tài khoản kho CS1' });
     }
 
-    const session = authData.session;
-    if (!session) {
+    const session = authData?.session;
+    if (!session || !session.access_token || !session.refresh_token) {
+      console.error('Không lấy được session Supabase hợp lệ');
       return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
     }
 
     // 3. Trả về session + thông tin nhân viên cho frontend
     return res.status(200).json({
       ok: true,
-      diadiem: diadiem || 'cs1',
       session: {
         access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_at: session.expires_at,
-        token_type: session.token_type
+        refresh_token: session.refresh_token
       },
       nhanvien: {
         manv: nv.manv,
         tennv: nv.tennv,
-        sua_hoadon: !!nv.sua_hoadon
-      }
+        sua_hoadon: nv.sua_hoadon
+      },
+      diadiem: diadiem || 'cs1'
     });
   } catch (err) {
-    console.error('Lỗi general trong login-cs1:', err);
-    return res.status(500).json({ ok: false, error: 'Lỗi máy chủ khi đăng nhập CS1' });
+    console.error('Lỗi không xác định trong login-cs1:', err);
+    return res.status(500).json({ ok: false, error: 'Lỗi server trong login-cs1' });
   }
 }
