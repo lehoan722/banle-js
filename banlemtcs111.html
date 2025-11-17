@@ -657,33 +657,71 @@
             tuDongKhoaCoSo: true,
             loginApiPath: "/api/login-cs1", // API backend mới
 
-            // nhanvien = tham số 1, context = tham số 2
-            onLoginSuccess: (nhanvien, { diadiem, session }) => {
-                // 🔹 authModule.js đã tự lưu localStorage + setSession rồi,
-                // ở đây ta chỉ cần cập nhật UI + biến toàn cục nếu cần thêm.
+            // Hàm được gọi khi đăng nhập thành công
+            onLoginSuccess: async ({ nhanvien, diadiem, session }) => {
+                // 1. Lưu thông tin vào localStorage giống logic cũ
+                if (diadiem) {
+                    localStorage.setItem("diadiem", diadiem);
+                }
+                if (session && session.access_token) {
+                    localStorage.setItem("supabase_access_token", session.access_token);
+                }
+                localStorage.setItem("manv", nhanvien.manv);
+                localStorage.setItem("tennv", nhanvien.tennv);
+                localStorage.setItem(
+                    "quyen_sua_hoadon",
+                    nhanvien.sua_hoadon ? "true" : "false"
+                );
 
-                // Cho các script khác trên trang dùng
+                // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
 
-                // Hiển thị tên nhân viên trên giao diện
-                const tennvEl = document.getElementById("tennv");
-                if (tennvEl) {
-                    tennvEl.value = nhanvien.tennv || "";
+                // 3. Cập nhật lên giao diện bán hàng
+                const manvInput = document.getElementById("manv");
+                const tennvInput = document.getElementById("tennv");
+                if (manvInput) {
+                    manvInput.value = nhanvien.manv;
+                    manvInput.readOnly = true;
+                }
+                if (tennvInput) {
+                    tennvInput.value = nhanvien.tennv;
+                    tennvInput.readOnly = true;
                 }
 
-                // Hiện app nếu cần (thực ra authModule cũng đã bật sẵn)
-                const app = document.getElementById("app-container");
-                if (app) app.style.display = "";
-
-                // Nếu sau này có hàm khởi tạo sau đăng nhập
-                if (typeof window.afterLoginInit === "function") {
-                    window.afterLoginInit();
+                // 4. Cập nhật quyền giao diện nếu có hàm này
+                if (typeof window.capNhatQuyenGiaoDien === "function") {
+                    window.capNhatQuyenGiaoDien();
                 }
+
+                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
+                try {
+                    const module = await import("./scripts/main.js");
+                    if (typeof module.khoiTaoUngDung === "function") {
+                        module.khoiTaoUngDung();
+                    }
+                } catch (e) {
+                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+                }
+
+                // 6. Chọn tab & checkbox mặc định giống code cũ
+                if (typeof window.switchTab === "function") {
+                    window.switchTab("thongtin");
+                }
+                const size45 = document.getElementById("size45");
+                if (size45) size45.checked = true;
+
+                const qlNhom = document.getElementById("quanlysizetheonhom");
+                if (qlNhom) qlNhom.checked = true;
+
+                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
+                const appContainer = document.getElementById("app-container");
+                if (appContainer) appContainer.style.display = "";
+
+                const loginContainer = document.getElementById("login-container");
+                if (loginContainer) loginContainer.style.display = "none";
             }
         });
-
-
     </script>
 
 
