@@ -8,7 +8,7 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 import './stockQuickPopup.js'; // :contentReference[oaicite:7]{index=7}
 
 // ===== CẤU HÌNH ẢNH – chỉnh cho đúng với dự án của bạn =====
-const IMAGE_BUCKET = 'anhhanghoa'; // TODO: đổi thành bucket thật
+const IMAGE_BUCKET = 'anhsanpham'; // TODO: đổi thành bucket thật
 const IMAGE_PATH_PREFIX = '';       // ví dụ 'sanpham/' nếu có thư mục con
 const IMAGE_EXTS = ['JPG', 'jpg', 'png', 'webp'];
 
@@ -337,7 +337,7 @@ async function onMaspSelected(raw) {
   }
 
   await ensureCatalogsReady();
-  const sp = window.sanPhamData?.[masp];
+  const sp = window.sanPhamData?.[masp]; 
   CURRENT_SP = sp || null;
 
   if (!sp) {
