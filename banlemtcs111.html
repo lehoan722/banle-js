@@ -658,7 +658,7 @@
             loginApiPath: "/api/login-cs1", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
-            onLoginSuccess: async ({ nhanvien, diadiem, session }) => {
+            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
                 // 1. Lưu thông tin vào localStorage giống logic cũ
                 if (diadiem) {
                     localStorage.setItem("diadiem", diadiem);
