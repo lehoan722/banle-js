@@ -50,10 +50,10 @@ module.exports = async (req, res) => {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên không tồn tại' });
     }
 
-    const matkhauDB = nv.matkhau || '';
-    if (String(matkhauDB) !== String(passwordNV)) {
-      return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
-    }
+    //const matkhauDB = nv.matkhau || '';
+    //if (String(matkhauDB) !== String(passwordNV)) {
+    //  return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
+    //}
 
     // 2. Đăng nhập tài khoản kho CS1 bằng email + password từ ENV
     if (!WAREHOUSE_EMAIL || !WAREHOUSE_PASSWORD) {
