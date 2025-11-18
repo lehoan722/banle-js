@@ -10,18 +10,14 @@
   // ===== CSS cho popup trên từng card ảnh =====
   const css = `
   .card {
-     position: relative;      /* để popup bám theo ô Mã hàng */
-    overflow: visible;       /* cho phép popup tràn ra ngoài ô */
+    /* không cần gì đặc biệt nữa, chỉ để đánh dấu dòng có popup */
   }
 
   .sq-stock-popup {
-    position: absolute;
-    top: 100%;               /* bung xuống dưới ô Mã hàng, không bung lên trên */
-    left: 0;
-    transform: translateY(4px); /* cách dòng 1 chút */
-    min-width: 230px;        /* rộng tối thiểu */
-    max-width: 320px;        /* không quá to */
-    max-height: 260px;       /* nếu dài thì có scroll */
+    position: fixed;          /* popup global, không nằm trong <td> nữa */
+    min-width: 230px;
+    max-width: 320px;
+    max-height: 260px;
     background: rgba(255,255,255,0.98);
     border-radius: 8px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -29,7 +25,7 @@
     padding: 6px 8px;
     font-size: 12px;
     line-height: 1.3;
-    z-index: 9999;           /* nổi lên trên mọi thanh công cụ */
+    z-index: 9999;
     display: none;
   }
 
@@ -75,7 +71,6 @@
   }
   .sq-close:hover { opacity:1; }
 
-  /* Dòng vị trí kho */
   .sq-vitri-row td {
     font-weight: 500;
     font-size: 10px;
@@ -83,6 +78,7 @@
     color: #b91c1c;
     border-bottom: none;
   }
+  
   `;
 
   const s = document.createElement('style');
@@ -184,7 +180,7 @@
   function buildTableHtml(masp, payload) {
     const upper = String(masp || '').toUpperCase();
     const rows = (payload && Array.isArray(payload.rows)) ? payload.rows
-               : (Array.isArray(payload) ? payload : []);
+      : (Array.isArray(payload) ? payload : []);
     const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : '';
     const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : '';
 
@@ -266,37 +262,75 @@
     });
   }
 
+  let globalHost = null;
+
   async function ensurePopup(card, masp) {
     if (!card) return;
-    let popup = card.querySelector('.sq-stock-popup');
-    if (!popup) {
-      // lần đầu: fetch dữ liệu rồi dựng popup
-      const payload = await fetchTonBanByMasp(masp);
-      card.insertAdjacentHTML('beforeend', buildTableHtml(masp, payload));
-      popup = card.querySelector('.sq-stock-popup');
-      const closeBtn = popup.querySelector('.sq-close');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          popup.classList.remove('show');
-        });
-      }
+
+    // Tạo host global một lần
+    if (!globalHost) {
+      globalHost = document.createElement('div');
+      globalHost.id = 'sq-stock-host';
+      document.body.appendChild(globalHost);
     }
+
+    // Lấy rect của dòng/ô để định vị
+    const rect = card.getBoundingClientRect();
+
+    // Lấy dữ liệu & dựng HTML
+    const payload = await fetchTonBanByMasp(masp);
+    globalHost.innerHTML = buildTableHtml(masp, payload);
+
+    const popup = globalHost.querySelector('.sq-stock-popup');
+    if (!popup) return;
+
+    // Gắn event nút đóng
+    const closeBtn = popup.querySelector('.sq-close');
+    if (closeBtn) {
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        popup.classList.remove('show');
+      };
+    }
+
+    // Tính vị trí hiển thị (xuống dưới dòng, không tràn màn hình)
+    const scrollX = window.scrollX || window.pageXOffset || 0;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    let left = rect.left + scrollX;
+    let top = rect.bottom + scrollY + 4;   // bung xuống dưới dòng
+
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const approxWidth = 320;
+    const approxHeight = 260;
+
+    // Nếu bị tràn phải → đẩy sang trái
+    if (left + approxWidth > scrollX + vw - 8) {
+      left = scrollX + vw - approxWidth - 8;
+    }
+    // Nếu gần đáy màn hình → cho popup nhảy lên trên dòng
+    if (top + approxHeight > scrollY + vh - 8) {
+      top = rect.top + scrollY - approxHeight - 8;
+    }
+
+    popup.style.left = `${left}px`;
+    popup.style.top = `${top}px`;
+
     hideAllPopups();
     popup.classList.add('show');
   }
 
-  function attach(card, masp) {
+
+    function attach(card, masp) {
     if (!card || !masp) return;
     const touch = isTouchDevice();
 
     if (touch) {
       // Điện thoại / tablet: chạm để mở, chạm lại để đóng
       card.addEventListener('click', async () => {
-        const popup = card.querySelector('.sq-stock-popup');
-        const isOpen = popup && popup.classList.contains('show');
-        if (isOpen) {
-          popup.classList.remove('show');
+        const current = document.querySelector('.sq-stock-popup.show');
+        if (current) {
+          current.classList.remove('show');
         } else {
           await ensurePopup(card, masp);
         }
@@ -307,13 +341,13 @@
         ensurePopup(card, masp);
       });
       card.addEventListener('mouseleave', () => {
-        const popup = card.querySelector('.sq-stock-popup');
-        if (popup) popup.classList.remove('show');
+        hideAllPopups();
       });
     }
   }
 
-    // API dùng chung – thêm hàm showFor để nơi khác gọi trực tiếp
+
+  // API dùng chung – thêm hàm showFor để nơi khác gọi trực tiếp
   window.StockQuick = {
     attach,
     showFor(card, masp) {
