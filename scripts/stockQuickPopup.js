@@ -51,16 +51,21 @@
   .sq-stock-popup td.num {
     text-align: right;
   }
-  .sq-stock-popup tr.sum-row td {
+    .sq-stock-popup tr.sum-row td {
     font-weight: 600;
     border-top: 1px solid #d1d5db;
     background: #f9fafb;
+    cursor: pointer;              /* trỏ chuột dạng link */
+    text-decoration: underline;   /* gợi ý có thể bấm */
   }
   .sq-stock-popup-header {
     font-weight: 600;
     margin-bottom: 4px;
     text-align: left;
+    cursor: pointer;              /* cũng cho phép bấm */
+    text-decoration: underline;
   }
+
   .sq-close {
     position:absolute;
     top:2px;
@@ -78,16 +83,27 @@
     color: #b91c1c;
     border-bottom: none;
   }
+  
 
   .sq-img-wrapper {
     margin-top: 4px;
   }
   .sq-img-wrapper img {
-    width: 100%;
-    max-height: 140px;
+    width: 100%;          /* luôn full chiều rộng popup */
+    height: auto;         /* chiều cao tự động theo tỉ lệ ảnh */
+    max-height: none;     /* không giới hạn 140px nữa */
     object-fit: contain;
     display: block;
   }
+
+    .sq-stock-popup {
+    position: fixed;
+    min-width: 230px;
+    max-width: 320px;
+    max-height: 340px;    /* trước là 260, tăng lên cho đủ bảng + ảnh */
+    ...
+  }
+
   
   `;
 
@@ -318,17 +334,26 @@
       };
     }
 
-    // Click vào dòng tổng (mã) để bật/tắt ảnh sản phẩm
-    const sumRowEl = popup.querySelector('tr.sum-row');
+        // Click vào dòng tổng (mã) hoặc header để bật/tắt ảnh sản phẩm
+    const sumRowEl  = popup.querySelector('tr.sum-row');
+    const headerEl  = popup.querySelector('.sq-stock-popup-header');
     const imgWrapper = popup.querySelector('.sq-img-wrapper');
+
+    const toggleImg = (e) => {
+      if (!imgWrapper) return;
+      e.stopPropagation();
+      const hidden =
+        imgWrapper.style.display === '' || imgWrapper.style.display === 'none';
+      imgWrapper.style.display = hidden ? 'block' : 'none';
+    };
+
     if (sumRowEl && imgWrapper) {
-      sumRowEl.onclick = (e) => {
-        e.stopPropagation();
-        const hidden =
-          imgWrapper.style.display === '' || imgWrapper.style.display === 'none';
-        imgWrapper.style.display = hidden ? 'block' : 'none';
-      };
+      sumRowEl.onclick = toggleImg;
     }
+    if (headerEl && imgWrapper) {
+      headerEl.onclick = toggleImg;
+    }
+
 
     // Tính vị trí hiển thị (xuống dưới dòng, không tràn màn hình)
     const scrollX = window.scrollX || window.pageXOffset || 0;
