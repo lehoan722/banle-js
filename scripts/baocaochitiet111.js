@@ -1,5 +1,6 @@
 // baocaochitiet.js
 import { supabase } from "./supabaseClient.js";
+import { openInvoiceFromRow } from "./invoiceNavigator.js";
 let hotInstance = null;
 let currentFilters = null;
 let totalRows = 0;
@@ -70,7 +71,7 @@ window.taiBaoCaoChiTiet = async function () {
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
     const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
-     const sohd = (document.getElementById("sohdInput")?.value || "").trim() || null;  // <== THÊM DÒNG NÀY
+    const sohd = (document.getElementById("sohdInput")?.value || "").trim() || null;  // <== THÊM DÒNG NÀY
     const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
     const tensp = (document.getElementById("tenspInput").value || "").trim() || null;
     const size = (document.getElementById("sizeInput").value || "").trim() || null;
@@ -105,7 +106,7 @@ window.taiBaoCaoChiTiet = async function () {
         p_diadiem: diadiem,
         p_khachhang: khachhang,
         p_nhanvien: nhanvien,
-         p_sohd: sohd,                 // <== THÊM DÒNG NÀY
+        p_sohd: sohd,                 // <== THÊM DÒNG NÀY
         p_masp_list: finalMaspList,
         p_tensp: tensp,
         p_size: size,
@@ -264,10 +265,27 @@ function renderTable(hotData) {
         filters: true,
         dropdownMenu: true,
         // không cần khai báo hiddenColumns ở đây; sẽ update bằng applyCompactView()
+
+        // >>> THÊM SỰ KIỆN CLICK VÀO Ô
+        afterOnCellMouseDown(event, coords, TD) {
+            // coords.row < 0 = header, bỏ qua
+            if (coords.row < 0) return;
+
+            // Xem cột được click là cột nào
+            const prop = hotInstance.colToProp(coords.col);
+            if (prop !== "sohd") return;   // chỉ xử lý khi click cột Số HĐ
+
+            const rowData = hotInstance.getSourceDataAtRow(coords.row);
+            if (!rowData || !rowData.sohd) return;
+
+            // Gọi module dùng chung để mở hóa đơn
+            openInvoiceFromRow(rowData);
+        }
     });
 
     // áp dụng trạng thái rút gọn (nếu đang bật)
     applyCompactView();
+
 
 }
 
