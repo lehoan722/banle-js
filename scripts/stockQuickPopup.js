@@ -58,12 +58,12 @@
     cursor: pointer;              /* trỏ chuột dạng link */
     text-decoration: underline;   /* gợi ý có thể bấm */
   }
-  .sq-stock-popup-header {
+   .sq-stock-popup-header {
     font-weight: 600;
     margin-bottom: 4px;
     text-align: left;
-    cursor: pointer;              /* cũng cho phép bấm */
-    text-decoration: underline;
+    cursor: move;              /* báo cho người dùng biết có thể kéo */
+    user-select: none;         /* tránh bôi đen chữ khi kéo */
   }
 
   .sq-close {
@@ -303,6 +303,72 @@
     });
   }
 
+    // ===== Drag support: kéo popup bằng thanh header =====
+  function makeDraggable(popup, handle) {
+    if (!popup || !handle) return;
+
+    let dragging = false;
+    let startX = 0, startY = 0;
+    let startLeft = 0, startTop = 0;
+
+    const getPoint = (e) => (e.touches && e.touches[0]) ? e.touches[0] : e;
+
+    const onDown = (e) => {
+      const p = getPoint(e);
+      dragging = true;
+      startX = p.clientX;
+      startY = p.clientY;
+
+      const rect = popup.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop  = rect.top;
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
+    };
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      if (e.cancelable) e.preventDefault();
+
+      const p = getPoint(e);
+      const dx = p.clientX - startX;
+      const dy = p.clientY - startY;
+
+      let left = startLeft + dx;
+      let top  = startTop  + dy;
+
+      const vw = window.innerWidth  || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const rect = popup.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      // Giới hạn trong màn hình
+      if (left < 0) left = 0;
+      if (top  < 0) top  = 0;
+      if (left + w > vw) left = vw - w;
+      if (top  + h > vh) top  = vh - h;
+
+      popup.style.left = left + 'px';
+      popup.style.top  = top  + 'px';
+    };
+
+    const onUp = () => {
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+    };
+
+    handle.addEventListener('mousedown', onDown);
+    handle.addEventListener('touchstart', onDown, { passive: false });
+  }
+
+
   let globalHost = null;
 
   async function ensurePopup(card, masp) {
@@ -354,6 +420,11 @@
       headerEl.onclick = toggleImg;
     }
 
+    // Cho phép kéo popup bằng thanh tiêu đề
+    if (headerEl && !headerEl.dataset.dragBound) {
+      makeDraggable(popup, headerEl);
+      headerEl.dataset.dragBound = '1';
+    }
 
     // Tính vị trí hiển thị (xuống dưới dòng, không tràn màn hình)
     const scrollX = window.scrollX || window.pageXOffset || 0;
