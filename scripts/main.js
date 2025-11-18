@@ -396,12 +396,22 @@ export async function khoiTaoUngDung() {
     }
 
 
-    function handleRow(row) {
+        function handleRow(row) {
       // Cột hiện có theo thead: 0 Mã hàng, 1 Tên, 2 Kích cỡ, 3 SL, 4 ĐVT, 5 Đơn giá, 6 KM, 7 Thành tiền, 8 Vị trí
       const masp = pickCellText(row, 0).toUpperCase();
       const size = pickCellText(row, 2);
       if (!masp) return;
 
+      // 🔹 GẮN POPUP TỒN/BÁN NHANH THEO MÃ CHO MỖI DÒNG
+      // - Chỉ gắn 1 lần / dòng (dùng data-flag)
+      // - Dùng StockQuick.attach(card, masp) trong stockQuickPopup.js
+      if (window.StockQuick && typeof window.StockQuick.attach === "function" && !row.dataset.stockQuickBound) {
+        row.classList.add("card");               // để CSS popup bám theo nguyên dòng
+        window.StockQuick.attach(row, masp);     // click (trên MT) hoặc hover (PC) sẽ hiện popup tồn/bán
+        row.dataset.stockQuickBound = "1";
+      }
+
+      // 🔹 Phần tồn kho tức thì – giữ nguyên logic cũ
       ensureTds(row);
       const k = keyOf(masp, size);
 
@@ -419,6 +429,7 @@ export async function khoiTaoUngDung() {
       queue.set(k, { masp, size, row });
       scheduleBatch();
     }
+
 
     document.addEventListener("keydown", (e) => {
       // tránh xóa khi đang gõ trong input
