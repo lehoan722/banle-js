@@ -395,32 +395,44 @@ export async function khoiTaoUngDung() {
       return c ? c.textContent.trim() : '';
     }
 
-
-    function handleRow(row) {
+        function handleRow(row) {
       // Cột hiện có theo thead: 0 Mã hàng, 1 Tên, 2 Kích cỡ, 3 SL, 4 ĐVT, 5 Đơn giá, 6 KM, 7 Thành tiền, 8 Vị trí
       const masp = pickCellText(row, 0).toUpperCase();
       const size = pickCellText(row, 2);
       if (!masp) return;
 
-      // 🔹 GẮN POPUP TỒN/BÁN NHANH THEO MÃ CHO MỖI DÒNG
-      // Thay vì gắn vào <tr>, ta gắn popup vào ô "Mã hàng" (cell đầu tiên)
-      const cardCell = row.cells[0] || row; // ưu tiên ô đầu, fallback là cả row
+      const cardCell = row.cells[0] || row; // ưu tiên ô "Mã hàng"
 
+      // 🔹 GẮN POPUP TỒN/BÁN NHANH THEO MÃ – chỉ gắn 1 lần/dòng
       if (
         window.StockQuick &&
         typeof window.StockQuick.attach === "function" &&
         !row.dataset.stockQuickBound
       ) {
-        cardCell.classList.add("card");          // card = <td>, position:relative dùng tốt
+        cardCell.classList.add("card");
         window.StockQuick.attach(cardCell, masp);
-        row.dataset.stockQuickBound = "1";       // đánh dấu đã gắn để khỏi lặp
+        row.dataset.stockQuickBound = "1";
+
+        // PC: cho phép click CẢ DÒNG thì cũng mở popup
+        const isTouch =
+          "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0);
+
+        if (!isTouch && typeof window.StockQuick.showFor === "function" &&
+            !row.dataset.stockQuickRowClickBound) {
+
+          row.addEventListener("click", () => {
+            // chỉ gọi showFor, không toggle, để luôn hiện popup theo dòng đang chọn
+            window.StockQuick.showFor(cardCell, masp);
+          });
+
+          row.dataset.stockQuickRowClickBound = "1";
+        }
       }
 
       // 🔹 Phần tồn kho tức thì – GIỮ NGUYÊN như cũ
       ensureTds(row);
       const k = keyOf(masp, size);
 
-      // Nếu vừa hỏi rồi → điền từ cache
       if (memo.has(k)) {
         const val = memo.get(k);
         const cs1 = row.querySelector('td[data-col="ton_cs1"]');
@@ -430,7 +442,6 @@ export async function khoiTaoUngDung() {
         return;
       }
 
-      // Gom batch; nếu đã có trong queue thì thay row cuối
       queue.set(k, { masp, size, row });
       scheduleBatch();
     }
