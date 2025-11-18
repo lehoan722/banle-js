@@ -78,12 +78,26 @@
     color: #b91c1c;
     border-bottom: none;
   }
+
+  .sq-img-wrapper {
+    margin-top: 4px;
+  }
+  .sq-img-wrapper img {
+    width: 100%;
+    max-height: 140px;
+    object-fit: contain;
+    display: block;
+  }
   
   `;
+
 
   const s = document.createElement('style');
   s.textContent = css;
   document.head.appendChild(s);
+
+  const IMG_BASE =
+    'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
 
   // ===== Helpers =====
   function normalizeSize(v) {
@@ -233,6 +247,15 @@
         <td colspan="5">Vị trí: ${vitriParts.join(' , ')}</td>
       </tr>` : '';
 
+    // Khung ảnh sản phẩm – ẩn mặc định, click dòng tổng sẽ bật/tắt
+    const imgUrl = IMG_BASE + upper + '.JPG';
+    const imgBlock = `
+      <div class="sq-img-wrapper" data-masp="${upper}" style="display:none;">
+        <img src="${imgUrl}"
+             alt="${upper}"
+             onerror="this.parentElement.style.display='none';" />
+      </div>`;
+
     return `
       <div class="sq-stock-popup">
         <span class="sq-close">✕</span>
@@ -253,8 +276,10 @@
             ${vitriRow}
           </tbody>
         </table>
+        ${imgBlock}
       </div>`;
   }
+
 
   function hideAllPopups() {
     document.querySelectorAll('.sq-stock-popup.show').forEach(p => {
@@ -293,6 +318,18 @@
       };
     }
 
+    // Click vào dòng tổng (mã) để bật/tắt ảnh sản phẩm
+    const sumRowEl = popup.querySelector('tr.sum-row');
+    const imgWrapper = popup.querySelector('.sq-img-wrapper');
+    if (sumRowEl && imgWrapper) {
+      sumRowEl.onclick = (e) => {
+        e.stopPropagation();
+        const hidden =
+          imgWrapper.style.display === '' || imgWrapper.style.display === 'none';
+        imgWrapper.style.display = hidden ? 'block' : 'none';
+      };
+    }
+
     // Tính vị trí hiển thị (xuống dưới dòng, không tràn màn hình)
     const scrollX = window.scrollX || window.pageXOffset || 0;
     const scrollY = window.scrollY || window.pageYOffset || 0;
@@ -321,7 +358,7 @@
   }
 
 
-    function attach(card, masp) {
+  function attach(card, masp) {
     if (!card || !masp) return;
     const touch = isTouchDevice();
 
