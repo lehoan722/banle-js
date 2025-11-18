@@ -1,108 +1,116 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
   <meta charset="UTF-8" />
   <title>Bán NV nhanh CS1</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
+    html, body {
+      height: 100%;
+    }
     body {
       font-family: Arial, sans-serif;
-      font-size: 14px;
+      font-size: 16px;
       margin: 0;
-      padding: 8px;
+      padding: 0;
       background: #f5f5f5;
+      overscroll-behavior-y: contain;
     }
-
     .sheet-wrapper {
-      max-width: 480px;
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
       margin: 0 auto;
       background: #fff;
       border: 1px solid #ccc;
-      padding: 6px;
+      padding: 6px 8px 8px;
       box-sizing: border-box;
     }
-
     .top-row {
       display: grid;
-      grid-template-columns: 70px 1fr 1fr;
+      grid-template-columns: 70px 1fr 80px;
       gap: 4px;
       margin-bottom: 4px;
     }
-
     .top-row input {
       width: 100%;
       box-sizing: border-box;
       padding: 3px 4px;
     }
-
     .label-small {
-      font-size: 11px;
+      font-size: 13px;
       color: #4b5563;
       margin: 2px 0;
     }
-
     #masp {
       width: 100%;
       box-sizing: border-box;
-      padding: 4px;
+      padding: 6px 6px;
+      font-size: 16px;
     }
 
-    /* Khu ảnh + card để gắn StockQuick */
-    #imageCard {
+    .image-panel {
       margin-top: 4px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      overflow: hidden;
-      background: #fafafa;
-      min-height: 120px;
+      margin-bottom: 6px;
+      border: 1px solid #e5e7eb;
+      height: 220px;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #f9fafb;
       position: relative;
+      overflow: hidden;
     }
-
-    #productImage {
+    .image-panel img {
       max-width: 100%;
-      max-height: 220px;
-      display: block;
+      max-height: 100%;
+      display: none;
+      object-fit: contain;
     }
-
-    #imagePlaceholder {
-      padding: 12px;
+    .image-placeholder {
+      font-size: 13px;
       color: #6b7280;
       text-align: center;
+      padding: 4px;
+    }
+
+    .stock-popup-hint {
+      position: absolute;
+      left: 4px;
+      bottom: 4px;
+      font-size: 11px;
+      color: #111827;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 2px 4px;
+      border-radius: 2px;
     }
 
     table.form-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 6px;
+      font-size: 14px;
     }
-
     table.form-table td {
-      border: 1px solid #d1d5db;
-      padding: 4px;
+      padding: 2px 2px;
       vertical-align: middle;
     }
-
     table.form-table td.label {
       width: 90px;
       background: #f3f4f6;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 13px;
     }
-
     table.form-table input,
     table.form-table select {
       width: 100%;
       box-sizing: border-box;
       border: none;
       outline: none;
-      padding: 3px 4px;
-      font-size: 13px;
+      padding: 6px 6px;
+      font-size: 16px;
     }
-
     table.form-table input[readonly] {
       background: #f9fafb;
     }
@@ -112,167 +120,190 @@
       align-items: center;
       gap: 4px;
     }
-
     .makh-row input {
-      flex: 1 1 auto;
+      flex: 1;
     }
-
     .btn-icon {
-      padding: 3px 6px;
-      font-size: 12px;
+      padding: 4px 8px;
+      font-size: 16px;
       cursor: pointer;
     }
 
     .buttons-row {
-      text-align: center;
-      margin-top: 6px;
-      display: flex;
-      gap: 4px;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
     }
-
     .buttons-row button {
       flex: 1 1 0px;
-      padding: 6px 4px;
-      font-size: 13px;
+      padding: 8px 4px;
+      font-size: 16px;
       border-radius: 4px;
       border: none;
       cursor: pointer;
+      touch-action: manipulation;
     }
-
     #btnLuu {
       background: #111827;
       color: #fff;
     }
-
-    #btnLuu.saving {
-      opacity: 0.7;
-      cursor: default;
-    }
-
     #btnThemMoi {
       background: #e5e7eb;
     }
 
+    .buttons-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .buttons-row-2 button {
+      flex: 1 1 0px;
+      padding: 8px 4px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
     #btnKiemTraAnh {
       background: #f3f4f6;
     }
-
     #btnChenAnhMoi {
       background: #d1fae5;
     }
 
     .note {
-      font-size: 11px;
+      font-size: 12px;
       color: #6b7280;
       margin-top: 4px;
     }
+
+    @supports (-webkit-touch-callout: none) {
+      body {
+        -webkit-text-size-adjust: 100%;
+      }
+    }
   </style>
 </head>
-
 <body>
+  <div class="sheet-wrapper">
+    <!-- Dòng đầu: địa điểm, ngày, nhân viên -->
+    <div class="top-row">
+      <input id="diadiem" readonly />
+      <input id="ngay" />
+      <input id="tennv" readonly />
+    </div>
 
-  <!-- Khung login: authModule.js sẽ vẽ form đăng nhập vào đây -->
-  <div id="login-container"></div>
+    <!-- Hàng: trạng thái ảnh + mã SP -->
+    <div class="label-small" id="statusAnh">ĐÃ CÓ ẢNH</div>
+    <input id="masp" placeholder="Nhập mã sản phẩm..." />
+    <!-- THÊM popup gợi ý 
+      - thao tác giống bên inmavachcs1.html: 
+        + gõ ký tự => hiển thị danh sách
+        + Enter/chọn => gọi onMaspSelected()
+    -->
+    <div id="maspSuggestionsContainer"></div>
 
-  <!-- App chính: chỉ hiện sau khi đăng nhập -->
-  <div id="app-container" style="display:none;">
-
-    <div class="sheet-wrapper">
-      <!-- Hàng trên: cơ sở / ngày / tên NV -->
-      <div class="top-row">
-        <input id="diadiem" readonly />
-        <input id="ngay" />
-        <input id="tennv" readonly />
+    <!-- Panel ảnh sản phẩm -->
+    <div class="image-panel" id="imagePanel">
+      <img id="productImage" alt="Ảnh sản phẩm" />
+      <div class="image-placeholder" id="imagePlaceholder">
+        Chưa có ảnh sản phẩm.
       </div>
+      <div class="stock-popup-hint">Bấm vào ảnh để xem nhanh tồn kho / bán theo size.</div>
+    </div>
 
-      <!-- Hàng: trạng thái ảnh + mã SP -->
-      <!-- Hàng: trạng thái ảnh + mã SP -->
-      <div class="label-small" id="statusAnh">ĐÃ CÓ ẢNH</div>
-      <input id="masp" placeholder="Nhập mã sản phẩm..." />
-
-      <!-- THÊM popup gợi ý mã sản phẩm ngay bên dưới -->
-      <div id="maspSuggestList" style="display:none;"></div>
-
-      <!-- Khu ảnh + click xem tồn kho (StockQuick.attach) -->
-      <div id="imageCard" class="card">
-        <div id="imagePlaceholder">Chưa có ảnh sản phẩm.</div>
-        <img id="productImage" src="" alt="" style="display:none;" />
-      </div>
-
-      <!-- Bảng thông tin sản phẩm + khách hàng -->
-      <table class="form-table">
+    <!-- Bảng thông tin sản phẩm & bán NV -->
+    <table class="form-table">
+      <tbody>
         <tr>
           <td class="label">size:</td>
           <td>
-            <input id="size" list="sizeList" />
-            <datalist id="sizeList">
-              <option value="0"></option>
-              <option value="38"></option>
-              <option value="39"></option>
-              <option value="40"></option>
-              <option value="41"></option>
-              <option value="42"></option>
-              <option value="43"></option>
-              <option value="44"></option>
-              <option value="45"></option>
-            </datalist>
+            <select id="size">
+              <option value="">Chọn size</option>
+              <option value="0">0 (không size)</option>
+              <option value="38">38</option>
+              <option value="39">39</option>
+              <option value="40">40</option>
+              <option value="41">41</option>
+              <option value="42">42</option>
+              <option value="43">43</option>
+              <option value="44">44</option>
+              <option value="45">45</option>
+            </select>
           </td>
         </tr>
+
         <tr>
           <td class="label">GIA SP:</td>
-          <td><input id="gia_sp" /></td>
+          <td>
+            <input id="gia_sp" type="number" />
+          </td>
         </tr>
+
         <tr>
           <td class="label">KHUYEN MAI:</td>
-          <td><input id="khuyen_mai" /></td>
+          <td>
+            <input id="khuyen_mai" type="number" />
+          </td>
         </tr>
+
         <tr>
           <td class="label">vi tri kho:</td>
-          <td><input id="vitrikho" readonly /></td>
+          <td>
+            <input id="vitrikho" />
+          </td>
         </tr>
+
         <tr>
           <td class="label">mã khách</td>
           <td>
             <div class="makh-row">
               <input id="makh" placeholder="Mã KH" />
-              <button type="button" id="btnTimKH" class="btn-icon">🔍</button>
+              <button class="btn-icon" id="btnSearchKH" title="Tìm khách hàng">&#128269;</button>
             </div>
           </td>
         </tr>
+
         <tr>
           <td class="label">TEN KHACH</td>
-          <td><input id="tenkh" readonly /></td>
+          <td>
+            <input id="tenkh" placeholder="Tên khách" />
+          </td>
         </tr>
-      </table>
+      </tbody>
+    </table>
 
-      <!-- Nút thao tác -->
-      <div class="buttons-row">
-        <button id="btnLuu">LƯU</button>
-        <button id="btnThemMoi">THEM MOI</button>
-      </div>
-      <div class="buttons-row">
-        <button id="btnKiemTraAnh">KIEM TRA ANH</button>
-        <button id="btnChenAnhMoi">CHEN ANH MOI</button>
-      </div>
-
-      <div class="note">
-        • Hình thức thanh toán: <b>NV</b> (cố định).<br />
-        • Bấm vào vùng ảnh để xem nhanh tồn kho / bán theo size.
-      </div>
-
-      <!-- hidden -->
-      <input type="hidden" id="sohd" />
-      <input type="hidden" id="manv" />
-      <input type="hidden" id="gio" />
-      <input type="hidden" id="hinhthuctt" value="NV" />
+    <!-- Hàng nút LƯU / THÊM MỚI -->
+    <div class="buttons-row">
+      <button id="btnLuu">LƯU</button>
+      <button id="btnThemMoi">THEM MOI</button>
     </div>
 
-    <!-- JS: Supabase / stockQuick / trang bán NV nhanh -->
-    <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được -->
-    <script src="scripts/stockQuickPopup.js"></script>
+    <!-- Hàng nút KIỂM TRA ẢNH / CHÈN ẢNH MỚI -->
+    <div class="buttons-row-2">
+      <button id="btnKiemTraAnh">KIEM TRA ANH</button>
+      <button id="btnChenAnhMoi">CHEN ANH MOI</button>
+    </div>
 
-    <script type="module" src="scripts/bannvcs1nhanh.js"></script>
+    <div class="note">
+      - Hình thức thanh toán: NV (cố định).<br />
+      - Bấm vào vùng ảnh để xem nhanh tồn kho / bán theo size.
+    </div>
+
+    <!-- hidden -->
+    <input type="hidden" id="sohd" />
+    <input type="hidden" id="manv" />
+    <input type="hidden" id="gio" />
+    <input type="hidden" id="hinhthuctt" value="NV" />
+  </div>
+
+  <!-- JS: Supabase / stockQuick / trang bán NV nhanh -->
+  <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được --> 
+   <script src="scripts/stockQuickPopup.js"></script>
+  
+  <script type="module" src="scripts/bannvcs1nhanh.js"></script>
 </body>
-
 </html>
