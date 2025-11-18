@@ -10,26 +10,32 @@
   // ===== CSS cho popup trên từng card ảnh =====
   const css = `
   .card {
-    position: relative; /* để popup bám theo card */
+     position: relative;      /* để popup bám theo ô Mã hàng */
+    overflow: visible;       /* cho phép popup tràn ra ngoài ô */
   }
+
   .sq-stock-popup {
     position: absolute;
-    left: 6px;
-    right: 6px;
-    bottom: 6px;
-    background: rgba(255,255,255,0.97);
+    top: 100%;               /* bung xuống dưới ô Mã hàng, không bung lên trên */
+    left: 0;
+    transform: translateY(4px); /* cách dòng 1 chút */
+    min-width: 230px;        /* rộng tối thiểu */
+    max-width: 320px;        /* không quá to */
+    max-height: 260px;       /* nếu dài thì có scroll */
+    background: rgba(255,255,255,0.98);
     border-radius: 8px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     border: 1px solid #e5e7eb;
     padding: 6px 8px;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.3;
+    z-index: 9999;           /* nổi lên trên mọi thanh công cụ */
     display: none;
-    max-height: 230px;
-    overflow: auto;
-    z-index: 5;
   }
-  .sq-stock-popup.show { display: block; }
+
+  .sq-stock-popup.show {
+    display: block;
+  }
 
   .sq-stock-popup table {
     width: 100%;
@@ -307,8 +313,12 @@
     }
   }
 
-  // API dùng chung – giữ nguyên tên như popup 11
+    // API dùng chung – thêm hàm showFor để nơi khác gọi trực tiếp
   window.StockQuick = {
-    attach
+    attach,
+    showFor(card, masp) {
+      return ensurePopup(card, masp);
+    }
   };
 })();
+
