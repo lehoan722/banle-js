@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -645,9 +645,11 @@
 
     </div>
 
+    
+
+
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
-
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
@@ -723,6 +725,10 @@
             }
         });
     </script>
+      <!-- het  Khung đăng nhập dùng module dùng chung -->
+
+
+      
 
 
     <script type="module">
@@ -904,6 +910,9 @@
             document.getElementById('login-manv').focus();
         }
     </script>
+
+     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
     <script src="scripts/menu-component.js"></script>
 
