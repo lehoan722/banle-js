@@ -8,23 +8,23 @@
   }
 
   // ===== CSS cho popup trên từng card ảnh =====
-  const css = `
+    const css = `
   .card {
-    /* không cần gì đặc biệt nữa, chỉ để đánh dấu dòng có popup */
+    /* không cần gì đặc biệt nữa, chỉ đánh dấu dòng có popup */
   }
 
   .sq-stock-popup {
-    position: fixed;          /* popup global, không nằm trong <td> nữa */
-    min-width: 230px;
-    max-width: 320px;
-    max-height: 260px;
+    position: fixed;
+    min-width: 260px;              /* rộng hơn chút */
+    max-width: 520px;              /* cho font 20 không bị tràn */
+    max-height: 480px;             /* cao hơn để chứa cả bảng + ảnh */
     background: rgba(255,255,255,0.98);
     border-radius: 8px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     border: 1px solid #e5e7eb;
-    padding: 6px 8px;
-    font-size: 20px;
-    line-height: 1.3;
+    padding: 8px 10px;
+    font-size: 20px;               /* cỡ chữ bạn muốn */
+    line-height: 1.35;
     z-index: 9999;
     display: none;
   }
@@ -36,13 +36,14 @@
   .sq-stock-popup table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;           /* chia đều cột theo chiều rộng */
   }
   .sq-stock-popup th,
   .sq-stock-popup td {
-    padding: 2px 4px;
+    padding: 4px 6px;              /* ô cao hơn theo font 20 */
     text-align: center;
     border-bottom: 1px solid #e5e7eb;
-    white-space: nowrap;
+    white-space: nowrap;           /* số không bị xuống dòng */
   }
   .sq-stock-popup th {
     background: #f3f4f6;
@@ -51,19 +52,20 @@
   .sq-stock-popup td.num {
     text-align: right;
   }
-    .sq-stock-popup tr.sum-row td {
+  .sq-stock-popup tr.sum-row td {
     font-weight: 600;
     border-top: 1px solid #d1d5db;
     background: #f9fafb;
-    cursor: pointer;              /* trỏ chuột dạng link */
-    text-decoration: underline;   /* gợi ý có thể bấm */
+    cursor: pointer;
+    text-decoration: underline;
   }
-   .sq-stock-popup-header {
+  .sq-stock-popup-header {
     font-weight: 600;
     margin-bottom: 4px;
     text-align: left;
-    cursor: move;              /* báo cho người dùng biết có thể kéo */
-    user-select: none;         /* tránh bôi đen chữ khi kéo */
+    cursor: move;                  /* kéo popup */
+    user-select: none;
+    text-decoration: underline;    /* gợi ý click để xem ảnh */
   }
 
   .sq-close {
@@ -78,33 +80,22 @@
 
   .sq-vitri-row td {
     font-weight: 500;
-    font-size: 20px;
+    font-size: 16px;               /* thông tin vị trí nhỏ hơn 1 chút cho gọn */
     text-align: left;
     color: #b91c1c;
     border-bottom: none;
   }
-  
 
   .sq-img-wrapper {
     margin-top: 4px;
   }
   .sq-img-wrapper img {
-    width: 100%;          /* luôn full chiều rộng popup */
-    height: auto;         /* chiều cao tự động theo tỉ lệ ảnh */
-    max-height: none;     /* không giới hạn 140px nữa */
+    width: 100%;
+    height: auto;
+    max-height: none;
     object-fit: contain;
     display: block;
   }
-
-    .sq-stock-popup {
-    position: fixed;
-    min-width: 230px;
-    max-width: 320px;
-    max-height: 340px;    /* trước là 260, tăng lên cho đủ bảng + ảnh */
-    ...
-  }
-
-  
   `;
 
 
@@ -303,6 +294,31 @@
     });
   }
 
+    let globalCloseBound = false;
+
+  function bindGlobalCloseHandlers() {
+    if (globalCloseBound) return;
+    globalCloseBound = true;
+
+    // ESC để đóng popup
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        hideAllPopups();
+      }
+    });
+
+    // Click ra ngoài để đóng popup
+    document.addEventListener('click', (e) => {
+      const popup = document.querySelector('.sq-stock-popup.show');
+      if (!popup) return;
+
+      // Nếu click bên trong popup thì bỏ qua
+      if (e.target.closest('.sq-stock-popup')) return;
+
+      hideAllPopups();
+    });
+  }
+
     // ===== Drag support: kéo popup bằng thanh header =====
   function makeDraggable(popup, handle) {
     if (!popup || !handle) return;
@@ -446,12 +462,16 @@
       top = rect.top + scrollY - approxHeight - 8;
     }
 
-    popup.style.left = `${left}px`;
+        popup.style.left = `${left}px`;
     popup.style.top = `${top}px`;
+
+    // Đảm bảo ESC + click ngoài hoạt động
+    bindGlobalCloseHandlers();
 
     hideAllPopups();
     popup.classList.add('show');
   }
+
 
 
   function attach(card, masp) {
@@ -460,7 +480,8 @@
 
     if (touch) {
       // Điện thoại / tablet: chạm để mở, chạm lại để đóng
-      card.addEventListener('click', async () => {
+      card.addEventListener('click', async (e) => {
+        e.stopPropagation();  // tránh click-bên-ngoài đóng ngay
         const current = document.querySelector('.sq-stock-popup.show');
         if (current) {
           current.classList.remove('show');
