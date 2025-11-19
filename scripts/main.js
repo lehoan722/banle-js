@@ -28,7 +28,7 @@ async function checkInStoreLocation() {
   // Toạ độ các cửa hàng (CẦN CẬP NHẬT LẠI CHO ĐÚNG)
   const STORE_POINTS = [
     // Ví dụ: Hamburg center – bạn thay lại bằng toạ độ cửa hàng thật
-    { lat: 53.551086, lng: 9.993682 }
+    { lat: 21.5527, lng: 105842555 }
   ];
   const MAX_DISTANCE_M = 200; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
 
@@ -101,10 +101,10 @@ export async function khoiTaoUngDung() {
 
   // Xác định đang ở trang nào (dựa theo URL)
   const path = (window.location && window.location.pathname) || "";
-  const isBannvNhanVienPage = path.includes("bannvcs1") || path.includes("bannvcs2"); // chỉ trang bannvcs1.html mới bị bắt định vị
+  const isBannvcs1Page = path.includes("bannvcs1"); // chỉ trang bannvcs1.html mới bị bắt định vị
 
   // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
-  if (isBannvNhanVienPage) {
+  if (isBannvcs1Page) {
     // Chỉ cho phép trên điện thoại / tablet
     if (!isMobileDevice()) {
       alert("Ứng dụng bán hàng nhân viên chỉ được dùng trên điện thoại tại cửa hàng.");
