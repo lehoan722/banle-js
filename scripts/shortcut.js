@@ -131,7 +131,7 @@ export function khoiTaoShortcut() {
       // 3) Mở trang timkiemhanghoa333 trong TAB MỚI
       window.open("timkiemhanghoa333.html", "_blank");
     }
-    
+
     // F8: mở trang nhập vị trí kho (theo cơ sở đích), có ngoại lệ ccn1v2/ccn2v1
     if (e.key === "F8") {
       e.preventDefault();
@@ -186,9 +186,10 @@ export function khoiTaoShortcut() {
 }
 
 async function taoMoiHoaDon() {
-  const diadiemVal = document.getElementById("diadiem").value;
-  const manvVal = document.getElementById("manv").value;
-  const tennvVal = document.getElementById("tennv").value;
+  const diadiemVal = localStorage.getItem("diadiem") || document.getElementById("diadiem").value;
+  const manvVal = localStorage.getItem("manv") || document.getElementById("manv").value;
+  const tennvVal = localStorage.getItem("tennv") || document.getElementById("tennv").value;
+
 
   document.querySelectorAll("input").forEach(input => {
     if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
@@ -196,9 +197,11 @@ async function taoMoiHoaDon() {
 
   resetBangKetQua();
   await capNhatSoHoaDonTuDong();
-  document.getElementById("diadiem").value = diadiemVal;
-  document.getElementById("manv").value = manvVal;
-  document.getElementById("tennv").value = tennvVal;
+  document.getElementById("diadiem").value = diadiemVal || "";
+  document.getElementById("manv").value = manvVal || "";
+  document.getElementById("tennv").value = tennvVal || "";
+
+
   document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
   document.getElementById("masp").focus();
 }
