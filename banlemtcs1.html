@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -448,7 +448,9 @@
 
             <input id="diadiem" placeholder="diadiem" readonly />
             <input id="ngay" type="date" readonly />
-            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="gio" type="text" readonly style="width:70px" />
+          
+            <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
@@ -645,7 +647,7 @@
 
     </div>
 
-    
+
 
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -725,10 +727,10 @@
             }
         });
     </script>
-      <!-- het  Khung đăng nhập dùng module dùng chung -->
+    <!-- het  Khung đăng nhập dùng module dùng chung -->
 
 
-      
+
 
 
     <script type="module">
