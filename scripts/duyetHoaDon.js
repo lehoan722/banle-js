@@ -4,6 +4,15 @@ import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { bangKetQua, resetBangKetQua } from './hoadon.js';
 
+function formatTimeHHMM(dateInput) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+
 export function ganSuKienDuyetHoaDon() {
   document.getElementById("quaylai")?.addEventListener("click", taiHoaDonTruoc);
   document.getElementById("tieptuc")?.addEventListener("click", taiHoaDonTiep);
@@ -101,6 +110,16 @@ async function napHoaDonVaoTrang(hoadon) {
 
   document.getElementById("sohd").value = hoadon.sohd || "";
   document.getElementById("ngay").value = hoadon.ngay || "";
+
+  
+  const gioEl = document.getElementById("gio");
+  if (gioEl) {
+    if (hoadon.created_at) {
+      gioEl.value = formatTimeHHMM(hoadon.created_at);
+    } else {
+      gioEl.value = "";
+    }
+  }
   document.getElementById("manv").value = hoadon.manv || "";
   document.getElementById("tennv").value = hoadon.tennv || "";
   document.getElementById("diadiem").value = hoadon.diadiem || "";
