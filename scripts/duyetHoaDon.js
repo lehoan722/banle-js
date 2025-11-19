@@ -100,7 +100,7 @@ async function napHoaDonVaoTrang(hoadon) {
   if (!hoadon) return;
 
   document.getElementById("sohd").value = hoadon.sohd || "";
-  document.getElementById("ngay").value = hoadon.ngay || "";
+  document.getElementById("ngay").value = hoadon.created_at || "";
   document.getElementById("manv").value = hoadon.manv || "";
   document.getElementById("tennv").value = hoadon.tennv || "";
   document.getElementById("diadiem").value = hoadon.diadiem || "";
