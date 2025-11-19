@@ -28,7 +28,7 @@ async function checkInStoreLocation() {
   // Toạ độ các cửa hàng (CẦN CẬP NHẬT LẠI CHO ĐÚNG)
   const STORE_POINTS = [
     // Ví dụ: Hamburg center – bạn thay lại bằng toạ độ cửa hàng thật
-    { lat: 21.5527, lng: 105842555 }
+    { lat: 21.5525047, lng: 105.8423559 }
   ];
   const MAX_DISTANCE_M = 200; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
 
