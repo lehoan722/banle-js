@@ -7,6 +7,15 @@ import {
 } from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
+function formatTimeHHMM(dateInput) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+
 export function khoiTaoShortcut() {
   document.addEventListener("keydown", async function (e) {
     // F1: popup thêm mới
@@ -195,13 +204,22 @@ async function taoMoiHoaDon() {
     if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
   });
 
-  resetBangKetQua();
+    resetBangKetQua();
   await capNhatSoHoaDonTuDong();
-  document.getElementById("diadiem").value = diadiemVal || "";
-  document.getElementById("manv").value = manvVal || "";
-  document.getElementById("tennv").value = tennvVal || "";
 
+  const now = new Date();
 
-  document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("diadiem").value = diadiemVal;
+  document.getElementById("manv").value = manvVal;
+  document.getElementById("tennv").value = tennvVal;
+  document.getElementById("ngay").value = now.toISOString().slice(0, 10);
+
+  const gioEl = document.getElementById("gio");
+  if (gioEl) {
+    gioEl.value = formatTimeHHMM(now);
+  }
+
   document.getElementById("masp").focus();
 }
+
+
