@@ -23,7 +23,7 @@
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     border: 1px solid #e5e7eb;
     padding: 6px 8px;
-    font-size: 12px;
+    font-size: 20px;
     line-height: 1.3;
     z-index: 9999;
     display: none;
@@ -70,7 +70,7 @@
     position:absolute;
     top:2px;
     right:4px;
-    font-size:13px;
+    font-size:20px;
     cursor:pointer;
     opacity:.6;
   }
@@ -78,7 +78,7 @@
 
   .sq-vitri-row td {
     font-weight: 500;
-    font-size: 10px;
+    font-size: 20px;
     text-align: left;
     color: #b91c1c;
     border-bottom: none;
