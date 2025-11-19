@@ -17,6 +17,80 @@ import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
 
+// ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
+function isMobileDevice() {
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  // Các từ khoá phổ biến trên điện thoại / tablet
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+}
+
+async function checkInStoreLocation() {
+  // Toạ độ các cửa hàng (CẦN CẬP NHẬT LẠI CHO ĐÚNG)
+  const STORE_POINTS = [
+    // Ví dụ: Hamburg center – bạn thay lại bằng toạ độ cửa hàng thật
+    { lat: 53.551086, lng: 9.993682 }
+  ];
+  const MAX_DISTANCE_M = 200; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
+
+  // Nếu thiết bị không hỗ trợ định vị
+  if (!navigator.geolocation) {
+    alert("Thiết bị không hỗ trợ định vị. Ứng dụng này chỉ dùng trong cửa hàng.");
+    return false;
+  }
+
+  // Lấy vị trí hiện tại (promise wrapper)
+  const pos = await new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve(p),
+      (err) => {
+        console.error("Lỗi định vị:", err);
+        alert("Không lấy được vị trí (có thể bạn đã từ chối). Ứng dụng chỉ dùng trong cửa hàng.");
+        resolve(null);
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000
+      }
+    );
+  });
+
+  if (!pos) return false;
+
+  const { latitude, longitude } = pos.coords;
+
+  // Hàm tính khoảng cách 2 toạ độ (haversine)
+  function distanceInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // bán kính trái đất (m)
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  let ok = false;
+  for (const p of STORE_POINTS) {
+    const dist = distanceInMeters(latitude, longitude, p.lat, p.lng);
+    console.log("Khoảng cách tới điểm", p, "=", dist, "m");
+    if (dist <= MAX_DISTANCE_M) {
+      ok = true;
+      break;
+    }
+  }
+
+  if (!ok) {
+    alert("Bạn không ở trong khu vực cửa hàng, ứng dụng không cho phép sử dụng.");
+  }
+  return ok;
+}
+
+// ===== HẾT PHẦN GUARD THEO THIẾT BỊ & VỊ TRÍ =====
+
+
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
 export async function khoiTaoUngDung() {
@@ -24,11 +98,48 @@ export async function khoiTaoUngDung() {
   window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
 
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
-  // === GUARD QUYỀN TRUY CẬP TRANG (DÙNG CHUNG CHO TẤT CẢ CÁC TRANG) ===
+
+  // Xác định đang ở trang nào (dựa theo URL)
+  const path = (window.location && window.location.pathname) || "";
+  const isBannvNhanVienPage = path.includes("bannvcs1") || path.includes("bannvcs2"); // chỉ trang bannvcs1.html mới bị bắt định vị
+
+  // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
+  if (isBannvNhanVienPage) {
+    // Chỉ cho phép trên điện thoại / tablet
+    if (!isMobileDevice()) {
+      alert("Ứng dụng bán hàng nhân viên chỉ được dùng trên điện thoại tại cửa hàng.");
+      try {
+        const app = document.getElementById("app-container");
+        const login = document.getElementById("login-container");
+        if (app) app.style.display = "none";
+        if (login) login.style.display = "";
+      } catch (e) {
+        console.warn("Không ẩn/hiện được container sau khi chặn thiết bị:", e);
+      }
+      return;
+    }
+
+    // Kiểm tra vị trí cửa hàng
+    const inStore = await checkInStoreLocation();
+    if (!inStore) {
+      try {
+        const app = document.getElementById("app-container");
+        const login = document.getElementById("login-container");
+        if (app) app.style.display = "none";
+        if (login) login.style.display = "";
+      } catch (e) {
+        console.warn("Không ẩn/hiện được container sau khi chặn vị trí:", e);
+      }
+      return;
+    }
+  }
+
+  // === 2. GUARD QUYỀN TRUY CẬP TRANG (DÙNG CHUNG CHO TẤT CẢ CÁC TRANG) ===
   const manvDangNhap = localStorage.getItem('manv');           // bạn đã set sau khi login
   const ok = await ensureAccess({ supabase, manv: manvDangNhap });
   if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
   // === HẾT GUARD ===
+
 
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
   if (error) {
@@ -395,7 +506,7 @@ export async function khoiTaoUngDung() {
       return c ? c.textContent.trim() : '';
     }
 
-        function handleRow(row) {
+    function handleRow(row) {
       // Cột hiện có theo thead: 0 Mã hàng, 1 Tên, 2 Kích cỡ, 3 SL, 4 ĐVT, 5 Đơn giá, 6 KM, 7 Thành tiền, 8 Vị trí
       const masp = pickCellText(row, 0).toUpperCase();
       const size = pickCellText(row, 2);
@@ -418,7 +529,7 @@ export async function khoiTaoUngDung() {
           "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0);
 
         if (!isTouch && typeof window.StockQuick.showFor === "function" &&
-            !row.dataset.stockQuickRowClickBound) {
+          !row.dataset.stockQuickRowClickBound) {
 
           row.addEventListener("click", () => {
             // chỉ gọi showFor, không toggle, để luôn hiện popup theo dòng đang chọn
