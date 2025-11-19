@@ -8,7 +8,7 @@
   }
 
   // ===== CSS cho popup trên từng card ảnh =====
-  const css = `
+    const css = `
   .card {
     /* không cần gì đặc biệt nữa, chỉ đánh dấu dòng có popup */
   }
@@ -294,7 +294,7 @@
     });
   }
 
-  let globalCloseBound = false;
+    let globalCloseBound = false;
 
   function bindGlobalCloseHandlers() {
     if (globalCloseBound) return;
@@ -319,7 +319,7 @@
     });
   }
 
-  // ===== Drag support: kéo popup bằng thanh header =====
+    // ===== Drag support: kéo popup bằng thanh header =====
   function makeDraggable(popup, handle) {
     if (!popup || !handle) return;
 
@@ -335,19 +335,15 @@
       startX = p.clientX;
       startY = p.clientY;
 
-      // Khi bắt đầu kéo, bỏ transform để dùng left/top dạng px
-      popup.style.transform = '';
-
       const rect = popup.getBoundingClientRect();
       startLeft = rect.left;
-      startTop = rect.top;
+      startTop  = rect.top;
 
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
       document.addEventListener('touchmove', onMove, { passive: false });
       document.addEventListener('touchend', onUp);
     };
-
 
     const onMove = (e) => {
       if (!dragging) return;
@@ -358,9 +354,9 @@
       const dy = p.clientY - startY;
 
       let left = startLeft + dx;
-      let top = startTop + dy;
+      let top  = startTop  + dy;
 
-      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vw = window.innerWidth  || document.documentElement.clientWidth;
       const vh = window.innerHeight || document.documentElement.clientHeight;
       const rect = popup.getBoundingClientRect();
       const w = rect.width;
@@ -368,12 +364,12 @@
 
       // Giới hạn trong màn hình
       if (left < 0) left = 0;
-      if (top < 0) top = 0;
+      if (top  < 0) top  = 0;
       if (left + w > vw) left = vw - w;
-      if (top + h > vh) top = vh - h;
+      if (top  + h > vh) top  = vh - h;
 
       popup.style.left = left + 'px';
-      popup.style.top = top + 'px';
+      popup.style.top  = top  + 'px';
     };
 
     const onUp = () => {
@@ -420,9 +416,9 @@
       };
     }
 
-    // Click vào dòng tổng (mã) hoặc header để bật/tắt ảnh sản phẩm
-    const sumRowEl = popup.querySelector('tr.sum-row');
-    const headerEl = popup.querySelector('.sq-stock-popup-header');
+        // Click vào dòng tổng (mã) hoặc header để bật/tắt ảnh sản phẩm
+    const sumRowEl  = popup.querySelector('tr.sum-row');
+    const headerEl  = popup.querySelector('.sq-stock-popup-header');
     const imgWrapper = popup.querySelector('.sq-img-wrapper');
 
     const toggleImg = (e) => {
@@ -457,11 +453,11 @@
     const approxHeight = 480;
 
     let left = scrollX + vw / 2;
-    let top = scrollY + vh / 2;
+    let top  = scrollY + vh / 2;
 
     // Đặt vào giữa bằng transform
     popup.style.left = `${left}px`;
-    popup.style.top = `${top}px`;
+    popup.style.top  = `${top}px`;
     popup.style.transform = 'translate(-50%, -50%)';
 
     // Đảm bảo ESC + click ngoài hoạt động
