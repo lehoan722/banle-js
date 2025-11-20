@@ -101,7 +101,7 @@ export async function khoiTaoUngDung() {
 
   // Xác định đang ở trang nào (dựa theo URL)
   const path = (window.location && window.location.pathname) || "";
-  const isBannvcs1Page = path.includes("bannvcs1"); // chỉ trang bannvcs1.html mới bị bắt định vị
+  const isBannvcs1Page = path.includes("bannvcssss"); // chỉ trang bannvcs1.html mới bị bắt định vị
 
   // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
   if (isBannvcs1Page) {
