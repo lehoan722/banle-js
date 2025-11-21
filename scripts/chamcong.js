@@ -236,7 +236,9 @@ function renderTodayLog() {
   logTotal.textContent = `Tổng công hôm nay: ${total.toFixed(2)} giờ`;
 }
 
-// Xác định những sự kiện hợp lệ tiếp theo dựa trên chuỗi hiện tại
+// Giờ giới hạn cho phép bắt đầu ca thứ 2 (22h)
+const SHIFT_RESTART_LIMIT_HOUR = 22;
+
 function getAllowedNextEvents() {
   // Chưa có sự kiện nào trong ngày -> chỉ được VÀO CA
   if (todayEvents.length === 0) {
@@ -247,6 +249,10 @@ function getAllowedNextEvents() {
     .sort((a, b) => a.createdAt - b.createdAt)
     .slice(-1)[0];
   const lastCode = last.su_kien;
+
+  // Lấy giờ hiện tại để quyết định có cho phép VÀO CA lần 2 không
+  const now = new Date();
+  const currentHour = now.getHours();
 
   switch (lastCode) {
     case "VAOCA":
@@ -271,7 +277,12 @@ function getAllowedNextEvents() {
 
     case "TANCA":
     case "AUTO_TANCA":
-      // Đã tan ca (tự bấm hoặc tự động) -> không cho chấm thêm
+      // Đã tan ca xong 1 ca:
+      // - Nếu TRƯỚC 22h: cho phép VÀO CA lại (ca 2)
+      // - Nếu SAU 22h: không cho chấm thêm
+      if (currentHour < SHIFT_RESTART_LIMIT_HOUR) {
+        return ["VAOCA"];
+      }
       return [];
 
     default:
@@ -279,6 +290,35 @@ function getAllowedNextEvents() {
       return ["VAOCA"];
   }
 }
+
+// Kiểm tra từ lần VAOCA gần nhất tới hiện tại đã có TANCA/AUTO_TANCA chưa
+function hasTancaAfterLastVaoca() {
+  if (todayEvents.length === 0) return false;
+
+  const sorted = [...todayEvents].sort((a, b) => a.createdAt - b.createdAt);
+  let lastVaocaIndex = -1;
+
+  // Tìm VAOCA gần nhất
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i].su_kien === "VAOCA") {
+      lastVaocaIndex = i;
+      break;
+    }
+  }
+
+  const startIndex = lastVaocaIndex === -1 ? 0 : lastVaocaIndex;
+
+  for (let i = startIndex; i < sorted.length; i++) {
+    const code = sorted[i].su_kien;
+    if (code === "TANCA" || code === "AUTO_TANCA") {
+      return true; // ca hiện tại đã tan ca
+    }
+  }
+
+  return false;
+}
+
+
 
 function hasTancaToday() {
   return todayEvents.some(ev => ev.su_kien === "TANCA" || ev.su_kien === "AUTO_TANCA");
