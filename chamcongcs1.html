@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chấm công CS1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+    }
+    #login-container, #app-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .hidden {
+      display: none;
+    }
+    h1 {
+      font-size: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    button {
+      padding: 16px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #007bff;
+      color: #fff;
+    }
+    button.warn {
+      background: #ff9800;
+      color: #fff;
+    }
+    button.danger {
+      background: #e53935;
+      color: #fff;
+    }
+    .info {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #555;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Form đăng nhập (tái dùng authModule.js) -->
+  <div id="login-container">
+    <h1>Đăng nhập chấm công CS1</h1>
+    <!-- Bạn có thể tái dùng form login hiện tại (authModule.js đang xử lý) -->
+    <form id="login-form">
+      <div>
+        <label>Mã nhân viên:</label><br>
+        <input type="text" id="login-manv" required>
+      </div>
+      <div style="margin-top:8px;">
+        <label>Mật khẩu:</label><br>
+        <input type="password" id="login-password" required>
+      </div>
+      <button type="submit" class="primary" style="margin-top:12px;width:100%;">Đăng nhập</button>
+    </form>
+    <div class="info">
+      Yêu cầu bật GPS và đứng trong cửa hàng CS1 khi đăng nhập.
+    </div>
+  </div>
+
+  <!-- App chấm công -->
+  <div id="app-container" class="hidden">
+    <h1>Chấm công - Cơ sở 1</h1>
+    <div class="status">
+      Nhân viên: <span id="status-manv"></span><br>
+      Địa điểm: CS1<br>
+      <span id="status-msg"></span>
+    </div>
+
+    <div class="btn-grid">
+      <button id="btn-vaoca" class="primary">Vào ca</button>
+      <button id="btn-ntr" class="warn">Nghỉ trưa</button>
+      <button id="btn-ntrd" class="primary">Nghỉ trưa đến</button>
+      <button id="btn-nch" class="warn">Nghỉ chiều</button>
+      <button id="btn-nchd" class="primary">Nghỉ chiều đến</button>
+      <button id="btn-tanca" class="danger">Tan ca</button>
+    </div>
+
+    <div class="info">
+      Mỗi lần bấm sẽ ghi 1 dòng vào bảng <b>chamcong_log</b> trên Supabase.
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/chamcong.js"></script>
+</body>
+</html>
