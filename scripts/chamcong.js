@@ -1,11 +1,16 @@
 // scripts/chamcong.js
-import { supabase } from './scripts/supabaseClient.js';  // sửa path nếu khác
+
+// Dùng chung cơ chế đăng nhập như trang Up ảnh nhanh
+import { khoiTaoDangNhapDungChung } from './authModule.js';
+
+// Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
+let supabase = null;
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 200;      // bán kính cho phép
-const AUTO_CHECK_INTERVAL_MS = 180000; // 3 phút
+const MAX_DISTANCE_M = 200;                // bán kính cho phép (m)
+const AUTO_CHECK_INTERVAL_MS = 180000;     // 3 phút
 
 function isMobileDevice() {
   const ua = navigator.userAgent || navigator.vendor || window.opera;
@@ -93,6 +98,14 @@ async function ensureInStoreBeforeAction(diadiem) {
 
 // Ghi 1 dòng chấm công vào bảng chamcong_log
 async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu = null }) {
+  if (!supabase) {
+    supabase = window.supabase;
+  }
+  if (!supabase) {
+    alert("Không khởi tạo được Supabase, vui lòng tải lại trang.");
+    return false;
+  }
+
   const { error } = await supabase.from("chamcong_log").insert({
     manv,
     diadiem,
@@ -120,6 +133,8 @@ function getTodayKeyForAuto(manv, diadiem) {
 }
 
 async function startAutoCheckLeave(manv, diadiem) {
+  if (!manv) return;
+
   // Khởi tạo flag theo localStorage
   autoTanCaLoggedToday = !!localStorage.getItem(getTodayKeyForAuto(manv, diadiem));
 
@@ -162,69 +177,10 @@ async function startAutoCheckLeave(manv, diadiem) {
   }, AUTO_CHECK_INTERVAL_MS);
 }
 
-// ================== ĐĂNG NHẬP & GIAO DIỆN ==================
-
-async function handleLogin(diadiem) {
-  const loginForm = document.getElementById("login-form");
-  const loginManv = document.getElementById("login-manv");
-  const loginPassword = document.getElementById("login-password");
-  const statusManv = document.getElementById("status-manv");
-  const statusMsg = document.getElementById("status-msg");
-  const loginContainer = document.getElementById("login-container");
-  const appContainer = document.getElementById("app-container");
-
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const manv = loginManv.value.trim();
-    const password = loginPassword.value;
-
-    if (!manv || !password) {
-      alert("Vui lòng nhập đủ mã nhân viên và mật khẩu.");
-      return;
-    }
-
-    // 1) Check vị trí trước khi cho login
-    const inStore = await ensureInStoreBeforeAction(diadiem);
-    if (!inStore) return;
-
-    // 2) Gọi API login (tái dùng cơ chế bạn đang có)
-    // Ở đây mình minh hoạ dùng Supabase Auth email/password,
-    // nếu bạn đang dùng API riêng /authModule.js thì thay đoạn này cho khớp.
-    try {
-      // Ví dụ: bạn dùng email = manv + '@yourdomain.com'
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: `${manv}@example.com`, // TUỲ CÁCH BẠN THIẾT KẾ
-        password
-      });
-      if (error) {
-        console.error(error);
-        alert("Đăng nhập thất bại: " + error.message);
-        return;
-      }
-
-      // Lưu manv & diadiem để dùng cho chấm công
-      localStorage.setItem("manv", manv);
-      localStorage.setItem("diadiem", diadiem);
-
-      statusManv.textContent = manv;
-      statusMsg.textContent = "Đã đăng nhập. Bạn có thể bấm các nút chấm công.";
-
-      loginContainer.classList.add("hidden");
-      appContainer.classList.remove("hidden");
-
-      // Bắt đầu auto-check rời khỏi cửa hàng
-      startAutoCheckLeave(manv, diadiem);
-
-    } catch (err) {
-      console.error(err);
-      alert("Có lỗi xảy ra khi đăng nhập.");
-    }
-  });
-}
-
+// Gắn sự kiện cho các nút chấm công sau khi đã login
 function attachChamCongButtons(diadiem) {
   const manv = localStorage.getItem("manv");
-  if (!manv) return; // chưa login
+  if (!manv) return;
 
   const statusManv = document.getElementById("status-manv");
   const statusMsg = document.getElementById("status-msg");
@@ -261,26 +217,43 @@ function attachChamCongButtons(diadiem) {
   btnTanca.addEventListener("click", () => handleClick("TANCA"));
 }
 
-// Khởi động
+// Khởi tạo sau khi đăng nhập thành công
+function initChamCong(diadiem) {
+  supabase = window.supabase;
+  if (!supabase) {
+    console.error("Supabase client chưa sẵn sàng!");
+    alert("Không khởi tạo được Supabase, vui lòng tải lại trang.");
+    return;
+  }
+
+  // Ẩn login, hiện app – authModule đã làm giúp, nhưng ta đảm bảo lại
+  const loginContainer = document.getElementById("login-container");
+  const appContainer = document.getElementById("app-container");
+  if (loginContainer) loginContainer.style.display = "none";
+  if (appContainer) appContainer.style.display = "";
+
+  // Gắn nút chấm công & bắt đầu auto check
+  attachChamCongButtons(diadiem);
+
+  const manv = localStorage.getItem("manv");
+  startAutoCheckLeave(manv, diadiem);
+}
+
+// ================== KHỞI ĐỘNG ==================
 document.addEventListener("DOMContentLoaded", () => {
   const diadiem = getDiaDiemFromPath(); // cs1 / cs2
 
-  // Nếu đã login trước (manv trong localStorage) thì cho vào luôn app
-  const manv = localStorage.getItem("manv");
-  const savedDiaDiem = localStorage.getItem("diadiem");
+  const loginApiPath = diadiem === "cs1" ? "/api/login-cs1" : "/api/login-cs2";
 
-  const loginContainer = document.getElementById("login-container");
-  const appContainer = document.getElementById("app-container");
-
-  if (manv && savedDiaDiem === diadiem) {
-    loginContainer.classList.add("hidden");
-    appContainer.classList.remove("hidden");
-    attachChamCongButtons(diadiem);
-    startAutoCheckLeave(manv, diadiem);
-  } else {
-    // Chưa login hoặc login ở cơ sở khác -> yêu cầu login lại
-    localStorage.removeItem("manv");
-    localStorage.removeItem("diadiem");
-    handleLogin(diadiem);
-  }
+  // Dùng cùng module đăng nhập như trang Up ảnh nhanh
+  khoiTaoDangNhapDungChung({
+    loginContainerId: 'login-container',
+    appContainerId: 'app-container',
+    macDinhDiaDiem: diadiem,
+    tuDongKhoaCoSo: true,
+    loginApiPath,
+    onLoginSuccess: () => {
+      initChamCong(diadiem);
+    }
+  });
 });
