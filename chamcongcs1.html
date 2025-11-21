@@ -46,6 +46,10 @@
       background: #e53935;
       color: #fff;
     }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
     .info {
       margin-top: 8px;
       font-size: 14px;
@@ -57,6 +61,30 @@
       background: #fff;
       border-radius: 6px;
       font-size: 14px;
+    }
+    .log-panel {
+      margin-top: 16px;
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    .log-panel h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+    #log-list {
+      margin: 0;
+      padding-left: 18px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #log-list li {
+      margin-bottom: 4px;
+    }
+    #log-total {
+      margin-top: 8px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -89,6 +117,12 @@
 
     <div class="info">
       Mỗi lần bấm sẽ ghi 1 dòng vào bảng <b>chamcong_log</b> trên Supabase.
+    </div>
+
+    <div id="log-panel" class="log-panel">
+      <h2>Lịch sử chấm công hôm nay</h2>
+      <ul id="log-list"></ul>
+      <div id="log-total">Tổng công hôm nay: 0.00 giờ</div>
     </div>
   </div>
 
