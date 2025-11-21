@@ -16,9 +16,6 @@
       margin: 0 auto;
       padding: 16px;
     }
-    .hidden {
-      display: none;
-    }
     h1 {
       font-size: 20px;
       text-align: center;
@@ -64,28 +61,16 @@
   </style>
 </head>
 <body>
-  <!-- Form đăng nhập (tái dùng authModule.js) -->
+  <!-- Khung login: authModule.js sẽ tự vẽ form đăng nhập ở đây -->
   <div id="login-container">
     <h1>Đăng nhập chấm công CS2</h1>
-    <!-- Bạn có thể tái dùng form login hiện tại (authModule.js đang xử lý) -->
-    <form id="login-form">
-      <div>
-        <label>Mã nhân viên:</label><br>
-        <input type="text" id="login-manv" required>
-      </div>
-      <div style="margin-top:8px;">
-        <label>Mật khẩu:</label><br>
-        <input type="password" id="login-password" required>
-      </div>
-      <button type="submit" class="primary" style="margin-top:12px;width:100%;">Đăng nhập</button>
-    </form>
     <div class="info">
       Yêu cầu bật GPS và đứng trong cửa hàng CS2 khi đăng nhập.
     </div>
   </div>
 
-  <!-- App chấm công -->
-  <div id="app-container" class="hidden">
+  <!-- App chấm công: chỉ hiển thị sau khi login thành công -->
+  <div id="app-container" style="display:none;">
     <h1>Chấm công - Cơ sở 2</h1>
     <div class="status">
       Nhân viên: <span id="status-manv"></span><br>
