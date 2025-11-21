@@ -24,11 +24,10 @@ function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
 
-async function checkInStoreLocation() {
-  // Toạ độ các cửa hàng (CẦN CẬP NHẬT LẠI CHO ĐÚNG)
-  const STORE_POINTS = [
-    // Ví dụ: Tich Luong – bạn thay lại bằng toạ độ cửa hàng thật
-    { lat: 21.5525047, lng: 105.8423559 }
+async function checkInStoreLocation(pointsOverride) {
+  // Nếu truyền vào mảng tọa độ thì dùng, không thì dùng mặc định (CS1)
+  const STORE_POINTS = pointsOverride || [
+    { lat: 21.5525047, lng: 105.8423559 }  // CS1 – Tích Lương
   ];
   const MAX_DISTANCE_M = 200; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
 
@@ -106,10 +105,11 @@ export async function khoiTaoUngDung() {
 
   // Xác định đang ở trang nào (dựa theo URL)
   const path = (window.location && window.location.pathname) || "";
-  const isBannvcs1Page = path.includes("bannvcs1"); // chỉ trang bannvcs1.html mới bị bắt định vị
+  const isBannvcs1Page = path.includes("bannvcs1");
+  const isBannvcs2Page = path.includes("bannvcs2");
 
-  // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
-  if (isBannvcs1Page) {
+  // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 HOẶC CS2 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
+  if (isBannvcs1Page || isBannvcs2Page) {
     // Chỉ cho phép trên điện thoại / tablet
     if (!isMobileDevice()) {
       alert("Ứng dụng bán hàng nhân viên chỉ được dùng trên điện thoại tại cửa hàng.");
@@ -124,8 +124,20 @@ export async function khoiTaoUngDung() {
       return;
     }
 
-    // Kiểm tra vị trí cửa hàng
-    const inStore = await checkInStoreLocation();
+    // Chọn tọa độ tùy theo trang
+    let inStore = false;
+    if (isBannvcs1Page) {
+      // CS1 – dùng tọa độ Tích Lương
+      inStore = await checkInStoreLocation([
+        { lat: 21.5525047, lng: 105.8423559 }
+      ]);
+    } else if (isBannvcs2Page) {
+      // CS2 – dùng tọa độ Lương Ngọc Quyến
+      inStore = await checkInStoreLocation([
+        { lat: 21.5843348, lng: 105.8343116 }
+      ]);
+    }
+
     if (!inStore) {
       try {
         const app = document.getElementById("app-container");
