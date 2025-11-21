@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo chấm công & lương nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./css/handsontable.full.min.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 8px;
+      background: #f5f5f5;
+    }
+    .filter-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+      background: #fff;
+      padding: 8px;
+      border-radius: 6px;
+    }
+    .filter-panel label {
+      font-size: 13px;
+      margin-right: 4px;
+    }
+    .filter-panel input,
+    .filter-panel select {
+      font-size: 13px;
+      padding: 2px 4px;
+    }
+    .filter-panel button {
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1.2fr 1.5fr;
+      gap: 8px;
+    }
+    .panel {
+      background: #fff;
+      border-radius: 6px;
+      padding: 4px;
+    }
+    .panel h2 {
+      font-size: 14px;
+      margin: 4px;
+    }
+    #summaryGrid, #detailGrid {
+      width: 100%;
+      height: 400px;
+    }
+  </style>
+</head>
+<body>
+  <div class="filter-panel">
+    <div>
+      <label>Từ ngày:</label>
+      <input type="date" id="tu_ngay">
+    </div>
+    <div>
+      <label>Đến ngày:</label>
+      <input type="date" id="den_ngay">
+    </div>
+    <div>
+      <label>Cơ sở:</label>
+      <select id="diadiem">
+        <option value="">Tất cả</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+    </div>
+    <div>
+      <label>Nhân viên:</label>
+      <input type="text" id="manv" placeholder="Mã NV (để trống = tất cả)">
+    </div>
+    <div>
+      <label>Lương/giờ:</label>
+      <input type="number" id="luong_gio" value="22000" style="width:80px;">
+    </div>
+    <div>
+      <label>% thưởng DS:</label>
+      <input type="number" id="pct_thuong" value="1" style="width:60px;">%
+    </div>
+    <div>
+      <button id="btn-load">Xem báo cáo</button>
+    </div>
+    <div>
+      <button id="btn-export-summary">Xuất Excel tổng hợp</button>
+      <button id="btn-export-detail">Xuất Excel chi tiết</button>
+    </div>
+  </div>
+
+  <div class="grid-container">
+    <div class="panel">
+      <h2>Tổng hợp theo nhân viên / tháng</h2>
+      <div id="summaryGrid"></div>
+    </div>
+    <div class="panel">
+      <h2>Chi tiết theo ngày (click dòng ở bảng trái)</h2>
+      <div id="detailGrid"></div>
+    </div>
+  </div>
+
+  <script src="./js/handsontable.full.min.js"></script>
+  <script type="module" src="./scripts/baocaochamcong.js"></script>
+</body>
+</html>
