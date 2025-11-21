@@ -11,6 +11,10 @@ const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
 const MAX_DISTANCE_M = 200;                // bán kính cho phép (m)
 const AUTO_CHECK_INTERVAL_MS = 180000;     // 3 phút
+const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
+
+// Bộ nhớ log chấm công trong ngày hiện tại (sau khi load từ DB)
+let todayEvents = []; // mỗi phần tử: { su_kien, createdAt: Date, nguon }
 
 function isMobileDevice() {
   const ua = navigator.userAgent || navigator.vendor || window.opera;
@@ -45,7 +49,8 @@ function getCoordForDiaDiem(diadiem) {
   return CS1_COORD;
 }
 
-// Check vị trí hiện tại có trong cửa hàng không
+// ==== VỊ TRÍ / GPS =====================================
+
 async function checkInStore(diadiem) {
   if (!navigator.geolocation) {
     alert("Thiết bị không hỗ trợ định vị. Ứng dụng chấm công chỉ dùng tại cửa hàng.");
@@ -96,17 +101,25 @@ async function ensureInStoreBeforeAction(diadiem) {
   return ok;
 }
 
-// Ghi 1 dòng chấm công vào bảng chamcong_log
-async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu = null }) {
+// ==== GHI & ĐỌC CSDL ====================================
+
+async function ensureSupabase() {
   if (!supabase) {
     supabase = window.supabase;
   }
   if (!supabase) {
     alert("Không khởi tạo được Supabase, vui lòng tải lại trang.");
-    return false;
+    return null;
   }
+  return supabase;
+}
 
-  const { error } = await supabase.from("chamcong_log").insert({
+// Ghi 1 dòng chấm công vào bảng chamcong_log
+async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu = null }) {
+  const sp = await ensureSupabase();
+  if (!sp) return false;
+
+  const { error } = await sp.from("chamcong_log").insert({
     manv,
     diadiem,
     su_kien,
@@ -121,10 +134,159 @@ async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu =
   return true;
 }
 
-// Auto TANCA khi ra khỏi cửa hàng sau 3 lần check
+// Tải toàn bộ log chấm công của hôm nay cho nhân viên & cơ sở
+async function loadTodayEvents(manv, diadiem) {
+  const sp = await ensureSupabase();
+  if (!sp) return [];
+
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+  const { data, error } = await sp
+    .from("chamcong_log")
+    .select("su_kien, nguon, created_at")
+    .eq("manv", manv)
+    .eq("diadiem", diadiem)
+    .gte("created_at", start.toISOString())
+    .lte("created_at", end.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Lỗi load log hôm nay:", error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    su_kien: row.su_kien,
+    nguon: row.nguon,
+    createdAt: new Date(row.created_at)
+  }));
+}
+
+// ==== LOGIC TÍNH GIỜ & HIỂN THỊ ========================
+
+function formatTime(date) {
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+function labelSuKien(su_kien) {
+  switch (su_kien) {
+    case "VAOCA": return "Vào ca";
+    case "NTR": return "Nghỉ trưa";
+    case "NTRD": return "Nghỉ trưa đến";
+    case "NCH": return "Nghỉ chiều";
+    case "NCHD": return "Nghỉ chiều đến";
+    case "TANCA": return "Tan ca";
+    case "AUTO_TANCA": return "Tan ca (tự động)";
+    default: return su_kien;
+  }
+}
+
+// Tính tổng giờ công từ danh sách sự kiện trong ngày
+function computeTotalHours(events) {
+  const sorted = [...events].sort((a, b) => a.createdAt - b.createdAt);
+
+  const startEvents = new Set(["VAOCA", "NTRD", "NCHD"]);
+  const endEvents = new Set(["NTR", "NCH", "TANCA", "AUTO_TANCA"]);
+
+  let totalMs = 0;
+  let currentStart = null;
+
+  for (const ev of sorted) {
+    if (startEvents.has(ev.su_kien)) {
+      if (currentStart === null) {
+        currentStart = ev.createdAt;
+      } else {
+        // nếu đang trong ca mà lại start mới -> reset mốc
+        currentStart = ev.createdAt;
+      }
+    } else if (endEvents.has(ev.su_kien)) {
+      if (currentStart !== null) {
+        totalMs += ev.createdAt - currentStart;
+        currentStart = null;
+      }
+    }
+  }
+
+  const hours = totalMs / (1000 * 60 * 60);
+  return Math.round(hours * 100) / 100; // 2 chữ số sau dấu phẩy
+}
+
+function renderTodayLog() {
+  const logList = document.getElementById("log-list");
+  const logTotal = document.getElementById("log-total");
+  if (!logList || !logTotal) return;
+
+  logList.innerHTML = "";
+
+  todayEvents
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .forEach(ev => {
+      const li = document.createElement("li");
+      li.textContent = `Đã ghi: ${ev.su_kien} (${labelSuKien(ev.su_kien)}) lúc ${formatTime(ev.createdAt)}` +
+        (ev.nguon === "auto-gps" ? " [tự động]" : "");
+      logList.appendChild(li);
+    });
+
+  const total = computeTotalHours(todayEvents);
+  logTotal.textContent = `Tổng công hôm nay: ${total.toFixed(2)} giờ`;
+}
+
+// Xác định những sự kiện hợp lệ tiếp theo dựa trên chuỗi hiện tại
+function getAllowedNextEvents() {
+  if (todayEvents.length === 0) {
+    return ["VAOCA"];
+  }
+  const last = [...todayEvents].sort((a, b) => a.createdAt - b.createdAt).slice(-1)[0];
+  const lastCode = last.su_kien;
+
+  switch (lastCode) {
+    case "VAOCA":
+      return ["NTR"];
+    case "NTR":
+      return ["NTRD"];
+    case "NTRD":
+      return ["NCH"];
+    case "NCH":
+      return ["NCHD"];
+    case "NCHD":
+      return ["TANCA"];
+    case "TANCA":
+    case "AUTO_TANCA":
+      return []; // đã tan ca -> không cho chấm thêm
+    default:
+      // nếu chuỗi bị lạ thì chỉ cho bắt đầu lại bằng VAOCA
+      return ["VAOCA"];
+  }
+}
+
+function hasTancaToday() {
+  return todayEvents.some(ev => ev.su_kien === "TANCA" || ev.su_kien === "AUTO_TANCA");
+}
+
+// Khoá nút tạm thời sau khi bấm để tránh click liên tiếp
+function disableButtonTemporarily(btn, ms = BUTTON_LOCK_MS) {
+  if (!btn) return;
+  btn.disabled = true;
+  const unlockAt = Date.now() + ms;
+  btn.dataset.disabledUntil = String(unlockAt);
+
+  setTimeout(() => {
+    const stored = parseInt(btn.dataset.disabledUntil || "0", 10);
+    if (Date.now() >= stored) {
+      btn.disabled = false;
+    }
+  }, ms);
+}
+
+// ==== AUTO TANCA (GPS 3 lần liên tiếp) ==================
+
 let lastInStore = true;
 let outCount = 0;
-let autoTanCaLoggedToday = false;
 
 function getTodayKeyForAuto(manv, diadiem) {
   const d = new Date();
@@ -134,9 +296,6 @@ function getTodayKeyForAuto(manv, diadiem) {
 
 async function startAutoCheckLeave(manv, diadiem) {
   if (!manv) return;
-
-  // Khởi tạo flag theo localStorage
-  autoTanCaLoggedToday = !!localStorage.getItem(getTodayKeyForAuto(manv, diadiem));
 
   setInterval(async () => {
     const inStore = await checkInStore(diadiem);
@@ -157,10 +316,18 @@ async function startAutoCheckLeave(manv, diadiem) {
 
     console.log("outCount =", outCount);
 
-    if (outCount >= 3 && !autoTanCaLoggedToday) {
+    if (outCount >= 3) {
       // Sau 3 lần check liên tiếp (3 * 3 phút = 9 phút) ngoài cửa hàng
-      autoTanCaLoggedToday = true;
-      localStorage.setItem(getTodayKeyForAuto(manv, diadiem), "1");
+      if (hasTancaToday()) {
+        console.log("Đã có TANCA hôm nay, không ghi AUTO_TANCA nữa.");
+        return;
+      }
+
+      const already = localStorage.getItem(getTodayKeyForAuto(manv, diadiem));
+      if (already) {
+        console.log("AUTO_TANCA hôm nay đã được ghi trong localStorage.");
+        return;
+      }
 
       const ok = await logChamCong({
         manv,
@@ -171,13 +338,23 @@ async function startAutoCheckLeave(manv, diadiem) {
       });
 
       if (ok) {
+        localStorage.setItem(getTodayKeyForAuto(manv, diadiem), "1");
+        todayEvents.push({
+          manv,
+          diadiem,
+          su_kien: "AUTO_TANCA",
+          nguon: "auto-gps",
+          createdAt: new Date()
+        });
+        renderTodayLog();
         alert("Hệ thống ghi nhận TAN CA tự động do bạn đã rời khỏi cửa hàng.");
       }
     }
   }, AUTO_CHECK_INTERVAL_MS);
 }
 
-// Gắn sự kiện cho các nút chấm công sau khi đã login
+// ==== GIAO DIỆN CHẤM CÔNG =============================
+
 function attachChamCongButtons(diadiem) {
   const manv = localStorage.getItem("manv");
   if (!manv) return;
@@ -193,7 +370,13 @@ function attachChamCongButtons(diadiem) {
   const btnNchd  = document.getElementById("btn-nchd");
   const btnTanca = document.getElementById("btn-tanca");
 
-  async function handleClick(su_kien) {
+  async function handleClick(su_kien, btn) {
+    const allowed = getAllowedNextEvents();
+    if (!allowed.includes(su_kien)) {
+      alert("Thứ tự chấm công không hợp lý. Vui lòng chấm đúng quy trình trong ngày.");
+      return;
+    }
+
     const okInStore = await ensureInStoreBeforeAction(diadiem);
     if (!okInStore) return;
 
@@ -205,20 +388,34 @@ function attachChamCongButtons(diadiem) {
     });
     if (ok) {
       const now = new Date();
-      statusMsg.textContent = `Đã ghi: ${su_kien} lúc ${now.toLocaleTimeString()}`;
+      todayEvents.push({
+        manv,
+        diadiem,
+        su_kien,
+        nguon: "manual",
+        createdAt: now
+      });
+      if (statusMsg) {
+        statusMsg.textContent = `Đã ghi: ${su_kien} lúc ${formatTime(now)}`;
+      }
+      renderTodayLog();
+      disableButtonTemporarily(btn);
     }
   }
 
-  btnVaoca.addEventListener("click", () => handleClick("VAOCA"));
-  btnNtr  .addEventListener("click", () => handleClick("NTR"));
-  btnNtrd .addEventListener("click", () => handleClick("NTRD"));
-  btnNch  .addEventListener("click", () => handleClick("NCH"));
-  btnNchd .addEventListener("click", () => handleClick("NCHD"));
-  btnTanca.addEventListener("click", () => handleClick("TANCA"));
+  btnVaoca.addEventListener("click", () => handleClick("VAOCA", btnVaoca));
+  btnNtr  .addEventListener("click", () => handleClick("NTR",   btnNtr));
+  btnNtrd .addEventListener("click", () => handleClick("NTRD",  btnNtrd));
+  btnNch  .addEventListener("click", () => handleClick("NCH",   btnNch));
+  btnNchd .addEventListener("click", () => handleClick("NCHD",  btnNchd));
+  btnTanca.addEventListener("click", () => handleClick("TANCA", btnTanca));
+
+  // Render log ngay khi gắn nút
+  renderTodayLog();
 }
 
 // Khởi tạo sau khi đăng nhập thành công
-function initChamCong(diadiem) {
+async function initChamCong(diadiem) {
   supabase = window.supabase;
   if (!supabase) {
     console.error("Supabase client chưa sẵn sàng!");
@@ -226,26 +423,31 @@ function initChamCong(diadiem) {
     return;
   }
 
-  // Ẩn login, hiện app – authModule đã làm giúp, nhưng ta đảm bảo lại
   const loginContainer = document.getElementById("login-container");
   const appContainer = document.getElementById("app-container");
   if (loginContainer) loginContainer.style.display = "none";
   if (appContainer) appContainer.style.display = "";
 
-  // Gắn nút chấm công & bắt đầu auto check
+  const manv = localStorage.getItem("manv");
+  if (!manv) {
+    alert("Không tìm thấy mã nhân viên trong phiên đăng nhập, vui lòng đăng nhập lại.");
+    location.reload();
+    return;
+  }
+
+  // Tải log hôm nay và hiển thị
+  todayEvents = await loadTodayEvents(manv, diadiem);
   attachChamCongButtons(diadiem);
 
-  const manv = localStorage.getItem("manv");
+  // Bắt đầu auto check rời khỏi cửa hàng
   startAutoCheckLeave(manv, diadiem);
 }
 
 // ================== KHỞI ĐỘNG ==================
 document.addEventListener("DOMContentLoaded", () => {
   const diadiem = getDiaDiemFromPath(); // cs1 / cs2
-
   const loginApiPath = diadiem === "cs1" ? "/api/login-cs1" : "/api/login-cs2";
 
-  // Dùng cùng module đăng nhập như trang Up ảnh nhanh
   khoiTaoDangNhapDungChung({
     loginContainerId: 'login-container',
     appContainerId: 'app-container',
