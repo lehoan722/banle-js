@@ -27,7 +27,7 @@ function isMobileDevice() {
 async function checkInStoreLocation() {
   // Toạ độ các cửa hàng (CẦN CẬP NHẬT LẠI CHO ĐÚNG)
   const STORE_POINTS = [
-    // Ví dụ: Hamburg center – bạn thay lại bằng toạ độ cửa hàng thật
+    // Ví dụ: Tich Luong – bạn thay lại bằng toạ độ cửa hàng thật
     { lat: 21.5525047, lng: 105.8423559 }
   ];
   const MAX_DISTANCE_M = 200; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
@@ -47,7 +47,7 @@ async function checkInStoreLocation() {
         if (err.code === 1) { // PERMISSION_DENIED
           alert(
             "Bạn đã chọn KHÔNG cho phép truy cập vị trí cho website này.\n\n" +
-            "Để dùng lại, hãy vào Cài đặt trình duyệt > Quyền (Permissions) > Vị trí (Location) " +
+            "Để dùng lại, hãy vào Cài đặt trình duyệt > Vị trí (Location) " +
             "và bật 'Cho phép' cho website, rồi mở lại ứng dụng."
           );
         } else {
