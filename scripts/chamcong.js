@@ -238,28 +238,44 @@ function renderTodayLog() {
 
 // Xác định những sự kiện hợp lệ tiếp theo dựa trên chuỗi hiện tại
 function getAllowedNextEvents() {
+  // Chưa có sự kiện nào trong ngày -> chỉ được VÀO CA
   if (todayEvents.length === 0) {
     return ["VAOCA"];
   }
-  const last = [...todayEvents].sort((a, b) => a.createdAt - b.createdAt).slice(-1)[0];
+
+  const last = [...todayEvents]
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(-1)[0];
   const lastCode = last.su_kien;
 
   switch (lastCode) {
     case "VAOCA":
-      return ["NTR"];
+      // Sau VÀO CA: có thể nghỉ trưa, nghỉ chiều, hoặc tan ca luôn
+      return ["NTR", "NCH", "TANCA"];
+
     case "NTR":
-      return ["NTRD"];
+      // Sau NGHỈ TRƯA: chỉ được NGHỈ TRƯA ĐẾN hoặc TAN CA
+      return ["NTRD", "TANCA"];
+
     case "NTRD":
-      return ["NCH"];
+      // Sau NGHỈ TRƯA ĐẾN: được NGHỈ CHIỀU hoặc TAN CA
+      return ["NCH", "TANCA"];
+
     case "NCH":
-      return ["NCHD"];
+      // Sau NGHỈ CHIỀU: chỉ được NGHỈ CHIỀU ĐẾN hoặc TAN CA
+      return ["NCHD", "TANCA"];
+
     case "NCHD":
+      // Sau NGHỈ CHIỀU ĐẾN: chỉ còn TAN CA
       return ["TANCA"];
+
     case "TANCA":
     case "AUTO_TANCA":
-      return []; // đã tan ca -> không cho chấm thêm
+      // Đã tan ca (tự bấm hoặc tự động) -> không cho chấm thêm
+      return [];
+
     default:
-      // nếu chuỗi bị lạ thì chỉ cho bắt đầu lại bằng VAOCA
+      // Nếu vì lý do gì đó chuỗi lạ -> bắt buộc quay lại từ VÀO CA
       return ["VAOCA"];
   }
 }
@@ -364,10 +380,10 @@ function attachChamCongButtons(diadiem) {
   statusManv.textContent = manv;
 
   const btnVaoca = document.getElementById("btn-vaoca");
-  const btnNtr   = document.getElementById("btn-ntr");
-  const btnNtrd  = document.getElementById("btn-ntrd");
-  const btnNch   = document.getElementById("btn-nch");
-  const btnNchd  = document.getElementById("btn-nchd");
+  const btnNtr = document.getElementById("btn-ntr");
+  const btnNtrd = document.getElementById("btn-ntrd");
+  const btnNch = document.getElementById("btn-nch");
+  const btnNchd = document.getElementById("btn-nchd");
   const btnTanca = document.getElementById("btn-tanca");
 
   async function handleClick(su_kien, btn) {
@@ -404,10 +420,10 @@ function attachChamCongButtons(diadiem) {
   }
 
   btnVaoca.addEventListener("click", () => handleClick("VAOCA", btnVaoca));
-  btnNtr  .addEventListener("click", () => handleClick("NTR",   btnNtr));
-  btnNtrd .addEventListener("click", () => handleClick("NTRD",  btnNtrd));
-  btnNch  .addEventListener("click", () => handleClick("NCH",   btnNch));
-  btnNchd .addEventListener("click", () => handleClick("NCHD",  btnNchd));
+  btnNtr.addEventListener("click", () => handleClick("NTR", btnNtr));
+  btnNtrd.addEventListener("click", () => handleClick("NTRD", btnNtrd));
+  btnNch.addEventListener("click", () => handleClick("NCH", btnNch));
+  btnNchd.addEventListener("click", () => handleClick("NCHD", btnNchd));
   btnTanca.addEventListener("click", () => handleClick("TANCA", btnTanca));
 
   // Render log ngay khi gắn nút
