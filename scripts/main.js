@@ -44,13 +44,18 @@ async function checkInStoreLocation() {
       (p) => resolve(p),
       (err) => {
         console.error("Lỗi định vị:", err);
-        alert("Không lấy được vị trí (có thể bạn đã từ chối). Ứng dụng chỉ dùng trong cửa hàng.");
+        if (err.code === 1) { // PERMISSION_DENIED
+          alert(
+            "Bạn đã chọn KHÔNG cho phép truy cập vị trí cho website này.\n\n" +
+            "Để dùng lại, hãy vào Cài đặt trình duyệt > Quyền (Permissions) > Vị trí (Location) " +
+            "và bật 'Cho phép' cho website, rồi mở lại ứng dụng."
+          );
+        } else {
+          alert("Không lấy được vị trí. Vui lòng kiểm tra GPS/mạng rồi thử lại.");
+        }
         resolve(null);
       },
-      {
-        enableHighAccuracy: false,
-        timeout: 10000
-      }
+      { enableHighAccuracy: false, timeout: 10000 }
     );
   });
 
