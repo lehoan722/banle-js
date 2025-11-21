@@ -149,7 +149,41 @@ export async function khoiTaoUngDung() {
       }
       return;
     }
+
   }
+
+  // === TỰ ĐỘNG KIỂM TRA LẠI VỊ TRÍ ĐỊNH KỲ ===
+  if (isBannvcs1Page || isBannvcs2Page) {
+    setInterval(async () => {
+      let stillInStore = false;
+
+      if (isBannvcs1Page) {
+        stillInStore = await checkInStoreLocation([
+          { lat: 21.5525047, lng: 105.8423559 }  // CS1
+        ]);
+      } else if (isBannvcs2Page) {
+        stillInStore = await checkInStoreLocation([
+          { lat: 21.5843348, lng: 105.8343116 }  // CS2
+        ]);
+      }
+
+      if (!stillInStore) {
+        alert("Bạn đã rời khỏi cửa hàng hoặc tắt GPS! Ứng dụng sẽ thoát.");
+
+        // Tắt app + logout bắt buộc
+        try {
+          localStorage.removeItem("manv"); // xoá đăng nhập
+          const app = document.getElementById("app-container");
+          const login = document.getElementById("login-container");
+          if (app) app.style.display = "none";
+          if (login) login.style.display = "";
+        } catch (e) { }
+
+        location.reload(); // tải lại trang → yêu cầu định vị lại
+      }
+    }, 300000); // kiểm tra mỗi 60 giây (60000 ms)  5 PHUT
+  }
+
 
   // === 2. GUARD QUYỀN TRUY CẬP TRANG (DÙNG CHUNG CHO TẤT CẢ CÁC TRANG) ===
   const manvDangNhap = localStorage.getItem('manv');           // bạn đã set sau khi login
