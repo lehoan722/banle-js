@@ -182,52 +182,57 @@ function parseTimeToMinutes(t) {
   return null;
 }
 
+// chuyển phút -> "HH:MM" (07:30, 08:00, 08:30,...)
 function minutesToHourLabel(mins) {
   const h = Math.floor(mins / 60);
+  const m = mins % 60;
   const hh = String(h).padStart(2, "0");
-  return `${hh}:00`;
+  const mm = String(m).padStart(2, "0");
+  return `${hh}:${mm}`;
 }
 
+// tạo các slot 30 phút từ 07:30 -> 22:00
 function buildSlotsFromRows(rows) {
-  if (!rows || rows.length === 0) return [];
+  const SLOT_START = 7 * 60 + 30; // 07:30
+  const SLOT_END   = 22 * 60;     // 22:00
 
-  let minStart = Infinity;
-  let maxEnd   = -Infinity;
-
-  const intervals = rows.map(r => {
+  // mỗi interval là 1 ca làm của 1 nhân viên
+  const intervals = (rows || []).map(r => {
     const startM = parseTimeToMinutes(r.gio_bat_dau);
     const endM   = parseTimeToMinutes(r.gio_ket_thuc);
-    if (startM != null && startM < minStart) minStart = startM;
-    if (endM   != null && endM   > maxEnd)   maxEnd   = endM;
-    return { diadiem: r.diadiem, startM, endM };
+    // tên hiển thị: ưu tiên tennv, nếu không có thì manv
+    const ten = r.tennv || r.manv || "";
+    return {
+      diadiem: r.diadiem,
+      startM,
+      endM,
+      ten
+    };
   });
 
-  if (!Number.isFinite(minStart) || !Number.isFinite(maxEnd)) {
-    // fallback khung giờ 08:00 - 22:00 nếu dữ liệu lỗi
-    minStart = 8 * 60;
-    maxEnd   = 22 * 60;
-  }
-
-  const slotStart = Math.floor(minStart / 60) * 60;
-  const slotEnd   = Math.ceil(maxEnd  / 60) * 60;
-
+  // tạo slot 30 phút
   const slots = [];
-  for (let m = slotStart; m < slotEnd; m += 60) {
+  for (let m = SLOT_START; m < SLOT_END; m += 30) {
     slots.push({
       startM: m,
-      endM: m + 60,
+      endM: m + 30,
       label: minutesToHourLabel(m),
-      cs1: 0,
-      cs2: 0
+      cs1: [], // danh sách tên NV
+      cs2: []
     });
   }
 
+  // phân bổ nhân viên vào từng slot
   for (const itv of intervals) {
-    if (itv.startM == null || itv.endM == null) continue;
+    if (itv.startM == null || itv.endM == null || !itv.ten) continue;
     for (const s of slots) {
+      // nếu ca có giao với slot
       if (itv.startM < s.endM && itv.endM > s.startM) {
-        if (itv.diadiem === "cs1") s.cs1 += 1;
-        else if (itv.diadiem === "cs2") s.cs2 += 1;
+        if (itv.diadiem === "cs1") {
+          if (!s.cs1.includes(itv.ten)) s.cs1.push(itv.ten);
+        } else if (itv.diadiem === "cs2") {
+          if (!s.cs2.includes(itv.ten)) s.cs2.push(itv.ten);
+        }
       }
     }
   }
@@ -251,7 +256,7 @@ async function loadSummary() {
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
-    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
+    .select("diadiem, manv, tennv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
     .eq("ngay", ngay)
     .eq("trang_thai", "DA_DUYET");
 
@@ -285,11 +290,11 @@ async function loadSummary() {
     tr.appendChild(tdTime);
 
     const tdCS1 = document.createElement("td");
-    tdCS1.textContent = String(s.cs1);
+    tdCS1.textContent = s.cs1.join(", ");
     tr.appendChild(tdCS1);
 
     const tdCS2 = document.createElement("td");
-    tdCS2.textContent = String(s.cs2);
+    tdCS2.textContent = s.cs2.join(", ");
     tr.appendChild(tdCS2);
 
     tbodySummary.appendChild(tr);
