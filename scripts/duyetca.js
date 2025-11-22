@@ -1,4 +1,4 @@
-// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin với log chi tiết)
+// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin từ thông tin đăng nhập)
 
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
@@ -32,74 +32,53 @@ function defaultRangeIfEmpty() {
 }
 
 /**
- * CHỈ KIỂM TRA CỘT is_admin:
- * - nếu is_admin = TRUE -> được quyền duyệt / từ chối
- * - nếu FALSE hoặc không tìm thấy -> chỉ được xem danh sách
- *
- * Ưu tiên tìm theo manv; nếu không có, thử tìm theo user_id.
+ * CHỈ DÙNG THÔNG TIN ĐÃ LOGIN:
+ * - Nếu is_admin = TRUE -> được quyền duyệt / từ chối
+ * - Ngược lại -> chỉ được xem danh sách
  */
-async function kiemTraQuyenDuyetCa() {
-  try {
-    const info =
-      window.thongTinNguoiDung ||
-      window.thongTinDangNhap ||
-      window.currentUserInfo ||
-      null;
+function kiemTraQuyenDuyetCaTuLogin() {
+  const info =
+    window.thongTinNguoiDung ||
+    window.thongTinDangNhap ||
+    window.currentUserInfo ||
+    null;
 
-    console.log("Thong tin dang nhap (authModule):", info);
+  console.log("Thông tin đăng nhập dùng để kiểm tra quyền:", info);
 
-    const manv   = info?.manv || info?.ma_nv || info?.maNhanVien || null;
-    const userId = info?.user_id || info?.id || null;
-
-    if (!manv && !userId) {
-      console.warn("Không tìm thấy manv hoặc user_id từ thông tin đăng nhập.");
-      coQuyenDuyetCa = false;
-      setMsg("Không xác định được nhân viên, tạm thời chỉ được xem danh sách.", true);
-      return;
-    }
-
-    let query = supabase.from("dmnhanvien").select("manv, is_admin");
-
-    if (manv) {
-      query = query.eq("manv", manv);
-      console.log("Kiểm tra quyền theo manv =", manv);
-    } else if (userId) {
-      query = query.eq("user_id", userId);
-      console.log("Kiểm tra quyền theo user_id =", userId);
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    console.log("Kết quả dmnhanvien:", { data, error });
-
-    if (error) {
-      console.error("Lỗi kiểm tra quyền trong dmnhanvien:", error);
-      coQuyenDuyetCa = false;
-      setMsg("Lỗi kiểm tra quyền, tạm thời chỉ được xem danh sách.", true);
-      return;
-    }
-
-    if (!data) {
-      console.warn("Không tìm thấy dòng dmnhanvien tương ứng.");
-      coQuyenDuyetCa = false;
-      setMsg("Không tìm thấy nhân viên trong danh mục, tạm thời chỉ được xem danh sách.", true);
-      return;
-    }
-
-    coQuyenDuyetCa = !!data.is_admin;
-
-    if (!coQuyenDuyetCa) {
-      setMsg(
-        `Bạn (${data.manv}) KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
-        true
-      );
-    } else {
-      setMsg(`Bạn (${data.manv}) là admin, được quyền duyệt/từ chối ca.`, false);
-    }
-  } catch (e) {
-    console.error("Lỗi ngoại lệ khi kiểm tra quyền:", e);
+  if (!info) {
     coQuyenDuyetCa = false;
-    setMsg("Lỗi kiểm tra quyền, tạm thời chỉ được xem danh sách.", true);
+    setMsg("Không xác định được thông tin nhân viên, tạm thời chỉ được xem danh sách.", true);
+    return;
+  }
+
+  // cố gắng lấy manv & is_admin với nhiều tên key khác nhau cho chắc
+  const manv =
+    info.manv ||
+    info.ma_nv ||
+    info.maNhanVien ||
+    info.ma_nhan_vien ||
+    null;
+
+  // is_admin có thể là boolean hoặc string 'true'/'TRUE'
+  const isAdminRaw = info.is_admin;
+  const isAdminBool =
+    isAdminRaw === true ||
+    isAdminRaw === "true" ||
+    isAdminRaw === "TRUE" ||
+    isAdminRaw === 1;
+
+  coQuyenDuyetCa = !!isAdminBool;
+
+  if (!coQuyenDuyetCa) {
+    setMsg(
+      `Bạn${manv ? " (" + manv + ")" : ""} KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
+      true
+    );
+  } else {
+    setMsg(
+      `Bạn${manv ? " (" + manv + ")" : ""} là admin (is_admin = TRUE), được quyền duyệt/từ chối ca.`,
+      false
+    );
   }
 }
 
@@ -229,7 +208,7 @@ function attachEvents() {
 async function onLoginSuccess() {
   defaultRangeIfEmpty();
   attachEvents();
-  await kiemTraQuyenDuyetCa(); // kiểm tra is_admin
+  kiemTraQuyenDuyetCaTuLogin(); // kiểm tra is_admin dựa trên thông tin đã login
   await loadRequests();
 }
 
