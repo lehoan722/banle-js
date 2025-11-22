@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
   <meta charset="UTF-8">
-  <title>Trạng thái nhân viên hiện tại</title>
+  <title>Quản lý nhân viên - Trạng thái & Nhân lực theo giờ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
     body {
       font-family: sans-serif;
@@ -15,15 +15,15 @@
 
     .card {
       background: #fff;
-      border-radius: 8px;
-      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      padding: 8px 10px;
       margin-bottom: 10px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
-    h1 {
+    h1, h2 {
+      margin: 4px 0 8px;
       font-size: 18px;
-      margin: 0 0 8px 0;
     }
 
     .filters {
@@ -39,7 +39,8 @@
       margin-right: 4px;
     }
 
-    .filters select {
+    .filters select,
+    .filters input[type="date"] {
       font-size: 13px;
       padding: 3px 6px;
     }
@@ -50,7 +51,8 @@
       cursor: pointer;
     }
 
-    #status-msg {
+    #status-msg,
+    #summary-msg {
       font-size: 12px;
       color: #555;
       margin-top: 4px;
@@ -60,25 +62,21 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
-      background: #fff;
     }
 
-    thead {
-      background: #e0e0e0;
-    }
-
-    th,
-    td {
-      border: 1px solid #ddd;
-      padding: 4px 6px;
+    thead th {
+      background: #eeeeee;
+      border-bottom: 1px solid #ccc;
+      padding: 4px;
       text-align: left;
     }
 
-    th {
-      font-weight: 600;
+    tbody td {
+      border-bottom: 1px solid #eee;
+      padding: 4px;
     }
 
-    tr:nth-child(even) {
+    tbody tr:nth-child(even) {
       background: #fafafa;
     }
 
@@ -106,6 +104,16 @@
       color: #616161;
     }
 
+    .status-SAP_VAO_CA {
+      background: #e3f2fd;
+      color: #0d47a1;
+    }
+
+    .status-CHUA_VAO_CA {
+      background: #ffecb3;
+      color: #e65100;
+    }
+
     .status-KHAC {
       background: #ffe0b2;
       color: #e65100;
@@ -117,27 +125,24 @@
       margin-top: 6px;
     }
 
-    .status-SAP_VAO_CA {
-  background: #e3f2fd;
-  color: #0d47a1;
-}
-.status-CHUA_VAO_CA {
-  background: #ffe0b2;
-  color: #e65100;
-}
-.status-KHONG_DI_LAM {
-  background: #ffcdd2;
-  color: #b71c1c;
-}
-.status-KHONG_CO_LICH {
-  background: #eeeeee;
-  color: #424242;
-}
+    .legend .status-badge {
+      margin-right: 4px;
+      margin-top: 2px;
+    }
 
+    @media (max-width: 600px) {
+      table {
+        font-size: 12px;
+      }
+      h1, h2 {
+        font-size: 16px;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <!-- Card 1: Bộ lọc & chú thích cho trạng thái hiện tại -->
   <div class="card">
     <h1>Trạng thái nhân viên hiện tại</h1>
     <div class="filters">
@@ -152,6 +157,7 @@
       <button id="btn-refresh">Làm mới</button>
       <div id="status-msg"></div>
     </div>
+
     <div class="legend">
       <b>Chú thích:</b>
       <span class="status-badge status-DANG_LAM">Đang làm</span>
@@ -160,9 +166,9 @@
       <span class="status-badge status-SAP_VAO_CA">Sắp vào ca</span>
       <span class="status-badge status-CHUA_VAO_CA">Chưa vào ca</span>
     </div>
-
   </div>
 
+  <!-- Card 2: Bảng trạng thái hiện tại -->
   <div class="card">
     <table>
       <thead>
@@ -180,11 +186,35 @@
       <tbody id="tbody-status">
         <!-- JS render -->
       </tbody>
+    </table>
+  </div>
 
+  <!-- Card 3: Tổng quan nhân lực theo giờ (đăng ký ca đã duyệt) -->
+  <div class="card">
+    <h2>Tổng quan nhân lực theo giờ (dựa trên đăng ký ca đã duyệt)</h2>
+    <div class="filters">
+      <div>
+        <label for="summary-date">Ngày:</label>
+        <input type="date" id="summary-date">
+      </div>
+      <button id="btn-load-summary">Tải tổng quan</button>
+      <div id="summary-msg"></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Giờ</th>
+          <th>Số nhân viên CS1</th>
+          <th>Số nhân viên CS2</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-summary">
+        <!-- JS render -->
+      </tbody>
     </table>
   </div>
 
   <script type="module" src="./scripts/quanlynhanvien.js"></script>
 </body>
-
 </html>
