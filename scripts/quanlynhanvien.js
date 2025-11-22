@@ -256,8 +256,7 @@ async function loadSummary() {
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
-    
-     .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
+    .select("diadiem, manv, tennv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
     .eq("ngay", ngay)
     .eq("trang_thai", "DA_DUYET");
 
