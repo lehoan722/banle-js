@@ -24,12 +24,19 @@ function formatISO(d) {
   return d.toISOString().slice(0, 10);
 }
 
+
 function defaultRangeIfEmpty() {
   const today = new Date();
-  const last7 = new Date(today.getTime() - 6 * 86400000);
-  if (!fromDateInput.value) fromDateInput.value = formatISO(last7);
-  if (!toDateInput.value)   toDateInput.value   = formatISO(today);
+
+  // 3 ngày trước
+  const threeDaysBefore = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
+  // 3 ngày sau
+  const threeDaysAfter  = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000);
+
+  if (!fromDateInput.value) fromDateInput.value = formatISO(threeDaysBefore);
+  if (!toDateInput.value)   toDateInput.value   = formatISO(threeDaysAfter);
 }
+
 
 /**
  * Kiểm tra quyền duyệt ca:
