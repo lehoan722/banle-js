@@ -2,8 +2,9 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Duyệt đăng ký ca làm</title>
+  <title>Duyệt đăng ký ca</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
     body {
       font-family: sans-serif;
@@ -22,12 +23,16 @@
       font-size: 18px;
       margin: 0 0 8px 0;
     }
-    .filters {
+    h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+    .row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      align-items: flex-end;
       margin-bottom: 8px;
+      align-items: flex-end;
     }
     .field {
       display: flex;
@@ -44,7 +49,7 @@
     }
     button {
       font-size: 13px;
-      padding: 5px 9px;
+      padding: 6px 10px;
       cursor: pointer;
     }
     table {
@@ -60,60 +65,77 @@
     thead {
       background: #e0e0e0;
     }
+
     .status-CHO_DUYET { color: #ff9800; }
     .status-DA_DUYET { color: #2e7d32; font-weight: 600; }
     .status-TU_CHOI  { color: #c62828; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Duyệt đăng ký ca làm</h1>
-    <div class="filters">
-      <div class="field">
-        <label>Ngày:</label>
-        <input type="date" id="ngay">
-      </div>
-      <div class="field">
-        <label>Cơ sở:</label>
-        <select id="diadiem">
-          <option value="">Tất cả</option>
-          <option value="cs1">CS1</option>
-          <option value="cs2">CS2</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Trạng thái:</label>
-        <select id="trang_thai">
-          <option value="CHO_DUYET">Chờ duyệt</option>
-          <option value="DA_DUYET">Đã duyệt</option>
-          <option value="TU_CHOI">Từ chối</option>
-          <option value="">Tất cả</option>
-        </select>
-      </div>
-      <button id="btn-load">Tải danh sách</button>
-      <span id="msg" style="font-size:12px;color:#555;"></span>
-    </div>
-  </div>
+  <!-- KHUNG LOGIN -->
+  <div id="login-container"></div>
 
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Ngày</th>
-          <th>Cơ sở</th>
-          <th>Mã NV</th>
-          <th>Giờ</th>
-          <th>Trạng thái</th>
-          <th>Lý do</th>
-          <th>Ghi chú quản lý</th>
-          <th>Hành động</th>
-        </tr>
-      </thead>
-      <tbody id="tbody-duyet">
-        <tr><td colspan="9">Bấm "Tải danh sách" để xem các đăng ký.</td></tr>
-      </tbody>
-    </table>
+  <!-- ỨNG DỤNG DUYỆT CA (ẩn cho đến khi login thành công) -->
+  <div id="app-container" style="display:none;">
+    <div class="card">
+      <h1>Duyệt đăng ký ca làm</h1>
+
+      <div class="row">
+        <div class="field">
+          <label>Cơ sở:</label>
+          <select id="diadiem">
+            <option value="">-- Tất cả --</option>
+            <option value="cs1">CS1</option>
+            <option value="cs2">CS2</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Trạng thái:</label>
+          <select id="trang_thai">
+            <option value="">-- Tất cả --</option>
+            <option value="CHO_DUYET">Chờ duyệt</option>
+            <option value="DA_DUYET">Đã duyệt</option>
+            <option value="TU_CHOI">Từ chối</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Từ ngày:</label>
+          <input type="date" id="from_date">
+        </div>
+
+        <div class="field">
+          <label>Đến ngày:</label>
+          <input type="date" id="to_date">
+        </div>
+
+        <button id="btn-load">Tải danh sách</button>
+      </div>
+
+      <div id="msg" style="font-size:12px;color:#555;margin-top:4px;"></div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Ngày</th>
+            <th>Cơ sở</th>
+            <th>Nhân viên</th>
+            <th>Giờ</th>
+            <th>Trạng thái</th>
+            <th>Lý do</th>
+            <th>Ghi chú</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-duyet">
+          <tr><td colspan="9">Chưa có dữ liệu.</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script type="module" src="./scripts/duyetca.js"></script>
