@@ -58,7 +58,7 @@ async function kiemTraQuyenDuyetCa() {
       return;
     }
 
-    let query = supabase.from("dmnhanvien").select("manv, is_admin, user_id");
+    let query = supabase.from("dmnhanvien").select("manv, is_admin");
 
     if (manv) {
       query = query.eq("manv", manv);
