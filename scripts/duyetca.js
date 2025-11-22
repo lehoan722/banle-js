@@ -32,17 +32,11 @@ function defaultRangeIfEmpty() {
 }
 
 /**
- * CHỈ DÙNG THÔNG TIN ĐÃ LOGIN:
+ * Dùng trực tiếp thông tin authModule trả về:
  * - Nếu is_admin = TRUE -> được quyền duyệt / từ chối
  * - Ngược lại -> chỉ được xem danh sách
  */
-function kiemTraQuyenDuyetCaTuLogin() {
-  const info =
-    window.thongTinNguoiDung ||
-    window.thongTinDangNhap ||
-    window.currentUserInfo ||
-    null;
-
+function kiemTraQuyenDuyetCaTuLogin(info) {
   console.log("Thông tin đăng nhập dùng để kiểm tra quyền:", info);
 
   if (!info) {
@@ -57,15 +51,22 @@ function kiemTraQuyenDuyetCaTuLogin() {
     info.ma_nv ||
     info.maNhanVien ||
     info.ma_nhan_vien ||
+    info.profile?.manv ||
     null;
 
-  // is_admin có thể là boolean hoặc string 'true'/'TRUE'
-  const isAdminRaw = info.is_admin;
+  const isAdminRaw =
+    info.is_admin ??
+    info.isAdmin ??
+    info.profile?.is_admin ??
+    info.profile?.isAdmin ??
+    null;
+
   const isAdminBool =
     isAdminRaw === true ||
     isAdminRaw === "true" ||
     isAdminRaw === "TRUE" ||
-    isAdminRaw === 1;
+    isAdminRaw === 1 ||
+    isAdminRaw === "1";
 
   coQuyenDuyetCa = !!isAdminBool;
 
@@ -204,11 +205,14 @@ function attachEvents() {
   });
 }
 
-// Gọi sau khi login thành công
-async function onLoginSuccess() {
+// ⚠️ LƯU Ý: NHẬN THAM SỐ thongTinNguoiDung TỪ authModule
+async function onLoginSuccess(thongTinNguoiDung) {
+  // Lưu global để sau này có thể dùng lại nếu cần
+  window.thongTinNguoiDung = thongTinNguoiDung;
+
   defaultRangeIfEmpty();
   attachEvents();
-  kiemTraQuyenDuyetCaTuLogin(); // kiểm tra is_admin dựa trên thông tin đã login
+  kiemTraQuyenDuyetCaTuLogin(thongTinNguoiDung); // dùng chính object trả về
   await loadRequests();
 }
 
@@ -218,6 +222,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loginContainerId: "login-container",
     appContainerId: "app-container",
     loginApiPath: "/api/login-cs1",
-    onLoginSuccess
+    onLoginSuccess    // <== authModule sẽ gọi onLoginSuccess(thongTinNguoiDung)
   });
 });
