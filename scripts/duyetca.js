@@ -1,4 +1,4 @@
-// duyetca.js - Quản lý duyệt ca (có login + kiểm tra quyền)
+// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin)
 
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
@@ -12,7 +12,7 @@ const msgEl           = document.getElementById("msg");
 const fromDateInput   = document.getElementById("from_date");
 const toDateInput     = document.getElementById("to_date");
 
-// Biến toàn cục: người đang đăng nhập có quyền duyệt / từ chối hay không
+// người đăng nhập hiện tại có quyền duyệt hay không
 let coQuyenDuyetCa = false;
 
 function setMsg(text, isError = false) {
@@ -32,15 +32,9 @@ function defaultRangeIfEmpty() {
 }
 
 /**
- * Lấy thông tin người đăng nhập và kiểm tra trong dmnhanvien
- * Chỉ những ai được gắn quyền mới được duyệt / từ chối.
- *
- * Giả định bảng dmnhanvien có các cột:
- *  - duoc_duyet_ca (boolean)  // ưu tiên
- *  - quyen_sua (boolean)
- *  - quyen_xoa (boolean)
- *
- * Nếu bạn đang dùng tên cột khác, chỉ cần sửa ở đây.
+ * CHỈ KIỂM TRA CỘT is_admin:
+ * - nếu is_admin = TRUE -> được quyền duyệt / từ chối
+ * - nếu FALSE hoặc không tìm thấy -> chỉ được xem danh sách
  */
 async function kiemTraQuyenDuyetCa() {
   try {
@@ -60,7 +54,7 @@ async function kiemTraQuyenDuyetCa() {
 
     const { data, error } = await supabase
       .from("dmnhanvien")
-      .select("manv, sua_hoadon, xoa_hoadon")
+      .select("manv, is_admin")
       .eq("manv", manv)
       .maybeSingle();
 
@@ -71,21 +65,15 @@ async function kiemTraQuyenDuyetCa() {
       return;
     }
 
-    // Xác định quyền:
-    // 1. Nếu có trường duoc_duyet_ca = true -> được duyệt
-    // 2. Hoặc có quyen_sua hoặc quyen_xoa = true -> cũng cho duyệt
-    coQuyenDuyetCa =
-      
-      !!(data?.sua_hoadon) ||
-      !!(data?.xoa_hoadon);
+    coQuyenDuyetCa = !!data?.is_admin;
 
     if (!coQuyenDuyetCa) {
       setMsg(
-        `Bạn (${manv}) KHÔNG có quyền duyệt/từ chối ca. Chỉ được xem danh sách đăng ký.`,
+        `Bạn (${manv}) KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
         true
       );
     } else {
-      setMsg(`Bạn (${manv}) có quyền duyệt/từ chối ca.`, false);
+      setMsg(`Bạn (${manv}) là admin, được quyền duyệt/từ chối ca.`, false);
     }
   } catch (e) {
     console.error("Lỗi ngoại lệ khi kiểm tra quyền:", e);
@@ -97,10 +85,10 @@ async function kiemTraQuyenDuyetCa() {
 async function loadRequests() {
   defaultRangeIfEmpty();
 
-  const diadiem     = diadiemSelect.value;
-  const trang_thai  = trangThaiSelect.value;
-  const fromDate    = fromDateInput.value;
-  const toDate      = toDateInput.value;
+  const diadiem    = diadiemSelect.value;
+  const trang_thai = trangThaiSelect.value;
+  const fromDate   = fromDateInput.value;
+  const toDate     = toDateInput.value;
 
   if (fromDate && toDate && fromDate > toDate) {
     setMsg("'Từ ngày' phải nhỏ hơn hoặc bằng 'Đến ngày'.", true);
@@ -136,6 +124,7 @@ async function loadRequests() {
     return;
   }
 
+  // Nếu không có quyền -> disable nút Duyệt / Từ chối + readonly ghi chú
   const disabledAttr = coQuyenDuyetCa ? "" : "disabled";
 
   tbody.innerHTML = "";
@@ -160,7 +149,7 @@ async function loadRequests() {
         </td>
         <td>
           <button data-act="approve" data-id="${row.id}" ${disabledAttr}>Duyệt</button>
-          <button data-act="reject" data-id="${row.id}" ${disabledAttr}>Từ chối</button>
+          <button data-act="reject"  data-id="${row.id}" ${disabledAttr}>Từ chối</button>
         </td>
       </tr>
     `;
@@ -171,7 +160,7 @@ async function loadRequests() {
 
 async function updateStatus(id, newStatus) {
   if (!coQuyenDuyetCa) {
-    alert("Bạn không có quyền duyệt/từ chối ca.");
+    alert("Bạn không có quyền duyệt/từ chối ca (chỉ admin được phép).");
     return;
   }
 
@@ -215,12 +204,12 @@ function attachEvents() {
   });
 }
 
-// Được gọi sau khi login thành công
+// Gọi sau khi login thành công
 async function onLoginSuccess() {
   defaultRangeIfEmpty();
   attachEvents();
-  await kiemTraQuyenDuyetCa(); // kiểm tra quyền trước
-  await loadRequests();        // rồi mới tải dữ liệu
+  await kiemTraQuyenDuyetCa(); // kiểm tra is_admin
+  await loadRequests();
 }
 
 // Khởi tạo login giống các trang khác
