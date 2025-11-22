@@ -1,4 +1,4 @@
-// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin từ thông tin đăng nhập)
+// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin bằng manv)
 
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
@@ -32,54 +32,105 @@ function defaultRangeIfEmpty() {
 }
 
 /**
- * Dùng trực tiếp thông tin authModule trả về:
- * - Nếu is_admin = TRUE -> được quyền duyệt / từ chối
- * - Ngược lại -> chỉ được xem danh sách
+ * Kiểm tra quyền duyệt ca:
+ * - Ưu tiên: dmnhanvien.is_admin (theo manv)
+ * - Fallback: nếu không đọc được dmnhanvien mà info.sua_hoadon === true
  */
-function kiemTraQuyenDuyetCaTuLogin(info) {
-  console.log("Thông tin đăng nhập dùng để kiểm tra quyền:", info);
+async function kiemTraQuyenDuyetCa(thongTinNguoiDung) {
+  console.log("Thông tin đăng nhập dùng để kiểm tra quyền:", thongTinNguoiDung);
 
-  if (!info) {
+  if (!thongTinNguoiDung) {
     coQuyenDuyetCa = false;
     setMsg("Không xác định được thông tin nhân viên, tạm thời chỉ được xem danh sách.", true);
     return;
   }
 
-  // cố gắng lấy manv & is_admin với nhiều tên key khác nhau cho chắc
   const manv =
-    info.manv ||
-    info.ma_nv ||
-    info.maNhanVien ||
-    info.ma_nhan_vien ||
-    info.profile?.manv ||
+    thongTinNguoiDung.manv ||
+    thongTinNguoiDung.ma_nv ||
+    thongTinNguoiDung.maNhanVien ||
+    thongTinNguoiDung.ma_nhan_vien ||
     null;
 
-  const isAdminRaw =
-    info.is_admin ??
-    info.isAdmin ??
-    info.profile?.is_admin ??
-    info.profile?.isAdmin ??
-    null;
+  const fallbackSuaHoaDon = thongTinNguoiDung.sua_hoadon === true;
 
-  const isAdminBool =
-    isAdminRaw === true ||
-    isAdminRaw === "true" ||
-    isAdminRaw === "TRUE" ||
-    isAdminRaw === 1 ||
-    isAdminRaw === "1";
+  if (!manv) {
+    // không có manv, chỉ còn fallback
+    coQuyenDuyetCa = fallbackSuaHoaDon;
+    if (coQuyenDuyetCa) {
+      setMsg("Không tìm được mã nhân viên nhưng có quyền sửa hóa đơn, cho phép duyệt ca.", false);
+    } else {
+      setMsg("Không tìm được mã nhân viên, tạm thời chỉ được xem danh sách.", true);
+    }
+    return;
+  }
 
-  coQuyenDuyetCa = !!isAdminBool;
+  try {
+    const { data, error } = await supabase
+      .from("dmnhanvien")
+      .select("manv, is_admin")
+      .eq("manv", manv)
+      .maybeSingle();
 
-  if (!coQuyenDuyetCa) {
-    setMsg(
-      `Bạn${manv ? " (" + manv + ")" : ""} KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
-      true
-    );
-  } else {
-    setMsg(
-      `Bạn${manv ? " (" + manv + ")" : ""} là admin (is_admin = TRUE), được quyền duyệt/từ chối ca.`,
-      false
-    );
+    console.log("Kết quả đọc dmnhanvien theo manv:", { data, error });
+
+    if (error) {
+      console.error("Lỗi kiểm tra quyền trong dmnhanvien:", error);
+      // lỗi thì dùng fallback
+      coQuyenDuyetCa = fallbackSuaHoaDon;
+      if (coQuyenDuyetCa) {
+        setMsg(
+          `Lỗi kiểm tra quyền trong dmnhanvien, nhưng ${manv} có quyền sửa hóa đơn nên được phép duyệt ca.`,
+          false
+        );
+      } else {
+        setMsg("Lỗi kiểm tra quyền, tạm thời chỉ được xem danh sách.", true);
+      }
+      return;
+    }
+
+    if (!data) {
+      // không có dòng dmnhanvien phù hợp
+      coQuyenDuyetCa = fallbackSuaHoaDon;
+      if (coQuyenDuyetCa) {
+        setMsg(
+          `Không tìm thấy ${manv} trong dmnhanvien, nhưng có quyền sửa hóa đơn nên được phép duyệt ca.`,
+          false
+        );
+      } else {
+        setMsg(
+          `Không tìm thấy ${manv} trong dmnhanvien, tạm thời chỉ được xem danh sách.`,
+          true
+        );
+      }
+      return;
+    }
+
+    const isAdmin = data.is_admin === true;
+
+    coQuyenDuyetCa = isAdmin || fallbackSuaHoaDon;
+
+    if (!coQuyenDuyetCa) {
+      setMsg(
+        `Bạn (${manv}) KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
+        true
+      );
+    } else if (isAdmin) {
+      setMsg(`Bạn (${manv}) là admin (is_admin = TRUE), được quyền duyệt/từ chối ca.`, false);
+    } else {
+      setMsg(
+        `Bạn (${manv}) không phải admin nhưng có quyền sửa hóa đơn, cho phép duyệt/từ chối ca.`,
+        false
+      );
+    }
+  } catch (e) {
+    console.error("Lỗi ngoại lệ khi kiểm tra quyền:", e);
+    coQuyenDuyetCa = fallbackSuaHoaDon;
+    if (coQuyenDuyetCa) {
+      setMsg("Lỗi kiểm tra quyền, tạm dùng quyền sửa hóa đơn để cho phép duyệt ca.", false);
+    } else {
+      setMsg("Lỗi kiểm tra quyền, tạm thời chỉ được xem danh sách.", true);
+    }
   }
 }
 
@@ -205,14 +256,13 @@ function attachEvents() {
   });
 }
 
-// ⚠️ LƯU Ý: NHẬN THAM SỐ thongTinNguoiDung TỪ authModule
+// Gọi sau khi login thành công – NHẬN THAM SỐ thông tin người dùng
 async function onLoginSuccess(thongTinNguoiDung) {
-  // Lưu global để sau này có thể dùng lại nếu cần
-  window.thongTinNguoiDung = thongTinNguoiDung;
+  window.thongTinNguoiDung = thongTinNguoiDung; // lưu lại nếu cần dùng chỗ khác
 
+  await kiemTraQuyenDuyetCa(thongTinNguoiDung); // kiểm tra is_admin + fallback
   defaultRangeIfEmpty();
   attachEvents();
-  kiemTraQuyenDuyetCaTuLogin(thongTinNguoiDung); // dùng chính object trả về
   await loadRequests();
 }
 
@@ -222,6 +272,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loginContainerId: "login-container",
     appContainerId: "app-container",
     loginApiPath: "/api/login-cs1",
-    onLoginSuccess    // <== authModule sẽ gọi onLoginSuccess(thongTinNguoiDung)
+    onLoginSuccess
   });
 });
