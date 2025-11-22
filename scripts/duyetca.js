@@ -1,4 +1,4 @@
-// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin)
+// duyetca.js - Quản lý duyệt ca (login + kiểm tra quyền is_admin với log chi tiết)
 
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
@@ -35,6 +35,8 @@ function defaultRangeIfEmpty() {
  * CHỈ KIỂM TRA CỘT is_admin:
  * - nếu is_admin = TRUE -> được quyền duyệt / từ chối
  * - nếu FALSE hoặc không tìm thấy -> chỉ được xem danh sách
+ *
+ * Ưu tiên tìm theo manv; nếu không có, thử tìm theo user_id.
  */
 async function kiemTraQuyenDuyetCa() {
   try {
@@ -44,19 +46,31 @@ async function kiemTraQuyenDuyetCa() {
       window.currentUserInfo ||
       null;
 
-    const manv = info?.manv;
-    if (!manv) {
-      console.warn("Không tìm thấy manv từ thông tin đăng nhập.");
+    console.log("Thong tin dang nhap (authModule):", info);
+
+    const manv   = info?.manv || info?.ma_nv || info?.maNhanVien || null;
+    const userId = info?.user_id || info?.id || null;
+
+    if (!manv && !userId) {
+      console.warn("Không tìm thấy manv hoặc user_id từ thông tin đăng nhập.");
       coQuyenDuyetCa = false;
-      setMsg("Không xác định được mã nhân viên, tạm thời chỉ được xem danh sách.", true);
+      setMsg("Không xác định được nhân viên, tạm thời chỉ được xem danh sách.", true);
       return;
     }
 
-    const { data, error } = await supabase
-      .from("dmnhanvien")
-      .select("manv, is_admin")
-      .eq("manv", manv)
-      .maybeSingle();
+    let query = supabase.from("dmnhanvien").select("manv, is_admin, user_id");
+
+    if (manv) {
+      query = query.eq("manv", manv);
+      console.log("Kiểm tra quyền theo manv =", manv);
+    } else if (userId) {
+      query = query.eq("user_id", userId);
+      console.log("Kiểm tra quyền theo user_id =", userId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    console.log("Kết quả dmnhanvien:", { data, error });
 
     if (error) {
       console.error("Lỗi kiểm tra quyền trong dmnhanvien:", error);
@@ -65,15 +79,22 @@ async function kiemTraQuyenDuyetCa() {
       return;
     }
 
-    coQuyenDuyetCa = !!data?.is_admin;
+    if (!data) {
+      console.warn("Không tìm thấy dòng dmnhanvien tương ứng.");
+      coQuyenDuyetCa = false;
+      setMsg("Không tìm thấy nhân viên trong danh mục, tạm thời chỉ được xem danh sách.", true);
+      return;
+    }
+
+    coQuyenDuyetCa = !!data.is_admin;
 
     if (!coQuyenDuyetCa) {
       setMsg(
-        `Bạn (${manv}) KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
+        `Bạn (${data.manv}) KHÔNG có quyền duyệt/từ chối ca (is_admin = FALSE). Chỉ được xem danh sách đăng ký.`,
         true
       );
     } else {
-      setMsg(`Bạn (${manv}) là admin, được quyền duyệt/từ chối ca.`, false);
+      setMsg(`Bạn (${data.manv}) là admin, được quyền duyệt/từ chối ca.`, false);
     }
   } catch (e) {
     console.error("Lỗi ngoại lệ khi kiểm tra quyền:", e);
