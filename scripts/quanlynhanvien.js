@@ -1,153 +1,333 @@
-// statusnhanvien.js
-// Hiển thị trạng thái nhân viên hiện tại theo dữ liệu chamcong_log
+// quanlynhanvien.js
+// Hiển thị trạng thái nhân viên hiện tại + tổng quan nhân lực theo giờ (từ đăng ký ca đã duyệt)
 
 import { supabase } from "./supabaseClient.js";
 
-const tbody = document.getElementById("tbody-status");
+// --- DOM elements: trạng thái hiện tại ---
+const tbodyStatus   = document.getElementById("tbody-status");
 const diadiemSelect = document.getElementById("filter-diadiem");
-const statusMsg = document.getElementById("status-msg");
-const refreshBtn = document.getElementById("btn-refresh");
+const statusMsg     = document.getElementById("status-msg");
+const refreshBtn    = document.getElementById("btn-refresh");
+
+// --- DOM elements: tổng quan theo giờ ---
+const summaryDateInput = document.getElementById("summary-date");
+const tbodySummary     = document.getElementById("tbody-summary");
+const summaryMsg       = document.getElementById("summary-msg");
+const summaryBtn       = document.getElementById("btn-load-summary");
 
 let autoTimer = null;
 const AUTO_REFRESH_MS = 60000; // 60 giây
 
-function trangThaiLabel(code) {
-    switch (code) {
-        case "DANG_LAM": return "Đang làm";
-        case "NGHI_TRUA": return "Nghỉ trưa";
-        case "NGHI_CHIEU": return "Nghỉ chiều";
-        case "DA_TAN_CA": return "Đã tan ca";
-        case "SAP_VAO_CA": return "Sắp vào ca";
-        case "CHUA_VAO_CA": return "Chưa vào ca";
-        case "KHONG_DI_LAM": return "Không đi làm";
-        case "KHONG_CO_LICH": return "Không có lịch";
-        default: return "Khác";
-    }
-}
+// ========== PHẦN 1: TRẠNG THÁI NHÂN VIÊN HIỆN TẠI ==========
 
+function trangThaiLabel(code) {
+  switch (code) {
+    case "DANG_LAM":     return "Đang làm";
+    case "NGHI_TRUA":    return "Nghỉ trưa";
+    case "NGHI_CHIEU":   return "Nghỉ chiều";
+    case "DA_TAN_CA":    return "Đã tan ca";
+    case "SAP_VAO_CA":   return "Sắp vào ca";
+    case "CHUA_VAO_CA":  return "Chưa vào ca";
+    default:             return "Khác";
+  }
+}
 
 function suKienLabel(code) {
-    const map = {
-        VAOCA: "Vào ca",
-        NTR: "Nghỉ trưa",
-        NTRD: "Trưa đến",
-        NCH: "Nghỉ chiều",
-        NCHD: "Chiều đến",
-        TANCA: "Tan ca",
-        AUTO_TANCA: "Tự động tan ca"
-    };
-    return map[code] || code || "";
+  const map = {
+    VAOCA: "Vào ca",
+    NTR: "Nghỉ trưa",
+    NTRD: "Trưa đến",
+    NCH: "Nghỉ chiều",
+    NCHD: "Chiều đến",
+    TANCA: "Tan ca",
+    AUTO_TANCA: "Tự tan ca"
+  };
+  return map[code] || (code || "");
 }
 
-function formatTimeVN(isoString) {
-    if (!isoString) return "";
-    const d = new Date(isoString);
+function formatTimeVN(value) {
+  if (!value) return "";
+  // nếu là ISO string
+  if (typeof value === "string" && value.includes("T")) {
+    const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "";
     const hh = String(d.getHours()).padStart(2, "0");
     const mm = String(d.getMinutes()).padStart(2, "0");
     const ss = String(d.getSeconds()).padStart(2, "0");
     return `${hh}:${mm}:${ss}`;
+  }
+  // nếu là "HH:MM" hoặc "HH:MM:SS"
+  if (typeof value === "string") {
+    const parts = value.split(":");
+    if (parts.length >= 2) {
+      const hh = parts[0].padStart(2, "0");
+      const mm = parts[1].padStart(2, "0");
+      const ss = parts[2] ? parts[2].padStart(2, "0") : "00";
+      return `${hh}:${mm}:${ss}`;
+    }
+  }
+  return "";
 }
 
 function formatMinutes(m) {
-    if (m == null || Number.isNaN(Number(m))) return "";
-    const val = Number(m);
-    return val.toFixed(1).replace(".", ",");
+  if (m == null || Number.isNaN(Number(m))) return "";
+  const val = Number(m);
+  if (val < 60) return `${Math.round(val)}p`;
+  const hours = Math.floor(val / 60);
+  const mins  = Math.round(val % 60);
+  if (mins === 0) return `${hours}g`;
+  return `${hours}g${mins}p`;
 }
 
 function setStatusMessage(text) {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    statusMsg.textContent = `${text} (Lần cuối: ${hh}:${mm})`;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  statusMsg.textContent = text ? `${text} (Lần cuối: ${hh}:${mm})` : "";
 }
 
 async function loadStatus() {
-    const diadiem = diadiemSelect.value || null;
+  const diadiem = diadiemSelect.value || null;
 
-    setStatusMessage("Đang tải dữ liệu...");
+  setStatusMessage("Đang tải dữ liệu...");
 
-    const nowIso = new Date().toISOString();
+  const nowIso = new Date().toISOString();
 
-    const { data, error } = await supabase.rpc("nhanvien_status_now", {
-        p_time: nowIso,
-        p_diadiem: diadiem
-    });
+  const { data, error } = await supabase.rpc("nhanvien_status_now", {
+    p_time: nowIso,
+    p_diadiem: diadiem
+  });
 
-    if (error) {
-        console.error("Lỗi gọi nhanvien_status_now:", error);
-        tbody.innerHTML = `<tr><td colspan="7" style="color:red;">Lỗi tải dữ liệu, xem console để biết chi tiết.</td></tr>`;
-        setStatusMessage("Lỗi tải dữ liệu.");
-        return;
-    }
+  if (error) {
+    console.error("Lỗi gọi nhanvien_status_now:", error);
+    tbodyStatus.innerHTML = `<tr><td colspan="8" style="color:red;">Lỗi tải dữ liệu, xem console để biết chi tiết.</td></tr>`;
+    setStatusMessage("Lỗi tải dữ liệu.");
+    return;
+  }
 
-    const rows = data || [];
-    if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7">Không có dữ liệu chấm công hôm nay.</td></tr>`;
-        setStatusMessage("Đã tải xong (không có dữ liệu hôm nay).");
-        return;
-    }
+  const rows = (data || []);
+  if (rows.length === 0) {
+    tbodyStatus.innerHTML = `<tr><td colspan="8">Không có dữ liệu chấm công hôm nay.</td></tr>`;
+    setStatusMessage("Đã tải xong (không có dữ liệu hôm nay).");
+    return;
+  }
 
-    tbody.innerHTML = "";
-    rows.forEach((r, idx) => {
-        const tr = document.createElement("tr");
+  tbodyStatus.innerHTML = "";
+  rows.forEach((r, idx) => {
+    const tr = document.createElement("tr");
 
-        const tdIndex = document.createElement("td");
-        tdIndex.textContent = String(idx + 1);
-        tr.appendChild(tdIndex);
+    const tdIndex = document.createElement("td");
+    tdIndex.textContent = String(idx + 1);
+    tr.appendChild(tdIndex);
 
-        const tdManv = document.createElement("td");
-        tdManv.textContent = r.manv || "";
-        tr.appendChild(tdManv);
+    const tdManv = document.createElement("td");
+    tdManv.textContent = r.manv || "";
+    tr.appendChild(tdManv);
 
-        const tdTennv = document.createElement("td");
-        tdTennv.textContent = r.tennv || "";
-        tr.appendChild(tdTennv);
+    const tdTennv = document.createElement("td");
+    tdTennv.textContent = r.tennv || "";
+    tr.appendChild(tdTennv);
 
-        const tdDia = document.createElement("td");
-        tdDia.textContent = r.diadiem || "";
-        tr.appendChild(tdDia);
+    const tdDia = document.createElement("td");
+    tdDia.textContent = r.diadiem || "";
+    tr.appendChild(tdDia);
 
+    const tdTrangThai = document.createElement("td");
+    const span = document.createElement("span");
+    span.className = `status-badge status-${r.trang_thai || "KHAC"}`;
+    span.textContent = trangThaiLabel(r.trang_thai);
+    tdTrangThai.appendChild(span);
+    tr.appendChild(tdTrangThai);
 
-        const tdTrangThai = document.createElement("td");
-        const span = document.createElement("span");
-        span.className = `status-badge status-${r.trang_thai || "KHAC"}`;
-        span.textContent = trangThaiLabel(r.trang_thai);
-        tdTrangThai.appendChild(span);
-        tr.appendChild(tdTrangThai);
+    const tdSuKien = document.createElement("td");
+    tdSuKien.textContent = suKienLabel(r.su_kien_cuoi);
+    tr.appendChild(tdSuKien);
 
-        const tdSuKien = document.createElement("td");
-        tdSuKien.textContent = suKienLabel(r.su_kien_cuoi);
-        tr.appendChild(tdSuKien);
+    const tdGio = document.createElement("td");
+    tdGio.textContent = formatTimeVN(r.gio_cuoi_vn || r.gio_cuoi);
+    tr.appendChild(tdGio);
 
-        const tdGio = document.createElement("td");
-        tdGio.textContent = formatTimeVN(r.gio_cuoi_vn || r.gio_cuoi);
-        tr.appendChild(tdGio);
+    const tdPhut = document.createElement("td");
+    tdPhut.textContent = formatMinutes(r.phut_tu_su_kien_cuoi);
+    tr.appendChild(tdPhut);
 
-        const tdPhut = document.createElement("td");
-        tdPhut.textContent = formatMinutes(r.phut_tu_su_kien_cuoi);
-        tr.appendChild(tdPhut);
+    tbodyStatus.appendChild(tr);
+  });
 
-        tbody.appendChild(tr);
-    });
-
-    setStatusMessage(`Đã tải xong (${rows.length} nhân viên).`);
+  setStatusMessage(`Đã tải xong (${rows.length} nhân viên).`);
 }
 
 function startAutoRefresh() {
-    if (autoTimer) clearInterval(autoTimer);
-    autoTimer = setInterval(loadStatus, AUTO_REFRESH_MS);
+  if (autoTimer) clearInterval(autoTimer);
+  autoTimer = setInterval(loadStatus, AUTO_REFRESH_MS);
 }
 
+// ========== PHẦN 2: TỔNG QUAN NHÂN LỰC THEO GIỜ ==========
+
+function setSummaryMessage(text) {
+  summaryMsg.textContent = text || "";
+}
+
+function parseTimeToMinutes(t) {
+  if (!t) return null;
+  if (typeof t === "string") {
+    const parts = t.split(":");
+    if (parts.length >= 2) {
+      const h = Number(parts[0]);
+      const m = Number(parts[1]);
+      if (Number.isNaN(h) || Number.isNaN(m)) return null;
+      return h * 60 + m;
+    }
+  }
+  return null;
+}
+
+function minutesToHourLabel(mins) {
+  const h = Math.floor(mins / 60);
+  const hh = String(h).padStart(2, "0");
+  return `${hh}:00`;
+}
+
+function buildSlotsFromRows(rows) {
+  if (!rows || rows.length === 0) return [];
+
+  let minStart = Infinity;
+  let maxEnd   = -Infinity;
+
+  const intervals = rows.map(r => {
+    const startM = parseTimeToMinutes(r.gio_bat_dau);
+    const endM   = parseTimeToMinutes(r.gio_ket_thuc);
+    if (startM != null && startM < minStart) minStart = startM;
+    if (endM   != null && endM   > maxEnd)   maxEnd   = endM;
+    return { diadiem: r.diadiem, startM, endM };
+  });
+
+  if (!Number.isFinite(minStart) || !Number.isFinite(maxEnd)) {
+    // fallback khung giờ 08:00 - 22:00 nếu dữ liệu lỗi
+    minStart = 8 * 60;
+    maxEnd   = 22 * 60;
+  }
+
+  const slotStart = Math.floor(minStart / 60) * 60;
+  const slotEnd   = Math.ceil(maxEnd  / 60) * 60;
+
+  const slots = [];
+  for (let m = slotStart; m < slotEnd; m += 60) {
+    slots.push({
+      startM: m,
+      endM: m + 60,
+      label: minutesToHourLabel(m),
+      cs1: 0,
+      cs2: 0
+    });
+  }
+
+  for (const itv of intervals) {
+    if (itv.startM == null || itv.endM == null) continue;
+    for (const s of slots) {
+      if (itv.startM < s.endM && itv.endM > s.startM) {
+        if (itv.diadiem === "cs1") s.cs1 += 1;
+        else if (itv.diadiem === "cs2") s.cs2 += 1;
+      }
+    }
+  }
+
+  return slots;
+}
+
+async function loadSummary() {
+  // Ngày chọn, mặc định hôm nay
+  let ngay = summaryDateInput.value;
+  if (!ngay) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    ngay = `${yyyy}-${mm}-${dd}`;
+    summaryDateInput.value = ngay;
+  }
+
+  setSummaryMessage("Đang tải tổng quan nhân lực...");
+
+  const { data, error } = await supabase
+    .from("lichlam_dangky")
+    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
+    .eq("ngay", ngay)
+    .eq("trang_thai", "DA_DUYET");
+
+  if (error) {
+    console.error("Lỗi đọc lichlam_dangky:", error);
+    tbodySummary.innerHTML = `<tr><td colspan="3" style="color:red;">Lỗi tải dữ liệu, xem console.</td></tr>`;
+    setSummaryMessage("Lỗi tải tổng quan.");
+    return;
+  }
+
+  const rows = data || [];
+  if (rows.length === 0) {
+    tbodySummary.innerHTML = `<tr><td colspan="3">Không có ca đã duyệt trong ngày ${ngay}.</td></tr>`;
+    setSummaryMessage("Không có dữ liệu.");
+    return;
+  }
+
+  const slots = buildSlotsFromRows(rows);
+  if (slots.length === 0) {
+    tbodySummary.innerHTML = `<tr><td colspan="3">Không tạo được khung giờ hiển thị.</td></tr>`;
+    setSummaryMessage("Không có dữ liệu phù hợp.");
+    return;
+  }
+
+  tbodySummary.innerHTML = "";
+  slots.forEach(s => {
+    const tr = document.createElement("tr");
+
+    const tdTime = document.createElement("td");
+    tdTime.textContent = s.label;
+    tr.appendChild(tdTime);
+
+    const tdCS1 = document.createElement("td");
+    tdCS1.textContent = String(s.cs1);
+    tr.appendChild(tdCS1);
+
+    const tdCS2 = document.createElement("td");
+    tdCS2.textContent = String(s.cs2);
+    tr.appendChild(tdCS2);
+
+    tbodySummary.appendChild(tr);
+  });
+
+  setSummaryMessage(`Đã tải tổng quan cho ngày ${ngay}.`);
+}
+
+// ========== KHỞI TẠO ==========
+
 document.addEventListener("DOMContentLoaded", () => {
+  // trạng thái hiện tại
+  loadStatus();
+  startAutoRefresh();
+
+  refreshBtn.addEventListener("click", () => {
     loadStatus();
-    startAutoRefresh();
+  });
 
-    refreshBtn.addEventListener("click", () => {
-        loadStatus();
-    });
+  diadiemSelect.addEventListener("change", () => {
+    loadStatus();
+  });
 
-    diadiemSelect.addEventListener("change", () => {
-        loadStatus();
+  // tổng quan theo giờ
+  if (summaryBtn) {
+    summaryBtn.addEventListener("click", () => {
+      loadSummary();
     });
+  }
+
+  // set mặc định ngày hôm nay cho summary
+  if (summaryDateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    summaryDateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  loadSummary();
 });
