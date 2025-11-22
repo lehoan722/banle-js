@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tính lương tháng nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 8px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h1 {
+      font-size: 18px;
+      margin: 0 0 8px 0;
+    }
+    .card h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+    }
+    .field label {
+      margin-bottom: 2px;
+    }
+    .field input,
+    .field select {
+      font-size: 13px;
+      padding: 4px 6px;
+    }
+    button {
+      font-size: 13px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1.2fr;
+      gap: 10px;
+    }
+    .result-item {
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .result-item span.label {
+      display: inline-block;
+      min-width: 180px;
+      font-weight: 600;
+    }
+    .note {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .warning {
+      color: #d32f2f;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    @media (max-width: 768px) {
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Tính lương tháng nhân viên</h1>
+    <div class="row">
+      <div class="field">
+        <label>Từ ngày:</label>
+        <input type="date" id="tu_ngay">
+      </div>
+      <div class="field">
+        <label>Đến ngày:</label>
+        <input type="date" id="den_ngay">
+      </div>
+      <div class="field">
+        <label>Mã nhân viên:</label>
+        <input type="text" id="manv" placeholder="VD: 38">
+      </div>
+      <div class="field">
+        <label>Lương/giờ (VND):</label>
+        <input type="number" id="luong_gio" value="22000">
+      </div>
+      <div class="field">
+        <label>% thưởng doanh số:</label>
+        <input type="number" id="pct_thuong" value="1">
+      </div>
+      <div class="field" style="align-self:flex-end;">
+        <button id="btn-tinh-luong">Tính lương</button>
+      </div>
+    </div>
+    <div class="note">
+      Gợi ý: chọn từ ngày = ngày đầu tháng, đến ngày = ngày cuối tháng. 
+      Doanh số thưởng lấy từ <b>nv_match2h_summary_all</b> (logic giống báo cáo NV12).
+    </div>
+    <div id="status" class="note"></div>
+  </div>
+
+  <div class="card">
+    <h2>Kết quả lương tháng</h2>
+    <div id="result-section">
+      <div class="result-grid">
+        <div>
+          <div class="result-item"><span class="label">Mã nhân viên:</span> <span id="kq-manv">-</span></div>
+          <div class="result-item"><span class="label">Khoảng thời gian:</span> <span id="kq-range">-</span></div>
+          <div class="result-item"><span class="label">Số ngày có công:</span> <span id="kq-so-ngay-cong">0</span></div>
+          <div class="result-item"><span class="label">Tổng giờ công:</span> <span id="kq-tong-gio-cong">0</span> giờ</div>
+          <div class="result-item"><span class="label">Số lần AUTO_TANCA:</span> <span id="kq-auto-tanca">0</span></div>
+          <div class="result-item"><span class="label">Số ngày vi phạm CB1:</span> <span id="kq-cb1">0</span></div>
+          <div class="result-item"><span class="label">Số ngày vi phạm CB2:</span> <span id="kq-cb2">0</span></div>
+          <div class="result-item"><span class="label">Số ngày vi phạm CB3:</span> <span id="kq-cb3">0</span></div>
+        </div>
+        <div>
+          <div class="result-item"><span class="label">Tổng doanh số (KPI):</span> <span id="kq-doanhso">0</span> đ</div>
+          <div class="result-item"><span class="label">Lương giờ:</span> <span id="kq-luong-gio">0</span> đ</div>
+          <div class="result-item"><span class="label">Thưởng doanh số:</span> <span id="kq-thuong-doanhso">0</span> đ</div>
+          <div class="result-item"><span class="label">Tổng lương:</span> <span id="kq-tong-luong">0</span> đ</div>
+        </div>
+      </div>
+      <div class="note">
+        * Doanh số dùng để thưởng lấy từ <b>nv_match2h_summary_all</b>, 
+        cùng logic với báo cáo chi tiết bán hàng NV12 (đã match 2h).
+        <br>
+        * Giờ công tính từ <b>chamcong_tinhcong_monthly</b> (chấm công GPS + vào ca / nghỉ trưa / nghỉ chiều / tan ca).
+      </div>
+      <div id="warning-section" class="warning"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/baocaoluong.js"></script>
+</body>
+</html>
