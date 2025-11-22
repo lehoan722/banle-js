@@ -1,21 +1,46 @@
-// dangkyca.js - nhân viên đăng ký ca
+// dangkyca.js - Nhân viên đăng ký ca + login auth + lọc khoảng ngày
 
 import { supabase } from "./supabaseClient.js";
+import { khoiTaoDangNhapDungChung } from "./authModule.js";
 
-const manvInput = document.getElementById("manv");
-const diadiemSelect = document.getElementById("diadiem");
-const ngayInput = document.getElementById("ngay");
-const gioBdInput = document.getElementById("gio_bat_dau");
-const gioKtInput = document.getElementById("gio_ket_thuc");
-const lyDoInput = document.getElementById("ly_do");
-const btnDangKy = document.getElementById("btn-dang-ky");
-const tbodyLich = document.getElementById("tbody-lich");
-const msgEl = document.getElementById("msg");
+// --- DOM element ---
+const manvInput      = document.getElementById("manv");
+const diadiemSelect  = document.getElementById("diadiem");
+const ngayInput      = document.getElementById("ngay");
+const gioBdInput     = document.getElementById("gio_bat_dau");
+const gioKtInput     = document.getElementById("gio_ket_thuc");
+const lyDoInput      = document.getElementById("ly_do");
+const btnDangKy      = document.getElementById("btn-dang-ky");
+const tbodyLich      = document.getElementById("tbody-lich");
+const msgEl          = document.getElementById("msg");
 
-function setToday() {
+const fromDateInput  = document.getElementById("from_date");
+const toDateInput    = document.getElementById("to_date");
+const btnTaiDangKy   = document.getElementById("btn-tai-dangky");
+
+let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại
+
+// --- Tiện ích ngày tháng ---
+function formatISODate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function getDefaultRange7Days() {
   const today = new Date();
-  const iso = today.toISOString().slice(0, 10);
-  ngayInput.value = iso;
+  const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+  return {
+    fromDate: formatISODate(sevenDaysAgo),
+    toDate: formatISODate(today)
+  };
+}
+
+function setTodayAndDefaultRange() {
+  const today = new Date();
+  ngayInput.value = formatISODate(today);
+
+  const { fromDate, toDate } = getDefaultRange7Days();
+  if (!fromDateInput.value) fromDateInput.value = fromDate;
+  if (!toDateInput.value)   toDateInput.value   = toDate;
 }
 
 function setMsg(text, isError = false) {
@@ -23,17 +48,54 @@ function setMsg(text, isError = false) {
   msgEl.style.color = isError ? "#c62828" : "#555";
 }
 
+// --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
+function autoFillManvFromLogin() {
+  try {
+    const info =
+      window.thongTinNguoiDung ||
+      window.thongTinDangNhap ||
+      window.currentUserInfo ||
+      null;
+
+    if (info && info.manv) {
+      manvInput.value = info.manv;
+      manvInput.readOnly = true; // khóa, không cho sửa tay
+    }
+  } catch (e) {
+    console.warn("Không lấy được manv từ thông tin đăng nhập:", e);
+  }
+}
+
+// --- Load đăng ký theo mã NV + khoảng ngày ---
 async function loadMyRequests() {
   const manv = manvInput.value.trim();
   if (!manv) {
-    tbodyLich.innerHTML = `<tr><td colspan="6">Nhập mã NV để xem lịch đăng ký.</td></tr>`;
+    tbodyLich.innerHTML = `<tr><td colspan="6">Nhập / đăng nhập Mã NV để xem lịch đăng ký.</td></tr>`;
     return;
   }
 
-  const today = new Date();
-  const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-  const fromDate = sevenDaysAgo.toISOString().slice(0, 10);
-  const toDate = today.toISOString().slice(0, 10);
+  let fromDate = fromDateInput.value;
+  let toDate   = toDateInput.value;
+
+  // Nếu chưa chọn thì tự set mặc định 7 ngày gần đây
+  if (!fromDate || !toDate) {
+    const def = getDefaultRange7Days();
+    if (!fromDate) {
+      fromDate = def.fromDate;
+      fromDateInput.value = fromDate;
+    }
+    if (!toDate) {
+      toDate = def.toDate;
+      toDateInput.value = toDate;
+    }
+  }
+
+  if (fromDate > toDate) {
+    setMsg("'Từ ngày' phải nhỏ hơn hoặc bằng 'Đến ngày'.", true);
+    return;
+  }
+
+  setMsg("Đang tải đăng ký...");
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
@@ -46,11 +108,13 @@ async function loadMyRequests() {
   if (error) {
     console.error("Lỗi load lichlam_dangky:", error);
     tbodyLich.innerHTML = `<tr><td colspan="6" style="color:red;">Lỗi tải dữ liệu.</td></tr>`;
+    setMsg("Lỗi tải dữ liệu.", true);
     return;
   }
 
   if (!data || data.length === 0) {
-    tbodyLich.innerHTML = `<tr><td colspan="6">Không có đăng ký nào trong 7 ngày gần đây.</td></tr>`;
+    tbodyLich.innerHTML = `<tr><td colspan="6">Không có đăng ký nào trong khoảng ngày đã chọn.</td></tr>`;
+    setMsg("");
     return;
   }
 
@@ -85,18 +149,21 @@ async function loadMyRequests() {
 
     tbodyLich.appendChild(tr);
   });
+
+  setMsg("");
 }
 
+// --- Gửi đăng ký ca ---
 async function handleDangKy() {
-  const manv = manvInput.value.trim();
+  const manv    = manvInput.value.trim();
   const diadiem = diadiemSelect.value;
-  const ngay = ngayInput.value;
-  const gio_bd = gioBdInput.value;
-  const gio_kt = gioKtInput.value;
-  const ly_do = lyDoInput.value.trim();
+  const ngay    = ngayInput.value;
+  const gio_bd  = gioBdInput.value;
+  const gio_kt  = gioKtInput.value;
+  const ly_do   = lyDoInput.value.trim();
 
-  if (!manv || !ngay || !gio_bd || !gio_kt) {
-    setMsg("Vui lòng nhập đủ Mã NV, Ngày, Giờ bắt đầu/kết thúc.", true);
+  if (!manv || !ngay || !gio_bd || !gio_kt || !diadiem) {
+    setMsg("Vui lòng nhập đủ Mã NV, Cơ sở, Ngày, Giờ bắt đầu/kết thúc.", true);
     return;
   }
 
@@ -130,10 +197,43 @@ async function handleDangKy() {
   await loadMyRequests();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  setToday();
+// --- Gắn event sau khi login thành công ---
+function attachEventsOnce() {
+  if (daGanEvent) return;
+  daGanEvent = true;
 
   btnDangKy.addEventListener("click", handleDangKy);
+
+  // Nếu (trong trường hợp đặc biệt) manv vẫn cho thay đổi, thì đổi mã NV sẽ load lại lịch
   manvInput.addEventListener("change", loadMyRequests);
   manvInput.addEventListener("blur", loadMyRequests);
+
+  btnTaiDangKy.addEventListener("click", loadMyRequests);
+}
+
+// --- onLoginSuccess từ authModule ---
+function onLoginSuccess() {
+  // Tự set ngày hôm nay + khoảng 7 ngày mặc định
+  setTodayAndDefaultRange();
+
+  // Lấy manv từ thông tin đăng nhập, điền vào form và khóa lại
+  autoFillManvFromLogin();
+
+  // Gắn event các nút
+  attachEventsOnce();
+
+  // Tải đăng ký mặc định 7 ngày gần đây
+  loadMyRequests();
+}
+
+// --- Khởi tạo login giống trang up ảnh nhanh ---
+document.addEventListener("DOMContentLoaded", () => {
+  khoiTaoDangNhapDungChung({
+    loginContainerId: "login-container",
+    appContainerId: "app-container",
+    macDinhDiaDiem: "cs1",     // chỉ config cho module login, không ảnh hưởng select cơ sở ở form
+    tuDongKhoaCoSo: false,     // để người dùng TỰ chọn cơ sở khi đăng ký ca
+    loginApiPath: "/api/login-cs1",
+    onLoginSuccess
+  });
 });
