@@ -60,7 +60,7 @@ async function kiemTraQuyenDuyetCa() {
 
     const { data, error } = await supabase
       .from("dmnhanvien")
-      .select("manv, duoc_duyet_ca, quyen_sua, quyen_xoa")
+      .select("manv, duoc_duyet_ca, sua_hoadon, xoa_hoadon")
       .eq("manv", manv)
       .maybeSingle();
 
@@ -76,8 +76,8 @@ async function kiemTraQuyenDuyetCa() {
     // 2. Hoặc có quyen_sua hoặc quyen_xoa = true -> cũng cho duyệt
     coQuyenDuyetCa =
       !!(data?.duoc_duyet_ca) ||
-      !!(data?.quyen_sua) ||
-      !!(data?.quyen_xoa);
+      !!(data?.sua_hoadon) ||
+      !!(data?.xoa_hoadon);
 
     if (!coQuyenDuyetCa) {
       setMsg(
