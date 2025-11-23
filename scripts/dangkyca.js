@@ -4,21 +4,22 @@ import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
 
 // --- DOM element ---
-const manvInput      = document.getElementById("manv");
-const diadiemSelect  = document.getElementById("diadiem");
-const ngayInput      = document.getElementById("ngay");
-const gioBdInput     = document.getElementById("gio_bat_dau");
-const gioKtInput     = document.getElementById("gio_ket_thuc");
-const lyDoInput      = document.getElementById("ly_do");
-const btnDangKy      = document.getElementById("btn-dang-ky");
-const tbodyLich      = document.getElementById("tbody-lich");
-const msgEl          = document.getElementById("msg");
+const manvInput = document.getElementById("manv");
+const diadiemSelect = document.getElementById("diadiem");
+const ngayInput = document.getElementById("ngay");
+const gioBdInput = document.getElementById("gio_bat_dau");
+const gioKtInput = document.getElementById("gio_ket_thuc");
+const lyDoInput = document.getElementById("ly_do");
+const btnDangKy = document.getElementById("btn-dang-ky");
+const tbodyLich = document.getElementById("tbody-lich");
+const msgEl = document.getElementById("msg");
 
-const fromDateInput  = document.getElementById("from_date");
-const toDateInput    = document.getElementById("to_date");
-const btnTaiDangKy   = document.getElementById("btn-tai-dangky");
+const fromDateInput = document.getElementById("from_date");
+const toDateInput = document.getElementById("to_date");
+const btnTaiDangKy = document.getElementById("btn-tai-dangky");
 
 let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại
+let currentManv = null; // <-- THÊM DÒNG NÀY: mã NV lấy từ login
 
 // --- Tiện ích ngày tháng ---
 function formatISODate(d) {
@@ -40,7 +41,7 @@ function setTodayAndDefaultRange() {
 
   const { fromDate, toDate } = getDefaultRange7Days();
   if (!fromDateInput.value) fromDateInput.value = fromDate;
-  if (!toDateInput.value)   toDateInput.value   = toDate;
+  if (!toDateInput.value) toDateInput.value = toDate;
 }
 
 function setMsg(text, isError = false) {
@@ -48,6 +49,7 @@ function setMsg(text, isError = false) {
   msgEl.style.color = isError ? "#c62828" : "#555";
 }
 
+// --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
 // --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
 function autoFillManvFromLogin() {
   try {
@@ -58,24 +60,40 @@ function autoFillManvFromLogin() {
       null;
 
     if (info && info.manv) {
-      manvInput.value = info.manv;
-      manvInput.readOnly = true; // khóa, không cho sửa tay
+      currentManv = String(info.manv).trim();  // lưu lại mã NV đăng nhập
+      manvInput.value = currentManv;
+
+      // khóa hẳn ô mã NV
+      manvInput.readOnly = true;
+      manvInput.disabled = true;
+      manvInput.title = "Mã nhân viên được lấy từ tài khoản đăng nhập, không thể sửa.";
     }
   } catch (e) {
     console.warn("Không lấy được manv từ thông tin đăng nhập:", e);
   }
 }
 
+
 // --- Load đăng ký theo mã NV + khoảng ngày ---
+
+
 async function loadMyRequests() {
-  const manv = manvInput.value.trim();
+  // Chỉ cho phép xem theo mã NV đã đăng nhập
+  if (!currentManv) {
+    tbodyLich.innerHTML = `<tr><td colspan="6">Vui lòng đăng nhập để xem lịch đăng ký ca.</td></tr>`;
+    setMsg("Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.", true);
+    return;
+  }
+
+  const manv = currentManv;
+
   if (!manv) {
     tbodyLich.innerHTML = `<tr><td colspan="6">Nhập / đăng nhập Mã NV để xem lịch đăng ký.</td></tr>`;
     return;
   }
 
   let fromDate = fromDateInput.value;
-  let toDate   = toDateInput.value;
+  let toDate = toDateInput.value;
 
   // Nếu chưa chọn thì tự set mặc định 7 ngày gần đây
   if (!fromDate || !toDate) {
@@ -131,7 +149,7 @@ async function loadMyRequests() {
     tr.appendChild(tdDia);
 
     const tdGio = document.createElement("td");
-    tdGio.textContent = `${row.gio_bat_dau?.slice(0,5)} - ${row.gio_ket_thuc?.slice(0,5)}`;
+    tdGio.textContent = `${row.gio_bat_dau?.slice(0, 5)} - ${row.gio_ket_thuc?.slice(0, 5)}`;
     tr.appendChild(tdGio);
 
     const tdTrangThai = document.createElement("td");
@@ -155,12 +173,18 @@ async function loadMyRequests() {
 
 // --- Gửi đăng ký ca ---
 async function handleDangKy() {
-  const manv    = manvInput.value.trim();
+  // Bắt buộc phải có mã NV từ login
+  if (!currentManv) {
+    setMsg("Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.", true);
+    return;
+  }
+
+  const manv = currentManv;
   const diadiem = diadiemSelect.value;
-  const ngay    = ngayInput.value;
-  const gio_bd  = gioBdInput.value;
-  const gio_kt  = gioKtInput.value;
-  const ly_do   = lyDoInput.value.trim();
+  const ngay = ngayInput.value;
+  const gio_bd = gioBdInput.value;
+  const gio_kt = gioKtInput.value;
+  const ly_do = lyDoInput.value.trim();
 
   if (!manv || !ngay || !gio_bd || !gio_kt || !diadiem) {
     setMsg("Vui lòng nhập đủ Mã NV, Cơ sở, Ngày, Giờ bắt đầu/kết thúc.", true);
@@ -203,11 +227,6 @@ function attachEventsOnce() {
   daGanEvent = true;
 
   btnDangKy.addEventListener("click", handleDangKy);
-
-  // Nếu (trong trường hợp đặc biệt) manv vẫn cho thay đổi, thì đổi mã NV sẽ load lại lịch
-  manvInput.addEventListener("change", loadMyRequests);
-  manvInput.addEventListener("blur", loadMyRequests);
-
   btnTaiDangKy.addEventListener("click", loadMyRequests);
 }
 
