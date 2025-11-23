@@ -396,6 +396,15 @@
 
       if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
 
+      // SẮP XẾP THEO SỐ HÓA ĐƠN TỪ NHỎ ĐẾN LỚN (chỉ áp dụng cho chế độ chi tiết)
+      if (loaiTongHop === "chitiet") {
+        filtered.sort((a, b) => {
+          const s1 = (a.sohd || "").toString();
+          const s2 = (b.sohd || "").toString();
+          return s1.localeCompare(s2); // tăng dần
+        });
+      }
+
       // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
       let hienThiData = filtered;
       if (loaiTongHop !== "chitiet") {
