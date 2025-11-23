@@ -93,7 +93,7 @@
   <div id="login-container">
     <h1>Đăng nhập chấm công CS2</h1>
     <div class="info">
-      Yêu cầu bật GPS và đứng trong cửa hàng CS2 khi đăng nhập.
+      Yêu cầu bật GPS và đứng trong cửa hàng CS2 khi đăng nhập và khi chấm VÀO CA / TAN CA.
     </div>
   </div>
 
@@ -116,7 +116,10 @@
     </div>
 
     <div class="info">
-      Yêu cầu chấm công đúng tại thời điểm, tại cửa hàng. Chấm công không đúng không được tính công. 
+      - Yêu cầu chấm công đúng tại thời điểm, tại cửa hàng.<br>
+      - Nếu đến giờ TAN CA mà không bấm, hệ thống vẫn tính TAN CA theo <b>giờ đăng ký ca</b> 
+        (TANCA_LỊCH) và <b>trừ 1 giờ công</b> khi tính lương.<br>
+      - AUTO_TANCA bằng GPS chỉ là hỗ trợ thêm (nhân viên vẫn phải tự bấm TAN CA).
     </div>
 
     <div id="log-panel" class="log-panel">
