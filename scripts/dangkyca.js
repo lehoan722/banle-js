@@ -51,25 +51,42 @@ function setMsg(text, isError = false) {
 
 // --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
 // --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
-function autoFillManvFromLogin() {
+// --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
+function autoFillManvFromLogin(thongTinNguoiDung) {
   try {
     const info =
+      thongTinNguoiDung ||
       window.thongTinNguoiDung ||
       window.thongTinDangNhap ||
       window.currentUserInfo ||
       null;
 
-    if (info && info.manv) {
-      currentManv = String(info.manv).trim();  // lưu lại mã NV đăng nhập
+    if (!info) {
+      console.warn("Không có thông tin đăng nhập để lấy manv");
+      return;
+    }
+
+    const manv =
+      info.manv ||
+      info.ma_nv ||
+      info.maNhanVien ||
+      info.ma_nhan_vien ||
+      null;
+
+    if (manv) {
+      currentManv = String(manv).trim();        // lưu lại mã NV đăng nhập
       manvInput.value = currentManv;
 
       // khóa hẳn ô mã NV
       manvInput.readOnly = true;
       manvInput.disabled = true;
-      manvInput.title = "Mã nhân viên được lấy từ tài khoản đăng nhập, không thể sửa.";
+      manvInput.title =
+        "Mã nhân viên được lấy từ tài khoản đăng nhập, không thể sửa.";
+    } else {
+      console.warn("Không tìm được trường manv trong thongTinNguoiDung:", info);
     }
   } catch (e) {
-    console.warn("Không lấy được manv từ thông tin đăng nhập:", e);
+    console.warn("Lỗi khi autoFillManvFromLogin:", e);
   }
 }
 
@@ -231,19 +248,24 @@ function attachEventsOnce() {
 }
 
 // --- onLoginSuccess từ authModule ---
-function onLoginSuccess() {
+// --- onLoginSuccess từ authModule ---
+function onLoginSuccess(thongTinNguoiDung) {
+  // Lưu global giống trang duyệt ca để chỗ khác dùng nếu cần
+  window.thongTinNguoiDung = thongTinNguoiDung;
+
   // Tự set ngày hôm nay + khoảng 7 ngày mặc định
   setTodayAndDefaultRange();
 
   // Lấy manv từ thông tin đăng nhập, điền vào form và khóa lại
-  autoFillManvFromLogin();
+  autoFillManvFromLogin(thongTinNguoiDung);
 
-  // Gắn event các nút
+  // Gắn event các nút (chỉ gắn 1 lần)
   attachEventsOnce();
 
-  // Tải đăng ký mặc định 7 ngày gần đây
+  // Tải đăng ký mặc định 7 ngày gần đây cho đúng manv
   loadMyRequests();
 }
+
 
 // --- Khởi tạo login giống trang up ảnh nhanh ---
 document.addEventListener("DOMContentLoaded", () => {
