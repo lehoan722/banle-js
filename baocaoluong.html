@@ -95,7 +95,7 @@
       </div>
       <div class="field">
         <label>Mã nhân viên:</label>
-        <input type="text" id="manv" placeholder="VD: 38">
+        <input type="text" id="manv" placeholder="VD: nv001">
       </div>
       <div class="field">
         <label>Lương/giờ (VND):</label>
@@ -114,8 +114,8 @@
       </div>
     </div>
     <div class="note">
-      - <b>Khoán doanh thu / giờ</b>: ví dụ 500.000đ/giờ → 1 giờ khoán 500k, 10 giờ khoán 5 triệu.<br>
-      - <b>% thưởng</b>: là % thưởng trên <u>phần doanh thu vượt khoán</u>. Ví dụ vượt 100.000đ, thưởng 1% = 1.000đ.
+      - <b>Khoán doanh thu / giờ</b>: ví dụ 800.000đ/giờ → 1 giờ khoán 800k, 10 giờ khoán 8 triệu.<br>
+      - <b>% thưởng</b>: là % thưởng trên <u>phần doanh thu vượt khoán</u>. Ví dụ vượt 1000.000đ, thưởng 1% = 10.000đ.
     </div>
     <div id="status" class="note"></div>
   </div>
@@ -132,9 +132,9 @@
           <div class="result-item"><span class="label">Giờ công dùng để tính lương:</span> <span id="kq-gio-cong-tinh-luong">0</span> giờ</div>
           <div class="result-item"><span class="label">Giờ bị trừ do TANCA_LỊCH:</span> <span id="kq-gio-phat-tanca-lich">0</span> giờ</div>
           <div class="result-item"><span class="label">Số lần AUTO_TANCA:</span> <span id="kq-auto-tanca">0</span></div>
-          <div class="result-item"><span class="label">Số ngày vi phạm CB1:</span> <span id="kq-cb1">0</span></div>
-          <div class="result-item"><span class="label">Số ngày vi phạm CB2:</span> <span id="kq-cb2">0</span></div>
-          <div class="result-item"><span class="label">Số ngày vi phạm CB3:</span> <span id="kq-cb3">0</span></div>
+          <div class="result-item"><span class="label">Số ngày quên vào ca:</span> <span id="kq-cb1">0</span></div>
+          <div class="result-item"><span class="label">Số ngày NTR quá 70 phút:</span> <span id="kq-cb2">0</span></div>
+          <div class="result-item"><span class="label">Số ngày NCH quá 40 phút:</span> <span id="kq-cb3">0</span></div>
           <div class="result-item"><span class="label">Số ca VẮNG (vào ca muộn &gt; 15p):</span> <span id="kq-so-ngay-vang">0</span></div>
           <div class="result-item"><span class="label">Số ca TAN CA theo LỊCH:</span> <span id="kq-so-ngay-tanca-lich">0</span></div>
         </div>
@@ -148,9 +148,9 @@
           <div class="result-item"><span class="label">Tổng lương (lương + thưởng):</span> <span id="kq-tong-luong">0</span> đ</div>
         </div>
       </div>
-      <div class="note">
-        * Doanh thu dùng để so với khoán lấy từ <b>nv_match2h_summary_all</b> (giống báo cáo NV12).<br>
-        * Giờ công & vi phạm lấy từ <b>chamcong_tinhcong_monthly</b> (chấm công GPS + đăng ký ca).<br>
+      <div class="note">  
+        * TANCA_LICH là khi hết giờ làm theo đăng ký lịch nhưng không chấm tan ca. 
+        * AUTO_TANCA. rời khỏi cửa hàng 10 phút nhưng không tan ca hoặc nghỉ.       
         * Mỗi ca TANCA_LỊCH (quên bấm tan ca sau giờ đăng ký + 15 phút) bị trừ <b>1 giờ công</b> khi tính lương.
       </div>
       <div id="warning-section" class="warning"></div>
