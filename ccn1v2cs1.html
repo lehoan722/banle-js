@@ -459,7 +459,7 @@
         </div>        
 
         <div id="app-menu" class="menu-item"></div>
-        
+
         <!--        
         <label>Giờ <input id="gio" /></label> -->
 
@@ -785,6 +785,9 @@
 
                 const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
+
+                const qlnhapsize = document.getElementById("nhapsize"); 
+                if (qlnhapsize) qlnhapsize.checked = true;
 
                 // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
                 const appContainer = document.getElementById("app-container");
