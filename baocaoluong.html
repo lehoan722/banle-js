@@ -61,7 +61,7 @@
     }
     .result-item span.label {
       display: inline-block;
-      min-width: 180px;
+      min-width: 210px;
       font-weight: 600;
     }
     .note {
@@ -102,7 +102,11 @@
         <input type="number" id="luong_gio" value="22000">
       </div>
       <div class="field">
-        <label>% thưởng doanh số:</label>
+        <label>Khoán doanh thu / giờ (VND):</label>
+        <input type="number" id="khoan_gio" value="500000">
+      </div>
+      <div class="field">
+        <label>% thưởng trên phần vượt khoán:</label>
         <input type="number" id="pct_thuong" value="1">
       </div>
       <div class="field" style="align-self:flex-end;">
@@ -110,8 +114,8 @@
       </div>
     </div>
     <div class="note">
-      Gợi ý: chọn từ ngày = ngày đầu tháng, đến ngày = ngày cuối tháng. 
-      Doanh số thưởng lấy từ <b>nv_match2h_summary_all</b> (logic giống báo cáo NV12).
+      - <b>Khoán doanh thu / giờ</b>: ví dụ 500.000đ/giờ → 1 giờ khoán 500k, 10 giờ khoán 5 triệu.<br>
+      - <b>% thưởng</b>: là % thưởng trên <u>phần doanh thu vượt khoán</u>. Ví dụ vượt 100.000đ, thưởng 1% = 1.000đ.
     </div>
     <div id="status" class="note"></div>
   </div>
@@ -124,24 +128,30 @@
           <div class="result-item"><span class="label">Mã nhân viên:</span> <span id="kq-manv">-</span></div>
           <div class="result-item"><span class="label">Khoảng thời gian:</span> <span id="kq-range">-</span></div>
           <div class="result-item"><span class="label">Số ngày có công:</span> <span id="kq-so-ngay-cong">0</span></div>
-          <div class="result-item"><span class="label">Tổng giờ công:</span> <span id="kq-tong-gio-cong">0</span> giờ</div>
+          <div class="result-item"><span class="label">Tổng giờ công (thực tế):</span> <span id="kq-tong-gio-cong">0</span> giờ</div>
+          <div class="result-item"><span class="label">Giờ công dùng để tính lương:</span> <span id="kq-gio-cong-tinh-luong">0</span> giờ</div>
+          <div class="result-item"><span class="label">Giờ bị trừ do TANCA_LỊCH:</span> <span id="kq-gio-phat-tanca-lich">0</span> giờ</div>
           <div class="result-item"><span class="label">Số lần AUTO_TANCA:</span> <span id="kq-auto-tanca">0</span></div>
           <div class="result-item"><span class="label">Số ngày vi phạm CB1:</span> <span id="kq-cb1">0</span></div>
           <div class="result-item"><span class="label">Số ngày vi phạm CB2:</span> <span id="kq-cb2">0</span></div>
           <div class="result-item"><span class="label">Số ngày vi phạm CB3:</span> <span id="kq-cb3">0</span></div>
+          <div class="result-item"><span class="label">Số ca VẮNG (vào ca muộn &gt; 15p):</span> <span id="kq-so-ngay-vang">0</span></div>
+          <div class="result-item"><span class="label">Số ca TAN CA theo LỊCH:</span> <span id="kq-so-ngay-tanca-lich">0</span></div>
         </div>
         <div>
-          <div class="result-item"><span class="label">Tổng doanh số (KPI):</span> <span id="kq-doanhso">0</span> đ</div>
-          <div class="result-item"><span class="label">Lương giờ:</span> <span id="kq-luong-gio">0</span> đ</div>
-          <div class="result-item"><span class="label">Thưởng doanh số:</span> <span id="kq-thuong-doanhso">0</span> đ</div>
-          <div class="result-item"><span class="label">Tổng lương:</span> <span id="kq-tong-luong">0</span> đ</div>
+          <div class="result-item"><span class="label">Khoán doanh thu / giờ:</span> <span id="kq-khoan-gio">0</span> đ</div>
+          <div class="result-item"><span class="label">Khoán doanh thu theo giờ công:</span> <span id="kq-khoan-thang">0</span> đ</div>
+          <div class="result-item"><span class="label">Doanh thu thực tế (KPI):</span> <span id="kq-doanhso">0</span> đ</div>
+          <div class="result-item"><span class="label">Doanh thu vượt khoán:</span> <span id="kq-tien-vuot">0</span> đ</div>
+          <div class="result-item"><span class="label">Tiền thưởng vượt khoán:</span> <span id="kq-thuong-doanhso">0</span> đ</div>
+          <div class="result-item"><span class="label">Lương cứng (giờ * lương giờ):</span> <span id="kq-luong-gio">0</span> đ</div>
+          <div class="result-item"><span class="label">Tổng lương (lương + thưởng):</span> <span id="kq-tong-luong">0</span> đ</div>
         </div>
       </div>
       <div class="note">
-        * Doanh số dùng để thưởng lấy từ <b>nv_match2h_summary_all</b>, 
-        cùng logic với báo cáo chi tiết bán hàng NV12 (đã match 2h).
-        <br>
-        * Giờ công tính từ <b>chamcong_tinhcong_monthly</b> (chấm công GPS + vào ca / nghỉ trưa / nghỉ chiều / tan ca).
+        * Doanh thu dùng để so với khoán lấy từ <b>nv_match2h_summary_all</b> (giống báo cáo NV12).<br>
+        * Giờ công & vi phạm lấy từ <b>chamcong_tinhcong_monthly</b> (chấm công GPS + đăng ký ca).<br>
+        * Mỗi ca TANCA_LỊCH (quên bấm tan ca sau giờ đăng ký + 15 phút) bị trừ <b>1 giờ công</b> khi tính lương.
       </div>
       <div id="warning-section" class="warning"></div>
     </div>
