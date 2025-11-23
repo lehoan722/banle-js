@@ -19,9 +19,10 @@ const toDateInput = document.getElementById("to_date");
 const btnTaiDangKy = document.getElementById("btn-tai-dangky");
 
 let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại
-let currentManv = null; // <-- THÊM DÒNG NÀY: mã NV lấy từ login
+let currentManv = null; // mã NV lấy từ login
 
-// --- Tiện ích ngày tháng ---
+// --- Tiện ích chung ---
+
 function formatISODate(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -49,8 +50,14 @@ function setMsg(text, isError = false) {
   msgEl.style.color = isError ? "#c62828" : "#555";
 }
 
-// --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
-// --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
+// Chuyển "HH:MM" -> phút
+function timeToMinutes(hhmm) {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
 // --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
 function autoFillManvFromLogin(thongTinNguoiDung) {
   try {
@@ -74,7 +81,7 @@ function autoFillManvFromLogin(thongTinNguoiDung) {
       null;
 
     if (manv) {
-      currentManv = String(manv).trim();        // lưu lại mã NV đăng nhập
+      currentManv = String(manv).trim(); // lưu lại mã NV đăng nhập
       manvInput.value = currentManv;
 
       // khóa hẳn ô mã NV
@@ -83,31 +90,29 @@ function autoFillManvFromLogin(thongTinNguoiDung) {
       manvInput.title =
         "Mã nhân viên được lấy từ tài khoản đăng nhập, không thể sửa.";
     } else {
-      console.warn("Không tìm được trường manv trong thongTinNguoiDung:", info);
+      console.warn(
+        "Không tìm được trường manv trong thongTinNguoiDung:",
+        info
+      );
     }
   } catch (e) {
     console.warn("Lỗi khi autoFillManvFromLogin:", e);
   }
 }
 
-
 // --- Load đăng ký theo mã NV + khoảng ngày ---
-
-
 async function loadMyRequests() {
   // Chỉ cho phép xem theo mã NV đã đăng nhập
   if (!currentManv) {
     tbodyLich.innerHTML = `<tr><td colspan="6">Vui lòng đăng nhập để xem lịch đăng ký ca.</td></tr>`;
-    setMsg("Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.", true);
+    setMsg(
+      "Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.",
+      true
+    );
     return;
   }
 
   const manv = currentManv;
-
-  if (!manv) {
-    tbodyLich.innerHTML = `<tr><td colspan="6">Nhập / đăng nhập Mã NV để xem lịch đăng ký.</td></tr>`;
-    return;
-  }
 
   let fromDate = fromDateInput.value;
   let toDate = toDateInput.value;
@@ -166,7 +171,9 @@ async function loadMyRequests() {
     tr.appendChild(tdDia);
 
     const tdGio = document.createElement("td");
-    tdGio.textContent = `${row.gio_bat_dau?.slice(0, 5)} - ${row.gio_ket_thuc?.slice(0, 5)}`;
+    tdGio.textContent = `${row.gio_bat_dau?.slice(0, 5)} - ${
+      row.gio_ket_thuc?.slice(0, 5)
+    }`;
     tr.appendChild(tdGio);
 
     const tdTrangThai = document.createElement("td");
@@ -192,7 +199,10 @@ async function loadMyRequests() {
 async function handleDangKy() {
   // Bắt buộc phải có mã NV từ login
   if (!currentManv) {
-    setMsg("Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.", true);
+    setMsg(
+      "Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.",
+      true
+    );
     return;
   }
 
@@ -204,7 +214,10 @@ async function handleDangKy() {
   const ly_do = lyDoInput.value.trim();
 
   if (!manv || !ngay || !gio_bd || !gio_kt || !diadiem) {
-    setMsg("Vui lòng nhập đủ Mã NV, Cơ sở, Ngày, Giờ bắt đầu/kết thúc.", true);
+    setMsg(
+      "Vui lòng nhập đủ Cơ sở, Ngày, Giờ bắt đầu/kết thúc.",
+      true
+    );
     return;
   }
 
@@ -213,20 +226,72 @@ async function handleDangKy() {
     return;
   }
 
+  // --- KIỂM TRA GIỚI HẠN 3 CA / NGÀY / ĐỊA ĐIỂM + KHÔNG TRÙNG GIỜ ---
+
+  // 1) Lấy tất cả đăng ký của NV trong NGÀY đó (mọi địa điểm),
+  //    bỏ qua các ca đã hủy / từ chối nếu có.
+  const { data: existing, error: existError } = await supabase
+    .from("lichlam_dangky")
+    .select("id, diadiem, gio_bat_dau, gio_ket_thuc, trang_thai")
+    .eq("manv", manv)
+    .eq("ngay", ngay)
+    .not("trang_thai", "in", "(HUY,TU_CHOI)");
+
+  if (existError) {
+    console.error("Lỗi kiểm tra đăng ký ca hiện có:", existError);
+    setMsg("Lỗi kiểm tra lịch đăng ký hiện có. Vui lòng thử lại.", true);
+    return;
+  }
+
+  const list = existing || [];
+
+  // 1.1. Kiểm tra tối đa 3 ca trong cùng 1 địa điểm
+  const caCungDiaDiem = list.filter(r => r.diadiem === diadiem);
+  if (caCungDiaDiem.length >= 3) {
+    setMsg(
+      `Bạn đã đăng ký tối đa 3 ca trong ngày ${ngay} tại cơ sở ${diadiem}. Không thể đăng ký thêm ca mới.`,
+      true
+    );
+    return;
+  }
+
+  // 1.2. Kiểm tra trùng giờ với bất kỳ ca nào đã đăng ký (mọi địa điểm)
+  const newStart = timeToMinutes(gio_bd);
+  const newEnd = timeToMinutes(gio_kt);
+
+  const overlap = list.find(r => {
+    const s = timeToMinutes(r.gio_bat_dau);
+    const e = timeToMinutes(r.gio_ket_thuc);
+    if (s == null || e == null) return false;
+    // điều kiện trùng: thời đoạn [start,end) cắt nhau
+    return newStart < e && newEnd > s;
+  });
+
+  if (overlap) {
+    setMsg(
+      `Khoảng giờ ${gio_bd} - ${gio_kt} bị trùng với ca đã đăng ký ` +
+        `${overlap.gio_bat_dau?.slice(0, 5)} - ${
+          overlap.gio_ket_thuc?.slice(0, 5)
+        } tại cơ sở ${overlap.diadiem}. ` +
+        "Không thể đăng ký trùng giờ ở bất kỳ cửa hàng nào.",
+      true
+    );
+    return;
+  }
+
+  // --- Nếu qua hết kiểm tra thì mới insert ---
   setMsg("Đang gửi đăng ký...");
 
-  const { error } = await supabase
-    .from("lichlam_dangky")
-    .insert({
-      manv,
-      diadiem,
-      ngay,
-      gio_bat_dau: gio_bd,
-      gio_ket_thuc: gio_kt,
-      ly_do,
-      trang_thai: "CHO_DUYET",
-      created_by: manv
-    });
+  const { error } = await supabase.from("lichlam_dangky").insert({
+    manv,
+    diadiem,
+    ngay,
+    gio_bat_dau: gio_bd,
+    gio_ket_thuc: gio_kt,
+    ly_do,
+    trang_thai: "CHO_DUYET",
+    created_by: manv
+  });
 
   if (error) {
     console.error("Lỗi insert lichlam_dangky:", error);
@@ -248,7 +313,6 @@ function attachEventsOnce() {
 }
 
 // --- onLoginSuccess từ authModule ---
-// --- onLoginSuccess từ authModule ---
 function onLoginSuccess(thongTinNguoiDung) {
   // Lưu global giống trang duyệt ca để chỗ khác dùng nếu cần
   window.thongTinNguoiDung = thongTinNguoiDung;
@@ -266,14 +330,13 @@ function onLoginSuccess(thongTinNguoiDung) {
   loadMyRequests();
 }
 
-
 // --- Khởi tạo login giống trang up ảnh nhanh ---
 document.addEventListener("DOMContentLoaded", () => {
   khoiTaoDangNhapDungChung({
     loginContainerId: "login-container",
     appContainerId: "app-container",
-    macDinhDiaDiem: "cs1",     // chỉ config cho module login, không ảnh hưởng select cơ sở ở form
-    tuDongKhoaCoSo: false,     // để người dùng TỰ chọn cơ sở khi đăng ký ca
+    macDinhDiaDiem: "cs1", // chỉ config cho module login, không ảnh hưởng select cơ sở ở form
+    tuDongKhoaCoSo: false, // để người dùng TỰ chọn cơ sở khi đăng ký ca
     loginApiPath: "/api/login-cs1",
     onLoginSuccess
   });
