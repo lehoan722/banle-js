@@ -1,6 +1,3 @@
-// baocaoluong.js
-// Tính lương tháng: giờ công từ chamcong_tinhcong_monthly + doanh số từ nv_match2h_summary_all
-
 import { supabase } from "./supabaseClient.js";
 
 function toIsoDate(d) {
@@ -31,19 +28,30 @@ function setStatus(msg) {
 }
 
 function setResultFields(values) {
-  document.getElementById("kq-manv").textContent = values.manv || "-";
-  document.getElementById("kq-range").textContent = values.range || "-";
-  document.getElementById("kq-so-ngay-cong").textContent = fmtNumber(values.so_ngay_cong, 0);
-  document.getElementById("kq-tong-gio-cong").textContent = fmtNumber(values.tong_gio_cong, 2);
-  document.getElementById("kq-auto-tanca").textContent = fmtNumber(values.so_lan_auto_tanca, 0);
-  document.getElementById("kq-cb1").textContent = fmtNumber(values.so_ngay_cb1, 0);
-  document.getElementById("kq-cb2").textContent = fmtNumber(values.so_ngay_cb2, 0);
-  document.getElementById("kq-cb3").textContent = fmtNumber(values.so_ngay_cb3, 0);
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
 
-  document.getElementById("kq-doanhso").textContent = fmtNumber(values.tong_doanh_thu, 0);
-  document.getElementById("kq-luong-gio").textContent = fmtNumber(values.luong_gio_thang, 0);
-  document.getElementById("kq-thuong-doanhso").textContent = fmtNumber(values.thuong_doanhso, 0);
-  document.getElementById("kq-tong-luong").textContent = fmtNumber(values.tong_luong, 0);
+  setText("kq-manv", values.manv || "-");
+  setText("kq-range", values.range || "-");
+  setText("kq-so-ngay-cong", fmtNumber(values.so_ngay_cong, 0));
+  setText("kq-tong-gio-cong", fmtNumber(values.tong_gio_cong, 2));
+  setText("kq-auto-tanca", fmtNumber(values.so_lan_auto_tanca, 0));
+  setText("kq-cb1", fmtNumber(values.so_ngay_cb1, 0));
+  setText("kq-cb2", fmtNumber(values.so_ngay_cb2, 0));
+  setText("kq-cb3", fmtNumber(values.so_ngay_cb3, 0));
+
+  // mới: VANG & TANCA_LICH + giờ phạt / giờ tính lương
+  setText("kq-so-ngay-vang", fmtNumber(values.so_ngay_vang || 0, 0));
+  setText("kq-so-ngay-tanca-lich", fmtNumber(values.so_ngay_tanca_lich || 0, 0));
+  setText("kq-gio-phat-tanca-lich", fmtNumber(values.gio_phat_tanca_lich || 0, 2));
+  setText("kq-gio-cong-tinh-luong", fmtNumber(values.gio_cong_tinh_luong || 0, 2));
+
+  setText("kq-doanhso", fmtNumber(values.tong_doanh_thu, 0));
+  setText("kq-luong-gio", fmtNumber(values.luong_gio_thang, 0));
+  setText("kq-thuong-doanhso", fmtNumber(values.thuong_doanhso, 0));
+  setText("kq-tong-luong", fmtNumber(values.tong_luong, 0));
 
   const warns = [];
   if (values.so_ngay_cb1 > 0) {
@@ -58,11 +66,20 @@ function setResultFields(values) {
   if (values.so_lan_auto_tanca > 5) {
     warns.push(`- AUTO_TANCA ${values.so_lan_auto_tanca} lần trong kỳ (>5 lần) – cần xem lại ý thức chấm công.`);
   }
+  if (values.so_ngay_vang > 0) {
+    warns.push(`- Có ${values.so_ngay_vang} ca VẮNG (vào ca muộn > 15 phút hoặc không vào ca).`);
+  }
+  if (values.so_ngay_tanca_lich > 0) {
+    warns.push(
+      `- Có ${values.so_ngay_tanca_lich} ca tan ca theo LỊCH (không bấm TANCA sau ca) – đã trừ ` +
+      `${fmtNumber(values.gio_phat_tanca_lich || 0, 2)} giờ công.`
+    );
+  }
 
   const warnEl = document.getElementById("warning-section");
   warnEl.innerHTML = warns.length
     ? warns.join("<br>")
-    : "Không có cảnh báo vi phạm đáng chú ý trong kỳ (CB1/CB2/CB3/AUTO_TANCA).";
+    : "Không có cảnh báo vi phạm đáng chú ý trong kỳ (CB1/CB2/CB3/AUTO_TANCA/VẮNG/TANCA_LỊCH).";
 }
 
 async function tinhLuongThang() {
@@ -91,6 +108,10 @@ async function tinhLuongThang() {
     so_ngay_cb1: 0,
     so_ngay_cb2: 0,
     so_ngay_cb3: 0,
+    so_ngay_vang: 0,
+    so_ngay_tanca_lich: 0,
+    gio_phat_tanca_lich: 0,
+    gio_cong_tinh_luong: 0,
     tong_doanh_thu: 0,
     luong_gio_thang: 0,
     thuong_doanhso: 0,
@@ -122,15 +143,25 @@ async function tinhLuongThang() {
     let so_ngay_cb1 = 0;
     let so_ngay_cb2 = 0;
     let so_ngay_cb3 = 0;
+    let so_ngay_vang = 0;
+    let so_ngay_tanca_lich = 0;
 
     (chamcongData || []).forEach(row => {
-      tong_gio_cong += Number(row.tong_gio_cong || 0);
-      so_ngay_cong += Number(row.so_ngay_cong || 0);
-      so_lan_auto_tanca += Number(row.so_lan_auto_tanca || 0);
-      so_ngay_cb1 += Number(row.so_ngay_cb1 || 0);
-      so_ngay_cb2 += Number(row.so_ngay_cb2 || 0);
-      so_ngay_cb3 += Number(row.so_ngay_cb3 || 0);
+      tong_gio_cong      += Number(row.tong_gio_cong || 0);
+      so_ngay_cong       += Number(row.so_ngay_cong || 0);
+      so_lan_auto_tanca  += Number(row.so_lan_auto_tanca || 0);
+      so_ngay_cb1        += Number(row.so_ngay_cb1 || 0);
+      so_ngay_cb2        += Number(row.so_ngay_cb2 || 0);
+      so_ngay_cb3        += Number(row.so_ngay_cb3 || 0);
+      so_ngay_vang       += Number(row.so_ngay_vang || 0);
+      so_ngay_tanca_lich += Number(row.so_ngay_tanca_lich || 0);
     });
+
+    // Giờ phạt do TANCA_LICH: mỗi ca trừ 1.00 giờ
+    const gio_phat_tanca_lich = so_ngay_tanca_lich * 1.0;
+
+    // Giờ công dùng để tính lương giờ (đã trừ phạt)
+    const gio_cong_tinh_luong = Math.max(tong_gio_cong - gio_phat_tanca_lich, 0);
 
     // 2) Lấy doanh số KPI từ nv_match2h_summary_all (gộp cs1 + cs2)
     const { data: kpiData, error: kpiError } = await supabase.rpc(
@@ -159,7 +190,7 @@ async function tinhLuongThang() {
     }
 
     // 3) Tính lương
-    const luong_gio_thang = tong_gio_cong * luong_gio;
+    const luong_gio_thang = gio_cong_tinh_luong * luong_gio;
     const thuong_doanhso = tong_doanh_thu * (pct_thuong / 100.0);
     const tong_luong = luong_gio_thang + thuong_doanhso;
 
@@ -174,6 +205,10 @@ async function tinhLuongThang() {
       so_ngay_cb1,
       so_ngay_cb2,
       so_ngay_cb3,
+      so_ngay_vang,
+      so_ngay_tanca_lich,
+      gio_phat_tanca_lich,
+      gio_cong_tinh_luong,
       tong_doanh_thu,
       luong_gio_thang,
       thuong_doanhso,
