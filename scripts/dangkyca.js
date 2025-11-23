@@ -29,12 +29,23 @@ function formatISODate(d) {
 
 function getDefaultRange7Days() {
   const today = new Date();
-  const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+
+  // 3 ngày trước hôm nay
+  const threeDaysAgo = new Date(
+    today.getTime() - 3 * 24 * 60 * 60 * 1000
+  );
+
+  // 7 ngày sau hôm nay
+  const sevenDaysAfter = new Date(
+    today.getTime() + 7 * 24 * 60 * 60 * 1000
+  );
+
   return {
-    fromDate: formatISODate(sevenDaysAgo),
-    toDate: formatISODate(today)
+    fromDate: formatISODate(threeDaysAgo),
+    toDate: formatISODate(sevenDaysAfter)
   };
 }
+
 
 function setTodayAndDefaultRange() {
   const today = new Date();
@@ -171,9 +182,8 @@ async function loadMyRequests() {
     tr.appendChild(tdDia);
 
     const tdGio = document.createElement("td");
-    tdGio.textContent = `${row.gio_bat_dau?.slice(0, 5)} - ${
-      row.gio_ket_thuc?.slice(0, 5)
-    }`;
+    tdGio.textContent = `${row.gio_bat_dau?.slice(0, 5)} - ${row.gio_ket_thuc?.slice(0, 5)
+      }`;
     tr.appendChild(tdGio);
 
     const tdTrangThai = document.createElement("td");
@@ -270,10 +280,9 @@ async function handleDangKy() {
   if (overlap) {
     setMsg(
       `Khoảng giờ ${gio_bd} - ${gio_kt} bị trùng với ca đã đăng ký ` +
-        `${overlap.gio_bat_dau?.slice(0, 5)} - ${
-          overlap.gio_ket_thuc?.slice(0, 5)
-        } tại cơ sở ${overlap.diadiem}. ` +
-        "Không thể đăng ký trùng giờ ở bất kỳ cửa hàng nào.",
+      `${overlap.gio_bat_dau?.slice(0, 5)} - ${overlap.gio_ket_thuc?.slice(0, 5)
+      } tại cơ sở ${overlap.diadiem}. ` +
+      "Không thể đăng ký trùng giờ ở bất kỳ cửa hàng nào.",
       true
     );
     return;
