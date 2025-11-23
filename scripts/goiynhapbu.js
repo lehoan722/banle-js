@@ -293,18 +293,30 @@ function renderHOT(rows) {
             return props;
         },
         afterSelection: (r1) => {
-            const rec = hot.getSourceDataAtRow(r1);
-            if (rec?.masp) promotePreviewToTop(rec.masp);
+            // r1 là visual row (sau khi sort/filter)
+            if (r1 == null || r1 < 0) return;
+
+            const physicalRow = hot.toPhysicalRow(r1);           // đổi sang row thật
+            const rec = hot.getSourceDataAtRow(physicalRow);     // lấy đúng bản ghi
+
+            if (rec?.masp) {
+                promotePreviewToTop(rec.masp);                   // đẩy ảnh mã đó lên đầu
+            }
         },
+
+
         afterOnCellMouseDown: (event, coords) => {
-            if (coords?.row != null) {
-                const rec = hot.getSourceDataAtRow(coords.row);
-                if (rec?.masp && event?.domEvent?.detail >= 2) {
-                    sessionStorage.setItem('xnt17_focus_masp', rec.masp);
-                    location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
-                }
+            if (!coords || coords.row == null || coords.row < 0) return;
+
+            const physicalRow = hot.toPhysicalRow(coords.row);   // visual -> physical
+            const rec = hot.getSourceDataAtRow(physicalRow);
+
+            if (rec?.masp && event?.domEvent?.detail >= 2) {     // double-click
+                sessionStorage.setItem('xnt17_focus_masp', rec.masp);
+                location.href = '/baocaoxnt17.html?masp=' + encodeURIComponent(rec.masp);
             }
         }
+
     });
 }
 
