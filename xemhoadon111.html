@@ -487,6 +487,20 @@
             xemChiTiet(hd.sohd);
           }
         };
+
+        // Double-click vào cột Số HĐ để mở trang hóa đơn tương ứng
+        const sohdCell = tr.cells[2]; // cột thứ 3 = Số HĐ
+        if (sohdCell) {
+          sohdCell.style.cursor = 'pointer';
+          sohdCell.style.textDecoration = 'underline';
+
+          sohdCell.ondblclick = (ev) => {
+            ev.stopPropagation();           // không kích hoạt click chọn dòng
+            if (!hd.sohd) return;
+            openInvoiceBySohd(hd.sohd);     // hàm sẽ khai báo ở dưới
+          };
+        }
+
         tbody.appendChild(tr);
       });
 
@@ -839,6 +853,84 @@
         elMasp.value = Array.from(set).join(',');
       }
     });
+  </script>
+
+  <script>
+    function openInvoiceBySohd(sohd) {
+      if (!sohd) return;
+
+      const prefix = sohd.split('_')[0].toLowerCase();  // ví dụ: bancs1, nmcs2, xcncs2_...
+      let url = null;
+
+      // Bán lẻ thường
+      if (prefix === 'bancs1') {
+        url = `banlemtcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'bancs2') {
+        url = `banlemtcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Bán nhân viên
+      else if (prefix === 'bannvcs1') {
+        url = `bannvcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'bannvcs2') {
+        url = `bannvcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Nhập mới
+      else if (prefix === 'nmcs1') {
+        url = `nhapmoimtcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nmcs2') {
+        url = `nhapmoimtcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Chuyển chi nhánh (2v1) – dùng cùng trang CCN2V1
+      else if (prefix === 'xcncs1' || prefix === 'ncncs1') {
+        url = `ccn2v1cs1.html?sohd=${encodeURIComponent(sohd)}&loaihd=${prefix}&diadiem=cs1`;
+      } else if (prefix === 'xcncs2' || prefix === 'ncncs2') {
+        url = `ccn2v1cs2.html?sohd=${encodeURIComponent(sohd)}&loaihd=${prefix}&diadiem=cs2`;
+      }
+
+      // Nhập kiểm, xuất kiểm
+      else if (prefix === 'nhapkiemcs1') {
+        url = `nhapkiemcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nhapkiemcs2') {
+        url = `nhapkiemcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      } else if (prefix === 'xuatkiemcs1') {
+        url = `xuatkiemcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'xuatkiemcs2') {
+        url = `xuatkiemcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Nhập tạm
+      else if (prefix === 'nhaptamcs1') {
+        url = `nhaptamcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nhaptamcs2') {
+        url = `nhaptamcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Nhập đổi từ khách
+      else if (prefix === 'nhapdoics1') {
+        url = `nhapdoimtcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nhapdoics2') {
+        url = `nhapdoimtcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Xuất hủy
+      else if (prefix === 'xuathuycs1') {
+        url = `xuathuycs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'xuathuycs2') {
+        url = `xuathuycs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Chưa cấu hình
+      if (!url) {
+        alert("Chưa cấu hình mở hóa đơn cho loại: " + prefix);
+        return;
+      }
+
+      window.open(url, "_blank");
+    }
+
   </script>
 
 
