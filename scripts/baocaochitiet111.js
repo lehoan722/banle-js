@@ -267,7 +267,7 @@ function renderTable(hotData) {
         // không cần khai báo hiddenColumns ở đây; sẽ update bằng applyCompactView()
 
         // >>> THÊM SỰ KIỆN CLICK VÀO Ô
-        afterOnCellDblClick(event, coords, TD) {
+        afterOnCellMouseDown(event, coords, TD) {
             // coords.row < 0 = header, bỏ qua
             if (coords.row < 0) return;
 
