@@ -253,19 +253,25 @@ function renderTable(hotData) {
         dropdownMenu: true,
         hiddenColumns: { columns: [], indicators: true },
 
-        // Double-click vào Số HĐ để mở hóa đơn
-        afterOnCellDblClick(event, coords, TD) {
-            if (coords.row < 0) return; // header
+        // Dùng afterOnCellMouseDown + event.detail để bắt DOUBLE CLICK
+        afterOnCellMouseDown(event, coords, TD) {
+            // chỉ xử lý khi double-click
+            if (!event || event.detail !== 2) return;
 
-            const prop = this.colToProp(coords.col); // dùng this cho chắc
-            if (prop !== "sohd") return;
+            // bỏ qua header
+            if (coords.row < 0) return;
+
+            const prop = this.colToProp(coords.col);
+            if (prop !== "sohd") return;  // chỉ cột Số HĐ
 
             const rowData = this.getSourceDataAtRow(coords.row);
             if (!rowData || !rowData.sohd) return;
 
+            // Mở hóa đơn tương ứng
             openInvoiceFromRow(rowData);
         }
     });
+
 
     // áp dụng trạng thái rút gọn (nếu đang bật)
     applyCompactView();
