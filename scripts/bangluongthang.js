@@ -236,3 +236,4 @@ async function taiBangCong() {
     tbody.innerHTML = html;
 }
 
+window.taiBangCong = taiBangCong;
