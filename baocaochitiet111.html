@@ -1,280 +1,559 @@
-<!DOCTYPE html>
-<html lang="vi">
+// baocaochitiet.js
+import { supabase } from "./supabaseClient.js";
+import { openInvoiceFromRow } from "./invoiceNavigator.js";
+let hotInstance = null;
+let currentFilters = null;
+let totalRows = 0;
+let pageSize = 1000;
+let currentPage = 1;
+let onlyOneProduct = false; // <== thêm biến toàn cục để xác định 
+let isCompactMode = false;
 
-<head>
-    <meta charset="UTF-8">
-    <title>BÁO CÁO CHI TIẾT BÁN HÀNG</title>
-    <!-- Kết nối Supabase + Handsontable + SheetJS -->
-    <script type="module" src="scripts/supabaseClient.js"></script>
-    <script type="module" src="scripts/baocaochitiet111.js"></script>
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f8f8f8;
-            padding: 16px;
+// ở CUỐI FILE, thêm:
+window.trangTruoc = window.trangTruoc;
+window.trangSau = window.trangSau;
+window.toiTrang = window.toiTrang;
+
+function getFiltersFromUI() {
+    const tuNgay = document.getElementById("tuNgay").value;
+    const denNgay = document.getElementById("denNgay").value;
+    const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    const diadiem = document.getElementById("diadiemSelect").value || null;
+    const khachhang = document.getElementById("khachhangInput").value.trim() || null;
+    const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
+
+    const sohd = (document.getElementById("sohdInput")?.value || "").trim() || null; // <== THÊM DÒNG NÀY
+
+    const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
+    const finalMaspList = masp ? masp.split(/[,\s]+/).map(x => x.trim()).filter(Boolean) : null;
+
+    const tensp = document.getElementById("tenspInput").value.trim() || null;
+    const size = document.getElementById("sizeInput").value.trim() || null;
+    const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
+    const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
+
+    return {
+        tu_ngay: tuNgay,
+        den_ngay: denNgay,
+        p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
+        p_diadiem: diadiem,
+        p_khachhang: khachhang,
+        p_nhanvien: nhanvien,
+        p_sohd: sohd,               // <== THÊM DÒNG NÀY
+        p_masp_list: finalMaspList,
+        p_tensp: tensp,
+        p_size: size,
+        p_tu_gia: tuGia,
+        p_den_gia: denGia
+    };
+}
+
+
+function safeDestroyHot() {
+    if (!hotInstance) return;
+    try {
+        if (typeof hotInstance.isDestroyed === 'function') {
+            if (!hotInstance.isDestroyed()) hotInstance.destroy();
+        } else {
+            hotInstance.destroy();
+        }
+    } catch (e) {
+    } finally {
+        hotInstance = null;
+    }
+}
+
+// ========== HÀM CHÍNH LẤY BÁO CÁO =============
+window.taiBaoCaoChiTiet = async function () {
+    const tuNgay = document.getElementById("tuNgay").value;
+    const denNgay = document.getElementById("denNgay").value;
+    const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    const diadiem = document.getElementById("diadiemSelect").value || null;
+    const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
+    const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
+    const sohd = (document.getElementById("sohdInput")?.value || "").trim() || null;  // <== THÊM DÒNG NÀY
+    const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
+    const tensp = (document.getElementById("tenspInput").value || "").trim() || null;
+    const size = (document.getElementById("sizeInput").value || "").trim() || null;
+    const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
+    const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
+
+    const maspListRaw = document.getElementById("maspList").value || "";
+    let maspListArr = maspListRaw
+        .split("\n")
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean);
+    maspListArr = Array.from(new Set(maspListArr));
+
+    const finalMaspList = maspListArr.length > 0 ? maspListArr : (masp ? [masp] : null);
+
+    if (!tuNgay || !denNgay) {
+        alert("Vui lòng chọn đủ Từ ngày và Đến ngày!");
+        return;
+    }
+
+    const container = document.getElementById("hot");
+    safeDestroyHot();
+    container.innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
+
+    // xác định có phải chỉ 1 mã hay không
+    onlyOneProduct = Array.isArray(finalMaspList) && finalMaspList.length === 1;
+
+    const f = {
+        tu_ngay: tuNgay,
+        den_ngay: denNgay,
+        p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
+        p_diadiem: diadiem,
+        p_khachhang: khachhang,
+        p_nhanvien: nhanvien,
+        p_sohd: sohd,                 // <== THÊM DÒNG NÀY
+        p_masp_list: finalMaspList,
+        p_tensp: tensp,
+        p_size: size,
+        p_tu_gia: tuGia,
+        p_den_gia: denGia,
+        p_tinh_ton: onlyOneProduct   // <== truyền thêm tham số
+    };
+
+
+    currentFilters = f;
+    pageSize = Number(document.getElementById("pageSize").value) || 1000;
+    currentPage = 1;
+
+    const { data: cnt, error: errCnt } = await supabase.rpc("baocaochitiet_bh_count", currentFilters);
+    if (errCnt) {
+        console.error("baocaochitiet_bh_count error:", errCnt);
+        alert("Lỗi đếm dữ liệu!");
+        return;
+    }
+    totalRows = Number(cnt || 0);
+
+    await taiTrang(currentPage);
+};
+
+async function taiTrang(page) {
+    const container = document.getElementById("hot");
+    safeDestroyHot();
+    container.innerHTML = "<div style='color:#888'>Đang tải dữ liệu...</div>";
+
+    const offset = (page - 1) * pageSize;
+    const params = {
+        ...currentFilters,
+        p_limit: pageSize,
+        p_offset: offset
+    };
+
+    const { data, error } = await supabase.rpc("baocaochitiet_bh_page", params);
+    if (error) {
+        console.error(error);
+        alert("Lỗi tải dữ liệu trang!");
+        return;
+    }
+
+    const startIndex = offset + 1;
+    const hotData = (data || []).map((r, idx) => ({
+        stt: startIndex + idx,
+        ...r
+    }));
+
+    renderTable(hotData);
+    updatePagingBar();
+    currentPage = page;
+}
+
+function updatePagingBar() {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    document.getElementById("pageInfo").innerText =
+        `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
+    const prev = document.getElementById("btnPrev");
+    const next = document.getElementById("btnNext");
+    if (prev) prev.disabled = currentPage <= 1;
+    if (next) next.disabled = currentPage >= totalPages;
+}
+
+window.trangTruoc = function () {
+    if (currentPage > 1) taiTrang(currentPage - 1);
+};
+window.trangSau = function () {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (currentPage < totalPages) taiTrang(currentPage + 1);
+};
+window.toiTrang = function () {
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    const n = Number(document.getElementById("gotoPage").value);
+    if (!n || n < 1 || n > totalPages) return alert("Số trang không hợp lệ");
+    taiTrang(n);
+};
+
+document.getElementById("pageSize").addEventListener("change", async function () {
+    if (!currentFilters) return;
+    pageSize = Number(this.value) || 1000;
+    currentPage = 1;
+    await taiTrang(currentPage);
+});
+
+// renderer riêng cho cột tồn
+function tonRenderer(instance, td, row, col, prop, value, cellProperties) {
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.style.textAlign = 'right';
+    if (value !== null && value !== undefined && value !== '') {
+        const num = Number(value);
+        td.textContent = isNaN(num) ? '' : num.toLocaleString('vi-VN');
+        if (!isNaN(num) && num < 0) {
+            td.style.background = '#ffe6e6';   // cảnh báo âm
+            td.style.color = '#c00';
+            td.style.fontWeight = '600';
+        }
+    }
+}
+
+function renderTable(hotData) {
+    const container = document.getElementById("hot");
+    const columns = [
+        { data: "stt", title: "STT", readOnly: true, width: 45 },
+        { data: "ngay", title: "Ngày", readOnly: true, width: 105, renderer: formatDateTimeCell },
+        { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
+        { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
+        { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
+        { data: "khachhang", title: "Khách hàng", readOnly: true, width: 140 },
+        { data: "nhanvien", title: "Nhân viên", readOnly: true, width: 110 },
+        { data: "masp", title: "Mã SP", readOnly: true, width: 100 },
+        { data: "tensp", title: "Tên SP", readOnly: true, width: 160 },
+        { data: "size", title: "Size", readOnly: true, width: 60 },
+        { data: "soluong", title: "SL", readOnly: true, width: 65, type: 'numeric' },
+        { data: "dvt", title: "ĐVT", readOnly: true, width: 60 },
+        { data: "gia", title: "Giá", readOnly: true, width: 100, type: 'numeric', renderer: formatNumberCell },
+        { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
+        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
+    ];
+
+    if (onlyOneProduct) {
+        columns.push({
+            data: "ton_tichluy",
+            title: "Tổng tồn kho",
+            readOnly: true,
+            width: 120,
+            type: 'numeric',
+            renderer: tonRenderer
+        });
+    }
+
+    hotInstance = new Handsontable(container, {
+        data: hotData,
+        columns,
+        colHeaders: columns.map(c => c.title || c.data),
+        rowHeaders: true,
+        width: '100%',
+        height: Math.min(window.innerHeight - 260, 550),
+        licenseKey: 'non-commercial-and-evaluation',
+        stretchH: 'all',
+        manualColumnResize: true,
+        filters: true,
+        dropdownMenu: true,
+    });
+
+    hotInstance = new Handsontable(container, {
+        data: hotData,
+        columns,
+        colHeaders: columns.map(c => c.title || c.data),
+        rowHeaders: true,
+        width: '100%',
+        height: Math.min(window.innerHeight - 260, 550),
+        licenseKey: 'non-commercial-and-evaluation',
+        stretchH: 'all',
+        manualColumnResize: true,
+        filters: true,
+        dropdownMenu: true,
+        // không cần khai báo hiddenColumns ở đây; sẽ update bằng applyCompactView()
+
+        // >>> THÊM SỰ KIỆN DOUBLE CLICK VÀO Ô
+        afterOnCellDblClick(event, coords, TD) {
+            // coords.row < 0 = header, bỏ qua
+            if (coords.row < 0) return;
+
+            // Xem cột được click là cột nào
+            const prop = hotInstance.colToProp(coords.col);
+            if (prop !== "sohd") return;   // chỉ xử lý khi double-click cột Số HĐ
+
+            const rowData = hotInstance.getSourceDataAtRow(coords.row);
+            if (!rowData || !rowData.sohd) return;
+
+            // Gọi module dùng chung để mở hóa đơn
+            openInvoiceFromRow(rowData);
         }
 
-        .container {
-            max-width: 1300px;
-            margin: auto;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 6px #e3e3e3;
-            padding: 24px 26px 48px 26px;
+
+    });
+
+    // áp dụng trạng thái rút gọn (nếu đang bật)
+    applyCompactView();
+
+
+}
+
+function getCompactColumnIndexes() {
+    if (!hotInstance) return [];
+    // danh sách cột cần ẩn khi rút gọn:
+    const props = ["loaihd", "khachhang", "nhanvien", "tensp", "dvt", "gia", "km", "thanhtien"];
+    // chuyển data-prop -> chỉ số cột hiện tại
+    const cols = [];
+    for (const p of props) {
+        const idx = hotInstance.propToCol(p);
+        if (typeof idx === 'number' && idx >= 0) cols.push(idx);
+    }
+    // loại trùng + sắp xếp tăng dần để tránh lỗi
+    return Array.from(new Set(cols)).sort((a, b) => a - b);
+}
+
+function applyCompactView() {
+    if (!hotInstance) return;
+    if (isCompactMode) {
+        const colsToHide = getCompactColumnIndexes();
+        hotInstance.updateSettings({
+            hiddenColumns: { columns: colsToHide, indicators: true }
+        });
+        const btn = document.getElementById('btnCompact');
+        if (btn) btn.textContent = "Đầy đủ";
+    } else {
+        // Hiện tất cả cột
+        hotInstance.updateSettings({
+            hiddenColumns: { columns: [], indicators: true }
+        });
+        const btn = document.getElementById('btnCompact');
+        if (btn) btn.textContent = "Rút gọn";
+    }
+}
+
+// toggle từ nút bấm
+window.toggleCompact = function () {
+    isCompactMode = !isCompactMode;
+    applyCompactView();
+};
+
+
+function formatNumberCell(instance, td, row, col, prop, value, cellProperties) {
+    const v = (value == null || value === '') ? '' : Number(value).toLocaleString('vi-VN');
+    td.textContent = v;
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function formatDateTimeCell(instance, td, row, col, prop, value, cellProperties) {
+    // Cho phép các dạng: Date | ISO string | "YYYY-MM-DD HH:mm:ss" | chỉ có ngày
+    let d = null;
+    if (value instanceof Date) {
+        d = value;
+    } else if (typeof value === 'string' && value.trim()) {
+        // chuyển dấu ' ' thành 'T' để Date parse tốt hơn
+        const candidate = value.includes('T') ? value : value.replace(' ', 'T');
+        const t = new Date(candidate);
+        if (!isNaN(t.getTime())) d = t;
+    }
+    if (!d) {
+        // fallback: nếu chỉ có YYYY-MM-DD, hiển thị với 00-00
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            const [y, m, day] = value.split('-').map(Number);
+            const yy = String(y).slice(-2);
+            td.textContent = `${pad2(day)}-${pad2(m)}-${yy} 00-00`;
+            return td;
         }
-
-        h2 {
-            text-align: center;
-            color: #1976d2;
-            margin-top: 0;
-        }
-
-        .filters-row {
-            display: flex;
-            gap: 0;
-            margin-bottom: 10px;
-        }
-
-        .filters-left {
-            flex: 1;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 10px 22px;
-        }
-
-        .filters-right {
-            min-width: 120px;
-            max-width: 220px;
-            padding: 6px 10px;
-            background: #f7fafd;
-            border-radius: 7px;
-            border: 1px solid #e3e6f3;
-            margin-left: 8px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .filters-right textarea {
-            width: 100%;
-            border-radius: 5px;
-            padding: 7px;
-            min-height: 140px;
-            border: 1px solid #bbb;
-            font-size: 15px;
-        }
-
-        .filters label {
-            margin-bottom: 0;
-            font-weight: 600;
-        }
-
-        .filters select,
-        .filters input[type="date"],
-        .filters input[type="number"],
-        .filters input[type="text"] {
-            padding: 6px 9px;
-            border-radius: 3px;
-            border: 1px solid #ccc;
-            font-size: 15px;
-        }
-
-        .main-btn {
-            background: #2196f3;
-            color: #fff;
-            border: none;
-            font-weight: bold;
-            padding: 8px 22px;
-            border-radius: 5px;
-            margin-right: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .main-btn:hover {
-            background: #1769aa;
-        }
-
-        .input-popup-group {
-            display: inline-flex;
-            align-items: center;
-            gap: 2px;
-            margin-right: 8px;
-        }
-
-        .input-popup-group input {
-            width: 130px;
-            padding: 6px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-
-        .input-popup-group button {
-            background: #eee;
-            color: #222;
-            border: 1px solid #bbb;
-            padding: 0 8px;
-            font-size: 15px;
-            border-radius: 3px;
-            cursor: pointer;
-            height: 32px;
-        }
-
-        .input-popup-group button:hover {
-            background: #ddd;
-        }
-
-        #hot {
-            margin-top: 16px;
-        }
-
-        /* Popup tìm kiếm */
-        #popupSearch {
-            display: none;
-            position: fixed;
-            top: 18%;
-            left: 50%;
-            transform: translate(-50%, 0);
-            background: #fff;
-            z-index: 2000;
-            border: 1px solid #ccc;
-            min-width: 320px;
-            max-width: 95vw;
-            box-shadow: 0 0 12px #888;
-            border-radius: 8px;
-        }
-
-        #popupSearch input {
-            width: 94%;
-            margin-bottom: 5px;
-        }
-
-        #popupSearchList {
-            max-height: 260px;
-            overflow: auto;
-            font-size: 15px;
-        }
-
-        #popupSearchList div {
-            padding: 5px 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        #popupSearchList div:hover {
-            background: #e3f0ff;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <h2>📊 BÁO CÁO CHI TIẾT BÁN HÀNG <span style="font-size:0.7em; color:#666;">(chuẩn hóa)</span></h2>
-        <div class="filters-row">
-            <div class="filters-left filters">
-                <label>Từ ngày: <input type="date" id="tuNgay"></label>
-                <label>Đến ngày: <input type="date" id="denNgay"></label>
-                <label>Loại hóa đơn:
-                    <select id="loaihdSelect" multiple style="min-width:140px; max-width:220px;">
-                        <option value="bancs1">bancs1</option>
-                        <option value="bancs2">bancs2</option>
-                        <option value="nmcs1">nmcs1</option>
-                        <option value="nmcs2">nmcs2</option>
-                        <option value="xcncs1">xuat cn cs1</option>
-                        <option value="ncncs1">nhap cn cs1</option>
-                        <option value="xcncs2">xuat cn cs2</option>
-                        <option value="ncncs2">nhap cn cs2</option>
-                        <option value="nhapkiem">nhapkiem</option>
-                        <option value="xuatkiem">xuatkiem</option>
-                        <option value="nhaptamcs1">nhaptamcs1</option>
-                        <option value="nhaptamcs2">nhaptamcs2</option>
-
-                    </select>
-                </label>
-                <label>Địa điểm:
-                    <select id="diadiemSelect" style="min-width:90px;">
-                        <option value="">Tất cả</option>
-                        <option value="cs1">Cơ sở 1</option>
-                        <option value="cs2">Cơ sở 2</option>
-                    </select>
-                </label>
-                <span class="input-popup-group">
-                    <input id="khachhangInput" placeholder="Khách hàng">
-                    <button onclick="openPopupSearch('khachhang')">🔍</button>
-                    <button onclick="clearInput('khachhangInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="nhanvienInput" placeholder="Nhân viên">
-                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
-                    <button onclick="clearInput('nhanvienInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="maspInput" placeholder="Mã hàng">
-                    <button onclick="openPopupSearch('mahang')">🔍</button>
-                    <button onclick="clearInput('maspInput')">✖</button>
-                </span>
-                
-                <label>
-                    Số HĐ:
-                    <input type="text" id="sohdInput" placeholder="Nhập số hóa đơn cần lọc">
-                </label>
-
-                <label>Tên hàng: <input id="tenspInput" type="text" placeholder="Tên sản phẩm"></label>
-                <label>Kích cỡ: <input id="sizeInput" type="text" style="width:60px" placeholder="Size"></label>
-                <label>Từ giá: <input type="number" id="tuGia" min="0" style="width:90px;" placeholder="Từ"></label>
-                <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;" placeholder="Đến"></label>
-                <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
-                <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
-                <button class="main-btn" id="btnCompact" onclick="toggleCompact()">Rút gọn</button>
-
-                <!-- thêm cụm phân trang -->
-                <div id="pagingBar" style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <label>Số dòng/trang:
-                        <select id="pageSize" style="padding:4px 6px;">
-                            <option value="500">500</option>
-                            <option value="1000" selected>1000</option>
-                            <option value="2000">2000</option>
-                        </select>
-                    </label>
-
-                    <button class="main-btn" id="btnPrev" onclick="window.trangTruoc()">⬅ Trang trước</button>
-                    <button class="main-btn" id="btnNext" onclick="window.trangSau()">Trang sau ➡</button>
+        td.textContent = value ?? ''; // để nguyên nếu không parse được
+        return td;
+    }
+    const dd = pad2(d.getDate());
+    const mm = pad2(d.getMonth() + 1);
+    const yy = String(d.getFullYear()).slice(-2);
+    const HH = pad2(d.getHours());
+    const MM = pad2(d.getMinutes());
+    td.textContent = `${dd}-${mm}-${yy} ${HH}-${MM}`; // dd-mm-yy hh-mm
+    return td;
+}
 
 
-                    <span id="pageInfo" style="color:#444">Trang 0/0 (Tổng: 0)</span>
-                    <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
-                    <button class="main-btn" onclick="window.toiTrang()">Đi</button>
+window.xuatExcelToanBo = async function () {
+    if (!currentFilters) return alert("Hãy chạy báo cáo trước đã!");
+    const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (totalRows === 0) return alert("Không có dữ liệu!");
 
-                    <!-- nút xuất toàn bộ -->
-                    <button class="main-btn" onclick="xuatExcelToanBo()">Xuất toàn bộ</button>
-                </div>
+    const confirmAll = confirm(`Sẽ tải ${totalRows.toLocaleString('vi-VN')} dòng (≈ ${totalPages} trang) rồi xuất Excel. Tiếp tục?`);
+    if (!confirmAll) return;
 
+    const allRows = [];
+    for (let p = 1; p <= totalPages; p++) {
+        const offset = (p - 1) * pageSize;
+        const params = { ...currentFilters, p_limit: pageSize, p_offset: offset };
+        const { data, error } = await supabase.rpc("baocaochitiet_bh_page", params);
+        if (error) { console.error(error); alert("Lỗi tải dữ liệu khi xuất!"); return; }
+        (data || []).forEach((r, idx) => allRows.push({
+            stt: offset + idx + 1, ...r
+        }));
+    }
 
-            </div>
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
+    if (onlyOneProduct) headers.push("Tổng tồn kho");
 
+    const aoa = [headers];
+    allRows.forEach(r => {
+        const row = [
+            r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
+            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
+        ];
+        if (onlyOneProduct) row.push(r.ton_tichluy);
+        aoa.push(row);
+    });
 
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, "ChiTietBanHang");
+    XLSX.writeFile(wb, "baocao_chitiet_banhang_ALL.xlsx");
+};
 
-            <div class="filters-right">
-                <textarea id="maspList" rows="12" placeholder="Nhập/dán nhiều mã sản phẩm, mỗi mã 1 dòng..."></textarea>
-            </div>
+// (phần xuất Excel từng trang giữ nguyên)
+// ========== XUẤT EXCEL ==========
+window.xuatExcel = function () {
+    if (!hotInstance) return alert("Chưa có dữ liệu để xuất!");
+    const table = document.createElement("table");
+    const hotData = hotInstance.getData();
+    const colHeaders = hotInstance.getColHeader();
+    // Header
+    let headerRow = document.createElement("tr");
+    colHeaders.forEach(h => {
+        let th = document.createElement("th");
+        th.innerText = h;
+        headerRow.appendChild(th);
+    });
+    table.appendChild(headerRow);
+    // Data
+    hotData.forEach(row => {
+        let tr = document.createElement("tr");
+        row.forEach(cell => {
+            let td = document.createElement("td");
+            td.innerText = cell;
+            tr.appendChild(td);
+        });
+        table.appendChild(tr);
+    });
+    // Xuất excel
+    const wb = XLSX.utils.table_to_book(table, { sheet: "ChiTietBanHang" });
+    XLSX.writeFile(wb, "baocao_chitiet_banhang.xlsx");
+};
+
+// ========== POPUP TÌM KIẾM KHÁCH/MÃ HÀNG/NHÂN VIÊN ==========
+window.openPopupSearch = function (type, keyword = "") {
+    window.currentPopupType = type;
+    const popup = document.getElementById('popupSearch');
+    const input = document.getElementById('popupSearchInput');
+    const list = document.getElementById('popupSearchList');
+    popup.style.display = 'block';
+    input.value = keyword || '';
+    input.focus();
+    if (!keyword || keyword.trim().length === 0) {
+        searchPopup(""); // Hiển thị 100 bản đầu
+    } else if (keyword.trim().length >= 1) {
+        searchPopup(keyword.trim());
+    } else {
+        list.innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+    }
+};
+window.closePopupSearch = function () {
+    document.getElementById('popupSearch').style.display = 'none';
+};
+window.clearInput = function (inputId) {
+    document.getElementById(inputId).value = '';
+};
+
+document.getElementById('popupSearchInput').addEventListener('input', async function () {
+    let keyword = this.value.trim();
+    if (keyword.length < 2) {
+        document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
+        return;
+    }
+    let type = window.currentPopupType;
+    let table = '', field = '', extraFields = '';
+    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+    else return;
+
+    let { data, error } = await supabase
+        .from(table)
+        .select(`${field}${extraFields}`)
+        .ilike(field, `%${keyword}%`)
+        .limit(100);
+
+    if (error || !data || data.length === 0) {
+        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
+        return;
+    }
+    document.getElementById('popupSearchList').innerHTML = data.map(row => `
+        <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
+            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
         </div>
+    `).join('');
+});
+window.selectPopupValue = function (type, value, el) {
+    let inputId = '';
+    let ten = '';
+    if (type === 'khachhang') {
+        inputId = 'khachhangInput';
+        let fullText = el.innerText;
+        if (fullText.indexOf(" - ") !== -1) {
+            ten = fullText.split(" - ").slice(1).join(" - ").trim();
+        } else {
+            ten = fullText.trim();
+        }
+    } else if (type === 'mahang') {
+        inputId = 'maspInput';
+        ten = value;
+    } else if (type === 'nhanvien') {
+        inputId = 'nhanvienInput';
+        let fullText = el.innerText;
+        if (fullText.indexOf(" - ") !== -1) {
+            ten = fullText.split(" - ").slice(1).join(" - ").trim();
+        } else {
+            ten = fullText.trim();
+        }
+    }
+    if (inputId) document.getElementById(inputId).value = ten;
+    closePopupSearch();
+};
 
-        <div id="tonghop" style="margin: 10px 0 5px 0; color: #1976d2; font-weight: bold; font-size: 17px;"></div>
 
-        <div id="hot"></div>
-    </div>
-    <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch">
-        <div style="padding:6px 10px; border-bottom:1px solid #eee; background:#f8fafd;">
-            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
-            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+// ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
+window.onload = function () {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Từ ngày cố định: 01/05/2025
+    document.getElementById('tuNgay').value = '2025-05-01';
+
+    // Đến ngày là hôm nay
+    document.getElementById('denNgay').value = today;
+};
+
+
+window.searchPopup = async function (keyword) {
+    let type = window.currentPopupType;
+    let table = '', field = '', extraFields = '';
+    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+    else return;
+
+    let { data, error } = await supabase
+        .from(table)
+        .select(`${field}${extraFields}`)
+        .ilike(field, keyword ? `%${keyword}%` : "%")
+        .limit(100);
+
+    if (error || !data || data.length === 0) {
+        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
+        return;
+    }
+    document.getElementById('popupSearchList').innerHTML = data.map(row => `
+        <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
+            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
         </div>
-        <div id="popupSearchList"></div>
-    </div>
-</body>
-
-</html>
+    `).join('');
+};
