@@ -192,50 +192,74 @@ function minutesToHourLabel(mins) {
 }
 
 // tạo các slot 30 phút từ 07:30 -> 22:00
+// tạo các slot 30 phút từ 07:30 -> 22:00
 function buildSlotsFromRows(rows) {
     const SLOT_START = 7 * 60 + 30; // 07:30
-    const SLOT_END = 22 * 60;     // 22:00
+    const SLOT_END = 22 * 60;       // 22:00
 
-    // mỗi interval là 1 ca làm của 1 nhân viên
+    // Chuẩn hóa intervals từ từng dòng đăng ký ca
     const intervals = (rows || []).map(r => {
         const startM = parseTimeToMinutes(r.gio_bat_dau);
         const endM = parseTimeToMinutes(r.gio_ket_thuc);
-        // tên hiển thị: ưu tiên tennv, nếu không có thì manv
         const ten = r.tennv || r.manv || "";
+
+        // D = đã duyệt, C = chờ duyệt, T = từ chối / huỷ / trạng thái khác
+        let suffix = "T";
+        if (r.trang_thai === "DA_DUYET") suffix = "D";
+        else if (r.trang_thai === "CHO_DUYET") suffix = "C";
+
+        const label = ten ? `${ten}(${suffix})` : "";
+
         return {
             diadiem: r.diadiem,
+            manv: r.manv,
             startM,
             endM,
-            ten
+            label
         };
     });
 
-    // tạo slot 30 phút
+    // Tạo danh sách slot 30 phút
     const slots = [];
     for (let m = SLOT_START; m < SLOT_END; m += 30) {
         slots.push({
             startM: m,
             endM: m + 30,
             label: minutesToHourLabel(m),
-            cs1: [], // danh sách tên NV
+            cs1: [], // mỗi phần tử: { manv, label }
             cs2: []
         });
     }
 
-    // phân bổ nhân viên vào từng slot
+    // Phân bổ nhân viên vào từng slot
     for (const itv of intervals) {
-        if (itv.startM == null || itv.endM == null || !itv.ten) continue;
+        if (itv.startM == null || itv.endM == null || !itv.label) continue;
+
         for (const s of slots) {
             // nếu ca có giao với slot
             if (itv.startM < s.endM && itv.endM > s.startM) {
                 if (itv.diadiem === "cs1") {
-                    if (!s.cs1.includes(itv.ten)) s.cs1.push(itv.ten);
+                    // mỗi nhân viên chỉ xuất hiện 1 lần/slot
+                    if (!s.cs1.some(x => x.manv === itv.manv)) {
+                        s.cs1.push({ manv: itv.manv, label: itv.label });
+                    }
                 } else if (itv.diadiem === "cs2") {
-                    if (!s.cs2.includes(itv.ten)) s.cs2.push(itv.ten);
+                    if (!s.cs2.some(x => x.manv === itv.manv)) {
+                        s.cs2.push({ manv: itv.manv, label: itv.label });
+                    }
                 }
             }
         }
     }
+
+    // Chuyển thành chuỗi hiển thị: "n, ten1(D), ten2(C)..."
+    slots.forEach(s => {
+        const list1 = s.cs1.map(x => x.label);
+        const list2 = s.cs2.map(x => x.label);
+
+        s.cs1Text = list1.length > 0 ? `${list1.length}, ${list1.join(", ")}` : "";
+        s.cs2Text = list2.length > 0 ? `${list2.length}, ${list2.join(", ")}` : "";
+    });
 
     return slots;
 }
@@ -257,8 +281,7 @@ async function loadSummary() {
     const { data, error } = await supabase
         .from("lichlam_dangky_v") // DÙNG VIEW MỚI
         .select("diadiem, manv, tennv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
-        .eq("ngay", ngay)
-        .eq("trang_thai", "DA_DUYET");
+        .eq("ngay", ngay);
 
 
     if (error) {
@@ -270,7 +293,7 @@ async function loadSummary() {
 
     const rows = data || [];
     if (rows.length === 0) {
-        tbodySummary.innerHTML = `<tr><td colspan="3">Không có ca đã duyệt trong ngày ${ngay}.</td></tr>`;
+        tbodySummary.innerHTML = `<tr><td colspan="3">Không có đăng ký ca trong ngày ${ngay}.</td></tr>`;
         setSummaryMessage("Không có dữ liệu.");
         return;
     }
@@ -291,14 +314,12 @@ async function loadSummary() {
         tr.appendChild(tdTime);
 
         const tdCS1 = document.createElement("td");
-        tdCS1.textContent = s.cs1.join(", ");
+        tdCS1.textContent = s.cs1Text || "";
         tr.appendChild(tdCS1);
 
         const tdCS2 = document.createElement("td");
-        tdCS2.textContent = s.cs2.join(", ");
+        tdCS2.textContent = s.cs2Text || "";
         tr.appendChild(tdCS2);
-
-        tbodySummary.appendChild(tr);
     });
 
     setSummaryMessage(`Đã tải tổng quan cho ngày ${ngay}.`);
