@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý chỉnh sửa chấm công</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 8px; background:#f5f5f5; }
+    .card {
+      background:#fff; border-radius:8px; padding:10px; margin-bottom:10px;
+      box-shadow:0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 { font-size:18px; margin:0 0 8px; text-align:center; }
+    .row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+    .field { display:flex; flex-direction:column; font-size:13px; }
+    .field label { margin-bottom:2px; }
+    .field input, .field select { font-size:13px; padding:4px 6px; }
+    button { font-size:13px; padding:6px 10px; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border:1px solid #ddd; padding:4px 6px; white-space:nowrap; }
+    th { background:#eee; position:sticky; top:0; z-index:1; }
+    tbody tr:nth-child(even){ background:#fafafa; }
+    .status { font-size:12px; color:#555; margin-top:4px; }
+    .btn-small { font-size:12px; padding:2px 6px; margin-right:4px; }
+    @media (max-width:768px) {
+      table { font-size:12px; }
+      th, td { white-space:normal; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login: authModule.js sẽ vẽ form vào đây -->
+  <div id="login-container">
+    <h1>Đăng nhập quản lý chấm công</h1>
+    <p style="font-size:13px;color:#555;">
+      Chỉ quản lý / admin mới được dùng trang này để điều chỉnh dữ liệu chấm công.
+    </p>
+  </div>
+
+  <!-- App chính: chỉ hiện sau khi login -->
+  <div id="app-container" style="display:none;">
+    <div class="card">
+      <h1>Quản lý chỉnh sửa chấm công</h1>
+      <div class="row">
+        <div class="field">
+          <label>Ngày:</label>
+          <input type="date" id="filter-ngay">
+        </div>
+        <div class="field">
+          <label>Cơ sở:</label>
+          <select id="filter-diadiem">
+            <option value="">Tất cả</option>
+            <option value="cs1">CS1</option>
+            <option value="cs2">CS2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Mã NV (trống = tất cả):</label>
+          <input type="text" id="filter-manv" placeholder="VD: 38">
+        </div>
+        <div class="field" style="align-self:flex-end;">
+          <button id="btn-load">Tải log ngày</button>
+        </div>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 6px;">Thêm bản ghi chấm công mới</h2>
+      <div class="row">
+        <div class="field">
+          <label>Mã NV:</label>
+          <input type="text" id="new-manv" placeholder="VD: 38">
+        </div>
+        <div class="field">
+          <label>Cơ sở:</label>
+          <select id="new-diadiem">
+            <option value="cs1">CS1</option>
+            <option value="cs2">CS2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Ngày:</label>
+          <input type="date" id="new-ngay">
+        </div>
+        <div class="field">
+          <label>Giờ (HH:MM):</label>
+          <input type="time" id="new-gio">
+        </div>
+        <div class="field">
+          <label>Sự kiện:</label>
+          <select id="new-su_kien">
+            <option value="VAOCA">VAOCA</option>
+            <option value="NTR">NTR</option>
+            <option value="NTRD">NTRD</option>
+            <option value="NCH">NCH</option>
+            <option value="NCHD">NCHD</option>
+            <option value="TANCA">TANCA</option>
+            <option value="AUTO_TANCA">AUTO_TANCA</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Nguồn:</label>
+          <input type="text" id="new-nguon" value="manual-admin">
+        </div>
+        <div class="field" style="align-self:flex-end;">
+          <button id="btn-add">Thêm bản ghi</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#666;">
+        * Ngày + giờ được lưu theo múi giờ Việt Nam (Asia/Ho_Chi_Minh).<br>
+        * Khuyến khích: xóa bản ghi sai rồi thêm bản ghi đúng thay vì sửa nhiều lần.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 6px;">Log chấm công trong ngày</h2>
+      <div style="max-height:420px;overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Thời gian (server)</th>
+              <th>Thời gian VN</th>
+              <th>Mã NV</th>
+              <th>Cơ sở</th>
+              <th>Sự kiện</th>
+              <th>Nguồn</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-log">
+            <tr><td colspan="8">Chưa có dữ liệu.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/chamcong_admin.js"></script>
+</body>
+</html>
