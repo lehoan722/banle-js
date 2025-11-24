@@ -266,14 +266,14 @@ function renderTable(hotData) {
         dropdownMenu: true,
         // không cần khai báo hiddenColumns ở đây; sẽ update bằng applyCompactView()
 
-        // >>> THÊM SỰ KIỆN CLICK VÀO Ô
-        afterOnCellMouseDown(event, coords, TD) {
+        // >>> THÊM SỰ KIỆN DOUBLE CLICK VÀO Ô
+        afterOnCellDblClick(event, coords, TD) {
             // coords.row < 0 = header, bỏ qua
             if (coords.row < 0) return;
 
             // Xem cột được click là cột nào
             const prop = hotInstance.colToProp(coords.col);
-            if (prop !== "sohd") return;   // chỉ xử lý khi click cột Số HĐ
+            if (prop !== "sohd") return;   // chỉ xử lý khi double-click cột Số HĐ
 
             const rowData = hotInstance.getSourceDataAtRow(coords.row);
             if (!rowData || !rowData.sohd) return;
@@ -281,6 +281,7 @@ function renderTable(hotData) {
             // Gọi module dùng chung để mở hóa đơn
             openInvoiceFromRow(rowData);
         }
+
     });
 
     // áp dụng trạng thái rút gọn (nếu đang bật)
