@@ -123,6 +123,21 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       return;
     }
 
+    // LƯU MÃ NV + MẬT KHẨU VÀO LOCALSTORAGE ĐỂ DÙNG CHO LẦN SAU
+    try {
+      if (manv) {
+        localStorage.setItem('last_login_manv', manv);
+        // đồng bộ luôn với key manv đang dùng
+        localStorage.setItem('manv', manv);
+      }
+      if (passwordNV) {
+        // ⚠️ Lưu plain-text, chỉ nên dùng trên máy cá nhân / máy shop
+        localStorage.setItem('last_login_password', passwordNV);
+      }
+    } catch (e) {
+      console.warn('Không lưu được thông tin đăng nhập gần nhất:', e);
+    }
+
     // Gọi API login trên server (ẩn email + mật khẩu kho ở backend)
     try {
       errorEl.textContent = 'Đang xác thực, vui lòng đợi…';
@@ -199,6 +214,42 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const form = document.getElementById('form-login-dungchung');
   form.addEventListener('submit', xuLyDangNhap);
 
+  // ===== TỰ ĐIỀN LẠI THÔNG TIN TỪ LOCALSTORAGE + AUTO LOGIN NẾU ĐỦ DỮ LIỆU =====
+  try {
+    // Lấy từ localStorage: ưu tiên 'manv', nếu không có thì dùng 'last_login_manv'
+    const savedManv =
+      localStorage.getItem('manv') ||
+      localStorage.getItem('last_login_manv');
+
+    const savedPass = localStorage.getItem('last_login_password');
+
+    if (savedManv && manvInput) {
+      manvInput.value = savedManv;
+    }
+    if (savedPass && passNVInput) {
+      passNVInput.value = savedPass;
+    }
+
+    // Nếu đã có sẵn cả mã NV + mật khẩu -> tự động đăng nhập luôn
+    if (form && savedManv && savedPass) {
+      setTimeout(() => {
+        try {
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.dispatchEvent(
+              new Event('submit', { cancelable: true, bubbles: true })
+            );
+          }
+        } catch (e) {
+          console.warn('Không auto submit form login được:', e);
+        }
+      }, 200); // delay nhẹ để UI render xong
+    }
+  } catch (e) {
+    console.warn('Không đọc được thông tin đăng nhập từ localStorage:', e);
+  }
+
   // 🔹 Enter ở ô MÃ NV -> nhảy sang ô MẬT KHẨU
   manvInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -208,6 +259,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       }
     }
   });
+
 
   // 🔹 Enter ở ô MẬT KHẨU -> gửi form đăng nhập
   passNVInput.addEventListener('keydown', (e) => {
