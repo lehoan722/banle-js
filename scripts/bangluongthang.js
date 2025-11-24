@@ -168,3 +168,71 @@ document.addEventListener("DOMContentLoaded", () => {
   setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
   btnTai.addEventListener("click", taiBangLuong);
 });
+
+async function taiBangCong() {
+    const thang = parseInt(document.getElementById("bc-thang").value);
+    const nam = parseInt(document.getElementById("bc-nam").value);
+    const tbody = document.getElementById("tbody-bangcong");
+    const thead = document.getElementById("thead-bangcong");
+
+    tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
+
+    const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
+        p_month: thang,
+        p_year: nam
+    });
+
+    if (error) {
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
+        return;
+    }
+
+    // lấy danh sách nhân viên
+    const nhanvien = [...new Set(data.map(d => `${d.manv}|${d.tennv}`))];
+
+    // dựng header
+    let header = `<th>Ngày</th><th>Thứ</th>`;
+    nhanvien.forEach(n => {
+        const [, tennv] = n.split('|');
+        header += `<th>${tennv}</th>`;
+    });
+    header += `<th>Tổng</th>`;
+    thead.innerHTML = `<tr>${header}</tr>`;
+
+    // dựng nội dung bảng
+    const groupByNgay = {};
+    data.forEach(d => {
+        if (!groupByNgay[d.ngay]) groupByNgay[d.ngay] = [];
+        groupByNgay[d.ngay].push(d);
+    });
+
+    let html = "";
+    Object.keys(groupByNgay).forEach(ng => {
+        const row = groupByNgay[ng];
+        const thu = row[0].thu;
+        let sum = 0;
+        let cells = "";
+
+        nhanvien.forEach(n => {
+            const manv = n.split('|')[0];
+            const found = row.find(r => r.manv == manv);
+            if (!found || found.gio_cong == 0) {
+                cells += `<td class="text-danger">N</td>`;
+            } else {
+                sum += found.gio_cong;
+                cells += `<td>${found.gio_cong}</td>`;
+            }
+        });
+
+        html += `<tr>
+            <td>${ng}</td>
+            <td class="${thu=='CN'?'text-danger fw-bold':''}">${thu}</td>
+            ${cells}
+            <td class="fw-bold">${sum}</td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+}
+
