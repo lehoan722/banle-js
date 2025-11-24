@@ -518,12 +518,17 @@ window.selectPopupValue = function (type, value, el) {
 };
 
 
-// ========== AUTO FILL NGÀY HÔM NAY ==========
+// ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
 window.onload = function () {
     const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('tuNgay').value = today;
+
+    // Từ ngày cố định: 01/05/2025
+    document.getElementById('tuNgay').value = '2025-05-01';
+
+    // Đến ngày là hôm nay
     document.getElementById('denNgay').value = today;
 };
+
 
 window.searchPopup = async function (keyword) {
     let type = window.currentPopupType;
