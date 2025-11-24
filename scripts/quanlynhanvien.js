@@ -320,9 +320,13 @@ async function loadSummary() {
         const tdCS2 = document.createElement("td");
         tdCS2.textContent = s.cs2Text || "";
         tr.appendChild(tdCS2);
+
+        // >>> THÊM DÒNG NÀY <<<
+        tbodySummary.appendChild(tr);
     });
 
     setSummaryMessage(`Đã tải tổng quan cho ngày ${ngay}.`);
+
 }
 
 // ========== KHỞI TẠO ==========
