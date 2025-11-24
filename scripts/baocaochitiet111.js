@@ -238,6 +238,7 @@ function renderTable(hotData) {
         });
     }
 
+    // KHỞI TẠO HANDSONTABLE CHỈ 1 LẦN
     hotInstance = new Handsontable(container, {
         data: hotData,
         columns,
@@ -250,45 +251,24 @@ function renderTable(hotData) {
         manualColumnResize: true,
         filters: true,
         dropdownMenu: true,
-    });
+        hiddenColumns: { columns: [], indicators: true },
 
-    hotInstance = new Handsontable(container, {
-        data: hotData,
-        columns,
-        colHeaders: columns.map(c => c.title || c.data),
-        rowHeaders: true,
-        width: '100%',
-        height: Math.min(window.innerHeight - 260, 550),
-        licenseKey: 'non-commercial-and-evaluation',
-        stretchH: 'all',
-        manualColumnResize: true,
-        filters: true,
-        dropdownMenu: true,
-        // không cần khai báo hiddenColumns ở đây; sẽ update bằng applyCompactView()
-
-        // >>> THÊM SỰ KIỆN DOUBLE CLICK VÀO Ô
+        // Double-click vào Số HĐ để mở hóa đơn
         afterOnCellDblClick(event, coords, TD) {
-            // coords.row < 0 = header, bỏ qua
-            if (coords.row < 0) return;
+            if (coords.row < 0) return; // header
 
-            // Xem cột được click là cột nào
-            const prop = hotInstance.colToProp(coords.col);
-            if (prop !== "sohd") return;   // chỉ xử lý khi double-click cột Số HĐ
+            const prop = this.colToProp(coords.col); // dùng this cho chắc
+            if (prop !== "sohd") return;
 
-            const rowData = hotInstance.getSourceDataAtRow(coords.row);
+            const rowData = this.getSourceDataAtRow(coords.row);
             if (!rowData || !rowData.sohd) return;
 
-            // Gọi module dùng chung để mở hóa đơn
             openInvoiceFromRow(rowData);
         }
-
-
     });
 
     // áp dụng trạng thái rút gọn (nếu đang bật)
     applyCompactView();
-
-
 }
 
 function getCompactColumnIndexes() {
