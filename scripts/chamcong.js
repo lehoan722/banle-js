@@ -164,6 +164,31 @@ async function loadTodayEvents(manv, diadiem) {
   }));
 }
 
+// ==== KIỂM TRA ĐÃ ĐĂNG KÝ CA HÔM NAY CHƯA ===============
+
+async function hasRegisteredShiftToday(manv, diadiem) {
+  const sp = await ensureSupabase();
+  if (!sp) return false;
+
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const { data, error } = await sp
+    .from("lichlam_dangky")
+    .select("id")
+    .eq("manv", manv)
+    .eq("diadiem", diadiem)
+    .eq("ngay", todayStr)
+    .not("trang_thai", "in", "(HUY,TU_CHOI)");
+
+  if (error) {
+    console.error("Lỗi kiểm tra đăng ký ca hôm nay:", error);
+    alert("Không kiểm tra được đăng ký ca hôm nay. Vui lòng thử lại hoặc báo quản lý.");
+    return false;
+  }
+
+  return !!(data && data.length > 0);
+}
+
 // ==== LOGIC TÍNH GIỜ & HIỂN THỊ ========================
 
 function formatTime(date) {
@@ -318,8 +343,6 @@ function hasTancaAfterLastVaoca() {
   return false;
 }
 
-
-
 function hasTancaToday() {
   return todayEvents.some(ev => ev.su_kien === "TANCA" || ev.su_kien === "AUTO_TANCA");
 }
@@ -431,6 +454,18 @@ function attachChamCongButtons(diadiem) {
     if (!allowed.includes(su_kien)) {
       alert("Thứ tự chấm công không hợp lý. Vui lòng chấm đúng quy trình trong ngày.");
       return;
+    }
+
+    // Nếu là VÀO CA thì bắt buộc phải có đăng ký ca hôm nay tại cơ sở này
+    if (su_kien === "VAOCA") {
+      const hasReg = await hasRegisteredShiftToday(manv, diadiem);
+      if (!hasReg) {
+        alert(
+          "Bạn chưa đăng ký ca làm việc cho ngày hôm nay tại cơ sở này.\n" +
+          "Vui lòng đăng ký ca và chờ duyệt trước khi chấm công."
+        );
+        return;
+      }
     }
 
     const okInStore = await ensureInStoreBeforeAction(diadiem);
