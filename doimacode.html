@@ -65,7 +65,7 @@
       background: #999;
       cursor: not-allowed;
     }
-    .result, .error {
+    .result, .error, .msg {
       margin-top: 14px;
       padding: 10px;
       border-radius: 6px;
@@ -81,6 +81,11 @@
       border: 1px solid #f5b7b1;
       color: #b03a2e;
     }
+    .msg {
+      background: #f8f9fa;
+      border: 1px solid #d6d8db;
+      color: #555;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -94,179 +99,63 @@
     .hidden {
       display: none;
     }
+    /* login-container / app-container do authModule.js điều khiển hiển thị */
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Đổi mã sản phẩm / nhân viên</h1>
+  <!-- Khu vực login – authModule.js sẽ chèn form vào đây -->
+  <div id="login-container"></div>
 
-    <form id="renameForm">
-      <fieldset>
-        <legend>Loại mã cần đổi</legend>
-        <label>
-          <input type="radio" name="mode" value="masp" checked />
-          Đổi mã sản phẩm (rename_masp)
-        </label>
-        <br />
-        <label>
-          <input type="radio" name="mode" value="manv" />
-          Đổi mã nhân viên (rename_manv)
-        </label>
-      </fieldset>
+  <!-- Khu vực app chính – chỉ hiển thị sau khi login thành công -->
+  <div id="app-container" style="display:none;">
+    <div class="container">
+      <h1>Đổi mã sản phẩm / nhân viên</h1>
 
-      <div class="row">
-        <label for="oldCode">Mã cũ:</label>
-        <input type="text" id="oldCode" autocomplete="off" required />
-      </div>
+      <div id="msg" class="msg"></div>
 
-      <div class="row">
-        <label for="newCode">Mã mới:</label>
-        <input type="text" id="newCode" autocomplete="off" required />
-      </div>
+      <form id="renameForm">
+        <fieldset>
+          <legend>Loại mã cần đổi</legend>
+          <label>
+            <input type="radio" name="mode" value="masp" checked />
+            Đổi mã sản phẩm (rename_masp)
+          </label>
+          <br />
+          <label>
+            <input type="radio" name="mode" value="manv" />
+            Đổi mã nhân viên (rename_manv)
+          </label>
+        </fieldset>
 
-      <div class="row" id="mergeRow">
-        <label></label>
-        <label>
-          <input type="checkbox" id="mergeIfExists" />
-          Gộp nếu mã mới đã tồn tại (chỉ áp dụng cho mã sản phẩm)
-        </label>
-      </div>
+        <div class="row">
+          <label for="oldCode">Mã cũ:</label>
+          <input type="text" id="oldCode" autocomplete="off" required />
+        </div>
 
-      <div class="actions">
-        <button type="submit" id="submitBtn">Thực hiện đổi mã</button>
-      </div>
-    </form>
+        <div class="row">
+          <label for="newCode">Mã mới:</label>
+          <input type="text" id="newCode" autocomplete="off" required />
+        </div>
 
-    <div id="resultBox" class="result hidden"></div>
-    <div id="errorBox" class="error hidden"></div>
+        <div class="row" id="mergeRow">
+          <label></label>
+          <label>
+            <input type="checkbox" id="mergeIfExists" />
+            Gộp nếu mã mới đã tồn tại (chỉ áp dụng cho mã sản phẩm)
+          </label>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="submitBtn">Thực hiện đổi mã</button>
+        </div>
+      </form>
+
+      <div id="resultBox" class="result hidden"></div>
+      <div id="errorBox" class="error hidden"></div>
+    </div>
   </div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-    // TODO: thay bằng cấu hình thật của bạn hoặc import từ supabaseClient.js
-    const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-    const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const form = document.getElementById("renameForm");
-    const oldCodeInput = document.getElementById("oldCode");
-    const newCodeInput = document.getElementById("newCode");
-    const mergeRow = document.getElementById("mergeRow");
-    const mergeCheckbox = document.getElementById("mergeIfExists");
-    const resultBox = document.getElementById("resultBox");
-    const errorBox = document.getElementById("errorBox");
-    const submitBtn = document.getElementById("submitBtn");
-
-    // Uppercase tự động cho mã
-    function toUpperTrim(value) {
-      return (value || "").trim().toUpperCase();
-    }
-
-    // Ẩn/hiện checkbox merge theo chế độ
-    function updateMergeVisibility() {
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      if (mode === "masp") {
-        mergeRow.classList.remove("hidden");
-      } else {
-        mergeRow.classList.add("hidden");
-      }
-    }
-
-    document.querySelectorAll('input[name="mode"]').forEach(radio => {
-      radio.addEventListener("change", updateMergeVisibility);
-    });
-    updateMergeVisibility();
-
-    function showResult(data, mode, oldCode, newCode) {
-      errorBox.classList.add("hidden");
-      resultBox.classList.remove("hidden");
-
-      if (!Array.isArray(data) || data.length === 0) {
-        resultBox.textContent = "Đã đổi mã thành công, nhưng function không trả về thống kê.";
-        return;
-      }
-
-      let html = "";
-      html += `Đã thực hiện đổi ${mode === "masp" ? "mã sản phẩm" : "mã nhân viên"} từ <b>${oldCode}</b> sang <b>${newCode}</b>.<br/>`;
-      html += "Thống kê số dòng cập nhật:<br/>";
-      html += "<table><thead><tr><th>Bảng</th><th>Số dòng cập nhật</th></tr></thead><tbody>";
-      for (const row of data) {
-        html += `<tr><td>${row.table_name}</td><td>${row.updated_rows}</td></tr>`;
-      }
-      html += "</tbody></table>";
-
-      resultBox.innerHTML = html;
-    }
-
-    function showError(message) {
-      resultBox.classList.add("hidden");
-      errorBox.classList.remove("hidden");
-      errorBox.textContent = message;
-    }
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      const oldCode = toUpperTrim(oldCodeInput.value);
-      const newCode = toUpperTrim(newCodeInput.value);
-
-      if (!oldCode || !newCode) {
-        showError("Vui lòng nhập đầy đủ mã cũ và mã mới.");
-        return;
-      }
-
-      if (oldCode === newCode) {
-        showError("Mã cũ và mã mới trùng nhau. Không cần đổi.");
-        return;
-      }
-
-      const confirmText =
-        `Bạn chắc chắn muốn đổi ${mode === "masp" ? "mã sản phẩm" : "mã nhân viên"} `
-        + `từ "${oldCode}" sang "${newCode}"?\n`
-        + "Hành động này ảnh hưởng đến nhiều bảng dữ liệu, nên chỉ dùng khi chắc chắn.";
-      if (!window.confirm(confirmText)) {
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Đang xử lý...";
-
-      try {
-        let data, error;
-
-        if (mode === "masp") {
-          const mergeIfExists = mergeCheckbox.checked;
-          ({ data, error } = await supabase.rpc("rename_masp", {
-            p_old_code: oldCode,
-            p_new_code: newCode,
-            p_merge_if_exists: mergeIfExists
-          }));
-        } else {
-          ({ data, error } = await supabase.rpc("rename_manv", {
-            p_old_manv: oldCode,
-            p_new_manv: newCode
-          }));
-        }
-
-        if (error) {
-          console.error("RPC error:", error);
-          showError("Lỗi khi gọi function: " + (error.message || JSON.stringify(error)));
-        } else {
-          showResult(data, mode, oldCode, newCode);
-        }
-      } catch (err) {
-        console.error(err);
-        showError("Lỗi không xác định: " + err.message);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Thực hiện đổi mã";
-      }
-    });
-
-    // focus mặc định vào ô mã cũ
-    oldCodeInput.focus();
-  </script>
+  <!-- Script chính: dùng chung supabaseClient + authModule như duyetca.js -->
+  <script type="module" src="./doimacode.js"></script>
 </body>
 </html>
