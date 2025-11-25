@@ -78,21 +78,59 @@ async function taiBangLuong() {
       return;
     }
 
-    // 2) Lấy tên nhân viên từ dmnhanvien
+    // 2) Lấy danh sách mã NV từ dữ liệu chấm công
     const manvSet = new Set(congData.map(r => r.manv));
     const manvArr = Array.from(manvSet);
-    let mapTen = {};
 
+    // 2a) Lấy tên nhân viên từ dmnhanvien
+    let mapTen = {};
     if (manvArr.length > 0) {
       const { data: nvData, error: nvErr } = await supabase
         .from("dmnhanvien")
         .select("manv, tennv")
         .in("manv", manvArr);
 
-      if (!nvErr && nvData) {
+      if (nvErr) {
+        console.error("Lỗi lấy dmnhanvien:", nvErr);
+      } else if (nvData) {
         nvData.forEach(n => {
           mapTen[String(n.manv)] = n.tennv || "";
         });
+      }
+    }
+
+    // 2b) Lấy DOANH THU KPI từ nv_match2h_summary_all giống báo cáo lương
+    //    => mỗi nhân viên 1 lần gọi RPC, dùng cùng tham số như baocaoluong.js
+    const mapDoanhThuKPI = {};
+
+    for (const manv of manvArr) {
+      try {
+        const { data: kpiData, error: kpiErr } = await supabase.rpc(
+          "nv_match2h_summary_all",
+          {
+            tu_ngay,
+            den_ngay,
+            p_manv: manv,
+            p_masp_list: null,
+            p_min_price: 0,
+            p_size: null
+          }
+        );
+
+        if (kpiErr) {
+          console.error(
+            `Lỗi nv_match2h_summary_all cho NV ${manv}:`,
+            kpiErr
+          );
+          mapDoanhThuKPI[manv] = 0;
+        } else if (kpiData && kpiData.length > 0) {
+          mapDoanhThuKPI[manv] = Number(kpiData[0].tong_doanh_thu || 0);
+        } else {
+          mapDoanhThuKPI[manv] = 0;
+        }
+      } catch (e) {
+        console.error(`Lỗi không mong muốn khi lấy KPI cho NV ${manv}:`, e);
+        mapDoanhThuKPI[manv] = 0;
       }
     }
 
@@ -110,7 +148,9 @@ async function taiBangLuong() {
       const gio_phat_tanca_lich = so_ngay_tanca_lich * 1.0;
       const gio_tinh = Math.max(gio_cong - gio_phat_tanca_lich, 0);
 
-      const doanhthu = Number(row.tong_doanhso || 0);
+      // *** ĐÃ SỬA: lấy doanh thu KPI từ nv_match2h_summary_all ***
+      const doanhthu = Number(mapDoanhThuKPI[manv] || 0);
+
       const khoan_thang = gio_tinh * khoan_gio;
       const tien_vuot = Math.max(doanhthu - khoan_thang, 0);
       const tien_thuong = tien_vuot * (pct_thuong / 100.0);
@@ -155,7 +195,12 @@ async function taiBangLuong() {
     trSum.appendChild(tdVal);
     tbody.appendChild(trSum);
 
-    setStatus(`Đã tải ${congData.length} dòng. Tổng lương: ${fmt(tongLuongAll,0)} đ.`);
+    setStatus(
+      `Đã tải ${congData.length} dòng. Tổng lương: ${fmt(
+        tongLuongAll,
+        0
+      )} đ.`
+    );
   } catch (err) {
     console.error("Lỗi không mong muốn:", err);
     setStatus("Có lỗi xảy ra, xem console.", true);
@@ -165,75 +210,79 @@ async function taiBangLuong() {
 
 document.addEventListener("DOMContentLoaded", () => {
   setDefaultDates();
-  setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
+  setStatus(
+    "Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương."
+  );
   btnTai.addEventListener("click", taiBangLuong);
 });
 
+// --------- PHẦN BẢNG CÔNG THÁNG (giữ nguyên) ----------
+
 async function taiBangCong() {
-    const thang = parseInt(document.getElementById("bc-thang").value);
-    const nam = parseInt(document.getElementById("bc-nam").value);
-    const tbody = document.getElementById("tbody-bangcong");
-    const thead = document.getElementById("thead-bangcong");
+  const thang = parseInt(document.getElementById("bc-thang").value);
+  const nam = parseInt(document.getElementById("bc-nam").value);
+  const tbody = document.getElementById("tbody-bangcong");
+  const thead = document.getElementById("thead-bangcong");
 
-    tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
 
-    const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
-        p_month: thang,
-        p_year: nam
-    });
+  const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
+    p_month: thang,
+    p_year: nam
+  });
 
-    if (error) {
-        console.error(error);
-        tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
-        return;
-    }
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
+    return;
+  }
 
-    // lấy danh sách nhân viên
-    const nhanvien = [...new Set(data.map(d => `${d.manv}|${d.tennv}`))];
+  // lấy danh sách nhân viên
+  const nhanvien = [...new Set(data.map(d => `${d.manv}|${d.tennv}`))];
 
-    // dựng header
-    let header = `<th>Ngày</th><th>Thứ</th>`;
+  // dựng header
+  let header = `<th>Ngày</th><th>Thứ</th>`;
+  nhanvien.forEach(n => {
+    const [, tennv] = n.split("|");
+    header += `<th>${tennv}</th>`;
+  });
+  header += `<th>Tổng</th>`;
+  thead.innerHTML = `<tr>${header}</tr>`;
+
+  // dựng nội dung bảng
+  const groupByNgay = {};
+  data.forEach(d => {
+    if (!groupByNgay[d.ngay]) groupByNgay[d.ngay] = [];
+    groupByNgay[d.ngay].push(d);
+  });
+
+  let html = "";
+  Object.keys(groupByNgay).forEach(ng => {
+    const row = groupByNgay[ng];
+    const thu = row[0].thu;
+    let sum = 0;
+    let cells = "";
+
     nhanvien.forEach(n => {
-        const [, tennv] = n.split('|');
-        header += `<th>${tennv}</th>`;
-    });
-    header += `<th>Tổng</th>`;
-    thead.innerHTML = `<tr>${header}</tr>`;
-
-    // dựng nội dung bảng
-    const groupByNgay = {};
-    data.forEach(d => {
-        if (!groupByNgay[d.ngay]) groupByNgay[d.ngay] = [];
-        groupByNgay[d.ngay].push(d);
+      const manv = n.split("|")[0];
+      const found = row.find(r => r.manv == manv);
+      if (!found || found.gio_cong == 0) {
+        cells += `<td class="text-danger">N</td>`;
+      } else {
+        sum += found.gio_cong;
+        cells += `<td>${found.gio_cong}</td>`;
+      }
     });
 
-    let html = "";
-    Object.keys(groupByNgay).forEach(ng => {
-        const row = groupByNgay[ng];
-        const thu = row[0].thu;
-        let sum = 0;
-        let cells = "";
-
-        nhanvien.forEach(n => {
-            const manv = n.split('|')[0];
-            const found = row.find(r => r.manv == manv);
-            if (!found || found.gio_cong == 0) {
-                cells += `<td class="text-danger">N</td>`;
-            } else {
-                sum += found.gio_cong;
-                cells += `<td>${found.gio_cong}</td>`;
-            }
-        });
-
-        html += `<tr>
+    html += `<tr>
             <td>${ng}</td>
-            <td class="${thu=='CN'?'text-danger fw-bold':''}">${thu}</td>
+            <td class="${thu == "CN" ? "text-danger fw-bold" : ""}">${thu}</td>
             ${cells}
             <td class="fw-bold">${sum}</td>
         </tr>`;
-    });
+  });
 
-    tbody.innerHTML = html;
+  tbody.innerHTML = html;
 }
 
 window.taiBangCong = taiBangCong;
