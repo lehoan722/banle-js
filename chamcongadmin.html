@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chấm công ADMIN CS1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+    }
+    #login-container, #app-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    button {
+      padding: 16px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #007bff;
+      color: #fff;
+    }
+    button.warn {
+      background: #ff9800;
+      color: #fff;
+    }
+    button.danger {
+      background: #e53935;
+      color: #fff;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .info {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #555;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .log-panel {
+      margin-top: 16px;
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    .log-panel h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+    #log-list {
+      margin: 0;
+      padding-left: 18px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #log-list li {
+      margin-bottom: 4px;
+    }
+    #log-total {
+      margin-top: 8px;
+      font-weight: bold;
+    }
+    .admin-panel {
+      margin-top: 12px;
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      border: 1px solid #ddd;
+    }
+    .admin-panel-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin: 4px 0;
+      flex-wrap: wrap;
+    }
+    .admin-panel-row input {
+      padding: 4px 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Khung login: authModule.js sẽ tự vẽ form đăng nhập ở đây -->
+  <div id="login-container">
+    <h1>Đăng nhập chấm công ADMIN CS1</h1>
+    <div class="info">
+      Đây là trang dành cho ADMIN (MIN) để chấm công hộ / sửa log cho nhân viên.
+      Nhân viên thường không sử dụng trang này.
+    </div>
+  </div>
+
+  <!-- App chấm công: chỉ hiển thị sau khi login thành công -->
+  <div id="app-container" style="display:none;">
+    <h1>Chấm công ADMIN - Cơ sở 1</h1>
+
+    <div class="status">
+      <div>Admin đăng nhập: <span id="status-manv"></span></div>
+      <div>Địa điểm: CS1</div>
+      <div id="status-msg"></div>
+    </div>
+
+    <!-- Khu admin: chọn mã nhân viên cần thao tác -->
+    <div class="admin-panel">
+      <div class="admin-panel-row">
+        <strong>Chọn nhân viên cần thao tác</strong>
+      </div>
+      <div class="admin-panel-row">
+        <label for="target-manv">Mã NV:</label>
+        <input id="target-manv" type="text" placeholder="VD: 1101" style="width:100px;">
+        <button id="btn-apply-target" type="button">Áp dụng</button>
+      </div>
+      <div id="target-info" style="font-style:italic; font-size:13px; color:#444;">
+        Chưa chọn mã nhân viên cần thao tác
+      </div>
+    </div>
+
+    <div class="btn-grid">
+      <button id="btn-vaoca" class="primary">Vào ca</button>
+      <button id="btn-ntr" class="warn">Nghỉ trưa</button>
+      <button id="btn-ntrd" class="primary">Nghỉ trưa đến</button>
+      <button id="btn-nch" class="warn">Nghỉ chiều</button>
+      <button id="btn-nchd" class="primary">Nghỉ chiều đến</button>
+      <button id="btn-tanca" class="danger">Tan ca</button>
+    </div>
+
+    <div class="info">
+      - Admin có thể chọn mã nhân viên rồi bấm các nút Vào ca / Nghỉ trưa / Tan ca để ghi log hộ.<br>
+      - Nên dùng để xử lý các trường hợp quên TAN CA hoặc cần chỉnh sửa cưỡng chế log trong ngày.
+    </div>
+
+    <div id="log-panel" class="log-panel">
+      <h2>Lịch sử chấm công hôm nay</h2>
+      <ul id="log-list"></ul>
+      <div id="log-total">Tổng công hôm nay: 0.00 giờ</div>
+    </div>
+  </div>
+
+  <!-- Trang admin dùng script riêng -->
+  <script type="module" src="./scripts/chamcongadmin.js"></script>
+</body>
+</html>
