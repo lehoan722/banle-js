@@ -266,13 +266,17 @@ async function taiBangCong() {
     nhanvien.forEach(n => {
       const manv = n.split("|")[0];
       const found = row.find(r => r.manv == manv);
-      if (!found || found.gio_cong == 0) {
-        cells += `<td class="text-danger">N</td>`;
+      const gioCong = found ? Number(found.gio_cong || 0) : 0;
+
+      if (gioCong === 0) {
+        // Ngày nghỉ / không có công: để ô trống cho đỡ rối
+        cells += `<td></td>`;
       } else {
-        sum += found.gio_cong;
-        cells += `<td>${found.gio_cong}</td>`;
+        sum += gioCong;
+        cells += `<td>${gioCong}</td>`;
       }
     });
+
 
     html += `<tr>
             <td>${ng}</td>
