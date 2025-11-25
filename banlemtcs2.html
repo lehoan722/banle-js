@@ -446,10 +446,10 @@
     <div class="menu-bar">
         <div class="tennv">
 
-              <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="diadiem" placeholder="diadiem" readonly />
             <input id="ngay" type="date" readonly />
             <input id="gio" type="text" readonly style="width:70px" />
-          
+
             <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
@@ -882,21 +882,33 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
+        // Gắn lại sự kiện cho nút THOAT PM
         document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
 
-            document.getElementById('backup-overlay').style.display = "block";
-            try {
-                await backupAllTablesToZip();
-                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
-            } catch (err) {
-                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+            // Hỏi người dùng có muốn tạo file dự phòng không
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                    // Có thể bật lại thông báo nếu muốn:
+                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
             }
-            document.getElementById('backup-overlay').style.display = "none";
+            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
+
             await dangXuatApp();
         };
 
         async function dangXuatApp() {
-            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
+            // Copy logic đăng xuất cũ của anh
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
                 localStorage.clear();
@@ -907,16 +919,20 @@
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
+
             const tbody = document.getElementById('bangketqua').querySelector('tbody');
             if (tbody) tbody.innerHTML = '';
             if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+
             const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
             idsToClear.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
+
             document.getElementById('login-manv').focus();
         }
     </script>
