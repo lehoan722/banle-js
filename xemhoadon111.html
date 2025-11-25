@@ -110,7 +110,7 @@
 
   <label><input type="date" id="tuNgay" placeholder="Từ ngày:"></label>
   <label><input type="date" id="denNgay" placeholder="Đến ngày:"></label>
-  <label><input type="text" id="locNV" placeholder="Nhân viên:"></label>
+  <label><input type="text" id="locNV" placeholder="Mã nhân viên:"></label>
   <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
   <label><input type="number" id="tienTu" style="width:80px" placeholder="Tiền từ:"></label>
   <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
@@ -347,7 +347,8 @@
           else if (tuNgay) query = query.gte('ngay', tuNgay);
           else if (denNgay) query = query.lte('ngay', denNgay);
 
-          if (nv) query = query.ilike('tennv', `%${nv}%`);
+          if (nv) query = query.ilike('manv', `%${nv}%`);
+
           if (sohd) query = query.ilike('sohd', `%${sohd}%`);
           if (khach) query = query.ilike('khachhang', `%${khach}%`);
           if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
@@ -380,7 +381,8 @@
         else if (denNgay) query = query.lte('ngay', denNgay);
 
 
-        if (nv) query = query.ilike('tennv', `%${nv}%`);
+        if (nv) query = query.ilike('manv', `%${nv}%`);
+
         if (sohd) query = query.ilike('sohd', `%${sohd}%`);
         if (khach) query = query.ilike('khachhang', `%${khach}%`);
         if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
@@ -473,7 +475,7 @@
   <td>${hd.sohd || ""}</td>
   <td>${dinhDangNgay(hd.ngay)}</td>
   <td>${dinhDangNgayGio(hd.created_at)}</td>
-  <td>${hd.tennv || ""}</td>
+  <td>${hd.manv || ""}</td>
   <td>${hd.khachhang || ""}</td>
   <td>${hd.tongsl || 0}</td>
   <td>${hd.thanhtoan?.toLocaleString()}</td>
