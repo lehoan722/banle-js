@@ -431,12 +431,8 @@ window.selectPopupValue = function (type, value, el) {
         ten = value;
     } else if (type === 'nhanvien') {
         inputId = 'nhanvienInput';
-        let fullText = el.innerText;
-        if (fullText.indexOf(" - ") !== -1) {
-            ten = fullText.split(" - ").slice(1).join(" - ").trim();
-        } else {
-            ten = fullText.trim();
-        }
+        // Ở popup, value chính là MANV → dùng luôn
+        ten = value;
     }
     if (inputId) document.getElementById(inputId).value = ten;
     closePopupSearch();
