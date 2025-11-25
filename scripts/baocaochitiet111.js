@@ -494,12 +494,8 @@ window.selectPopupValue = function (type, value, el) {
         ten = value;
     } else if (type === 'nhanvien') {
         inputId = 'nhanvienInput';
-        let fullText = el.innerText;
-        if (fullText.indexOf(" - ") !== -1) {
-            ten = fullText.split(" - ").slice(1).join(" - ").trim();
-        } else {
-            ten = fullText.trim();
-        }
+        // với nhân viên, ta muốn nhập MÃ NV, không phải tên
+        ten = value;   // value chính là manv
     }
     if (inputId) document.getElementById(inputId).value = ten;
     closePopupSearch();
