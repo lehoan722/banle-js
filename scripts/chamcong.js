@@ -572,7 +572,10 @@ function attachChamCongButtons(diadiem) {
     });
 
     // NẾU LÀ VÀO CA → tự động duyệt ca đăng ký tương ứng (nếu có)
-    
+    if (su_kien === "VAOCA") {
+      approveShiftWhenCheckin({ manv, diadiem });
+    }
+
     if (ok) {
       const now = new Date();
       todayEvents.push({
