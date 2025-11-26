@@ -466,6 +466,8 @@ function attachChamCongButtons(diadiem) {
         );
         return;
       }
+
+       approveShiftWhenCheckin({ manv, diadiem });
     }
 
     const okInStore = await ensureInStoreBeforeAction(diadiem);
@@ -550,3 +552,36 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+//Nhân viên bấm Vào ca → hệ thống tự duyệt ca đăng ký trùng giờ (nếu có).
+
+async function approveShiftWhenCheckin({ manv, diadiem }) {
+  try {
+    const sp = await ensureSupabase();
+    if (!sp) return;
+
+    const today = new Date();
+    const ngayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
+    const nowHHMM = `${String(today.getHours()).padStart(2,"0")}:${String(today.getMinutes()).padStart(2,"0")}`;
+
+    // Duyệt các ca đăng ký khớp thời điểm hiện tại
+    const { error } = await sp
+      .from("lichlam_dangky")
+      .update({
+        trang_thai: "DA_DUYET",
+        nguoi_duyet: "AUTO_VAOCA",     // Có dấu vết tự động
+        thoi_gian_duyet: new Date().toISOString()
+      })
+      .eq("manv", manv)
+      .eq("diadiem", diadiem)
+      .eq("ngay", ngayStr)
+      .eq("trang_thai", "CHO_DUYET")
+      .lte("gio_bat_dau", nowHHMM)
+      .gt("gio_ket_thuc", nowHHMM);
+
+    if (error) console.error("Lỗi duyệt ca khi vào ca:", error);
+  } catch (err) {
+    console.error("approveShiftWhenCheckin error:", err);
+  }
+}
+
