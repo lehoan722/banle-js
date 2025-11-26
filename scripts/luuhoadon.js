@@ -391,7 +391,7 @@ export async function luuHoaDonQuaAPI() {
         }
     }
 
-    // 3) Hỏi nếu số đang gõ bị trùng (vẫn đứng SAU)
+    // 3) Hỏi nếu số đang gõ bị trùng (vẫn đứng SAU) 
     if (!IS_EDIT) {
         const existed = await hoaDonDaTonTaiAny(sohd);
         if (existed) {
@@ -404,7 +404,7 @@ export async function luuHoaDonQuaAPI() {
             // choice === 'new' → để NEW tiếp, RPC sẽ cấp số mới
         }
     }
-   
+
 
     // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
 
@@ -676,7 +676,7 @@ export async function luuHoaDonNhapQuaAPI() {
             alert("❌ Lưu HĐ nhập thất bại (cấp số).");
             return;
         }
-        
+
 
         const sohdThucTe = rpcRes[0].sohd;
         document.getElementById("sohd").value = sohdThucTe;
@@ -684,7 +684,7 @@ export async function luuHoaDonNhapQuaAPI() {
         const createdAt = new Date().toISOString();
         const bangKetQuaNEW = getBangKetQua();
 
-       
+
         const chitiet = [];
         Object.values(bangKetQuaNEW).forEach(item => {
             item.sizes.forEach((sz, i) => {
@@ -1022,10 +1022,28 @@ async function lamMoiSauKhiLuu() {
 }
 
 export async function xacNhanSuaHoaDon() {
-    const manv = document.getElementById("xacmanv").value.trim();
-    const mk = document.getElementById("xacmatkhau").value.trim();
-    const sohd = document.getElementById("sohd").value.trim();
+    // 1. Lấy thông tin đăng nhập đã lưu bởi authModule (không dùng ô input nữa)
+    const manv =
+        localStorage.getItem('manv') ||
+        localStorage.getItem('last_login_manv') ||
+        '';
+    const mk = localStorage.getItem('last_login_password') || '';
+    const sohd = (document.getElementById("sohd")?.value || '').trim();
 
+    if (!sohd) {
+        alert("❌ Không xác định được số hóa đơn cần sửa.");
+        return;
+    }
+
+    if (!manv || !mk) {
+        alert(
+            "❌ Không tìm thấy thông tin đăng nhập trong máy.\n" +
+            "Vui lòng đăng xuất và đăng nhập lại, sau đó sửa hóa đơn."
+        );
+        return;
+    }
+
+    // 2. Kiểm tra nhân viên & mật khẩu trong bảng dmnhanvien
     const { data: nv, error: errNV } = await supabase
         .from("dmnhanvien")
         .select("matkhau, sua_hoadon")
@@ -1033,14 +1051,15 @@ export async function xacNhanSuaHoaDon() {
         .maybeSingle();
 
     if (errNV || !nv || nv.matkhau !== mk) {
-        alert("❌ Sai mã nhân viên hoặc mật khẩu.");
+        alert("❌ Tài khoản đang đăng nhập không hợp lệ hoặc mật khẩu đã thay đổi.");
         return;
     }
     if (nv.sua_hoadon !== true) {
-        alert("🚫 Bạn không có quyền sửa hóa đơn.");
+        alert("🚫 Tài khoản đang đăng nhập không có quyền sửa/xóa hóa đơn.");
         return;
     }
 
+    // 3. Kiểm tra hóa đơn thuộc đúng cơ sở đang làm việc
     const { data: hd, error: errHD } = await supabase
         .from("hoadon_banle")
         .select("diadiem, updated_at")
@@ -1052,35 +1071,38 @@ export async function xacNhanSuaHoaDon() {
         return;
     }
 
-    const diadiemTrang = getDiaDiemFromPageName();
-    if ((hd.diadiem || "").toLowerCase() !== diadiemTrang) {
+    const diadiemTrang = getDiaDiemFromPageName && getDiaDiemFromPageName();
+    if (diadiemTrang && (hd.diadiem || "").toLowerCase() !== diadiemTrang) {
         alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
         return;
     }
 
+    // 4. Đặt cờ cho phép sửa + context EDIT
     choPhepSua = true;
-    // Đặt chế độ EDIT để các hàm lưu rẽ nhánh đúng
-    window.HD_CTX = { mode: "EDIT", version: (hd && hd.updated_at) ? hd.updated_at : null };
-    document.getElementById("popupXacThucSua").style.display = "none";
-    alert("✅ Xác thực thành công. Tiếp tục lưu hóa đơn.");
+    window.HD_CTX = {
+        mode: "EDIT",
+        version: (hd && hd.updated_at) ? hd.updated_at : null
+    };
 
-    // [MỚI] Gọi đúng hàm lưu tuỳ theo loại trang
-    if (CCN_CTX.isCCN) {
-        // Trang chuyển chi nhánh
+    // Nếu popup tồn tại thì đóng lại (để dùng chung cho mọi trang)
+    const popup = document.getElementById("popupXacThucSua");
+    if (popup) popup.style.display = "none";
+
+    alert("✅ Xác thực sửa hóa đơn thành công. Đang lưu lại hóa đơn...");
+
+    // 5. Gọi lại hàm lưu đúng theo loại chứng từ như logic cũ
+    if (typeof CCN_CTX !== "undefined" && CCN_CTX.isCCN) {
+        // Hóa đơn chuyển chi nhánh
         await luuHoaDonccn1v2();
     } else {
-        // Lấy loại chứng từ từ số hoá đơn để xác định
-        const sohdNow = document.getElementById("sohd").value.trim();
+        const sohdNow = (document.getElementById("sohd")?.value || '').trim();
         const prefix = sohdNow.split("_")[0] || "";
 
         if (prefix.includes("nmcs1") || prefix.includes("nmcs2")) {
-            // Hoá đơn nhập mới
             await luuHoaDonNhapQuaAPI();
         } else if (prefix.endsWith("T")) {
-            // Hoá đơn 2 bản (song song)
             await luuHoaDonCaHaiBan();
         } else {
-            // Mặc định: hoá đơn bán lẻ thường
             await luuHoaDonQuaAPI();
         }
     }
