@@ -56,7 +56,8 @@
         </div>
         <div class="field">
           <label>Mã NV (trống = tất cả):</label>
-          <input type="text" id="filter-manv" placeholder="VD: 38">
+          
+          <input type="text" id="filter-manv" list="ds-manv" placeholder="VD: NV01">
         </div>
         <div class="field" style="align-self:flex-end;">
           <button id="btn-load">Tải log ngày</button>
@@ -70,7 +71,8 @@
       <div class="row">
         <div class="field">
           <label>Mã NV:</label>
-          <input type="text" id="new-manv" placeholder="VD: 38">
+          
+          <input type="text" id="new-manv" list="ds-manv" placeholder="Chọn mã NV">
         </div>
         <div class="field">
           <label>Cơ sở:</label>
@@ -138,5 +140,8 @@
   </div>
 
   <script type="module" src="./scripts/chamcong_admin.js"></script>
+  
+  <datalist id="ds-manv"></datalist>
+
 </body>
 </html>
