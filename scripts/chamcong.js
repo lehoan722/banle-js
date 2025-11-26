@@ -135,35 +135,6 @@ async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu =
 }
 
 // Tải toàn bộ log chấm công của hôm nay cho nhân viên & cơ sở
-async function loadTodayEvents(manv, diadiem) {
-  const sp = await ensureSupabase();
-  if (!sp) return [];
-
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
-  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-
-  const { data, error } = await sp
-    .from("chamcong_log")
-    .select("su_kien, nguon, created_at")
-    .eq("manv", manv)
-    .eq("diadiem", diadiem)
-    .gte("created_at", start.toISOString())
-    .lte("created_at", end.toISOString())
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    console.error("Lỗi load log hôm nay:", error);
-    return [];
-  }
-
-  return (data || []).map(row => ({
-    su_kien: row.su_kien,
-    nguon: row.nguon,
-    createdAt: new Date(row.created_at)
-  }));
-}
-
 // Tải toàn bộ log chấm công của hôm nay cho nhân viên & cơ sở
 async function loadTodayEvents(manv, diadiem) {
   const sp = await ensureSupabase();
@@ -194,6 +165,8 @@ async function loadTodayEvents(manv, diadiem) {
   }));
 }
 
+
+/* ====== TỰ ĐỘNG DUYỆT CA KHI VÀO CA ====== */
 /* ====== TỰ ĐỘNG DUYỆT CA KHI VÀO CA ====== */
 async function approveShiftWhenCheckin({ manv, diadiem }) {
   const sp = await ensureSupabase();
@@ -204,7 +177,7 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
     const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
     const nowTime = now.toTimeString().slice(0, 8);  // HH:MM:SS
 
-    // Lấy các ca CHỜ DUYỆT của NV hôm nay tại đúng cơ sở
+    // Lấy các ca CHO_DUYỆT của NV hôm nay tại đúng cơ sở
     let { data, error } = await sp
       .from("lichlam_dangky")
       .select("*")
@@ -224,16 +197,14 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
       return;
     }
 
-    // Ưu tiên chọn ca có khung giờ bao trùm thời điểm hiện tại
+    // Ưu tiên ca bao trùm thời điểm hiện tại
     let target = data.find(row =>
       row.gio_bat_dau && row.gio_ket_thuc &&
       row.gio_bat_dau <= nowTime && row.gio_ket_thuc >= nowTime
     );
 
-    // Nếu không có ca đúng giờ -> lấy ca CHO_DUYET đầu tiên
-    if (!target) {
-      target = data[0];
-    }
+    // Nếu không có ca đúng giờ → lấy ca CHO_DUYỆT đầu tiên
+    if (!target) target = data[0];
 
     const { error: upErr } = await sp
       .from("lichlam_dangky")
@@ -570,12 +541,6 @@ function attachChamCongButtons(diadiem) {
       su_kien,
       nguon: "manual"
     });
-
-    // NẾU LÀ VÀO CA → tự động duyệt ca đăng ký tương ứng (nếu có)
-    if (su_kien === "VAOCA") {
-      approveShiftWhenCheckin({ manv, diadiem });
-    }
-
     if (ok) {
       const now = new Date();
       todayEvents.push({
@@ -591,11 +556,12 @@ function attachChamCongButtons(diadiem) {
       renderTodayLog();
       disableButtonTemporarily(btn);
 
-      // 🔔 Nếu là VÀO CA thì gọi auto duyệt ca đăng ký
+      // 🔔 Nếu là VÀO CA → tự động duyệt ca đăng ký tương ứng
       if (su_kien === "VAOCA") {
         await approveShiftWhenCheckin({ manv, diadiem });
       }
     }
+
   }
 
   btnVaoca.addEventListener("click", () => handleClick("VAOCA", btnVaoca));
@@ -655,35 +621,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-//Nhân viên bấm Vào ca → hệ thống tự duyệt ca đăng ký trùng giờ (nếu có).
 
-async function approveShiftWhenCheckin({ manv, diadiem }) {
-  try {
-    const sp = await ensureSupabase();
-    if (!sp) return;
-
-    const today = new Date();
-    const ngayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const nowHHMM = `${String(today.getHours()).padStart(2, "0")}:${String(today.getMinutes()).padStart(2, "0")}`;
-
-    // Duyệt các ca đăng ký khớp thời điểm hiện tại
-    const { error } = await sp
-      .from("lichlam_dangky")
-      .update({
-        trang_thai: "DA_DUYET",
-        nguoi_duyet: "AUTO_VAOCA",     // Có dấu vết tự động
-        thoi_gian_duyet: new Date().toISOString()
-      })
-      .eq("manv", manv)
-      .eq("diadiem", diadiem)
-      .eq("ngay", ngayStr)
-      .eq("trang_thai", "CHO_DUYET")
-      .lte("gio_bat_dau", nowHHMM)
-      .gt("gio_ket_thuc", nowHHMM);
-
-    if (error) console.error("Lỗi duyệt ca khi vào ca:", error);
-  } catch (err) {
-    console.error("approveShiftWhenCheckin error:", err);
-  }
-}
 
