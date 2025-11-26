@@ -1,8 +1,9 @@
-// chamcong_admin.js - Quản lý chỉnh sửa chấm công
+// chamcong_admin.js - Quản lý chỉnh sửa chấm công (ADMIN)
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
 import { fillNhanVienDropdown } from "./dmnhanvien.js";
 
+// --- DOM elements ---
 const filterNgay = document.getElementById("filter-ngay");
 const filterDia = document.getElementById("filter-diadiem");
 const filterManv = document.getElementById("filter-manv");
@@ -16,14 +17,18 @@ const newNgay = document.getElementById("new-ngay");
 const newGio = document.getElementById("new-gio");
 const newSuKien = document.getElementById("new-su_kien");
 const newNguon = document.getElementById("new-nguon");
+
 const btnAdd = document.getElementById("btn-add");
+
+// datalist mã nhân viên dùng chung
+const manvDatalist = document.getElementById("ds-manv");
 
 let daGanEvent = false;
 
-// --- Datalist mã nhân viên dùng chung ---
-const manvDatalist = document.getElementById("ds-manv");
+// --- Helpers chung ---
 
 function setStatus(msg, isError = false) {
+  if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.style.color = isError ? "#c62828" : "#555";
 }
@@ -36,77 +41,93 @@ function toVNTimeString(ts) {
 
 function getTodayISO() {
   const d = new Date();
-  return d.toISOString().slice(0, 10);
+  return d.toISOString().slice(0, 10); // yyyy-mm-dd
 }
 
-// Load log theo ngày
+// --- Load log theo ngày ---
+
 async function loadLogs() {
-  const ngay = filterNgay.value || getTodayISO();
-  filterNgay.value = ngay;
+  try {
+    const ngay = filterNgay.value || getTodayISO();
+    filterNgay.value = ngay;
 
-  const diadiem = filterDia.value || null;
-  const manv = filterManv.value.trim() || null;
+    const diadiem = filterDia.value || "";
+    const manv = filterManv.value.trim();
 
-  setStatus("Đang tải log...");
+    // Khoảng thời gian 1 ngày theo giờ VN
+    const from = `${ngay}T00:00:00+07:00`;
+    const to = `${ngay}T23:59:59.999+07:00`;
 
-  // Khoảng thời gian 1 ngày theo giờ Việt Nam
-  const from = `${ngay}T00:00:00+07:00`;
-  const to = `${ngay}T23:59:59.999+07:00`;
+    let query = supabase
+      .from("chamcong_log")
+      .select("id, manv, diadiem, su_kien, nguon, created_at")
+      .gte("created_at", from)
+      .lte("created_at", to)
+      .order("created_at", { ascending: true });
 
-  let query = supabase
-    .from("chamcong_log")
-    .select("id, manv, diadiem, su_kien, nguon, created_at")
-    .gte("created_at", from)
-    .lte("created_at", to)
-    .order("created_at", { ascending: true });
+    if (diadiem) {
+      query = query.eq("diadiem", diadiem);
+    }
+    if (manv) {
+      query = query.eq("manv", manv);
+    }
 
-  if (diadiem) query = query.eq("diadiem", diadiem);
-  if (manv) query = query.eq("manv", manv);
+    setStatus("Đang tải dữ liệu...");
+    const { data, error } = await query;
 
-  const { data, error } = await query;
+    if (error) {
+      console.error("Lỗi load chamcong_log:", error);
+      setStatus("Lỗi tải log chấm công. Xem console.", true);
+      return;
+    }
 
-  if (error) {
-    console.error("Lỗi load chamcong_log:", error);
-    tbodyLog.innerHTML =
-      `<tr><td colspan="8" style="color:red;">Lỗi tải dữ liệu.</td></tr>`;
-    setStatus("Lỗi tải dữ liệu.", true);
-    return;
+    renderLogs(data || []);
+  } catch (err) {
+    console.error("Lỗi không xác định khi loadLogs:", err);
+    setStatus("Lỗi không xác định khi tải log.", true);
   }
+}
 
-  if (!data || data.length === 0) {
-    tbodyLog.innerHTML =
-      `<tr><td colspan="8">Không có bản ghi chấm công trong ngày này.</td></tr>`;
-    setStatus("");
-    return;
-  }
-
+function renderLogs(rows) {
   tbodyLog.innerHTML = "";
-  data.forEach(row => {
+
+  if (!rows.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 8;
+    td.textContent = "Chưa có dữ liệu.";
+    tr.appendChild(td);
+    tbodyLog.appendChild(tr);
+    setStatus("Không có bản ghi nào.");
+    return;
+  }
+
+  rows.forEach((row) => {
     const tr = document.createElement("tr");
 
     const tdId = document.createElement("td");
     tdId.textContent = row.id;
     tr.appendChild(tdId);
 
-    const tdTime = document.createElement("td");
-    tdTime.textContent = row.created_at;
-    tr.appendChild(tdTime);
+    const tdServer = document.createElement("td");
+    tdServer.textContent = row.created_at || "";
+    tr.appendChild(tdServer);
 
-    const tdTimeVN = document.createElement("td");
-    tdTimeVN.textContent = toVNTimeString(row.created_at);
-    tr.appendChild(tdTimeVN);
+    const tdVN = document.createElement("td");
+    tdVN.textContent = toVNTimeString(row.created_at);
+    tr.appendChild(tdVN);
 
     const tdManv = document.createElement("td");
-    tdManv.textContent = row.manv;
+    tdManv.textContent = row.manv || "";
     tr.appendChild(tdManv);
 
     const tdDia = document.createElement("td");
-    tdDia.textContent = row.diadiem;
+    tdDia.textContent = row.diadiem || "";
     tr.appendChild(tdDia);
 
-    const tdSu = document.createElement("td");
-    tdSu.textContent = row.su_kien;
-    tr.appendChild(tdSu);
+    const tdSuKien = document.createElement("td");
+    tdSuKien.textContent = row.su_kien || "";
+    tr.appendChild(tdSuKien);
 
     const tdNguon = document.createElement("td");
     tdNguon.textContent = row.nguon || "";
@@ -130,17 +151,18 @@ async function loadLogs() {
     tbodyLog.appendChild(tr);
   });
 
-  setStatus(`Đã tải ${data.length} bản ghi.`);
+  setStatus(`Đã tải ${rows.length} bản ghi.`);
 }
 
-// Thêm bản ghi mới
+// --- Thêm / sửa / xóa log ---
+
 async function addLog() {
   const manv = newManv.value.trim();
   const diadiem = newDia.value;
   const ngay = newNgay.value || filterNgay.value || getTodayISO();
   const gio = newGio.value;
   const su_kien = newSuKien.value;
-  const nguon = newNguon.value.trim() || "manual-admin";
+  const nguon = (newNguon.value || "manual-admin").trim();
 
   if (!manv || !diadiem || !ngay || !gio || !su_kien) {
     setStatus("Vui lòng nhập đủ Mã NV, Cơ sở, Ngày, Giờ, Sự kiện.", true);
@@ -149,100 +171,102 @@ async function addLog() {
 
   const ts = `${ngay}T${gio}:00+07:00`;
 
-  setStatus("Đang thêm bản ghi...");
+  try {
+    const { error } = await supabase.from("chamcong_log").insert([
+      {
+        manv,
+        diadiem,
+        su_kien,
+        nguon,
+        created_at: ts
+      }
+    ]);
 
-  const { error } = await supabase.from("chamcong_log").insert({
-    manv,
-    diadiem,
-    su_kien,
-    nguon,
-    created_at: ts
-  });
+    if (error) {
+      console.error("Lỗi thêm log:", error);
+      setStatus("Lỗi thêm bản ghi mới. Xem console.", true);
+      return;
+    }
 
-  if (error) {
-    console.error("Lỗi insert chamcong_log:", error);
-    setStatus("Thêm bản ghi thất bại.", true);
-    return;
+    setStatus("Đã thêm bản ghi mới.");
+    // Reload list để thấy dòng mới
+    await loadLogs();
+  } catch (err) {
+    console.error("Lỗi không xác định khi thêm log:", err);
+    setStatus("Lỗi không xác định khi thêm bản ghi.", true);
   }
-
-  setStatus("Đã thêm bản ghi mới.");
-  await loadLogs();
 }
 
-// Sửa 1 bản ghi: sửa sự kiện + giờ
-async function editLog(row) {
-  const newSu = prompt(
-    `Sự kiện mới cho ID ${row.id} (hiện tại: ${row.su_kien}):`,
-    row.su_kien
-  );
-  if (!newSu) return;
+// Tạm thời: Sửa = load giá trị lên form (nếu anh muốn nâng cấp thêm)
+function editLog(row) {
+  newManv.value = row.manv || "";
+  newDia.value = row.diadiem || "cs1";
+  const d = new Date(row.created_at);
+  const ngay = d.toISOString().slice(0, 10);
+  const gio = d.toISOString().slice(11, 16); // HH:MM
 
-  const vnNow = toVNTimeString(row.created_at);
-  const defTime = vnNow.slice(11, 16); // HH:MM
-  const newTime = prompt(
-    `Giờ mới (HH:MM) cho ID ${row.id} (hiện tại: ${defTime}):`,
-    defTime
-  );
-  if (!newTime) return;
-
-  const ngay = filterNgay.value || getTodayISO();
-  const ts = `${ngay}T${newTime}:00+07:00`;
-
-  setStatus(`Đang cập nhật ID ${row.id}...`);
-
-  const { error } = await supabase
-    .from("chamcong_log")
-    .update({ su_kien: newSu, created_at: ts })
-    .eq("id", row.id);
-
-  if (error) {
-    console.error("Lỗi update chamcong_log:", error);
-    setStatus("Cập nhật thất bại.", true);
-    return;
-  }
-
-  setStatus(`Đã cập nhật ID ${row.id}.`);
-  await loadLogs();
+  newNgay.value = ngay;
+  newGio.value = gio;
+  newSuKien.value = row.su_kien || "VAOCA";
+  newNguon.value = row.nguon || "manual-admin";
 }
 
-// Xóa bản ghi
+// Xóa log
 async function deleteLog(row) {
-  if (!confirm(`Xóa bản ghi ID ${row.id}?`)) return;
+  if (!window.confirm(`Xóa bản ghi ID ${row.id}?`)) return;
 
-  setStatus(`Đang xóa ID ${row.id}...`);
+  try {
+    const { error } = await supabase
+      .from("chamcong_log")
+      .delete()
+      .eq("id", row.id);
 
-  const { error } = await supabase
-    .from("chamcong_log")
-    .delete()
-    .eq("id", row.id);
+    if (error) {
+      console.error("Lỗi xóa log:", error);
+      setStatus("Lỗi xóa bản ghi.", true);
+      return;
+    }
 
-  if (error) {
-    console.error("Lỗi delete chamcong_log:", error);
-    setStatus("Xóa thất bại.", true);
-    return;
+    setStatus(`Đã xóa bản ghi ID ${row.id}.`);
+    await loadLogs();
+  } catch (err) {
+    console.error("Lỗi không xác định khi xóa log:", err);
+    setStatus("Lỗi không xác định khi xóa.", true);
   }
-
-  setStatus(`Đã xóa ID ${row.id}.`);
-  await loadLogs();
 }
+
+// --- Gắn event chỉ 1 lần ---
 
 function attachEventsOnce() {
   if (daGanEvent) return;
   daGanEvent = true;
 
-  btnLoad.addEventListener("click", loadLogs);
-  btnAdd.addEventListener("click", addLog);
+  if (btnLoad) btnLoad.addEventListener("click", loadLogs);
+  if (btnAdd) btnAdd.addEventListener("click", addLog);
 }
 
-async function onLoginSuccess({ user, profile }) {
-  // Tải danh mục nhân viên vào datalist
-  await fillNhanVienDropdown(manvDatalist, { showName: true });
+// --- Login thành công ---
 
-  initDefaultDates();
+async function onLoginSuccess({ user, profile }) {
+  // Đổ danh sách nhân viên vào datalist ds-manv
+  if (manvDatalist) {
+    try {
+      await fillNhanVienDropdown(manvDatalist, { showName: true });
+    } catch (err) {
+      console.error("Lỗi khi đổ danh sách nhân viên:", err);
+    }
+  }
+
+  // Ngày mặc định = hôm nay
+  const today = getTodayISO();
+  if (filterNgay) filterNgay.value = today;
+  if (newNgay) newNgay.value = today;
+
   attachEventsOnce();
   loadLogs();
 }
 
+// --- Khởi động ---
 
 document.addEventListener("DOMContentLoaded", () => {
   khoiTaoDangNhapDungChung({
