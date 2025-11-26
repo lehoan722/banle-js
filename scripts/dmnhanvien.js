@@ -1,16 +1,16 @@
 // dmnhanvien.js
 // Module dùng chung cho danh mục nhân viên
 
+// dmnhanvien.js
 import { supabase } from "./supabaseClient.js";
 
 /**
  * Lấy danh sách nhân viên từ bảng dmnhanvien
- * @returns {Promise<Array<{manv:string, tennv:string|null, diadiem?:string}>>}
  */
 export async function fetchDmNhanVien() {
   const { data, error } = await supabase
     .from("dmnhanvien")
-    .select("manv, tennv, diadiem")
+    .select("manv, tennv")        // <-- BỎ diadiem
     .order("manv", { ascending: true });
 
   if (error) {
@@ -20,6 +20,7 @@ export async function fetchDmNhanVien() {
 
   return data || [];
 }
+
 
 /**
  * Đổ danh mục nhân viên vào 1 <datalist> hoặc <select>.
