@@ -3,6 +3,7 @@
 // + thưởng doanh thu vượt khoán (nv_match2h_summary_all)
 
 import { supabase } from "./supabaseClient.js";
+import { fillNhanVienDropdown } from "./dmnhanvien.js"; // <-- dùng chung dropdown NV
 
 function toIsoDate(d) {
   return d.toISOString().slice(0, 10);
@@ -111,7 +112,7 @@ async function tinhLuongThang() {
     return;
   }
   if (!manv) {
-    alert("Vui lòng nhập mã nhân viên.");
+    alert("Vui lòng chọn mã nhân viên.");
     return;
   }
 
@@ -246,8 +247,20 @@ async function tinhLuongThang() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+// --- Khởi tạo khi load trang ---
+document.addEventListener("DOMContentLoaded", async () => {
   setDefaultDates();
-  setStatus("Chọn khoảng ngày, nhập mã NV, lương giờ, khoán/giờ và % thưởng trên phần vượt khoán rồi bấm Tính lương.");
+  setStatus("Chọn khoảng ngày, chọn mã NV, nhập lương giờ, khoán/giờ và % thưởng trên phần vượt khoán rồi bấm Tính lương.");
+
+  // Đổ danh sách nhân viên vào datalist ds-manv
+  const manvDatalist = document.getElementById("ds-manv");
+  if (manvDatalist) {
+    try {
+      await fillNhanVienDropdown(manvDatalist, { showName: true });
+    } catch (err) {
+      console.error("Lỗi load danh mục nhân viên cho báo cáo lương:", err);
+    }
+  }
+
   document.getElementById("btn-tinh-luong").addEventListener("click", tinhLuongThang);
 });
