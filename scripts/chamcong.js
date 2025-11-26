@@ -512,56 +512,53 @@ function attachChamCongButtons(diadiem) {
   const btnNchd = document.getElementById("btn-nchd");
   const btnTanca = document.getElementById("btn-tanca");
 
+    // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
   async function handleClick(su_kien, btn) {
-    const allowed = getAllowedNextEvents();
-    if (!allowed.includes(su_kien)) {
-      alert("Thứ tự chấm công không hợp lý. Vui lòng chấm đúng quy trình trong ngày.");
+    if (!btn) return;
+
+    // Nếu nút đang xử lý 1 lần bấm rồi thì bỏ qua (chống nhân đôi khi có 2 listener)
+    if (btn.dataset.working === "1") {
       return;
     }
+    btn.dataset.working = "1";
 
-    // Nếu là VÀO CA thì bắt buộc phải có đăng ký ca hôm nay tại cơ sở này
-    if (su_kien === "VAOCA") {
-      const hasReg = await hasRegisteredShiftToday(manv, diadiem);
-      if (!hasReg) {
-        alert(
-          "Bạn chưa đăng ký ca làm việc cho ngày hôm nay tại cơ sở này.\n" +
-          "Vui lòng đăng ký ca và chờ duyệt trước khi chấm công."
-        );
+    try {
+      const allowed = getAllowedNextEvents();
+      if (!allowed.includes(su_kien)) {
+        alert("Thứ tự chấm công không hợp lý. Vui lòng chấm đúng quy trình trong ngày.");
         return;
       }
 
-    }
+      const okInStore = await ensureInStoreBeforeAction(diadiem);
+      if (!okInStore) return;
 
-    const okInStore = await ensureInStoreBeforeAction(diadiem);
-    if (!okInStore) return;
-
-    const ok = await logChamCong({
-      manv,
-      diadiem,
-      su_kien,
-      nguon: "manual"
-    });
-    if (ok) {
-      const now = new Date();
-      todayEvents.push({
+      const ok = await logChamCong({
         manv,
         diadiem,
         su_kien,
-        nguon: "manual",
-        createdAt: now
+        nguon: "manual"
       });
-      if (statusMsg) {
-        statusMsg.textContent = `Đã ghi: ${su_kien} lúc ${formatTime(now)}`;
-      }
-      renderTodayLog();
-      disableButtonTemporarily(btn);
+      if (ok) {
+        const now = new Date();
+        todayEvents.push({
+          manv,
+          diadiem,
+          su_kien,
+          nguon: "manual",
+          createdAt: now
+        });
+        if (statusMsg) {
+          statusMsg.textContent = `Đã ghi: ${su_kien} lúc ${formatTime(now)}`;
+        }
+        renderTodayLog();
 
-      // 🔔 Nếu là VÀO CA → tự động duyệt ca đăng ký tương ứng
-      if (su_kien === "VAOCA") {
-        await approveShiftWhenCheckin({ manv, diadiem });
+        // Khóa nút trong 5 phút như cũ
+        disableButtonTemporarily(btn);
       }
+    } finally {
+      // Cho phép lần bấm tiếp theo (tránh kẹt nếu validate fail / GPS fail)
+      btn.dataset.working = "0";
     }
-
   }
 
   btnVaoca.addEventListener("click", () => handleClick("VAOCA", btnVaoca));
