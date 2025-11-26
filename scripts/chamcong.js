@@ -467,7 +467,6 @@ function attachChamCongButtons(diadiem) {
         return;
       }
 
-       approveShiftWhenCheckin({ manv, diadiem });
     }
 
     const okInStore = await ensureInStoreBeforeAction(diadiem);
@@ -479,8 +478,15 @@ function attachChamCongButtons(diadiem) {
       su_kien,
       nguon: "manual"
     });
+
+    // NẾU LÀ VÀO CA → tự động duyệt ca đăng ký tương ứng (nếu có)
+    if (su_kien === "VAOCA") {
+      approveShiftWhenCheckin({ manv, diadiem });
+    }
+    
     if (ok) {
       const now = new Date();
+
       todayEvents.push({
         manv,
         diadiem,
@@ -562,7 +568,7 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
 
     const today = new Date();
     const ngayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const nowHHMM = `${String(today.getHours()).padStart(2,"0")}:${String(today.getMinutes()).padStart(2,"0")}`;
+    const nowHHMM = `${String(today.getHours()).padStart(2, "0")}:${String(today.getMinutes()).padStart(2, "0")}`;
 
     // Duyệt các ca đăng ký khớp thời điểm hiện tại
     const { error } = await sp
