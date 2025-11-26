@@ -1,6 +1,7 @@
 // chamcong_admin.js - Quản lý chỉnh sửa chấm công
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
+import { fillNhanVienDropdown } from "./dmnhanvien.js";
 
 const filterNgay = document.getElementById("filter-ngay");
 const filterDia = document.getElementById("filter-diadiem");
@@ -18,6 +19,9 @@ const newNguon = document.getElementById("new-nguon");
 const btnAdd = document.getElementById("btn-add");
 
 let daGanEvent = false;
+
+// --- Datalist mã nhân viên dùng chung ---
+const manvDatalist = document.getElementById("ds-manv");
 
 function setStatus(msg, isError = false) {
   statusEl.textContent = msg || "";
@@ -230,13 +234,15 @@ function attachEventsOnce() {
   btnAdd.addEventListener("click", addLog);
 }
 
-function onLoginSuccess(thongTinNguoiDung) {
-  // Ở đây anh có thể kiểm tra role admin nếu muốn (theo thongTinNguoiDung)
-  filterNgay.value = getTodayISO();
-  newNgay.value = getTodayISO();
+async function onLoginSuccess({ user, profile }) {
+  // Tải danh mục nhân viên vào datalist
+  await fillNhanVienDropdown(manvDatalist, { showName: true });
+
+  initDefaultDates();
   attachEventsOnce();
   loadLogs();
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   khoiTaoDangNhapDungChung({
