@@ -164,6 +164,98 @@ async function loadTodayEvents(manv, diadiem) {
   }));
 }
 
+// Tải toàn bộ log chấm công của hôm nay cho nhân viên & cơ sở
+async function loadTodayEvents(manv, diadiem) {
+  const sp = await ensureSupabase();
+  if (!sp) return [];
+
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+  const { data, error } = await sp
+    .from("chamcong_log")
+    .select("su_kien, nguon, created_at")
+    .eq("manv", manv)
+    .eq("diadiem", diadiem)
+    .gte("created_at", start.toISOString())
+    .lte("created_at", end.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Lỗi load log hôm nay:", error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    su_kien: row.su_kien,
+    nguon: row.nguon,
+    createdAt: new Date(row.created_at)
+  }));
+}
+
+/* ====== TỰ ĐỘNG DUYỆT CA KHI VÀO CA ====== */
+async function approveShiftWhenCheckin({ manv, diadiem }) {
+  const sp = await ensureSupabase();
+  if (!sp) return;
+
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const nowTime = now.toTimeString().slice(0, 8);  // HH:MM:SS
+
+    // Lấy các ca CHỜ DUYỆT của NV hôm nay tại đúng cơ sở
+    let { data, error } = await sp
+      .from("lichlam_dangky")
+      .select("*")
+      .eq("manv", manv)
+      .eq("diadiem", diadiem)
+      .eq("ngay", todayStr)
+      .eq("trang_thai", "CHO_DUYET")
+      .order("gio_bat_dau", { ascending: true });
+
+    if (error) {
+      console.error("Lỗi đọc lichlam_dangky khi auto duyệt:", error);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      console.log("Không có ca CHO_DUYET nào hôm nay để auto duyệt.");
+      return;
+    }
+
+    // Ưu tiên chọn ca có khung giờ bao trùm thời điểm hiện tại
+    let target = data.find(row =>
+      row.gio_bat_dau && row.gio_ket_thuc &&
+      row.gio_bat_dau <= nowTime && row.gio_ket_thuc >= nowTime
+    );
+
+    // Nếu không có ca đúng giờ -> lấy ca CHO_DUYET đầu tiên
+    if (!target) {
+      target = data[0];
+    }
+
+    const { error: upErr } = await sp
+      .from("lichlam_dangky")
+      .update({
+        trang_thai: "DA_DUYET",
+        ghi_chu_admin: (target.ghi_chu_admin || "") + " (auto duyệt khi vào ca)",
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", target.id);
+
+    if (upErr) {
+      console.error("Lỗi update auto duyệt ca:", upErr);
+      return;
+    }
+
+    console.log("ĐÃ AUTO DUYỆT ca id", target.id, "cho", manv, "tại", diadiem);
+  } catch (e) {
+    console.error("Lỗi ngoại lệ auto duyệt ca:", e);
+  }
+}
+
+
 // ==== KIỂM TRA ĐÃ ĐĂNG KÝ CA HÔM NAY CHƯA ===============
 
 async function hasRegisteredShiftToday(manv, diadiem) {
@@ -480,13 +572,9 @@ function attachChamCongButtons(diadiem) {
     });
 
     // NẾU LÀ VÀO CA → tự động duyệt ca đăng ký tương ứng (nếu có)
-    if (su_kien === "VAOCA") {
-      approveShiftWhenCheckin({ manv, diadiem });
-    }
     
     if (ok) {
       const now = new Date();
-
       todayEvents.push({
         manv,
         diadiem,
@@ -499,6 +587,11 @@ function attachChamCongButtons(diadiem) {
       }
       renderTodayLog();
       disableButtonTemporarily(btn);
+
+      // 🔔 Nếu là VÀO CA thì gọi auto duyệt ca đăng ký
+      if (su_kien === "VAOCA") {
+        await approveShiftWhenCheckin({ manv, diadiem });
+      }
     }
   }
 
