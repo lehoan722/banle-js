@@ -1,13 +1,14 @@
 // bangtonghopchamcong.js
-// Bảng tổng hợp chấm công theo ngày (Handsontable + lọc ở tiêu đề)
+// Bảng tổng hợp chấm công: NGÀY, NV, VAOCA, NTR, NTRD, NCH, NCHD, TANCA, GIỜ CÔNG, GHI CHÚ
+// Lấy trực tiếp từ chamcong_log, không dùng RPC khác.
 
 import { supabase } from "./supabaseClient.js";
 import { fillNhanVienDropdown } from "./dmnhanvien.js";
 
-let tonghopHot = null;
-let tonghopData = [];
+let hot = null;
+let tableData = [];
 
-// ============ TIỆN ÍCH ============
+// ========== TIỆN ÍCH ==========
 
 function setStatus(msg, isError = false) {
   const el = document.getElementById("status");
@@ -27,176 +28,146 @@ function setDefaultDates() {
   const today = getTodayISO();
   tuInput.value = today;
   denInput.value = today;
+  updateHeaderRange(today, today);
 }
 
-function formatDateVN(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return dateStr;
+function updateHeaderRange(tuNgay, denNgay) {
+  const fmt = (s) => {
+    if (!s) return "";
+    const [y, m, d] = s.split("-");
+    return `${d}-${m}-${String(y).slice(-2)}`;
+  };
+  document.getElementById("lbl-tungay").textContent = fmt(tuNgay);
+  document.getElementById("lbl-denngay").textContent = fmt(denNgay);
+}
+
+function toShortDate(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}-${mm}-${yy}`;
 }
 
-function formatNumber(n, decimals = 2) {
-  if (n == null || Number.isNaN(Number(n))) return "";
-  return Number(n).toFixed(decimals);
+function toTimeStr(d) {
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
 }
 
-// ============ HANDSONTABLE ============
+function toMinutes(d) {
+  return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+}
 
-function initTonghopGrid() {
+// ========== HANDSONTABLE ==========
+
+function initGrid() {
   const container = document.getElementById("tonghopGrid");
-  tonghopHot = new Handsontable(container, {
+  hot = new Handsontable(container, {
     data: [],
     rowHeaders: true,
     colHeaders: [
-      "Ngày",
-      "Mã NV",
+      "NGÀY",
+      "NV",
       "Cơ sở",
-      "Giờ công",
-      "Nghỉ trưa (phút)",
-      "Nghỉ chiều (phút)",
-      "Số lần AUTO_TANCA",
-      "Doanh số",
-      "Vắng ca?",
-      "TANCA theo lịch?",
-      "Ghi chú"
+      "VAOCA",
+      "NTR",
+      "NTRD",
+      "NCH",
+      "NCHD",
+      "TANCA",
+      "GIỜ CÔNG",
+      "GHI CHÚ"
     ],
     columns: [
-      { data: "ngay_fmt", type: "text" },
+      { data: "ngay", type: "text" },
       { data: "manv", type: "text" },
       { data: "diadiem", type: "text" },
-      { data: "gio_cong", type: "numeric" },
-      { data: "phut_nghi_trua", type: "numeric" },
-      { data: "phut_nghi_chieu", type: "numeric" },
-      { data: "so_lan_auto_tanca", type: "numeric" },
-      { data: "doanhso", type: "numeric" },
-      { data: "vang_ca_fmt", type: "text" },
-      { data: "tanca_lich_fmt", type: "text" },
-      { data: "ghi_chu_fmt", type: "text" }
+      { data: "vaoca", type: "text" },
+      { data: "ntr", type: "text" },
+      { data: "ntrd", type: "text" },
+      { data: "nch", type: "text" },
+      { data: "nchd", type: "text" },
+      { data: "tanca", type: "text" },
+      { data: "gio_cong", type: "numeric", numericFormat: { pattern: "0.00" } },
+      { data: "ghi_chu", type: "text" }
     ],
     licenseKey: "non-commercial-and-evaluation",
     stretchH: "all",
-    height: 500,
+    height: 520,
     filters: true,
     dropdownMenu: true,
+    columnSorting: true,
     readOnly: true,
-    cells: function (row, col) {
-      const cellProperties = {};
-      const rowData = tonghopData[row];
-      if (!rowData) return cellProperties;
+    cells(row, col) {
+      const props = {};
+      const r = tableData[row];
+      if (!r) return props;
 
-      // Tô màu các cảnh báo
-      if (rowData.cb1_quen_vaoca) {
-        cellProperties.className =
-          (cellProperties.className || "") + " cb1-warning";
+      if (col === 9) {
+        props.className = (props.className || "") + " giocon-cell";
       }
-      if (rowData.cb2_nghi_trua_qua_70p) {
-        cellProperties.className =
-          (cellProperties.className || "") + " cb2-warning";
-      }
-      if (rowData.cb3_nghi_chieu_qua_40p) {
-        cellProperties.className =
-          (cellProperties.className || "") + " cb3-warning";
-      }
-      if (rowData.vang_ca) {
-        cellProperties.className =
-          (cellProperties.className || "") + " vang-warning";
-      }
-      if (rowData.tanca_lich) {
-        cellProperties.className =
-          (cellProperties.className || "") + " tanca-lich-warning";
-      }
-
-      // Ghi chú: chữ nhỏ hơn
       if (col === 10) {
-        cellProperties.className =
-          (cellProperties.className || "") + " ghi-chu-cell";
+        props.className = (props.className || "") + " ghi-chu-cell";
       }
-
-      return cellProperties;
+      return props;
     }
   });
 }
 
-// ============ LOAD DỮ LIỆU ============
+// ========== LẤY & GOM DỮ LIỆU TỪ chamcong_log ==========
 
-function getFilterInputs() {
+function getFilters() {
   const tuNgay = document.getElementById("tu_ngay").value;
   const denNgay = document.getElementById("den_ngay").value;
   const diadiem = document.getElementById("diadiem").value || null;
-  const manvRaw = document.getElementById("manv").value.trim();
-  const manv = manvRaw !== "" ? manvRaw : null;
+  const manvVal = document.getElementById("manv").value.trim();
+  const manv = manvVal !== "" ? manvVal : null;
 
   if (!tuNgay || !denNgay) {
     alert("Vui lòng chọn đủ TỪ NGÀY và ĐẾN NGÀY.");
     return null;
   }
-
   return { tuNgay, denNgay, diadiem, manv };
 }
 
-function buildGhiChu(row) {
-  const notes = [];
-  if (row.so_lan_auto_tanca > 0) notes.push(`AUTO_TANCA x${row.so_lan_auto_tanca}`);
-  if (row.cb1_quen_vaoca) notes.push("CB1 quên vào ca");
-  if (row.cb2_nghi_trua_qua_70p) notes.push("CB2 trưa > 70p");
-  if (row.cb3_nghi_chieu_qua_40p) notes.push("CB3 chiều > 40p");
-  if (row.vang_ca) notes.push("VẮNG ca");
-  if (row.tanca_lich) notes.push("TANCA_LỊCH (không bấm tan ca)");
-  return notes.join(", ");
-}
+async function loadData() {
+  const f = getFilters();
+  if (!f) return;
+  const { tuNgay, denNgay, diadiem, manv } = f;
 
-async function loadTonghopData() {
-  const filters = getFilterInputs();
-  if (!filters) return;
-
-  const { tuNgay, denNgay, diadiem, manv } = filters;
-
+  updateHeaderRange(tuNgay, denNgay);
   setStatus("Đang tải dữ liệu...");
+
+  // Tạo khoảng thời gian theo giờ VN
+  const from = `${tuNgay}T00:00:00+07:00`;
+  const to = `${denNgay}T23:59:59.999+07:00`;
+
   try {
-    const { data, error } = await supabase.rpc("chamcong_tinhcong_daily", {
-      tu_ngay: tuNgay,
-      den_ngay: denNgay,
-      p_diadiem: diadiem,
-      p_manv: manv
-    });
+    let query = supabase
+      .from("chamcong_log")
+      .select("manv, diadiem, su_kien, ghi_chu, created_at")
+      .gte("created_at", from)
+      .lte("created_at", to);
+
+    if (diadiem) query = query.eq("diadiem", diadiem);
+    if (manv) query = query.eq("manv", manv);
+
+    const { data, error } = await query;
 
     if (error) {
-      console.error("Lỗi gọi chamcong_tinhcong_daily:", error);
-      setStatus("Lỗi tải dữ liệu. Xem console để biết chi tiết.", true);
+      console.error("Lỗi đọc chamcong_log:", error);
+      setStatus("Lỗi đọc dữ liệu chấm công. Xem console.", true);
       return;
     }
 
-    tonghopData = (data || []).map((row) => {
-      const gio_cong = Number(row.gio_cong || 0);
-      const phut_nghi_trua =
-        row.phut_nghi_trua != null ? Number(row.phut_nghi_trua) : 0;
-      const phut_nghi_chieu =
-        row.phut_nghi_chieu != null ? Number(row.phut_nghi_chieu) : 0;
-      const doanhso = Number(row.doanhso || 0);
+    const aggregated = aggregateLogs(data || []);
+    tableData = aggregated;
+    hot.loadData(tableData);
 
-      return {
-        ...row,
-        ngay_fmt: formatDateVN(row.ngay),
-        gio_cong,
-        phut_nghi_trua,
-        phut_nghi_chieu,
-        doanhso,
-        vang_ca_fmt: row.vang_ca ? "VẮNG" : "",
-        tanca_lich_fmt: row.tanca_lich ? "✓" : "",
-        ghi_chu_fmt: buildGhiChu(row)
-      };
-    });
-
-    tonghopHot.loadData(tonghopData);
-
-    if (tonghopData.length === 0) {
+    if (tableData.length === 0) {
       setStatus("Không có dữ liệu trong khoảng đã chọn.");
     } else {
-      setStatus(`Đã tải ${tonghopData.length} dòng dữ liệu.`);
+      setStatus(`Đã tải ${tableData.length} dòng dữ liệu.`);
     }
   } catch (err) {
     console.error("Lỗi không mong muốn:", err);
@@ -204,56 +175,201 @@ async function loadTonghopData() {
   }
 }
 
-// ============ XUẤT CSV ============
+/**
+ * Gom log theo (ngày, manv, diadiem) và lấy mốc VAOCA, NTR, NTRD, NCH, NCHD, TANCA
+ * Tính GIỜ CÔNG = (TANCA - VAOCA) - (NTRD - NTR) - (NCHD - NCH)
+ */
+function aggregateLogs(rows) {
+  const map = new Map();
+
+  for (const row of rows) {
+    const d = new Date(row.created_at);
+    // Giả sử trình duyệt đang ở VN, dùng thời gian local
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+    const shortDate = toShortDate(d);
+
+    const key = `${dateKey}|${row.manv}|${row.diadiem}`;
+    let agg = map.get(key);
+    if (!agg) {
+      agg = {
+        dateKey,
+        ngay: shortDate,
+        manv: row.manv,
+        diadiem: row.diadiem,
+        // giữ phút để tính toán
+        vaocaMin: null,
+        ntrMin: null,
+        ntrdMin: null,
+        nchMin: null,
+        nchdMin: null,
+        tancaMin: null,
+        vaoca: "",
+        ntr: "",
+        ntrd: "",
+        nch: "",
+        nchd: "",
+        tanca: "",
+        ghiChuList: []
+      };
+      map.set(key, agg);
+    }
+
+    const sukien = row.su_kien;
+    const ghiChu = row.ghi_chu;
+    if (ghiChu) {
+      agg.ghiChuList.push(String(ghiChu));
+    }
+
+    // Chỉ xử lý các mốc chính
+    const dMin = toMinutes(d);
+    const timeStr = toTimeStr(d);
+
+    if (sukien === "VAOCA") {
+      if (agg.vaocaMin == null || dMin < agg.vaocaMin) {
+        agg.vaocaMin = dMin;
+        agg.vaoca = timeStr;
+      }
+    } else if (sukien === "NTR") {
+      if (agg.ntrMin == null || dMin < agg.ntrMin) {
+        agg.ntrMin = dMin;
+        agg.ntr = timeStr;
+      }
+    } else if (sukien === "NTRD") {
+      if (agg.ntrdMin == null || dMin < agg.ntrdMin) {
+        agg.ntrdMin = dMin;
+        agg.ntrd = timeStr;
+      }
+    } else if (sukien === "NCH") {
+      if (agg.nchMin == null || dMin < agg.nchMin) {
+        agg.nchMin = dMin;
+        agg.nch = timeStr;
+      }
+    } else if (sukien === "NCHD") {
+      if (agg.nchdMin == null || dMin < agg.nchdMin) {
+        agg.nchdMin = dMin;
+        agg.nchd = timeStr;
+      }
+    } else if (sukien === "TANCA") {
+      // TANCA lấy mốc muộn nhất trong ngày
+      if (agg.tancaMin == null || dMin > agg.tancaMin) {
+        agg.tancaMin = dMin;
+        agg.tanca = timeStr;
+      }
+    }
+    // các su_kien khác (AUTO_TANCA, ...) chỉ dùng ghi_chu
+  }
+
+  const result = [];
+
+  for (const agg of map.values()) {
+    let gioCong = 0;
+
+    if (agg.vaocaMin != null && agg.tancaMin != null) {
+      const total = agg.tancaMin - agg.vaocaMin;
+
+      const nghiTrua =
+        agg.ntrMin != null && agg.ntrdMin != null
+          ? Math.max(agg.ntrdMin - agg.ntrMin, 0)
+          : 0;
+
+      const nghiChieu =
+        agg.nchMin != null && agg.nchdMin != null
+          ? Math.max(agg.nchdMin - agg.nchMin, 0)
+          : 0;
+
+      const workMin = Math.max(total - nghiTrua - nghiChieu, 0);
+      gioCong = Number((workMin / 60).toFixed(2));
+    }
+
+    result.push({
+      ngay: agg.ngay,
+      manv: agg.manv,
+      diadiem: agg.diadiem,
+      vaoca: agg.vaoca,
+      ntr: agg.ntr,
+      ntrd: agg.ntrd,
+      nch: agg.nch,
+      nchd: agg.nchd,
+      tanca: agg.tanca,
+      gio_cong: gioCong,
+      ghi_chu: agg.ghiChuList.join(", ")
+    });
+  }
+
+  // Sắp xếp: ngày tăng dần, NV tăng dần, cơ sở
+  result.sort((a, b) => {
+    if (a.ngay === b.ngay) {
+      if (a.manv === b.manv) {
+        return a.diadiem.localeCompare(b.diadiem);
+      }
+      return a.manv.localeCompare(b.manv);
+    }
+    // dd-mm-yy → sort lại theo dateKey better, nhưng ở đây chấp nhận đơn giản:
+    const [da, ma, ya] = a.ngay.split("-").map(Number);
+    const [db, mb, yb] = b.ngay.split("-").map(Number);
+    const va = ya * 10000 + ma * 100 + da;
+    const vb = yb * 10000 + mb * 100 + db;
+    return va - vb;
+  });
+
+  return result;
+}
+
+// ========== XUẤT CSV ==========
 
 function exportCsv() {
-  if (!tonghopData || tonghopData.length === 0) {
+  if (!tableData || tableData.length === 0) {
     alert("Không có dữ liệu để xuất.");
     return;
   }
 
-  const rows = [];
+  const rows = [
+    [
+      "NGÀY",
+      "NV",
+      "Cơ sở",
+      "VAOCA",
+      "NTR",
+      "NTRD",
+      "NCH",
+      "NCHD",
+      "TANCA",
+      "GIỜ CÔNG",
+      "GHI CHÚ"
+    ]
+  ];
 
-  rows.push([
-    "Ngày",
-    "Mã NV",
-    "Cơ sở",
-    "Giờ công",
-    "Nghỉ trưa (phút)",
-    "Nghỉ chiều (phút)",
-    "Số lần AUTO_TANCA",
-    "Doanh số",
-    "Vắng ca?",
-    "TANCA theo lịch?",
-    "Ghi chú"
-  ]);
-
-  tonghopData.forEach((r) => {
+  tableData.forEach((r) => {
     rows.push([
-      r.ngay_fmt,
+      r.ngay,
       r.manv,
       r.diadiem,
-      formatNumber(r.gio_cong, 2),
-      formatNumber(r.phut_nghi_trua, 0),
-      formatNumber(r.phut_nghi_chieu, 0),
-      r.so_lan_auto_tanca,
-      formatNumber(r.doanhso, 0),
-      r.vang_ca ? "VẮNG" : "",
-      r.tanca_lich ? "✓" : "",
-      r.ghi_chu_fmt
+      r.vaoca,
+      r.ntr,
+      r.ntrd,
+      r.nch,
+      r.nchd,
+      r.tanca,
+      r.gio_cong != null ? r.gio_cong.toFixed(2) : "",
+      r.ghi_chu || ""
     ]);
   });
 
-  const csvContent = rows.map((row) =>
-    row
-      .map((v) => {
-        const s = String(v ?? "").replace(/"/g, '""');
-        return `"${s}"`;
-      })
-      .join(",")
-  ).join("\r\n");
+  const csv = rows
+    .map((row) =>
+      row
+        .map((v) => {
+          const s = String(v ?? "").replace(/"/g, '""');
+          return `"${s}"`;
+        })
+        .join(",")
+    )
+    .join("\r\n");
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -264,29 +380,25 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-// ============ KHỞI ĐỘNG ============
+// ========== KHỞI ĐỘNG ==========
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. Khởi tạo Handsontable
-  initTonghopGrid();
-
-  // 2. Ngày mặc định = hôm nay
+  initGrid();
   setDefaultDates();
 
-  // 3. Load danh mục nhân viên cho datalist (dùng chung module dmnhanvien.js)
+  // Load dropdown nhân viên dùng chung module dmnhanvien.js
   const manvDatalist = document.getElementById("ds-manv");
   if (manvDatalist) {
     try {
       await fillNhanVienDropdown(manvDatalist, { showName: true });
     } catch (err) {
-      console.error("Lỗi load danh mục nhân viên cho bảng tổng hợp:", err);
+      console.error("Lỗi load danh mục nhân viên:", err);
     }
   }
 
-  // 4. Gán event
-  document.getElementById("btn-load").addEventListener("click", loadTonghopData);
+  document.getElementById("btn-load").addEventListener("click", loadData);
   document.getElementById("btn-export").addEventListener("click", exportCsv);
 
-  // 5. Tự động tải dữ liệu ngày hiện tại khi mở trang
-  await loadTonghopData();
+  // Khi mở trang: tự tải dữ liệu ngày hiện tại
+  await loadData();
 });
