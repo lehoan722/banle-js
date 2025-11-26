@@ -17,8 +17,13 @@
     }
 
     h1 {
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       font-size: 20px;
+    }
+
+    .sub-title {
+      font-size: 13px;
+      margin-bottom: 8px;
     }
 
     .filter-row {
@@ -26,7 +31,7 @@
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .filter-row label {
@@ -41,13 +46,9 @@
     }
 
     #status {
-      margin: 5px 0;
+      margin: 4px 0;
       font-size: 13px;
       color: #555;
-    }
-
-    #grid-wrapper {
-      margin-top: 5px;
     }
 
     #tonghopGrid {
@@ -56,21 +57,9 @@
       overflow: hidden;
     }
 
-    /* Tô màu cảnh báo giống trang baocaochamcong */
-    .cb1-warning {
-      background-color: #fff9c4 !important; /* vàng nhạt */
-    }
-    .cb2-warning {
-      background-color: #ffe0b2 !important; /* cam nhạt */
-    }
-    .cb3-warning {
-      background-color: #ffccbc !important; /* đỏ nhạt */
-    }
-    .vang-warning {
-      background-color: #ffcdd2 !important; /* đỏ hồng */
-    }
-    .tanca-lich-warning {
-      background-color: #e1bee7 !important; /* tím nhạt */
+    .giocon-cell {
+      color: #d32f2f;
+      font-weight: bold;
     }
 
     .ghi-chu-cell {
@@ -79,7 +68,10 @@
   </style>
 </head>
 <body>
-  <h1>Bảng tổng hợp chấm công (theo ngày)</h1>
+  <h1>BẢNG TỔNG HỢP CHẤM CÔNG</h1>
+  <div class="sub-title">
+    Từ ngày: <span id="lbl-tungay"></span> &nbsp;&nbsp; Đến ngày: <span id="lbl-denngay"></span>
+  </div>
 
   <div class="filter-row">
     <label>Từ ngày:
@@ -109,14 +101,12 @@
 
   <div id="status"></div>
 
-  <div id="grid-wrapper">
-    <div id="tonghopGrid"></div>
-  </div>
+  <div id="tonghopGrid"></div>
 
   <!-- Handsontable JS -->
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
-  <!-- Script chính (module) -->
+  <!-- Script chính -->
   <script type="module" src="./scripts/bangtonghopchamcong.js"></script>
 </body>
 </html>
