@@ -45,16 +45,15 @@ async function loadLogs() {
 
   setStatus("Đang tải log...");
 
+  // Khoảng thời gian 1 ngày theo giờ Việt Nam
   const from = `${ngay}T00:00:00+07:00`;
-  const base = new Date(`${ngay}T00:00:00+07:00`);
-  const toDateObjPlus1 = new Date(base.getTime() + 24 * 60 * 60 * 1000);
-  const to = toDateObjPlus1.toISOString().replace("Z", "+07:00");
+  const to = `${ngay}T23:59:59.999+07:00`;
 
   let query = supabase
     .from("chamcong_log")
     .select("id, manv, diadiem, su_kien, nguon, created_at")
     .gte("created_at", from)
-    .lt("created_at", to)
+    .lte("created_at", to)
     .order("created_at", { ascending: true });
 
   if (diadiem) query = query.eq("diadiem", diadiem);
