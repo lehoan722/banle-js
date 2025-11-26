@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bảng tổng hợp chấm công</title>
+
+  <!-- Handsontable CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css"
+  />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .filter-row label {
+      font-size: 13px;
+    }
+
+    .filter-row input,
+    .filter-row select,
+    .filter-row button {
+      font-size: 13px;
+      padding: 3px 6px;
+    }
+
+    #status {
+      margin: 5px 0;
+      font-size: 13px;
+      color: #555;
+    }
+
+    #grid-wrapper {
+      margin-top: 5px;
+    }
+
+    #tonghopGrid {
+      width: 100%;
+      max-height: 600px;
+      overflow: hidden;
+    }
+
+    /* Tô màu cảnh báo giống trang baocaochamcong */
+    .cb1-warning {
+      background-color: #fff9c4 !important; /* vàng nhạt */
+    }
+    .cb2-warning {
+      background-color: #ffe0b2 !important; /* cam nhạt */
+    }
+    .cb3-warning {
+      background-color: #ffccbc !important; /* đỏ nhạt */
+    }
+    .vang-warning {
+      background-color: #ffcdd2 !important; /* đỏ hồng */
+    }
+    .tanca-lich-warning {
+      background-color: #e1bee7 !important; /* tím nhạt */
+    }
+
+    .ghi-chu-cell {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Bảng tổng hợp chấm công (theo ngày)</h1>
+
+  <div class="filter-row">
+    <label>Từ ngày:
+      <input type="date" id="tu_ngay" />
+    </label>
+
+    <label>Đến ngày:
+      <input type="date" id="den_ngay" />
+    </label>
+
+    <label>Cơ sở:
+      <select id="diadiem">
+        <option value="">Tất cả</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+    </label>
+
+    <label>Mã NV:
+      <input type="text" id="manv" list="ds-manv" placeholder="Chọn mã NV" />
+    </label>
+    <datalist id="ds-manv"></datalist>
+
+    <button id="btn-load">Tải dữ liệu</button>
+    <button id="btn-export">Xuất CSV</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div id="grid-wrapper">
+    <div id="tonghopGrid"></div>
+  </div>
+
+  <!-- Handsontable JS -->
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+
+  <!-- Script chính (module) -->
+  <script type="module" src="./scripts/bangtonghopchamcong.js"></script>
+</body>
+</html>
