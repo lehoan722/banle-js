@@ -191,7 +191,7 @@ export async function khoiTaoUngDung() {
   if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
   // === HẾT GUARD ===
 
-    // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CHỈ CS1) ===
+  // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CHỈ CS1) ===
   const isBanLeMTcs1Page = path.includes("banlemtcs1");
   const isBanNvcs1Page = path.includes("bannvcs1");
 
@@ -789,6 +789,8 @@ function loadQuickActionState() {
 
 let bayMauTimer = null;
 let bayMauPopupDangMo = false;
+// Lưu context hiện tại để dùng lại trong các lần kiểm tra sau
+window.__bayMauContext = window.__bayMauContext || null;
 
 /**
  * Gọi RPC lấy danh sách cần bày mẫu
@@ -988,29 +990,62 @@ function showBayMauPopup(tasks, context) {
 }
 
 /**
- * Bắt đầu vòng lặp 10 phút kiểm tra bày mẫu
+ * Hàm kiểm tra 1 lần:
+ * - Nếu bảng kết quả đang có dữ liệu => KHÔNG popup
+ * - Nếu rảnh => gọi RPC & hiện popup nếu có việc
+ */
+async function runBayMauCheck(contextOverride) {
+  const ctx = contextOverride || window.__bayMauContext;
+  if (!ctx) return;
+
+  const { diadiem, mode, manvDangNhap } = ctx;
+
+  // Trang nhân viên mà chưa có mã NV -> bỏ qua
+  if (mode === "nv" && !manvDangNhap) return;
+
+  // 1. Nếu bảng kết quả đang có dữ liệu thì KHÔNG nhắc
+  try {
+    if (typeof getBangKetQua === "function") {
+      const bang = getBangKetQua();
+      if (bang && Object.keys(bang).length > 0) {
+        // đang bán dở -> không gây phiền
+        return;
+      }
+    }
+  } catch (e) {
+    console.error("Lỗi kiểm tra bảng kết quả trước khi nhắc bày mẫu:", e);
+  }
+
+  // 2. Nếu rảnh tay -> gọi RPC
+  const tasks = await fetchBayMauTasks({ diadiem, mode, manvDangNhap });
+  if (tasks && tasks.length) {
+    showBayMauPopup(tasks, ctx);
+  }
+}
+
+/**
+ * Bắt đầu vòng lặp 5 phút kiểm tra bày mẫu
  */
 function startBayMauReminderLoop({ diadiem, mode, manvDangNhap }) {
-  // Hàm check 1 lần
-  const doCheck = async () => {
-    // Chỉ chạy nếu đang đăng nhập và có thông tin nhân viên với mode 'nv'
-    if (mode === "nv" && !manvDangNhap) return;
+  // Lưu context global
+  window.__bayMauContext = { diadiem, mode, manvDangNhap };
 
-    const tasks = await fetchBayMauTasks({ diadiem, mode, manvDangNhap });
-    if (tasks && tasks.length) {
-      showBayMauPopup(tasks, { diadiem, mode, manvDangNhap });
-    }
-  };
-
-  // Chạy lần đầu sau khi đăng nhập
-  doCheck();
+  // Chạy 1 lần ngay lập tức
+  runBayMauCheck();
 
   // Clear timer cũ nếu có
   if (bayMauTimer) clearInterval(bayMauTimer);
 
-  // Lặp lại mỗi 10 phút
-  bayMauTimer = setInterval(doCheck, 10 * 60 * 1000);
+  // Lặp lại mỗi 5 phút
+  bayMauTimer = setInterval(() => runBayMauCheck(), 5 * 60 * 1000);
 }
+
+/**
+ * Cho phép nơi khác (nút Thêm mới, v.v.) gọi check ngay lập tức
+ */
+window.triggerBayMauCheckNgay = function () {
+  runBayMauCheck();
+};
 
 // =================== HẾT: POPUP NHẮC BÀY MẪU ===================
 
