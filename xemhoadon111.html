@@ -755,78 +755,63 @@
 
 
   <script>
-    // Supabase project của bạn (dùng anon key)  xax nhan sua hoa don
     const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
 
-    // 👉 HÀM ĐỌC THÔNG TIN ĐĂNG NHẬP TỪ LOCALSTORAGE
-    // Bạn chỉ cần chỉnh lại tên key cho đúng với authModule đang dùng.
-    function getSavedNVFromLocalStorage() {
-      try {
-        // Trường hợp authModule lưu 1 object JSON
-        // ví dụ: localStorage.setItem('auth_user', JSON.stringify({ manv, matkhau }))
-        const authJson =
-          localStorage.getItem('auth_user') ||
-          localStorage.getItem('authUser') ||
-          localStorage.getItem('currentUser');
-
-        if (authJson) {
-          const u = JSON.parse(authJson);
-          return {
-            manv: u.manv || u.ma_nv || u.username || '',
-            matkhau: u.matkhau || u.password || u.mk || ''
-          };
-        }
-
-        // Trường hợp lưu từng key riêng lẻ
-        const manv =
-          localStorage.getItem('manv') ||
-          localStorage.getItem('lastManv') ||
-          '';
-        const matkhau =
-          localStorage.getItem('matkhau') ||
-          localStorage.getItem('lastMatkhau') ||
-          '';
-
-        return { manv, matkhau };
-      } catch (e) {
-        console.warn('Lỗi đọc localStorage xác thực NV:', e);
-        return { manv: '', matkhau: '' };
-      }
-    }
-
-    // Hàm xác thực nhân viên, gọi ở bất kỳ đâu!
+    // 👉 Hàm mở popup + tự fill mã NV / mật khẩu
     async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+      const popup = document.getElementById('popupXacThucNV');
+      const txtMa = document.getElementById('maNVCheck');
+      const txtMk = document.getElementById('matkhauNVCheck');
       const msg = document.getElementById('msgCheckNV');
 
-      // 👉 Lấy dữ liệu đã lưu trong localStorage
-      const saved = getSavedNVFromLocalStorage();
+      // 1. Đọc thông tin đã lưu khi đăng nhập
+      const savedMa =
+        localStorage.getItem('login_manv') ||
+        localStorage.getItem('manv') || '';          // fallback theo banlemtcs1
 
-      // Nếu có dữ liệu thì tự fill vào popup, nếu không thì để trống
-      document.getElementById('maNVCheck').value = saved.manv || '';
-      document.getElementById('matkhauNVCheck').value = saved.matkhau || '';
+      const savedMk =
+        localStorage.getItem('login_matkhau') || ''; // key mật khẩu chuẩn
 
-      msg.textContent = '';
-      msg.style.color = '#ad3a2b';
+      // 2. Đẩy thẳng vào ô nhập
+      if (txtMa) txtMa.value = savedMa;
+      if (txtMk) txtMk.value = savedMk;
 
-      // Hiển thị popup
-      document.getElementById('popupXacThucNV').style.display = 'block';
-
-      // Xử lý khi bấm nút kiểm tra
-      document.getElementById('btnKiemTraNV').onclick = async function () {
-        const manv = document.getElementById('maNVCheck').value.trim();
-        const mk = document.getElementById('matkhauNVCheck').value.trim();
-
-        msg.style.color = '#ad3a2b';
+      // 3. Xóa message cũ + mở popup
+      if (msg) {
         msg.textContent = '';
+        msg.style.color = '#ad3a2b';
+      }
+      popup.style.display = 'block';
+
+      // 4. Focus hợp lý:
+      //    - Nếu đã có đủ mã + mật khẩu → focus nút kiểm tra
+      //    - Nếu chưa → cho người dùng sửa tiếp
+      setTimeout(() => {
+        if (savedMa && savedMk) {
+          if (txtMk) { txtMk.focus(); txtMk.select(); }
+        } else if (txtMa) {
+          txtMa.focus(); txtMa.select();
+        }
+      }, 0);
+
+      // 5. Gán sự kiện khi bấm nút Kiểm tra
+      const btn = document.getElementById('btnKiemTraNV');
+      if (!btn) return;
+
+      btn.onclick = async function () {
+        const manv = txtMa.value.trim();
+        const mk = txtMk.value.trim();
 
         if (!manv || !mk) {
           msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
+          msg.style.color = '#ad3a2b';
           return;
         }
 
         const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         const { data, error } = await supabase
           .from('dmnhanvien')
           .select('*')
@@ -835,80 +820,31 @@
 
         if (error || !data) {
           msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
+          msg.style.color = '#ad3a2b';
           return;
         }
         if (data.matkhau !== mk) {
           msg.textContent = "❌ Mật khẩu không đúng!";
+          msg.style.color = '#ad3a2b';
           return;
         }
         if (!data.xoa_hoadon) {
-          msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
+          msg.textContent = "❌ Bạn không có quyền xóa hóa đơn!";
+          msg.style.color = '#ad3a2b';
           return;
         }
 
         // ✅ Thành công
+        msg.textContent = "✅ Đã xác thực, đang xóa...";
         msg.style.color = 'green';
-        msg.textContent = "✅ Đã xác thực, đang xử lý...";
+
         setTimeout(() => {
-          document.getElementById('popupXacThucNV').style.display = 'none';
+          popup.style.display = 'none';
           msg.textContent = '';
-          if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data);
-        }, 450);
-      };
-    }
-    
-    // Hàm xác thực nhân viên, gọi ở bất kỳ đâu!
-    async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
-      document.getElementById('maNVCheck').value = '';
-      document.getElementById('matkhauNVCheck').value = '';
-      document.getElementById('msgCheckNV').textContent = '';
-      document.getElementById('popupXacThucNV').style.display = 'block';
-
-      // Đặt lại màu báo lỗi
-      document.getElementById('msgCheckNV').style.color = '#ad3a2b';
-
-      // Xử lý khi bấm nút kiểm tra
-      document.getElementById('btnKiemTraNV').onclick = async function () {
-        const manv = document.getElementById('maNVCheck').value.trim();
-        const mk = document.getElementById('matkhauNVCheck').value.trim();
-        const msg = document.getElementById('msgCheckNV');
-        msg.style.color = '#ad3a2b';
-        msg.textContent = '';
-
-        if (!manv || !mk) {
-          msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
-          return;
-        }
-
-        // Import SDK Supabase
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data, error } = await supabase
-          .from('dmnhanvien')
-          .select('*')
-          .eq('manv', manv)
-          .single();
-
-        if (error || !data) {
-          msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
-          return;
-        }
-        if (data.matkhau !== mk) {
-          msg.textContent = "❌ Mật khẩu không đúng!";
-          return;
-        }
-        if (!data.xoa_hoadon) { // Nếu cần phân quyền khác thì đổi tên trường này
-          msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
-          return;
-        }
-        // Thành công!
-        msg.style.color = 'green';
-        msg.textContent = "✅ Đã xác thực, đang xử lý...";
-        setTimeout(() => {
-          document.getElementById('popupXacThucNV').style.display = 'none';
-          msg.textContent = '';
-          if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data); // Truyền data nếu cần
-        }, 450);
+          if (typeof callbackSauXacThuc === 'function') {
+            callbackSauXacThuc(data); // gọi hàm xóa thực sự
+          }
+        }, 400);
       };
     }
   </script>
