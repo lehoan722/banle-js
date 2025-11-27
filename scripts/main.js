@@ -191,6 +191,21 @@ export async function khoiTaoUngDung() {
   if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
   // === HẾT GUARD ===
 
+    // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CHỈ CS1) ===
+  const isBanLeMTcs1Page = path.includes("banlemtcs1");
+  const isBanNvcs1Page = path.includes("bannvcs1");
+
+  if (isBanLeMTcs1Page || isBanNvcs1Page) {
+    const mode = isBanLeMTcs1Page ? "mt" : "nv";
+    // diadiem = 'cs1' (đúng theo yêu cầu)
+    startBayMauReminderLoop({
+      diadiem: "cs1",
+      mode,
+      manvDangNhap,
+    });
+  }
+  // === HẾT PHẦN NHẮC BÀY MẪU ===
+
 
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
   if (error) {
@@ -769,6 +784,236 @@ function loadQuickActionState() {
   if ("inKhongHoi" in states && document.getElementById("inKhongHoi"))
     document.getElementById("inKhongHoi").checked = states.inKhongHoi;
 }
+
+// =================== BẮT ĐẦU: POPUP NHẮC BÀY MẪU ===================
+
+let bayMauTimer = null;
+let bayMauPopupDangMo = false;
+
+/**
+ * Gọi RPC lấy danh sách cần bày mẫu
+ */
+async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
+  try {
+    const { data, error } = await supabase.rpc("baymau_get_tasks", {
+      p_diadiem: diadiem,
+      p_mode: mode,
+      p_manv: mode === "nv" ? manvDangNhap : null,
+    });
+
+    if (error) {
+      console.error("Lỗi RPC baymau_get_tasks:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (e) {
+    console.error("Lỗi fetchBayMauTasks:", e);
+    return [];
+  }
+}
+
+/**
+ * Hiển thị popup nhắc bày mẫu
+ * - tasks: danh sách bản ghi từ RPC
+ * - context: { diadiem, mode, manvDangNhap }
+ */
+function showBayMauPopup(tasks, context) {
+  if (!tasks || !tasks.length) return;
+  if (bayMauPopupDangMo) return;
+  bayMauPopupDangMo = true;
+
+  // Tạo overlay mờ để bắt sự kiện click ra ngoài
+  const overlay = document.createElement("div");
+  overlay.id = "baymau-overlay";
+  Object.assign(overlay.style, {
+    position: "fixed",
+    inset: "0",
+    background: "rgba(0,0,0,0.05)",
+    zIndex: "9998",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    pointerEvents: "auto",
+  });
+
+  // Khối popup chính (ở gần cuối màn hình)
+  const box = document.createElement("div");
+  box.id = "baymau-popup";
+  Object.assign(box.style, {
+    marginBottom: "12px",
+    minWidth: "320px",
+    maxWidth: "600px",
+    maxHeight: "60vh",
+    background: "#f7e0b3",   // màu vàng nhạt kiểu cảnh báo nhẹ
+    borderRadius: "6px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+    padding: "8px 10px",
+    fontSize: "13px",
+    overflow: "auto",
+  });
+
+  // Header
+  const header = document.createElement("div");
+  Object.assign(header.style, {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "4px",
+    fontWeight: "600",
+  });
+  header.innerHTML = `<span>YÊU CẦU BÀY MẪU SP</span>`;
+
+  const btnClose = document.createElement("button");
+  btnClose.textContent = "✕";
+  Object.assign(btnClose.style, {
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "bold",
+  });
+  header.appendChild(btnClose);
+
+  // Bảng nội dung
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+
+  const thead = document.createElement("thead");
+  thead.innerHTML = `
+    <tr style="background:#f4c985;">
+      <th style="border:1px solid #ccc;padding:4px 6px;">bày mẫu</th>
+      <th style="border:1px solid #ccc;padding:4px 6px;">mã sp</th>
+      <th style="border:1px solid #ccc;padding:4px 6px;">nv bán</th>
+    </tr>
+  `;
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  tasks.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.style.background = "#fdf1d6";
+
+    // Checkbox
+    const tdCheck = document.createElement("td");
+    tdCheck.style.border = "1px solid #ccc";
+    tdCheck.style.padding = "4px 6px";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.idCt = row.id_ct;
+    tdCheck.appendChild(cb);
+
+    // Mã SP (click = mở stockQuickPopup)
+    const tdMasp = document.createElement("td");
+    tdMasp.style.border = "1px solid #ccc";
+    tdMasp.style.padding = "4px 6px";
+    tdMasp.style.cursor = "pointer";
+    tdMasp.style.textAlign = "left";
+    tdMasp.textContent = row.masp;
+    tdMasp.addEventListener("click", (e) => {
+      e.stopPropagation();
+      try {
+        if (typeof window.stockQuickPopup === "function") {
+          window.stockQuickPopup(String(row.masp).toUpperCase());
+        } else {
+          console.warn("stockQuickPopup chưa được khai báo trên window.");
+        }
+      } catch (err) {
+        console.error("Lỗi gọi stockQuickPopup:", err);
+      }
+    });
+
+    // NV bán
+    const tdNvBan = document.createElement("td");
+    tdNvBan.style.border = "1px solid #ccc";
+    tdNvBan.style.padding = "4px 6px";
+    tdNvBan.textContent = row.nvban || "";
+
+    tr.appendChild(tdCheck);
+    tr.appendChild(tdMasp);
+    tr.appendChild(tdNvBan);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  box.appendChild(header);
+  box.appendChild(table);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Hàm đóng popup:
+  async function closePopup() {
+    try {
+      // Lấy các dòng đã tick
+      const checked = Array.from(
+        box.querySelectorAll("input[type=checkbox]:checked")
+      );
+      const ids = checked
+        .map((cb) => Number(cb.dataset.idCt))
+        .filter((v) => Number.isFinite(v));
+
+      if (ids.length > 0 && context.manvDangNhap) {
+        const { error } = await supabase.rpc("baymau_set_done", {
+          p_ids: ids,
+          p_manv: context.manvDangNhap,
+        });
+        if (error) {
+          console.error("Lỗi RPC baymau_set_done:", error);
+        }
+      }
+    } catch (e) {
+      console.error("Lỗi khi đóng popup bày mẫu:", e);
+    } finally {
+      bayMauPopupDangMo = false;
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    }
+  }
+
+  // Đóng bằng nút X
+  btnClose.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closePopup();
+  });
+
+  // Click ra ngoài box thì đóng
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closePopup();
+    }
+  });
+}
+
+/**
+ * Bắt đầu vòng lặp 10 phút kiểm tra bày mẫu
+ */
+function startBayMauReminderLoop({ diadiem, mode, manvDangNhap }) {
+  // Hàm check 1 lần
+  const doCheck = async () => {
+    // Chỉ chạy nếu đang đăng nhập và có thông tin nhân viên với mode 'nv'
+    if (mode === "nv" && !manvDangNhap) return;
+
+    const tasks = await fetchBayMauTasks({ diadiem, mode, manvDangNhap });
+    if (tasks && tasks.length) {
+      showBayMauPopup(tasks, { diadiem, mode, manvDangNhap });
+    }
+  };
+
+  // Chạy lần đầu sau khi đăng nhập
+  doCheck();
+
+  // Clear timer cũ nếu có
+  if (bayMauTimer) clearInterval(bayMauTimer);
+
+  // Lặp lại mỗi 10 phút
+  bayMauTimer = setInterval(doCheck, 10 * 60 * 1000);
+}
+
+// =================== HẾT: POPUP NHẮC BÀY MẪU ===================
+
 
 document.addEventListener("DOMContentLoaded", function () {
   loadQuickActionState();
