@@ -8,7 +8,7 @@
   }
 
   // ===== CSS cho popup trên từng card ảnh =====
-    const css = `
+  const css = `
   .card {
     /* không cần gì đặc biệt nữa, chỉ đánh dấu dòng có popup */
   }
@@ -294,7 +294,7 @@
     });
   }
 
-    let globalCloseBound = false;
+  let globalCloseBound = false;
 
   function bindGlobalCloseHandlers() {
     if (globalCloseBound) return;
@@ -319,7 +319,7 @@
     });
   }
 
-    // ===== Drag support: kéo popup bằng thanh header =====
+  // ===== Drag support: kéo popup bằng thanh header =====
   function makeDraggable(popup, handle) {
     if (!popup || !handle) return;
 
@@ -337,7 +337,7 @@
 
       const rect = popup.getBoundingClientRect();
       startLeft = rect.left;
-      startTop  = rect.top;
+      startTop = rect.top;
 
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
@@ -354,9 +354,9 @@
       const dy = p.clientY - startY;
 
       let left = startLeft + dx;
-      let top  = startTop  + dy;
+      let top = startTop + dy;
 
-      const vw = window.innerWidth  || document.documentElement.clientWidth;
+      const vw = window.innerWidth || document.documentElement.clientWidth;
       const vh = window.innerHeight || document.documentElement.clientHeight;
       const rect = popup.getBoundingClientRect();
       const w = rect.width;
@@ -364,12 +364,12 @@
 
       // Giới hạn trong màn hình
       if (left < 0) left = 0;
-      if (top  < 0) top  = 0;
+      if (top < 0) top = 0;
       if (left + w > vw) left = vw - w;
-      if (top  + h > vh) top  = vh - h;
+      if (top + h > vh) top = vh - h;
 
       popup.style.left = left + 'px';
-      popup.style.top  = top  + 'px';
+      popup.style.top = top + 'px';
     };
 
     const onUp = () => {
@@ -416,9 +416,9 @@
       };
     }
 
-        // Click vào dòng tổng (mã) hoặc header để bật/tắt ảnh sản phẩm
-    const sumRowEl  = popup.querySelector('tr.sum-row');
-    const headerEl  = popup.querySelector('.sq-stock-popup-header');
+    // Click vào dòng tổng (mã) hoặc header để bật/tắt ảnh sản phẩm
+    const sumRowEl = popup.querySelector('tr.sum-row');
+    const headerEl = popup.querySelector('.sq-stock-popup-header');
     const imgWrapper = popup.querySelector('.sq-img-wrapper');
 
     const toggleImg = (e) => {
@@ -453,11 +453,11 @@
     const approxHeight = 480;
 
     let left = scrollX + vw / 2;
-    let top  = scrollY + vh / 2;
+    let top = scrollY + vh / 2;
 
     // Đặt vào giữa bằng transform
     popup.style.left = `${left}px`;
-    popup.style.top  = `${top}px`;
+    popup.style.top = `${top}px`;
     popup.style.transform = 'translate(-50%, -50%)';
 
     // Đảm bảo ESC + click ngoài hoạt động
@@ -495,7 +495,6 @@
     }
   }
 
-
   // API dùng chung – thêm hàm showFor để nơi khác gọi trực tiếp
   window.StockQuick = {
     attach,
@@ -503,5 +502,15 @@
       return ensurePopup(card, masp);
     }
   };
+
+  // 👉 Thêm wrapper global cho các chỗ gọi window.stockQuickPopup(masp)
+  if (typeof window !== "undefined") {
+    window.stockQuickPopup = function (masp) {
+      // dùng body làm "card" để ensurePopup định vị popup ở giữa màn hình
+      return window.StockQuick.showFor(document.body, masp);
+    };
+  }
 })();
+
+
 
