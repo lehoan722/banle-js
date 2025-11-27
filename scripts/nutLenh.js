@@ -29,22 +29,27 @@ export function ganSuKienNutLenh() {
       if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
     });
 
-      resetBangKetQua();
-  await capNhatSoHoaDonTuDong();
+    resetBangKetQua();
+    await capNhatSoHoaDonTuDong();
 
-  const now = new Date();
+    const now = new Date();
 
-  document.getElementById("diadiem").value = diadiemVal;
-  document.getElementById("manv").value = manvVal;
-  document.getElementById("tennv").value = tennvVal;
-  document.getElementById("ngay").value = now.toISOString().slice(0, 10);
+    document.getElementById("diadiem").value = diadiemVal;
+    document.getElementById("manv").value = manvVal;
+    document.getElementById("tennv").value = tennvVal;
+    document.getElementById("ngay").value = now.toISOString().slice(0, 10);
 
-  const gioEl = document.getElementById("gio");
-  if (gioEl) {
-    gioEl.value = formatTimeHHMM(now);
-  }
+    const gioEl = document.getElementById("gio");
+    if (gioEl) {
+      gioEl.value = formatTimeHHMM(now);
+    }
 
-  document.getElementById("masp").focus();
+    document.getElementById("masp").focus();
+
+    // 🔔 Sau khi bắt đầu hóa đơn mới -> nhắc bày mẫu (nếu đang rảnh)
+    if (window.triggerBayMauCheckNgay) {
+      window.triggerBayMauCheckNgay();
+    }
 
   });
 
