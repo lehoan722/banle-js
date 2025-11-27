@@ -975,22 +975,45 @@
   </script>
 
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
-  
-  <script type="module">    
+
+  <script type="module">
   import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
   khoiTaoDangNhapDungChung({
     appContainerId: 'app-container',
-    macDinhDiaDiem: 'cs1',           // nếu báo cáo cho cả 2 cs thì để '' và bỏ tuDongKhoaCoSo
-    tuDongKhoaCoSo: false,           // cho phép chọn cs1/cs2 trên form login
-    loginApiPath: '/api/login-cs1',  // giống trang bán lẻ MT cs1
+    macDinhDiaDiem: 'cs1',
+    tuDongKhoaCoSo: false,
+    loginApiPath: '/api/login-cs1',
+
     async onLoginSuccess(nv, ctx) {
-      // Sau khi login thành công, tự load dữ liệu hóa đơn
+      // nv = bản ghi dmnhanvien của người vừa đăng nhập
+
+      // 🔐 CHỈ CHO PHÉP ADMIN XEM BÁO CÁO
+      if (!nv || nv.is_admin !== true) {
+        // Ẩn toàn bộ nội dung app
+        const app = document.getElementById('app-container');
+        if (app) {
+          app.innerHTML = `
+            <h2 style="color:#c00;margin-top:40px;">🚫 Bạn không có quyền xem báo cáo này</h2>
+            <p>Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code> trong bảng <code>dmnhanvien</code>)
+            mới được phép truy cập trang Tra cứu Hóa Đơn Bán Lẻ.</p>
+          `;
+        }
+
+        // Thông báo nhẹ cho người dùng
+        alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
+
+        // Nếu muốn cưỡng chế quay về trang bán lẻ:
+        // window.location.href = 'banlemtcs1.html';
+
+        return; // ⛔ Dừng lại, KHÔNG gọi taiDanhSachHoaDon()
+      }
+
+      // ✅ Là admin → cho phép xem, tải dữ liệu báo cáo như bình thường
       await taiDanhSachHoaDon();
     }
   });
 </script>
-
 
 
 </body>
