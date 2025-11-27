@@ -114,6 +114,339 @@ async function ensureSupabase() {
   return supabase;
 }
 
+// ====== BẮT NHẮC BAY MAU TRƯỚC KHI CHẤM CÔNG ======
+
+function getBayMauKeyForToday(manv, diadiem) {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  return `baymau_checked_${yyyy}-${mm}-${dd}_${diadiem}_${manv}`;
+}
+
+// Lấy danh sách nhiệm vụ bày mẫu cho trang chấm công
+async function fetchBayMauTasksForChamCong({ diadiem, manv }) {
+  const sp = await ensureSupabase();
+  if (!sp || !manv) return [];
+
+  try {
+    const { data, error } = await sp.rpc("baymau_get_tasks", {
+      p_diadiem: diadiem,
+      p_mode: "nv",
+      p_manv: manv
+    });
+
+    if (error) {
+      console.error("Lỗi RPC baymau_get_tasks (chấm công):", error);
+      return [];
+    }
+
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("Lỗi fetchBayMauTasksForChamCong:", e);
+    return [];
+  }
+}
+
+// Lưu thay đổi bày mẫu / ghi chú cho các dòng được sửa
+async function saveBayMauRowsFromChamCong(changes, { manv }) {
+  if (!changes.length) return true;
+
+  const sp = await ensureSupabase();
+  if (!sp) return false;
+
+  for (const row of changes) {
+    const updates = {};
+    if (row.newBayMauBy !== row.oldBayMauBy) {
+      updates.baymau_by = row.newBayMauBy;
+    }
+    if (row.newNote !== row.oldNote) {
+      updates.baymau_note = row.newNote;
+    }
+    if (Object.keys(updates).length === 0) continue;
+
+    const { error } = await sp
+      .from("ct_hoadon_banle")
+      .update(updates)
+      .eq("id", row.id_ct);
+
+    if (error) {
+      console.error("Lỗi cập nhật bày mẫu từ chấm công:", error);
+      alert("Lỗi lưu trạng thái bày mẫu, vui lòng thử lại hoặc báo quản lý.");
+      return false;
+    }
+  }
+  return true;
+}
+
+// Hiển thị popup bày mẫu dạng chặn (blocking) cho trang chấm công
+function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
+  return new Promise((resolve) => {
+    // Tạo overlay full màn hình
+    const overlay = document.createElement("div");
+    overlay.id = "baymau-cc-overlay";
+    Object.assign(overlay.style, {
+      position: "fixed",
+      inset: "0",
+      backgroundColor: "rgba(0,0,0,0.4)",
+      zIndex: "9999",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    });
+
+    // Popup container
+    const popup = document.createElement("div");
+    Object.assign(popup.style, {
+      backgroundColor: "#ffe4b5",
+      borderRadius: "6px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
+      width: "90%",
+      maxWidth: "800px",
+      maxHeight: "80%",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      fontFamily: "Tahoma, Arial, sans-serif",
+      fontSize: "14px"
+    });
+
+    // Header
+    const header = document.createElement("div");
+    header.textContent = "YÊU CẦU BÀY MẪU SP (trước khi chấm công)";
+    Object.assign(header.style, {
+      backgroundColor: "#f4b05e",
+      color: "#000",
+      fontWeight: "bold",
+      padding: "6px 10px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between"
+    });
+
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "X";
+    Object.assign(closeBtn.style, {
+      border: "none",
+      background: "transparent",
+      cursor: "pointer",
+      fontWeight: "bold"
+    });
+
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    // Thân bảng
+    const body = document.createElement("div");
+    Object.assign(body.style, {
+      flex: "1",
+      overflow: "auto",
+      padding: "6px 10px",
+      backgroundColor: "#ffecc8"
+    });
+
+    const table = document.createElement("table");
+    table.style.width = "100%";
+    table.style.borderCollapse = "collapse";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    const headers = ["bày mẫu", "mã sp", "nv bán", "GHI CHÚ"];
+    headers.forEach((h) => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      Object.assign(th.style, {
+        borderBottom: "1px solid #d09040",
+        padding: "4px",
+        textAlign: h === "GHI CHÚ" ? "left" : "center",
+        backgroundColor: "#f4b05e"
+      });
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    const rowStates = [];
+
+    tasks.forEach((t) => {
+      const tr = document.createElement("tr");
+
+      const tdCheck = document.createElement("td");
+      tdCheck.style.textAlign = "center";
+      tdCheck.style.padding = "4px";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!t.baymau_by;
+      tdCheck.appendChild(cb);
+      tr.appendChild(tdCheck);
+
+      const tdMasp = document.createElement("td");
+      tdMasp.textContent = t.masp || "";
+      tdMasp.style.padding = "4px";
+      tr.appendChild(tdMasp);
+
+      const tdNvban = document.createElement("td");
+      tdNvban.textContent = t.nvban || "";
+      tdNvban.style.textAlign = "center";
+      tdNvban.style.padding = "4px";
+      tr.appendChild(tdNvban);
+
+      const tdNote = document.createElement("td");
+      tdNote.style.padding = "4px";
+      const inputNote = document.createElement("input");
+      inputNote.type = "text";
+      inputNote.value = t.baymau_note || "";
+      inputNote.style.width = "100%";
+      tdNote.appendChild(inputNote);
+      tr.appendChild(tdNote);
+
+      tbody.appendChild(tr);
+
+      rowStates.push({
+        id_ct: t.id_ct,
+        checkbox: cb,
+        inputNote,
+        oldBayMauBy: t.baymau_by || null,
+        oldNote: t.baymau_note || ""
+      });
+    });
+
+    table.appendChild(tbody);
+    body.appendChild(table);
+    popup.appendChild(body);
+
+    // Footer với nút lưu
+    const footer = document.createElement("div");
+    Object.assign(footer.style, {
+      padding: "6px 10px",
+      backgroundColor: "#f4b05e",
+      textAlign: "right"
+    });
+
+    const info = document.createElement("span");
+    info.textContent = "Hãy bày mẫu hoặc ghi chú lý do trước khi chấm công.";
+    info.style.float = "left";
+    footer.appendChild(info);
+
+    const btnSave = document.createElement("button");
+    btnSave.textContent = "Lưu & đóng";
+    Object.assign(btnSave.style, {
+      padding: "4px 12px",
+      fontWeight: "bold",
+      cursor: "pointer"
+    });
+    footer.appendChild(btnSave);
+
+    popup.appendChild(footer);
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    function cleanup(ok) {
+      document.body.removeChild(overlay);
+      resolve(ok);
+    }
+
+    // Không cho đóng bằng click nền / ESC
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        e.stopPropagation();
+      }
+    });
+    document.addEventListener(
+      "keydown",
+      function escHandler(ev) {
+        if (ev.key === "Escape") {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+      },
+      { capture: true, once: true }
+    );
+
+    closeBtn.addEventListener("click", async () => {
+      // xử lý như nút Lưu & đóng
+      await btnSave.click();
+    });
+
+    btnSave.addEventListener("click", async () => {
+      // Chuẩn bị danh sách cần lưu
+      const changes = [];
+      for (const row of rowStates) {
+        const newBayMauBy = row.checkbox.checked ? manv : null;
+        const newNote = row.inputNote.value.trim();
+        if (newBayMauBy !== row.oldBayMauBy || newNote !== row.oldNote) {
+          changes.push({
+            id_ct: row.id_ct,
+            newBayMauBy,
+            newNote,
+            oldBayMauBy: row.oldBayMauBy,
+            oldNote: row.oldNote
+          });
+        }
+      }
+
+      // Nếu vẫn còn dòng chưa tích & chưa ghi chú -> nhắc và không đóng
+      const unresolved = rowStates.filter((row) => {
+        const isChecked = row.checkbox.checked;
+        const noteVal = row.inputNote.value.trim();
+        return !isChecked && !noteVal;
+      });
+      if (unresolved.length > 0) {
+        alert(
+          "Vẫn còn sản phẩm chưa bày mẫu và chưa có ghi chú. Vui lòng xử lý hết trước khi đóng."
+        );
+        return;
+      }
+
+      const ok = await saveBayMauRowsFromChamCong(changes, { manv });
+      if (!ok) {
+        // lỗi lưu thì không đóng, caller sẽ xử lý tiếp
+        return;
+      }
+
+      cleanup(true);
+    });
+  });
+}
+
+// Hàm ép người dùng xử lý bày mẫu trước khi chấm công
+async function enforceBayMauBeforeChamCong({ diadiem }) {
+  const manv = localStorage.getItem("manv");
+  if (!manv) return;
+
+  const key = getBayMauKeyForToday(manv, diadiem);
+  if (localStorage.getItem(key) === "1") {
+    return;
+  }
+
+  while (true) {
+    const tasks = await fetchBayMauTasksForChamCong({ diadiem, manv });
+    if (!tasks.length) {
+      localStorage.setItem(key, "1");
+      return;
+    }
+
+    // Chỉ chặn theo các dòng chưa bày mẫu & chưa có ghi chú
+    const needAction = tasks.filter((t) => !t.baymau_by && !t.baymau_note);
+    if (!needAction.length) {
+      localStorage.setItem(key, "1");
+      return;
+    }
+
+    const ok = await showBayMauPopupChamCong(needAction, { diadiem, manv });
+    if (!ok) {
+      // Nếu có lỗi lưu, không loop nữa để tránh kẹt
+      return;
+    }
+
+    // Sau khi lưu thành công, loop lại để chắc chắn không còn dòng mới
+  }
+}
+
+// ====== HET NHẮC BAY MAU TRƯỚC KHI CHẤM CÔNG ======
+
 // Ghi 1 dòng chấm công vào bảng chamcong_log
 async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu = null }) {
   const sp = await ensureSupabase();
@@ -512,7 +845,7 @@ function attachChamCongButtons(diadiem) {
   const btnNchd = document.getElementById("btn-nchd");
   const btnTanca = document.getElementById("btn-tanca");
 
-    // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
+  // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
   async function handleClick(su_kien, btn) {
     if (!btn) return;
 
@@ -612,11 +945,14 @@ document.addEventListener("DOMContentLoaded", () => {
     macDinhDiaDiem: diadiem,
     tuDongKhoaCoSo: true,
     loginApiPath,
-    onLoginSuccess: () => {
-      initChamCong(diadiem);
+    onLoginSuccess: async () => {
+      // Bắt buộc xử lý bày mẫu trước khi vào màn hình chấm công
+      await enforceBayMauBeforeChamCong({ diadiem });
+      await initChamCong(diadiem);
     }
   });
 });
+
 
 
 
