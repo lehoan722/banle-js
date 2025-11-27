@@ -820,10 +820,23 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
  * - tasks: danh sách bản ghi từ RPC
  * - context: { diadiem, mode, manvDangNhap }
  */
+/**
+ * Hiển thị popup nhắc bày mẫu
+ * - tasks: danh sách bản ghi từ RPC baymau_get_tasks
+ *   (có thêm các field: baymau_note, baymau_admin_confirm_by)
+ * - context: { diadiem, mode, manvDangNhap }
+ */
 function showBayMauPopup(tasks, context) {
   if (!tasks || !tasks.length) return;
   if (bayMauPopupDangMo) return;
   bayMauPopupDangMo = true;
+
+  const isAdmin =
+    localStorage.getItem("is_admin") === "1" ||
+    localStorage.getItem("role") === "admin";
+
+  const currentManv =
+    localStorage.getItem("manv") || context.manvDangNhap || "";
 
   // Tạo overlay mờ để bắt sự kiện click ra ngoài
   const overlay = document.createElement("div");
@@ -845,9 +858,9 @@ function showBayMauPopup(tasks, context) {
   Object.assign(box.style, {
     marginBottom: "12px",
     minWidth: "320px",
-    maxWidth: "600px",
+    maxWidth: "650px",
     maxHeight: "60vh",
-    background: "#f7e0b3",   // màu vàng nhạt kiểu cảnh báo nhẹ
+    background: "#f7e0b3",   // vàng nhạt
     borderRadius: "6px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
     padding: "8px 10px",
@@ -883,22 +896,47 @@ function showBayMauPopup(tasks, context) {
   table.style.borderCollapse = "collapse";
 
   const thead = document.createElement("thead");
-  thead.innerHTML = `
-    <tr style="background:#f4c985;">
-      <th style="border:1px solid #ccc;padding:4px 6px;">bày mẫu</th>
-      <th style="border:1px solid #ccc;padding:4px 6px;">mã sp</th>
-      <th style="border:1px solid #ccc;padding:4px 6px;">nv bán</th>
-    </tr>
-  `;
+
+  const trHead = document.createElement("tr");
+  trHead.style.background = "#f4c985";
+
+  function mkTh(text) {
+    const th = document.createElement("th");
+    th.textContent = text;
+    th.style.border = "1px solid #ccc";
+    th.style.padding = "4px 6px";
+    return th;
+  }
+
+  trHead.appendChild(mkTh("bày mẫu"));
+  trHead.appendChild(mkTh("mã sp"));
+  trHead.appendChild(mkTh("nv bán"));
+  trHead.appendChild(mkTh("GHI CHÚ"));
+
+  // Cột X.NHẬN với checkbox tổng
+  const thConfirm = mkTh("");
+  const chkAllConfirm = document.createElement("input");
+  chkAllConfirm.type = "checkbox";
+  if (!isAdmin) chkAllConfirm.disabled = true;
+  thConfirm.appendChild(chkAllConfirm);
+  trHead.appendChild(thConfirm);
+
+  thead.appendChild(trHead);
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+
+  // Lưu lại để dùng khi bấm Đóng
+  const bayMauCheckboxes = [];
+  const noteInputs = [];
+  const confirmCheckboxes = [];
 
   tasks.forEach((row) => {
     const tr = document.createElement("tr");
     tr.style.background = "#fdf1d6";
 
-    // Checkbox
+    // 1. checkbox BÀY MẪU
     const tdCheck = document.createElement("td");
     tdCheck.style.border = "1px solid #ccc";
     tdCheck.style.padding = "4px 6px";
@@ -906,8 +944,10 @@ function showBayMauPopup(tasks, context) {
     cb.type = "checkbox";
     cb.dataset.idCt = row.id_ct;
     tdCheck.appendChild(cb);
+    tr.appendChild(tdCheck);
+    bayMauCheckboxes.push(cb);
 
-    // Mã SP (click = mở stockQuickPopup)
+    // 2. MÃ SP (click = mở popup nhanh)
     const tdMasp = document.createElement("td");
     tdMasp.style.border = "1px solid #ccc";
     tdMasp.style.padding = "4px 6px";
@@ -926,47 +966,113 @@ function showBayMauPopup(tasks, context) {
         console.error("Lỗi gọi stockQuickPopup:", err);
       }
     });
+    tr.appendChild(tdMasp);
 
-    // NV bán
+    // 3. NV BÁN
     const tdNvBan = document.createElement("td");
     tdNvBan.style.border = "1px solid #ccc";
     tdNvBan.style.padding = "4px 6px";
     tdNvBan.textContent = row.nvban || "";
-
-    tr.appendChild(tdCheck);
-    tr.appendChild(tdMasp);
     tr.appendChild(tdNvBan);
+
+    // 4. GHI CHÚ
+    const tdNote = document.createElement("td");
+    tdNote.style.border = "1px solid #ccc";
+    tdNote.style.padding = "2px 4px";
+    const inpNote = document.createElement("input");
+    inpNote.type = "text";
+    inpNote.style.width = "100%";
+    inpNote.style.boxSizing = "border-box";
+    inpNote.value = row.baymau_note || "";
+    inpNote.dataset.idCt = row.id_ct;
+    tdNote.appendChild(inpNote);
+    tr.appendChild(tdNote);
+    noteInputs.push({ input: inpNote, old: row.baymau_note || "" });
+
+    // 5. X.NHẬN (chỉ admin được tick)
+    const tdConfirm = document.createElement("td");
+    tdConfirm.style.border = "1px solid #ccc";
+    tdConfirm.style.textAlign = "center";
+    const chkConfirm = document.createElement("input");
+    chkConfirm.type = "checkbox";
+    chkConfirm.dataset.idCt = row.id_ct;
+    chkConfirm.checked = !!row.baymau_admin_confirm_by;
+    if (!isAdmin) chkConfirm.disabled = true;
+    tdConfirm.appendChild(chkConfirm);
+    tr.appendChild(tdConfirm);
+    confirmCheckboxes.push(chkConfirm);
+
     tbody.appendChild(tr);
   });
 
-  table.appendChild(tbody);
+  // Checkbox tổng cho cột xác nhận
+  chkAllConfirm.addEventListener("change", () => {
+    if (!isAdmin) return;
+    confirmCheckboxes.forEach((chk) => {
+      if (!chk.disabled) chk.checked = chkAllConfirm.checked;
+    });
+  });
+
   box.appendChild(header);
   box.appendChild(table);
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // Hàm đóng popup:
+  // === Hàm đóng popup: lưu bày mẫu + ghi chú + xác nhận ===
   async function closePopup() {
     try {
-      // Lấy các dòng đã tick
-      const checked = Array.from(
-        box.querySelectorAll("input[type=checkbox]:checked")
-      );
-      const ids = checked
-        .map((cb) => Number(cb.dataset.idCt))
+      // 1. GHI NHẬN BÀY MẪU (baymau_set_done)
+      const idsBayMau = bayMauCheckboxes
+        .filter((c) => c.checked)
+        .map((c) => Number(c.dataset.idCt))
         .filter((v) => Number.isFinite(v));
 
-      if (ids.length > 0 && context.manvDangNhap) {
+      if (idsBayMau.length > 0 && context.manvDangNhap) {
         const { error } = await supabase.rpc("baymau_set_done", {
-          p_ids: ids,
+          p_ids: idsBayMau,
           p_manv: context.manvDangNhap,
         });
         if (error) {
           console.error("Lỗi RPC baymau_set_done:", error);
         }
       }
+
+      // 2. GHI NHẬN GHI CHÚ + XÁC NHẬN ADMIN
+      const noteUpdates = [];
+      noteInputs.forEach(({ input, old }) => {
+        const note = input.value.trim();
+        if (note !== (old || "")) {
+          noteUpdates.push({
+            id_ct: Number(input.dataset.idCt),
+            note,
+          });
+        }
+      });
+
+      let confirmIds = [];
+      if (isAdmin) {
+        confirmIds = confirmCheckboxes
+          .filter((c) => c.checked)
+          .map((c) => Number(c.dataset.idCt))
+          .filter((v) => Number.isFinite(v));
+      }
+
+      if (noteUpdates.length > 0 || confirmIds.length > 0) {
+        const { error: errNote } = await supabase.rpc(
+          "baymau_update_note_and_confirm",
+          {
+            p_note_updates: noteUpdates,
+            p_confirm_ids: confirmIds,
+            p_admin: isAdmin ? currentManv : null,
+          }
+        );
+        if (errNote) {
+          console.error("Lỗi RPC baymau_update_note_and_confirm:", errNote);
+        }
+      }
     } catch (e) {
       console.error("Lỗi khi đóng popup bày mẫu:", e);
+      alert("Có lỗi khi lưu thông tin bày mẫu, vui lòng thử lại.");
     } finally {
       bayMauPopupDangMo = false;
       if (overlay && overlay.parentNode) {
@@ -988,6 +1094,7 @@ function showBayMauPopup(tasks, context) {
     }
   });
 }
+
 
 /**
  * Hàm kiểm tra 1 lần:
