@@ -831,9 +831,14 @@ function showBayMauPopup(tasks, context) {
   if (bayMauPopupDangMo) return;
   bayMauPopupDangMo = true;
 
+  const rawIsAdmin = (localStorage.getItem("is_admin") || "").toLowerCase();
+  const rawRole = (localStorage.getItem("role") || "").toLowerCase();
+
   const isAdmin =
-    localStorage.getItem("is_admin") === "1" ||
-    localStorage.getItem("role") === "admin";
+    rawIsAdmin === "1" ||
+    rawIsAdmin === "true" ||
+    rawIsAdmin === "y" ||
+    rawRole === "admin";
 
   const currentManv =
     localStorage.getItem("manv") || context.manvDangNhap || "";
