@@ -677,6 +677,11 @@
                     nhanvien.sua_hoadon ? "true" : "false"
                 );
 
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
+
                 // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
