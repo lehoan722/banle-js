@@ -976,46 +976,20 @@
 
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
   
-  <script type="module">
+  <script type="module">    
   import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
   khoiTaoDangNhapDungChung({
-    appContainerId: 'app-container',   // nếu chưa có div này thì không sao, mình có fallback
-    macDinhDiaDiem: '',
-    tuDongKhoaCoSo: false,
-    loginApiPath: '/api/login-cs2',
-
+    appContainerId: 'app-container',
+    macDinhDiaDiem: '',           // nếu báo cáo cho cả 2 cs thì để '' và bỏ tuDongKhoaCoSo
+    tuDongKhoaCoSo: false,           // cho phép chọn cs1/cs2 trên form login
+    loginApiPath: '/api/login-cs2',  // giống trang bán lẻ MT cs1
     async onLoginSuccess(nv, ctx) {
-      // nv = 1 dòng trong dmnhanvien mà API trả về
-      // Chỉ cho phép nếu is_admin = TRUE
-      if (!nv || !nv.is_admin) {
-        alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
-
-        // Tìm vùng chứa app, nếu không có thì dùng luôn <body>
-        let app = document.getElementById('app-container') || document.body;
-
-        // Ghi đè toàn bộ nội dung bằng thông báo lỗi (không còn bảng báo cáo nữa)
-        app.innerHTML = `
-          <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
-            🚫 Bạn không có quyền xem báo cáo này
-          </h2>
-          <p>
-            Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
-            trong bảng <code>dmnhanvien</code>) mới được phép truy cập
-            trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
-          </p>
-        `;
-
-        // Không cho chạy tiếp
-        return;
-      }
-
-      // ✅ Là admin → load báo cáo như bình thường
+      // Sau khi login thành công, tự load dữ liệu hóa đơn
       await taiDanhSachHoaDon();
     }
   });
 </script>
-
 
 </body>
 
