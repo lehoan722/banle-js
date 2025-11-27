@@ -191,20 +191,31 @@ export async function khoiTaoUngDung() {
   if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
   // === HẾT GUARD ===
 
-  // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CHỈ CS1) ===
+  // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CS1 + CS2, MT + NV) ===
   const isBanLeMTcs1Page = path.includes("banlemtcs1");
+  const isBanLeMTcs2Page = path.includes("banlemtcs2");
   const isBanNvcs1Page = path.includes("bannvcs1");
+  const isBanNvcs2Page = path.includes("bannvcs2");
 
-  if (isBanLeMTcs1Page || isBanNvcs1Page) {
-    const mode = isBanLeMTcs1Page ? "mt" : "nv";
-    // diadiem = 'cs1' (đúng theo yêu cầu)
+  const isBanLePage = isBanLeMTcs1Page || isBanLeMTcs2Page;
+  const isBanNvPage = isBanNvcs1Page || isBanNvcs2Page;
+
+  if (isBanLePage || isBanNvPage) {
+    // mode: mt = bán lẻ MT, nv = bán lẻ nhân viên
+    const mode = isBanNvPage ? "nv" : "mt";
+
+    // diadiem: cs1 hay cs2 theo trang
+    const diadiem =
+      (isBanLeMTcs2Page || isBanNvcs2Page) ? "cs2" : "cs1";
+
     startBayMauReminderLoop({
-      diadiem: "cs1",
+      diadiem,
       mode,
       manvDangNhap,
     });
   }
   // === HẾT PHẦN NHẮC BÀY MẪU ===
+
 
 
   const { data: dssp, error } = await supabase.from("dmhanghoa").select("*");
