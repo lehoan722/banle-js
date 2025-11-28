@@ -15,10 +15,9 @@ function createServerSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
+// Hàm xử lý login cho CS1
 export default async function handler(req, res) {
-  // Chỉ cho phép POST
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
@@ -26,16 +25,16 @@ export default async function handler(req, res) {
     const { manv, passwordNV, diadiem } = req.body || {};
 
     if (!manv || !passwordNV) {
-      return res.status(400).json({ ok: false, error: 'Thiếu mã nhân viên hoặc mật khẩu' });
+      return res.status(400).json({ ok: false, error: 'Thiếu manv hoặc passwordNV' });
     }
 
     const supabase = createServerSupabase();
-    const manvUpper = String(manv).trim().toUpperCase();
+    const manvUpper = manv.toString().trim().toUpperCase();
 
     // 1. Lấy thông tin nhân viên + mật khẩu từ bảng dmnhanvien
     const { data: nvArr, error: errNV } = await supabase
       .from('dmnhanvien')
-      .select('manv, tennv, sua_hoadon, matkhau')
+      .select('manv, tennv, sua_hoadon, xoa_hoadon, is_admin, matkhau')
       .eq('manv', manvUpper)
       .limit(1);
 
@@ -57,25 +56,33 @@ export default async function handler(req, res) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
     }
 
-    // 2. Đăng nhập tài khoản kho CS1 bằng email + password từ ENV
+    // 2. Đăng nhập "tài khoản kho" để lấy session Supabase (service user)
     if (!WAREHOUSE_EMAIL || !WAREHOUSE_PASSWORD) {
-      console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD');
-      return res.status(500).json({ ok: false, error: 'Chưa cấu hình email/mật khẩu kho CS1 trên server' });
+      console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD trong ENV');
+      return res.status(500).json({ ok: false, error: 'Chưa cấu hình tài khoản kho CS1 trên server' });
     }
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: WAREHOUSE_EMAIL,
-      password: WAREHOUSE_PASSWORD
+    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: WAREHOUSE_EMAIL,
+        password: WAREHOUSE_PASSWORD
+      })
     });
 
-    if (authError) {
-      console.error('Đăng nhập tài khoản kho CS1 thất bại:', authError);
-      return res.status(500).json({ ok: false, error: 'Không đăng nhập được tài khoản kho CS1' });
+    if (!authRes.ok) {
+      const errText = await authRes.text();
+      console.error('Lỗi đăng nhập tài khoản kho CS1:', errText);
+      return res.status(500).json({ ok: false, error: 'Đăng nhập tài khoản kho CS1 thất bại' });
     }
 
-    const session = authData?.session;
-    if (!session || !session.access_token || !session.refresh_token) {
-      console.error('Không lấy được session Supabase hợp lệ');
+    const session = await authRes.json();
+    if (!session || !session.access_token) {
+      console.error('Không lấy được access_token từ tài khoản kho CS1:', session);
       return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
     }
 
@@ -89,7 +96,9 @@ export default async function handler(req, res) {
       nhanvien: {
         manv: nv.manv,
         tennv: nv.tennv,
-        sua_hoadon: nv.sua_hoadon
+        sua_hoadon: nv.sua_hoadon,
+        xoa_hoadon: nv.xoa_hoadon,
+        is_admin: nv.is_admin
       },
       diadiem: diadiem || 'cs1'
     });
