@@ -991,27 +991,33 @@
       loginApiPath: '/api/login-cs1',  // backend vẫn nhận được diadiem = cs1 / cs2 từ form
 
       async onLoginSuccess(nv, ctx) {
-        // CHỈ CHO ADMIN XEM BÁO CÁO
-        if (!nv || !nv.is_admin) {
+        // Lấy cờ admin từ object trả về + localStorage
+        const flagFromObj = nv && (nv.is_admin === true || nv.is_admin === 'true' || nv.is_admin === 1);
+        const flagFromLS = localStorage.getItem('is_admin') === 'true';
+
+        const isAdmin = flagFromObj || flagFromLS;
+
+        if (!isAdmin) {
           alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
 
           const app = document.getElementById('app-container') || document.body;
           app.innerHTML = `
-          <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
-            🚫 Bạn không có quyền xem báo cáo này
-          </h2>
-          <p>
-            Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
-            trong bảng <code>dmnhanvien</code>) mới được phép truy cập
-            trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
-          </p>
-        `;
+        <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
+          🚫 Bạn không có quyền xem báo cáo này
+        </h2>
+        <p>
+          Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
+          trong bảng <code>dmnhanvien</code>) mới được phép truy cập
+          trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
+        </p>
+      `;
           return;
         }
 
-        // ✅ Admin → load báo cáo
+        // ✅ Là admin → load dữ liệu báo cáo
         await taiDanhSachHoaDon();
       }
+
     });
   </script>
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
