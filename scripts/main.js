@@ -132,8 +132,8 @@ export async function khoiTaoUngDung() {
         { pattern: "banlemtcs1", storeKey: "cs1", requireMobile: false },
         { pattern: "nhapmoimtcs1", storeKey: "cs1", requireMobile: false },
 
-        //{ pattern: "banlemtcs2", storeKey: "cs2", requireMobile: false },
-        //{ pattern: "nhapmoimtcs2", storeKey: "cs2", requireMobile: false },
+        { pattern: "banlemtcs2", storeKey: "cs2", requireMobile: false },
+        { pattern: "nhapmoimtcs2", storeKey: "cs2", requireMobile: false },
 
     ];
 
