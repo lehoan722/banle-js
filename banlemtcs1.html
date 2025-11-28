@@ -865,7 +865,7 @@
     </script>
 
 
-    <!-- Overlay loading khi backup -->
+    <!-- Overlay loading khi backup --> 
     <div id="backup-overlay" style="
     display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
     background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
@@ -913,6 +913,7 @@
                 localStorage.removeItem("quyen_sua_hoadon");
             }
             document.getElementById('login-manv').value = "";
+            document.getElementById('login-password-nv').value = "";
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
