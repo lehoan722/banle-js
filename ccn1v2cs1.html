@@ -450,13 +450,13 @@
             <input id="diadiem" placeholder="diadiem" readonly />
             <input id="ngay" type="date" readonly />
             <input id="gio" type="text" readonly style="width:70px" />
-          
+
             <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
-           
-        </div>        
+
+        </div>
 
         <div id="app-menu" class="menu-item"></div>
 
@@ -786,7 +786,7 @@
                 const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
 
-                const qlnhapsize = document.getElementById("nhapsize"); 
+                const qlnhapsize = document.getElementById("nhapsize");
                 if (qlnhapsize) qlnhapsize.checked = true;
 
                 // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
@@ -877,6 +877,8 @@
             });
         }
 
+
+
         // Copy bảng sang clipboard, có cả dòng tiêu đề
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
@@ -954,6 +956,46 @@
 
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
     </script>
+
+    <script type="module">
+        // Không import backup nữa vì không dùng
+        // import { backupAllTablesToZip } from './scripts/backup.js';
+
+        // Bấm THOAT PM → đăng xuất luôn, không backup, không hỏi
+        document.getElementById('btn-logout').onclick = async function () {
+            await dangXuatApp();
+        };
+
+        async function dangXuatApp() {
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+            }
+
+            document.getElementById('login-manv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+
+            document.getElementById('login-manv').focus();
+        }
+    </script>
+
 
     <script>
         // goi phím F2
