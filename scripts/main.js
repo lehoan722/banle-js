@@ -29,7 +29,8 @@ async function checkInStoreLocation(pointsOverride) {
     const STORE_POINTS = pointsOverride || [
         { lat: 21.5525047, lng: 105.8423559 }  // CS1 – Tích Lương
     ];
-    const MAX_DISTANCE_M = 300; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
+     // Điện thoại thì bắt chặt (200m), máy tính thì cho sai số rộng hơn
+  const MAX_DISTANCE_M = isMobileDevice() ? 200 : 1500;
 
     // Nếu thiết bị không hỗ trợ định vị
     if (!navigator.geolocation) {
@@ -131,8 +132,8 @@ export async function khoiTaoUngDung() {
         { pattern: "banlemtcs1", storeKey: "cs1", requireMobile: false },
         { pattern: "nhapmoimtcs1", storeKey: "cs1", requireMobile: false },
 
-        { pattern: "banlemtcs2", storeKey: "cs2", requireMobile: false },
-        { pattern: "nhapmoimtcs2", storeKey: "cs2", requireMobile: false },
+        //{ pattern: "banlemtcs2", storeKey: "cs2", requireMobile: false },
+        //{ pattern: "nhapmoimtcs2", storeKey: "cs2", requireMobile: false },
 
     ];
 
