@@ -177,6 +177,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       }
 
       // Lưu thông tin vào localStorage giống các trang khác
+            // Lưu thông tin vào localStorage giống các trang khác
       const csFinal = diadiem || cs;
 
       localStorage.setItem('diadiem', csFinal);
@@ -184,6 +185,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       localStorage.setItem('manv', nhanvien.manv);
       localStorage.setItem('tennv', nhanvien.tennv || '');
       localStorage.setItem('quyen_sua_hoadon', nhanvien.sua_hoadon ? 'true' : 'false');
+
+      // ⭐ LƯU THÊM CỜ ADMIN ĐỂ CÁC TRANG KHÁC DÙNG
+      // nếu API trả về is_admin = true/false thì dòng dưới sẽ hoạt động
+      localStorage.setItem('is_admin', nhanvien.is_admin ? 'true' : 'false');
+
+      // Debug nhẹ: xem trong Console object nhân viên có gì
+      console.log('DEBUG nhanvien login:', nhanvien);
 
       window.diadiem = csFinal;
 
