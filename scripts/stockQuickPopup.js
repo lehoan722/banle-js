@@ -281,7 +281,7 @@
     const sumRow = rows.length
       ? `
       <tr class="sum-row">
-        <td>${upper}</td>
+        <td></td>
         <td class="num">${sum1 || ""}</td>
         <td class="num">${sum2 || ""}</td>
         <td class="num">${sumBan1 || ""}</td>
@@ -517,3 +517,4 @@
     };
   }
 })();
+
