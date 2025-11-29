@@ -446,10 +446,10 @@
     <div class="menu-bar">
         <div class="tennv">
 
-             <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="diadiem" placeholder="diadiem" readonly />
             <input id="ngay" type="date" readonly />
             <input id="gio" type="text" readonly style="width:70px" />
-          
+
             <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
@@ -898,7 +898,7 @@
         </div>
     </div>
 
-    
+
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
     <script src="scripts/stockQuickPopup.js"></script>
@@ -1528,6 +1528,29 @@
         });
     </script>
 
+    <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
+    <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
+    <script>
+        if (window.initCCNAdapter) {
+            window.initCCNAdapter();
+        }
+    </script>
+
+    <style>
+        /* Cột size của bảng kết quả CCN1V2:
+     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
+        #bangketqua th:nth-child(3),
+        #bangketqua td:nth-child(3) {
+            width: 40px;
+            max-width: 40px;
+            white-space: normal;
+            /* cho phép xuống dòng */
+
+            /* nếu cần thì bẻ từ */
+            text-align: left;
+            /* tùy, thích center thì bỏ dòng này */
+        }
+    </style>
 </body>
 
 </html>
