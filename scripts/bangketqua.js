@@ -133,7 +133,17 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
 
     // 4) Cập nhật tổng
     capNhatThongTinTong(bangKetQua);
+
+    // 5) Nếu có adapter sau render (dùng cho các trang đặc biệt như CCN1V2)
+    if (typeof window.ccnAfterRenderAdapter === "function") {
+        try {
+            window.ccnAfterRenderAdapter({ bangKetQua, lastAdded });
+        } catch (err) {
+            console.error("Lỗi trong ccnAfterRenderAdapter:", err);
+        }
+    }
 }
+
 
 function highlightRow(selectedRow) {
     document.querySelectorAll("#bangketqua tbody tr").forEach(row => {
