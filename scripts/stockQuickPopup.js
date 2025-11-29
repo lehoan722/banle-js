@@ -18,7 +18,7 @@
   .sq-stock-popup {
     position: fixed;
     min-width: 260px;
-    max-width: 900px;              /* rộng hơn để có chỗ cho bảng + ảnh */
+    max-width: 900px;              /* PC: đủ chỗ cho bảng + ảnh */
     max-height: 600px;
     background: rgba(255,255,255,0.98);
     border-radius: 8px;
@@ -36,7 +36,7 @@
     display: block;
   }
 
-  /* layout: bảng bên trái, ảnh bên phải */
+  /* layout PC: bảng bên trái, ảnh bên phải */
   .sq-stock-layout {
     display: flex;
     align-items: flex-start;
@@ -75,16 +75,22 @@
     font-weight: 600;
     border-top: 1px solid #d1d5db;
     background: #f9fafb;
-    cursor: default;
-    text-decoration: none;
   }
 
   .sq-stock-popup-header {
     font-weight: 600;
     margin-bottom: 4px;
     text-align: left;
-    cursor: move;                  /* kéo popup */
+    cursor: move;
     user-select: none;
+  }
+
+  .sq-vitri-row td {
+    font-weight: 500;
+    font-size: 16px;
+    text-align: left;
+    color: #b91c1c;
+    border-bottom: none;
   }
 
   .sq-close {
@@ -97,16 +103,8 @@
   }
   .sq-close:hover { opacity: 1; }
 
-  .sq-vitri-row td {
-    font-weight: 500;
-    font-size: 16px;
-    text-align: left;
-    color: #b91c1c;
-    border-bottom: none;
-  }
-
   .sq-img-wrapper {
-    flex: 0 0 260px;               /* khung ảnh bên phải */
+    flex: 0 0 260px;
     max-width: 320px;
   }
 
@@ -116,6 +114,30 @@
     max-height: 460px;
     object-fit: contain;
     display: block;
+  }
+
+  /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
+  @media (max-width: 800px) and (orientation: portrait) {
+    .sq-stock-popup {
+      max-width: 95vw;          /* gần full chiều ngang */
+      max-height: 90vh;         /* full chiều cao, cho phép cuộn */
+      overflow: auto;
+    }
+
+    .sq-stock-layout {
+      flex-direction: column;   /* xếp dọc: bảng trên, ảnh dưới */
+    }
+
+    .sq-img-wrapper {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 8px;
+    }
+
+    .sq-img-wrapper img {
+      max-height: 60vh;         /* ảnh không quá cao, vẫn cuộn được */
+    }
   }
   `;
 
@@ -145,7 +167,6 @@
     return "ontouchstart" in window || navigator.maxTouchPoints > 0;
   }
 
-  // Lấy den_ngay từ filter XNT14 nếu có, không thì dùng hôm nay
   function getDenNgay() {
     try {
       const raw = sessionStorage.getItem("XNT14_FILTERS");
@@ -157,7 +178,7 @@
     return new Date().toISOString().slice(0, 10);
   }
 
-  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho cho 1 mã =====
+  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) {
@@ -172,7 +193,6 @@
     let vitri_cs2 = "";
 
     if (typeof supabase !== "undefined") {
-      // 1) Snapshot bán/tồn
       const { data, error } = await supabase.rpc("xnt17_tonban_snapshot", {
         p_masps: [masp],
         p_den_ngay: denNgay,
@@ -194,7 +214,6 @@
         console.warn("xnt17_tonban_snapshot error:", error);
       }
 
-      // 2) Lấy vị trí kho
       try {
         const { data: vitriData, error: vitriErr } = await supabase
           .from("dmhanghoa")
@@ -215,7 +234,7 @@
     return { masp, rows, vitri_cs1, vitri_cs2 };
   }
 
-  // ===== Build HTML popup: bảng bên trái + ảnh bên phải =====
+  // ===== HTML popup: bảng bên trái + ảnh bên phải (PC) / xếp dọc (mobile) =====
   function buildTableHtml(masp, payload) {
     const upper = String(masp || "").toUpperCase();
     const rows = payload && Array.isArray(payload.rows)
@@ -329,14 +348,12 @@
     if (globalCloseBound) return;
     globalCloseBound = true;
 
-    // ESC để đóng popup
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" || e.key === "Esc") {
         hideAllPopups();
       }
     });
 
-    // Click ra ngoài để đóng popup
     document.addEventListener("click", (e) => {
       const popup = document.querySelector(".sq-stock-popup.show");
       if (!popup) return;
@@ -345,7 +362,7 @@
     });
   }
 
-  // ===== Drag support: kéo popup bằng thanh header =====
+  // ===== Drag để kéo popup =====
   function makeDraggable(popup, handle) {
     if (!popup || !handle) return;
 
@@ -446,7 +463,6 @@
       headerEl.dataset.dragBound = "1";
     }
 
-    // Đặt popup giữa màn hình
     const scrollX = window.scrollX || window.pageXOffset || 0;
     const scrollY = window.scrollY || window.pageYOffset || 0;
     const vw = window.innerWidth || document.documentElement.clientWidth;
@@ -469,7 +485,6 @@
     const touch = isTouchDevice();
 
     if (touch) {
-      // Điện thoại / tablet: chạm để mở, chạm lại để đóng
       card.addEventListener("click", async (e) => {
         e.stopPropagation();
         const current = document.querySelector(".sq-stock-popup.show");
@@ -480,7 +495,6 @@
         }
       });
     } else {
-      // PC: hover để xem, rời chuột để ẩn
       card.addEventListener("mouseenter", () => {
         ensurePopup(card, masp);
       });
@@ -490,7 +504,6 @@
     }
   }
 
-  // API dùng chung
   window.StockQuick = {
     attach,
     showFor(card, masp) {
@@ -498,7 +511,6 @@
     },
   };
 
-  // Wrapper cho các chỗ gọi window.stockQuickPopup(masp)
   if (typeof window !== "undefined") {
     window.stockQuickPopup = function (masp) {
       return window.StockQuick.showFor(document.body, masp);
