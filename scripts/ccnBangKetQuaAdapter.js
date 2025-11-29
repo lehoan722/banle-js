@@ -19,6 +19,26 @@
     return sp.vitrikho1 || sp.vitrikho2 || sp.vitrikho3 || "";
   }
 
+  // ===== helper: xác định thứ tự size để sort =====
+  function getSizeOrder(size) {
+    const raw = String(size || "").trim();
+    if (!raw) return 9999;
+
+    // 1) Nếu có danhMucSize (0, 38, 39, 40... hoặc 0, S, M, L...)
+    if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
+      const upperList = window.danhMucSize.map(s => String(s).trim().toUpperCase());
+      const idx = upperList.indexOf(raw.toUpperCase());
+      if (idx !== -1) return idx;
+    }
+
+    // 2) Thử coi như số (38, 39, 40...)
+    const n = parseFloat(raw);
+    if (!Number.isNaN(n)) return n;
+
+    // 3) Còn lại (S, M, L... mà không có trong danhMucSize) cho xuống cuối
+    return 9999;
+  }
+
   function groupBangKetQua(bangKetQua) {
     const result = [];
     const maspList = Object.keys(bangKetQua || {});
@@ -40,17 +60,23 @@
       const sizes = Array.isArray(item.sizes) ? item.sizes : [];
       const counts = Array.isArray(item.soluongs) ? item.soluongs : [];
 
+      // Gom thành mảng cặp {size, sl}
+      let pairs = [];
       let tongSL = 0;
-      const parts = [];
 
       sizes.forEach((sz, idx) => {
         const sl = parseInt(counts[idx] || 0, 10) || 0;
         if (!sz && !sl) return;
         tongSL += sl;
-        parts.push(`${sz}/${sl}`);
+        pairs.push({ size: String(sz).trim(), sl });
       });
 
+      // 🔑 SẮP XẾP LẠI SIZE TỪ NHỎ → LỚN
+      pairs.sort((a, b) => getSizeOrder(a.size) - getSizeOrder(b.size));
+
+      const parts = pairs.map(p => `${p.size}/${p.sl}`);
       const sizeText = parts.join(" ");
+
       result.push({
         masp: item.masp,
         tensp: item.tensp,
@@ -64,6 +90,7 @@
 
     return result;
   }
+
 
   function renderGroupedTable(bangKetQua) {
     const table = document.getElementById("bangketqua");
