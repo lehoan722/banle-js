@@ -9,8 +9,8 @@ let supabase = null;
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 200;                // bán kính cho phép (m)
-const AUTO_CHECK_INTERVAL_MS = 180000;     // 3 phút
+const MAX_DISTANCE_M = 400;                // bán kính cho phép (m)
+const AUTO_CHECK_INTERVAL_MS = 300000;     // 3 phút
 const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 
 // Bộ nhớ log chấm công trong ngày hiện tại (sau khi load từ DB)
@@ -788,7 +788,7 @@ async function startAutoCheckLeave(manv, diadiem) {
 
         console.log("outCount =", outCount);
 
-        if (outCount >= 3) {
+        if (outCount >= 5) {
             // Sau 3 lần check liên tiếp (3 * 3 phút = 9 phút) ngoài cửa hàng
             if (hasTancaToday()) {
                 console.log("Đã có TANCA hôm nay, không ghi AUTO_TANCA nữa.");
