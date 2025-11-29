@@ -129,11 +129,11 @@ export async function khoiTaoUngDung() {
         { pattern: "bannvcs2", storeKey: "cs2", requireMobile: true },
 
         // === BÁN LẺ MÁY TÍNH: CHỈ ĐÚNG VỊ TRÍ, KHÔNG GIỚI HẠN THIẾT BỊ ===
-        { pattern: "banlemtcs1", storeKey: "cs1", requireMobile: false },
-        { pattern: "nhapmoimtcs1", storeKey: "cs1", requireMobile: false },
+        //{ pattern: "banlemtcs1", storeKey: "cs1", requireMobile: false },
+        //{ pattern: "nhapmoimtcs1", storeKey: "cs1", requireMobile: false },
 
-        { pattern: "banlemtcs2", storeKey: "cs2", requireMobile: false },
-        { pattern: "nhapmoimtcs2", storeKey: "cs2", requireMobile: false },
+        //{ pattern: "banlemtcs2", storeKey: "cs2", requireMobile: false },
+        //{ pattern: "nhapmoimtcs2", storeKey: "cs2", requireMobile: false },
 
     ];
 
