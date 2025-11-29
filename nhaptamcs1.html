@@ -789,25 +789,78 @@
             });
         }
 
-        // Copy bảng sang clipboard,
+        // Copy bảng sang clipboard: MỖI SIZE = 1 DÒNG
         document.getElementById('btnCopy').onclick = function () {
-            const table = document.getElementById('bangketqua');
+            // 1️⃣ Đồng bộ dữ liệu mới nhất từ DOM vào bangKetQua (nếu có hàm)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                try { window.capNhatBangKetQuaTuDOM(); } catch (e) { console.warn(e); }
+            }
+
+            const bang = window.bangKetQua || {};
+
+            // 2️⃣ Lấy thêm thông tin vị trí / T1 / T2 từ dòng đang hiển thị (nếu cần)
+            const vitriMap = {};
+            const t1Map = {};
+            const t2Map = {};
+            const tbody = document.querySelector('#bangketqua tbody');
+            if (tbody) {
+                for (const row of tbody.rows) {
+                    const masp = (row.cells[0]?.innerText || '').toUpperCase().trim();
+                    if (!masp || vitriMap[masp]) continue; // mỗi mã lấy 1 lần
+                    vitriMap[masp] = row.cells[8]?.innerText || '';   // cột Vị trí
+                    t1Map[masp] = row.cells[9]?.innerText || '';   // T1
+                    t2Map[masp] = row.cells[10]?.innerText || '';  // T2
+                }
+            }
+
+            // 3️⃣ Ghép chuỗi: duyệt bangKetQua, MỖI SIZE 1 DÒNG
             let str = '';
 
-            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
-            for (let row of table.querySelectorAll('tbody tr')) {
-                let line = [];
-                for (let cell of row.cells) {
-                    line.push(cell.innerText);
-                }
-                str += line.join('\t') + '\n';
+            Object.values(bang).forEach(item => {
+                if (!item || !Array.isArray(item.sizes) || !Array.isArray(item.soluongs)) return;
+
+                const masp = item.masp || '';
+                const tensp = item.tensp || '';
+                const dvt = item.dvt || '';
+                const gia = Number(item.gia) || 0;
+                const km = Number(item.km) || 0;
+                const vitri = vitriMap[masp.toUpperCase()] || '';
+                const t1 = t1Map[masp.toUpperCase()] || '';
+                const t2 = t2Map[masp.toUpperCase()] || '';
+
+                item.sizes.forEach((sz, idx) => {
+                    const size = (sz == null ? '' : String(sz).trim());
+                    const sl = Number(item.soluongs[idx]) || 0;
+                    if (!size && !sl) return;
+
+                    const thanhtien = gia * sl - km;
+
+                    const line = [
+                        masp,           // Mã hàng
+                        tensp,          // Tên hàng
+                        size,           // Kích cỡ
+                        sl,             // S.lượng
+                        dvt,            // ĐVT
+                        gia,            // Đơn giá
+                        km,             // Khuyến mại
+                        thanhtien,      // Thành tiền
+                        vitri,          // Vị trí
+                        t1,             // T1
+                        t2              // T2
+                    ];
+
+                    str += line.join('\t') + '\n';
+                });
+            });
+
+            if (!str) {
+                alert('Chưa có dữ liệu để copy!');
+                return;
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
+                .then(() => alert('✅ Đã copy dữ liệu chi tiết từng size ra clipboard!'));
         };
-
-
 
 
         // Dán từ Excel/Sheet → cập nhật window.bangKetQua → vẽ bảng
