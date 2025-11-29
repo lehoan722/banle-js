@@ -71,8 +71,7 @@
         }
 
         #size {
-            
-            max-width: 25px;
+            width: 60px;
             text-align: center;
         }
 
@@ -342,6 +341,23 @@
             }
         }
     </style>
+
+    <style>
+        /* Cột size của bảng kết quả CCN1V2:
+     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
+        #bangketqua th:nth-child(3),
+        #bangketqua td:nth-child(3) {
+            width: 72px;
+            max-width: 72px;
+            white-space: normal;
+            /* cho phép xuống dòng */
+            word-break: break-word;
+            /* nếu cần thì bẻ từ */
+            text-align: left;
+            /* tùy, thích center thì bỏ dòng này */
+        }
+    </style>
+
 
 
     <script>
