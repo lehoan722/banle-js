@@ -192,7 +192,6 @@ export function resetFormSauKhiNhapSize() {
     sizeInput.select();
 }
 
-
 export function capNhatBangKetQuaTuDOM() {
     const tbody = document.querySelector("#bangketqua tbody");
     if (!tbody) return;
@@ -200,19 +199,16 @@ export function capNhatBangKetQuaTuDOM() {
     const bang = {};
 
     Array.from(tbody.rows).forEach(row => {
-        // Chú ý: cập nhật lại chỉ số cột nếu bảng có thay đổi thứ tự
         const masp = (row.cells[0]?.innerText || "").trim().toUpperCase();
         const tensp = (row.cells[1]?.innerText || "").trim();
-        const size = (row.cells[2]?.innerText || "").trim();
-        const soluong = parseFloat(row.cells[3]?.innerText || "0");
-        // cells[4] là ĐVT nhưng sẽ không lấy trực tiếp
-        const gia = parseFloat(row.cells[5]?.innerText?.replace(/,/g, "") || "0");
-        const km = parseFloat(row.cells[6]?.innerText?.replace(/,/g, "") || "0");
-        // cells[7] là Thành tiền, không cần dùng
+        const sizeText = (row.cells[2]?.innerText || "").trim();
+        const slCell = parseFloat(row.cells[3]?.innerText || "0"); // SL của cả dòng
+        const gia = parseFloat((row.cells[5]?.innerText || "").replace(/,/g, "")) || 0;
+        const km = parseFloat((row.cells[6]?.innerText || "").replace(/,/g, "")) || 0;
 
-        if (!masp) return; // Bỏ qua dòng rỗng
+        if (!masp) return;
 
-        // Lấy dvt từ danh mục hàng hóa (window.sanPhamData)
+        // Lấy ĐVT từ danh mục hàng hóa (sanPhamData)
         let dvt = "";
         if (window.sanPhamData && window.sanPhamData[masp]) {
             dvt = window.sanPhamData[masp].dvt || "";
@@ -229,14 +225,47 @@ export function capNhatBangKetQuaTuDOM() {
                 dvt,
             };
         }
-        bang[masp].sizes.push(size);
-        bang[masp].soluongs.push(soluong);
-        // Có thể bổ sung logic cộng dồn size nếu cần
+
+        // 🔍 PHẦN QUAN TRỌNG: phân tích cột size
+        // Hỗ trợ 2 kiểu:
+        // 1) Gộp:  "38/5 39/1 40/1 ..."
+        // 2) Cũ:   "39"  + SL = 1
+        const entries = [];
+
+        if (sizeText) {
+            const parts = sizeText.split(/\s+/).filter(Boolean);
+
+            parts.forEach(tok => {
+                // dạng "38/5" -> size=38, sl=5
+                const m = tok.match(/^(\d+)\s*\/\s*(\d+)$/);
+                if (m) {
+                    entries.push({
+                        size: m[1],
+                        sl: Number(m[2]) || 0,
+                    });
+                }
+            });
+
+            // Nếu KHÔNG tìm được token dạng "38/5" → coi như dạng cũ: 1 size, SL = slCell
+            if (entries.length === 0) {
+                entries.push({
+                    size: sizeText,
+                    sl: slCell,
+                });
+            }
+        }
+
+        // Ghi các cặp size/sl vào bang[masp]
+        entries.forEach(({ size, sl }) => {
+            bang[masp].sizes.push(String(size).trim());
+            bang[masp].soluongs.push(Number(sl) || 0);
+        });
     });
 
-    // Gán vào window để getBangKetQua() có thể đọc
+    // Đẩy lên global
     window.bangKetQua = bang;
 }
+
 
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
 
