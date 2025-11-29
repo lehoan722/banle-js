@@ -138,10 +138,25 @@
     });
   }
 
+
   function afterRender({ bangKetQua }) {
-    // Chỉ chạy ở trang CCN (ccn1v2 / ccn2v1...), tránh ảnh hưởng trang khác
     const path = (window.location.pathname || "").toLowerCase();
-    if (!path.includes("ccn1v2") && !path.includes("ccn2v1")) return;
+
+    // ===== DANH SÁCH TRANG ĐƯỢC ÁP DỤNG ADAPTER =====
+    const allowedPages = [
+      "ccn1v2",
+      "ccn2v1",
+      "banlemtcs1",
+      "nhapmoimtcs1",
+      "nhaptamcs1",
+      "ccn2v1cs1",
+      "nhapmoimtcs2",
+      "nhaptamcs2",
+      "ccn2v1cs2"
+    ];
+
+    const match = allowedPages.some(p => path.includes(p));
+    if (!match) return;     // ❌ KHÔNG có trong danh sách → bỏ qua
 
     try {
       renderGroupedTable(bangKetQua);
@@ -149,6 +164,7 @@
       console.error("[CCN Adapter] Lỗi renderGroupedTable:", err);
     }
   }
+
 
   // Hàm public để trang CCN gọi kích hoạt adapter
   window.initCCNAdapter = function () {
