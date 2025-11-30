@@ -197,185 +197,215 @@ function minutesToHourLabel(mins) {
 // - Mỗi nhân viên -> 1 hoặc nhiều khoảng [start, end) theo phút trong ngày
 // - Ghép thêm giờ vào/ra thực tế (chamcong_log) để mở rộng khoảng
 // - Trả về các mốc thời gian mà danh sách nhân viên CS1/CS2 thay đổi
+// Xây timeline linh hoạt từ đăng ký ca + log chấm công
+// - Nhân viên có chấm công: dùng các phiên làm việc thực tế (có thể nhiều ca)
+// - Nhân viên không chấm công: dùng giờ đăng ký ca
 function buildTimelineFromRows(scheduleRows, logRows) {
-    const rows = scheduleRows || [];
-    const logs = logRows || [];
+  const schedules = scheduleRows || [];
+  const logs = logRows || [];
 
-    if (rows.length === 0 && logs.length === 0) return [];
+  // Gom đăng ký ca theo (manv, diadiem)
+  const scheduleByKey = new Map();
+  for (const r of schedules) {
+    if (!r.manv || !r.diadiem) continue;
+    const key = `${r.manv}|${r.diadiem}`;
+    if (!scheduleByKey.has(key)) scheduleByKey.set(key, []);
+    scheduleByKey.get(key).push(r);
+  }
 
-    // Gom log theo (manv, diadiem) lấy mốc đến / về
-    const logMap = new Map();
-    const startEvents = new Set(["VAOCA", "NTRD", "NCHD"]);
-    const endEvents = new Set(["TANCA", "AUTO_TANCA"]);
+  // Gom log chấm công theo (manv, diadiem)
+  const logsByKey = new Map();
+  for (const log of logs) {
+    if (!log.manv || !log.diadiem || !log.su_kien || !log.created_at) continue;
+    const key = `${log.manv}|${log.diadiem}`;
+    if (!logsByKey.has(key)) logsByKey.set(key, []);
+    logsByKey.get(key).push(log);
+  }
 
-    for (const log of logs) {
-        if (!log.manv || !log.diadiem || !log.su_kien || !log.created_at) continue;
+  const intervals = [];
 
-        const d = new Date(log.created_at); // giả định local time = VN
-        const mins = d.getHours() * 60 + d.getMinutes();
-        const key = `${log.manv}|${log.diadiem}`;
+  function toMinutesFromTimestamp(ts) {
+    const d = new Date(ts);
+    return d.getHours() * 60 + d.getMinutes();
+  }
 
-        let info = logMap.get(key);
-        if (!info) {
-            info = {
-                manv: log.manv,
-                diadiem: log.diadiem,
-                firstPresenceMin: null,
-                lastPresenceMin: null
-            };
-            logMap.set(key, info);
-        }
+  // Hàm tạo nhãn cho 1 nhân viên ở 1 cơ sở
+  function makeLabel(key, fallbackManv) {
+    const schedList = scheduleByKey.get(key) || [];
+    const [manvOnly] = key.split("|");
+    const baseManv = fallbackManv || manvOnly;
 
-        if (startEvents.has(log.su_kien)) {
-            if (info.firstPresenceMin == null || mins < info.firstPresenceMin) {
-                info.firstPresenceMin = mins;
-            }
-        }
-
-        if (endEvents.has(log.su_kien)) {
-            if (info.lastPresenceMin == null || mins > info.lastPresenceMin) {
-                info.lastPresenceMin = mins;
-            }
-        }
+    if (schedList.length === 0) {
+      // chỉ có chấm công, không có lịch -> TT (Thực Tế)
+      return `${baseManv}(TT)`;
     }
 
-    const intervals = [];
-    const scheduleKeySet = new Set();
+    const r0 = schedList[0];
+    const ten = r0.tennv || r0.manv || baseManv;
+    let suffix = "T";
+    if (r0.trang_thai === "DA_DUYET") suffix = "D";
+    else if (r0.trang_thai === "CHO_DUYET") suffix = "C";
+    return `${ten}(${suffix})`;
+  }
 
-    // Tạo interval từ đăng ký ca, điều chỉnh theo giờ thực tế nếu có
-    for (const r of rows) {
-        let startM = parseTimeToMinutes(r.gio_bat_dau);
-        let endM = parseTimeToMinutes(r.gio_ket_thuc);
-        if (startM == null || endM == null || endM <= startM) continue;
+  // 1) Tạo các khoảng làm việc thực tế từ log (có thể nhiều ca trong ngày)
+  const tanEvents = new Set(["TANCA", "AUTO_TANCA"]);
+  for (const [key, evs] of logsByKey.entries()) {
+    // sắp xếp log theo thời gian
+    evs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-        const key = `${r.manv}|${r.diadiem}`;
-        scheduleKeySet.add(key);
+    let currentStart = null;
+    let lastTimeSeen = null;
 
-        const info = logMap.get(key);
-        if (info) {
-            // Nếu có giờ vào thực tế -> ca bắt đầu từ min(giờ đăng ký, giờ thực)
-            if (info.firstPresenceMin != null) {
-                startM = Math.min(startM, info.firstPresenceMin);
-            }
+    for (const ev of evs) {
+      const tMin = toMinutesFromTimestamp(ev.created_at);
+      lastTimeSeen = tMin;
 
-            // Nếu có TANCA/AUTO_TANCA -> ca kết thúc đúng giờ TANCA
-            // (có thể sớm hơn hoặc muộn hơn giờ đăng ký)
-            if (info.lastPresenceMin != null) {
-                endM = info.lastPresenceMin;
-            }
+      if (ev.su_kien === "VAOCA") {
+        if (currentStart == null) {
+          // mở ca mới
+          currentStart = tMin;
+        } else {
+          // đang có ca mà lại VAOCA nữa -> đóng ca cũ tại thời điểm này, mở ca mới
+          if (tMin > currentStart) {
+            intervals.push({
+              key,
+              manv: ev.manv,
+              diadiem: ev.diadiem,
+              startM: currentStart,
+              endM: tMin,
+              label: makeLabel(key, ev.manv),
+            });
+          }
+          currentStart = tMin;
         }
-
-        if (endM <= startM) continue;
-
-        const ten = r.tennv || r.manv || "";
-        let suffix = "T"; // T = trạng thái khác
-        if (r.trang_thai === "DA_DUYET") suffix = "D";
-        else if (r.trang_thai === "CHO_DUYET") suffix = "C";
-
-        const label = ten ? `${ten}(${suffix})` : "";
-
-        intervals.push({
-            diadiem: r.diadiem,
-            manv: r.manv,
-            startM,
-            endM,
-            label
-        });
+      } else if (tanEvents.has(ev.su_kien)) {
+        if (currentStart != null && tMin > currentStart) {
+          intervals.push({
+            key,
+            manv: ev.manv,
+            diadiem: ev.diadiem,
+            startM: currentStart,
+            endM: tMin,
+            label: makeLabel(key, ev.manv),
+          });
+          currentStart = null;
+        }
+        // nếu không có currentStart thì đây là TANCA lẻ -> bỏ qua cho timeline
+      } else if ((ev.su_kien === "NTRD" || ev.su_kien === "NCHD") && currentStart == null) {
+        // trong trường hợp hiếm chỉ có NTRD/NCHD mà không có VAOCA, coi như bắt đầu ca
+        currentStart = tMin;
+      }
     }
 
-    // Thêm các interval chỉ có chấm công mà không có đăng ký ca
-    for (const info of logMap.values()) {
-        const key = `${info.manv}|${info.diadiem}`;
-        if (scheduleKeySet.has(key)) continue;
+    // Nếu còn 1 ca đang mở mà chưa gặp TANCA trong ngày
+    if (currentStart != null) {
+      const endM = lastTimeSeen != null && lastTimeSeen > currentStart
+        ? lastTimeSeen
+        : currentStart + 1; // ít nhất 1 phút
+      intervals.push({
+        key,
+        manv: evs[evs.length - 1].manv,
+        diadiem: evs[evs.length - 1].diadiem,
+        startM: currentStart,
+        endM,
+        label: makeLabel(key, evs[evs.length - 1].manv),
+      });
+    }
+  }
 
-        if (
-            info.firstPresenceMin == null ||
-            info.lastPresenceMin == null ||
-            info.lastPresenceMin <= info.firstPresenceMin
-        ) {
-            continue;
-        }
-
-        // TT = Thực Tế (không có lịch)
-        const label = `${info.manv}(TT)`;
-
-        intervals.push({
-            diadiem: info.diadiem,
-            manv: info.manv,
-            startM: info.firstPresenceMin,
-            endM: info.lastPresenceMin,
-            label
-        });
+  // 2) Thêm các khoảng chỉ có lịch đăng ký (không chấm công)
+  for (const [key, schedList] of scheduleByKey.entries()) {
+    if (logsByKey.has(key)) {
+      // đã có log -> đã tạo interval thực tế, không thêm khoảng lịch nữa
+      continue;
     }
 
-    if (intervals.length === 0) return [];
+    for (const r of schedList) {
+      const startM = parseTimeToMinutes(r.gio_bat_dau);
+      const endM = parseTimeToMinutes(r.gio_ket_thuc);
+      if (startM == null || endM == null || endM <= startM) continue;
 
-    // Tập tất cả mốc thời gian xuất hiện trong dữ liệu (linh hoạt, không cố định 30 phút)
-    const timeSet = new Set();
+      const label = makeLabel(key, r.manv);
+
+      intervals.push({
+        key,
+        manv: r.manv,
+        diadiem: r.diadiem,
+        startM,
+        endM,
+        label,
+      });
+    }
+  }
+
+  if (intervals.length === 0) return [];
+
+  // 3) Tập tất cả mốc thời gian (linh hoạt, lấy theo dữ liệu)
+  const timeSet = new Set();
+  for (const itv of intervals) {
+    timeSet.add(itv.startM);
+    timeSet.add(itv.endM);
+  }
+  const times = Array.from(timeSet).sort((a, b) => a - b);
+
+  // 4) Tính trạng thái tại từng mốc
+  const steps = [];
+  for (const t of times) {
+    const cs1 = [];
+    const cs2 = [];
+
     for (const itv of intervals) {
-        timeSet.add(itv.startM);
-        timeSet.add(itv.endM);
-    }
-
-    const times = Array.from(timeSet).sort((a, b) => a - b);
-
-    // Tính danh sách nhân viên tại từng mốc thời gian
-    const steps = [];
-    for (const t of times) {
-        const cs1 = [];
-        const cs2 = [];
-
-        for (const itv of intervals) {
-            // Nhân viên được tính là đang làm nếu start <= t < end
-            if (itv.startM <= t && t < itv.endM) {
-                const dest = itv.diadiem === "cs2" ? cs2 : cs1;
-                if (!dest.some(x => x.manv === itv.manv)) {
-                    dest.push({ manv: itv.manv, label: itv.label });
-                }
-            }
+      if (itv.startM <= t && t < itv.endM) {
+        const dest = itv.diadiem === "cs2" ? cs2 : cs1;
+        if (!dest.some(x => x.manv === itv.manv)) {
+          dest.push({ manv: itv.manv, label: itv.label });
         }
-
-        steps.push({
-            timeM: t,
-            label: minutesToHourLabel(t),
-            cs1,
-            cs2
-        });
+      }
     }
 
-    // Nén lại: chỉ giữ những mốc mà danh sách nhân viên thay đổi
-    const result = [];
-    let prevKey = null;
+    steps.push({
+      timeM: t,
+      label: minutesToHourLabel(t),
+      cs1,
+      cs2,
+    });
+  }
 
-    for (const step of steps) {
-        const cs1Ids = step.cs1.map(x => x.manv).sort().join(",");
-        const cs2Ids = step.cs2.map(x => x.manv).sort().join(",");
-        const key = `${cs1Ids}|${cs2Ids}`;
+  // 5) Nén lại, chỉ giữ mốc thay đổi danh sách nhân viên
+  const result = [];
+  let prevKey = null;
 
-        if (prevKey !== null && key === prevKey) {
-            // Không có thay đổi so với mốc trước -> bỏ qua
-            continue;
-        }
-        prevKey = key;
+  for (const step of steps) {
+    const cs1Ids = step.cs1.map(x => x.manv).sort().join(",");
+    const cs2Ids = step.cs2.map(x => x.manv).sort().join(",");
+    const key = `${cs1Ids}|${cs2Ids}`;
 
-        const cs1Text =
-            step.cs1.length > 0
-                ? `${step.cs1.length}, ${step.cs1.map(x => x.label).join(", ")}`
-                : "";
-        const cs2Text =
-            step.cs2.length > 0
-                ? `${step.cs2.length}, ${step.cs2.map(x => x.label).join(", ")}`
-                : "";
-
-        result.push({
-            label: step.label,
-            cs1Text,
-            cs2Text
-        });
+    if (prevKey !== null && key === prevKey) {
+      // không có thay đổi so với mốc trước -> bỏ
+      continue;
     }
+    prevKey = key;
 
-    return result;
+    const cs1Text =
+      step.cs1.length > 0
+        ? `${step.cs1.length}, ${step.cs1.map(x => x.label).join(", ")}`
+        : "";
+    const cs2Text =
+      step.cs2.length > 0
+        ? `${step.cs2.length}, ${step.cs2.map(x => x.label).join(", ")}`
+        : "";
+
+    result.push({
+      label: step.label,
+      cs1Text,
+      cs2Text,
+    });
+  }
+
+  return result;
 }
+
 
 async function loadSummary() {
     // Ngày chọn, mặc định hôm nay
