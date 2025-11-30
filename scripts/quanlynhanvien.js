@@ -253,12 +253,14 @@ function buildTimelineFromRows(scheduleRows, logRows) {
 
         const info = logMap.get(key);
         if (info) {
-            // Nếu vào sớm hơn đăng ký -> lấy giờ vào thực tế
-            if (info.firstPresenceMin != null && info.firstPresenceMin < startM) {
-                startM = info.firstPresenceMin;
+            // Nếu có giờ vào thực tế -> ca bắt đầu từ min(giờ đăng ký, giờ thực)
+            if (info.firstPresenceMin != null) {
+                startM = Math.min(startM, info.firstPresenceMin);
             }
-            // Nếu tan muộn hơn đăng ký -> kéo mốc cuối ra
-            if (info.lastPresenceMin != null && info.lastPresenceMin > endM) {
+
+            // Nếu có TANCA/AUTO_TANCA -> ca kết thúc đúng giờ TANCA
+            // (có thể sớm hơn hoặc muộn hơn giờ đăng ký)
+            if (info.lastPresenceMin != null) {
                 endM = info.lastPresenceMin;
             }
         }
@@ -400,9 +402,9 @@ async function loadSummary() {
         tbodySummary.innerHTML = `<tr><td colspan="3" style="color:red;">Lỗi tải dữ liệu, xem console.</td></tr>`;
         setSummaryMessage("Lỗi tải tổng quan.");
         return;
-    }    
+    }
 
-        const rows = data || [];
+    const rows = data || [];
     if (rows.length === 0) {
         tbodySummary.innerHTML = `<tr><td colspan="3">Không có đăng ký ca trong ngày ${ngay}.</td></tr>`;
         setSummaryMessage("Không có dữ liệu.");
