@@ -878,11 +878,16 @@ function attachChamCongButtons(diadiem) {
                 }
 
                 // 3b. Bắt buộc phải có ca đã đăng ký trong lichlam_dangky
+                // 1. Bắt buộc phải có đăng ký ca hôm nay
                 const hasShift = await hasRegisteredShiftToday(manv, diadiem);
                 if (!hasShift) {
                     alert("Bạn chưa đăng ký ca hôm nay. Vui lòng đăng ký ca trước khi chấm công.");
                     return;
                 }
+
+                // 2. Nếu ca hôm nay đang ở trạng thái CHO_DUYET
+                //    -> tự động duyệt ca gần nhất (bao trùm thời điểm hiện tại nếu có)
+                await approveShiftWhenCheckin({ manv, diadiem });
             }
 
             // 4) Kiểm tra GPS: phải đứng trong khu vực cửa hàng
