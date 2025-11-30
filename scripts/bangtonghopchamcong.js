@@ -180,143 +180,222 @@ async function loadData() {
  * Tính GIỜ CÔNG = (TANCA - VAOCA) - (NTRD - NTR) - (NCHD - NCH)
  */
 function aggregateLogs(rows) {
-  const map = new Map();
+  // Dùng cho sort theo ngày dd-mm-yy
+  function dateSortValue(shortDate) {
+    if (!shortDate) return 0;
+    const [dd, mm, yy] = shortDate.split("-").map(Number);
+    const fullYear = yy >= 70 ? 1900 + yy : 2000 + yy;
+    return fullYear * 10000 + mm * 100 + dd;
+  }
+
+  // Gom log theo (ngày, manv, diadiem)
+  const groupMap = new Map();
 
   for (const row of rows) {
     const d = new Date(row.created_at);
-    // Giả sử trình duyệt đang ở VN, dùng thời gian local
     const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
       2,
       "0"
     )}-${String(d.getDate()).padStart(2, "0")}`;
-    const shortDate = toShortDate(d);
+    const shortDate = toShortDate(d); // dd-mm-yy
 
     const key = `${dateKey}|${row.manv}|${row.diadiem}`;
-    let agg = map.get(key);
-    if (!agg) {
-      agg = {
-        dateKey,
-        ngay: shortDate,
-        manv: row.manv,
-        diadiem: row.diadiem,
-        // giữ phút để tính toán
-        vaocaMin: null,
-        ntrMin: null,
-        ntrdMin: null,
-        nchMin: null,
-        nchdMin: null,
-        tancaMin: null,
+    if (!groupMap.has(key)) {
+      groupMap.set(key, []);
+    }
+    groupMap.get(key).push({
+      ...row,
+      _dateKey: dateKey,
+      _shortDate: shortDate,
+      _d: d
+    });
+  }
+
+  const result = [];
+  const endEvents = new Set(["TANCA", "AUTO_TANCA"]);
+
+  // Tạo 1 ca trống
+  function createEmptySession(ev) {
+    return {
+      dateKey: ev._dateKey,
+      ngay: ev._shortDate,
+      manv: ev.manv,
+      diadiem: ev.diadiem,
+      vaocaMin: null,
+      ntrMin: null,
+      ntrdMin: null,
+      nchMin: null,
+      nchdMin: null,
+      tancaMin: null,
+      vaoca: "",
+      ntr: "",
+      ntrd: "",
+      nch: "",
+      nchd: "",
+      tanca: "",
+      ghiChuList: []
+    };
+  }
+
+  // Xử lý từng (ngày, manv, diadiem)
+  for (const events of groupMap.values()) {
+    // sort theo thời gian
+    events.sort((a, b) => a._d - b._d);
+
+    let currentSession = null;
+    const sessions = [];
+    const orphanEvents = []; // log lẻ không gắn được vào ca nào
+
+    for (const ev of events) {
+      const d = ev._d;
+      const timeStr = toTimeStr(d);
+      const dMin = toMinutes(d);
+      const sukien = ev.su_kien;
+      const ghiChu = ev.ghi_chu;
+
+      // VAOCA: mở ca mới
+      if (sukien === "VAOCA") {
+        // Nếu đang có ca mà chưa có TANCA thì đóng ca cũ lại (thiếu TANCA)
+        if (currentSession && currentSession.tancaMin == null) {
+          currentSession.ghiChuList.push(
+            "Ca trước thiếu TANCA/AUTO_TANCA (đóng ca khi gặp VAOCA mới)."
+          );
+          sessions.push(currentSession);
+        }
+        currentSession = createEmptySession(ev);
+        currentSession.vaocaMin = dMin;
+        currentSession.vaoca = timeStr;
+        if (ghiChu) currentSession.ghiChuList.push(String(ghiChu));
+        continue;
+      }
+
+      // Nếu chưa có ca mở mà lại gặp NTR/NCH/TANCA... => LOG LẺ
+      if (!currentSession) {
+        orphanEvents.push(ev);
+        continue;
+      }
+
+      if (ghiChu) currentSession.ghiChuList.push(String(ghiChu));
+
+      if (sukien === "NTR") {
+        if (currentSession.ntrMin == null || dMin < currentSession.ntrMin) {
+          currentSession.ntrMin = dMin;
+          currentSession.ntr = timeStr;
+        }
+      } else if (sukien === "NTRD") {
+        if (currentSession.ntrdMin == null || dMin < currentSession.ntrdMin) {
+          currentSession.ntrdMin = dMin;
+          currentSession.ntrd = timeStr;
+        }
+      } else if (sukien === "NCH") {
+        if (currentSession.nchMin == null || dMin < currentSession.nchMin) {
+          currentSession.nchMin = dMin;
+          currentSession.nch = timeStr;
+        }
+      } else if (sukien === "NCHD") {
+        if (currentSession.nchdMin == null || dMin < currentSession.nchdMin) {
+          currentSession.nchdMin = dMin;
+          currentSession.nchd = timeStr;
+        }
+      } else if (endEvents.has(sukien)) {
+        // TANCA / AUTO_TANCA -> đóng ca
+        if (currentSession.tancaMin == null || dMin > currentSession.tancaMin) {
+          currentSession.tancaMin = dMin;
+          currentSession.tanca = timeStr;
+        }
+        sessions.push(currentSession);
+        currentSession = null;
+      }
+      // các su_kien khác nếu có thì chỉ được gom vào ghi chú ở trên
+    }
+
+    // Còn ca dang dở chưa TANCA
+    if (currentSession) {
+      currentSession.ghiChuList.push("Ca chưa có TANCA/AUTO_TANCA.");
+      sessions.push(currentSession);
+    }
+
+    // Tính giờ công cho từng ca & đưa vào result
+    for (const agg of sessions) {
+      let gioCong = 0;
+
+      if (agg.vaocaMin != null && agg.tancaMin != null) {
+        const total = agg.tancaMin - agg.vaocaMin;
+
+        const nghiTrua =
+          agg.ntrMin != null && agg.ntrdMin != null
+            ? Math.max(agg.ntrdMin - agg.ntrMin, 0)
+            : 0;
+
+        const nghiChieu =
+          agg.nchMin != null && agg.nchdMin != null
+            ? Math.max(agg.nchdMin - agg.nchMin, 0)
+            : 0;
+
+        const workMin = Math.max(total - nghiTrua - nghiChieu, 0);
+        gioCong = Number((workMin / 60).toFixed(2));
+      }
+
+      result.push({
+        ngay: agg.ngay,
+        manv: agg.manv,
+        diadiem: agg.diadiem,
+        vaoca: agg.vaoca,
+        ntr: agg.ntr,
+        ntrd: agg.ntrd,
+        nch: agg.nch,
+        nchd: agg.nchd,
+        tanca: agg.tanca,
+        gio_cong: gioCong,
+        ghi_chu: agg.ghiChuList.join(", ")
+      });
+    }
+
+    // Chuyển các LOG LẺ thành dòng riêng
+    for (const ev of orphanEvents) {
+      const d = ev._d;
+      const timeStr = toTimeStr(d);
+      const base = {
+        ngay: ev._shortDate,
+        manv: ev.manv,
+        diadiem: ev.diadiem,
         vaoca: "",
         ntr: "",
         ntrd: "",
         nch: "",
         nchd: "",
         tanca: "",
-        ghiChuList: []
+        gio_cong: 0,
+        ghi_chu:
+          "LOG LẺ: " +
+          ev.su_kien +
+          " không ghép được vào ca nào." +
+          (ev.ghi_chu ? ` (${ev.ghi_chu})` : "")
       };
-      map.set(key, agg);
-    }
 
-    const sukien = row.su_kien;
-    const ghiChu = row.ghi_chu;
-    if (ghiChu) {
-      agg.ghiChuList.push(String(ghiChu));
-    }
+      if (ev.su_kien === "VAOCA") base.vaoca = timeStr;
+      else if (ev.su_kien === "NTR") base.ntr = timeStr;
+      else if (ev.su_kien === "NTRD") base.ntrd = timeStr;
+      else if (ev.su_kien === "NCH") base.nch = timeStr;
+      else if (ev.su_kien === "NCHD") base.nchd = timeStr;
+      else if (endEvents.has(ev.su_kien)) base.tanca = timeStr;
 
-    // Chỉ xử lý các mốc chính
-    const dMin = toMinutes(d);
-    const timeStr = toTimeStr(d);
-
-    if (sukien === "VAOCA") {
-      if (agg.vaocaMin == null || dMin < agg.vaocaMin) {
-        agg.vaocaMin = dMin;
-        agg.vaoca = timeStr;
-      }
-    } else if (sukien === "NTR") {
-      if (agg.ntrMin == null || dMin < agg.ntrMin) {
-        agg.ntrMin = dMin;
-        agg.ntr = timeStr;
-      }
-    } else if (sukien === "NTRD") {
-      if (agg.ntrdMin == null || dMin < agg.ntrdMin) {
-        agg.ntrdMin = dMin;
-        agg.ntrd = timeStr;
-      }
-    } else if (sukien === "NCH") {
-      if (agg.nchMin == null || dMin < agg.nchMin) {
-        agg.nchMin = dMin;
-        agg.nch = timeStr;
-      }
-    } else if (sukien === "NCHD") {
-      if (agg.nchdMin == null || dMin < agg.nchdMin) {
-        agg.nchdMin = dMin;
-        agg.nchd = timeStr;
-      }
-    } else if (sukien === "TANCA") {
-      // TANCA lấy mốc muộn nhất trong ngày
-      if (agg.tancaMin == null || dMin > agg.tancaMin) {
-        agg.tancaMin = dMin;
-        agg.tanca = timeStr;
-      }
+      result.push(base);
     }
-    // các su_kien khác (AUTO_TANCA, ...) chỉ dùng ghi_chu
   }
 
-  const result = [];
-
-  for (const agg of map.values()) {
-    let gioCong = 0;
-
-    if (agg.vaocaMin != null && agg.tancaMin != null) {
-      const total = agg.tancaMin - agg.vaocaMin;
-
-      const nghiTrua =
-        agg.ntrMin != null && agg.ntrdMin != null
-          ? Math.max(agg.ntrdMin - agg.ntrMin, 0)
-          : 0;
-
-      const nghiChieu =
-        agg.nchMin != null && agg.nchdMin != null
-          ? Math.max(agg.nchdMin - agg.nchMin, 0)
-          : 0;
-
-      const workMin = Math.max(total - nghiTrua - nghiChieu, 0);
-      gioCong = Number((workMin / 60).toFixed(2));
-    }
-
-    result.push({
-      ngay: agg.ngay,
-      manv: agg.manv,
-      diadiem: agg.diadiem,
-      vaoca: agg.vaoca,
-      ntr: agg.ntr,
-      ntrd: agg.ntrd,
-      nch: agg.nch,
-      nchd: agg.nchd,
-      tanca: agg.tanca,
-      gio_cong: gioCong,
-      ghi_chu: agg.ghiChuList.join(", ")
-    });
-  }
-
-  // Sắp xếp: ngày tăng dần, NV tăng dần, cơ sở
+  // Sắp xếp: NGÀY ↑, NV ↑, Cơ sở ↑
   result.sort((a, b) => {
-    if (a.ngay === b.ngay) {
-      if (a.manv === b.manv) {
-        return a.diadiem.localeCompare(b.diadiem);
-      }
-      return a.manv.localeCompare(b.manv);
-    }
-    // dd-mm-yy → sort lại theo dateKey better, nhưng ở đây chấp nhận đơn giản:
-    const [da, ma, ya] = a.ngay.split("-").map(Number);
-    const [db, mb, yb] = b.ngay.split("-").map(Number);
-    const va = ya * 10000 + ma * 100 + da;
-    const vb = yb * 10000 + mb * 100 + db;
-    return va - vb;
+    const da = dateSortValue(a.ngay);
+    const db = dateSortValue(b.ngay);
+    if (da !== db) return da - db;
+    if (a.manv !== b.manv) return a.manv.localeCompare(b.manv);
+    return a.diadiem.localeCompare(b.diadiem);
   });
 
   return result;
 }
+
 
 // ========== XUẤT CSV ==========
 
