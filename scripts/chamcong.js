@@ -843,6 +843,7 @@ function attachChamCongButtons(diadiem) {
     const btnTanca = document.getElementById("btn-tanca");
 
     // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
+    // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
     async function handleClick(su_kien, btn) {
         if (!btn) return;
 
@@ -853,31 +854,49 @@ function attachChamCongButtons(diadiem) {
         btn.dataset.working = "1";
 
         try {
+            // 1) Luôn load lại log hôm nay mới nhất từ DB
+            //    -> chống mở nhiều tab / nhiều thiết bị cùng chấm công.
+            todayEvents = await loadTodayEvents(manv, diadiem);
+
+            // 2) Kiểm tra thứ tự sự kiện hợp lý dựa trên log mới nhất
             const allowed = getAllowedNextEvents();
             if (!allowed.includes(su_kien)) {
                 alert("Thứ tự chấm công không hợp lý. Vui lòng chấm đúng quy trình trong ngày.");
                 return;
             }
 
-             // *** MỚI THÊM: BẮT BUỘC PHẢI ĐĂNG KÝ CA HÔM NAY TRƯỚC KHI VÀO CA ***
-      if (su_kien === "VAOCA") {
-        const hasShift = await hasRegisteredShiftToday(manv, diadiem);
-        if (!hasShift) {
-          alert("Bạn chưa đăng ký ca hôm nay. Vui lòng đăng ký ca trước khi chấm công.");
-          return;
-        }
-      }
-      // *** HẾT PHẦN MỚI ***
+            // 3) Các kiểm tra riêng cho VÀO CA
+            if (su_kien === "VAOCA") {
+                // 3a. Nếu đã từng VÀO CA hôm nay mà ca gần nhất chưa TAN CA -> không cho vào ca mới
+                const hasAnyVaoca = todayEvents.some(ev => ev.su_kien === "VAOCA");
+                if (hasAnyVaoca && !hasTancaAfterLastVaoca()) {
+                    alert(
+                        "Ca trước của bạn chưa TAN CA, không thể vào ca mới.\n" +
+                        "Hãy nhờ quản lý kiểm tra / sửa lại chấm công trước."
+                    );
+                    return;
+                }
 
+                // 3b. Bắt buộc phải có ca đã đăng ký trong lichlam_dangky
+                const hasShift = await hasRegisteredShiftToday(manv, diadiem);
+                if (!hasShift) {
+                    alert("Bạn chưa đăng ký ca hôm nay. Vui lòng đăng ký ca trước khi chấm công.");
+                    return;
+                }
+            }
+
+            // 4) Kiểm tra GPS: phải đứng trong khu vực cửa hàng
             const okInStore = await ensureInStoreBeforeAction(diadiem);
             if (!okInStore) return;
 
+            // 5) Ghi log chấm công
             const ok = await logChamCong({
                 manv,
                 diadiem,
                 su_kien,
                 nguon: "manual"
             });
+
             if (ok) {
                 const now = new Date();
                 todayEvents.push({
@@ -892,7 +911,7 @@ function attachChamCongButtons(diadiem) {
                 }
                 renderTodayLog();
 
-                // Khóa nút trong 5 phút như cũ
+                // Khoá nút trong 5 phút như cũ
                 disableButtonTemporarily(btn);
             }
         } finally {
@@ -900,6 +919,7 @@ function attachChamCongButtons(diadiem) {
             btn.dataset.working = "0";
         }
     }
+
 
     btnVaoca.addEventListener("click", () => handleClick("VAOCA", btnVaoca));
     btnNtr.addEventListener("click", () => handleClick("NTR", btnNtr));
