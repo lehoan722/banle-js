@@ -36,9 +36,9 @@ function suKienLabel(code) {
     const map = {
         VAOCA: "Vào ca",
         NTR: "Nghỉ trưa",
-        NTRD: "Trưa đến",
+        NTRD: "Nghỉ Trưa đến",
         NCH: "Nghỉ chiều",
-        NCHD: "Chiều đến",
+        NCHD: "Nghỉ Chiều đến",
         TANCA: "Tan ca",
         AUTO_TANCA: "Tự tan ca"
     };
@@ -193,75 +193,186 @@ function minutesToHourLabel(mins) {
 
 // tạo các slot 30 phút từ 07:30 -> 22:00
 // tạo các slot 30 phút từ 07:30 -> 22:00
-function buildSlotsFromRows(rows) {
-    const SLOT_START = 7 * 60 + 30; // 07:30
-    const SLOT_END = 22 * 60;       // 22:00
+// Xây timeline linh hoạt từ đăng ký ca + giờ làm thực tế
+// - Mỗi nhân viên -> 1 hoặc nhiều khoảng [start, end) theo phút trong ngày
+// - Ghép thêm giờ vào/ra thực tế (chamcong_log) để mở rộng khoảng
+// - Trả về các mốc thời gian mà danh sách nhân viên CS1/CS2 thay đổi
+function buildTimelineFromRows(scheduleRows, logRows) {
+    const rows = scheduleRows || [];
+    const logs = logRows || [];
 
-    // Chuẩn hóa intervals từ từng dòng đăng ký ca
-    const intervals = (rows || []).map(r => {
-        const startM = parseTimeToMinutes(r.gio_bat_dau);
-        const endM = parseTimeToMinutes(r.gio_ket_thuc);
+    if (rows.length === 0 && logs.length === 0) return [];
+
+    // Gom log theo (manv, diadiem) lấy mốc đến / về
+    const logMap = new Map();
+    const startEvents = new Set(["VAOCA", "NTRD", "NCHD"]);
+    const endEvents = new Set(["TANCA", "AUTO_TANCA"]);
+
+    for (const log of logs) {
+        if (!log.manv || !log.diadiem || !log.su_kien || !log.created_at) continue;
+
+        const d = new Date(log.created_at); // giả định local time = VN
+        const mins = d.getHours() * 60 + d.getMinutes();
+        const key = `${log.manv}|${log.diadiem}`;
+
+        let info = logMap.get(key);
+        if (!info) {
+            info = {
+                manv: log.manv,
+                diadiem: log.diadiem,
+                firstPresenceMin: null,
+                lastPresenceMin: null
+            };
+            logMap.set(key, info);
+        }
+
+        if (startEvents.has(log.su_kien)) {
+            if (info.firstPresenceMin == null || mins < info.firstPresenceMin) {
+                info.firstPresenceMin = mins;
+            }
+        }
+
+        if (endEvents.has(log.su_kien)) {
+            if (info.lastPresenceMin == null || mins > info.lastPresenceMin) {
+                info.lastPresenceMin = mins;
+            }
+        }
+    }
+
+    const intervals = [];
+    const scheduleKeySet = new Set();
+
+    // Tạo interval từ đăng ký ca, điều chỉnh theo giờ thực tế nếu có
+    for (const r of rows) {
+        let startM = parseTimeToMinutes(r.gio_bat_dau);
+        let endM = parseTimeToMinutes(r.gio_ket_thuc);
+        if (startM == null || endM == null || endM <= startM) continue;
+
+        const key = `${r.manv}|${r.diadiem}`;
+        scheduleKeySet.add(key);
+
+        const info = logMap.get(key);
+        if (info) {
+            // Nếu vào sớm hơn đăng ký -> lấy giờ vào thực tế
+            if (info.firstPresenceMin != null && info.firstPresenceMin < startM) {
+                startM = info.firstPresenceMin;
+            }
+            // Nếu tan muộn hơn đăng ký -> kéo mốc cuối ra
+            if (info.lastPresenceMin != null && info.lastPresenceMin > endM) {
+                endM = info.lastPresenceMin;
+            }
+        }
+
+        if (endM <= startM) continue;
+
         const ten = r.tennv || r.manv || "";
-
-        // D = đã duyệt, C = chờ duyệt, T = từ chối / huỷ / trạng thái khác
-        let suffix = "T";
+        let suffix = "T"; // T = trạng thái khác
         if (r.trang_thai === "DA_DUYET") suffix = "D";
         else if (r.trang_thai === "CHO_DUYET") suffix = "C";
 
         const label = ten ? `${ten}(${suffix})` : "";
 
-        return {
+        intervals.push({
             diadiem: r.diadiem,
             manv: r.manv,
             startM,
             endM,
             label
-        };
-    });
-
-    // Tạo danh sách slot 30 phút
-    const slots = [];
-    for (let m = SLOT_START; m < SLOT_END; m += 30) {
-        slots.push({
-            startM: m,
-            endM: m + 30,
-            label: minutesToHourLabel(m),
-            cs1: [], // mỗi phần tử: { manv, label }
-            cs2: []
         });
     }
 
-    // Phân bổ nhân viên vào từng slot
-    for (const itv of intervals) {
-        if (itv.startM == null || itv.endM == null || !itv.label) continue;
+    // Thêm các interval chỉ có chấm công mà không có đăng ký ca
+    for (const info of logMap.values()) {
+        const key = `${info.manv}|${info.diadiem}`;
+        if (scheduleKeySet.has(key)) continue;
 
-        for (const s of slots) {
-            // nếu ca có giao với slot
-            if (itv.startM < s.endM && itv.endM > s.startM) {
-                if (itv.diadiem === "cs1") {
-                    // mỗi nhân viên chỉ xuất hiện 1 lần/slot
-                    if (!s.cs1.some(x => x.manv === itv.manv)) {
-                        s.cs1.push({ manv: itv.manv, label: itv.label });
-                    }
-                } else if (itv.diadiem === "cs2") {
-                    if (!s.cs2.some(x => x.manv === itv.manv)) {
-                        s.cs2.push({ manv: itv.manv, label: itv.label });
-                    }
+        if (
+            info.firstPresenceMin == null ||
+            info.lastPresenceMin == null ||
+            info.lastPresenceMin <= info.firstPresenceMin
+        ) {
+            continue;
+        }
+
+        // TT = Thực Tế (không có lịch)
+        const label = `${info.manv}(TT)`;
+
+        intervals.push({
+            diadiem: info.diadiem,
+            manv: info.manv,
+            startM: info.firstPresenceMin,
+            endM: info.lastPresenceMin,
+            label
+        });
+    }
+
+    if (intervals.length === 0) return [];
+
+    // Tập tất cả mốc thời gian xuất hiện trong dữ liệu (linh hoạt, không cố định 30 phút)
+    const timeSet = new Set();
+    for (const itv of intervals) {
+        timeSet.add(itv.startM);
+        timeSet.add(itv.endM);
+    }
+
+    const times = Array.from(timeSet).sort((a, b) => a - b);
+
+    // Tính danh sách nhân viên tại từng mốc thời gian
+    const steps = [];
+    for (const t of times) {
+        const cs1 = [];
+        const cs2 = [];
+
+        for (const itv of intervals) {
+            // Nhân viên được tính là đang làm nếu start <= t < end
+            if (itv.startM <= t && t < itv.endM) {
+                const dest = itv.diadiem === "cs2" ? cs2 : cs1;
+                if (!dest.some(x => x.manv === itv.manv)) {
+                    dest.push({ manv: itv.manv, label: itv.label });
                 }
             }
         }
+
+        steps.push({
+            timeM: t,
+            label: minutesToHourLabel(t),
+            cs1,
+            cs2
+        });
     }
 
-    // Chuyển thành chuỗi hiển thị: "n, ten1(D), ten2(C)..."
-    slots.forEach(s => {
-        const list1 = s.cs1.map(x => x.label);
-        const list2 = s.cs2.map(x => x.label);
+    // Nén lại: chỉ giữ những mốc mà danh sách nhân viên thay đổi
+    const result = [];
+    let prevKey = null;
 
-        s.cs1Text = list1.length > 0 ? `${list1.length}, ${list1.join(", ")}` : "";
-        s.cs2Text = list2.length > 0 ? `${list2.length}, ${list2.join(", ")}` : "";
-    });
+    for (const step of steps) {
+        const cs1Ids = step.cs1.map(x => x.manv).sort().join(",");
+        const cs2Ids = step.cs2.map(x => x.manv).sort().join(",");
+        const key = `${cs1Ids}|${cs2Ids}`;
 
-    return slots;
+        if (prevKey !== null && key === prevKey) {
+            // Không có thay đổi so với mốc trước -> bỏ qua
+            continue;
+        }
+        prevKey = key;
+
+        const cs1Text =
+            step.cs1.length > 0
+                ? `${step.cs1.length}, ${step.cs1.map(x => x.label).join(", ")}`
+                : "";
+        const cs2Text =
+            step.cs2.length > 0
+                ? `${step.cs2.length}, ${step.cs2.map(x => x.label).join(", ")}`
+                : "";
+
+        result.push({
+            label: step.label,
+            cs1Text,
+            cs2Text
+        });
+    }
+
+    return result;
 }
 
 async function loadSummary() {
@@ -289,16 +400,38 @@ async function loadSummary() {
         tbodySummary.innerHTML = `<tr><td colspan="3" style="color:red;">Lỗi tải dữ liệu, xem console.</td></tr>`;
         setSummaryMessage("Lỗi tải tổng quan.");
         return;
-    }
+    }    
 
-    const rows = data || [];
+        const rows = data || [];
     if (rows.length === 0) {
         tbodySummary.innerHTML = `<tr><td colspan="3">Không có đăng ký ca trong ngày ${ngay}.</td></tr>`;
         setSummaryMessage("Không có dữ liệu.");
         return;
     }
 
-    const slots = buildSlotsFromRows(rows);
+    // Đọc thêm log chấm công trong ngày để lấy giờ làm thực tế
+    const from = `${ngay}T00:00:00+07:00`;
+    const to = `${ngay}T23:59:59.999+07:00`;
+
+    let logRows = [];
+    try {
+        const { data: logs, error: logError } = await supabase
+            .from("chamcong_log")
+            .select("manv, diadiem, su_kien, created_at")
+            .gte("created_at", from)
+            .lte("created_at", to);
+
+        if (logError) {
+            console.error("Lỗi đọc chamcong_log cho summary:", logError);
+        } else {
+            logRows = logs || [];
+        }
+    } catch (e) {
+        console.error("Lỗi không mong muốn khi đọc chamcong_log cho summary:", e);
+    }
+
+    // Xây timeline linh hoạt từ đăng ký + giờ thực tế
+    const slots = buildTimelineFromRows(rows, logRows);
     if (slots.length === 0) {
         tbodySummary.innerHTML = `<tr><td colspan="3">Không tạo được khung giờ hiển thị.</td></tr>`;
         setSummaryMessage("Không có dữ liệu phù hợp.");
@@ -321,11 +454,11 @@ async function loadSummary() {
         tdCS2.textContent = s.cs2Text || "";
         tr.appendChild(tdCS2);
 
-        // >>> THÊM DÒNG NÀY <<<
         tbodySummary.appendChild(tr);
     });
 
-    setSummaryMessage(`Đã tải tổng quan cho ngày ${ngay}.`);
+    setSummaryMessage(`Đã tải ${slots.length} mốc thời gian.`);
+
 
 }
 
