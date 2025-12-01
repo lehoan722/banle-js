@@ -237,8 +237,21 @@ async function taiBangCong() {
     return;
   }
 
-  // lấy danh sách nhân viên
-  const nhanvien = [...new Set(data.map(d => `${d.manv}|${d.tennv}`))];
+  // lấy danh sách nhân viên **chỉ những người có phát sinh công trong tháng**
+  const nhanvien = [
+    ...new Set(
+      data
+        .filter(d => Number(d.gio_cong || 0) > 0)
+        .map(d => `${d.manv}|${d.tennv}`)
+    )
+  ];
+
+  // Nếu không ai có công trong tháng -> hiển thị thông báo
+  if (nhanvien.length === 0) {
+    thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công trong tháng này.</td></tr>`;
+    return;
+  }
 
   // dựng header
   let header = `<th>Ngày</th><th>Thứ</th>`;
@@ -269,14 +282,13 @@ async function taiBangCong() {
       const gioCong = found ? Number(found.gio_cong || 0) : 0;
 
       if (gioCong === 0) {
-        // Ngày nghỉ / không có công: để ô trống cho đỡ rối
+        // Ngày nghỉ / không có công: để ô trống
         cells += `<td></td>`;
       } else {
         sum += gioCong;
         cells += `<td>${gioCong}</td>`;
       }
     });
-
 
     html += `<tr>
             <td>${ng}</td>
