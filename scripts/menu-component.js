@@ -454,10 +454,10 @@
           qrImg2.alt = `QR ${neck}`;
 
           // Kích thước lớn hơn cho card (in, quét trực tiếp từ màn hình)
-          qrImg2.style.width = '2.4cm';
-          qrImg2.style.height = '2.4cm';
-          qrImg2.style.maxWidth = '120px';
-          qrImg2.style.maxHeight = '120px';
+          qrImg2.style.width = '2cm';
+          qrImg2.style.height = '2cm';
+          qrImg2.style.maxWidth = '100px';
+          qrImg2.style.maxHeight = '100px';
 
           qrImg2.style.display = 'block';
           qrImg2.style.margin = '2px auto';
