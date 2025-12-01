@@ -85,18 +85,28 @@ function setResultFields(values) {
     );
   }
 
-  if (values.tien_vuot <= 0) {
-    warns.push("- Doanh thu chưa vượt mức khoán, thưởng vượt khoán = 0.");
-  } else {
+  // --- Cảnh báo doanh thu so với khoán: cho phép âm (thiếu khoán) ---
+  if (values.tien_vuot > 0) {
+    // Vượt khoán: thưởng dương
     warns.push(
-      `- Doanh thu vượt khoán: ${fmtNumber(values.tien_vuot, 0)} đ, thưởng vượt khoán: ${fmtNumber(values.tien_thuong, 0)} đ.`
+      `- Doanh thu VƯỢT khoán: ${fmtNumber(values.tien_vuot, 0)} đ, thưởng vượt khoán: ${fmtNumber(values.tien_thuong, 0)} đ.`
+    );
+  } else if (values.tien_vuot < 0) {
+    // Thiếu khoán: phạt / giảm lương (thưởng âm)
+    warns.push(
+      `- Doanh thu THIẾU khoán: ${fmtNumber(Math.abs(values.tien_vuot), 0)} đ, tiền phạt/giảm thưởng: ${fmtNumber(values.tien_thuong, 0)} đ (âm nghĩa là trừ vào lương).`
+    );
+  } else {
+    // Bằng khoán: không thưởng, không phạt
+    warns.push(
+      "- Doanh thu đúng bằng mức khoán, thưởng vượt khoán = 0, không thưởng cũng không bị trừ."
     );
   }
 
   const warnEl = document.getElementById("warning-section");
   warnEl.innerHTML = warns.length
     ? warns.join("<br>")
-    : "Không có cảnh báo vi phạm đáng chú ý trong kỳ (CB1/CB2/CB3/AUTO_TANCA/VẮNG/TANCA_LỊCH) và doanh thu đang đạt/vượt khoán.";
+    : "Không có cảnh báo vi phạm đáng chú ý trong kỳ (CB1/CB2/CB3/AUTO_TANCA/VẮNG/TANCA_LỊCH) và doanh thu đang đạt đúng mức khoán.";
 }
 
 async function tinhLuongThang() {
@@ -206,13 +216,16 @@ async function tinhLuongThang() {
       tong_doanh_thu = Number(kpiData[0].tong_doanh_thu || 0);
     }
 
-    // 3) Tính khoán & thưởng vượt khoán
+    // 3) Tính khoán & thưởng vượt khoán (CHO PHÉP ÂM)
     const khoan_thang = gio_cong_tinh_luong * khoan_gio;
-    const tien_vuot = Math.max(tong_doanh_thu - khoan_thang, 0);
+    // Trước đây: chỉ lấy dương => Math.max(tong_doanh_thu - khoan_thang, 0)
+    // Giờ: cho phép âm để nếu doanh thu < khoán thì bị trừ thưởng
+    const tien_vuot = tong_doanh_thu - khoan_thang;
     const tien_thuong = tien_vuot * (pct_thuong / 100.0);
 
     // 4) Tính lương
     const luong_gio_thang = gio_cong_tinh_luong * luong_gio;
+    // Nếu tien_thuong âm thì sẽ tự động trừ vào tổng lương
     const tong_luong = luong_gio_thang + tien_thuong;
 
     const rangeLabel = `${tuNgay} → ${denNgay}`;
@@ -250,7 +263,9 @@ async function tinhLuongThang() {
 // --- Khởi tạo khi load trang ---
 document.addEventListener("DOMContentLoaded", async () => {
   setDefaultDates();
-  setStatus("Chọn khoảng ngày, chọn mã NV, nhập lương giờ, khoán/giờ và % thưởng trên phần vượt khoán rồi bấm Tính lương.");
+  setStatus(
+    "Chọn khoảng ngày, chọn mã NV, nhập lương giờ, khoán/giờ và % thưởng trên phần chênh lệch so với khoán (có thể âm/dương) rồi bấm Tính lương."
+  );
 
   // Đổ danh sách nhân viên vào datalist ds-manv
   const manvDatalist = document.getElementById("ds-manv");
