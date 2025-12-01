@@ -164,7 +164,7 @@
     <div id="hotLuong" class="hot-container"></div>
 
     <!-- Bảng HTML cũ: luôn hiển thị (fallback) -->
-    <div style="max-height: 480px; overflow: auto; margin-top: 6px">
+    <div style="max-height: 480px; overflow: auto; margin-top: 6px; display:none;">
       <table>
         <thead>
           <tr>
@@ -209,8 +209,8 @@
     <!-- Bảng công dùng Handsontable -->
     <div id="hotBangCong" class="hot-container"></div>
 
-    <!-- Bảng HTML cũ: fallback -->
-    <div class="table-responsive mt-2" style="max-height: 500px; overflow: auto">
+    <!-- Bảng HTML cũ: ẩn, chỉ dùng làm fallback -->
+    <div class="table-responsive mt-2" style="max-height: 500px; overflow: auto; display:none;">
       <table class="table table-bordered table-sm">
         <thead id="thead-bangcong" class="table-dark"></thead>
         <tbody id="tbody-bangcong"></tbody>
