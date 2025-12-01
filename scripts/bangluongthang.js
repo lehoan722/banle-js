@@ -170,11 +170,12 @@ async function taiBangLuong() {
       const doanhthu = Number(mapDoanhThuKPI[manv] || 0);
 
       const khoan_thang = gio_tinh * khoan_gio;
-      const tien_vuot = Math.max(doanhthu - khoan_thang, 0);
-      const tien_thuong = tien_vuot * (pct_thuong / 100.0);
+      // CHO PHÉP ÂM: không dùng Math.max nữa
+      const tien_vuot = doanhthu - khoan_thang;              // có thể âm
+      const tien_thuong = tien_vuot * (pct_thuong / 100.0);  // thưởng/phạt
 
       const luong_cung = gio_tinh * luong_gio;
-      const tong_luong = luong_cung + tien_thuong;
+      const tong_luong = luong_cung + tien_thuong;           // tổng lương có thể < lương cứng
 
       // Cộng dồn vào tổng cuối
       sum_gio_cong += gio_cong;
