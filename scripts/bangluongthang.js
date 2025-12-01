@@ -417,7 +417,7 @@ async function taiBangCong() {
   }
 
   // Header
-  
+  let header = `<th>Ngày</th><th>Thứ</th>`;
   nhanvien.forEach(n => {
     const [, tennv] = n.split("|");
     header += `<th>${tennv}</th>`;
@@ -497,7 +497,7 @@ async function taiBangCong() {
   renderBangCongHot(colHeaders, hotData);
 
   // Giữ lại bảng HTML cũ để dự phòng (không cần hiển thị)
-  let header = `<th>Ngày</th><th>Thứ</th>`;
+  
   nhanvien.forEach(n => {
     header += `<th>${n.split("|")[1]}</th>`;
   });
