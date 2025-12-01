@@ -467,7 +467,7 @@
           Object.assign(qr2Wrap.style, {
             textAlign: 'center',
             background: '#FFFFFF',         // nền trắng riêng cho QR
-            padding: '8px',
+            padding: '10px',
             borderRadius: '8px',
             boxShadow: '0 0 0 1px #d1d5db inset',
             boxSizing: 'border-box'
