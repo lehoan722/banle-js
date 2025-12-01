@@ -425,7 +425,7 @@ async function taiBangCong() {
   header += `<th>Tổng</th>`;
   thead.innerHTML = `<tr>${header}</tr>`;
 
-    // --------- CHUẨN HOÁ DỮ LIỆU ĐỂ ĐỔ VÀO HANDSONTABLE ---------
+  // --------- CHUẨN HOÁ DỮ LIỆU ĐỂ ĐỔ VÀO HANDSONTABLE ---------
 
   // Gom dữ liệu theo ngày
   const groupByNgay = {};
@@ -497,7 +497,7 @@ async function taiBangCong() {
   renderBangCongHot(colHeaders, hotData);
 
   // Giữ lại bảng HTML cũ để dự phòng (không cần hiển thị)
-  
+  let header = `<th>Ngày</th><th>Thứ</th>`;
   nhanvien.forEach(n => {
     header += `<th>${n.split("|")[1]}</th>`;
   });
