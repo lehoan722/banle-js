@@ -478,7 +478,7 @@
           const mk = (txt) => {
             const c = document.createElement('div');
             c.textContent = txt;
-            c.style.padding = '4px 4px';
+            c.style.padding = '2px 2px';
             c.style.textAlign = 'center';
             return c;
           };
