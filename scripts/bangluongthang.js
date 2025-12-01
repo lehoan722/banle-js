@@ -371,7 +371,7 @@ async function taiBangCong() {
       <td>${ng}</td>
       <td class="${thu == "CN" ? "text-danger fw-bold" : ""}">${thu}</td>
       ${cells}
-      <td class="fw-bold">${sum}</td>
+      <td class="fw-bold">${fmt(sum, 2)}</td>
     </tr>`;
   });
 
@@ -383,9 +383,10 @@ async function taiBangCong() {
   nhanvien.forEach(n => {
     const manv = n.split("|")[0];
     const tongNv = tongTheoNhanVien[manv] || 0;
-    totalRow += `<td>${tongNv > 0 ? tongNv : ""}</td>`;
+    totalRow += `<td>${tongNv > 0 ? fmt(tongNv, 2) : ""}</td>`;
   });
-  totalRow += `<td>${tongTatCa}</td></tr>`;
+  totalRow += `<td>${fmt(tongTatCa, 2)}</td></tr>`;
+
 
   html += totalRow;
 
