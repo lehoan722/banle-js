@@ -209,12 +209,17 @@ async function taiBangLuong() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // đặt mặc định từ ngày / đến ngày
   setDefaultDates();
-  setStatus(
-    "Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương."
-  );
+
+  // gán sự kiện cho nút "Tải bảng lương"
   btnTai.addEventListener("click", taiBangLuong);
+
+  // tự động tải bảng lương + bảng công ngay khi mở trang
+  taiBangLuong();
+  taiBangCong();
 });
+
 
 // --------- PHẦN BẢNG CÔNG THÁNG (giữ nguyên) ----------
 
