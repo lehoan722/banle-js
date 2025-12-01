@@ -11,6 +11,15 @@ const btnTai = document.getElementById("btn-tai");
 const tbody = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
 
+// Container Handsontable
+const hotLuongContainer = document.getElementById("hotLuong");
+const hotBangCongContainer = document.getElementById("hotBangCong");
+
+// Biến lưu instance Handsontable
+let hotLuong = null;
+let hotBangCong = null;
+
+
 function toIsoDate(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -31,6 +40,93 @@ function fmt(n, d = 0) {
     maximumFractionDigits: d
   });
 }
+
+function renderLuongHot(data) {
+  if (!hotLuongContainer) return;
+  const HOT = window.Handsontable;
+  if (!HOT) {
+    console.error("Handsontable chưa được nạp.");
+    return;
+  }
+
+  const colHeaders = [
+    "Mã NV",
+    "Tên NV",
+    "Cơ sở",
+    "Giờ công (thực)",
+    "Giờ trừ TANCA_LỊCH",
+    "Giờ tính lương",
+    "Doanh thu",
+    "Khoán / giờ",
+    "Khoán theo giờ công",
+    "Doanh thu vượt khoán",
+    "Thưởng vượt khoán",
+    "Lương cứng",
+    "Tổng lương"
+  ];
+
+  const columns = [
+    { data: 0, type: "text" },
+    { data: 1, type: "text" },
+    { data: 2, type: "text" },
+    { data: 3, type: "numeric", numericFormat: { pattern: "0.00" } },
+    { data: 4, type: "numeric", numericFormat: { pattern: "0.00" } },
+    { data: 5, type: "numeric", numericFormat: { pattern: "0.00" } },
+    { data: 6, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 7, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 8, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } }
+  ];
+
+  if (!hotLuong) {
+    hotLuong = new HOT(hotLuongContainer, {
+      data,
+      colHeaders,
+      columns,
+      rowHeaders: true,
+      filters: true,
+      dropdownMenu: true,
+      columnSorting: true,
+      licenseKey: "non-commercial-and-evaluation"
+    });
+  } else {
+    hotLuong.updateSettings({
+      data,
+      colHeaders,
+      columns
+    });
+  }
+}
+
+function renderBangCongHot(colHeaders, data) {
+  if (!hotBangCongContainer) return;
+  const HOT = window.Handsontable;
+  if (!HOT) {
+    console.error("Handsontable chưa được nạp.");
+    return;
+  }
+
+  if (!hotBangCong) {
+    hotBangCong = new HOT(hotBangCongContainer, {
+      data,
+      colHeaders,
+      rowHeaders: true,
+      filters: true,
+      dropdownMenu: true,
+      columnSorting: true,
+      licenseKey: "non-commercial-and-evaluation"
+    });
+  } else {
+    hotBangCong.updateSettings({
+      data,
+      colHeaders
+    });
+  }
+}
+
 
 function setStatus(msg, isError = false) {
   statusEl.textContent = msg || "";
@@ -321,7 +417,7 @@ async function taiBangCong() {
   }
 
   // Header
-  let header = `<th>Ngày</th><th>Thứ</th>`;
+  
   nhanvien.forEach(n => {
     const [, tennv] = n.split("|");
     header += `<th>${tennv}</th>`;
@@ -329,14 +425,27 @@ async function taiBangCong() {
   header += `<th>Tổng</th>`;
   thead.innerHTML = `<tr>${header}</tr>`;
 
-  // Gom theo ngày
+    // --------- CHUẨN HOÁ DỮ LIỆU ĐỂ ĐỔ VÀO HANDSONTABLE ---------
+
+  // Gom dữ liệu theo ngày
   const groupByNgay = {};
   data.forEach(d => {
     if (!groupByNgay[d.ngay]) groupByNgay[d.ngay] = [];
     groupByNgay[d.ngay].push(d);
   });
 
-  // Biến tổng cho từng nhân viên & tổng toàn bộ
+  // MẢNG HEADER CHO HANDSONTABLE
+  const colHeaders = ["Ngày", "Thứ"];
+  nhanvien.forEach(n => {
+    const [, tennv] = n.split("|");
+    colHeaders.push(tennv);
+  });
+  colHeaders.push("Tổng");
+
+  // MẢNG DỮ LIỆU DẠNG 2 CHIỀU CHO HANDSONTABLE
+  const hotData = [];
+
+  // Biến tổng cho từng nhân viên
   const tongTheoNhanVien = {};
   nhanvien.forEach(n => {
     const manv = n.split("|")[0];
@@ -344,55 +453,69 @@ async function taiBangCong() {
   });
   let tongTatCa = 0;
 
-  let html = "";
+  // ---- Duyệt từng ngày ----
   const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
 
   ngayList.forEach(ng => {
     const row = groupByNgay[ng];
     const thu = row[0].thu;
+
     let sum = 0;
-    let cells = "";
+
+    const rowData = [Number(ng), thu]; // dòng cho HOT
 
     nhanvien.forEach(n => {
       const manv = n.split("|")[0];
       const found = row.find(r => r.manv == manv);
       const gioCong = found ? Number(found.gio_cong || 0) : 0;
 
-      if (gioCong === 0) {
-        cells += `<td></td>`;
-      } else {
-        cells += `<td>${gioCong}</td>`;
+      rowData.push(Number(gioCong.toFixed(2)));
+
+      if (gioCong > 0) {
         sum += gioCong;
         tongTheoNhanVien[manv] += gioCong;
         tongTatCa += gioCong;
       }
     });
 
-    html += `<tr>
-      <td>${ng}</td>
-      <td class="${thu == "CN" ? "text-danger fw-bold" : ""}">${thu}</td>
-      ${cells}
-      <td class="fw-bold">${fmt(sum, 2)}</td>
-    </tr>`;
+    rowData.push(Number(sum.toFixed(2)));
+    hotData.push(rowData);
   });
 
-  // Dòng TỔNG cuối cùng
-  let totalRow = `<tr class="table-secondary fw-bold">
-    <td>TỔNG</td>
-    <td></td>`;
-
+  // DÒNG TỔNG CUỐI
+  const totalRow = ["TỔNG", ""];
   nhanvien.forEach(n => {
     const manv = n.split("|")[0];
     const tongNv = tongTheoNhanVien[manv] || 0;
-    totalRow += `<td>${tongNv > 0 ? fmt(tongNv, 2) : ""}</td>`;
+    totalRow.push(Number(tongNv.toFixed(2)));
   });
-  totalRow += `<td>${fmt(tongTatCa, 2)}</td></tr>`;
+  totalRow.push(Number(tongTatCa.toFixed(2)));
 
+  hotData.push(totalRow);
 
-  html += totalRow;
+  // Gọi HANDSONTABLE
+  renderBangCongHot(colHeaders, hotData);
+
+  // Giữ lại bảng HTML cũ để dự phòng (không cần hiển thị)
+  let header = `<th>Ngày</th><th>Thứ</th>`;
+  nhanvien.forEach(n => {
+    header += `<th>${n.split("|")[1]}</th>`;
+  });
+  header += `<th>Tổng</th>`;
+  thead.innerHTML = `<tr>${header}</tr>`;
+
+  let html = "";
+  hotData.forEach((r, idx) => {
+    html += "<tr>";
+    r.forEach(v => {
+      html += `<td>${v}</td>`;
+    });
+    html += "</tr>";
+  });
 
   tbody.innerHTML = html;
 }
+
 
 window.taiBangCong = taiBangCong;
 
