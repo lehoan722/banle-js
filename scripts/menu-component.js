@@ -368,21 +368,34 @@
             return c;
           };
 
-          // QR cell (đứng trước cột Vòng cổ)
+          // QR cell (đứng trước cột Vòng cổ) – tối ưu cho máy quét
           const qrWrap = document.createElement('div');
-          qrWrap.style.textAlign = 'center';
-          qrWrap.style.cursor = 'pointer';
+          Object.assign(qrWrap.style, {
+            textAlign: 'center',
+            cursor: 'pointer',
+            background: '#FFFFFF',          // nền trắng tuyệt đối
+            padding: '6px',                 // tạo quiet zone thêm
+            borderRadius: '8px',
+            boxShadow: '0 0 0 1px #d1d5db inset',
+            boxSizing: 'border-box'
+          });
+
           const qrImg = document.createElement('img');
           qrImg.src = SIZE_QR_IMAGES[neck];
           qrImg.alt = `QR ${neck}`;
-          // Kích thước vật lý ≥ 1cm: đặt 1.2cm để dư biên khi màn hình thu phóng
-          qrImg.style.width = '1.5cm';
-          qrImg.style.height = '1.5cm';
+
+          // Tăng kích thước QR: ~2.4cm, giới hạn tối đa ~120px
+          qrImg.style.width = '2.4cm';
+          qrImg.style.height = '2.4cm';
+          qrImg.style.maxWidth = '120px';
+          qrImg.style.maxHeight = '120px';
+
           qrImg.style.display = 'block';
-          qrImg.style.margin = '6px auto';
-          // giữ pixel gọn khi thu/phóng
+          qrImg.style.margin = '2px auto';
           qrImg.style.imageRendering = 'pixelated';
+
           qrWrap.appendChild(qrImg);
+
 
           const rIdx = this.rows.length;
           const c1 = makeCell(neck);
@@ -435,17 +448,30 @@
             // Giữ khoảng cách rộng, hạn chế quét nhầm
           });
 
-          // Tạo lại QR img riêng cho card (không lấy khỏi list)
+          // Tạo lại QR img riêng cho card (không lấy khỏi list) – tối ưu cho quét màn hình
           const qrImg2 = document.createElement('img');
           qrImg2.src = SIZE_QR_IMAGES[neck];
           qrImg2.alt = `QR ${neck}`;
-          qrImg2.style.width = '1.5cm';
-          qrImg2.style.height = '1.5cm';
+
+          // Kích thước lớn hơn cho card (in, quét trực tiếp từ màn hình)
+          qrImg2.style.width = '2.4cm';
+          qrImg2.style.height = '2.4cm';
+          qrImg2.style.maxWidth = '120px';
+          qrImg2.style.maxHeight = '120px';
+
           qrImg2.style.display = 'block';
-          qrImg2.style.margin = '6px auto';
+          qrImg2.style.margin = '2px auto';
           qrImg2.style.imageRendering = 'pixelated';
+
           const qr2Wrap = document.createElement('div');
-          qr2Wrap.style.textAlign = 'center';
+          Object.assign(qr2Wrap.style, {
+            textAlign: 'center',
+            background: '#FFFFFF',         // nền trắng riêng cho QR
+            padding: '6px',
+            borderRadius: '8px',
+            boxShadow: '0 0 0 1px #d1d5db inset',
+            boxSizing: 'border-box'
+          });
           qr2Wrap.appendChild(qrImg2);
 
           // 3 ô text (clone style “makeCell” nhưng độc lập)
@@ -629,13 +655,13 @@
       move() { /* noop */ }
 
       pick(idx, source = 'mouse') {
-  if (idx == null || idx < 0 || idx >= this.rows.length) return;
-  const value = this.rows[idx].neck; // ghi cột 1 vào #size
-  if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx], source);
+        if (idx == null || idx < 0 || idx >= this.rows.length) return;
+        const value = this.rows[idx].neck; // ghi cột 1 vào #size
+        if (typeof this.onPick === 'function') this.onPick(value, this.rows[idx], source);
 
-  // ⬇️ Chỉ đóng khi KHÔNG bật nhập size liên tiếp
-  if (!isNhapSizeLienTiep()) this.close();
-}
+        // ⬇️ Chỉ đóng khi KHÔNG bật nhập size liên tiếp
+        if (!isNhapSizeLienTiep()) this.close();
+      }
 
 
       findIndexByValue(v) {
@@ -691,7 +717,7 @@
             }, ENTER_DELAY_MS);
           }
 
-          
+
 
         };
 
@@ -726,11 +752,11 @@
           switch (e.key) {
             case 'ArrowDown': /* không di chuyển dòng */ e.preventDefault(); break;
             case 'ArrowUp':   /* không di chuyển dòng */ e.preventDefault(); break;
-             case 'Enter':
-      // Giữ popup mở khi bật nhập size liên tiếp để tránh chớp nháy
-      if (__sizeDD.isOpen() && !isNhapSizeLienTiep()) __sizeDD.close();
-      // KHÔNG preventDefault: để handler Enter của bạn chạy bình thường (đẩy vào bảng)
-      break;
+            case 'Enter':
+              // Giữ popup mở khi bật nhập size liên tiếp để tránh chớp nháy
+              if (__sizeDD.isOpen() && !isNhapSizeLienTiep()) __sizeDD.close();
+              // KHÔNG preventDefault: để handler Enter của bạn chạy bình thường (đẩy vào bảng)
+              break;
             case 'Escape':
               __sizeDD.close();
               break;
@@ -742,10 +768,10 @@
 
         // Blur input -> đóng dropdown (chờ 120ms để nhận click vào dropdown)
         __sizeInput.addEventListener('blur', () => {
-  if (!isNhapSizeLienTiep()) {
-    setTimeout(() => __sizeDD.close(), 120);
-  }
-});
+          if (!isNhapSizeLienTiep()) {
+            setTimeout(() => __sizeDD.close(), 120);
+          }
+        });
 
       };
 
