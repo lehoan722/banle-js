@@ -495,25 +495,7 @@ async function taiBangCong() {
 
   // Gọi HANDSONTABLE
   renderBangCongHot(colHeaders, hotData);
-
-  // Giữ lại bảng HTML cũ để dự phòng (không cần hiển thị)
-  let header = `<th>Ngày</th><th>Thứ</th>`;
-  nhanvien.forEach(n => {
-    header += `<th>${n.split("|")[1]}</th>`;
-  });
-  header += `<th>Tổng</th>`;
-  thead.innerHTML = `<tr>${header}</tr>`;
-
-  let html = "";
-  hotData.forEach((r, idx) => {
-    html += "<tr>";
-    r.forEach(v => {
-      html += `<td>${v}</td>`;
-    });
-    html += "</tr>";
-  });
-
-  tbody.innerHTML = html;
+ 
 }
 
 
