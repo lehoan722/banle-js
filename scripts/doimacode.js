@@ -3,15 +3,15 @@ import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
 
 // Các phần tử giao diện
-const form        = document.getElementById("renameForm");
+const form = document.getElementById("renameForm");
 const oldCodeInput = document.getElementById("oldCode");
 const newCodeInput = document.getElementById("newCode");
-const mergeRow     = document.getElementById("mergeRow");
+const mergeRow = document.getElementById("mergeRow");
 const mergeCheckbox = document.getElementById("mergeIfExists");
-const resultBox    = document.getElementById("resultBox");
-const errorBox     = document.getElementById("errorBox");
-const submitBtn    = document.getElementById("submitBtn");
-const msgEl        = document.getElementById("msg");
+const resultBox = document.getElementById("resultBox");
+const errorBox = document.getElementById("errorBox");
+const submitBtn = document.getElementById("submitBtn");
+const msgEl = document.getElementById("msg");
 
 // trạng thái quyền
 let coQuyenDoiMa = false;
@@ -30,12 +30,14 @@ function toUpperTrim(value) {
 // Ẩn/hiện checkbox merge theo loại mã
 function updateMergeVisibility() {
   const mode = document.querySelector('input[name="mode"]:checked')?.value;
-  if (mode === "masp") {
+  // Hiện checkbox cho cả mã sản phẩm & mã nhân viên
+  if (mode === "masp" || mode === "manv") {
     mergeRow?.classList.remove("hidden");
   } else {
     mergeRow?.classList.add("hidden");
   }
 }
+
 
 // Cập nhật UI theo quyền
 function capNhatTrangThaiQuyenUI() {
@@ -123,9 +125,9 @@ async function kiemTraQuyenDoiMa(thongTinNguoiDung) {
       return;
     }
 
-    const isAdmin   = data.is_admin === true;
-    const coSua     = data.sua_hoadon === true;
-    const coXoa     = data.xoa_hoadon === true;
+    const isAdmin = data.is_admin === true;
+    const coSua = data.sua_hoadon === true;
+    const coXoa = data.xoa_hoadon === true;
 
     coQuyenDoiMa = isAdmin || coSua || coXoa || fallbackSua || fallbackXoa;
     capNhatTrangThaiQuyenUI();
@@ -177,6 +179,7 @@ async function handleSubmit(e) {
   const mode = document.querySelector('input[name="mode"]:checked')?.value;
   const oldCode = toUpperTrim(oldCodeInput?.value);
   const newCode = toUpperTrim(newCodeInput?.value);
+  const mergeIfExists = mergeCheckbox?.checked ?? false;
 
   if (!oldCode || !newCode) {
     showError("Vui lòng nhập đầy đủ mã cũ và mã mới.");
@@ -203,7 +206,6 @@ async function handleSubmit(e) {
     let data, error;
 
     if (mode === "masp") {
-      const mergeIfExists = mergeCheckbox?.checked ?? false;
       ({ data, error } = await supabase.rpc("rename_masp", {
         p_old_code: oldCode,
         p_new_code: newCode,
@@ -212,9 +214,11 @@ async function handleSubmit(e) {
     } else {
       ({ data, error } = await supabase.rpc("rename_manv", {
         p_old_manv: oldCode,
-        p_new_manv: newCode
+        p_new_manv: newCode,
+        p_merge_if_exists: mergeIfExists   // <<< thêm dòng này
       }));
     }
+
 
     if (error) {
       console.error("RPC error:", error);
