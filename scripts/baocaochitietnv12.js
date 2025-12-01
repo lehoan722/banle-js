@@ -279,7 +279,8 @@ function renderTable(hotData) {
         { data: "gia", title: "Giá", readOnly: true, width: 100, type: 'numeric', renderer: formatNumberCell },
         { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
         { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell },
-        { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 }  // <— THÊM
+        { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 },
+        { data: "baymau_by", title: "Bày mẫu bởi", readOnly: true, width: 120 }   // ✅ THÊM
     ];
 
     hotInstance = new Handsontable(container, {
