@@ -8,7 +8,7 @@ const luongGioInput = document.getElementById("luong_gio");
 const khoanGioInput = document.getElementById("khoan_gio");
 const pctThuongInput = document.getElementById("pct_thuong");
 const btnTai = document.getElementById("btn-tai");
-const tbody = document.getElementById("tbody-bangluong");
+const tbodyLuong = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
 
 // Container Handsontable
@@ -19,6 +19,7 @@ const hotBangCongContainer = document.getElementById("hotBangCong");
 let hotLuong = null;
 let hotBangCong = null;
 
+// =================== HÀM DÙNG CHUNG ===================
 
 function toIsoDate(d) {
   return d.toISOString().slice(0, 10);
@@ -40,6 +41,13 @@ function fmt(n, d = 0) {
     maximumFractionDigits: d
   });
 }
+
+function setStatus(msg, isError = false) {
+  statusEl.textContent = msg || "";
+  statusEl.style.color = isError ? "#c62828" : "#555";
+}
+
+// ============== RENDER HANDSONTABLE LƯƠNG ==============
 
 function renderLuongHot(data) {
   if (!hotLuongContainer) return;
@@ -101,6 +109,8 @@ function renderLuongHot(data) {
   }
 }
 
+// ============== RENDER HANDSONTABLE BẢNG CÔNG ==============
+
 function renderBangCongHot(colHeaders, data) {
   if (!hotBangCongContainer) return;
   const HOT = window.Handsontable;
@@ -127,11 +137,7 @@ function renderBangCongHot(colHeaders, data) {
   }
 }
 
-
-function setStatus(msg, isError = false) {
-  statusEl.textContent = msg || "";
-  statusEl.style.color = isError ? "#c62828" : "#555";
-}
+// ===================== TẢI BẢNG LƯƠNG =====================
 
 async function taiBangLuong() {
   const tu_ngay = tuNgayInput.value;
@@ -147,7 +153,7 @@ async function taiBangLuong() {
   }
 
   setStatus("Đang tải dữ liệu lương...");
-  tbody.innerHTML = `<tr><td colspan="13">Đang tải...</td></tr>`;
+  tbodyLuong.innerHTML = `<tr><td colspan="13">Đang tải...</td></tr>`;
 
   try {
     // 1) Lấy chấm công tháng tất cả NV
@@ -164,13 +170,14 @@ async function taiBangLuong() {
     if (congErr) {
       console.error("Lỗi chamcong_tinhcong_monthly:", congErr);
       setStatus("Lỗi lấy dữ liệu chấm công.", true);
-      tbody.innerHTML = `<tr><td colspan="13" style="color:red;">Lỗi chamcong_tinhcong_monthly.</td></tr>`;
+      tbodyLuong.innerHTML = `<tr><td colspan="13" style="color:red;">Lỗi chamcong_tinhcong_monthly.</td></tr>`;
       return;
     }
 
     if (!congData || congData.length === 0) {
       setStatus("Không có dữ liệu chấm công trong khoảng này.");
-      tbody.innerHTML = `<tr><td colspan="13">Không có dữ liệu.</td></tr>`;
+      tbodyLuong.innerHTML = `<tr><td colspan="13">Không có dữ liệu.</td></tr>`;
+      renderLuongHot([]); // clear HOT
       return;
     }
 
@@ -226,21 +233,22 @@ async function taiBangLuong() {
     }
 
     // 3) Dựng bảng lương + TỔNG CUỐI
-    tbody.innerHTML = "";
+    tbodyLuong.innerHTML = "";
+    const bangLuongData = [];
 
     // Các biến tổng cho từng cột
     let sum_gio_cong = 0;
     let sum_gio_phat = 0;
     let sum_gio_tinh = 0;
     let sum_doanhthu = 0;
-    let sum_khoan_gio = 0;      // tổng cột Khoán/giờ
+    let sum_khoan_gio = 0;
     let sum_khoan_thang = 0;
     let sum_tien_vuot = 0;
     let sum_tien_thuong = 0;
     let sum_luong_cung = 0;
     let sum_tong_luong = 0;
 
-    // gom theo nhân viên (vì chamcong_tinhcong_monthly có thể trả nhiều dòng / nv)
+    // gom theo nhân viên
     const byManv = {};
     congData.forEach(r => {
       if (!byManv[r.manv]) byManv[r.manv] = [];
@@ -252,7 +260,6 @@ async function taiBangLuong() {
       const ten = mapTen[String(manv)] || "";
       const dia = rows[0].diadiem || "";
 
-      // tổng giờ trong khoảng
       let gio_cong = 0;
       let so_ngay_tanca_lich = 0;
       rows.forEach(r => {
@@ -266,14 +273,13 @@ async function taiBangLuong() {
       const doanhthu = Number(mapDoanhThuKPI[manv] || 0);
 
       const khoan_thang = gio_tinh * khoan_gio;
-      // CHO PHÉP ÂM: không dùng Math.max nữa
-      const tien_vuot = doanhthu - khoan_thang;              // có thể âm
+      const tien_vuot = doanhthu - khoan_thang;              // cho phép âm
       const tien_thuong = tien_vuot * (pct_thuong / 100.0);  // thưởng/phạt
 
       const luong_cung = gio_tinh * luong_gio;
-      const tong_luong = luong_cung + tien_thuong;           // tổng lương có thể < lương cứng
+      const tong_luong = luong_cung + tien_thuong;
 
-      // Cộng dồn vào tổng cuối
+      // Cộng dồn
       sum_gio_cong += gio_cong;
       sum_gio_phat += gio_phat_tanca_lich;
       sum_gio_tinh += gio_tinh;
@@ -285,14 +291,13 @@ async function taiBangLuong() {
       sum_luong_cung += luong_cung;
       sum_tong_luong += tong_luong;
 
-      // Tạo dòng chi tiết
+      // HTML cũ (ẩn nhưng vẫn giữ)
       const tr = document.createElement("tr");
       const add = txt => {
         const td = document.createElement("td");
         td.textContent = txt;
         tr.appendChild(td);
       };
-
       add(manv);
       add(ten);
       add(dia);
@@ -306,22 +311,35 @@ async function taiBangLuong() {
       add(fmt(tien_thuong, 0));
       add(fmt(luong_cung, 0));
       add(fmt(tong_luong, 0));
+      tbodyLuong.appendChild(tr);
 
-      tbody.appendChild(tr);
+      // Dữ liệu cho Handsontable
+      bangLuongData.push([
+        manv,
+        ten,
+        dia,
+        Number(gio_cong.toFixed(2)),
+        Number(gio_phat_tanca_lich.toFixed(2)),
+        Number(gio_tinh.toFixed(2)),
+        Math.round(doanhthu),
+        Math.round(khoan_gio),
+        Math.round(khoan_thang),
+        Math.round(tien_vuot),
+        Math.round(tien_thuong),
+        Math.round(luong_cung),
+        Math.round(tong_luong)
+      ]);
     }
 
-    // 4) Dòng TỔNG cuối cùng cho tất cả các cột
+    // Dòng tổng (HTML ẩn)
     const trTotal = document.createElement("tr");
     trTotal.className = "table-secondary fw-bold";
-
     const addTotal = (txt, colspan = 1) => {
       const td = document.createElement("td");
       if (colspan > 1) td.colSpan = colspan;
       td.textContent = txt;
       trTotal.appendChild(td);
     };
-
-    // 3 cột đầu (Mã NV, Tên, Cơ sở) gộp thành một ô "TỔNG"
     addTotal("TỔNG", 3);
     addTotal(fmt(sum_gio_cong, 2));
     addTotal(fmt(sum_gio_phat, 2));
@@ -333,8 +351,10 @@ async function taiBangLuong() {
     addTotal(fmt(sum_tien_thuong, 0));
     addTotal(fmt(sum_luong_cung, 0));
     addTotal(fmt(sum_tong_luong, 0));
+    tbodyLuong.appendChild(trTotal);
 
-    tbody.appendChild(trTotal);
+    // Render Handsontable
+    renderLuongHot(bangLuongData);
 
     setStatus(
       `Đã tải ${congData.length} dòng. Tổng lương: ${fmt(
@@ -345,36 +365,12 @@ async function taiBangLuong() {
   } catch (err) {
     console.error("Lỗi không mong muốn:", err);
     setStatus("Có lỗi xảy ra, xem console.", true);
-    tbody.innerHTML = `<tr><td colspan="13" style="color:red;">Lỗi JS.</td></tr>`;
+    tbodyLuong.innerHTML = `<tr><td colspan="13" style="color:red;">Lỗi JS.</td></tr>`;
+    renderLuongHot([]);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ngày mặc định cho bảng lương
-  setDefaultDates();
-  setStatus(
-    "Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương."
-  );
-  btnTai.addEventListener("click", taiBangLuong);
-
-  // tháng/năm mặc định cho BẢNG CÔNG
-  const today = new Date();
-  const thangEl = document.getElementById("bc-thang");
-  const namEl = document.getElementById("bc-nam");
-  if (thangEl && namEl) {
-    thangEl.value = today.getMonth() + 1;
-    namEl.value = today.getFullYear();
-  }
-
-  // Tự động tải cả bảng lương và bảng công khi mở trang
-  taiBangLuong();
-  taiBangCong();
-});
-
-
-// --------- PHẦN BẢNG CÔNG THÁNG (giữ nguyên) ----------
-
-// --------- PHẦN BẢNG CÔNG THÁNG ----------
+// ===================== TẢI BẢNG CÔNG =====================
 
 async function taiBangCong() {
   const thang = parseInt(document.getElementById("bc-thang").value);
@@ -392,12 +388,14 @@ async function taiBangCong() {
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
+    renderBangCongHot([], []);
     return;
   }
 
   if (!data || data.length === 0) {
     thead.innerHTML = "";
     tbody.innerHTML = `<tr><td colspan="50">Không có dữ liệu.</td></tr>`;
+    renderBangCongHot([], []);
     return;
   }
 
@@ -413,10 +411,11 @@ async function taiBangCong() {
   if (nhanvien.length === 0) {
     thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
     tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công trong tháng này.</td></tr>`;
+    renderBangCongHot([], []);
     return;
   }
 
-  // Header
+  // Header HTML dự phòng
   let header = `<th>Ngày</th><th>Thứ</th>`;
   nhanvien.forEach(n => {
     const [, tennv] = n.split("|");
@@ -425,8 +424,6 @@ async function taiBangCong() {
   header += `<th>Tổng</th>`;
   thead.innerHTML = `<tr>${header}</tr>`;
 
-  // --------- CHUẨN HOÁ DỮ LIỆU ĐỂ ĐỔ VÀO HANDSONTABLE ---------
-
   // Gom dữ liệu theo ngày
   const groupByNgay = {};
   data.forEach(d => {
@@ -434,7 +431,7 @@ async function taiBangCong() {
     groupByNgay[d.ngay].push(d);
   });
 
-  // MẢNG HEADER CHO HANDSONTABLE
+  // Header cho Handsontable
   const colHeaders = ["Ngày", "Thứ"];
   nhanvien.forEach(n => {
     const [, tennv] = n.split("|");
@@ -442,10 +439,7 @@ async function taiBangCong() {
   });
   colHeaders.push("Tổng");
 
-  // MẢNG DỮ LIỆU DẠNG 2 CHIỀU CHO HANDSONTABLE
   const hotData = [];
-
-  // Biến tổng cho từng nhân viên
   const tongTheoNhanVien = {};
   nhanvien.forEach(n => {
     const manv = n.split("|")[0];
@@ -453,16 +447,18 @@ async function taiBangCong() {
   });
   let tongTatCa = 0;
 
-  // ---- Duyệt từng ngày ----
   const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
+
+  let html = "";
 
   ngayList.forEach(ng => {
     const row = groupByNgay[ng];
     const thu = row[0].thu;
-
     let sum = 0;
 
-    const rowData = [Number(ng), thu]; // dòng cho HOT
+    const rowData = [Number(ng), thu];
+
+    let cellsHtml = "";
 
     nhanvien.forEach(n => {
       const manv = n.split("|")[0];
@@ -475,31 +471,64 @@ async function taiBangCong() {
         sum += gioCong;
         tongTheoNhanVien[manv] += gioCong;
         tongTatCa += gioCong;
+        cellsHtml += `<td>${gioCong.toFixed(2)}</td>`;
+      } else {
+        cellsHtml += "<td></td>";
       }
     });
 
     rowData.push(Number(sum.toFixed(2)));
     hotData.push(rowData);
+
+    html += `<tr>
+      <td>${ng}</td>
+      <td>${thu}</td>
+      ${cellsHtml}
+      <td class="fw-bold">${sum.toFixed(2)}</td>
+    </tr>`;
   });
 
-  // DÒNG TỔNG CUỐI
+  // Dòng tổng
   const totalRow = ["TỔNG", ""];
+  let totalHtml = `<tr class="table-secondary fw-bold"><td>TỔNG</td><td></td>`;
   nhanvien.forEach(n => {
     const manv = n.split("|")[0];
     const tongNv = tongTheoNhanVien[manv] || 0;
     totalRow.push(Number(tongNv.toFixed(2)));
+    totalHtml += `<td>${tongNv.toFixed(2)}</td>`;
   });
   totalRow.push(Number(tongTatCa.toFixed(2)));
+  totalHtml += `<td>${tongTatCa.toFixed(2)}</td></tr>`;
 
   hotData.push(totalRow);
 
-  // Gọi HANDSONTABLE
+  tbody.innerHTML = html + totalHtml;
+
+  // Render Handsontable
   renderBangCongHot(colHeaders, hotData);
- 
 }
 
+// ===================== INIT =====================
 
-window.taiBangCong = taiBangCong;
+document.addEventListener("DOMContentLoaded", () => {
+  setDefaultDates();
+  setStatus(
+    "Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương."
+  );
+  btnTai.addEventListener("click", taiBangLuong);
 
+  const today = new Date();
+  const thangEl = document.getElementById("bc-thang");
+  const namEl = document.getElementById("bc-nam");
+  if (thangEl && namEl) {
+    thangEl.value = today.getMonth() + 1;
+    namEl.value = today.getFullYear();
+  }
 
+  // tự tải khi mở trang
+  taiBangLuong();
+  taiBangCong();
+});
+
+// cho button onclick trong HTML
 window.taiBangCong = taiBangCong;
