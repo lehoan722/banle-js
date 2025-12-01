@@ -5,8 +5,12 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>xuat huy cs2</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <title>XUAT HUY CS2</title>
+    <!-- Backup: các thư viện ngoài -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -18,7 +22,7 @@
         }
 
         .header {
-            background: #6fcdb9;
+            background-color: #ecc00d;
             color: white;
             text-align: center;
             padding: 10px;
@@ -30,15 +34,15 @@
             display: flex;
             padding: 5px;
             gap: 5px;
-            background: #6fcdb9;
+             background-color: #ecc00d;
             align-items: center;
         }
 
         .tennv {
-            display: flex;
+            display: auto;
             padding: 5px;
             gap: 5px;
-            background: #0088cc;
+             background-color: #ecc00d;
             align-items: center;
             justify-content: flex-end;
             /* Đẩy hết sang phải */
@@ -57,24 +61,23 @@
 
         #masp {
             width: 250px;
-            background: #f917db;
+             background-color: #ecc00d;
         }
 
         #soluong {
             width: 60px;
-            background: #6fcdb9;
+            background-color: #ecc00d;
             text-align: center;
         }
 
         #dvt {
             width: 60px;
-            background: #6fcdb9;
         }
 
         #size {
             width: 60px;
             text-align: center;
-            background: #6fcdb9;
+            background-color: #ecc00d;
         }
 
         #gia,
@@ -82,13 +85,9 @@
         #thanhtien {
             width: 150px;
             text-align: right;
-            background: #6fcdb9;
         }
 
-        #ghichu {
-            flex: 1;
-            background: #6fcdb9;
-        }
+
 
         .main {
             display: flex;
@@ -273,11 +272,6 @@
             /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
         }
 
-
-        #popupDanhMuc {
-            display: none !important;
-        }
-
         html,
         body {
             height: 100%;
@@ -340,6 +334,11 @@
                 size: 80mm auto;
             }
         }
+
+        tr.highlight {
+            background-color: #fff3cd !important;
+            /* vàng nhạt */
+        }
     </style>
 
 
@@ -355,9 +354,7 @@
             switchTab("thongtin");
         });
 
-        function dongPopupDM() {
-            document.getElementById('popupDanhMuc').style.display = 'none';
-        }
+
     </script>
 
     <!-- banlemobile -->
@@ -367,18 +364,17 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
 
-
 </head>
 
 <body>
 
     <style>
         .menu-bar {
-            background: #e012e0;
+            background: #0088cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
-            color: white;
+            color: rgb(42, 11, 245);
             position: relative;
             z-index: 1000;
         }
@@ -450,35 +446,34 @@
     <div class="menu-bar">
         <div class="tennv">
 
-            <label>
-                <select id="diadiem">
-                    
-                    <option value="cs2">Cơ sở 2</option>
-                </select>
-            </label>
+            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="ngay" type="date" readonly />
+            <input id="gio" type="text" readonly style="width:70px" />
 
-            <label> <input id="ngay" type="date" /></label>
-            <!-- <label>Giờ <input id="gio" /></label> -->
-            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
-
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
 
-        <label><input id="size45" type="checkbox" />QL SIZE</label>
+        <div id="app-menu" class="menu-item"></div>
+
+        <!--
+        <label>Giờ <input id="gio" /></label>
+         
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
+
 
     </div>
 
-
     <div id="app-container" style="display:none;">
-
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <input id="masp" placeholder="xat huy cs2" autocomplete="off" />
                 <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
             </div>
             <input id="soluong" value="1" />
@@ -488,14 +483,15 @@
             <input id="khuyenmai" placeholder="khuyen mai" />
             <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
-
-            <input id="ghichu" placeholder="Ghi chú HH" />
-            <button id="masp-search">🔍</button>
+            <input id="vitri" placeholder="vi tri" readonly />
+            <button id="xemtonkho">🔍</button>
+            <button id="ghivitri">✏️</button>
         </div>
 
 
         <div class="main">
             <div class="table-area">
+
                 <table id="bangketqua">
                     <thead>
                         <tr>
@@ -507,11 +503,15 @@
                             <th>Đơn giá</th>
                             <th>Khuyến mại</th>
                             <th>Thành tiền</th>
-
+                            <th>Vị trí</th> <!-- (giữ nguyên) -->
+                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                            <th>Tồn1</th>
+                            <th>Tồn2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
+
             </div>
             <div class="sidebar">
                 <div class="tabs">
@@ -531,7 +531,8 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label>Vị trí <input id="vitri" readonly="" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+
                         <!-- khu vuc tìm khách hàng -->
                         <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                             <input id="makh" placeholder="mã khách"
@@ -554,14 +555,15 @@
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
                             <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
-
+                            <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
+                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
                             <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
 
 
-                            <label><input type="checkbox" /> Cộng dồn số lượng</label>
+                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
                         </div>
                     </div>
                 </div>
@@ -595,12 +597,15 @@
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
 
+            <button id="sua" class="btn edit" type="button">SỬA</button>
+
             <button id="quaylai">Quay lại</button>
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
+
 
             <!-- Popup tìm khách hàng
              
@@ -613,37 +618,31 @@
 
         </div>
 
+
         <div class="top-inputs">
-            ----------------------------------------------------------
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
+            F7: xem tồn kho nhanh, F8: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
         </div>
 
-
-        <div class="popup" id="popupDanhMuc">
-            <div class="popup-content">
-                <strong>Tìm kiếm mã sản phẩm</strong>
-                <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
-                <div class="popup-list" id="danhSachSP"></div>
-                <button onclick="dongPopupDM()">Đóng</button>
-            </div>
-        </div>
         <!-- ✅ Popup xác thực sửa hóa đơn -->
         <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-  background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
             <h3>Xác thực sửa hóa đơn</h3>
             <input id="xacmanv" placeholder="Mã nhân viên" type="password"
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+
             <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
 
         <!-- Popup xác nhận thêm mới -->
         <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
             <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
@@ -651,63 +650,6 @@
             </div>
         </div>
 
-        <!-- Popup nhập mã sản phẩm mới -->
-        <div id="popupNhapMaMoi" class="popup-confirm"
-            style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
-  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
-            <h3>Thêm mã sản phẩm mới</h3>
-            <div id="formFields"></div>
-            <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
-            <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
-            <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
-        </div>
-
-        <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
-  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
-            <h3>Cấu hình trường hiển thị</h3>
-            <div id="dsCauHinhTruong"></div>
-            <div style="text-align:right; margin-top:10px;">
-                <button onclick="luuCauHinhTruong()">Lưu</button>
-                <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
-            </div>
-        </div>
-
-
-
-        <div id="popupBangDanhMuc" class="popup"
-            style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
-            <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                <strong>Danh mục hàng hóa</strong>
-                <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
-            </div>
-            <div style="padding: 0 10px 10px;">
-                <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
-                    style="width: 300px; padding: 4px;" />
-                <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
-
-            </div>
-            <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
-        </div>
-
-        <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
-        <div id="popupNhapHangHoa"
-            style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
-            <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
-
-            <div id="fieldsNhapHangHoa"></div>
-
-            <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
-
-            <div style="margin-top:14px; text-align:center;">
-                <button onclick="themTiepSanPham()">➕ Thêm mới</button>
-                <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
-                <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
-                <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
-            </div>
-
-
-        </div>
     </div>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -736,6 +678,11 @@
                     "quyen_sua_hoadon",
                     nhanvien.sua_hoadon ? "true" : "false"
                 );
+
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
                 // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
@@ -867,31 +814,35 @@
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            tbody.innerHTML = '';
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            // ❌ KHÔNG xoá dữ liệu cũ nữa
+            // tbody.innerHTML = '';
+
+            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
                 const tr = document.createElement('tr');
-                rowArr.forEach(cell => {
+                rowArr.forEach((cell) => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
-            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
-            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
-            if (typeof capNhatThongTinTong === "function") {
+            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            // ✅ Cập nhật tổng
+            if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log để kiểm tra
-            console.log("window.bangKetQua:", window.bangKetQua);
-            if (typeof bangKetQua !== "undefined") {
-                console.log("bangKetQua:", bangKetQua);
-            }
+            // Log kiểm tra
+            console.log('window.bangKetQua:', window.bangKetQua);
         });
 
 
@@ -915,14 +866,114 @@
             const img = document.querySelector('.product-image');
             if (img) {
                 img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xemhoadon.html', '_blank');
+                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
                 });
             }
         });
     </script>
-    
+
+
+    <!-- Overlay loading khi backup -->
+    <div id="backup-overlay" style="
+    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
+    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { backupAllTablesToZip } from './scripts/backup.js';
+
+        // Gắn lại sự kiện cho nút THOAT PM
+        document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
+
+            // Hỏi người dùng có muốn tạo file dự phòng không
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                    // Có thể bật lại thông báo nếu muốn:
+                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
+            }
+            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
+
+            await dangXuatApp();
+        };
+
+        async function dangXuatApp() {
+            // Copy logic đăng xuất cũ của anh
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+            }
+             document.getElementById('login-manv').value = "";
+            document.getElementById('login-password-nv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+
+            document.getElementById('login-manv').focus();
+        }
+    </script>
+
+    <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
+    <script src="scripts/stockQuickPopup.js"></script>
+
+    <script src="scripts/menu-component.js"></script>
+
+    <script>
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+
+        // Bạn đã cung cấp:
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_NAME = 'menubanlemt';
+
+        MenuComponent.mount({
+            el: '#app-menu',
+            sheetId: SHEET_ID,
+            sheetName: SHEET_NAME,
+            cs,
+            manv,
+            cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
 
     <script>  //<!-- banlemobile -->
+
+        // goi phím F2
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        }, 1000);
+
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
@@ -934,11 +985,112 @@
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });</script>
+        });
+
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('ghivitri')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+    </script>
+
+    <script>
+        // Mở popup xác thực + focus ngay vào #xacmanv
+        function moPopupXacThucSua() {
+            const p = document.getElementById('popupXacThucSua');
+            p.style.display = 'block';
+            setTimeout(() => {
+                const manv = document.getElementById('xacmanv');
+                if (manv) { manv.focus(); manv.select(); }
+            }, 0);
+        }
+
+        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
+        document.addEventListener('DOMContentLoaded', () => {
+            const manv = document.getElementById('xacmanv');
+            const mk = document.getElementById('xacmatkhau');
+            const btn = document.getElementById('btnXacNhanSua');
+
+            if (manv) {
+                manv.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (mk) { mk.focus(); mk.select(); }
+                    }
+                });
+            }
+
+            if (mk) {
+                mk.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (btn) { btn.focus(); }
+                    }
+                });
+            }
+
+            if (btn) {
+                btn.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btn.click(); // = gọi xacNhanSuaHoaDon()
+                    }
+                });
+            }
+        });
+    </script>
 
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
+                    //moPopupXacThucSua();
+                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+                });
+            }
 
-    <script type="module" src="scripts/viettelInvoice.js"></script>
+        });
+    </script>
+
+    <!-- Overlay quét -->
+    <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
+        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+
+        <!-- Thanh điều khiển -->
+        <div
+            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
+            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
+            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
+
+            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
+                Ảnh có sẵn
+                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
+            </label>
+
+            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
+        </div>
+
+        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
+    </div>
+
+    <!-- Flash + Toast -->
+    <div id="flashOverlay"></div>
+    <div id="toastMsg"></div>
+
+
+    <script type="module" src="scripts/feedback.js"></script>
+    <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
