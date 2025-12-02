@@ -94,8 +94,8 @@ function renderLuongHot(data) {
 
   // 👇 Độ rộng từng cột (bạn muốn chỉnh thì chỉ sửa mảng này)
   const colWidths = [
-    60,   // Mã NV
-    120,  // Tên NV
+    70,   // Mã NV
+    90,  // Tên NV
     50,   // Cơ sở
     70,   // Giờ công (thực)
     70,   // Giờ trừ TANCA_LỊCH
@@ -105,13 +105,13 @@ function renderLuongHot(data) {
     70,   // Khoán theo giờ công
     70,   // Doanh thu vượt khoán
     70,   // Thưởng vượt khoán
-    40,   // Lương cứng
+    70,   // Lương cứng
     100   // Tổng lương
   ];
 
   // 👇 Ẩn tạm 3 cột: Doanh thu (6), Khoán theo giờ công (8), Doanh thu vượt khoán (9)
   const hiddenColsConfig = {
-    columns: [6, 8, 9],
+    columns: [6, 7, 8, 9],
     indicators: true   // hiện dấu nhỏ ở đầu để biết có cột đang ẩn
   };
 
