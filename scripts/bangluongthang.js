@@ -63,33 +63,36 @@ function renderLuongHot(data) {
     "Mã NV",
     "Tên NV",
     "Cơ sở",
-    "Giờ công\n(thực)",
-    "Giờ trừ\nTANCA_LỊCH",
-    "Giờ tính\nlương",
+    "Giờ công (thực)",
+    "Giờ trừ TANCA_LỊCH",
+    "Giờ tính lương",
     "Doanh thu",
     "Khoán / giờ",
-    "Khoán theo\ngiờ công",
-    "Doanh thu\nvượt khoán",
-    "Thưởng\nvượt khoán",
+    "Khoán theo giờ công",
+    "Doanh thu vượt khoán",
+    "Thưởng vượt khoán",
     "Lương cứng",
-    "Tổng lương"
+    "Tổng lương",
+    "Lương/1 giờ"
   ];
 
   // Kiểu dữ liệu từng cột
   const columns = [
-    { data: 0, type: "text" },    // Mã NV
-    { data: 1, type: "text" },    // Tên NV
-    { data: 2, type: "text" },    // Cơ sở
-    { data: 3, type: "numeric", numericFormat: { pattern: "0.00" } }, // Giờ công
-    { data: 4, type: "numeric", numericFormat: { pattern: "0.00" } }, // Giờ trừ
-    { data: 5, type: "numeric", numericFormat: { pattern: "0.00" } }, // Giờ tính lương
-    { data: 6, type: "numeric", numericFormat: { pattern: "0,0" } },  // Doanh thu
-    { data: 7, type: "numeric", numericFormat: { pattern: "0,0" } },  // Khoán / giờ
-    { data: 8, type: "numeric", numericFormat: { pattern: "0,0" } },  // Khoán theo giờ công
-    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } },  // Doanh thu vượt khoán
-    { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } }, // Thưởng vượt khoán
-    { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } }, // Lương cứng
-    { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } }  // Tổng lương
+    { data: 0, type: "text" },
+    { data: 1, type: "text" },
+    { data: 2, type: "text" },
+    { data: 3, type: "numeric", numericFormat: { pattern: "0.00" } },
+    { data: 4, type: "numeric", numericFormat: { pattern: "0.00" } },
+    { data: 5, type: "numeric", numericFormat: { pattern: "0.00" } },
+    { data: 6, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 7, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 8, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } },
+    { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } },
+    // Lương/1 giờ
+    { data: 13, type: "numeric", numericFormat: { pattern: "0,0" } }
   ];
 
   // 👇 Độ rộng từng cột (bạn muốn chỉnh thì chỉ sửa mảng này)
@@ -305,6 +308,7 @@ async function taiBangLuong() {
 
       const luong_cung = gio_tinh * luong_gio;
       const tong_luong = luong_cung + tien_thuong;
+      const luong_1_gio = gio_cong > 0 ? tong_luong / gio_cong : 0;
 
       // Cộng dồn
       sum_gio_cong += gio_cong;
@@ -338,6 +342,7 @@ async function taiBangLuong() {
       add(fmt(tien_thuong, 0));
       add(fmt(luong_cung, 0));
       add(fmt(tong_luong, 0));
+      add(fmt(luong_1_gio, 0));   // <-- cột Lương/1 giờ
       tbodyLuong.appendChild(tr);
 
       // Dữ liệu cho Handsontable
@@ -354,8 +359,10 @@ async function taiBangLuong() {
         Math.round(tien_vuot),
         Math.round(tien_thuong),
         Math.round(luong_cung),
-        Math.round(tong_luong)
+        Math.round(tong_luong),
+        Math.round(luong_1_gio)   // <-- cột Lương/1 giờ
       ]);
+
     }
 
     // Dòng tổng (HTML ẩn)
