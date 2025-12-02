@@ -229,41 +229,30 @@
     </div>
   </div>
 
-    <!-- Hàng rào đăng nhập chuẩn cho Bảng lương tháng -->
+  <!-- Hàng rào đăng nhập chuẩn cho Bảng lương tháng -->
   <script type="module">
-    import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
     khoiTaoDangNhapDungChung({
-      appContainerId: 'app-container',    // chính là div bạn vừa bọc
-
-      // Không ép sẵn cơ sở nào – chỉ cần check đăng nhập & quyền
+      appContainerId: 'app',        // hoặc 'app-container' tuỳ bạn đang dùng id nào
       macDinhDiaDiem: '',
       tuDongKhoaCoSo: false,
-
-      // Dùng lại API login hiện tại bạn dùng cho các trang khác
       loginApiPath: '/api/login-cs1',
 
       async onLoginSuccess(nv, ctx) {
-        // ---- CHECK QUYỀN (ví dụ: chỉ admin mới được xem bảng lương) ----
-        const isAdmin =
-          nv &&
-          (nv.is_admin === true ||
-           nv.is_admin === 'true' ||
-           nv.is_admin === 1);
-
-        if (!isAdmin) {
-          alert('Bạn không có quyền xem BẢNG LƯƠNG THÁNG.');
-          const app = document.getElementById('app-container');
-          app.innerHTML = `
-            <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
-              🚫 Không có quyền truy cập trang Bảng lương tháng
-            </h2>
-            <p>Chỉ tài khoản admin (cột <code>is_admin = TRUE</code> trong <code>dmnhanvien</code>) mới được phép xem.</p>
-          `;
-          return;
+        // 1. Kiểm tra quyền xem trang theo bảng phân quyền
+        if (window.kiemTraQuyenXemTrang) {
+          const ok = await window.kiemTraQuyenXemTrang("bangluongthang.html");
+          if (!ok) {
+            // kiemTraQuyenXemTrang đã tự hiển thị thông báo cấm truy cập
+            return;
+          }
         }
 
-        // ---- ĐÃ QUA AUTH + ĐÚNG QUYỀN → LOAD DỮ LIỆU ----
+        // 2. Nếu qua được bước 1 -> cho hiển thị app & load dữ liệu
+        const appDiv = document.getElementById('app');
+        if (appDiv) appDiv.style.display = '';
+
         if (window.taiBangLuong) {
           await window.taiBangLuong();
         }
@@ -272,6 +261,8 @@
         }
       }
     });
+
+    window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
   </script>
 
 
