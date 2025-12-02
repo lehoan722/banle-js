@@ -49,6 +49,7 @@ function setStatus(msg, isError = false) {
 
 // ============== RENDER HANDSONTABLE LƯƠNG ==============
 
+// ============== RENDER HANDSONTABLE LƯƠNG ==============
 function renderLuongHot(data) {
   if (!hotLuongContainer) return;
   const HOT = window.Handsontable;
@@ -57,55 +58,81 @@ function renderLuongHot(data) {
     return;
   }
 
+  // Tiêu đề có xuống dòng (\n)
   const colHeaders = [
     "Mã NV",
     "Tên NV",
     "Cơ sở",
-    "Giờ công (thực)",
-    "Giờ trừ TANCA_LỊCH",
-    "Giờ tính lương",
+    "Giờ công\n(thực)",
+    "Giờ trừ\nTANCA_LỊCH",
+    "Giờ tính\nlương",
     "Doanh thu",
     "Khoán / giờ",
-    "Khoán theo giờ công",
-    "Doanh thu vượt khoán",
-    "Thưởng vượt khoán",
+    "Khoán theo\ngiờ công",
+    "Doanh thu\nvượt khoán",
+    "Thưởng\nvượt khoán",
     "Lương cứng",
     "Tổng lương"
   ];
 
+  // Kiểu dữ liệu từng cột
   const columns = [
-    { data: 0, type: "text" },
-    { data: 1, type: "text" },
-    { data: 2, type: "text" },
-    { data: 3, type: "numeric", numericFormat: { pattern: "0.00" } },
-    { data: 4, type: "numeric", numericFormat: { pattern: "0.00" } },
-    { data: 5, type: "numeric", numericFormat: { pattern: "0.00" } },
-    { data: 6, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 7, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 8, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } }
+    { data: 0, type: "text" },    // Mã NV
+    { data: 1, type: "text" },    // Tên NV
+    { data: 2, type: "text" },    // Cơ sở
+    { data: 3, type: "numeric", numericFormat: { pattern: "0.00" } }, // Giờ công
+    { data: 4, type: "numeric", numericFormat: { pattern: "0.00" } }, // Giờ trừ
+    { data: 5, type: "numeric", numericFormat: { pattern: "0.00" } }, // Giờ tính lương
+    { data: 6, type: "numeric", numericFormat: { pattern: "0,0" } },  // Doanh thu
+    { data: 7, type: "numeric", numericFormat: { pattern: "0,0" } },  // Khoán / giờ
+    { data: 8, type: "numeric", numericFormat: { pattern: "0,0" } },  // Khoán theo giờ công
+    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } },  // Doanh thu vượt khoán
+    { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } }, // Thưởng vượt khoán
+    { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } }, // Lương cứng
+    { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } }  // Tổng lương
   ];
 
+  // 👇 Độ rộng từng cột (bạn muốn chỉnh thì chỉ sửa mảng này)
+  const colWidths = [
+    60,   // Mã NV
+    120,  // Tên NV
+    50,   // Cơ sở
+    70,   // Giờ công (thực)
+    70,   // Giờ trừ TANCA_LỊCH
+    70,   // Giờ tính lương
+    70,   // Doanh thu
+    70,   // Khoán / giờ
+    70,   // Khoán theo giờ công
+    70,   // Doanh thu vượt khoán
+    70,   // Thưởng vượt khoán
+    40,   // Lương cứng
+    100   // Tổng lương
+  ];
+
+  // 👇 Ẩn tạm 3 cột: Doanh thu (6), Khoán theo giờ công (8), Doanh thu vượt khoán (9)
+  const hiddenColsConfig = {
+    columns: [6, 8, 9],
+    indicators: true   // hiện dấu nhỏ ở đầu để biết có cột đang ẩn
+  };
+
+  const commonSettings = {
+    data,
+    colHeaders,
+    columns,
+    colWidths,
+    rowHeaders: true,
+    filters: true,
+    dropdownMenu: true,
+    columnSorting: true,
+    wordWrap: true,
+    hiddenColumns: hiddenColsConfig,
+    licenseKey: "non-commercial-and-evaluation"
+  };
+
   if (!hotLuong) {
-    hotLuong = new HOT(hotLuongContainer, {
-      data,
-      colHeaders,
-      columns,
-      rowHeaders: true,
-      filters: true,
-      dropdownMenu: true,
-      columnSorting: true,
-      licenseKey: "non-commercial-and-evaluation"
-    });
+    hotLuong = new HOT(hotLuongContainer, commonSettings);
   } else {
-    hotLuong.updateSettings({
-      data,
-      colHeaders,
-      columns
-    });
+    hotLuong.updateSettings(commonSettings);
   }
 }
 
@@ -353,8 +380,26 @@ async function taiBangLuong() {
     addTotal(fmt(sum_tong_luong, 0));
     tbodyLuong.appendChild(trTotal);
 
+    // 👉 Thêm dòng TỔNG vào dữ liệu Handsontable
+    bangLuongData.push([
+      "TỔNG",                // Mã NV
+      "",                    // Tên NV
+      "",                    // Cơ sở
+      Number(sum_gio_cong.toFixed(2)),
+      Number(sum_gio_phat.toFixed(2)),
+      Number(sum_gio_tinh.toFixed(2)),
+      Math.round(sum_doanhthu),
+      Math.round(sum_khoan_gio),
+      Math.round(sum_khoan_thang),
+      Math.round(sum_tien_vuot),
+      Math.round(sum_tien_thuong),
+      Math.round(sum_luong_cung),
+      Math.round(sum_tong_luong)
+    ]);
+
     // Render Handsontable
     renderLuongHot(bangLuongData);
+
 
     setStatus(
       `Đã tải ${congData.length} dòng. Tổng lương: ${fmt(
