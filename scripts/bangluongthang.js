@@ -578,9 +578,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // tự tải khi mở trang
-  taiBangLuong();
-  taiBangCong();
+  //taiBangLuong();
+  //taiBangCong();
 });
 
-// cho button onclick trong HTML
+// Cho phép gọi từ bên ngoài (authModule)
+window.taiBangLuong = taiBangLuong;
 window.taiBangCong = taiBangCong;
