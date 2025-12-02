@@ -21,6 +21,62 @@ let hotBangCong = null;
 
 // =================== HÀM DÙNG CHUNG ===================
 
+// =============================
+// KIỂM SOÁT QUYỀN TRUY CẬP TRANG
+// =============================
+import { supabase } from "./supabaseClient.js";
+import * as authModule from "./authModule.js";
+
+async function kiemTraQuyenXemTrang(pathTrang) {
+  // 1. Lấy nhân viên đang đăng nhập
+  const nv = await authModule.getCurrentUserInfo();
+
+  if (!nv || !nv.manv) {
+    hienCamTruyCap("Bạn chưa đăng nhập.");
+    return false;
+  }
+
+  // 2. Lấy danh sách trang được phép xem
+  const { data, error } = await supabase.rpc("get_pages_for_manv", {
+    p_manv: nv.manv
+  });
+
+  if (error) {
+    hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
+    return false;
+  }
+
+  const dsTrang = data?.map(r => r.path) || [];
+
+  // 3. Nếu không phải admin và không nằm trong danh sách → CẤM
+  if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
+    hienCamTruyCap(
+      `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
+    );
+    return false;
+  }
+
+  // 4. Cho phép hiển thị trang
+  document.getElementById("app").style.display = "";
+  return true;
+}
+
+// Hàm hiện thông báo cấm truy cập
+function hienCamTruyCap(msg) {
+  document.body.innerHTML = `
+        <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
+            ⛔ Không có quyền truy cập<br>
+            <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
+        </div>
+    `;
+}
+
+// =============================
+// GỌI KIỂM TRA
+// =============================
+kiemTraQuyenXemTrang("bangluongthang.html");
+
+
 function toIsoDate(d) {
   return d.toISOString().slice(0, 10);
 }
