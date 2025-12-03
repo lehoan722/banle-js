@@ -220,19 +220,19 @@ async function ensureHOTLoaded() {
 let hot = null;           // instance Handsontable
 let hotData = [];         // dữ liệu đang hiển thị (sau tính toán)
 const hotCols = [
-    { data: 'stt', title: 'STT', type: 'numeric', width: 60 },
-    { data: 'masp', title: 'MÃ SP', type: 'text', width: 160 },
-    { data: 'nhacc', title: 'NHÀ CC', type: 'text', width: 160 },
-    { data: 'nhap_dau_ky', title: 'NHẬP ĐẦU KỲ', type: 'numeric', width: 120 },
-    { data: 'nhap_ky', title: 'NHẬP KỲ', type: 'numeric', width: 100 },
-    { data: 'ban_ky', title: 'BÁN KỲ', type: 'numeric', width: 100 },
-    { data: 'ton_cuoi', title: 'TỒN CUỐI', type: 'numeric', width: 100 },
-    { data: 'pct_bn', title: '% BÁN/NHẬP', type: 'numeric', width: 110, numericFormat: { pattern: '0.0' } },
-    { data: 'ban_ngay', title: 'BÁN/NGÀY', type: 'numeric', width: 110, numericFormat: { pattern: '0.0' } },
-    { data: 'rank', title: 'ĐIỂM', type: 'numeric', width: 90, numericFormat: { pattern: '0.00' } },
-    { data: 'goi_y', title: 'GỢI Ý', type: 'numeric', width: 90 },
-    // cột ẩn “Xem” sẽ mở chi tiết/đẩy ảnh khi click hàng
+    { data: "stt", title: "STT", type: "numeric", width: 50 },
+    { data: "masp", title: "MÃ SP", type: "text", width: 120 },
+    { data: "nhacc", title: "NHÀ CC", type: "text", width: 100 },
+    { data: "nhap_dau_ky", title: "NHẬP ĐẦU KỲ", type: "numeric", width: 50 },
+    { data: "nhap_ky", title: "NHẬP KỲ", type: "numeric", width: 50 },
+    { data: "ban_ky", title: "BÁN KỲ", type: "numeric", width: 50 },
+    { data: "ton_cuoi", title: "TỒN CUỐI", type: "numeric", width: 50 },
+    { data: "pct_bn", title: "% BÁN/NHẬP", type: "numeric", width: 50, numericFormat: { pattern: "0.0" } },
+    { data: "ban_ngay", title: "BÁN/NGÀY", type: "numeric", width: 50, numericFormat: { pattern: "0.0" } },
+    { data: "rank", title: "ĐIỂM", type: "numeric", width: 50, numericFormat: { pattern: "0.00" } },
+    { data: "goi_y", title: "GỢI Ý", type: "numeric", width: 50 },
 ];
+
 
 function buildHotData(rows) {
     // Chuẩn hoá dữ liệu cho HOT
@@ -272,23 +272,47 @@ function renderHOT(rows) {
     hot = new HOT(container, {
         data: hotData,
         columns: hotCols,
-        colHeaders: hotCols.map(c => c.title),
+        colHeaders: hotCols.map((c) => c.title),
         rowHeaders: true,
-        stretchH: 'all',
-        height: h,                              // <— dùng chiều cao thật
-        licenseKey: 'non-commercial-and-evaluation',
+
+        // ❗ Không tự giãn, dùng đúng width trong hotCols
+        stretchH: "none",
+        autoColumnSize: false,
+        manualColumnResize: true,
+        manualColumnMove: true,
+
+        height: h,
+        licenseKey: "non-commercial-and-evaluation",
         filters: true,
         dropdownMenu: true,
         columnSorting: true,
-        manualColumnMove: true,
-        manualColumnResize: true,
-        contextMenu: ['copy', 'cut', '---------', 'freeze_column', 'unfreeze_column', '---------', 'alignment'],
+        contextMenu: [
+            "copy",
+            "cut",
+            "---------",
+            "freeze_column",
+            "unfreeze_column",
+            "---------",
+            "alignment",
+        ],
         hiddenColumns: { indicators: true },
         cells: (row, col) => {
             const props = {};
             const key = hotCols[col]?.data;
-            if (['nhap_dau_ky', 'nhap_ky', 'ban_ky', 'ton_cuoi', 'pct_bn', 'ban_ngay', 'rank', 'goi_y', 'stt'].includes(key)) {
-                props.className = 'htRight';
+            if (
+                [
+                    "nhap_dau_ky",
+                    "nhap_ky",
+                    "ban_ky",
+                    "ton_cuoi",
+                    "pct_bn",
+                    "ban_ngay",
+                    "rank",
+                    "goi_y",
+                    "stt",
+                ].includes(key)
+            ) {
+                props.className = "htRight";
             }
             return props;
         },
