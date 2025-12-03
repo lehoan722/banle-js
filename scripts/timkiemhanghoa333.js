@@ -434,6 +434,7 @@ function showEmptyIfZero(val) {
 
 
 // ==== Hàm chính lấy và render dữ liệu ==== 
+// ==== Hàm chính lấy và render dữ liệu ==== 
 async function triggerSearch(_masp = null) {
     const msg = document.getElementById("statusMsg");
     msg.textContent = "Đang tìm kiếm mã sản phẩm...";
@@ -490,7 +491,14 @@ async function triggerSearch(_masp = null) {
         return;
     }
 
-    // Gom danh sách mã có dữ liệu XNT
+    // 👉 Cache XNT theo từng mã để dùng lại, không phải gọi RPC từng mã
+    window.XNT_BULK_MAP = {};
+    for (const row of bulkData) {
+        const key = String(row.masp || "").toUpperCase();
+        if (!window.XNT_BULK_MAP[key]) window.XNT_BULK_MAP[key] = [];
+        window.XNT_BULK_MAP[key].push(row);
+    }
+
     // Gom danh sách mã có dữ liệu XNT
     let productWithXNT = Array.from(new Set(bulkData.map(r => r.masp)));
 
@@ -504,7 +512,6 @@ async function triggerSearch(_masp = null) {
             return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
         });
     }
-
 
     if (productWithXNT.length === 0) {
         msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
@@ -525,7 +532,6 @@ async function triggerSearch(_masp = null) {
     const multi = document.getElementById("multiDetailBox");
     multi.innerHTML = "";
 
-    multi.innerHTML = "";
     const hotList = [];
     for (const m of productWithXNT) {
         const html = await renderProductDetailHTML(m);
@@ -559,55 +565,100 @@ async function triggerSearch(_masp = null) {
 
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
+/* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 async function renderOneProductDetail(masp) {
+    const normMasp = (masp || '').toUpperCase();
+    masp = normMasp;
 
-    CURRENT_MASP = (masp || '').toUpperCase();   // luôn IN HOA để đặt tên file .JPG
-    _pendingBlob = null;                          // reset blob chờ upload
+    CURRENT_MASP = normMasp;              // luôn IN HOA để đặt tên file .JPG
+    _pendingBlob = null;                  // reset blob chờ upload
     const sts = document.getElementById('uploadStatus');
     if (sts) sts.textContent = '';
 
-    // thông tin hàng hóa
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+    // --- Chuẩn bị các query chạy song song ---
+    const hanghoaPromise = supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", masp)
+        .single();
+
+    const nhapListPromise = supabase
+        .from("hoadon_banle")
+        .select("ngay,sohd")
+        .in("loaihd", ["nmcs1", "nmcs2"])
+        .order("ngay", { ascending: true });
+
+    const k1Promise = supabase
+        .from("kiemkho")
+        .select("ngaygio")
+        .eq("masp", masp)
+        .eq("diadiem", "cs1")
+        .order("ngaygio", { ascending: false })
+        .limit(1);
+
+    const k2Promise = supabase
+        .from("kiemkho")
+        .select("ngaygio")
+        .eq("masp", masp)
+        .eq("diadiem", "cs2")
+        .order("ngaygio", { ascending: false })
+        .limit(1);
+
+    // XNT: ưu tiên lấy từ cache bulk, nếu không có thì mới gọi RPC đơn
+    let cachedXnt = (window.XNT_BULK_MAP && window.XNT_BULK_MAP[normMasp]) || null;
+    const xntPromise = cachedXnt
+        ? null
+        : supabase.rpc("timkiemhanghoa", { masp_query: masp });
+
+    const [
+        hanghoaRes,
+        nhapListRes,
+        k1Res,
+        k2Res,
+        xntRes
+    ] = await Promise.all([
+        hanghoaPromise,
+        nhapListPromise,
+        k1Promise,
+        k2Promise,
+        xntPromise ? xntPromise : Promise.resolve({ data: cachedXnt, error: null })
+    ]);
+
+    const { data: hanghoa, error: err1 } = hanghoaRes;
     if (err1 || !hanghoa) return;
+
+    const nhapList = nhapListRes.data || [];
+    const k1 = k1Res.data || [];
+    const k2 = k2Res.data || [];
+    let xntdata = cachedXnt || (xntRes && xntRes.data) || [];
 
     // ND lấy từ dmhanghoa.nhapdau; fallback tính từ hóa đơn nếu thiếu
     let ngay_nhapdau = hanghoa.nhapdau || "";
     let ngay_nhapcuoi = "";
 
-    if (!ngay_nhapdau || !ngay_nhapcuoi) {
-        const { data: nhapList } = await supabase
-            .from("hoadon_banle")
-            .select("ngay,sohd")
-            .in("loaihd", ["nmcs1", "nmcs2"])
-            .order("ngay", { ascending: true });
-        if (nhapList?.length) {
-            const sohdArr = nhapList.map(e => e.sohd);
-            const { data: cts } = await supabase
-                .from("ct_hoadon_banle")
-                .select("sohd,masp")
-                .in("sohd", sohdArr)
-                .eq("masp", masp);
-            const setSohd = new Set(cts.map(e => e.sohd));
-            const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-            if (filtered.length) {
-                if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;  // fallback nếu thiếu
-                ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
-            }
+    if ((!ngay_nhapdau || !ngay_nhapcuoi) && nhapList.length) {
+        const sohdArr = nhapList.map(e => e.sohd);
+        const { data: cts } = await supabase
+            .from("ct_hoadon_banle")
+            .select("sohd,masp")
+            .in("sohd", sohdArr)
+            .eq("masp", masp);
+
+        const setSohd = new Set((cts || []).map(e => e.sohd));
+        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+        if (filtered.length) {
+            if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;
+            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
         }
     }
 
-
     // ngày kiểm gần nhất CS1/CS2
-    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
-    {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
-        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
-        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-    }
+    let ngay_kiem_cs1 = "";
+    let ngay_kiem_cs2 = "";
+    if (k1.length) ngay_kiem_cs1 = k1[0].ngaygio;
+    if (k2.length) ngay_kiem_cs2 = k2[0].ngaygio;
 
     // xuất nhập tồn
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
     if (!xntdata || !xntdata.length) {
         document.getElementById("infoTopTable").innerHTML = "";
         document.getElementById("infoTableRight").innerHTML = "";
@@ -615,20 +666,18 @@ async function renderOneProductDetail(masp) {
         return false;
     }
 
-    // map size & tổng dòng đầu
-
     // EU/US/JP/height (dùng EU làm key tính toán)
     const SIZE_LIST = ['0', '38/S/46/165', '39/M/48/170', '40/L/50/175', '41/XL/52/180', '42/2X/54/185', '43/3X/56/190', '44/4X/58/195', '45/5X/60/200'];
 
     // Tách metadata để vừa có "key" (EU) vừa có "label" (US/JP/height)
     const SIZE_META = SIZE_LIST.map(x => {
         const parts = String(x).split('/');
-        const eu = parts[0];                      // key cột (EU)
-        const label = parts.slice(1).join('/');   // nhãn phụ để hiển thị
-        return { key: eu, label };                // vd: {key:'38', label:'S/46/165'}
+        const eu = parts[0];
+        const label = parts.slice(1).join('/');
+        return { key: eu, label };
     });
 
-    const SIZE_KEYS = SIZE_META.map(s => s.key);   // ['0','38','39',...]
+    const SIZE_KEYS = SIZE_META.map(s => s.key);
 
     const rowMap = {};
     xntdata.forEach(r => { rowMap[r.size === null ? '' : r.size] = r; });
@@ -638,13 +687,10 @@ async function renderOneProductDetail(masp) {
         totalRow[f] = KEYS_NO_ZERO.reduce((s, k) => s + (Number(rowMap[k]?.[f]) || 0), 0);
     });
 
-    // 2 dòng / 8 cột (KHÔNG hiển thị tên sản phẩm)
-
     const top = document.getElementById("infoTopTable");
-    if (!top) return; // phòng khi thiếu phần tử
+    if (!top) return;
 
     top.innerHTML = `   
-
     <tr>
       <th>Mã hàng</th>
       <th>Vị trí CS1</th>
@@ -657,30 +703,26 @@ async function renderOneProductDetail(masp) {
     </tr>
     <tr>
       <td>
-     <a href="#"
-     class="order-link"
-     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-     ${(hanghoa.masp || '')}
-     </a>
-     </td>
-
-     <td>
-  <input class="vitri-input"
-         data-masp="${hanghoa.masp}"
-         data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
-         style="width:120px;text-align:center;">
-</td>
-<td>
-  <input class="vitri-input"
-         data-masp="${hanghoa.masp}"
-         data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
-         style="width:120px;text-align:center;">
-</td>
-
-
-
+        <a href="#"
+           class="order-link"
+           onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+           ${(hanghoa.masp || '')}
+        </a>
+      </td>
+      <td>
+        <input class="vitri-input"
+               data-masp="${hanghoa.masp}"
+               data-branch="cs1"
+               value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+               style="width:120px;text-align:center;">
+      </td>
+      <td>
+        <input class="vitri-input"
+               data-masp="${hanghoa.masp}"
+               data-branch="cs2"
+               value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+               style="width:120px;text-align:center;">
+      </td>
       <td>${hanghoa.giale?.toLocaleString() || ""}</td>
       <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
       <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
@@ -691,7 +733,6 @@ async function renderOneProductDetail(masp) {
 
     toggleVitriInputsByBranch();
 
-    // Bảng XNT
     // Bảng XNT (Editable)
     const rightBox = document.querySelector('.right-xnt');
     if (rightBox) {
@@ -700,11 +741,11 @@ async function renderOneProductDetail(masp) {
         initXntHot(el, rowMap);
     }
 
-
     // Ảnh sản phẩm dưới bảng
     setProductImageByMasp(hanghoa.masp);
     document.getElementById("maspInput").select();
 }
+
 // Lưu rowMap tạm để khởi tạo HOT sau khi gán HTML vào DOM
 window.XNT_ROW_MAPS = window.XNT_ROW_MAPS || {};
 
@@ -718,39 +759,99 @@ function _safeIdFromMasp(masp) {
  * - Trả về string HTML (chưa khởi tạo HOT)
  * - Lưu rowMap vào window.XNT_ROW_MAPS[masp] để lát nữa init HOT
  */
+/**
+ * Tạo block HTML cho 1 sản phẩm (dùng trong chế độ nhiều mã)
+ * - Trả về string HTML (chưa khởi tạo HOT)
+ * - Lưu rowMap vào window.XNT_ROW_MAPS[masp] để lát nữa init HOT
+ */
 async function renderProductDetailHTML(masp) {
-    const { data: hanghoa, error: err1 } = await supabase.from("dmhanghoa").select("*").eq("masp", masp).single();
+    const normMasp = (masp || '').toUpperCase();
+    masp = normMasp;
+
+    // Chạy song song dmhanghoa, hoadon, kiểm kho, XNT
+    const hanghoaPromise = supabase
+        .from("dmhanghoa")
+        .select("*")
+        .eq("masp", masp)
+        .single();
+
+    const nhapListPromise = supabase
+        .from("hoadon_banle")
+        .select("ngay,sohd")
+        .in("loaihd", ["nmcs1", "nmcs2"])
+        .order("ngay", { ascending: true });
+
+    const k1Promise = supabase
+        .from("kiemkho")
+        .select("ngaygio")
+        .eq("masp", masp)
+        .eq("diadiem", "cs1")
+        .order("ngaygio", { ascending: false })
+        .limit(1);
+
+    const k2Promise = supabase
+        .from("kiemkho")
+        .select("ngaygio")
+        .eq("masp", masp)
+        .eq("diadiem", "cs2")
+        .order("ngaygio", { ascending: false })
+        .limit(1);
+
+    // XNT: dùng cache bulk nếu có, fallback RPC đơn
+    let cachedXnt = (window.XNT_BULK_MAP && window.XNT_BULK_MAP[normMasp]) || null;
+    const xntPromise = cachedXnt
+        ? null
+        : supabase.rpc("timkiemhanghoa", { masp_query: masp });
+
+    const [
+        hanghoaRes,
+        nhapListRes,
+        k1Res,
+        k2Res,
+        xntRes
+    ] = await Promise.all([
+        hanghoaPromise,
+        nhapListPromise,
+        k1Promise,
+        k2Promise,
+        xntPromise ? xntPromise : Promise.resolve({ data: cachedXnt, error: null })
+    ]);
+
+    const { data: hanghoa, error: err1 } = hanghoaRes;
     if (err1 || !hanghoa) {
         return `<div style="color:red">Không lấy được thông tin sản phẩm ${masp}</div>`;
     }
 
-    // ngày nhập đầu/cuối (giữ nguyên logic gọn)
-    const { data: nhapList } = await supabase
-        .from("hoadon_banle").select("ngay,sohd")
-        .in("loaihd", ["nmcs1", "nmcs2"])
-        .order("ngay", { ascending: true });
-    let ngay_nhapdau = "", ngay_nhapcuoi = "";
-    if (nhapList?.length) {
+    const nhapList = nhapListRes.data || [];
+    const k1 = k1Res.data || [];
+    const k2 = k2Res.data || [];
+    let xntdata = cachedXnt || (xntRes && xntRes.data) || [];
+
+    // ngày nhập đầu/cuối
+    let ngay_nhapdau = "";
+    let ngay_nhapcuoi = "";
+    if (nhapList.length) {
         const sohdArr = nhapList.map(e => e.sohd);
         const { data: cts } = await supabase
-            .from("ct_hoadon_banle").select("sohd,masp")
-            .in("sohd", sohdArr).eq("masp", masp);
+            .from("ct_hoadon_banle")
+            .select("sohd,masp")
+            .in("sohd", sohdArr)
+            .eq("masp", masp);
         const setSohd = new Set((cts || []).map(e => e.sohd));
-        const filtered = (nhapList || []).filter(e => setSohd.has(e.sohd));
-        if (filtered.length) { ngay_nhapdau = filtered[0].ngay; ngay_nhapcuoi = filtered[filtered.length - 1].ngay; }
+        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
+        if (filtered.length) {
+            ngay_nhapdau = filtered[0].ngay;
+            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
+        }
     }
 
     // ngày kiểm
-    let ngay_kiem_cs1 = "", ngay_kiem_cs2 = "";
-    {
-        const { data: k1 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs1").order("ngaygio", { ascending: false }).limit(1);
-        if (k1?.length) ngay_kiem_cs1 = k1[0].ngaygio;
-        const { data: k2 } = await supabase.from("kiemkho").select("ngaygio").eq("masp", masp).eq("diadiem", "cs2").order("ngaygio", { ascending: false }).limit(1);
-        if (k2?.length) ngay_kiem_cs2 = k2[0].ngaygio;
-    }
+    let ngay_kiem_cs1 = "";
+    let ngay_kiem_cs2 = "";
+    if (k1.length) ngay_kiem_cs1 = k1[0].ngaygio;
+    if (k2.length) ngay_kiem_cs2 = k2[0].ngaygio;
 
-    // XNT của 1 mã
-    const { data: xntdata } = await supabase.rpc("timkiemhanghoa", { masp_query: masp });
+    // Nếu không có XNT vẫn trả block với message
     if (!xntdata || !xntdata.length) {
         return `
       <div class="detail-grid">
@@ -762,34 +863,31 @@ async function renderProductDetailHTML(masp) {
             </tr>
             <tr>
               <td>
-  <a href="#"
-     class="order-link"
-     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-     ${(hanghoa.masp || '')}
-  </a>
-</td>
-
-              
-             <td>
-  <input class="vitri-input"
-         data-masp="${hanghoa.masp}"
-         data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
-         style="width:120px;text-align:center;">
-</td>
-<td>
-  <input class="vitri-input"
-         data-masp="${hanghoa.masp}"
-         data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
-         style="width:120px;text-align:center;">
-</td>
-
-
-
+                <a href="#"
+                   class="order-link"
+                   onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+                   ${(hanghoa.masp || '')}
+                </a>
+              </td>
+              <td>
+                <input class="vitri-input"
+                       data-masp="${hanghoa.masp}"
+                       data-branch="cs1"
+                       value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+                       style="width:120px;text-align:center;">
+              </td>
+              <td>
+                <input class="vitri-input"
+                       data-masp="${hanghoa.masp}"
+                       data-branch="cs2"
+                       value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+                       style="width:120px;text-align:center;">
+              </td>
               <td>${hanghoa.giale?.toLocaleString() || ""}</td>
-              <td>${formatDateOnly(ngay_nhapdau) || ""}</td><td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
-              <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td><td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
+              <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
+              <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
+              <td>${formatDateOnly(ngay_kiem_cs1) || ""}</td>
+              <td>${formatDateOnly(ngay_kiem_cs2) || ""}</td>
             </tr>
           </table>
         </div>
@@ -817,30 +915,26 @@ async function renderProductDetailHTML(masp) {
           </tr>
           <tr>
             <td>
-  <a href="#"
-     class="order-link"
-     onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-     ${(hanghoa.masp || '')}
-  </a>
-</td>
-
+              <a href="#"
+                 class="order-link"
+                 onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
+                 ${(hanghoa.masp || '')}
+              </a>
+            </td>
             <td>
-  <input class="vitri-input"
-         data-masp="${hanghoa.masp}"
-         data-branch="cs1"
-         value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
-         style="width:120px;text-align:center;">
-</td>
-<td>
-  <input class="vitri-input"
-         data-masp="${hanghoa.masp}"
-         data-branch="cs2"
-         value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
-         style="width:120px;text-align:center;">
-</td>
-
-
-
+              <input class="vitri-input"
+                     data-masp="${hanghoa.masp}"
+                     data-branch="cs1"
+                     value="${(hanghoa.vitrikho1 || '').replace(/"/g, '&quot;')}"
+                     style="width:120px;text-align:center;">
+            </td>
+            <td>
+              <input class="vitri-input"
+                     data-masp="${hanghoa.masp}"
+                     data-branch="cs2"
+                     value="${(hanghoa.vitrikho2 || '').replace(/"/g, '&quot;')}"
+                     style="width:120px;text-align:center;">
+            </td>
             <td>${hanghoa.giale?.toLocaleString() || ""}</td>
             <td>${formatDateOnly(ngay_nhapdau) || ""}</td>
             <td>${formatDateOnly(ngay_nhapcuoi) || ""}</td>
