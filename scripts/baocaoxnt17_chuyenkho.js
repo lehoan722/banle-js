@@ -327,7 +327,7 @@ async function rpcTonSnapshot(masps, denNgay, tonghopSize = false) {
     }));
 }
 
-// Snapshot TỒN + BÁN all-time từ RPC mới xnt17_tonban_snapshot
+// Snapshot TỒN + BÁN all-time từ RPC mới xnt17_tonban_snapshot 
 async function rpcTonBanSnapshot(masps, denNgay, tonghopSize = false) {
     if (!Array.isArray(masps) || masps.length === 0) return [];
 
@@ -986,182 +986,58 @@ function focusPreview(masp) {
     }
 }
 
-// ===== Popup tồn kho theo size cho từng mã trong popup ảnh =====
-
-// Lấy toàn bộ dòng tồn kho (9 size + Tổng) theo MASP từ currentRows
-function getTonKhoRowsByMasp(masp) {
-  const M = String(masp || '').toUpperCase();
-  if (!M || !Array.isArray(currentRows)) return [];
-  return currentRows.filter(r => String(r.masp || '').toUpperCase() === M);
-}
-
-// Dựng HTML bảng tồn kho theo size cho MASP
-// Dựng HTML bảng tồn kho theo size cho MASP
-// Dựng HTML bảng tồn kho theo size cho MASP
-// Dựng HTML bảng tồn kho theo size cho MASP
-function buildTonKhoTableHtml(masp) {
-  const rows = getTonKhoRowsByMasp(masp);
-  if (!rows.length) {
-    return `
-      <div class="ck-stock-popup">
-        <div>Không có dữ liệu tồn kho.</div>
-      </div>
-    `;
-  }
-
-  const upperMasp = String(masp || '').toUpperCase();
-
-  const body = rows.map(r => {
-    const isSum = !!r.__isSum;
-
-    // Dòng cuối: hiển thị MÃ SẢN PHẨM để tránh nhầm mã
-    const sizeLabel = isSum
-      ? upperMasp
-      : displaySizeLabel(r.size);   // "size 38" -> "38"
-
-    const ban1 = r.ban_cs1 ?? r.xuatban_cs1 ?? 0;
-    const ban2 = r.ban_cs2 ?? r.xuatban_cs2 ?? 0;
-    const cs1  = r.ton_cs1 ?? r.cs1 ?? 0;
-    const cs2  = r.ton_cs2 ?? r.cs2 ?? 0;
-
-    return `
-      <tr class="${isSum ? 'sum-row' : ''}">
-        <td>${sizeLabel}</td>
-        <td class="num">${cs1  || ''}</td>
-        <td class="num">${cs2  || ''}</td>
-        <td class="num">${ban1 || ''}</td>
-        <td class="num">${ban2 || ''}</td>
-      </tr>
-    `;
-  }).join('');
-
-  return `
-    <div class="ck-stock-popup">
-      <table>
-        <thead>
-          <tr>
-            <th>Size / Mã</th>
-            <th>CS1</th>
-            <th>CS2</th>
-            <th>Bán CS1</th>
-            <th>Bán CS2</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${body}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-
+// === Popup tồn kho theo size cho từng mã trong popup ảnh =====
 // Phát hiện thiết bị cảm ứng (điện thoại/tablet)
 function isTouchDevice() {
-  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-}
-
-function hideAllStockPopups() {
-  document.querySelectorAll('.ck-stock-popup.show').forEach(p => {
-    p.classList.remove('show');
-  });
-}
-
-function showStockPopupForCard(card) {
-  if (!card) return;
-  hideAllStockPopups();
-  const popup = card.querySelector('.ck-stock-popup');
-  if (popup) popup.classList.add('show');
-}
-
-function hideStockPopupForCard(card) {
-  if (!card) return;
-  const popup = card.querySelector('.ck-stock-popup');
-  if (popup) popup.classList.remove('show');
-}
-
-function attachStockPopupEvents() {
-  const touch = isTouchDevice();
-  const cards = document.querySelectorAll('#ckGalGrid .ck-item');
-
-  cards.forEach(card => {
-    const img = card.querySelector('.ck-pic img');
-    if (!img) return;
-
-    if (!touch) {
-      // PC: hover chuột để xem tồn kho
-      card.addEventListener('mouseenter', () => showStockPopupForCard(card));
-      card.addEventListener('mouseleave', () => hideStockPopupForCard(card));
-    } else {
-      // Điện thoại: chạm 1 lần mở, chạm lại đóng / chạm ảnh khác thì đổi
-      img.addEventListener('click', () => {
-        const popup = card.querySelector('.ck-stock-popup');
-        const isShown = popup && popup.classList.contains('show');
-        hideAllStockPopups();
-        if (!isShown) {
-          showStockPopupForCard(card);
-        }
-      });
-    }
-  });
-
-  // Trên mobile: chạm nền đen ngoài card để đóng hết popup tồn kho
-  const modal = document.getElementById('ckGalleryModal');
-  if (touch && modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        hideAllStockPopups();
-      }
-    });
-  }
+    return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 }
 
 // ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
 
+// ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
 // ===== POPUP ẢNH CHUYỂN CHI NHÁNH =====
 function openAnhChuyenPopup() {
-  const data = buildCkGalleryData();
-  if (!data) return;
-  const { dir, list } = data;
+    const data = buildCkGalleryData();
+    if (!data) return;
+    const { dir, list } = data;
 
-  const modal = document.getElementById('ckGalleryModal');
-  const grid = document.getElementById('ckGalGrid');
-  const title = document.getElementById('ckGalTitle');
-  const info = document.getElementById('ckInfo');
-  if (!modal || !grid || !title) {
-    alert('Không tìm thấy popup ảnh trên trang.');
-    return;
-  }
+    const modal = document.getElementById('ckGalleryModal');
+    const grid = document.getElementById('ckGalGrid');
+    const title = document.getElementById('ckGalTitle');
+    const info = document.getElementById('ckInfo');
+    if (!modal || !grid || !title) {
+        alert('Không tìm thấy popup ảnh trên trang.');
+        return;
+    }
 
-  // đếm thêm số mã duy nhất để hiển thị cho dễ hiểu
-  const uniqMasps = Array.from(new Set(list.map(it => it.masp)));
-  title.textContent =
-    `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} ảnh / ${uniqMasps.length} mã`;
+    // đếm thêm số mã duy nhất để hiển thị cho dễ hiểu
+    const uniqMasps = Array.from(new Set(list.map(it => it.masp)));
+    title.textContent =
+        `Ảnh chuyển chi nhánh (${dir === '1v2' ? 'CS1 → CS2' : 'CS2 → CS1'}) – ${list.length} ảnh / ${uniqMasps.length} mã`;
 
-  const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+    const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
 
-  grid.innerHTML = list.map(item => {
-    const masp = item.masp;
-    const sizeLabel = displaySizeLabel(item.size);   // "size 39" -> "39"
-    const src = getImageUrl(masp);
-    const tonKhoHtml = buildTonKhoTableHtml(masp);   // 👈 bảng tồn kho theo size
+    grid.innerHTML = list.map(item => {
+        const masp = item.masp;
+        const sizeLabel = displaySizeLabel(item.size);   // "size 39" -> "39"
+        const src = getImageUrl(masp);
 
-    return `
+        return `
       <div class="ck-item" data-masp="${masp}" data-size="${item.size}">
         <div class="ck-pic">
           <img loading="lazy"
                src="${src}" data-try="0" alt="${masp}"
                onerror="(function(img,masp){handleImageError(img,masp,'');})(this,'${masp}')">
         </div>
-        ${tonKhoHtml}
         <div class="ck-body">
           <div class="ck-row">
             <b>Mã SP:</b>
             <a href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" target="_blank">${masp}</a>
           </div>
           <div class="ck-row">
-            <!-- ❌ BỎ checked: không còn tự chọn tạo phiếu cho tất cả -->
-            <label><input type="checkbox" class="ck-create"> tạo phiếu</label>
+            <label>
+              <input type="checkbox" class="ck-create"> tạo phiếu
+            </label>
           </div>
           <div class="ck-row">
             <b>Size:</b> <span class="ck-size">${sizeLabel}</span>
@@ -1179,25 +1055,67 @@ function openAnhChuyenPopup() {
         </div>
       </div>
     `;
-  }).join("");
+    }).join("");
 
-  if (info) {
-    info.textContent =
-      `Đang hiển thị ${list.length} ảnh của ${uniqMasps.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
-  }
+    if (info) {
+        info.textContent =
+            `Đang hiển thị ${list.length} ảnh của ${uniqMasps.length} mã – nhập chữ để lọc nhanh theo mã SP.`;
+    }
 
-  modal.style.display = 'flex';
+    modal.style.display = 'flex';
 
-  // Gắn sự kiện hover / click để hiển thị popup tồn kho theo size
-  attachStockPopupEvents();
+    // Gắn stockQuickPopup cho từng ảnh
+    attachStockQuickPopupEvents();
 }
 
+// Gắn stockQuickPopup: chạm 1 lần hiện, chạm lại ẩn – popup luôn ở góc trên trái
+function attachStockQuickPopupEvents() {
+    const cards = document.querySelectorAll('#ckGalGrid .ck-item');
+    if (!cards.length || !window.StockQuick) return;
+
+    cards.forEach(card => {
+        const img = card.querySelector('.ck-pic img');
+        if (!img) return;
+
+        const masp = String(card.dataset.masp || '').toUpperCase();
+
+        img.addEventListener('click', async (e) => {
+            e.stopPropagation();
+
+            const current = document.querySelector('.sq-stock-popup.show');
+
+            // Nếu popup đang mở cho đúng mã này → bấm lần nữa thì ẩn
+            if (current && current.dataset.masp === masp) {
+                current.classList.remove('show');
+                return;
+            }
+
+            // Ngược lại: mở popup mới cho mã này
+            await window.StockQuick.showFor(document.body, masp);
+
+            const popup = document.querySelector('.sq-stock-popup');
+            if (popup) {
+                popup.dataset.masp = masp; // ghi nhớ masp để toggle
+                if (document.body.classList.contains('xnt17-chuyenkho')) {
+                    popup.style.left = '8px';
+                    popup.style.top = '8px';
+                    popup.style.transform = 'none';
+                }
+            }
+        });
+    });
+}
 
 
 function closeAnhChuyenPopup() {
     const modal = document.getElementById('ckGalleryModal');
     if (modal) modal.style.display = 'none';
+
+    // Tắt luôn popup stockQuick nếu đang mở
+    const popup = document.querySelector('.sq-stock-popup.show');
+    if (popup) popup.classList.remove('show');
 }
+
 
 // Tìm nhanh theo mã SP trong popup
 function onCkSearchInput() {
