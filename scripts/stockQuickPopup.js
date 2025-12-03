@@ -30,6 +30,10 @@
     z-index: 9999;
     display: none;
     overflow: hidden;
+    top: 8px;
+  right: 8px;
+  left: auto;
+  transform: none;
   }
 
   .sq-stock-popup.show {
