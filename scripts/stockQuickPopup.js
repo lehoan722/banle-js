@@ -353,13 +353,7 @@
         hideAllPopups();
       }
     });
-
-    document.addEventListener("click", (e) => {
-      const popup = document.querySelector(".sq-stock-popup.show");
-      if (!popup) return;
-      if (e.target.closest(".sq-stock-popup")) return;
-      hideAllPopups();
-    });
+    
   }
 
   // ===== Drag để kéo popup =====
