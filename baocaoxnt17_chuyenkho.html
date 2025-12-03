@@ -162,53 +162,27 @@
       flex-direction: column;
     }
 
-    /* Popup tồn kho theo size trong card ảnh */
-/* Popup tồn kho theo size trong card ảnh */
-.ck-stock-popup {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #d4d4d8;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, .18);
-  padding: 8px 10px;
-  font-size: 16px;      /* chữ to hơn */
-  z-index: 20;
-  max-width: 460px;     /* rộng ~ gấp đôi so với trước (230px) */
-  display: none;        /* mặc định ẩn */
-}
+    /* ===== Tùy biến stockQuickPopup cho trang XNT17 chuyển kho ===== */
 
+    /* Hiển thị popup ở góc trên bên trái màn hình, không căn giữa */
+    body.xnt17-chuyenkho .sq-stock-popup {
+      left: 8px !important;
+      top: 8px !important;
+      transform: none !important;
+    }
 
-.ck-stock-popup.show {
-  display: block;
-}
+    /* Trên trang này đã có ảnh nên ẩn phần ảnh trong popup stockQuick */
+    body.xnt17-chuyenkho .sq-img-wrapper {
+      display: none !important;
+    }
 
-.ck-stock-popup table {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-.ck-stock-popup th,
-.ck-stock-popup td {
-  padding: 2px 4px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.ck-stock-popup th {
-  text-align: left;
-  font-weight: 600;
-  color: #111827;
-}
-
-.ck-stock-popup td.num {
-  text-align: right;
-}
-
-.ck-stock-popup tr.sum-row {
-  font-weight: 600;
-  background: #f3f4ff;
-}
+    /* Checkbox "tạo phiếu" to hơn, dễ bấm */
+    .ck-row input[type="checkbox"].ck-create {
+      width: 22px;
+      height: 22px;
+      transform: scale(1.5);
+      margin-right: 4px;
+    }
 
 
     .ck-pic {
@@ -303,7 +277,7 @@
 
       .ck-item {
         max-width: 520px;
-        
+
       }
 
       .ck-pic {
@@ -336,7 +310,7 @@
         font-size: 18px;
         padding: 8px 16px;
         border-radius: 12px;
-         background: #e9d607;
+        background: #e9d607;
       }
 
       #ckGalleryModal #ckApply {
@@ -368,7 +342,7 @@
   </style>
 </head>
 
-<body>
+<body class="xnt17-chuyenkho">
 
   <header>
     <button id="btnReload">Tải lại đề xuất</button>
@@ -435,15 +409,16 @@ C789"></textarea>
 
       <!-- Thanh nút luôn ở đáy màn hình (mobile/PC đều thấy) -->
       <div class="ck-gfoot">
-        
+
         <button id="ckApply" class="btn">Tạo phiếu CCN</button>
       </div>
     </div>
   </div>
 
-
   <!-- Logic riêng của trang -->
+  <script src="scripts/stockQuickPopup.js"></script>
   <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
+
 </body>
 
 </html>
