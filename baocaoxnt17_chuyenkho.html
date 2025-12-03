@@ -115,6 +115,7 @@
 
 
         /* Header: tiêu đề + tìm kiếm + nút */
+        /* Header: tiêu đề + tìm kiếm + nút */
         .ck-ghead {
             display: flex;
             align-items: center;
@@ -122,6 +123,9 @@
             padding: 8px 10px;
             background: #f6f9ff;
             border-bottom: 1px solid #e6eeff;
+
+            /* cho phép các phần tử xuống dòng */
+            flex-wrap: wrap;
         }
 
         #ckGalTitle {
@@ -168,7 +172,31 @@
             .ck-ghead #ckInfo {
                 display: none;
             }
+
+            /* Header trên mobile dọc: xuống 2 dòng gọn hơn */
+            #ckGalleryModal .ck-ghead {
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            /* Ô tìm kiếm chiếm cả dòng 1 */
+            #ckGalleryModal #ckSearch {
+                flex: 1 1 20%;
+                margin-left: 0;
+                /* bỏ margin-left: auto cũ */
+                margin-bottom: 6px;
+            }
+
+            /* 4 nút chia làm 2 cột ở dòng 2 (mỗi nút ~1/2 hàng) */
+            #ckGalleryModal .ck-ghead button {
+                flex: 1 1 calc(20% - 4px);
+                margin: 0;
+                text-align: center;
+            }
         }
+
+
+
 
 
         /* Ẩn tiêu đề + dòng thông tin trong popup ảnh chuyển kho
