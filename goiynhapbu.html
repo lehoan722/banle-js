@@ -329,11 +329,18 @@
       overflow: visible;
     }
 
-    
+    /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+body.goiynhapbu .sq-stock-popup {
+  top: 8px !important;
+  right: 8px !important;
+  left: auto !important;
+  transform: none !important;
+}
+
   </style>
 </head>
 
-<body>
+<body class="goiynhapbu">
   <div class="container">
     -Nếu bán chạy → tăng dự trữ lên 21, dự phòng 1,4; Nếu lọc tra ve quá ít mã → giảm % Bán/Nhập hoặc Bán/ngày
 
