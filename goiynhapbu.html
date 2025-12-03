@@ -329,7 +329,20 @@
       overflow: visible;
     }
 
-    /* tránh “cắt” vùng HOT */
+    /* Cho tiêu đề cột Handsontable tự xuống dòng */
+.ht_clone_top th .colHeader {
+  white-space: normal !important;
+  line-height: 1.2 !important;
+  word-break: break-word !important;
+  text-align: center;
+}
+
+/* Cho header cao linh hoạt để chứa 2–3 dòng */
+.ht_clone_top th {
+  height: auto !important;
+  padding: 4px 6px !important;
+}
+    
   </style>
 </head>
 
