@@ -339,6 +339,14 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
     </style>
 
 
@@ -366,7 +374,7 @@
 
 </head>
 
-<body>
+<body class="popupnhanh">
 
     <style>
         .menu-bar {
@@ -920,7 +928,7 @@
                 sessionStorage.clear();
                 localStorage.removeItem("quyen_sua_hoadon");
             }
-             document.getElementById('login-manv').value = "";
+            document.getElementById('login-manv').value = "";
             document.getElementById('login-password-nv').value = "";
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
