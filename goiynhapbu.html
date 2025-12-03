@@ -332,10 +332,38 @@
     /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
 body.goiynhapbu .sq-stock-popup {
   top: 8px !important;
-  right: 8px !important;
+  left: 8px !important;
   left: auto !important;
   transform: none !important;
 }
+
+  /* ===== THU NHỎ POPUP TRÊN ĐIỆN THOẠI (PORTRAIT) ===== */
+  @media (max-width: 768px) and (orientation: portrait) {
+    .sq-stock-popup {
+      /* rộng ~ 1/2 màn hình, cao tối đa ~ 1/2 màn hình */
+      width: 50vw;
+      max-width: 50vw;
+      min-width: 0;
+      max-height: 50vh;
+      font-size: 14px;         /* chữ nhỏ lại một chút */
+      padding: 6px 8px;
+      overflow: auto;          /* nếu nội dung dài thì scroll bên trong popup */
+    }
+
+    /* Bảng trong popup nhỏ gọn lại */
+    .sq-stock-popup table {
+      font-size: 13px;
+    }
+
+    /* Ảnh trong popup (nếu có) cũng co lại, cao tối đa ~ 1/4 màn hình */
+    .sq-stock-popup img {
+      max-width: 100%;
+      height: auto;
+      max-height: 25vh;
+      object-fit: contain;
+    }
+  }
+
 
   </style>
 </head>
