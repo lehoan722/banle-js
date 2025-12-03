@@ -329,20 +329,22 @@
       overflow: visible;
     }
 
-    /* Cho tiêu đề cột Handsontable tự xuống dòng */
-.ht_clone_top th .colHeader {
-  white-space: normal !important;
-  line-height: 1.2 !important;
-  word-break: break-word !important;
-  text-align: center;
-}
+    /* Cho tiêu đề tự xuống dòng nhưng không phá layout */
+    .ht_clone_top th .colHeader {
+      white-space: normal !important;
+      /* cho phép xuống dòng */
+      line-height: 1.2 !important;
+      word-break: break-word !important;
+      text-align: center;
+      padding: 4px 6px;
+      /* chuyển padding vào đây */
+      font-size: 12px;
+      /* tùy, có thể 11–12px cho gọn */
+    }
 
-/* Cho header cao linh hoạt để chứa 2–3 dòng */
-.ht_clone_top th {
-  height: auto !important;
-  padding: 4px 6px !important;
-}
-    
+    .handsontable .ht_master .wtHolder {
+      padding-top: 2px;
+    }
   </style>
 </head>
 
