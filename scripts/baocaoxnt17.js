@@ -781,11 +781,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (tu) tu.value = toLocalISO(yesterday);  // hôm qua
 
     // Tự động tick "Phát sinh bán trong kỳ"
-    //const cb = document.getElementById("locPhatSinhXuat"); 
-    //if (cb) cb.checked = true;
+    const cb = document.getElementById("locPhatSinhXuat"); 
+    if (cb) cb.checked = true;
 
     // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
-    //taiBaoCaoXNT();
+    taiBaoCaoXNT();
 });
 
 
