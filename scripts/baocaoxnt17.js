@@ -773,7 +773,7 @@ function toLocalISO(d) {
 window.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 10);   // -1 hôm qua -10= 10 NGAY
+    yesterday.setDate(now.getDate() - 30);   // -1 hôm qua -10= 10 NGAY
 
     const den = document.getElementById("denNgay");
     const tu = document.getElementById("tuNgay");
