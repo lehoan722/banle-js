@@ -415,8 +415,16 @@ C789"></textarea>
     </div>
   </div>
 
-  <!-- Logic riêng của trang -->
+  <!-- Bridge: đưa supabase trong module ra global cho stockQuickPopup -->
+  <script type="module">
+    import { supabase as sb } from "./scripts/supabaseClient.js";
+    window.supabase = sb;
+  </script>
+
+  <!-- Popup nhanh tồn kho -->
   <script src="scripts/stockQuickPopup.js"></script>
+
+  <!-- Logic riêng của trang -->
   <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
 
 </body>
