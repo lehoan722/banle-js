@@ -339,6 +339,14 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+            /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+body.goiynhapbu .sq-stock-popup {
+  top: 8px !important;
+  left: 8px !important;
+  left: auto !important;
+  transform: none !important;
+}
     </style>
 
 
@@ -366,7 +374,7 @@
 
 </head>
 
-<body>
+<body class="goiynhapbu">
 
     <style>
         .menu-bar {
@@ -650,7 +658,7 @@
     <script src="scripts/stockQuickPopup.js"></script>
 
 
-    <!-- Khung đăng nhập dùng module dùng chung -->
+    <!-- Khung đăng nhập dùng module dùng chung --> 
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
