@@ -1,6 +1,8 @@
 
-// scripts/baocaoxnt16.js 
+// scripts/baocaoxnt17.js
 import { supabase } from "./supabaseClient.js";
+import * as authModule from "./authModule.js";
+
 
 let hotInstance;
 let currentPage = 1;
@@ -53,27 +55,52 @@ let totalRows = 0;
 })();
 
 
-document.addEventListener("DOMContentLoaded", async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-        document.getElementById("loginBox").style.display = "none";
-    } else {
-        document.getElementById("loginBox").style.display = "block";
-    }
-});
+// ================== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (chuẩn auth) ==================
+async function kiemTraQuyenXemTrang(pathTrang) {
+  // 1. Lấy thông tin nhân viên đang đăng nhập từ authModule
+  const nv = await authModule.getCurrentUserInfo();
 
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        alert("Sai mật khẩu, vui lòng nhập lại");
-    } else {
-        document.getElementById("loginBox").style.display = "none";
-        location.reload(); // refresh lại để lấy session
-    }
-});
+  if (!nv || !nv.manv) {
+    hienCamTruyCap("Bạn chưa đăng nhập.");
+    return false;
+  }
+
+  // 2. Lấy danh sách trang được phép xem
+  const { data, error } = await supabase.rpc("get_pages_for_manv", {
+    p_manv: nv.manv,
+  });
+
+  if (error) {
+    hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
+    return false;
+  }
+
+  const dsTrang = data?.map((r) => r.path) || [];
+
+  // 3. Nếu KHÔNG phải admin và path trang không nằm trong danh sách → CẤM
+  if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
+    hienCamTruyCap(
+      `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
+    );
+    return false;
+  }
+
+  // 4. OK
+  return true;
+}
+
+// Hàm hiện thông báo cấm truy cập
+function hienCamTruyCap(msg) {
+  document.body.innerHTML = `
+    <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
+      ⛔ Không có quyền truy cập<br>
+      <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
+    </div>
+  `;
+}
+
+// Cho phép gọi từ script inline trong HTML
+window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
 
 
 // ===================== HELPERS =====================
@@ -746,7 +773,7 @@ function toLocalISO(d) {
 window.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);   // hôm qua
+    yesterday.setDate(now.getDate() - 10);   // -1 hôm qua -10= 10 NGAY
 
     const den = document.getElementById("denNgay");
     const tu = document.getElementById("tuNgay");
@@ -754,7 +781,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (tu) tu.value = toLocalISO(yesterday);  // hôm qua
 
     // Tự động tick "Phát sinh bán trong kỳ"
-    //const cb = document.getElementById("locPhatSinhXuat");
+    //const cb = document.getElementById("locPhatSinhXuat"); 
     //if (cb) cb.checked = true;
 
     // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
