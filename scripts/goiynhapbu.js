@@ -296,11 +296,22 @@ function renderHOT(rows) {
             // r1 là visual row (sau khi sort/filter)
             if (r1 == null || r1 < 0) return;
 
-            const physicalRow = hot.toPhysicalRow(r1);           // đổi sang row thật
+            const physicalRow = hot.toPhysicalRow(r1);           // visual -> physical
             const rec = hot.getSourceDataAtRow(physicalRow);     // lấy đúng bản ghi
 
             if (rec?.masp) {
-                promotePreviewToTop(rec.masp);                   // đẩy ảnh mã đó lên đầu
+                const masp = String(rec.masp).toUpperCase();
+
+                // 1) Đẩy ảnh mã đó lên đầu panel bên phải
+                promotePreviewToTop(masp);
+
+                // 2) Gọi popup tồn/bán nhanh
+                if (window.StockQuick && typeof window.StockQuick.showFor === 'function') {
+                    window.StockQuick.showFor(document.body, masp);
+                } else if (window.stockQuickPopup) {
+                    // fallback tên hàm global cũ nếu có
+                    window.stockQuickPopup(masp);
+                }
             }
         },
 
