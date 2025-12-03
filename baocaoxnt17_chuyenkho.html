@@ -2,435 +2,454 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8" />
-  <title>Gợi ý chuyển kho (XNT17)</title>
+    <meta charset="UTF-8" />
+    <title>Gợi ý chuyển kho (XNT17)</title>
 
-  <!-- Handsontable -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <!-- Handsontable -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
 
-  <!-- XLSX để xuất (giống trang XNT17) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- XLSX để xuất (giống trang XNT17) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  <!-- Supabase client dùng chung -->
-  <script type="module" src="scripts/supabaseClient.js"></script>
+    <!-- Supabase client dùng chung -->
+    <script type="module" src="scripts/supabaseClient.js"></script>
 
-  <style>
-    html,
-    body {
-      height: 100%
-    }
+    <style>
+        html,
+        body {
+            height: 100%
+        }
 
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto
-    }
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto
+        }
 
-    header {
-      padding: 8px 12px;
-      border-bottom: 1px solid #e7e7e7;
-      display: flex;
-      gap: 8px;
-      align-items: center
-    }
+        header {
+            padding: 8px 12px;
+            border-bottom: 1px solid #e7e7e7;
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
 
-    header .spacer {
-      flex: 1
-    }
+        header .spacer {
+            flex: 1
+        }
 
-    .main {
-      display: grid;
-      grid-template-columns: 60% 40%;
-      gap: 8px;
-      padding: 8px;
-      box-sizing: border-box;
-      height: 100%;
-    }
+        .main {
+            display: grid;
+            grid-template-columns: 60% 40%;
+            gap: 8px;
+            padding: 8px;
+            box-sizing: border-box;
+            height: 100%;
+        }
 
-    #leftPane {
-      min-height: 0;
-      display: flex;
-      flex-direction: column
-    }
+        #leftPane {
+            min-height: 0;
+            display: flex;
+            flex-direction: column
+        }
 
-    #hot {
-      flex: 1 1 auto;
-      min-height: 0
-    }
+        #hot {
+            flex: 1 1 auto;
+            min-height: 0
+        }
 
-    #rightPane {
-      min-height: 0;
-      overflow: auto
-    }
+        #rightPane {
+            min-height: 0;
+            overflow: auto
+        }
 
-    #imagesWrap {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px
-    }
+        #imagesWrap {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px
+        }
 
-    #imagesWrap img {
-      width: 100%;
-      height: auto;
-      aspect-ratio: 3/4;
-      object-fit: cover;
-      display: block
-    }
+        #imagesWrap img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 3/4;
+            object-fit: cover;
+            display: block
+        }
 
-    .sumRow {
-      background: #f2f2f2;
-      font-weight: bold
-    }
-  </style>
+        .sumRow {
+            background: #f2f2f2;
+            font-weight: bold
+        }
+    </style>
 
-  <style>
-    /* ===== Popup ẢNH CHUYỂN CHI NHÁNH (CK) ===== */
-    #ckGalleryModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, .55);
-      z-index: 5000;
-      align-items: center;
-      justify-content: center;
-    }
+    <style>
+        /* ===== Popup ẢNH CHUYỂN CHI NHÁNH (CK) ===== */
+        #ckGalleryModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .55);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+        }
 
-    /* Khung trắng full màn hình */
-    #ckGalleryModal .ck-gcard {
-      background: #fff;
-      border-radius: 0;
-      width: 100vw;
-      /* lấy đúng chiều cao của popup, tránh bug 100vh trên mobile */
-      height: 100%;
-      max-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 14px 40px rgba(0, 0, 0, .25);
-    }
-
-
-    /* Header: tiêu đề + tìm kiếm + nút */
-    .ck-ghead {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      background: #f6f9ff;
-      border-bottom: 1px solid #e6eeff;
-    }
-
-    #ckGalTitle {
-      font-size: 16px;
-      color: #1b5dbf;
-    }
-
-    #ckSearch {
-      margin-left: auto;
-      height: 32px;
-      padding: 4px 8px;
-      border-radius: 8px;
-      border: 1px solid #cfe1ff;
-      min-width: 120px;
-    }
-
-    /* Thân popup: lưới ảnh, phần này cuộn */
-    .ck-gbody {
-      flex: 1;
-      overflow: auto;
-      padding: 10px;
-    }
-
-    /* Lưới ảnh */
-    #ckGalGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-      gap: 10px;
-    }
-
-    /* Card ảnh */
-    .ck-item {
-      border-radius: 12px;
-      border: 1px solid #e6eeff;
-      overflow: hidden;
-      background: #fff;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ===== Tùy biến stockQuickPopup cho trang XNT17 chuyển kho ===== */
-
-    /* Hiển thị popup ở góc trên bên trái màn hình, không căn giữa */
-    body.xnt17-chuyenkho .sq-stock-popup {
-      left: 8px !important;
-      top: 8px !important;
-      transform: none !important;
-      min-width: 220px;
-    max-width: 450px;              /* ~một nửa so với trước (900px) */
-    width: min(450px, 90vw);       /* co lại theo màn hình mobile */
-    max-height: 600px;
-    }
-    
-
-    /* Trên trang này đã có ảnh nên ẩn phần ảnh trong popup stockQuick */
-    body.xnt17-chuyenkho .sq-img-wrapper {
-      display: none !important;
-    }
-
-    /* Checkbox "tạo phiếu" to hơn, dễ bấm */
-    .ck-row input[type="checkbox"].ck-create {
-      width: 22px;
-      height: 22px;
-      transform: scale(1.5);
-      margin-right: 4px;
-    }
+        /* Khung trắng full màn hình */
+        #ckGalleryModal .ck-gcard {
+            background: #fff;
+            border-radius: 0;
+            width: 100vw;
+            /* lấy đúng chiều cao của popup, tránh bug 100vh trên mobile */
+            height: 100%;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, .25);
+        }
 
 
-    .ck-pic {
-      background: #f8faff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 180px;
-    }
+        /* Header: tiêu đề + tìm kiếm + nút */
+        .ck-ghead {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #f6f9ff;
+            border-bottom: 1px solid #e6eeff;
+        }
 
-    .ck-pic img {
-      max-width: 100%;
-      max-height: 240px;
-      display: block;
-    }
+        #ckGalTitle {
+            font-size: 16px;
+            color: #1b5dbf;
+        }
 
-    .ck-body {
-      padding: 6px 9px 10px;
-      font-size: 14px;
-    }
+        #ckSearch {
+            margin-left: auto;
+            height: 32px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 1px solid #cfe1ff;
+            min-width: 120px;
+        }
 
-    .ck-row {
-      margin: 2px 0;
-      line-height: 1.3;
-    }
+        /* Thân popup: lưới ảnh, phần này cuộn */
+        .ck-gbody {
+            flex: 1;
+            overflow: auto;
+            padding: 10px;
+        }
 
-    .ck-row b {
-      color: #333;
-    }
+        /* Lưới ảnh */
+        #ckGalGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 10px;
+        }
 
-    .ck-row a {
-      color: #1976d2;
-      text-decoration: none;
-    }
+        /* Card ảnh */
+        .ck-item {
+            border-radius: 12px;
+            border: 1px solid #e6eeff;
+            overflow: hidden;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+        }
 
-    .ck-row a:hover {
-      text-decoration: underline;
-    }
+        @media (orientation: portrait) {
 
-    .ck-row input[type="number"] {
-      width: 80px;
-      padding: 2px 4px;
-      border-radius: 6px;
-      border: 1px solid #cfe1ff;
-      font-size: 14px;
-    }
-
-    /* Ô nhập size + SL trong popup */
-    .ck-size-input {
-      width: 100%;
-      min-height: 38px;
-      padding: 3px 5px;
-      border-radius: 6px;
-      border: 1px solid #cfe1ff;
-      font-size: 13px;
-      resize: vertical;
-    }
-
-    .ck-size-input.ck-error {
-      border-color: #e53935;
-      background: #fff5f5;
-    }
-
-    /* Footer: text + nút tạo phiếu, dính đáy */
-    .ck-gfoot {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 8px 10px;
-      border-top: 1px solid #e6eeff;
-      background: #fdfdfd;
-      /* không dùng sticky nữa, để flex giữ nó ở đáy */
-      flex-shrink: 0;
-    }
+            .ck-ghead #ckGalTitle,
+            .ck-ghead #ckInfo {
+                display: none;
+            }
+        }
 
 
-    /* Text thông tin nhỏ bên trái */
-    .ck-info {
-      font-size: 13px;
-      color: #555;
-    }
-
-    /* Mobile: lưới 1 cột cho dễ xem */
-    /* Điện thoại DỌC: 1 cột ảnh */
-    /* Điện thoại DỌC: luôn 1 cột ảnh */
-    /* Điện thoại DỌC: 1 cột, ảnh to hết chiều ngang */
-    @media (orientation: portrait) {
-      #ckGalGrid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .ck-item {
-        max-width: 520px;
-
-      }
-
-      .ck-pic {
-        min-height: 260px;
-      }
-
-      .ck-pic img {
-        width: 100%;
-        height: auto;
-        max-height: none;
-        object-fit: contain;
-      }
-
-      /* Header cao, thoáng */
-      #ckGalleryModal .ck-ghead {
-        padding: 10px 8px;
-        min-height: 52px;
-      }
-
-      /* Ô tìm kiếm to hơn */
-      #ckGalleryModal #ckSearch {
-        height: 50px;
-        padding: 6px 10px;
-        font-size: 20px;
-      }
-
-      /* Nút to hơn, dễ bấm */
-      #ckGalleryModal .ck-ghead button,
-      #ckGalleryModal .ck-gfoot button {
-        font-size: 18px;
-        padding: 8px 16px;
-        border-radius: 12px;
-        background: #e9d607;
-      }
-
-      #ckGalleryModal #ckApply {
-        min-width: 140px;
-        font-weight: 900;
-        background: #e9d607;
-      }
-    }
+        /* Ẩn tiêu đề + dòng thông tin trong popup ảnh chuyển kho
+   để trên mobile chỉ còn ô tìm kiếm + 4 nút */
+        .ck-ghead #ckGalTitle,
+        .ck-ghead #ckInfo {
+            display: none;
+        }
 
 
-    /* Điện thoại XOAY NGANG: 4 cột ảnh */
-    @media (orientation: landscape) {
-      #ckGalGrid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
+        /* ===== Tùy biến stockQuickPopup cho trang XNT17 chuyển kho ===== */
 
-      #ckGalleryModal {
-        align-items: stretch;
-        justify-content: stretch;
-      }
+        /* Hiển thị popup ở góc trên bên trái màn hình, không căn giữa */
+        body.xnt17-chuyenkho .sq-stock-popup {
+            left: 8px !important;
+            top: 8px !important;
+            transform: none !important;
+            min-width: 220px;
+            max-width: 450px;
+            /* ~một nửa so với trước (900px) */
+            width: min(450px, 90vw);
+            /* co lại theo màn hình mobile */
+            max-height: 600px;
+        }
 
-      #ckGalleryModal .ck-gcard {
-        width: 100%;
-        height: 100%;
-        max-height: 100%;
-        border-radius: 0;
-      }
-    }
-  </style>
+
+        /* Trên trang này đã có ảnh nên ẩn phần ảnh trong popup stockQuick */
+        body.xnt17-chuyenkho .sq-img-wrapper {
+            display: none !important;
+        }
+
+        /* Checkbox "tạo phiếu" to hơn, dễ bấm */
+        .ck-row input[type="checkbox"].ck-create {
+            width: 22px;
+            height: 22px;
+            transform: scale(1.5);
+            margin-right: 4px;
+        }
+
+
+        .ck-pic {
+            background: #f8faff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+        }
+
+        .ck-pic img {
+            max-width: 100%;
+            max-height: 240px;
+            display: block;
+        }
+
+        .ck-body {
+            padding: 6px 9px 10px;
+            font-size: 14px;
+        }
+
+        .ck-row {
+            margin: 2px 0;
+            line-height: 1.3;
+        }
+
+        .ck-row b {
+            color: #333;
+        }
+
+        .ck-row a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+
+        .ck-row a:hover {
+            text-decoration: underline;
+        }
+
+        .ck-row input[type="number"] {
+            width: 80px;
+            padding: 2px 4px;
+            border-radius: 6px;
+            border: 1px solid #cfe1ff;
+            font-size: 14px;
+        }
+
+        /* Ô nhập size + SL trong popup */
+        .ck-size-input {
+            width: 100%;
+            min-height: 38px;
+            padding: 3px 5px;
+            border-radius: 6px;
+            border: 1px solid #cfe1ff;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        .ck-size-input.ck-error {
+            border-color: #e53935;
+            background: #fff5f5;
+        }
+
+        /* Footer: text + nút tạo phiếu, dính đáy */
+        .ck-gfoot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 10px;
+            border-top: 1px solid #e6eeff;
+            background: #fdfdfd;
+            /* không dùng sticky nữa, để flex giữ nó ở đáy */
+            flex-shrink: 0;
+        }
+
+
+        /* Text thông tin nhỏ bên trái */
+        .ck-info {
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* Mobile: lưới 1 cột cho dễ xem */
+        /* Điện thoại DỌC: 1 cột ảnh */
+        /* Điện thoại DỌC: luôn 1 cột ảnh */
+        /* Điện thoại DỌC: 1 cột, ảnh to hết chiều ngang */
+        @media (orientation: portrait) {
+            #ckGalGrid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .ck-item {
+                max-width: 520px;
+
+            }
+
+            .ck-pic {
+                min-height: 260px;
+            }
+
+            .ck-pic img {
+                width: 100%;
+                height: auto;
+                max-height: none;
+                object-fit: contain;
+            }
+
+            /* Header cao, thoáng */
+            #ckGalleryModal .ck-ghead {
+                padding: 10px 8px;
+                min-height: 52px;
+            }
+
+            /* Ô tìm kiếm to hơn */
+            #ckGalleryModal #ckSearch {
+                height: 50px;
+                padding: 6px 10px;
+                font-size: 20px;
+            }
+
+            /* Nút to hơn, dễ bấm */
+            #ckGalleryModal .ck-ghead button,
+            #ckGalleryModal .ck-gfoot button {
+                font-size: 18px;
+                padding: 8px 16px;
+                border-radius: 12px;
+                background: #e9d607;
+            }
+
+            #ckGalleryModal #ckApply {
+                min-width: 140px;
+                font-weight: 900;
+                background: #e9d607;
+            }
+        }
+
+
+        /* Điện thoại XOAY NGANG: 4 cột ảnh */
+        @media (orientation: landscape) {
+            #ckGalGrid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+
+            #ckGalleryModal {
+                align-items: stretch;
+                justify-content: stretch;
+            }
+
+            #ckGalleryModal .ck-gcard {
+                width: 100%;
+                height: 100%;
+                max-height: 100%;
+                border-radius: 0;
+            }
+        }
+    </style>
 </head>
 
 <body class="xnt17-chuyenkho">
 
-  <header>
-    <button id="btnReload">Tải lại đề xuất</button>
-    <button id="btnCopy">📋 Copy bảng</button>
-    <button id="btnExport">Xuất Excel</button>
-    <button id="btnFilter1v2">1v2</button>
-    <button id="btnFilter2v1">2v1</button>
-    <button id="btnShowAll">Hiện tất cả</button>
-    <button id="btnTaoPhieuCN">Tạo phiếu chuyển CN</button>
-    <button id="btnAnhChuyen" class="btn secondary">ảnh chuyen</button>
+    <header>
+        <button id="btnReload">Tải lại đề xuất</button>
+        <button id="btnCopy">📋 Copy bảng</button>
+        <button id="btnExport">Xuất Excel</button>
+        <button id="btnFilter1v2">1v2</button>
+        <button id="btnFilter2v1">2v1</button>
+        <button id="btnShowAll">Hiện tất cả</button>
+        <button id="btnTaoPhieuCN">Tạo phiếu chuyển CN</button>
+        <button id="btnAnhChuyen" class="btn secondary">ảnh chuyen</button>
 
-    <div style="margin:10px 0;">
-      <label for="maspTextarea" style="display:block;font-weight:600;margin-bottom:4px;">
-        Danh sách mã sản phẩm (mỗi mã 1 dòng):
-      </label>
-      <textarea id="maspTextarea" rows="5" style="width:100%;max-width:680px;display:block;margin-bottom:6px;"
-        placeholder="VD:
+        <div style="margin:10px 0;">
+            <label for="maspTextarea" style="display:block;font-weight:600;margin-bottom:4px;">
+                Danh sách mã sản phẩm (mỗi mã 1 dòng):
+            </label>
+            <textarea id="maspTextarea" rows="5" style="width:100%;max-width:680px;display:block;margin-bottom:6px;"
+                placeholder="VD:
 A123
 B456
 C789"></textarea>
-      <button id="btnChuyenKho">Chuyển kho</button>
+            <button id="btnChuyenKho">Chuyển kho</button>
+        </div>
+
+
+        <div class="spacer"></div>
+        <small id="status" style="color:#666"></small>
+    </header>
+
+    <div class="main">
+        <div id="leftPane">
+            <div id="hot"></div>
+        </div>
+
+        <div id="rightPane">
+            <div style="display:flex;flex-direction:column;gap:8px;height:100%;">
+                <div id="previewTitle" style="font-weight:600;color:#111"></div>
+                <div id="previewGrid" style="flex:1 1 auto;min-height:0;overflow:auto;"></div>
+            </div>
+
+
+        </div>
     </div>
 
+    <!-- Popup ẢNH CHUYỂN CHI NHÁNH -->
+    <div id="ckGalleryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000;">
+        <div class="ck-gcard">
+            <!-- Header -->
+            <div class="ck-ghead">
+                <b id="ckGalTitle">Ảnh chuyển chi nhánh</b>
+                <span id="ckInfo" class="ck-info"></span>
 
-    <div class="spacer"></div>
-    <small id="status" style="color:#666"></small>
-  </header>
+                <input id="ckSearch" placeholder="Tìm nhanh mã SP..." autocomplete="off">
+                <button id="ckApply" class="btn">Tạo phiếu CCN</button>
 
-  <div class="main">
-    <div id="leftPane">
-      <div id="hot"></div>
+                <button id="ckSelectAll" class="btn secondary">Chọn tất cả</button>
+                <button id="ckClearAll" class="btn secondary">Bỏ chọn</button>
+                <button id="ckClose" class="btn secondary">Đóng</button>
+            </div>
+
+            <!-- Thân popup: lưới ảnh -->
+            <div class="ck-gbody">
+                <div id="ckGalGrid"></div>
+            </div>
+
+            <!-- Thanh nút luôn ở đáy màn hình (mobile/PC đều thấy) -->
+            <div class="ck-gfoot">
+
+                <button id="ckApply" class="btn">Tạo phiếu CCN</button>
+            </div>
+        </div>
     </div>
 
-    <div id="rightPane">
-      <div style="display:flex;flex-direction:column;gap:8px;height:100%;">
-        <div id="previewTitle" style="font-weight:600;color:#111"></div>
-        <div id="previewGrid" style="flex:1 1 auto;min-height:0;overflow:auto;"></div>
-      </div>
+    <!-- Bridge: đưa supabase trong module ra global cho stockQuickPopup -->
+    <script type="module">
+        import { supabase as sb } from "./scripts/supabaseClient.js";
+        window.supabase = sb;
+    </script>
 
+    <!-- Popup nhanh tồn kho -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
-    </div>
-  </div>
-
-  <!-- Popup ẢNH CHUYỂN CHI NHÁNH -->
-  <div id="ckGalleryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000;">
-    <div class="ck-gcard">
-      <!-- Header -->
-      <div class="ck-ghead">
-       <!-- <b id="ckGalTitle">Ảnh chuyển chi nhánh</b>
-        <span id="ckInfo" class="ck-info"></span>-->
-
-        <input id="ckSearch" placeholder="Tìm nhanh mã SP..." autocomplete="off">
-        <button id="ckApply" class="btn">Tạo phiếu CCN</button>
-
-        <button id="ckSelectAll" class="btn secondary">Chọn tất cả</button>
-        <button id="ckClearAll" class="btn secondary">Bỏ chọn</button>
-        <button id="ckClose" class="btn secondary">Đóng</button>
-      </div>
-
-      <!-- Thân popup: lưới ảnh -->
-      <div class="ck-gbody">
-        <div id="ckGalGrid"></div>
-      </div>
-
-      <!-- Thanh nút luôn ở đáy màn hình (mobile/PC đều thấy) -->
-      <div class="ck-gfoot">
-
-        <button id="ckApply" class="btn">Tạo phiếu CCN</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bridge: đưa supabase trong module ra global cho stockQuickPopup -->
-  <script type="module">
-    import { supabase as sb } from "./scripts/supabaseClient.js";
-    window.supabase = sb;
-  </script>
-
-  <!-- Popup nhanh tồn kho -->
-  <script src="scripts/stockQuickPopup.js"></script>
-
-  <!-- Logic riêng của trang -->
-  <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
+    <!-- Logic riêng của trang -->
+    <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
 
 </body>
 
