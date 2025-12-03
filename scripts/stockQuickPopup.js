@@ -174,7 +174,7 @@
         const f = JSON.parse(raw);
         if (f.den_ngay) return f.den_ngay;
       }
-    } catch (e) { }
+    } catch (e) {}
     return new Date().toISOString().slice(0, 10);
   }
 
@@ -240,8 +240,8 @@
     const rows = payload && Array.isArray(payload.rows)
       ? payload.rows
       : Array.isArray(payload)
-        ? payload
-        : [];
+      ? payload
+      : [];
     const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : "";
     const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : "";
 
@@ -353,7 +353,13 @@
         hideAllPopups();
       }
     });
-    
+
+    document.addEventListener("click", (e) => {
+      const popup = document.querySelector(".sq-stock-popup.show");
+      if (!popup) return;
+      if (e.target.closest(".sq-stock-popup")) return;
+      hideAllPopups();
+    });
   }
 
   // ===== Drag để kéo popup =====
@@ -481,8 +487,12 @@
     if (touch) {
       card.addEventListener("click", async (e) => {
         e.stopPropagation();
-        // Luôn MỞ / refresh popup cho mã này, không toggle đóng nữa
-        await ensurePopup(card, masp);
+        const current = document.querySelector(".sq-stock-popup.show");
+        if (current) {
+          current.classList.remove("show");
+        } else {
+          await ensurePopup(card, masp);
+        }
       });
     } else {
       card.addEventListener("mouseenter", () => {
@@ -493,7 +503,6 @@
       });
     }
   }
-
 
   window.StockQuick = {
     attach,
