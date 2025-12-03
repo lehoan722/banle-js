@@ -220,15 +220,15 @@ async function ensureHOTLoaded() {
 let hot = null;           // instance Handsontable
 let hotData = [];         // dữ liệu đang hiển thị (sau tính toán)
 const hotCols = [
-    { data: "stt", title: "STT", type: "numeric", width: 50 },
+    { data: "stt", title: "STT", type: "numeric", width: 40 },
     { data: "masp", title: "MÃ SP", type: "text", width: 120 },
-    { data: "nhacc", title: "NHÀ CC", type: "text", width: 100 },
-    { data: "nhap_dau_ky", title: "NHẬP ĐẦU KỲ", type: "numeric", width: 50 },
+    { data: "nhacc", title: "NHÀ CC", type: "text", width: 90 },
+    { data: "nhap_dau_ky", title: "NHẬP ĐẦU", type: "numeric", width: 50 },
     { data: "nhap_ky", title: "NHẬP KỲ", type: "numeric", width: 50 },
     { data: "ban_ky", title: "BÁN KỲ", type: "numeric", width: 50 },
     { data: "ton_cuoi", title: "TỒN CUỐI", type: "numeric", width: 50 },
-    { data: "pct_bn", title: "% BÁN/NHẬP", type: "numeric", width: 50, numericFormat: { pattern: "0.0" } },
-    { data: "ban_ngay", title: "BÁN/NGÀY", type: "numeric", width: 50, numericFormat: { pattern: "0.0" } },
+    { data: "pct_bn", title: "% BÁN/NHap", type: "numeric", width: 70, numericFormat: { pattern: "0.0" } },
+    { data: "ban_ngay", title: "BÁN/NGÀY", type: "numeric", width: 70, numericFormat: { pattern: "0.0" } },
     { data: "rank", title: "ĐIỂM", type: "numeric", width: 50, numericFormat: { pattern: "0.00" } },
     { data: "goi_y", title: "GỢI Ý", type: "numeric", width: 50 },
 ];
