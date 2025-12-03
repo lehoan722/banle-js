@@ -174,10 +174,11 @@
         const f = JSON.parse(raw);
         if (f.den_ngay) return f.den_ngay;
       }
-    } catch (e) {}
+    } catch (e) { }
     return new Date().toISOString().slice(0, 10);
   }
 
+  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
@@ -193,33 +194,37 @@
     let vitri_cs2 = "";
 
     if (typeof supabase !== "undefined") {
-      const { data, error } = await supabase.rpc("xnt17_tonban_snapshot", {
-        p_masps: [masp],
-        p_den_ngay: denNgay,
-        p_tonghop_size: false,
-      });
-
-      console.log("[StockQuickPopup] Kết quả RPC", { masp, denNgay, data, error });
-
-      if (!error && data && data.length) {
-        rows = data.map((r) => ({
-          masp: String(r.masp || "").toUpperCase(),
-          size: normalizeSize(r.size),
-          ton_cs1: Number(r.ton_cs1 || 0),
-          ton_cs2: Number(r.ton_cs2 || 0),
-          ban_cs1: Number(r.ban_cs1 || 0),
-          ban_cs2: Number(r.ban_cs2 || 0),
-        }));
-      } else if (error) {
-        console.warn("xnt17_tonban_snapshot error:", error);
-      }
-
       try {
-        const { data: vitriData, error: vitriErr } = await supabase
-          .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2")
-          .eq("masp", masp);
+        // GỌI SONG SONG: RPC + lấy vị trí từ dmhanghoa
+        const [snapRes, vitriRes] = await Promise.all([
+          supabase.rpc("xnt17_tonban_snapshot", {
+            p_masps: [masp],
+            p_den_ngay: denNgay,
+            p_tonghop_size: false,
+          }),
+          supabase
+            .from("dmhanghoa")
+            .select("vitrikho1, vitrikho2")
+            .eq("masp", masp),
+        ]);
 
+        // Kết quả RPC tồn/bán
+        const { data, error } = snapRes || {};
+        if (!error && data && data.length) {
+          rows = data.map((r) => ({
+            masp: String(r.masp || "").toUpperCase(),
+            size: normalizeSize(r.size),
+            ton_cs1: Number(r.ton_cs1 || 0),
+            ton_cs2: Number(r.ton_cs2 || 0),
+            ban_cs1: Number(r.ban_cs1 || 0),
+            ban_cs2: Number(r.ban_cs2 || 0),
+          }));
+        } else if (error) {
+          console.warn("xnt17_tonban_snapshot error:", error);
+        }
+
+        // Kết quả vị trí kho
+        const { data: vitriData, error: vitriErr } = vitriRes || {};
         if (vitriErr) {
           console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
         } else if (Array.isArray(vitriData) && vitriData.length > 0) {
@@ -227,7 +232,7 @@
           vitri_cs2 = vitriData[0].vitrikho2 || "";
         }
       } catch (e) {
-        console.warn("[StockQuickPopup] Exception đọc vị trí kho:", e);
+        console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
       }
     }
 
@@ -240,8 +245,8 @@
     const rows = payload && Array.isArray(payload.rows)
       ? payload.rows
       : Array.isArray(payload)
-      ? payload
-      : [];
+        ? payload
+        : [];
     const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : "";
     const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : "";
 
