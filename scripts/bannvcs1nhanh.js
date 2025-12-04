@@ -1,9 +1,9 @@
-// bannvcs1nhanh.js
 import { supabase } from './supabaseClient.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
-import { showPopupTimKH } from './popupKhachhang.js'; // popup chọn khách
+import { showPopupTimKH } from './popupKhachhang.js';
 import { khoiTaoDangNhapDungChung } from './authModule.js';
-import { openProductCodeScanner } from './productCodeScanner.js'; // <-- THÊM DÒNG NÀY
+import { openProductCodeScanner, preloadMaspOcr } from './productCodeScanner.js';
+
 
 // StockQuickPopup chỉ xuất ra window.StockQuick qua side-effect
 import './stockQuickPopup.js';
@@ -639,7 +639,7 @@ function bindEvents() {
       hideMaspSuggest();
       return;
     }
-    loadMaspSuggest(v).catch(() => {});
+    loadMaspSuggest(v).catch(() => { });
   });
 
   window.addEventListener('resize', positionMaspSuggestList);
@@ -750,4 +750,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
+
+  async function init() {
+    // ... code cũ
+    preloadMaspOcr(); // load sẵn worker OCR để lần chụp đầu nhanh hơn
+    // ... phần còn lại
+  }
 });
