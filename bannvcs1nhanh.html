@@ -109,7 +109,7 @@
       background: #f9fafb;
     }
 
-        .makh-row {
+    .makh-row {
       display: flex;
       align-items: center;
       gap: 4px;
@@ -285,64 +285,50 @@
       <input type="hidden" id="hinhthuctt" value="NV" />
     </div>
 
-          <!-- ... phía trên là div.sheet-wrapper ... -->
+    <!-- JS: thư viện đọc QR và OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-      <!-- Modal quét mã sản phẩm dùng chung -->
-      <div id="maspScannerModal" style="display:none;">
-        <div style="
-          background:#111827;
-          color:#fff;
-          padding:8px;
-          border-radius:8px;
-          max-width:480px;
-          width:90vw;
-          margin:0 auto;
-          display:flex;
-          flex-direction:column;
-          align-items:center;
-          gap:8px;
-        ">
-          <video id="maspScannerVideo"
-                 autoplay
-                 muted
-                 playsinline
-                 style="max-width:100%; border-radius:8px; background:#000;"></video>
+    <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
-          <div style="display:flex; gap:6px; width:100%; justify-content:space-between;">
-            <button id="maspScannerClose"
-                    style="flex:1; padding:6px; font-size:13px;">
-              Đóng
-            </button>
-            <button id="maspScannerFlash"
-                    style="flex:1; padding:6px; font-size:13px;">
-              🔦 Đèn
-            </button>
-            <button id="maspScannerOcr"
-                    style="flex:1; padding:6px; font-size:13px;">
-              Quét từ ảnh (OCR)
-            </button>
-          </div>
+    <!-- ============ MODAL QUÉT MÃ SẢN PHẨM ============ -->
+    <div id="maspScannerModal" style="display:none;">
+      <div style="
+    background:#111;
+    color:#fff;
+    padding:10px;
+    border-radius:8px;
+    max-width:480px;
+    width:90vw;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+  ">
+        <video id="maspScannerVideo" autoplay muted playsinline
+          style="max-width:100%;border-radius:8px;background:#000;height:auto;"></video>
 
-          <div id="maspScannerStatus"
-               style="font-size:12px; color:#e5e7eb; text-align:center;">
-            Đang chuẩn bị camera...
-          </div>
+        <div style="display:flex;gap:6px;width:100%;">
+          <button id="maspScannerClose" style="flex:1;padding:6px;">Đóng</button>
+          <button id="maspScannerFlash" style="flex:1;padding:6px;">🔦 Đèn</button>
+          <button id="maspScannerOcr" style="flex:1;padding:6px;">OCR</button>
+        </div>
+
+        <div id="maspScannerStatus" style="font-size:12px;text-align:center;">
+          Đang khởi tạo camera...
         </div>
       </div>
-
-      <!-- JS: Supabase / stockQuick / trang bán NV nhanh -->
-      <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được -->
-      <script src="scripts/stockQuickPopup.js"></script>
-
-      <!-- Tesseract: cho OCR -->
-      <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-      <!-- Module quét mã sản phẩm dùng chung -->
-      <script src="scripts/quetmasp.js"></script>
-
-      <!-- Script chính của trang -->
-      <script type="module" src="scripts/bannvcs1nhanh.js"></script>
-     
     </div>
-  </body>
+
+    <!-- MODULE QUÉT MÃ -->
+    <script src="scripts/quetmasp.js"></script>
+
+
+    <!-- Trang bán NV nhanh -->
+    <script type="module" src="scripts/bannvcs1nhanh.js"></script>
+  </div>
+</body>
+
 </html>
