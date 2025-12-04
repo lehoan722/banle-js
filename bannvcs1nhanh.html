@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Bán NV nhanh CS1</title> 
+  <title>Bán NV nhanh CS1</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 
@@ -109,7 +109,7 @@
       background: #f9fafb;
     }
 
-    .makh-row {
+        .makh-row {
       display: flex;
       align-items: center;
       gap: 4px;
@@ -118,6 +118,18 @@
     .makh-row input {
       flex: 1 1 auto;
     }
+
+    /* Hàng mã sản phẩm + nút chụp ảnh */
+    .masp-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .masp-row input {
+      flex: 1 1 auto;
+    }
+
 
     .btn-icon {
       padding: 3px 6px;
@@ -189,9 +201,12 @@
       </div>
 
       <!-- Hàng: trạng thái ảnh + mã SP -->
-      <!-- Hàng: trạng thái ảnh + mã SP -->
       <div class="label-small" id="statusAnh">ĐÃ CÓ ẢNH</div>
-      <input id="masp" placeholder="Nhập mã sản phẩm..." />
+      <div class="masp-row">
+        <input id="masp" placeholder="Nhập mã sản phẩm." />
+        <button type="button" id="btnScanMasp" class="btn-icon">📷</button>
+      </div>
+
 
       <!-- THÊM popup gợi ý mã sản phẩm ngay bên dưới -->
       <div id="maspSuggestList" style="display:none;"></div>
@@ -270,11 +285,15 @@
       <input type="hidden" id="hinhthuctt" value="NV" />
     </div>
 
-    <!-- JS: Supabase / stockQuick / trang bán NV nhanh -->
-    <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được -->
-    <script src="scripts/stockQuickPopup.js"></script>
+     <!-- JS: thư viện đọc QR và OCR -->
+      <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-    <script type="module" src="scripts/bannvcs1nhanh.js"></script>
-</body>
+      <!-- stockQuickPopup sử dụng global supabase, nên cứ load trước là được -->
+      <script src="scripts/stockQuickPopup.js"></script>
 
+      <!-- Trang bán NV nhanh -->
+      <script type="module" src="scripts/bannvcs1nhanh.js"></script>
+    </div>
+  </body>
 </html>
