@@ -103,15 +103,16 @@ export function openProductCodeScanner(options = {}) {
 // ========== XỬ LÝ ẢNH ==========
 
 async function detectMaspFromCanvas(canvas, statusEl) {
-  // 1. Thử đọc QR trước (nhanh, chính xác)
+  // 1. THỬ QR TRƯỚC – ƯU TIÊN HOÀN TOÀN
   if (window.jsQR) {
     try {
-      const ctx = canvas.getContext('2d');
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const qr = window.jsQR(imageData.data, canvas.width, canvas.height);
-      if (qr && qr.data) {
-        const maspFromQr = extractMaspFromString(qr.data);
-        if (maspFromQr) return maspFromQr;
+      statusEl.textContent = 'Đang quét QR...';
+      const qrData = tryDecodeQr(canvas);
+      if (qrData) {
+        const maspFromQr = extractMaspFromString(qrData);
+        if (maspFromQr) {
+          return maspFromQr; // Có QR → dùng luôn, KHÔNG OCR nữa
+        }
       }
     } catch (err) {
       console.warn('Lỗi decode QR', err);
@@ -120,13 +121,13 @@ async function detectMaspFromCanvas(canvas, statusEl) {
     console.warn('jsQR chưa được load (window.jsQR).');
   }
 
-  // 2. Nếu QR không được thì dùng OCR để đọc chữ
+  // 2. Nếu QR không đọc được → chuyển sang OCR
   if (!window.Tesseract) {
     console.warn('Tesseract chưa được load (window.Tesseract).');
     return null;
   }
 
-  statusEl.textContent = 'Đang dùng OCR để đọc chữ trên nhãn (tối đa ~8 giây)...';
+  statusEl.textContent = 'Không thấy QR, đang dùng OCR để đọc chữ trên nhãn (tối đa ~8 giây)...';
 
   try {
     // Crop vùng trung tâm (tránh dòng "Shop Hoàn Tuyết" ở trên và "Giá" ở dưới)
@@ -147,10 +148,7 @@ async function detectMaspFromCanvas(canvas, statusEl) {
 
     // Gọi OCR với timeout để tránh treo
     const ocrPromise = window.Tesseract.recognize(cropCanvas, 'eng', {
-      logger: m => {
-        // Nếu muốn debug, có thể console.log(m);
-        // Đồng thời cập nhật % cho status nếu cần.
-      }
+      logger: () => { /* có thể log % nếu muốn */ }
     });
 
     const timeoutPromise = new Promise((_, reject) =>
@@ -168,6 +166,45 @@ async function detectMaspFromCanvas(canvas, statusEl) {
     console.error('Lỗi OCR Tesseract', err);
     return null;
   }
+}
+
+// ========== QUÉT QR 2 LẦN (FULL & THU NHỎ) ==========
+
+function tryDecodeQr(canvas) {
+  if (!window.jsQR) return null;
+
+  const ctx = canvas.getContext('2d');
+
+  // Lần 1: quét trên khung gốc
+  try {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const qr1 = window.jsQR(imageData.data, canvas.width, canvas.height);
+    if (qr1 && qr1.data) return qr1.data;
+  } catch (err) {
+    console.warn('QR pass1 error', err);
+  }
+
+  // Lần 2: thu nhỏ lại để tăng tương phản / độ sắc nét cho jsQR
+  try {
+    const maxW = 400;
+    const scale = canvas.width > maxW ? maxW / canvas.width : 1;
+    const w = Math.floor(canvas.width * scale);
+    const h = Math.floor(canvas.height * scale);
+
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = w;
+    smallCanvas.height = h;
+    const sctx = smallCanvas.getContext('2d');
+    sctx.drawImage(canvas, 0, 0, w, h);
+
+    const imageData2 = sctx.getImageData(0, 0, w, h);
+    const qr2 = window.jsQR(imageData2.data, w, h);
+    if (qr2 && qr2.data) return qr2.data;
+  } catch (err) {
+    console.warn('QR pass2 error', err);
+  }
+
+  return null;
 }
 
 // ========== HÀM PHÂN TÍCH MÃ TỪ STRING/TEXT ==========
