@@ -979,11 +979,7 @@ document.addEventListener("DOMContentLoaded", () => {
         macDinhDiaDiem: diadiem,
         tuDongKhoaCoSo: true,
         loginApiPath,
-        onLoginSuccess: async () => {
-            // Bắt buộc xử lý bày mẫu trước khi vào màn hình chấm công
-            await enforceBayMauBeforeChamCong({ diadiem });
-            await initChamCong(diadiem);
-        }
+        
     });
 });
 
