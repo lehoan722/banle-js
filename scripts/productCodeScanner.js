@@ -1,20 +1,16 @@
 // scripts/productCodeScanner.js
-// Module mở camera, chụp ảnh nhãn và cố gắng đọc mã sản phẩm
+// Module mở camera, chụp ảnh nhãn và đọc mã sản phẩm
 // Ưu tiên: QR → nếu không có QR thì OCR text để tìm mã sản phẩm
 
-// YÊU CẦU:
-// - HTML đã load 2 thư viện global:
-//   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-//   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+// YÊU CẦU HTML:
+//
+// <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+// <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 let _scannerOverlay = null;
 let _scannerStream = null;
 let _alreadyInjectedStyle = false;
 
-// worker OCR dùng chung cho nhiều lần scan (để nhanh hơn)
-let _maspOcrWorkerPromise = null;
-
-// regex fallback khi cần bắt chuỗi con
 const MASP_REGEX = /[A-Z0-9\/_.-]{3,30}/g;
 
 // ========== HÀM PUBLIC ==========
@@ -91,7 +87,7 @@ export function openProductCodeScanner(options = {}) {
         setTimeout(() => {
           closeScannerOverlay();
           onDetected(maspUpper);
-        }, 300);
+        }, 250);
       } else {
         statusEl.textContent = 'Không nhận diện được mã, vui lòng đưa nhãn gần hơn và chụp lại.';
         btnCapture.disabled = false;
@@ -104,18 +100,10 @@ export function openProductCodeScanner(options = {}) {
   });
 }
 
-/**
- * Gọi trước 1 lần sau khi load trang để load sẵn worker OCR (scan sẽ nhanh hơn).
- */
-export function preloadMaspOcr() {
-  if (!window.Tesseract) return;
-  getMaspOcrWorker().catch(() => {});
-}
-
 // ========== XỬ LÝ ẢNH ==========
 
 async function detectMaspFromCanvas(canvas, statusEl) {
-  // 1. Thử đọc QR trước (rất nhanh, chính xác)
+  // 1. Thử đọc QR trước (nhanh, chính xác)
   if (window.jsQR) {
     try {
       const ctx = canvas.getContext('2d');
@@ -138,18 +126,16 @@ async function detectMaspFromCanvas(canvas, statusEl) {
     return null;
   }
 
-  statusEl.textContent = 'Đang dùng OCR để đọc chữ trên nhãn...';
+  statusEl.textContent = 'Đang dùng OCR để đọc chữ trên nhãn (tối đa ~8 giây)...';
 
   try {
-    const worker = await getMaspOcrWorker();
-
-    // Crop vùng trung tâm (tránh dòng "Shop Hoàn Tuyết" phía trên và "Giá" phía dưới)
+    // Crop vùng trung tâm (tránh dòng "Shop Hoàn Tuyết" ở trên và "Giá" ở dưới)
     const cropCanvas = document.createElement('canvas');
     const cw = canvas.width;
     const ch = canvas.height;
 
     const cropWidth = Math.floor(cw * 0.9);
-    const cropHeight = Math.floor(ch * 0.4);
+    const cropHeight = Math.floor(ch * 0.45);
     const cropX = Math.floor((cw - cropWidth) / 2);
     const cropY = Math.floor((ch - cropHeight) / 2);
 
@@ -159,8 +145,20 @@ async function detectMaspFromCanvas(canvas, statusEl) {
     const cropCtx = cropCanvas.getContext('2d');
     cropCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
 
-    const { data } = await worker.recognize(cropCanvas);
-    const rawText = (data && data.text) || '';
+    // Gọi OCR với timeout để tránh treo
+    const ocrPromise = window.Tesseract.recognize(cropCanvas, 'eng', {
+      logger: m => {
+        // Nếu muốn debug, có thể console.log(m);
+        // Đồng thời cập nhật % cho status nếu cần.
+      }
+    });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('OCR timeout')), 8000)
+    );
+
+    const result = await Promise.race([ocrPromise, timeoutPromise]);
+    const rawText = (result && result.data && result.data.text) || '';
 
     if (!rawText.trim()) return null;
 
@@ -170,32 +168,6 @@ async function detectMaspFromCanvas(canvas, statusEl) {
     console.error('Lỗi OCR Tesseract', err);
     return null;
   }
-}
-
-// ========== WORKER OCR DÙNG CHUNG ==========
-
-async function getMaspOcrWorker() {
-  if (_maspOcrWorkerPromise) return _maspOcrWorkerPromise;
-
-  if (!window.Tesseract) {
-    throw new Error('Tesseract chưa sẵn sàng.');
-  }
-
-  _maspOcrWorkerPromise = (async () => {
-    const worker = await window.Tesseract.createWorker({
-      logger: () => {} // không spam log
-    });
-    await worker.loadLanguage('eng');
-    await worker.initialize('eng');
-    // Giới hạn tập ký tự cho giống mã SP → tăng tốc & giảm nhầm
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/-_.',
-      preserve_interword_spaces: '0'
-    });
-    return worker;
-  })();
-
-  return _maspOcrWorkerPromise;
 }
 
 // ========== HÀM PHÂN TÍCH MÃ TỪ STRING/TEXT ==========
@@ -230,59 +202,57 @@ function extractMaspFromString(str) {
 }
 
 /**
- * Phân tích toàn bộ text OCR để tìm dòng mã sản phẩm.
- * Ưu tiên: dòng KHÔNG có khoảng trắng, không có "SHOP"/"GIA",
- * độ dài 5–20, có ít nhất 1 chữ số (và thường có chữ).
+ * Phân tích text OCR để tìm dòng mã sản phẩm.
+ * Tem của bạn:
+ *  - Dòng mã: KHÔNG có khoảng trắng, có số + chữ, dài 5–20
+ *  - Không chứa "SHOP", "GIA/GIÁ", "SIZE"...
  */
 function extractMaspFromText(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if (!lines.length) return null;
 
-  let strongCandidates = [];
-  let weakCandidates = [];
+  let strong = [];
+  let weak = [];
 
   for (let line of lines) {
     const upper = line.toUpperCase();
 
-    // Loại bỏ các dòng chắc chắn không phải mã sản phẩm
+    // Loại bỏ những dòng chắc chắn không phải mã
     if (upper.includes('SHOP') && (upper.includes('HOAN') || upper.includes('HOÀN'))) continue;
-    if (upper.includes('GIA') || upper.includes('GIÁ') || upper.includes('EUR') || upper.includes('VND') || upper.includes('VNĐ')) continue;
+    if (upper.includes('GIÁ') || upper.includes('GIA:') || upper.includes('EUR') || upper.includes('VND') || upper.includes('VNĐ')) continue;
     if (upper.includes('SIZE') || upper.includes('KICH CO') || upper.includes('KÍCH CỠ')) continue;
 
-    // 1) ƯU TIÊN CASE MẠNH: dòng không có khoảng trắng, độ dài 5–20, có số
     const noSpace = !/\s/.test(upper);
     const hasDigit = /[0-9]/.test(upper);
     const len = upper.length;
 
+    // 1) Ưu tiên mạnh: dòng không có khoảng trắng, có số, dài 5–20
     if (noSpace && hasDigit && len >= 5 && len <= 20) {
-      strongCandidates.push(upper);
+      strong.push(upper);
       continue;
     }
 
-    // 2) CASE YẾU HƠN: bắt chuỗi con bằng regex
+    // 2) Bắt chuỗi con bằng regex (yếu hơn)
     const matches = upper.match(MASP_REGEX);
     if (matches && matches.length) {
       matches.forEach(m => {
-        const trimmed = m.trim();
-        const l2 = trimmed.length;
-        if (l2 >= 3 && l2 <= 30) {
-          weakCandidates.push(trimmed);
-        }
+        const t = m.trim();
+        const l2 = t.length;
+        if (l2 >= 3 && l2 <= 30) weak.push(t);
       });
     }
   }
 
-  // Nếu có candidate mạnh → dùng chúng
-  let candidates = strongCandidates.length ? strongCandidates : weakCandidates;
+  let candidates = strong.length ? strong : weak;
   if (!candidates.length) return null;
 
   // Nếu có dmhanghoa cache thì ưu tiên mã nào tồn tại
   if (window.sanPhamData && typeof window.sanPhamData === 'object') {
-    const validByCatalog = candidates.find(c => window.sanPhamData[c]);
-    if (validByCatalog) return validByCatalog;
+    const valid = candidates.find(c => window.sanPhamData[c]);
+    if (valid) return valid;
   }
 
-  // Nếu không có trong catalog, chọn candidate đầu tiên
+  // Nếu không có trong catalog, lấy candidate đầu tiên
   return candidates[0];
 }
 
@@ -303,7 +273,7 @@ function createOverlay() {
           <button id="pcs-btn-close" class="pcs-btn pcs-btn-secondary">ĐÓNG</button>
         </div>
         <div id="pcs-status" class="pcs-status">
-          Đưa mã QR hoặc nhãn sản phẩm (dòng mã như 558008-DNAU) vào giữa khung rồi bấm CHỤP MÃ.
+          Đưa mã QR hoặc nhãn (dòng như 558008-DNAU) vào giữa khung rồi bấm CHỤP MÃ.
         </div>
       </div>
     </div>
