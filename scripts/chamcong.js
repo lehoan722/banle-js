@@ -979,9 +979,14 @@ document.addEventListener("DOMContentLoaded", () => {
         macDinhDiaDiem: diadiem,
         tuDongKhoaCoSo: true,
         loginApiPath,
-        
+        onLoginSuccess: async () => {
+            // Không kiểm tra bày mẫu khi đăng nhập nữa
+            await initChamCong(diadiem);
+        }
     });
 });
+
+
 
 
 
