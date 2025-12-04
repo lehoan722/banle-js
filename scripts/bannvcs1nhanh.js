@@ -1,8 +1,13 @@
 // bannvcs1nhanh.js
 import { supabase } from './supabaseClient.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
-import { showPopupTimKH } from './popupKhachhang.js'; // popup chọn khách :contentReference[oaicite:6]{index=6}
+import { showPopupTimKH } from './popupKhachhang.js'; // popup chọn khách
 import { khoiTaoDangNhapDungChung } from './authModule.js';
+import { openProductCodeScanner } from './productCodeScanner.js'; // <-- THÊM DÒNG NÀY
+
+// StockQuickPopup chỉ xuất ra window.StockQuick qua side-effect
+import './stockQuickPopup.js';
+
 
 // StockQuickPopup chỉ xuất ra window.StockQuick qua side-effect
 import './stockQuickPopup.js'; // :contentReference[oaicite:7]{index=7}
@@ -653,6 +658,23 @@ function bindEvents() {
     }
   });
   maspEl.addEventListener('change', () => onMaspSelected(maspEl.value));
+
+  // ========= NÚT CHỤP MÃ SẢN PHẨM =========
+  const btnScanMasp = document.getElementById('btnScanMasp');
+  if (btnScanMasp) {
+    btnScanMasp.addEventListener('click', (e) => {
+      e.preventDefault();
+      openProductCodeScanner({
+        onDetected: (maspFound) => {
+          if (!maspFound) return;
+          const maspUpper = String(maspFound).toUpperCase().trim();
+          maspEl.value = maspUpper;
+          onMaspSelected(maspUpper);
+        }
+      });
+    });
+  }
+  // =======================================
 
   document.getElementById('btnLuu').addEventListener('click', e => {
     e.preventDefault();
