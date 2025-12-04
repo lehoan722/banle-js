@@ -1,11 +1,16 @@
-// scripts/quetmasp.js
-// Module quét mã sản phẩm dùng chung cho nhiều trang
-// ƯU TIÊN:
-// 1) Quét QR bằng ZXing (rất nhanh)
-// 2) Nếu không có QR thì fallback sang OCR đọc mã sản phẩm (dòng không có khoảng trắng, không chứa "SHOP", "GIA")
+// =============================
+//  QUET MASP MODULE (QR + OCR)
+//  VERSION: FINAL – NO FRAME
+//  Tối ưu cho iPhone / Safari
+//  Tự chọn camera sau (ưu tiên Ultra Wide)
+//  Auto-scan QR → fallback auto-OCR
+// =============================
 
 (function () {
-  // ======= STATE & BIẾN DÙNG CHUNG =======
+
+  //========================
+  // GLOBAL STATE
+  //========================
   let ZXING = null;
   let codeReader = null;
   let scanControls = null;
@@ -16,387 +21,316 @@
   let autoOcrTimer = null;
   let ocrRunning = false;
 
-  let currentTargetInputId = null;
-  let currentOnResult = null;
+  let currentTargetId = null;
+  let currentCallback = null;
 
-  // ======= ZXING – LOAD ESM TỪ CDN =======
+
+  //========================
+  // LOAD ZXING ESM
+  //========================
   async function ensureZXing() {
-    if (ZXING) return;
+    if (ZXING) return ZXING;
     ZXING = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm');
+    return ZXING;
   }
 
-  // ======= ƯU TIÊN CAMERA SAU / ULTRA WIDE (giống 333) =======
-  function scoreCameraLabel(label = '') {
+
+  //========================
+  // CHỌN CAMERA SAU TỐT NHẤT
+  //========================
+
+  function scoreCamera(label = "") {
     const s = label.toLowerCase();
     let score = 0;
 
-    // Ưu tiên camera sau
-    if (/(back|rear|mặt sau|environment)/.test(s)) score += 50;
-
-    // Ưu tiên cao nhất: cực rộng / ultra wide / 0.5x
-    if (/(cực rộng|siêu rộng|ultra\s*wide|0\.5x|0,5x|0\.5|0,5)/.test(s)) score += 200;
-
-    // Tránh tele
-    if (/(tele|chụp xa|zoom|2x|3x)/.test(s)) score -= 120;
-
-    // Tránh camera trước
-    if (/(front|trước|mặt trước)/.test(s)) score -= 200;
+    if (s.includes("back") || s.includes("rear") || s.includes("environment")) score += 50;
+    if (s.includes("ultra") || s.includes("0.5x") || s.includes("0,5x")) score += 200;
+    if (s.includes("tele") || s.includes("zoom") || s.includes("2x") || s.includes("3x")) score -= 150;
+    if (s.includes("front")) score -= 300;
 
     return score;
   }
 
-  async function pickBestBackCamera() {
-    await ensureZXing();
-    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
-    if (!devices || !devices.length) return undefined;
-    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+  async function pickBestCamera() {
+    const ZX = await ensureZXing();
+    const devices = await ZX.BrowserCodeReader.listVideoInputDevices();
+    if (!devices.length) return null;
+
+    devices.sort((a, b) => scoreCamera(b.label) - scoreCamera(a.label));
+
     return devices[0].deviceId;
   }
 
-  // ======= HÀM XỬ LÝ KẾT QUẢ CUỐI CÙNG (MÃ SP) =======
-  function useFinalMasp(maspRaw) {
-    if (!maspRaw) return;
 
-    const masp = String(maspRaw).trim().toUpperCase();
-    const input = currentTargetInputId
-      ? document.getElementById(currentTargetInputId)
-      : null;
+  //========================
+  // QUILT MÃ (KẾT QUẢ CUỐI)
+  //========================
+  function applyFinalResult(raw) {
+    if (!raw) return;
+    const code = String(raw).trim().toUpperCase();
 
+    const input = document.getElementById(currentTargetId);
     if (input) {
-      input.value = masp;
-      // Bắn change để trang đích xử lý onMaspSelected nếu có
-      const ev = new Event('change', { bubbles: true });
-      input.dispatchEvent(ev);
+      input.value = code;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    if (typeof currentOnResult === 'function') {
-      try {
-        currentOnResult(masp);
-      } catch (e) {
-        console.error('[quetmasp] Lỗi callback onResult:', e);
-      }
-    }
+    if (typeof currentCallback === "function") currentCallback(code);
 
-    closeScannerInternal();
+    closeScanner();
   }
 
-  // ======= HÀM PHÂN TÍCH TEXT → CHỌN DÒNG LÀ MÃ SP (CHO OCR) =======
-  function extractMaspFromOcrText(text) {
+
+  //========================
+  // PHÂN TÍCH TEXT → MÃ SP (CHO OCR)
+  //========================
+  function extractMasp(text) {
     if (!text) return null;
-    const lines = String(text)
+
+    const lines = text
       .split(/\r?\n/)
       .map(l => l.trim())
       .filter(Boolean);
 
-    // ƯU TIÊN: dòng không có khoảng trắng, độ dài vừa phải, không chứa SHOP / GIA / PRICE...
-    const blacklist = ['shop', 'hoàn', 'hoan', 'tuyet', 'tuyết', 'gia', 'giá', 'price', '€', 'vnd'];
-    const isBadLine = (line) => {
-      const lower = line.toLowerCase();
-      return blacklist.some(w => lower.includes(w));
-    };
+    const blacklist = ["shop", "hoàn", "tuyết", "gia", "giá", "price", "vnd", "vnđ", "eur"];
 
-    let best = null;
-
-    for (const line of lines) {
-      // Bỏ dòng có khoảng trắng
-      if (/\s/.test(line)) continue;
-
-      const len = line.length;
-      if (len < 3 || len > 30) continue;
-
-      if (isBadLine(line)) continue;
-
-      // Đã qua hết filter → coi là ứng viên rất mạnh
-      best = line;
-      break;
+    function isBad(line) {
+      const t = line.toLowerCase();
+      return blacklist.some(w => t.includes(w));
     }
 
-    return best;
+    for (const line of lines) {
+      if (/\s/.test(line)) continue;
+      if (line.length < 3 || line.length > 30) continue;
+      if (isBad(line)) continue;
+
+      return line; // ứng viên mạnh nhất
+    }
+
+    return null;
   }
 
-  // ======= ZXING CALLBACK – CHỈ NHẬN QR =======
-  function onScanResult(result, err, controls) {
-    if (result) {
-      let text = '';
-      let format = '';
 
-      try {
-        text = result.getText ? result.getText() : (result.rawValue || '');
-      } catch (_) {
-        text = '';
-      }
-      try {
-        format = result.getBarcodeFormat ? String(result.getBarcodeFormat()) : '';
-      } catch (_) {
-        format = '';
-      }
+  //========================
+  // ZXING CALLBACK – ƯU TIÊN QR
+  //========================
+  function onScanResult(result, err) {
+    if (result) {
+      let text = "";
+      let fmt = "";
+
+      try { text = result.getText(); } catch (_) { }
+      try { fmt = result.getBarcodeFormat(); } catch (_) { }
 
       if (!text) return;
 
-      // CHỈ ƯU TIÊN QR
-      const fmtLower = format.toLowerCase();
-      if (fmtLower.includes('qr')) {
+      const f = String(fmt).toLowerCase();
+      if (f.includes("qr")) {
         hasQrResult = true;
-        useFinalMasp(text);
+        applyFinalResult(text);
       }
-      // Nếu format là mã vạch (EAN, CODE128...), để OCR xử lý, không dùng trực tiếp
       return;
     }
-
-    // lỗi decode thì bỏ qua
-    if (err) {
-      // console.debug('scan error:', err);
-    }
   }
 
-  // ======= START / STOP SCANNER (giống 333, sửa id) =======
-  async function startScanner(deviceId) {
-    await ensureZXing();
-    const videoEl = document.getElementById('maspScannerVideo');
-    const status = document.getElementById('maspScannerStatus');
 
-    if (!videoEl || !status) {
-      console.error('[quetmasp] Thiếu #maspScannerVideo hoặc #maspScannerStatus');
-      return;
-    }
-
-    // Giảm delay giữa các lần decode → quét mượt
-    codeReader = new ZXING.BrowserMultiFormatReader(undefined, {
-      delayBetweenScanAttempts: 25
-    });
-
-    // Constraint nhanh: 720p, environment
-    const fastConstraints = {
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 }
-      }
-    };
-
-    try {
-      if (deviceId) {
-        scanControls = await codeReader.decodeFromVideoDevice(deviceId, videoEl, onScanResult);
-      } else {
-        scanControls = await codeReader.decodeFromConstraints(fastConstraints, videoEl, onScanResult);
-      }
-
-      // Lưu track để bật/tắt torch
-      const stream = videoEl.srcObject;
-      if (stream) {
-        track = stream.getVideoTracks()[0] || null;
-      }
-
-      // Thử bật continuous-focus nếu hỗ trợ
-      try {
-        await track?.applyConstraints?.({
-          advanced: [{ focusMode: 'continuous' }]
-        });
-      } catch (_) { }
-
-      status.textContent = 'Đưa mã QR / tem sản phẩm vào khung hình...';
-
-      // HẸN GIỜ AUTO-OCR nếu sau ~2.5s vẫn chưa có QR
-      clearTimeout(autoOcrTimer);
-      hasQrResult = false;
-      autoOcrTimer = setTimeout(() => {
-        if (!hasQrResult) {
-          captureAndOcr();
-        }
-      }, 2500);
-    } catch (e) {
-      console.error('[quetmasp] startScanner error:', e);
-      status.textContent = 'Không mở được camera, hãy kiểm tra quyền.';
-    }
-  }
-
-  async function stopScanner() {
-    try { await scanControls?.stop?.(); } catch (_) { }
-    const v = document.getElementById('maspScannerVideo');
-    try { track?.stop?.(); } catch (_) { }
-    if (v) v.srcObject = null;
-
-    codeReader = null;
-    scanControls = null;
-    torchOn = false;
-    track = null;
-
-    clearTimeout(autoOcrTimer);
-    autoOcrTimer = null;
-  }
-
+  //========================
+  // BẬT / TẮT ĐÈN
+  //========================
   async function toggleTorch() {
     if (!track) return;
     try {
       torchOn = !torchOn;
       await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-      const btn = document.getElementById('maspScannerFlash');
-      if (btn) btn.textContent = torchOn ? '🔦 Tắt đèn' : '🔦 Đèn';
+
+      const btn = document.getElementById("maspScannerFlash");
+      if (btn) btn.textContent = torchOn ? "🔦 Tắt" : "🔦 Đèn";
     } catch (e) {
-      const status = document.getElementById('maspScannerStatus');
-      if (status) status.textContent = 'Thiết bị không hỗ trợ bật đèn.';
+      const status = document.getElementById("maspScannerStatus");
+      if (status) status.textContent = "Thiết bị không hỗ trợ bật đèn.";
       torchOn = false;
     }
   }
 
-  // ======= OCR: CHỤP KHUNG HÌNH HIỆN TẠI VÀ NHẬN DẠNG =======
+
+  //========================
+  // AUTO-OCR
+  //========================
   async function ensureTesseract() {
     if (window.Tesseract) return;
-    // Nếu anh chưa chèn script Tesseract ở HTML thì có thể dynamic import (nhưng tốt nhất là chèn sẵn)
-    // Ở đây vẫn thử dynamic import:
-    try {
-      await import('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
-    } catch (e) {
-      console.error('[quetmasp] Không load được Tesseract:', e);
-      throw e;
-    }
+    await import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
   }
 
-  async function captureAndOcr() {
+  async function captureOCR() {
     if (ocrRunning) return;
     ocrRunning = true;
 
-    const status = document.getElementById('maspScannerStatus');
-    const video = document.getElementById('maspScannerVideo');
-    if (!video) {
-      ocrRunning = false;
-      return;
-    }
+    const video = document.getElementById("maspScannerVideo");
+    const status = document.getElementById("maspScannerStatus");
 
-    if (status) status.textContent = 'Đang nhận dạng mã từ ảnh...';
+    status.textContent = "Đang OCR...";
 
-    // Tạo canvas tạm
-    const canvas = document.createElement('canvas');
-    const isLandscape = video.videoWidth >= video.videoHeight;
-    const targetW = isLandscape ? 640 : 480;
-    const targetH = isLandscape ? 480 : 640;
+    const canvas = document.createElement("canvas");
+    const W = 640, H = 480;
+    canvas.width = W;
+    canvas.height = H;
 
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
 
-    // Vẽ khung hình vào canvas (scale cho vừa)
-    const scale = Math.min(targetW / video.videoWidth, targetH / video.videoHeight);
-    const drawW = video.videoWidth * scale;
-    const drawH = video.videoHeight * scale;
-    const offX = (targetW - drawW) / 2;
-    const offY = (targetH - drawH) / 2;
-    ctx.drawImage(video, offX, offY, drawW, drawH);
+    const scale = Math.min(W / vw, H / vh);
+    const dw = vw * scale;
+    const dh = vh * scale;
+
+    ctx.drawImage(video, (W - dw) / 2, (H - dh) / 2, dw, dh);
 
     try {
       await ensureTesseract();
-      const { data } = await window.Tesseract.recognize(canvas, 'eng', {
-        logger: () => { } // bỏ log cho nhẹ
+      const { data } = await Tesseract.recognize(canvas, "eng", {
+        logger: () => { }
       });
 
-      const masp = extractMaspFromOcrText(data.text || '');
+      const masp = extractMasp(data.text || "");
       if (masp) {
-        if (status) status.textContent = 'Đã nhận dạng được mã: ' + masp;
-        useFinalMasp(masp);
+        status.textContent = "Nhận diện: " + masp;
+        applyFinalResult(masp);
       } else {
-        if (status) status.textContent = 'Không tìm thấy mã sản phẩm trên ảnh, thử đưa gần hơn / rõ hơn.';
+        status.textContent = "Không nhận được mã. Thử lại gần hơn.";
       }
-    } catch (e) {
-      console.error('[quetmasp] OCR error:', e);
-      if (status) status.textContent = 'Lỗi OCR, vui lòng thử lại.';
-    } finally {
-      ocrRunning = false;
+    } catch (err) {
+      console.error("OCR error:", err);
+      status.textContent = "Lỗi OCR.";
+    }
+
+    ocrRunning = false;
+  }
+
+
+  //========================
+  // KHỞI ĐỘNG CAMERA
+  //========================
+  async function startScanner(deviceId) {
+    await ensureZXing();
+
+    const video = document.getElementById("maspScannerVideo");
+    const status = document.getElementById("maspScannerStatus");
+
+    codeReader = new ZXING.BrowserMultiFormatReader(undefined, {
+      delayBetweenScanAttempts: 40
+    });
+
+    const constraints = {
+      video: {
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    };
+
+    try {
+      if (deviceId) {
+        scanControls = await codeReader.decodeFromVideoDevice(
+          deviceId,
+          video,
+          onScanResult
+        );
+      } else {
+        scanControls = await codeReader.decodeFromConstraints(
+          constraints,
+          video,
+          onScanResult
+        );
+      }
+
+      const stream = video.srcObject;
+      if (stream) track = stream.getVideoTracks()[0];
+
+      // Auto-OCR fallback sau 2.5s nếu không có QR
+      clearTimeout(autoOcrTimer);
+      hasQrResult = false;
+
+      autoOcrTimer = setTimeout(() => {
+        if (!hasQrResult) captureOCR();
+      }, 2500);
+
+      status.textContent = "Đưa mã vào camera...";
+    } catch (err) {
+      console.error("Camera error:", err);
+      status.textContent = "Không mở được camera.";
     }
   }
 
-  // ======= OPEN / CLOSE MODAL =======
-  async function openScannerInternal(targetInputId, onResult) {
-    currentTargetInputId = targetInputId || null;
-    currentOnResult = typeof onResult === 'function' ? onResult : null;
 
-    try { document.activeElement?.blur(); } catch (_) { }
+  //========================
+  // OPEN / CLOSE MODAL
+  //========================
+  async function openScannerInternal(targetId, callback) {
+    currentTargetId = targetId;
+    currentCallback = callback;
 
-    const modal = document.getElementById('maspScannerModal');
-    const status = document.getElementById('maspScannerStatus');
+    const modal = document.getElementById("maspScannerModal");
+    modal.style.display = "flex";
 
-    if (!modal || !status) {
-      console.error('[quetmasp] Thiếu DOM modal quét mã (#maspScannerModal / #maspScannerStatus)');
-      return;
-    }
-
-    Object.assign(modal.style, {
-      display: 'flex',
-      position: 'fixed',
-      inset: '0',
-      zIndex: '9999',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,0.6)'
-    });
-
-    status.textContent = 'Đang chuẩn bị camera...';
+    const status = document.getElementById("maspScannerStatus");
+    status.textContent = "Đang mở camera...";
 
     try {
       await ensureZXing();
 
-      // Mồi quyền & lộ label camera (giống 333)
+      // Safari yêu cầu "mồi" để lộ label camera
       try {
         const pre = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } }
+          video: { facingMode: "environment" }
         });
         pre.getTracks().forEach(t => t.stop());
       } catch (_) { }
 
-      const bestId = await pickBestBackCamera();
-      await startScanner(bestId || null);
+      const best = await pickBestCamera();
+      await startScanner(best);
     } catch (e) {
-      console.error('[quetmasp] openScanner error:', e);
-      status.textContent = 'Không mở được camera. Hãy kiểm tra quyền camera / Live Text.';
+      console.error("openScanner error:", e);
+      status.textContent = "Lỗi mở camera.";
     }
   }
 
-  async function closeScannerInternal() {
-    const modal = document.getElementById('maspScannerModal');
-    if (modal) modal.style.display = 'none';
-    await stopScanner();
+  async function closeScanner() {
+    const modal = document.getElementById("maspScannerModal");
+    modal.style.display = "none";
+
+    try { await scanControls?.stop?.(); } catch (_) { }
+    try { track?.stop?.(); } catch (_) { }
+
+    const v = document.getElementById("maspScannerVideo");
+    if (v) v.srcObject = null;
+
+    torchOn = false;
+    ocrRunning = false;
+    hasQrResult = false;
   }
 
-  // ======= GẮN SỰ KIỆN NÚT TRONG MODAL =======
-  document.addEventListener('DOMContentLoaded', () => {
-    const btnClose = document.getElementById('maspScannerClose');
-    const btnFlash = document.getElementById('maspScannerFlash');
-    const btnOcr = document.getElementById('maspScannerOcr');
 
-    btnClose?.addEventListener('click', () => {
-      closeScannerInternal();
-    });
-
-    btnFlash?.addEventListener('click', () => {
-      toggleTorch();
-    });
-
-    btnOcr?.addEventListener('click', () => {
-      captureAndOcr();
-    });
+  //========================
+  // GẮN SỰ KIỆN NÚT
+  //========================
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("maspScannerClose").addEventListener("click", closeScanner);
+    document.getElementById("maspScannerFlash").addEventListener("click", toggleTorch);
+    document.getElementById("maspScannerOcr").addEventListener("click", captureOCR);
   });
 
-  // ======= EXPOSE GLOBAL: MaspScanner =======
+
+  //========================
+  // API PUBLIC
+  //========================
   window.MaspScanner = {
-    /**
-     * Mở scanner cho 1 input mã sản phẩm.
-     * @param {string} targetInputId - id của ô input (ví dụ 'masp')
-     * @param {object} options
-     *   - onResult(masp) (optional): callback khi quét xong
-     */
-    openForInput(targetInputId, options = {}) {
-      const onResult = options.onResult;
-      openScannerInternal(targetInputId, onResult);
+    openForInput(targetId, options = {}) {
+      const cb = options.onResult;
+      openScannerInternal(targetId, cb);
     },
-
-    // Cho phép trang ngoài chủ động đóng nếu cần
     close() {
-      closeScannerInternal();
-    },
-
-    // Cho phép trang ngoài bấm: MaspScanner.captureOcr() nếu muốn OCR ngay
-    captureOcr() {
-      captureAndOcr();
+      closeScanner();
     }
   };
+
 })();
