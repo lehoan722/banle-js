@@ -5,7 +5,7 @@ import { showPopupTimKH } from './popupKhachhang.js';
 import { khoiTaoDangNhapDungChung } from './authModule.js';
 
 // SỬA DÒNG NÀY: chỉ còn openProductCodeScanner
-import { openProductCodeScanner } from './productCodeScanner.js';
+
 
 import './stockQuickPopup.js';
 
@@ -661,20 +661,28 @@ function bindEvents() {
   maspEl.addEventListener('change', () => onMaspSelected(maspEl.value));
 
   // ========= NÚT CHỤP MÃ SẢN PHẨM =========
-  const btnScanMasp = document.getElementById('btnScanMasp');
-  if (btnScanMasp) {
-    btnScanMasp.addEventListener('click', (e) => {
-      e.preventDefault();
-      openProductCodeScanner({
-        onDetected: (maspFound) => {
+  // ========== MODULE QUÉT MÃ SP (QR + OCR) ==========
+const btnScanMasp = document.getElementById('btnScanMasp');
+if (btnScanMasp) {
+  btnScanMasp.addEventListener('click', (e) => {
+    e.preventDefault();
+
+    // Mở module mới quetmasp.js
+    if (window.MaspScanner) {
+      window.MaspScanner.openForInput('masp', {
+        onResult: (maspFound) => {
           if (!maspFound) return;
-          const maspUpper = String(maspFound).toUpperCase().trim();
-          maspEl.value = maspUpper;
-          onMaspSelected(maspUpper);
+          const masp = String(maspFound).trim().toUpperCase();
+          maspEl.value = masp;
+          onMaspSelected(masp);
         }
       });
-    });
-  }
+    } else {
+      alert('Module quét mã chưa tải xong.');
+    }
+  });
+}
+
   // =======================================
 
   document.getElementById('btnLuu').addEventListener('click', e => {
