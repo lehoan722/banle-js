@@ -1,36 +1,24 @@
 // scripts/productCodeScanner.js
-// UI B: Auto scan QR từ video, không cần bấm.
-// Nếu không có QR -> chuyển OCR: auto chụp khi khung hình ổn định + có nút CHỤP NHÃN (OCR).
+// Module mở camera, chụp ảnh nhãn và đọc mã sản phẩm
+// Ưu tiên: QR → nếu không có QR thì OCR text để tìm mã sản phẩm
 
-// YÊU CẦU:
-//  - HTML đã load:
-//      <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-//      <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-//  - Gọi: openProductCodeScanner({ onDetected: (masp) => { ... }, onCancel?: () => {} });
+// YÊU CẦU HTML:
+//
+// <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+// <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 let _scannerOverlay = null;
 let _scannerStream = null;
-let _videoEl = null;
-let _statusEl = null;
-let _btnCapture = null;
-let _btnClose = null;
-
-let _qrScanActive = false;
-let _qrFound = false;
-let _ocrMode = false;
-let _ocrAutoLoopId = null;
-
-const QR_SCAN_INTERVAL_MS = 120;      // tốc độ scan QR
-const QR_MAX_TIME_BEFORE_OCR = 2000;  // sau 2s không thấy QR thì chuyển OCR
-const OCR_AUTO_INTERVAL_MS = 350;     // kiểm tra ổn định khung 0.35s/lần
-const OCR_STABLE_FRAME_COUNT = 3;     // cần 3 lần ổn định liên tiếp
+let _alreadyInjectedStyle = false;
 
 const MASP_REGEX = /[A-Z0-9\/_.-]{3,30}/g;
 
-// =====================================
-// API PUBLIC
-// =====================================
+// ========== HÀM PUBLIC ==========
 
+/**
+ * Mở UI chụp mã sản phẩm.
+ * @param {{ onDetected: (masp: string) => void, onCancel?: () => void }} options
+ */
 export function openProductCodeScanner(options = {}) {
   const { onDetected, onCancel } = options;
   if (typeof onDetected !== 'function') {
@@ -38,381 +26,129 @@ export function openProductCodeScanner(options = {}) {
     return;
   }
 
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Trình duyệt không hỗ trợ camera (getUserMedia). Vui lòng dùng Chrome/Edge/Firefox mới.');
+    if (onCancel) onCancel();
+    return;
+  }
+
   injectScannerStyleIfNeeded();
   createOverlay();
 
-  _videoEl = document.getElementById('pcs-video');
-  _statusEl = document.getElementById('pcs-status');
-  _btnCapture = document.getElementById('pcs-capture-btn');
-  _btnClose = document.getElementById('pcs-close-btn');
+  const video = document.getElementById('pcs-video');
+  const btnCapture = document.getElementById('pcs-btn-capture');
+  const btnClose = document.getElementById('pcs-btn-close');
+  const statusEl = document.getElementById('pcs-status');
 
-  _btnClose.addEventListener('click', () => {
-    cleanupScanner();
-    if (typeof onCancel === 'function') onCancel();
-  });
-
-  _btnCapture.addEventListener('click', () => {
-    // user bấm tay để OCR
-    manualCaptureForOCR(onDetected);
-  });
-
-  startCameraAndScan(onDetected, onCancel);
-}
-
-// =====================================
-// KHOI ĐỘNG CAMERA + QR AUTO SCAN
-// =====================================
-
-async function startCameraAndScan(onDetected, onCancel) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Trình duyệt không hỗ trợ camera (getUserMedia).');
-    cleanupScanner();
-    if (onCancel) onCancel();
-    return;
-  }
-
-  _statusEl.textContent = 'Đang mở camera sau...';
-
-  try {
-    const bestDeviceId = await getBestBackCameraDeviceId();
-
-    const constraintsList = [];
-    if (bestDeviceId) {
-      constraintsList.push({ video: { deviceId: { exact: bestDeviceId } } });
-    }
-    constraintsList.push({ video: { facingMode: { exact: 'environment' } } });
-    constraintsList.push({ video: { facingMode: 'environment' } });
-
-    let stream = null;
-    for (const c of constraintsList) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        stream = await navigator.mediaDevices.getUserMedia(c);
-        if (stream) break;
-      } catch (e) {
-        // thử constraint khác
-      }
-    }
-
-    if (!stream) {
-      // phương án cuối: không chỉ định gì
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    }
-
+  // Bật camera
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment' }
+  }).then(stream => {
     _scannerStream = stream;
-    _videoEl.srcObject = stream;
-
-    _videoEl.onloadedmetadata = () => {
-      _videoEl.play().catch(() => {});
-      startQrScanLoop(onDetected);
-    };
-  } catch (err) {
+    video.srcObject = stream;
+    video.play().catch(() => {});
+  }).catch(err => {
     console.error('Lỗi mở camera', err);
-    alert('Không mở được camera. Vui lòng kiểm tra quyền camera.');
-    cleanupScanner();
+    alert('Không mở được camera. Vui lòng kiểm tra quyền truy cập camera.');
+    closeScannerOverlay();
     if (onCancel) onCancel();
-  }
-}
+  });
 
-async function getBestBackCameraDeviceId() {
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videos = devices.filter(d => d.kind === 'videoinput');
+  btnClose.addEventListener('click', () => {
+    closeScannerOverlay();
+    if (onCancel) onCancel();
+  });
 
-    if (!videos.length) return null;
-
-    // Ưu tiên label chứa "back" / "rear"
-    const backLike = videos.find(d => {
-      const l = (d.label || '').toLowerCase();
-      return l.includes('back') || l.includes('rear');
-    });
-    if (backLike) return backLike.deviceId;
-
-    // Nếu không có, cứ lấy camera video đầu tiên (thường là camera chính)
-    return videos[0].deviceId;
-  } catch (err) {
-    console.warn('enumerateDevices lỗi:', err);
-    return null;
-  }
-}
-
-// =====================================
-// VÒNG LẶP AUTO SCAN QR
-// =====================================
-
-function startQrScanLoop(onDetected) {
-  if (!window.jsQR) {
-    console.warn('jsQR chưa được load.');
-    startOcrMode(onDetected);
-    return;
-  }
-
-  _qrScanActive = true;
-  _qrFound = false;
-  _ocrMode = false;
-
-  _statusEl.textContent = 'Đưa mã QR vào giữa khung, hệ thống sẽ tự quét...';
-
-  const startTime = Date.now();
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  const loop = () => {
-    if (!_qrScanActive || !_videoEl || _videoEl.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
-      if (_qrScanActive) {
-        requestAnimationFrame(loop);
-      }
+  btnCapture.addEventListener('click', async () => {
+    if (!video.videoWidth || !video.videoHeight) {
+      statusEl.textContent = 'Camera chưa sẵn sàng, vui lòng đợi 1–2 giây rồi chụp lại.';
       return;
     }
 
-    const elapsed = Date.now() - startTime;
-
-    // Nếu quá thời gian mà chưa thấy QR: chuyển OCR mode
-    if (elapsed > QR_MAX_TIME_BEFORE_OCR && !_qrFound && !_ocrMode) {
-      startOcrMode(onDetected);
-      return;
-    }
-
-    const vw = _videoEl.videoWidth;
-    const vh = _videoEl.videoHeight;
-    if (!vw || !vh) {
-      requestAnimationFrame(loop);
-      return;
-    }
-
-    // cắt một vùng vuông trung tâm để scan QR (nhanh hơn)
-    const size = Math.min(vw, vh) * 0.7;
-    const sx = (vw - size) / 2;
-    const sy = (vh - size) / 2;
-
-    const targetSize = 400;
-    canvas.width = targetSize;
-    canvas.height = targetSize;
-    ctx.drawImage(_videoEl, sx, sy, size, size, 0, 0, targetSize, targetSize);
+    statusEl.textContent = 'Đang nhận diện mã sản phẩm...';
+    btnCapture.disabled = true;
 
     try {
-      const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
-      const qr = window.jsQR(imageData.data, targetSize, targetSize);
-      if (qr && qr.data) {
-        _qrFound = true;
-        _qrScanActive = false;
+      // Chụp khung hình
+      const canvas = document.createElement('canvas');
+      const targetWidth = 800;
+      const scale = video.videoWidth > targetWidth ? targetWidth / video.videoWidth : 1;
+      canvas.width = Math.floor(video.videoWidth * scale);
+      canvas.height = Math.floor(video.videoHeight * scale);
 
-        const maspFromQr = extractMaspFromString(qr.data);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const masp = await detectMaspFromCanvas(canvas, statusEl);
+
+      if (masp) {
+        const maspUpper = String(masp).toUpperCase().trim();
+        statusEl.textContent = 'Đã nhận diện mã: ' + maspUpper;
+        setTimeout(() => {
+          closeScannerOverlay();
+          onDetected(maspUpper);
+        }, 250);
+      } else {
+        statusEl.textContent = 'Không nhận diện được mã, vui lòng đưa nhãn gần hơn và chụp lại.';
+        btnCapture.disabled = false;
+      }
+    } catch (err) {
+      console.error('Lỗi detect masp', err);
+      statusEl.textContent = 'Có lỗi khi nhận diện mã, vui lòng chụp lại.';
+      btnCapture.disabled = false;
+    }
+  });
+}
+
+// ========== XỬ LÝ ẢNH ==========
+
+async function detectMaspFromCanvas(canvas, statusEl) {
+  // 1. THỬ QR TRƯỚC – ƯU TIÊN HOÀN TOÀN
+  if (window.jsQR) {
+    try {
+      statusEl.textContent = 'Đang quét QR...';
+      const qrData = tryDecodeQr(canvas);
+      if (qrData) {
+        const maspFromQr = extractMaspFromString(qrData);
         if (maspFromQr) {
-          _statusEl.textContent = 'Đã nhận diện QR: ' + maspFromQr;
-          setTimeout(() => {
-            const maspUpper = maspFromQr.toUpperCase().trim();
-            const cb = onDetected;
-            cleanupScanner();
-            cb(maspUpper);
-          }, 200);
-          return;
-        } else {
-          // Có QR nhưng data không hợp lệ → chuyển OCR
-          startOcrMode(onDetected);
-          return;
+          return maspFromQr; // Có QR → dùng luôn, KHÔNG OCR nữa
         }
       }
     } catch (err) {
-      console.warn('QR decode error:', err);
+      console.warn('Lỗi decode QR', err);
     }
+  } else {
+    console.warn('jsQR chưa được load (window.jsQR).');
+  }
 
-    // chờ một nhịp
-    setTimeout(() => {
-      if (_qrScanActive) requestAnimationFrame(loop);
-    }, QR_SCAN_INTERVAL_MS);
-  };
-
-  requestAnimationFrame(loop);
-}
-
-// =====================================
-// CHUYỂN SANG OCR MODE
-// =====================================
-
-function startOcrMode(onDetected) {
-  if (_ocrMode) return;
-  _ocrMode = true;
-  _qrScanActive = false;
-
+  // 2. Nếu QR không đọc được → chuyển sang OCR
   if (!window.Tesseract) {
-    console.warn('Tesseract chưa load, không dùng được OCR.');
-    _statusEl.textContent = 'Không thấy QR, và OCR không khả dụng (thiếu Tesseract).';
-    document.getElementById('pcs-manual-capture').style.display = 'block';
-    return;
-  }
-
-  _statusEl.textContent =
-    'Không thấy QR. Giữ nhãn ổn định trong khung, hệ thống sẽ tự chụp để đọc mã, hoặc bấm CHỤP NHÃN (OCR).';
-  document.getElementById('pcs-manual-capture').style.display = 'block';
-
-  startOcrAutoCaptureLoop(onDetected);
-}
-
-function startOcrAutoCaptureLoop(onDetected) {
-  stopOcrAutoLoop();
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  let lastSample = null;
-  let stableCount = 0;
-  let capturing = false;
-
-  _ocrAutoLoopId = setInterval(async () => {
-    if (capturing || !_videoEl || _videoEl.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
-      return;
-    }
-
-    const vw = _videoEl.videoWidth;
-    const vh = _videoEl.videoHeight;
-    if (!vw || !vh) return;
-
-    const sizeW = vw * 0.9;
-    const sizeH = vh * 0.45;
-    const sx = (vw - sizeW) / 2;
-    const sy = (vh - sizeH) / 2;
-
-    const targetW = 600;
-    const scale = targetW / sizeW;
-    const targetH = Math.floor(sizeH * scale);
-
-    canvas.width = targetW;
-    canvas.height = targetH;
-    ctx.drawImage(_videoEl, sx, sy, sizeW, sizeH, 0, 0, targetW, targetH);
-
-    // Lấy mẫu ảnh nhỏ để tính độ thay đổi
-    const sampleSize = 40;
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = sampleSize;
-    sampleCanvas.height = sampleSize;
-    const sctx = sampleCanvas.getContext('2d');
-    sctx.drawImage(canvas, 0, 0, sampleSize, sampleSize);
-    const sampleData = sctx.getImageData(0, 0, sampleSize, sampleSize).data;
-
-    if (!lastSample) {
-      lastSample = sampleData;
-      stableCount = 0;
-      return;
-    }
-
-    let diff = 0;
-    for (let i = 0; i < sampleData.length; i += 4) {
-      const g1 = (lastSample[i] + lastSample[i + 1] + lastSample[i + 2]) / 3;
-      const g2 = (sampleData[i] + sampleData[i + 1] + sampleData[i + 2]) / 3;
-      diff += Math.abs(g1 - g2);
-    }
-    const avgDiff = diff / (sampleData.length / 4);
-
-    // Nếu khung hình ít thay đổi → coi như ổn định
-    if (avgDiff < 8) {
-      stableCount += 1;
-    } else {
-      stableCount = 0;
-    }
-    lastSample = sampleData;
-
-    if (stableCount >= OCR_STABLE_FRAME_COUNT) {
-      // Ảnh đã đủ ổn định → chụp để OCR
-      stableCount = 0;
-      capturing = true;
-      _statusEl.textContent = 'Ảnh ổn định, đang đọc mã từ nhãn...';
-
-      try {
-        const masp = await detectMaspFromCanvas(canvas, _statusEl);
-        if (masp) {
-          const maspUpper = masp.toUpperCase().trim();
-          _statusEl.textContent = 'Đã nhận diện mã: ' + maspUpper;
-          setTimeout(() => {
-            const cb = onDetected;
-            cleanupScanner();
-            cb(maspUpper);
-          }, 250);
-        } else {
-          _statusEl.textContent = 'Không đọc được mã với OCR tự động. Bạn có thể bấm CHỤP NHÃN (OCR) để thử lại.';
-        }
-      } catch (err) {
-        console.error('OCR auto capture error:', err);
-        _statusEl.textContent = 'Lỗi khi dùng OCR tự động, thử lại hoặc bấm CHỤP NHÃN.';
-      } finally {
-        capturing = false;
-      }
-    }
-  }, OCR_AUTO_INTERVAL_MS);
-}
-
-function stopOcrAutoLoop() {
-  if (_ocrAutoLoopId) {
-    clearInterval(_ocrAutoLoopId);
-    _ocrAutoLoopId = null;
-  }
-}
-
-// =====================================
-// CHỤP TAY → OCR
-// =====================================
-
-function manualCaptureForOCR(onDetected) {
-  if (!_videoEl || _videoEl.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
-    _statusEl.textContent = 'Camera chưa sẵn sàng, vui lòng chờ 1–2 giây rồi bấm lại.';
-    return;
-  }
-
-  _statusEl.textContent = 'Đang chụp và đọc mã từ nhãn...';
-
-  const vw = _videoEl.videoWidth;
-  const vh = _videoEl.videoHeight;
-
-  const sizeW = vw * 0.9;
-  const sizeH = vh * 0.45;
-  const sx = (vw - sizeW) / 2;
-  const sy = (vh - sizeH) / 2;
-
-  const targetW = 800;
-  const scale = targetW / sizeW;
-  const targetH = Math.floor(sizeH * scale);
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = targetW;
-  canvas.height = targetH;
-  ctx.drawImage(_videoEl, sx, sy, sizeW, sizeH, 0, 0, targetW, targetH);
-
-  detectMaspFromCanvas(canvas, _statusEl)
-    .then(masp => {
-      if (masp) {
-        const maspUpper = masp.toUpperCase().trim();
-        _statusEl.textContent = 'Đã nhận diện mã: ' + maspUpper;
-        setTimeout(() => {
-          const cb = onDetected;
-          cleanupScanner();
-          cb(maspUpper);
-        }, 250);
-      } else {
-        _statusEl.textContent = 'Không đọc được mã. Hãy chụp gần hơn, rõ hơn, rồi thử lại.';
-      }
-    })
-    .catch(err => {
-      console.error('OCR manual error:', err);
-      _statusEl.textContent = 'Có lỗi khi OCR, vui lòng thử lại.';
-    });
-}
-
-// =====================================
-// OCR MÃ SẢN PHẨM TỪ CANVAS
-// =====================================
-
-async function detectMaspFromCanvas(canvas, statusEl) {
-  if (!window.Tesseract) {
-    console.warn('Tesseract chưa được load.');
+    console.warn('Tesseract chưa được load (window.Tesseract).');
     return null;
   }
 
-  statusEl.textContent = 'Đang dùng OCR để đọc chữ trên nhãn (tối đa ~8 giây)...';
+  statusEl.textContent = 'Không thấy QR, đang dùng OCR để đọc chữ trên nhãn (tối đa ~8 giây)...';
 
   try {
-    const ocrPromise = window.Tesseract.recognize(canvas, 'eng', {
-      logger: () => {}
+    // Crop vùng trung tâm (tránh dòng "Shop Hoàn Tuyết" ở trên và "Giá" ở dưới)
+    const cropCanvas = document.createElement('canvas');
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    const cropWidth = Math.floor(cw * 0.9);
+    const cropHeight = Math.floor(ch * 0.45);
+    const cropX = Math.floor((cw - cropWidth) / 2);
+    const cropY = Math.floor((ch - cropHeight) / 2);
+
+    cropCanvas.width = cropWidth;
+    cropCanvas.height = cropHeight;
+
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+    // Gọi OCR với timeout để tránh treo
+    const ocrPromise = window.Tesseract.recognize(cropCanvas, 'eng', {
+      logger: () => { /* có thể log % nếu muốn */ }
     });
 
     const timeoutPromise = new Promise((_, reject) =>
@@ -420,7 +156,7 @@ async function detectMaspFromCanvas(canvas, statusEl) {
     );
 
     const result = await Promise.race([ocrPromise, timeoutPromise]);
-    const rawText = result && result.data && result.data.text ? result.data.text : '';
+    const rawText = (result && result.data && result.data.text) || '';
 
     if (!rawText.trim()) return null;
 
@@ -432,33 +168,82 @@ async function detectMaspFromCanvas(canvas, statusEl) {
   }
 }
 
-// =====================================
-// XỬ LÝ STRING → MÃ SẢN PHẨM
-// =====================================
+// ========== QUÉT QR 2 LẦN (FULL & THU NHỎ) ==========
+
+function tryDecodeQr(canvas) {
+  if (!window.jsQR) return null;
+
+  const ctx = canvas.getContext('2d');
+
+  // Lần 1: quét trên khung gốc
+  try {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const qr1 = window.jsQR(imageData.data, canvas.width, canvas.height);
+    if (qr1 && qr1.data) return qr1.data;
+  } catch (err) {
+    console.warn('QR pass1 error', err);
+  }
+
+  // Lần 2: thu nhỏ lại để tăng tương phản / độ sắc nét cho jsQR
+  try {
+    const maxW = 400;
+    const scale = canvas.width > maxW ? maxW / canvas.width : 1;
+    const w = Math.floor(canvas.width * scale);
+    const h = Math.floor(canvas.height * scale);
+
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = w;
+    smallCanvas.height = h;
+    const sctx = smallCanvas.getContext('2d');
+    sctx.drawImage(canvas, 0, 0, w, h);
+
+    const imageData2 = sctx.getImageData(0, 0, w, h);
+    const qr2 = window.jsQR(imageData2.data, w, h);
+    if (qr2 && qr2.data) return qr2.data;
+  } catch (err) {
+    console.warn('QR pass2 error', err);
+  }
+
+  return null;
+}
+
+// ========== HÀM PHÂN TÍCH MÃ TỪ STRING/TEXT ==========
 
 function extractMaspFromString(str) {
   if (!str) return null;
   const upper = String(str).toUpperCase().trim();
 
+  // Nếu QR chứa đúng 1 mã đơn giản → dùng luôn
   if (/^[A-Z0-9\/_.-]{3,30}$/.test(upper)) {
     return upper;
   }
 
-  const first = upper.split(/[|;]/)[0].trim();
-  if (/^[A-Z0-9\/_.-]{3,30}$/.test(first)) {
-    return first;
+  // Nếu QR chứa định dạng có dấu | hoặc ; thì lấy token đầu tiên
+  const byPipe = upper.split(/[|;]/)[0].trim();
+  if (/^[A-Z0-9\/_.-]{3,30}$/.test(byPipe)) {
+    return byPipe;
   }
 
+  // Nếu vẫn chưa tìm được, thử regex trên toàn chuỗi
   const matches = upper.match(MASP_REGEX);
   if (matches && matches.length > 0) {
     const sorted = matches
       .map(m => m.trim())
       .filter(m => m.length >= 3 && m.length <= 30);
-    if (sorted.length > 0) return sorted[0];
+    if (sorted.length > 0) {
+      return sorted[0];
+    }
   }
+
   return null;
 }
 
+/**
+ * Phân tích text OCR để tìm dòng mã sản phẩm.
+ * Tem của bạn:
+ *  - Dòng mã: KHÔNG có khoảng trắng, có số + chữ, dài 5–20
+ *  - Không chứa "SHOP", "GIA/GIÁ", "SIZE"...
+ */
 function extractMaspFromText(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if (!lines.length) return null;
@@ -469,7 +254,7 @@ function extractMaspFromText(text) {
   for (let line of lines) {
     const upper = line.toUpperCase();
 
-    // Loại bỏ các dòng chắc chắn không phải mã
+    // Loại bỏ những dòng chắc chắn không phải mã
     if (upper.includes('SHOP') && (upper.includes('HOAN') || upper.includes('HOÀN'))) continue;
     if (upper.includes('GIÁ') || upper.includes('GIA:') || upper.includes('EUR') || upper.includes('VND') || upper.includes('VNĐ')) continue;
     if (upper.includes('SIZE') || upper.includes('KICH CO') || upper.includes('KÍCH CỠ')) continue;
@@ -478,12 +263,13 @@ function extractMaspFromText(text) {
     const hasDigit = /[0-9]/.test(upper);
     const len = upper.length;
 
-    // Ưu tiên: dòng không khoảng trắng, có số, dài 5–20 (giống 558008-DNAU)
+    // 1) Ưu tiên mạnh: dòng không có khoảng trắng, có số, dài 5–20
     if (noSpace && hasDigit && len >= 5 && len <= 20) {
       strong.push(upper);
       continue;
     }
 
+    // 2) Bắt chuỗi con bằng regex (yếu hơn)
     const matches = upper.match(MASP_REGEX);
     if (matches && matches.length) {
       matches.forEach(m => {
@@ -497,76 +283,61 @@ function extractMaspFromText(text) {
   let candidates = strong.length ? strong : weak;
   if (!candidates.length) return null;
 
-  // Nếu có cache dmhanghoa → ưu tiên mã tồn tại
+  // Nếu có dmhanghoa cache thì ưu tiên mã nào tồn tại
   if (window.sanPhamData && typeof window.sanPhamData === 'object') {
     const valid = candidates.find(c => window.sanPhamData[c]);
     if (valid) return valid;
   }
 
+  // Nếu không có trong catalog, lấy candidate đầu tiên
   return candidates[0];
 }
 
-// =====================================
-// UI & CLEANUP
-// =====================================
+// ========== UI OVERLAY & STYLE ==========
 
 function createOverlay() {
-  closeScannerOverlay(); // xóa nếu đang có
+  closeScannerOverlay(); // Xóa cái cũ nếu còn
 
-  const wrapper = document.createElement('div');
-  wrapper.id = 'pcs-overlay';
-  wrapper.innerHTML = `
+  const overlay = document.createElement('div');
+  overlay.id = 'pcs-overlay';
+  overlay.innerHTML = `
     <div class="pcs-backdrop">
       <div class="pcs-dialog">
-        <div class="pcs-title">Quét mã sản phẩm</div>
-        <div class="pcs-video-wrap">
-          <video id="pcs-video" autoplay playsinline class="pcs-video"></video>
-          <div id="pcs-status" class="pcs-status">
-            Đang mở camera...
-          </div>
+        <div class="pcs-title">Chụp mã sản phẩm</div>
+        <video id="pcs-video" autoplay playsinline class="pcs-video"></video>
+        <div class="pcs-actions">
+          <button id="pcs-btn-capture" class="pcs-btn pcs-btn-primary">CHỤP MÃ</button>
+          <button id="pcs-btn-close" class="pcs-btn pcs-btn-secondary">ĐÓNG</button>
         </div>
-        <div id="pcs-manual-capture" class="pcs-manual" style="display:none;">
-          <button id="pcs-capture-btn" class="pcs-btn pcs-btn-primary">CHỤP NHÃN (OCR)</button>
+        <div id="pcs-status" class="pcs-status">
+          Đưa mã QR hoặc nhãn (dòng như 558008-DNAU) vào giữa khung rồi bấm CHỤP MÃ.
         </div>
-        <button id="pcs-close-btn" class="pcs-btn pcs-btn-secondary pcs-close">ĐÓNG</button>
       </div>
     </div>
   `;
-  document.body.appendChild(wrapper);
-  _scannerOverlay = wrapper;
+
+  document.body.appendChild(overlay);
+  _scannerOverlay = overlay;
 }
 
 function closeScannerOverlay() {
+  if (_scannerStream) {
+    _scannerStream.getTracks().forEach(t => {
+      try { t.stop(); } catch (e) { }
+    });
+    _scannerStream = null;
+  }
   if (_scannerOverlay && _scannerOverlay.parentNode) {
     _scannerOverlay.parentNode.removeChild(_scannerOverlay);
   }
   _scannerOverlay = null;
 }
 
-function cleanupScanner() {
-  stopOcrAutoLoop();
-  _qrScanActive = false;
-
-  if (_scannerStream) {
-    _scannerStream.getTracks().forEach(t => {
-      try { t.stop(); } catch (e) {}
-    });
-    _scannerStream = null;
-  }
-
-  closeScannerOverlay();
-
-  _videoEl = null;
-  _statusEl = null;
-  _btnCapture = null;
-  _btnClose = null;
-}
-
 function injectScannerStyleIfNeeded() {
-  if (document.getElementById('pcs-style')) return;
+  if (_alreadyInjectedStyle) return;
+  _alreadyInjectedStyle = true;
 
   const style = document.createElement('style');
-  style.id = 'pcs-style';
   style.textContent = `
     #pcs-overlay {
       position: fixed;
@@ -584,10 +355,10 @@ function injectScannerStyleIfNeeded() {
     .pcs-dialog {
       background: #111827;
       color: #f9fafb;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 10px;
-      width: 92%;
-      max-width: 430px;
+      width: 90%;
+      max-width: 420px;
       box-sizing: border-box;
       box-shadow: 0 10px 30px rgba(0,0,0,0.4);
       display: flex;
@@ -600,37 +371,22 @@ function injectScannerStyleIfNeeded() {
       text-align: center;
       margin-bottom: 4px;
     }
-    .pcs-video-wrap {
-      position: relative;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #000;
-    }
     .pcs-video {
       width: 100%;
       max-height: 260px;
+      background: #000;
+      border-radius: 6px;
       object-fit: cover;
-      display: block;
     }
-    .pcs-status {
-      font-size: 12px;
-      color: #e5e7eb;
-      padding: 4px 6px;
-      background: rgba(0,0,0,0.5);
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      text-align: left;
-    }
-    .pcs-manual {
-      margin-top: 6px;
+    .pcs-actions {
       display: flex;
-      justify-content: center;
+      gap: 6px;
+      margin-top: 6px;
     }
     .pcs-btn {
-      padding: 6px 10px;
-      border-radius: 6px;
+      flex: 1 1 0;
+      padding: 6px 4px;
+      border-radius: 4px;
       border: none;
       font-size: 13px;
       cursor: pointer;
@@ -639,20 +395,21 @@ function injectScannerStyleIfNeeded() {
       background: #22c55e;
       color: #052e16;
       font-weight: 600;
-      flex: 1 1 0;
     }
     .pcs-btn-secondary {
       background: #4b5563;
-      color: #f9fafb;
-      margin-top: 4px;
-      width: 100%;
-    }
-    .pcs-close {
-      margin-top: 4px;
+      color: #f3f4f6;
     }
     .pcs-btn:disabled {
       opacity: 0.7;
       cursor: default;
+    }
+    .pcs-status {
+      font-size: 12px;
+      color: #e5e7eb;
+      margin-top: 4px;
+      min-height: 18px;
+      text-align: left;
     }
   `;
   document.head.appendChild(style);
