@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>bantheosize</title>
+    <title>Báo cáo XNT17</title>
     <!-- Liên kết Supabase và JS mới -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
 
     <style>
-        /* Body không cuộn; bảng cuộn trong vùng của nó */  
+        /* Body không cuộn; bảng cuộn trong vùng của nó */
         html,
         body {
             height: 100%;
@@ -194,7 +194,7 @@
         #maspList {
             line-height: 1.4;
             height: calc(1.4em * 10 + 10px);
-            max-height: calc(1.4em * 3 + 3px);
+            max-height: calc(1.4em * 6 + 6px);
             resize: vertical;
         }
 
@@ -349,413 +349,465 @@
         }
 
         /* Lưới 60/40 – giảm gap giữa 2 cột để rộng chỗ cho ảnh */
-.main-grid { display:flex; gap:6px; height: calc(100vh - 140px); }
+        .main-grid {
+            display: flex;
+            gap: 6px;
+            height: calc(100vh - 140px);
+        }
 
-/* Giữ 60/40, nhưng bỏ mọi padding/margin thừa ở cột phải */
-.grid-left  { flex: 0 0 60%; min-width: 0; display:flex; flex-direction: column; }
-.grid-right { flex: 0 0 40%; min-width: 0; display:flex; flex-direction: column; padding:0; margin:0; }
+        /* Giữ 60/40, nhưng bỏ mọi padding/margin thừa ở cột phải */
+        .grid-left {
+            flex: 0 0 60%;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
 
-#hot { flex:1 1 auto; min-height:0; }
+        .grid-right {
+            flex: 0 0 40%;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            margin: 0;
+        }
 
-/* Tiêu đề khu ảnh – gom gọn */
-#previewTitle { font-weight:700; margin:2px 0 4px 0; line-height:1.2; }
+        #hot {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
 
-/* Grid ảnh: sát nhau tối đa, bỏ khoảng đệm */
-#previewGrid {
-  overflow:auto;
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));  /* 2 cột đều */
-  gap:2px;                        /* gần như sát nhau */
-  padding:0;                      /* bỏ mọi padding */
-}
+        /* Tiêu đề khu ảnh – gom gọn */
+        #previewTitle {
+            font-weight: 700;
+            margin: 2px 0 4px 0;
+            line-height: 1.2;
+        }
 
-/* Ảnh: full chiều ngang, giữ tỉ lệ, không bo tròn, auto cao theo nội dung */
-#previewGrid img {
-  width:100%;
-  height:auto;                    /* cho phép tự cao theo tỉ lệ */
-  aspect-ratio: 3 / 4;            /* giữ khung đứng đồng đều; có thể chuyển 1/1 nếu muốn vuông */
-  object-fit:cover;
-  border-radius:0;                /* bỏ bo góc để nhìn sát */
-  display:block;
-}
+        /* Grid ảnh: sát nhau tối đa, bỏ khoảng đệm */
+        #previewGrid {
+            overflow: auto;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            /* 2 cột đều */
+            gap: 2px;
+            /* gần như sát nhau */
+            padding: 0;
+            /* bỏ mọi padding */
+        }
+
+        /* Ảnh: full chiều ngang, giữ tỉ lệ, không bo tròn, auto cao theo nội dung */
+        #previewGrid img {
+            width: 100%;
+            height: auto;
+            /* cho phép tự cao theo tỉ lệ */
+            aspect-ratio: 3 / 4;
+            /* giữ khung đứng đồng đều; có thể chuyển 1/1 nếu muốn vuông */
+            object-fit: cover;
+            border-radius: 0;
+            /* bỏ bo góc để nhìn sát */
+            display: block;
+        }
 
 
-  /* Xen kẽ màu dòng cho Handsontable */
-#hot .handsontable td.row-even {
-  background: #f7eeee;           /* màu nhạt */
-}
-#hot .handsontable td.row-odd {
-  background: #ffffff;           /* trắng */
-}
-/* Khi hover vẫn thấy rõ */
-#hot .handsontable tbody tr:hover td {
-  filter: brightness(0.98);
-}
+        /* Xen kẽ màu dòng cho Handsontable */
+        #hot .handsontable td.row-even {
+            background: #f7eeee;
+            /* màu nhạt */
+        }
 
+        #hot .handsontable td.row-odd {
+            background: #ffffff;
+            /* trắng */
+        }
 
+        /* Khi hover vẫn thấy rõ */
+        #hot .handsontable tbody tr:hover td {
+            filter: brightness(0.98);
+        }
     </style>
 </head>
 
 <body>
-    <div id="loginBox" style="margin:10px 0; text-align:center;">
-  <form id="loginForm">
-    <input type="email" id="email" value="khohangcs1@gmail.com" readonly 
-           style="padding:5px; margin-right:5px; width:220px;">
-    <input type="password" id="password" placeholder="Nhập mật khẩu" 
-           style="padding:5px; margin-right:5px; width:160px;">
-    <button type="submit">Đăng nhập</button>
-  </form>
-</div>
+    <div id="app-container">
 
+        <div class="filters-row">
+            <div class="filters-left">
+                <div class="filters">
 
-    <div class="filters-row">
-        <div class="filters-left">
-            <div class="filters">
-                <label>
-                    Phương pháp:
-                    <select id="selectFunction">
-                        <option value="baocaoxnt17_paged">Chuẩn mới (Tổng hợp size, cột nhập mua/xuất bán)</option>
-                    </select>
-                </label>
-                <label>
-                    Địa điểm:
-                    <select id="diadiemSelect">
-                        <option value="">Tất cả</option>
-                        <option value="cs1">Cơ sở 1</option>
-                        <option value="cs2">Cơ sở 2</option>
-                    </select>
-                </label>
-                <label>Từ ngày: <input type="date" id="tuNgay"></label>
-                <label>Đến ngày: <input type="date" id="denNgay"></label>
-                <!-- Các input popup tìm kiếm -->
-                <span class="input-popup-group">
-                    <input id="khachhangInput" placeholder="Khách hàng">
-                    <button onclick="openPopupSearch('khachhang')">🔍</button>
-                    <button onclick="clearInput('khachhangInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="nhanvienInput" placeholder="Nhân viên">
-                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
-                    <button onclick="clearInput('nhanvienInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="nhomhangInput" placeholder="Nhóm hàng">
-                    <button onclick="openPopupSearch('nhomhang')">🔍</button>
-                    <button onclick="clearInput('nhomhangInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="chungloaiInput" placeholder="Chủng loại">
-                    <button onclick="openPopupSearch('chungloai')">🔍</button>
-                    <button onclick="clearInput('chungloaiInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="mausacInput" placeholder="Màu sắc">
-                    <button onclick="openPopupSearch('mausac')">🔍</button>
-                    <button onclick="clearInput('mausacInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="sizeInput" placeholder="Kích cỡ">
-                    <button onclick="openPopupSearch('size')">🔍</button>
-                    <button onclick="clearInput('sizeInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="maspInput" placeholder="Mã hàng">
-                    <button onclick="openPopupSearch('mahang')">🔍</button>
-                    <button onclick="clearInput('maspInput')">✖</button>
-                </span>
-                <label>Từ giá:
-                    <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
-                </label>
-                <label>Đến giá:
-                    <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
-                </label>
-                <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
-                <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
-                <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
-                <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
-                <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
-                <!-- CHECKBOX TỔNG HỢP SIZE -->
-                <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
-                <label style="font-weight:normal;">
-                    <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
-                </label>
+                    <label>
+                        Địa điểm:
+                        <select id="diadiemSelect">
+                            <option value="">Tất cả</option>
+                            <option value="cs1">Cơ sở 1</option>
+                            <option value="cs2">Cơ sở 2</option>
+                        </select>
+                    </label>
+                    <label>Từ ngày: <input type="date" id="tuNgay"></label>
+                    <label>Đến ngày: <input type="date" id="denNgay"></label>
+                    <!-- Các input popup tìm kiếm -->
+                    <span class="input-popup-group">
+                        <input id="khachhangInput" placeholder="Khách hàng">
+                        <button onclick="openPopupSearch('khachhang')">🔍</button>
+                        <button onclick="clearInput('khachhangInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="nhanvienInput" placeholder="Nhân viên">
+                        <button onclick="openPopupSearch('nhanvien')">🔍</button>
+                        <button onclick="clearInput('nhanvienInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="nhomhangInput" placeholder="Nhóm hàng">
+                        <button onclick="openPopupSearch('nhomhang')">🔍</button>
+                        <button onclick="clearInput('nhomhangInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="chungloaiInput" placeholder="Chủng loại">
+                        <button onclick="openPopupSearch('chungloai')">🔍</button>
+                        <button onclick="clearInput('chungloaiInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="mausacInput" placeholder="Màu sắc">
+                        <button onclick="openPopupSearch('mausac')">🔍</button>
+                        <button onclick="clearInput('mausacInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="sizeInput" placeholder="Kích cỡ">
+                        <button onclick="openPopupSearch('size')">🔍</button>
+                        <button onclick="clearInput('sizeInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="maspInput" placeholder="Mã hàng">
+                        <button onclick="openPopupSearch('mahang')">🔍</button>
+                        <button onclick="clearInput('maspInput')">✖</button>
+                    </span>
+                    <label>Từ giá:
+                        <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
+                    </label>
+                    <label>Đến giá:
+                        <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
+                    </label>
+                    <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
+                    <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
+                    <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
+                    <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
+                    <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
+                    <!-- CHECKBOX TỔNG HỢP SIZE -->
+                    <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
+                    <label style="font-weight:normal;">
+                        <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
+                    </label>
 
-                <!-- Nút xem báo cáo -->
-                <button class="main" onclick="taiBaoCaoXNT()">Xem bao cao</button>
-                <button id="btnShowImages" onclick="moTrangAnh()">🖼️ Hiển thị ảnh</button>
-                <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
-                <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuat Excel</button>
-                <button class="main" id="btnChuyenKho" onclick="moTrangChuyenKho()">Gợi ý chuyển kho</button>
-                <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
-                
+                    <!-- Nút xem báo cáo -->
+                    <button class="main" onclick="taiBaoCaoXNT()">Xem bao cao</button>
+                    <button id="btnShowImages" onclick="moTrangAnh()">🖼️ Hiển thị ảnh</button>
+                    <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
+                    <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuat Excel</button>
+                    <button class="main" id="btnChuyenKho" onclick="moTrangChuyenKho()">Gợi ý chuyển kho</button>
+                    <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
+                    <button id="btnGoiYNhapBu" class="btn">Gợi ý nhập bù</button>
+
+                </div>
+            </div>
+
+            <div class="filters-right">
+                <textarea id="maspList" rows="8" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
+                    style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
+
             </div>
         </div>
 
-        <div class="filters-right">
-            <textarea id="maspList" rows="8" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
-                style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
+        <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề" onclick="toggleHeader()">⮜</button>
 
+        <!-- NÚT THU GỌN HEADER giữ nguyên -->
+
+        <div class="main-grid">
+            <!-- Cột trái: Bảng (60%) -->
+            <div class="grid-left">
+                <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
+                <div id="hot" style="margin-top: 4px;"></div>
+
+                <div id="pagination" style="margin-top:10px; text-align:center;">
+                    <label style="margin-right:8px;">
+                        Số dòng/trang:
+                        <select id="pageSize" style="padding:4px 6px;">
+                            <option value="500">500</option>
+                            <option value="1000" selected>1000</option>
+                            <option value="2000">2000</option>
+                            <option value="5000">5000</option>
+                            <option value="10000">10000</option>
+                        </select>
+                    </label>
+                    <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
+                    <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
+                    <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
+                    <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+                    <button class="main" onclick="window.gotoPage()">Đi</button>
+                </div>
+            </div>
+
+            <!-- Cột phải: Ảnh (40%) -->
+            <div class="grid-right">
+                <div id="previewTitle">Ảnh nhanh</div>
+                <div id="previewGrid"></div>
+            </div>
         </div>
-    </div>
-
-    <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề"
-                    onclick="toggleHeader()">⮜</button>
-
-       <!-- NÚT THU GỌN HEADER giữ nguyên -->
-
-<div class="main-grid">
-  <!-- Cột trái: Bảng (60%) -->
-  <div class="grid-left">
-    <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
-    <div id="hot" style="margin-top: 4px;"></div>
-
-    <div id="pagination" style="margin-top:10px; text-align:center;">
-      <label style="margin-right:8px;">
-        Số dòng/trang:
-        <select id="pageSize" style="padding:4px 6px;">
-          <option value="500">500</option>
-          <option value="1000" selected>1000</option>
-          <option value="2000">2000</option>
-          <option value="5000">5000</option>
-          <option value="10000">10000</option>
-        </select>
-      </label>
-      <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
-      <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
-      <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
-      <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
-      <button class="main" onclick="window.gotoPage()">Đi</button>
-    </div>
-  </div>
-
-  <!-- Cột phải: Ảnh (40%) -->
-  <div class="grid-right">
-    <div id="previewTitle">Ảnh nhanh</div>
-    <div id="previewGrid"></div>
-  </div>
-</div>
 
 
-    <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch">
-        <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
-            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+        <!-- Popup tìm kiếm dùng chung -->
+        <div id="popupSearch">
+            <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+                <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+                <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+            </div>
+            <div id="popupSearchList"></div>
         </div>
-        <div id="popupSearchList"></div>
-    </div>
 
-    <!-- Modal ảnh -->
-    <div id="imgModal" role="dialog" aria-hidden="true">
-        <div class="box">
-            <button class="close" id="imgClose">Đóng ✕</button>
-            <img id="prodImg" alt="Ảnh sản phẩm">
-            <div class="cap" id="imgCaption"></div>
+        <!-- Modal ảnh -->
+        <div id="imgModal" role="dialog" aria-hidden="true">
+            <div class="box">
+                <button class="close" id="imgClose">Đóng ✕</button>
+                <img id="prodImg" alt="Ảnh sản phẩm">
+                <div class="cap" id="imgCaption"></div>
+            </div>
         </div>
-    </div>
 
-    <script>
-        (function initHeaderToggle() {
-            const btn = document.getElementById('headerToggle');
-            if (!btn) return;
+        <script>
+            (function initHeaderToggle() {
+                const btn = document.getElementById('headerToggle');
+                if (!btn) return;
 
-            // Khôi phục trạng thái lần trước
-            const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
-            if (saved) document.body.classList.add('header-collapsed');
-            btn.textContent = saved ? '⮞' : '⮜';
-            btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+                // Khôi phục trạng thái lần trước
+                const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
+                if (saved) document.body.classList.add('header-collapsed');
+                btn.textContent = saved ? '⮞' : '⮜';
+                btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
 
-            window.toggleHeader = function () {
-                const collapsed = document.body.classList.toggle('header-collapsed');
-                btn.textContent = collapsed ? '⮞' : '⮜';
-                btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
-                localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
-                // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
+                window.toggleHeader = function () {
+                    const collapsed = document.body.classList.toggle('header-collapsed');
+                    btn.textContent = collapsed ? '⮞' : '⮜';
+                    btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+                    localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
+                    // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
+                };
+            })();
+        </script>
+
+        <script>
+    /** SIMPLE MODE cho XNT17 – ẩn bớt bộ lọc & cột bảng như yêu cầu */
+    (function () {
+      const SIMPLE_MODE = true; // chỉ để đọc – có thể bỏ
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // 1) ẨN NHÓM INPUT: khách hàng, nhân viên, màu sắc, mã hàng
+        const hidePopupGroupByInputId = (inputId) => {
+          const el = document.getElementById(inputId);
+          if (el) {
+            const grp = el.closest('.input-popup-group');
+            if (grp) grp.style.display = 'none';
+          }
+        };
+        hidePopupGroupByInputId('khachhangInput');
+        hidePopupGroupByInputId('nhanvienInput');
+        hidePopupGroupByInputId('mausacInput');
+        //hidePopupGroupByInputId('maspInput');
+        hidePopupGroupByInputId('chungloaiInput');
+
+        // 2) CHECKBOX “Chỉ hàng dương” → CHECK SẴN, GIỮ LẠI
+        const locDuong = document.getElementById('locDuong');
+        if (locDuong) {
+          locDuong.checked = true;
+          // đảm bảo khi người dùng bấm Xem báo cáo lần đầu chưa load giá trị → vẫn giữ true
+          locDuong.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        // 3) ẨN CÁC CHECKBOX CÒN LẠI
+        const hideCheckLabel = (checkboxId) => {
+          const cb = document.getElementById(checkboxId);
+          if (cb) {
+            const label = cb.closest('label');
+            if (label) label.style.display = 'none';
+          }
+        };
+        hideCheckLabel('locAm');
+        hideCheckLabel('locHet');
+        hideCheckLabel('locPhatSinhNhap');
+        hideCheckLabel('locPhatSinhXuat');
+        hideCheckLabel('tonghopSizeCheckbox');
+        hideCheckLabel('locNCCCheckbox');
+
+        // 4) ẨN NÚT "Copy bảng", "Xuất Excel"
+        // (nút không có id, nên ẩn theo onclick)
+        document.querySelectorAll('button[onclick="copyBang()"]').forEach(b => b.style.display = 'none');
+        document.querySelectorAll('button[onclick="window.xuatExcelToanBoXNT17()"]').forEach(b => b.style.display = 'none');
+
+        // 5) ẨN DÒNG THÔNG TIN TỔNG HỢP
+        const xntSummary = document.getElementById('xntSummary');
+        if (xntSummary) xntSummary.style.display = 'none';
+
+        // 6) CHỈ GIỮ CÁC CỘT: STT, MÃ HÀNG, KÍCH CỠ, TỒN CS1, TỒN CS2, CUỐI KỲ, GIÁ LẺ
+        //    → sau mỗi lần tải/đổi trang, gọi "applySimpleColumns" để ẩn các cột khác
+        function applySimpleColumns() {
+          if (!window.hot || typeof window.hot.getColHeader !== 'function') return;
+
+          // Lấy headers hiện đang hiển thị
+          const headers = Array.from({ length: window.hot.countCols() }, (_, i) => window.hot.getColHeader(i))
+            .map(h => (String(h || '').trim().toLowerCase()));
+
+          // Danh sách tên cột mong muốn (so khớp "chứa" để linh hoạt tiêu đề)
+          const WANT = [
+            'stt',          // số thứ tự
+            'mã hàng', 'ma hang', 'masp',
+            'kích cỡ', 'kich co', 'size',
+            'tồn cơ sở 1', 'ton cs1', 'tồn cs1',
+            'tồn cơ sở 2', 'ton cs2', 'tồn cs2',
+            'cuối kỳ', 'cuoi ky', 'ck', 'cuoiky',
+            'giá lẻ', 'gia le', 'giale'
+          ];
+
+          const wantIdx = [];
+          headers.forEach((h, idx) => {
+            const hit = WANT.some(w => h.includes(w));
+            if (hit) wantIdx.push(idx);
+          });
+
+          // Nếu vì lý do tiêu đề không trùng khớp, thử dựa theo prop data (optional)
+          if (wantIdx.length === 0 && typeof window.hot.getSettings === 'function') {
+            const st = window.hot.getSettings();
+            if (Array.isArray(st.columns)) {
+              const props = st.columns.map(c => (c && c.data ? String(c.data).toLowerCase() : ''));
+              const WANT_PROP = ['stt', 'masp', 'size', 'ton_cs1', 'toncs1', 'ton_cs2', 'toncs2', 'cuoiky', 'gia_le', 'giale', 'gia'];
+              props.forEach((p, idx) => {
+                if (WANT_PROP.some(w => p.includes(w))) wantIdx.push(idx);
+              });
+            }
+          }
+
+          // Tạo danh sách cột cần ẩn = tất cả cột trừ wantIdx
+          const total = window.hot.countCols();
+          const toHide = [];
+          for (let i = 0; i < total; i++) if (!wantIdx.includes(i)) toHide.push(i);
+
+          // Ẩn bằng plugin hiddenColumns
+          if (typeof window.hot.updateSettings === 'function') {
+            window.hot.updateSettings({
+              hiddenColumns: { columns: toHide, indicators: false }
+            });
+            // Render lại để ăn ẩn/hiện
+            window.hot.render && window.hot.render();
+          }
+        }
+
+        // Hook sau khi nhấn "Xem báo cáo" – bọc hàm gốc nếu có
+        const wrapAfter = (name) => {
+          const fn = window[name];
+          if (typeof fn === 'function') {
+            window[name] = async function (...args) {
+              const r = fn.apply(this, args);
+              // Hỗ trợ cả sync/async
+              try { await r; } catch (e) { }
+              // đợi 1 tick để HOT vẽ xong rồi ẩn cột
+              setTimeout(applySimpleColumns, 0);
+              return r;
             };
-        })();
+          }
+        };
+
+        wrapAfter('taiBaoCaoXNT');   // khi tải mới dữ liệu
+        wrapAfter('nextPage');       // chuyển trang
+        wrapAfter('prevPage');       // chuyển trang
+        wrapAfter('gotoPage');       // nhảy trang
+
+        // Nếu bảng đã có sẵn (ví dụ trang tự render lúc vào), cố gắng ẩn ngay
+        setTimeout(applySimpleColumns, 400);
+      });
+    })();
+  </script>
+
+  <script>
+    /** Tắt auto-run báo cáo lúc mở trang + không auto-check "Phát sinh bán trong kỳ" */
+    (function () {
+      // 1) Khóa auto-run lần đầu nếu có script ngoài gọi taiBaoCaoXNT() trên DOMContentLoaded
+      let allowRun = false;
+      const installGuard = () => {
+        // Nếu hàm chưa sẵn sàng, thử lại chút nữa (vì file ngoài là module)
+        if (typeof window.taiBaoCaoXNT !== 'function') {
+          setTimeout(installGuard, 50);
+          return;
+        }
+        const original = window.taiBaoCaoXNT;
+        // Chặn mọi lời gọi KHÔNG DO NGƯỜI DÙNG
+        window.taiBaoCaoXNT = function (...args) {
+          if (!allowRun) {
+            // Bị chặn: do auto-run khi vừa mở trang
+            return;
+          }
+          return original.apply(this, args);
+        };
+
+        // Gắn lại onclick của nút "Xem báo cáo" để bật allowRun trước khi chạy
+        const btn = document.querySelector('button[onclick="taiBaoCaoXNT()"]');
+        if (btn) {
+          btn.onclick = function (ev) {
+            allowRun = true;           // chỉ khi người dùng bấm mới cho phép chạy
+            return original();
+          };
+        }
+      };
+
+      // 2) Luôn bỏ check "Phát sinh bán trong kỳ" khi tải trang
+      const uncheckPhatSinhBan = () => {
+        const cb = document.getElementById('locPhatSinhXuat');
+        if (cb) {
+          cb.checked = false;
+          // Nếu script ngoài cố thao tác lại, ta vẫn hạ về false sau 1 tick
+          setTimeout(() => { cb.checked = false; }, 0);
+        }
+      };
+
+      // Cài guard sớm (trước khi DOMContentLoaded fire)
+      installGuard();
+
+      // Khi DOM sẵn sàng: đảm bảo checkbox không bị tick
+      document.addEventListener('DOMContentLoaded', uncheckPhatSinhBan);
+    })();
+  </script>
+
+    </div>
+
+    <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
+    <script type="module">
+        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+        khoiTaoDangNhapDungChung({
+            // id bọc toàn bộ app – sửa đúng theo trang của bạn:
+            appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
+
+            macDinhDiaDiem: "",
+            tuDongKhoaCoSo: false,
+            loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
+
+            async onLoginSuccess(nv, ctx) {
+                // 1. Kiểm tra quyền xem trang theo bảng nv_page
+                if (window.kiemTraQuyenXemTrang) {
+                    const ok = await window.kiemTraQuyenXemTrang("baocaoxnt17.html");
+                    if (!ok) {
+                        // hienCamTruyCap đã hiển thị lý do, nên chỉ return
+                        return;
+                    }
+                }
+
+                // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
+                if (window.taiBaoCaoXNT) {
+                    await window.taiBaoCaoXNT();
+                }
+            },
+        });
     </script>
 
-    <script>
-/** SIMPLE MODE cho XNT17 – ẩn bớt bộ lọc & cột bảng như yêu cầu */
-(function () {
-  const SIMPLE_MODE = true; // chỉ để đọc – có thể bỏ
-
-  document.addEventListener('DOMContentLoaded', () => {
-    // 1) ẨN NHÓM INPUT: khách hàng, nhân viên, màu sắc, mã hàng
-    const hidePopupGroupByInputId = (inputId) => {
-      const el = document.getElementById(inputId);
-      if (el) {
-        const grp = el.closest('.input-popup-group');
-        if (grp) grp.style.display = 'none';
-      }
-    };
-    hidePopupGroupByInputId('khachhangInput');
-    hidePopupGroupByInputId('nhanvienInput');
-    hidePopupGroupByInputId('mausacInput');
-    //hidePopupGroupByInputId('maspInput');
-    hidePopupGroupByInputId('chungloaiInput');
-
-    // 2) CHECKBOX “Chỉ hàng dương” → CHECK SẴN, GIỮ LẠI
-    const locDuong = document.getElementById('locDuong');
-    if (locDuong) {
-      locDuong.checked = true;
-      // đảm bảo khi người dùng bấm Xem báo cáo lần đầu chưa load giá trị → vẫn giữ true
-      locDuong.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    // 3) ẨN CÁC CHECKBOX CÒN LẠI
-    const hideCheckLabel = (checkboxId) => {
-      const cb = document.getElementById(checkboxId);
-      if (cb) {
-        const label = cb.closest('label');
-        if (label) label.style.display = 'none';
-      }
-    };
-    hideCheckLabel('locAm');
-    hideCheckLabel('locHet');
-    hideCheckLabel('locPhatSinhNhap');
-    hideCheckLabel('locPhatSinhXuat');
-    hideCheckLabel('tonghopSizeCheckbox');
-    hideCheckLabel('locNCCCheckbox');
-
-    // 4) ẨN NÚT "Copy bảng", "Xuất Excel"
-    // (nút không có id, nên ẩn theo onclick)
-    document.querySelectorAll('button[onclick="copyBang()"]').forEach(b => b.style.display = 'none');
-    document.querySelectorAll('button[onclick="window.xuatExcelToanBoXNT17()"]').forEach(b => b.style.display = 'none');
-
-    // 5) ẨN DÒNG THÔNG TIN TỔNG HỢP
-    const xntSummary = document.getElementById('xntSummary');
-    if (xntSummary) xntSummary.style.display = 'none';
-
-    // 6) CHỈ GIỮ CÁC CỘT: STT, MÃ HÀNG, KÍCH CỠ, TỒN CS1, TỒN CS2, CUỐI KỲ, GIÁ LẺ
-    //    → sau mỗi lần tải/đổi trang, gọi "applySimpleColumns" để ẩn các cột khác
-    function applySimpleColumns() {
-      if (!window.hot || typeof window.hot.getColHeader !== 'function') return;
-
-      // Lấy headers hiện đang hiển thị
-      const headers = Array.from({ length: window.hot.countCols() }, (_, i) => window.hot.getColHeader(i))
-        .map(h => (String(h || '').trim().toLowerCase()));
-
-      // Danh sách tên cột mong muốn (so khớp "chứa" để linh hoạt tiêu đề)
-      const WANT = [
-        'stt',          // số thứ tự
-        'mã hàng', 'ma hang', 'masp',
-        'kích cỡ', 'kich co', 'size',
-        'tồn cơ sở 1', 'ton cs1', 'tồn cs1',
-        'tồn cơ sở 2', 'ton cs2', 'tồn cs2',
-        'cuối kỳ', 'cuoi ky', 'ck', 'cuoiky',
-        'giá lẻ', 'gia le', 'giale'
-      ];
-
-      const wantIdx = [];
-      headers.forEach((h, idx) => {
-        const hit = WANT.some(w => h.includes(w));
-        if (hit) wantIdx.push(idx);
-      });
-
-      // Nếu vì lý do tiêu đề không trùng khớp, thử dựa theo prop data (optional)
-      if (wantIdx.length === 0 && typeof window.hot.getSettings === 'function') {
-        const st = window.hot.getSettings();
-        if (Array.isArray(st.columns)) {
-          const props = st.columns.map(c => (c && c.data ? String(c.data).toLowerCase() : ''));
-          const WANT_PROP = ['stt', 'masp', 'size', 'ton_cs1', 'toncs1', 'ton_cs2', 'toncs2', 'cuoiky', 'gia_le', 'giale', 'gia'];
-          props.forEach((p, idx) => {
-            if (WANT_PROP.some(w => p.includes(w))) wantIdx.push(idx);
-          });
-        }
-      }
-
-      // Tạo danh sách cột cần ẩn = tất cả cột trừ wantIdx
-      const total = window.hot.countCols();
-      const toHide = [];
-      for (let i = 0; i < total; i++) if (!wantIdx.includes(i)) toHide.push(i);
-
-      // Ẩn bằng plugin hiddenColumns
-      if (typeof window.hot.updateSettings === 'function') {
-        window.hot.updateSettings({
-          hiddenColumns: { columns: toHide, indicators: false }
-        });
-        // Render lại để ăn ẩn/hiện
-        window.hot.render && window.hot.render();
-      }
-    }
-
-    // Hook sau khi nhấn "Xem báo cáo" – bọc hàm gốc nếu có
-    const wrapAfter = (name) => {
-      const fn = window[name];
-      if (typeof fn === 'function') {
-        window[name] = async function (...args) {
-          const r = fn.apply(this, args);
-          // Hỗ trợ cả sync/async
-          try { await r; } catch (e) {}
-          // đợi 1 tick để HOT vẽ xong rồi ẩn cột
-          setTimeout(applySimpleColumns, 0);
-          return r;
-        };
-      }
-    };
-
-    wrapAfter('taiBaoCaoXNT');   // khi tải mới dữ liệu
-    wrapAfter('nextPage');       // chuyển trang
-    wrapAfter('prevPage');       // chuyển trang
-    wrapAfter('gotoPage');       // nhảy trang
-
-    // Nếu bảng đã có sẵn (ví dụ trang tự render lúc vào), cố gắng ẩn ngay
-    setTimeout(applySimpleColumns, 400);
-  });
-})();
-</script>
-
-<script>
-/** Tắt auto-run báo cáo lúc mở trang + không auto-check "Phát sinh bán trong kỳ" */
-(function () {
-  // 1) Khóa auto-run lần đầu nếu có script ngoài gọi taiBaoCaoXNT() trên DOMContentLoaded
-  let allowRun = false;
-  const installGuard = () => {
-    // Nếu hàm chưa sẵn sàng, thử lại chút nữa (vì file ngoài là module)
-    if (typeof window.taiBaoCaoXNT !== 'function') {
-      setTimeout(installGuard, 50);
-      return;
-    }
-    const original = window.taiBaoCaoXNT;
-    // Chặn mọi lời gọi KHÔNG DO NGƯỜI DÙNG
-    window.taiBaoCaoXNT = function (...args) {
-      if (!allowRun) {
-        // Bị chặn: do auto-run khi vừa mở trang
-        return;
-      }
-      return original.apply(this, args);
-    };
-
-    // Gắn lại onclick của nút "Xem báo cáo" để bật allowRun trước khi chạy
-    const btn = document.querySelector('button[onclick="taiBaoCaoXNT()"]');
-    if (btn) {
-      btn.onclick = function (ev) {
-        allowRun = true;           // chỉ khi người dùng bấm mới cho phép chạy
-        return original();
-      };
-    }
-  };
-
-  // 2) Luôn bỏ check "Phát sinh bán trong kỳ" khi tải trang
-  const uncheckPhatSinhBan = () => {
-    const cb = document.getElementById('locPhatSinhXuat');
-    if (cb) {
-      cb.checked = false;
-      // Nếu script ngoài cố thao tác lại, ta vẫn hạ về false sau 1 tick
-      setTimeout(() => { cb.checked = false; }, 0);
-    }
-  };
-
-  // Cài guard sớm (trước khi DOMContentLoaded fire)
-  installGuard();
-
-  // Khi DOM sẵn sàng: đảm bảo checkbox không bị tick
-  document.addEventListener('DOMContentLoaded', uncheckPhatSinhBan);
-})();
-</script>
-
-
+    <!-- Handsontable + script xử lý XNT17 -->
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+    <script type="module" src="./scripts/baocaoxnt17.js"></script>
 
 </body>
 
