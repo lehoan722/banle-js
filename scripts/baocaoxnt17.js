@@ -107,6 +107,11 @@ window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
 function val(id) { return document.getElementById(id)?.value ?? ""; }
 function bool(id) { return document.getElementById(id)?.checked ?? false; }
 function normMasp(s) { return (s || "").trim().toUpperCase(); }
+function toLocalISO(d) {
+    const pad = n => String(n).toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 
 function getDSMasp() {
     // 1) Giữ nguyên: đọc từ sessionStorage (luồng cũ)
