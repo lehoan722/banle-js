@@ -625,9 +625,17 @@ async function renderOneProductDetail(masp) {
     ]);
 
     const { data: hanghoa, error: err1 } = hanghoaRes;
-    if (err1 || !hanghoa) return;
+    if (err1 || !hanghoa) {
+        return `<div style="color:red">Không lấy được thông tin sản phẩm ${masp}</div>`;
+    }
+
+    // Lưu nhóm hàng để dùng cho chức năng "tìm sản phẩm tương đồng theo size"
+    const groupVal = getHanghoaGroup(hanghoa);
+    window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
+    window.PRODUCT_GROUP_MAP[masp] = groupVal || '';
 
     const nhapList = nhapListRes.data || [];
+
     const k1 = k1Res.data || [];
     const k2 = k2Res.data || [];
     let xntdata = cachedXnt || (xntRes && xntRes.data) || [];
@@ -738,8 +746,9 @@ async function renderOneProductDetail(masp) {
     if (rightBox) {
         rightBox.innerHTML = '<div id="xntHot" style="max-width:100%;"></div>';
         const el = document.getElementById('xntHot');
-        initXntHot(el, rowMap);
+        initXntHot(el, rowMap, masp);
     }
+
 
     // Ảnh sản phẩm dưới bảng
     setProductImageByMasp(hanghoa.masp);
@@ -818,11 +827,16 @@ async function renderProductDetailHTML(masp) {
     ]);
 
     const { data: hanghoa, error: err1 } = hanghoaRes;
-    if (err1 || !hanghoa) {
-        return `<div style="color:red">Không lấy được thông tin sản phẩm ${masp}</div>`;
-    }
+    if (err1 || !hanghoa) return;
+
+    // Lưu nhóm hàng để dùng cho chức năng "tìm sản phẩm tương đồng theo size"
+    const groupVal = getHanghoaGroup(hanghoa);
+    CURRENT_GROUP = groupVal || '';
+    window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
+    window.PRODUCT_GROUP_MAP[masp] = CURRENT_GROUP;
 
     const nhapList = nhapListRes.data || [];
+
     const k1 = k1Res.data || [];
     const k2 = k2Res.data || [];
     let xntdata = cachedXnt || (xntRes && xntRes.data) || [];
@@ -1540,7 +1554,13 @@ function buildXntRows(rowMap) {
 }
 
 function initXntHot(containerEl, rowMap, masp) {
+    // Nếu không truyền masp (chế độ 1 mã cũ) thì dùng CURRENT_MASP hoặc gán key tạm
+    if (!masp) {
+        masp = (window.CURRENT_MASP || '').toUpperCase() || '_SINGLE_';
+    }
+
     const data = buildXntRows(rowMap);
+
 
     const columns = XNT_COLS.map(c => {
         if (c.key === 'size') return { data: c.key, readOnly: true, className: 'htCenter htBold' };
@@ -1596,15 +1616,100 @@ function initXntHot(containerEl, rowMap, masp) {
                 }
                 hot.render();
             }
+        },
+        // 👉 Click vào bất kỳ ô nào trên dòng size (trừ dòng Tổng) để mở tìm tương đồng
+        afterOnCellMouseDown: (event, coords) => {
+            const row = coords?.row;
+            if (row == null || row <= 0) return;   // bỏ hàng Tổng (row 0)
+
+            const sourceData = hot.getSourceData();
+            const rowObj = sourceData[row];
+            if (!rowObj) return;
+
+            const rawSize = rowObj.size || '';
+            if (!rawSize) return;
+
+            const sizeEU = String(rawSize).split('/')[0].trim(); // ví dụ "41" từ "41/XL/52/180"
+            if (!sizeEU) return;
+
+            const branch = (window.CURRENT_BRANCH || '').trim().toLowerCase();
+            if (!branch) {
+                showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
+                return;
+            }
+
+            const groupMap = window.PRODUCT_GROUP_MAP || {};
+            const groupVal = (masp && groupMap[masp]) || (window.CURRENT_GROUP || '');
+
+            openSimilarSearchFromSize({
+                masp,
+                sizeEU,
+                branch,
+                group: groupVal
+            });
         }
     });
+
 
     xntHotInstances[masp] = hot;  // lưu lại
     return hot;
 }
 
+// Mở trang bán theo size và truyền điều kiện tìm tương đồng qua localStorage
+function openSimilarSearchFromSize({ masp, sizeEU, branch, group }) {
+    const normMasp = (masp || '').toUpperCase();
+    const sizeKey = String(sizeEU || '').trim();
+    if (!normMasp || !sizeKey) {
+        showToast('Không lấy được thông tin sản phẩm / size để tìm tương đồng!', 'warn');
+        return;
+    }
+
+    const branchClean = (branch || '').toLowerCase();
+    if (!branchClean || (branchClean !== 'cs1' && branchClean !== 'cs2')) {
+        showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
+        return;
+    }
+
+    const payload = {
+        masp: normMasp,
+        sizeEU: sizeKey,
+        branch: branchClean,   // 'cs1' | 'cs2'
+        group: group || '',    // nhóm hàng (nếu lấy được)
+        createdAt: Date.now()
+    };
+
+    try {
+        localStorage.setItem('bantheosize_similar_params', JSON.stringify(payload));
+    } catch (err) {
+        console.error('Không lưu được tham số tìm tương đồng:', err);
+    }
+
+    // Mở trang bán theo size (cùng thư mục với trang 333)
+    const url = 'bantheosize.html?mode=similar';
+    window.open(url, '_blank');
+}
+
 
 /* ====== TIỆN ÍCH ====== */
+/* ====== TIỆN ÍCH ====== */
+
+// Helper: lấy "nhóm hàng" từ bản ghi dmhanghoa.
+// Tùy tên cột thực tế trong bảng (ví dụ: nhomhang, nhom, chungloai, ...).
+function getHanghoaGroup(hanghoa) {
+    if (!hanghoa) return '';
+    const candidates = [
+        'nhomhang', 'nhom', 'nhom_hang',
+        'nhomsp', 'nhom_sp',
+        'chungloai', 'chung_loai',
+        'nhom1', 'nhom2'
+    ];
+    for (const key of candidates) {
+        if (Object.prototype.hasOwnProperty.call(hanghoa, key) && hanghoa[key]) {
+            return String(hanghoa[key]);
+        }
+    }
+    return '';
+}
 
 // Base ảnh sản phẩm
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -1612,9 +1717,13 @@ const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/pub
 const STORAGE_BUCKET = 'anhsanpham';
 
 let CURRENT_MASP = null;        // đang hiển thị 1 sản phẩm nào
+let CURRENT_GROUP = '';         // nhóm hàng của sản phẩm đang hiển thị (để tìm tương đồng)
 let _pendingBlob = null;        // blob đã resize (để upload)
 // NEW: cờ điều khiển luồng tự lưu ảnh + mở đặt hàng
-let _orderAutoFlow = false;  // true khi bấm Đặt hàng mà chưa có ảnh
+let _orderAutoFlow = false;     // true khi bấm Đặt hàng mà chưa có ảnh
+
+// Map: masp -> nhóm hàng (dùng cho chế độ nhiều mã)
+window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
 
 
 // Thử .JPG → .jpg → .PNG → .png
