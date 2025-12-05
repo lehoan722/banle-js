@@ -390,21 +390,25 @@
     <!-- SheetJS for export Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
+
+
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
         const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'; // <-- Thay đúng anon key
 
-        // Lấy token từ localStorage (nếu có)
         const token = localStorage.getItem('supabase_access_token');
 
-        // Nếu có token thì khởi tạo client với Authorization header
-        export const supabase = token
+        // KHÔNG dùng export nữa
+        const supabase = token
             ? createClient(supabaseUrl, supabaseKey, {
                 global: { headers: { Authorization: `Bearer ${token}` } }
             })
             : createClient(supabaseUrl, supabaseKey);
+
+        // Nếu các file cũ / code khác cần supabase global:
+        window.supabase = supabase;
 
         // 🔎 LẤY GIÁ LẺ THEO DANH SÁCH MÃ (batch)
         async function fetchGiaLeByMasps(masps = []) {
