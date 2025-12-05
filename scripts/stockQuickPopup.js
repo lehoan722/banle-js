@@ -394,7 +394,7 @@
       startLeft = rect.left;
       startTop = rect.top;
 
-      //document.addEventListener("mousemove", onMove);
+      document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
       document.addEventListener("touchmove", onMove, { passive: false });
       document.addEventListener("touchend", onUp);
@@ -431,7 +431,7 @@
 
     const onUp = () => {
       dragging = false;
-      //document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onUp);
