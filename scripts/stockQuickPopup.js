@@ -488,17 +488,13 @@
       headerEl.dataset.dragBound = "1";
     }
 
-    const scrollX = window.scrollX || window.pageXOffset || 0;
-    const scrollY = window.scrollY || window.pageYOffset || 0;
-    const vw = window.innerWidth || document.documentElement.clientWidth;
-    const vh = window.innerHeight || document.documentElement.clientHeight;
+        // Luôn cố định popup ở góc trên bên phải
+    popup.style.position = "fixed";
+    popup.style.top = "8px";
+    popup.style.right = "8px";
+    popup.style.left = "auto";
+    popup.style.transform = "none";
 
-    let left = scrollX + vw / 2;
-    let top = scrollY + vh / 2;
-
-    popup.style.left = `${left}px`;
-    popup.style.top = `${top}px`;
-    popup.style.transform = "translate(-50%, -50%)";
 
     bindGlobalCloseHandlers();
     hideAllPopups();
