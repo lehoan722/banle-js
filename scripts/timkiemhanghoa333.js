@@ -491,24 +491,27 @@ async function triggerSearch(_masp = null) {
         return;
     }
 
-    // 👉 Cache XNT theo từng mã để dùng lại, không phải gọi RPC từng mã
+    // 👉 Cache XNT theo từng mã (chuẩn hoá masp: trim + toUpperCase)
     window.XNT_BULK_MAP = {};
     for (const row of bulkData) {
-        const key = String(row.masp || "").toUpperCase();
+        const key = String(row.masp || "").trim().toUpperCase();
+        if (!key) continue;
         if (!window.XNT_BULK_MAP[key]) window.XNT_BULK_MAP[key] = [];
         window.XNT_BULK_MAP[key].push(row);
     }
 
-    // Gom danh sách mã có dữ liệu XNT
-    let productWithXNT = Array.from(new Set(bulkData.map(r => r.masp)));
+    // Gom danh sách mã có dữ liệu XNT (dùng key đã chuẩn hoá)
+    let productWithXNT = Object.keys(window.XNT_BULK_MAP);
 
     // Nếu đang ở chế độ nhiều mã (textarea) → sắp xếp đúng thứ tự người dùng nhập
     if (Array.isArray(candidates) && candidates.length > 0) {
-        const orderMap = new Map(candidates.map((m, i) => [m.toUpperCase(), i]));
+        const norm = s => String(s || "").trim().toUpperCase();
+
+        const orderMap = new Map(candidates.map((m, i) => [norm(m), i]));
+
         productWithXNT.sort((a, b) => {
-            const ia = orderMap.get((a || "").toUpperCase());
-            const ib = orderMap.get((b || "").toUpperCase());
-            // Mã không có trong textarea sẽ đẩy về cuối (nếu có)
+            const ia = orderMap.get(norm(a));
+            const ib = orderMap.get(norm(b));
             return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
         });
     }
