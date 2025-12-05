@@ -1,41 +1,23 @@
 // stockQuickPopup.js
 // Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xnt17_tonban_snapshot
-// LƯU Ý: supabase được tạo global trong supabaseClient.js hoặc supabaseClientGlobal.js
+// LƯU Ý: supabase phải được tạo global ở nơi khác (authModule.js / supabaseClient.js)
 
 (function () {
-  // ===== CẤU HÌNH SUPABASE DÙNG CHUNG =====
-  const SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
-  const SUPABASE_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
-
-  // Hàm đảm bảo luôn có window.supabase
-  async function ensureSupabaseClient() {
+  // ===== HÀM LẤY SUPABASE GLOBAL AN TOÀN =====
+  function getSupabaseClient() {
     if (typeof window === "undefined") return null;
-
-    // Nếu đã có client (từ authModule hoặc trang khác) thì dùng lại
+    const client = window.supabase;
     if (
-      window.supabase &&
-      window.supabase.auth &&
-      typeof window.supabase.auth.setSession === "function"
+      !client ||
+      !client.auth || // client hợp lệ của supabase-js v2 đều có .auth
+      typeof client.from !== "function"
     ) {
-      return window.supabase;
-    }
-
-    // Chưa có → tự tạo client anon
-    try {
-      const { createClient } = await import(
-        "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
-      );
-      window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-      console.log("[StockQuickPopup] Tự tạo Supabase client global");
-      return window.supabase;
-    } catch (e) {
       console.warn(
-        "[StockQuickPopup] Không tạo được Supabase client:",
-        e
+        "[StockQuickPopup] supabase global chưa sẵn sàng. Hãy đảm bảo đã load authModule.js hoặc supabaseClient.js trước."
       );
       return null;
     }
+    return client;
   }
 
   // ===== CSS cho popup =====
@@ -60,9 +42,9 @@
     display: none;
     overflow: hidden;
     top: 8px;
-  right: 8px;
-  left: auto;
-  transform: none;
+    right: 8px;
+    left: auto;
+    transform: none;
   }
 
   .sq-stock-popup.show {
@@ -207,11 +189,10 @@
         const f = JSON.parse(raw);
         if (f.den_ngay) return f.den_ngay;
       }
-    } catch (e) { }
+    } catch (e) {}
     return new Date().toISOString().slice(0, 10);
   }
 
-  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
@@ -226,15 +207,13 @@
     let vitri_cs1 = "";
     let vitri_cs2 = "";
 
-    // Đảm bảo luôn có client
-    const client = await ensureSupabaseClient();
+    const client = getSupabaseClient();
     if (!client) {
-      // Không có client → trả về rỗng, tránh crash
+      // Không có client → không crash, chỉ trả về rỗng
       return { masp, rows, vitri_cs1, vitri_cs2 };
     }
 
     try {
-      // GỌI SONG SONG: RPC + lấy vị trí từ dmhanghoa
       const [snapRes, vitriRes] = await Promise.all([
         client.rpc("xnt17_tonban_snapshot", {
           p_masps: [masp],
@@ -247,7 +226,6 @@
           .eq("masp", masp),
       ]);
 
-      // Kết quả RPC tồn/bán
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
         rows = data.map((r) => ({
@@ -262,7 +240,6 @@
         console.warn("xnt17_tonban_snapshot error:", error);
       }
 
-      // Kết quả vị trí kho
       const { data: vitriData, error: vitriErr } = vitriRes || {};
       if (vitriErr) {
         console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
@@ -277,7 +254,7 @@
     return { masp, rows, vitri_cs1, vitri_cs2 };
   }
 
-  // ===== HTML popup: bảng bên trái + ảnh bên phải (PC) / xếp dọc (mobile) =====
+  // ===== HTML popup =====
   function buildTableHtml(masp, payload) {
     const upper = String(masp || "").toUpperCase();
     const rows = payload && Array.isArray(payload.rows)
@@ -560,4 +537,3 @@
     };
   }
 })();
-
