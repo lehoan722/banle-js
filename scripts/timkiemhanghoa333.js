@@ -1588,6 +1588,10 @@ function initXntHot(containerEl, rowMap, masp) {
         stretchH: 'all',
         height: 'auto',
         manualColumnResize: true,
+        // 👇 Thêm 3 dòng này
+        selectionMode: 'single',   // chỉ cho chọn 1 ô
+        fillHandle: false,         // tắt ô vuông kéo fill
+        dragToScroll: false,       // tắt auto scroll khi kéo
         contextMenu: ['row_above', 'row_below', 'remove_row', 'sep1', 'undo', 'redo'],
         cells: (row, col, prop) => {
             const meta = {};
