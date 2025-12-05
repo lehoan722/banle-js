@@ -3,10 +3,39 @@
 // LƯU Ý: supabase được tạo global trong supabaseClient.js hoặc supabaseClientGlobal.js
 
 (function () {
-  if (typeof supabase === "undefined") {
-    console.warn(
-      "stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClient trước."
-    );
+  // ===== CẤU HÌNH SUPABASE DÙNG CHUNG =====
+  const SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
+  const SUPABASE_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
+
+  // Hàm đảm bảo luôn có window.supabase
+  async function ensureSupabaseClient() {
+    if (typeof window === "undefined") return null;
+
+    // Nếu đã có client (từ authModule hoặc trang khác) thì dùng lại
+    if (
+      window.supabase &&
+      window.supabase.auth &&
+      typeof window.supabase.auth.setSession === "function"
+    ) {
+      return window.supabase;
+    }
+
+    // Chưa có → tự tạo client anon
+    try {
+      const { createClient } = await import(
+        "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"
+      );
+      window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log("[StockQuickPopup] Tự tạo Supabase client global");
+      return window.supabase;
+    } catch (e) {
+      console.warn(
+        "[StockQuickPopup] Không tạo được Supabase client:",
+        e
+      );
+      return null;
+    }
   }
 
   // ===== CSS cho popup =====
