@@ -385,12 +385,6 @@
         </div>
     </div>
 
-    <!-- QR Code lib -->
-    <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
-    <!-- SheetJS for export Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
-
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -1900,20 +1894,27 @@
 
         // 2) Mỗi khi quay lại tab, làm “refresh nhẹ”
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                supabase.auth.refreshSession().catch(() => { });
+            const sb = window.supabase;         // lấy từ global
+            if (!document.hidden && sb?.auth) {
+                sb.auth.refreshSession().catch(() => { });
             }
         });
 
         // 3) Gia cố: canh thời điểm gần hết hạn thì refresh sớm
         const REFRESH_EARLY_SEC = 300; // 5 phút trước khi hết hạn
+
         setInterval(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const sb = window.supabase;
+            if (!sb?.auth) return;              // chưa khởi tạo thì bỏ qua
+
+            const { data: { session } = { session: null } } = await sb.auth.getSession();
             const expMs = session?.expires_at ? session.expires_at * 1000 : 0;
+
             if (expMs && expMs - Date.now() < REFRESH_EARLY_SEC * 1000) {
-                await supabase.auth.refreshSession().catch(() => { });
+                await sb.auth.refreshSession().catch(() => { });
             }
         }, 60 * 1000);
+
 
     </script>
 
