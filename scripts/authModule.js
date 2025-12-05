@@ -94,13 +94,26 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const passNVInput = document.getElementById('login-password-nv');
   const errorEl = document.getElementById('login-error');
 
-  // Giá trị mặc định cơ sở
-  if (macDinhDiaDiem) {
-    csSelect.value = macDinhDiaDiem;
+  // Giá trị mặc định cơ sở:
+  //  - Ưu tiên lấy từ localStorage.diadiem (lần đăng nhập trước)
+  //  - Nếu không có thì dùng macDinhDiaDiem truyền vào
+  try {
+    const savedBranch = localStorage.getItem('diadiem');
+    if (savedBranch) {
+      csSelect.value = savedBranch;
+    } else if (macDinhDiaDiem) {
+      csSelect.value = macDinhDiaDiem;
+    }
+  } catch (e) {
+    if (macDinhDiaDiem) {
+      csSelect.value = macDinhDiaDiem;
+    }
   }
+
   if (tuDongKhoaCoSo) {
     csSelect.disabled = true;
   }
+
 
   async function xuLyDangNhap(e) {
     e.preventDefault();
@@ -177,7 +190,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       }
 
       // Lưu thông tin vào localStorage giống các trang khác
-            // Lưu thông tin vào localStorage giống các trang khác
+      // Lưu thông tin vào localStorage giống các trang khác
       const csFinal = diadiem || cs;
 
       localStorage.setItem('diadiem', csFinal);
@@ -230,6 +243,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       localStorage.getItem('last_login_manv');
 
     const savedPass = localStorage.getItem('last_login_password');
+    const savedBranch = localStorage.getItem('diadiem');
 
     if (savedManv && manvInput) {
       manvInput.value = savedManv;
@@ -237,9 +251,12 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     if (savedPass && passNVInput) {
       passNVInput.value = savedPass;
     }
+    if (savedBranch && csSelect) {
+      csSelect.value = savedBranch;
+    }
 
-    // Nếu đã có sẵn cả mã NV + mật khẩu -> tự động đăng nhập luôn
-    if (form && savedManv && savedPass) {
+    // Nếu đã có sẵn MÃ NV + MẬT KHẨU + CƠ SỞ -> tự động đăng nhập luôn
+    if (form && savedManv && savedPass && savedBranch) {
       setTimeout(() => {
         try {
           if (typeof form.requestSubmit === 'function') {
@@ -257,6 +274,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   } catch (e) {
     console.warn('Không đọc được thông tin đăng nhập từ localStorage:', e);
   }
+
 
   // 🔹 Enter ở ô MÃ NV -> nhảy sang ô MẬT KHẨU
   manvInput.addEventListener('keydown', (e) => {
