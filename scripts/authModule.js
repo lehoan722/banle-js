@@ -1,5 +1,5 @@
 // scripts/authModule.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm';
 
 // ==== 1. CẤU HÌNH SUPABASE DÙNG CHUNG TRÊN FRONTEND ====
 // (Anon key public giống như bạn đã dùng từ trước, KHÔNG phải service key)
