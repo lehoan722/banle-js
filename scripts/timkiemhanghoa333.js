@@ -1380,29 +1380,24 @@ window.onload = async function () {
     filePick?.addEventListener('change', (e) => decodeFromFile(e.target.files?.[0]));
 };
 
+// ==== AUTO SEARCH SAU KHI ĐĂNG NHẬP (F7/F8) ====
 
-// Gộp cùng onload hiện có:
-const _oldOnload = window.onload;
-window.onload = async function () {
-    // giữ hành vi cũ: kiểm tra session và ẩn/hiện box đăng nhập
-    if (typeof _oldOnload === "function") await _oldOnload();
-    // 🔊 mở khóa audio một lần cho iOS/Safari
-    try { setupBeepUnlockOnce(document); } catch (_) { }
-
-    // nhận mã từ URL và tìm kiếm luôn
+// gom lại logic tìm từ URL ?masp=... + localStorage TKHH333_BULK
+async function autoSearchFromUrlAndBulk() {
+    // 1. Nhận mã từ URL và tìm kiếm luôn
     const q = getQuery("masp");
     if (q && q.length >= 3) {
         const masp = q.toUpperCase();
         const ip = document.getElementById("maspInput");
         if (ip) ip.value = masp;
-        // nếu chưa đăng nhập RLS có thể chặn; vẫn cứ gọi,
-        // user có thể đăng nhập rồi bấm tìm lại nếu cần
         try {
             await triggerSearch(masp);
-        } catch (e) { /* bỏ qua lỗi */ }
+        } catch (e) {
+            console.error("Lỗi auto triggerSearch từ URL:", e);
+        }
     }
 
-    // NHẬN DANH SÁCH MÃ TỪ localStorage (nếu được F8 truyền sang)
+    // 2. Nhận danh sách mã từ localStorage (F8 truyền sang)
     const bulk = localStorage.getItem("TKHH333_BULK");
     if (bulk) {
         const ta = document.getElementById("bulkTextarea");
@@ -1414,6 +1409,37 @@ window.onload = async function () {
             console.error("Lỗi auto triggerSearch từ F8:", e);
         }
     }
+}
+
+// đợi đến khi authModule có thông tin nhân viên rồi mới gọi autoSearchFromUrlAndBulk
+async function waitForLoginAndAutoSearch() {
+    let attempts = 0;
+    let info = null;
+
+    while (attempts < 40) { // ~10s nếu mỗi vòng 250ms
+        try {
+            info = await authModule.getCurrentUserInfo();
+        } catch (e) {
+            info = null;
+        }
+        if (info && info.manv) break; // đã đăng nhập xong
+        await new Promise(res => setTimeout(res, 250));
+        attempts++;
+    }
+
+    // sau khi có (hoặc quá thời gian chờ) thì chạy auto search
+    await autoSearchFromUrlAndBulk();
+}
+
+
+// Gộp cùng onload hiện có:
+const _oldOnload = window.onload;
+window.onload = async function () {
+    if (typeof _oldOnload === "function") await _oldOnload();
+    try { setupBeepUnlockOnce(document); } catch (_) { }
+
+    // ⭐ Đợi đăng nhập xong rồi mới auto search (F7/F8)
+    waitForLoginAndAutoSearch().catch(console.error);
 
     // === ĐẶT HÀNG: gắn sự kiện ===
     document.getElementById('orderBtn')?.addEventListener('click', async () => {
