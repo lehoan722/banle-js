@@ -1587,6 +1587,14 @@ function buildXntRows(rowMap) {
 
 }
 
+// Lưu lần click gần nhất trên bảng size để bắt double-click
+let lastSizeClick = {
+    time: 0,
+    row: null,
+    masp: null
+};
+
+
 function initXntHot(containerEl, rowMap, masp) {
     // Nếu không truyền masp (chế độ 1 mã cũ) thì dùng CURRENT_MASP hoặc gán key tạm
     if (!masp) {
@@ -1656,36 +1664,55 @@ function initXntHot(containerEl, rowMap, masp) {
             }
         },
         // 👉 Click vào bất kỳ ô nào trên dòng size (trừ dòng Tổng) để mở tìm tương đồng
+                // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
         afterOnCellMouseDown: (event, coords) => {
             const row = coords?.row;
             if (row == null || row <= 0) return;   // bỏ hàng Tổng (row 0)
 
-            const sourceData = hot.getSourceData();
-            const rowObj = sourceData[row];
-            if (!rowObj) return;
+            const now = Date.now();
 
-            const rawSize = rowObj.size || '';
-            if (!rawSize) return;
+            // kiểm tra có phải double-click cùng dòng & cùng mã không
+            if (
+                lastSizeClick.row === row &&
+                lastSizeClick.masp === masp &&
+                (now - lastSizeClick.time) < 350   // ngưỡng double-click ~ 350ms
+            ) {
+                // === xử lý mở bán theo size ===
+                const sourceData = hot.getSourceData();
+                const rowObj = sourceData[row];
+                if (!rowObj) return;
 
-            const sizeEU = String(rawSize).split('/')[0].trim(); // ví dụ "41" từ "41/XL/52/180"
-            if (!sizeEU) return;
+                const rawSize = rowObj.size || '';
+                if (!rawSize) return;
 
-            const branch = (window.CURRENT_BRANCH || '').trim().toLowerCase();
-            if (!branch) {
-                showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
-                return;
+                const sizeEU = String(rawSize).split('/')[0].trim();
+                if (!sizeEU) return;
+
+                const branch = (window.CURRENT_BRANCH || '').trim().toLowerCase();
+                if (!branch) {
+                    showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
+                    return;
+                }
+
+                const groupMap = window.PRODUCT_GROUP_MAP || {};
+                const groupVal = (masp && groupMap[masp]) || (window.CURRENT_GROUP || '');
+
+                openSimilarSearchFromSize({
+                    masp,
+                    sizeEU,
+                    branch,
+                    group: groupVal
+                });
             }
 
-            const groupMap = window.PRODUCT_GROUP_MAP || {};
-            const groupVal = (masp && groupMap[masp]) || (window.CURRENT_GROUP || '');
-
-            openSimilarSearchFromSize({
-                masp,
-                sizeEU,
-                branch,
-                group: groupVal
-            });
+            // lưu lại click hiện tại để lần sau so double-click
+            lastSizeClick = {
+                time: now,
+                row,
+                masp
+            };
         }
+
     });
 
 
