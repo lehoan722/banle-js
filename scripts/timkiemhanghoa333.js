@@ -1,38 +1,43 @@
 import { supabase } from "./supabaseClient.js";
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
-// ==== 1. ĐĂNG NHẬP SUPABASE ====
-window.dangNhap = async function () {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const status = document.getElementById("authStatus");
-    status.textContent = "";
+// ==== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (AUTH MỚI) ====
+import * as authModule from "./authModule.js";
 
-    if (!email || !password) {
-        status.textContent = "Nhập đầy đủ email và mật khẩu!";
-        return;
-    }
+async function kiemTraQuyenXemTrangTimKiem333() {
+    try {
+        const userInfo = await authModule.getCurrentUserInfo();
+        if (!userInfo || !userInfo.manv) {
+            alert("Không lấy được thông tin nhân viên. Vui lòng đăng nhập lại.");
+            return false;
+        }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        status.textContent = "Sai email hoặc mật khẩu!";
-        return;
-    }
-    status.style.color = "green";
-    status.textContent = "Đăng nhập thành công!";
-    document.getElementById("authBox").style.display = "none";
-};
+        // path dùng để map với bảng phân quyền (bạn có thể chỉnh lại cho khớp)
+        const pathTrang = "timkiemhanghoa333.html";
 
-// ==== 2. Ẩn/hiện form đăng nhập khi load lại trang ==== 
-window.onload = async function () {
-    // Tự động ẩn/hiện box đăng nhập nếu đã đăng nhập
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-        document.getElementById("authBox").style.display = "none";
-    } else {
-        document.getElementById("authBox").style.display = "block";
+        const { data, error } = await authModule.getUserPagePermissions(userInfo.manv);
+        if (error) throw error;
+
+        const ds = (data || []).map(r => (r.path || "").toLowerCase());
+        const allowAll = ds.includes("*");
+        const allowThis = ds.includes(pathTrang.toLowerCase());
+
+        if (!allowAll && !allowThis) {
+            alert("Bạn không có quyền xem trang Tìm kiếm hàng hóa 333.");
+            return false;
+        }
+
+        return true;
+    } catch (err) {
+        console.error("Lỗi kiểm tra quyền xem trang:", err);
+        alert("Lỗi kiểm tra quyền truy cập. Vui lòng thử lại sau.");
+        return false;
     }
-};
+}
+
+// Cho HTML gọi được
+window.kiemTraQuyenXemTrangTimKiem333 = kiemTraQuyenXemTrangTimKiem333;
+
 
 // ====== CƠ SỞ ĐANG CHỌN (ưu tiên từ dropdown, nhớ lại qua localStorage) ======
 window.CURRENT_BRANCH = null;
