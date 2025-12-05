@@ -725,36 +725,39 @@ window.clearInput = function (id) { const el = document.getElementById(id); if (
 // Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
 // Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại),
 // nhưng chỉ lấy những mã còn tồn kho > 0 tại cơ sở đang chọn (CS1/CS2)
+// Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
+// và lọc theo tồn kho từng cơ sở (CS1/CS2) theo dropdown Địa điểm
 window.moTrangAnh = function () {
     if (!hotInstance) {
         alert("Chưa có dữ liệu để hiển thị ảnh.");
         return;
     }
 
-    // Lấy dữ liệu gốc của Handsontable cho trang hiện tại
-    const srcAll = hotInstance.getSourceData() || [];
+    // Lấy nguồn dữ liệu gốc của Handsontable (đúng theo thứ tự/đang có trong trang)
+    const src = hotInstance.getSourceData() || [];
 
-    // Xác định cơ sở đang chọn trong dropdown "Địa điểm"
-    const branchRaw = document.getElementById("diadiemSelect")?.value || "";
-    const branch = branchRaw.toLowerCase(); // "", "cs1", "cs2"
+    // Đọc địa điểm đang chọn: '', 'cs1', 'cs2'
+    const diadiemEl = document.getElementById("diadiemSelect");
+    const branch = diadiemEl ? (diadiemEl.value || "") : "";
 
-    // Lọc theo tồn kho cơ sở tương ứng
-    let src = srcAll;
+    // Lọc theo tồn kho từng cơ sở
+    let filteredRows = src;
     if (branch === "cs1") {
-        src = srcAll.filter(r => (Number(r?.ton_cs1) || 0) > 0);
+        filteredRows = src.filter(r => {
+            const tonCS1 = Number(r?.toncs1 ?? r?.ton_cs1 ?? 0);
+            return tonCS1 > 0;
+        });
     } else if (branch === "cs2") {
-        src = srcAll.filter(r => (Number(r?.ton_cs2) || 0) > 0);
+        filteredRows = src.filter(r => {
+            const tonCS2 = Number(r?.toncs2 ?? r?.ton_cs2 ?? 0);
+            return tonCS2 > 0;
+        });
     }
-    // Nếu branch = "" (Tất cả) → không lọc, giữ nguyên srcAll
-
-    if (!src.length) {
-        alert("Không có sản phẩm còn tồn kho tại cơ sở đã chọn để hiển thị ảnh.");
-        return;
-    }
+    // Nếu để Tất cả (''), không lọc thêm
 
     // Gom theo mã sản phẩm, ưu tiên giữ bản ghi có giale khác 0 nếu có
     const map = new Map(); // key = MASP, value = { masp, giale }
-    for (const r of src) {
+    for (const r of filteredRows) {
         const code = String(r?.masp || "").trim().toUpperCase();
         if (!code) continue;
         const price = Number(r?.giale || 0) || 0;
@@ -762,8 +765,8 @@ window.moTrangAnh = function () {
         if (!map.has(code)) {
             map.set(code, { masp: code, giale: price });
         } else {
+            // nếu đã có rồi nhưng giale đang 0, mà bản mới có giá > 0 → ưu tiên bản có giá
             const cur = map.get(code);
-            // Nếu bản đang có giá 0 mà bản mới có giá > 0 thì ưu tiên bản mới
             if ((cur.giale || 0) === 0 && price > 0) {
                 map.set(code, { masp: code, giale: price });
             }
@@ -772,44 +775,79 @@ window.moTrangAnh = function () {
 
     const list = Array.from(map.values());
     if (!list.length) {
-        alert("Không có mã hàng hợp lệ trong bảng.");
+        alert("Không có mã hàng phù hợp với điều kiện tồn kho/địa điểm.");
         return;
     }
 
-    // Dùng cùng key sessionStorage như XNT14/XNT15 để trang xem ảnh dùng chung được ngay
+    // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
     sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
 
-    // Mở trang xem ảnh XNT14 ở tab mới
+    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới
     window.open("xemanhxnt14.html", "_blank");
 };
 
 
-
-// ===================== INIT ===================== 
-function toLocalISO(d) {
-    const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 window.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 10);   // -1 hôm qua -10= 10 NGAY
+    yesterday.setDate(now.getDate() - 10);   // -1 hôm qua -10 = 10 ngày
 
     const den = document.getElementById("denNgay");
     const tu = document.getElementById("tuNgay");
     if (den) den.value = toLocalISO(now);        // hôm nay
-    if (tu) tu.value = toLocalISO(yesterday);  // hôm qua
+    if (tu) tu.value = toLocalISO(yesterday);    // hôm qua
 
-    // Tự động tick "Phát sinh bán trong kỳ"
+    // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
     const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = true;
+    if (cb) cb.checked = false;
 
-    // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
-    taiBaoCaoXNT();
+    // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get("mode");
+
+        // Chỉ xử lý khi mở bằng ?mode=similar
+        if (mode === "similar") {
+            const raw = localStorage.getItem("bantheosize_similar_params");
+            if (raw) {
+                const cfg = JSON.parse(raw);
+
+                const diadiemSelect = document.getElementById("diadiemSelect");
+                const sizeInput = document.getElementById("sizeInput");
+                const nhomhangInput = document.getElementById("nhomhangInput");
+
+                // branch: 'cs1' | 'cs2'
+                if (diadiemSelect && cfg.branch) {
+                    diadiemSelect.value = cfg.branch;
+                }
+                // sizeEU: chuỗi kích cỡ (vd: "41/XL/52/180")
+                if (sizeInput && cfg.sizeEU) {
+                    sizeInput.value = cfg.sizeEU;
+                }
+                // group: nhóm hàng của mã đang tìm
+                if (nhomhangInput && cfg.group) {
+                    nhomhangInput.value = cfg.group;
+                }
+            }
+
+            // Sau khi gán xong, tự động bấm nút "Xem báo cáo"
+            // dùng click() để đi qua guard ở script inline (nó gọi original() trực tiếp)
+            setTimeout(() => {
+                const btn = document.querySelector('button[onclick="taiBaoCaoXNT()"]');
+                if (btn) btn.click();
+            }, 300);
+
+            // Không cần auto-chạy gì thêm ở dưới
+            return;
+        }
+    } catch (e) {
+        console.error("Lỗi init chế độ similar:", e);
+    }
+
+    // ================== MỞ TRANG BÌNH THƯỜNG ==================
+    // Không tự chạy báo cáo nữa; người dùng phải bấm nút
+    // taiBaoCaoXNT();  // nếu muốn auto-chạy lại thì bỏ comment dòng này
 });
-
-
 
 
 /* ===== PREVIEW ẢNH (40%) =====
