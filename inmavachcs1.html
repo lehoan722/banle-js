@@ -381,6 +381,10 @@
             </div>
         </div>
 
+        <!-- QR Code lib -->
+        <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+        <!-- SheetJS for export Excel -->
+        <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
         <script type="module">
             // 1) Import client chuẩn + module đăng nhập dùng chung
@@ -1635,15 +1639,6 @@
                 });
             }
 
-            // Đăng nhập xong reload lại để token cập nhật
-            import { renderLoginModule } from './scripts/loginSupabaseModule.js';
-            renderLoginModule({
-                supabaseUrl,
-                supabaseKey,
-                onLoginSuccess: (accessToken) => {
-                    window.location.reload(); // Đăng nhập xong reload lại để token cập nhật
-                }
-            });
 
             function pushProductToGrid(product) {
                 if (!hot) return;
