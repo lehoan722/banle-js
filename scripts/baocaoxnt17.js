@@ -57,41 +57,41 @@ let totalRows = 0;
 
 // ================== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (chuẩn auth) ==================
 async function kiemTraQuyenXemTrang(pathTrang) {
-  // 1. Lấy thông tin nhân viên đang đăng nhập từ authModule
-  const nv = await authModule.getCurrentUserInfo();
+    // 1. Lấy thông tin nhân viên đang đăng nhập từ authModule
+    const nv = await authModule.getCurrentUserInfo();
 
-  if (!nv || !nv.manv) {
-    hienCamTruyCap("Bạn chưa đăng nhập.");
-    return false;
-  }
+    if (!nv || !nv.manv) {
+        hienCamTruyCap("Bạn chưa đăng nhập.");
+        return false;
+    }
 
-  // 2. Lấy danh sách trang được phép xem
-  const { data, error } = await supabase.rpc("get_pages_for_manv", {
-    p_manv: nv.manv,
-  });
+    // 2. Lấy danh sách trang được phép xem
+    const { data, error } = await supabase.rpc("get_pages_for_manv", {
+        p_manv: nv.manv,
+    });
 
-  if (error) {
-    hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
-    return false;
-  }
+    if (error) {
+        hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
+        return false;
+    }
 
-  const dsTrang = data?.map((r) => r.path) || [];
+    const dsTrang = data?.map((r) => r.path) || [];
 
-  // 3. Nếu KHÔNG phải admin và path trang không nằm trong danh sách → CẤM
-  if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
-    hienCamTruyCap(
-      `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
-    );
-    return false;
-  }
+    // 3. Nếu KHÔNG phải admin và path trang không nằm trong danh sách → CẤM
+    if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
+        hienCamTruyCap(
+            `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
+        );
+        return false;
+    }
 
-  // 4. OK
-  return true;
+    // 4. OK
+    return true;
 }
 
 // Hàm hiện thông báo cấm truy cập
 function hienCamTruyCap(msg) {
-  document.body.innerHTML = `
+    document.body.innerHTML = `
     <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
       ⛔ Không có quyền truy cập<br>
       <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
@@ -723,14 +723,34 @@ window.clearInput = function (id) { const el = document.getElementById(id); if (
 
 
 // Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
+// Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại),
+// nhưng chỉ lấy những mã còn tồn kho > 0 tại cơ sở đang chọn (CS1/CS2)
 window.moTrangAnh = function () {
     if (!hotInstance) {
         alert("Chưa có dữ liệu để hiển thị ảnh.");
         return;
     }
 
-    // Lấy nguồn dữ liệu gốc của Handsontable (đúng theo thứ tự/đang có trong trang)
-    const src = hotInstance.getSourceData() || [];
+    // Lấy dữ liệu gốc của Handsontable cho trang hiện tại
+    const srcAll = hotInstance.getSourceData() || [];
+
+    // Xác định cơ sở đang chọn trong dropdown "Địa điểm"
+    const branchRaw = document.getElementById("diadiemSelect")?.value || "";
+    const branch = branchRaw.toLowerCase(); // "", "cs1", "cs2"
+
+    // Lọc theo tồn kho cơ sở tương ứng
+    let src = srcAll;
+    if (branch === "cs1") {
+        src = srcAll.filter(r => (Number(r?.ton_cs1) || 0) > 0);
+    } else if (branch === "cs2") {
+        src = srcAll.filter(r => (Number(r?.ton_cs2) || 0) > 0);
+    }
+    // Nếu branch = "" (Tất cả) → không lọc, giữ nguyên srcAll
+
+    if (!src.length) {
+        alert("Không có sản phẩm còn tồn kho tại cơ sở đã chọn để hiển thị ảnh.");
+        return;
+    }
 
     // Gom theo mã sản phẩm, ưu tiên giữ bản ghi có giale khác 0 nếu có
     const map = new Map(); // key = MASP, value = { masp, giale }
@@ -742,8 +762,8 @@ window.moTrangAnh = function () {
         if (!map.has(code)) {
             map.set(code, { masp: code, giale: price });
         } else {
-            // nếu đã có rồi nhưng giale đang 0, mà bản mới có giá > 0 → ưu tiên bản có giá
             const cur = map.get(code);
+            // Nếu bản đang có giá 0 mà bản mới có giá > 0 thì ưu tiên bản mới
             if ((cur.giale || 0) === 0 && price > 0) {
                 map.set(code, { masp: code, giale: price });
             }
@@ -756,12 +776,13 @@ window.moTrangAnh = function () {
         return;
     }
 
-    // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
+    // Dùng cùng key sessionStorage như XNT14/XNT15 để trang xem ảnh dùng chung được ngay
     sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
 
-    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới
+    // Mở trang xem ảnh XNT14 ở tab mới
     window.open("xemanhxnt14.html", "_blank");
 };
+
 
 
 // ===================== INIT ===================== 
@@ -781,7 +802,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (tu) tu.value = toLocalISO(yesterday);  // hôm qua
 
     // Tự động tick "Phát sinh bán trong kỳ"
-    const cb = document.getElementById("locPhatSinhXuat"); 
+    const cb = document.getElementById("locPhatSinhXuat");
     if (cb) cb.checked = true;
 
     // Nếu muốn tự chạy báo cáo ngay khi vào trang thì mở dòng dưới:
@@ -1001,7 +1022,7 @@ window.moTrangGoiYNhapBu = async () => {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('btnGoiYNhapBu');
-  if (btn) btn.addEventListener('click', window.moTrangGoiYNhapBu);
+    const btn = document.getElementById('btnGoiYNhapBu');
+    if (btn) btn.addEventListener('click', window.moTrangGoiYNhapBu);
 });
 
