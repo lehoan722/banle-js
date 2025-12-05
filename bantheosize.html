@@ -428,202 +428,168 @@
 </head>
 
 <body>
-  <div id="app-container">
 
-    <div class="filters-row">
-      <div class="filters-left">
-        <div class="filters">
 
-          <label>
-            Địa điểm:
-            <select id="diadiemSelect">
-              <option value="">Tất cả</option>
-              <option value="cs1">Cơ sở 1</option>
-              <option value="cs2">Cơ sở 2</option>
-            </select>
-          </label>
-          <label>Từ ngày: <input type="date" id="tuNgay"></label>
-          <label>Đến ngày: <input type="date" id="denNgay"></label>
-          <!-- Các input popup tìm kiếm -->
-          <span class="input-popup-group">
-            <input id="khachhangInput" placeholder="Khách hàng">
-            <button onclick="openPopupSearch('khachhang')">🔍</button>
-            <button onclick="clearInput('khachhangInput')">✖</button>
-          </span>
-          <span class="input-popup-group">
-            <input id="nhanvienInput" placeholder="Nhân viên">
-            <button onclick="openPopupSearch('nhanvien')">🔍</button>
-            <button onclick="clearInput('nhanvienInput')">✖</button>
-          </span>
-          <span class="input-popup-group">
-            <input id="nhomhangInput" placeholder="Nhóm hàng">
-            <button onclick="openPopupSearch('nhomhang')">🔍</button>
-            <button onclick="clearInput('nhomhangInput')">✖</button>
-          </span>
-          <span class="input-popup-group">
-            <input id="chungloaiInput" placeholder="Chủng loại">
-            <button onclick="openPopupSearch('chungloai')">🔍</button>
-            <button onclick="clearInput('chungloaiInput')">✖</button>
-          </span>
-          <span class="input-popup-group">
-            <input id="mausacInput" placeholder="Màu sắc">
-            <button onclick="openPopupSearch('mausac')">🔍</button>
-            <button onclick="clearInput('mausacInput')">✖</button>
-          </span>
-          <span class="input-popup-group">
-            <input id="sizeInput" placeholder="Kích cỡ">
-            <button onclick="openPopupSearch('size')">🔍</button>
-            <button onclick="clearInput('sizeInput')">✖</button>
-          </span>
-          <span class="input-popup-group">
-            <input id="maspInput" placeholder="Mã hàng">
-            <button onclick="openPopupSearch('mahang')">🔍</button>
-            <button onclick="clearInput('maspInput')">✖</button>
-          </span>
-          <label>Từ giá:
-            <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
-          </label>
-          <label>Đến giá:
-            <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
-          </label>
-          <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
-          <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
-          <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
-          <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
-          <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
-          <!-- CHECKBOX TỔNG HỢP SIZE -->
-          <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
-          <label style="font-weight:normal;">
-            <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
-          </label>
+  <div class="filters-row">
+    <div class="filters-left">
+      <div class="filters">
 
-          <!-- Nút xem báo cáo -->
-          <button class="main" onclick="taiBaoCaoXNT()">Xem bao cao</button>
-          <button id="btnShowImages" onclick="moTrangAnh()">🖼️ Hiển thị ảnh</button>
-          <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
-          <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuat Excel</button>
-          <button class="main" id="btnChuyenKho" onclick="moTrangChuyenKho()">Gợi ý chuyển kho</button>
-          <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
-          <button id="btnGoiYNhapBu" class="btn">Gợi ý nhập bù</button>
+        <label>
+          Địa điểm:
+          <select id="diadiemSelect">
+            <option value="">Tất cả</option>
+            <option value="cs1">Cơ sở 1</option>
+            <option value="cs2">Cơ sở 2</option>
+          </select>
+        </label>
+        <label>Từ ngày: <input type="date" id="tuNgay"></label>
+        <label>Đến ngày: <input type="date" id="denNgay"></label>
+        <!-- Các input popup tìm kiếm -->
+        <span class="input-popup-group">
+          <input id="khachhangInput" placeholder="Khách hàng">
+          <button onclick="openPopupSearch('khachhang')">🔍</button>
+          <button onclick="clearInput('khachhangInput')">✖</button>
+        </span>
+        <span class="input-popup-group">
+          <input id="nhanvienInput" placeholder="Nhân viên">
+          <button onclick="openPopupSearch('nhanvien')">🔍</button>
+          <button onclick="clearInput('nhanvienInput')">✖</button>
+        </span>
+        <span class="input-popup-group">
+          <input id="nhomhangInput" placeholder="Nhóm hàng">
+          <button onclick="openPopupSearch('nhomhang')">🔍</button>
+          <button onclick="clearInput('nhomhangInput')">✖</button>
+        </span>
+        <span class="input-popup-group">
+          <input id="chungloaiInput" placeholder="Chủng loại">
+          <button onclick="openPopupSearch('chungloai')">🔍</button>
+          <button onclick="clearInput('chungloaiInput')">✖</button>
+        </span>
+        <span class="input-popup-group">
+          <input id="mausacInput" placeholder="Màu sắc">
+          <button onclick="openPopupSearch('mausac')">🔍</button>
+          <button onclick="clearInput('mausacInput')">✖</button>
+        </span>
+        <span class="input-popup-group">
+          <input id="sizeInput" placeholder="Kích cỡ">
+          <button onclick="openPopupSearch('size')">🔍</button>
+          <button onclick="clearInput('sizeInput')">✖</button>
+        </span>
+        <span class="input-popup-group">
+          <input id="maspInput" placeholder="Mã hàng">
+          <button onclick="openPopupSearch('mahang')">🔍</button>
+          <button onclick="clearInput('maspInput')">✖</button>
+        </span>
+        <label>Từ giá:
+          <input type="number" id="tuGia" min="0" step="1000" style="width:90px;" placeholder="Từ">
+        </label>
+        <label>Đến giá:
+          <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
+        </label>
+        <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
+        <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
+        <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
+        <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
+        <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
+        <!-- CHECKBOX TỔNG HỢP SIZE -->
+        <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
+        <label style="font-weight:normal;">
+          <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
+        </label>
 
-        </div>
-      </div>
-
-      <div class="filters-right">
-        <textarea id="maspList" rows="8" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
-          style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
+        <!-- Nút xem báo cáo -->
+        <button class="main" onclick="taiBaoCaoXNT()">Xem bao cao</button>
+        <button id="btnShowImages" onclick="moTrangAnh()">🖼️ Hiển thị ảnh</button>
+        <button onclick="copyBang()">📋 Copy bảng</button> <!-- <-- THÊM DÒNG NÀY -->
+        <button class="main" onclick="window.xuatExcelToanBoXNT17()">Xuat Excel</button>
+        <button class="main" id="btnChuyenKho" onclick="moTrangChuyenKho()">Gợi ý chuyển kho</button>
+        <div id="loadingMsg" style="color: red; font-style: italic; margin-bottom: 8px;"></div>
+        <button id="btnGoiYNhapBu" class="btn">Gợi ý nhập bù</button>
 
       </div>
     </div>
 
-    <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề" onclick="toggleHeader()">⮜</button>
+    <div class="filters-right">
+      <textarea id="maspList" rows="8" placeholder="Nhập/dán mã sản phẩm, mỗi mã 1 dòng..."
+        style="margin-top:0; margin-bottom:0; font-size:15px;"></textarea>
 
-    <!-- NÚT THU GỌN HEADER giữ nguyên -->
-
-    <div class="main-grid">
-      <!-- Cột trái: Bảng (60%) -->
-      <div class="grid-left">
-        <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
-        <div id="hot" style="margin-top: 4px;"></div>
-
-        <div id="pagination" style="margin-top:10px; text-align:center;">
-          <label style="margin-right:8px;">
-            Số dòng/trang:
-            <select id="pageSize" style="padding:4px 6px;">
-              <option value="500">500</option>
-              <option value="1000" selected>1000</option>
-              <option value="2000">2000</option>
-              <option value="5000">5000</option>
-              <option value="10000">10000</option>
-            </select>
-          </label>
-          <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
-          <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
-          <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
-          <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
-          <button class="main" onclick="window.gotoPage()">Đi</button>
-        </div>
-      </div>
-
-      <!-- Cột phải: Ảnh (40%) -->
-      <div class="grid-right">
-        <div id="previewTitle">Ảnh nhanh</div>
-        <div id="previewGrid"></div>
-      </div>
     </div>
-
-
-    <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch">
-      <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
-        <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
-        <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
-      </div>
-      <div id="popupSearchList"></div>
-    </div>
-
-    <!-- Modal ảnh -->
-    <div id="imgModal" role="dialog" aria-hidden="true">
-      <div class="box">
-        <button class="close" id="imgClose">Đóng ✕</button>
-        <img id="prodImg" alt="Ảnh sản phẩm">
-        <div class="cap" id="imgCaption"></div>
-      </div>
-    </div>
-
-    <script>
-      (function initHeaderToggle() {
-        const btn = document.getElementById('headerToggle');
-        if (!btn) return;
-
-        // Khôi phục trạng thái lần trước
-        const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
-        if (saved) document.body.classList.add('header-collapsed');
-        btn.textContent = saved ? '⮞' : '⮜';
-        btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
-
-        window.toggleHeader = function () {
-          const collapsed = document.body.classList.toggle('header-collapsed');
-          btn.textContent = collapsed ? '⮞' : '⮜';
-          btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
-          localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
-          // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
-        };
-      })();
-    </script>
-
-
-
   </div>
 
-  <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
-  <script type="module">
-    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+  <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề" onclick="toggleHeader()">⮜</button>
 
-    khoiTaoDangNhapDungChung({
-      // id bọc toàn bộ app – sửa đúng theo trang của bạn:
-      appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
+  <!-- NÚT THU GỌN HEADER giữ nguyên -->
 
-      macDinhDiaDiem: "",
-      tuDongKhoaCoSo: false,
-      loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
+  <div class="main-grid">
+    <!-- Cột trái: Bảng (60%) -->
+    <div class="grid-left">
+      <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
+      <div id="hot" style="margin-top: 4px;"></div>
 
-      async onLoginSuccess(nv, ctx) {
-        // 1. Kiểm tra quyền xem trang theo bảng nv_page
-        if (window.kiemTraQuyenXemTrang) {
-          const ok = await window.kiemTraQuyenXemTrang("baocaoxnt17.html");
-          if (!ok) {
-            // hienCamTruyCap đã hiển thị lý do, nên chỉ return
-            return;
-          }
-        }
+      <div id="pagination" style="margin-top:10px; text-align:center;">
+        <label style="margin-right:8px;">
+          Số dòng/trang:
+          <select id="pageSize" style="padding:4px 6px;">
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+            <option value="2000">2000</option>
+            <option value="5000">5000</option>
+            <option value="10000">10000</option>
+          </select>
+        </label>
+        <button class="main" id="btnPrev" onclick="window.prevPage()">⬅ Trang trước</button>
+        <button class="main" id="btnNext" onclick="window.nextPage()">Trang sau ➡</button>
+        <span id="pageInfo" style="margin:0 10px;">Trang 0/0 (Tổng: 0)</span>
+        <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+        <button class="main" onclick="window.gotoPage()">Đi</button>
+      </div>
+    </div>
 
-        // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
-        //if (window.taiBaoCaoXNT) {
-        //   await window.taiBaoCaoXNT();
-        //}
-      },
-    });
+    <!-- Cột phải: Ảnh (40%) -->
+    <div class="grid-right">
+      <div id="previewTitle">Ảnh nhanh</div>
+      <div id="previewGrid"></div>
+    </div>
+  </div>
+
+
+  <!-- Popup tìm kiếm dùng chung -->
+  <div id="popupSearch">
+    <div style="padding:6px 10px;border-bottom:1px solid #eee;background:#f8fafd;">
+      <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+      <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
+    </div>
+    <div id="popupSearchList"></div>
+  </div>
+
+  <!-- Modal ảnh -->
+  <div id="imgModal" role="dialog" aria-hidden="true">
+    <div class="box">
+      <button class="close" id="imgClose">Đóng ✕</button>
+      <img id="prodImg" alt="Ảnh sản phẩm">
+      <div class="cap" id="imgCaption"></div>
+    </div>
+  </div>
+
+  <script>
+    (function initHeaderToggle() {
+      const btn = document.getElementById('headerToggle');
+      if (!btn) return;
+
+      // Khôi phục trạng thái lần trước
+      const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
+      if (saved) document.body.classList.add('header-collapsed');
+      btn.textContent = saved ? '⮞' : '⮜';
+      btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+
+      window.toggleHeader = function () {
+        const collapsed = document.body.classList.toggle('header-collapsed');
+        btn.textContent = collapsed ? '⮞' : '⮜';
+        btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
+        localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
+        // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
+      };
+    })();
   </script>
 
   <script>
@@ -805,6 +771,34 @@
       document.addEventListener('DOMContentLoaded', uncheckPhatSinhBan);
     })();
   </script>
+
+  <script>
+
+    //Đọc dữ liệu từ localStorage (bantheosize_similar_params)
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("mode") !== "similar") return;
+
+      const payload = JSON.parse(localStorage.getItem("bantheosize_similar_params") || "{}");
+      if (!payload || !payload.sizeEU) return;
+
+      console.log("Nhận điều kiện tìm tương đồng:", payload);
+
+      // Gán giá trị vào các bộ lọc
+      document.getElementById("sizeInput").value = payload.sizeEU;
+      if (payload.group) document.getElementById("nhomhangInput").value = payload.group;
+      if (payload.branch) document.getElementById("diadiemSelect").value = payload.branch;
+
+      // Tự động chạy báo cáo sau 250ms
+      setTimeout(() => {
+        if (window.taiBaoCaoXNT) {
+          window.taiBaoCaoXNT();
+        }
+      }, 250);
+    });
+  </script>
+
 
   <!-- Handsontable + script xử lý XNT17 -->
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
