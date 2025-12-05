@@ -267,7 +267,7 @@
 
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
       return `
-        <div class="sq-stock-popup">
+        <div class="sq-stock-popup" data-masp="${upper}">
           <span class="sq-close">✕</span>
           <div class="sq-stock-popup-header">Mã: ${upper}</div>
           <div>Không có dữ liệu tồn kho.</div>
@@ -329,7 +329,7 @@
       </div>`;
 
     return `
-      <div class="sq-stock-popup">
+      <div class="sq-stock-popup" data-masp="${upper}">
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">Mã: ${upper} – bán/tồn đến ${getDenNgay()}</div>
         <div class="sq-stock-layout">
@@ -368,12 +368,14 @@
     if (globalCloseBound) return;
     globalCloseBound = true;
 
+    // ESC để đóng popup
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" || e.key === "Esc") {
         hideAllPopups();
       }
     });
 
+    // Click ra ngoài popup để đóng
     document.addEventListener("click", (e) => {
       const popup = document.querySelector(".sq-stock-popup.show");
       if (!popup) return;
@@ -433,7 +435,7 @@
       if (left < 0) left = 0;
       if (top < 0) top = 0;
       if (left + w > vw) left = vw - w;
-      if (top + h > vh) top = vh - h;
+      if (top + h > vh) left = vw - w;
 
       popup.style.left = left + "px";
       popup.style.top = top + "px";
@@ -469,6 +471,9 @@
     const popup = globalHost.querySelector(".sq-stock-popup");
     if (!popup) return;
 
+    // đảm bảo có data-masp (để toggle theo mã)
+    popup.dataset.masp = String(masp || "").trim().toUpperCase();
+
     const closeBtn = popup.querySelector(".sq-close");
     if (closeBtn) {
       closeBtn.onclick = (e) => {
@@ -500,28 +505,26 @@
     popup.classList.add("show");
   }
 
+  // ===== attach: luôn dùng CLICK để bật/tắt popup =====
   function attach(card, masp) {
     if (!card || !masp) return;
-    const touch = isTouchDevice();
 
-    if (touch) {
-      card.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const current = document.querySelector(".sq-stock-popup.show");
-        if (current) {
-          current.classList.remove("show");
-        } else {
-          await ensurePopup(card, masp);
-        }
-      });
-    } else {
-      card.addEventListener("mouseenter", () => {
-        ensurePopup(card, masp);
-      });
-      card.addEventListener("mouseleave", () => {
+    card.addEventListener("click", async (e) => {
+      // không cho click lan ra ngoài (để global click không đóng ngay)
+      e.stopPropagation();
+
+      const targetMasp = String(masp).trim().toUpperCase();
+      const current = document.querySelector(".sq-stock-popup.show");
+
+      // Nếu popup đang mở cho đúng mã này → đóng
+      if (current && current.dataset.masp === targetMasp) {
         hideAllPopups();
-      });
-    }
+        return;
+      }
+
+      // Nếu popup đang mở cho mã khác → mở lại cho mã mới
+      await ensurePopup(card, masp);
+    });
   }
 
   window.StockQuick = {
