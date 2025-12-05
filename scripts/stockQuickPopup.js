@@ -226,47 +226,52 @@
     let vitri_cs1 = "";
     let vitri_cs2 = "";
 
-    if (typeof supabase !== "undefined") {
-      try {
-        // GỌI SONG SONG: RPC + lấy vị trí từ dmhanghoa
-        const [snapRes, vitriRes] = await Promise.all([
-          supabase.rpc("xnt17_tonban_snapshot", {
-            p_masps: [masp],
-            p_den_ngay: denNgay,
-            p_tonghop_size: false,
-          }),
-          supabase
-            .from("dmhanghoa")
-            .select("vitrikho1, vitrikho2")
-            .eq("masp", masp),
-        ]);
+    // Đảm bảo luôn có client
+    const client = await ensureSupabaseClient();
+    if (!client) {
+      // Không có client → trả về rỗng, tránh crash
+      return { masp, rows, vitri_cs1, vitri_cs2 };
+    }
 
-        // Kết quả RPC tồn/bán
-        const { data, error } = snapRes || {};
-        if (!error && data && data.length) {
-          rows = data.map((r) => ({
-            masp: String(r.masp || "").toUpperCase(),
-            size: normalizeSize(r.size),
-            ton_cs1: Number(r.ton_cs1 || 0),
-            ton_cs2: Number(r.ton_cs2 || 0),
-            ban_cs1: Number(r.ban_cs1 || 0),
-            ban_cs2: Number(r.ban_cs2 || 0),
-          }));
-        } else if (error) {
-          console.warn("xnt17_tonban_snapshot error:", error);
-        }
+    try {
+      // GỌI SONG SONG: RPC + lấy vị trí từ dmhanghoa
+      const [snapRes, vitriRes] = await Promise.all([
+        client.rpc("xnt17_tonban_snapshot", {
+          p_masps: [masp],
+          p_den_ngay: denNgay,
+          p_tonghop_size: false,
+        }),
+        client
+          .from("dmhanghoa")
+          .select("vitrikho1, vitrikho2")
+          .eq("masp", masp),
+      ]);
 
-        // Kết quả vị trí kho
-        const { data: vitriData, error: vitriErr } = vitriRes || {};
-        if (vitriErr) {
-          console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
-        } else if (Array.isArray(vitriData) && vitriData.length > 0) {
-          vitri_cs1 = vitriData[0].vitrikho1 || "";
-          vitri_cs2 = vitriData[0].vitrikho2 || "";
-        }
-      } catch (e) {
-        console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
+      // Kết quả RPC tồn/bán
+      const { data, error } = snapRes || {};
+      if (!error && data && data.length) {
+        rows = data.map((r) => ({
+          masp: String(r.masp || "").toUpperCase(),
+          size: normalizeSize(r.size),
+          ton_cs1: Number(r.ton_cs1 || 0),
+          ton_cs2: Number(r.ton_cs2 || 0),
+          ban_cs1: Number(r.ban_cs1 || 0),
+          ban_cs2: Number(r.ban_cs2 || 0),
+        }));
+      } else if (error) {
+        console.warn("xnt17_tonban_snapshot error:", error);
       }
+
+      // Kết quả vị trí kho
+      const { data: vitriData, error: vitriErr } = vitriRes || {};
+      if (vitriErr) {
+        console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
+      } else if (Array.isArray(vitriData) && vitriData.length > 0) {
+        vitri_cs1 = vitriData[0].vitrikho1 || "";
+        vitri_cs2 = vitriData[0].vitrikho2 || "";
+      }
+    } catch (e) {
+      console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
 
     return { masp, rows, vitri_cs1, vitri_cs2 };
