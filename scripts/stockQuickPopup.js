@@ -1,23 +1,12 @@
 // stockQuickPopup.js
 // Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xnt17_tonban_snapshot
-// LƯU Ý: supabase phải được tạo global ở nơi khác (authModule.js / supabaseClient.js)
+// LƯU Ý: supabase được tạo global trong supabaseClient.js hoặc supabaseClientGlobal.js
 
 (function () {
-  // ===== HÀM LẤY SUPABASE GLOBAL AN TOÀN =====
-  function getSupabaseClient() {
-    if (typeof window === "undefined") return null;
-    const client = window.supabase;
-    if (
-      !client ||
-      !client.auth || // client hợp lệ của supabase-js v2 đều có .auth
-      typeof client.from !== "function"
-    ) {
-      console.warn(
-        "[StockQuickPopup] supabase global chưa sẵn sàng. Hãy đảm bảo đã load authModule.js hoặc supabaseClient.js trước."
-      );
-      return null;
-    }
-    return client;
+  if (typeof supabase === "undefined") {
+    console.warn(
+      "stockQuickPopup: supabase global not found. Hãy chắc chắn đã load supabaseClient trước."
+    );
   }
 
   // ===== CSS cho popup =====
@@ -42,9 +31,9 @@
     display: none;
     overflow: hidden;
     top: 8px;
-    right: 8px;
-    left: auto;
-    transform: none;
+  right: 8px;
+  left: auto;
+  transform: none;
   }
 
   .sq-stock-popup.show {
@@ -189,10 +178,11 @@
         const f = JSON.parse(raw);
         if (f.den_ngay) return f.den_ngay;
       }
-    } catch (e) {}
+    } catch (e) { }
     return new Date().toISOString().slice(0, 10);
   }
 
+  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
@@ -207,54 +197,53 @@
     let vitri_cs1 = "";
     let vitri_cs2 = "";
 
-    const client = getSupabaseClient();
-    if (!client) {
-      // Không có client → không crash, chỉ trả về rỗng
-      return { masp, rows, vitri_cs1, vitri_cs2 };
-    }
+    if (typeof supabase !== "undefined") {
+      try {
+        // GỌI SONG SONG: RPC + lấy vị trí từ dmhanghoa
+        const [snapRes, vitriRes] = await Promise.all([
+          supabase.rpc("xnt17_tonban_snapshot", {
+            p_masps: [masp],
+            p_den_ngay: denNgay,
+            p_tonghop_size: false,
+          }),
+          supabase
+            .from("dmhanghoa")
+            .select("vitrikho1, vitrikho2")
+            .eq("masp", masp),
+        ]);
 
-    try {
-      const [snapRes, vitriRes] = await Promise.all([
-        client.rpc("xnt17_tonban_snapshot", {
-          p_masps: [masp],
-          p_den_ngay: denNgay,
-          p_tonghop_size: false,
-        }),
-        client
-          .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2")
-          .eq("masp", masp),
-      ]);
+        // Kết quả RPC tồn/bán
+        const { data, error } = snapRes || {};
+        if (!error && data && data.length) {
+          rows = data.map((r) => ({
+            masp: String(r.masp || "").toUpperCase(),
+            size: normalizeSize(r.size),
+            ton_cs1: Number(r.ton_cs1 || 0),
+            ton_cs2: Number(r.ton_cs2 || 0),
+            ban_cs1: Number(r.ban_cs1 || 0),
+            ban_cs2: Number(r.ban_cs2 || 0),
+          }));
+        } else if (error) {
+          console.warn("xnt17_tonban_snapshot error:", error);
+        }
 
-      const { data, error } = snapRes || {};
-      if (!error && data && data.length) {
-        rows = data.map((r) => ({
-          masp: String(r.masp || "").toUpperCase(),
-          size: normalizeSize(r.size),
-          ton_cs1: Number(r.ton_cs1 || 0),
-          ton_cs2: Number(r.ton_cs2 || 0),
-          ban_cs1: Number(r.ban_cs1 || 0),
-          ban_cs2: Number(r.ban_cs2 || 0),
-        }));
-      } else if (error) {
-        console.warn("xnt17_tonban_snapshot error:", error);
+        // Kết quả vị trí kho
+        const { data: vitriData, error: vitriErr } = vitriRes || {};
+        if (vitriErr) {
+          console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
+        } else if (Array.isArray(vitriData) && vitriData.length > 0) {
+          vitri_cs1 = vitriData[0].vitrikho1 || "";
+          vitri_cs2 = vitriData[0].vitrikho2 || "";
+        }
+      } catch (e) {
+        console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
       }
-
-      const { data: vitriData, error: vitriErr } = vitriRes || {};
-      if (vitriErr) {
-        console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
-      } else if (Array.isArray(vitriData) && vitriData.length > 0) {
-        vitri_cs1 = vitriData[0].vitrikho1 || "";
-        vitri_cs2 = vitriData[0].vitrikho2 || "";
-      }
-    } catch (e) {
-      console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
 
     return { masp, rows, vitri_cs1, vitri_cs2 };
   }
 
-  // ===== HTML popup =====
+  // ===== HTML popup: bảng bên trái + ảnh bên phải (PC) / xếp dọc (mobile) =====
   function buildTableHtml(masp, payload) {
     const upper = String(masp || "").toUpperCase();
     const rows = payload && Array.isArray(payload.rows)
@@ -537,3 +526,4 @@
     };
   }
 })();
+
