@@ -2120,4 +2120,21 @@ async function saveDatHang() {
     document.getElementById('dhGhichu').value = '';
 }
 
+// Hàm được gọi sau khi đăng nhập thành công
+window.onLoginSuccessTimKiem = async function (nhanvien, context) {
+    // context.diadiem do authModule truyền sang: 'cs1' hoặc 'cs2'
+    const diadiem = (context && context.diadiem) || window.diadiem || localStorage.getItem('diadiem');
+
+    const branchSelect = document.getElementById('branchPicker'); // đúng id dropdown cơ sở
+    if (branchSelect && diadiem) {
+        branchSelect.value = diadiem;          // giá trị option phải đúng 'cs1' / 'cs2'
+        branchSelect.dispatchEvent(new Event('change')); // kích hoạt lại logic khóa/mở ô vị trí
+    }
+
+    // Nếu trang tìm kiếm có dùng tên nhân viên để lưu vị trí/ghi log
+    if (nhanvien && nhanvien.tennv) {
+        localStorage.setItem('tennv', nhanvien.tennv);
+    }
+};
+
 
