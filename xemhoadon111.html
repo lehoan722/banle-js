@@ -816,11 +816,13 @@
         const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const { data, error } = await window.supabase
+        // DÙNG chính biến supabase vừa tạo, KHÔNG dùng window.supabase
+        const { data, error } = await supabase
           .from('dmnhanvien')
           .select('*')
           .eq('manv', manv)
           .single();
+
 
         if (error || !data) {
           msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
@@ -872,29 +874,6 @@
       style="margin-left:8px;">Hủy</button>
   </div>
 
-  <script type="module">
-    import {
-      attachMaspPopup,
-      fetchProductByCode
-    } from './scripts/productSearchModule.js';
-
-    // Gợi ý popup ngay dưới ô Mã SP.
-    // Khi người dùng chọn 1 mã → tự động thêm vào danh sách (dạng A123,B456,...)
-    const elMasp = document.getElementById('locMasp');
-    attachMaspPopup({
-      supabase: window.supabaseClient || window.supabase, // dùng client hiện có
-      maspInput: elMasp,
-      onPick: (p) => {
-        const cur = (elMasp.value || '').trim();
-        const v = (p?.masp || '').trim();
-        if (!v) return;
-        // thêm v vào danh sách, tránh trùng
-        const set = new Set(cur ? cur.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []);
-        set.add(v.toUpperCase());
-        elMasp.value = Array.from(set).join(',');
-      }
-    });
-  </script>
 
   <script>
     function openInvoiceBySohd(sohd) {
@@ -989,11 +968,10 @@
       loginApiPath: '/api/login-cs1',
 
       async onLoginSuccess(nv, ctx) {
-        // Lấy cờ admin từ object trả về + localStorage
+        // 1. Kiểm tra quyền admin
         const flagFromObj =
           nv && (nv.is_admin === true || nv.is_admin === 'true' || nv.is_admin === 1);
         const flagFromLS = localStorage.getItem('is_admin') === 'true';
-
         const isAdmin = flagFromObj || flagFromLS;
 
         if (!isAdmin) {
@@ -1001,21 +979,46 @@
 
           const app = document.getElementById('app-container') || document.body;
           app.innerHTML = `
-          <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
-            🚫 Bạn không có quyền xem báo cáo này
-          </h2>
-          <p>
-            Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
-            trong bảng <code>dmnhanvien</code>) mới được phép truy cập
-            trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
-          </p>
-        `;
+      <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
+        🚫 Bạn không có quyền xem báo cáo này
+      </h2>
+      <p>
+        Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
+        trong bảng <code>dmnhanvien</code>) mới được phép truy cập
+        trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
+      </p>
+    `;
           return;
         }
 
-        // ✅ Đã đăng nhập + đúng admin → lúc này window.supabase đã có session
+        // 2. Sau khi login OK và là admin → lúc này window.supabase đã sẵn sàng
+        //    => MỚI gắn popup tìm mã sản phẩm
+        const { attachMaspPopup } = await import('./scripts/productSearchModule.js');
+        const elMasp = document.getElementById('locMasp');
+
+        if (elMasp) {
+          attachMaspPopup({
+            supabase: window.supabase,                // client đã có session
+            maspInput: elMasp,
+            onPick: (p) => {
+              const cur = (elMasp.value || '').trim();
+              const v = (p?.masp || '').trim();
+              if (!v) return;
+              const set = new Set(
+                cur
+                  ? cur.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+                  : []
+              );
+              set.add(v.toUpperCase());
+              elMasp.value = Array.from(set).join(',');
+            }
+          });
+        }
+
+        // 3. Cuối cùng mới tải danh sách hóa đơn
         await taiDanhSachHoaDon();
       }
+
     });
   </script>
 
