@@ -134,8 +134,8 @@
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
   @media (max-width: 800px) and (orientation: portrait) {
     .sq-stock-popup {
-      max-width: 95vw;          /* gần full chiều ngang */
-      max-height: 90vh;         /* full chiều cao, cho phép cuộn */
+      max-width: 47.5vw;          /* gần full chiều ngang */
+      max-height: 45vh;         /* full chiều cao, cho phép cuộn */
       overflow: auto;
     }
 
@@ -151,7 +151,7 @@
     }
 
     .sq-img-wrapper img {
-      max-height: 60vh;         /* ảnh không quá cao, vẫn cuộn được */
+      max-height: 30vh;         /* ảnh không quá cao, vẫn cuộn được */
     }
   }
   `;
