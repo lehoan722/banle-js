@@ -760,100 +760,102 @@
   </script>
 
   <script>
-    const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+  // 👉 Hàm mở popup xác thực + kiểm tra quyền xóa hóa đơn
+  async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+    const popup = document.getElementById('popupXacThucNV');
+    const txtMa = document.getElementById('maNVCheck');
+    const txtMk = document.getElementById('matkhauNVCheck');
+    const msg   = document.getElementById('msgCheckNV');
 
-    // 👉 Hàm mở popup + tự fill mã NV / mật khẩu
-    async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
-      const popup = document.getElementById('popupXacThucNV');
-      const txtMa = document.getElementById('maNVCheck');
-      const txtMk = document.getElementById('matkhauNVCheck');
-      const msg = document.getElementById('msgCheckNV');
+    // 1. Đọc thông tin đã lưu khi đăng nhập (authModule.js)
+    const savedMa =
+      localStorage.getItem('manv') ||
+      localStorage.getItem('last_login_manv') ||
+      '';
 
-      // 1. Đọc thông tin đã lưu khi đăng nhập (theo đúng authModule.js)
-      const savedMa =
-        localStorage.getItem('manv') ||
-        localStorage.getItem('last_login_manv') ||
-        '';
+    const savedMk =
+      localStorage.getItem('last_login_password') || '';
 
-      const savedMk =
-        localStorage.getItem('last_login_password') || ''; // 👈 mật khẩu authModule lưu ở đây
+    // 2. Đẩy vào ô nhập
+    if (txtMa) txtMa.value = savedMa;
+    if (txtMk) txtMk.value = savedMk;
 
-      // 2. Đẩy thẳng vào ô nhập
-      if (txtMa) txtMa.value = savedMa;
-      if (txtMk) txtMk.value = savedMk;
-
-      // 3. Xóa message cũ + mở popup
-      if (msg) {
-        msg.textContent = '';
-        msg.style.color = '#ad3a2b';
-      }
-      popup.style.display = 'block';
-
-      // 4. Focus hợp lý
-      setTimeout(() => {
-        if (savedMa && savedMk) {
-          if (txtMk) { txtMk.focus(); txtMk.select(); }
-        } else if (txtMa) {
-          txtMa.focus(); txtMa.select();
-        }
-      }, 0);
-
-      // 5. Gán sự kiện khi bấm nút Kiểm tra
-      const btn = document.getElementById('btnKiemTraNV');
-      if (!btn) return;
-
-      btn.onclick = async function () {
-        const manv = txtMa.value.trim().toUpperCase();
-        const mk = txtMk.value.trim();
-
-        if (!manv || !mk) {
-          msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
-          msg.style.color = '#ad3a2b';
-          return;
-        }
-
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // DÙNG chính biến supabase vừa tạo, KHÔNG dùng window.supabase
-        const { data, error } = await supabase
-          .from('dmnhanvien')
-          .select('*')
-          .eq('manv', manv)
-          .single();
-
-
-        if (error || !data) {
-          msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
-          msg.style.color = '#ad3a2b';
-          return;
-        }
-        if (data.matkhau !== mk) {
-          msg.textContent = "❌ Mật khẩu không đúng!";
-          msg.style.color = '#ad3a2b';
-          return;
-        }
-        if (!data.xoa_hoadon) {
-          msg.textContent = "❌ Bạn không có quyền xóa hóa đơn!";
-          msg.style.color = '#ad3a2b';
-          return;
-        }
-
-        // ✅ Thành công
-        msg.textContent = "✅ Đã xác thực, đang xóa...";
-        msg.style.color = 'green';
-
-        setTimeout(() => {
-          popup.style.display = 'none';
-          msg.textContent = '';
-          if (typeof callbackSauXacThuc === 'function') {
-            callbackSauXacThuc(data); // gọi hàm xóa thực sự
-          }
-        }, 400);
-      };
+    // 3. Reset message + mở popup
+    if (msg) {
+      msg.textContent = '';
+      msg.style.color = '#ad3a2b';
     }
-  </script>
+    if (popup) popup.style.display = 'block';
+
+    // 4. Focus hợp lý
+    setTimeout(() => {
+      if (savedMa && savedMk) {
+        if (txtMk) { txtMk.focus(); txtMk.select(); }
+      } else if (txtMa) {
+        txtMa.focus(); txtMa.select();
+      }
+    }, 0);
+
+    // 5. Gán sự kiện cho nút "Kiểm tra"
+    const btn = document.getElementById('btnKiemTraNV');
+    if (!btn) return;
+
+    btn.onclick = async function () {
+      const manv = (txtMa.value || '').trim().toUpperCase();
+      const matkhau = (txtMk.value || '').trim();
+
+      if (!manv || !matkhau) {
+        msg.textContent = 'Vui lòng nhập đủ Mã NV và Mật khẩu.';
+        return;
+      }
+
+      // đảm bảo đã có client Supabase do authModule.js khởi tạo
+      if (!window.supabase || !window.supabase.from) {
+        console.error('Supabase client chưa khởi tạo trên window');
+        msg.textContent = 'Không khởi tạo được Supabase, hãy tải lại trang.';
+        return;
+      }
+
+      try {
+        // kiểm tra nhân viên trong bảng dmnhanvien
+        const { data, error } = await window.supabase
+          .from('dmnhanvien')
+          .select('manv, tennv, matkhau, xoa_hoadon, is_admin')
+          .eq('manv', manv)
+          .eq('matkhau', matkhau)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Lỗi kiểm tra nhân viên:', error);
+          msg.textContent = 'Lỗi kiểm tra nhân viên: ' + error.message;
+          return;
+        }
+
+        if (!data) {
+          msg.textContent = 'Sai mã nhân viên hoặc mật khẩu.';
+          return;
+        }
+
+        // chỉ cho xóa nếu có quyền xóa hoặc là admin
+        if (!data.xoa_hoadon && !data.is_admin) {
+          msg.textContent = 'Nhân viên này không có quyền xóa hóa đơn.';
+          return;
+        }
+
+        // OK – đóng popup và chạy callback xóa hóa đơn
+        if (popup) popup.style.display = 'none';
+        msg.textContent = '';
+
+        if (typeof callbackSauXacThuc === 'function') {
+          callbackSauXacThuc(data);
+        }
+      } catch (err) {
+        console.error('Exception khi kiểm tra NV:', err);
+        msg.textContent = 'Có lỗi xảy ra khi kiểm tra nhân viên.';
+      }
+    };
+  }
+</script>
 
 
   <!-- Popup xác thực nhân viên -->
