@@ -2,489 +2,497 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <title>Nhập Danh Mục Nhân Viên</title>
-  <meta name="viewport" content="width=450">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9f9fb;
-      padding: 32px;
-    }
+    <meta charset="UTF-8">
+    <title>Nhập Danh Mục Nhân Viên</title>
+    <meta name="viewport" content="width=450">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f9f9fb;
+            padding: 32px;
+        }
 
-    .center-box {
-      width: 420px;
-      margin: 40px auto;
-      background: #fff;
-      border-radius: 18px;
-      box-shadow: 0 3px 18px #d6e3ef44;
-      border: 1.5px solid #e3e9f1;
-      padding: 28px 24px 18px 24px;
-    }
+        .center-box {
+            width: 420px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 3px 18px #d6e3ef44;
+            border: 1.5px solid #e3e9f1;
+            padding: 28px 24px 18px 24px;
+        }
 
-    .form-title {
-      font-size: 1.18em;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 22px;
-      color: #163163;
-    }
+        .form-title {
+            font-size: 1.18em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 22px;
+            color: #163163;
+        }
 
-    .row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 15px;
-    }
+        .row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
 
-    .row label {
-      width: 120px;
-      font-size: 1em;
-    }
+        /* THÊM ĐOẠN NÀY an ca cdong hidden-row */
+        .row.hidden-row {
+            display: none;
+        }
 
-    .row input,
-    .row select,
-    .row textarea {
-      flex: 1;
-      padding: 7px 10px;
-      font-size: 1em;
-      border-radius: 7px;
-      border: 1.2px solid #b5bed5;
-      background: #fcfcfe;
-    }
+        .row label {
+            width: 120px;
+            font-size: 1em;
+        }
 
-    .row input:focus,
-    .row select:focus,
-    .row textarea:focus {
-      border-color: #1164be;
-      outline: none;
-    }
+        .row input,
+        .row select,
+        .row textarea {
+            flex: 1;
+            padding: 7px 10px;
+            font-size: 1em;
+            border-radius: 7px;
+            border: 1.2px solid #b5bed5;
+            background: #fcfcfe;
+        }
 
-    .required {
-      color: #e23a1b;
-      font-weight: bold;
-    }
+        .row input:focus,
+        .row select:focus,
+        .row textarea:focus {
+            border-color: #1164be;
+            outline: none;
+        }
 
-    .actions {
-      display: flex;
-      gap: 13px;
-      justify-content: center;
-      margin-top: 20px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
+        .required {
+            color: #e23a1b;
+            font-weight: bold;
+        }
 
-    .actions button {
-      font-size: 1em;
-      padding: 8px 22px;
-      border-radius: 7px;
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-      box-shadow: 0 2px 6px #dee6ff33;
-    }
+        .actions {
+            display: flex;
+            gap: 13px;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
 
-    .actions button.save {
-      background: #18804f;
-      color: #fff;
-    }
+        .actions button {
+            font-size: 1em;
+            padding: 8px 22px;
+            border-radius: 7px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 2px 6px #dee6ff33;
+        }
 
-    .actions button.new {
-      background: #eaeaec;
-    }
+        .actions button.save {
+            background: #18804f;
+            color: #fff;
+        }
 
-    .actions button.delete {
-      background: #d13f3f;
-      color: #fff;
-    }
+        .actions button.new {
+            background: #eaeaec;
+        }
 
-    .actions button.logout {
-      background: #efebfa;
-      color: #45427b;
-    }
+        .actions button.delete {
+            background: #d13f3f;
+            color: #fff;
+        }
 
-    .actions button:hover {
-      opacity: .87;
-    }
+        .actions button.logout {
+            background: #efebfa;
+            color: #45427b;
+        }
 
-    .msg {
-      text-align: center;
-      padding: 10px 0 5px 0;
-      min-height: 26px;
-    }
+        .actions button:hover {
+            opacity: .87;
+        }
 
-    .msg.error {
-      color: #fff;
-      background: #c44736;
-      border-radius: 6px;
-    }
+        .msg {
+            text-align: center;
+            padding: 10px 0 5px 0;
+            min-height: 26px;
+        }
 
-    .msg.success {
-      color: #18804f;
-      background: #e6f4e7;
-      border-radius: 6px;
-    }
+        .msg.error {
+            color: #fff;
+            background: #c44736;
+            border-radius: 6px;
+        }
 
-    /* --- Gợi ý Mã NV --- */
-    .manv-wrap {
-      position: relative;
-      width: 100%;
-    }
+        .msg.success {
+            color: #18804f;
+            background: #e6f4e7;
+            border-radius: 6px;
+        }
 
-    #nvSuggest {
-      position: absolute;
-      top: 38px;
-      left: 0;
-      right: 0;
-      background: #fff;
-      border: 1px solid #cdd5e1;
-      border-radius: 8px;
-      box-shadow: 0 6px 18px #1f2a4422;
-      max-height: 220px;
-      overflow: auto;
-      z-index: 1000;
-      display: none;
-    }
+        /* --- Gợi ý Mã NV --- */
+        .manv-wrap {
+            position: relative;
+            width: 100%;
+        }
 
-    #nvSuggest .item {
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: .95em;
-    }
+        #nvSuggest {
+            position: absolute;
+            top: 38px;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #cdd5e1;
+            border-radius: 8px;
+            box-shadow: 0 6px 18px #1f2a4422;
+            max-height: 220px;
+            overflow: auto;
+            z-index: 1000;
+            display: none;
+        }
 
-    #nvSuggest .item:hover,
-    #nvSuggest .item.active {
-      background: #eef5ff;
-    }
+        #nvSuggest .item {
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: .95em;
+        }
 
-    #nvSuggest .empty {
-      padding: 8px 10px;
-      color: #6b7280;
-    }
-  </style>
+        #nvSuggest .item:hover,
+        #nvSuggest .item.active {
+            background: #eef5ff;
+        }
+
+        #nvSuggest .empty {
+            padding: 8px 10px;
+            color: #6b7280;
+        }
+    </style>
 </head>
 
 <body>
-  <!-- Toàn bộ app sẽ nằm trong app-container, mặc định bị ẩn tới khi đăng nhập -->
-  <div id="app-container" style="display:none">
-    <div id="mainform" class="center-box">
-      <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
+    <!-- Toàn bộ app sẽ nằm trong app-container, mặc định bị ẩn tới khi đăng nhập -->
+    <div id="app-container" style="display:none">
+        <div id="mainform" class="center-box">
+            <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
 
-      <div class="row">
-        <label class="required">Mã NV *</label>
-        <div class="manv-wrap">
-          <input id="manv" autocomplete="off"
-                 oninput="onManvInput()" onkeydown="onManvKey(event)"
-                 onfocus="onManvInput()">
-          <div id="nvSuggest"></div>
+            <div class="row">
+                <label class="required">Mã NV *</label>
+                <div class="manv-wrap">
+                    <input id="manv" autocomplete="off" oninput="onManvInput()" onkeydown="onManvKey(event)"
+                        onfocus="onManvInput()">
+                    <div id="nvSuggest"></div>
+                </div>
+            </div>
+
+            <div class="row">
+                <label class="required">Tên NV *</label>
+                <input id="tennv">
+            </div>
+
+            <div class="row">
+                <label>Trạng thái</label>
+                <select id="trangthai">
+                    <option value="true">Đang hoạt động</option>
+                    <option value="false">Ngừng hoạt động</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Mật khẩu</label>
+                <input id="matkhau">
+            </div>
+
+            <div class="row">
+                <label>Sửa hóa đơn</label>
+                <select id="sua_hoadon">
+                    <option value="false">Không</option>
+                    <option value="true">Có</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Xóa hóa đơn</label>
+                <select id="xoa_hoadon">
+                    <option value="false">Không</option>
+                    <option value="true">Có</option>
+                </select>
+            </div>
+
+            <div class="row hidden-row">
+                <label>Email</label>
+                <input id="email">
+            </div>
+
+            <div class="row hidden-row">
+                <label>Loại được sửa</label>
+                <textarea id="loai_duoc_sua" rows="2"></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="save" onclick="saveNV()">Lưu dữ liệu</button>
+                <button class="new" onclick="resetForm()">Thêm mới</button>
+                <button class="delete" onclick="deleteNV()">Xoá nhân viên</button>
+                <button class="logout" onclick="handleLogout()">Đăng xuất</button>
+            </div>
+            <div id="msgBox" class="msg"></div>
         </div>
-      </div>
-
-      <div class="row">
-        <label class="required">Tên NV *</label>
-        <input id="tennv">
-      </div>
-
-      <div class="row">
-        <label>Trạng thái</label>
-        <select id="trangthai">
-          <option value="true">Đang hoạt động</option>
-          <option value="false">Ngừng hoạt động</option>
-        </select>
-      </div>
-
-      <div class="row">
-        <label>Mật khẩu</label>
-        <input id="matkhau" type="password">
-      </div>
-
-      <div class="row">
-        <label>Sửa hóa đơn</label>
-        <select id="sua_hoadon">
-          <option value="false">Không</option>
-          <option value="true">Có</option>
-        </select>
-      </div>
-
-      <div class="row">
-        <label>Xóa hóa đơn</label>
-        <select id="xoa_hoadon">
-          <option value="false">Không</option>
-          <option value="true">Có</option>
-        </select>
-      </div>
-
-      <div class="row">
-        <label>Email</label>
-        <input id="email">
-      </div>
-
-      <div class="row">
-        <label>Loại được sửa</label>
-        <textarea id="loai_duoc_sua" rows="2"></textarea>
-      </div>
-
-      <div class="actions">
-        <button class="save" onclick="saveNV()">Lưu dữ liệu</button>
-        <button class="new" onclick="resetForm()">Thêm mới</button>
-        <button class="delete" onclick="deleteNV()">Xoá nhân viên</button>
-        <button class="logout" onclick="handleLogout()">Đăng xuất</button>
-      </div>
-      <div id="msgBox" class="msg"></div>
     </div>
-  </div>
 
-  <!-- Script xử lý: dùng authModule chuẩn + chỉ cho ADMIN -->
-  <script type="module">
-    import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js'; // :contentReference[oaicite:0]{index=0}
+    <!-- Script xử lý: dùng authModule chuẩn + chỉ cho ADMIN -->
+    <script type="module">
+        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js'; // :contentReference[oaicite:0]{index=0}
 
-    const TABLE = 'dmnhanvien';
-    const supabase = window.supabase; // client đã được authModule khởi tạo
-    let editingOld = false;
+        const TABLE = 'dmnhanvien';
+        const supabase = window.supabase; // client đã được authModule khởi tạo
+        let editingOld = false;
 
-    // ======= GỢI Ý MÃ NHÂN VIÊN =======
-    let nvCache = [];
-    let nvIndex = -1;
-    let nvLoading = null;
+        // ======= GỢI Ý MÃ NHÂN VIÊN =======
+        let nvCache = [];
+        let nvIndex = -1;
+        let nvLoading = null;
 
-    async function loadNvList() {
-      const { data, error } = await supabase
-        .from(TABLE)
-        .select('manv, tennv, trangthai')
-        .order('manv', { ascending: true })
-        .limit(5000);
-      if (!error && Array.isArray(data)) {
-        nvCache = data;
-      } else {
-        nvCache = [];
-      }
-    }
+        async function loadNvList() {
+            const { data, error } = await supabase
+                .from(TABLE)
+                .select('manv, tennv, trangthai')
+                .order('manv', { ascending: true })
+                .limit(5000);
+            if (!error && Array.isArray(data)) {
+                nvCache = data;
+            } else {
+                nvCache = [];
+            }
+        }
 
-    async function ensureNvList() {
-      if (nvCache.length) return;
-      if (!nvLoading) nvLoading = loadNvList();
-      await nvLoading;
-    }
+        async function ensureNvList() {
+            if (nvCache.length) return;
+            if (!nvLoading) nvLoading = loadNvList();
+            await nvLoading;
+        }
 
-    function pickNv(code) {
-      setVal('manv', code);
-      hideNvSuggest();
-      fetchNV();
-      setTimeout(() => document.getElementById('tennv').focus(), 0);
-    }
+        function pickNv(code) {
+            setVal('manv', code);
+            hideNvSuggest();
+            fetchNV();
+            setTimeout(() => document.getElementById('tennv').focus(), 0);
+        }
 
-    function renderNvSuggest(list) {
-      const box = document.getElementById('nvSuggest');
-      if (!list.length) {
-        box.innerHTML = '<div class="empty">Không có kết quả</div>';
-        box.style.display = 'block';
-        return;
-      }
-      const html = list.slice(0, 100)
-        .map((r, i) => `
+        function renderNvSuggest(list) {
+            const box = document.getElementById('nvSuggest');
+            if (!list.length) {
+                box.innerHTML = '<div class="empty">Không có kết quả</div>';
+                box.style.display = 'block';
+                return;
+            }
+            const html = list.slice(0, 100)
+                .map((r, i) => `
           <div class="item${i === nvIndex ? ' active' : ''}" data-manv="${r.manv}">
             ${r.manv} — ${r.tennv || ''}
           </div>`).join('');
-      box.innerHTML = html;
-      box.style.display = 'block';
-      box.querySelectorAll('.item').forEach(el => {
-        el.addEventListener('mousedown', e => {
-          e.preventDefault();
-          pickNv(el.dataset.manv);
+            box.innerHTML = html;
+            box.style.display = 'block';
+            box.querySelectorAll('.item').forEach(el => {
+                el.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    pickNv(el.dataset.manv);
+                });
+            });
+        }
+
+        function hideNvSuggest() {
+            const box = document.getElementById('nvSuggest');
+            if (box) box.style.display = 'none';
+            nvIndex = -1;
+        }
+
+        async function onManvInput() {
+            await ensureNvList();
+            const q = getVal('manv').trim().toUpperCase();
+
+            const list = !q
+                ? nvCache.slice(0, 200)
+                : nvCache.filter(r =>
+                    r.manv?.toUpperCase().includes(q) ||
+                    (r.tennv || '').toUpperCase().includes(q)
+                );
+
+            nvIndex = -1;
+            renderNvSuggest(list);
+        }
+
+        function onManvKey(e) {
+            const box = document.getElementById('nvSuggest');
+            const items = Array.from(box.querySelectorAll('.item'));
+            if (e.key === 'ArrowDown') {
+                if (!items.length) return;
+                e.preventDefault();
+                nvIndex = (nvIndex + 1) % items.length;
+                items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
+                items[nvIndex].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                if (!items.length) return;
+                e.preventDefault();
+                nvIndex = (nvIndex <= 0 ? items.length - 1 : nvIndex - 1);
+                items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
+                items[nvIndex].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (nvIndex >= 0 && items[nvIndex]) {
+                    e.preventDefault();
+                    pickNv(items[nvIndex].dataset.manv);
+                } else {
+                    fetchNV();
+                    hideNvSuggest();
+                }
+            } else if (e.key === 'Escape') {
+                hideNvSuggest();
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!document.querySelector('.manv-wrap')?.contains(e.target)) hideNvSuggest();
         });
-      });
-    }
 
-    function hideNvSuggest() {
-      const box = document.getElementById('nvSuggest');
-      if (box) box.style.display = 'none';
-      nvIndex = -1;
-    }
+        // ======= HÀM TIỆN ÍCH FORM =======
+        function getVal(id) { return document.getElementById(id).value; }
+        function setVal(id, val) { document.getElementById(id).value = val || ''; }
 
-    async function onManvInput() {
-      await ensureNvList();
-      const q = getVal('manv').trim().toUpperCase();
-
-      const list = !q
-        ? nvCache.slice(0, 200)
-        : nvCache.filter(r =>
-          r.manv?.toUpperCase().includes(q) ||
-          (r.tennv || '').toUpperCase().includes(q)
-        );
-
-      nvIndex = -1;
-      renderNvSuggest(list);
-    }
-
-    function onManvKey(e) {
-      const box = document.getElementById('nvSuggest');
-      const items = Array.from(box.querySelectorAll('.item'));
-      if (e.key === 'ArrowDown') {
-        if (!items.length) return;
-        e.preventDefault();
-        nvIndex = (nvIndex + 1) % items.length;
-        items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
-        items[nvIndex].scrollIntoView({ block: 'nearest' });
-      } else if (e.key === 'ArrowUp') {
-        if (!items.length) return;
-        e.preventDefault();
-        nvIndex = (nvIndex <= 0 ? items.length - 1 : nvIndex - 1);
-        items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
-        items[nvIndex].scrollIntoView({ block: 'nearest' });
-      } else if (e.key === 'Enter') {
-        if (nvIndex >= 0 && items[nvIndex]) {
-          e.preventDefault();
-          pickNv(items[nvIndex].dataset.manv);
-        } else {
-          fetchNV();
-          hideNvSuggest();
-        }
-      } else if (e.key === 'Escape') {
-        hideNvSuggest();
-      }
-    }
-
-    document.addEventListener('click', (e) => {
-      if (!document.querySelector('.manv-wrap')?.contains(e.target)) hideNvSuggest();
-    });
-
-    // ======= HÀM TIỆN ÍCH FORM =======
-    function getVal(id) { return document.getElementById(id).value; }
-    function setVal(id, val) { document.getElementById(id).value = val || ''; }
-
-    function showMsg(msg, type) {
-      let box = document.getElementById('msgBox');
-      box.textContent = msg || '';
-      box.className = 'msg' + (type ? ' ' + type : '');
-      if (msg && type !== 'error') {
-        setTimeout(() => { box.textContent = ''; }, 2500);
-      }
-    }
-
-    function resetForm() {
-      ['manv', 'tennv', 'matkhau', 'email', 'loai_duoc_sua'].forEach(id => setVal(id, ''));
-      ['trangthai', 'sua_hoadon', 'xoa_hoadon'].forEach(id => {
-        document.getElementById(id).value = 'true';
-      });
-      editingOld = false;
-      document.getElementById('manv').readOnly = false;
-      showMsg('');
-      document.getElementById('manv').focus();
-    }
-
-    async function fetchNV() {
-      let manv = getVal('manv').trim().toUpperCase();
-      if (!manv) return;
-      const { data, error } = await supabase
-        .from(TABLE)
-        .select('*')
-        .eq('manv', manv)
-        .maybeSingle();
-
-      if (error) {
-        showMsg('Lỗi tải dữ liệu: ' + error.message, 'error');
-        return;
-      }
-
-      if (data && data.manv) {
-        setVal('tennv', data.tennv);
-        setVal('matkhau', data.matkhau);
-        setVal('email', data.email);
-        setVal('loai_duoc_sua', (data.loai_duoc_sua || []).join(', '));
-        document.getElementById('trangthai').value = data.trangthai ? 'true' : 'false';
-        document.getElementById('sua_hoadon').value = data.sua_hoadon ? 'true' : 'false';
-        document.getElementById('xoa_hoadon').value = data.xoa_hoadon ? 'true' : 'false';
-        editingOld = true;
-        document.getElementById('manv').readOnly = true;
-        showMsg('Đã tải dữ liệu nhân viên.', 'success');
-      } else {
-        editingOld = false;
-        document.getElementById('manv').readOnly = false;
-        showMsg('Mã mới, hãy nhập thông tin để lưu!');
-      }
-    }
-
-    async function saveNV() {
-      let manv = getVal('manv').trim().toUpperCase();
-      let tennv = getVal('tennv').trim();
-      if (!manv) return showMsg('Mã nhân viên không được bỏ trống!', 'error');
-      if (!tennv) return showMsg('Tên nhân viên không được bỏ trống!', 'error');
-
-      let obj = {
-        manv,
-        tennv,
-        trangthai: getVal('trangthai') === 'true',
-        matkhau: getVal('matkhau') || null,
-        sua_hoadon: getVal('sua_hoadon') === 'true',
-        xoa_hoadon: getVal('xoa_hoadon') === 'true',
-        email: getVal('email') || null,
-        loai_duoc_sua: getVal('loai_duoc_sua')
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean)
-      };
-
-      let error;
-      if (editingOld) {
-        ({ error } = await supabase.from(TABLE).update(obj).eq('manv', manv));
-      } else {
-        ({ error } = await supabase.from(TABLE).insert(obj));
-      }
-
-      if (!error) {
-        showMsg(editingOld ? 'Đã cập nhật nhân viên!' : 'Đã thêm nhân viên mới!', 'success');
-        setTimeout(resetForm, 1000);
-      } else {
-        showMsg('Lỗi: ' + error.message, 'error');
-      }
-    }
-
-    async function deleteNV() {
-      let manv = getVal('manv').trim().toUpperCase();
-      if (!manv || !editingOld) return showMsg('Không có nhân viên để xóa!', 'error');
-      if (!confirm(`Bạn có chắc chắn muốn xoá nhân viên "${manv}" không?`)) return;
-      const { error } = await supabase.from(TABLE).delete().eq('manv', manv);
-      if (!error) {
-        showMsg('Đã xoá nhân viên thành công!', 'success');
-        setTimeout(resetForm, 1000);
-      } else {
-        showMsg('Lỗi xoá: ' + error.message, 'error');
-      }
-    }
-
-    async function handleLogout() {
-      await dangXuatDungChung({ appContainerId: 'app-container' });
-    }
-
-    // ======= GHÉP AUTH CHUẨN – CHỈ CHO PHÉP ADMIN =======
-    khoiTaoDangNhapDungChung({
-      appContainerId: 'app-container',
-      macDinhDiaDiem: 'cs1',      // mặc định cơ sở 1, tuỳ anh đổi nếu cần
-      tuDongKhoaCoSo: true,
-      loginApiPath: '/api/login-cs1',
-      onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-        // Chỉ cho phép admin
-        if (!nhanvien.is_admin) {
-          alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang nhập danh mục nhân viên.');
-          await dangXuatDungChung({ appContainerId: 'app-container' });
-          return;
+        function showMsg(msg, type) {
+            let box = document.getElementById('msgBox');
+            box.textContent = msg || '';
+            box.className = 'msg' + (type ? ' ' + type : '');
+            if (msg && type !== 'error') {
+                setTimeout(() => { box.textContent = ''; }, 2500);
+            }
         }
 
-        // Admin hợp lệ -> hiển thị app & load danh sách gợi ý mã NV
-        document.getElementById('app-container').style.display = '';
-        await loadNvList();
-        resetForm();
-      }
-    });
+        function resetForm() {
+            ['manv', 'tennv', 'matkhau', 'email', 'loai_duoc_sua'].forEach(id => setVal(id, ''));
 
-    // ======= EXPOSE HÀM RA WINDOW ĐỂ HTML GỌI =======
-    window.onManvInput = onManvInput;
-    window.onManvKey = onManvKey;
-    window.resetForm = resetForm;
-    window.fetchNV = fetchNV;
-    window.saveNV = saveNV;
-    window.deleteNV = deleteNV;
-    window.handleLogout = handleLogout;
-  </script>
+            // ĐẶT MẶC ĐỊNH
+            document.getElementById('trangthai').value = 'true';   // đang hoạt động
+            document.getElementById('sua_hoadon').value = 'false'; // KHÔNG được sửa hóa đơn
+            document.getElementById('xoa_hoadon').value = 'false'; // KHÔNG được xóa hóa đơn
+
+            editingOld = false;
+            document.getElementById('manv').readOnly = false;
+            showMsg('');
+            document.getElementById('manv').focus();
+        }
+
+
+        async function fetchNV() {
+            let manv = getVal('manv').trim().toUpperCase();
+            if (!manv) return;
+            const { data, error } = await supabase
+                .from(TABLE)
+                .select('*')
+                .eq('manv', manv)
+                .maybeSingle();
+
+            if (error) {
+                showMsg('Lỗi tải dữ liệu: ' + error.message, 'error');
+                return;
+            }
+
+            if (data && data.manv) {
+                setVal('tennv', data.tennv);
+                setVal('matkhau', data.matkhau);
+                setVal('email', data.email);
+                setVal('loai_duoc_sua', (data.loai_duoc_sua || []).join(', '));
+                document.getElementById('trangthai').value = data.trangthai ? 'true' : 'false';
+                document.getElementById('sua_hoadon').value = data.sua_hoadon ? 'true' : 'false';
+                document.getElementById('xoa_hoadon').value = data.xoa_hoadon ? 'true' : 'false';
+                editingOld = true;
+                document.getElementById('manv').readOnly = true;
+                showMsg('Đã tải dữ liệu nhân viên.', 'success');
+            } else {
+                editingOld = false;
+                document.getElementById('manv').readOnly = false;
+                showMsg('Mã mới, hãy nhập thông tin để lưu!');
+            }
+        }
+
+        async function saveNV() {
+            let manv = getVal('manv').trim().toUpperCase();
+            let tennv = getVal('tennv').trim();
+            if (!manv) return showMsg('Mã nhân viên không được bỏ trống!', 'error');
+            if (!tennv) return showMsg('Tên nhân viên không được bỏ trống!', 'error');
+
+            let obj = {
+                manv,
+                tennv,
+                trangthai: getVal('trangthai') === 'true',
+                matkhau: getVal('matkhau') || null,
+                sua_hoadon: getVal('sua_hoadon') === 'true',
+                xoa_hoadon: getVal('xoa_hoadon') === 'true',
+                email: getVal('email') || null,
+                loai_duoc_sua: getVal('loai_duoc_sua')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+            };
+
+            let error;
+            if (editingOld) {
+                ({ error } = await supabase.from(TABLE).update(obj).eq('manv', manv));
+            } else {
+                ({ error } = await supabase.from(TABLE).insert(obj));
+            }
+
+            if (!error) {
+                showMsg(editingOld ? 'Đã cập nhật nhân viên!' : 'Đã thêm nhân viên mới!', 'success');
+                setTimeout(resetForm, 1000);
+            } else {
+                showMsg('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteNV() {
+            let manv = getVal('manv').trim().toUpperCase();
+            if (!manv || !editingOld) return showMsg('Không có nhân viên để xóa!', 'error');
+            if (!confirm(`Bạn có chắc chắn muốn xoá nhân viên "${manv}" không?`)) return;
+            const { error } = await supabase.from(TABLE).delete().eq('manv', manv);
+            if (!error) {
+                showMsg('Đã xoá nhân viên thành công!', 'success');
+                setTimeout(resetForm, 1000);
+            } else {
+                showMsg('Lỗi xoá: ' + error.message, 'error');
+            }
+        }
+
+        async function handleLogout() {
+            await dangXuatDungChung({ appContainerId: 'app-container' });
+        }
+
+        // ======= GHÉP AUTH CHUẨN – CHỈ CHO PHÉP ADMIN =======
+        khoiTaoDangNhapDungChung({
+            appContainerId: 'app-container',
+            macDinhDiaDiem: 'cs1',      // mặc định cơ sở 1, tuỳ anh đổi nếu cần
+            tuDongKhoaCoSo: true,
+            loginApiPath: '/api/login-cs1',
+            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+                // Chỉ cho phép admin
+                if (!nhanvien.is_admin) {
+                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang nhập danh mục nhân viên.');
+                    await dangXuatDungChung({ appContainerId: 'app-container' });
+                    return;
+                }
+
+                // Admin hợp lệ -> hiển thị app & load danh sách gợi ý mã NV
+                document.getElementById('app-container').style.display = '';
+                await loadNvList();
+                resetForm();
+            }
+        });
+
+        // ======= EXPOSE HÀM RA WINDOW ĐỂ HTML GỌI =======
+        window.onManvInput = onManvInput;
+        window.onManvKey = onManvKey;
+        window.resetForm = resetForm;
+        window.fetchNV = fetchNV;
+        window.saveNV = saveNV;
+        window.deleteNV = deleteNV;
+        window.handleLogout = handleLogout;
+    </script>
 </body>
 
 </html>
