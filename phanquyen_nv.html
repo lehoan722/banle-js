@@ -1,172 +1,381 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8" />
-  <title>PHÂN QUYỀN NHÂN VIÊN</title>
-  <meta name="viewport" content="width=600">
+  <meta charset="utf-8" />
+  <title>Phân quyền nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {font-family: Arial, sans-serif; background:#f9f9fb; padding:30px;}
-    h2 {margin-top:0;}
-    table {border-collapse:collapse; width:100%; font-size:14px;}
-    th,td {border:1px solid #ddd; padding:6px;}
-    th {background:#e6eef8;}
-    .center {text-align:center;}
-    .container {max-width:750px; margin:0 auto;}
+    body {
+      font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      margin: 16px;
+      background: #fafbfc
+    }
 
-    /* overlay login */
-    #login-container{
-      position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
-      justify-content:center; background:white; z-index:9999;
+    .wrap {
+      max-width: 820px;
+      margin: 0 auto
     }
-    #login-box{
-      width:330px; padding:20px; background:#f9f9f9; border-radius:10px;
-      box-shadow:0 0 20px #ddd;
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px
     }
-    #login-box input{
-      width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;
+
+    .badge {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 20px;
+      background: #eef6ff;
+      color: #0b5cd9
     }
-    #btnLogin{
-      width:100%; padding:10px; border-radius:8px; background:#0b84ff; color:white;
-      border:none; cursor:pointer;
+
+    .danger {
+      color: #b00020
     }
-    #btnLogin:hover{opacity:.85;}
-    #login-error{margin-top:8px; color:#c91616; min-height:22px;}
-    #app{display:none;}
-    .info{margin-bottom:20px; font-size:14px;}
-    #who{color:#1164be;font-weight:bold;}
-    .btn-save{
-      padding:8px 18px; border:none;
-      background:#159647; color:white;
-      border-radius:8px; cursor:pointer;
-      margin:20px 0;
+
+    .card {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 14px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .02)
     }
-    .btn-save:hover{opacity:.85;}
-    .disabled{background:#ccc !important;cursor:not-allowed;}
+
+    .row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px
+    }
+
+    input[type=text],
+    input[type=password] {
+      padding: 10px;
+      border: 1px solid #dcdfe4;
+      border-radius: 10px;
+      width: 100%
+    }
+
+    input[readonly] {
+      background: #f6f7f9
+    }
+
+    button {
+      padding: 10px 14px;
+      border: 1px solid #d0d7de;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer
+    }
+
+    button.primary {
+      background: #0b84ff;
+      color: #fff;
+      border-color: #0b84ff
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse
+    }
+
+    th,
+    td {
+      padding: 8px;
+      border-bottom: 1px dashed #eee
+    }
+
+    th {
+      text-align: left
+    }
+
+    .footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 12px
+    }
+
+    .hint {
+      color: #6b7280;
+      font-size: 13px
+    }
+
+    .ok {
+      color: #0a7a0a
+    }
+
+    /* Có style cho #login-container cũng không sao – authModule sẽ override bằng inline style */
+    #login-container {
+      /* sẽ được authModule set lại bằng JS */
+    }
   </style>
 </head>
 
 <body>
+  <!-- APP CHÍNH – ẩn khi chưa login -->
+  <div class="wrap" id="app" style="display:none">
+    <div class="top">
+      <h2>Phân quyền nhân viên</h2>
+      <span id="who" class="badge">Đang kiểm tra…</span>
+    </div>
 
-<!-- LOGIN -->
-<div id="login-container">
-  <div id="login-box">
-    <h2>Đăng nhập</h2>
-    <form id="form-login">
-      <input id="manvLogin" placeholder="Mã nhân viên" autocomplete="off" />
-      <input id="passLogin" type="password" placeholder="Mật khẩu" />
-      <button id="btnLogin">Đăng nhập</button>
-    </form>
-    <div id="login-error"></div>
+    <!-- Khối tìm NV cần phân quyền -->
+    <div class="card" id="searchCard">
+      <div class="row">
+        <label>Mã nhân viên</label>
+        <input id="manv" type="text" placeholder=" 2222/NV001" />
+      </div>
+      <div class="row">
+        <label>Tên nhân viên</label>
+        <input id="tennv" type="text" readonly placeholder="(tự điền sau khi nhập mã)" />
+      </div>
+      <div class="row">
+        <label></label>
+        <div>
+          <button id="btnLoad">Tải danh sách trang</button>
+          <span class="hint">Nhập mã NV → tên NV tự hiện nếu tồn tại.</span>
+        </div>
+      </div>
+      <div id="msgSearch" class="hint" style="margin-top:6px"></div>
+    </div>
+
+    <!-- Khối danh sách trang -->
+    <div class="card" id="pagesCard" style="display:none">
+      <table id="pagesTable">
+        <thead>
+          <tr>
+            <th style="width:70px">Chọn</th>
+            <th>Trang được sử dụng</th>
+            <th class="hint">Đường dẫn</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="footer">
+        <button id="btnUncheckAll">Bỏ chọn hết</button>
+        <button id="btnCheckAll">Chọn hết</button>
+        <button class="primary" id="btnSave">Lưu dữ liệu</button>
+      </div>
+      <div id="msg" class="hint" style="margin-top:8px"></div>
+    </div>
   </div>
-</div>
 
-<div id="app" class="container">
+  <!-- KHUNG LOGIN – để trống, authModule sẽ tự render form -->
+  <div id="login-container"></div>
 
-  <div class="info">
-    <span id="who"></span>
-  </div>
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-  <h2>PHÂN QUYỀN NHÂN VIÊN</h2>
+    // Supabase client dùng chung đã được tạo trong authModule và gắn ở window.supabase
+    const supabase = window.supabase;
 
-  <table id="tbl" class="center">
-    <thead>
-      <tr>
-        <th>Mã NV</th>
-        <th>Tên NV</th>
-        <th>Được xem</th>
-        <th>Được sửa</th>
-        <th>Được xóa</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
+    const el = (id) => document.getElementById(id);
+    const elWho = el('who');
 
-  <button id="btnSave" class="btn-save">Lưu phân quyền</button>
+    // Người đang đăng nhập trang phân quyền
+    let ACTOR = { manv: null, tennv: null, is_admin: false, _pass: "" };
 
-</div>
+    // ==== KHỞI TẠO ĐĂNG NHẬP CHUẨN AUTH (CHỈ ADMIN ĐƯỢC VÀO TRANG) ====
+    khoiTaoDangNhapDungChung({
+      loginContainerId: "login-container",
+      appContainerId: "app",
+      macDinhDiaDiem: "cs1",        // có thể đổi nếu muốn, chỉ là mặc định trong form
+      tuDongKhoaCoSo: false,        // cho admin chọn cs1/cs2 nếu cần
+      loginApiPath: "/api/login-cs1",
+
+      onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+        // Lấy lại mật khẩu NV từ localStorage (authModule đã lưu ở last_login_password)
+        const pass = (localStorage.getItem("last_login_password") || "").trim();
+
+        // CHẶN KHÔNG PHẢI ADMIN
+        if (!nhanvien.is_admin) {
+          alert("Chỉ tài khoản ADMIN mới được phép sử dụng trang PHÂN QUYỀN NHÂN VIÊN.");
+
+          // Ẩn app, hiện lại form login
+          const app = document.getElementById("app");
+          const loginDiv = document.getElementById("login-container");
+          if (app) app.style.display = "none";
+          if (loginDiv) loginDiv.style.display = "flex";
+
+          return;
+        }
+
+        // Nếu là ADMIN → cho dùng trang
+        ACTOR = {
+          manv: nhanvien.manv,
+          tennv: nhanvien.tennv,
+          is_admin: true,
+          _pass: pass
+        };
+
+        elWho.textContent = `Đang đăng nhập: ${ACTOR.tennv || ACTOR.manv} (ADMIN)`;
+
+        // Đảm bảo nút Lưu được bật
+        const btnSave = document.getElementById("btnSave");
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.title = "";
+        }
+      }
+    });
 
 
-<!-- --- SUPABASE --- -->
-<script>
-  window.SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
-  window.SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
-</script>
+    // ---------- UI phân quyền ---------- //
+    const elSearch = el('searchCard');
+    const elManv = el('manv');
+    const elTennv = el('tennv');
+    const elBtnLoad = el('btnLoad');
+    const elMsgSearch = el('msgSearch');
+    const elPages = el('pagesCard');
+    const elTableBody = document.querySelector('#pagesTable tbody');
+    const elCheckAll = el('btnCheckAll');
+    const elUncheckAll = el('btnUncheckAll');
+    const elSave = el('btnSave');
+    const elMsg = el('msg');
 
-<script type="module">
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
+    let currentRows = []; // [{code,path,title,checked,can_edit}...]
 
-const rowsBox = document.getElementById("rows");
-const btnSave = document.getElementById("btnSave");
-const who = document.getElementById("who");
+    function renderRows(rows) {
+      elTableBody.innerHTML = '';
+      rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
 
-// AUTH ONLY ADMIN
-async function doLogin(manv, password){
-  const {data,error} = await supabase.rpc("nv_login",{p_manv:manv,p_password:password});
-  if(error)throw new Error(error.message);
-  const row=data&&data[0];
-  if(!row||!row.ok)throw new Error("Sai mã NV hoặc mật khẩu!");
-  if(!row.is_admin)throw new Error("Tài khoản này KHÔNG phải ADMIN!");
-  return row;
-}
+        const tdCheck = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!r.checked;
+        cb.dataset.idx = idx;
+        cb.addEventListener('change', (e) => {
+          currentRows[Number(e.target.dataset.idx)].checked = e.target.checked;
+        });
+        tdCheck.appendChild(cb);
 
-// LOAD
-async function load(){
-  const {data,error} = await supabase
-      .from("dmnhanvien")
-      .select("manv,tennv,sua_hoadon,xoa_hoadon,trangthai,duoc_xem,duoc_sua,duoc_xoa")
-      .order("manv",{ascending:true});
-  if(error)return;
-  rowsBox.innerHTML="";
-  data.forEach(r=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${r.manv}</td>
-      <td>${r.tennv||""}</td>
-      <td><input type="checkbox" class="ex" data-manv="${r.manv}" ${r.duoc_xem?"checked":""}></td>
-      <td><input type="checkbox" class="ed" data-manv="${r.manv}" ${r.duoc_sua?"checked":""}></td>
-      <td><input type="checkbox" class="del" data-manv="${r.manv}" ${r.duoc_xoa?"checked":""}></td>
-    `;
-    rowsBox.appendChild(tr);
-  });
-}
+        const tdTitle = document.createElement('td');
+        tdTitle.textContent = r.title || r.path;
 
-async function save(){
-  const ex=document.querySelectorAll(".ex");
-  const ed=document.querySelectorAll(".ed");
-  const del=document.querySelectorAll(".del");
+        const tdPath = document.createElement('td');
+        tdPath.className = 'hint';
+        tdPath.textContent = r.path;
 
-  for(let i=0;i<ex.length;i++){
-    const manv = ex[i].dataset.manv;
-    const obj={
-      duoc_xem: ex[i].checked,
-      duoc_sua: ed[i].checked,
-      duoc_xoa: del[i].checked
-    };
-    await supabase.from("dmnhanvien").update(obj).eq("manv",manv);
-  }
-  alert("Đã lưu!");
-}
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdPath);
+        elTableBody.appendChild(tr);
+      });
+    }
 
-document.getElementById("form-login").addEventListener("submit", async e=>{
-  e.preventDefault();
-  const manv=document.getElementById("manvLogin").value.trim();
-  const pass=document.getElementById("passLogin").value.trim();
-  try{
-    const u=await doLogin(manv,pass);
-    document.getElementById("login-container").style.display="none";
-    document.getElementById("app").style.display="";
-    who.textContent=`Đang đăng nhập: ${u.tennv||u.manv} (ADMIN)`;
-    btnSave.disabled=false;
-    load();
-  }catch(err){
-    document.getElementById("login-error").textContent=err.message;
-  }
-});
+    async function loadNvName(manv) {
+      elMsgSearch.textContent = '';
+      if (!manv) {
+        elTennv.value = '';
+        return;
+      }
+      const { data, error } = await supabase.rpc('get_nv_info', { p_manv: manv });
+      if (error) {
+        elMsgSearch.className = 'hint danger';
+        elMsgSearch.textContent = 'Lỗi lấy tên NV: ' + error.message;
+        elTennv.value = '';
+        return;
+      }
+      if (!data || !data[0] || !data[0].found) {
+        elMsgSearch.className = 'hint danger';
+        elMsgSearch.textContent = 'Mã NV không tồn tại trong danh mục.';
+        elTennv.value = '';
+        return;
+      }
+      elMsgSearch.className = 'hint';
+      elMsgSearch.textContent = '';
+      elTennv.value = data[0].tennv || '';
+    }
 
-btnSave.addEventListener("click",save);
+    // Khi rời ô mã NV → tự load tên
+    elManv.addEventListener('blur', () => loadNvName(elManv.value.trim()));
 
-</script>
+    // Nút "Tải danh sách trang"
+    elBtnLoad.addEventListener('click', async () => {
+      const manv = elManv.value.trim();
+      if (!manv) {
+        alert('Hãy nhập Mã NV');
+        return;
+      }
+      await loadNvName(manv);
+
+      const { data, error } = await supabase.rpc('get_pages_for_manv', { p_manv: manv });
+      if (error) {
+        elMsg.className = 'hint danger';
+        elMsg.textContent = 'Lỗi tải danh sách trang: ' + error.message;
+        return;
+      }
+      currentRows = data || [];
+      renderRows(currentRows);
+      elPages.style.display = 'block';
+    });
+
+    // Chọn hết / Bỏ chọn hết
+    elCheckAll.addEventListener('click', () => {
+      currentRows.forEach(r => r.checked = true);
+      renderRows(currentRows);
+    });
+    elUncheckAll.addEventListener('click', () => {
+      currentRows.forEach(r => r.checked = false);
+      renderRows(currentRows);
+    });
+
+    // Nút LƯU DỮ LIỆU
+    elSave.addEventListener('click', async () => {
+      elMsg.textContent = '';
+
+      if (!ACTOR || !ACTOR.manv || !ACTOR.is_admin) {
+        alert('Chỉ ADMIN đăng nhập bằng tài khoản hợp lệ mới được lưu phân quyền.');
+        return;
+      }
+
+      const manvTarget = elManv.value.trim();
+      if (!manvTarget) {
+        alert('Chưa có Mã NV');
+        return;
+      }
+
+      const codes = currentRows
+        .filter(r => r.checked)
+        .map(r => r.code);
+
+      const payload = {
+        p_actor_manv: ACTOR.manv,
+        p_actor_pass: ACTOR._pass || null,
+        p_target_manv: manvTarget,
+        p_codes: codes.length ? codes : null,
+        p_can_edit: false
+      };
+
+      const { data, error } = await supabase.rpc('set_pages_for_manv_nvauth', payload);
+
+      if (error) {
+        console.error('RPC error:', error);
+        elMsg.className = 'hint danger';
+        elMsg.textContent = 'Lỗi RPC: ' + (error.message || 'Bad Request');
+        return;
+      }
+
+      const row = (data && data[0]) || {};
+      if (!row.ok) {
+        elMsg.className = 'hint danger';
+        elMsg.textContent = 'Không lưu được: ' + (row.reason || 'Không rõ nguyên nhân');
+        return;
+      }
+
+      elMsg.className = 'hint ok';
+      elMsg.textContent = 'Đã lưu phân quyền cho ' + (elTennv.value || manvTarget) + ' (' + (codes.length || 0) + ' trang).';
+    });
+
+  </script>
 </body>
+
 </html>
