@@ -1423,7 +1423,7 @@ async function waitForLoginAndAutoSearch() {
             info = null;
         }
         if (info && info.manv) break; // đã đăng nhập xong
-        await new Promise(res => setTimeout(res, 250));
+        await new Promise(res => setTimeout(res, 50));
         attempts++;
     }
 
