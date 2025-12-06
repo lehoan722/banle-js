@@ -149,16 +149,17 @@ function renderLuongHot(data) {
     70,   // Mã NV
     90,  // Tên NV
     50,   // Cơ sở
-    70,   // Giờ công (thực)
-    70,   // Giờ trừ TANCA_LỊCH
-    70,   // Giờ tính lương
+    90,   // Giờ công (thực)
+    110,   // Giờ trừ TANCA_LỊCH
+    100,   // Giờ tính lương
     70,   // Doanh thu
     70,   // Khoán / giờ
     70,   // Khoán theo giờ công
-    70,   // Doanh thu vượt khoán
-    70,   // Thưởng vượt khoán
-    70,   // Lương cứng
-    100   // Tổng lương
+    110,   // Doanh thu vượt khoán
+    110,   // Thưởng vượt khoán
+    100,   // Lương cứng
+    100,   // Tổng lương
+    100   // Lương/1 giờ
   ];
 
   // 👇 Ẩn tạm 3 cột: Doanh thu (6), Khoán theo giờ công (8), Doanh thu vượt khoán (9)
