@@ -1416,14 +1416,14 @@ async function waitForLoginAndAutoSearch() {
     let attempts = 0;
     let info = null;
 
-    while (attempts < 40) { // ~10s nếu mỗi vòng 250ms
+    while (attempts < 2) { // ~10s nếu mỗi vòng 250ms
         try {
             info = await authModule.getCurrentUserInfo();
         } catch (e) {
             info = null;
         }
         if (info && info.manv) break; // đã đăng nhập xong
-        await new Promise(res => setTimeout(res, 50));
+        await new Promise(res => setTimeout(res, 10));
         attempts++;
     }
 
