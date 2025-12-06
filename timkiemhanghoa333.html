@@ -683,13 +683,30 @@
 
         // Khởi tạo login chung
         authModule.khoiTaoDangNhapDungChung({
-            appContainerId: "app-container",
-            macDinhDiaDiem: "",        // hoặc "cs1" nếu muốn mặc định
-            tuDongKhoaCoSo: false,
-            loginApiPath: "/api/login-cs1",   // giữ giống các trang khác của bạn
-            onLoginSuccess: window.onLoginSuccessTimKiem,
-            skipPagePermissionCheck: true // nếu trong authModule có flag kiểu này
+            appContainerId: "app-container-tk333",
+            loginContainerId: "login-container",
+            loginApiPath: "/api/login-...",
+
+            onLoginSuccess: async (nhanvien, context) => {
+                // 1. Gán cơ sở cho dropdown 333 theo diadiem đăng nhập
+                const diadiem = (context && context.diadiem) || localStorage.getItem('diadiem');
+                const branchSelect = document.getElementById('branchPicker');
+                if (branchSelect && diadiem) {
+                    branchSelect.value = diadiem;
+                    branchSelect.dispatchEvent(new Event('change'));
+                }
+
+                // 2. Sau khi đã login xong, chạy auto search (F7/F8) đúng 1 lần
+                if (window.autoSearchFromUrlAndBulk) {
+                    try {
+                        await window.autoSearchFromUrlAndBulk();
+                    } catch (e) {
+                        console.error("Lỗi autoSearchFromUrlAndBulk sau login:", e);
+                    }
+                }
+            }
         });
+
     </script>
 
 </body>
