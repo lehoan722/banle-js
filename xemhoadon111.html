@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Xem hoa don</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -219,10 +219,7 @@
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
   <script>
-    const supabase = window.supabase.createClient(
-      'https://rddjrmbyftlcvrgzlyby.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-    );
+
     let rowDangChon = null;
 
     // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
@@ -254,7 +251,7 @@
       let from = 0;
       const sohdSet = new Set();
       while (true) {
-        const { data, error } = await supabase
+        const { data, error } = await window.supabase
           .from('ct_hoadon_banle')
           .select('sohd, masp')
           .ilike('masp', `%${masp}%`)
@@ -554,7 +551,7 @@
     async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "block";
       document.getElementById("sohdCT").textContent = sohd;
-      const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+      const { data, error } = await window.supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
       const tbody = document.getElementById("ctHoaDon");
       tbody.innerHTML = "";
       if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
@@ -626,8 +623,8 @@
 
         // Thực hiện xóa
         for (const sohd of dsXoa) {
-          await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-          await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+          await window.supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+          await window.supabase.from("hoadon_banle").delete().eq("sohd", sohd);
         }
 
         alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
@@ -819,7 +816,7 @@
         const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const { data, error } = await supabase
+        const { data, error } = await window.supabase
           .from('dmnhanvien')
           .select('*')
           .eq('manv', manv)
@@ -984,15 +981,17 @@
     khoiTaoDangNhapDungChung({
       appContainerId: 'app-container',
 
-      // 👉 KHÔNG đặt mặc định cơ sở nào
-      macDinhDiaDiem: '',        // hoặc bỏ hẳn option này cũng được
-      tuDongKhoaCoSo: false,     // vẫn cho chọn CS1 / CS2
+      // Không khóa cứng cơ sở, để nhân viên chọn CS1 / CS2
+      macDinhDiaDiem: '',
+      tuDongKhoaCoSo: false,
 
-      loginApiPath: '/api/login-cs1',  // backend vẫn nhận được diadiem = cs1 / cs2 từ form
+      // API backend đăng nhập
+      loginApiPath: '/api/login-cs1',
 
       async onLoginSuccess(nv, ctx) {
         // Lấy cờ admin từ object trả về + localStorage
-        const flagFromObj = nv && (nv.is_admin === true || nv.is_admin === 'true' || nv.is_admin === 1);
+        const flagFromObj =
+          nv && (nv.is_admin === true || nv.is_admin === 'true' || nv.is_admin === 1);
         const flagFromLS = localStorage.getItem('is_admin') === 'true';
 
         const isAdmin = flagFromObj || flagFromLS;
@@ -1002,24 +1001,24 @@
 
           const app = document.getElementById('app-container') || document.body;
           app.innerHTML = `
-        <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
-          🚫 Bạn không có quyền xem báo cáo này
-        </h2>
-        <p>
-          Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
-          trong bảng <code>dmnhanvien</code>) mới được phép truy cập
-          trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
-        </p>
-      `;
+          <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
+            🚫 Bạn không có quyền xem báo cáo này
+          </h2>
+          <p>
+            Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
+            trong bảng <code>dmnhanvien</code>) mới được phép truy cập
+            trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
+          </p>
+        `;
           return;
         }
 
-        // ✅ Là admin → load dữ liệu báo cáo
+        // ✅ Đã đăng nhập + đúng admin → lúc này window.supabase đã có session
         await taiDanhSachHoaDon();
       }
-
     });
   </script>
+
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
 </body>
