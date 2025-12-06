@@ -1411,12 +1411,35 @@ async function autoSearchFromUrlAndBulk() {
     }
 }
 
+// đợi đến khi authModule có thông tin nhân viên rồi mới gọi autoSearchFromUrlAndBulk
+async function waitForLoginAndAutoSearch() {
+    let attempts = 0;
+    let info = null;
+
+    while (attempts < 1) { // ~10s nếu mỗi vòng 250ms
+        try {
+            info = await authModule.getCurrentUserInfo();
+        } catch (e) {
+            info = null;
+        }
+        if (info && info.manv) break; // đã đăng nhập xong
+        await new Promise(res => setTimeout(res, 250));
+        attempts++;
+    }
+
+    // sau khi có (hoặc quá thời gian chờ) thì chạy auto search
+    await autoSearchFromUrlAndBulk();
+}
+
 
 // Gộp cùng onload hiện có:
 const _oldOnload = window.onload;
 window.onload = async function () {
     if (typeof _oldOnload === "function") await _oldOnload();
-    try { setupBeepUnlockOnce(document); } catch (_) { }   
+    try { setupBeepUnlockOnce(document); } catch (_) { }
+
+    // ⭐ Đợi đăng nhập xong rồi mới auto search (F7/F8)
+    waitForLoginAndAutoSearch().catch(console.error);
 
     // === ĐẶT HÀNG: gắn sự kiện ===
     document.getElementById('orderBtn')?.addEventListener('click', async () => {
