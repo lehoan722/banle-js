@@ -136,7 +136,26 @@
   </style>
 </head>
 
-<body>
+<body style="display:none" id="mainBody">
+
+  <!--dang nhap chuan auth  -->
+  <div id="login-container" style="
+  position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; background:white; z-index:9999;">
+    <div style="width:320px; padding:20px; background:#f9f9f9; border-radius:10px; box-shadow:0 0 20px #ddd;">
+      <h2>Đăng nhập</h2>
+      <input id="login-manv" placeholder="Mã nhân viên" style="width:100%; margin-bottom:10px; padding:10px;">
+      <input id="login-password" type="password" placeholder="Mật khẩu"
+        style="width:100%; margin-bottom:10px; padding:10px;">
+      <button id="btnLogin" style="
+      width:100%; padding:10px; border-radius:8px; background:#0b84ff; color:white;">Đăng nhập</button>
+      <div id="login-error" style="color:red;margin-top:10px;"></div>
+    </div>
+  </div>
+  <!--dang nhap chuan auth  -->
+
+
+
   <div class="wrap" id="app" style="display:none">
     <div class="top">
       <h2>Phân quyền nhân viên</h2>
@@ -235,24 +254,37 @@
       el('login-error').textContent = '';
       const manv = (elManvL.value || '').trim();
       const pass = (elPassL.value || '').trim();
-      if (!manv || !pass) { el('login-error').textContent = 'Nhập đủ mã NV và mật khẩu.'; return; }
+      if (!manv || !pass) {
+        el('login-error').textContent = 'Nhập đủ mã NV và mật khẩu.';
+        return;
+      }
 
       try {
         ACTOR = await doLogin(manv, pass);
+
+        // 🔐 CHỈ CHO PHÉP ADMIN
+        if (!ACTOR.is_admin) {
+          el('login-error').textContent =
+            'Tài khoản này không phải ADMIN nên không được phép mở trang phân quyền.';
+          ACTOR = { manv: null, tennv: null, is_admin: false };
+          return; // không cho ẩn màn đăng nhập, không cho vào trang
+        }
+
+        // 💚 ĐÚNG ADMIN → cho vào trang
         el('login-container').style.display = 'none';
         el('app').style.display = '';
-        elWho.textContent = `Đang đăng nhập: ${ACTOR.tennv || ACTOR.manv}` + (ACTOR.is_admin ? ' (ADMIN)' : '');
-        // Lưu tạm mật khẩu để gửi cho RPC lưu quyền (cần xác thực người thực hiện)
+        elWho.textContent =
+          `Đang đăng nhập: ${ACTOR.tennv || ACTOR.manv} (ADMIN)`;
+
+        // lưu mật khẩu để gửi kèm RPC phân quyền
         ACTOR._pass = pass;
-        // Nếu không phải admin -> khóa nút Lưu
-        if (!ACTOR.is_admin) {
-          el('btnSave').disabled = true;
-          el('btnSave').title = 'Chỉ ADMIN mới được phép lưu phân quyền';
-        }
+        el('btnSave').disabled = false;
+        el('btnSave').title = '';
       } catch (err) {
         el('login-error').textContent = 'Đăng nhập thất bại: ' + err.message;
       }
     });
+
 
     /* ---------- UI phân quyền ---------- */
     const elSearch = el('searchCard');
