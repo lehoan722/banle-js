@@ -685,10 +685,9 @@
         authModule.khoiTaoDangNhapDungChung({
             appContainerId: "app-container-tk333",
             loginContainerId: "login-container",
-            loginApiPath: "/api/login-...",
+            loginApiPath: "/api/login-cs1",
 
             onLoginSuccess: async (nhanvien, context) => {
-                // 1. Gán cơ sở cho dropdown 333 theo diadiem đăng nhập
                 const diadiem = (context && context.diadiem) || localStorage.getItem('diadiem');
                 const branchSelect = document.getElementById('branchPicker');
                 if (branchSelect && diadiem) {
@@ -696,7 +695,6 @@
                     branchSelect.dispatchEvent(new Event('change'));
                 }
 
-                // 2. Sau khi đã login xong, chạy auto search (F7/F8) đúng 1 lần
                 if (window.autoSearchFromUrlAndBulk) {
                     try {
                         await window.autoSearchFromUrlAndBulk();
@@ -706,7 +704,6 @@
                 }
             }
         });
-
     </script>
 
 </body>
