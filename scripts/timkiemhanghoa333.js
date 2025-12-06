@@ -750,13 +750,29 @@ async function renderOneProductDetail(masp) {
     toggleVitriInputsByBranch();
 
     // Bảng XNT (Editable)
+    // Bảng XNT (Editable)
     const rightBox = document.querySelector('.right-xnt');
     if (rightBox) {
+        // tạo container cho Handsontable
         rightBox.innerHTML = '<div id="xntHot" style="max-width:100%;"></div>';
         const el = document.getElementById('xntHot');
-        initXntHot(el, rowMap, masp);
-    }
 
+        // khởi tạo bảng XNT
+        const hot = initXntHot(el, rowMap, masp);
+
+        // 👉 rất quan trọng: sau khi layout ổn định thì refresh lại
+        // để trường hợp F7 mở trang + auto search vẫn hiện bảng ngay
+        if (hot) {
+            requestAnimationFrame(() => {
+                try {
+                    hot.refreshDimensions();
+                    hot.render();
+                } catch (e) {
+                    console.warn('refreshDimensions XNT error:', e);
+                }
+            });
+        }
+    }
 
     // Ảnh sản phẩm dưới bảng
     setProductImageByMasp(hanghoa.masp);
@@ -1664,7 +1680,7 @@ function initXntHot(containerEl, rowMap, masp) {
             }
         },
         // 👉 Click vào bất kỳ ô nào trên dòng size (trừ dòng Tổng) để mở tìm tương đồng
-                // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
+        // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
         afterOnCellMouseDown: (event, coords) => {
             const row = coords?.row;
             if (row == null || row <= 0) return;   // bỏ hàng Tổng (row 0)
