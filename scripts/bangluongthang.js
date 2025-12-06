@@ -148,9 +148,9 @@ function renderLuongHot(data) {
   const colWidths = [
     70,   // Mã NV
     90,  // Tên NV
-    50,   // Cơ sở
+    80,   // Cơ sở
     90,   // Giờ công (thực)
-    110,   // Giờ trừ TANCA_LỊCH
+    100,   // Giờ trừ TANCA_LỊCH
     100,   // Giờ tính lương
     70,   // Doanh thu
     70,   // Khoán / giờ
