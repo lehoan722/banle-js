@@ -14,14 +14,40 @@ async function kiemTraSoHoaDonDaTonTai(loai, so) {
 // Hàm phát sinh số hóa đơn động (KHÔNG cập nhật vào sochungtu)
 export async function capNhatSoHoaDonTuDong() {
     try {
-        // 1. Lấy địa điểm từ localStorage
-        const diadiem = window.diadiem || localStorage.getItem("diadiem") || "cs1";
+        // 1. XÁC ĐỊNH PATHNAME CỦA TRANG
+        const pathname = window.location?.pathname || "";
 
-        //const diadiem = localStorage.getItem("diadiem") || "cs1";
+        // 2. ƯU TIÊN XÁC ĐỊNH CƠ SỞ THEO TÊN TRANG
+        //    - Nếu pathname chứa "cs1"  → luôn coi là cs1
+        //    - Nếu pathname chứa "cs2"  → luôn coi là cs2
+        //    (áp dụng cho TẤT CẢ các trang có cs1 / cs2 trong tên file)
+        let branchFromPath = null;
+        if (pathname.includes("cs1")) {
+            branchFromPath = "cs1";
+        } else if (pathname.includes("cs2")) {
+            branchFromPath = "cs2";
+        }
 
-        // 2. Xác định loại chứng từ như cũ 
-        const pathname = window.location.pathname;
+        // 3. LẤY ĐỊA ĐIỂM:
+        //    - Nếu branchFromPath có giá trị → dùng luôn (khóa cứng theo tên trang)
+        //    - Nếu KHÔNG (trang không chứa cs1/cs2) → fallback về window.diadiem / localStorage
+        let diadiem;
+        if (branchFromPath) {
+            diadiem = branchFromPath;
+        } else {
+            try {
+                diadiem =
+                    window.diadiem ||
+                    localStorage.getItem("diadiem") ||
+                    "cs1";
+            } catch (e) {
+                diadiem = window.diadiem || "cs1";
+            }
+        }
+
+        // 4. Xác định LOẠI CHỨNG TỪ dựa trên pathname + diadiem
         let loai = "";
+
         if (pathname.includes("banle")) {
             loai = diadiem === "cs1" ? "bancs1" : "bancs2";
 
@@ -45,13 +71,16 @@ export async function capNhatSoHoaDonTuDong() {
 
         } else if (pathname.includes("xuatkiem")) {
             loai = diadiem === "cs1" ? "xuatkiemcs1" : "xuatkiemcs2";
+
         } else if (pathname.includes("nhapkiem")) {
             loai = diadiem === "cs1" ? "nhapkiemcs1" : "nhapkiemcs2";
 
-
         } else if (pathname.includes("ccn1v2")) {
+            // Trang chuyển CN 1 → 2: luôn xuất từ CS1
             loai = "xcncs1";
+
         } else if (pathname.includes("ccn2v1")) {
+            // Trang chuyển CN 2 → 1: luôn xuất từ CS2
             loai = "xcncs2";
 
         } else if (pathname.includes("nhaptam")) {
@@ -59,14 +88,16 @@ export async function capNhatSoHoaDonTuDong() {
 
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
-            loai = isTang ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
+            loai = isTang
+                ? (diadiem === "cs1" ? "tangkhocs1" : "tangkhocs2")
                 : (diadiem === "cs1" ? "giamkhocs1" : "giamkhocs2");
+
         } else {
             alert("Không nhận diện được loại chứng từ từ giao diện.");
             return;
         }
 
-        // 3. Lấy số hiện tại từ bảng sochungtu
+        // 5. Lấy số hiện tại từ bảng sochungtu
         const { data } = await supabase
             .from("sochungtu")
             .select("so_hientai")
@@ -75,19 +106,20 @@ export async function capNhatSoHoaDonTuDong() {
 
         let soMoi = data?.so_hientai ? data.so_hientai + 1 : 1;
 
-        // 4. Kiểm tra số này đã có ai dùng chưa (trong bảng hóa đơn)
+        // 6. Kiểm tra số này đã có ai dùng chưa (trong bảng hóa đơn)
         while (await kiemTraSoHoaDonDaTonTai(loai, soMoi)) {
             soMoi++; // nếu đã tồn tại thì tăng lên tiếp
         }
 
         // KHÔNG cập nhật lại số_hientai vào bảng sochungtu ở đây!
 
-        // 5. Ghép số hóa đơn đúng chuẩn
+        // 7. Ghép số hóa đơn đúng chuẩn
         const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
 
-        // 6. Cập nhật lên giao diện (có kiểm tra tồn tại phần tử)
+        // 8. Cập nhật lên giao diện (có kiểm tra tồn tại phần tử)
         const sohdEl = document.getElementById("sohd");
         if (sohdEl) sohdEl.value = sohd;
+
         const ddEl = document.getElementById("diadiem");
         if (ddEl) ddEl.value = diadiem;
 
@@ -99,6 +131,7 @@ export async function capNhatSoHoaDonTuDong() {
         return null;
     }
 }
+
 window.capNhatSoHoaDonTuDong = capNhatSoHoaDonTuDong;
 
 
