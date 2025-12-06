@@ -1416,7 +1416,7 @@ async function waitForLoginAndAutoSearch() {
     let attempts = 0;
     let info = null;
 
-    while (attempts < 1) { // ~10s nếu mỗi vòng 250ms
+    while (attempts < 40) { // ~10s nếu mỗi vòng 250ms
         try {
             info = await authModule.getCurrentUserInfo();
         } catch (e) {
