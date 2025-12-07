@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>XUAT HUY CS2</title>
+    <title>XUAY HUY CS2</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -22,7 +22,7 @@
         }
 
         .header {
-            background-color: #ecc00d;
+            background-color: #0078d7;
             color: white;
             text-align: center;
             padding: 10px;
@@ -34,7 +34,7 @@
             display: flex;
             padding: 5px;
             gap: 5px;
-             background-color: #ecc00d;
+            background: #f4f4f4;
             align-items: center;
         }
 
@@ -42,7 +42,7 @@
             display: auto;
             padding: 5px;
             gap: 5px;
-             background-color: #ecc00d;
+            background: #0088cc;
             align-items: center;
             justify-content: flex-end;
             /* Đẩy hết sang phải */
@@ -61,12 +61,12 @@
 
         #masp {
             width: 250px;
-             background-color: #ecc00d;
+            background: rgb(225, 99, 9);
         }
 
         #soluong {
             width: 60px;
-            background-color: #ecc00d;
+            background: rgb(225, 99, 9);
             text-align: center;
         }
 
@@ -77,7 +77,7 @@
         #size {
             width: 60px;
             text-align: center;
-            background-color: #ecc00d;
+            background: rgb(225, 99, 9);
         }
 
         #gia,
@@ -339,6 +339,14 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
     </style>
 
 
@@ -366,11 +374,11 @@
 
 </head>
 
-<body>
+<body class="popupnhanh">
 
     <style>
         .menu-bar {
-            background: #0088cc;
+            background: #c74212;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -471,7 +479,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="xat huy cs2" autocomplete="off" />
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -920,7 +928,7 @@
                 sessionStorage.clear();
                 localStorage.removeItem("quyen_sua_hoadon");
             }
-             document.getElementById('login-manv').value = "";
+            document.getElementById('login-manv').value = "";
             document.getElementById('login-password-nv').value = "";
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
