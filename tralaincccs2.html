@@ -5,19 +5,18 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>tra lai ncc cs2</title>
-    <!-- Backup: các thư viện ngoài --> 
+    <title>TRA LAI NCC CS2</title>
+    <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
     <style>
         body {
-            font-family: Arial; 
+            font-family: Arial;
             margin: 0;
             height: 100%;
         }
@@ -62,12 +61,12 @@
 
         #masp {
             width: 250px;
-            background: rgb(247, 0, 255);
+            background: rgb(225, 99, 9);
         }
 
         #soluong {
             width: 60px;
-            background: yellow;
+            background: rgb(225, 99, 9);
             text-align: center;
         }
 
@@ -78,7 +77,7 @@
         #size {
             width: 60px;
             text-align: center;
-            background: yellow;
+            background: rgb(225, 99, 9);
         }
 
         #gia,
@@ -340,6 +339,14 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
     </style>
 
 
@@ -367,11 +374,11 @@
 
 </head>
 
-<body>
+<body class="popupnhanh">
 
     <style>
         .menu-bar {
-            background: #b800cc;
+            background: #c74212;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -449,7 +456,9 @@
 
             <input id="diadiem" placeholder="diadiem" readonly />
             <input id="ngay" type="date" readonly />
-            <input id="manv" type="password" placeholder="Mã NV" />
+            <input id="gio" type="text" readonly style="width:70px" />
+
+            <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
@@ -458,7 +467,10 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label> -->        
+        <label>Giờ <input id="gio" /></label>
+         
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
 
 
     </div>
@@ -501,8 +513,8 @@
                             <th>Thành tiền</th>
                             <th>Vị trí</th> <!-- (giữ nguyên) -->
                             <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>T1</th>
-                            <th>T2</th>
+                            <th>Tồn1</th>
+                            <th>Tồn2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -554,10 +566,12 @@
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
+                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
+
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
                 </div>
@@ -673,6 +687,11 @@
                     nhanvien.sua_hoadon ? "true" : "false"
                 );
 
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
+
                 // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
@@ -728,7 +747,15 @@
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-       
+
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
+
         // Hàm show popup
         function showPopupTimKH() {
             const popup = document.getElementById('popupTimKH');
@@ -795,31 +822,35 @@
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            tbody.innerHTML = '';
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            // ❌ KHÔNG xoá dữ liệu cũ nữa
+            // tbody.innerHTML = '';
+
+            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
                 const tr = document.createElement('tr');
-                rowArr.forEach(cell => {
+                rowArr.forEach((cell) => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
-            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
-            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
-            if (typeof capNhatThongTinTong === "function") {
+            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            // ✅ Cập nhật tổng
+            if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log để kiểm tra
-            console.log("window.bangKetQua:", window.bangKetQua);
-            if (typeof bangKetQua !== "undefined") {
-                console.log("bangKetQua:", bangKetQua);
-            }
+            // Log kiểm tra
+            console.log('window.bangKetQua:', window.bangKetQua);
         });
 
 
@@ -864,21 +895,33 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
+        // Gắn lại sự kiện cho nút THOAT PM
         document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
 
-            document.getElementById('backup-overlay').style.display = "block";
-            try {
-                await backupAllTablesToZip();
-                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
-            } catch (err) {
-                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+            // Hỏi người dùng có muốn tạo file dự phòng không
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                    // Có thể bật lại thông báo nếu muốn:
+                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
             }
-            document.getElementById('backup-overlay').style.display = "none";
+            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
+
             await dangXuatApp();
         };
 
         async function dangXuatApp() {
-            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
+            // Copy logic đăng xuất cũ của anh
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
                 localStorage.clear();
@@ -886,28 +929,36 @@
                 localStorage.removeItem("quyen_sua_hoadon");
             }
             document.getElementById('login-manv').value = "";
+            document.getElementById('login-password-nv').value = "";
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
+
             const tbody = document.getElementById('bangketqua').querySelector('tbody');
             if (tbody) tbody.innerHTML = '';
             if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+
             const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
             idsToClear.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
+
             document.getElementById('login-manv').focus();
         }
     </script>
+
+    <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
     <script src="scripts/menu-component.js"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -997,12 +1048,13 @@
                 btn.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                        btn.click(); // = gọi xacNhanSuaHoaDon()
                     }
                 });
             }
         });
     </script>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
