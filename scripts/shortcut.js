@@ -6,6 +6,8 @@ import {
   suaDongDangChon
 } from './hoadon.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
+// ✅ Thêm flag này
+let _shortcutInited = false;
 
 function formatTimeHHMM(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -17,6 +19,10 @@ function formatTimeHHMM(dateInput) {
 
 
 export function khoiTaoShortcut() {
+  // ✅ Nếu đã khởi tạo rồi thì thoát luôn, không gắn thêm listener nữa
+  if (_shortcutInited) return;
+  _shortcutInited = true;
+  
   document.addEventListener("keydown", async function (e) {
     // F1: popup thêm mới
     if (e.key === "F1") {
