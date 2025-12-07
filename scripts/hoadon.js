@@ -704,7 +704,13 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         dvt: sp.dvt || ""
     };
 
-    // Nếu nhóm đã tồn tại → cập nhật giá/km theo form (ưu tiên người dùng nhập tay)
+    // Tự động tính lại, tránh sai do form bị bỏ qua
+    let kmAuto = 0;
+    try { kmAuto = tinhKhuyenMai(sp, giaForm) || 0; } catch (e) { }
+
+    if (!kmForm || kmForm < 0) {
+        kmForm = kmAuto;        // override đúng
+    }
     bang.gia = giaForm;
     bang.km = kmForm;
 
