@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gợi Ý Xả Hàng</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f7f7f8;
+            --card: #fff;
+            --text: #111;
+            --muted: #666;
+            --accent: #2563eb;
+            --accent-soft: #e0edff;
+            --danger: #dc2626;
+            --br: 10px;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
+
+        .sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--br);
+            box-shadow: var(--shadow);
+            padding: 12px;
+        }
+
+        .card h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 110px;
+            flex: 1;
+        }
+
+        label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        input[type="date"],
+        input[type="number"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 13px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: 999px;
+            border: none;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .btn.secondary {
+            background: #e5e7eb;
+            color: #111;
+        }
+
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #hotWrap {
+            margin-top: 8px;
+        }
+
+        .ht_clone_top th .colHeader {
+            white-space: normal !important;
+            line-height: 1.2 !important;
+            word-break: break-word !important;
+            text-align: center;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+
+        .detail-panel {
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 8px;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .info-table th,
+        .info-table td {
+            border: 1px solid #e5e7eb;
+            padding: 3px 4px;
+            text-align: left;
+        }
+
+        .info-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .badge-danger {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 6px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        #xaImgBox {
+            border-radius: 8px;
+            background: #f9fafb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+            overflow: hidden;
+        }
+
+        #xaImgBox img {
+            max-width: 100%;
+            max-height: 240px;
+            object-fit: contain;
+        }
+
+        .xa-note {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .xa-highlight {
+            font-weight: 600;
+            color: var(--danger);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Ẩn toàn bộ app cho tới khi đăng nhập thành công (giống trang nhập DM nhân viên) -->
+    <div id="app-container" style="display:none">
+        <div class="page">
+            <h1>Gợi Ý Xả Hàng</h1>
+            <div class="sub">
+                Lọc ra các mã còn tồn lẻ (≤ 3 SP), tồn ≤ 10% tổng nhập, không bán ≥ 60 ngày, để xả hết cho sạch kho.
+            </div>
+
+            <div class="layout">
+                <!-- BÊN TRÁI: LỌC + BẢNG -->
+                <div class="card">
+                    <h3>Tham số lọc</h3>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="denNgay">Đến ngày</label>
+                            <input type="date" id="denNgay" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="ngayKhongBan">Không bán ít nhất (ngày)</label>
+                            <input type="number" id="ngayKhongBan" value="60" min="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="tonMax">Tồn tối đa (SP)</label>
+                            <input type="number" id="tonMax" value="3" min="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="tyleMax">% tồn / nhập tối đa</label>
+                            <input type="number" id="tyleMax" value="10" min="1" max="100" />
+                        </div>
+                    </div>
+
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="nhomhangFilter">Nhóm hàng</label>
+                            <input type="text" id="nhomhangFilter" placeholder="VD: GIAY, AO, QUAN..." />
+                        </div>
+                        <div class="filter-group">
+                            <label for="chungloaiFilter">Chủng loại</label>
+                            <input type="text" id="chungloaiFilter" placeholder="Tùy chọn" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="nhaccFilter">Nhà cung cấp</label>
+                            <input type="text" id="nhaccFilter" placeholder="Tùy chọn" />
+                        </div>
+                        <div class="filter-group" style="align-items:flex-start; margin-top:18px; flex:0 0 auto;">
+                            <button class="btn" id="btnRun">
+                                🔍 Lọc xả hàng
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="filter-row" style="justify-content: space-between; margin-top:4px;">
+                        <div class="status" id="statusMsg">Chưa chạy.</div>
+                        <button class="btn secondary" id="btnExport">⬇️ Xuất CSV</button>
+                    </div>
+
+                    <div id="hotWrap">
+                        <div id="hotXa" style="width:100%; min-height:320px;"></div>
+                    </div>
+                </div>
+
+                <!-- BÊN PHẢI: CHI TIẾT 1 MÃ -->
+                <div class="card detail-panel">
+                    <div>
+                        <h3>Chi tiết mã xả</h3>
+                        <div class="xa-note">
+                            Chọn một dòng trong bảng bên trái để xem chi tiết: ảnh sản phẩm, tồn & lịch sử bán.
+                        </div>
+                    </div>
+
+                    <table class="info-table" id="infoTable">
+                        <tbody>
+                            <tr>
+                                <th>Mã SP</th>
+                                <td colspan="3" id="infoMasp">-</td>
+                            </tr>
+                            <tr>
+                                <th>Tên SP</th>
+                                <td colspan="3" id="infoTensp">-</td>
+                            </tr>
+                            <tr>
+                                <th>Nhóm / Chủng</th>
+                                <td id="infoNhom">-</td>
+                                <th>Màu / NCC</th>
+                                <td id="infoMauNhacc">-</td>
+                            </tr>
+                            <tr>
+                                <th>Giá lẻ</th>
+                                <td id="infoGia">-</td>
+                                <th>Tổng nhập</th>
+                                <td id="infoTongNhap">-</td>
+                            </tr>
+                            <tr>
+                                <th>Tổng bán</th>
+                                <td id="infoTongXuat">-</td>
+                                <th>Tồn hiện tại</th>
+                                <td id="infoTon">-</td>
+                            </tr>
+                            <tr>
+                                <th>% tồn / nhập</th>
+                                <td id="infoTyle">-</td>
+                                <th>Ngày bán cuối</th>
+                                <td id="infoLastSale">-</td>
+                            </tr>
+                            <tr>
+                                <th>Không bán (ngày)</th>
+                                <td colspan="3" id="infoNoSale">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div id="xaImgBox">
+                        <span style="font-size:12px; color:#9ca3af;">Chưa chọn mã nào.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
+    <script type="module">
+        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
+        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20251208a';
+
+        // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
+        khoiTaoDangNhapDungChung({
+            appContainerId: 'app-container',
+            macDinhDiaDiem: 'cs1',          // nếu trang này của CS2 thì đổi thành 'cs2'
+            tuDongKhoaCoSo: true,
+            loginApiPath: '/api/login-cs1', // nếu làm bản riêng cho cs2 thì dùng /api/login-cs2
+            onLoginSuccess: async (nhanvien, context) => {
+
+                // Giống trang nhập DM nhân viên: chỉ ADMIN được xem
+                if (!nhanvien.is_admin) {
+                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang Gợi Ý Xả Hàng.');
+                    await dangXuatDungChung({ appContainerId: 'app-container' });
+                    return;
+                }
+
+                // Cho hiện giao diện + khởi tạo trang
+                document.getElementById('app-container').style.display = '';
+                initGoiYXaHang();
+            }
+        });
+    </script>
+</body>
+
+</html>
