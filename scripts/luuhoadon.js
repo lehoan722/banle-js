@@ -992,7 +992,7 @@ export async function luuHoaDonCaHaiBan() {
     }
 
     // ✅ Thành công
-    alert("✅ Đã lưu hóa đơn thành công!");
+    //alert("✅ Đã lưu hóa đơn thành công!");
     inHoaDon(hoadonChinh, chitietChinh);
     await lamMoiSauKhiLuu();
     guiHoaDonViettel(sohdT);
