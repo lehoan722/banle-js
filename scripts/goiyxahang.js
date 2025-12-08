@@ -1,366 +1,287 @@
-<!doctype html>
-<html lang="vi">
+// scripts/goiyxahang.js
+// Trang gợi ý xả hàng: gọi RPC goiy_xahang, hiển thị HOT, chi tiết + ảnh.
 
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Gợi Ý Xả Hàng</title>
+// ========== Helper chung ==========
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+const formatNumber = (v, digits = 0) => {
+  if (v === null || v === undefined || isNaN(v)) return "";
+  return Number(v).toLocaleString("vi-VN", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+};
 
-    <style>
-        :root {
-            --bg: #f7f7f8;
-            --card: #fff;
-            --text: #111;
-            --muted: #666;
-            --accent: #2563eb;
-            --accent-soft: #e0edff;
-            --danger: #dc2626;
-            --br: 10px;
-            --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-        }
+const formatDate = (dStr) => {
+  if (!dStr) return "";
+  const d = new Date(dStr);
+  if (Number.isNaN(d.getTime())) return dStr;
+  return d.toLocaleDateString("vi-VN");
+};
 
-        * {
-            box-sizing: border-box;
-        }
+const todayISO = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
+const toCsv = (rows) =>
+  rows
+    .map((r) =>
+      r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")
+    )
+    .join("\r\n");
 
-        .page {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 12px;
-        }
+// ========== HOT cấu hình ==========
+let hot = null;
+let hotData = [];
+let supabaseClient = null; // sẽ được gán trong initGoiYXaHang()
 
-        h1 {
-            font-size: 20px;
-            margin: 0 0 8px;
-        }
+const hotCols = [
+  { data: "stt", title: "STT", type: "numeric", width: 50 },
+  { data: "masp", title: "MÃ SP", type: "text", width: 140 },
+  { data: "tensp", title: "TÊN SP", type: "text", width: 200 },
+  { data: "nhomhang", title: "NHÓM HÀNG", type: "text", width: 90 },
+  { data: "chungloai", title: "CHỦNG LOẠI", type: "text", width: 90 },
+  { data: "nhacc", title: "NHÀ CC", type: "text", width: 120 },
+  { data: "tong_nhap", title: "TỔNG NHẬP", type: "numeric", width: 90 },
+  { data: "tong_xuat", title: "TỔNG BÁN", type: "numeric", width: 90 },
+  { data: "ton_hientai", title: "TỒN HIỆN TẠI", type: "numeric", width: 90 },
+  { data: "tyle_ton", title: "% TỒN/NHẬP", type: "numeric", width: 90 },
+  {
+    data: "so_ngay_khong_ban",
+    title: "KHÔNG BÁN (NGÀY)",
+    type: "numeric",
+    width: 110,
+  },
+  { data: "ngay_ban_cuoi", title: "NGÀY BÁN CUỐI", type: "text", width: 100 },
+];
 
-        .sub {
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 12px;
-        }
+function renderHOT() {
+  const container = $("#hotXa");
+  if (!container) return;
 
-        .layout {
-            display: grid;
-            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-            gap: 12px;
-        }
+  const h = Math.max(320, ($("#hotWrap")?.clientHeight || 0) - 10);
 
-        @media (max-width: 900px) {
-            .layout {
-                grid-template-columns: minmax(0, 1fr);
-            }
-        }
+  if (hot) {
+    hot.updateSettings({ data: hotData, height: h });
+    hot.render();
+    hot.scrollViewportTo(0, 0);
+    return;
+  }
 
-        .card {
-            background: var(--card);
-            border-radius: var(--br);
-            box-shadow: var(--shadow);
-            padding: 12px;
-        }
+  hot = new Handsontable(container, {
+    data: hotData,
+    columns: hotCols,
+    colHeaders: hotCols.map((c) => c.title),
+    rowHeaders: true,
+    stretchH: "none",
+    autoColumnSize: false,
+    manualColumnResize: true,
+    manualColumnMove: true,
+    height: h,
+    licenseKey: "non-commercial-and-evaluation",
+    columnSorting: true,
+    filters: true,
+    dropdownMenu: true,
+    contextMenu: ["copy", "cut", "---------", "alignment"],
+    cells: (row, col) => {
+      const props = {};
+      const key = hotCols[col]?.data;
+      if (
+        [
+          "tong_nhap",
+          "tong_xuat",
+          "ton_hientai",
+          "tyle_ton",
+          "so_ngay_khong_ban",
+          "stt",
+        ].includes(key)
+      ) {
+        props.className = "htRight";
+      }
+      return props;
+    },
+    afterSelection: (r1) => {
+      if (r1 == null || r1 < 0) return;
+      const phys = hot.toPhysicalRow(r1);
+      const rec = hot.getSourceDataAtRow(phys);
+      if (rec?.masp) {
+        updateDetailPanel(rec);
+      }
+    },
+  });
+}
 
-        .card h3 {
-            margin: 0 0 8px;
-            font-size: 16px;
-        }
+// ========== Detail panel ==========
+function updateDetailPanel(rec) {
+  $("#infoMasp").textContent = rec.masp || "-";
+  $("#infoTensp").textContent = rec.tensp || "-";
+  $("#infoNhom").textContent =
+    `${rec.nhomhang || ""} / ${rec.chungloai || ""}`.trim() || "-";
+  $("#infoMauNhacc").textContent =
+    `${rec.mausac || ""} / ${rec.nhacc || ""}`.trim() || "-";
+  $("#infoGia").textContent = formatNumber(rec.giale, 0);
+  $("#infoTongNhap").textContent = formatNumber(rec.tong_nhap, 0);
+  $("#infoTongXuat").textContent = formatNumber(rec.tong_xuat, 0);
+  $("#infoTon").textContent = formatNumber(rec.ton_hientai, 0);
+  $("#infoTyle").textContent =
+    rec.tyle_ton != null ? formatNumber(rec.tyle_ton * 100, 1) + " %" : "-";
+  $("#infoLastSale").textContent = formatDate(rec.ngay_ban_cuoi);
+  $("#infoNoSale").textContent =
+    rec.so_ngay_khong_ban != null ? `${rec.so_ngay_khong_ban} ngày` : "-";
 
-        .filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 8px;
-        }
+  // Ảnh
+  const box = $("#xaImgBox");
+  box.innerHTML = "";
+  const img = document.createElement("img");
+  img.alt = rec.masp;
+  const base =
+    "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+  // Nếu bucket ảnh khác thì anh chỉ cần đổi base
+  img.src = `${base}${encodeURIComponent(rec.masp)}.JPG`;
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = `${base}${encodeURIComponent(rec.masp)}.png`;
+  };
+  box.appendChild(img);
+}
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 110px;
-            flex: 1;
-        }
+// ========== Gọi RPC ==========
+async function runXaHang() {
+  const msg = $("#statusMsg");
+  msg.textContent = "Đang lọc gợi ý xả hàng...";
+  $("#btnRun").disabled = true;
 
-        label {
-            font-size: 11px;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .04em;
-        }
+  try {
+    if (!supabaseClient) {
+      console.error("Supabase client chưa sẵn sàng");
+      msg.textContent = "❌ Supabase chưa khởi tạo. Vui lòng tải lại trang.";
+      return;
+    }
 
-        input[type="date"],
-        input[type="number"],
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 4px 6px;
-            border-radius: 6px;
-            border: 1px solid #d1d5db;
-            font-size: 13px;
-        }
+    const denNgay = $("#denNgay").value || todayISO();
+    const ngayKhongBan = parseInt($("#ngayKhongBan").value || "60", 10);
+    const tonMax = parseInt($("#tonMax").value || "3", 10);
+    const tyleMaxPercent = parseFloat($("#tyleMax").value || "10");
 
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            border-radius: 999px;
-            border: none;
-            padding: 6px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            background: var(--accent);
-            color: #fff;
-            white-space: nowrap;
-        }
+    const nhomhangFilter = $("#nhomhangFilter").value.trim() || null;
+    const chungloaiFilter = $("#chungloaiFilter").value.trim() || null;
+    const nhaccFilter = $("#nhaccFilter").value.trim() || null;
 
-        .btn.secondary {
-            background: #e5e7eb;
-            color: #111;
-        }
+    const { data, error } = await supabaseClient.rpc("goiy_xahang", {
+      p_den_ngay: denNgay,
+      p_ngay_khong_ban: ngayKhongBan,
+      p_ton_max: tonMax,
+      p_tyle_max: (tyleMaxPercent || 10) / 100.0,
+      p_nhomhang_filter: nhomhangFilter,
+      p_chungloai_filter: chungloaiFilter,
+      p_nhacc_filter: nhaccFilter,
+    });
 
-        .btn:disabled {
-            opacity: .6;
-            cursor: not-allowed;
-        }
+    if (error) {
+      console.error(error);
+      msg.textContent = "❌ Lỗi RPC goiy_xahang. Xem console để biết chi tiết.";
+      return;
+    }
 
-        .status {
-            margin-top: 4px;
-            font-size: 12px;
-            color: var(--muted);
-        }
+    hotData = (data || []).map((r, idx) => ({
+      stt: idx + 1,
+      masp: r.masp,
+      tensp: r.tensp,
+      nhomhang: r.nhomhang,
+      chungloai: r.chungloai,
+      mausac: r.mausac,
+      nhacc: r.nhacc,
+      giale: r.giale,
+      tong_nhap: r.tong_nhap,
+      tong_xuat: r.tong_xuat,
+      ton_hientai: r.ton_hientai,
+      tyle_ton: r.tyle_ton,
+      ngay_ban_cuoi: r.ngay_ban_cuoi,
+      so_ngay_khong_ban: r.so_ngay_khong_ban,
+    }));
 
-        #hotWrap {
-            margin-top: 8px;
-        }
+    renderHOT();
 
-        .ht_clone_top th .colHeader {
-            white-space: normal !important;
-            line-height: 1.2 !important;
-            word-break: break-word !important;
-            text-align: center;
-            padding: 4px 6px;
-            font-size: 11px;
-        }
+    if (hotData.length === 0) {
+      msg.textContent = "Không có mã nào thỏa điều kiện xả hàng.";
+      $("#infoTable")
+        .querySelectorAll("td")
+        .forEach((td) => (td.textContent = "-"));
+      $("#xaImgBox").innerHTML =
+        '<span style="font-size:12px; color:#9ca3af;">Không có dữ liệu.</span>';
+    } else {
+      msg.textContent = `Hoàn thành! Có ${hotData.length} mã gợi ý xả hàng.`;
+      updateDetailPanel(hotData[0]);
+    }
+  } catch (e) {
+    console.error(e);
+    msg.textContent = "❌ Lỗi không xác định khi chạy gợi ý xả hàng.";
+  } finally {
+    $("#btnRun").disabled = false;
+  }
+}
 
-        .detail-panel {
-            display: grid;
-            grid-template-rows: auto auto 1fr;
-            gap: 8px;
-        }
+// ========== Xuất CSV ==========
+function exportCsv() {
+  if (!hotData.length) {
+    alert("Không có dữ liệu để xuất.");
+    return;
+  }
+  const header = hotCols.map((c) => c.title);
+  const body = hotData.map((r) => hotCols.map((c) => r[c.data]));
+  const csv = toCsv([header, ...body]);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `goi_y_xa_hang_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
+// ========== Khởi tạo sau khi đăng nhập thành công ==========
+function main() {
+  // Set default "Đến ngày" = hôm nay
+  $("#denNgay").value = todayISO();
 
-        .info-table th,
-        .info-table td {
-            border: 1px solid #e5e7eb;
-            padding: 3px 4px;
-            text-align: left;
-        }
+  $("#btnRun").addEventListener("click", () => runXaHang());
+  $("#btnExport").addEventListener("click", () => exportCsv());
 
-        .info-table th {
-            background: #f9fafb;
-            font-weight: 600;
-            font-size: 11px;
-        }
+  // Cho phép bấm Enter trong input filter để chạy ngay
+  [
+    "denNgay",
+    "ngayKhongBan",
+    "tonMax",
+    "tyleMax",
+    "nhomhangFilter",
+    "chungloaiFilter",
+    "nhaccFilter",
+  ].forEach((id) => {
+    const el = $("#" + id);
+    if (!el) return;
+    el.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") runXaHang();
+    });
+  });
 
-        .badge-danger {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 6px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: #fee2e2;
-            color: #b91c1c;
-        }
+  // Render HOT rỗng lần đầu
+  renderHOT();
+}
 
-        #xaImgBox {
-            border-radius: 8px;
-            background: #f9fafb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 180px;
-            overflow: hidden;
-        }
-
-        #xaImgBox img {
-            max-width: 100%;
-            max-height: 240px;
-            object-fit: contain;
-        }
-
-        .xa-note {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .xa-highlight {
-            font-weight: 600;
-            color: var(--danger);
-        }
-    </style>
-</head>
-
-<body>
-    <!-- Ẩn toàn bộ app cho tới khi đăng nhập thành công (giống trang nhập DM nhân viên) -->
-    <div id="app-container" style="display:none">
-        <div class="page">
-            <h1>Gợi Ý Xả Hàng</h1>
-            <div class="sub">
-                Lọc ra các mã còn tồn lẻ (≤ 3 SP), tồn ≤ 10% tổng nhập, không bán ≥ 60 ngày, để xả hết cho sạch kho.
-            </div>
-
-            <div class="layout">
-                <!-- BÊN TRÁI: LỌC + BẢNG -->
-                <div class="card">
-                    <h3>Tham số lọc</h3>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="denNgay">Đến ngày</label>
-                            <input type="date" id="denNgay" />
-                        </div>
-                        <div class="filter-group">
-                            <label for="ngayKhongBan">Không bán ít nhất (ngày)</label>
-                            <input type="number" id="ngayKhongBan" value="60" min="1" />
-                        </div>
-                        <div class="filter-group">
-                            <label for="tonMax">Tồn tối đa (SP)</label>
-                            <input type="number" id="tonMax" value="3" min="1" />
-                        </div>
-                        <div class="filter-group">
-                            <label for="tyleMax">% tồn / nhập tối đa</label>
-                            <input type="number" id="tyleMax" value="10" min="1" max="100" />
-                        </div>
-                    </div>
-
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="nhomhangFilter">Nhóm hàng</label>
-                            <input type="text" id="nhomhangFilter" placeholder="VD: GIAY, AO, QUAN..." />
-                        </div>
-                        <div class="filter-group">
-                            <label for="chungloaiFilter">Chủng loại</label>
-                            <input type="text" id="chungloaiFilter" placeholder="Tùy chọn" />
-                        </div>
-                        <div class="filter-group">
-                            <label for="nhaccFilter">Nhà cung cấp</label>
-                            <input type="text" id="nhaccFilter" placeholder="Tùy chọn" />
-                        </div>
-                        <div class="filter-group" style="align-items:flex-start; margin-top:18px; flex:0 0 auto;">
-                            <button class="btn" id="btnRun">
-                                🔍 Lọc xả hàng
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="filter-row" style="justify-content: space-between; margin-top:4px;">
-                        <div class="status" id="statusMsg">Chưa chạy.</div>
-                        <button class="btn secondary" id="btnExport">⬇️ Xuất CSV</button>
-                    </div>
-
-                    <div id="hotWrap">
-                        <div id="hotXa" style="width:100%; min-height:320px;"></div>
-                    </div>
-                </div>
-
-                <!-- BÊN PHẢI: CHI TIẾT 1 MÃ -->
-                <div class="card detail-panel">
-                    <div>
-                        <h3>Chi tiết mã xả</h3>
-                        <div class="xa-note">
-                            Chọn một dòng trong bảng bên trái để xem chi tiết: ảnh sản phẩm, tồn & lịch sử bán.
-                        </div>
-                    </div>
-
-                    <table class="info-table" id="infoTable">
-                        <tbody>
-                            <tr>
-                                <th>Mã SP</th>
-                                <td colspan="3" id="infoMasp">-</td>
-                            </tr>
-                            <tr>
-                                <th>Tên SP</th>
-                                <td colspan="3" id="infoTensp">-</td>
-                            </tr>
-                            <tr>
-                                <th>Nhóm / Chủng</th>
-                                <td id="infoNhom">-</td>
-                                <th>Màu / NCC</th>
-                                <td id="infoMauNhacc">-</td>
-                            </tr>
-                            <tr>
-                                <th>Giá lẻ</th>
-                                <td id="infoGia">-</td>
-                                <th>Tổng nhập</th>
-                                <td id="infoTongNhap">-</td>
-                            </tr>
-                            <tr>
-                                <th>Tổng bán</th>
-                                <td id="infoTongXuat">-</td>
-                                <th>Tồn hiện tại</th>
-                                <td id="infoTon">-</td>
-                            </tr>
-                            <tr>
-                                <th>% tồn / nhập</th>
-                                <td id="infoTyle">-</td>
-                                <th>Ngày bán cuối</th>
-                                <td id="infoLastSale">-</td>
-                            </tr>
-                            <tr>
-                                <th>Không bán (ngày)</th>
-                                <td colspan="3" id="infoNoSale">-</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div id="xaImgBox">
-                        <span style="font-size:12px; color:#9ca3af;">Chưa chọn mã nào.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
-    <script type="module">
-        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20251208a';
-
-        // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
-        khoiTaoDangNhapDungChung({
-            appContainerId: 'app-container',
-            macDinhDiaDiem: 'cs1',          // nếu trang này của CS2 thì đổi thành 'cs2'
-            tuDongKhoaCoSo: true,
-            loginApiPath: '/api/login-cs1', // nếu làm bản riêng cho cs2 thì dùng /api/login-cs2
-            onLoginSuccess: async (nhanvien, context) => {
-
-                // Giống trang nhập DM nhân viên: chỉ ADMIN được xem
-                if (!nhanvien.is_admin) {
-                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang Gợi Ý Xả Hàng.');
-                    await dangXuatDungChung({ appContainerId: 'app-container' });
-                    return;
-                }
-
-                // Cho hiện giao diện + khởi tạo trang
-                document.getElementById('app-container').style.display = '';
-                initGoiYXaHang();
-            }
-        });
-    </script>
-</body>
-
-</html>
+/**
+ * Hàm public được gọi từ HTML sau khi đăng nhập chuẩn auth thành công
+ */
+export function initGoiYXaHang() {
+  supabaseClient = window.supabase || null;
+  if (!supabaseClient) {
+    console.error(
+      "initGoiYXaHang: window.supabase chưa được khởi tạo bởi authModule"
+    );
+  }
+  main();
+}
