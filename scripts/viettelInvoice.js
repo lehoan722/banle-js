@@ -220,7 +220,7 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
             .update({ trang_thai_gui: 'Đã gửi' })
             .eq('sohd', mahoadon);
 
-          alert("✅ Gửi hóa đơn thành công!");
+          //alert("✅ Gửi hóa đơn thành công!");
           return;
         }
 
