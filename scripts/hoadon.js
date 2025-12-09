@@ -58,75 +58,6 @@ function currentBranchUpper() {
     return 'CS1';
 }
 
-// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
-async function goiYSizeTuHoaDonNhanVien(maspBase) {
-    const masp = String(maspBase || "").trim().toUpperCase();
-    if (!masp) return null;
-
-    // Xác định prefix hóa đơn nhân viên theo cơ sở
-    const branch = currentBranchUpper(); // 'CS1' | 'CS2'
-    let prefix;
-    if (branch === "CS2") {
-        prefix = "bannvcs2_";
-    } else {
-        // mặc định CS1
-        prefix = "bannvcs1_";
-    }
-
-    try {
-        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-        // 1. Ưu tiên tìm trong 1 giờ gần nhất, tối đa 200 dòng
-        let { data, error } = await supabase
-            .from("ct_hoadon_banle")
-            .select("size, sohd, id, created_at")
-            .eq("masp", masp)
-            .like("sohd", `${prefix}%`)
-            .gte("created_at", oneHourAgoIso)
-            .order("id", { ascending: false })
-            .limit(100);
-
-        if (error) {
-            console.warn(
-                "Gợi ý size (1h) lỗi hoặc thiếu cột created_at, thử fallback không giới hạn thời gian:",
-                error
-            );
-            data = null;
-        }
-
-        // 2. Nếu không có dữ liệu trong 1h → fallback: 200 dòng gần nhất (không lọc thời gian)
-        if (!data || !data.length) {
-            const res2 = await supabase
-                .from("ct_hoadon_banle")
-                .select("size, sohd, id, created_at")
-                .eq("masp", masp)
-                .like("sohd", `${prefix}%`)
-                .order("id", { ascending: false })
-                .limit(200);
-
-            if (res2.error) {
-                console.error("Gợi ý size fallback lỗi:", res2.error);
-                return null;
-            }
-            data = res2.data;
-        }
-
-        if (!data || !data.length) return null;
-
-        // Lấy bản ghi đầu tiên có size hợp lệ
-        const row = data.find(
-            (r) => r.size != null && String(r.size).trim() !== ""
-        );
-        if (!row) return null;
-
-        return String(row.size).trim();
-    } catch (err) {
-        console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
-        return null;
-    }
-}
-
-
 export let bangKetQua = {};
 
 // Trong hoadon.js
@@ -446,43 +377,11 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                 // Nếu người dùng có gõ hậu tố size thì đã điền sẵn #size ở trên
                 const sizeEl = document.getElementById("size");
                 if (!sizeEl.value.trim()) {
-                    // Focus & bíp như cũ
                     sizeEl.focus();
                     sizeEl.select?.();
                     window.soundWaitSize?.();
-
-                    // 🔔 Gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
-                    // Chạy bất đồng bộ, KHÔNG chặn người dùng gõ tay
-                    const maspBaseNow = String(baseCode || maspVal || "").trim().toUpperCase();
-                    const maspAtTime = maspBaseNow; // chụp lại mã tại thời điểm này
-
-                    goiYSizeTuHoaDonNhanVien(maspBaseNow)
-                        .then((sizeGoiY) => {
-                            if (!sizeGoiY) return;
-
-                            const sizeInput = document.getElementById("size");
-                            const maspInput = document.getElementById("masp");
-                            if (!sizeInput || !maspInput) return;
-
-                            // Nếu trong lúc chờ, người dùng đã gõ size → KHÔNG ghi đè
-                            if (sizeInput.value.trim()) return;
-
-                            // Nếu đã chuyển sang mã sản phẩm khác → KHÔNG ghi đè
-                            const maspCurrent = maspInput.value.trim().toUpperCase();
-                            if (maspCurrent !== maspAtTime) return;
-
-                            // Gán size gợi ý + bôi đen để nhấn Enter là xong
-                            sizeInput.value = sizeGoiY;
-                            sizeInput.focus();
-                            sizeInput.select?.();
-                        })
-                        .catch((err) => {
-                            console.error("Gợi ý size từ hóa đơn nhân viên lỗi:", err);
-                        });
-
-                    return true; // đợi người dùng nhập size hoặc nhấn Enter với size gợi ý
+                    return true; // đợi người dùng nhập size
                 }
-
                 // Có size rồi → ép SL=1 và thêm ngay
                 const slEl = document.getElementById("soluong");
                 if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
