@@ -251,7 +251,7 @@ async function onKiemTon() {
     for (let row of rows) {
         resultRows.push({ ...row, type: "Kiểm thực tế" });
         // 1. Lấy tồn kho hệ thống
-        const { data: xnt, error } = await supabase.rpc("timkiemhanghoa", { masp_query: row.masp });
+        const { data: xnt, error } = await supabase.rpc("kiemton", { masp_query: row.masp });
         let rowSys = { masp: row.masp, type: "Tồn hệ thống", vitri: row.vitri, ghichu: "tồn hệ thống" };
         SIZE_FIELDS.forEach(s => rowSys['size' + s] = 0);
         if (xnt && xnt.length) {
