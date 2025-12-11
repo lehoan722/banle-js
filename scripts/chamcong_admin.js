@@ -252,6 +252,14 @@ function attachEventsOnce() {
  *   onLoginSuccess(nhanvien, context)
  * -> Ở đây ta chỉ cho phép nhanvien.is_admin === true
  */
+
+async function onLoginSuccess() {
+  const { data, error } = await supabase.auth.getUser();
+  console.log("CURRENT USER:", data?.user?.id, data?.user?.email);
+
+  // ... phần code cũ load dropdown, set default v.v ở dưới
+}
+
 async function onLoginSuccess(nhanvien, context) {
   console.log("DEBUG chamcong_admin onLoginSuccess:", nhanvien, context);
 
