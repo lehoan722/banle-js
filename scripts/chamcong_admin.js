@@ -1,6 +1,6 @@
 // chamcong_admin.js - Quản lý chỉnh sửa chấm công (ADMIN)
 import { supabase } from "./supabaseClient.js";
-import { khoiTaoDangNhapDungChung } from "./authModule.js";
+import { khoiTaoDangNhapDungChung, dangXuatDungChung } from "./authModule.js";
 import { fillNhanVienDropdown } from "./dmnhanvien.js";
 
 // --- DOM elements ---
@@ -245,9 +245,34 @@ function attachEventsOnce() {
   if (btnAdd) btnAdd.addEventListener("click", addLog);
 }
 
-// --- Login thành công ---
+// --- Login thành công (chuẩn authModule) ---
 
-async function onLoginSuccess({ user, profile }) {
+/**
+ * authModule sẽ gọi:
+ *   onLoginSuccess(nhanvien, context)
+ * -> Ở đây ta chỉ cho phép nhanvien.is_admin === true
+ */
+async function onLoginSuccess(nhanvien, context) {
+  console.log("DEBUG chamcong_admin onLoginSuccess:", nhanvien, context);
+
+  // Nếu không phải admin -> không cho dùng trang này
+  if (!nhanvien || nhanvien.is_admin !== true) {
+    alert("Tài khoản này không có quyền ADMIN để dùng trang chỉnh sửa chấm công.");
+
+    // Đăng xuất + hiện lại màn đăng nhập (không cần xóa draft hóa đơn gì cả)
+    await dangXuatDungChung({
+      loginContainerId: "login-container",
+      appContainerId: "app-container",
+      clearDraft: false
+    });
+
+    // Đảm bảo status hiển thị rõ
+    setStatus("Bạn không phải admin, vui lòng đăng nhập bằng tài khoản admin.", true);
+    return;
+  }
+
+  // ----- Từ đây trở xuống: CHỈ ADMIN -----
+
   // Đổ danh sách nhân viên vào datalist ds-manv
   if (manvDatalist) {
     try {
