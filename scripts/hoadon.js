@@ -59,6 +59,72 @@ function currentBranchUpper() {
 }
 
 // === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+async function goiYSizeTuHoaDonNhanVien(maspBase) {
+    const masp = String(maspBase || "").trim().toUpperCase();
+    if (!masp) return null;
+
+    // Xác định prefix hóa đơn nhân viên theo cơ sở
+    const branch = currentBranchUpper(); // 'CS1' | 'CS2'
+    let prefix;
+    if (branch === "CS2") {
+        prefix = "bannvcs2_";
+    } else {
+        // mặc định CS1
+        prefix = "bannvcs1_";
+    }
+
+    try {
+        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+        // 1. Ưu tiên tìm trong 1 giờ gần nhất, tối đa 200 dòng
+        let { data, error } = await supabase
+            .from("ct_hoadon_banle")
+            .select("size, sohd, id, created_at")
+            .eq("masp", masp)
+            .like("sohd", `${prefix}%`)
+            .gte("created_at", oneHourAgoIso)
+            .order("id", { ascending: false })
+            .limit(100);
+
+        if (error) {
+            console.warn(
+                "Gợi ý size (1h) lỗi hoặc thiếu cột created_at, thử fallback không giới hạn thời gian:",
+                error
+            );
+            data = null;
+        }
+
+        // 2. Nếu không có dữ liệu trong 1h → fallback: 200 dòng gần nhất (không lọc thời gian)
+        if (!data || !data.length) {
+            const res2 = await supabase
+                .from("ct_hoadon_banle")
+                .select("size, sohd, id, created_at")
+                .eq("masp", masp)
+                .like("sohd", `${prefix}%`)
+                .order("id", { ascending: false })
+                .limit(200);
+
+            if (res2.error) {
+                console.error("Gợi ý size fallback lỗi:", res2.error);
+                return null;
+            }
+            data = res2.data;
+        }
+
+        if (!data || !data.length) return null;
+
+        // Lấy bản ghi đầu tiên có size hợp lệ
+        const row = data.find(
+            (r) => r.size != null && String(r.size).trim() !== ""
+        );
+        if (!row) return null;
+
+        return String(row.size).trim();
+    } catch (err) {
+        console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
+        return null;
+    }
+}
 
 
 export let bangKetQua = {};
@@ -186,64 +252,6 @@ function isBanLeMTMode() {
     return false;
 }
 
-// GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_/bannvcs2_)
-async function goiYSizeTuHoaDonNhanVien(maspBase) {
-  const masp = String(maspBase || "").trim().toUpperCase();
-  if (!masp) return null;
-
-  // CS1 → bannvcs1_, CS2 → bannvcs2_
-  const branch = currentBranchUpper();             // đã có sẵn phía trên
-  const prefix = branch === "CS2" ? "bannvcs2_" : "bannvcs1_";
-
-  try {
-    // Nếu bảng ct_hoadon_banle của bạn dùng cột thời gian khác (ví dụ ngaygio),
-    // hãy đổi "created_at" bên dưới cho đúng tên cột.
-    const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-    // 1. Ưu tiên 1 giờ gần nhất, tối đa 200 dòng
-    let { data, error } = await supabase
-      .from("ct_hoadon_banle")
-      .select("size, sohd, id, created_at")
-      .eq("masp", masp)
-      .like("sohd", `${prefix}%`)
-      .gte("created_at", oneHourAgoIso)
-      .order("id", { ascending: false })
-      .limit(200);
-
-    if (error) {
-      console.warn("Gợi ý size (1h) lỗi, thử fallback:", error);
-      data = null;
-    }
-
-    // 2. Nếu không có trong 1h → fallback: 200 dòng mới nhất không giới hạn thời gian
-    if (!data || !data.length) {
-      const res2 = await supabase
-        .from("ct_hoadon_banle")
-        .select("size, sohd, id, created_at")
-        .eq("masp", masp)
-        .like("sohd", `${prefix}%`)
-        .order("id", { ascending: false })
-        .limit(200);
-
-      if (res2.error) {
-        console.error("Gợi ý size fallback lỗi:", res2.error);
-        return null;
-      }
-      data = res2.data;
-    }
-
-    if (!data || !data.length) return null;
-
-    // Lấy bản ghi đầu tiên có size hợp lệ
-    const row = data.find((r) => r.size != null && String(r.size).trim() !== "");
-    if (!row) return null;
-
-    return String(row.size).trim();
-  } catch (err) {
-    console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
-    return null;
-  }
-}
 
 // Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
 function autoGoiYSizeNeuOTrong(maspBaseNow) {
@@ -494,6 +502,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                     sizeEl.focus();
                     sizeEl.select?.();
                     window.soundWaitSize?.();
+                    return true; // chỉ bắt nhập size tay, KHÔNG gợi ý
 
                     // 🔔 Gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
                     // Chạy bất đồng bộ, KHÔNG chặn người dùng gõ tay
