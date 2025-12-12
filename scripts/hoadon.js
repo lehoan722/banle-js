@@ -65,13 +65,22 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
 
     // Xác định prefix hóa đơn nhân viên theo cơ sở
     const branch = currentBranchUpper(); // 'CS1' | 'CS2'
+    // Xác định prefix hóa đơn nhân viên theo CƠ SỞ, ưu tiên URL trang banlemt
     let prefix;
-    if (branch === "CS2") {
+    const path = (location.pathname || "").toLowerCase();
+
+    if (path.includes("banlemtcs2")) {
+        // Trang bán lẻ MT cơ sở 2 → chỉ lấy từ bannvcs2_
         prefix = "bannvcs2_";
-    } else {
-        // mặc định CS1
+    } else if (path.includes("banlemtcs1")) {
+        // Trang bán lẻ MT cơ sở 1 → chỉ lấy từ bannvcs1_
         prefix = "bannvcs1_";
+    } else {
+        // Các trang khác (ví dụ trang nhân viên…) fallback theo currentBranchUpper
+        const branch = currentBranchUpper(); // 'CS1' | 'CS2'
+        prefix = branch === "CS2" ? "bannvcs2_" : "bannvcs1_";
     }
+
 
     try {
         const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -255,34 +264,34 @@ function isBanLeMTMode() {
 
 // Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
 function autoGoiYSizeNeuOTrong(maspBaseNow) {
-  const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
-  if (!maspSnap) return;
+    const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
+    if (!maspSnap) return;
 
-  const maspAtTime = maspSnap;
+    const maspAtTime = maspSnap;
 
-  goiYSizeTuHoaDonNhanVien(maspSnap)
-    .then((sizeGoiY) => {
-      if (!sizeGoiY) return;
+    goiYSizeTuHoaDonNhanVien(maspSnap)
+        .then((sizeGoiY) => {
+            if (!sizeGoiY) return;
 
-      const sizeInput = document.getElementById("size");
-      const maspInput = document.getElementById("masp");
-      if (!sizeInput || !maspInput) return;
+            const sizeInput = document.getElementById("size");
+            const maspInput = document.getElementById("masp");
+            if (!sizeInput || !maspInput) return;
 
-      // Nếu trong lúc chờ, người dùng đã tự gõ size → không ghi đè
-      if (sizeInput.value.trim()) return;
+            // Nếu trong lúc chờ, người dùng đã tự gõ size → không ghi đè
+            if (sizeInput.value.trim()) return;
 
-      // Nếu người dùng đã chuyển sang mã khác → không ghi đè
-      const maspCurrent = maspInput.value.trim().toUpperCase();
-      if (maspCurrent !== maspAtTime) return;
+            // Nếu người dùng đã chuyển sang mã khác → không ghi đè
+            const maspCurrent = maspInput.value.trim().toUpperCase();
+            if (maspCurrent !== maspAtTime) return;
 
-      // Gán size gợi ý + bôi đen để chỉ cần Enter là xong
-      sizeInput.value = String(sizeGoiY).trim();
-      sizeInput.focus();
-      sizeInput.select?.();
-    })
-    .catch((err) => {
-      console.error("autoGoiYSizeNeuOTrong lỗi:", err);
-    });
+            // Gán size gợi ý + bôi đen để chỉ cần Enter là xong
+            sizeInput.value = String(sizeGoiY).trim();
+            sizeInput.focus();
+            sizeInput.select?.();
+        })
+        .catch((err) => {
+            console.error("autoGoiYSizeNeuOTrong lỗi:", err);
+        });
 }
 
 
