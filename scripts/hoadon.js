@@ -59,15 +59,14 @@ function currentBranchUpper() {
 }
 
 // === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
 async function goiYSizeTuHoaDonNhanVien(maspBase) {
     const masp = String(maspBase || "").trim().toUpperCase();
     if (!masp) return null;
 
-    // Xác định prefix hóa đơn nhân viên theo cơ sở
-    const branch = currentBranchUpper(); // 'CS1' | 'CS2'
-    // Xác định prefix hóa đơn nhân viên theo CƠ SỞ, ưu tiên URL trang banlemt
-    let prefix;
+    // Xác định prefix hóa đơn nhân viên theo CƠ SỞ, ưu tiên URL trang bán lẻ MT
     const path = (location.pathname || "").toLowerCase();
+    let prefix;
 
     if (path.includes("banlemtcs2")) {
         // Trang bán lẻ MT cơ sở 2 → chỉ lấy từ bannvcs2_
@@ -76,48 +75,29 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
         // Trang bán lẻ MT cơ sở 1 → chỉ lấy từ bannvcs1_
         prefix = "bannvcs1_";
     } else {
-        // Các trang khác (ví dụ trang nhân viên…) fallback theo currentBranchUpper
+        // Các trang khác fallback theo currentBranchUpper (nếu bạn có dùng ở nơi khác)
         const branch = currentBranchUpper(); // 'CS1' | 'CS2'
         prefix = branch === "CS2" ? "bannvcs2_" : "bannvcs1_";
     }
 
-
     try {
         const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-        // 1. Ưu tiên tìm trong 1 giờ gần nhất, tối đa 200 dòng
-        let { data, error } = await supabase
+        // Lấy CÙNG LÚC 2 điều kiện:
+        // - Trong vòng 1 giờ gần nhất
+        // - Tối đa 50 hóa đơn
+        const { data, error } = await supabase
             .from("ct_hoadon_banle")
             .select("size, sohd, id, created_at")
             .eq("masp", masp)
             .like("sohd", `${prefix}%`)
             .gte("created_at", oneHourAgoIso)
             .order("id", { ascending: false })
-            .limit(100);
+            .limit(50);
 
         if (error) {
-            console.warn(
-                "Gợi ý size (1h) lỗi hoặc thiếu cột created_at, thử fallback không giới hạn thời gian:",
-                error
-            );
-            data = null;
-        }
-
-        // 2. Nếu không có dữ liệu trong 1h → fallback: 200 dòng gần nhất (không lọc thời gian)
-        if (!data || !data.length) {
-            const res2 = await supabase
-                .from("ct_hoadon_banle")
-                .select("size, sohd, id, created_at")
-                .eq("masp", masp)
-                .like("sohd", `${prefix}%`)
-                .order("id", { ascending: false })
-                .limit(200);
-
-            if (res2.error) {
-                console.error("Gợi ý size fallback lỗi:", res2.error);
-                return null;
-            }
-            data = res2.data;
+            console.error("Gợi ý size (1h, 50 hóa đơn) lỗi:", error);
+            return null;
         }
 
         if (!data || !data.length) return null;
@@ -134,7 +114,6 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
         return null;
     }
 }
-
 
 export let bangKetQua = {};
 
