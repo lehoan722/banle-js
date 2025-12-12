@@ -234,6 +234,116 @@ function requireManagedInTransfer(masp) {
     );
 }
 
+// === BANLE MT HELPERS: xác định bối cảnh bán lẻ MT & gợi ý size từ hóa đơn nhân viên ===
+function isBanLeMTMode() {
+    const p = (location.pathname || "").toLowerCase();
+    const loai = (window.loaihd || "").toLowerCase();
+
+    // Các trang bán lẻ MT chính: banlemtcs1, banlemtcs2
+    if (p.includes("banlemtcs1") || p.includes("banlemtcs2")) {
+        return true;
+    }
+
+    // Dự phòng theo loại hóa đơn nếu sau này bạn có set
+    if (loai === "bancs1" || loai === "bancs2") {
+        return true;
+    }
+
+    return false;
+}
+
+// GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_/bannvcs2_)
+async function goiYSizeTuHoaDonNhanVien(maspBase) {
+  const masp = String(maspBase || "").trim().toUpperCase();
+  if (!masp) return null;
+
+  // CS1 → bannvcs1_, CS2 → bannvcs2_
+  const branch = currentBranchUpper();             // đã có sẵn phía trên
+  const prefix = branch === "CS2" ? "bannvcs2_" : "bannvcs1_";
+
+  try {
+    // Nếu bảng ct_hoadon_banle của bạn dùng cột thời gian khác (ví dụ ngaygio),
+    // hãy đổi "created_at" bên dưới cho đúng tên cột.
+    const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    // 1. Ưu tiên 1 giờ gần nhất, tối đa 200 dòng
+    let { data, error } = await supabase
+      .from("ct_hoadon_banle")
+      .select("size, sohd, id, created_at")
+      .eq("masp", masp)
+      .like("sohd", `${prefix}%`)
+      .gte("created_at", oneHourAgoIso)
+      .order("id", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      console.warn("Gợi ý size (1h) lỗi, thử fallback:", error);
+      data = null;
+    }
+
+    // 2. Nếu không có trong 1h → fallback: 200 dòng mới nhất không giới hạn thời gian
+    if (!data || !data.length) {
+      const res2 = await supabase
+        .from("ct_hoadon_banle")
+        .select("size, sohd, id, created_at")
+        .eq("masp", masp)
+        .like("sohd", `${prefix}%`)
+        .order("id", { ascending: false })
+        .limit(200);
+
+      if (res2.error) {
+        console.error("Gợi ý size fallback lỗi:", res2.error);
+        return null;
+      }
+      data = res2.data;
+    }
+
+    if (!data || !data.length) return null;
+
+    // Lấy bản ghi đầu tiên có size hợp lệ
+    const row = data.find((r) => r.size != null && String(r.size).trim() !== "");
+    if (!row) return null;
+
+    return String(row.size).trim();
+  } catch (err) {
+    console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
+    return null;
+  }
+}
+
+// Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
+function autoGoiYSizeNeuOTrong(maspBaseNow) {
+  const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
+  if (!maspSnap) return;
+
+  const maspAtTime = maspSnap;
+
+  goiYSizeTuHoaDonNhanVien(maspSnap)
+    .then((sizeGoiY) => {
+      if (!sizeGoiY) return;
+
+      const sizeInput = document.getElementById("size");
+      const maspInput = document.getElementById("masp");
+      if (!sizeInput || !maspInput) return;
+
+      // Nếu trong lúc chờ, người dùng đã tự gõ size → không ghi đè
+      if (sizeInput.value.trim()) return;
+
+      // Nếu người dùng đã chuyển sang mã khác → không ghi đè
+      const maspCurrent = maspInput.value.trim().toUpperCase();
+      if (maspCurrent !== maspAtTime) return;
+
+      // Gán size gợi ý + bôi đen để chỉ cần Enter là xong
+      sizeInput.value = String(sizeGoiY).trim();
+      sizeInput.focus();
+      sizeInput.select?.();
+    })
+    .catch((err) => {
+      console.error("autoGoiYSizeNeuOTrong lỗi:", err);
+    });
+}
+
+
 export async function chuyenFocus(e) {
     if (e.key !== "Enter") return;
 
@@ -553,6 +663,15 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     // Tổng điều kiện cần quản-size (size45 bật thì ép cho mọi mã quản-size)
     const requireManagedSizeNow = (size45On && isQLSize) || groupRequires || managedByGia; // ✅ dùng isQLSize
+    // 👉 Nếu đang ở trang BÁN LẺ MT (không phải CCN),
+    // và mã hàng này thuộc diện QUẢN SIZE,
+    // và ô #size hiện đang trống → chạy gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
+    if (!isCCNMode() && isBanLeMTMode() && requireManagedSizeNow) {
+        const sizeEl = document.getElementById("size");
+        if (sizeEl && !sizeEl.value.trim()) {
+            autoGoiYSizeNeuOTrong(baseCode || maspVal);
+        }
+    }
 
     // --- thay thế toàn bộ khối này trong xuLyMaSanPham ---
     if (typedSize) {
