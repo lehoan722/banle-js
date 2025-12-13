@@ -53,6 +53,101 @@ async function hoaDonDaTonTaiAny(sohd) {
     return !!(r1?.data || r2?.data);
 }
 
+// === SAU KHI LƯU HÓA ĐƠN: CẬP NHẬT used_for_mt CHO DÒNG TƯ VẤN NHÂN VIÊN ===
+// Quy tắc:
+// - Chỉ chạy cho hóa đơn bán lẻ MT chính: loai = 'bancs1' hoặc 'bancs2'
+// - Chỉ xét các dòng tư vấn trong ct_hoadon_banle có:
+//      + masp trùng với masp trong chi tiết hóa đơn vừa lưu
+//      + sohd bắt đầu bằng bannvcs1_ / bannvcs2_ (tùy cơ sở)
+//      + created_at trong 1 giờ gần nhất
+//      + used_for_mt = false
+// - Nếu trong 1h không có dòng hợp lệ → bỏ qua
+// - Nếu chỉ có 1 dòng hợp lệ & size trùng với size trên hóa đơn MT → set used_for_mt = true cho đúng dòng đó
+// - Nếu có từ 2 dòng hợp lệ trở lên (kể cả trùng size hay khác size) và hóa đơn MT có bán mã đó:
+//      → coi là dữ liệu mập mờ → set used_for_mt = true cho TẤT CẢ các dòng đó (dọn rác)
+// Lưu ý: HÀM NÀY KHÔNG ẢNH HƯỞNG TỚI LUỒNG LƯU CHÍNH nếu có lỗi, chỉ log ra console.
+async function capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang) {
+    try {
+        if (!Array.isArray(chitiet) || chitiet.length === 0) return;
+
+        // Chỉ áp dụng cho bán lẻ MT chính
+        const loaiNorm = String(loai || "").toLowerCase();
+        if (loaiNorm !== "bancs1" && loaiNorm !== "bancs2") return;
+
+        // Xác định prefix hóa đơn nhân viên theo địa điểm
+        const dia = String(diadiemTrang || "").toLowerCase();
+        const prefixNV = dia === "cs2" ? "bannvcs2_" : "bannvcs1_";
+
+        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+        // Tập mã sản phẩm duy nhất có trong hóa đơn vừa lưu
+        const maspSet = new Set();
+        chitiet.forEach((ct) => {
+            const m = String(ct.masp || "").trim().toUpperCase();
+            if (m) maspSet.add(m);
+        });
+
+        if (!maspSet.size) return;
+
+        for (const masp of maspSet) {
+            const { data, error } = await supabase
+                .from("ct_hoadon_banle")
+                .select("id, size, sohd, created_at, used_for_mt, masp")
+                .eq("masp", masp)
+                .like("sohd", `${prefixNV}%`)
+                .gte("created_at", oneHourAgoIso)
+                .eq("used_for_mt", false)
+                .order("id", { ascending: false })
+                .limit(50);
+
+            if (error) {
+                console.error("Lỗi truy vấn tư vấn NV cho masp", masp, error);
+                continue;
+            }
+            if (!data || !data.length) continue;
+
+            const validRows = data.filter((r) => {
+                const s = r && r.size != null ? String(r.size).trim() : "";
+                return s !== "";
+            });
+            if (!validRows.length) continue;
+
+            // Nếu hóa đơn MT KHÔNG bán mã này thì không dọn rác nhóm này
+            const usedAny = chitiet.some(
+                (ct) => String(ct.masp || "").trim().toUpperCase() === masp
+            );
+            if (!usedAny) continue;
+
+            if (validRows.length === 1) {
+                // Chỉ dùng khi size trùng với size trên hóa đơn MT
+                const nvSize = String(validRows[0].size || "").trim();
+                const usedInMT = chitiet.some(
+                    (ct) =>
+                        String(ct.masp || "").trim().toUpperCase() === masp &&
+                        String(ct.size ?? "").trim() === nvSize
+                );
+                if (!usedInMT) continue;
+
+                await supabase
+                    .from("ct_hoadon_banle")
+                    .update({ used_for_mt: true })
+                    .eq("id", validRows[0].id);
+            } else {
+                // Có từ 2 dòng trở lên (kể cả cùng size hay khác size) → dọn rác toàn bộ nếu có phát sinh bán MT
+                const ids = validRows.map((r) => r.id);
+                if (ids.length) {
+                    await supabase
+                        .from("ct_hoadon_banle")
+                        .update({ used_for_mt: true })
+                        .in("id", ids);
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Lỗi capNhatUsedTuVanSauKhiLuuCT:", err);
+    }
+}
+
 
 // ===== Modal "Số hóa đơn đã tồn tại" với 2 nút to (Tạo mới / Sửa) =====
 function ensureExistDialog() {
@@ -487,8 +582,12 @@ export async function luuHoaDonQuaAPI() {
             return;
         }
 
+        // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
+        await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
+
         inHoaDon({ ...header, sohd: sohdThucTe }, chitiet);
         await lamMoiSauKhiLuu();
+
         choPhepSua = false;
         return;
     }
@@ -993,6 +1092,10 @@ export async function luuHoaDonCaHaiBan() {
 
     // ✅ Thành công
     //alert("✅ Đã lưu hóa đơn thành công!");
+
+    // Sau khi lưu chi tiết CHÍNH thành công: cập nhật used_for_mt cho tư vấn nhân viên
+    await capNhatUsedTuVanSauKhiLuuCT(chitietChinh, hoadonChinh.loaihd, diadiem);
+
     inHoaDon(hoadonChinh, chitietChinh);
     await lamMoiSauKhiLuu();
     guiHoaDonViettel(sohdT);
