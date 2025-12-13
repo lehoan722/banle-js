@@ -15,7 +15,7 @@ export function getAudioCtx() {
 }
 
 // Envelope chống "click" đầu/cuối
-function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) {
+function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.1) {
   const ctx = getAudioCtx();
   const now = ctx.currentTime;
 
