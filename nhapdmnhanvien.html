@@ -239,7 +239,7 @@
 
     <!-- Script xử lý: dùng authModule chuẩn + chỉ cho ADMIN -->
     <script type="module">
-        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js'; // :contentReference[oaicite:0]{index=0}
+        import { khoiTaoDangNhapEmailAdmin, dangXuatEmail } from './scripts/authEmailAdmin.js';
 
         const TABLE = 'dmnhanvien';
         const supabase = window.supabase; // client đã được authModule khởi tạo
@@ -460,31 +460,22 @@
         }
 
         async function handleLogout() {
-            await dangXuatDungChung({ appContainerId: 'app-container' });
+            await dangXuatEmail({ appContainerId: 'app-container' });
         }
 
         // ======= GHÉP AUTH CHUẨN – CHỈ CHO PHÉP ADMIN =======
-        khoiTaoDangNhapDungChung({
+        khoiTaoDangNhapEmailAdmin({
             appContainerId: 'app-container',
-            macDinhDiaDiem: 'cs1',      // mặc định cơ sở 1, tuỳ anh đổi nếu cần
-            tuDongKhoaCoSo: true,
-            loginApiPath: '/api/login-cs1',
-            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // Chỉ cho phép admin
-                if (!nhanvien.is_admin) {
-                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang nhập danh mục nhân viên.');
-                    await dangXuatDungChung({ appContainerId: 'app-container' });
-                    return;
-                }
-
+            // Tuỳ chọn: đổi tiêu đề/placeholder nếu muốn
+            title: 'Đăng nhập ADMIN (Email)',
+            onLoginSuccess: async ({ user, session }) => {
                 // Admin hợp lệ -> hiển thị app & load danh sách gợi ý mã NV
                 document.getElementById('app-container').style.display = '';
                 await loadNvList();
                 resetForm();
             }
         });
-
-        // ======= EXPOSE HÀM RA WINDOW ĐỂ HTML GỌI =======
+        // L GỌI =======
         window.onManvInput = onManvInput;
         window.onManvKey = onManvKey;
         window.resetForm = resetForm;
