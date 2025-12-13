@@ -3,172 +3,162 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Đặt lại mật khẩu</title>
+  <title>Reset mật khẩu</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#fff; margin:0; }
-    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; }
-    .card { width:min(420px, 92vw); background:#f7f7f7; border:1px solid #ddd; border-radius:10px; padding:22px; }
-    h2 { margin:0 0 12px; }
-    label { display:block; margin:10px 0 6px; }
-    input { width:100%; padding:10px; border:1px solid #bbb; border-radius:8px; font-size:15px; }
-    button { width:100%; margin-top:14px; padding:11px; border:0; border-radius:8px; background:#16a34a; color:#fff; font-weight:700; cursor:pointer; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#f6f7fb; margin:0; }
+    .wrap { max-width: 520px; margin: 60px auto; padding: 0 16px; }
+    .card { background:#fff; border-radius: 14px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.07); }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    .muted { color:#666; font-size: 13px; line-height: 1.5; }
+    label { display:block; margin-top: 12px; font-weight: 600; font-size: 13px; }
+    input { width:100%; padding: 12px; border:1px solid #ddd; border-radius: 10px; margin-top: 6px; font-size: 14px; }
+    button { width:100%; margin-top: 14px; padding: 12px; border:0; border-radius: 10px; background:#16a34a; color:#fff; font-weight: 700; font-size: 15px; cursor:pointer; }
     button:disabled { opacity:.6; cursor:not-allowed; }
-    .msg { margin-top:12px; font-size:14px; }
-    .err { color:#b91c1c; }
-    .ok { color:#15803d; }
-    .hint { font-size:13px; color:#444; margin-top:10px; }
-    code { background:#eee; padding:2px 6px; border-radius:6px; }
+    .err { margin-top: 12px; color:#b91c1c; font-weight: 600; }
+    .ok { margin-top: 12px; color:#166534; font-weight: 700; }
+    .box { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background:#f3f4f6; font-size: 12px; color:#333; overflow:auto; }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h2>Đặt lại mật khẩu</h2>
-
-    <div id="stage-loading">
-      <div class="msg">Đang xác thực link khôi phục…</div>
-      <div class="hint">Nếu đứng lâu ở bước này: kiểm tra <code>Site URL</code> và <code>Redirect URLs</code> trong Supabase.</div>
-    </div>
-
-    <div id="stage-form" style="display:none;">
-      <label>Mật khẩu mới</label>
-      <input id="pw1" type="password" placeholder="Nhập mật khẩu mới" />
-
-      <label>Nhập lại mật khẩu</label>
-      <input id="pw2" type="password" placeholder="Nhập lại mật khẩu mới" />
-
-      <button id="btnSave">Lưu mật khẩu</button>
-      <div id="msg" class="msg"></div>
-
-      <div class="hint">
-        Sau khi đổi mật khẩu xong, bạn quay lại trang đăng nhập admin và đăng nhập bằng mật khẩu mới.
+  <div class="wrap">
+    <div class="card">
+      <h1>Đặt lại mật khẩu</h1>
+      <div id="status" class="muted">
+        Đang kiểm tra link khôi phục...
       </div>
-    </div>
 
-    <div id="stage-error" style="display:none;">
-      <div id="msgErr" class="msg err"></div>
-      <div class="hint">
-        Link khôi phục thường có dạng:
-        <br/>- <code>.../reset-password.html?code=...</code> (PKCE)
-        <br/>hoặc <code>.../reset-password.html#access_token=...&refresh_token=...&type=recovery</code>
+      <div id="formArea" style="display:none;">
+        <label>Mật khẩu mới</label>
+        <input id="pw1" type="password" placeholder="Nhập mật khẩu mới" />
+
+        <label>Nhập lại mật khẩu mới</label>
+        <input id="pw2" type="password" placeholder="Nhập lại mật khẩu" />
+
+        <button id="btnSave">Lưu mật khẩu</button>
+        <div id="msg"></div>
       </div>
+
+      <div id="debug" class="box" style="display:none;"></div>
     </div>
   </div>
-</div>
 
-<!-- Nếu bạn đã có supabaseClient.js riêng thì dùng dòng này và đảm bảo nó set window.supabase -->
-<!-- <script type="module" src="/scripts/supabaseClient.js"></script> -->
+  <script type="module">
+    import { supabase } from './supabaseClient.js';
 
-<script type="module">
-  // Cách 1 (khuyến nghị nếu bạn CHƯA chắc supabaseClient.js có tồn tại trên trang này):
-  // Tạo client giống authModule.js (copy y nguyên)
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm';
+    const statusEl = document.getElementById('status');
+    const formArea = document.getElementById('formArea');
+    const msgEl = document.getElementById('msg');
+    const debugEl = document.getElementById('debug');
+    const btnSave = document.getElementById('btnSave');
 
-  const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+    function setErr(t){ msgEl.className='err'; msgEl.textContent=t; }
+    function setOk(t){ msgEl.className='ok'; msgEl.textContent=t; }
 
-  if (!window.supabase || !window.supabase.auth || typeof window.supabase.auth.setSession !== 'function') {
-    window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  }
-  const supabase = window.supabase;
-
-  const elLoading = document.getElementById('stage-loading');
-  const elForm = document.getElementById('stage-form');
-  const elErr = document.getElementById('stage-error');
-  const msgErr = document.getElementById('msgErr');
-
-  function showError(text) {
-    elLoading.style.display = 'none';
-    elForm.style.display = 'none';
-    elErr.style.display = '';
-    msgErr.textContent = text;
-  }
-
-  function showForm() {
-    elLoading.style.display = 'none';
-    elErr.style.display = 'none';
-    elForm.style.display = '';
-  }
-
-  async function bootstrapRecoverySession() {
-    // 1) Nếu link dạng PKCE: /reset-password.html?code=...
-    const url = new URL(location.href);
-    const code = url.searchParams.get('code');
-    if (code) {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
-      if (!data?.session) throw new Error('Không tạo được session từ code.');
-      return;
+    function parseHash() {
+      const h = location.hash?.startsWith('#') ? location.hash.slice(1) : '';
+      const p = new URLSearchParams(h);
+      return {
+        access_token: p.get('access_token'),
+        refresh_token: p.get('refresh_token'),
+        type: p.get('type'),
+        expires_in: p.get('expires_in'),
+      };
     }
 
-    // 2) Nếu link dạng hash: #access_token=...&refresh_token=...&type=recovery
-    const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
-    const hp = new URLSearchParams(hash);
-    const type = hp.get('type');
-    const access_token = hp.get('access_token');
-    const refresh_token = hp.get('refresh_token');
+    async function bootstrapRecoverySession() {
+      // Case A: PKCE flow -> ?code=...
+      const url = new URL(location.href);
+      const code = url.searchParams.get('code');
 
-    if (type === 'recovery' && access_token && refresh_token) {
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (error) throw error;
-      return;
+      // Case B: implicit tokens -> #access_token=...&refresh_token=...&type=recovery
+      const h = parseHash();
+
+      debugEl.style.display = 'block';
+      debugEl.textContent =
+        'URL=' + location.href + '\n' +
+        'code=' + (code || '') + '\n' +
+        'hash.type=' + (h.type || '') + '\n' +
+        'hash.access_token=' + (h.access_token ? '[OK]' : '') + '\n' +
+        'hash.refresh_token=' + (h.refresh_token ? '[OK]' : '');
+
+      // 1) Nếu có code -> đổi code lấy session
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+
+        // dọn query ?code=... cho sạch URL
+        url.searchParams.delete('code');
+        history.replaceState({}, document.title, url.toString());
+
+        return data?.session || null;
+      }
+
+      // 2) Nếu có access_token/refresh_token trong hash -> setSession
+      if (h.access_token && h.refresh_token) {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: h.access_token,
+          refresh_token: h.refresh_token,
+        });
+        if (error) throw error;
+
+        // dọn hash cho sạch URL
+        history.replaceState({}, document.title, location.pathname + location.search);
+
+        return data?.session || null;
+      }
+
+      // 3) Nếu không có gì -> fail (do cấu hình redirect url chưa đúng)
+      return null;
     }
 
-    throw new Error('Link khôi phục không hợp lệ hoặc thiếu token.');
-  }
+    async function init() {
+      try {
+        const session = await bootstrapRecoverySession();
 
-  try {
-    await bootstrapRecoverySession();
-    showForm();
-  } catch (e) {
-    console.error(e);
-    showError('❌ ' + (e?.message || 'Không xác thực được link khôi phục.'));
-  }
+        if (!session) {
+          statusEl.innerHTML =
+            '<span style="color:#b91c1c;font-weight:700;">Link khôi phục không hợp lệ hoặc thiếu token/code.</span><br>' +
+            '<span class="muted">Bạn cần cấu hình Supabase Auth → URL Configuration đúng, rồi gửi lại email reset password.</span>';
+          return;
+        }
 
-  // Save password
-  const btn = document.getElementById('btnSave');
-  const msg = document.getElementById('msg');
-  const pw1 = document.getElementById('pw1');
-  const pw2 = document.getElementById('pw2');
+        statusEl.innerHTML =
+          '<span style="color:#166534;font-weight:800;">OK.</span> Hãy nhập mật khẩu mới để cập nhật.';
+        formArea.style.display = 'block';
 
-  btn.addEventListener('click', async () => {
-    msg.className = 'msg';
-    msg.textContent = '';
+        btnSave.onclick = async () => {
+          msgEl.textContent = '';
+          const pw1 = document.getElementById('pw1').value.trim();
+          const pw2 = document.getElementById('pw2').value.trim();
 
-    const p1 = (pw1.value || '').trim();
-    const p2 = (pw2.value || '').trim();
+          if (!pw1 || pw1.length < 6) return setErr('Mật khẩu phải >= 6 ký tự.');
+          if (pw1 !== pw2) return setErr('2 mật khẩu không khớp.');
 
-    if (p1.length < 6) {
-      msg.classList.add('err');
-      msg.textContent = '❌ Mật khẩu tối thiểu 6 ký tự.';
-      return;
-    }
-    if (p1 !== p2) {
-      msg.classList.add('err');
-      msg.textContent = '❌ 2 mật khẩu không khớp.';
-      return;
-    }
+          btnSave.disabled = true;
+          btnSave.textContent = 'Đang lưu...';
 
-    btn.disabled = true;
-    msg.textContent = 'Đang cập nhật mật khẩu…';
+          try {
+            const { data, error } = await supabase.auth.updateUser({ password: pw1 });
+            if (error) throw error;
 
-    const { error } = await supabase.auth.updateUser({ password: p1 });
+            setOk('Đổi mật khẩu thành công. Bạn có thể quay lại trang đăng nhập để đăng nhập lại.');
+            // Optional: supabase.auth.signOut();
+          } catch (e) {
+            setErr(e?.message || String(e));
+          } finally {
+            btnSave.disabled = false;
+            btnSave.textContent = 'Lưu mật khẩu';
+          }
+        };
 
-    btn.disabled = false;
-
-    if (error) {
-      console.error(error);
-      msg.classList.add('err');
-      msg.textContent = '❌ ' + (error.message || 'Cập nhật thất bại');
-      return;
+      } catch (e) {
+        statusEl.innerHTML =
+          '<span style="color:#b91c1c;font-weight:700;">Lỗi khi khởi tạo recovery session:</span> ' +
+          (e?.message || String(e));
+      }
     }
 
-    msg.classList.add('ok');
-    msg.textContent = '✅ Đổi mật khẩu thành công! Bạn có thể quay lại trang đăng nhập và đăng nhập bằng mật khẩu mới.';
-
-    // Optional: signOut để sạch session recovery
-    try { await supabase.auth.signOut(); } catch {}
-  });
-</script>
+    init();
+  </script>
 </body>
 </html>
