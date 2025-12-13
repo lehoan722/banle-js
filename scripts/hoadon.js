@@ -60,6 +60,16 @@ function currentBranchUpper() {
 
 // === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
 // === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// Quy tắc:
+// - Chỉ xét các dòng nhân viên trong 1 giờ gần nhất, used_for_mt = false
+// - Nếu không có dòng nào -> không gợi ý
+// - Nếu có > 1 dòng (kể cả cùng size hay khác size):
+//     + KHÔNG gợi ý
+//     + Đánh dấu used_for_mt = true cho TẤT CẢ các dòng đó (dọn rác mạnh tay)
+// - Nếu CHỈ CÓ 1 dòng hợp lệ:
+//     + Gợi ý size của dòng đó
+//     + Đồng thời đánh dấu used_for_mt = true cho dòng đó (mỗi dòng dùng 1 lần)
 async function goiYSizeTuHoaDonNhanVien(maspBase) {
     const masp = String(maspBase || "").trim().toUpperCase();
     if (!masp) return null;
@@ -83,37 +93,82 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
     try {
         const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-        // Lấy CÙNG LÚC 2 điều kiện:
-        // - Trong vòng 1 giờ gần nhất
-        // - Tối đa 50 hóa đơn
+        // Chỉ lấy các dòng tư vấn:
+        // - Đúng mã
+        // - Đúng cơ sở (prefix sohd)
+        // - Trong 1h gần nhất
+        // - CHƯA dùng cho MT (used_for_mt = false)
         const { data, error } = await supabase
             .from("ct_hoadon_banle")
-            .select("size, sohd, id, created_at")
+            .select("id, size, sohd, created_at, used_for_mt")
             .eq("masp", masp)
             .like("sohd", `${prefix}%`)
             .gte("created_at", oneHourAgoIso)
+            .eq("used_for_mt", false)
             .order("id", { ascending: false })
             .limit(50);
 
         if (error) {
-            console.error("Gợi ý size (1h, 50 hóa đơn) lỗi:", error);
+            console.error("Gợi ý size (1h, used_for_mt=false) lỗi:", error);
             return null;
         }
 
-        if (!data || !data.length) return null;
+        if (!data || !data.length) {
+            // Không có dữ liệu tư vấn phù hợp trong 1h -> không gợi ý
+            return null;
+        }
 
-        // Lấy bản ghi đầu tiên có size hợp lệ
-        const row = data.find(
-            (r) => r.size != null && String(r.size).trim() !== ""
-        );
-        if (!row) return null;
+        // Lọc những dòng có size hợp lệ (khác rỗng)
+        const validRows = data.filter(r => {
+            const s = r && r.size != null ? String(r.size).trim() : "";
+            return s !== "";
+        });
 
-        return String(row.size).trim();
+        if (!validRows.length) {
+            // Có dữ liệu nhưng toàn size rỗng -> không gợi ý
+            return null;
+        }
+
+        // Nếu có từ 2 dòng trở lên (kể cả cùng size hay khác size) -> KHÔNG gợi ý,
+        // và đánh dấu used_for_mt = true cho TẤT CẢ để dọn rác
+        if (validRows.length > 1) {
+            try {
+                const ids = validRows.map(r => r.id);
+                await supabase
+                    .from("ct_hoadon_banle")
+                    .update({ used_for_mt: true })
+                    .in("id", ids);
+            } catch (updErr) {
+                console.error("Lỗi update used_for_mt (dọn rác khi >1 dòng):", updErr);
+            }
+            // An toàn: không gợi ý gì
+            return null;
+        }
+
+        // Đến đây: CHỈ CÓ 1 dòng tư vấn hợp lệ trong 1h
+        const row = validRows[0];
+        const sizeStr = String(row.size).trim();
+
+        if (!sizeStr) return null;
+
+        // Đánh dấu dòng này đã được sử dụng cho MT (mỗi dòng 1 lần)
+        try {
+            await supabase
+                .from("ct_hoadon_banle")
+                .update({ used_for_mt: true })
+                .eq("id", row.id);
+        } catch (updErr) {
+            console.error("Lỗi update used_for_mt (dòng đơn lẻ):", updErr);
+            // vẫn trả về gợi ý, vì lỗi chỉ ảnh hưởng việc "chỉ dùng 1 lần"
+        }
+
+        return sizeStr;
     } catch (err) {
         console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
         return null;
     }
 }
+
 
 export let bangKetQua = {};
 
