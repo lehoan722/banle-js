@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Đặt lại mật khẩu</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#fff; margin:0; }
+    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .card { width:min(420px, 92vw); background:#f7f7f7; border:1px solid #ddd; border-radius:10px; padding:22px; }
+    h2 { margin:0 0 12px; }
+    label { display:block; margin:10px 0 6px; }
+    input { width:100%; padding:10px; border:1px solid #bbb; border-radius:8px; font-size:15px; }
+    button { width:100%; margin-top:14px; padding:11px; border:0; border-radius:8px; background:#16a34a; color:#fff; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .msg { margin-top:12px; font-size:14px; }
+    .err { color:#b91c1c; }
+    .ok { color:#15803d; }
+    .hint { font-size:13px; color:#444; margin-top:10px; }
+    code { background:#eee; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>Đặt lại mật khẩu</h2>
+
+    <div id="stage-loading">
+      <div class="msg">Đang xác thực link khôi phục…</div>
+      <div class="hint">Nếu đứng lâu ở bước này: kiểm tra <code>Site URL</code> và <code>Redirect URLs</code> trong Supabase.</div>
+    </div>
+
+    <div id="stage-form" style="display:none;">
+      <label>Mật khẩu mới</label>
+      <input id="pw1" type="password" placeholder="Nhập mật khẩu mới" />
+
+      <label>Nhập lại mật khẩu</label>
+      <input id="pw2" type="password" placeholder="Nhập lại mật khẩu mới" />
+
+      <button id="btnSave">Lưu mật khẩu</button>
+      <div id="msg" class="msg"></div>
+
+      <div class="hint">
+        Sau khi đổi mật khẩu xong, bạn quay lại trang đăng nhập admin và đăng nhập bằng mật khẩu mới.
+      </div>
+    </div>
+
+    <div id="stage-error" style="display:none;">
+      <div id="msgErr" class="msg err"></div>
+      <div class="hint">
+        Link khôi phục thường có dạng:
+        <br/>- <code>.../reset-password.html?code=...</code> (PKCE)
+        <br/>hoặc <code>.../reset-password.html#access_token=...&refresh_token=...&type=recovery</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Nếu bạn đã có supabaseClient.js riêng thì dùng dòng này và đảm bảo nó set window.supabase -->
+<!-- <script type="module" src="/scripts/supabaseClient.js"></script> -->
+
+<script type="module">
+  // Cách 1 (khuyến nghị nếu bạn CHƯA chắc supabaseClient.js có tồn tại trên trang này):
+  // Tạo client giống authModule.js (copy y nguyên)
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm';
+
+  const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+  const SUPABASE_KEY = 'YOUR_ANON_KEY_HERE'; // <-- DÁN anon key của bạn (giống authModule.js)
+
+  if (!window.supabase || !window.supabase.auth || typeof window.supabase.auth.setSession !== 'function') {
+    window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  const supabase = window.supabase;
+
+  const elLoading = document.getElementById('stage-loading');
+  const elForm = document.getElementById('stage-form');
+  const elErr = document.getElementById('stage-error');
+  const msgErr = document.getElementById('msgErr');
+
+  function showError(text) {
+    elLoading.style.display = 'none';
+    elForm.style.display = 'none';
+    elErr.style.display = '';
+    msgErr.textContent = text;
+  }
+
+  function showForm() {
+    elLoading.style.display = 'none';
+    elErr.style.display = 'none';
+    elForm.style.display = '';
+  }
+
+  async function bootstrapRecoverySession() {
+    // 1) Nếu link dạng PKCE: /reset-password.html?code=...
+    const url = new URL(location.href);
+    const code = url.searchParams.get('code');
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      if (!data?.session) throw new Error('Không tạo được session từ code.');
+      return;
+    }
+
+    // 2) Nếu link dạng hash: #access_token=...&refresh_token=...&type=recovery
+    const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+    const hp = new URLSearchParams(hash);
+    const type = hp.get('type');
+    const access_token = hp.get('access_token');
+    const refresh_token = hp.get('refresh_token');
+
+    if (type === 'recovery' && access_token && refresh_token) {
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) throw error;
+      return;
+    }
+
+    throw new Error('Link khôi phục không hợp lệ hoặc thiếu token.');
+  }
+
+  try {
+    await bootstrapRecoverySession();
+    showForm();
+  } catch (e) {
+    console.error(e);
+    showError('❌ ' + (e?.message || 'Không xác thực được link khôi phục.'));
+  }
+
+  // Save password
+  const btn = document.getElementById('btnSave');
+  const msg = document.getElementById('msg');
+  const pw1 = document.getElementById('pw1');
+  const pw2 = document.getElementById('pw2');
+
+  btn.addEventListener('click', async () => {
+    msg.className = 'msg';
+    msg.textContent = '';
+
+    const p1 = (pw1.value || '').trim();
+    const p2 = (pw2.value || '').trim();
+
+    if (p1.length < 6) {
+      msg.classList.add('err');
+      msg.textContent = '❌ Mật khẩu tối thiểu 6 ký tự.';
+      return;
+    }
+    if (p1 !== p2) {
+      msg.classList.add('err');
+      msg.textContent = '❌ 2 mật khẩu không khớp.';
+      return;
+    }
+
+    btn.disabled = true;
+    msg.textContent = 'Đang cập nhật mật khẩu…';
+
+    const { error } = await supabase.auth.updateUser({ password: p1 });
+
+    btn.disabled = false;
+
+    if (error) {
+      console.error(error);
+      msg.classList.add('err');
+      msg.textContent = '❌ ' + (error.message || 'Cập nhật thất bại');
+      return;
+    }
+
+    msg.classList.add('ok');
+    msg.textContent = '✅ Đổi mật khẩu thành công! Bạn có thể quay lại trang đăng nhập và đăng nhập bằng mật khẩu mới.';
+
+    // Optional: signOut để sạch session recovery
+    try { await supabase.auth.signOut(); } catch {}
+  });
+</script>
+</body>
+</html>
