@@ -221,8 +221,10 @@ function renderColSelect() {
 
 // ==== Table Handsontable (chỉ gồm masp, cột cần sửa, trạng thái) ====
 let hot;
+let currentTableMode = 'masp';
 
 function initTable(colname = 'vitrikho1') {
+  currentTableMode = 'masp';
   const colInfo = COLS.find(c => c.name === colname);
   const colLabel = colInfo ? colInfo.label : colname;
 
@@ -261,8 +263,17 @@ function initTable(colname = 'vitrikho1') {
       }
       return cellProperties;
     },
+    afterOnCellMouseDown: function (event, coords) {
+      // Click ở cột giá trị (cột thứ 2) khi đang ở chế độ DANH SÁCH -> đẩy vào ô điều kiện lọc
+      if (currentTableMode !== 'distinct') return;
+      if (!coords || coords.row < 0) return;
+      if (coords.col !== 1) return;
+      const val = this.getDataAtCell(coords.row, coords.col);
+      appendToFilterInput(val);
+    },
     afterOnCellDblClick: function (event, coords) {
       // Double click ở cột giá trị (cột thứ 2) -> đẩy vào ô điều kiện lọc
+      if (currentTableMode !== 'distinct') return;
       if (!coords || coords.row < 0) return;
       if (coords.col !== 1) return;
       const val = this.getDataAtCell(coords.row, coords.col);
@@ -293,6 +304,7 @@ function attachUIEvents() {
   if (btnReset) {
     btnReset.onclick = function () {
       initTable(colSelect?.value || 'vitrikho1');
+      if (inputFilter) inputFilter.value = "";
       if (previewEl) previewEl.innerHTML = "";
     };
   }
@@ -453,6 +465,7 @@ async function taiDanhSachGiaTriCotDangChon() {
     }));
 
     hot.loadData(rows);
+    currentTableMode = 'distinct';
 
     if (previewEl) {
       previewEl.innerHTML =
