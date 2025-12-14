@@ -23,7 +23,11 @@ const COLS = [
   { name: "ngaykiem", label: "Ngày kiểm" },
   { name: "dvt", label: "ĐVT" },
   { name: "nhapdau", label: "Ngày nhập đầu" },
+  { name: "treomaucs1", label: "treo mau cs1" },
+  { name: "treomaucs2", label: "treo mau cs2" },
   { name: "vitrikho3", label: "Vị trí kho 3" },
+  
+
 ];
 
 // ==== Render dropdown chọn cột cần ghi ====
