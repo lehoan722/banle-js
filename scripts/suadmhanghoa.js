@@ -40,6 +40,7 @@ const DISTINCT_WHITELIST = new Set([
   'vitrikho1',
   'vitrikho2',
   'vitri',
+  'nhacc',
 ]);
 
 const DISTINCT_MAX_UNIQUE = 2000;   // tối đa số giá trị distinct đổ ra bảng
@@ -53,7 +54,41 @@ const FILTER_NUMERIC_COLS = new Set(['gianhap','giale','giasi']);
 const FILTER_BOOLEAN_COLS = new Set(['active','quanlykichco']);
 
 function applyFilterQuery(q, colname, rawValue) {
-  // Nếu là boolean
+
+
+// Hỗ trợ nhiều giá trị cách nhau bằng dấu phẩy: dùng .in() (match chính xác)
+// rawValue có thể là mảng (đã được split/trim ở nơi gọi)
+if (Array.isArray(rawValue)) {
+  const vals = rawValue.map(v => String(v).trim()).filter(Boolean);
+  if (vals.length === 0) return q.eq(colname, null);
+
+  // Boolean
+  if (FILTER_BOOLEAN_COLS.has(colname)) {
+    const bools = vals
+      .map(v => v.toLowerCase())
+      .map(v => (v === '1' || v === 'true') ? true : (v === '0' || v === 'false') ? false : null)
+      .filter(v => v !== null);
+
+    if (bools.length === 0) return q.eq(colname, null);
+    // nếu có cả true và false -> không cần lọc
+    if (bools.includes(true) && bools.includes(false)) return q;
+    return q.eq(colname, bools[0]);
+  }
+
+  // Số
+  if (FILTER_NUMERIC_COLS.has(colname)) {
+    const nums = vals
+      .map(v => Number(String(v).replace(',', '.')))
+      .filter(n => Number.isFinite(n));
+    if (nums.length === 0) return q.eq(colname, null);
+    return q.in(colname, nums);
+  }
+
+  // Text: dùng OR + ilike để KHÔNG phân biệt hoa/thường (và vẫn match chính xác)
+// Ví dụ: nhomhang in [A1, A2] -> or("nhomhang.ilike.A1,nhomhang.ilike.A2")
+  const orExpr = vals.map(v => `${colname}.ilike.${v}`).join(',');
+  return q.or(orExpr);
+}  // Nếu là boolean
   if (FILTER_BOOLEAN_COLS.has(colname)) {
     const v = String(rawValue).trim().toLowerCase();
     if (v === '1' || v === 'true') return q.eq(colname, true);
@@ -80,6 +115,30 @@ function getColLabel(colname) {
   return colInfo ? colInfo.label : colname;
 }
 
+
+// ==== Hỗ trợ UX: double-click để đẩy giá trị vào ô "Giá trị lọc" ====
+function appendToFilterInput(value) {
+  const input = document.getElementById('filter-value');
+  if (!input) return;
+
+  const v = (value ?? "").toString().trim();
+  if (!v) return;
+
+  const current = (input.value || "").toString().trim();
+  if (!current) {
+    input.value = v;
+    input.focus();
+    return;
+  }
+
+  const parts = current.split(',').map(x => x.trim()).filter(Boolean);
+  // tránh trùng (không phân biệt hoa/thường)
+  const exists = parts.some(x => x.toLowerCase() === v.toLowerCase());
+  if (!exists) parts.push(v);
+
+  input.value = parts.join(', ');
+  input.focus();
+}
 function isDistinctAllowed(colname) {
   return DISTINCT_WHITELIST.has(colname);
 }
@@ -201,6 +260,13 @@ function initTable(colname = 'vitrikho1') {
         if (val === "CHƯA CÓ GIÁ TRỊ") cellProperties.className = "trangthai-chuacovitri";
       }
       return cellProperties;
+    },
+    afterOnCellDblClick: function (event, coords) {
+      // Double click ở cột giá trị (cột thứ 2) -> đẩy vào ô điều kiện lọc
+      if (!coords || coords.row < 0) return;
+      if (coords.col !== 1) return;
+      const val = this.getDataAtCell(coords.row, coords.col);
+      appendToFilterInput(val);
     }
   });
 }
@@ -409,26 +475,29 @@ async function taiDanhSachTheoDieuKien() {
 
   const colname = colSelect.value;
   const colLabel = getColLabel(colname);
-  const filterValue = (inputFilter?.value || "").toString().trim();
+  const rawFilter = (inputFilter?.value || "").toString();
+  const filterValues = rawFilter.split(',').map(v => v.trim()).filter(Boolean);
 
   if (!colname) {
     alert("Bạn cần chọn cột trước khi tải theo điều kiện!");
     return;
   }
 
-  if (!filterValue) {
-    alert(`Bạn cần nhập "Giá trị lọc" cho cột "${colLabel}"!`);
+  if (filterValues.length === 0) {
+    alert(`Bạn cần nhập "Giá trị lọc" cho cột "${colLabel}"! (có thể nhập nhiều giá trị cách nhau bằng dấu ,)`);
     return;
   }
 
   try {
-    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách sản phẩm có <b>${colLabel}</b> = <b>${filterValue}</b>...</span>`;
+    const filterText = filterValues.join(', ');
 
-    const foundRows = await fetchRowsByFilterFromDmHangHoa(colname, filterValue);
+    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách sản phẩm có <b>${colLabel}</b> thuộc: <b>${filterText}</b>...</span>`;
+
+    const foundRows = await fetchRowsByFilterFromDmHangHoa(colname, (filterValues.length === 1 ? filterValues[0] : filterValues));
 
     if (!foundRows || foundRows.length === 0) {
       hot.loadData([{ masp: "", [colname]: "", trangthai: "KHÔNG CÓ KẾT QUẢ" }]);
-      if (previewEl) previewEl.innerHTML = `⚠️ Không tìm thấy sản phẩm nào có <b>${colLabel}</b> = <b>${filterValue}</b>.`;
+      if (previewEl) previewEl.innerHTML = `⚠️ Không tìm thấy sản phẩm nào có <b>${colLabel}</b> thuộc: <b>${filterText}</b>.`;
       return;
     }
 
@@ -445,7 +514,7 @@ async function taiDanhSachTheoDieuKien() {
       : "";
 
     if (previewEl) {
-      previewEl.innerHTML = `✅ Đã tải <b>${rows.length}</b> sản phẩm theo điều kiện <b>${colLabel}</b> = <b>${filterValue}</b>${note}.`;
+      previewEl.innerHTML = `✅ Đã tải <b>${rows.length}</b> sản phẩm theo điều kiện <b>${colLabel}</b> thuộc: <b>${filterText}</b>${note}.`;
     }
   } catch (err) {
     console.error(err);
