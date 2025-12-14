@@ -386,7 +386,7 @@ export async function chuyenFocus(e) {
             }
 
             // Không hợp lệ (dài hay ngắn đều coi là sai) -> chỉ báo lỗi + ở lại #size
-            alert("Size không hợp lệ! Chỉ cho phép nhập: 38 -> 45");
+            //alert("Size không hợp lệ! Chỉ cho phép nhập: 38 -> 45");
             sizeInput.focus();
             sizeInput.select();
             return;
