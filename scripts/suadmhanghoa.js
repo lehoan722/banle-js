@@ -30,6 +30,122 @@ const COLS = [
 
 ];
 
+// ==== Cấu hình cho tính năng lọc theo điều kiện & tải danh sách giá trị ====
+const DISTINCT_WHITELIST = new Set([
+  // Các cột “danh mục/nhóm” thường có ít giá trị -> tải distinct nhẹ
+  'nhomhang',
+  'chungloai',
+  'treomaucs1',
+  'treomaucs2',
+  'vitrikho1',
+  'vitrikho2',
+  'vitri',
+]);
+
+const DISTINCT_MAX_UNIQUE = 2000;   // tối đa số giá trị distinct đổ ra bảng
+const DISTINCT_MAX_SCAN = 20000;    // tối đa số dòng quét để lấy distinct
+const DISTINCT_BATCH = 1000;        // mỗi lần đọc bao nhiêu dòng
+
+const FILTER_MAX_ROWS = 10000;      // tối đa số sản phẩm tải theo điều kiện (tránh nặng HOT)
+const FILTER_BATCH = 1000;
+
+const FILTER_NUMERIC_COLS = new Set(['gianhap','giale','giasi']);
+const FILTER_BOOLEAN_COLS = new Set(['active','quanlykichco']);
+
+function applyFilterQuery(q, colname, rawValue) {
+  // Nếu là boolean
+  if (FILTER_BOOLEAN_COLS.has(colname)) {
+    const v = String(rawValue).trim().toLowerCase();
+    if (v === '1' || v === 'true') return q.eq(colname, true);
+    if (v === '0' || v === 'false') return q.eq(colname, false);
+    // nếu nhập sai -> trả về query sẽ không có kết quả
+    return q.eq(colname, null);
+  }
+
+  // Nếu là số
+  if (FILTER_NUMERIC_COLS.has(colname)) {
+    const n = Number(String(rawValue).trim().replace(',', '.'));
+    if (Number.isFinite(n)) return q.eq(colname, n);
+    return q.eq(colname, null);
+  }
+
+  // Mặc định: text -> ilike exact để không phân biệt hoa thường
+  const pattern = String(rawValue).trim();
+  return q.ilike(colname, pattern);
+}
+
+
+function getColLabel(colname) {
+  const colInfo = COLS.find(c => c.name === colname);
+  return colInfo ? colInfo.label : colname;
+}
+
+function isDistinctAllowed(colname) {
+  return DISTINCT_WHITELIST.has(colname);
+}
+
+async function fetchDistinctValuesFromDmHangHoa(colname) {
+  const set = new Set();
+  let from = 0;
+
+  while (from < DISTINCT_MAX_SCAN && set.size < DISTINCT_MAX_UNIQUE) {
+    const to = from + DISTINCT_BATCH - 1;
+
+    const { data, error } = await supabase
+      .from('dmhanghoa')
+      .select(colname)
+      .not(colname, 'is', null)
+      .range(from, to);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      const v = row?.[colname];
+      if (v === null || typeof v === 'undefined') continue;
+      const s = String(v).trim();
+      if (!s) continue;
+      set.add(s);
+      if (set.size >= DISTINCT_MAX_UNIQUE) break;
+    }
+
+    if (data.length < DISTINCT_BATCH) break;
+    from += DISTINCT_BATCH;
+  }
+
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+}
+
+async function fetchRowsByFilterFromDmHangHoa(colname, filterValue) {
+  const rows = [];
+  let from = 0;
+
+  while (rows.length < FILTER_MAX_ROWS) {
+    const to = from + FILTER_BATCH - 1;
+
+    let q = supabase
+      .from('dmhanghoa')
+      .select(`masp,${colname}`);
+
+    q = applyFilterQuery(q, colname, filterValue);
+
+    const { data, error } = await q.range(from, to);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) break;
+
+    rows.push(...data);
+
+    if (data.length < FILTER_BATCH) break;
+    from += FILTER_BATCH;
+  }
+
+  return rows;
+}
+
+
 // ==== Render dropdown chọn cột cần ghi ====
 function renderColSelect() {
   let html = `<option value="" selected disabled>-- Chọn mục cần ghi --</option>` +
@@ -97,6 +213,8 @@ function attachUIEvents() {
   const btnXoa = document.getElementById('btn-xoa');
   const btnBackup = document.getElementById('btn-backup');
   const btnLuu = document.getElementById('btn-luu');
+  const inputFilter = document.getElementById('filter-value');
+  const btnLoadFilter = document.getElementById('btn-load-filter');
   const previewEl = document.getElementById('preview');
 
   if (colSelect) {
@@ -127,6 +245,16 @@ function attachUIEvents() {
 
   if (btnLuu) {
     btnLuu.onclick = luuDuLieu;
+  }
+
+  if (btnLoadFilter) {
+    btnLoadFilter.onclick = taiDanhSachTheoDieuKien;
+  }
+
+  if (inputFilter) {
+    inputFilter.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') taiDanhSachTheoDieuKien();
+    });
   }
 }
 
@@ -160,7 +288,24 @@ async function kiemTraViTri() {
   }
 
   if (uniqueMasps.length === 0) {
-    alert("Nhập mã sản phẩm để kiểm tra!");
+    // Không có mã sản phẩm -> gợi ý tải danh sách giá trị “đơn nhất” của cột đang chọn
+    const colLabel = getColLabel(colname);
+
+    if (!isDistinctAllowed(colname)) {
+      alert(`Bạn chưa nhập mã sản phẩm để kiểm tra.\n\nCột "${colLabel}" hiện chưa hỗ trợ tải danh sách giá trị đơn nhất.`);
+      return;
+    }
+
+    const ok = confirm(
+      `Bạn chưa nhập mã sản phẩm để kiểm tra.\n\nBạn có muốn tải DANH SÁCH GIÁ TRỊ (đơn nhất) của cột "${colLabel}" để tham khảo & copy dán vào ô điều kiện không?`
+    );
+
+    if (!ok) {
+      alert("Hãy nhập mã sản phẩm vào cột A để kiểm tra.");
+      return;
+    }
+
+    await taiDanhSachGiaTriCotDangChon();
     return;
   }
 
@@ -209,6 +354,105 @@ async function kiemTraViTri() {
   hot.updateSettings({ cells: hot.getSettings().cells });
 }
 
+
+
+// ==== Tải danh sách GIÁ TRỊ (đơn nhất) của cột đang chọn để tham khảo ====
+async function taiDanhSachGiaTriCotDangChon() {
+  const colSelect = document.getElementById('col-select');
+  const previewEl = document.getElementById('preview');
+  if (!colSelect || !hot) return;
+
+  const colname = colSelect.value;
+  const colLabel = getColLabel(colname);
+
+  if (!colname) {
+    alert("Bạn cần chọn cột trước khi tải danh sách giá trị!");
+    return;
+  }
+
+  if (!isDistinctAllowed(colname)) {
+    alert(`Cột "${colLabel}" hiện chưa hỗ trợ tải danh sách giá trị đơn nhất.`);
+    return;
+  }
+
+  try {
+    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách giá trị của cột <b>${colLabel}</b>...</span>`;
+
+    const values = await fetchDistinctValuesFromDmHangHoa(colname);
+
+    const rows = values.map(v => ({
+      masp: "",
+      [colname]: v,
+      trangthai: "DANH SÁCH"
+    }));
+
+    hot.loadData(rows);
+
+    if (previewEl) {
+      previewEl.innerHTML =
+        `✅ Đã tải <b>${values.length}</b> giá trị (đơn nhất) của cột <b>${colLabel}</b>. ` +
+        `Bạn có thể copy ở cột <b>${colLabel}</b> và dán vào ô <b>Giá trị lọc</b>.`;
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Lỗi khi tải danh sách giá trị: " + (err?.message || err));
+    if (previewEl) previewEl.innerHTML = "";
+  }
+}
+
+// ==== Tải danh sách sản phẩm theo điều kiện (cột đang chọn = giá trị lọc) ====
+async function taiDanhSachTheoDieuKien() {
+  const colSelect = document.getElementById('col-select');
+  const inputFilter = document.getElementById('filter-value');
+  const previewEl = document.getElementById('preview');
+  if (!colSelect || !hot) return;
+
+  const colname = colSelect.value;
+  const colLabel = getColLabel(colname);
+  const filterValue = (inputFilter?.value || "").toString().trim();
+
+  if (!colname) {
+    alert("Bạn cần chọn cột trước khi tải theo điều kiện!");
+    return;
+  }
+
+  if (!filterValue) {
+    alert(`Bạn cần nhập "Giá trị lọc" cho cột "${colLabel}"!`);
+    return;
+  }
+
+  try {
+    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách sản phẩm có <b>${colLabel}</b> = <b>${filterValue}</b>...</span>`;
+
+    const foundRows = await fetchRowsByFilterFromDmHangHoa(colname, filterValue);
+
+    if (!foundRows || foundRows.length === 0) {
+      hot.loadData([{ masp: "", [colname]: "", trangthai: "KHÔNG CÓ KẾT QUẢ" }]);
+      if (previewEl) previewEl.innerHTML = `⚠️ Không tìm thấy sản phẩm nào có <b>${colLabel}</b> = <b>${filterValue}</b>.`;
+      return;
+    }
+
+    const rows = foundRows.slice(0, FILTER_MAX_ROWS).map(r => ({
+      masp: (r.masp || "").toString().trim().toUpperCase(),
+      [colname]: r[colname],
+      trangthai: "TẢI ĐIỀU KIỆN"
+    }));
+
+    hot.loadData(rows);
+
+    const note = (foundRows.length >= FILTER_MAX_ROWS)
+      ? ` (đang giới hạn hiển thị ${FILTER_MAX_ROWS} dòng đầu)`
+      : "";
+
+    if (previewEl) {
+      previewEl.innerHTML = `✅ Đã tải <b>${rows.length}</b> sản phẩm theo điều kiện <b>${colLabel}</b> = <b>${filterValue}</b>${note}.`;
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Lỗi khi tải theo điều kiện: " + (err?.message || err));
+    if (previewEl) previewEl.innerHTML = "";
+  }
+}
 // ==== Xóa sản phẩm đã có vị trí (và dòng trống) ====
 function xoaSanPhamDaCoViTri() {
   const previewEl = document.getElementById('preview');
