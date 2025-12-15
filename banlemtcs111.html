@@ -349,6 +349,48 @@
         }
     </style>
 
+    <script>
+        (function () {
+            const APP = "banlemt_cs1";
+            const HB_KEY = APP + ":browser_hb";
+            const HEARTBEAT_MS = 1000;  // ping mỗi 1s
+            const TTL_MS = 4000;        // >4s không ping => coi như browser đã đóng
+
+            const now = Date.now();
+            const last = Number(localStorage.getItem(HB_KEY) || 0);
+
+            const browserWasClosed = !last || (now - last) > TTL_MS;
+
+            function clearAuthStorage() {
+                // ✅ các key app bạn lưu
+                const AUTH_KEYS = [
+                    "manv", "tennv", "supabase_access_token",
+                    "is_admin", "sua_hoadon", "xoa_hoadon", "quyen_sua_hoadon"
+                    // "diadiem" // muốn giữ cơ sở thì để comment; muốn sạch luôn thì bỏ comment
+                ];
+                AUTH_KEYS.forEach(k => localStorage.removeItem(k));
+
+                // ✅ xóa toàn bộ token Supabase (quan trọng)
+                Object.keys(localStorage).forEach(k => {
+                    if (k.startsWith("sb-") && k.endsWith("-auth-token")) localStorage.removeItem(k);
+                });
+            }
+
+            if (browserWasClosed) {
+                console.warn("[" + APP + "] Browser restart detected -> clearing auth localStorage");
+                clearAuthStorage();
+            }
+
+            // Start heartbeat (chung cho toàn browser)
+            try { localStorage.setItem(HB_KEY, String(Date.now())); } catch { }
+
+            window.__BANLE_HB_TIMER__ = setInterval(() => {
+                try { localStorage.setItem(HB_KEY, String(Date.now())); } catch { }
+            }, HEARTBEAT_MS);
+
+        })();
+    </script>
+
 
     <script>
 
