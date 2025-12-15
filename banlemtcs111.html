@@ -1,1175 +1,366 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="vi">
 
 <head>
     <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN LE cs1</title>
-    <!-- Backup: các thư viện ngoài -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gợi Ý Xả Hàng</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
     <style>
+        :root {
+            --bg: #f7f7f8;
+            --card: #fff;
+            --text: #111;
+            --muted: #666;
+            --accent: #2563eb;
+            --accent-soft: #e0edff;
+            --danger: #dc2626;
+            --br: 10px;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial;
             margin: 0;
-            height: 100%;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
         }
 
-        .header {
-            background-color: #0078d7;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            font-size: 28px;
-            font-weight: bold;
-        }
-
-        .top-inputs {
-            display: flex;
-            padding: 5px;
-            gap: 5px;
-            background: #f4f4f4;
-            align-items: center;
-        }
-
-        .tennv {
-            display: auto;
-            padding: 5px;
-            gap: 5px;
-            background: #0088cc;
-            align-items: center;
-            justify-content: flex-end;
-            /* Đẩy hết sang phải */
-        }
-
-
-        .top-inputs input,
-        .top-inputs select {
-            padding: 4px;
-            font-size: 20px;
-        }
-
-        .top-inputs input {
-            box-sizing: border-box;
-        }
-
-        #masp {
-            width: 250px;
-            background: cyan;
-        }
-
-        #soluong {
-            width: 60px;
-            background: yellow;
-            text-align: center;
-        }
-
-        #dvt {
-            width: 60px;
-        }
-
-        #size {
-            width: 60px;
-            text-align: center;
-            background: yellow;
-        }
-
-        #gia,
-        #khuyenmai,
-        #thanhtien {
-            width: 150px;
-            text-align: right;
-        }
-
-
-
-        .main {
-            display: flex;
-            height: calc(100vh - 150px);
-            overflow: hidden;
-        }
-
-        .table-area {
-            flex: 1;
-            overflow: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        table th,
-        table td {
-            border: 1px solid #ccc;
-            padding: 6px;
-            text-align: center;
-        }
-
-        .sidebar {
-            width: 360px;
-            border-left: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .tabs {
-            display: flex;
-            background: #eee;
-        }
-
-        .tabs button {
-            flex: 1;
-            padding: 8px;
-            cursor: pointer;
-            border: none;
-            background: #ddd;
-        }
-
-        .tabs button.active {
-            background: white;
-            font-weight: bold;
-            border-bottom: 2px solid #0078d7;
-        }
-
-        .tab-content {
-            flex: 1;
-            padding: 10px;
-            font-size: 13px;
-        }
-
-        .tab-pane {
-            display: none;
-        }
-
-        .tab-pane.active {
-            display: block;
-        }
-
-        .sidebar input,
-        .sidebar select {
-            width: 100%;
-            padding: 4px;
-            font-size: 13px;
-            margin-bottom: 4px;
-        }
-
-        .checkbox-list label {
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        .btn-big {
-            width: 85%;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 10px;
-            margin: 6px 0;
-        }
-
-        .red {
-            background-color: darkred;
-            color: white;
-        }
-
-        .gray {
-            background-color: lightgray;
-            color: black;
-        }
-
-        .product-image {
-            width: 360px !important;
-            height: 360px !important;
-            display: block;
-            object-fit: contain;
-            /* Giữ nguyên tỉ lệ, không cắt ảnh */
-            object-position: center;
-            background: #f5f5f5;
-            /* Màu nền trung tính, có thể chỉnh nếu muốn */
-            border: 1px solid #ccc;
+        .page {
+            max-width: 1400px;
             margin: 0 auto;
+            padding: 12px;
         }
 
+        h1 {
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
 
-        .footer-buttons {
+        .sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--br);
+            box-shadow: var(--shadow);
+            padding: 12px;
+        }
+
+        .card h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+        }
+
+        .filter-row {
             display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            /* dồn trái */
             flex-wrap: wrap;
-            gap: 7px;
-            padding: 5px 0 5px 8px;
-            background: #dce9f9;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
         }
 
-        .footer-buttons button {
-            margin-right: 4px;
-            font-size: 15px;
-            padding: 7px 13px;
-            min-width: 85px;
-        }
-
-
-        .popup {
-            display: none;
-            position: fixed;
-            top: 10%;
-            left: 5%;
-            width: 90%;
-            height: 70%;
-            background: white;
-            border: 1px solid #ccc;
-            z-index: 999;
-            box-shadow: 0 0 10px #333;
-        }
-
-        .popup-content {
-            padding: 10px;
-            height: 100%;
+        .filter-group {
             display: flex;
             flex-direction: column;
-        }
-
-        .popup-list {
+            gap: 4px;
+            min-width: 110px;
             flex: 1;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            margin-top: 6px;
         }
 
-        /* Bố cục nhóm nhập liệu */
-        .tab-pane label {
-            display: inline-block;
-            width: 32%;
-            box-sizing: border-box;
-            padding-right: 4px;
-            margin-bottom: 6px;
+        label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
         }
 
-        .tab-pane input,
-        .tab-pane select {
+        input[type="date"],
+        input[type="number"],
+        input[type="text"],
+        select {
             width: 100%;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 13px;
         }
 
-        .sidebar {
-            width: 360px;
-            border-left: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            /* ⚠️ CHUYỂN TỪ space-between */
-        }
-
-        .tab-content {
-            flex-grow: 0;
-            /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
-        }
-
-        html,
-        body {
-            height: 100%;
-        }
-
-        body {
-            height: 100%;
-        }
-
-        #app-container {
-            min-height: 100vh;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .main {
-            flex: 1 1 auto;
-            display: flex;
-            min-height: 0;
-            height: 1px;
-            overflow: hidden;
-        }
-
-        .table-area {
-            flex: 1 1 auto;
-            overflow: auto;
-            min-height: 0;
-            max-height: 100%;
-            background: #fff;
-        }
-
-        .footer-userinfo,
-        .footer-buttons {
-            flex-shrink: 0;
-            width: 75%;
-            z-index: 100;
-        }
-
-        @media print {
-
-            html,
-            body {
-                margin: 0 !important;
-                padding: 0 !important;
-                width: 80mm;
-                /* đúng khổ K80 */
-                box-sizing: border-box;
-            }
-
-            body {
-                /* Xóa font-size mặc định lớn */
-                font-size: 12px;
-                line-height: 1.2;
-            }
-
-            /* Xóa header/footer mặc định của trình duyệt nếu có */
-            @page {
-                margin: 0;
-                size: 80mm auto;
-            }
-        }
-
-        tr.highlight {
-            background-color: #fff3cd !important;
-            /* vàng nhạt */
-        }
-
-        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-        body.popupnhanh .sq-stock-popup {
-            top: 8px !important;
-            left: 8px !important;
-            left: auto !important;
-            transform: none !important;
-        }
-    </style>
-
-    <script>
-        (function () {
-            const APP = "banlemt_cs1";
-            const HB_KEY = APP + ":browser_hb";
-            const HEARTBEAT_MS = 1000;  // ping mỗi 1s
-            const TTL_MS = 4000;        // >4s không ping => coi như browser đã đóng
-
-            const now = Date.now();
-            const last = Number(localStorage.getItem(HB_KEY) || 0);
-
-            const browserWasClosed = !last || (now - last) > TTL_MS;
-
-            function clearAuthStorage() {
-                // ✅ các key app bạn lưu
-                const AUTH_KEYS = [
-                    "manv", "tennv", "supabase_access_token",
-                    "is_admin", "sua_hoadon", "xoa_hoadon", "quyen_sua_hoadon"
-                    // "diadiem" // muốn giữ cơ sở thì để comment; muốn sạch luôn thì bỏ comment
-                ];
-                AUTH_KEYS.forEach(k => localStorage.removeItem(k));
-
-                // ✅ xóa toàn bộ token Supabase (quan trọng)
-                Object.keys(localStorage).forEach(k => {
-                    if (k.startsWith("sb-") && k.endsWith("-auth-token")) localStorage.removeItem(k);
-                });
-            }
-
-            if (browserWasClosed) {
-                console.warn("[" + APP + "] Browser restart detected -> clearing auth localStorage");
-                clearAuthStorage();
-            }
-
-            // Start heartbeat (chung cho toàn browser)
-            try { localStorage.setItem(HB_KEY, String(Date.now())); } catch { }
-
-            window.__BANLE_HB_TIMER__ = setInterval(() => {
-                try { localStorage.setItem(HB_KEY, String(Date.now())); } catch { }
-            }, HEARTBEAT_MS);
-
-        })();
-    </script>
-
-
-    <script>
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            document.getElementById('btn_' + tabName).classList.add('active');
-        }
-        document.addEventListener("DOMContentLoaded", () => {
-            switchTab("thongtin");
-        });
-
-
-    </script>
-
-    <!-- banlemobile -->
-    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-
-    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css">
-
-</head>
-
-<body class="popupnhanh">
-
-    <style>
-        .menu-bar {
-            background: #0088cc;
-            padding: 8px 20px;
-            display: flex;
-            gap: 30px;
-            color: rgb(42, 11, 245);
-            position: relative;
-            z-index: 1000;
-        }
-
-        .menu-item {
-            position: relative;
-        }
-
-        .menu-link {
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: 999px;
+            border: none;
+            padding: 6px 12px;
+            font-size: 13px;
             cursor: pointer;
-            padding: 6px 10px;
-            display: inline-block;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            background-color: #f1f1f1;
-            min-width: 240px;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-            top: 100%;
-            left: 0;
-            z-index: 1001;
-            padding: 6px 0;
-        }
-
-        .dropdown-content a {
-            color: black;
-            padding: 10px 16px;
-            text-decoration: none;
-            display: block;
+            background: var(--accent);
+            color: #fff;
             white-space: nowrap;
         }
 
-        .dropdown-content a:hover {
-            background-color: #ddd;
+        .btn.secondary {
+            background: #e5e7eb;
+            color: #111;
         }
 
-        .menu-item:hover .dropdown-content {
-            display: block;
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
         }
 
-        .footer-userinfo {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+        .status {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #hotWrap {
+            margin-top: 8px;
+        }
+
+        .ht_clone_top th .colHeader {
+            white-space: normal !important;
+            line-height: 1.2 !important;
+            word-break: break-word !important;
+            text-align: center;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+
+        .detail-panel {
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 8px;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .info-table th,
+        .info-table td {
+            border: 1px solid #e5e7eb;
+            padding: 3px 4px;
+            text-align: left;
+        }
+
+        .info-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .badge-danger {
+            display: inline-flex;
             align-items: center;
-            padding: 4px 0 4px 8px;
-            background: #e5eef9;
-            border-top: 1px solid #c7d3e9;
-        }
-
-        .footer-userinfo label {
-            margin-bottom: 0;
-            font-size: 15px;
-        }
-
-        .footer-userinfo input,
-        .footer-userinfo select {
             padding: 3px 6px;
-            font-size: 15px;
-            margin-left: 2px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        #xaImgBox {
+            border-radius: 8px;
+            background: #f9fafb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+            overflow: hidden;
+        }
+
+        #xaImgBox img {
+            max-width: 100%;
+            max-height: 240px;
+            object-fit: contain;
+        }
+
+        .xa-note {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .xa-highlight {
+            font-weight: 600;
+            color: var(--danger);
         }
     </style>
+</head>
 
-    <div class="menu-bar">
-        <div class="tennv">
-
-            <input id="diadiem" placeholder="diadiem" readonly />
-            <input id="ngay" type="date" readonly />
-            <input id="gio" type="text" readonly style="width:70px" />
-
-            <input id="manv" type="hidden" />
-            <input id="tennv" placeholder="Tên NV" readonly />
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-
-        </div>
-
-        <div id="app-menu" class="menu-item"></div>
-
-        <!--
-        <label>Giờ <input id="gio" /></label> -->
-
-
-    </div>
-
-    <div id="app-container" style="display:none;">
-
-        <div class="top-inputs">
-            <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
-                <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
-                </div>
+<body>
+    <!-- Ẩn toàn bộ app cho tới khi đăng nhập thành công (giống trang nhập DM nhân viên) -->
+    <div id="app-container" style="display:none">
+        <div class="page">
+            <h1>Gợi Ý Xả Hàng</h1>
+            <div class="sub">
+                Lọc ra các mã còn tồn lẻ (≤ 3 SP), tồn ≤ 10% tổng nhập, không bán ≥ 60 ngày, để xả hết cho sạch kho.
             </div>
-            <input id="soluong" value="1" />
-            <input id="dvt" placeholder="DVT" />
-            <input id="size" placeholder="SIZE" />
-            <input id="gia" placeholder="Giá SP" />
-            <input id="khuyenmai" placeholder="khuyen mai" />
-            <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />
-            <input id="vitri" placeholder="vi tri" readonly />
-            <button id="xemtonkho">🔍</button>
-            <button id="ghivitri">✏️</button>
-        </div>
 
+            <div class="layout">
+                <!-- BÊN TRÁI: LỌC + BẢNG -->
+                <div class="card">
+                    <h3>Tham số lọc</h3>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="denNgay">Đến ngày</label>
+                            <input type="date" id="denNgay" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="ngayKhongBan">Không bán ít nhất (ngày)</label>
+                            <input type="number" id="ngayKhongBan" value="60" min="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="tonMax">Tồn tối đa (SP)</label>
+                            <input type="number" id="tonMax" value="3" min="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="tyleMax">% tồn / nhập tối đa</label>
+                            <input type="number" id="tyleMax" value="10" min="1" max="100" />
+                        </div>
+                    </div>
 
-        <div class="main">
-            <div class="table-area">
-
-                <table id="bangketqua">
-                    <thead>
-                        <tr>
-                            <th>Mã hàng</th>
-                            <th>Tên hàng</th>
-                            <th>Kích cỡ</th>
-                            <th>S.lượng</th>
-                            <th>ĐVT</th>
-                            <th>Đơn giá</th>
-                            <th>Khuyến mại</th>
-                            <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- (giữ nguyên) -->
-                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>T1</th>
-                            <th>T2</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-
-            </div>
-            <div class="sidebar">
-                <div class="tabs">
-                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
-                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
-                </div>
-                <div class="tab-content">
-                    <div class="tab-pane" id="thongtin">
-
-                        <label>Hình thức TT <select id="hinhthuctt">
-                                <option value="tm">Tiền mặt</option>
-                                <option value="ck">Chuyển khoản</option>
-                            </select></label>
-
-                        <label>Chiết khấu <input id="chietkhau" /></label>
-                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
-
-                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
-                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
-
-                        <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mã khách"
-                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
-                            <button id="btnPopupKH" type="button"
-                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                🔍
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="nhomhangFilter">Nhóm hàng</label>
+                            <input type="text" id="nhomhangFilter" placeholder="VD: GIAY, AO, QUAN..." />
+                        </div>
+                        <div class="filter-group">
+                            <label for="chungloaiFilter">Chủng loại</label>
+                            <input type="text" id="chungloaiFilter" placeholder="Tùy chọn" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="nhaccFilter">Nhà cung cấp</label>
+                            <input type="text" id="nhaccFilter" placeholder="Tùy chọn" />
+                        </div>
+                        <div class="filter-group" style="align-items:flex-start; margin-top:18px; flex:0 0 auto;">
+                            <button class="btn" id="btnRun">
+                                🔍 Lọc xả hàng
                             </button>
                         </div>
-                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
-
-                        <!-- Popup tìm khách hàng -->
-                        <div id="popupTimKH"
-                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
-                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
-                            <table id="tableKH" style="width:100%;font-size:15px"></table>
-                        </div>
-                        <!-- het khu vuc tìm khách hàng -->
                     </div>
-                    <div class="tab-pane" id="tacvu">
-                        <div class="checkbox-list">
-                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
-                            <label><input id="size45" type="checkbox" />QL SIZE</label>
-                            <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
-                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
-                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
-                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
-                        </div>
+
+                    <div class="filter-row" style="justify-content: space-between; margin-top:4px;">
+                        <div class="status" id="statusMsg">Chưa chạy.</div>
+                        <button class="btn secondary" id="btnExport">⬇️ Xuất CSV</button>
+                    </div>
+
+                    <div id="hotWrap">
+                        <div id="hotXa" style="width:100%; min-height:320px;"></div>
                     </div>
                 </div>
 
-                <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
-                    Tổng phải trả
-                    <input id="phaithanhtoan"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
-                </div>
-                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    Khách thanh toán
-                    <input id="khachtra"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
-                </div>
-                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    Còn lại
-                    <input id="conlai"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
-                        readonly />
-                </div>
+                <!-- BÊN PHẢI: CHI TIẾT 1 MÃ -->
+                <div class="card detail-panel">
+                    <div>
+                        <h3>Chi tiết mã xả</h3>
+                        <div class="xa-note">
+                            Chọn một dòng trong bảng bên trái để xem chi tiết: ảnh sản phẩm, tồn & lịch sử bán.
+                        </div>
+                    </div>
 
+                    <table class="info-table" id="infoTable">
+                        <tbody>
+                            <tr>
+                                <th>Mã SP</th>
+                                <td colspan="3" id="infoMasp">-</td>
+                            </tr>
+                            <tr>
+                                <th>Tên SP</th>
+                                <td colspan="3" id="infoTensp">-</td>
+                            </tr>
+                            <tr>
+                                <th>Nhóm / Chủng</th>
+                                <td id="infoNhom">-</td>
+                                <th>Màu / NCC</th>
+                                <td id="infoMauNhacc">-</td>
+                            </tr>
+                            <tr>
+                                <th>Giá lẻ</th>
+                                <td id="infoGia">-</td>
+                                <th>Tổng nhập</th>
+                                <td id="infoTongNhap">-</td>
+                            </tr>
+                            <tr>
+                                <th>Tổng bán</th>
+                                <td id="infoTongXuat">-</td>
+                                <th>Tồn hiện tại</th>
+                                <td id="infoTon">-</td>
+                            </tr>
+                            <tr>
+                                <th>% tồn / nhập</th>
+                                <td id="infoTyle">-</td>
+                                <th>Ngày bán cuối</th>
+                                <td id="infoLastSale">-</td>
+                            </tr>
+                            <tr>
+                                <th>Không bán (ngày)</th>
+                                <td colspan="3" id="infoNoSale">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-
-                <img alt="Ảnh sản phẩm" class="product-image"
-                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+                    <div id="xaImgBox">
+                        <span style="font-size:12px; color:#9ca3af;">Chưa chọn mã nào.</span>
+                    </div>
+                </div>
             </div>
         </div>
-
-
-        <div class="footer-buttons">
-            <button id="them">Thêm mới</button>
-            <button id="btn-luu">💾 Lưu</button>
-
-            <button id="sua" class="btn edit" type="button">SỬA</button>
-
-            <button id="quaylai">Quay lại</button>
-            <button id="tieptuc">Tiếp tục</button>
-            <button id="xemin">Xem in</button>
-            <button id="btnCopy">Copy</button>
-            <button id="xuatexcel">Xuất Excel</button>
-            <button id="btn-logout">THOAT PM</button>
-
-
-            <!-- Popup tìm khách hàng
-             
-             <button id="xuatexcel">Xuất Excel</button>
-             <button id="timkiem">Tìm kiếm</button>
-             <button id="luu">Lưu</button>
-            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
-            
-            -->
-
-        </div>
-
-
-        <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
-            F7: xem tồn kho nhanh, F8: nhập vị trí kho
-        </div>
-        <div class="top-inputs">
-            ----------------------------------------------------------
-        </div>
-
-        <!-- ✅ Popup xác thực sửa hóa đơn -->
-        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-            <h3>Xác thực sửa hóa đơn</h3>
-            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
-                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
-                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
-
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
-        </div>
-
-        <!-- Popup xác nhận thêm mới -->
-        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-            <h3>Bạn có thực sự muốn thêm mới?</h3>
-            <div style="text-align:center; margin-top:10px;">
-                <button id="btnThemMoiCo">✅ Có</button>
-                <button onclick="dongTatCaPopup()">❌ Không</button>
-            </div>
-        </div>
-
     </div>
 
-    <script src="scripts/stockQuickPopup.js"></script>
-
-
-    <!-- Khung đăng nhập dùng module dùng chung -->
-    <div id="login-container"></div>
-
+    <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
     <script type="module">
-        // =========================
-        // ✅ Browser-close logout guard (KHÔNG logout khi đóng 1 tab nếu còn tab khác)
-        // =========================
-        const APP_PREFIX = "banlemt_cs1";
-        const TABS_KEY = `${APP_PREFIX}:tabs_alive`;
-        const TAB_ID_KEY = `${APP_PREFIX}:tab_id`;
-        const HEARTBEAT_MS = 5000;   // ping mỗi 5s
-        const TTL_MS = 15000;        // coi là "còn sống" nếu ping trong 15s gần nhất
+        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
+        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20251208a';
 
-        function safeParse(json, fallback) {
-            try { return JSON.parse(json); } catch { return fallback; }
-        }
-
-        function readTabs() {
-            return safeParse(localStorage.getItem(TABS_KEY) || "{}", {});
-        }
-
-        function writeTabs(obj) {
-            try { localStorage.setItem(TABS_KEY, JSON.stringify(obj)); } catch { }
-        }
-
-        function pruneTabs(tabs, now = Date.now()) {
-            for (const [id, ts] of Object.entries(tabs)) {
-                if (!ts || (now - ts) > TTL_MS) delete tabs[id];
-            }
-            return tabs;
-        }
-
-        function clearAuthLocalStorage() {
-            const AUTH_KEYS = [
-                "manv", "tennv",
-                "supabase_access_token",
-                "is_admin", "sua_hoadon", "xoa_hoadon", "quyen_sua_hoadon"
-                // "diadiem"  // nếu muốn giữ cơ sở đã chọn thì để comment; muốn sạch luôn thì bỏ comment
-            ];
-            AUTH_KEYS.forEach(k => localStorage.removeItem(k));
-
-            // ✅ Xóa session Supabase mặc định (nếu có) để tránh tự restore login
-            for (const k of Object.keys(localStorage)) {
-                if (/^sb-.*-auth-token$/.test(k)) localStorage.removeItem(k);
-            }
-        }
-
-        // 1) Dọn tab cũ + kiểm tra "có tab nào còn sống không?"
-        const now = Date.now();
-        const existing = pruneTabs(readTabs(), now);
-        const hasAliveTabs = Object.keys(existing).length > 0;
-
-        // Nếu không có tab nào còn sống => khả năng cao browser đã đóng -> lần mở này là "phiên mới"
-        if (!hasAliveTabs) {
-            clearAuthLocalStorage();
-        }
-
-        // 2) Đăng ký tab hiện tại + heartbeat
-        const tabId =
-            sessionStorage.getItem(TAB_ID_KEY) ||
-            (crypto.randomUUID ? crypto.randomUUID() : `${now}_${Math.random()}`);
-
-        sessionStorage.setItem(TAB_ID_KEY, tabId);
-
-        function heartbeat() {
-            const t = pruneTabs(readTabs(), Date.now());
-            t[tabId] = Date.now();
-            writeTabs(t);
-        }
-
-        heartbeat();
-        const hbTimer = setInterval(heartbeat, HEARTBEAT_MS);
-
-        // best-effort: gỡ tab khi đóng tab (không bắt buộc, heartbeat/TTL đã đủ)
-        window.addEventListener("beforeunload", () => {
-            clearInterval(hbTimer);
-            const t = readTabs();
-            delete t[tabId];
-            writeTabs(t);
-        });
-
-        // =========================
-        // ✅ Sau khi guard xong mới import authModule
-        // =========================
-        const { khoiTaoDangNhapDungChung } = await import("./scripts/authModule.js");
-
+        // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",
+            appContainerId: 'app-container',
+            macDinhDiaDiem: 'cs1',          // nếu trang này của CS2 thì đổi thành 'cs2'
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1",
+            loginApiPath: '/api/login-cs1', // nếu làm bản riêng cho cs2 thì dùng /api/login-cs2
+            onLoginSuccess: async (nhanvien, context) => {
 
-            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // (giữ nguyên logic bạn đang có)
-                if (diadiem) localStorage.setItem("diadiem", diadiem);
-                if (session && session.access_token) {
-                    localStorage.setItem("supabase_access_token", session.access_token);
+                // Giống trang nhập DM nhân viên: chỉ ADMIN được xem
+                if (!nhanvien.is_admin) {
+                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang Gợi Ý Xả Hàng.');
+                    await dangXuatDungChung({ appContainerId: 'app-container' });
+                    return;
                 }
-                localStorage.setItem("manv", nhanvien.manv);
-                localStorage.setItem("tennv", nhanvien.tennv);
-                localStorage.setItem("quyen_sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
-                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
-                window.diadiem = diadiem;
-                window.dangLuu = false;
-
-                try {
-                    const module = await import("./scripts/main.js");
-                    if (typeof module.khoiTaoUngDung === "function") module.khoiTaoUngDung();
-                } catch (e) {
-                    console.error(e);
-                }
+                // Cho hiện giao diện + khởi tạo trang
+                document.getElementById('app-container').style.display = '';
+                initGoiYXaHang();
             }
         });
     </script>
-
-    <!-- het  Khung đăng nhập dùng module dùng chung -->
-
-
-
-
-
-    <script type="module">
-        // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-
-        // Hàm show popup
-        function showPopupTimKH() {
-            const popup = document.getElementById('popupTimKH');
-            popup.style.display = '';
-            document.getElementById('txtSearchKH').value = '';
-            document.getElementById('txtSearchKH').focus();
-            loadListKH('');
-        }
-
-        // Tìm kiếm realtime theo ký tự gõ
-        document.getElementById('txtSearchKH').oninput = function () {
-            loadListKH(this.value.trim());
-        };
-
-        // Hàm load danh sách KH (gọi Supabase)
-        async function loadListKH(keyword) {
-            const table = document.getElementById('tableKH');
-            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
-            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
-            if (keyword) {
-                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
-            }
-            const { data, error } = await query;
-            if (error || !data || !data.length) {
-                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
-                return;
-            }
-            table.innerHTML = data.map(kh =>
-                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
-        <td>${kh.makh}</td><td>${kh.tenkh}</td>
-      </tr>`
-            ).join('');
-            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
-                row.onclick = function () {
-                    document.getElementById('makh').value = this.dataset.makh;
-                    document.getElementById('khachhang').value = this.dataset.tenkh;
-                    document.getElementById('popupTimKH').style.display = 'none';
-                }
-            });
-        }
-
-        // Copy bảng sang clipboard,
-        document.getElementById('btnCopy').onclick = function () {
-            const table = document.getElementById('bangketqua');
-            let str = '';
-
-            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
-            for (let row of table.querySelectorAll('tbody tr')) {
-                let line = [];
-                for (let cell of row.cells) {
-                    line.push(cell.innerText);
-                }
-                str += line.join('\t') + '\n';
-            }
-
-            navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
-        };
-
-
-
-        // Dán từ clipboard (Excel) vào bảng web
-        document.getElementById('bangketqua').addEventListener('paste', function (e) {
-            e.preventDefault();
-            const text = e.clipboardData.getData('text/plain');
-            const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.querySelector('#bangketqua tbody');
-
-            // ❌ KHÔNG xoá dữ liệu cũ nữa
-            // tbody.innerHTML = '';
-
-            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
-            rows.forEach(rowArr => {
-                if (rowArr.length < 2) return;
-                const tr = document.createElement('tr');
-                rowArr.forEach((cell) => {
-                    const td = document.createElement('td');
-                    td.innerText = cell;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-
-            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                window.capNhatBangKetQuaTuDOM();
-            }
-
-            // ✅ Cập nhật tổng
-            if (typeof capNhatThongTinTong === 'function') {
-                capNhatThongTinTong(window.bangKetQua || {});
-            }
-
-            // Log kiểm tra
-            console.log('window.bangKetQua:', window.bangKetQua);
-        });
-
-        // Đóng popup khi bấm ESC hoặc click ra ngoài
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
-        });
-        document.addEventListener('click', function (e) {
-            const p = document.getElementById('popupTimKH');
-            if (p.style.display === '' && !p.contains(e.target) && e.target.id !== 'btnPopupKH') {
-                p.style.display = 'none';
-            }
-        });
-
-        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
-    </script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const img = document.querySelector('.product-image');
-            if (img) {
-                img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
-                });
-            }
-        });
-    </script>
-
-
-    <!-- Overlay loading khi backup -->
-    <div id="backup-overlay" style="
-    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
-    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
-        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
-            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
-            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
-            </div>
-        </div>
-    </div>
-
-    <script type="module">
-        import { backupAllTablesToZip } from './scripts/backup.js';
-
-        // Gắn lại sự kiện cho nút THOAT PM
-        document.getElementById('btn-logout').onclick = async function () {
-            const overlay = document.getElementById('backup-overlay');
-
-            // Hỏi người dùng có muốn tạo file dự phòng không
-            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
-
-            if (muonBackup) {
-                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
-                overlay.style.display = "block";
-                try {
-                    await backupAllTablesToZip();
-                    // Có thể bật lại thông báo nếu muốn:
-                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
-                } catch (err) {
-                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
-                } finally {
-                    overlay.style.display = "none";
-                }
-            }
-            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
-
-            await dangXuatApp();
-        };
-
-        async function dangXuatApp() {
-            // Copy logic đăng xuất cũ của anh
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
-            }
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-password-nv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
-
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-
-            document.getElementById('login-manv').focus();
-        }
-    </script>
-
-    <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-
-
-    <script src="scripts/menu-component.js"></script>
-
-    <script>
-        // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
-        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
-
-        // Bạn đã cung cấp:
-        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
-        const SHEET_NAME = 'menubanlemt';
-
-        MenuComponent.mount({
-            el: '#app-menu',
-            sheetId: SHEET_ID,
-            sheetName: SHEET_NAME,
-            cs,
-            manv,
-            cacheTtlMin: 30 // TTL cache 30 phút
-        });
-    </script>
-
-    <script>  //<!-- banlemobile -->
-
-        // goi phím F2
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-        }, 1000);
-
-        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
-        const dispatchTarget = document.body || document.documentElement;
-
-        document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-
-        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
-        document.getElementById('xemtonkho')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-
-        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
-        document.getElementById('ghivitri')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-
-    </script>
-
-    <script>
-        // Mở popup xác thực + focus ngay vào #xacmanv
-        function moPopupXacThucSua() {
-            const p = document.getElementById('popupXacThucSua');
-            p.style.display = 'block';
-            setTimeout(() => {
-                const manv = document.getElementById('xacmanv');
-                if (manv) { manv.focus(); manv.select(); }
-            }, 0);
-        }
-
-        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
-        document.addEventListener('DOMContentLoaded', () => {
-            const manv = document.getElementById('xacmanv');
-            const mk = document.getElementById('xacmatkhau');
-            const btn = document.getElementById('btnXacNhanSua');
-
-            if (manv) {
-                manv.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (mk) { mk.focus(); mk.select(); }
-                    }
-                });
-            }
-
-            if (mk) {
-                mk.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (btn) { btn.focus(); }
-                    }
-                });
-            }
-
-            if (btn) {
-                btn.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
-                    }
-                });
-            }
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
-                });
-            }
-
-        });
-    </script>
-
-    <!-- Overlay quét -->
-    <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
-        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
-
-        <!-- Thanh điều khiển -->
-        <div
-            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
-            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
-            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
-
-            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
-                Ảnh có sẵn
-                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
-            </label>
-
-            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
-        </div>
-
-        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
-    </div>
-
-    <!-- Flash + Toast -->
-    <div id="flashOverlay"></div>
-    <div id="toastMsg"></div>
-
-
-    <script type="module" src="scripts/feedback.js"></script>
-    <script type="module" src="scripts/scanner.js"></script>
-
-    <script type="module" src="scripts/viettelInvoice.js"></script>
-
 </body>
 
 </html>
