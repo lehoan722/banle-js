@@ -762,6 +762,21 @@
                 localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
                 localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
+                // ✅ Đổ thông tin đăng nhập lên giao diện (cực quan trọng)
+                const diadiemEl = document.getElementById("diadiem");
+                if (diadiemEl && diadiem) diadiemEl.value = diadiem;
+
+                const manvEl = document.getElementById("manv");
+                if (manvEl) {
+                    manvEl.value = nhanvien.manv || "";
+                    // nếu code cũ có hook theo "change" thì bắn luôn:
+                    manvEl.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+
+                const tennvEl = document.getElementById("tennv");
+                if (tennvEl) tennvEl.value = nhanvien.tennv || "";
+
+
                 window.diadiem = diadiem;
                 window.dangLuu = false;
 
@@ -776,9 +791,6 @@
     </script>
 
     <!-- het  Khung đăng nhập dùng module dùng chung -->
-
-
-
 
 
     <script type="module">
