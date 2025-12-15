@@ -269,34 +269,6 @@ function isBanLeMTMode() {
 }
 
 
-// === BANLE MT: TOKEN CHỐT SIZE GỢI Ý (scanner auto-Enter) ===
-// Scanner của bạn tự Enter sau mỗi lần quét.
-// - Quét SIZE thật (vd: 42) khi ô #size đang bôi đen -> sẽ ghi đè + Enter -> xuống bảng ngay.
-// - Quét TOKEN (vd: "..") khi ô #size đang bôi đen -> hiểu là "chốt size gợi ý" -> xuống bảng.
-const MT_SIZE_CONFIRM_TOKEN = "..";          // ✅ QR/lệnh chốt size gợi ý
-const MT_SUGGEST_TTL_MS = 30 * 1000;         // ✅ hiệu lực gợi ý: 30 giây
-
-let mtLastSuggest = null; // { masp: "ABC", size: "41", at: 123456789 }
-
-function mtSetLastSuggest(masp, size) {
-    const m = String(masp || "").trim().toUpperCase();
-    const s = String(size || "").trim().toUpperCase();
-    if (!m || !s) return;
-    mtLastSuggest = { masp: m, size: s, at: Date.now() };
-}
-
-function mtClearLastSuggest() {
-    mtLastSuggest = null;
-}
-
-function mtGetLastSuggestIfValid(maspCurrent) {
-    const m = String(maspCurrent || "").trim().toUpperCase();
-    if (!mtLastSuggest) return null;
-    if (!m || mtLastSuggest.masp !== m) return null;
-    if ((Date.now() - mtLastSuggest.at) > MT_SUGGEST_TTL_MS) return null;
-    return mtLastSuggest;
-}
-
 // Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
 function autoGoiYSizeNeuOTrong(maspBaseNow) {
     const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
@@ -323,9 +295,6 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             sizeInput.value = String(sizeGoiY).trim();
             sizeInput.focus();
             sizeInput.select?.();
-        
-            // ✅ ghi nhớ size gợi ý để cho phép quét TOKEN chốt size
-            mtSetLastSuggest(maspAtTime, sizeInput.value);
         })
         .catch((err) => {
             console.error("autoGoiYSizeNeuOTrong lỗi:", err);
@@ -381,45 +350,8 @@ export async function chuyenFocus(e) {
             ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
             : [];
 
-        const nhapSizeMode = document.getElementById("nhapsize")?.checked === true; // 🔴 CHẾ ĐỘ NHẬP SIZE LIÊN TIẾP
-
-        // ✅ Scanner TOKEN: chốt size gợi ý (vd: "..") -> xuống bảng bằng size đã gợi ý trước đó
-        // Lưu ý: do ô #size đang "select", token sẽ ghi đè thành ".." rồi scanner tự Enter.
-        // Ta chặn tại đây để không bị coi là "size không hợp lệ".
-        if (raw === MT_SIZE_CONFIRM_TOKEN) {
-            const maspNow = maspInput?.value?.trim()?.toUpperCase() || "";
-            const sug = mtGetLastSuggestIfValid(maspNow);
-
-            if (!sug) {
-                alert("Không có size gợi ý để chốt (hết hạn hoặc bạn đã đổi mã).");
-                sizeInput.focus();
-                sizeInput.select?.();
-                return;
-            }
-
-            const sizeSug = String(sug.size || "").trim().toUpperCase();
-            const sizeSugValid = sizeSug && (!dsSize.length || dsSize.includes(sizeSug));
-            if (!sizeSugValid) {
-                alert("Size gợi ý không hợp lệ. Vui lòng nhập size thủ công.");
-                mtClearLastSuggest();
-                sizeInput.value = "";
-                sizeInput.focus();
-                sizeInput.select?.();
-                return;
-            }
-
-            // ✅ thêm dòng y như người dùng nhấn Enter với sizeSug
-            ensureStateFromDOM();
-            if (nhapSizeMode) {
-                themVaoBang(sizeSug, { afterAdd: "keepMaspFocusSize" });
-            } else {
-                themVaoBang(sizeSug);
-            }
-            mtClearLastSuggest();
-            return;
-        }
-
         const isValidSize = val && dsSize.includes(val);
+        const nhapSizeMode = document.getElementById("nhapsize")?.checked === true; // 🔴 CHẾ ĐỘ NHẬP SIZE LIÊN TIẾP
         ensureStateFromDOM();
         if (nhapSizeMode) {
             // ====== MODE A: Đang bật nhập size liên tiếp ======
@@ -820,8 +752,6 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     window.closePopupMasp && window.closePopupMasp();
     // 🔒 CHỐT: luôn đồng bộ state từ DOM (trường hợp vừa dán Excel / nhập ngang / edit trực tiếp)
     ensureStateFromDOM();
-    // ✅ reset gợi ý size MT (tránh token dùng nhầm cho dòng sau)
-    mtClearLastSuggest();
     const masp = layMaspGoc(document.getElementById("masp").value);
     const isNewGroup = !bangKetQua[masp]; // 🔔 nhóm mới hay không
 
@@ -1199,35 +1129,6 @@ export async function napLaiChiTietHoaDon(sohd) {
 
 // ===== Chuyển focus về #size khi Enter ở #gia hoặc #khuyenmai =====
 document.addEventListener("DOMContentLoaded", () => {
-
-// ✅ Banle MT: dọn gợi ý khi người dùng đổi mã / tự sửa size
-try {
-    const maspEl = document.getElementById("masp");
-    const sizeEl = document.getElementById("size");
-
-    if (maspEl) {
-        maspEl.addEventListener("input", () => {
-            mtClearLastSuggest();
-        });
-    }
-
-    if (sizeEl) {
-        sizeEl.addEventListener("input", () => {
-            if (!mtLastSuggest) return;
-            const v = String(sizeEl.value || "").trim().toUpperCase();
-            if (!v) return;
-            // token thì giữ lại để Enter xử lý
-            if (v === String(MT_SIZE_CONFIRM_TOKEN || "").toUpperCase()) return;
-
-            // nếu user đã gõ/scan size khác size gợi ý -> bỏ gợi ý để tránh confirm nhầm
-            const sug = String(mtLastSuggest.size || "").trim().toUpperCase();
-            if (sug && v !== sug) {
-                mtClearLastSuggest();
-            }
-        });
-    }
-} catch (_) { }
-
     ["gia", "khuyenmai"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -1244,3 +1145,4 @@ try {
     });
 });
 
+ 
