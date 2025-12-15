@@ -268,8 +268,8 @@ function isBanLeMTMode() {
     return false;
 }
 
-
 // Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
+// BẢN MỚI: nếu có size gợi ý hợp lệ → tự động thêm luôn vào bảng kết quả
 function autoGoiYSizeNeuOTrong(maspBaseNow) {
     const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
     if (!maspSnap) return;
@@ -284,17 +284,30 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             const maspInput = document.getElementById("masp");
             if (!sizeInput || !maspInput) return;
 
-            // Nếu trong lúc chờ, người dùng đã tự gõ size → không ghi đè
+            // Nếu trong lúc chờ, người dùng đã tự gõ size → KHÔNG làm gì
             if (sizeInput.value.trim()) return;
 
-            // Nếu người dùng đã chuyển sang mã khác → không ghi đè
+            // Nếu người dùng đã chuyển sang mã khác → KHÔNG làm gì
             const maspCurrent = maspInput.value.trim().toUpperCase();
             if (maspCurrent !== maspAtTime) return;
 
-            // Gán size gợi ý + bôi đen để chỉ cần Enter là xong
-            sizeInput.value = String(sizeGoiY).trim();
-            sizeInput.focus();
-            sizeInput.select?.();
+            // 1) Gán size gợi ý lên form
+            const sizeValue = String(sizeGoiY).trim();
+            sizeInput.value = sizeValue;
+
+            // 2) Tự động thêm vào bảng kết quả
+            const nhapSizeMode =
+                document.getElementById("nhapsize")?.checked === true;
+
+            if (nhapSizeMode) {
+                // Chế độ nhập size liên tiếp: giữ mã & focus lại #size
+                themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+            } else {
+                // Chế độ bình thường: thêm xong reset về #masp
+                themVaoBang(sizeValue);
+            }
+
+            // Không cần focus/select #size nữa vì themVaoBang đã xử lý focus phù hợp
         })
         .catch((err) => {
             console.error("autoGoiYSizeNeuOTrong lỗi:", err);
@@ -1145,4 +1158,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
- 
