@@ -554,12 +554,20 @@ export async function khoiTaoUngDung() {
 
   // Phát âm cảnh báo mỗi khi gọi alert()
   // Phát âm cảnh báo TRƯỚC, rồi mới mở alert ở tick kế tiếp
-  (function patchAlert() {
-    const nativeAlert = window.alert;
+  // ✅ Patch alert() CHỈ 1 LẦN để tránh bị bọc lồng nhiều lớp sau mỗi lần logout/login
+  (function patchAlertOnce() {
+    if (window.__alertBeepPatched) return;         // đã patch rồi thì thôi
+    window.__alertBeepPatched = true;
+
+    // lưu alert gốc đúng 1 lần
+    if (!window.__nativeAlert) {
+      window.__nativeAlert = window.alert.bind(window);
+    }
+    const nativeAlert = window.__nativeAlert;
+
     window.alert = function (message) {
       try { window.soundAlert?.(); } catch { }
-      setTimeout(() => nativeAlert.call(window, message), 300);
-      return; // giữ API như alert gốc
+      setTimeout(() => nativeAlert(String(message ?? "")), 300);
     };
   })();
 
