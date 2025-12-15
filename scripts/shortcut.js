@@ -9,6 +9,58 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 // ✅ Thêm flag này
 let _shortcutInited = false;
 
+// ===============================
+//  Scanner special commands
+//  - Quét #### => Lưu (F2)
+//  - Quét **** => Thêm mới (như bấm 'Có' ở popup F1)
+// ===============================
+const SCAN_CMD_SAVE = '####';
+const SCAN_CMD_NEW  = '****';
+let _scanCmdInited = false;
+
+function khoiTaoLenhQuetDacBiet() {
+  if (_scanCmdInited) return;
+  _scanCmdInited = true;
+
+  // Bắt Enter ở ô mã sản phẩm (#masp) theo chế độ capture để chặn xử lý mặc định nếu là lệnh đặc biệt
+  document.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    const el = document.activeElement;
+    if (!el || el.id !== 'masp') return;
+
+    const raw = (el.value || '').trim();
+    if (!raw) return;
+
+    if (raw !== SCAN_CMD_SAVE && raw !== SCAN_CMD_NEW) return;
+
+    // Chặn các handler Enter khác (vd: thêm sản phẩm / chuyển focus)
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Xóa ô masp để tránh hiểu nhầm lệnh là mã sản phẩm
+    el.value = '';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+
+    if (raw === SCAN_CMD_SAVE) {
+      // Gọi đúng luồng F2 hiện có (giữ nguyên mọi kiểm tra/khóa đang lưu)
+      const ev = new KeyboardEvent('keydown', { key: 'F2', code: 'F2', bubbles: true });
+      document.dispatchEvent(ev);
+      return;
+    }
+
+    if (raw === SCAN_CMD_NEW) {
+      // Hands-free: coi như đã bấm 'Có' trong popup F1
+      try {
+        await taoMoiHoaDon();
+      } catch (err) {
+        console.error('Lỗi tạo mới hóa đơn bằng lệnh quét:', err);
+      }
+    }
+  }, true);
+}
+
+
 function formatTimeHHMM(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
   if (Number.isNaN(d.getTime())) return "";
@@ -22,6 +74,8 @@ export function khoiTaoShortcut() {
   // ✅ Nếu đã khởi tạo rồi thì thoát luôn, không gắn thêm listener nữa
   if (_shortcutInited) return;
   _shortcutInited = true;
+  // ✅ Khởi tạo lệnh quét đặc biệt #### / ****
+  khoiTaoLenhQuetDacBiet();
   
   document.addEventListener("keydown", async function (e) {
     // F1: popup thêm mới
@@ -227,5 +281,4 @@ async function taoMoiHoaDon() {
 
   document.getElementById("masp").focus();
 }
-
 
