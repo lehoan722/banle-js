@@ -14,8 +14,8 @@ let _shortcutInited = false;
 //  - Quét #### => Lưu (F2)
 //  - Quét **** => Thêm mới (như bấm 'Có' ở popup F1)
 // ===============================
-const SCAN_CMD_SAVE = '####';
-const SCAN_CMD_NEW  = '****';
+const SCAN_CMD_SAVE = '##';
+const SCAN_CMD_NEW  = '**';
 let _scanCmdInited = false;
 
 function khoiTaoLenhQuetDacBiet() {
