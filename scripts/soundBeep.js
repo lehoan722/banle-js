@@ -15,7 +15,7 @@ export function getAudioCtx() {
 }
 
 // Envelope chống "click" đầu/cuối
-function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.1) {
+function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) {
   const ctx = getAudioCtx();
   const now = ctx.currentTime;
 
@@ -39,17 +39,17 @@ function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.1) {
 
 // “tinh” — ngắn, sáng
 export function playSuccessBeep() {
-  beep(2400, 120, "sine", 0.0);
+  beep(2400, 120, "sine", 0.7);
 }
 
 // “tút” — dài, trầm hơn
 export function playWaitSizeBeep() {
-  beep(1200, 350, "sine", 0.4);
+  beep(1200, 350, "sine", 0.7);
 }
 
 // Tuỳ chọn: beep cảnh báo (âm vuông, hơi “gắt” hơn)
 export function playAlertBeep() {
-  beep(800, 350, "square", 0.4);
+  beep(800, 350, "square", 0.7);
 }
 
 // Gợi ý: gọi hàm này 1 lần sau tương tác người dùng (click/keydown) để “unlock” audio trên iOS
