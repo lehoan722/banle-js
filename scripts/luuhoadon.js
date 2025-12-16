@@ -1125,31 +1125,33 @@ async function lamMoiSauKhiLuu() {
 }
 
 export async function xacNhanSuaHoaDon() {
-  // 0) Lấy số HĐ
+  // 1) Lấy số hóa đơn
   const sohd = (document.getElementById("sohd")?.value || "").trim();
   if (!sohd) {
     alert("❌ Không xác định được số hóa đơn cần sửa.");
     return;
   }
 
-  // 1) Lấy thông tin xác thực từ POPUP (KHÔNG lấy mk từ localStorage nữa)
-  const manvNhap = (document.getElementById("xacmanv")?.value || "").trim().toUpperCase();
-  const mkNhap = (document.getElementById("xacmatkhau")?.value || "").trim();
+  // 2) Lấy nhân viên đang hoạt động (KHÔNG lấy mật khẩu nữa)
+  const manv =
+    (document.getElementById("manv")?.value || "").trim().toUpperCase() ||
+    (localStorage.getItem("manv") || "").trim().toUpperCase() ||
+    (localStorage.getItem("last_login_manv") || "").trim().toUpperCase();
 
-  if (!manvNhap || !mkNhap) {
-    alert("❌ Vui lòng nhập Mã nhân viên và Mật khẩu để xác thực sửa hóa đơn.");
+  if (!manv) {
+    alert("❌ Không tìm thấy nhân viên đang đăng nhập. Vui lòng đăng nhập lại.");
     return;
   }
 
-  // 2) Kiểm tra nhân viên & mật khẩu & quyền trong bảng dmnhanvien
+  // 3) Kiểm tra quyền sửa/xóa của nhân viên trong dmnhanvien
   const { data: nv, error: errNV } = await supabase
     .from("dmnhanvien")
-    .select("matkhau, sua_hoadon, is_admin, trangthai")
-    .eq("manv", manvNhap)
+    .select("sua_hoadon, is_admin, trangthai")
+    .eq("manv", manv)
     .maybeSingle();
 
   if (errNV || !nv) {
-    alert("❌ Không tìm thấy nhân viên hoặc lỗi truy vấn dmnhanvien.");
+    alert("❌ Không xác thực được nhân viên trong dmnhanvien.");
     return;
   }
 
@@ -1158,20 +1160,15 @@ export async function xacNhanSuaHoaDon() {
     return;
   }
 
-  if ((nv.matkhau || "") !== mkNhap) {
-    alert("❌ Mật khẩu không đúng.");
-    return;
-  }
-
   const laAdmin = nv.is_admin === true;
   const coQuyenSua = nv.sua_hoadon === true;
 
   if (!laAdmin && !coQuyenSua) {
-    alert("🚫 Tài khoản này không có quyền sửa/xóa hóa đơn.");
+    alert("🚫 Tài khoản đang đăng nhập không có quyền sửa/xóa hóa đơn.");
     return;
   }
 
-  // 3) Kiểm tra hóa đơn thuộc đúng cơ sở đang làm việc
+  // 4) Kiểm tra hóa đơn thuộc đúng cơ sở đang làm việc
   const { data: hd, error: errHD } = await supabase
     .from("hoadon_banle")
     .select("diadiem, updated_at")
@@ -1183,30 +1180,25 @@ export async function xacNhanSuaHoaDon() {
     return;
   }
 
-  const diadiemTrang = (typeof getDiaDiemFromPageName === "function")
-    ? getDiaDiemFromPageName()
-    : "";
+  const diadiemTrang =
+    (typeof getDiaDiemFromPageName === "function" ? getDiaDiemFromPageName() : "") || "";
 
-  if (diadiemTrang && (String(hd.diadiem || "").toLowerCase() !== diadiemTrang)) {
+  if (diadiemTrang && (String(hd.diadiem || "").toLowerCase() !== String(diadiemTrang).toLowerCase())) {
     alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
     return;
   }
 
-  // 4) Đặt cờ cho phép sửa + context EDIT
+  // 5) Cho phép sửa
   choPhepSua = true;
-  window.HD_CTX = {
-    mode: "EDIT",
-    version: hd?.updated_at ? hd.updated_at : null
-  };
+  window.HD_CTX = { mode: "EDIT", version: hd?.updated_at ? hd.updated_at : null };
 
-  // 5) Đóng popup + xóa mật khẩu vừa nhập cho an toàn
+  // Nếu popup tồn tại thì đóng lại (đỡ phải nhập gì)
   const popup = document.getElementById("popupXacThucSua");
   if (popup) popup.style.display = "none";
-  const mkEl = document.getElementById("xacmatkhau");
-  if (mkEl) mkEl.value = "";
 
-  alert("✅ Xác thực sửa hóa đơn thành công. Bạn có thể sửa/xóa hóa đơn.");
+  alert("✅ Đã xác thực quyền sửa hóa đơn (không cần nhập lại mật khẩu).");
 }
+
 
 function inHoaDon(hoadon, chitiet) {
     const data = { hoadon, chitiet };
