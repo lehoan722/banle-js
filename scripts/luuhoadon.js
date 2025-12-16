@@ -1196,7 +1196,7 @@ export async function xacNhanSuaHoaDon() {
   const popup = document.getElementById("popupXacThucSua");
   if (popup) popup.style.display = "none";
 
-  alert("✅ Xác thực sửa hóa đơn thành công. Đang lưu lại hóa đơn...");
+  //alert("✅ Xác thực sửa hóa đơn thành công. Đang lưu lại hóa đơn...");
   
       // 5. Gọi lại hàm lưu đúng theo loại chứng từ như logic cũ
       if (typeof CCN_CTX !== "undefined" && CCN_CTX.isCCN) {
