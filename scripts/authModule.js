@@ -16,6 +16,104 @@ if (
 }
 
 
+// ==== 1B. CƠ CHẾ "PHIÊN TRÌNH DUYỆT" ĐỂ KHÔNG GIỮ LOGIN SAU KHI ĐÓNG TRÌNH DUYỆT ====
+// Lưu ý: không thể bắt 100% sự kiện đóng trình duyệt (đặc biệt khi tắt máy / kill process).
+// Cách làm an toàn thực tế: chỉ coi phiên đăng nhập là HỢP LỆ nếu có "nhịp tim" (heartbeat)
+// được update liên tục khi còn ít nhất 1 tab đang mở. Khi mở lại trình duyệt, heartbeat sẽ "nguội"
+// => tự xoá dữ liệu đăng nhập trong localStorage và bắt buộc đăng nhập lại.
+
+const __ALIVE_TS_KEY__ = '__APP_ALIVE_TS__';
+const __ALIVE_USER_KEY__ = '__APP_ALIVE_USER__';
+const __ALIVE_MAX_AGE_MS__ = 15000;   // > 15s coi như phiên cũ (đã đóng browser)
+const __ALIVE_PING_MS__ = 4000;       // update heartbeat mỗi 4s
+
+let __aliveTimer = null;
+
+function __now() { return Date.now(); }
+
+function __isAlive() {
+  const ts = Number(localStorage.getItem(__ALIVE_TS_KEY__) || 0);
+  if (!ts) return false;
+  return (__now() - ts) <= __ALIVE_MAX_AGE_MS__;
+}
+
+function __hasSupabaseAuthTokenInLocalStorage() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      // Supabase v2 thường lưu key dạng: sb-<projectRef>-auth-token
+      if (k.startsWith('sb-') && k.includes('rddjrmbyftlcvrgzlyby') && k.includes('auth-token')) {
+        return true;
+      }
+    }
+  } catch { }
+  return false;
+}
+
+function __hasAnyAuthInLocalStorage() {
+  return !!localStorage.getItem('manv') || __hasSupabaseAuthTokenInLocalStorage();
+}
+
+function __clearAuthLocalStorage() {
+  // Chỉ xoá các key liên quan đăng nhập, không đụng các setting khác (nếu bạn muốn giữ).
+  const keys = [
+    'manv', 'tennv', 'supabase_access_token',
+    'quyen_sua_hoadon', 'is_admin',
+    'last_login_password' // legacy (sẽ bỏ lưu)
+  ];
+  keys.forEach(k => { try { localStorage.removeItem(k); } catch { } });
+
+  // Xoá token Supabase trong localStorage (nếu đang persist)
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith('sb-') && k.includes('rddjrmbyftlcvrgzlyby') && k.includes('auth-token')) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch { }
+
+  // Xoá dấu hiệu alive
+  try { localStorage.removeItem(__ALIVE_TS_KEY__); } catch { }
+  try { localStorage.removeItem(__ALIVE_USER_KEY__); } catch { }
+}
+
+function __enforceFreshBrowserSession() {
+  // Nếu đang có dữ liệu đăng nhập nhưng heartbeat đã "nguội" => coi như đã đóng trình duyệt
+  if (__hasAnyAuthInLocalStorage() && !__isAlive()) {
+    console.warn('🔒 Phiên đăng nhập cũ (đã đóng trình duyệt). Tự xoá localStorage auth.');
+    __clearAuthLocalStorage();
+    try { window.supabase?.auth?.signOut(); } catch { }
+  }
+}
+
+function __startAliveHeartbeat(manv) {
+  try {
+    // ping ngay lập tức
+    localStorage.setItem(__ALIVE_TS_KEY__, String(__now()));
+    if (manv) localStorage.setItem(__ALIVE_USER_KEY__, String(manv));
+  } catch { }
+
+  if (__aliveTimer) clearInterval(__aliveTimer);
+  __aliveTimer = setInterval(() => {
+    try { localStorage.setItem(__ALIVE_TS_KEY__, String(__now())); } catch { }
+  }, __ALIVE_PING_MS__);
+
+  // Khi tab bị đóng/reload: dừng timer (không xoá auth vì có thể còn tab khác đang mở)
+  const stop = () => { try { if (__aliveTimer) clearInterval(__aliveTimer); } catch { } __aliveTimer = null; };
+  window.addEventListener('pagehide', stop);
+  window.addEventListener('beforeunload', stop);
+}
+
+
+// Tự kiểm tra ngay khi module được load (tránh script khác dùng localStorage trước)
+try { __enforceFreshBrowserSession(); } catch (e) { }
+
+// ==== HẾT CƠ CHẾ PHIÊN TRÌNH DUYỆT ====
+
+
 // ==== 2. MODULE ĐĂNG NHẬP DÙNG CHUNG ====
 // options:
 // - loginContainerId: div chứa giao diện login (mặc định: 'login-container')
@@ -25,6 +123,8 @@ if (
 // - loginApiPath:     đường dẫn API, ví dụ '/api/login-cs1'
 // - onLoginSuccess(nv, context): callback sau khi đăng nhập thành công
 export function khoiTaoDangNhapDungChung(options = {}) {
+  // Chặn auto-login sau khi đã đóng trình duyệt
+  __enforceFreshBrowserSession();
   const {
     loginContainerId = 'login-container',
     appContainerId = 'app-container',
@@ -143,10 +243,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         // đồng bộ luôn với key manv đang dùng
         localStorage.setItem('manv', manv);
       }
-      if (passwordNV) {
-        // ⚠️ Lưu plain-text, chỉ nên dùng trên máy cá nhân / máy shop
-        localStorage.setItem('last_login_password', passwordNV);
-      }
+      // ✅ KHÔNG lưu mật khẩu vào localStorage (tránh tự đăng nhập khi người khác mở máy)
     } catch (e) {
       console.warn('Không lưu được thông tin đăng nhập gần nhất:', e);
     }
@@ -203,6 +300,9 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       // nếu API trả về is_admin = true/false thì dòng dưới sẽ hoạt động
       localStorage.setItem('is_admin', nhanvien.is_admin ? 'true' : 'false');
 
+      // Bắt đầu heartbeat để tab khác nhận biết còn phiên đăng nhập đang mở
+      __startAliveHeartbeat(nhanvien.manv);
+
       // Debug nhẹ: xem trong Console object nhân viên có gì
       console.log('DEBUG nhanvien login:', nhanvien);
 
@@ -235,48 +335,63 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const form = document.getElementById('form-login-dungchung');
   form.addEventListener('submit', xuLyDangNhap);
 
-  // ===== TỰ ĐIỀN LẠI THÔNG TIN TỪ LOCALSTORAGE + AUTO LOGIN NẾU ĐỦ DỮ LIỆU =====
+  // ===== TỰ ĐIỀN LẠI MÃ NV + CƠ SỞ (KHÔNG lưu mật khẩu) =====
   try {
     // Lấy từ localStorage: ưu tiên 'manv', nếu không có thì dùng 'last_login_manv'
     const savedManv =
       localStorage.getItem('manv') ||
       localStorage.getItem('last_login_manv');
 
-    const savedPass = localStorage.getItem('last_login_password');
     const savedBranch = localStorage.getItem('diadiem');
 
     if (savedManv && manvInput) {
       manvInput.value = savedManv;
     }
-    if (savedPass && passNVInput) {
-      passNVInput.value = savedPass;
-    }
     if (savedBranch && csSelect) {
       csSelect.value = savedBranch;
-    }
-
-    // Nếu đã có sẵn MÃ NV + MẬT KHẨU + CƠ SỞ -> tự động đăng nhập luôn
-    if (form && savedManv && savedPass && savedBranch) {
-      setTimeout(() => {
-        try {
-          if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
-          } else {
-            form.dispatchEvent(
-              new Event('submit', { cancelable: true, bubbles: true })
-            );
-          }
-        } catch (e) {
-          console.warn('Không auto submit form login được:', e);
-        }
-      }, 200); // delay nhẹ để UI render xong
     }
   } catch (e) {
     console.warn('Không đọc được thông tin đăng nhập từ localStorage:', e);
   }
 
+  // ===== TỰ KHÔI PHỤC ĐĂNG NHẬP (CHỈ KHI CÒN TAB KHÁC ĐANG MỞ) =====
+  // Nếu bạn mở THÊM TAB trong cùng một phiên (còn tab khác đang chạy) => tự vào app luôn.
+  // Nếu bạn đã đóng trình duyệt/tắt máy => heartbeat nguội => bắt buộc đăng nhập lại.
+  (async () => {
+    try {
+      if (!__isAlive()) return;
 
-  // 🔹 Enter ở ô MÃ NV -> nhảy sang ô MẬT KHẨU
+      const { data } = await window.supabase.auth.getSession();
+      const session = data?.session;
+      const manvLS = localStorage.getItem('manv');
+      if (!session || !manvLS) return;
+
+      const csFinal = localStorage.getItem('diadiem') || macDinhDiaDiem;
+      const nhanvien = {
+        manv: manvLS,
+        tennv: localStorage.getItem('tennv') || '',
+        sua_hoadon: localStorage.getItem('quyen_sua_hoadon') === 'true',
+        is_admin: localStorage.getItem('is_admin') === 'true'
+      };
+
+      window.diadiem = csFinal;
+
+      const appContainer = document.getElementById(appContainerId);
+      if (appContainer) appContainer.style.display = '';
+      loginContainer.style.display = 'none';
+
+      __startAliveHeartbeat(nhanvien.manv);
+
+      if (typeof onLoginSuccess === 'function') {
+        await onLoginSuccess(nhanvien, { diadiem: csFinal, nhanvien, session });
+      }
+    } catch (e) {
+      console.warn('Không tự khôi phục được phiên đăng nhập:', e);
+    }
+  })();
+
+
+// 🔹 Enter ở ô MÃ NV -> nhảy sang ô MẬT KHẨU
   manvInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
