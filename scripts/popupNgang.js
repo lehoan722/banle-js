@@ -56,6 +56,12 @@ export const popupNgang = (() => {
         tfoot .pn-total-cell{background:#f0fdf4}
         body.pn-locked{overflow:hidden}
 
+        /* (NEW) Tô màu dòng lệch: size 0 khác tổng các size chi tiết */
+        .pn-mismatch td{background:#fff1f2}
+        .pn-mismatch td.pn-total-cell{background:#ffd1d6}
+        .pn-mismatch td.pn-m0{background:#ffd1d6}
+
+
         /* Mobile: co nhỏ một chút vẫn giữ tỉ lệ Mã = 3× size */
         @media (max-width: 480px){
           .pn-wrap{ --sizeW: 40px; }
@@ -195,6 +201,7 @@ export const popupNgang = (() => {
 
       sizes.forEach((s, colIdx) => {
         const td = document.createElement('td');
+        if (String(s) === '0') td.classList.add('pn-m0');
         const v = Number(r[s]) || 0;
         if (String(s) !== '0') rowTotal += v;
 
@@ -233,6 +240,9 @@ export const popupNgang = (() => {
           const cell = tr.querySelector('td[data-role="row-total"]');
           if (cell) cell.textContent = sum > 0 ? String(sum) : '';
 
+          // (NEW) check lệch size 0 vs tổng size
+          applyRowMismatchStyle(tr);
+
           // recalc footer
           recalcFooterTotals();
         };
@@ -270,6 +280,8 @@ export const popupNgang = (() => {
       tdt.textContent = rowTotal > 0 ? String(rowTotal) : '';
       tdt.dataset.role = 'row-total';
       tr.appendChild(tdt);
+
+      applyRowMismatchStyle(tr);
 
       tbody.appendChild(tr);
     });
@@ -336,7 +348,24 @@ export const popupNgang = (() => {
     if (gcell) gcell.textContent = grand > 0 ? String(grand) : '';
   }
 
-  function moveFocusToNext(inp, sizes) {
+  
+  // (NEW) So sánh size 0 vs tổng size chi tiết để tô màu dòng bị lệch
+  function applyRowMismatchStyle(tr) {
+    if (!tr) return;
+    const inp0 = tr.querySelector('input.pn-input[data-size="0"]');
+    const v0 = Number(inp0 && inp0.value ? inp0.value : 0) || 0;
+
+    let sum = 0;
+    tr.querySelectorAll('input.pn-input').forEach(i => {
+      if (i.dataset.size === '0') return;
+      sum += Number(i.value) || 0;
+    });
+
+    const mismatch = (v0 != sum) && (v0 > 0 || sum > 0);
+    tr.classList.toggle('pn-mismatch', mismatch);
+  }
+
+function moveFocusToNext(inp, sizes) {
     const row = parseInt(inp.dataset.row, 10);
     const col = parseInt(inp.dataset.col, 10);
     let targetRow = row, targetCol = col + 1;
