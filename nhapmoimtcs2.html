@@ -609,7 +609,7 @@
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
-                <button id="btnNapNhapTam" class="btnChuyen" title="Tự động lấy size chi tiết từ nhaptamcs2_ trong 2 ngày sau khi tạo nmcs2_">⬇️ nạp nhập tạm</button>
+                <button id="btnNapNhapTam" class="btnChuyen" title="Tự động lấy size chi tiết từ nhaptamcs2_ trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU">⬇️ nạp nhập tạm</button>
             </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>kiemkhocs2/kiemkhocs2
@@ -1527,19 +1527,23 @@
             }
 
             const nmCreatedAt = new Date(nm.created_at);
-            // ✅ Ngưỡng quét mặc định: 2 ngày (hôm nay + ngày mai) tính từ thời điểm phát sinh nmcs2_
-            const timeMax = new Date(nmCreatedAt.getTime() + 2 * 24 * 60 * 60 * 1000);
+            // ✅ Ngưỡng quét mặc định: lấy NHẬP TẠM trong "NGÀY tạo nmcs2_" và "NGÀY HÔM SAU"
+            // (để bao cả trường hợp nhaptam phát sinh TRƯỚC thời điểm tạo nmcs2_ nhưng vẫn trong cùng ngày)
+            const dayStart = new Date(nmCreatedAt);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 2); // [dayStart, dayEnd) = hôm nay + ngày mai
 
             const cs = (nm.diadiem || diadiem || 'cs2').trim();
 
-            // 3) Lấy danh sách hóa đơn nhập tạm trong khoảng thời gian
+            // 3) Lấy danh sách hóa đơn nhập tạm trong khoảng thời gian (NGÀY tạo nmcs2_ + NGÀY HÔM SAU)
             const { data: hdsTam, error: hdErr } = await window.supabase
                 .from('hoadon_banle')
                 .select('sohd, created_at')
                 .eq('diadiem', cs)
                 .ilike('sohd', 'nhaptamcs2_%')
-                .gt('created_at', nmCreatedAt.toISOString())
-                .lte('created_at', timeMax.toISOString());
+                .gte('created_at', dayStart.toISOString())
+                .lt('created_at', dayEnd.toISOString());
 
             if (hdErr) {
                 console.error('hdErr:', hdErr);
@@ -1550,7 +1554,7 @@
             const sohdTamList = (hdsTam || []).map(x => x.sohd).filter(Boolean);
 
             if (sohdTamList.length === 0) {
-                alert('ℹ️ Không tìm thấy hóa đơn nhaptamcs2_ nào trong 2 ngày sau hóa đơn nmcs2_ này.');
+                alert('ℹ️ Không tìm thấy hóa đơn nhaptamcs2_ nào trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU.');
                 return;
             }
 
@@ -1712,7 +1716,7 @@
 
     <style>
         /* Cột size của bảng kết quả CCN1V2:
-     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */ 
+     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
         #bangketqua th:nth-child(3),
         #bangketqua td:nth-child(3) {
             width: 40px;
