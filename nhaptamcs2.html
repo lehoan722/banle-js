@@ -1715,12 +1715,58 @@
                 const tbody = document.querySelector('#bangketqua tbody');
                 if (!tbody) return;
 
+                const getColIndex = (label) => {
+                    const ths = document.querySelectorAll('#bangketqua thead th');
+                    for (let i = 0; i < ths.length; i++) {
+                        const t = String(ths[i].innerText || '').trim();
+                        if (t === label) return i;
+                    }
+                    return -1;
+                };
+
+                const ensureCellCount = (tr, n) => {
+                    while (tr.cells.length < n) {
+                        tr.appendChild(document.createElement('td'));
+                    }
+                };
+
+                const t1Idx = getColIndex('T1');
+                const t2Idx = getColIndex('T2');
+                const maxIdx = Math.max(t1Idx, t2Idx);
+
                 let hit = 0;
                 Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
                     const maspCell = tr.cells && tr.cells[0];
                     if (!maspCell) return;
                     const maspU = String(maspCell.innerText || '').toUpperCase().trim();
                     if (!maspU) return;
+
+                    const total = totalByMasp.get(maspU);
+                    const sohdSet = sohdByMasp.get(maspU);
+
+                    if (maxIdx >= 0) {
+                        ensureCellCount(tr, maxIdx + 1);
+
+                        // T1 = tổng SL nhập mới
+                        if (t1Idx >= 0) {
+                            tr.cells[t1Idx].innerText = (total != null) ? String(total) : '';
+                        }
+
+                        // T2 = danh sách số HĐ (tối đa 3, dư thì +N)
+                        if (t2Idx >= 0) {
+                            if (sohdSet && sohdSet.size) {
+                                const arr = Array.from(sohdSet).slice(0, 3);
+                                const more = sohdSet.size > 3 ? (' +' + (sohdSet.size - 3)) : '';
+                                tr.cells[t2Idx].innerText = arr.join(',') + more;
+                            } else {
+                                tr.cells[t2Idx].innerText = '';
+                            }
+                        }
+
+                        if (total != null) hit++;
+                    }
+                         });
+                      if (!maspU) return;
 
                     const total = totalByMasp.get(maspU);
                     const sohdSet = sohdByMasp.get(maspU);
@@ -1739,7 +1785,7 @@
 
                         if (total != null) hit++;
                     }
-                });
+                
 
                 alert(`Đã tải dữ liệu nhập mới trong ngày ${dayStr}.\n- Hóa đơn nmcs2_: ${sohdList.length}\n- Mã khớp trên bảng: ${hit}/${masps.length}`);
             } catch (err) {
@@ -1748,11 +1794,12 @@
             } finally {
                 setLoading(false);
             }
-        }
+        
 
-        if (btnTai) {
+         if (btnTai) {
             btnTai.addEventListener('click', taiNhapMoiTrongNgay);
         }
+    }
     </script>
 
 
