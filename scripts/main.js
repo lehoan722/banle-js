@@ -20,9 +20,8 @@ import { ensureAccess } from './auth_guard.js';
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
   //const ua = navigator.userAgent || navigator.vendor || window.opera;
-  const ua = navigator.userAgent || navigator.vendor;
   // Các từ khoá phổ biến trên điện thoại / tablet
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile| window.opera|Opera Mini/i.test(ua);
+  //return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
 
 async function checkInStoreLocation(pointsOverride) {
@@ -122,7 +121,7 @@ export async function khoiTaoUngDung() {
       } catch (e) {
         console.warn("Không ẩn/hiện được container sau khi chặn thiết bị:", e);
       }
-      return;
+      //return;
     }
 
     // Chọn tọa độ tùy theo trang
