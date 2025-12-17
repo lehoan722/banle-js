@@ -19,7 +19,8 @@ import { ensureAccess } from './auth_guard.js';
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
-  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  //const ua = navigator.userAgent || navigator.vendor || window.opera;
+  const ua = navigator.userAgent || navigator.vendor;
   // Các từ khoá phổ biến trên điện thoại / tablet
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
