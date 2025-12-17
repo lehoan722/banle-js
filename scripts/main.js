@@ -22,7 +22,7 @@ function isMobileDevice() {
   //const ua = navigator.userAgent || navigator.vendor || window.opera;
   const ua = navigator.userAgent || navigator.vendor;
   // Các từ khoá phổ biến trên điện thoại / tablet
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile| window.opera|Opera Mini/i.test(ua);
 }
 
 async function checkInStoreLocation(pointsOverride) {
