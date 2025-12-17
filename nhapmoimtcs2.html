@@ -609,6 +609,7 @@
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+                <button id="btnNapNhapTam" class="btnChuyen" title="Tự động lấy size chi tiết từ nhaptamcs2_ trong 2 ngày sau khi tạo nmcs2_">⬇️ nạp nhập tạm</button>
             </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>kiemkhocs2/kiemkhocs2
@@ -1484,38 +1485,220 @@
     <script type="module">
         import { popupNgang } from './scripts/popupNgang.js';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btnChuyenngang');
-            if (!btn) return;
+        // ✅ Nút "Nạp nhập tạm" (nhaptamcs2_) -> tự đổ dữ liệu size chi tiết vào bảng kết quả của nmcs2_
+        async function napNhapTamTuSupabase() {
+            // 1) Cập nhật dữ liệu mới nhất từ bảng DOM (tránh lấy thiếu nếu user vừa sửa)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
 
-            btn.addEventListener('click', () => {
-                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
-                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                    window.capNhatBangKetQuaTuDOM();
+            const sohd = (document.getElementById('sohd')?.value || '').trim();
+            const diadiem = (document.getElementById('diadiem')?.value || '').trim() || 'cs2';
+
+            if (!sohd.startsWith('nmcs2_')) {
+                alert('⚠️ Nút này chỉ dùng khi đang mở hóa đơn nhập mới MT cơ sở 2 (sohd bắt đầu bằng nmcs2_)');
+                return;
+            }
+
+            const bang = window.bangKetQua || {};
+            const masps = Object.keys(bang).map(x => (x || '').toUpperCase()).filter(Boolean);
+
+            if (masps.length === 0) {
+                alert('⚠️ Chưa có mã sản phẩm nào trong bảng kết quả để đối chiếu.');
+                return;
+            }
+
+            if (!window.supabase) {
+                alert('❌ Không tìm thấy window.supabase. Trang này cần khởi tạo Supabase client trước khi nạp nhập tạm.');
+                return;
+            }
+
+            // 2) Lấy created_at của hóa đơn nmcs2_ hiện tại (mốc quét)
+            const { data: nm, error: nmErr } = await window.supabase
+                .from('hoadon_banle')
+                .select('created_at, diadiem')
+                .eq('sohd', sohd)
+                .single();
+
+            if (nmErr || !nm?.created_at) {
+                console.error('nmErr:', nmErr);
+                alert('❌ Không lấy được created_at của hóa đơn nhập mới. Hãy chắc chắn hóa đơn nmcs2_ đã LƯU trước khi nạp nhập tạm.');
+                return;
+            }
+
+            const nmCreatedAt = new Date(nm.created_at);
+            // ✅ Ngưỡng quét mặc định: 2 ngày (hôm nay + ngày mai) tính từ thời điểm phát sinh nmcs2_
+            const timeMax = new Date(nmCreatedAt.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+            const cs = (nm.diadiem || diadiem || 'cs2').trim();
+
+            // 3) Lấy danh sách hóa đơn nhập tạm trong khoảng thời gian
+            const { data: hdsTam, error: hdErr } = await window.supabase
+                .from('hoadon_banle')
+                .select('sohd, created_at')
+                .eq('diadiem', cs)
+                .ilike('sohd', 'nhaptamcs2_%')
+                .gt('created_at', nmCreatedAt.toISOString())
+                .lte('created_at', timeMax.toISOString());
+
+            if (hdErr) {
+                console.error('hdErr:', hdErr);
+                alert('❌ Lỗi khi tìm hóa đơn nhập tạm.');
+                return;
+            }
+
+            const sohdTamList = (hdsTam || []).map(x => x.sohd).filter(Boolean);
+
+            if (sohdTamList.length === 0) {
+                alert('ℹ️ Không tìm thấy hóa đơn nhaptamcs2_ nào trong 2 ngày sau hóa đơn nmcs2_ này.');
+                return;
+            }
+
+            // 4) Lấy chi tiết từ ct_hoadon_banle theo sohd nhập tạm, sau đó lọc masp trùng ở phía JS (an toàn khi masps nhiều)
+            const maspSet = new Set(masps);
+            const chunk = (arr, size) => {
+                const out = [];
+                for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+                return out;
+            };
+
+            let ctRows = [];
+            let ctErr = null;
+
+            for (const sohdChunk of chunk(sohdTamList, 200)) {
+                const { data, error } = await window.supabase
+                    .from('ct_hoadon_banle')
+                    .select('sohd, masp, tensp, size, soluong, gia, km, dvt, diadiem')
+                    .eq('diadiem', cs)
+                    .in('sohd', sohdChunk)
+                    .neq('size', '0'); // chỉ lấy size chi tiết
+
+                if (error) { ctErr = error; break; }
+                if (data?.length) {
+                    // lọc masp trùng (upper)
+                    ctRows = ctRows.concat(
+                        data.filter(r => maspSet.has(((r.masp || '').toUpperCase().trim())))
+                    );
                 }
+            }
 
-                // 2️⃣ Lấy dữ liệu dọc hiện tại
-                const bang = window.bangKetQua || {};
-                const rows = [];
-                Object.values(bang).forEach(item => {
-                    item.sizes.forEach((sz, i) => {
-                        rows.push({
-                            masp: item.masp,
-                            tenhang: item.tensp || '',
-                            size: sz,
-                            sl: item.soluongs[i] || 0
+            if (ctErr) {
+                console.error('ctErr:', ctErr);
+                alert('❌ Lỗi khi tải chi tiết nhập tạm.');
+                return;
+            }
+
+            if (!ctRows || ctRows.length === 0) {
+                alert('ℹ️ Có hóa đơn nhập tạm, nhưng không có dòng nào trùng mã sản phẩm với hóa đơn nmcs2_ hiện tại.');
+                return;
+            }
+
+            // 5) Gom nhóm theo (MASP, SIZE) -> SUM(soluong)
+            const agg = new Map(); // key: MASP|SIZE
+            for (const r of ctRows) {
+                const masp = (r.masp || '').toUpperCase().trim();
+                const size = (r.size || '').toString().trim();
+                if (!masp || !size) continue;
+
+                const key = masp + '|' + size;
+                const prev = agg.get(key) || {
+                    masp,
+                    tensp: r.tensp || '',
+                    size,
+                    soluong: 0,
+                    dvt: r.dvt || '',
+                    gia: (typeof r.gia === 'number' ? r.gia : Number(r.gia)) || 0,
+                    km: (typeof r.km === 'number' ? r.km : Number(r.km)) || 0
+                };
+                prev.soluong += Number(r.soluong) || 0;
+                // giữ thông tin phụ nếu thiếu
+                if (!prev.tensp && r.tensp) prev.tensp = r.tensp;
+                if (!prev.dvt && r.dvt) prev.dvt = r.dvt;
+                if (!prev.gia && r.gia) prev.gia = (typeof r.gia === 'number' ? r.gia : Number(r.gia)) || 0;
+                agg.set(key, prev);
+            }
+
+            // 6) Tự "dán" vào window.bangKetQua: size đã có thì overwrite SL, chưa có thì thêm mới
+            let countAdded = 0;
+            let countUpdated = 0;
+
+            for (const item of agg.values()) {
+                const masp = item.masp;
+                const size = item.size;
+                const sl = item.soluong;
+
+                const target = bang[masp];
+                if (!target) continue; // chỉ xử lý masp trùng trong hóa đơn nmcs2_
+
+                // bổ sung tên hàng nếu thiếu
+                if (!target.tensp && item.tensp) target.tensp = item.tensp;
+                // ưu tiên dvt/gia nếu target đang trống
+                if (!target.dvt && item.dvt) target.dvt = item.dvt;
+                if ((!target.gia || Number(target.gia) === 0) && item.gia) target.gia = item.gia;
+
+                const idx = (target.sizes || []).findIndex(sz => String(sz).trim() === String(size).trim());
+                if (idx >= 0) {
+                    target.soluongs[idx] = sl;
+                    countUpdated++;
+                } else {
+                    target.sizes.push(size);
+                    target.soluongs.push(sl);
+                    countAdded++;
+                }
+            }
+
+            // 7) Render lại bảng
+            window.bangKetQua = bang;
+            if (typeof window.renderBangKetQua === 'function') window.renderBangKetQua(bang);
+            if (typeof window.capNhatTongTien === 'function') window.capNhatTongTien(bang);
+
+            alert(`✅ Đã nạp dữ liệu từ nhập tạm\n- Hóa đơn tạm tìm thấy: ${sohdTamList.length}\n- Dòng size mới thêm: ${countAdded}\n- Dòng size cập nhật: ${countUpdated}\n\nTiếp theo: bấm 🔁 ngang để đối chiếu và tô màu lệch.`);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 🔁 Nút ngang (giữ nguyên)
+            const btnNgang = document.getElementById('btnChuyenngang');
+            if (btnNgang) {
+                btnNgang.addEventListener('click', () => {
+                    // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
+                    if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                        window.capNhatBangKetQuaTuDOM();
+                    }
+
+                    // 2️⃣ Lấy dữ liệu dọc hiện tại
+                    const bang = window.bangKetQua || {};
+                    const rows = [];
+                    Object.values(bang).forEach(item => {
+                        item.sizes.forEach((sz, i) => {
+                            rows.push({
+                                masp: item.masp,
+                                tenhang: item.tensp || '',
+                                size: sz,
+                                sl: item.soluongs[i] || 0
+                            });
                         });
                     });
+
+                    if (rows.length === 0) {
+                        alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
+                        return;
+                    }
+
+                    // 3️⃣ Gọi popup để hiển thị bảng ngang
+                    popupNgang.open(rows);
                 });
+            }
 
-                if (rows.length === 0) {
-                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
-                    return;
-                }
-
-                // 3️⃣ Gọi popup để hiển thị bảng ngang
-                popupNgang.open(rows);
-            });
+            // ⬇️ Nút nạp nhập tạm
+            const btnNap = document.getElementById('btnNapNhapTam');
+            if (btnNap) {
+                btnNap.addEventListener('click', () => {
+                    napNhapTamTuSupabase().catch(err => {
+                        console.error(err);
+                        alert('❌ Có lỗi khi nạp nhập tạm. Mở Console để xem chi tiết.');
+                    });
+                });
+            }
         });
     </script>
 
@@ -1529,7 +1712,7 @@
 
     <style>
         /* Cột size của bảng kết quả CCN1V2:
-     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
+     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */ 
         #bangketqua th:nth-child(3),
         #bangketqua td:nth-child(3) {
             width: 40px;
