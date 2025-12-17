@@ -600,6 +600,9 @@
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
             </div>
+            <div style="margin-bottom:6px;">
+                <button id="btnTaiNhapMoiTrongNgay" class="btnChuyen" title="Tải số lượng nhập mới (nmcs2_) trong ngày đang chọn cho các mã hiện có">⬇️ tải nhập mới</button>
+            </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button> kiemkhocs2/kiemkhocs2
 
@@ -1566,6 +1569,193 @@
             });
         });
     </script>
+
+    <script type="module">
+        // (NEW) Tải dữ liệu "nhập mới" (nmcs2_) trong NGÀY đang chọn về trang nhập tạm (nhaptamcs2)
+        // - Chỉ lấy cùng cơ sở (cs2)
+        // - Chỉ lấy các MASP đang có trên bảng hiện tại
+        // - Query theo created_at trong ngày (00:00 -> 24:00)
+        // - Đổ kết quả vào 2 cột T1/T2 của bảng: T1 = Tổng SL nhập mới; T2 = Danh sách số HĐ nmcs2_
+        const btnTai = document.getElementById('btnTaiNhapMoiTrongNgay');
+
+        function getNgayDangChon() {
+            const el = document.getElementById('ngay');
+            const v = (el && el.value) ? el.value : new Date().toISOString().slice(0,10);
+            return v; // YYYY-MM-DD
+        }
+
+        function getCoSo() {
+            // ưu tiên input #diadiem (đã set sau login), fallback localStorage
+            const el = document.getElementById('diadiem');
+            return (el && el.value) ? el.value : (localStorage.getItem('diadiem') || 'cs2');
+        }
+
+        function getMaspDangCo() {
+            // cố gắng lấy từ bangKetQua (chuẩn nhất), fallback đọc từ DOM
+            try {
+                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                    window.capNhatBangKetQuaTuDOM();
+                }
+            } catch(e) {}
+
+            const bang = window.bangKetQua || {};
+            let list = Object.keys(bang || {}).map(x => String(x||'').toUpperCase().trim()).filter(Boolean);
+
+            if (!list.length) {
+                const rows = document.querySelectorAll('#bangketqua tbody tr');
+                rows.forEach(tr => {
+                    const masp = (tr.cells && tr.cells[0]) ? tr.cells[0].innerText : '';
+                    const u = String(masp||'').toUpperCase().trim();
+                    if (u) list.push(u);
+                });
+                list = Array.from(new Set(list));
+            }
+            return list;
+        }
+
+        function setLoading(on) {
+            if (!btnTai) return;
+            btnTai.disabled = !!on;
+            btnTai.textContent = on ? '⏳ đang tải...' : '⬇️ tải nhập mới';
+        }
+
+        async function taiNhapMoiTrongNgay() {
+            if (!window.supabase) {
+                alert('Chưa sẵn sàng Supabase. Bạn đăng nhập xong rồi thử lại nhé.');
+                return;
+            }
+
+            const cs = getCoSo();
+            if (cs !== 'cs2') {
+                // trang này là nhaptamcs2, nhưng vẫn check cho chắc
+                alert('Trang này chỉ dùng cho CS2 (cs2).');
+                return;
+            }
+
+            const masps = getMaspDangCo();
+            if (!masps.length) {
+                alert('Chưa có mã sản phẩm nào trên bảng để đối chiếu.');
+                return;
+            }
+
+            const dayStr = getNgayDangChon(); // YYYY-MM-DD
+            // parse theo local time
+            const dayStart = new Date(dayStr + 'T00:00:00');
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            setLoading(true);
+
+            try {
+                // 1) Lấy danh sách hóa đơn nhập mới trong ngày
+                const { data: hds, error: e1 } = await window.supabase
+                    .from('hoadon_banle')
+                    .select('sohd, created_at')
+                    .eq('diadiem', cs)
+                    .ilike('sohd', 'nmcs2_%')
+                    .gte('created_at', dayStart.toISOString())
+                    .lt('created_at', dayEnd.toISOString())
+                    .limit(5000);
+
+                if (e1) throw e1;
+
+                const sohdList = (hds || []).map(x => x.sohd).filter(Boolean);
+                if (!sohdList.length) {
+                    alert('Không tìm thấy hóa đơn nhập mới (nmcs2_) trong ngày ' + dayStr + '.');
+                    return;
+                }
+
+                // 2) Lấy chi tiết các mã đang có trên bảng, trong các hóa đơn nmcs2_ vừa tìm
+                // NOTE: để tránh query quá dài, nếu cần sẽ chia lô 200 sohd/lần
+                const chunk = (arr, n) => arr.reduce((a, _, i) => (i % n ? a : [...a, arr.slice(i, i + n)]), []);
+                const sohdBatches = chunk(sohdList, 200);
+
+                const keyMap = new Map(); // key: sohd|MASP -> {has0,sum0,sumOther}
+                const sohdByMasp = new Map(); // MASP -> Set(sohd)
+
+                for (const batch of sohdBatches) {
+                    const { data: cts, error: e2 } = await window.supabase
+                        .from('ct_hoadon_banle')
+                        .select('sohd, masp, size, soluong')
+                        .in('sohd', batch)
+                        .in('masp', masps)
+                        .limit(50000);
+
+                    if (e2) throw e2;
+
+                    (cts || []).forEach(r => {
+                        const sohd = r.sohd;
+                        const maspU = String(r.masp || '').toUpperCase().trim();
+                        if (!sohd || !maspU) return;
+
+                        const size = String(r.size ?? '').trim();
+                        const sl = Number(r.soluong) || 0;
+
+                        const k = sohd + '|' + maspU;
+                        if (!keyMap.has(k)) keyMap.set(k, { has0: false, sum0: 0, sumOther: 0, masp: maspU, sohd });
+
+                        const o = keyMap.get(k);
+                        if (size === '0') { o.has0 = true; o.sum0 += sl; }
+                        else { o.sumOther += sl; }
+
+                        if (!sohdByMasp.has(maspU)) sohdByMasp.set(maspU, new Set());
+                        sohdByMasp.get(maspU).add(sohd);
+                    });
+                }
+
+                // 3) Tổng hợp theo MASP, tránh double count (nếu có size 0 thì lấy size0, không thì lấy sumOther)
+                const totalByMasp = new Map(); // MASP -> total
+                for (const o of keyMap.values()) {
+                    const contrib = o.has0 ? o.sum0 : o.sumOther;
+                    if (!totalByMasp.has(o.masp)) totalByMasp.set(o.masp, 0);
+                    totalByMasp.set(o.masp, (totalByMasp.get(o.masp) || 0) + contrib);
+                }
+
+                // 4) Đổ vào bảng: cột T1 (tổng nhập mới), T2 (ds sohd)
+                const tbody = document.querySelector('#bangketqua tbody');
+                if (!tbody) return;
+
+                let hit = 0;
+                Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                    const maspCell = tr.cells && tr.cells[0];
+                    if (!maspCell) return;
+                    const maspU = String(maspCell.innerText || '').toUpperCase().trim();
+                    if (!maspU) return;
+
+                    const total = totalByMasp.get(maspU);
+                    const sohdSet = sohdByMasp.get(maspU);
+
+                    // cột index: 0..10 ; T1 là cột 9, T2 là cột 10 (sau Vị trí)
+                    if (tr.cells.length >= 11) {
+                        tr.cells[9].innerText = (total != null) ? String(total) : '';
+                        // hiển thị tối đa 3 số HĐ, còn lại ghi +N
+                        if (sohdSet && sohdSet.size) {
+                            const arr = Array.from(sohdSet).slice(0, 3);
+                            const more = sohdSet.size > 3 ? (' +' + (sohdSet.size - 3)) : '';
+                            tr.cells[10].innerText = arr.join(',') + more;
+                        } else {
+                            tr.cells[10].innerText = '';
+                        }
+
+                        if (total != null) hit++;
+                    }
+                });
+
+                alert(`Đã tải dữ liệu nhập mới trong ngày ${dayStr}.\n- Hóa đơn nmcs2_: ${sohdList.length}\n- Mã khớp trên bảng: ${hit}/${masps.length}`);
+            } catch (err) {
+                console.error('Lỗi tải nhập mới:', err);
+                alert('Lỗi tải dữ liệu nhập mới: ' + (err?.message || err));
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        if (btnTai) {
+            btnTai.addEventListener('click', taiNhapMoiTrongNgay);
+        }
+    </script>
+
+
     
     
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
