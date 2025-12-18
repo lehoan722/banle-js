@@ -818,12 +818,17 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
   try {
 
     const modeForRpc = (mode === "nv") ? "mt" : mode; // NV cũng lấy danh sách kiểu máy tính
-
     const { data, error } = await supabase.rpc("baymau_get_tasks", {
       p_diadiem: diadiem,
       p_mode: modeForRpc,
       p_manv: null, // không lọc theo nhân viên
     });
+
+    //const { data, error } = await supabase.rpc("baymau_get_tasks", {
+      //p_diadiem: diadiem,
+      //p_mode: mode,
+     // p_manv: mode === "nv" ? manvDangNhap : null, // lọc theo nhân viên
+    //});
 
     if (error) {
       console.error("Lỗi RPC baymau_get_tasks:", error);
