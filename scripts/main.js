@@ -819,8 +819,7 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
     const { data, error } = await supabase.rpc("baymau_get_tasks", {
       p_diadiem: diadiem,
       p_mode: mode,
-      //p_manv: mode === "nv" ? manvDangNhap : null, // hiển thị gợi Ý bày mẫu theo từng mã nhân viên phân biệt
-      p_manv: null, // // hiển thị gợi Ý bày mẫu KHONG PHAN BIET mã nhân viên.
+      p_manv: mode === "nv" ? manvDangNhap : null,
     });
 
     if (error) {
