@@ -890,7 +890,11 @@ function attachChamCongButtons(diadiem) {
 
             // 4) MỖI LẦN CHẤM CÔNG ĐỀU PHẢI XỬ LÝ BÀY MẪU (NẾU CÒN)
             //    Nếu còn dòng chưa bày mẫu & chưa ghi chú -> popup sẽ chặn không cho qua.
-            await enforceBayMauBeforeChamCong({ diadiem });
+            // Chỉ nhắc bày mẫu cho các sự kiện KHÁC VÀO CA
+            
+            if (su_kien !== "VAOCA") {
+                await enforceBayMauBeforeChamCong({ diadiem });
+            }
 
             // 5) Kiểm tra GPS: phải đứng trong khu vực cửa hàng
             const okInStore = await ensureInStoreBeforeAction(diadiem);
