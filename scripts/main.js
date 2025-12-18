@@ -816,10 +816,13 @@ window.__bayMauContext = window.__bayMauContext || null;
  */
 async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
   try {
+
+    const modeForRpc = (mode === "nv") ? "mt" : mode; // NV cũng lấy danh sách kiểu máy tính
+
     const { data, error } = await supabase.rpc("baymau_get_tasks", {
       p_diadiem: diadiem,
-      p_mode: mode,
-      p_manv: mode === "nv" ? manvDangNhap : null,
+      p_mode: modeForRpc,
+      p_manv: null, // không lọc theo nhân viên
     });
 
     if (error) {
