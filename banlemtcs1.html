@@ -340,13 +340,13 @@
             /* vàng nhạt */
         }
 
-            /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-body.popupnhanh .sq-stock-popup {
-  top: 8px !important;
-  left: 8px !important;
-  left: auto !important;
-  transform: none !important;
-}
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
     </style>
 
 
@@ -658,7 +658,7 @@ body.popupnhanh .sq-stock-popup {
     <script src="scripts/stockQuickPopup.js"></script>
 
 
-    <!-- Khung đăng nhập dùng module dùng chung --> 
+    <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
@@ -713,9 +713,17 @@ body.popupnhanh .sq-stock-popup {
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-                    const module = await import("./scripts/main.js");
-                    if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
+                    // ✅ chỉ init main 1 lần cho cả vòng đời trang
+                    if (!window.__BANLE_MAIN_MODULE__) {
+                        window.__BANLE_MAIN_MODULE__ = await import("./scripts/main.js");
+                        if (typeof window.__BANLE_MAIN_MODULE__.khoiTaoUngDung === "function") {
+                            await window.__BANLE_MAIN_MODULE__.khoiTaoUngDung();
+                        }
+                    } else {
+                        // ✅ đã init rồi: KHÔNG gọi khoiTaoUngDung lần nữa (tránh nhân đôi dòng)
+                        // cách chắc ăn nhất khi đổi tài khoản là reload để sạch toàn bộ state cũ:
+                        location.reload();
+                        return;
                     }
                 } catch (e) {
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
@@ -873,7 +881,7 @@ body.popupnhanh .sq-stock-popup {
     </script>
 
 
-    <!-- Overlay loading khi backup --> 
+    <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
     display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
     background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
