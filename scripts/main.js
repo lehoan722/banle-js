@@ -16,6 +16,8 @@ import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep }
 import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
+import { startSessionKeeper } from "./supabaseClient.js";
+startSessionKeeper();
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
@@ -827,7 +829,7 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
     //const { data, error } = await supabase.rpc("baymau_get_tasks", {
       //p_diadiem: diadiem,
       //p_mode: mode,
-     // p_manv: mode === "nv" ? manvDangNhap : null, // không lọc theo nhân viên
+     // p_manv: mode === "nv" ? manvDangNhap : null, // lọc theo nhân viên
     //});
 
     if (error) {
