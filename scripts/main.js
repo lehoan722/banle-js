@@ -17,7 +17,6 @@ import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
-startSessionKeeper();
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
@@ -192,7 +191,7 @@ export async function khoiTaoUngDung() {
   const ok = await ensureAccess({ supabase, manv: manvDangNhap });
   if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
   // === HẾT GUARD ===
-
+  startSessionKeeper();
   // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CS1 + CS2, MT + NV) ===
   const isBanLeMTcs1Page = path.includes("banlemtcs1");
   const isBanLeMTcs2Page = path.includes("banlemtcs2");
