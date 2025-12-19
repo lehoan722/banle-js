@@ -300,16 +300,7 @@ export async function khoiTaoUngDung() {
     e.target.dataset.modified = true;
     capNhatThongTinTong(getBangKetQua());
   });
-
-  document.getElementById("chietkhau")?.addEventListener("blur", () => {
-    capNhatThongTinTong(getBangKetQua());
-  });
-
-  document.getElementById("khachtra")?.addEventListener("input", (e) => {
-    e.target.dataset.modified = true;
-    capNhatThongTinTong(getBangKetQua());
-  });
-
+ 
   // ================== MỚI: đọc tham số trên URL để auto mở hóa đơn ==================
   const urlParams = new URLSearchParams(window.location.search || "");
   const sohdUrl = urlParams.get("sohd");
