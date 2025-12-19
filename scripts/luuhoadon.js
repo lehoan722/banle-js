@@ -7,6 +7,33 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 import { guiHoaDonViettel } from './viettelInvoice.js';
 
+async function refreshSessionIfNeeded() {
+    // 1) phải có session
+    const { data: s1, error: e1 } = await supabase.auth.getSession();
+    if (e1) console.warn("getSession error:", e1);
+
+    let session = s1?.session;
+    if (!session) {
+        // Không còn session => bắt đăng nhập lại
+        alert("⚠️ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại!");
+        throw new Error("NO_SESSION");
+    }
+
+    // 2) nếu sắp hết hạn (<= 90s) thì refresh
+    const expiresAtMs = (session.expires_at || 0) * 1000;
+    if (expiresAtMs && expiresAtMs - Date.now() <= 90_000) {
+        const { data: s2, error: e2 } = await supabase.auth.refreshSession();
+        if (e2 || !s2?.session) {
+            console.warn("refreshSession error:", e2);
+            alert("⚠️ Không làm mới được phiên đăng nhập. Vui lòng đăng nhập lại!");
+            throw new Error("REFRESH_FAILED");
+        }
+        session = s2.session;
+    }
+
+    return session;
+}
+
 
 async function hoaDonDaTonTai(sohd) {
     if (!sohd) return false;
@@ -534,6 +561,8 @@ export async function luuHoaDonQuaAPI() {
             nhacc: ""
         };
 
+        await refreshSessionIfNeeded();
+
         const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
             p_loai: loai,
             p_diadiem: diadiemTrang,
@@ -763,6 +792,8 @@ export async function luuHoaDonNhapQuaAPI() {
             loai: loai,
             nhacc: ""
         };
+
+        await refreshSessionIfNeeded();
 
         const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
             p_loai: loai,
@@ -1316,6 +1347,8 @@ export async function luuHoaDonccn1v2() {
                     loai: loaihd_thucte,
                     nhacc: ""
                 };
+
+                await refreshSessionIfNeeded();
 
                 const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
                     p_loai: loaihd_thucte,                // <<< QUAN TRỌNG: loại CCN thật sự
