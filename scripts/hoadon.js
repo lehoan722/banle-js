@@ -1,389 +1,207 @@
-// luuhoadon.js
+
+// hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
+import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangketqua.js';
+
 import { supabase } from './supabaseClient.js';
-import { resetBangKetQua, getBangKetQua } from './hoadon.js';
+import { tinhKhuyenMai } from './khuyenmai.js';
 
-import { capNhatThongTinTong } from './utils.js';
-import { capNhatSoHoaDonTuDong } from './sohoadon.js';
-
-import { guiHoaDonViettel } from './viettelInvoice.js';
-
-async function refreshSessionIfNeeded() {
-    // 1) phải có session
-    const { data: s1, error: e1 } = await supabase.auth.getSession();
-    if (e1) console.warn("getSession error:", e1);
-
-    let session = s1?.session;
-    if (!session) {
-        // Không còn session => bắt đăng nhập lại
-        alert("⚠️ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại!");
-        throw new Error("NO_SESSION");
-    }
-
-    // 2) nếu sắp hết hạn (<= 90s) thì refresh
-    const expiresAtMs = (session.expires_at || 0) * 1000;
-    if (expiresAtMs && expiresAtMs - Date.now() <= 90_000) {
-        const { data: s2, error: e2 } = await supabase.auth.refreshSession();
-        if (e2 || !s2?.session) {
-            console.warn("refreshSession error:", e2);
-            alert("⚠️ Không làm mới được phiên đăng nhập. Vui lòng đăng nhập lại!");
-            throw new Error("REFRESH_FAILED");
-        }
-        session = s2.session;
-    }
-
-    return session;
+function _data() {
+    return (window.bangKetQua && Object.keys(window.bangKetQua).length)
+        ? window.bangKetQua
+        : bangKetQua;
+}
+function _sync(obj) {
+    window.bangKetQua = obj;
+    bangKetQua = obj;
 }
 
-
-async function hoaDonDaTonTai(sohd) {
-    if (!sohd) return false;
-    const { data, error } = await supabase
-        .from("hoadon_banle")
-        .select("sohd")
-        .eq("sohd", sohd)
-        .maybeSingle();
-    return !!data;
-}
-
-
-// === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
-window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
-
-// === Helpers chung, dùng lại toàn file ===
-const getInt = (id) => parseInt((document.getElementById(id)?.value || "").replace(/[.,]/g, "") || "0", 10);
-
-// Chuẩn hoá mảng size: rỗng -> "0"
-function normalizeBangKetQua(bkq) {
-    if (!bkq) return;
-    Object.values(bkq).forEach(item => {
-        if (Array.isArray(item?.sizes)) {
-            item.sizes = item.sizes.map(sz => {
-                const s = String(sz ?? "").trim();
-                return s === "" ? "0" : s;
-            });
-        }
-    });
-}
-
-// Lấy địa điểm từ prefix loại
-function getDiaDiemFromLoai(loai) {
-    return (String(loai).toLowerCase().includes("cs2")) ? "cs2" : "cs1";
-}
-
-// Kiểm tra trùng số ở cả 2 bảng bán lẻ (chính và T)
-async function hoaDonDaTonTaiAny(sohd) {
-    if (!sohd) return false;
-    const [r1, r2] = await Promise.all([
-        supabase.from("hoadon_banle").select("sohd").eq("sohd", sohd).maybeSingle(),
-        supabase.from("hoadon_banleT").select("sohd").eq("sohd", sohd).maybeSingle()
-    ]);
-    return !!(r1?.data || r2?.data);
-}
-
-// === SAU KHI LƯU HÓA ĐƠN: CẬP NHẬT used_for_mt CHO DÒNG TƯ VẤN NHÂN VIÊN ===
-// Quy tắc:
-// - Chỉ chạy cho hóa đơn bán lẻ MT chính: loai = 'bancs1' hoặc 'bancs2'
-// - Chỉ xét các dòng tư vấn trong ct_hoadon_banle có:
-//      + masp trùng với masp trong chi tiết hóa đơn vừa lưu
-//      + sohd bắt đầu bằng bannvcs1_ / bannvcs2_ (tùy cơ sở)
-//      + created_at trong 1 giờ gần nhất
-//      + used_for_mt = false
-// - Nếu trong 1h không có dòng hợp lệ → bỏ qua
-// - Nếu chỉ có 1 dòng hợp lệ & size trùng với size trên hóa đơn MT → set used_for_mt = true cho đúng dòng đó
-// - Nếu có từ 2 dòng hợp lệ trở lên (kể cả trùng size hay khác size) và hóa đơn MT có bán mã đó:
-//      → coi là dữ liệu mập mờ → set used_for_mt = true cho TẤT CẢ các dòng đó (dọn rác)
-// Lưu ý: HÀM NÀY KHÔNG ẢNH HƯỞNG TỚI LUỒNG LƯU CHÍNH nếu có lỗi, chỉ log ra console.
-async function capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang) {
+// === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM, đồng bộ về state trước khi thao tác
+// === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM,
+// đồng bộ về state trước khi thao tác
+function ensureStateFromDOM() {
+    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
+    // CHỐT: nếu popup/Import đã cập nhật window.bangKetQua thì nhập về biến module luôn
     try {
-        if (!Array.isArray(chitiet) || chitiet.length === 0) return;
+        if (window.bangKetQua && typeof window.bangKetQua === 'object') {
+            _sync(window.bangKetQua); // giữ 1 nguồn sự thật cho mọi hàm trong module
+        }
+    } catch (_) { }
+}
 
-        // Chỉ áp dụng cho bán lẻ MT chính
-        const loaiNorm = String(loai || "").toLowerCase();
-        if (loaiNorm !== "bancs1" && loaiNorm !== "bancs2") return;
+// Cho phép module khác (popupNgang) chủ động sync từ window vào biến module
+window.hoadonSyncFromWindow = () => {
+    try { _sync(window.bangKetQua || {}); } catch (_) { }
+};
 
-        // Xác định prefix hóa đơn nhân viên theo địa điểm
-        const dia = String(diadiemTrang || "").toLowerCase();
-        const prefixNV = dia === "cs2" ? "bannvcs2_" : "bannvcs1_";
 
+// === BRANCH RESOLVER (ưu tiên tên trang/biến toàn cục), Fallback: localStorage (tương thích cũ) ===
+function currentBranchUpper() {
+    // 1) Ưu tiên window.diadiem do trang đã cài cứng (banlemtcs111: "cs1")
+    try {
+        const w = (window.diadiem || '').toString().toLowerCase();
+        if (w === 'cs1' || w === 'cs2') return w.toUpperCase(); // -> 'CS1' | 'CS2'
+    } catch (_) { }
+
+    // 2) Thử ô #diadiem (nếu có sẵn trên trang)
+    try {
+        const el = document.getElementById('diadiem');
+        if (el && /cs[12]/i.test(el.value)) return el.value.toUpperCase();
+    } catch (_) { }
+
+    // 3) Fallback tạm thời: localStorage (giữ an toàn cho trang cũ chưa đặt window.diadiem)
+    try {
+        const ls = (localStorage.getItem('diadiem') || '').toLowerCase();
+        if (ls === 'cs1' || ls === 'cs2') return ls.toUpperCase();
+    } catch (_) { }
+
+    // 4) Mặc định an toàn
+    return 'CS1';
+}
+
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// Quy tắc:
+// - Chỉ xét các dòng nhân viên trong 1 giờ gần nhất, used_for_mt = false
+// - Nếu không có dòng nào -> không gợi ý
+// - Nếu có > 1 dòng (kể cả cùng size hay khác size):
+//     + KHÔNG gợi ý
+//     + Đánh dấu used_for_mt = true cho TẤT CẢ các dòng đó (dọn rác mạnh tay)
+// - Nếu CHỈ CÓ 1 dòng hợp lệ:
+//     + Gợi ý size của dòng đó
+//     + Đồng thời đánh dấu used_for_mt = true cho dòng đó (mỗi dòng dùng 1 lần)
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// Phiên bản READ-ONLY: chỉ đọc dữ liệu tư vấn, KHÔNG cập nhật used_for_mt.
+// Quy tắc:
+// - Chỉ xét các dòng nhân viên trong 1 giờ gần nhất, used_for_mt = false
+// - Lọc những dòng có size hợp lệ (khác rỗng)
+// - Nếu không có dòng nào -> không gợi ý
+// - Nếu có TỪ 2 DÒNG TRỞ LÊN (kể cả cùng size hay khác size) -> không gợi ý
+// - Chỉ khi CÓ ĐÚNG 1 DÒNG hợp lệ trong 1h -> trả về size của dòng đó
+async function goiYSizeTuHoaDonNhanVien(maspBase) {
+    const masp = String(maspBase || "").trim().toUpperCase();
+    if (!masp) return null;
+
+    // Xác định prefix hóa đơn nhân viên theo CƠ SỞ, ưu tiên URL trang bán lẻ MT
+    const path = (location.pathname || "").toLowerCase();
+    let prefix;
+
+    if (path.includes("banlemtcs2")) {
+        // Trang bán lẻ MT cơ sở 2 → chỉ lấy từ bannvcs2_
+        prefix = "bannvcs2_";
+    } else if (path.includes("banlemtcs1")) {
+        // Trang bán lẻ MT cơ sở 1 → chỉ lấy từ bannvcs1_
+        prefix = "bannvcs1_";
+    } else {
+        // Các trang khác fallback theo currentBranchUpper (giữ an toàn cho logic cũ)
+        const branch = currentBranchUpper(); // 'CS1' | 'CS2'
+        prefix = branch === "CS2" ? "bannvcs2_" : "bannvcs1_";
+    }
+
+    try {
         const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-        // Tập mã sản phẩm duy nhất có trong hóa đơn vừa lưu
-        const maspSet = new Set();
-        chitiet.forEach((ct) => {
-            const m = String(ct.masp || "").trim().toUpperCase();
-            if (m) maspSet.add(m);
+        const { data, error } = await supabase
+            .from("ct_hoadon_banle")
+            .select("id, size, sohd, created_at, used_for_mt")
+            .eq("masp", masp)
+            .like("sohd", `${prefix}%`)
+            .gte("created_at", oneHourAgoIso)
+            .eq("used_for_mt", false)
+            .order("id", { ascending: false })
+            .limit(50);
+
+        if (error) {
+            console.error("Gợi ý size từ HĐ nhân viên lỗi:", error);
+            return null;
+        }
+
+        if (!data || !data.length) return null;
+
+        // Chỉ lấy những dòng có size hợp lệ
+        const validRows = data.filter((r) => {
+            const s = r && r.size != null ? String(r.size).trim() : "";
+            return s !== "";
         });
 
-        if (!maspSet.size) return;
+        if (!validRows.length) return null;
 
-        for (const masp of maspSet) {
-            const { data, error } = await supabase
-                .from("ct_hoadon_banle")
-                .select("id, size, sohd, created_at, used_for_mt, masp")
-                .eq("masp", masp)
-                .like("sohd", `${prefixNV}%`)
-                .gte("created_at", oneHourAgoIso)
-                .eq("used_for_mt", false)
-                .order("id", { ascending: false })
-                .limit(50);
-
-            if (error) {
-                console.error("Lỗi truy vấn tư vấn NV cho masp", masp, error);
-                continue;
-            }
-            if (!data || !data.length) continue;
-
-            const validRows = data.filter((r) => {
-                const s = r && r.size != null ? String(r.size).trim() : "";
-                return s !== "";
-            });
-            if (!validRows.length) continue;
-
-            // Nếu hóa đơn MT KHÔNG bán mã này thì không dọn rác nhóm này
-            const usedAny = chitiet.some(
-                (ct) => String(ct.masp || "").trim().toUpperCase() === masp
-            );
-            if (!usedAny) continue;
-
-            if (validRows.length === 1) {
-                // Chỉ dùng khi size trùng với size trên hóa đơn MT
-                const nvSize = String(validRows[0].size || "").trim();
-                const usedInMT = chitiet.some(
-                    (ct) =>
-                        String(ct.masp || "").trim().toUpperCase() === masp &&
-                        String(ct.size ?? "").trim() === nvSize
-                );
-                if (!usedInMT) continue;
-
-                await supabase
-                    .from("ct_hoadon_banle")
-                    .update({ used_for_mt: true })
-                    .eq("id", validRows[0].id);
-            } else {
-                // Có từ 2 dòng trở lên (kể cả cùng size hay khác size) → dọn rác toàn bộ nếu có phát sinh bán MT
-                const ids = validRows.map((r) => r.id);
-                if (ids.length) {
-                    await supabase
-                        .from("ct_hoadon_banle")
-                        .update({ used_for_mt: true })
-                        .in("id", ids);
-                }
-            }
+        // Nếu có từ 2 dòng trở lên (kể cả trùng size) → không gợi ý gì
+        if (validRows.length > 1) {
+            return null;
         }
+
+        // Đến đây chắc chắn chỉ có 1 dòng hợp lệ
+        const row = validRows[0];
+        const sizeStr = String(row.size || "").trim();
+        if (!sizeStr) return null;
+
+        return sizeStr;
     } catch (err) {
-        console.error("Lỗi capNhatUsedTuVanSauKhiLuuCT:", err);
+        console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
+        return null;
     }
 }
 
+export let bangKetQua = {};
 
-// ===== Modal "Số hóa đơn đã tồn tại" với 2 nút to (Tạo mới / Sửa) =====
-function ensureExistDialog() {
-    if (document.getElementById('exist-dialog')) return;
-
-    const css = document.createElement('style');
-    css.id = 'exist-dialog-css';
-    css.textContent = `
-  .exist-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998}
-  .exist-box{position:fixed;z-index:9999;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:560px;max-width:92vw;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);
-    font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
-  .exist-hd{padding:14px 18px;border-bottom:1px solid #eee;font-weight:700;font-size:16px}
-  .exist-bd{padding:16px 18px;line-height:1.5;color:#333}
-  .exist-actions{display:flex;gap:16px;justify-content:center;padding:16px 18px 22px}
-  .exist-btn{min-width:210px;padding:12px 18px;border-radius:999px;border:2px solid transparent;
-    font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
-  .exist-btn.new{background:#1e88e5;color:#fff}
-  .exist-btn.new:focus,.exist-btn.new:hover{filter:brightness(1.05)}
-  .exist-btn.edit{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
-  .exist-btn.edit:focus,.exist-btn.edit:hover{filter:brightness(1.03)}
-  .exist-note{margin-top:8px;color:#666;font-size:13px}
-  `;
-    document.head.appendChild(css);
-
-    const wrap = document.createElement('div');
-    wrap.id = 'exist-dialog';
-    wrap.style.display = 'none';
-    wrap.innerHTML = `
-    <div class="exist-mask" data-role="mask"></div>
-    <div class="exist-box" role="dialog" aria-modal="true" aria-labelledby="exist-title">
-      <div class="exist-hd" id="exist-title">Số hóa đơn đã tồn tại</div>
-      <div class="exist-bd">
-        <div>Hóa đơn có số <b id="exist-sohd"></b> đã có trong hệ thống.</div>
-        <div class="exist-note">Chọn <b>Tạo hóa đơn mới</b> để hệ thống tự cấp số mới, hoặc
-        <b>Sửa hóa đơn này</b> (yêu cầu xác thực) nếu bạn muốn chỉnh hóa đơn cũ.</div>
-      </div>
-      <div class="exist-actions">
-        <button class="exist-btn new"  id="exist-new-btn">Tạo hóa đơn mới</button>
-        <button class="exist-btn edit" id="exist-edit-btn">Sửa hóa đơn này</button>
-      </div>
-    </div>`;
-    document.body.appendChild(wrap);
-
-    // Đóng khi click nền mờ
-    wrap.querySelector('[data-role="mask"]').addEventListener('click', () => {
-        wrap.style.display = 'none';
-    });
+// Trong hoadon.js
+let maspDangChon = null;
+export function setMaspspDangChon(obj) {
+    maspDangChon = obj; // obj = {masp, size}
+}
+export function getMaspspDangChon() {
+    return maspDangChon;
 }
 
-function showExistDialog(sohd) {
-    ensureExistDialog();
-    const wrap = document.getElementById('exist-dialog');
-    document.getElementById('exist-sohd').textContent = sohd;
-    wrap.style.display = 'block';
-
-    return new Promise(resolve => {
-        const ok = document.getElementById('exist-new-btn');
-        const edt = document.getElementById('exist-edit-btn');
-
-        const cleanup = () => {
-            ok.removeEventListener('click', onNew);
-            edt.removeEventListener('click', onEdit);
-            wrap.style.display = 'none';
-        };
-        const onNew = () => { cleanup(); resolve('new'); };
-        const onEdit = () => { cleanup(); resolve('edit'); };
-
-        ok.addEventListener('click', onNew);
-        edt.addEventListener('click', onEdit);
-    });
+function toInt(v) {
+    if (v == null) return 0;
+    return parseInt(String(v).replace(/[.,\s]/g, ""), 10) || 0;
 }
 
-
-
-function getLoaiFromSoHDInput() {
-    const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
-    if (raw && raw.includes('_')) {
-        // nếu ô sohd đã có dạng hợp lệ thì cứ cắt prefix
-        return raw.split('_')[0];
-    }
-    // Fallback theo đường dẫn trang – KHÔNG phụ thuộc ô #sohd
-    const path = location.pathname.toLowerCase();
-    if (path.includes('nhaptamcs1')) return 'ntcs1';
-    if (path.includes('nhapmoimtcs1')) return 'nmcs1';
-    if (path.includes('nhaptamcs2')) return 'ntcs2';
-    if (path.includes('nhapmoimtcs2')) return 'nmcs2';
-    // thêm các trang khác nếu cần …
-    return '';
+function parseMoneyInt(v) {
+    if (v == null) return 0;
+    // bỏ dấu phẩy, chấm, khoảng trắng
+    const s = String(v).trim().replace(/\./g, "").replace(/,/g, "").replace(/\s/g, "");
+    const n = parseInt(s, 10);
+    return isNaN(n) ? 0 : n;
 }
 
-
-
-
-let choPhepSua = false;
-
-// --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
-// --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
-async function ensureCatalogsReady() {
-    // Sản phẩm
-    if (!window.sanPhamData || Object.keys(window.sanPhamData).length === 0) {
-        const { data: dssp, error } = await supabase
-            .from("dmhanghoa")
-            .select("*"); // DÙNG * để nhận được cả manhom/nhomhang tùy DB của bạn
-
-        if (!error && Array.isArray(dssp)) {
-            window.sanPhamData = {};
-            dssp.forEach(sp => {
-                const key = String(sp.masp || "").toUpperCase().trim();
-                window.sanPhamData[key] = sp;
-            });
-        } else {
-            console.warn("⚠️ Không tải được dmhanghoa, requireManagedAtBranch có thể sai.", error);
-            window.sanPhamData = window.sanPhamData || {};
-        }
-    }
-
-    // Nhóm hàng (Map)
-    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) {
-        const { data, error } = await supabase
-            .from("dmnhomhang")
-            .select("manhom, quanlysize, diadiem"); // dmnhomhang có cột manhom là PK
-
-        if (!error && Array.isArray(data)) {
-            window.danhMucNhom = new Map();
-            data.forEach(row => {
-                window.danhMucNhom.set(String(row.manhom).toUpperCase().trim(), {
-                    quanlysize: !!row.quanlysize,
-                    diadiem: String(row.diadiem || "ALL").toUpperCase().trim() // ALL | CS1 | CS2
-                });
-            });
-        } else {
-            console.warn("⚠️ Không tải được dmnhomhang, requireManagedAtBranch sẽ trả false.", error);
-            window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
-        }
-    }
+// === Helper: Sản phẩm có bắt buộc quản lý size không? (GD hoặc quanlykichco=true)
+function isQuanLySizeProduct(sp) {
+    if (!sp) return false;
+    const isGD = String(sp.chungloai || "").trim().toUpperCase() === "GD";
+    return isGD || sp.quanlykichco === true;
 }
 
-// [ADD – đặt gần đầu file luuhoadon.js, trước khi dùng tới trong xacNhanSuaHoaDon()]
-function getDiaDiemFromPageName() {
-    const t = ((document?.title || '') + ' ' + (window?.location?.pathname || '')).toLowerCase();
-
-    // Ưu tiên pathname có 'cs1'/'cs2' (vd: /banlemtcs1.html, /nhaptamcs2.html)
-    if (t.includes('cs2')) return 'cs2';
-    if (t.includes('cs1')) return 'cs1';
-
-    // Fallback: tiêu đề trang chứa 'cơ sở 1/2' (không dấu)
-    const normalized = t
-        .replace(/cơ\s*sở/gi, 'co so')
-        .replace(/[^\w\s]/g, ' ') // bỏ ký tự đặc biệt
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    if (normalized.includes('co so 2')) return 'cs2';
-    if (normalized.includes('co so 1')) return 'cs1';
-
-    // Cuối cùng: nếu không đoán được, trả rỗng để caller tự xử lý
-    return '';
+function recalcThanhtienFromForm() {
+    const sl = toInt(document.getElementById("soluong")?.value || "1");
+    const gia = toInt(document.getElementById("gia")?.value || "0");
+    const km = toInt(document.getElementById("khuyenmai")?.value || "0");
+    const tt = (gia - km) * sl;
+    const ttEl = document.getElementById("thanhtien");
+    if (ttEl) ttEl.value = tt.toLocaleString();
 }
 
-
-/***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
-/* ========================= CCN CONTEXT (ĐÓNG BĂNG CHIỀU CHUYỂN) ========================= */
-/* [MỚI] Đóng băng bối cảnh CCN theo chính tên trang, không dùng localStorage ở trang CCN */
-function buildCCNCtxFromPathname() {
-    const p = (window.location.pathname || '').toLowerCase();
-    // Mặc định
-    let ctx = {
-        isCCN: false,
-        src: 'CS1',
-        dst: 'CS2',
-        loaihdGoc: '',     // xcncs1 | xcncs2
-        loaihdDoiUng: '',  // ncncs2 | ncncs1
-        page: p
-    };
-
-    if (p.includes('ccn1v2')) {
-        ctx.isCCN = true;
-        ctx.src = 'CS1';
-        ctx.dst = 'CS2';
-        ctx.loaihdGoc = 'xcncs1';
-        ctx.loaihdDoiUng = 'ncncs2';
-        return ctx;
-    }
-    if (p.includes('ccn2v1')) {
-        ctx.isCCN = true;
-        ctx.src = 'CS2';
-        ctx.dst = 'CS1';
-        ctx.loaihdGoc = 'xcncs2';
-        ctx.loaihdDoiUng = 'ncncs1';
-        return ctx;
-    }
-    return ctx; // không phải trang CCN
+/***** CCN HELPERS: xác định bối cảnh chuyển chi nhánh *****/
+function isCCNMode() {
+    const p = (location.pathname || "").toLowerCase();
+    const loai = (window.loaihd || "").toLowerCase();
+    // Trang CCN thường chứa "ccn"; hoặc loaihd “xcncs1/xcncs2” (phiếu xuất chuyển chi nhánh)
+    return p.includes("ccn") || loai === "xcncs1" || loai === "xcncs2";
 }
 
-// [MỚI] Tạo context 1 lần, giữ cố định cho toàn phiên của tab
-const CCN_CTX = buildCCNCtxFromPathname();
-
-/* [MỚI] inferBranches() nay trả về từ CCN_CTX nếu là trang CCN,
-   còn trang khác (bán lẻ/nhập) giữ nguyên suy luận cũ theo prefix số chứng từ */
+// SUY RA CHIỀU CHUYỂN (nguồn → đích)
 function inferBranches() {
-    if (CCN_CTX.isCCN) {
-        return { src: CCN_CTX.src, dst: CCN_CTX.dst };
-    }
-    // Non-CCN: đoán theo sohd/prefix (giữ logic cũ)
-    const sohd = document.getElementById('sohd')?.value || '';
-    const prefix = sohd.split('_')[0] || '';
-    if (prefix.includes('cs2')) return { src: 'CS2', dst: 'CS1' };
-    return { src: 'CS1', dst: 'CS2' };
+    const loai = (window.loaihd || "").toLowerCase();
+    if (loai === "xcncs1") return { src: "CS1", dst: "CS2" }; // xuất CS1 → nhập CS2
+    if (loai === "xcncs2") return { src: "CS2", dst: "CS1" }; // xuất CS2 → nhập CS1
+
+    // fallback: lấy từ diadiem hiện tại (nếu có)
+    const here = (localStorage.getItem("diadiem") || "").toUpperCase();
+    if (here === "CS1") return { src: "CS1", dst: "CS2" };
+    if (here === "CS2") return { src: "CS2", dst: "CS1" };
+    return { src: "CS1", dst: "CS2" }; // an toàn
 }
 
 /* [MỚI] Nhận diện "quản size" theo CHỦNG LOẠI (GD = giày dép) & theo NHÓM (quanlysize + diadiem) */
@@ -399,1158 +217,944 @@ function resolveGroupKeyFromSP(sp) {
     return null;
 }
 
-// luuhoadon.js
 function requireManagedAtBranch(masp, branch) {
-    const upper = s => String(s || "").toUpperCase().trim();
+    const upper = (s) => String(s || "").toUpperCase().trim();
     const sp = window.sanPhamData?.[upper(masp)];
-    const br = upper(branch);
+    if (!sp) return false; // thiếu catalog → coi như không quản-size
 
-    // ❗Nếu chưa tra được catalog → giữ size (trả true)
-    if (!sp) return true;
-
-    // 1) Chủng loại GD => quản size
+    // 1) Theo CHỦNG LOẠI: Giày/Dép luôn quản-size
     if (upper(sp.chungloai || "") === "GD") return true;
 
-    // 2) Cờ riêng của SP
+    // 2) Theo CỜ SẢN PHẨM: dmhanghoa.quanlykichco = true → quản-size (áp cho cả 2 cơ sở)
     if (sp.quanlykichco === true) return true;
 
-    // 3) Theo nhóm + địa điểm
-    if (window.danhMucNhom instanceof Map && window.danhMucNhom.size) {
-        const groupKey = resolveGroupKeyFromSP(sp); // manhom/nhomhang/...
-        if (groupKey) {
-            const nhom = window.danhMucNhom.get(upper(groupKey));
-            if (nhom && nhom.quanlysize) {
-                const dia = upper(nhom.diadiem || "ALL");
-                return dia === "ALL" || dia === br;
+    // 3) Theo NHÓM + địa điểm: chỉ quản-size ở cơ sở được chỉ định
+    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) return false;
+
+    const groupKey = resolveGroupKeyFromSP(sp); // <-- CHỐT: lấy manhom/nhomhang linh hoạt
+    if (!groupKey) return false;
+
+    const nhom = window.danhMucNhom.get(groupKey);
+    if (!nhom || !nhom.quanlysize) return false;
+
+    const dia = String(nhom.diadiem || "ALL").toUpperCase().trim(); // 'ALL' | 'CS1' | 'CS2'
+    return dia === "ALL" || dia === upper(branch);
+}
+
+// Trong NGỮ CẢNH CCN: chỉ cần một trong hai đầu quản-size là phải nhập size
+function requireManagedInTransfer(masp) {
+    const branches = inferBranches();
+    return (
+        requireManagedAtBranch(masp, branches.src) ||
+        requireManagedAtBranch(masp, branches.dst)
+    );
+}
+
+// === BANLE MT HELPERS: xác định bối cảnh bán lẻ MT & gợi ý size từ hóa đơn nhân viên ===
+function isBanLeMTMode() {
+    const p = (location.pathname || "").toLowerCase();
+    const loai = (window.loaihd || "").toLowerCase();
+
+    // Các trang bán lẻ MT chính: banlemtcs1, banlemtcs2
+    if (p.includes("banlemtcs1") || p.includes("banlemtcs2")) {
+        return true;
+    }
+
+    // Dự phòng theo loại hóa đơn nếu sau này bạn có set
+    if (loai === "bancs1" || loai === "bancs2") {
+        return true;
+    }
+
+    return false;
+}
+
+// Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
+// BẢN MỚI: nếu có size gợi ý hợp lệ → tự động thêm luôn vào bảng kết quả
+function autoGoiYSizeNeuOTrong(maspBaseNow) {
+    const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
+    if (!maspSnap) return;
+
+    const maspAtTime = maspSnap;
+
+    goiYSizeTuHoaDonNhanVien(maspSnap)
+        .then((sizeGoiY) => {
+            if (!sizeGoiY) return;
+
+            const sizeInput = document.getElementById("size");
+            const maspInput = document.getElementById("masp");
+            if (!sizeInput || !maspInput) return;
+
+            // Nếu trong lúc chờ, người dùng đã tự gõ size → KHÔNG làm gì
+            if (sizeInput.value.trim()) return;
+
+            // Nếu người dùng đã chuyển sang mã khác → KHÔNG làm gì
+            const maspCurrent = maspInput.value.trim().toUpperCase();
+            if (maspCurrent !== maspAtTime) return;
+
+            // 1) Gán size gợi ý lên form
+            const sizeValue = String(sizeGoiY).trim();
+            sizeInput.value = sizeValue;
+
+            // 2) Tự động thêm vào bảng kết quả
+            const nhapSizeMode =
+                document.getElementById("nhapsize")?.checked === true;
+
+            if (nhapSizeMode) {
+                // Chế độ nhập size liên tiếp: giữ mã & focus lại #size
+                themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+            } else {
+                // Chế độ bình thường: thêm xong reset về #masp
+                themVaoBang(sizeValue);
+            }
+
+            // Không cần focus/select #size nữa vì themVaoBang đã xử lý focus phù hợp
+        })
+        .catch((err) => {
+            console.error("autoGoiYSizeNeuOTrong lỗi:", err);
+        });
+}
+
+
+export async function chuyenFocus(e) {
+    if (e.key !== "Enter") return;
+
+    const nhapNhanh = document.getElementById("nhapnhanh").checked;
+    const size45 = document.getElementById("size45").checked;
+
+    if (e.target.id === "masp") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
+        const maspVal = document.getElementById("masp").value.trim().toUpperCase();
+        const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked;
+        const thanhCong = await xuLyMaSanPham(quanLySizeTheoGia, maspVal, size45, nhapNhanh);
+
+        // Nếu không thành công → chỉ đưa con trỏ về lại ô MÃ SP (không mở popup)
+        if (!thanhCong) {
+            const maspInput = document.getElementById("masp");
+            if (maspInput) {
+                setTimeout(() => {
+                    maspInput.focus();
+                    maspInput.select();
+                }, 600);
             }
         }
-    }
 
-    // ✅ Không rơi vào case nào khẳng định “không size” → vẫn coi là có size
-    return true;
-}
+    } else if (e.target.id === "soluong") {
+        // Đóng gợi ý nếu đang mở
+        window.closePopupMasp && window.closePopupMasp();
 
-
-async function handleSpecialSoHoaDon(sohd) {
-    // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
-    const prefixFull = (sohd.split("_")[0] || "").toLowerCase();
-    if (prefixFull !== "bancs1" && prefixFull !== "bancs2") {
-        // Không phải hóa đơn bán lẻ → không kích hoạt nhánh 2 bản
-        return false;
-    }
-
-    // Lấy số thứ tự
-    const parts = sohd.split("_");
-    if (parts.length < 2) return false;
-    const num = parseInt(parts[1], 10);
-
-    // Xác định cơ sở và điều kiện chia hết
-    const diadiem = (prefixFull === "bancs2") ? "cs2" : "cs1";
-    const modulus = (diadiem === "cs1") ? 4 : 6;
-
-    // Không phải số đặc biệt → thôi
-    if (Number.isNaN(num) || num % modulus !== 0) return false;
-
-    // Giới hạn tiền theo cơ sở
-    const ngay = document.getElementById("ngay").value;
-    let hanMuc = (diadiem === "cs1") ? 2500000 : 7000000;
-
-    // Tổng đã lưu trong ngày của bảng T tại cơ sở này
-    const { data, error } = await supabase
-        .from("hoadon_banleT")
-        .select("thanhtoan")
-        .eq("ngay", ngay)
-        .eq("diadiem", diadiem);
-
-    let tongTien = 0;
-    if (data && data.length) {
-        tongTien = data.reduce((sum, hd) => sum + (Number(hd.thanhtoan) || 0), 0);
-    }
-
-    const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-    const tienHoaDon = getIntValue("phaithanhtoan");
-
-    if (tongTien + tienHoaDon > hanMuc) {
-        // Vượt hạn mức → chỉ lưu bản thường
-        return false;
-    }
-
-    // ✅ Đủ điều kiện → lưu 2 bản và gọi Viettel (logic nằm trong luuHoaDonCaHaiBan)
-    await luuHoaDonCaHaiBan();
-    return true;
-}
-
-
-export async function luuHoaDonQuaAPI() {
-    capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
-
-    const maspChuaNhap = document.getElementById("masp")?.value.trim();
-    if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-        alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
-        document.getElementById("masp").focus();
-        return;
-    }
-
-    const bangKetQua = getBangKetQua();
-    const sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) return alert("❌ Chưa có số hóa đơn.");
-    const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
-
-    // ... sau khi có const sohd = ...; const tennv = ...;
-
-    // ... đã có sohd, tennv, bangKetQua ...
-
-    // 1) Khai báo trước
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-
-    // 2) KHỐI SỐ ĐẶC BIỆT (phải đứng SAU dòng trên)
-    if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTaiAny(sohd);
-        if (!existed && await handleSpecialSoHoaDon(sohd)) {
-            return; // đã lưu 2 bản xong thì thoát sớm
+        const sizeEl = document.getElementById("size");
+        if (sizeEl) {
+            sizeEl.focus();
+            sizeEl.select();   // ✅ bôi đen để gõ tiếp
         }
-    }
+        return;              // ✅ thoát nhánh cho rõ ràng
+    } else if (e.target.id === "size") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
 
-    // 3) Hỏi nếu số đang gõ bị trùng (vẫn đứng SAU) 
-    if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTaiAny(sohd);
-        if (existed) {
-            const choice = await showExistDialog(sohd);
-            if (choice === 'edit') {
-                document.getElementById("popupXacThucSua").style.display = "block";
-                document.getElementById("xacmanv")?.focus();
+        const sizeInput = document.getElementById("size");
+        const maspInput = document.getElementById("masp");
+        const raw = String(sizeInput.value || "").trim();
+        const val = raw.toUpperCase();
+
+        // Danh mục size hợp lệ
+        const dsSize = Array.isArray(window.danhMucSize)
+            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+            : [];
+
+        const isValidSize = val && dsSize.includes(val);
+        const nhapSizeMode = document.getElementById("nhapsize")?.checked === true; // 🔴 CHẾ ĐỘ NHẬP SIZE LIÊN TIẾP
+        ensureStateFromDOM();
+        if (nhapSizeMode) {
+            // ====== MODE A: Đang bật nhập size liên tiếp ======
+            if (isValidSize) {
+                // Thêm dòng, GIỮ MÃ SP, focus + select về #size để nhập liên tiếp
+                themVaoBang(val, { afterAdd: "keepMaspFocusSize" });
                 return;
             }
-            // choice === 'new' → để NEW tiếp, RPC sẽ cấp số mới
-        }
-    }
 
-
-    // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
-
-    if (!IS_EDIT) {
-        // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
-        let loai = getLoaiFromSoHDInput();
-        if (!loai) {
-            // nếu ô #sohd chưa có, phát sinh lại rồi lấy
-            await capNhatSoHoaDonTuDong();
-            loai = getLoaiFromSoHDInput();
-            if (!loai) { alert("❗Chưa xác định được loại chứng từ từ số hóa đơn."); return; }
-        }
-        const diadiemTrang = loai.includes('cs2') ? 'cs2' : 'cs1';
-
-
-        const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-        const header = {
-            ngay: document.getElementById("ngay").value,
-            manv: document.getElementById("manv").value,
-            tennv: document.getElementById("tennv").value,
-            diadiem: diadiemTrang,
-            khachhang: document.getElementById("khachhang").value,
-            tongsl: getIntValue("tongsl"),
-            tongkm: getIntValue("tongkm"),
-            chietkhau: getIntValue("chietkhau"),
-            thanhtoan: getIntValue("phaithanhtoan"),
-            hinhthuctt: document.getElementById("hinhthuctt").value,
-            ghichu: document.getElementById("ghichu")?.value || "",
-            dvt: "",
-            loaihd: loai,
-            loai: loai,
-            nhacc: ""
-        };
-
-        await refreshSessionIfNeeded();
-
-        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
-            p_loai: loai,
-            p_diadiem: diadiemTrang,
-            p_header: header
-        });
-
-        if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
-            console.error(rpcErr);
-            alert("❌ Lưu hóa đơn thất bại (cấp số).");
-            return;
-        }
-
-        const sohdThucTe = rpcRes[0].sohd;
-        document.getElementById("sohd").value = sohdThucTe;
-
-        normalizeBangKetQua(getBangKetQua());
-        const createdAt = new Date().toISOString();
-        const bangKetQuaNEW = getBangKetQua();
-
-        const chitiet = [];
-        Object.values(bangKetQuaNEW).forEach(item => {
-            item.sizes.forEach((sz, i) => {
-                const sl = item.soluongs[i];
-                chitiet.push({
-                    sohd: sohdThucTe,
-                    masp: item.masp,
-                    tensp: item.tensp,
-                    size: sz,
-                    soluong: sl,
-                    gia: item.gia,
-                    km: item.km,
-                    thanhtien: (item.gia - item.km) * sl,
-                    dvt: item.dvt || '',
-                    diadiem: diadiemTrang,
-                    created_at: createdAt,
-                    ngay: document.getElementById("ngay").value
-                });
-            });
-        });
-
-        const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
-        if (errCT) {
-            alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
-            console.error(errCT);
-            await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
-            return;
-        }
-
-        // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
-        await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
-
-        inHoaDon({ ...header, sohd: sohdThucTe }, chitiet);
-        await lamMoiSauKhiLuu();
-
-        choPhepSua = false;
-        return;
-    }
-
-    // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
-    const { data: tonTai } = await supabase
-        .from("hoadon_banle")
-        .select("sohd")
-        .eq("sohd", sohd)
-        .maybeSingle();
-
-    if (!tonTai) {
-        alert("❌ Không tìm thấy hóa đơn để sửa. Vui lòng kiểm tra lại số HĐ hoặc chuyển sang tạo mới.");
-        return;
-    }
-
-    if (tonTai && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        p.style.display = "block";
-        const manvEl = document.getElementById("xacmanv");
-        if (manvEl) { manvEl.focus(); manvEl.select(); }
-        return;
-    }
-
-    if (tonTai && choPhepSua) {
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-    }
-
-    const createdAt = new Date().toISOString();
-
-    const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-
-    const hoadon = {
-        sohd,
-        ngay: document.getElementById("ngay").value,
-        manv: document.getElementById("manv").value,
-        tennv: document.getElementById("tennv").value,
-        diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
-        khachhang: document.getElementById("khachhang").value,
-        tongsl: getIntValue("tongsl"),
-        tongkm: getIntValue("tongkm"),
-        chietkhau: getIntValue("chietkhau"),
-        thanhtoan: getIntValue("phaithanhtoan"),
-        hinhthuctt: document.getElementById("hinhthuctt").value,
-        ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAt,
-        loai: "",
-        dvt: "",
-        loaihd: sohd.split("_")[0],
-        nhacc: ""
-    };
-
-    const chitiet = [];
-    Object.values(bangKetQua).forEach(item => {
-        item.sizes.forEach((sz, i) => {
-            const sl = item.soluongs[i];
-            chitiet.push({
-                sohd,
-                masp: item.masp,
-                tensp: item.tensp,
-                size: sz,
-                soluong: sl,
-                gia: item.gia,
-                km: item.km,
-                thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || '',
-                diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
-                created_at: createdAt,
-                ngay: document.getElementById("ngay").value
-            });
-        });
-    });
-
-    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
-
-    if (!errHD && !errCT) {
-        // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
-        const [loai, so] = sohd.split('_');
-        const soMoi = parseInt(so, 10);
-
-        const { data: currSoChungTu } = await supabase
-            .from("sochungtu")
-            .select("so_hientai")
-            .eq("loai", loai)
-            .single();
-
-        if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
-            await supabase
-                .from("sochungtu")
-                .update({ so_hientai: soMoi })
-                .eq("loai", loai);
-        }
-
-        inHoaDon(hoadon, chitiet);
-        await lamMoiSauKhiLuu();
-        choPhepSua = false;
-    }
-    else {
-        alert("❌ Lỗi khi lưu hóa đơn");
-        console.error(errHD || errCT);
-    }
-}
-
-
-export async function luuHoaDonNhapQuaAPI() {
-    capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
-
-    const maspChuaNhap = document.getElementById("masp")?.value.trim();
-    if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-        alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
-        document.getElementById("masp").focus();
-        return;
-    }
-
-    const bangKetQua = getBangKetQua();
-    const sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) return alert("❌ Chưa có số hóa đơn.");
-    const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên nhập hàng.");
-
-    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-    if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const choice = await showExistDialog(sohd); // 'new' | 'edit'
-            if (choice === 'edit') {
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
+            // Không phải size hợp lệ nhưng >= 3 ký tự -> coi là MÃ SP MỚI
+            if (val.length >= 3) {
+                maspInput.value = layMaspGoc(val);   // ghi thẳng sang #masp (mã gốc, bỏ hậu tố)
+                sizeInput.value = "";                 // xóa size vừa gõ
+                // Giả lập Enter ở ô masp để tái sử dụng luồng xử lý mã
+                const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+                maspInput.dispatchEvent(ev);
+                return;
             }
-            // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
-        }
-    }
 
-    // (giữ nguyên nhánh EDIT nhập của bạn)
-
-
-    // === NHÁNH NEW: dùng RPC save_new_header cấp số & insert header ===
-
-    if (!IS_EDIT) {
-        // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
-        let loai = getLoaiFromSoHDInput();
-        if (!loai) {
-            await capNhatSoHoaDonTuDong();
-            loai = getLoaiFromSoHDInput();
-            if (!loai) { alert("❗Chưa xác định được loại chứng từ từ số hóa đơn."); return; }
-        }
-        const diadiemTrang = loai.includes('cs2') ? 'cs2' : 'cs1';
-
-
-        const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-        const header = {
-            ngay: document.getElementById("ngay").value,
-            manv: document.getElementById("manv").value,
-            tennv: document.getElementById("tennv").value,
-            diadiem: diadiemTrang,
-            khachhang: document.getElementById("khachhang").value,
-            tongsl: getIntValue("tongsl"),
-            tongkm: 0,
-            chietkhau: getIntValue("chietkhau"),
-            thanhtoan: getIntValue("phaithanhtoan"),
-            hinhthuctt: document.getElementById("hinhthuctt").value,
-            ghichu: document.getElementById("ghichu")?.value || "",
-            dvt: "",
-            loaihd: loai,
-            loai: loai,
-            nhacc: ""
-        };
-
-        await refreshSessionIfNeeded();
-
-        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
-            p_loai: loai,
-            p_diadiem: diadiemTrang,
-            p_header: header
-        });
-
-        if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
-            console.error(rpcErr);
-            alert("❌ Lưu HĐ nhập thất bại (cấp số).");
+            // Không hợp lệ và < 3 ký tự -> báo lỗi + focus lại #size
+            alert("Bạn phải nhập size hợp lệ hoặc gõ một mã sản phẩm (từ 3 ký tự).");
+            sizeInput.focus();
+            sizeInput.select();
             return;
-        }
 
-
-        const sohdThucTe = rpcRes[0].sohd;
-        document.getElementById("sohd").value = sohdThucTe;
-        normalizeBangKetQua(getBangKetQua());
-        const createdAt = new Date().toISOString();
-        const bangKetQuaNEW = getBangKetQua();
-
-
-        const chitiet = [];
-        Object.values(bangKetQuaNEW).forEach(item => {
-            item.sizes.forEach((sz, i) => {
-                const sl = item.soluongs[i];
-                let gia = 0;
-                if (window.sanPhamData && window.sanPhamData[item.masp]) {
-                    gia = window.sanPhamData[item.masp].gianhap || 0;
-                }
-                const km = 0;
-                chitiet.push({
-                    sohd: sohdThucTe,
-                    masp: item.masp,
-                    tensp: item.tensp,
-                    size: sz,
-                    soluong: sl,
-                    gia,
-                    km,
-                    thanhtien: (gia - km) * sl,
-                    dvt: item.dvt || '',
-                    diadiem: diadiemTrang,
-                    created_at: createdAt,
-                    ngay: document.getElementById("ngay").value
-                });
-            });
-        });
-
-        const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
-        if (errCT) {
-            alert("❌ Lỗi khi lưu chi tiết nhập.");
-            console.error(errCT);
-            await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
-            return;
-        }
-
-        alert("✅ Đã lưu hóa đơn nhập thành công!");
-        inHoaDon({ ...header, sohd: sohdThucTe }, chitiet);
-        await lamMoiSauKhiLuu();
-        choPhepSua = false;
-        return;
-    }
-
-    // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
-
-    const { data: tonTai } = await supabase
-        .from("hoadon_banle")
-        .select("sohd")
-        .eq("sohd", sohd)
-        .maybeSingle();
-
-    if (!tonTai) {
-        alert("❌ Không tìm thấy hóa đơn để sửa (nhập).");
-        return;
-    }
-
-
-    if (tonTai && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        p.style.display = "block";
-        const manvEl = document.getElementById("xacmanv");
-        if (manvEl) { manvEl.focus(); manvEl.select(); }
-        return;
-    }
-
-    if (tonTai && choPhepSua) {
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-    }
-    const createdAt = new Date().toISOString();
-
-    const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-
-    const hoadon = {
-        sohd,
-        ngay: document.getElementById("ngay").value,
-        manv: document.getElementById("manv").value,
-        tennv: document.getElementById("tennv").value,
-        diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
-        khachhang: document.getElementById("khachhang").value,
-        tongsl: getIntValue("tongsl"),
-        tongkm: 0, // Nhập mới không có khuyến mại
-        chietkhau: getIntValue("chietkhau"),
-        thanhtoan: getIntValue("phaithanhtoan"),
-        hinhthuctt: document.getElementById("hinhthuctt").value,
-        ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAt,
-        loai: "",
-        dvt: "",
-        loaihd: sohd.split("_")[0],
-        nhacc: ""
-    };
-
-    const chitiet2 = [];
-    Object.values(bangKetQua).forEach(item => {
-        item.sizes.forEach((sz, i) => {
-            const sl = item.soluongs[i];
-            // Ép giá nhập từ dmhanghoa nếu có
-            let gia = 0;
-            if (window.sanPhamData && window.sanPhamData[item.masp]) {
-                gia = window.sanPhamData[item.masp].gianhap || 0;
-            }
-            const km = 0;
-            chitiet2.push({
-                sohd,
-                masp: item.masp,
-                tensp: item.tensp,
-                size: sz,
-                soluong: sl,
-                gia,
-                km,
-                thanhtien: (gia - km) * sl,
-                dvt: item.dvt || '',
-                diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
-                created_at: createdAt,
-                ngay: document.getElementById("ngay").value
-            });
-        });
-    });
-
-    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet2);
-
-    if (!errHD && !errCT) {
-        // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
-        const [loai, so] = sohd.split('_');
-        const soMoi = parseInt(so, 10);
-
-        const { data: currSoChungTu } = await supabase
-            .from("sochungtu")
-            .select("so_hientai")
-            .eq("loai", loai)
-            .single();
-
-        if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
-            await supabase
-                .from("sochungtu")
-                .update({ so_hientai: soMoi })
-                .eq("loai", loai);
-        }
-
-        alert("✅ Đã lưu hóa đơn nhập thành công!");
-        inHoaDon(hoadon, chitiet2);
-        await lamMoiSauKhiLuu();
-        choPhepSua = false;
-    }
-    else {
-        alert("❌ Lỗi khi lưu hóa đơn nhập");
-        console.error(errHD || errCT);
-    }
-}
-
-export async function luuHoaDonCaHaiBan() {
-    const sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
-    // Chuẩn hoá size trước khi build chi tiết
-    normalizeBangKetQua(getBangKetQua());
-
-    // Chặn trùng số ở cả 2 bảng ngay từ đầu
-    if (await hoaDonDaTonTaiAny(sohd)) {
-        alert("🚫 Số hóa đơn đã tồn tại ở hệ thống (bảng bán lẻ hoặc bán lẻ T). Vui lòng đổi số khác!");
-        return;
-    }
-
-    // ==== CHẶN LƯU 2 BẢN NẾU LÀ HÓA ĐƠN CŨ (<=) NGAY ĐẦU HÀM ====
-    const [loai, soStr] = sohd.split('_');
-    const so = parseInt(soStr, 10);
-    const { data: currSoChungTu, error: errSoHienTai } = await supabase
-        .from("sochungtu")
-        .select("so_hientai")
-        .eq("loai", loai)
-        .single();
-    if (errSoHienTai || !currSoChungTu) {
-        alert("❌ Không lấy được số hiện tại từ bảng sochungtu.");
-        return;
-    }
-    if (so <= currSoChungTu.so_hientai) {
-        alert("🚫 Không được phép dùng chức năng này để sửa hóa đơn cũ!");
-        return;
-    }
-    // ==== HẾT ĐOẠN CHẶN ====
-
-    // Kiểm tra bảng kết quả có dữ liệu không
-    const bangKetQua = getBangKetQua();
-    if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
-        alert("⛔ Hóa đơn chưa có sản phẩm nào! Không thể lưu hai bản hóa đơn trắng.");
-        return;
-    }
-
-    // Xác nhận với người dùng trước khi tiếp tục
-    const xacNhan = confirm("Bạn có chắc chắn muốn lưu hóa đơn này ?\nNhấn OK để lưu, Huỷ để quay về giao diện hóa đơn.");
-    if (!xacNhan) return;
-
-
-    // ==== HẾT ĐOẠN CHẶN ====
-
-    // TIẾP ĐÓ mới kiểm tra các dữ liệu nhập liệu khác
-
-    // BỔ SUNG CHẶN LƯU Ở ĐÂY:
-
-    const maspChuaNhap = document.getElementById("masp")?.value.trim();
-    if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-        alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
-        document.getElementById("masp").focus();
-        return;
-    }
-
-    const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
-
-    // Lấy địa điểm từ localStorage (không lấy từ input)
-    //const diadiem = localStorage.getItem("diadiem");
-    const prefix = sohd.split("_")[0] || "";
-    let diadiem = "cs1";
-    if (prefix.includes("cs2")) diadiem = "cs2";
-    else if (prefix.includes("cs1")) diadiem = "cs1";
-
-    const createdAt = new Date().toISOString();
-    const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
-
-    // Lấy số hiện tại từ bảng sochungtu
-    const { data: row, error } = await supabase
-        .from("sochungtu")
-        .select("so_hientai")
-        .eq("loai", loaiT)
-        .single();
-
-    if (error || !row) {
-        alert("❌ Không lấy được số chứng từ từ bảng sochungtu.");
-        return;
-    }
-
-    const soMoi = row.so_hientai + 1;
-    const sohdT = `${loaiT}_${String(soMoi).padStart(3, "0")}`;
-
-    // Cập nhật lại số chứng từ mới
-    await supabase
-        .from("sochungtu")
-        .update({ so_hientai: soMoi })
-        .eq("loai", loaiT);
-
-    const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-
-    const hoadon = {
-        ngay: document.getElementById("ngay").value,
-        manv: document.getElementById("manv").value,
-        tennv: document.getElementById("tennv").value,
-        diadiem: diadiem,
-        khachhang: document.getElementById("khachhang").value,
-        tongsl: getIntValue("tongsl"),
-        tongkm: getIntValue("tongkm"),
-        chietkhau: getIntValue("chietkhau"),
-        thanhtoan: getIntValue("phaithanhtoan"),
-        hinhthuctt: document.getElementById("hinhthuctt").value,
-        ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAt,
-    };
-
-    const chitiet = [];
-    Object.values(bangKetQua).forEach(item => {
-        item.sizes.forEach((sz, i) => {
-            const sl = item.soluongs[i];
-            chitiet.push({
-                sohd,
-                masp: item.masp,
-                tensp: item.tensp,
-                size: sz,
-                soluong: sl,
-                gia: item.gia,
-                km: item.km,
-                thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || '',
-                diadiem: diadiem,
-                created_at: createdAt,
-                ngay: document.getElementById("ngay").value
-            });
-
-        });
-    });
-
-    //const hoadonChinh = { ...hoadon, sohd };
-    //const hoadonPhu = { ...hoadon, sohd: sohdT };
-
-    const hoadonChinh = { ...hoadon, sohd, loaihd: diadiem === 'cs1' ? 'bancs1' : 'bancs2' };
-    const hoadonPhu = { ...hoadon, sohd: sohdT, loaihd: diadiem === 'cs1' ? 'bancs1T' : 'bancs2T' };
-
-    const chitietChinh = chitiet.map(ct => ({ ...ct, sohd }));
-    const chitietPhu = chitiet.map(ct => ({ ...ct, sohd: sohdT }));
-
-    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadonChinh]);
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitietChinh);
-    const { error: errHDT } = await supabase.from("hoadon_banleT").insert([hoadonPhu]);
-    const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
-
-    if (errHD || errCT || errHDT || errCTT) {
-        // 🧹 Rollback bồi hoàn 4 bảng (an toàn khi một số lệnh có thể chưa chèn được)
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohdT);
-        await supabase.from("hoadon_banleT").delete().eq("sohd", sohdT);
-
-        alert("❌ Lưu 2 bản thất bại, đã hoàn tác các bản ghi liên quan. Vui lòng thử lại.");
-        console.error({ errHD, errCT, errHDT, errCTT });
-        return;
-    }
-
-    // ✅ Thành công
-    //alert("✅ Đã lưu hóa đơn thành công!");
-
-    // Sau khi lưu chi tiết CHÍNH thành công: cập nhật used_for_mt cho tư vấn nhân viên
-    await capNhatUsedTuVanSauKhiLuuCT(chitietChinh, hoadonChinh.loaihd, diadiem);
-
-    inHoaDon(hoadonChinh, chitietChinh);
-    await lamMoiSauKhiLuu();
-    guiHoaDonViettel(sohdT);
-
-}
-
-async function lamMoiSauKhiLuu() {
-    const diadiemVal = document.getElementById("diadiem").value;
-    const manvVal = document.getElementById("manv").value;
-    const tennvVal = document.getElementById("tennv").value;
-
-    document.querySelectorAll("input").forEach(input => {
-        if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
-    });
-
-    resetBangKetQua();
-    capNhatThongTinTong(getBangKetQua());
-
-    document.getElementById("diadiem").value = diadiemVal;
-    document.getElementById("manv").value = manvVal;
-    document.getElementById("tennv").value = tennvVal;
-    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-    // Reset mode về NEW sau khi lưu
-    window.HD_CTX = { mode: "NEW", version: null };
-    await capNhatSoHoaDonTuDong();
-    document.getElementById("masp").focus();
-}
-
-export async function xacNhanSuaHoaDon() {
-    // 1. Lấy thông tin đăng nhập đã lưu bởi authModule (không dùng ô input nữa)
-    const manv =
-        localStorage.getItem('manv') ||
-        localStorage.getItem('last_login_manv') ||
-        '';
-    const mk = localStorage.getItem('last_login_password') || '';
-    const sohd = (document.getElementById("sohd")?.value || '').trim();
-
-    if (!sohd) {
-        alert("❌ Không xác định được số hóa đơn cần sửa.");
-        return;
-    }
-
-    if (!manv || !mk) {
-        alert(
-            "❌ Không tìm thấy thông tin đăng nhập trong máy.\n" +
-            "Vui lòng đăng xuất và đăng nhập lại, sau đó sửa hóa đơn."
-        );
-        return;
-    }
-
-    // 2. Kiểm tra nhân viên & mật khẩu trong bảng dmnhanvien
-    const { data: nv, error: errNV } = await supabase
-        .from("dmnhanvien")
-        .select("matkhau, sua_hoadon")
-        .eq("manv", manv)
-        .maybeSingle();
-
-    if (errNV || !nv || nv.matkhau !== mk) {
-        alert("❌ Tài khoản đang đăng nhập không hợp lệ hoặc mật khẩu đã thay đổi.");
-        return;
-    }
-    if (nv.sua_hoadon !== true) {
-        alert("🚫 Tài khoản đang đăng nhập không có quyền sửa/xóa hóa đơn.");
-        return;
-    }
-
-    // 3. Kiểm tra hóa đơn thuộc đúng cơ sở đang làm việc
-    const { data: hd, error: errHD } = await supabase
-        .from("hoadon_banle")
-        .select("diadiem, updated_at")
-        .eq("sohd", sohd)
-        .maybeSingle();
-
-    if (errHD || !hd) {
-        alert("❌ Không tìm thấy hóa đơn cần sửa.");
-        return;
-    }
-
-    const diadiemTrang = getDiaDiemFromPageName && getDiaDiemFromPageName();
-    if (diadiemTrang && (hd.diadiem || "").toLowerCase() !== diadiemTrang) {
-        alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
-        return;
-    }
-
-    // 4. Đặt cờ cho phép sửa + context EDIT
-    choPhepSua = true;
-    window.HD_CTX = {
-        mode: "EDIT",
-        version: (hd && hd.updated_at) ? hd.updated_at : null
-    };
-
-    // Nếu popup tồn tại thì đóng lại (để dùng chung cho mọi trang)
-    const popup = document.getElementById("popupXacThucSua");
-    if (popup) popup.style.display = "none";
-
-    //alert("✅ Xác thực sửa hóa đơn thành công. Đang lưu lại hóa đơn...");
-
-    // 5. Gọi lại hàm lưu đúng theo loại chứng từ như logic cũ
-    if (typeof CCN_CTX !== "undefined" && CCN_CTX.isCCN) {
-        // Hóa đơn chuyển chi nhánh
-        await luuHoaDonccn1v2();
-    } else {
-        const sohdNow = (document.getElementById("sohd")?.value || '').trim();
-        const prefix = sohdNow.split("_")[0] || "";
-
-        if (prefix.includes("nmcs1") || prefix.includes("nmcs2")) {
-            await luuHoaDonNhapQuaAPI();
-        } else if (prefix.endsWith("T")) {
-            await luuHoaDonCaHaiBan();
         } else {
-            await luuHoaDonQuaAPI();
-        }
-    }
-}
-
-function inHoaDon(hoadon, chitiet) {
-    const data = { hoadon, chitiet };
-    localStorage.setItem("data_hoadon_in", JSON.stringify(data));
-
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = "/in-hoadon.html";
-    document.body.appendChild(iframe);
-
-    iframe.onload = () => {
-        setTimeout(() => {
-            try {
-                iframe.contentWindow.print();
-            } catch (e) {
-                console.error("Không thể gọi print() từ iframe:", e);
-            } finally {
-                iframe.remove();
-            }
-        }, 500);
-    };
-}
-
-/* ========================= LƯU CHUYỂN CHI NHÁNH – ĐÃ TÍCH HỢP CCN_CTX ========================= */
-export async function luuHoaDonccn1v2() {
-    if (!CCN_CTX.isCCN) {
-        alert("❗Trang hiện tại không phải trang CCN. Vui lòng mở đúng trang ccn1v2 hoặc ccn2v1.");
-        return;
-    }
-    const loaihd_thucte = CCN_CTX.loaihdGoc;
-    const diadiemSRC = CCN_CTX.src.toLowerCase();
-
-    capNhatThongTinTong(getBangKetQua());
-    normalizeBangKetQua(getBangKetQua());
-
-    const maspChuaNhap = document.getElementById("masp")?.value.trim();
-    if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-        alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng!");
-        document.getElementById("masp").focus();
-        return;
-    }
-
-    await ensureCatalogsReady();
-
-    const bangKetQua = getBangKetQua();
-
-    // Normalize sau dán (tránh size null/undefined hoặc số chưa được stringify)
-    for (const k of Object.keys(bangKetQua)) {
-        const item = bangKetQua[k];
-        if (!Array.isArray(item.sizes) || !Array.isArray(item.soluongs)) continue;
-        item.sizes = item.sizes.map(sz => {
-            const s = String(sz ?? "").trim();
-            return s === "" ? "0" : s;
-        });
-    }
-
-    let sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) return alert("❌ Chưa có số hóa đơn.");
-    const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên.");
-
-    const prefix = sohd.split("_")[0] || "";
-    if (prefix !== loaihd_thucte) {
-        alert(`🚫 Số chứng từ không khớp trang. Trang này yêu cầu prefix "${loaihd_thucte}_*".`);
-        return;
-    }
-
-    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
-    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-
-    if (!IS_EDIT) {
-        // NEW: nếu số đang nhập đã tồn tại → hỏi người dùng
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const choice = await showExistDialog(sohd); // 'new' | 'edit'
-            if (choice === 'edit') {
-                // Người dùng chọn SỬA → bật popup xác thực và dừng
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
+            // ====== MODE B: Không bật nhập size liên tiếp (an toàn) ======
+            if (isValidSize) {
+                // Thêm dòng, SAU ĐÓ focus + select về #masp để nhập mã mới
+                themVaoBang(val); // dùng luồng mặc định -> resetFormBang() sẽ focus #masp
                 return;
             }
-            // Người dùng chọn TẠO MỚI → NHỜ RPC cấp số mới CHUẨN theo loaihd_thucte
-            {
-                const getInt = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
 
-                // Header tạm để RPC ghi dòng header và trả về sohd mới (đúng prefix)
-                const headerTmp = {
-                    ngay: document.getElementById("ngay").value,
-                    manv: document.getElementById("manv").value,
-                    tennv: document.getElementById("tennv").value,
-                    diadiem: diadiemSRC,                  // 'cs1' hoặc 'cs2' theo CCN_CTX
-                    khachhang: document.getElementById("khachhang").value,
-                    tongsl: getInt("tongsl"),
-                    tongkm: getInt("tongkm"),
-                    chietkhau: getInt("chietkhau"),
-                    thanhtoan: getInt("phaithanhtoan"),
-                    hinhthuctt: document.getElementById("hinhthuctt").value,
-                    ghichu: document.getElementById("ghichu")?.value || "",
-                    dvt: "",
-                    loaihd: loaihd_thucte,                // xcncs1 hoặc xcncs2
-                    loai: loaihd_thucte,
-                    nhacc: ""
-                };
+            // Không hợp lệ (dài hay ngắn đều coi là sai) -> chỉ báo lỗi + ở lại #size
+            alert("Size không hợp lệ! Chỉ cho phép nhập: 38 -> 45");
+            sizeInput.focus();
+            sizeInput.select();
+            return;
+        }
+    } else if (e.target.id === "khuyenmai") {
+        // Chuẩn hoá khuyến mại: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
+        const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
+        let km = parseFloat(String(document.getElementById("khuyenmai").value).replace(/\./g, "").replace(/,/g, "."));
+        if (!isFinite(km)) km = 0;
+        km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
+        document.getElementById("khuyenmai").value = km.toLocaleString();
 
-                await refreshSessionIfNeeded();
+        recalcThanhtienFromForm();
 
-                const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
-                    p_loai: loaihd_thucte,                // <<< QUAN TRỌNG: loại CCN thật sự
-                    p_diadiem: diadiemSRC,                // 'cs1'/'cs2'
-                    p_header: headerTmp
-                });
+        // 🔑 Thay vì gọi themVaoBang → giả lập Enter trên #size
+        const sizeInput = document.getElementById("size");
+        if (sizeInput) {
+            const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+            sizeInput.dispatchEvent(ev);
+        }
+        return;
 
-                if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
-                    console.error(rpcErr);
-                    alert("❌ Không cấp được số hóa đơn mới cho chứng từ chuyển chi nhánh.");
-                    return;
+    } else if (e.target.id === "gia") {
+        const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
+        document.getElementById("gia").value = gia.toLocaleString();
+
+        let kmIn = String(document.getElementById("khuyenmai").value).trim();
+        let km = parseFloat(kmIn.replace(/\./g, "").replace(/,/g, "."));
+        if (!isFinite(km)) km = 0;
+        km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
+        document.getElementById("khuyenmai").value = km.toLocaleString();
+
+        recalcThanhtienFromForm();
+
+        // 🔑 Giả lập Enter trên #size
+        const sizeInput = document.getElementById("size");
+        if (sizeInput) {
+            const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+            sizeInput.dispatchEvent(ev);
+        }
+        return;
+    }
+
+}
+
+function layMaspGoc(str) {
+    return String(str || "").toUpperCase().replace(/\(\d+\)\s*$/, "").trim();
+}
+
+// [MỚI] Tách mã & size hậu tố: "ABC12-DG38_38" -> { masp:"ABC12-DG38", size:"38" }
+function tachMaspVaSizeHauTo(raw) {
+    const s = String(raw || "").trim().toUpperCase();
+    // Nhận "_xxx" ở cuối. Ví dụ "…_38", "…_40", "…_L", v.v.
+    const m = s.match(/^(.*)\_([A-Z0-9\-]+)$/);
+    if (!m) return { masp: s, size: null };
+    return { masp: m[1], size: m[2] };
+}
+
+// === REPLACE THIS WHOLE FUNCTION IN hoadon.js ===
+async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
+
+    // --- [NEW SIZE SUFFIX] Tách hậu tố _NN (ví dụ abc12-dg38_38) ---
+    // Lấy danh sách size hợp lệ: ưu tiên window.danhMucSize, fallback 38–45
+    const allowedFromDM = Array.isArray(window.danhMucSize)
+        ? new Set(window.danhMucSize.map(s => String(s).trim().toUpperCase()))
+        : null;
+    const fallbackAllowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+
+    let typedSize = null;
+    let baseCode = String(maspVal || "").trim().toUpperCase();
+    const mSuffix = baseCode.match(/^(.*)_([0-9]{2})$/); // bắt hậu tố _NN
+    if (mSuffix) {
+        const candidate = mSuffix[2].toUpperCase();
+        const ok = allowedFromDM ? allowedFromDM.has(candidate) : fallbackAllowed.has(candidate);
+        if (ok) {
+            baseCode = mSuffix[1].trim().toUpperCase(); // mã gốc
+            typedSize = candidate;                      // size người dùng gõ
+            // Ghi sẵn về form để các nhánh dưới dùng
+            const maspEl = document.getElementById("masp");
+            const sizeEl = document.getElementById("size");
+            if (maspEl) maspEl.value = baseCode;
+            if (sizeEl) sizeEl.value = typedSize;
+        }
+    }
+    // Chuẩn hoá kiểu "MASP(3)" → "MASP"
+    maspVal = layMaspGoc(baseCode);
+
+    // --- Tải dữ liệu sản phẩm (cache trước, supabase sau) ---
+    let spData = window.sanPhamData?.[maspVal];
+
+    if (!spData) {
+        const { data, error } = await supabase
+            .from("dmhanghoa")
+            .select("*")
+            .eq("masp", maspVal)
+            .single();
+
+        if (data) {
+            spData = data;
+            window.sanPhamData[maspVal] = data; // cache lại
+        }
+    }
+
+    // Guard dữ liệu nền
+    if (!window.sanPhamData || !Object.keys(window.sanPhamData).length) {
+        alert("Đang tải danh mục sản phẩm... vui lòng thử lại sau 1–2 giây.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) { setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600); }
+        return false;
+    }
+    // BẢO VỆ MỀM với danh mục nhóm: luôn là Map, rỗng thì coi như "không quản size theo nhóm"
+    if (!(window.danhMucNhom instanceof Map)) {
+        window.danhMucNhom = new Map();
+        // thử reload nền nếu có expose
+        try { window.reloadDanhMucNhom?.(); } catch (e) { }
+    }
+    // KHÔNG alert, KHÔNG return; tiếp tục xử lý bình thường
+
+    // (danhMucSize có thể rỗng)
+
+    /***** NHÁNH SỚM CHO CCN: nếu ít nhất một đầu quản-size → bắt nhập size *****/
+    if (isCCNMode()) {
+        try {
+            if (requireManagedInTransfer(maspVal) || isQuanLySizeProduct(spData)) {  // ✅ thêm vế phải isQuanLySizeProduct
+                // Nếu người dùng có gõ hậu tố size thì đã điền sẵn #size ở trên
+                const sizeEl = document.getElementById("size");
+                if (!sizeEl.value.trim()) {
+                    // Focus & bíp như cũ
+                    sizeEl.focus();
+                    sizeEl.select?.();
+                    window.soundWaitSize?.();
+                    return true; // chỉ bắt nhập size tay, KHÔNG gợi ý
+
+                    // 🔔 Gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
+                    // Chạy bất đồng bộ, KHÔNG chặn người dùng gõ tay
+                    const maspBaseNow = String(baseCode || maspVal || "").trim().toUpperCase();
+                    const maspAtTime = maspBaseNow; // chụp lại mã tại thời điểm này
+
+                    goiYSizeTuHoaDonNhanVien(maspBaseNow)
+                        .then((sizeGoiY) => {
+                            if (!sizeGoiY) return;
+
+                            const sizeInput = document.getElementById("size");
+                            const maspInput = document.getElementById("masp");
+                            if (!sizeInput || !maspInput) return;
+
+                            // Nếu trong lúc chờ, người dùng đã gõ size → KHÔNG ghi đè
+                            if (sizeInput.value.trim()) return;
+
+                            // Nếu đã chuyển sang mã sản phẩm khác → KHÔNG ghi đè
+                            const maspCurrent = maspInput.value.trim().toUpperCase();
+                            if (maspCurrent !== maspAtTime) return;
+
+                            // Gán size gợi ý + bôi đen để nhấn Enter là xong
+                            sizeInput.value = sizeGoiY;
+                            sizeInput.focus();
+                            sizeInput.select?.();
+                        })
+                        .catch((err) => {
+                            console.error("Gợi ý size từ hóa đơn nhân viên lỗi:", err);
+                        });
+
+                    return true; // đợi người dùng nhập size hoặc nhấn Enter với size gợi ý
                 }
 
-                const sohdMoi = rpcRes[0].sohd;        // ví dụ: xcncs1_00052
-                document.getElementById('sohd').value = sohdMoi; // cập nhật UI
-                sohd = sohdMoi;                        // cập nhật biến làm việc
+                // Có size rồi → ép SL=1 và thêm ngay
+                const slEl = document.getElementById("soluong");
+                if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+
+                const nhapSizeMode = document.getElementById("nhapsize")?.checked === true;
+                if (nhapSizeMode) {
+                    themVaoBang(sizeEl.value.trim(), { afterAdd: "keepMaspFocusSize" });
+                } else {
+                    themVaoBang(sizeEl.value.trim()); // mặc định: reset về #masp
+                }
+                return true;
+            }
+        } catch (e) {
+            console.warn("CCN size-check fallback:", e);
+        }
+    }
+
+    // Không tìm thấy sp
+    if (!spData) {
+        alert("❌ Mã sản phẩm không hợp lệ. Vui lòng nhập lại.");
+        const maspInput = document.getElementById("masp");
+        if (maspInput) {
+            setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600);
+        }
+        return false;
+    }
+
+    // [NEW giữ nguyên] Chuẩn hoá form từ spData
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+    const giaInt = Math.round(parseMoneyInt(spData.giale || 0));
+    giaEl.value = giaInt.toLocaleString();
+    const kmDef = tinhKhuyenMai(spData, giaInt);
+    kmEl.value = (kmDef || 0).toLocaleString();
+
+    const slEl = document.getElementById("soluong");
+    if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+    recalcThanhtienFromForm();
+
+    // vị trí kho theo cơ sở
+    const cs = document.getElementById("diadiem").value;
+    const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
+    document.getElementById("vitri").value = vitri || "";
+
+    // -------------- [NEW SIZE SUFFIX] TỰ ĐỘNG THÊM NẾU CÓ HẬU TỐ --------------
+    // Tính xem hàng này hiện tại có thuộc diện "quản size" không
+    const isGD = String(spData.chungloai || "").trim().toUpperCase() === "GD";
+    const isQLSize = isQuanLySizeProduct(spData);   // ✅ mới
+    const giaHangHoa = Number(spData.giale) || 0;
+
+    // trạng thái checkbox hiện tại
+    const size45On = !!size45;
+    const qlSizeTheoGiaOn = !!quanlysizetheogia;
+    const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
+
+    // nhóm có quanlysize hợp lệ tại cơ sở?
+    let groupRequires = false;
+    if (qlTheoNhomOn && spData.nhomhang && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
+        if (nhom && nhom.quanlysize) {
+            const diadiemHienTai = currentBranchUpper(); // 'CS1'|'CS2'
+            groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
+        }
+    }
+
+    // theo giá: siết nếu là giày hoặc giá ≥ 170000
+    const managedByGia = qlSizeTheoGiaOn && (isQLSize || giaHangHoa >= 170000);  // ✅ dùng isQLSize
+
+    // Tổng điều kiện cần quản-size (size45 bật thì ép cho mọi mã quản-size)
+    const requireManagedSizeNow = (size45On && isQLSize) || groupRequires || managedByGia; // ✅ dùng isQLSize
+    // 👉 Nếu đang ở trang BÁN LẺ MT (không phải CCN),
+    // và mã hàng này thuộc diện QUẢN SIZE,
+    // và ô #size hiện đang trống → chạy gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
+    if (!isCCNMode() && isBanLeMTMode() && requireManagedSizeNow) {
+        const sizeEl = document.getElementById("size");
+        if (sizeEl && !sizeEl.value.trim()) {
+            autoGoiYSizeNeuOTrong(baseCode || maspVal);
+        }
+    }
+
+    // --- thay thế toàn bộ khối này trong xuLyMaSanPham ---
+    if (typedSize) {
+        const sizeEl = document.getElementById("size");
+        const sizeChosen = String(typedSize).trim();
+        const nhapSizeMode = document.getElementById("nhapsize")?.checked === true;
+
+        if (requireManagedSizeNow) {
+            // → Hàng QUẢN-SIZE: thêm đúng size người dùng chọn
+            if (sizeEl) sizeEl.value = sizeChosen;
+            if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+
+            if (nhapSizeMode) {
+                themVaoBang(sizeChosen, { afterAdd: "keepMaspFocusSize" }); // giữ ở #size để nhập tiếp
+            } else {
+                themVaoBang(sizeChosen); // reset về #masp như yêu cầu
+            }
+            return true;
+        } else {
+            // → Hàng KHÔNG QUẢN-SIZE: bỏ hậu tố, thêm với size=0
+            if (sizeEl) sizeEl.value = "0";
+            if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
+            themVaoBang("0"); // mặc định: resetFormBang() → focus #masp
+            return true;
+        }
+    }
+    // --- hết khối thay thế ---
+    // ------------------- END [NEW SIZE SUFFIX] -------------------
+
+    // ===== QUẢN LÝ SIZE THEO NHÓM (giữ nguyên hành vi cũ) =====
+    var checkboxQuanLySizeTheoNhom = document.getElementById("quanlysizetheonhom");
+    var qlTheoNhom = (checkboxQuanLySizeTheoNhom && checkboxQuanLySizeTheoNhom.checked) ? true : false;
+
+    if (qlTheoNhom && String(spData.nhomhang || "").trim() && window.danhMucNhom) {
+        const nhom = window.danhMucNhom.get(String(spData.nhomhang).toUpperCase());
+        if (nhom && nhom.quanlysize) {
+            const diadiemHienTai = currentBranchUpper();
+            if (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai) {
+                const sizeInput = document.getElementById("size");
+                const sizeValue = (sizeInput?.value || "").trim();
+                if (!sizeValue) {
+                    sizeInput.focus();
+                    sizeInput.select();
+                    if (window.soundWaitSize) window.soundWaitSize();
+                    return true;
+                } else {
+                    document.getElementById("soluong").value = 1;
+                    themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+                    return true;
+                }
+            }
+        }
+    }
+
+    // ==== BÁN SIÊU NHANH (giữ nguyên) ====
+    const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
+    if (banSieuNhanh) {
+        document.getElementById("soluong").value = "1";
+        document.getElementById("size").value = "0";
+        themVaoBang("");
+        document.getElementById("masp").focus();
+        document.getElementById("masp").select();
+        return true;
+    }
+
+    // === BẮT NHẬP SIZE VỚI GIÀY DÉP KHI BẬT CỜ (giữ nguyên) ===
+    if (
+        quanlysizetheogia &&
+        ((spData.chungloai && spData.chungloai.toLowerCase() === "gd") || (Number(spData.giale) >= 170000))
+    ) {
+        const sizeInput = document.getElementById("size");
+        if (!sizeInput.value.trim()) {
+            sizeInput.focus();
+            sizeInput.select();
+            window.soundWaitSize?.();
+            return true;
+        }
+        document.getElementById("soluong").value = "1";
+        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });
+        return true;
+    }
+
+    if (size45 && isQuanLySizeProduct(spData)) {
+        const sizeInput = document.getElementById("size");
+        if (!sizeInput.value.trim()) {
+            sizeInput.focus();
+            sizeInput.select();
+            window.soundWaitSize?.(); // 🔔 Beep chờ size — giữ nguyên như GD
+            return true;
+        }
+        document.getElementById("soluong").value = "1";
+        themVaoBang(sizeInput.value.trim(), { afterAdd: "keepMaspFocusSize" });
+        return true;
+    }
+
+    // === Các trường hợp khác (giữ nguyên) ===
+    if (size45) {
+        if (isQuanLySizeProduct(spData)) {
+            // hàng quản-size (GD hoặc quanlykichco) thì KHÔNG chèn "0"
+            const sizeEl = document.getElementById("size");
+            sizeEl.focus(); sizeEl.select?.();
+            return true;
+        }
+        document.getElementById("soluong").value = "1";
+        themVaoBang("0"); // chỉ dành cho hàng KHÔNG quản-size
+    } else {
+        const nextId = nhapNhanh ? "size" : "soluong";
+        const nextInput = document.getElementById(nextId);
+        nextInput.focus();
+        nextInput.select();
+        if (nextId === "soluong") nextInput.select();
+    }
+
+    return true;
+}
+
+export function themVaoBang(forcedSize = null, opts = {}) {
+    // luôn đóng popup ngay khi bắt đầu thêm
+    window.closePopupMasp && window.closePopupMasp();
+    // 🔒 CHỐT: luôn đồng bộ state từ DOM (trường hợp vừa dán Excel / nhập ngang / edit trực tiếp)
+    ensureStateFromDOM();
+    const masp = layMaspGoc(document.getElementById("masp").value);
+    const isNewGroup = !bangKetQua[masp]; // 🔔 nhóm mới hay không
+
+    let size = forcedSize !== null ? String(forcedSize).trim()
+        : String(document.getElementById("size").value).trim();
+    const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
+
+    const sp = window.sanPhamData?.[masp];
+
+    // --- Kiểm tra trạng thái bán siêu nhanh ---
+    const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
+
+    // quản lý việc tất cả các mã hàng thuộc điều kiện quản lý theo size thì
+    //  không được phép nhập sai bằng 0 chỉ được phép nhập (38–45):    
+    // ===== CỬA CUỐI: khóa size cho mọi đường vào =====
+    {
+        if (sp) {
+            const size45On = !!document.getElementById("size45")?.checked;
+            const qlSizeTheoGiaOn = !!document.getElementById("quanlysizetheogia")?.checked;
+            const qlTheoNhomOn = !!document.getElementById("quanlysizetheonhom")?.checked;
+
+            // nhóm có quanlysize hợp lệ tại cơ sở hiện tại?
+            let groupRequires = false;
+            if (qlTheoNhomOn && sp.nhomhang && window.danhMucNhom) {
+                const nhom = window.danhMucNhom.get(String(sp.nhomhang).toUpperCase());
+                if (nhom && nhom.quanlysize) {
+                    const diadiemHienTai = currentBranchUpper(); // 'CS1' | 'CS2' cố định theo trang
+
+                    groupRequires = (nhom.diadiem === "ALL" || nhom.diadiem === diadiemHienTai);
+                }
             }
 
+            // size45 chỉ siết với giày; theo giá siết nếu là giày hoặc giale ≥ 170000
+            const isGD = String(sp.chungloai || "").trim().toUpperCase() === "GD";
+            const isQLSize = isQuanLySizeProduct(sp);        // ✅ mới
+            const giaHangHoa = Number(sp.giale) || 0;
+            const managedByGia = qlSizeTheoGiaOn && (isQLSize || giaHangHoa >= 170000); // ✅
+
+            // 🔒 Chỉ khi thực sự thuộc diện quản lý size mới kiểm tra 38–45
+            const requireManagedSize = (size45On && isQLSize) || groupRequires || managedByGia;  // ✅
+
+            if (requireManagedSize) {
+                const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+                const rawSize = (forcedSize ?? size ?? "").toString().trim().toUpperCase();
+
+                const invalid = (!rawSize || rawSize === "0" || !allowed.has(rawSize));
+                if (invalid) {
+                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
+                    const sizeEl = document.getElementById("size");
+                    if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
+                    window.soundWaitSize?.();   // beep cảnh báo
+                    return; // ❌ dừng thêm dòng
+                }
+
+                // chuẩn hoá size hợp lệ để dùng tiếp phía dưới
+                size = rawSize;
+            }
+        }
+    }
+
+    // ==== KIỂM TRA SIZE HỢP LỆ (áp dụng cho mọi trường hợp, TRỪ bán siêu nhanh) ====
+
+    if (!banSieuNhanh) {
+        const dsSize = Array.isArray(window.danhMucSize)
+            ? window.danhMucSize.map(s => String(s).trim().toUpperCase())
+            : [];
+
+        const sizeUC = String(size || "").trim().toUpperCase();
+
+        // Thiếu masp hoặc không tìm thấy sản phẩm -> không thể thêm
+        if (!masp || !sp) {
+            alert("Phải nhập mã sản phẩm hợp lệ.");
+            document.getElementById("masp").focus();
+            document.getElementById("masp").select();
+            return;
+        }
+
+        // Nếu đã vào được đây từ ô #size, ta chỉ chấp nhận khi size nằm trong danh mục
+        // (trường hợp không hợp lệ đã được điều hướng/cảnh báo ở chuyenFocus)
+        if (dsSize.length && !dsSize.includes(sizeUC)) {
+            // Không alert ở đây để tránh gián đoạn thao tác;
+            // chỉ quay lại #size nếu đang có trường này.
+            const sizeEl = document.getElementById("size");
+            if (sizeEl) {
+                sizeEl.focus();
+                sizeEl.select();
+            }
+            return;
+        }
+    }
+
+    // ==== END KIỂM TRA ====
+    // Lấy giá & khuyến mại từ form
+    const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
+    let giaForm = toInt(document.getElementById("gia")?.value || "0");
+    let kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
+
+    // [SAFE GUARD] Nếu giá form vẫn = 0, fallback theo dm hàng hoá
+    if (giaForm === 0 && sp) {
+        const giaSP = Math.round(parseMoneyInt(sp.giale || 0));
+        let kmAuto = 0;
+        try { kmAuto = tinhKhuyenMai(sp, giaSP) || 0; } catch (e) { }
+
+        giaForm = giaSP;
+        if (!kmForm || kmForm < 0) kmForm = kmAuto;
+
+        // ghi ngược lại lên form để người dùng thấy đúng
+        const giaEl = document.getElementById("gia");
+        const kmEl = document.getElementById("khuyenmai");
+        if (giaEl) giaEl.value = giaSP.toLocaleString();
+        if (kmEl) kmEl.value = (kmForm || 0).toLocaleString();
+    }
+
+
+    // Nếu nhập khuyến mại < 100 → coi là %
+    if (kmForm > 0 && kmForm < 100) {
+        kmForm = Math.round((giaForm * kmForm) / 100);
+    }
+
+    const key = masp;
+    const bang = bangKetQua[key] || {
+        masp,
+        tensp: sp.tensp,
+        sizes: [],
+        soluongs: [],
+        tong: 0,
+        gia: giaForm,
+        km: kmForm,
+        dvt: sp.dvt || ""
+    };
+
+    // Nếu nhóm đã tồn tại → cập nhật giá/km theo form (ưu tiên người dùng nhập tay)
+    bang.gia = giaForm;
+    bang.km = kmForm;
+
+
+    // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
+    const normSize = String(size).trim();
+    const index = bang.sizes.findIndex(sz => String(sz).trim() === normSize);
+    if (index !== -1) {
+        bang.soluongs[index] += soluong;
+    } else {
+        bang.sizes.push(normSize);
+        bang.soluongs.push(soluong);
+    }
+
+    bang.tong += soluong;
+    bangKetQua[key] = bang;
+    // Cập nhật thứ tự nhóm (mới nhất ở TRÊN CÙNG)
+    if (!Array.isArray(window.groupOrder)) {
+        // khởi tạo: newest-first từ trạng thái hiện có
+        window.groupOrder = Object.keys(bangKetQua).slice().reverse();
+    }
+
+    if (isNewGroup) {
+        // nhóm mới: đưa lên đầu
+        window.groupOrder = [masp, ...window.groupOrder.filter(m => m !== masp)];
+    } else {
+        // nhóm cũ: giữ nguyên vị trí; nhưng nếu vì lý do gì chưa có thì thêm vào cuối
+        if (!window.groupOrder.includes(masp)) {
+            window.groupOrder.push(masp);
+        }
+    }
+
+    // ⚡️ Lưu lại thông tin dòng vừa thêm + cờ nhóm mới/cũ
+    window.lastAdded = { masp, size: normSize, isNewGroup };
+
+    // Render bảng theo luật mới
+    capNhatBangHTML(bangKetQua, window.lastAdded);
+
+    // "Tinh" báo thêm thành công
+    window.soundSuccess?.();
+
+
+    if (opts.afterAdd === "keepMaspFocusSize") {
+        // Đóng gợi ý MASP ngay khi Enter ở #masp
+        window.closePopupMasp && window.closePopupMasp();
+        // ✅ Tăng bộ đếm (xx) ngay trên ô #masp
+        const maspEl = document.getElementById("masp");
+        const raw = String(maspEl.value || "").trim().toUpperCase();
+        const base = raw.replace(/\(\d+\)\s*$/, "");       // bỏ (xx) nếu có
+        const m = raw.match(/\((\d+)\)\s*$/);
+        const next = m ? (parseInt(m[1], 10) + 1) : 1;
+        maspEl.value = `${base}(${next})`;
+
+        // Rồi mới reset size + select để nhập tiếp
+        if (typeof resetFormSauKhiNhapSize === "function") {
+            resetFormSauKhiNhapSize();
         }
     } else {
-        // EDIT: đảm bảo số đang sửa thực sự tồn tại, nếu không thì báo lỗi
-        const existed = await hoaDonDaTonTai(sohd);
-        if (!existed) { alert("❌ Không tìm thấy hóa đơn để sửa (CCN)."); return; }
-
-        // Cho phép xoá để ghi lại (giữ nguyên logic xoá phiếu gốc + đối ứng của bạn)
-        // --- COPY từ khối 'if (tonTai && choPhepSua) { ... }' cũ ---
-        // Xoá phiếu gốc
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-
-        // Xoá phiếu đối ứng
-        const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-        const parts__ = base.split("_");
-        const so__ = parts__[parts__.length - 1];
-        const loaiGoc__ = parts__.slice(0, -1).join("_");
-        const loaiDoiUng__ = (loaiGoc__ === "xcncs1") ? "ncncs2" : "ncncs1";
-        const sohdDoiUng__ = `${loaiDoiUng__}_${so__}`;
-
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng__);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng__);
-
-        // Nối ghi chú sửa (giữ nguyên đoạn bạn đã có)
-        let oldNote = document.getElementById("ghichu")?.value || "";
-        const manv2 = document.getElementById("manv").value.trim();
-        const timestamp2 = new Date().toISOString().slice(0, 19).replace("T", " ");
-        const oldEdits2 = (oldNote.match(/Sửa lần/g) || []).length;
-        const newEditCount2 = oldEdits2 + 1;
-        const newNoteEntry2 = `Sửa lần ${newEditCount2} – ${timestamp2} – ${manv2}`;
-        const finalNote2 = oldNote ? oldNote + "\n" + newNoteEntry2 : newNoteEntry2;
-        document.getElementById("ghichu").value = finalNote2;
+        // Luồng cũ: thêm xong thì xóa masp và focus về #masp
+        resetFormBang();
     }
 
-    const createdAt = new Date().toISOString();
-    const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-
-    const hoadon = {
-        sohd,
-        ngay: document.getElementById("ngay").value,
-        manv: document.getElementById("manv").value,
-        tennv: document.getElementById("tennv").value,
-        diadiem: diadiemSRC,
-        khachhang: document.getElementById("khachhang").value,
-        tongsl: getIntValue("tongsl"),
-        tongkm: getIntValue("tongkm"),
-        chietkhau: getIntValue("chietkhau"),
-        thanhtoan: getIntValue("phaithanhtoan"),
-        hinhthuctt: document.getElementById("hinhthuctt").value,
-        ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAt,
-        loai: "",
-        dvt: "",
-        loaihd: loaihd_thucte,
-        nhacc: ""
-    };
-
-    // Chi tiết xuất (SRC)
-    const { src, dst } = inferBranches();
-    const chitiet = [];
-    Object.values(bangKetQua).forEach(item => {
-        item.sizes.forEach((sz, i) => {
-            const sl = item.soluongs[i];
-            const masp = item.masp;
-            const sizeInput = String(sz || "").trim() || "0";
-            const managedAtSrc = requireManagedAtBranch(masp, src);
-            const size_effective_src = managedAtSrc ? sizeInput : "0";
-
-            chitiet.push({
-                sohd,
-                masp,
-                tensp: item.tensp,
-                size: size_effective_src,
-                soluong: sl,
-                gia: item.gia,
-                km: item.km,
-                thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || '',
-                diadiem: diadiemSRC,
-                created_at: createdAt,
-                ngay: document.getElementById("ngay").value
-            });
-        });
-    });
-
-    const { error: errHD } = await supabase
-        .from("hoadon_banle")
-        .upsert([hoadon], { onConflict: "sohd" });
-    const { error: errCT } = await supabase
-        .from("ct_hoadon_banle")
-        .upsert(chitiet);
-
-    if (errHD || errCT) {
-        alert("❌ Lỗi khi lưu hóa đơn (gốc).");
-        console.error(errHD || errCT);
-        return;
-    }
-
-    // Đối ứng (DST)
-    const sohdBase = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
-    const parts = sohdBase.split("_");
-    const loaiGoc = parts.slice(0, -1).join("_");
-    const soStr = parts[parts.length - 1];
-    const soMoi = parseInt(soStr, 10);
-
-    const diadiemDoiUng = CCN_CTX.dst.toLowerCase();
-    const loaiDoiUng = CCN_CTX.loaihdDoiUng;
-    const sohdDoiUng = `${loaiDoiUng}_${soStr}`;
-
-    const hoadonDoiUng = {
-        ...hoadon,
-        sohd: sohdDoiUng,
-        loaihd: loaiDoiUng,
-        diadiem: diadiemDoiUng,
-        created_at: new Date().toISOString()
-    };
-
-    const chitietDoiUng = [];
-    Object.values(bangKetQua).forEach(item => {
-        item.sizes.forEach((sz, i) => {
-            const sl = item.soluongs[i];
-            const masp = item.masp;
-            const sizeInput = String(sz || "").trim() || "0";
-            const managedAtDst = requireManagedAtBranch(masp, dst);
-            const size_effective_dst = managedAtDst ? sizeInput : "0";
-
-            chitietDoiUng.push({
-                sohd: sohdDoiUng,
-                masp,
-                tensp: item.tensp,
-                size: size_effective_dst,
-                soluong: sl,
-                gia: item.gia,
-                km: item.km,
-                thanhtien: (item.gia - item.km) * sl,
-                dvt: item.dvt || '',
-                diadiem: diadiemDoiUng,
-                created_at: new Date().toISOString(),
-                ngay: document.getElementById("ngay").value
-            });
-        });
-    });
-
-    const { error: errDU1 } = await supabase
-        .from("hoadon_banle")
-        .upsert([hoadonDoiUng], { onConflict: "sohd" });
-    const { error: errDU2 } = await supabase
-        .from("ct_hoadon_banle")
-        .insert(chitietDoiUng); // đã xoá trước nên dùng insert thay vì upsert
-
-    if (errDU1 || errDU2) {
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-        alert("❗Không tạo được hóa đơn đối ứng. Đã huỷ hoá đơn vừa lưu.");
-        return;
-    }
-
-    // Cập nhật sochungtu
-    const { data: currSoChungTu } = await supabase
-        .from("sochungtu")
-        .select("so_hientai")
-        .eq("loai", loaiGoc)
-        .single();
-    if (!currSoChungTu || soMoi > currSoChungTu.so_hientai) {
-        await supabase.from("sochungtu").update({ so_hientai: soMoi }).eq("loai", loaiGoc);
-    }
-    const { data: currSoChungTuDoiUng } = await supabase
-        .from("sochungtu")
-        .select("so_hientai")
-        .eq("loai", loaiDoiUng)
-        .single();
-    if (!currSoChungTuDoiUng || soMoi > currSoChungTuDoiUng.so_hientai) {
-        await supabase.from("sochungtu").update({ so_hientai: soMoi }).eq("loai", loaiDoiUng);
-    }
-
-    alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
-    inHoaDon(hoadon, chitiet);
-    await lamMoiSauKhiLuu();
-    choPhepSua = false;
 }
 
 
-/* ===== expose ===== */
+export function getBangKetQua() {
+    if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
+        return window.bangKetQua;
+    }
+    return bangKetQua;
+}
 
-window.luuHoaDonccn1v2 = luuHoaDonccn1v2; // expose đúng hàm lưu chuyển chi nhánh
-window.luuHoaDonNhapQuaAPI = luuHoaDonNhapQuaAPI; // nếu muốn giữ hàm nhập qua API cho các trang khác
+export function resetBangKetQua() {
+    bangKetQua = {};
+    if (window.bangKetQua) window.bangKetQua = {};
+
+    // ✅ reset luôn các state điều khiển thứ tự/hiển thị
+    window.groupOrder = [];
+    window.lastAdded = null;
+
+    capNhatBangHTML(bangKetQua, null);
+}
+
+
+export function ganTenNV() {
+    const manv = document.getElementById("manv").value.trim();
+    document.getElementById("tennv").value = window.nhanVienData?.[manv] || "";
+}
+
+export function xoaDongDangChon() {
+    // ✅ Đồng bộ lại dữ liệu từ bảng DOM (trường hợp vừa “nhập ngang”)
+    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
+
+    const dang = getMaspspDangChon();
+    if (!dang) { alert("Vui lòng chọn dòng cần xóa."); return; }
+
+    const masp = String(dang.masp || "").trim();
+    const size = (dang.size != null) ? String(dang.size).trim() : null;
+    if (!masp) { alert("Không xác định được mã sản phẩm đang chọn để xóa."); return; }
+
+    const data = _data();
+    const item = data[masp];
+    if (!item) { alert("Không tìm thấy dòng để xóa."); return; }
+
+    const msg = size
+        ? `Bạn có chắc muốn xóa size "${size}" của mã "${masp}"?`
+        : `Bạn có chắc muốn xóa toàn bộ mã "${masp}"?`;
+    if (!confirm(msg)) return;
+
+    if (size) {
+        const idx = item.sizes.findIndex(s => String(s).trim() === size);
+        if (idx !== -1) {
+            const sl = parseInt(item.soluongs[idx] || 0, 10) || 0;
+            item.tong = Math.max(0, (item.tong || 0) - sl);
+            item.sizes.splice(idx, 1);
+            item.soluongs.splice(idx, 1);
+        }
+        if (item.sizes.length === 0) delete data[masp];
+    } else {
+        delete data[masp];
+    }
+
+    setMaspspDangChon(null);
+    capNhatBangHTML(data, window.lastAdded);
+}
+
+
+// hoadon.js
+export function suaDongDangChon() {
+    // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
+    try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
+
+    // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
+    let dangChon = getMaspspDangChon();
+    if (!dangChon) {
+        const firstRow = document.querySelector("#bangketqua tbody tr");
+        if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
+        const tds = firstRow.querySelectorAll("td");
+        const masp = (tds[0]?.textContent || "").trim();
+        const size = (tds[2]?.textContent || "").trim();
+        if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
+        setMaspspDangChon({ masp, size });
+        dangChon = { masp, size };
+    }
+
+    const masp = String(dangChon.masp || "").trim();
+    const size = String(dangChon.size || "").trim();
+
+    const data = _data();
+    const item = data[masp];
+    if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
+
+    const idx = item.sizes.findIndex(s => String(s).trim() === size);
+    if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
+
+    // 3) Đẩy dữ liệu lên form
+    const maspEl = document.getElementById("masp");
+    if (maspEl) {
+        maspEl.value = masp.toUpperCase();                 // ghi lại MASP
+        try { maspEl.dispatchEvent(new Event("change", { bubbles: true })); } catch (_) { }
+    }
+    document.getElementById("size").value = item.sizes[idx] || "";
+    document.getElementById("soluong").value = item.soluongs[idx] || "1";
+    document.getElementById("dvt").value = item.dvt || "";
+    document.getElementById("gia").value = item.gia || "";
+    document.getElementById("khuyenmai").value = item.km || "";
+    (function recalc() {
+        const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
+        const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g, "")) || 0;
+        const km = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g, "")) || 0;
+        const tt = (gia - km) * sl;
+        const ttEl = document.getElementById("thanhtien");
+        if (ttEl) ttEl.value = tt.toLocaleString();
+    })();
+    const slEl = document.getElementById("soluong");
+    if (slEl) { slEl.focus(); slEl.select(); }
+
+    // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
+    const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
+    item.sizes.splice(idx, 1);
+    item.soluongs.splice(idx, 1);
+    item.tong = Math.max(0, (item.tong || 0) - slCu);
+    if (item.sizes.length === 0) delete data[masp];
+
+    // 5) Ghi state & render
+    setMaspspDangChon(null);
+    _sync(data);
+    capNhatBangHTML(data, window.lastAdded);
+}
+
+// Chạy Sửa với lớp bọc _wrapEnsureState (nếu trang đã khai báo), fallback gọi trực tiếp
+export function runSuaDongDangChon() {
+    const runner = window._wrapEnsureState ? window._wrapEnsureState(suaDongDangChon) : suaDongDangChon;
+    return runner();
+}
+
+
+
+export async function napLaiChiTietHoaDon(sohd) {
+    // Lấy chi tiết từ bảng ct_hoadon_banle
+    const { data: chitiet, error } = await supabase
+        .from("ct_hoadon_banle")
+        .select("*")
+        .eq("sohd", sohd);
+
+    if (error || !chitiet || chitiet.length === 0) {
+        alert("❌ Không tìm thấy chi tiết hóa đơn để sửa.");
+        return;
+    }
+
+    // Reset lại bảng tạm
+    resetBangKetQua();
+
+    // Ghép lại đúng cấu trúc của bangKetQua
+    chitiet.forEach(ct => {
+        const masp = ct.masp;
+        if (!bangKetQua[masp]) {
+            bangKetQua[masp] = {
+                masp: ct.masp,
+                tensp: ct.tensp,
+                sizes: [],
+                soluongs: [],
+                tong: 0,
+                gia: ct.gia,
+                km: ct.km,
+                dvt: ct.dvt || ""
+            };
+        }
+        const index = bangKetQua[masp].sizes.indexOf(ct.size);
+        if (index === -1) {
+            bangKetQua[masp].sizes.push(String(ct.size)); // luôn lưu về kiểu string
+
+            bangKetQua[masp].soluongs.push(ct.soluong);
+        } else {
+            bangKetQua[masp].soluongs[index] += ct.soluong;
+        }
+        bangKetQua[masp].tong += ct.soluong;
+    });
+
+    capNhatBangHTML(bangKetQua, window.lastAdded);
+}
+
+
+// ===== Chuyển focus về #size khi Enter ở #gia hoặc #khuyenmai =====
+document.addEventListener("DOMContentLoaded", () => {
+    ["gia", "khuyenmai"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const sizeEl = document.getElementById("size");
+                if (sizeEl) {
+                    sizeEl.focus();
+                    sizeEl.select();
+                }
+            }
+        });
+    });
+});
+
