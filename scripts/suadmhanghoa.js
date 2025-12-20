@@ -84,10 +84,11 @@ function applyFilterQuery(q, colname, rawValue) {
       return q.in(colname, nums);
     }
 
-    // Text: dùng OR + ilike để KHÔNG phân biệt hoa/thường (và vẫn match chính xác)
-    // Ví dụ: nhomhang in [A1, A2] -> or("nhomhang.ilike.A1,nhomhang.ilike.A2")
-    const orExpr = vals.map(v => `${colname}.ilike.${v}`).join(',');
+    // Text: OR + ilike dạng contains (không phân biệt hoa/thường)
+    // Ví dụ: nhập noc4 -> match mọi giá trị có chứa noc4
+    const orExpr = vals.map(v => `${colname}.ilike.%${v}%`).join(',');
     return q.or(orExpr);
+
   }  // Nếu là boolean
   if (FILTER_BOOLEAN_COLS.has(colname)) {
     const v = String(rawValue).trim().toLowerCase();
@@ -104,9 +105,9 @@ function applyFilterQuery(q, colname, rawValue) {
     return q.eq(colname, null);
   }
 
-  // Mặc định: text -> ilike exact để không phân biệt hoa thường
+  // Mặc định: text -> ilike contains để không phân biệt hoa thường
   const pattern = String(rawValue).trim();
-  return q.ilike(colname, pattern);
+  return q.ilike(colname, `%${pattern}%`);
 }
 
 
