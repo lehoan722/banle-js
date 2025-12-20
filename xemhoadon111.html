@@ -177,7 +177,7 @@
             <th>stt</th>
             <th><input type="checkbox" id="chonTatCaHD"></th>
             <th>Số HĐ</th>
-            <th>Ngày</th>
+            <th>Ngày Tạo</th>
             <th>Ngày sửa</th>
             <th>NV</th>
             <th>Khách</th>
@@ -498,7 +498,7 @@
   <td>${idx + 1}</td>
   <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
   <td>${hd.sohd || ""}</td>
-  <td>${dinhDangNgay(hd.created_at)}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
   <td>${dinhDangNgayGio(hd.updated_at || hd.updatedAt)}</td>
   <td>${hd.manv || ""}</td>
   <td>${hd.khachhang || ""}</td>
