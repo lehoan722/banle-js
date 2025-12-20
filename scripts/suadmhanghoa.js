@@ -26,7 +26,7 @@ const COLS = [
   { name: "treomaucs1", label: "treo mau cs1" },
   { name: "treomaucs2", label: "treo mau cs2" },
   { name: "vitrikho3", label: "Vị trí kho 3" },
-  
+
 
 ];
 
@@ -50,45 +50,45 @@ const DISTINCT_BATCH = 1000;        // mỗi lần đọc bao nhiêu dòng
 const FILTER_MAX_ROWS = 10000;      // tối đa số sản phẩm tải theo điều kiện (tránh nặng HOT)
 const FILTER_BATCH = 1000;
 
-const FILTER_NUMERIC_COLS = new Set(['gianhap','giale','giasi']);
-const FILTER_BOOLEAN_COLS = new Set(['active','quanlykichco']);
+const FILTER_NUMERIC_COLS = new Set(['gianhap', 'giale', 'giasi']);
+const FILTER_BOOLEAN_COLS = new Set(['active', 'quanlykichco']);
 
 function applyFilterQuery(q, colname, rawValue) {
 
 
-// Hỗ trợ nhiều giá trị cách nhau bằng dấu phẩy: dùng .in() (match chính xác)
-// rawValue có thể là mảng (đã được split/trim ở nơi gọi)
-if (Array.isArray(rawValue)) {
-  const vals = rawValue.map(v => String(v).trim()).filter(Boolean);
-  if (vals.length === 0) return q.eq(colname, null);
+  // Hỗ trợ nhiều giá trị cách nhau bằng dấu phẩy: dùng .in() (match chính xác)
+  // rawValue có thể là mảng (đã được split/trim ở nơi gọi)
+  if (Array.isArray(rawValue)) {
+    const vals = rawValue.map(v => String(v).trim()).filter(Boolean);
+    if (vals.length === 0) return q.eq(colname, null);
 
-  // Boolean
-  if (FILTER_BOOLEAN_COLS.has(colname)) {
-    const bools = vals
-      .map(v => v.toLowerCase())
-      .map(v => (v === '1' || v === 'true') ? true : (v === '0' || v === 'false') ? false : null)
-      .filter(v => v !== null);
+    // Boolean
+    if (FILTER_BOOLEAN_COLS.has(colname)) {
+      const bools = vals
+        .map(v => v.toLowerCase())
+        .map(v => (v === '1' || v === 'true') ? true : (v === '0' || v === 'false') ? false : null)
+        .filter(v => v !== null);
 
-    if (bools.length === 0) return q.eq(colname, null);
-    // nếu có cả true và false -> không cần lọc
-    if (bools.includes(true) && bools.includes(false)) return q;
-    return q.eq(colname, bools[0]);
-  }
+      if (bools.length === 0) return q.eq(colname, null);
+      // nếu có cả true và false -> không cần lọc
+      if (bools.includes(true) && bools.includes(false)) return q;
+      return q.eq(colname, bools[0]);
+    }
 
-  // Số
-  if (FILTER_NUMERIC_COLS.has(colname)) {
-    const nums = vals
-      .map(v => Number(String(v).replace(',', '.')))
-      .filter(n => Number.isFinite(n));
-    if (nums.length === 0) return q.eq(colname, null);
-    return q.in(colname, nums);
-  }
+    // Số
+    if (FILTER_NUMERIC_COLS.has(colname)) {
+      const nums = vals
+        .map(v => Number(String(v).replace(',', '.')))
+        .filter(n => Number.isFinite(n));
+      if (nums.length === 0) return q.eq(colname, null);
+      return q.in(colname, nums);
+    }
 
-  // Text: dùng OR + ilike để KHÔNG phân biệt hoa/thường (và vẫn match chính xác)
-// Ví dụ: nhomhang in [A1, A2] -> or("nhomhang.ilike.A1,nhomhang.ilike.A2")
-  const orExpr = vals.map(v => `${colname}.ilike.${v}`).join(',');
-  return q.or(orExpr);
-}  // Nếu là boolean
+    // Text: dùng OR + ilike để KHÔNG phân biệt hoa/thường (và vẫn match chính xác)
+    // Ví dụ: nhomhang in [A1, A2] -> or("nhomhang.ilike.A1,nhomhang.ilike.A2")
+    const orExpr = vals.map(v => `${colname}.ilike.${v}`).join(',');
+    return q.or(orExpr);
+  }  // Nếu là boolean
   if (FILTER_BOOLEAN_COLS.has(colname)) {
     const v = String(rawValue).trim().toLowerCase();
     if (v === '1' || v === 'true') return q.eq(colname, true);
@@ -598,10 +598,23 @@ function resolveUpdateValue(colname, rawVal) {
   return s;
 }
 
+// Tạo timestamp hiện tại (giờ máy) dạng YYYY-MM-DD HH:mm:ss
+function nowLocalTimestamp() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
 // ==== Lưu dữ liệu (PATCH từng dòng, chia chunk 100 dòng) ====
 async function luuDuLieu() {
   const colSelect = document.getElementById('col-select');
   const previewEl = document.getElementById('preview');
+  const nowKiem = nowLocalTimestamp(); // dùng 1 mốc thời gian cho cả lần lưu này
   if (!colSelect) return;
 
   const colname = colSelect.value;
@@ -652,7 +665,14 @@ async function luuDuLieu() {
 
     const promises = chunks[i].map((row) => {
       const updateObj = {};
-      updateObj[colname] = resolveUpdateValue(colname, row.rawVal); // rỗng -> null
+
+      // luôn cập nhật ngày kiểm khi bấm Lưu dữ liệu
+      updateObj.ngaykiem = nowKiem;
+
+      // vẫn update cột đang chọn (trừ khi chính nó là ngaykiem)
+      if (colname !== 'ngaykiem') {
+        updateObj[colname] = resolveUpdateValue(colname, row.rawVal); // rỗng -> null
+      }
 
       return supabase
         .from('dmhanghoa')
