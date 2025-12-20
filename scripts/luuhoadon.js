@@ -39,7 +39,7 @@ async function hoaDonDaTonTai(sohd) {
     if (!sohd) return false;
     const { data, error } = await supabase
         .from("hoadon_banle")
-        .select("sohd")
+        .select("sohd, created_at")
         .eq("sohd", sohd)
         .maybeSingle();
     return !!data;
@@ -624,7 +624,7 @@ export async function luuHoaDonQuaAPI() {
     // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
-        .select("sohd, created_at")
+        .select("sohd")
         .eq("sohd", sohd)
         .maybeSingle();
 
@@ -646,8 +646,9 @@ export async function luuHoaDonQuaAPI() {
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
 
-    const updatedAt = new Date().toISOString();
-    const createdAt = tonTai?.created_at || updatedAt;
+    const nowIso = new Date().toISOString();
+    const createdAt = tonTai?.created_at || nowIso;
+    const updatedAt = nowIso;
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -863,7 +864,7 @@ export async function luuHoaDonNhapQuaAPI() {
 
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
-        .select("sohd, created_at")
+        .select("sohd")
         .eq("sohd", sohd)
         .maybeSingle();
 
@@ -885,8 +886,7 @@ export async function luuHoaDonNhapQuaAPI() {
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
-    const updatedAt = new Date().toISOString();
-    const createdAt = tonTai?.created_at || updatedAt;
+    const createdAt = new Date().toISOString();
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -905,7 +905,6 @@ export async function luuHoaDonNhapQuaAPI() {
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
         created_at: createdAt,
-        updated_at: updatedAt,
         loai: "",
         dvt: "",
         loaihd: sohd.split("_")[0],
@@ -1259,13 +1258,15 @@ function inHoaDon(hoadon, chitiet) {
     iframe.onload = () => {
         setTimeout(() => {
             try {
+                iframe.contentWindow.focus();
                 iframe.contentWindow.print();
+                // Đợi người dùng đóng hộp thoại in rồi mới remove iframe (tránh lỗi callback bị huỷ)
+                setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 1500);
             } catch (e) {
                 console.error("Không thể gọi print() từ iframe:", e);
-            } finally {
-                iframe.remove();
+                try { iframe.remove(); } catch (_) {}
             }
-        }, 500);
+        }, 200);
     };
 }
 
@@ -1276,10 +1277,18 @@ export async function luuHoaDonccn1v2() {
         return;
     }
     const loaihd_thucte = CCN_CTX.loaihdGoc;
+    let oldCreatedAtGoc = null;
+    let oldCreatedAtDoiUng = null;
+    let sohdDoiUngOld = null;
     const diadiemSRC = CCN_CTX.src.toLowerCase();
 
-    capNhatThongTinTong(getBangKetQua());
-    normalizeBangKetQua(getBangKetQua());
+    // Một số trang (CCN) có thể chưa nạp đủ hàm/biến phụ trợ; dùng wrapper an toàn
+    const getBKQ = (typeof window.getBangKetQua === "function") ? window.getBangKetQua : () => ({});
+    const bkq0 = getBKQ();
+    if (typeof window.capNhatThongTinTong === "function") {
+        window.capNhatThongTinTong(bkq0);
+    }
+    normalizeBangKetQua(bkq0);
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -1290,7 +1299,7 @@ export async function luuHoaDonccn1v2() {
 
     await ensureCatalogsReady();
 
-    const bangKetQua = getBangKetQua();
+    const bangKetQua = getBKQ();
 
     // Normalize sau dán (tránh size null/undefined hoặc số chưa được stringify)
     for (const k of Object.keys(bangKetQua)) {
@@ -1315,8 +1324,6 @@ export async function luuHoaDonccn1v2() {
 
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-    let createdAtGoc = null;
-    let createdAtDoiUngGoc = null;
 
     if (!IS_EDIT) {
         // NEW: nếu số đang nhập đã tồn tại → hỏi người dùng
@@ -1382,28 +1389,39 @@ export async function luuHoaDonccn1v2() {
 
         // Cho phép xoá để ghi lại (giữ nguyên logic xoá phiếu gốc + đối ứng của bạn)
         // --- COPY từ khối 'if (tonTai && choPhepSua) { ... }' cũ ---
-        // Xoá phiếu gốc
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-
-        // Xoá phiếu đối ứng
+        // Xác định số hóa đơn đối ứng & giữ lại created_at cũ (để ghi lại đúng khi SỬA)
         const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
         const parts__ = base.split("_");
         const so__ = parts__[parts__.length - 1];
         const loaiGoc__ = parts__.slice(0, -1).join("_");
         const loaiDoiUng__ = (loaiGoc__ === "xcncs1") ? "ncncs2" : "ncncs1";
         const sohdDoiUng__ = `${loaiDoiUng__}_${so__}`;
-        const { data: tonTaiDU } = await supabase
+        sohdDoiUngOld = sohdDoiUng__;
+
+        // Lấy created_at cũ để không bị ghi đè khi sửa
+        const { data: oldGoc } = await supabase
+            .from("hoadon_banle")
+            .select("created_at")
+            .eq("sohd", sohd)
+            .maybeSingle();
+        const { data: oldDU } = await supabase
             .from("hoadon_banle")
             .select("created_at")
             .eq("sohd", sohdDoiUng__)
             .maybeSingle();
-        createdAtDoiUngGoc = tonTaiDU?.created_at || createdAtGoc;
+        oldCreatedAtGoc = oldGoc?.created_at || null;
+        oldCreatedAtDoiUng = oldDU?.created_at || null;
 
+        // Xoá phiếu gốc
+        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+
+        // Xoá phiếu đối ứng
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng__);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng__);
 
-        // Nối ghi chú sửa (giữ nguyên đoạn bạn đã có)
+
+// Nối ghi chú sửa (giữ nguyên đoạn bạn đã có)
         let oldNote = document.getElementById("ghichu")?.value || "";
         const manv2 = document.getElementById("manv").value.trim();
         const timestamp2 = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -1415,7 +1433,7 @@ export async function luuHoaDonccn1v2() {
     }
 
     const nowIso = new Date().toISOString();
-    const createdAt = IS_EDIT ? (createdAtGoc || nowIso) : nowIso;
+    const createdAt = (IS_EDIT ? (oldCreatedAtGoc || nowIso) : nowIso);
     const updatedAt = IS_EDIT ? nowIso : null;
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -1434,11 +1452,11 @@ export async function luuHoaDonccn1v2() {
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
         created_at: createdAt,
+        updated_at: updatedAt,
         loai: "",
         dvt: "",
         loaihd: loaihd_thucte,
         nhacc: ""
-        (updatedAt ? { updated_at: updatedAt } : {})
     };
 
     // Chi tiết xuất (SRC)
@@ -1464,7 +1482,7 @@ export async function luuHoaDonccn1v2() {
                 dvt: item.dvt || '',
                 diadiem: diadiemSRC,
                 created_at: createdAt,
-                ...(updatedAt ? { updated_at: updatedAt } : {}),
+                updated_at: updatedAt,
                 ngay: document.getElementById("ngay").value
             });
         });
@@ -1499,8 +1517,8 @@ export async function luuHoaDonccn1v2() {
         sohd: sohdDoiUng,
         loaihd: loaiDoiUng,
         diadiem: diadiemDoiUng,
-        created_at: (IS_EDIT ? (createdAtDoiUngGoc || createdAt) : createdAt),
-        ...(updatedAt ? { updated_at: updatedAt } : {})
+        created_at: (IS_EDIT ? (oldCreatedAtDoiUng || nowIso) : nowIso),
+        updated_at: updatedAt
     };
 
     const chitietDoiUng = [];
@@ -1523,8 +1541,8 @@ export async function luuHoaDonccn1v2() {
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
                 diadiem: diadiemDoiUng,
-                created_at: (IS_EDIT ? (createdAtDoiUngGoc || createdAt) : createdAt),
-                ...(updatedAt ? { updated_at: updatedAt } : {}),
+                created_at: (IS_EDIT ? (oldCreatedAtDoiUng || nowIso) : nowIso),
+                updated_at: updatedAt,
                 ngay: document.getElementById("ngay").value
             });
         });
