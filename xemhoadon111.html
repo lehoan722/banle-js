@@ -421,23 +421,11 @@
       if (loaiTongHop !== "chitiet") {
         const groupMap = new Map();
         filtered.forEach(hd => {
-          // Tạo key tổng hợp theo GIỜ VIỆT NAM để tránh lệch ngày khi máy tính ở múi giờ khác
           const d = new Date(hd.created_at);
-          const partsVN = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "Asia/Ho_Chi_Minh",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          }).formatToParts(d);
-          const getVN = (t) => partsVN.find(p => p.type === t)?.value || "";
-          const y = getVN("year");
-          const m = getVN("month");
-          const da = getVN("day");
-
           let key = "";
-          if (loaiTongHop === "ngay") key = `${y}-${m}-${da}`;        // YYYY-MM-DD
-          if (loaiTongHop === "thang") key = `${y}-${m}`;             // YYYY-MM
-          if (loaiTongHop === "nam") key = `${y}`;                    // YYYY
+          if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+          if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+          if (loaiTongHop === "nam") key = d.getFullYear() + "";
           if (!groupMap.has(key)) {
             groupMap.set(key, {
               sohd: 1,
@@ -463,52 +451,28 @@
 
       // ------------- HÀM ĐỊNH DẠNG NGÀY  -------------
 
-            // -------------  HÀM ĐỊNH DẠNG NGÀY (LUÔN THEO GIỜ VIỆT NAM) -------------
-      function _formatDateVN(isoStr, withTime = false) {
-        if (!isoStr) return "";
-
-        // Nếu chuỗi đã được tổng hợp dạng dd/mm/yyyy, mm/yyyy hoặc yyyy thì giữ nguyên
-        if (
-          typeof isoStr === "string" &&
-          (isoStr.match(/^\d{2}\/\d{2}\/\d{4}$/) ||
-            isoStr.match(/^\d{2}\/\d{4}$/) ||
-            isoStr.length === 4)
-        ) {
-          return isoStr;
-        }
-
-        const d = new Date(isoStr);
-        if (isNaN(d)) return "";
-
-        const fmt = new Intl.DateTimeFormat("vi-VN", {
-          timeZone: "Asia/Ho_Chi_Minh",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          ...(withTime
-            ? { hour: "2-digit", minute: "2-digit", hour12: false }
-            : {}),
-        });
-
-        const parts = fmt.formatToParts(d);
-        const get = (t) => parts.find((p) => p.type === t)?.value || "";
-
-        const dateStr = `${get("day")}/${get("month")}/${get("year")}`;
-        if (!withTime) return dateStr;
-
-        const hh = get("hour");
-        const mm = get("minute");
-        return `${dateStr} ${hh}h${mm}`;
-      }
-
       function dinhDangNgay(ngayStr) {
-        // dd/mm/yyyy theo giờ Việt Nam
-        return _formatDateVN(ngayStr, false);
+        if (!ngayStr) return "";
+        const d = new Date(ngayStr);
+        const ngay = d.getDate().toString().padStart(2, "0");
+        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+        const nam = d.getFullYear();
+        return `${ngay}/${thang}/${nam}`;
       }
 
+
+      // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
       function dinhDangNgayGio(ngayStr) {
-        // dd/mm/yyyy HHhMM theo giờ Việt Nam
-        return _formatDateVN(ngayStr, true);
+        if (!ngayStr) return "";
+        // Nếu chuỗi có dạng dd/mm/yyyy thì giữ nguyên (đang tổng hợp)
+        if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
+        const d = new Date(ngayStr);
+        const ngay = d.getDate().toString().padStart(2, "0");
+        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+        const nam = d.getFullYear();
+        const gio = d.getHours().toString().padStart(2, "0");
+        const phut = d.getMinutes().toString().padStart(2, "0");
+        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
       }
 
       // ------------- HIỂN THỊ RA BẢNG -------------
@@ -518,8 +482,8 @@
   <td>${idx + 1}</td>
   <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
   <td>${hd.sohd || ""}</td>
-  <td>${dinhDangNgay(hd.created_at)}</td>
-  <td>${dinhDangNgayGio(hd.updated_at || hd.updatedAt)}</td>
+  <td>${dinhDangNgay(hd.ngay)}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
   <td>${hd.manv || ""}</td>
   <td>${hd.khachhang || ""}</td>
   <td>${hd.tongsl || 0}</td>
