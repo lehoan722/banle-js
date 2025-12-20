@@ -611,6 +611,16 @@ export async function luuHoaDonQuaAPI() {
             return;
         }
 
+        // [FIX] NEW nhập: không ghi ngày sửa khi vừa tạo mới
+        // (một số DB có default/trigger updated_at, nên ta ép về null để báo cáo không hiện "ngày sửa")
+        try {
+            const { error: e1 } = await supabase.from("hoadon_banle").update({ updated_at: null }).eq("sohd", sohdThucTe);
+            const { error: e2 } = await supabase.from("ct_hoadon_banle").update({ updated_at: null }).eq("sohd", sohdThucTe);
+            if (e1 || e2) console.warn("Không clear được updated_at (NEW nhập):", e1 || e2);
+        } catch (e) {
+            console.warn("Không clear được updated_at (NEW nhập):", e);
+        }
+
         // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
         await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
 
@@ -798,7 +808,8 @@ export async function luuHoaDonNhapQuaAPI() {
             dvt: "",
             loaihd: loai,
             loai: loai,
-            nhacc: ""
+            nhacc: "",
+            updated_at: null
         };
 
         await refreshSessionIfNeeded();
@@ -1506,6 +1517,10 @@ export async function luuHoaDonccn1v2() {
         nhacc: ""
     };
 
+    if (updatedAt) {
+        hoadon.updated_at = updatedAt;
+    }
+
     // Chi tiết xuất (SRC)
     const { src, dst } = inferBranches();
     const chitiet = [];
@@ -1534,7 +1549,11 @@ export async function luuHoaDonccn1v2() {
         });
     });
 
-    const { error: errHD } = await supabase
+    
+    if (updatedAt) {
+        chitiet.forEach((r) => r.updated_at = updatedAt);
+    }
+const { error: errHD } = await supabase
         .from("hoadon_banle")
         .upsert([hoadon], { onConflict: "sohd" });
     const { error: errCT } = await supabase
@@ -1592,7 +1611,11 @@ export async function luuHoaDonccn1v2() {
         });
     });
 
-    const { error: errDU1 } = await supabase
+    
+    if (updatedAt) {
+        chitietDoiUng.forEach((r) => r.updated_at = updatedAt);
+    }
+const { error: errDU1 } = await supabase
         .from("hoadon_banle")
         .upsert([hoadonDoiUng], { onConflict: "sohd" });
     const { error: errDU2 } = await supabase
