@@ -579,9 +579,7 @@ export async function luuHoaDonQuaAPI() {
         document.getElementById("sohd").value = sohdThucTe;
 
         normalizeBangKetQua(getBangKetQua());
-        const nowIso = new Date().toISOString();
-    const createdAtToWrite = IS_EDIT ? (CREATED_AT_GOC || nowIso) : nowIso;
-    const createdAtDoiUngToWrite = IS_EDIT ? (CREATED_AT_DOIUNG_GOC || createdAtToWrite) : createdAtToWrite;
+        const createdAt = new Date().toISOString();
         const bangKetQuaNEW = getBangKetQua();
 
         const chitiet = [];
@@ -643,23 +641,12 @@ export async function luuHoaDonQuaAPI() {
         return;
     }
 
-    // --- FIX timestamp: EDIT không ghi đè created_at, chỉ ghi updated_at ---
-    let createdAtGoc = null;
     if (tonTai && choPhepSua) {
-        const { data: hdOld, error: eOld } = await supabase
-            .from("hoadon_banle")
-            .select("created_at")
-            .eq("sohd", sohd)
-            .maybeSingle();
-        if (eOld) console.warn("⚠️ Không đọc được created_at cũ:", eOld);
-        createdAtGoc = hdOld?.created_at || null;
-
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
 
-    const nowIso = new Date().toISOString();
-    const createdAtToWrite = createdAtGoc || nowIso;
+    const createdAt = new Date().toISOString();
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -677,8 +664,7 @@ export async function luuHoaDonQuaAPI() {
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAtToWrite,
-        updated_at: nowIso,
+        created_at: createdAt,
         loai: "",
         dvt: "",
         loaihd: sohd.split("_")[0],
@@ -700,8 +686,7 @@ export async function luuHoaDonQuaAPI() {
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
                 diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
-                created_at: createdAtToWrite,
-                updated_at: nowIso,
+                created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
         });
@@ -893,23 +878,11 @@ export async function luuHoaDonNhapQuaAPI() {
         return;
     }
 
-    // --- FIX timestamp: EDIT không ghi đè created_at, chỉ ghi updated_at ---
-    let createdAtGoc = null;
     if (tonTai && choPhepSua) {
-        const { data: hdOld, error: eOld } = await supabase
-            .from("hoadon_banle")
-            .select("created_at")
-            .eq("sohd", sohd)
-            .maybeSingle();
-        if (eOld) console.warn("⚠️ Không đọc được created_at cũ:", eOld);
-        createdAtGoc = hdOld?.created_at || null;
-
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
-
-    const nowIso = new Date().toISOString();
-    const createdAtToWrite = createdAtGoc || nowIso;
+    const createdAt = new Date().toISOString();
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -927,8 +900,7 @@ export async function luuHoaDonNhapQuaAPI() {
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAtToWrite,
-        updated_at: nowIso,
+        created_at: createdAt,
         loai: "",
         dvt: "",
         loaihd: sohd.split("_")[0],
@@ -956,8 +928,7 @@ export async function luuHoaDonNhapQuaAPI() {
                 thanhtien: (gia - km) * sl,
                 dvt: item.dvt || '',
                 diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
-                created_at: createdAtToWrite,
-                updated_at: nowIso,
+                created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
         });
@@ -1340,10 +1311,6 @@ export async function luuHoaDonccn1v2() {
     // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
 
-    // Giữ created_at gốc khi SỬA (để không ghi đè created_at)
-    let CREATED_AT_GOC = null;
-    let CREATED_AT_DOIUNG_GOC = null;
-
     if (!IS_EDIT) {
         // NEW: nếu số đang nhập đã tồn tại → hỏi người dùng
         const existed = await hoaDonDaTonTai(sohd);
@@ -1406,16 +1373,6 @@ export async function luuHoaDonccn1v2() {
         const existed = await hoaDonDaTonTai(sohd);
         if (!existed) { alert("❌ Không tìm thấy hóa đơn để sửa (CCN)."); return; }
 
-
-        // Đọc created_at gốc của phiếu gốc + phiếu đối ứng (để giữ nguyên khi EDIT)
-        const { data: hdOld, error: eOld } = await supabase
-            .from("hoadon_banle")
-            .select("created_at")
-            .eq("sohd", sohd)
-            .maybeSingle();
-        if (eOld) console.warn("⚠️ CCN: Không đọc được created_at gốc:", eOld);
-        CREATED_AT_GOC = hdOld?.created_at || null;
-
         // Cho phép xoá để ghi lại (giữ nguyên logic xoá phiếu gốc + đối ứng của bạn)
         // --- COPY từ khối 'if (tonTai && choPhepSua) { ... }' cũ ---
         // Xoá phiếu gốc
@@ -1429,15 +1386,6 @@ export async function luuHoaDonccn1v2() {
         const loaiGoc__ = parts__.slice(0, -1).join("_");
         const loaiDoiUng__ = (loaiGoc__ === "xcncs1") ? "ncncs2" : "ncncs1";
         const sohdDoiUng__ = `${loaiDoiUng__}_${so__}`;
-
-        const { data: hdDUOld, error: eDUOld } = await supabase
-            .from("hoadon_banle")
-            .select("created_at")
-            .eq("sohd", sohdDoiUng__)
-            .maybeSingle();
-        if (eDUOld) console.warn("⚠️ CCN: Không đọc được created_at đối ứng:", eDUOld);
-        CREATED_AT_DOIUNG_GOC = hdDUOld?.created_at || null;
-
 
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng__);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng__);
@@ -1470,8 +1418,7 @@ export async function luuHoaDonccn1v2() {
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
-        created_at: createdAtToWrite,
-        updated_at: IS_EDIT ? nowIso : null,
+        created_at: createdAt,
         loai: "",
         dvt: "",
         loaihd: loaihd_thucte,
@@ -1500,8 +1447,7 @@ export async function luuHoaDonccn1v2() {
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
                 diadiem: diadiemSRC,
-                created_at: createdAtToWrite,
-                updated_at: IS_EDIT ? nowIso : null,
+                created_at: createdAt,
                 ngay: document.getElementById("ngay").value
             });
         });
@@ -1536,8 +1482,7 @@ export async function luuHoaDonccn1v2() {
         sohd: sohdDoiUng,
         loaihd: loaiDoiUng,
         diadiem: diadiemDoiUng,
-        created_at: createdAtDoiUngToWrite,
-        updated_at: IS_EDIT ? nowIso : null,
+        created_at: new Date().toISOString()
     };
 
     const chitietDoiUng = [];
@@ -1560,8 +1505,7 @@ export async function luuHoaDonccn1v2() {
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
                 diadiem: diadiemDoiUng,
-                created_at: createdAtDoiUngToWrite,
-                updated_at: IS_EDIT ? nowIso : null,
+                created_at: new Date().toISOString(),
                 ngay: document.getElementById("ngay").value
             });
         });
