@@ -124,8 +124,8 @@
     <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
     <label> <input type="text" id="locSoHD" placeholder="so hd:"></label>
     <label><input type="text" id="locMasp" placeholder="tim nhiều Mã SP cách nhau dấu phẩy"> </label>
-    <label style="user-select:none"> <input type="checkbox" id="chkMatchAll" > HĐ phải chứa tất cả mã </label>
-     
+    <label style="user-select:none"> <input type="checkbox" id="chkMatchAll"> HĐ phải chứa tất cả mã </label>
+
 
     <label>Loại chứng từ:</label>
     <select id="loaiChungTu" multiple style="min-width:140px;">
@@ -349,10 +349,10 @@
           let query = supabase
             .from('hoadon_banle')
             .select('*')
-            .order('ngay', { ascending: true })    // SỬA: dùng 'ngay'
+            .order('created_at', { ascending: true })    // SỬA: dùng 'ngay'
             .ilike('sohd', `${loai}_%`);
 
-          if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);   // SỬA: dùng 'ngay'
+          if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);   // SỬA: dùng 'ngay'
           else if (tuNgay) query = query.gte('ngay', tuNgay);
           else if (denNgay) query = query.lte('ngay', denNgay);
 
@@ -385,7 +385,7 @@
           .select('*')
           .order('ngay', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
 
-        if (tuNgay && denNgay) query = query.gte('ngay', tuNgay).lte('ngay', denNgay);
+        if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
         else if (tuNgay) query = query.gte('ngay', tuNgay);
         else if (denNgay) query = query.lte('ngay', denNgay);
 
@@ -454,27 +454,43 @@
       function dinhDangNgay(ngayStr) {
         if (!ngayStr) return "";
         const d = new Date(ngayStr);
-        const ngay = d.getDate().toString().padStart(2, "0");
-        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
-        const nam = d.getFullYear();
-        return `${ngay}/${thang}/${nam}`;
+        return new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
       }
-
 
       // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
-        // Nếu chuỗi có dạng dd/mm/yyyy thì giữ nguyên (đang tổng hợp)
-        if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
-        const d = new Date(ngayStr);
-        const ngay = d.getDate().toString().padStart(2, "0");
-        const thang = (d.getMonth() + 1).toString().padStart(2, "0");
-        const nam = d.getFullYear();
-        const gio = d.getHours().toString().padStart(2, "0");
-        const phut = d.getMinutes().toString().padStart(2, "0");
-        return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
-      }
 
+        // Nếu chuỗi có dạng dd/mm/yyyy hoặc mm/yyyy hoặc yyyy thì giữ nguyên (đang tổng hợp)
+        if (
+          /^\d{2}\/\d{2}\/\d{4}$/.test(ngayStr) ||
+          /^\d{2}\/\d{4}$/.test(ngayStr) ||
+          /^\d{4}$/.test(ngayStr)
+        ) return ngayStr;
+
+        const d = new Date(ngayStr);
+        const datePart = new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
+
+        const timePart = new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(d);
+
+        // timePart thường ra "09:18" => đổi thành "09h18"
+        return `${datePart} ${timePart.replace(":", "h")}`;
+      }
       // ------------- HIỂN THỊ RA BẢNG -------------
       hienThiData.forEach((hd, idx) => {
         const tr = document.createElement("tr");
