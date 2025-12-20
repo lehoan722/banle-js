@@ -694,13 +694,13 @@ export async function luuHoaDonQuaAPI() {
         });
     });
 
-    
+
     if (updatedAt) {
         hoadon.updated_at = updatedAt;
         chitiet.forEach(r => r.updated_at = updatedAt);
     }
 
-const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
+    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
 
     if (!errHD && !errCT) {
@@ -891,8 +891,8 @@ export async function luuHoaDonNhapQuaAPI() {
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
-        const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
-        const createdAt = (tonTai && choPhepSua && tonTai.created_at) ? tonTai.created_at : new Date().toISOString();
+    const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
+    const createdAt = (tonTai && choPhepSua && tonTai.created_at) ? tonTai.created_at : new Date().toISOString();
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -944,13 +944,12 @@ export async function luuHoaDonNhapQuaAPI() {
         });
     });
 
-    
     if (updatedAt) {
         hoadon.updated_at = updatedAt;
-        chitiet.forEach(r => r.updated_at = updatedAt);
+        chitiet2.forEach((r) => r.updated_at = updatedAt);
     }
 
-const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
+    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet2);
 
     if (!errHD && !errCT) {
@@ -980,6 +979,10 @@ const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
         alert("❌ Lỗi khi lưu hóa đơn nhập");
         console.error(errHD || errCT);
     }
+    
+    choPhepSua = false;
+    window.HD_CTX = null;
+
 }
 
 export async function luuHoaDonCaHaiBan() {
@@ -1000,22 +1003,22 @@ export async function luuHoaDonCaHaiBan() {
 
     // ==== CHẶN LƯU 2 BẢN NẾU LÀ HÓA ĐƠN CŨ (<=) NGAY ĐẦU HÀM ====
     if (!isConfirmEdit) {
-    const [loai, soStr] = sohd.split('_');
-    const so = parseInt(soStr, 10);
-    const { data: currSoChungTu, error: errSoHienTai } = await supabase
-        .from("sochungtu")
-        .select("so_hientai")
-        .eq("loai", loai)
-        .single();
-    if (errSoHienTai || !currSoChungTu) {
-        alert("❌ Không lấy được số hiện tại từ bảng sochungtu.");
-        return;
-    }
-    if (so <= currSoChungTu.so_hientai) {
-        alert("🚫 Không được phép dùng chức năng này để sửa hóa đơn cũ!");
-        return;
-    }
+        const [loai, soStr] = sohd.split('_');
+        const so = parseInt(soStr, 10);
+        const { data: currSoChungTu, error: errSoHienTai } = await supabase
+            .from("sochungtu")
+            .select("so_hientai")
+            .eq("loai", loai)
+            .single();
+        if (errSoHienTai || !currSoChungTu) {
+            alert("❌ Không lấy được số hiện tại từ bảng sochungtu.");
+            return;
         }
+        if (so <= currSoChungTu.so_hientai) {
+            alert("🚫 Không được phép dùng chức năng này để sửa hóa đơn cũ!");
+            return;
+        }
+    }
     // ==== HẾT ĐOẠN CHẶN ====
 
     // Kiểm tra bảng kết quả có dữ liệu không
@@ -1148,7 +1151,7 @@ export async function luuHoaDonCaHaiBan() {
     const chitietChinh = chitiet.map(ct => ({ ...ct, sohd }));
     const chitietPhu = chitiet.map(ct => ({ ...ct, sohd: sohdT }));
 
-    
+
     if (updatedAt) {
         hoadonChinh.updated_at = updatedAt;
         hoadonPhu.updated_at = updatedAt;
@@ -1156,7 +1159,7 @@ export async function luuHoaDonCaHaiBan() {
         chitietPhu.forEach(r => r.updated_at = updatedAt);
     }
 
-const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadonChinh]);
+    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadonChinh]);
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitietChinh);
     const { error: errHDT } = await supabase.from("hoadon_banleT").insert([hoadonPhu]);
     const { error: errCTT } = await supabase.from("ct_hoadon_banleT").insert(chitietPhu);
