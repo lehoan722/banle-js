@@ -45,6 +45,10 @@ export default async function handler(req, res) {
       .eq('manv', manvUpper)
       .limit(1);
 
+    // CHÈN LOG Ở ĐÂY
+    console.log('LOGIN CS1 manvUpper =', manvUpper);
+    console.log('LOGIN CS1 nvArr =', nvArr, 'errNV =', errNV);
+
     if (errNV) {
       console.error('Lỗi truy vấn dmnhanvien (CS2):', errNV);
       return res
