@@ -58,6 +58,91 @@ function currentBranchUpper() {
     return 'CS1';
 }
 
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// Quy tắc:
+// - Chỉ xét các dòng nhân viên trong 1 giờ gần nhất, used_for_mt = false
+// - Nếu không có dòng nào -> không gợi ý
+// - Nếu có > 1 dòng (kể cả cùng size hay khác size):
+//     + KHÔNG gợi ý
+//     + Đánh dấu used_for_mt = true cho TẤT CẢ các dòng đó (dọn rác mạnh tay)
+// - Nếu CHỈ CÓ 1 dòng hợp lệ:
+//     + Gợi ý size của dòng đó
+//     + Đồng thời đánh dấu used_for_mt = true cho dòng đó (mỗi dòng dùng 1 lần)
+// === GỢI Ý SIZE TỪ HÓA ĐƠN NHÂN VIÊN (bannvcs1_, bannvcs2_) ===
+// Phiên bản READ-ONLY: chỉ đọc dữ liệu tư vấn, KHÔNG cập nhật used_for_mt.
+// Quy tắc:
+// - Chỉ xét các dòng nhân viên trong 1 giờ gần nhất, used_for_mt = false
+// - Lọc những dòng có size hợp lệ (khác rỗng)
+// - Nếu không có dòng nào -> không gợi ý
+// - Nếu có TỪ 2 DÒNG TRỞ LÊN (kể cả cùng size hay khác size) -> không gợi ý
+// - Chỉ khi CÓ ĐÚNG 1 DÒNG hợp lệ trong 1h -> trả về size của dòng đó
+async function goiYSizeTuHoaDonNhanVien(maspBase) {
+    const masp = String(maspBase || "").trim().toUpperCase();
+    if (!masp) return null;
+
+    // Xác định prefix hóa đơn nhân viên theo CƠ SỞ, ưu tiên URL trang bán lẻ MT
+    const path = (location.pathname || "").toLowerCase();
+    let prefix;
+
+    if (path.includes("banlemtcs2")) {
+        // Trang bán lẻ MT cơ sở 2 → chỉ lấy từ bannvcs2_
+        prefix = "bannvcs2_";
+    } else if (path.includes("banlemtcs1")) {
+        // Trang bán lẻ MT cơ sở 1 → chỉ lấy từ bannvcs1_
+        prefix = "bannvcs1_";
+    } else {
+        // Các trang khác fallback theo currentBranchUpper (giữ an toàn cho logic cũ)
+        const branch = currentBranchUpper(); // 'CS1' | 'CS2'
+        prefix = branch === "CS2" ? "bannvcs2_" : "bannvcs1_";
+    }
+
+    try {
+        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+        const { data, error } = await supabase
+            .from("ct_hoadon_banle")
+            .select("id, size, sohd, created_at, used_for_mt")
+            .eq("masp", masp)
+            .like("sohd", `${prefix}%`)
+            .gte("created_at", oneHourAgoIso)
+            .eq("used_for_mt", false)
+            .order("id", { ascending: false })
+            .limit(50);
+
+        if (error) {
+            console.error("Gợi ý size từ HĐ nhân viên lỗi:", error);
+            return null;
+        }
+
+        if (!data || !data.length) return null;
+
+        // Chỉ lấy những dòng có size hợp lệ
+        const validRows = data.filter((r) => {
+            const s = r && r.size != null ? String(r.size).trim() : "";
+            return s !== "";
+        });
+
+        if (!validRows.length) return null;
+
+        // Nếu có từ 2 dòng trở lên (kể cả trùng size) → không gợi ý gì
+        if (validRows.length > 1) {
+            return null;
+        }
+
+        // Đến đây chắc chắn chỉ có 1 dòng hợp lệ
+        const row = validRows[0];
+        const sizeStr = String(row.size || "").trim();
+        if (!sizeStr) return null;
+
+        return sizeStr;
+    } catch (err) {
+        console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
+        return null;
+    }
+}
+
 export let bangKetQua = {};
 
 // Trong hoadon.js
@@ -164,6 +249,71 @@ function requireManagedInTransfer(masp) {
         requireManagedAtBranch(masp, branches.dst)
     );
 }
+
+// === BANLE MT HELPERS: xác định bối cảnh bán lẻ MT & gợi ý size từ hóa đơn nhân viên ===
+function isBanLeMTMode() {
+    const p = (location.pathname || "").toLowerCase();
+    const loai = (window.loaihd || "").toLowerCase();
+
+    // Các trang bán lẻ MT chính: banlemtcs1, banlemtcs2
+    if (p.includes("banlemtcs1") || p.includes("banlemtcs2")) {
+        return true;
+    }
+
+    // Dự phòng theo loại hóa đơn nếu sau này bạn có set
+    if (loai === "bancs1" || loai === "bancs2") {
+        return true;
+    }
+
+    return false;
+}
+
+// Helper: chỉ ghi size gợi ý vào #size nếu đang trống & vẫn đúng mã
+// BẢN MỚI: nếu có size gợi ý hợp lệ → tự động thêm luôn vào bảng kết quả
+function autoGoiYSizeNeuOTrong(maspBaseNow) {
+    const maspSnap = String(maspBaseNow || "").trim().toUpperCase();
+    if (!maspSnap) return;
+
+    const maspAtTime = maspSnap;
+
+    goiYSizeTuHoaDonNhanVien(maspSnap)
+        .then((sizeGoiY) => {
+            if (!sizeGoiY) return;
+
+            const sizeInput = document.getElementById("size");
+            const maspInput = document.getElementById("masp");
+            if (!sizeInput || !maspInput) return;
+
+            // Nếu trong lúc chờ, người dùng đã tự gõ size → KHÔNG làm gì
+            if (sizeInput.value.trim()) return;
+
+            // Nếu người dùng đã chuyển sang mã khác → KHÔNG làm gì
+            const maspCurrent = maspInput.value.trim().toUpperCase();
+            if (maspCurrent !== maspAtTime) return;
+
+            // 1) Gán size gợi ý lên form
+            const sizeValue = String(sizeGoiY).trim();
+            sizeInput.value = sizeValue;
+
+            // 2) Tự động thêm vào bảng kết quả
+            const nhapSizeMode =
+                document.getElementById("nhapsize")?.checked === true;
+
+            if (nhapSizeMode) {
+                // Chế độ nhập size liên tiếp: giữ mã & focus lại #size
+                themVaoBang(sizeValue, { afterAdd: "keepMaspFocusSize" });
+            } else {
+                // Chế độ bình thường: thêm xong reset về #masp
+                themVaoBang(sizeValue);
+            }
+
+            // Không cần focus/select #size nữa vì themVaoBang đã xử lý focus phù hợp
+        })
+        .catch((err) => {
+            console.error("autoGoiYSizeNeuOTrong lỗi:", err);
+        });
+}
+
 
 export async function chuyenFocus(e) {
     if (e.key !== "Enter") return;
@@ -377,11 +527,44 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                 // Nếu người dùng có gõ hậu tố size thì đã điền sẵn #size ở trên
                 const sizeEl = document.getElementById("size");
                 if (!sizeEl.value.trim()) {
+                    // Focus & bíp như cũ
                     sizeEl.focus();
                     sizeEl.select?.();
                     window.soundWaitSize?.();
-                    return true; // đợi người dùng nhập size
+                    return true; // chỉ bắt nhập size tay, KHÔNG gợi ý
+
+                    // 🔔 Gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
+                    // Chạy bất đồng bộ, KHÔNG chặn người dùng gõ tay
+                    const maspBaseNow = String(baseCode || maspVal || "").trim().toUpperCase();
+                    const maspAtTime = maspBaseNow; // chụp lại mã tại thời điểm này
+
+                    goiYSizeTuHoaDonNhanVien(maspBaseNow)
+                        .then((sizeGoiY) => {
+                            if (!sizeGoiY) return;
+
+                            const sizeInput = document.getElementById("size");
+                            const maspInput = document.getElementById("masp");
+                            if (!sizeInput || !maspInput) return;
+
+                            // Nếu trong lúc chờ, người dùng đã gõ size → KHÔNG ghi đè
+                            if (sizeInput.value.trim()) return;
+
+                            // Nếu đã chuyển sang mã sản phẩm khác → KHÔNG ghi đè
+                            const maspCurrent = maspInput.value.trim().toUpperCase();
+                            if (maspCurrent !== maspAtTime) return;
+
+                            // Gán size gợi ý + bôi đen để nhấn Enter là xong
+                            sizeInput.value = sizeGoiY;
+                            sizeInput.focus();
+                            sizeInput.select?.();
+                        })
+                        .catch((err) => {
+                            console.error("Gợi ý size từ hóa đơn nhân viên lỗi:", err);
+                        });
+
+                    return true; // đợi người dùng nhập size hoặc nhấn Enter với size gợi ý
                 }
+
                 // Có size rồi → ép SL=1 và thêm ngay
                 const slEl = document.getElementById("soluong");
                 if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
@@ -452,6 +635,15 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     // Tổng điều kiện cần quản-size (size45 bật thì ép cho mọi mã quản-size)
     const requireManagedSizeNow = (size45On && isQLSize) || groupRequires || managedByGia; // ✅ dùng isQLSize
+    // 👉 Nếu đang ở trang BÁN LẺ MT (không phải CCN),
+    // và mã hàng này thuộc diện QUẢN SIZE,
+    // và ô #size hiện đang trống → chạy gợi ý size từ hóa đơn nhân viên bannvcs1_/bannvcs2_
+    if (!isCCNMode() && isBanLeMTMode() && requireManagedSizeNow) {
+        const sizeEl = document.getElementById("size");
+        if (sizeEl && !sizeEl.value.trim()) {
+            autoGoiYSizeNeuOTrong(baseCode || maspVal);
+        }
+    }
 
     // --- thay thế toàn bộ khối này trong xuLyMaSanPham ---
     if (typedSize) {
@@ -965,12 +1157,4 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
-
-
-
-
-
-
-
 
