@@ -39,7 +39,7 @@ async function hoaDonDaTonTai(sohd) {
     if (!sohd) return false;
     const { data, error } = await supabase
         .from("hoadon_banle")
-        .select("sohd, created_at")
+        .select("sohd")
         .eq("sohd", sohd)
         .maybeSingle();
     return !!data;
@@ -646,9 +646,7 @@ export async function luuHoaDonQuaAPI() {
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
 
-    const nowIso = new Date().toISOString();
-    const createdAt = tonTai?.created_at || nowIso;
-    const updatedAt = nowIso;
+    const createdAt = new Date().toISOString();
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -667,7 +665,6 @@ export async function luuHoaDonQuaAPI() {
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
         created_at: createdAt,
-        updated_at: updatedAt,
         loai: "",
         dvt: "",
         loaihd: sohd.split("_")[0],
@@ -690,7 +687,6 @@ export async function luuHoaDonQuaAPI() {
                 dvt: item.dvt || '',
                 diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
                 created_at: createdAt,
-                updated_at: updatedAt,
                 ngay: document.getElementById("ngay").value
             });
         });
@@ -1258,15 +1254,13 @@ function inHoaDon(hoadon, chitiet) {
     iframe.onload = () => {
         setTimeout(() => {
             try {
-                iframe.contentWindow.focus();
                 iframe.contentWindow.print();
-                // Đợi người dùng đóng hộp thoại in rồi mới remove iframe (tránh lỗi callback bị huỷ)
-                setTimeout(() => { try { iframe.remove(); } catch (_) {} }, 1500);
             } catch (e) {
                 console.error("Không thể gọi print() từ iframe:", e);
-                try { iframe.remove(); } catch (_) {}
+            } finally {
+                iframe.remove();
             }
-        }, 200);
+        }, 500);
     };
 }
 
@@ -1277,18 +1271,10 @@ export async function luuHoaDonccn1v2() {
         return;
     }
     const loaihd_thucte = CCN_CTX.loaihdGoc;
-    let oldCreatedAtGoc = null;
-    let oldCreatedAtDoiUng = null;
-    let sohdDoiUngOld = null;
     const diadiemSRC = CCN_CTX.src.toLowerCase();
 
-    // Một số trang (CCN) có thể chưa nạp đủ hàm/biến phụ trợ; dùng wrapper an toàn
-    const getBKQ = (typeof window.getBangKetQua === "function") ? window.getBangKetQua : () => ({});
-    const bkq0 = getBKQ();
-    if (typeof window.capNhatThongTinTong === "function") {
-        window.capNhatThongTinTong(bkq0);
-    }
-    normalizeBangKetQua(bkq0);
+    capNhatThongTinTong(getBangKetQua());
+    normalizeBangKetQua(getBangKetQua());
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -1299,7 +1285,7 @@ export async function luuHoaDonccn1v2() {
 
     await ensureCatalogsReady();
 
-    const bangKetQua = getBKQ();
+    const bangKetQua = getBangKetQua();
 
     // Normalize sau dán (tránh size null/undefined hoặc số chưa được stringify)
     for (const k of Object.keys(bangKetQua)) {
@@ -1389,39 +1375,22 @@ export async function luuHoaDonccn1v2() {
 
         // Cho phép xoá để ghi lại (giữ nguyên logic xoá phiếu gốc + đối ứng của bạn)
         // --- COPY từ khối 'if (tonTai && choPhepSua) { ... }' cũ ---
-        // Xác định số hóa đơn đối ứng & giữ lại created_at cũ (để ghi lại đúng khi SỬA)
+        // Xoá phiếu gốc
+        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+
+        // Xoá phiếu đối ứng
         const base = sohd.endsWith("_IN") ? sohd.slice(0, -3) : sohd;
         const parts__ = base.split("_");
         const so__ = parts__[parts__.length - 1];
         const loaiGoc__ = parts__.slice(0, -1).join("_");
         const loaiDoiUng__ = (loaiGoc__ === "xcncs1") ? "ncncs2" : "ncncs1";
         const sohdDoiUng__ = `${loaiDoiUng__}_${so__}`;
-        sohdDoiUngOld = sohdDoiUng__;
 
-        // Lấy created_at cũ để không bị ghi đè khi sửa
-        const { data: oldGoc } = await supabase
-            .from("hoadon_banle")
-            .select("created_at")
-            .eq("sohd", sohd)
-            .maybeSingle();
-        const { data: oldDU } = await supabase
-            .from("hoadon_banle")
-            .select("created_at")
-            .eq("sohd", sohdDoiUng__)
-            .maybeSingle();
-        oldCreatedAtGoc = oldGoc?.created_at || null;
-        oldCreatedAtDoiUng = oldDU?.created_at || null;
-
-        // Xoá phiếu gốc
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-
-        // Xoá phiếu đối ứng
         await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohdDoiUng__);
         await supabase.from("hoadon_banle").delete().eq("sohd", sohdDoiUng__);
 
-
-// Nối ghi chú sửa (giữ nguyên đoạn bạn đã có)
+        // Nối ghi chú sửa (giữ nguyên đoạn bạn đã có)
         let oldNote = document.getElementById("ghichu")?.value || "";
         const manv2 = document.getElementById("manv").value.trim();
         const timestamp2 = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -1432,9 +1401,7 @@ export async function luuHoaDonccn1v2() {
         document.getElementById("ghichu").value = finalNote2;
     }
 
-    const nowIso = new Date().toISOString();
-    const createdAt = (IS_EDIT ? (oldCreatedAtGoc || nowIso) : nowIso);
-    const updatedAt = IS_EDIT ? nowIso : null;
+    const createdAt = new Date().toISOString();
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
 
@@ -1452,7 +1419,6 @@ export async function luuHoaDonccn1v2() {
         hinhthuctt: document.getElementById("hinhthuctt").value,
         ghichu: document.getElementById("ghichu")?.value || "",
         created_at: createdAt,
-        updated_at: updatedAt,
         loai: "",
         dvt: "",
         loaihd: loaihd_thucte,
@@ -1482,7 +1448,6 @@ export async function luuHoaDonccn1v2() {
                 dvt: item.dvt || '',
                 diadiem: diadiemSRC,
                 created_at: createdAt,
-                updated_at: updatedAt,
                 ngay: document.getElementById("ngay").value
             });
         });
@@ -1517,8 +1482,7 @@ export async function luuHoaDonccn1v2() {
         sohd: sohdDoiUng,
         loaihd: loaiDoiUng,
         diadiem: diadiemDoiUng,
-        created_at: (IS_EDIT ? (oldCreatedAtDoiUng || nowIso) : nowIso),
-        updated_at: updatedAt
+        created_at: new Date().toISOString()
     };
 
     const chitietDoiUng = [];
@@ -1541,8 +1505,7 @@ export async function luuHoaDonccn1v2() {
                 thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
                 diadiem: diadiemDoiUng,
-                created_at: (IS_EDIT ? (oldCreatedAtDoiUng || nowIso) : nowIso),
-                updated_at: updatedAt,
+                created_at: new Date().toISOString(),
                 ngay: document.getElementById("ngay").value
             });
         });
