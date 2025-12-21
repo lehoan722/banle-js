@@ -7,67 +7,16 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 import { guiHoaDonViettel } from './viettelInvoice.js';
 
+import { refreshSessionIfNeeded, hoaDonDaTonTai, hoaDonDaTonTaiAny, ensureCatalogsReady, capNhatUsedTuVanSauKhiLuuCT } from './luuhoadon/api.js';
+import { buildCCNCtxFromPathname, ensureExistDialog, showExistDialog, getDiaDiemFromLoai, getDiaDiemFromPageName, getLoaiFromSoHDInput, handleSpecialSoHoaDon, inferBranches } from './luuhoadon/builders.js';
+import { normalizeBangKetQua, calcTongThanhTienFromBangKetQua } from './luuhoadon/pricing.js';
+import { resolveGroupKeyFromSP, requireManagedAtBranch } from './luuhoadon/validators.js';
+
 
 // =========================
 // TỔNG THÀNH TIỀN (ẩn)
 // tongthanhtien = SUM( (gia - km) * soluong ) theo từng size/dòng
 // =========================
-function calcTongThanhTienFromBangKetQua(bangKetQua) {
-  let sum = 0;
-  try {
-    Object.values(bangKetQua || {}).forEach((item) => {
-      const gia = Number(item?.gia || 0);
-      const km = Number(item?.km || 0);
-      const soluongs = item?.soluongs || [];
-      for (let i = 0; i < soluongs.length; i++) {
-        const sl = Number(soluongs[i] || 0);
-        sum += (gia - km) * sl;
-      }
-    });
-  } catch (e) {
-    console.warn("calcTongThanhTienFromBangKetQua error:", e);
-  }
-  // đảm bảo số nguyên (VND)
-  return Math.round(sum);
-}
-
-async function refreshSessionIfNeeded() {
-    // 1) phải có session
-    const { data: s1, error: e1 } = await supabase.auth.getSession();
-    if (e1) console.warn("getSession error:", e1);
-
-    let session = s1?.session;
-    if (!session) {
-        // Không còn session => bắt đăng nhập lại
-        alert("⚠️ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại!");
-        throw new Error("NO_SESSION");
-    }
-
-    // 2) nếu sắp hết hạn (<= 90s) thì refresh
-    const expiresAtMs = (session.expires_at || 0) * 1000;
-    if (expiresAtMs && expiresAtMs - Date.now() <= 90_000) {
-        const { data: s2, error: e2 } = await supabase.auth.refreshSession();
-        if (e2 || !s2?.session) {
-            console.warn("refreshSession error:", e2);
-            alert("⚠️ Không làm mới được phiên đăng nhập. Vui lòng đăng nhập lại!");
-            throw new Error("REFRESH_FAILED");
-        }
-        session = s2.session;
-    }
-
-    return session;
-}
-
-
-async function hoaDonDaTonTai(sohd) {
-    if (!sohd) return false;
-    const { data, error } = await supabase
-        .from("hoadon_banle")
-        .select("sohd")
-        .eq("sohd", sohd)
-        .maybeSingle();
-    return !!data;
-}
 
 
 // === HD_CTX: trạng thái NEW/EDIT cho luồng lưu hóa đơn ===
@@ -77,33 +26,8 @@ window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
 const getInt = (id) => parseInt((document.getElementById(id)?.value || "").replace(/[.,]/g, "") || "0", 10);
 
 // Chuẩn hoá mảng size: rỗng -> "0"
-function normalizeBangKetQua(bkq) {
-    if (!bkq) return;
-    Object.values(bkq).forEach(item => {
-        if (Array.isArray(item?.sizes)) {
-            item.sizes = item.sizes.map(sz => {
-                const s = String(sz ?? "").trim();
-                return s === "" ? "0" : s;
-            });
-        }
-    });
-}
-
 // Lấy địa điểm từ prefix loại
-function getDiaDiemFromLoai(loai) {
-    return (String(loai).toLowerCase().includes("cs2")) ? "cs2" : "cs1";
-}
-
 // Kiểm tra trùng số ở cả 2 bảng bán lẻ (chính và T)
-async function hoaDonDaTonTaiAny(sohd) {
-    if (!sohd) return false;
-    const [r1, r2] = await Promise.all([
-        supabase.from("hoadon_banle").select("sohd").eq("sohd", sohd).maybeSingle(),
-        supabase.from("hoadon_banleT").select("sohd").eq("sohd", sohd).maybeSingle()
-    ]);
-    return !!(r1?.data || r2?.data);
-}
-
 // === SAU KHI LƯU HÓA ĐƠN: CẬP NHẬT used_for_mt CHO DÒNG TƯ VẤN NHÂN VIÊN ===
 // Quy tắc:
 // - Chỉ chạy cho hóa đơn bán lẻ MT chính: loai = 'bancs1' hoặc 'bancs2'
@@ -117,178 +41,9 @@ async function hoaDonDaTonTaiAny(sohd) {
 // - Nếu có từ 2 dòng hợp lệ trở lên (kể cả trùng size hay khác size) và hóa đơn MT có bán mã đó:
 //      → coi là dữ liệu mập mờ → set used_for_mt = true cho TẤT CẢ các dòng đó (dọn rác)
 // Lưu ý: HÀM NÀY KHÔNG ẢNH HƯỞNG TỚI LUỒNG LƯU CHÍNH nếu có lỗi, chỉ log ra console.
-async function capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang) {
-    try {
-        if (!Array.isArray(chitiet) || chitiet.length === 0) return;
-
-        // Chỉ áp dụng cho bán lẻ MT chính
-        const loaiNorm = String(loai || "").toLowerCase();
-        if (loaiNorm !== "bancs1" && loaiNorm !== "bancs2") return;
-
-        // Xác định prefix hóa đơn nhân viên theo địa điểm
-        const dia = String(diadiemTrang || "").toLowerCase();
-        const prefixNV = dia === "cs2" ? "bannvcs2_" : "bannvcs1_";
-
-        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-        // Tập mã sản phẩm duy nhất có trong hóa đơn vừa lưu
-        const maspSet = new Set();
-        chitiet.forEach((ct) => {
-            const m = String(ct.masp || "").trim().toUpperCase();
-            if (m) maspSet.add(m);
-        });
-
-        if (!maspSet.size) return;
-
-        for (const masp of maspSet) {
-            const { data, error } = await supabase
-                .from("ct_hoadon_banle")
-                .select("id, size, sohd, created_at, used_for_mt, masp")
-                .eq("masp", masp)
-                .like("sohd", `${prefixNV}%`)
-                .gte("created_at", oneHourAgoIso)
-                .eq("used_for_mt", false)
-                .order("id", { ascending: false })
-                .limit(50);
-
-            if (error) {
-                console.error("Lỗi truy vấn tư vấn NV cho masp", masp, error);
-                continue;
-            }
-            if (!data || !data.length) continue;
-
-            const validRows = data.filter((r) => {
-                const s = r && r.size != null ? String(r.size).trim() : "";
-                return s !== "";
-            });
-            if (!validRows.length) continue;
-
-            // Nếu hóa đơn MT KHÔNG bán mã này thì không dọn rác nhóm này
-            const usedAny = chitiet.some(
-                (ct) => String(ct.masp || "").trim().toUpperCase() === masp
-            );
-            if (!usedAny) continue;
-
-            if (validRows.length === 1) {
-                // Chỉ dùng khi size trùng với size trên hóa đơn MT
-                const nvSize = String(validRows[0].size || "").trim();
-                const usedInMT = chitiet.some(
-                    (ct) =>
-                        String(ct.masp || "").trim().toUpperCase() === masp &&
-                        String(ct.size ?? "").trim() === nvSize
-                );
-                if (!usedInMT) continue;
-
-                await supabase
-                    .from("ct_hoadon_banle")
-                    .update({ used_for_mt: true })
-                    .eq("id", validRows[0].id);
-            } else {
-                // Có từ 2 dòng trở lên (kể cả cùng size hay khác size) → dọn rác toàn bộ nếu có phát sinh bán MT
-                const ids = validRows.map((r) => r.id);
-                if (ids.length) {
-                    await supabase
-                        .from("ct_hoadon_banle")
-                        .update({ used_for_mt: true })
-                        .in("id", ids);
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Lỗi capNhatUsedTuVanSauKhiLuuCT:", err);
-    }
-}
-
 
 // ===== Modal "Số hóa đơn đã tồn tại" với 2 nút to (Tạo mới / Sửa) =====
-function ensureExistDialog() {
-    if (document.getElementById('exist-dialog')) return;
 
-    const css = document.createElement('style');
-    css.id = 'exist-dialog-css';
-    css.textContent = `
-  .exist-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998}
-  .exist-box{position:fixed;z-index:9999;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:560px;max-width:92vw;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);
-    font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
-  .exist-hd{padding:14px 18px;border-bottom:1px solid #eee;font-weight:700;font-size:16px}
-  .exist-bd{padding:16px 18px;line-height:1.5;color:#333}
-  .exist-actions{display:flex;gap:16px;justify-content:center;padding:16px 18px 22px}
-  .exist-btn{min-width:210px;padding:12px 18px;border-radius:999px;border:2px solid transparent;
-    font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
-  .exist-btn.new{background:#1e88e5;color:#fff}
-  .exist-btn.new:focus,.exist-btn.new:hover{filter:brightness(1.05)}
-  .exist-btn.edit{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7}
-  .exist-btn.edit:focus,.exist-btn.edit:hover{filter:brightness(1.03)}
-  .exist-note{margin-top:8px;color:#666;font-size:13px}
-  `;
-    document.head.appendChild(css);
-
-    const wrap = document.createElement('div');
-    wrap.id = 'exist-dialog';
-    wrap.style.display = 'none';
-    wrap.innerHTML = `
-    <div class="exist-mask" data-role="mask"></div>
-    <div class="exist-box" role="dialog" aria-modal="true" aria-labelledby="exist-title">
-      <div class="exist-hd" id="exist-title">Số hóa đơn đã tồn tại</div>
-      <div class="exist-bd">
-        <div>Hóa đơn có số <b id="exist-sohd"></b> đã có trong hệ thống.</div>
-        <div class="exist-note">Chọn <b>Tạo hóa đơn mới</b> để hệ thống tự cấp số mới, hoặc
-        <b>Sửa hóa đơn này</b> (yêu cầu xác thực) nếu bạn muốn chỉnh hóa đơn cũ.</div>
-      </div>
-      <div class="exist-actions">
-        <button class="exist-btn new"  id="exist-new-btn">Tạo hóa đơn mới</button>
-        <button class="exist-btn edit" id="exist-edit-btn">Sửa hóa đơn này</button>
-      </div>
-    </div>`;
-    document.body.appendChild(wrap);
-
-    // Đóng khi click nền mờ
-    wrap.querySelector('[data-role="mask"]').addEventListener('click', () => {
-        wrap.style.display = 'none';
-    });
-}
-
-function showExistDialog(sohd) {
-    ensureExistDialog();
-    const wrap = document.getElementById('exist-dialog');
-    document.getElementById('exist-sohd').textContent = sohd;
-    wrap.style.display = 'block';
-
-    return new Promise(resolve => {
-        const ok = document.getElementById('exist-new-btn');
-        const edt = document.getElementById('exist-edit-btn');
-
-        const cleanup = () => {
-            ok.removeEventListener('click', onNew);
-            edt.removeEventListener('click', onEdit);
-            wrap.style.display = 'none';
-        };
-        const onNew = () => { cleanup(); resolve('new'); };
-        const onEdit = () => { cleanup(); resolve('edit'); };
-
-        ok.addEventListener('click', onNew);
-        edt.addEventListener('click', onEdit);
-    });
-}
-
-
-
-function getLoaiFromSoHDInput() {
-    const raw = document.getElementById('sohd')?.value?.trim().toLowerCase() || '';
-    if (raw && raw.includes('_')) {
-        // nếu ô sohd đã có dạng hợp lệ thì cứ cắt prefix
-        return raw.split('_')[0];
-    }
-    // Fallback theo đường dẫn trang – KHÔNG phụ thuộc ô #sohd
-    const path = location.pathname.toLowerCase();
-    if (path.includes('nhaptamcs1')) return 'ntcs1';
-    if (path.includes('nhapmoimtcs1')) return 'nmcs1';
-    if (path.includes('nhaptamcs2')) return 'ntcs2';
-    if (path.includes('nhapmoimtcs2')) return 'nmcs2';
-    // thêm các trang khác nếu cần …
-    return '';
-}
 
 
 
@@ -297,213 +52,19 @@ let choPhepSua = false;
 
 // --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
 // --- BẮT BUỘC: nạp catalog nếu chưa có (dùng riêng cho trang CCN) ---
-async function ensureCatalogsReady() {
-    // Sản phẩm
-    if (!window.sanPhamData || Object.keys(window.sanPhamData).length === 0) {
-        const { data: dssp, error } = await supabase
-            .from("dmhanghoa")
-            .select("*"); // DÙNG * để nhận được cả manhom/nhomhang tùy DB của bạn
-
-        if (!error && Array.isArray(dssp)) {
-            window.sanPhamData = {};
-            dssp.forEach(sp => {
-                const key = String(sp.masp || "").toUpperCase().trim();
-                window.sanPhamData[key] = sp;
-            });
-        } else {
-            console.warn("⚠️ Không tải được dmhanghoa, requireManagedAtBranch có thể sai.", error);
-            window.sanPhamData = window.sanPhamData || {};
-        }
-    }
-
-    // Nhóm hàng (Map)
-    if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) {
-        const { data, error } = await supabase
-            .from("dmnhomhang")
-            .select("manhom, quanlysize, diadiem"); // dmnhomhang có cột manhom là PK
-
-        if (!error && Array.isArray(data)) {
-            window.danhMucNhom = new Map();
-            data.forEach(row => {
-                window.danhMucNhom.set(String(row.manhom).toUpperCase().trim(), {
-                    quanlysize: !!row.quanlysize,
-                    diadiem: String(row.diadiem || "ALL").toUpperCase().trim() // ALL | CS1 | CS2
-                });
-            });
-        } else {
-            console.warn("⚠️ Không tải được dmnhomhang, requireManagedAtBranch sẽ trả false.", error);
-            window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
-        }
-    }
-}
-
 // [ADD – đặt gần đầu file luuhoadon.js, trước khi dùng tới trong xacNhanSuaHoaDon()]
-function getDiaDiemFromPageName() {
-    const t = ((document?.title || '') + ' ' + (window?.location?.pathname || '')).toLowerCase();
-
-    // Ưu tiên pathname có 'cs1'/'cs2' (vd: /banlemtcs1.html, /nhaptamcs2.html)
-    if (t.includes('cs2')) return 'cs2';
-    if (t.includes('cs1')) return 'cs1';
-
-    // Fallback: tiêu đề trang chứa 'cơ sở 1/2' (không dấu)
-    const normalized = t
-        .replace(/cơ\s*sở/gi, 'co so')
-        .replace(/[^\w\s]/g, ' ') // bỏ ký tự đặc biệt
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    if (normalized.includes('co so 2')) return 'cs2';
-    if (normalized.includes('co so 1')) return 'cs1';
-
-    // Cuối cùng: nếu không đoán được, trả rỗng để caller tự xử lý
-    return '';
-}
-
 
 /***** CCN HELPERS (kiểm tra nếu là ccn thì goi inferBranches chuyển đổi size theo từng cơ sở) *****/
 /* ========================= CCN CONTEXT (ĐÓNG BĂNG CHIỀU CHUYỂN) ========================= */
 /* [MỚI] Đóng băng bối cảnh CCN theo chính tên trang, không dùng localStorage ở trang CCN */
-function buildCCNCtxFromPathname() {
-    const p = (window.location.pathname || '').toLowerCase();
-    // Mặc định
-    let ctx = {
-        isCCN: false,
-        src: 'CS1',
-        dst: 'CS2',
-        loaihdGoc: '',     // xcncs1 | xcncs2
-        loaihdDoiUng: '',  // ncncs2 | ncncs1
-        page: p
-    };
-
-    if (p.includes('ccn1v2')) {
-        ctx.isCCN = true;
-        ctx.src = 'CS1';
-        ctx.dst = 'CS2';
-        ctx.loaihdGoc = 'xcncs1';
-        ctx.loaihdDoiUng = 'ncncs2';
-        return ctx;
-    }
-    if (p.includes('ccn2v1')) {
-        ctx.isCCN = true;
-        ctx.src = 'CS2';
-        ctx.dst = 'CS1';
-        ctx.loaihdGoc = 'xcncs2';
-        ctx.loaihdDoiUng = 'ncncs1';
-        return ctx;
-    }
-    return ctx; // không phải trang CCN
-}
-
 // [MỚI] Tạo context 1 lần, giữ cố định cho toàn phiên của tab
 const CCN_CTX = buildCCNCtxFromPathname();
 
 /* [MỚI] inferBranches() nay trả về từ CCN_CTX nếu là trang CCN,
    còn trang khác (bán lẻ/nhập) giữ nguyên suy luận cũ theo prefix số chứng từ */
-function inferBranches() {
-    if (CCN_CTX.isCCN) {
-        return { src: CCN_CTX.src, dst: CCN_CTX.dst };
-    }
-    // Non-CCN: đoán theo sohd/prefix (giữ logic cũ)
-    const sohd = document.getElementById('sohd')?.value || '';
-    const prefix = sohd.split('_')[0] || '';
-    if (prefix.includes('cs2')) return { src: 'CS2', dst: 'CS1' };
-    return { src: 'CS1', dst: 'CS2' };
-}
-
 /* [MỚI] Nhận diện "quản size" theo CHỦNG LOẠI (GD = giày dép) & theo NHÓM (quanlysize + diadiem) */
 
-function resolveGroupKeyFromSP(sp) {
-    // Thử lần lượt các tên cột nhóm có thể gặp trong dự án
-    const candidates = ["nhomhang", "manhom", "nhom", "group_code", "nhomsp"];
-    for (const key of candidates) {
-        if (sp && sp[key] != null && String(sp[key]).trim() !== "") {
-            return String(sp[key]).toUpperCase().trim();
-        }
-    }
-    return null;
-}
-
 // luuhoadon.js
-function requireManagedAtBranch(masp, branch) {
-    const upper = s => String(s || "").toUpperCase().trim();
-    const sp = window.sanPhamData?.[upper(masp)];
-    const br = upper(branch);
-
-    // ❗Nếu chưa tra được catalog → giữ size (trả true)
-    if (!sp) return true;
-
-    // 1) Chủng loại GD => quản size
-    if (upper(sp.chungloai || "") === "GD") return true;
-
-    // 2) Cờ riêng của SP
-    if (sp.quanlykichco === true) return true;
-
-    // 3) Theo nhóm + địa điểm
-    if (window.danhMucNhom instanceof Map && window.danhMucNhom.size) {
-        const groupKey = resolveGroupKeyFromSP(sp); // manhom/nhomhang/...
-        if (groupKey) {
-            const nhom = window.danhMucNhom.get(upper(groupKey));
-            if (nhom && nhom.quanlysize) {
-                const dia = upper(nhom.diadiem || "ALL");
-                return dia === "ALL" || dia === br;
-            }
-        }
-    }
-
-    // ✅ Không rơi vào case nào khẳng định “không size” → vẫn coi là có size
-    return true;
-}
-
-
-async function handleSpecialSoHoaDon(sohd) {
-    // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
-    const prefixFull = (sohd.split("_")[0] || "").toLowerCase();
-    if (prefixFull !== "bancs1" && prefixFull !== "bancs2") {
-        // Không phải hóa đơn bán lẻ → không kích hoạt nhánh 2 bản
-        return false;
-    }
-
-    // Lấy số thứ tự
-    const parts = sohd.split("_");
-    if (parts.length < 2) return false;
-    const num = parseInt(parts[1], 10);
-
-    // Xác định cơ sở và điều kiện chia hết
-    const diadiem = (prefixFull === "bancs2") ? "cs2" : "cs1";
-    const modulus = (diadiem === "cs1") ? 4 : 6;
-
-    // Không phải số đặc biệt → thôi
-    if (Number.isNaN(num) || num % modulus !== 0) return false;
-
-    // Giới hạn tiền theo cơ sở
-    const ngay = document.getElementById("ngay").value;
-    let hanMuc = (diadiem === "cs1") ? 2500000 : 7000000;
-
-    // Tổng đã lưu trong ngày của bảng T tại cơ sở này
-    const { data, error } = await supabase
-        .from("hoadon_banleT")
-        .select("thanhtoan")
-        .eq("ngay", ngay)
-        .eq("diadiem", diadiem);
-
-    let tongTien = 0;
-    if (data && data.length) {
-        tongTien = data.reduce((sum, hd) => sum + (Number(hd.thanhtoan) || 0), 0);
-    }
-
-    const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-    const tienHoaDon = getIntValue("phaithanhtoan");
-
-    if (tongTien + tienHoaDon > hanMuc) {
-        // Vượt hạn mức → chỉ lưu bản thường
-        return false;
-    }
-
-    // ✅ Đủ điều kiện → lưu 2 bản và gọi Viettel (logic nằm trong luuHoaDonCaHaiBan)
-    await luuHoaDonCaHaiBan();
-    return true;
-}
 
 
 export async function luuHoaDonQuaAPI() {
