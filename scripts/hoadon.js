@@ -191,6 +191,16 @@ function isCCNMode() {
     return p.includes("ccn") || loai === "xcncs1" || loai === "xcncs2";
 }
 
+function isNhapMode() {
+    // Nhập hàng / nhập tạm / đổi trả... (không áp dụng cho CCN)
+    if (isCCNMode()) return false;
+    const p = (location.pathname || "").toLowerCase();
+    if (p.includes("nhap") || p.includes("nhaptam") || p.includes("nhapmoi") || p.includes("doitra")) return true;
+
+    const loai = (window.loaihd || "").toLowerCase();
+    return loai.startsWith("nm") || loai.startsWith("nt") || loai.startsWith("ndoi") || loai.startsWith("ncn");
+}
+
 // SUY RA CHIỀU CHUYỂN (nguồn → đích)
 function inferBranches() {
     const loai = (window.loaihd || "").toLowerCase();
@@ -595,9 +605,15 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     // [NEW giữ nguyên] Chuẩn hoá form từ spData
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
-    const giaInt = Math.round(parseMoneyInt(spData.giale || 0));
+    const giaNguon = isNhapMode() ? (spData.gianhap || 0) : (spData.giale || 0);
+    const giaInt = Math.round(parseMoneyInt(giaNguon));
     giaEl.value = giaInt.toLocaleString();
-    const kmDef = tinhKhuyenMai(spData, giaInt);
+
+    // Nhập hàng: không tự động chèn khuyến mại
+    let kmDef = 0;
+    if (!isNhapMode()) {
+        kmDef = tinhKhuyenMai(spData, giaInt) || 0;
+    }
     kmEl.value = (kmDef || 0).toLocaleString();
 
     const slEl = document.getElementById("soluong");
@@ -864,9 +880,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     // [SAFE GUARD] Nếu giá form vẫn = 0, fallback theo dm hàng hoá
     if (giaForm === 0 && sp) {
-        const giaSP = Math.round(parseMoneyInt(sp.giale || 0));
+        const giaSP = Math.round(parseMoneyInt(isNhapMode() ? (sp.gianhap || 0) : (sp.giale || 0)));
         let kmAuto = 0;
-        try { kmAuto = tinhKhuyenMai(sp, giaSP) || 0; } catch (e) { }
+        if (!isNhapMode()) {
+            try { kmAuto = tinhKhuyenMai(sp, giaSP) || 0; } catch (e) { }
+        }
 
         giaForm = giaSP;
         if (!kmForm || kmForm < 0) kmForm = kmAuto;
