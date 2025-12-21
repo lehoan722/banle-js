@@ -167,6 +167,49 @@ function parseMoneyInt(v) {
     return isNaN(n) ? 0 : n;
 }
 
+// ===== Phân quyền UI: chỉ ADMIN được sửa giá/khuyến mại/thành tiền =====
+function isAdminUser() {
+    // Ưu tiên key riêng (tránh cache để không bị sai khi đăng nhập đổi tài khoản mà không reload)
+    const v = localStorage.getItem('is_admin');
+    if (v != null) {
+        const s = String(v).trim().toLowerCase();
+        return (s === 'true' || s === '1' || s === 'yes');
+    }
+
+    // Fallback: dò trong localStorage xem có object nào chứa is_admin không
+    try {
+        for (const k of Object.keys(localStorage)) {
+            const raw = localStorage.getItem(k);
+            if (!raw) continue;
+            if (raw[0] !== '{' && raw[0] !== '[') continue;
+            const obj = JSON.parse(raw);
+            if (obj && typeof obj === 'object' && 'is_admin' in obj) {
+                return (obj.is_admin === true || String(obj.is_admin).toLowerCase() === 'true');
+            }
+        }
+    } catch (e) { /* ignore */ }
+
+    return false;
+}
+
+function applyRoleLockToPriceFields() {
+    const lock = !isAdminUser();
+    ['gia', 'khuyenmai', 'thanhtien'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // chỉ khóa khi không phải admin
+        el.readOnly = lock;
+        if (lock) {
+            el.dataset.lockedByRole = '1';
+            el.title = 'Chỉ ADMIN được sửa';
+        } else {
+            delete el.dataset.lockedByRole;
+            el.title = '';
+        }
+    });
+}
+
+
 // === Helper: Sản phẩm có bắt buộc quản lý size không? (GD hoặc quanlykichco=true)
 function isQuanLySizeProduct(sp) {
     if (!sp) return false;
@@ -915,7 +958,22 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         dvt: sp.dvt || ""
     };
 
-    // Nếu nhóm đã tồn tại → cập nhật giá/km theo form (ưu tiên người dùng nhập tay)
+    // Nếu không phải ADMIN: luôn lấy giá/km theo danh mục & rule hệ thống (không tin dữ liệu gõ tay)
+    if (!isAdminUser()) {
+        const giaNguonSys = isNhapMode() ? (sp.gianhap || 0) : (sp.giale || 0);
+        const giaSys = Math.round(parseMoneyInt(giaNguonSys));
+        let kmSys = 0;
+        if (!isNhapMode()) kmSys = tinhKhuyenMai(sp, giaSys) || 0;
+        giaForm = giaSys;
+        kmForm = kmSys;
+        // Đồng bộ lại form để người dùng thấy đúng
+        const _giaEl = document.getElementById('gia');
+        const _kmEl = document.getElementById('khuyenmai');
+        if (_giaEl) _giaEl.value = giaSys.toLocaleString();
+        if (_kmEl) _kmEl.value = (kmSys || 0).toLocaleString();
+    }
+
+    // Cập nhật giá/km cho nhóm
     bang.gia = giaForm;
     bang.km = kmForm;
 
@@ -1161,6 +1219,7 @@ export async function napLaiChiTietHoaDon(sohd) {
 
 // ===== Chuyển focus về #size khi Enter ở #gia hoặc #khuyenmai =====
 document.addEventListener("DOMContentLoaded", () => {
+    applyRoleLockToPriceFields();
     ["gia", "khuyenmai"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -1176,4 +1235,3 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
-
