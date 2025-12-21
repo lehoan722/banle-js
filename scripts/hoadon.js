@@ -195,7 +195,8 @@ function isNhapMode() {
     // Nhập hàng / nhập tạm / đổi trả... (không áp dụng cho CCN)
     if (isCCNMode()) return false;
     const p = (location.pathname || "").toLowerCase();
-    if (p.includes("nhap") || p.includes("nhaptam") || p.includes("nhapmoi") || p.includes("doitra")) return true;
+    //if (p.includes("nhap") || p.includes("nhaptam") || p.includes("nhapmoi") || p.includes("doitra")) return true;
+    if ( p.includes("nhapmoi") || p.includes("doitra")) return true;
 
     const loai = (window.loaihd || "").toLowerCase();
     return loai.startsWith("nm") || loai.startsWith("nt") || loai.startsWith("ndoi") || loai.startsWith("ncn");
