@@ -7,30 +7,6 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 import { guiHoaDonViettel } from './viettelInvoice.js';
 
-
-// =========================
-// TỔNG THÀNH TIỀN (ẩn)
-// tongthanhtien = SUM( (gia - km) * soluong ) theo từng size/dòng
-// =========================
-function calcTongThanhTienFromBangKetQua(bangKetQua) {
-  let sum = 0;
-  try {
-    Object.values(bangKetQua || {}).forEach((item) => {
-      const gia = Number(item?.gia || 0);
-      const km = Number(item?.km || 0);
-      const soluongs = item?.soluongs || [];
-      for (let i = 0; i < soluongs.length; i++) {
-        const sl = Number(soluongs[i] || 0);
-        sum += (gia - km) * sl;
-      }
-    });
-  } catch (e) {
-    console.warn("calcTongThanhTienFromBangKetQua error:", e);
-  }
-  // đảm bảo số nguyên (VND)
-  return Math.round(sum);
-}
-
 async function refreshSessionIfNeeded() {
     // 1) phải có session
     const { data: s1, error: e1 } = await supabase.auth.getSession();
@@ -574,7 +550,6 @@ export async function luuHoaDonQuaAPI() {
             diadiem: diadiemTrang,
             khachhang: document.getElementById("khachhang").value,
             tongsl: getIntValue("tongsl"),
-            tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
             tongkm: getIntValue("tongkm"),
             chietkhau: getIntValue("chietkhau"),
             thanhtoan: getIntValue("phaithanhtoan"),
@@ -588,7 +563,7 @@ export async function luuHoaDonQuaAPI() {
 
         await refreshSessionIfNeeded();
 
-        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header_v2', {
             p_loai: loai,
             p_diadiem: diadiemTrang,
             p_header: header
@@ -634,16 +609,6 @@ export async function luuHoaDonQuaAPI() {
             console.error(errCT);
             await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
             return;
-        }
-
-        // [FIX] NEW nhập: không ghi ngày sửa khi vừa tạo mới
-        // (một số DB có default/trigger updated_at, nên ta ép về null để báo cáo không hiện "ngày sửa")
-        try {
-            const { error: e1 } = await supabase.from("hoadon_banle").update({ updated_at: null }).eq("sohd", sohdThucTe);
-            const { error: e2 } = await supabase.from("ct_hoadon_banle").update({ updated_at: null }).eq("sohd", sohdThucTe);
-            if (e1 || e2) console.warn("Không clear được updated_at (NEW nhập):", e1 || e2);
-        } catch (e) {
-            console.warn("Không clear được updated_at (NEW nhập):", e);
         }
 
         // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
@@ -696,8 +661,7 @@ export async function luuHoaDonQuaAPI() {
         diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: getIntValue("tongkm"),
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -826,7 +790,6 @@ export async function luuHoaDonNhapQuaAPI() {
             diadiem: diadiemTrang,
             khachhang: document.getElementById("khachhang").value,
             tongsl: getIntValue("tongsl"),
-            tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
             tongkm: 0,
             chietkhau: getIntValue("chietkhau"),
             thanhtoan: getIntValue("phaithanhtoan"),
@@ -835,13 +798,12 @@ export async function luuHoaDonNhapQuaAPI() {
             dvt: "",
             loaihd: loai,
             loai: loai,
-            nhacc: "",
-            updated_at: null
+            nhacc: ""
         };
 
         await refreshSessionIfNeeded();
 
-        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header_v2', {
             p_loai: loai,
             p_diadiem: diadiemTrang,
             p_header: header
@@ -943,8 +905,7 @@ export async function luuHoaDonNhapQuaAPI() {
         diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: 0, // Nhập mới không có khuyến mại
+        tongkm: 0, // Nhập mới không có khuyến mại
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -1151,8 +1112,7 @@ export async function luuHoaDonCaHaiBan() {
         diadiem: diadiem,
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: getIntValue("tongkm"),
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -1454,7 +1414,7 @@ export async function luuHoaDonccn1v2() {
 
                 await refreshSessionIfNeeded();
 
-                const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header', {
+                const { data: rpcRes, error: rpcErr } = await supabase.rpc('save_new_header_v2', {
                     p_loai: loaihd_thucte,                // <<< QUAN TRỌNG: loại CCN thật sự
                     p_diadiem: diadiemSRC,                // 'cs1'/'cs2'
                     p_header: headerTmp
@@ -1534,8 +1494,7 @@ export async function luuHoaDonccn1v2() {
         diadiem: diadiemSRC,
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: getIntValue("tongkm"),
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -1546,10 +1505,6 @@ export async function luuHoaDonccn1v2() {
         loaihd: loaihd_thucte,
         nhacc: ""
     };
-
-    if (updatedAt) {
-        hoadon.updated_at = updatedAt;
-    }
 
     // Chi tiết xuất (SRC)
     const { src, dst } = inferBranches();
@@ -1579,11 +1534,7 @@ export async function luuHoaDonccn1v2() {
         });
     });
 
-    
-    if (updatedAt) {
-        chitiet.forEach((r) => r.updated_at = updatedAt);
-    }
-const { error: errHD } = await supabase
+    const { error: errHD } = await supabase
         .from("hoadon_banle")
         .upsert([hoadon], { onConflict: "sohd" });
     const { error: errCT } = await supabase
@@ -1641,11 +1592,7 @@ const { error: errHD } = await supabase
         });
     });
 
-    
-    if (updatedAt) {
-        chitietDoiUng.forEach((r) => r.updated_at = updatedAt);
-    }
-const { error: errDU1 } = await supabase
+    const { error: errDU1 } = await supabase
         .from("hoadon_banle")
         .upsert([hoadonDoiUng], { onConflict: "sohd" });
     const { error: errDU2 } = await supabase
