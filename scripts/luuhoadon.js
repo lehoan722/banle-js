@@ -7,6 +7,30 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 import { guiHoaDonViettel } from './viettelInvoice.js';
 
+
+// =========================
+// TỔNG THÀNH TIỀN (ẩn)
+// tongthanhtien = SUM( (gia - km) * soluong ) theo từng size/dòng
+// =========================
+function calcTongThanhTienFromBangKetQua(bangKetQua) {
+  let sum = 0;
+  try {
+    Object.values(bangKetQua || {}).forEach((item) => {
+      const gia = Number(item?.gia || 0);
+      const km = Number(item?.km || 0);
+      const soluongs = item?.soluongs || [];
+      for (let i = 0; i < soluongs.length; i++) {
+        const sl = Number(soluongs[i] || 0);
+        sum += (gia - km) * sl;
+      }
+    });
+  } catch (e) {
+    console.warn("calcTongThanhTienFromBangKetQua error:", e);
+  }
+  // đảm bảo số nguyên (VND)
+  return Math.round(sum);
+}
+
 async function refreshSessionIfNeeded() {
     // 1) phải có session
     const { data: s1, error: e1 } = await supabase.auth.getSession();
@@ -550,6 +574,7 @@ export async function luuHoaDonQuaAPI() {
             diadiem: diadiemTrang,
             khachhang: document.getElementById("khachhang").value,
             tongsl: getIntValue("tongsl"),
+            tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
             tongkm: getIntValue("tongkm"),
             chietkhau: getIntValue("chietkhau"),
             thanhtoan: getIntValue("phaithanhtoan"),
@@ -671,7 +696,8 @@ export async function luuHoaDonQuaAPI() {
         diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongkm: getIntValue("tongkm"),
+        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+            tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -800,6 +826,7 @@ export async function luuHoaDonNhapQuaAPI() {
             diadiem: diadiemTrang,
             khachhang: document.getElementById("khachhang").value,
             tongsl: getIntValue("tongsl"),
+            tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
             tongkm: 0,
             chietkhau: getIntValue("chietkhau"),
             thanhtoan: getIntValue("phaithanhtoan"),
@@ -916,7 +943,8 @@ export async function luuHoaDonNhapQuaAPI() {
         diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongkm: 0, // Nhập mới không có khuyến mại
+        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+            tongkm: 0, // Nhập mới không có khuyến mại
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -1123,7 +1151,8 @@ export async function luuHoaDonCaHaiBan() {
         diadiem: diadiem,
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongkm: getIntValue("tongkm"),
+        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+            tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -1505,7 +1534,8 @@ export async function luuHoaDonccn1v2() {
         diadiem: diadiemSRC,
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
-        tongkm: getIntValue("tongkm"),
+        tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+            tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
