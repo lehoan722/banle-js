@@ -182,6 +182,8 @@
             <th>NV</th>
             <th>Khách</th>
             <th>Tổng SL</th>
+            <th>Tổng thành tiền</th>
+            <th>Chiết khấu</th>
             <th>TT</th>
             <th>Ghi chú</th>
           </tr>
@@ -431,12 +433,16 @@
               sohd: 1,
               created_at: hd.created_at,
               tongsl: Number(hd.tongsl || 0),
+              tongthanhtien: Number(hd.tongthanhtien || 0),
+              chietkhau: Number(hd.chietkhau || 0),
               thanhtoan: Number(hd.thanhtoan || 0)
             });
           } else {
             let obj = groupMap.get(key);
             obj.sohd += 1;
             obj.tongsl += Number(hd.tongsl || 0);
+            obj.tongthanhtien += Number(hd.tongthanhtien || 0);
+            obj.chietkhau += Number(hd.chietkhau || 0);
             obj.thanhtoan += Number(hd.thanhtoan || 0);
           }
         });
@@ -503,7 +509,9 @@
   <td>${hd.manv || ""}</td>
   <td>${hd.khachhang || ""}</td>
   <td>${hd.tongsl || 0}</td>
-  <td>${hd.thanhtoan?.toLocaleString()}</td>
+  <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+  <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
+  <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
   <td>${hd.ghichu || ""}</td>
 `;
         tr.onclick = (e) => {
@@ -532,9 +540,11 @@
       });
 
       // ------------- DÒNG TỔNG CUỐI BẢNG -------------
-      let tongSL = 0, tongTien = 0;
+      let tongSL = 0, tongThanhTien = 0, tongChietKhau = 0, tongTien = 0;
       hienThiData.forEach(hd => {
         tongSL += Number(hd.tongsl || 0);
+        tongThanhTien += Number(hd.tongthanhtien || 0);
+        tongChietKhau += Number(hd.chietkhau || 0);
         tongTien += Number(hd.thanhtoan || 0);
       });
       document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
@@ -544,8 +554,10 @@
       trTong.style.fontWeight = "bold";
       trTong.style.background = "#f8f8f8";
       trTong.innerHTML = `
-    <td colspan="6" style="text-align:right">TỔNG</td>
+    <td colspan="7" style="text-align:right">TỔNG</td>
     <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+    <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
+    <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
     <td id="tongTien">${tongTien.toLocaleString()}</td>
     <td></td>
   `;
