@@ -194,7 +194,7 @@ function isAdminUser() {
 
 function applyRoleLockToPriceFields() {
     const lock = !isAdminUser();
-    ['gia', 'khuyenmai', 'thanhtien'].forEach((id) => {
+    ['gia', 'khuyenmai', 'thanhtien', 'chietkhau', 'chiet_khau'].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         // chỉ khóa khi không phải admin
