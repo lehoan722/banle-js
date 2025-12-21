@@ -194,12 +194,21 @@ export async function handleSpecialSoHoaDon(sohd) {
 }
 
 export function inferBranches() {
-    if (CCN_CTX.isCCN) {
-        return { src: CCN_CTX.src, dst: CCN_CTX.dst };
+    const ctx = buildCCNCtxFromPathname();
+    if (ctx.isCCN) {
+        return { src: ctx.src, dst: ctx.dst };
     }
-    // Non-CCN: đoán theo sohd/prefix (giữ logic cũ)
-    const sohd = document.getElementById('sohd')?.value || '';
-    const prefix = sohd.split('_')[0] || '';
-    if (prefix.includes('cs2')) return { src: 'CS2', dst: 'CS1' };
-    return { src: 'CS1', dst: 'CS2' };
+
+    // Non-CCN: đoán theo loai có cs1/cs2
+    const s = String(window.sohd ?? '').toLowerCase();
+    const loai = (String(window.loaihd ?? '') || '').toLowerCase();
+
+    if (loai.includes('cs1')) return { src: 'CS1', dst: 'CS2' };
+    if (loai.includes('cs2')) return { src: 'CS2', dst: 'CS1' };
+
+    // fallback: dựa trên tiền tố sohd
+    if (s.includes('cs1')) return { src: 'CS1', dst: 'CS2' };
+    if (s.includes('cs2')) return { src: 'CS2', dst: 'CS1' };
+
+    return { src: null, dst: null };
 }
