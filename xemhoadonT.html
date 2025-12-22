@@ -1182,68 +1182,42 @@ document.getElementById('btnCopyTable').onclick = function () {
     }
 
     async function xoaHoaDonDaChon() {
+      // Chỉ cho xóa khi đang ở chế độ chi tiết
+      if (__loaiTongHopCurrent !== 'chitiet') {
+        alert('Chỉ có thể xóa khi đang xem "Chi tiết từng hóa đơn".');
+        return;
+      }
+
       const checkboxes = document.querySelectorAll(".chonHD:checked");
       if (checkboxes.length === 0) {
         alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
         return;
       }
 
-      // Gọi xác thực và chỉ xóa nếu xác thực thành công
+      // Xác thực lại nhân viên giống 111
       kiemTraNhanVienTruocKhiXoa(async function () {
+        const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
 
-        let dsXoa = [];
-        let doiUngList = [];
-        let coCCN = false;
+        // Xác nhận lần cuối (an toàn hơn)
+        const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
+        if (!ok) return;
 
-        for (const cb of checkboxes) {
-          const sohd = cb.getAttribute("data-sohd");
-          if (!sohd) continue;
-
-          const prefix = sohd.split("_")[0] || "";
-
-          if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
-            coCCN = true;
-            const so = sohd.split("_")[1];
-            let doiUng = "";
-            if (prefix === "xcncs1") doiUng = `ncncs2_${so}`;
-            if (prefix === "xcncs2") doiUng = `ncncs1_${so}`;
-            if (prefix === "ncncs1") doiUng = `xcncs2_${so}`;
-            if (prefix === "ncncs2") doiUng = `xcncs1_${so}`;
-
-            dsXoa.push(sohd);
-            if (doiUng) {
-              dsXoa.push(doiUng);
-              doiUngList.push(`${sohd} ↔ ${doiUng}`);
-            }
-          } else {
-            dsXoa.push(sohd);
+        // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
+        for (const sohd of dsXoa) {
+          const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
+          if (e1) {
+            alert(`❌ Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
+            return;
+          }
+          const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
+          if (e2) {
+            alert(`❌ Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
+            return;
           }
         }
 
-        dsXoa = [...new Set(dsXoa)]; // loại trùng
-
-        let xacNhan = false;
-        if (coCCN) {
-          xacNhan = confirm(
-            "⚠️ Hóa đơn chuyển chi nhánh phải xóa kèm cả hóa đơn đối ứng.\n" +
-            "Các cặp sẽ bị xóa:\n" +
-            doiUngList.join("\n") +
-            "\n\nBạn có đồng ý xóa toàn bộ không?"
-          );
-        } else {
-          xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
-        }
-        if (!xacNhan) return;
-
-        // Thực hiện xóa
-        for (const sohd of dsXoa) {
-          await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
-          await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
-        }
-
-        alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
-        await taiDanhSachHoaDon(); // refresh lại bảng
-
+        alert(`✅ Đã xóa thành công ${dsXoa.length} hóa đơn.`);
+        await window.taiDanhSachHoaDon();
       });
     }
 
