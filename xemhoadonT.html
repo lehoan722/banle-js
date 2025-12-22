@@ -255,20 +255,26 @@
       return "#888";
     };
 
-    function capNhatNutGuiLai() {
+    
+    function capNhatNutXoa() {
+      const btnXoa = document.getElementById('btnXoaHD');
+      if (!btnXoa) return;
+
+      // Chỉ bật khi đang ở chế độ chi tiết và có ít nhất 1 hóa đơn được tick
+      const isChiTiet = (__loaiTongHopCurrent === 'chitiet');
+      const hasChecked = document.querySelectorAll('.chonHD:checked').length > 0;
+
+      btnXoa.disabled = !(isChiTiet && hasChecked);
+    }
+
+function capNhatNutGuiLai() {
       const btn = document.getElementById("btnGuiLai");
       if (!btn) return;
 
       // Chỉ cho gửi lại trong chế độ "chi tiết"
+      capNhatNutXoa();
       if (__loaiTongHopCurrent !== "chitiet") {
         btn.disabled = true;
-
-
-      // T2: cập nhật nút XÓA theo checkbox (chỉ bật khi đang 'chitiet' và có chọn)
-      const btnXoa = document.getElementById('btnXoaHD');
-      if (btnXoa) {
-        btnXoa.disabled = (__loaiTongHopCurrent !== 'chitiet') || (selected.length === 0);
-      }
         return;
       }
 
@@ -585,7 +591,7 @@
         const __cb = tr.querySelector('.chonHD');
         if (__cb) {
           __cb.disabled = (__loaiTongHopCurrent !== 'chitiet');
-          __cb.onchange = capNhatNutGuiLai;
+          __cb.onchange = () => { capNhatNutGuiLai(); capNhatNutXoa(); capNhatNutXoa(); };
         }
 
         tr.onclick = (e) => {
@@ -645,7 +651,9 @@
       const __btnXoa = document.getElementById('btnXoaHD');
       if (__btnXoa) __btnXoa.disabled = true;
 
-      // GẮN SỰ KIỆN CHỌN TẤT CẢ
+      
+      capNhatNutXoa();
+// GẮN SỰ KIỆN CHỌN TẤT CẢ
       setTimeout(() => {
         const chonTatCa = document.getElementById('chonTatCaHD');
         if (chonTatCa) {
@@ -657,6 +665,7 @@
             const checkboxes = document.querySelectorAll('.chonHD');
             checkboxes.forEach(cb => { if (!cb.disabled) cb.checked = chonTatCa.checked; });
             capNhatNutGuiLai();
+          capNhatNutXoa();
           };
         }
       }, 10);
