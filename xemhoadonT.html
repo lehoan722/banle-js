@@ -1237,10 +1237,10 @@
           xacNhan = confirm(
             ` Có hóa đơn chuyển chi nhánh. Hệ thống sẽ xóa kèm cả hóa đơn đối ứng (nếu có).
 
-Các cặp dự kiến xóa:
-${doiUngList.join("\n")}
+      Các cặp dự kiến xóa:
+              ${doiUngList.join("\n")}
 
-Bạn có đồng ý xóa toàn bộ không?`
+              Bạn có đồng ý xóa toàn bộ không?`
           );
         } else {
           xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
@@ -1263,40 +1263,33 @@ Bạn có đồng ý xóa toàn bộ không?`
 
         alert(` Đã xóa thành công ${dsXoa.length} hóa đơn (bao gồm đối ứng nếu có).`);
         await window.taiDanhSachHoaDon(); // refresh lại bảng
-      });
-    }
-    {
-      const checkboxes = document.querySelectorAll(".chonHD:checked");
-      if (checkboxes.length === 0) {
-        alert(" Bạn chưa chọn hóa đơn nào để xóa.");
-        return;
+      });    
+
+    // Xác thực lại nhân viên giống 111
+    kiemTraNhanVienTruocKhiXoa(async function () {
+      const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
+
+      // Xác nhận lần cuối (an toàn hơn)
+      const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
+      if (!ok) return;
+
+      // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
+      for (const sohd of dsXoa) {
+        const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
+        if (e1) {
+          alert(` Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
+          return;
+        }
+        const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
+        if (e2) {
+          alert(` Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
+          return;
+        }
       }
 
-      // Xác thực lại nhân viên giống 111
-      kiemTraNhanVienTruocKhiXoa(async function () {
-        const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
-
-        // Xác nhận lần cuối (an toàn hơn)
-        const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
-        if (!ok) return;
-
-        // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
-        for (const sohd of dsXoa) {
-          const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
-          if (e1) {
-            alert(` Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
-            return;
-          }
-          const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
-          if (e2) {
-            alert(` Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
-            return;
-          }
-        }
-
-        alert(` Đã xóa thành công ${dsXoa.length} hóa đơn.`);
-        await window.taiDanhSachHoaDon();
-      });
+      alert(` Đã xóa thành công ${dsXoa.length} hóa đơn.`);
+      await window.taiDanhSachHoaDon();
+    });
     }
 
 
