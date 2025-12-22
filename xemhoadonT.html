@@ -671,14 +671,6 @@ function capNhatNutGuiLai() {
       }, 10);
 
     }
-
-
-
-
-    
-    // Expose to window for module callbacks
-    window.taiDanhSachHoaDon = taiDanhSachHoaDon;
-
 async function xemChiTiet(sohd) {
       const popupEl = document.getElementById("popup");
       popupEl.style.display = "block";
@@ -1182,11 +1174,97 @@ document.getElementById('btnCopyTable').onclick = function () {
     }
 
     async function xoaHoaDonDaChon() {
-      // Chỉ cho xóa khi đang ở chế độ chi tiết
-      if (__loaiTongHopCurrent !== 'chitiet') {
-        alert('Chỉ có thể xóa khi đang xem "Chi tiết từng hóa đơn".');
+  // Chỉ cho xóa khi đang ở chế độ chi tiết
+  if (__loaiTongHopCurrent !== 'chitiet') {
+    alert('Chỉ có thể xóa khi đang xem "Chi tiết từng hóa đơn".');
+    return;
+  }
+
+  const checkboxes = document.querySelectorAll(".chonHD:checked");
+  if (checkboxes.length === 0) {
+    alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
+    return;
+  }
+
+  // Xác thực lại nhân viên giống 111
+  kiemTraNhanVienTruocKhiXoa(async function () {
+
+    // --- Gom danh sách sohd cần xóa + tự động thêm đối ứng (kể cả nếu hiện tại chưa có) ---
+    let dsXoa = [];
+    let doiUngList = [];
+    let coCCN = false;
+
+    const mapDoiUng = {
+      xcncs1: 'ncncs2',
+      xcncs2: 'ncncs1',
+      ncncs1: 'xcncs2',
+      ncncs2: 'xcncs1'
+    };
+
+    for (const cb of checkboxes) {
+      const sohd = cb.getAttribute("data-sohd");
+      if (!sohd) continue;
+
+      const prefix = (sohd.split("_")[0] || "").trim();
+      const so = (sohd.split("_")[1] || "").trim();
+
+      // Hỗ trợ cả trường hợp prefix có hậu tố "T" (vd: xcncs1T_00031)
+      const isT = prefix.endsWith("T");
+      const basePrefix = isT ? prefix.slice(0, -1) : prefix;
+
+      dsXoa.push(sohd);
+
+      if (mapDoiUng[basePrefix] && so) {
+        coCCN = true;
+
+        const doiUngPrefix = mapDoiUng[basePrefix] + (isT ? "T" : "");
+        const doiUng = `${doiUngPrefix}_${so}`;
+
+        dsXoa.push(doiUng);
+        doiUngList.push(`${sohd} ↔ ${doiUng}`);
+      }
+    }
+
+    dsXoa = [...new Set(dsXoa.filter(Boolean))]; // loại trùng + loại rỗng
+
+    // Xác nhận xóa
+    let xacNhan = false;
+    if (coCCN) {
+      xacNhan = confirm(
+        "⚠️ Có hóa đơn chuyển chi nhánh. Hệ thống sẽ xóa kèm cả hóa đơn đối ứng (nếu có).
+
+" +
+        "Các cặp dự kiến xóa:
+" +
+        doiUngList.join("
+") +
+        "
+
+Bạn có đồng ý xóa toàn bộ không?"
+      );
+    } else {
+      xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
+    }
+    if (!xacNhan) return;
+
+    // Thực hiện xóa: chi tiết trước, master sau (T tables)
+    for (const sohd of dsXoa) {
+      const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
+      if (e1) {
+        alert(`❌ Lỗi xóa CT hóa đơn ${sohd}: ${e1.message}`);
         return;
       }
+      const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
+      if (e2) {
+        alert(`❌ Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
+        return;
+      }
+    }
+
+    alert(`✅ Đã xóa thành công ${dsXoa.length} hóa đơn (bao gồm đối ứng nếu có).`);
+    await window.taiDanhSachHoaDon(); // refresh lại bảng
+  });
+}
 
       const checkboxes = document.querySelectorAll(".chonHD:checked");
       if (checkboxes.length === 0) {
@@ -1221,6 +1299,13 @@ document.getElementById('btnCopyTable').onclick = function () {
       });
     }
 
+
+// Expose functions for inline onclick handlers
+window.taiDanhSachHoaDon = taiDanhSachHoaDon;
+window.xemChiTiet = xemChiTiet;
+window.dongPopup = dongPopup;
+window.xoaHoaDonDaChon = xoaHoaDonDaChon;
+window.kiemTraNhanVienTruocKhiXoa = kiemTraNhanVienTruocKhiXoa;
 khoiTaoDangNhapDungChung({
       appContainerId: 'app-container',
 
