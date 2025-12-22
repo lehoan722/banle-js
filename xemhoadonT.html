@@ -1247,6 +1247,7 @@ Bạn có đồng ý xóa toàn bộ không?`
         }
         if (!xacNhan) return;
 
+
         // Thực hiện xóa: chi tiết trước, master sau (T tables)
         for (const sohd of dsXoa) {
           const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
