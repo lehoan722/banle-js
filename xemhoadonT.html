@@ -174,7 +174,7 @@
 
     <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
     <button id="btnGuiLai" class="loc-btn" disabled>📤 Gửi lại HĐĐT đã chọn</button>
-    <button id="btnXoaHD" class="xoa-btn" disabled onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+    <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
     <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
 
     <br />
@@ -706,7 +706,7 @@ async function xemChiTiet(sohd) {
       document.getElementById("popup").style.display = "none";
     }
 
-    // (đã bỏ) xoaHoaDonDaChon trong T2
+    
 
     document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
 
