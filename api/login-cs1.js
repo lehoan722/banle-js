@@ -7,13 +7,12 @@ const SUPABASE_URL =
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// ✅ CS1
 const WAREHOUSE_EMAIL_CS1 = process.env.WAREHOUSE_CS1_EMAIL;
 const WAREHOUSE_PASSWORD_CS1 = process.env.WAREHOUSE_CS1_PASSWORD;
 
-// (Tuỳ chọn) Nếu muốn admin thật sự dùng session admin Supabase
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Thiếu SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trong ENV');
+}
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -26,8 +25,11 @@ export default async function handler(req, res) {
 
   try {
     const { manv, passwordNV, diadiem } = req.body || {};
+
     if (!manv || !passwordNV) {
-      return res.status(400).json({ ok: false, error: 'Thiếu mã nhân viên hoặc mật khẩu' });
+      return res
+        .status(400)
+        .json({ ok: false, error: 'Thiếu mã nhân viên hoặc mật khẩu' });
     }
 
     const manvUpper = manv.toString().trim().toUpperCase();
@@ -38,6 +40,9 @@ export default async function handler(req, res) {
       .select('manv, tennv, sua_hoadon, xoa_hoadon, is_admin, matkhau')
       .eq('manv', manvUpper)
       .limit(1);
+
+    console.log('LOGIN CS1 manvUpper =', manvUpper);
+    console.log('LOGIN CS1 nvArr =', nvArr, 'errNV =', errNV);
 
     if (errNV) {
       console.error('Lỗi truy vấn dmnhanvien (CS1):', errNV);
@@ -51,40 +56,36 @@ export default async function handler(req, res) {
 
     const matkhauDB = (nv.matkhau ?? '').toString().trim();
     const matkhauNhap = passwordNV.toString().trim();
+
     if (!matkhauDB || matkhauDB !== matkhauNhap) {
       return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
     }
 
-    // 2) Chọn tài khoản Supabase để cấp session
-    // - NV thường: dùng kho CS1
-    // - Admin: (tuỳ chọn) dùng ADMIN_EMAIL/ADMIN_PASSWORD để is_admin() chạy đúng
-    const useAdminSession = nv.is_admin === true;
-
-    const emailToLogin = useAdminSession ? ADMIN_EMAIL : WAREHOUSE_EMAIL_CS1;
-    const passToLogin = useAdminSession ? ADMIN_PASSWORD : WAREHOUSE_PASSWORD_CS1;
-
-    if (!emailToLogin || !passToLogin) {
+    // 2) Đăng nhập tài khoản kho CS1 để lấy session Supabase
+    if (!WAREHOUSE_EMAIL_CS1 || !WAREHOUSE_PASSWORD_CS1) {
+      console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD trong ENV');
       return res.status(500).json({
         ok: false,
-        error: useAdminSession
-          ? 'Chưa cấu hình ADMIN_EMAIL/ADMIN_PASSWORD'
-          : 'Chưa cấu hình tài khoản kho CS1 trên server',
+        error: 'Chưa cấu hình tài khoản kho CS1 trên server',
       });
     }
 
     const { data: signInData, error: signInError } =
       await supabaseAdmin.auth.signInWithPassword({
-        email: emailToLogin,
-        password: passToLogin,
+        email: WAREHOUSE_EMAIL_CS1,
+        password: WAREHOUSE_PASSWORD_CS1,
       });
 
     if (signInError) {
-      console.error('Lỗi signInWithPassword:', signInError);
-      return res.status(500).json({ ok: false, error: 'Đăng nhập tài khoản Supabase thất bại' });
+      console.error('Lỗi signInWithPassword CS1:', signInError);
+      return res
+        .status(500)
+        .json({ ok: false, error: 'Đăng nhập tài khoản kho CS1 thất bại' });
     }
 
     const session = signInData?.session;
-    if (!session?.access_token) {
+    if (!session || !session.access_token) {
+      console.error('Không lấy được session Supabase CS1:', signInData);
       return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
     }
 
@@ -101,7 +102,6 @@ export default async function handler(req, res) {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       },
-      // ✅ CS1 default
       diadiem: diadiem || 'cs1',
     });
   } catch (err) {
