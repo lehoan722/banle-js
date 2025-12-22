@@ -431,32 +431,51 @@
                     .filter(Boolean)
             };
 
-            let error;
+            let data, error;
+
             if (editingOld) {
-                ({ error } = await supabase.from(TABLE).update(obj).eq('manv', manv));
+                ({ data, error } = await supabase
+                    .from(TABLE)
+                    .update(obj)
+                    .eq('manv', manv)
+                    .select('manv')); // <= bắt buộc để biết có update thật không
             } else {
-                ({ error } = await supabase.from(TABLE).insert(obj));
+                ({ data, error } = await supabase
+                    .from(TABLE)
+                    .insert(obj)
+                    .select('manv'));
             }
 
-            if (!error) {
-                showMsg(editingOld ? 'Đã cập nhật nhân viên!' : 'Đã thêm nhân viên mới!', 'success');
-                setTimeout(resetForm, 1000);
-            } else {
+            if (error) {
                 showMsg('Lỗi: ' + error.message, 'error');
+                return;
             }
+
+            if (!data || data.length === 0) {
+                showMsg('Không cập nhật được (bị RLS chặn hoặc không có dòng nào khớp).', 'error');
+                return;
+            }
+
+            showMsg(editingOld ? 'Đã cập nhật nhân viên!' : 'Đã thêm nhân viên mới!', 'success');
+            setTimeout(resetForm, 1000);
+
         }
 
         async function deleteNV() {
             let manv = getVal('manv').trim().toUpperCase();
             if (!manv || !editingOld) return showMsg('Không có nhân viên để xóa!', 'error');
             if (!confirm(`Bạn có chắc chắn muốn xoá nhân viên "${manv}" không?`)) return;
-            const { error } = await supabase.from(TABLE).delete().eq('manv', manv);
-            if (!error) {
-                showMsg('Đã xoá nhân viên thành công!', 'success');
-                setTimeout(resetForm, 1000);
-            } else {
-                showMsg('Lỗi xoá: ' + error.message, 'error');
-            }
+            const { data, error } = await supabase
+                .from(TABLE)
+                .delete()
+                .eq('manv', manv)
+                .select('manv');
+
+            if (error) return showMsg('Lỗi xoá: ' + error.message, 'error');
+            if (!data || data.length === 0) return showMsg('Không xoá được (bị RLS chặn).', 'error');
+
+            showMsg('Đã xoá nhân viên thành công!', 'success');
+            setTimeout(resetForm, 1000);
         }
 
         async function handleLogout() {
