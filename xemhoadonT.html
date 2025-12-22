@@ -97,11 +97,7 @@
       margin-right: 8px;
       cursor: pointer;
     }
-
-    .xoa-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    .xoa-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 
     button.loc-btn:hover {
@@ -190,22 +186,22 @@
 
     <table>
       <thead>
-        <tr>
-          <th>stt</th>
-          <th><input type="checkbox" id="chonTatCaHD"></th>
-          <th>Số HĐ</th>
-          <th>Ngày Tạo</th>
-          <th>Ngày sửa</th>
-          <th>NV</th>
-          <th>Khách</th>
-          <th>Tổng SL</th>
-          <th>Tổng thành tiền</th>
-          <th>Chiết khấu</th>
-          <th>TT</th>
-          <th>Ghi chú</th>
-          <th>Trạng thái gửi</th>
-        </tr>
-      </thead>
+          <tr>
+            <th>stt</th>
+            <th><input type="checkbox" id="chonTatCaHD"></th>
+            <th>Số HĐ</th>
+            <th>Ngày Tạo</th>
+            <th>Ngày sửa</th>
+            <th>NV</th>
+            <th>Khách</th>
+            <th>Tổng SL</th>
+            <th>Tổng thành tiền</th>
+            <th>Chiết khấu</th>
+            <th>TT</th>
+            <th>Ghi chú</th>
+            <th>Trạng thái gửi</th>
+          </tr>
+        </thead>
       <tbody id="dsHoaDon"></tbody>
     </table>
 
@@ -259,7 +255,7 @@
       return "#888";
     };
 
-
+    
     function capNhatNutXoa() {
       const btnXoa = document.getElementById('btnXoaHD');
       if (!btnXoa) return;
@@ -271,7 +267,7 @@
       btnXoa.disabled = !(isChiTiet && hasChecked);
     }
 
-    function capNhatNutGuiLai() {
+function capNhatNutGuiLai() {
       const btn = document.getElementById("btnGuiLai");
       if (!btn) return;
 
@@ -655,9 +651,9 @@
       const __btnXoa = document.getElementById('btnXoaHD');
       if (__btnXoa) __btnXoa.disabled = true;
 
-
+      
       capNhatNutXoa();
-      // GẮN SỰ KIỆN CHỌN TẤT CẢ
+// GẮN SỰ KIỆN CHỌN TẤT CẢ
       setTimeout(() => {
         const chonTatCa = document.getElementById('chonTatCaHD');
         if (chonTatCa) {
@@ -669,13 +665,21 @@
             const checkboxes = document.querySelectorAll('.chonHD');
             checkboxes.forEach(cb => { if (!cb.disabled) cb.checked = chonTatCa.checked; });
             capNhatNutGuiLai();
-            capNhatNutXoa();
+          capNhatNutXoa();
           };
         }
       }, 10);
 
     }
-    async function xemChiTiet(sohd) {
+
+
+
+
+    
+    // Expose to window for module callbacks
+    window.taiDanhSachHoaDon = taiDanhSachHoaDon;
+
+async function xemChiTiet(sohd) {
       const popupEl = document.getElementById("popup");
       popupEl.style.display = "block";
 
@@ -750,13 +754,13 @@
     };
 
 
-
+    
 
     // T2: gửi lại HĐĐT Viettel (chỉ dùng cho hoadon_banleT)
 
 
     // ====== T2: lấy buyer từ dmkhachhang + gửi lại + cập nhật trang_thai_gui ======
-    async function fetchBuyerFromDMKH(makhOrName) {
+async function fetchBuyerFromDMKH(makhOrName) {
       const key = String(makhOrName || "").trim();
       if (!key || /^kh(á|a)ch\s*l(ẻ|e)$/i.test(key)) return null;
 
@@ -784,7 +788,7 @@
       };
     }
 
-    async function guiLaiHoaDonDaChon() {
+async function guiLaiHoaDonDaChon() {
       // Lấy danh sách các checkbox được chọn
       const checkboxes = document.querySelectorAll(".chonHD:checked");
       const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
@@ -900,7 +904,7 @@
       taiDanhSachHoaDon();
     }
 
-    function taoDuLieuHoaDon(hoadon, chitiet) {
+function taoDuLieuHoaDon(hoadon, chitiet) {
       let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
 
       // Nhận diện cơ sở từ số hóa đơn
@@ -995,7 +999,7 @@
     }
 
     document.getElementById('btnGuiLai').onclick = guiLaiHoaDonDaChon;
-    document.getElementById('btnCopyTable').onclick = function () {
+document.getElementById('btnCopyTable').onclick = function () {
       let table = document.querySelector("table");
       if (!table) return alert("Không tìm thấy bảng dữ liệu!");
 
@@ -1110,7 +1114,7 @@
   <script type="module">
     import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
-
+    
 
     // ====== T2: XÓA HÓA ĐƠN (giống 111 nhưng áp dụng cho bảng T) ======
     function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
@@ -1192,67 +1196,17 @@
 
       // Xác thực lại nhân viên giống 111
       kiemTraNhanVienTruocKhiXoa(async function () {
+        const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
 
-        // --- Gom danh sách sohd cần xóa + tự động thêm đối ứng (kể cả nếu hiện tại chưa có) ---
-        let dsXoa = [];
-        let doiUngList = [];
-        let coCCN = false;
+        // Xác nhận lần cuối (an toàn hơn)
+        const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
+        if (!ok) return;
 
-        const mapDoiUng = {
-          xcncs1: 'ncncs2',
-          xcncs2: 'ncncs1',
-          ncncs1: 'xcncs2',
-          ncncs2: 'xcncs1'
-        };
-
-        for (const cb of checkboxes) {
-          const sohd = cb.getAttribute("data-sohd");
-          if (!sohd) continue;
-
-          const prefix = (sohd.split("_")[0] || "").trim();
-          const so = (sohd.split("_")[1] || "").trim();
-
-          // Hỗ trợ cả trường hợp prefix có hậu tố "T" (vd: xcncs1T_00031)
-          const isT = prefix.endsWith("T");
-          const basePrefix = isT ? prefix.slice(0, -1) : prefix;
-
-          dsXoa.push(sohd);
-
-          if (mapDoiUng[basePrefix] && so) {
-            coCCN = true;
-
-            const doiUngPrefix = mapDoiUng[basePrefix] + (isT ? "T" : "");
-            const doiUng = `${doiUngPrefix}_${so}`;
-
-            dsXoa.push(doiUng);
-            doiUngList.push(`${sohd} ↔ ${doiUng}`);
-          }
-        }
-
-        dsXoa = [...new Set(dsXoa.filter(Boolean))]; // loại trùng + loại rỗng
-
-        // Xác nhận xóa
-        let xacNhan = false;
-        if (coCCN) {
-          xacNhan = confirm(
-            `⚠️ Có hóa đơn chuyển chi nhánh. Hệ thống sẽ xóa kèm cả hóa đơn đối ứng (nếu có).
-
-Các cặp dự kiến xóa:
-${doiUngList.join("\n")}
-
-Bạn có đồng ý xóa toàn bộ không?`
-          );
-        } else {
-          xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
-        }
-        if (!xacNhan) return;
-
-
-        // Thực hiện xóa: chi tiết trước, master sau (T tables)
+        // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
         for (const sohd of dsXoa) {
           const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
           if (e1) {
-            alert(`❌ Lỗi xóa CT hóa đơn ${sohd}: ${e1.message}`);
+            alert(`❌ Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
             return;
           }
           const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
@@ -1262,52 +1216,12 @@ Bạn có đồng ý xóa toàn bộ không?`
           }
         }
 
-        alert(`✅ Đã xóa thành công ${dsXoa.length} hóa đơn (bao gồm đối ứng nếu có).`);
-        await window.taiDanhSachHoaDon(); // refresh lại bảng
+        alert(`✅ Đã xóa thành công ${dsXoa.length} hóa đơn.`);
+        await window.taiDanhSachHoaDon();
       });
     }
 
-    const checkboxes = document.querySelectorAll(".chonHD:checked");
-    if (checkboxes.length === 0) {
-      alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
-      return;
-    }
-
-    // Xác thực lại nhân viên giống 111
-    kiemTraNhanVienTruocKhiXoa(async function () {
-      const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
-
-      // Xác nhận lần cuối (an toàn hơn)
-      const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
-      if (!ok) return;
-
-      // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
-      for (const sohd of dsXoa) {
-        const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
-        if (e1) {
-          alert(`❌ Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
-          return;
-        }
-        const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
-        if (e2) {
-          alert(`❌ Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
-          return;
-        }
-      }
-
-      alert(`✅ Đã xóa thành công ${dsXoa.length} hóa đơn.`);
-      await window.taiDanhSachHoaDon();
-    });
-
-
-
-    // Expose functions for inline onclick handlers
-    window.taiDanhSachHoaDon = taiDanhSachHoaDon;
-    window.xemChiTiet = xemChiTiet;
-    window.dongPopup = dongPopup;
-    window.xoaHoaDonDaChon = xoaHoaDonDaChon;
-    window.kiemTraNhanVienTruocKhiXoa = kiemTraNhanVienTruocKhiXoa;
-    khoiTaoDangNhapDungChung({
+khoiTaoDangNhapDungChung({
       appContainerId: 'app-container',
 
       // Không khóa cứng cơ sở, để nhân viên chọn CS1 / CS2
@@ -1412,7 +1326,7 @@ Bạn có đồng ý xóa toàn bộ không?`
         }
 
         await window.taiDanhSachHoaDon();
-      }
+}
 
     });
   </script>
@@ -1432,8 +1346,7 @@ Bạn có đồng ý xóa toàn bộ không?`
     </div>
     <div id="msgCheckNV" style="color:#ad3a2b;margin:8px 0;min-height:18px;font-size:0.97em"></div>
     <button id="btnKiemTraNV"
-      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm
-      tra</button>
+      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm tra</button>
     <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
       style="margin-left:8px;">Hủy</button>
   </div>
