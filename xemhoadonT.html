@@ -87,6 +87,19 @@
       cursor: pointer;
     }
 
+    .xoa-btn {
+      background: #ffe066;
+      color: #555;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+    .xoa-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+
     button.loc-btn:hover {
       background: #1769aa;
     }
@@ -161,6 +174,7 @@
 
     <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
     <button id="btnGuiLai" class="loc-btn" disabled>📤 Gửi lại HĐĐT đã chọn</button>
+    <button id="btnXoaHD" class="xoa-btn" disabled onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
     <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
 
     <br />
@@ -248,6 +262,13 @@
       // Chỉ cho gửi lại trong chế độ "chi tiết"
       if (__loaiTongHopCurrent !== "chitiet") {
         btn.disabled = true;
+
+
+      // T2: cập nhật nút XÓA theo checkbox (chỉ bật khi đang 'chitiet' và có chọn)
+      const btnXoa = document.getElementById('btnXoaHD');
+      if (btnXoa) {
+        btnXoa.disabled = (__loaiTongHopCurrent !== 'chitiet') || (selected.length === 0);
+      }
         return;
       }
 
@@ -620,6 +641,9 @@
       // T2: reset nút gửi lại sau khi render
       const __btnGui = document.getElementById('btnGuiLai');
       if (__btnGui) __btnGui.disabled = true;
+
+      const __btnXoa = document.getElementById('btnXoaHD');
+      if (__btnXoa) __btnXoa.disabled = true;
 
       // GẮN SỰ KIỆN CHỌN TẤT CẢ
       setTimeout(() => {
@@ -1081,7 +1105,114 @@ document.getElementById('btnCopyTable').onclick = function () {
   <script type="module">
     import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
-    khoiTaoDangNhapDungChung({
+    
+
+    // ====== T2: XÓA HÓA ĐƠN (giống 111 nhưng áp dụng cho bảng T) ======
+    function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+      const popup = document.getElementById('popupXacThucNV');
+      const txtMa = document.getElementById('maNVCheck');
+      const txtMk = document.getElementById('matkhauNVCheck');
+      const msg = document.getElementById('msgCheckNV');
+
+      const savedMa =
+        localStorage.getItem('manv') ||
+        localStorage.getItem('last_login_manv') ||
+        '';
+
+      const savedMk =
+        localStorage.getItem('last_login_password') || '';
+
+      if (txtMa) txtMa.value = savedMa;
+      if (txtMk) txtMk.value = savedMk;
+      if (msg) msg.textContent = '';
+
+      if (popup) popup.style.display = 'block';
+
+      const btn = document.getElementById('btnKiemTraNV');
+      if (!btn) return;
+
+      btn.onclick = async function () {
+        try {
+          const manv = (txtMa?.value || '').trim();
+          const matkhau = (txtMk?.value || '').trim();
+
+          if (!manv || !matkhau) {
+            msg.textContent = 'Vui lòng nhập đủ mã NV và mật khẩu.';
+            return;
+          }
+
+          // Kiểm tra lại trên dmnhanvien (giống 111)
+          const { data, error } = await window.supabase
+            .from('dmnhanvien')
+            .select('manv, tennv, matkhau, is_admin')
+            .eq('manv', manv)
+            .eq('matkhau', matkhau)
+            .maybeSingle();
+
+          if (error || !data) {
+            msg.textContent = 'Sai mã NV hoặc mật khẩu.';
+            return;
+          }
+
+          // (Tuỳ bạn) chỉ cho admin xóa
+          const isAdmin = (data.is_admin === true || data.is_admin === 'true' || data.is_admin === 1);
+          if (!isAdmin) {
+            msg.textContent = 'Bạn không có quyền xóa hóa đơn.';
+            return;
+          }
+
+          if (popup) popup.style.display = 'none';
+          msg.textContent = '';
+
+          if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data);
+        } catch (err) {
+          console.error('Exception khi kiểm tra NV:', err);
+          msg.textContent = 'Có lỗi xảy ra khi kiểm tra nhân viên.';
+        }
+      };
+    }
+
+    async function xoaHoaDonDaChon() {
+      // Chỉ cho xóa khi đang ở chế độ chi tiết
+      if (__loaiTongHopCurrent !== 'chitiet') {
+        alert('Chỉ có thể xóa khi đang xem "Chi tiết từng hóa đơn".');
+        return;
+      }
+
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      if (checkboxes.length === 0) {
+        alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
+        return;
+      }
+
+      // Xác thực lại nhân viên giống 111
+      kiemTraNhanVienTruocKhiXoa(async function () {
+        const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
+
+        // Xác nhận lần cuối (an toàn hơn)
+        const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
+        if (!ok) return;
+
+        // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
+        for (const sohd of dsXoa) {
+          const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
+          if (e1) {
+            alert(`❌ Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
+            return;
+          }
+          const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
+          if (e2) {
+            alert(`❌ Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
+            return;
+          }
+        }
+
+        alert(`✅ Đã xóa thành công ${dsXoa.length} hóa đơn.`);
+        await window.taiDanhSachHoaDon();
+      });
+    }
+
+khoiTaoDangNhapDungChung({
       appContainerId: 'app-container',
 
       // Không khóa cứng cơ sở, để nhân viên chọn CS1 / CS2
@@ -1192,6 +1323,24 @@ document.getElementById('btnCopyTable').onclick = function () {
   </script>
 
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+
+
+  <!-- Popup xác thực nhân viên (dùng cho xóa hóa đơn) -->
+  <div id="popupXacThucNV"
+    style="display:none;position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #ccc;box-shadow:0 6px 22px rgba(0,0,0,0.25);padding:24px;z-index:10000;border-radius:8px;min-width:300px;">
+    <h3 style="color:#1976d2;margin:0 0 10px 0;">Xác thực nhân viên</h3>
+    <div style="margin-bottom:10px;">
+      <label>Mã NV: <input type="password" id="maNVCheck" style="width:120px"></label>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label>Mật khẩu: <input type="password" id="matkhauNVCheck" style="width:120px"></label>
+    </div>
+    <div id="msgCheckNV" style="color:#ad3a2b;margin:8px 0;min-height:18px;font-size:0.97em"></div>
+    <button id="btnKiemTraNV"
+      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm tra</button>
+    <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
+      style="margin-left:8px;">Hủy</button>
+  </div>
 
 </body>
 
