@@ -1,111 +1,97 @@
 // /api/login-cs1.js
-// Đăng nhập nhân viên cho CS1 – dùng service_role để đọc dmnhanvien (bỏ qua RLS)
-
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const WAREHOUSE_EMAIL_CS1 = process.env.WAREHOUSE_CS1_EMAIL;
-const WAREHOUSE_PASSWORD_CS1 = process.env.WAREHOUSE_CS1_PASSWORD;
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Thiếu SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trong ENV');
-}
-
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, error: 'Method not allowed' });
-  }
-
   try {
-    const { manv, passwordNV, diadiem } = req.body || {};
-
-    if (!manv || !passwordNV) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'Thiếu mã nhân viên hoặc mật khẩu' });
+    if (req.method !== "POST") {
+      return res.status(405).json({ ok: false, error: "Method not allowed" });
     }
 
-    const manvUpper = manv.toString().trim().toUpperCase();
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // 1) Lấy nhân viên bằng service_role (bỏ qua RLS)
-    const { data: nvArr, error: errNV } = await supabaseAdmin
-      .from('dmnhanvien')
-      .select('manv, tennv, sua_hoadon, xoa_hoadon, is_admin, matkhau')
-      .eq('manv', manvUpper)
-      .limit(1);
+    const WAREHOUSE_EMAIL = process.env.WAREHOUSE_CS1_EMAIL;
+    const WAREHOUSE_PASSWORD = process.env.WAREHOUSE_CS1_PASSWORD;
 
-    console.log('LOGIN CS1 manvUpper =', manvUpper);
-    console.log('LOGIN CS1 nvArr =', nvArr, 'errNV =', errNV);
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-    if (errNV) {
-      console.error('Lỗi truy vấn dmnhanvien (CS1):', errNV);
-      return res.status(500).json({ ok: false, error: 'Lỗi truy vấn dmnhanvien' });
+    if (!SUPABASE_URL || !SERVICE_ROLE) {
+      return res.status(500).json({ ok: false, error: "Missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY" });
     }
 
-    const nv = nvArr && nvArr[0];
+    const { manv, matkhau } = req.body || {};
+    const manvUpper = String(manv || "").trim().toUpperCase();
+    const pass = String(matkhau || "").trim();
+
+    if (!manvUpper || !pass) {
+      return res.status(400).json({ ok: false, error: "Thiếu mã nhân viên / mật khẩu" });
+    }
+
+    // 1) Check nhân viên bằng service_role (an toàn, bypass RLS)
+    const sbAdmin = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: nv, error: nvErr } = await sbAdmin
+      .from("dmnhanvien")
+      .select("manv, tennv, matkhau, is_admin, active")
+      .eq("manv", manvUpper)
+      .limit(1)
+      .maybeSingle();
+
+    if (nvErr) {
+      return res.status(500).json({ ok: false, error: `DB error: ${nvErr.message}` });
+    }
     if (!nv) {
-      return res.status(401).json({ ok: false, error: 'Mã nhân viên không tồn tại' });
+      return res.status(401).json({ ok: false, error: "Mã nhân viên không tồn tại" });
+    }
+    if (nv.active === false) {
+      return res.status(403).json({ ok: false, error: "Tài khoản đã bị khóa" });
+    }
+    if (String(nv.matkhau || "") !== pass) {
+      return res.status(401).json({ ok: false, error: "Sai mật khẩu" });
     }
 
-    const matkhauDB = (nv.matkhau ?? '').toString().trim();
-    const matkhauNhap = passwordNV.toString().trim();
+    const isInternalAdmin = nv.is_admin === true;
 
-    if (!matkhauDB || matkhauDB !== matkhauNhap) {
-      return res.status(401).json({ ok: false, error: 'Mã nhân viên hoặc mật khẩu không đúng' });
+    // 2) Chọn account Supabase để sign-in
+    const loginEmail = isInternalAdmin ? ADMIN_EMAIL : WAREHOUSE_EMAIL;
+    const loginPassword = isInternalAdmin ? ADMIN_PASSWORD : WAREHOUSE_PASSWORD;
+
+    if (!loginEmail || !loginPassword) {
+      const need = isInternalAdmin ? "ADMIN_EMAIL/ADMIN_PASSWORD" : "WAREHOUSE_CS1_EMAIL/WAREHOUSE_CS1_PASSWORD";
+      return res.status(500).json({ ok: false, error: `Chưa cấu hình ${need}` });
     }
 
-    // 2) Đăng nhập tài khoản kho CS1 để lấy session Supabase
-    if (!WAREHOUSE_EMAIL_CS1 || !WAREHOUSE_PASSWORD_CS1) {
-      console.error('Thiếu WAREHOUSE_CS1_EMAIL hoặc WAREHOUSE_CS1_PASSWORD trong ENV');
-      return res.status(500).json({
-        ok: false,
-        error: 'Chưa cấu hình tài khoản kho CS1 trên server',
-      });
+    // 3) Sign in lấy session
+    const sbAuth = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: signInData, error: signInErr } = await sbAuth.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+
+    if (signInErr || !signInData?.session) {
+      return res.status(401).json({ ok: false, error: `Đăng nhập Supabase thất bại: ${signInErr?.message || "no session"}` });
     }
 
-    const { data: signInData, error: signInError } =
-      await supabaseAdmin.auth.signInWithPassword({
-        email: WAREHOUSE_EMAIL_CS1,
-        password: WAREHOUSE_PASSWORD_CS1,
-      });
-
-    if (signInError) {
-      console.error('Lỗi signInWithPassword CS1:', signInError);
-      return res
-        .status(500)
-        .json({ ok: false, error: 'Đăng nhập tài khoản kho CS1 thất bại' });
-    }
-
-    const session = signInData?.session;
-    if (!session || !session.access_token) {
-      console.error('Không lấy được session Supabase CS1:', signInData);
-      return res.status(500).json({ ok: false, error: 'Không lấy được session Supabase' });
-    }
-
+    // 4) Trả về
     return res.status(200).json({
       ok: true,
+      diadiem: "cs1",
       nhanvien: {
         manv: nv.manv,
-        tennv: nv.tennv,
-        sua_hoadon: nv.sua_hoadon,
-        xoa_hoadon: nv.xoa_hoadon,
-        is_admin: nv.is_admin,
+        tennv: nv.tennv || "",
+        // giữ is_admin nội bộ để tương thích cũ (authModule sẽ override bằng RPC nếu bạn muốn)
+        is_admin: !!nv.is_admin,
       },
-      session: {
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      },
-      diadiem: diadiem || 'cs1',
+      session: signInData.session,
+      user: signInData.user,
     });
-  } catch (err) {
-    console.error('Lỗi không xác định ở login-cs1:', err);
-    return res.status(500).json({ ok: false, error: 'Lỗi server không xác định' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 }
