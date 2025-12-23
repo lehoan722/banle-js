@@ -21,7 +21,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     appContainerId = 'app-container',
     macDinhDiaDiem = 'cs1',
     tuDongKhoaCoSo = true,
-    loginApiPath = '/api/login-cs1',
+    loginApiPath = null,
     onLoginSuccess
   } = options;
 
@@ -115,8 +115,19 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     }
   }
 
+
+  function resolveLoginApiPath(cs) {
+    // Ưu tiên: loginApiPath truyền vào (function/object/string). Nếu không có -> tự suy ra theo cs
+    try {
+      if (typeof loginApiPath === 'function') return loginApiPath(cs);
+      if (loginApiPath && typeof loginApiPath === 'object') return loginApiPath[cs];
+      if (typeof loginApiPath === 'string' && loginApiPath.trim()) return loginApiPath.trim();
+    } catch (e) {}
+    return `/api/login-${cs}`;
+  }
+
   async function tryEmployeeLogin(cs, manvUpper, password) {
-    const resp = await fetch(loginApiPath, {
+    const resp = await fetch(resolveLoginApiPath(cs), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ manv: manvUpper, passwordNV: password, diadiem: cs })
