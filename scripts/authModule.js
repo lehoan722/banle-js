@@ -176,12 +176,11 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         return;
       }
 
-      // Set session Supabase ở frontend
-      const { data: setSessionData, error: setSessionError } =
-        await window.supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token
-        });
+      // ✅ setSession đúng cách (lấy error ra)
+      const { error: setSessionError } = await window.supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
 
       if (setSessionError) {
         console.error('Lỗi setSession:', setSessionError);
@@ -189,15 +188,19 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         return;
       }
 
-      // ✅ Sync quyền admin (rpc) - phải dùng window.supabase
+      // ✅ Sync quyền admin theo MANV (không theo auth.uid)
       let isAdminRpc = false;
       try {
-        const { data, error } = await window.supabase.rpc('is_admin');
-        if (error) console.warn('RPC is_admin error:', error);
-        isAdminRpc = !!data;
+        const manvSafe = (nhanvien?.manv || '').toString().trim();
+        if (manvSafe) {
+          const { data, error } = await window.supabase.rpc('is_admin_by_manv', { p_manv: manvSafe });
+          if (error) console.warn('RPC is_admin_by_manv error:', error);
+          isAdminRpc = !!data;
+        }
       } catch (e) {
-        console.warn('RPC is_admin exception:', e);
+        console.warn('RPC is_admin_by_manv exception:', e);
       }
+
       nhanvien.is_admin = isAdminRpc;
 
 
