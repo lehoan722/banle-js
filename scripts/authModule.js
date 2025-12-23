@@ -183,6 +183,18 @@ export function khoiTaoDangNhapDungChung(options = {}) {
           refresh_token: session.refresh_token
         });
 
+      // ✅ Sync quyền admin từ bảng admin_users (rpc)
+      let isAdminRpc = false;
+      try {
+        const { data, error } = await supabase.rpc("is_admin");
+        if (error) console.warn("RPC is_admin error:", error);
+        isAdminRpc = !!data;
+      } catch (e) {
+        console.warn("RPC is_admin exception:", e);
+      }
+      nhanvien.is_admin = isAdminRpc;
+
+
       if (setSessionError) {
         console.error('Lỗi setSession:', setSessionError);
         errorEl.textContent = 'Không set được session Supabase';
