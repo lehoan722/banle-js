@@ -1,146 +1,190 @@
 // /api/login-cs1.js
-// Đăng nhập nhân viên cho cơ sở 1.
-// - Bước 1: kiểm tra manv/passwordNV trong bảng dmnhanvien (dùng service_role để đọc, bỏ qua RLS)
-// - Bước 2: nếu hợp lệ thì sign-in Supabase Auth bằng tài khoản WAREHOUSE_CS1_* để lấy session dùng cho toàn app
-//
-// Lưu ý: Endpoint đăng nhập là POST. GET/HEAD trả về 200 để tránh log đỏ 401/405
-// trong trường hợp trang/tiện ích vô tình request endpoint như 1 resource.
+// Đăng nhập nhân viên (CS1/CS2) + trả session Supabase theo tài khoản kho (warehouse)
+// - POST JSON: { manv, passwordNV, diadiem: "cs1"|"cs2" }
+// - 401: sai mã nv hoặc sai mật khẩu
+// - 403: tài khoản nhân viên bị khóa (active=false) (nếu có cột active)
+// - 405: gọi sai method (GET/PUT...)
+// Lưu ý: API này KHÔNG dùng cho đăng nhập ADMIN (ADMIN dùng /api/login-admin)
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-function sendJson(res, status, obj) {
-  res.status(status);
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.end(JSON.stringify(obj));
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const WAREHOUSE_EMAIL_CS1 = process.env.WAREHOUSE_CS1_EMAIL;
+const WAREHOUSE_PASSWORD_CS1 = process.env.WAREHOUSE_CS1_PASSWORD;
+
+const WAREHOUSE_EMAIL_CS2 = process.env.WAREHOUSE_CS2_EMAIL;
+const WAREHOUSE_PASSWORD_CS2 = process.env.WAREHOUSE_CS2_PASSWORD;
+
+function pickWarehouse(diadiemRaw) {
+  const diadiem = String(diadiemRaw || "cs1").toLowerCase();
+  if (diadiem === "cs2") {
+    return {
+      diadiem: "cs2",
+      email: WAREHOUSE_EMAIL_CS2,
+      password: WAREHOUSE_PASSWORD_CS2,
+    };
+  }
+  return {
+    diadiem: "cs1",
+    email: WAREHOUSE_EMAIL_CS1,
+    password: WAREHOUSE_PASSWORD_CS1,
+  };
 }
 
-function safeString(v) {
-  return (v ?? '').toString();
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (chunk) => (data += chunk));
+    req.on("end", () => {
+      if (!data) return resolve({});
+      try {
+        resolve(JSON.parse(data));
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }
 
 export default async function handler(req, res) {
-  // (Tuỳ chọn) CORS nhẹ cho an toàn khi có preflight
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET, HEAD');
-
-  if (req.method === 'OPTIONS') return res.status(204).end();
-
-  // Nếu có GET/HEAD (bị load nhầm như resource) => trả 200 để khỏi log đỏ
-  if (req.method === 'GET' || req.method === 'HEAD') {
-    return sendJson(res, 200, {
-      ok: true,
-      hint: 'Use POST with JSON body: { manv, passwordNV, diadiem: \"cs1\" }',
-    });
-  }
-
-  if (req.method !== 'POST') {
-    return sendJson(res, 405, { ok: false, error: 'Method not allowed' });
-  }
-
-  // Parse body an toàn
-  let body = req.body;
-  if (typeof body === 'string') {
-    try {
-      body = JSON.parse(body);
-    } catch {
-      body = {};
-    }
-  }
-
-  const manv = safeString(body?.manv).trim().toUpperCase();
-  const passwordNV = safeString(body?.passwordNV);
-  const diadiem = safeString(body?.diadiem || 'cs1').trim().toLowerCase();
-
-  if (!manv || !passwordNV) {
-    return sendJson(res, 400, { ok: false, error: 'Thiếu manv/passwordNV' });
-  }
-
-  // Endpoint này cố định cho CS1
-  if (diadiem !== 'cs1') {
-    return sendJson(res, 400, { ok: false, error: 'Endpoint này chỉ dùng cho cs1' });
-  }
-
-  const SUPABASE_URL =
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!SUPABASE_URL || !SERVICE_ROLE) {
-    return sendJson(res, 500, {
-      ok: false,
-      error: 'Thiếu SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trên Vercel',
-    });
-  }
-
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  res.setHeader("Cache-Control", "no-store");
 
   try {
-    // 1) Kiểm tra nhân viên
-    const { data: nv, error: nvErr } = await admin
-      .from('dmnhanvien')
-      .select('manv, tennv, matkhau, trangthai, is_admin')
-      .eq('manv', manv)
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({
+        ok: false,
+        error: "Thiếu SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY trong ENV",
+      });
+    }
+
+    // Nếu ai đó mở trực tiếp /api/login-cs1 trên trình duyệt => GET
+    if (req.method !== "POST") {
+      return res.status(405).json({
+        ok: false,
+        error: "Method not allowed. Use POST with JSON body.",
+      });
+    }
+
+    const body = await readBody(req).catch(() => null);
+    if (!body) {
+      return res.status(400).json({
+        ok: false,
+        error: "Body JSON không hợp lệ",
+      });
+    }
+
+    const manvUpper = String(body.manv || "")
+      .trim()
+      .toUpperCase();
+    const passwordNV = String(body.passwordNV || "");
+    const { diadiem, email: warehouseEmail, password: warehousePassword } =
+      pickWarehouse(body.diadiem);
+
+    if (!manvUpper || !passwordNV) {
+      return res.status(400).json({
+        ok: false,
+        error: "Thiếu manv hoặc passwordNV",
+      });
+    }
+
+    if (!warehouseEmail || !warehousePassword) {
+      return res.status(500).json({
+        ok: false,
+        error: `Chưa cấu hình WAREHOUSE_${diadiem.toUpperCase()}_EMAIL/PASSWORD`,
+      });
+    }
+
+    // 1) Dùng service_role để đọc dmnhanvien (bỏ qua RLS)
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+
+    const { data: nv, error: nvErr } = await supabaseAdmin
+      .from("dmnhanvien")
+      .select("*")
+      .eq("manv", manvUpper)
       .maybeSingle();
 
     if (nvErr) {
-      return sendJson(res, 500, {
+      return res.status(500).json({
         ok: false,
-        error: `Lỗi truy vấn dmnhanvien: ${nvErr.message}`,
+        error: "Lỗi đọc dmnhanvien: " + nvErr.message,
       });
     }
 
-    if (!nv || nv.trangthai === false) {
-      return sendJson(res, 401, {
+    if (!nv) {
+      return res.status(401).json({ ok: false, error: "Sai mã nhân viên" });
+    }
+
+    // Tên cột mật khẩu có thể khác nhau giữa các bản (matkhau / matkhaunv / password...)
+    const storedPass =
+      nv.matkhau ??
+      nv.matkhaunv ??
+      nv.password ??
+      nv.pass ??
+      nv.mat_khau ??
+      null;
+
+    if (String(storedPass ?? "") !== String(passwordNV)) {
+      return res.status(401).json({ ok: false, error: "Sai mật khẩu nhân viên" });
+    }
+
+    // Nếu bạn có cột active và muốn khóa nhân viên
+    if (nv.active === false) {
+      return res.status(403).json({ ok: false, error: "Nhân viên đang bị khóa" });
+    }
+
+    // 2) Đăng nhập Supabase bằng tài khoản kho (warehouse) để lấy session token
+    const supabaseAuth = createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
+    );
+
+    const { data: signInData, error: signInErr } =
+      await supabaseAuth.auth.signInWithPassword({
+        email: warehouseEmail,
+        password: warehousePassword,
+      });
+
+    if (signInErr || !signInData?.session) {
+      return res.status(500).json({
         ok: false,
-        error: 'Sai mã nhân viên hoặc tài khoản bị khóa',
+        error:
+          "Đăng nhập warehouse thất bại: " +
+          (signInErr?.message || "Không có session"),
       });
     }
 
-    if (safeString(nv.matkhau) !== passwordNV) {
-      return sendJson(res, 401, { ok: false, error: 'Sai mã nhân viên hoặc mật khẩu' });
-    }
+    const session = signInData.session;
 
-    // 2) Sign-in bằng tài khoản kho CS1 để lấy session dùng trong app
-    const warehouseEmail = process.env.WAREHOUSE_CS1_EMAIL;
-    const warehousePassword = process.env.WAREHOUSE_CS1_PASSWORD;
-
-    if (!warehouseEmail || !warehousePassword) {
-      return sendJson(res, 500, {
-        ok: false,
-        error: 'Chưa cấu hình WAREHOUSE_CS1_EMAIL/WAREHOUSE_CS1_PASSWORD trên Vercel',
-      });
-    }
-
-    const { data: authData, error: authErr } = await admin.auth.signInWithPassword({
-      email: warehouseEmail,
-      password: warehousePassword,
-    });
-
-    if (authErr || !authData?.session) {
-      return sendJson(res, 401, {
-        ok: false,
-        error: 'Không đăng nhập được tài khoản kho CS1 (WAREHOUSE_CS1_*)',
-        detail: authErr?.message || null,
-      });
-    }
-
-    return sendJson(res, 200, {
+    // 3) Trả về thông tin nhân viên + token
+    return res.status(200).json({
       ok: true,
-      diadiem: 'cs1',
-      session: authData.session,
       nhanvien: {
         manv: nv.manv,
-        tennv: nv.tennv || '',
-        is_admin: !!nv.is_admin,
+        tennv: nv.tennv,
+        sua_hoadon: nv.sua_hoadon,
+        xoa_hoadon: nv.xoa_hoadon,
+        is_admin: nv.is_admin,
       },
+      session: {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      },
+      diadiem,
     });
-  } catch (e) {
-    return sendJson(res, 500, {
+  } catch (err) {
+    console.error("login-cs1 error:", err);
+    return res.status(500).json({
       ok: false,
-      error: 'Server error',
-      detail: e?.message || String(e),
+      error: "Lỗi server không xác định",
     });
   }
 }
