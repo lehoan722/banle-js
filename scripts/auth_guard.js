@@ -1,381 +1,153 @@
-// scripts/authModule.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm';
+// scripts/auth_guard.js
+// Guard dùng chung để chặn truy cập theo quyền trang.
+// - ADMIN: kiểm tra bằng RPC public.is_admin() (bảng admin_users) => nếu true thì cho phép vào mọi trang.
+// - NV thường: kiểm tra danh sách trang cho manv (RPC get_pages_for_manv).
 
-// ==== 1. CẤU HÌNH SUPABASE DÙNG CHUNG TRÊN FRONTEND ====
-const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+import { supabase } from "./supabaseClient.js";
 
-// Chỉ tạo 1 lần trên window
-if (
-  !window.supabase ||
-  !window.supabase.auth ||
-  typeof window.supabase.auth.setSession !== 'function'
-) {
-  window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const CACHE_KEY = "perm_cache_pages";
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 phút
+
+function getCurrentPagePath() {
+  // Ưu tiên meta (nếu bạn set), fallback pathname
+  const meta = document.querySelector('meta[name="app:page_path"]');
+  if (meta && meta.content) return meta.content.trim();
+  const p = (window.location.pathname || "").split("?")[0];
+  return (p || "").split("/").pop() || p || "";
 }
 
-// ==== 2. MODULE ĐĂNG NHẬP DÙNG CHUNG ====
-export function khoiTaoDangNhapDungChung(options = {}) {
-  const {
-    loginContainerId = 'login-container',
-    appContainerId = 'app-container',
-    macDinhDiaDiem = 'cs1',
-    tuDongKhoaCoSo = true,
-    loginApiPath = null,
-    onLoginSuccess
-  } = options;
+function readJSON(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
+    return fallback;
+  }
+}
 
-  // Tạo/đảm bảo có div login
-  let loginContainer = document.getElementById(loginContainerId);
-  if (!loginContainer) {
-    loginContainer = document.createElement('div');
-    loginContainer.id = loginContainerId;
-    document.body.appendChild(loginContainer);
+function writeJSON(key, val) {
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch (e) {}
+}
+
+async function getIsAdmin() {
+  try {
+    const { data, error } = await supabase.rpc("is_admin");
+    if (error) return false;
+    return !!data;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getAllowedPagesForManv(manv) {
+  const now = Date.now();
+  const cache = readJSON(CACHE_KEY, null);
+  if (cache && cache.manv === manv && (now - cache.ts) < CACHE_TTL_MS && Array.isArray(cache.pages)) {
+    return cache.pages;
   }
 
-  // Style overlay
-  loginContainer.style.position = "fixed";
-  loginContainer.style.top = "0";
-  loginContainer.style.left = "0";
-  loginContainer.style.width = "100%";
-  loginContainer.style.height = "100%";
-  loginContainer.style.background = "#fff";
-  loginContainer.style.display = "flex";
-  loginContainer.style.flexDirection = "column";
-  loginContainer.style.alignItems = "center";
-  loginContainer.style.justifyContent = "center";
-  loginContainer.style.zIndex = "99999";
+  // RPC bạn đang dùng: get_pages_for_manv(manv text)
+  const { data, error } = await supabase.rpc("get_pages_for_manv", { p_manv: manv });
+  if (error) return [];
+  const pages = (data || [])
+    .map(x => (typeof x === "string" ? x : x?.page || x?.path || x?.url))
+    .filter(Boolean)
+    .map(s => String(s).trim());
 
-  // App ẩn lúc chưa login
-  const appContainer = document.getElementById(appContainerId);
-  if (appContainer) appContainer.style.display = 'none';
+  writeJSON(CACHE_KEY, { manv, ts: now, pages });
+  return pages;
+}
 
-  // 1 FORM: “Mã nhân viên” (hoặc email admin) + “Mật khẩu”
-  loginContainer.innerHTML = `
-    <div style="background:#f9f9f9; padding:30px; border-radius:8px; box-shadow:0 0 10px #ccc; min-width:280px;">
-      <h2>Đăng nhập</h2>
-      <form id="form-login-dungchung">
-        <label>Cơ sở:</label><br />
-        <select id="login-cs" style="width:100%; padding:6px; margin-bottom:8px;">
-          <option value="">-- Chọn cơ sở --</option>
-          <option value="cs1">Cơ sở 1</option>
-          <option value="cs2">Cơ sở 2</option>
-        </select>
+function renderBlocked(message) {
+  const wrap = document.createElement("div");
+  wrap.id = "auth-guard-block";
+  wrap.style.cssText = [
+    "position:fixed",
+    "inset:0",
+    "z-index:999999",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "background:#f5f6f8",
+    "font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial"
+  ].join(";");
 
-        <label for="login-manv">Mã nhân viên / Email admin</label><br />
-        <input type="text" id="login-manv" autocomplete="off"
-               placeholder="Ví dụ: NV01 hoặc admin@email.com" required
-               style="width:100%;padding:6px;margin-bottom:8px;" /><br />
-
-        <label for="login-password-nv">Mật khẩu</label><br />
-        <input type="password" id="login-password-nv"
-               placeholder="Nhập mật khẩu"
-               style="width:100%;padding:6px;margin-bottom:12px;" /><br />
-
-        <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
-        <p id="login-error" style="color:red; margin-top:10px;"></p>
-      </form>
+  wrap.innerHTML = `
+    <div style="width:min(560px,92vw);background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 24px;box-shadow:0 12px 30px rgba(0,0,0,.08)">
+      <div style="font-size:26px;font-weight:800;letter-spacing:.2px;margin-bottom:10px">Không có quyền truy cập</div>
+      <div style="color:#374151;font-size:15px;line-height:1.5;margin-bottom:18px">${message}</div>
+      <div style="display:flex;gap:10px">
+        <button id="auth-guard-back" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer">Quay lại</button>
+        <button id="auth-guard-logout" style="padding:10px 14px;border:1px solid #ef4444;border-radius:10px;background:#ef4444;color:#fff;cursor:pointer">Đăng xuất</button>
+      </div>
     </div>
   `;
+  document.body.appendChild(wrap);
 
-  const csSelect = document.getElementById('login-cs');
-  const manvInput = document.getElementById('login-manv');
-  const passInput = document.getElementById('login-password-nv');
-  const errorEl = document.getElementById('login-error');
-  const form = document.getElementById('form-login-dungchung');
-
-  // Set default cơ sở (ưu tiên localStorage)
-  try {
-    const savedBranch = localStorage.getItem('diadiem');
-    if (savedBranch) csSelect.value = savedBranch;
-    else if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
-  } catch (e) {
-    if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
-  }
-
-  if (tuDongKhoaCoSo) csSelect.disabled = true;
-
-  function showAppAfterLogin(nhanvienLike, context) {
-    if (appContainer) appContainer.style.display = '';
-    loginContainer.style.display = 'none';
-
-    if (typeof onLoginSuccess === 'function') {
-      Promise.resolve(onLoginSuccess(nhanvienLike, context)).catch(console.error);
-    }
-  }
-
-  async function checkIsAdminBestEffort() {
-    // Nếu chưa tạo RPC is_admin() thì coi như false
-    try {
-      const { data, error } = await window.supabase.rpc('is_admin');
-      if (error) return false;
-      return data === true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-
-  function resolveLoginApiPath(cs) {
-    // Ưu tiên: loginApiPath truyền vào (function/object/string). Nếu không có -> tự suy ra theo cs
-    try {
-      if (typeof loginApiPath === 'function') return loginApiPath(cs);
-      if (loginApiPath && typeof loginApiPath === 'object') return loginApiPath[cs];
-      if (typeof loginApiPath === 'string' && loginApiPath.trim()) return loginApiPath.trim();
-    } catch (e) {}
-    return `/api/login-${cs}`;
-  }
-
-  async function tryEmployeeLogin(cs, manvUpper, password) {
-    const resp = await fetch(resolveLoginApiPath(cs), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ manv: manvUpper, passwordNV: password, diadiem: cs })
-    });
-
-    const result = await resp.json().catch(() => ({}));
-    if (!resp.ok || !result.ok) {
-      return { ok: false, error: result?.error || 'Đăng nhập thất bại' };
-    }
-
-    const { session, nhanvien, diadiem } = result;
-    if (!session || !session.access_token || !session.refresh_token) {
-      return { ok: false, error: 'Không nhận được session hợp lệ từ server' };
-    }
-
-    // Set session Supabase ở frontend
-    const { data: setSessionData, error: setSessionError } =
-      await window.supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      });
-
-    if (setSessionError) {
-      console.error('Lỗi setSession:', setSessionError);
-      return { ok: false, error: 'Không set được session Supabase' };
-    }
-
-    // IMPORTANT: Nhân viên luôn là is_admin=false (không tin dmnhanvien.is_admin nữa)
-    const csFinal = diadiem || cs;
-    localStorage.setItem('diadiem', csFinal);
-    localStorage.setItem('supabase_access_token', session.access_token); // giữ lại để tương thích code cũ
-    localStorage.setItem('manv', nhanvien?.manv || manvUpper);
-    localStorage.setItem('tennv', nhanvien?.tennv || '');
-    localStorage.setItem('quyen_sua_hoadon', nhanvien?.sua_hoadon ? 'true' : 'false');
-    localStorage.setItem('is_admin', 'false'); // CHỐT: nhân viên không thể thành admin
-
-    window.diadiem = csFinal;
-
-    return {
-      ok: true,
-      nhanvienLike: { ...(nhanvien || {}), is_admin: false },
-      context: {
-        diadiem: csFinal,
-        nhanvien,
-        session: setSessionData?.session || session
-      }
-    };
-  }
-
-  async function tryAdminLogin(cs, email, password) {
-    // 1) Supabase Auth sign-in
-    const { data: signInData, error: signInError } =
-      await window.supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-    if (signInError || !signInData?.session) {
-      return { ok: false, error: 'Không đăng nhập được' };
-    }
-
-    // 2) Check quyền admin thật sự bằng RPC is_admin()
-    const isAdmin = await checkIsAdminBestEffort();
-    if (!isAdmin) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Không được phép đăng nhập' };
-    }
-
-    // 3) Set local flags
-    localStorage.setItem('diadiem', cs);
-    localStorage.setItem('is_admin', 'true');
-    localStorage.setItem('manv', 'ADMIN');
-    localStorage.setItem('tennv', 'ADMIN');
-    localStorage.setItem('quyen_sua_hoadon', 'true');
-
-    window.diadiem = cs;
-
-    return {
-      ok: true,
-      nhanvienLike: { manv: 'ADMIN', tennv: 'ADMIN', is_admin: true, sua_hoadon: true, xoa_hoadon: true },
-      context: {
-        diadiem: cs,
-        nhanvien: { manv: 'ADMIN', tennv: 'ADMIN', is_admin: true },
-        session: signInData.session
-      }
-    };
-  }
-
-  async function xuLyDangNhap(e) {
-    e.preventDefault();
-
-    const cs = csSelect.value;
-    const rawId = (manvInput.value || '').trim();
-    const password = (passInput.value || '').trim();
-
-    errorEl.style.color = 'red';
-
-    if (!cs) return (errorEl.textContent = 'Vui lòng chọn cơ sở!');
-    if (!rawId) return (errorEl.textContent = 'Vui lòng nhập mã nhân viên hoặc email!');
-    if (!password) return (errorEl.textContent = 'Vui lòng nhập mật khẩu!');
-
-    // Chỉ lưu identifier để tiện lần sau (KHÔNG lưu password)
-    try {
-      localStorage.setItem('last_login_identifier', rawId);
-    } catch (e) {}
-
-    errorEl.textContent = 'Đang xác thực, vui lòng đợi…';
-
-    const looksLikeEmail = rawId.includes('@');
-
-    // A) Thử login nhân viên trước
-    try {
-      const manvUpper = rawId.toUpperCase();
-      const emp = await tryEmployeeLogin(cs, manvUpper, password);
-      if (emp.ok) {
-        errorEl.style.color = 'green';
-        errorEl.textContent = '✅ Đăng nhập thành công!';
-        showAppAfterLogin(emp.nhanvienLike, emp.context);
-        return;
-      }
-
-      // Nếu không phải email => fail luôn (không thử admin)
-      if (!looksLikeEmail) {
-        errorEl.textContent = '❌ Không đăng nhập được';
-        return;
-      }
-      // Nếu là email => thử admin tiếp
-    } catch (err) {
-      // Nếu employee login lỗi mạng... mà không phải email thì dừng
-      if (!looksLikeEmail) {
-        console.error(err);
-        errorEl.textContent = '❌ Không đăng nhập được';
-        return;
-      }
-    }
-
-    // B) Thử login admin (email/pass + is_admin())
-    try {
-      const email = rawId.toLowerCase();
-      const adm = await tryAdminLogin(cs, email, password);
-      if (!adm.ok) {
-        errorEl.textContent = '❌ ' + (adm.error || 'Không đăng nhập được');
-        return;
-      }
-
-      errorEl.style.color = 'green';
-      errorEl.textContent = '✅ Đăng nhập thành công!';
-      showAppAfterLogin(adm.nhanvienLike, adm.context);
-    } catch (err) {
-      console.error(err);
-      errorEl.textContent = '❌ Không đăng nhập được';
-    }
-  }
-
-  form.addEventListener('submit', xuLyDangNhap);
-
-  // ===== AUTO: nếu đã có session Supabase -> bỏ qua login overlay =====
-  (async () => {
-    try {
-      // Fill lại identifier/branch cho tiện (không fill password)
-      const savedId = localStorage.getItem('last_login_identifier') || localStorage.getItem('manv') || '';
-      const savedBranch = localStorage.getItem('diadiem') || '';
-      if (savedId) manvInput.value = savedId;
-      if (savedBranch) csSelect.value = savedBranch;
-
-      const { data } = await window.supabase.auth.getSession();
-      const session = data?.session;
-      if (session) {
-        const isAdmin = await checkIsAdminBestEffort();
-        localStorage.setItem('is_admin', isAdmin ? 'true' : 'false');
-        // nếu là admin mà chưa set manv/tennv thì set tối thiểu
-        if (isAdmin) {
-          if (!localStorage.getItem('manv')) localStorage.setItem('manv', 'ADMIN');
-          if (!localStorage.getItem('tennv')) localStorage.setItem('tennv', 'ADMIN');
-          localStorage.setItem('quyen_sua_hoadon', 'true');
-        }
-        showAppAfterLogin(
-          {
-            manv: localStorage.getItem('manv') || '',
-            tennv: localStorage.getItem('tennv') || '',
-            is_admin: isAdmin
-          },
-          { diadiem: localStorage.getItem('diadiem') || macDinhDiaDiem, session }
-        );
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    // Focus
-    manvInput.focus();
-  })();
-
-  // Enter UX
-  manvInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      passInput?.focus();
-    }
-  });
-
-  passInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (typeof form.requestSubmit === 'function') form.requestSubmit();
-      else form.submit();
-    }
+  wrap.querySelector("#auth-guard-back")?.addEventListener("click", () => history.back());
+  wrap.querySelector("#auth-guard-logout")?.addEventListener("click", async () => {
+    try { localStorage.clear(); } catch (e) {}
+    try { await supabase.auth.signOut(); } catch (e) {}
+    location.href = "/"; // hoặc trang login của bạn
   });
 }
 
-// ==== 3. HÀM ĐĂNG XUẤT DÙNG CHUNG ====
-export async function dangXuatDungChung(options = {}) {
-  const {
-    loginContainerId = 'login-container',
-    appContainerId = 'app-container',
-    clearDraft = true
-  } = options;
+/**
+ * ensureAccess({ manv })
+ * - manv: mã nhân viên lấy từ localStorage (bạn set sau khi login nội bộ).
+ */
+export async function ensureAccess({ manv } = {}) {
+  const page = getCurrentPagePath();
 
+  // Cho qua các trang login (tùy bạn thêm/bớt)
+  const lower = page.toLowerCase();
+  if (lower.includes("login") || lower.includes("dangnhap")) return true;
+
+  // Nếu đang có session supabase => có thể check admin
+  let user = null;
   try {
-    if (window.supabase && window.supabase.auth) {
-      await window.supabase.auth.signOut();
-    }
-  } catch (err) {
-    console.warn('Lỗi khi signOut Supabase:', err);
+    const r = await supabase.auth.getUser();
+    user = r?.data?.user || null;
+  } catch (e) {}
+
+  // Đồng bộ is_admin vào currentUser nếu có
+  let currentUser = readJSON("currentUser", null);
+  const isAdmin = user ? await getIsAdmin() : !!currentUser?.is_admin;
+
+  // Đồng bộ lại currentUser để main.js và các trang khác nhận đúng trạng thái ADMIN
+  if (!currentUser && isAdmin) {
+    currentUser = {
+      manv: "ADMIN",
+      email: user?.email || "",
+      is_admin: true,
+      ts: Date.now()
+    };
+    writeJSON("currentUser", currentUser);
+    try { localStorage.setItem("manv", "ADMIN"); } catch (e) {}
+  } else if (currentUser) {
+    currentUser.is_admin = !!isAdmin;
+    writeJSON("currentUser", currentUser);
   }
 
-  // Chỉ xóa key liên quan auth (không clear all để khỏi mất config khác)
-  const keepBranch = localStorage.getItem('diadiem');
-  const keepId = localStorage.getItem('last_login_identifier');
+  // ADMIN được vào mọi trang
+  if (isAdmin) return true;
 
-  localStorage.removeItem('supabase_access_token');
-  localStorage.removeItem('manv');
-  localStorage.removeItem('tennv');
-  localStorage.removeItem('is_admin');
-  localStorage.removeItem('quyen_sua_hoadon');
-
-  sessionStorage.clear();
-
-  if (keepBranch) localStorage.setItem('diadiem', keepBranch);
-  if (keepId) localStorage.setItem('last_login_identifier', keepId);
-
-  const loginContainer = document.getElementById(loginContainerId);
-  const appContainer = document.getElementById(appContainerId);
-  if (loginContainer) loginContainer.style.display = '';
-  if (appContainer) appContainer.style.display = 'none';
-
-  if (clearDraft) {
-    localStorage.removeItem('draft_hoadon');
-    sessionStorage.removeItem('draft_hoadon');
+  // NV thường: cần manv
+  const mv = (manv || currentUser?.manv || localStorage.getItem("manv") || "").toString().trim();
+  if (!mv) {
+    renderBlocked("Bạn chưa đăng nhập hoặc thiếu <b>mã nhân viên</b> trong phiên.");
+    return false;
   }
+
+  const pages = await getAllowedPagesForManv(mv);
+  const ok = pages.includes(page);
+
+  if (!ok) {
+    renderBlocked(`Tài khoản <b>${mv}</b> không được mở "<b>${page}</b>".`);
+    return false;
+  }
+  return true;
 }
