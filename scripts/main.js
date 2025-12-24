@@ -191,17 +191,7 @@ export async function khoiTaoUngDung() {
   const ok = await ensureAccess({ supabase, manv: manvDangNhap });
   if (!ok) return; // bị chặn thì dừng khởi tạo còn lại
   // === HẾT GUARD ===
-  // Chỉ bật session-keeper cho nhân viên (warehouse account). 
-  // ADMIN đăng nhập bằng tài khoản riêng thì KHÔNG cần gọi /api/login-cs1 => tránh lỗi 401 không cần thiết.
-  try {
-    const cu = JSON.parse(localStorage.getItem('currentUser') || 'null');
-    const isAdmin = !!(cu && cu.is_admin);
-    if (!isAdmin) startSessionKeeper();
-  } catch (e) {
-    // nếu localStorage lỗi/parsing lỗi thì vẫn bật như cũ
-    startSessionKeeper();
-  }
-
+  startSessionKeeper();
   // === 3. BẮT ĐẦU NHẮC BÀY MẪU (CS1 + CS2, MT + NV) ===
   const isBanLeMTcs1Page = path.includes("banlemtcs1");
   const isBanLeMTcs2Page = path.includes("banlemtcs2");
