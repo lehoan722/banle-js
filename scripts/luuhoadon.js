@@ -230,11 +230,23 @@ export async function luuHoaDonQuaAPI() {
     }
 
     if (tonTai && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        p.style.display = "block";
-        const manvEl = document.getElementById("xacmanv");
-        if (manvEl) { manvEl.focus(); manvEl.select(); }
-        return;
+        const ok = confirm("Hóa đơn đã tồn tại. Bạn có chắc muốn SỬA / GHI ĐÈ hóa đơn này không?");
+        if (!ok) return;
+
+        // (Tùy chọn) kiểm tra quyền nhanh bằng RPC is_admin() nếu có
+        try {
+            const { data: isAdmin, error } = await supabase.rpc('is_admin');
+            if (!error && isAdmin !== true) {
+                toastError("Bạn không có quyền sửa hóa đơn.");
+                return;
+            }
+        } catch (e) {
+            // Nếu chưa tạo RPC is_admin() thì bỏ qua, để RLS tự chặn khi UPDATE
+        }
+
+        choPhepSua = true;
+        window.choPhepSua = true;
+        if (window.HD_CTX) window.HD_CTX.mode = "EDIT";
     }
 
     if (tonTai && choPhepSua) {
@@ -812,93 +824,44 @@ async function lamMoiSauKhiLuu() {
 }
 
 export async function xacNhanSuaHoaDon() {
-    // 1. Lấy thông tin đăng nhập đã lưu bởi authModule (không dùng ô input nữa)
-    const manv =
-        localStorage.getItem('manv') ||
-        localStorage.getItem('last_login_manv') ||
-        '';
-    const mk = localStorage.getItem('last_login_password') || '';
-    const sohd = (document.getElementById("sohd")?.value || '').trim();
+    const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
+    if (!ok) return;
 
-    if (!sohd) {
-        alert("❌ Không xác định được số hóa đơn cần sửa.");
+    // 1) Bắt buộc phải có session đăng nhập
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            toastError("Phiên đăng nhập đã hết. Vui lòng đăng xuất và đăng nhập lại.");
+            return;
+        }
+    } catch (e) {
+        toastError("Không kiểm tra được phiên đăng nhập. Vui lòng tải lại trang.");
         return;
     }
 
-    if (!manv || !mk) {
-        alert(
-            "❌ Không tìm thấy thông tin đăng nhập trong máy.\n" +
-            "Vui lòng đăng xuất và đăng nhập lại, sau đó sửa hóa đơn."
-        );
-        return;
+    // 2) (Khuyến nghị) kiểm tra quyền bằng RPC is_admin() để báo lỗi sớm
+    try {
+        const { data: isAdmin, error } = await supabase.rpc('is_admin');
+        if (!error && isAdmin !== true) {
+            toastError("Bạn không có quyền sửa hóa đơn.");
+            return;
+        }
+    } catch (e) {
+        // Nếu chưa có RPC is_admin() thì bỏ qua, để RLS tự chặn khi UPDATE
     }
 
-    // 2. Kiểm tra nhân viên & mật khẩu trong bảng dmnhanvien
-    const { data: nv, error: errNV } = await supabase
-        .from("dmnhanvien")
-        .select("matkhau, sua_hoadon")
-        .eq("manv", manv)
-        .maybeSingle();
-
-    if (errNV || !nv || nv.matkhau !== mk) {
-        alert("❌ Tài khoản đang đăng nhập không hợp lệ hoặc mật khẩu đã thay đổi.");
-        return;
-    }
-    if (nv.sua_hoadon !== true) {
-        alert("🚫 Tài khoản đang đăng nhập không có quyền sửa/xóa hóa đơn.");
-        return;
-    }
-
-    // 3. Kiểm tra hóa đơn thuộc đúng cơ sở đang làm việc
-    const { data: hd, error: errHD } = await supabase
-        .from("hoadon_banle")
-        .select("diadiem, updated_at")
-        .eq("sohd", sohd)
-        .maybeSingle();
-
-    if (errHD || !hd) {
-        alert("❌ Không tìm thấy hóa đơn cần sửa.");
-        return;
-    }
-
-    const diadiemTrang = getDiaDiemFromPageName && getDiaDiemFromPageName();
-    if (diadiemTrang && (hd.diadiem || "").toLowerCase() !== diadiemTrang) {
-        alert("🚫 Bạn chỉ được sửa hóa đơn tại cơ sở mình đang đăng nhập!");
-        return;
-    }
-
-    // 4. Đặt cờ cho phép sửa + context EDIT
+    // 3) Đánh dấu đang sửa + cho phép ghi đè
+    window.dangSuaHoaDon = true;
+    window.choPhepSua = true;
     choPhepSua = true;
-    const editAt = new Date().toISOString();
-    window.HD_CTX = {
-        mode: "EDIT",
-        version: (hd && hd.updated_at) ? hd.updated_at : null,
-        fromConfirm: true,
-        edit_at: editAt
-    };
+    if (window.HD_CTX) window.HD_CTX.mode = "EDIT";
 
-    // Nếu popup tồn tại thì đóng lại (để dùng chung cho mọi trang)
+    // 4) Đóng popup nếu còn tồn tại trong UI
     const popup = document.getElementById("popupXacThucSua");
     if (popup) popup.style.display = "none";
 
-    //alert("✅ Xác thực sửa hóa đơn thành công. Đang lưu lại hóa đơn...");
-
-    // 5. Gọi lại hàm lưu đúng theo loại chứng từ như logic cũ
-    if (typeof CCN_CTX !== "undefined" && CCN_CTX.isCCN) {
-        // Hóa đơn chuyển chi nhánh
-        await luuHoaDonccn1v2();
-    } else {
-        const sohdNow = (document.getElementById("sohd")?.value || '').trim();
-        const prefix = sohdNow.split("_")[0] || "";
-
-        if (prefix.includes("nmcs1") || prefix.includes("nmcs2")) {
-            await luuHoaDonNhapQuaAPI();
-        } else if (prefix.endsWith("T")) {
-            await luuHoaDonCaHaiBan();
-        } else {
-            await luuHoaDonQuaAPI();
-        }
-    }
+    // 5) Tiếp tục lưu hóa đơn (UPDATE sẽ bị chặn bởi RLS nếu không đủ quyền)
+    await luuHoaDonQuaAPI();
 }
 
 function inHoaDon(hoadon, chitiet) {
