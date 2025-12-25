@@ -248,7 +248,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (uid) {
         const { data: prof, error: profErr } = await window.supabase
           .from('admin_users')
-          .select('manv, tennv, active')
+          .select('manv, tenadmin, active')
           .eq('user_id', uid)
           .maybeSingle();
 
