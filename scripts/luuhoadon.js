@@ -868,16 +868,16 @@ async function lamMoiSauKhiLuu() {
 }
 
 export async function xacNhanSuaHoaDon() {
-    //const popup = document.getElementById("popupXacThucSua");
-    //const closePopup = () => {
-        //if (popup) popup.style.display = "none";
-   // };
+    const popup = document.getElementById("popupXacThucSua");
+    const closePopup = () => {
+        if (popup) popup.style.display = "none";
+    };
 
-   // const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
-    //if (!ok) {
-     //   closePopup();
-      //  return;
-   // }
+    const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
+    if (!ok) {
+        closePopup();
+        return;
+    }
 
     // 1) Bắt buộc phải có session đăng nhập
     try {
