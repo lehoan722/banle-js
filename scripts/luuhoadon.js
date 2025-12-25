@@ -868,8 +868,8 @@ async function lamMoiSauKhiLuu() {
 }
 
 export async function xacNhanSuaHoaDon() {
-    const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
-    if (!ok) return;
+    //const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
+    //if (!ok) return;
 
     // 1) Bắt buộc phải có session đăng nhập
     try {
