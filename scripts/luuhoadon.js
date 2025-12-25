@@ -12,6 +12,12 @@ import { buildCCNCtxFromPathname, ensureExistDialog, showExistDialog, getDiaDiem
 import { normalizeBangKetQua, calcTongThanhTienFromBangKetQua } from './luuhoadon/pricing.js';
 import { resolveGroupKeyFromSP, requireManagedAtBranch } from './luuhoadon/validators.js';
 
+// ===== Toast fallback (tránh lỗi ReferenceError nếu chưa có UI toast) =====
+function toastError(msg) {
+    alert('❌ ' + msg);
+}
+
+
 
 // =========================
 // TỔNG THÀNH TIỀN (ẩn)
@@ -233,15 +239,17 @@ export async function luuHoaDonQuaAPI() {
         const ok = confirm("Hóa đơn đã tồn tại. Bạn có chắc muốn SỬA / GHI ĐÈ hóa đơn này không?");
         if (!ok) return;
 
-        // (Tùy chọn) kiểm tra quyền nhanh bằng RPC is_admin() nếu có
+        // CHỐT: chỉ MIN/Admin mới được sửa (tránh nhân viên thường vô tình ghi đè)
+        let isAdmin = false;
         try {
-            const { data: isAdmin, error } = await supabase.rpc('is_admin');
-            if (!error && isAdmin !== true) {
-                toastError("Bạn không có quyền sửa hóa đơn.");
-                return;
-            }
+            const { data, error } = await supabase.rpc('is_admin');
+            isAdmin = !error && data === true;
         } catch (e) {
-            // Nếu chưa tạo RPC is_admin() thì bỏ qua, để RLS tự chặn khi UPDATE
+            isAdmin = false;
+        }
+        if (!isAdmin) {
+            alert("❌ Bạn không có quyền sửa hóa đơn. Chỉ tài khoản MIN/Admin mới được sửa/xóa.");
+            return;
         }
 
         choPhepSua = true;
@@ -250,8 +258,19 @@ export async function luuHoaDonQuaAPI() {
     }
 
     if (tonTai && choPhepSua) {
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        const { error: delCTErr } = await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        if (delCTErr) {
+            alert("❌ Không xóa được chi tiết hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
+            console.error(delCTErr);
+            return;
+        }
+
+        const { error: delHDErr } = await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        if (delHDErr) {
+            alert("❌ Không xóa được hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
+            console.error(delHDErr);
+            return;
+        }
     }
 
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
@@ -310,7 +329,20 @@ export async function luuHoaDonQuaAPI() {
     }
 
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
+    if (errHD) {
+        alert("❌ Lỗi khi lưu hóa đơn (header). Có thể bạn không có quyền sửa, hoặc số HĐ bị trùng.");
+        console.error(errHD);
+        return;
+    }
+
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
+    if (errCT) {
+        alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
+        console.error(errCT);
+        // rollback best-effort để tránh header không có chi tiết
+        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) {}
+        return;
+    }
 
     if (!errHD && !errCT) {
         // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
@@ -562,7 +594,19 @@ export async function luuHoaDonNhapQuaAPI() {
     }
 
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
+    if (errHD) {
+        alert("❌ Lỗi khi lưu hóa đơn nhập (header). Có thể bạn không có quyền sửa, hoặc số HĐ bị trùng.");
+        console.error(errHD);
+        return;
+    }
+
     const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet2);
+    if (errCT) {
+        alert("❌ Lỗi khi lưu chi tiết hóa đơn nhập.");
+        console.error(errCT);
+        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) {}
+        return;
+    }
 
     if (!errHD && !errCT) {
         // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
@@ -847,7 +891,8 @@ export async function xacNhanSuaHoaDon() {
             return;
         }
     } catch (e) {
-        // Nếu chưa có RPC is_admin() thì bỏ qua, để RLS tự chặn khi UPDATE
+        toastError("Không kiểm tra được quyền sửa hóa đơn. Vui lòng đăng nhập lại bằng tài khoản MIN/Admin.");
+        return;
     }
 
     // 3) Đánh dấu đang sửa + cho phép ghi đè
