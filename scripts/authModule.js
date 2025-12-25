@@ -220,138 +220,166 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     };
   }
 
-  async function tryAdminLogin(cs, email, password) {
-    // 1) Supabase Auth sign-in
-    const { data: signInData, error: signInError } =
-      await window.supabase.auth.signInWithPassword({
-        email,
-        password
+  
+async function tryAdminLogin(cs, email, password) {
+  const emailLower = (email || '').trim().toLowerCase();
+
+  // 1) Supabase Auth sign-in chuẩn
+  const { data: signInData, error: signInErr } = await window.supabase.auth.signInWithPassword({
+    email: emailLower,
+    password
+  });
+
+  if (signInErr || !signInData?.session) {
+    return { ok: false, error: signInErr?.message || 'Sai email/mật khẩu admin' };
+  }
+
+  const session = signInData.session;
+  const uid = session?.user?.id;
+
+  // 2) Lấy profile admin (manv/tenadmin/active) từ bảng admin_users
+  //    Ưu tiên match theo user_id; nếu lỗi/không có dữ liệu thì fallback theo email.
+  async function fetchAdminProfile(uid, emailLower) {
+    const selectCols = 'manv, tenadmin, active, email, user_id';
+
+    // Ưu tiên match theo email (ổn định hơn, tránh lỗi 400 nếu cột user_id/policy đang khác)
+    const rEmail = await window.supabase
+      .from('admin_users')
+      .select(selectCols)
+      .eq('email', emailLower)
+      .maybeSingle();
+
+    if (!rEmail?.error && rEmail?.data) {
+      return { profile: rEmail.data, error: null };
+    }
+
+    // Nếu không có theo email -> thử theo user_id
+    const rUid = await window.supabase
+      .from('admin_users')
+      .select(selectCols)
+      .eq('user_id', uid)
+      .maybeSingle();
+
+    if (rUid?.error) return { profile: null, error: rUid.error };
+    return { profile: rUid?.data || null, error: null };
+  }
+
+  const { profile, error: profErr } = await fetchAdminProfile(uid, emailLower);
+
+  if (profErr) {
+    console.warn('Không lấy được admin profile:', profErr);
+    return { ok: false, error: 'Không lấy được thông tin admin (admin_users). Kiểm tra cột user_id/email & policy SELECT.' };
+  }
+
+  if (!profile) {
+    return { ok: false, error: 'Không tìm thấy admin trong bảng admin_users (hãy kiểm tra user_id/email đã khớp chưa).' };
+  }
+
+  if (profile.active === false) {
+    // Chủ động sign-out nếu admin bị khóa
+    try { await window.supabase.auth.signOut(); } catch (e) {}
+    return { ok: false, error: 'Tài khoản admin đang bị khóa (active = false).' };
+  }
+
+  const manvAdmin = String(profile.manv || '').trim().toUpperCase();
+  const tenAdmin = String(profile.tenadmin || manvAdmin || '').trim();
+
+  // 3) Lưu session info và manv/tennv như nhân viên
+  localStorage.setItem('user_email', emailLower);
+  localStorage.setItem('admin_email_last', emailLower);
+  localStorage.setItem('is_admin', 'true');
+
+  localStorage.setItem('manv', manvAdmin || 'ADMIN');
+  localStorage.setItem('tennv', tenAdmin || 'ADMIN');
+
+  // (tuỳ chọn) cập nhật UI ngay nếu có các ô trên trang
+  try {
+    const elManv = document.getElementById('manv');
+    const elTennv = document.getElementById('tennv');
+    if (elManv) elManv.value = (manvAdmin || 'ADMIN');
+    if (elTennv) elTennv.value = (tenAdmin || 'ADMIN');
+  } catch (e) {}
+
+  // 4) Trả về context theo format giống nhân viên
+  return {
+    ok: true,
+    session,
+    nhanvien: {
+      manv: manvAdmin || 'ADMIN',
+      tennv: tenAdmin || 'ADMIN',
+      is_admin: true,
+      email: emailLower,
+      user_id: uid
+    },
+    diadiem: cs
+  };
+}
+
+
+  
+async function xuLyDangNhap(e) {
+  e?.preventDefault?.();
+
+  const cs = (loginCsEl?.value || '').trim() || 'cs1';
+  const idRaw = (loginIdEl?.value || '').trim();
+  const password = (loginPwEl?.value || '').trim();
+
+  if (!idRaw || !password) {
+    setLoginStatus('Vui lòng nhập đầy đủ thông tin', true);
+    return;
+  }
+
+  const isEmail = idRaw.includes('@'); // admin dùng email -> bỏ qua bước login nhân viên (tránh 401 api/login-cs1)
+  const idNorm = normalizeLoginIdentifier(idRaw);
+
+  setLoginStatus('Đang đăng nhập...', false);
+
+  // 1) Nếu là email -> ưu tiên đăng nhập admin ngay (không gọi /api/login-cs1)
+  if (isEmail) {
+    const adminResult = await tryAdminLogin(cs, idNorm, password);
+    if (!adminResult.ok) {
+      setLoginStatus(adminResult.error || 'Đăng nhập thất bại', true);
+      return;
+    }
+
+    // Set session Supabase ở frontend nếu server/SDK chưa tự set (thường đã set rồi)
+    // (Không cần setSession thủ công vì signInWithPassword đã set session)
+
+    callOnLoginSuccess({
+      ...adminResult.nhanvien,
+      diadiem: adminResult.diadiem
+    });
+
+    return;
+  }
+
+  // 2) Không phải email -> thử đăng nhập nhân viên trước
+  const empResult = await tryEmployeeLogin(cs, idNorm, password);
+  if (empResult.ok) {
+    callOnLoginSuccess({
+      ...empResult.nhanvien,
+      diadiem: empResult.diadiem
+    });
+    return;
+  }
+
+  // 3) Fallback: nếu id nằm trong whitelist email admin (trường hợp user chọn dropdown nhưng xoá '@'...) thì thử admin
+  if (FIXED_ADMIN_EMAILS.includes(idNorm)) {
+    const adminResult = await tryAdminLogin(cs, idNorm, password);
+    if (adminResult.ok) {
+      callOnLoginSuccess({
+        ...adminResult.nhanvien,
+        diadiem: adminResult.diadiem
       });
-
-    if (signInError || !signInData?.session) {
-      return { ok: false, error: 'Không đăng nhập được' };
+      return;
     }
-
-    // 2) Check quyền admin thật sự bằng RPC is_admin()
-    const isAdmin = await checkIsAdminBestEffort();
-    if (!isAdmin) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Không được phép đăng nhập' };
-    }
-
-    // 3) Load profile admin để hiển thị/ghi DB giống nhân viên
-    let manvAdmin = 'ADMIN';
-    let tenAdmin = 'ADMIN';
-
-    try {
-      const uid = signInData?.user?.id || signInData?.session?.user?.id;
-      if (uid) {
-        const { data: prof, error: profErr } = await window.supabase
-          .from('admin_users')
-          .select('manv, tenadmin, active')
-          .eq('user_id', uid)
-          .maybeSingle();
-
-        if (!profErr && prof) {
-          if (prof.active === false) {
-            await window.supabase.auth.signOut().catch(() => {});
-            return { ok: false, error: 'Tài khoản admin đang bị khóa' };
-          }
-          manvAdmin = String(prof.manv || 'ADMIN').trim().toUpperCase();
-          tenAdmin = String(prof.tenadmin || manvAdmin).trim();
-        }
-      }
-    } catch (e) {
-      // nếu lỗi lấy profile thì fallback ADMIN
-      console.warn('Không lấy được profile admin_users:', e);
-    }
-
-    // 4) Set local flags + nhớ email để nhập nhanh
-    localStorage.setItem('diadiem', cs);
-    localStorage.setItem('is_admin', 'true');
-    localStorage.setItem('manv', manvAdmin);
-    localStorage.setItem('tennv', tenAdmin);
-    localStorage.setItem('quyen_sua_hoadon', 'true');
-
-    addEmailToHistory(email);
-    window.diadiem = cs;
-
-    return {
-      ok: true,
-      nhanvienLike: { manv: manvAdmin, tennv: tenAdmin, is_admin: true, sua_hoadon: true, xoa_hoadon: true },
-      context: {
-        diadiem: cs,
-        nhanvien: { manv: manvAdmin, tennv: tenAdmin, is_admin: true },
-        session: signInData.session
-      }
-    };
+    setLoginStatus(adminResult.error || 'Đăng nhập thất bại', true);
+    return;
   }
 
-  async function xuLyDangNhap(e) {
-    e.preventDefault();
+  setLoginStatus(empResult.error || 'Đăng nhập thất bại', true);
+}
 
-    const cs = csSelect.value;
-    const rawId = (manvInput.value || '').trim();
-    const password = (passInput.value || '').trim();
-
-    errorEl.style.color = 'red';
-
-    if (!cs) return (errorEl.textContent = 'Vui lòng chọn cơ sở!');
-    if (!rawId) return (errorEl.textContent = 'Vui lòng nhập mã nhân viên hoặc email!');
-    if (!password) return (errorEl.textContent = 'Vui lòng nhập mật khẩu!');
-
-    // Chỉ lưu identifier để tiện lần sau (KHÔNG lưu password)
-    try {
-      localStorage.setItem('last_login_identifier', rawId);
-    } catch (e) {}
-
-    errorEl.textContent = 'Đang xác thực, vui lòng đợi…';
-
-    const looksLikeEmail = rawId.includes('@');
-
-    // A) Thử login nhân viên trước
-    try {
-      const manvUpper = rawId.toUpperCase();
-      const emp = await tryEmployeeLogin(cs, manvUpper, password);
-      if (emp.ok) {
-        errorEl.style.color = 'green';
-        errorEl.textContent = '✅ Đăng nhập thành công!';
-        showAppAfterLogin(emp.nhanvienLike, emp.context);
-        return;
-      }
-
-      // Nếu không phải email => fail luôn (không thử admin)
-      if (!looksLikeEmail) {
-        errorEl.textContent = '❌ Không đăng nhập được';
-        return;
-      }
-      // Nếu là email => thử admin tiếp
-    } catch (err) {
-      // Nếu employee login lỗi mạng... mà không phải email thì dừng
-      if (!looksLikeEmail) {
-        console.error(err);
-        errorEl.textContent = '❌ Không đăng nhập được';
-        return;
-      }
-    }
-
-    // B) Thử login admin (email/pass + is_admin())
-    try {
-      const email = rawId.toLowerCase();
-      const adm = await tryAdminLogin(cs, email, password);
-      if (!adm.ok) {
-        errorEl.textContent = '❌ ' + (adm.error || 'Không đăng nhập được');
-        return;
-      }
-
-      errorEl.style.color = 'green';
-      errorEl.textContent = '✅ Đăng nhập thành công!';
-      showAppAfterLogin(adm.nhanvienLike, adm.context);
-    } catch (err) {
-      console.error(err);
-      errorEl.textContent = '❌ Không đăng nhập được';
-    }
-  }
 
   form.addEventListener('submit', xuLyDangNhap);
 
