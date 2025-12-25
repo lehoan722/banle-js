@@ -868,30 +868,42 @@ async function lamMoiSauKhiLuu() {
 }
 
 export async function xacNhanSuaHoaDon() {
-    //const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
-    //if (!ok) return;
+    const popup = document.getElementById("popupXacThucSua");
+    const closePopup = () => {
+        if (popup) popup.style.display = "none";
+    };
+
+    const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
+    if (!ok) {
+        closePopup();
+        return;
+    }
 
     // 1) Bắt buộc phải có session đăng nhập
     try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
             toastError("Phiên đăng nhập đã hết. Vui lòng đăng xuất và đăng nhập lại.");
+            closePopup();
             return;
         }
     } catch (e) {
         toastError("Không kiểm tra được phiên đăng nhập. Vui lòng tải lại trang.");
+        closePopup();
         return;
     }
 
-    // 2) (Khuyến nghị) kiểm tra quyền bằng RPC is_admin() để báo lỗi sớm
+    // 2) Kiểm tra quyền bằng RPC is_admin() để báo lỗi sớm
     try {
         const { data: isAdmin, error } = await supabase.rpc('is_admin');
-        if (!error && isAdmin !== true) {
+        if (error || isAdmin !== true) {
             toastError("Bạn không có quyền sửa hóa đơn.");
+            closePopup();
             return;
         }
     } catch (e) {
         toastError("Không kiểm tra được quyền sửa hóa đơn. Vui lòng đăng nhập lại bằng tài khoản MIN/Admin.");
+        closePopup();
         return;
     }
 
@@ -899,13 +911,20 @@ export async function xacNhanSuaHoaDon() {
     window.dangSuaHoaDon = true;
     window.choPhepSua = true;
     choPhepSua = true;
-    if (window.HD_CTX) window.HD_CTX.mode = "EDIT";
 
-    // 4) Đóng popup nếu còn tồn tại trong UI
-    const popup = document.getElementById("popupXacThucSua");
-    if (popup) popup.style.display = "none";
+    // 4) Ghi thời điểm sửa để lưu vào updated_at (hoadon + chi tiết)
+    const editAt = new Date().toISOString();
+    window.HD_CTX = {
+        ...(window.HD_CTX || {}),
+        mode: "EDIT",
+        fromConfirm: true,
+        edit_at: editAt
+    };
 
-    // 5) Tiếp tục lưu hóa đơn (UPDATE sẽ bị chặn bởi RLS nếu không đủ quyền)
+    // 5) Đóng popup (nếu đang mở) để người dùng không phải đóng thêm lần nữa
+    closePopup();
+
+    // 6) Tiếp tục lưu hóa đơn (UPDATE sẽ bị chặn bởi RLS nếu không đủ quyền)
     await luuHoaDonQuaAPI();
 }
 
