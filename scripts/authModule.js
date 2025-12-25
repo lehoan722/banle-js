@@ -14,35 +14,6 @@ if (
   window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-
-// ==== 2A. DANH SÁCH EMAIL ADMIN GỢI Ý (datalist: vừa gõ vừa chọn) ====
-// (Anh sửa danh sách này theo thực tế)
-const ADMIN_EMAIL_SUGGESTIONS = [
-  'nguyenanhtuyet140175@gmail.com',
-  'danghoanghai02@gmail.com',
-  'lehoan722@gmail.com'
-];
-
-function attachAdminEmailDatalist(inputEl) {
-  try {
-    const listId = 'admin-email-datalist';
-    let dl = document.getElementById(listId);
-    if (!dl) {
-      dl = document.createElement('datalist');
-      dl.id = listId;
-      for (const email of ADMIN_EMAIL_SUGGESTIONS) {
-        const opt = document.createElement('option');
-        opt.value = email;
-        dl.appendChild(opt);
-      }
-      document.body.appendChild(dl);
-    }
-    inputEl.setAttribute('list', listId);
-  } catch (e) {
-    // ignore
-  }
-}
-
 // ==== 2. MODULE ĐĂNG NHẬP DÙNG CHUNG ====
 export function khoiTaoDangNhapDungChung(options = {}) {
   const {
@@ -92,11 +63,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         </select>
 
         <label for="login-manv">Mã nhân viên / Email admin</label><br />
-        <input type="text" id="login-manv" autocomplete="off"
+        <input type="text" id="login-manv" autocomplete="off" list="email-suggest"
                placeholder="Ví dụ: NV01 hoặc admin@email.com" required
                style="width:100%;padding:6px;margin-bottom:8px;" /><br />
 
-        <label for="login-password-nv">Mật khẩu</label><br />
+        
+        <datalist id="email-suggest"></datalist>
+<label for="login-password-nv">Mật khẩu</label><br />
         <input type="password" id="login-password-nv"
                placeholder="Nhập mật khẩu"
                style="width:100%;padding:6px;margin-bottom:12px;" /><br />
@@ -109,10 +82,50 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
   const csSelect = document.getElementById('login-cs');
   const manvInput = document.getElementById('login-manv');
-  attachAdminEmailDatalist(manvInput);
   const passInput = document.getElementById('login-password-nv');
   const errorEl = document.getElementById('login-error');
   const form = document.getElementById('form-login-dungchung');
+  // ===== Email dropdown gợi ý (vừa chọn vừa gõ) =====
+  const emailDatalist = document.getElementById('email-suggest');
+  const FIXED_ADMIN_EMAILS = [
+    'nguyennhuyet140175@gmail.com',
+    'danghoanghai02@gmail.com',
+    'lehoan722@gmail.com'
+  ];
+
+  function readEmailHistory() {
+    try { return JSON.parse(localStorage.getItem('email_suggest_history') || '[]'); }
+    catch { return []; }
+  }
+  function writeEmailHistory(list) {
+    try { localStorage.setItem('email_suggest_history', JSON.stringify(list.slice(0, 10))); } catch {}
+  }
+  function addEmailToHistory(email) {
+    const e = (email || '').trim();
+    if (!e || !e.includes('@')) return;
+    const cur = readEmailHistory();
+    const next = [e, ...cur.filter(x => x !== e)];
+    writeEmailHistory(next);
+  }
+  function renderEmailDatalist() {
+    if (!emailDatalist) return;
+    const history = readEmailHistory();
+    const last = (localStorage.getItem('last_login_identifier') || '').trim();
+    const merged = [
+      ...FIXED_ADMIN_EMAILS,
+      ...(last.includes('@') ? [last] : []),
+      ...history
+    ];
+    const uniq = [];
+    for (const x of merged) {
+      const v = (x || '').trim();
+      if (!v) continue;
+      if (!uniq.includes(v)) uniq.push(v);
+    }
+    emailDatalist.innerHTML = uniq.map(v => `<option value="${v}"></option>`).join('');
+  }
+  renderEmailDatalist();
+
 
   // Set default cơ sở (ưu tiên localStorage)
   try {
@@ -207,103 +220,69 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     };
   }
 
-  async function tryAdminLogin(cs, emailRaw, password) {
-    const emailLower = String(emailRaw || '').trim().toLowerCase();
-    const pw = String(password || '').trim();
+  async function tryAdminLogin(cs, email, password) {
+    // 1) Supabase Auth sign-in
+    const { data: signInData, error: signInError } =
+      await window.supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    // 1) Đăng nhập Supabase Auth bằng email/password
-    const { data: signInData, error: signInErr } = await window.supabase.auth.signInWithPassword({
-      email: emailLower,
-      password: pw
-    });
-
-    if (signInErr) {
-      console.error('[Auth] Admin signIn error:', signInErr);
-      return { ok: false, error: 'Sai email hoặc mật khẩu admin' };
-    }
-    if (!signInData?.session?.access_token) {
-      return { ok: false, error: 'Không nhận được session hợp lệ từ Supabase' };
+    if (signInError || !signInData?.session) {
+      return { ok: false, error: 'Không đăng nhập được' };
     }
 
-    const session = signInData.session;
-    const uid = session.user?.id;
-
-    // 2) Lấy profile admin (manv/tenadmin) từ bảng admin_users
-    //    Ưu tiên theo user_id, nếu fail thì fallback theo email
-    let prof = null;
-    let profErr = null;
-
-    if (uid) {
-      const r1 = await window.supabase
-        .from('admin_users')
-        .select('manv, tenadmin, active')
-        .eq('user_id', uid)
-        .maybeSingle();
-      prof = r1.data || null;
-      profErr = r1.error || null;
+    // 2) Check quyền admin thật sự bằng RPC is_admin()
+    const isAdmin = await checkIsAdminBestEffort();
+    if (!isAdmin) {
+      await window.supabase.auth.signOut().catch(() => {});
+      return { ok: false, error: 'Không được phép đăng nhập' };
     }
 
-    if (!prof) {
-      const r2 = await window.supabase
-        .from('admin_users')
-        .select('manv, tenadmin, active')
-        .eq('email', emailLower)
-        .maybeSingle();
-      prof = r2.data || null;
-      profErr = profErr || r2.error || null;
+    // 3) Load profile admin để hiển thị/ghi DB giống nhân viên
+    let manvAdmin = 'ADMIN';
+    let tenAdmin = 'ADMIN';
+
+    try {
+      const uid = signInData?.user?.id || signInData?.session?.user?.id;
+      if (uid) {
+        const { data: prof, error: profErr } = await window.supabase
+          .from('admin_users')
+          .select('manv, tenadmin, active')
+          .eq('user_id', uid)
+          .maybeSingle();
+
+        if (!profErr && prof) {
+          if (prof.active === false) {
+            await window.supabase.auth.signOut().catch(() => {});
+            return { ok: false, error: 'Tài khoản admin đang bị khóa' };
+          }
+          manvAdmin = String(prof.manv || 'ADMIN').trim().toUpperCase();
+          tenAdmin = String(prof.tenadmin || manvAdmin).trim();
+        }
+      }
+    } catch (e) {
+      // nếu lỗi lấy profile thì fallback ADMIN
+      console.warn('Không lấy được profile admin_users:', e);
     }
 
-    if (profErr) {
-      console.error('[Auth] Không lấy được profile admin_users:', profErr);
-      // sign out để tránh vào app với manv sai
-      try { await window.supabase.auth.signOut(); } catch (_) {}
-      return { ok: false, error: 'Không lấy được thông tin admin (admin_users). Kiểm tra policy/field user_id/email.' };
-    }
-    if (!prof) {
-      console.error('[Auth] Không tìm thấy dòng admin_users cho:', { uid, emailLower });
-      try { await window.supabase.auth.signOut(); } catch (_) {}
-      return { ok: false, error: 'Chưa có thông tin admin trong bảng admin_users (thiếu dòng user_id/email)' };
-    }
-
-    if (prof.active === false) {
-      try { await window.supabase.auth.signOut(); } catch (_) {}
-      return { ok: false, error: 'Tài khoản admin đang bị khóa (active=false)' };
-    }
-
-    const manvAdmin = String(prof.manv || '').trim() || 'ADMIN';
-    const tenAdmin = String(prof.tenadmin || '').trim() || manvAdmin;
-
-    // 3) Gán quyền / lưu localStorage giống flow nhân viên
-    localStorage.setItem('last_login_identifier', emailLower); // nhớ email để gõ nhanh
+    // 4) Set local flags + nhớ email để nhập nhanh
     localStorage.setItem('diadiem', cs);
+    localStorage.setItem('is_admin', 'true');
     localStorage.setItem('manv', manvAdmin);
     localStorage.setItem('tennv', tenAdmin);
-
-    localStorage.setItem('is_admin', 'true');
-    localStorage.setItem('quyen_xoa_hoadon', 'true');
     localStorage.setItem('quyen_sua_hoadon', 'true');
 
+    addEmailToHistory(email);
     window.diadiem = cs;
-
-    const nhanvienLike = {
-      manv: manvAdmin,
-      tennv: tenAdmin,
-      is_admin: true,
-      sua_hoadon: true,
-      xoa_hoadon: true,
-      email: emailLower,
-      user_id: uid
-    };
-
-    localStorage.setItem('currentUser', JSON.stringify(nhanvienLike));
 
     return {
       ok: true,
-      nhanvienLike,
+      nhanvienLike: { manv: manvAdmin, tennv: tenAdmin, is_admin: true, sua_hoadon: true, xoa_hoadon: true },
       context: {
         diadiem: cs,
         nhanvien: { manv: manvAdmin, tennv: tenAdmin, is_admin: true },
-        session
+        session: signInData.session
       }
     };
   }
@@ -327,29 +306,36 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     } catch (e) {}
 
     errorEl.textContent = 'Đang xác thực, vui lòng đợi…';
-    
 
-    // A) Nếu là email admin -> bỏ qua bước login nhân viên (tránh 401 /api/login-cs*)
-  const looksLikeEmail = rawId.includes('@');
+    const looksLikeEmail = rawId.includes('@');
 
-  // Chỉ thử login nhân viên khi KHÔNG phải email
-  if (!looksLikeEmail) {
+    // A) Thử login nhân viên trước
     try {
+      const manvUpper = rawId.toUpperCase();
       const emp = await tryEmployeeLogin(cs, manvUpper, password);
       if (emp.ok) {
-        localStorage.setItem('last_login_identifier', manvUpper);
+        errorEl.style.color = 'green';
+        errorEl.textContent = '✅ Đăng nhập thành công!';
+        showAppAfterLogin(emp.nhanvienLike, emp.context);
         return;
       }
-      errorEl.textContent = emp.error || 'Sai mã nhân viên hoặc mật khẩu';
-      return;
-    } catch (e) {
-      console.warn('[Auth] tryEmployeeLogin error', e);
-      errorEl.textContent = 'Không đăng nhập được nhân viên';
-      return;
-    }
-  }
 
-// B) Thử login admin (email/pass + is_admin())
+      // Nếu không phải email => fail luôn (không thử admin)
+      if (!looksLikeEmail) {
+        errorEl.textContent = '❌ Không đăng nhập được';
+        return;
+      }
+      // Nếu là email => thử admin tiếp
+    } catch (err) {
+      // Nếu employee login lỗi mạng... mà không phải email thì dừng
+      if (!looksLikeEmail) {
+        console.error(err);
+        errorEl.textContent = '❌ Không đăng nhập được';
+        return;
+      }
+    }
+
+    // B) Thử login admin (email/pass + is_admin())
     try {
       const email = rawId.toLowerCase();
       const adm = await tryAdminLogin(cs, email, password);
@@ -383,10 +369,41 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (session) {
         const isAdmin = await checkIsAdminBestEffort();
         localStorage.setItem('is_admin', isAdmin ? 'true' : 'false');
-        // nếu là admin mà chưa set manv/tennv thì set tối thiểu
-        if (isAdmin) {
-          if (!localStorage.getItem('manv')) localStorage.setItem('manv', 'ADMIN');
-          if (!localStorage.getItem('tennv')) localStorage.setItem('tennv', 'ADMIN');
+        // nếu là admin: lấy manv/tennv từ bảng admin_users để hiển thị/ghi DB đúng theo admin đang đăng nhập
+        try {
+          const uid = session?.user?.id;
+          if (uid) {
+            const { data: prof, error: profErr } = await window.supabase
+              .from('admin_users')
+              .select('manv, tenadmin, active')
+              .eq('user_id', uid)
+              .maybeSingle();
+
+            if (!profErr && prof) {
+              if (prof.active === false) {
+                await window.supabase.auth.signOut().catch(() => {});
+                throw new Error('Tài khoản admin đang bị khóa');
+              }
+              const manvAdmin = String(prof.manv || 'ADMIN').trim().toUpperCase();
+              const tenAdmin = String(prof.tenadmin || manvAdmin).trim();
+
+              localStorage.setItem('is_admin', 'true');
+              localStorage.setItem('manv', manvAdmin);
+              localStorage.setItem('tennv', tenAdmin);
+              localStorage.setItem('quyen_sua_hoadon', 'true');
+            } else {
+              // fallback tối thiểu nếu không lấy được profile
+              localStorage.setItem('is_admin', 'true');
+              localStorage.setItem('manv', localStorage.getItem('manv') || 'ADMIN');
+              localStorage.setItem('tennv', localStorage.getItem('tennv') || 'ADMIN');
+              localStorage.setItem('quyen_sua_hoadon', 'true');
+            }
+          }
+        } catch (e) {
+          console.warn('Auto session: không lấy được profile admin_users:', e);
+          localStorage.setItem('is_admin', 'true');
+          localStorage.setItem('manv', localStorage.getItem('manv') || 'ADMIN');
+          localStorage.setItem('tennv', localStorage.getItem('tennv') || 'ADMIN');
           localStorage.setItem('quyen_sua_hoadon', 'true');
         }
         showAppAfterLogin(
