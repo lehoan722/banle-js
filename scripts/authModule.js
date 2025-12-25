@@ -18,8 +18,8 @@ if (
 // ==== 2A. DANH SÁCH EMAIL ADMIN GỢI Ý (datalist: vừa gõ vừa chọn) ====
 // (Anh sửa danh sách này theo thực tế)
 const ADMIN_EMAIL_SUGGESTIONS = [
-  'tuyet140175@gmail.com',
-  'hai2508@gmail.com',
+  'nguyenanhtuyet140175@gmail.com',
+  'danghoanghai02@gmail.com',
   'lehoan722@gmail.com'
 ];
 
