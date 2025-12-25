@@ -84,33 +84,6 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const errorEl = document.getElementById('login-error');
   const form = document.getElementById('form-login-dungchung');
 
-  // --- Gợi ý nhanh email admin đã dùng (không lưu mật khẩu) ---
-  const EMAIL_SUGGEST_KEY = 'recent_login_emails';
-  const EMAIL_SUGGEST_LIST_ID = 'login-email-suggest';
-  try {
-    // gắn datalist cho ô "mã nhân viên hoặc email"
-    manvInput.setAttribute('list', EMAIL_SUGGEST_LIST_ID);
-
-    let dl = document.getElementById(EMAIL_SUGGEST_LIST_ID);
-    if (!dl) {
-      dl = document.createElement('datalist');
-      dl.id = EMAIL_SUGGEST_LIST_ID;
-      loginContainer.appendChild(dl);
-    }
-
-    const recent = JSON.parse(localStorage.getItem(EMAIL_SUGGEST_KEY) || '[]');
-    const emails = Array.isArray(recent) ? recent : [];
-    dl.innerHTML = '';
-    [...new Set(emails)]
-      .filter((x) => typeof x === 'string' && x.includes('@'))
-      .slice(0, 8)
-      .forEach((email) => {
-        const opt = document.createElement('option');
-        opt.value = email;
-        dl.appendChild(opt);
-      });
-  } catch (e) {}
-
   // Set default cơ sở (ưu tiên localStorage)
   try {
     const savedBranch = localStorage.getItem('diadiem');
@@ -224,50 +197,20 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     }
 
     // 3) Set local flags
-    // 3) Lấy thông tin admin (manv/tenadmin) để hiển thị & ghi hoá đơn giống nhân viên
-    const uid = signInData.session.user?.id;
-    let adminRow = null;
-    try {
-      const { data, error } = await window.supabase
-        .from('admin_users')
-        .select('manv, tenadmin, active')
-        .eq('user_id', uid)
-        .maybeSingle();
-
-      if (error) throw error;
-      adminRow = data;
-    } catch (e) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Không lấy được thông tin admin' };
-    }
-
-    if (!adminRow?.manv) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Không tìm thấy admin trong bảng admin_users' };
-    }
-
-    if (adminRow.active === false) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Tài khoản admin đang bị khóa' };
-    }
-
-    const manvAdmin = String(adminRow.manv || '').toUpperCase();
-    const tenAdmin = String(adminRow.tenadmin || manvAdmin);
-
     localStorage.setItem('diadiem', cs);
     localStorage.setItem('is_admin', 'true');
-    localStorage.setItem('manv', manvAdmin);
-    localStorage.setItem('tennv', tenAdmin);
+    localStorage.setItem('manv', 'ADMIN');
+    localStorage.setItem('tennv', 'ADMIN');
     localStorage.setItem('quyen_sua_hoadon', 'true');
 
     window.diadiem = cs;
 
     return {
       ok: true,
-      nhanvienLike: { manv: manvAdmin, tennv: tenAdmin, is_admin: true, sua_hoadon: true, xoa_hoadon: true },
+      nhanvienLike: { manv: 'ADMIN', tennv: 'ADMIN', is_admin: true, sua_hoadon: true, xoa_hoadon: true },
       context: {
         diadiem: cs,
-        nhanvien: { manv: manvAdmin, tennv: tenAdmin, is_admin: true },
+        nhanvien: { manv: 'ADMIN', tennv: 'ADMIN', is_admin: true },
         session: signInData.session
       }
     };
@@ -294,32 +237,6 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     errorEl.textContent = 'Đang xác thực, vui lòng đợi…';
 
     const looksLikeEmail = rawId.includes('@');
-    // Lưu danh sách email đã đăng nhập để chọn nhanh lần sau (máy dùng chung)
-    if (looksLikeEmail) {
-      try {
-        const EMAIL_SUGGEST_KEY = 'recent_login_emails';
-        const EMAIL_SUGGEST_LIST_ID = 'login-email-suggest';
-        const recent = JSON.parse(localStorage.getItem(EMAIL_SUGGEST_KEY) || '[]');
-        const arr = Array.isArray(recent) ? recent : [];
-        const email = rawId.trim();
-        const next = [email, ...arr.filter((x) => x !== email)].slice(0, 8);
-        localStorage.setItem(EMAIL_SUGGEST_KEY, JSON.stringify(next));
-
-        // update datalist nếu đang hiển thị
-        const dl = document.getElementById(EMAIL_SUGGEST_LIST_ID);
-        if (dl) {
-          dl.innerHTML = '';
-          next.forEach((em) => {
-            if (typeof em === 'string' && em.includes('@')) {
-              const opt = document.createElement('option');
-              opt.value = em;
-              dl.appendChild(opt);
-            }
-          });
-        }
-      } catch (e) {}
-    }
-
 
     // A) Thử login nhân viên trước
     try {
