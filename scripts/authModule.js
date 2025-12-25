@@ -14,59 +14,6 @@ if (
   window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-// ==== Helpers: nhớ email admin (chỉ lưu email, KHÔNG lưu mật khẩu) ====
-const LS_RECENT_ADMIN_EMAILS = 'recent_admin_emails_v1';
-const LS_LAST_IDENTIFIER = 'last_login_identifier';
-
-function loadRecentAdminEmails() {
-  try {
-    const raw = localStorage.getItem(LS_RECENT_ADMIN_EMAILS);
-    const arr = JSON.parse(raw || '[]');
-    if (!Array.isArray(arr)) return [];
-    return arr
-      .filter(x => typeof x === 'string' && x.includes('@'))
-      .map(x => x.trim())
-      .filter(Boolean)
-      .slice(0, 12);
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveRecentAdminEmail(email) {
-  if (!email || !email.includes('@')) return;
-  try {
-    const norm = email.trim().toLowerCase();
-    const nowArr = loadRecentAdminEmails();
-    const next = [norm, ...nowArr.filter(x => x.toLowerCase() != norm)].slice(0, 12);
-    localStorage.setItem(LS_RECENT_ADMIN_EMAILS, JSON.stringify(next));
-  } catch (e) {}
-}
-
-function renderAdminEmailDatalist() {
-  const dl = document.getElementById('admin-email-suggest-list');
-  if (!dl) return;
-  const list = loadRecentAdminEmails();
-  dl.innerHTML = list.map(e => `<option value="${e}"></option>`).join('');
-}
-
-async function fetchAdminProfileByUid(uid) {
-  // Lấy manv/tenadmin của admin đang đăng nhập.
-  // NOTE: cần policy SELECT trên admin_users cho phép authenticated đọc dòng có user_id = auth.uid()
-  const { data, error } = await window.supabase
-    .from('admin_users')
-    .select('manv, tenadmin, active')
-    .eq('user_id', uid)
-    .maybeSingle();
-
-  if (error) return { ok: false, error };
-  if (!data) return { ok: false, error: new Error('NOT_FOUND') };
-  if (data.active === false) return { ok: false, error: new Error('INACTIVE') };
-
-  return { ok: true, profile: data };
-}
-
-
 // ==== 2. MODULE ĐĂNG NHẬP DÙNG CHUNG ====
 export function khoiTaoDangNhapDungChung(options = {}) {
   const {
@@ -116,10 +63,9 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         </select>
 
         <label for="login-manv">Mã nhân viên / Email admin</label><br />
-        <input type="text" id="login-manv" list="admin-email-suggest-list" autocomplete="off"
+        <input type="text" id="login-manv" autocomplete="off"
                placeholder="Ví dụ: NV01 hoặc admin@email.com" required
                style="width:100%;padding:6px;margin-bottom:8px;" /><br />
-        <datalist id="admin-email-suggest-list"></datalist>
 
         <label for="login-password-nv">Mật khẩu</label><br />
         <input type="password" id="login-password-nv"
@@ -249,39 +195,22 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       await window.supabase.auth.signOut().catch(() => {});
       return { ok: false, error: 'Không được phép đăng nhập' };
     }
-    // 3) Lấy manv/tenadmin theo auth.uid() để hiển thị & ghi hóa đơn đúng admin
-    const uid = signInData?.user?.id || signInData?.session?.user?.id;
-    if (!uid) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Không lấy được user_id sau đăng nhập' };
-    }
 
-    const prof = await fetchAdminProfileByUid(uid);
-    if (!prof.ok) {
-      await window.supabase.auth.signOut().catch(() => {});
-      return { ok: false, error: 'Không lấy được thông tin admin' };
-    }
-
-    const manv = (prof.profile.manv || '').toString().trim() || 'ADMIN';
-    const tennv = (prof.profile.tenadmin || '').toString().trim() || manv;
-
+    // 3) Set local flags
     localStorage.setItem('diadiem', cs);
     localStorage.setItem('is_admin', 'true');
-    localStorage.setItem('manv', manv);
-    localStorage.setItem('tennv', tennv);
+    localStorage.setItem('manv', 'ADMIN');
+    localStorage.setItem('tennv', 'ADMIN');
     localStorage.setItem('quyen_sua_hoadon', 'true');
-
-    // Nhớ email admin để chọn nhanh lần sau
-    saveRecentAdminEmail(email);
 
     window.diadiem = cs;
 
     return {
       ok: true,
-      nhanvienLike: { manv, tennv, is_admin: true, sua_hoadon: true, xoa_hoadon: true },
+      nhanvienLike: { manv: 'ADMIN', tennv: 'ADMIN', is_admin: true, sua_hoadon: true, xoa_hoadon: true },
       context: {
         diadiem: cs,
-        nhanvien: { manv, tennv, is_admin: true },
+        nhanvien: { manv: 'ADMIN', tennv: 'ADMIN', is_admin: true },
         session: signInData.session
       }
     };
@@ -302,36 +231,14 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
     // Chỉ lưu identifier để tiện lần sau (KHÔNG lưu password)
     try {
-      localStorage.setItem(LS_LAST_IDENTIFIER, rawId);
-      if (looksLikeEmail) saveRecentAdminEmail(rawId);
+      localStorage.setItem('last_login_identifier', rawId);
     } catch (e) {}
 
     errorEl.textContent = 'Đang xác thực, vui lòng đợi…';
 
     const looksLikeEmail = rawId.includes('@');
 
-    // Nếu người dùng nhập email -> đi thẳng admin login (tránh gọi /api/login-cs* gây 401)
-    if (looksLikeEmail) {
-      try {
-        const email = rawId.toLowerCase();
-        const adm = await tryAdminLogin(cs, email, password);
-        if (!adm.ok) {
-          errorEl.textContent = '❌ ' + (adm.error || 'Không đăng nhập được');
-          return;
-        }
-
-        errorEl.style.color = 'green';
-        errorEl.textContent = '✅ Đăng nhập thành công!';
-        showAppAfterLogin(adm.nhanvienLike, adm.context);
-        return;
-      } catch (err) {
-        console.error(err);
-        errorEl.textContent = '❌ Không đăng nhập được';
-        return;
-      }
-    }
-
-    // Người dùng nhập mã nhân viên => login nhân viên
+    // A) Thử login nhân viên trước
     try {
       const manvUpper = rawId.toUpperCase();
       const emp = await tryEmployeeLogin(cs, manvUpper, password);
@@ -341,15 +248,23 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         showAppAfterLogin(emp.nhanvienLike, emp.context);
         return;
       }
-      errorEl.textContent = '❌ ' + (emp.error || 'Không đăng nhập được');
-      return;
+
+      // Nếu không phải email => fail luôn (không thử admin)
+      if (!looksLikeEmail) {
+        errorEl.textContent = '❌ Không đăng nhập được';
+        return;
+      }
+      // Nếu là email => thử admin tiếp
     } catch (err) {
-      console.error(err);
-      errorEl.textContent = '❌ Không đăng nhập được';
-      return;
+      // Nếu employee login lỗi mạng... mà không phải email thì dừng
+      if (!looksLikeEmail) {
+        console.error(err);
+        errorEl.textContent = '❌ Không đăng nhập được';
+        return;
+      }
     }
 
-    // B) (fallback) Thử login admin (email/pass + is_admin())
+    // B) Thử login admin (email/pass + is_admin())
     try {
       const email = rawId.toLowerCase();
       const adm = await tryAdminLogin(cs, email, password);
@@ -373,7 +288,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   (async () => {
     try {
       // Fill lại identifier/branch cho tiện (không fill password)
-      const savedId = localStorage.getItem(LS_LAST_IDENTIFIER) || localStorage.getItem('manv') || '';
+      const savedId = localStorage.getItem('last_login_identifier') || localStorage.getItem('manv') || '';
       const savedBranch = localStorage.getItem('diadiem') || '';
       if (savedId) manvInput.value = savedId;
       if (savedBranch) csSelect.value = savedBranch;
@@ -383,26 +298,10 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (session) {
         const isAdmin = await checkIsAdminBestEffort();
         localStorage.setItem('is_admin', isAdmin ? 'true' : 'false');
-        // nếu là admin: cố gắng lấy manv/tennv theo admin_users
+        // nếu là admin mà chưa set manv/tennv thì set tối thiểu
         if (isAdmin) {
-          try {
-            const uid = session?.user?.id;
-            if (uid) {
-              const prof = await fetchAdminProfileByUid(uid);
-              if (prof.ok) {
-                const manv = (prof.profile.manv || '').toString().trim() || 'ADMIN';
-                const tennv = (prof.profile.tenadmin || '').toString().trim() || manv;
-                localStorage.setItem('manv', manv);
-                localStorage.setItem('tennv', tennv);
-              } else {
-                if (!localStorage.getItem('manv')) localStorage.setItem('manv', 'ADMIN');
-                if (!localStorage.getItem('tennv')) localStorage.setItem('tennv', 'ADMIN');
-              }
-            }
-          } catch (e) {
-            if (!localStorage.getItem('manv')) localStorage.setItem('manv', 'ADMIN');
-            if (!localStorage.getItem('tennv')) localStorage.setItem('tennv', 'ADMIN');
-          }
+          if (!localStorage.getItem('manv')) localStorage.setItem('manv', 'ADMIN');
+          if (!localStorage.getItem('tennv')) localStorage.setItem('tennv', 'ADMIN');
           localStorage.setItem('quyen_sua_hoadon', 'true');
         }
         showAppAfterLogin(
@@ -457,7 +356,7 @@ export async function dangXuatDungChung(options = {}) {
 
   // Chỉ xóa key liên quan auth (không clear all để khỏi mất config khác)
   const keepBranch = localStorage.getItem('diadiem');
-  const keepId = localStorage.getItem(LS_LAST_IDENTIFIER);
+  const keepId = localStorage.getItem('last_login_identifier');
 
   localStorage.removeItem('supabase_access_token');
   localStorage.removeItem('manv');
@@ -468,7 +367,7 @@ export async function dangXuatDungChung(options = {}) {
   sessionStorage.clear();
 
   if (keepBranch) localStorage.setItem('diadiem', keepBranch);
-  if (keepId) localStorage.setItem(LS_LAST_IDENTIFIER, keepId);
+  if (keepId) localStorage.setItem('last_login_identifier', keepId);
 
   const loginContainer = document.getElementById(loginContainerId);
   const appContainer = document.getElementById(appContainerId);
