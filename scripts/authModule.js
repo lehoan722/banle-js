@@ -557,10 +557,11 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   });
 }
 
-// =======================================================
+// ======================================================= 
 // 5) ĐĂNG XUẤT DÙNG CHUNG
 // =======================================================
 export async function dangXuatDungChung(options = {}) {
+
   const { loginContainerId = "login-container", appContainerId = "app-container", clearDraft = true } = options;
 
   try {
@@ -607,3 +608,5 @@ export async function dangXuatDungChung(options = {}) {
     window.is_admin = false;
   } catch {}
 }
+
+location.reload(); // ✅ reset sạch main.js, không bị init chồng
