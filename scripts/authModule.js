@@ -159,7 +159,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         "email_suggest_history",
         JSON.stringify(list.slice(0, 10))
       );
-    } catch {}
+    } catch { }
   }
   function addEmailToHistory(email) {
     const e = (email || "").trim();
@@ -204,7 +204,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       window.manv = localStorage.getItem("manv") || "";
       window.tennv = localStorage.getItem("tennv") || "";
       window.is_admin = localStorage.getItem("is_admin") === "true";
-    } catch {}
+    } catch { }
   }
 
   function showAppAfterLogin(nhanvienLike, context) {
@@ -238,7 +238,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (typeof loginApiPath === "function") return loginApiPath(cs);
       if (loginApiPath && typeof loginApiPath === "object") return loginApiPath[cs];
       if (typeof loginApiPath === "string" && loginApiPath.trim()) return loginApiPath.trim();
-    } catch {}
+    } catch { }
     return `/api/login-${cs}`;
   }
 
@@ -246,7 +246,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     try {
       if (session?.access_token) localStorage.setItem("supabase_access_token", session.access_token);
       if (session?.refresh_token) localStorage.setItem("supabase_refresh_token", session.refresh_token);
-    } catch {}
+    } catch { }
   }
 
   async function tryEmployeeLogin(cs, manvUpper, password) {
@@ -311,7 +311,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
     const isAdmin = await checkIsAdminBestEffort();
     if (!isAdmin) {
-      await window.supabase.auth.signOut().catch(() => {});
+      await window.supabase.auth.signOut().catch(() => { });
       return { ok: false, error: "Không được phép đăng nhập" };
     }
 
@@ -330,7 +330,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
         if (!profErr && prof) {
           if (prof.active === false) {
-            await window.supabase.auth.signOut().catch(() => {});
+            await window.supabase.auth.signOut().catch(() => { });
             return { ok: false, error: "Tài khoản admin đang bị khóa" };
           }
           manvAdmin = String(prof.manv || "ADMIN").trim().toUpperCase();
@@ -373,7 +373,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
     try {
       localStorage.setItem("last_login_identifier", rawId);
-    } catch {}
+    } catch { }
 
     errorEl.textContent = "Đang xác thực, vui lòng đợi…";
 
@@ -463,7 +463,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
             if (!profErr && prof) {
               if (prof.active === false) {
-                await window.supabase.auth.signOut().catch(() => {});
+                await window.supabase.auth.signOut().catch(() => { });
                 throw new Error("Tài khoản admin đang bị khóa");
               }
 
@@ -497,7 +497,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
             if (!nvErr && nv) {
               if (nv.active === false) {
-                await window.supabase.auth.signOut().catch(() => {});
+                await window.supabase.auth.signOut().catch(() => { });
                 throw new Error("Tài khoản nhân viên đang bị khóa");
               }
 
@@ -560,53 +560,62 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 // ======================================================= 
 // 5) ĐĂNG XUẤT DÙNG CHUNG
 // =======================================================
+// ==== 3. HÀM ĐĂNG XUẤT DÙNG CHUNG ====
 export async function dangXuatDungChung(options = {}) {
+  const {
+    loginContainerId = 'login-container',
+    appContainerId = 'app-container',
+    clearDraft = true,
+    reloadPage = true, // ✅ mặc định: logout xong reload luôn cho ổn định
+  } = options;
 
-  const { loginContainerId = "login-container", appContainerId = "app-container", clearDraft = true } = options;
-
+  // 1) Sign out Supabase
   try {
-    if (window.supabase?.auth) {
+    if (window.supabase && window.supabase.auth) {
       await window.supabase.auth.signOut();
     }
   } catch (err) {
-    console.warn("Lỗi khi signOut Supabase:", err);
+    console.warn('Lỗi khi signOut Supabase:', err);
   }
 
-  // Chỉ xóa key liên quan auth (không clear all để khỏi mất config khác)
-  const keepBranch = localStorage.getItem("diadiem");
-  const keepId = localStorage.getItem("last_login_identifier");
+  // 2) Chỉ xóa key liên quan auth (không clear all để khỏi mất config khác)
+  const keepBranch = localStorage.getItem('diadiem');
+  const keepId = localStorage.getItem('last_login_identifier');
 
-  // Xóa legacy tokens + cache user
-  localStorage.removeItem("supabase_access_token");
-  localStorage.removeItem("supabase_refresh_token");
+  localStorage.removeItem('supabase_access_token');
+  localStorage.removeItem('manv');
+  localStorage.removeItem('tennv');
+  localStorage.removeItem('is_admin');
+  localStorage.removeItem('quyen_sua_hoadon');
 
-  localStorage.removeItem("manv");
-  localStorage.removeItem("tennv");
-  localStorage.removeItem("is_admin");
-  localStorage.removeItem("quyen_sua_hoadon");
+  // sessionStorage: xóa sạch cho chắc (reload cũng sẽ sạch)
+  try { sessionStorage.clear(); } catch (e) { }
 
-  sessionStorage.clear();
+  // giữ lại cơ sở + identifier để lần sau chọn nhanh
+  if (keepBranch) localStorage.setItem('diadiem', keepBranch);
+  if (keepId) localStorage.setItem('last_login_identifier', keepId);
 
-  if (keepBranch) localStorage.setItem("diadiem", keepBranch);
-  if (keepId) localStorage.setItem("last_login_identifier", keepId);
-
-  // UI
+  // 3) Ẩn app / hiện login (phòng trường hợp reload bị chặn)
   const loginContainer = document.getElementById(loginContainerId);
   const appContainer = document.getElementById(appContainerId);
-  if (loginContainer) loginContainer.style.display = "";
-  if (appContainer) appContainer.style.display = "none";
+  if (loginContainer) loginContainer.style.display = '';
+  if (appContainer) appContainer.style.display = 'none';
 
+  // 4) Xóa draft nếu muốn
   if (clearDraft) {
-    localStorage.removeItem("draft_hoadon");
-    sessionStorage.removeItem("draft_hoadon");
+    localStorage.removeItem('draft_hoadon');
+    try { sessionStorage.removeItem('draft_hoadon'); } catch (e) { }
   }
 
-  // globals
-  try {
-    window.manv = "";
-    window.tennv = "";
-    window.is_admin = false;
-  } catch {}
+  // 5) ✅ Ổn định nhất: reload trang để tránh bị init/lắng nghe sự kiện nhiều lần
+  if (reloadPage) {
+    try {
+      location.reload();
+    } catch (e) {
+      // ignore
+    }
+  }
 }
+
 
 
