@@ -609,4 +609,4 @@ export async function dangXuatDungChung(options = {}) {
   } catch {}
 }
 
-location.reload(); // ✅ reset sạch main.js, không bị init chồng
+
