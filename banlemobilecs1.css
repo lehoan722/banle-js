@@ -28,7 +28,7 @@
     justify-content: flex-start;
     /* không dàn đều tạo khoảng trống lớn */
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
     box-sizing: border-box;
   }
@@ -51,34 +51,36 @@
     font-size: 15px;
   }
 
-  /* Tỉ lệ 20/40/40 */
-  .tennv>label:nth-of-type(1) {
-    flex: 0 1 25%;
-    max-width: 25%;
+  /* Ưu tiên hiển thị Tên NV: thu gọn "Địa điểm" để không bị chèn mất */
+  /* Gợi ý: Địa điểm thường chỉ CS1/CS2 nên để dạng "fit" theo nội dung */
+  .tennv > label:has(#diadiem),
+  .tennv > label:nth-of-type(1) { /* fallback nếu #diadiem là label đầu */
+    flex: 0 0 72px;       /* ~1/3 so với khối rộng 200px+ trước đây */
+    max-width: 72px;
+    min-width: 72px;
   }
 
-  /* địa điểm */
-  .tennv>label:nth-of-type(2) {
-    flex: 0 1 40%;
-    max-width: 40%;
+  #diadiem {
+    width: 72px;          /* giữ gọn và ổn định trên iOS */
+    min-width: 0;
   }
 
-  /* ngày */
-  /* (robust nếu đổi thứ tự phần tử) */
-  .tennv>label:has(#diadiem) {
-    flex: 0 1 25%;
-    max-width: 25%;
+  .tennv > label:has(#ngay),
+  .tennv > label:nth-of-type(2) { /* fallback nếu #ngay là label thứ 2 */
+    flex: 0 0 120px;
+    max-width: 120px;
+    min-width: 120px;
   }
 
-  .tennv>label:has(#ngay) {
-    flex: 0 1 40%;
-    max-width: 40%;
+  #ngay {
+    width: 120px;
+    min-width: 0;
   }
 
-  /* Ô Tên NV là flex-item trực tiếp */
+/* Ô Tên NV là flex-item trực tiếp */
   #tennv {
-    flex: 0 1 30%;
-    max-width: 30%;
+    flex: 1 1 auto;
+    max-width: none;
     min-width: 0;
     height: 20px;
     font-size: 15px;
