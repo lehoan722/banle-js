@@ -924,8 +924,15 @@ export async function xacNhanSuaHoaDon() {
     // 5) Đóng popup (nếu đang mở) để người dùng không phải đóng thêm lần nữa
     closePopup();
 
-    // 6) Tiếp tục lưu hóa đơn (UPDATE sẽ bị chặn bởi RLS nếu không đủ quyền)
-    await luuHoaDonQuaAPI();
+    // 6) Tiếp tục lưu hóa đơn theo đúng loại trang
+    // - Nếu là trang CHUYỂN CHI NHÁNH (CCN): phải gọi luuHoaDonccn1v2() để tự tạo/ghi đè hóa đơn đối ứng
+    // - Các trang khác: giữ nguyên luuHoaDonQuaAPI()
+    if (typeof CCN_CTX !== "undefined" && CCN_CTX?.isCCN && typeof luuHoaDonccn1v2 === "function") {
+        await luuHoaDonccn1v2();
+    } else {
+        // UPDATE sẽ bị chặn bởi RLS nếu không đủ quyền
+        await luuHoaDonQuaAPI();
+    }
 }
 
 function inHoaDon(hoadon, chitiet) {
