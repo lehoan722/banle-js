@@ -672,7 +672,9 @@
       });
     }
 
-    window.onload = async function () {
+    // ✅ KHÔNG auto-load dữ liệu khi vừa mở trang.
+    // Chỉ sau khi xác nhận ADMIN thành công mới được gọi taiDanhSachHoaDon().
+    async function initFiltersFromUrl() {
       const params = new URLSearchParams(window.location.search);
       const sohdQ = (params.get('sohd') || '').trim();
 
@@ -695,7 +697,7 @@
           const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
           const sb = createClient(
             'https://rddjrmbyftlcvrgzlyby.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX...cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
           );
           const { data } = await sb.from('hoadon_banle').select('ngay').eq('sohd', sohdQ).maybeSingle();
           if (data?.ngay) {
@@ -704,14 +706,10 @@
             document.getElementById('tuNgay').value = yyyy_mm_dd;
             document.getElementById('denNgay').value = yyyy_mm_dd;
           } else {
-            // fallback: để rỗng -> lọc theo số HĐ vẫn ra đúng 1 dòng
             document.getElementById('tuNgay').value = '';
             document.getElementById('denNgay').value = '';
           }
         } catch (e) { /* bỏ qua nếu lỗi nhỏ */ }
-
-        // chạy lọc
-        taiDanhSachHoaDon();
         return;
       }
 
@@ -719,10 +717,13 @@
       const today = new Date().toISOString().slice(0, 10);
       document.getElementById('tuNgay').value = today;
       document.getElementById('denNgay').value = today;
-      taiDanhSachHoaDon();
-    };
+    }
 
-    document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
+    function bindEventsAfterAdmin() {
+      const el = document.getElementById("loaiTongHop");
+      if (el) el.onchange = taiDanhSachHoaDon;
+    }
+
 
     // DRAG POPUP (kéo popup)
     (function dragPopup() {
@@ -937,6 +938,7 @@
   </script>
 
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+  <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
   <script type="module">
     import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
@@ -947,63 +949,65 @@
       macDinhDiaDiem: '',
       tuDongKhoaCoSo: false,
 
-      // API backend đăng nhập
-      loginApiPath: '/api/login-cs1',
+      // API backend đăng nhập (tự theo cơ sở chọn: cs1/cs2)
+      loginApiPath: (cs) => `/api/login-${cs}`,
 
       async onLoginSuccess(nv, ctx) {
-        // 1. Kiểm tra quyền admin
-        const flagFromObj =
-          nv && (nv.is_admin === true || nv.is_admin === 'true' || nv.is_admin === 1);
-        const flagFromLS = localStorage.getItem('is_admin') === 'true';
-        const isAdmin = flagFromObj || flagFromLS;
+        // ✅ Check quyền admin bằng RPC (nguồn thật) => không tin localStorage / nv.is_admin
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) {
+          isAdmin = false;
+        }
 
         if (!isAdmin) {
           alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
-
+          const login = document.getElementById('login-container');
+          if (login) login.style.display = 'none';
           const app = document.getElementById('app-container') || document.body;
+          app.style.display = '';
           app.innerHTML = `
-      <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
-        🚫 Bạn không có quyền xem báo cáo này
-      </h2>
-      <p>
-        Chỉ tài khoản <b>admin</b> (cột <code>is_admin = TRUE</code>
-        trong bảng <code>dmnhanvien</code>) mới được phép truy cập
-        trang <b>Tra cứu Hóa Đơn Bán Lẻ</b>.
-      </p>
-    `;
-          return;
+            <h2 style="color:#c00; margin-top:20px; font-weight:bold;">🚫 Bạn không có quyền xem báo cáo này</h2>
+          `;
+          return false; // chặn không cho show app theo flow mặc định
         }
 
-        // 2. Sau khi login OK và là admin → lúc này window.supabase đã sẵn sàng
-        //    => MỚI gắn popup tìm mã sản phẩm
-        const { attachMaspPopup } = await import('./scripts/productSearchModule.js');
-        const elMasp = document.getElementById('locMasp');
+        // ✅ Admin OK -> lúc này mới init filter + bind events + load data
+        await initFiltersFromUrl();
+        bindEventsAfterAdmin();
 
-        if (elMasp) {
-          attachMaspPopup({
-            supabase: window.supabase,                // client đã có session
-            maspInput: elMasp,
-            onPick: (p) => {
-              const cur = (elMasp.value || '').trim();
-              const v = (p?.masp || '').trim();
-              if (!v) return;
-              const set = new Set(
-                cur
-                  ? cur.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-                  : []
-              );
-              set.add(v.toUpperCase());
-              elMasp.value = Array.from(set).join(',');
-            }
-          });
+        // Gắn popup tìm mã sản phẩm (chỉ admin)
+        try {
+          const { attachMaspPopup } = await import('./scripts/productSearchModule.js');
+          const elMasp = document.getElementById('locMasp');
+          if (elMasp) {
+            attachMaspPopup({
+              supabase: window.supabase,
+              maspInput: elMasp,
+              onPick: (p) => {
+                const cur = (elMasp.value || '').trim();
+                const v = (p?.masp || '').trim();
+                if (!v) return;
+                const set = new Set(
+                  cur ? cur.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
+                );
+                set.add(v.toUpperCase());
+                elMasp.value = Array.from(set).join(',');
+              }
+            });
+          }
+        } catch (e) {
+          // nếu module popup không tồn tại thì bỏ qua
         }
 
-        // 3. Cuối cùng mới tải danh sách hóa đơn
         await taiDanhSachHoaDon();
+        return true;
       }
-
     });
   </script>
+
 
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
