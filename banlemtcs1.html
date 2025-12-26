@@ -940,7 +940,9 @@ body.popupnhanh .sq-stock-popup {
             sessionStorage.removeItem('draft_hoadon');
 
             document.getElementById('login-manv').focus();
+            location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
+        
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
