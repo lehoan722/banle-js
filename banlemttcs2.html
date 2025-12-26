@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN LET cs2</title>
+    <title>BAN LE CS2</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -340,13 +340,13 @@
             /* vàng nhạt */
         }
 
-            /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-body.popupnhanh .sq-stock-popup {
-  top: 8px !important;
-  left: 8px !important;
-  left: auto !important;
-  transform: none !important;
-}
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
     </style>
 
 
@@ -467,7 +467,10 @@ body.popupnhanh .sq-stock-popup {
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label> -->
+        <label>Giờ <input id="gio" /></label>
+         
+        
+         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
 
 
     </div>
@@ -510,8 +513,8 @@ body.popupnhanh .sq-stock-popup {
                             <th>Thành tiền</th>
                             <th>Vị trí</th> <!-- (giữ nguyên) -->
                             <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>T1</th>
-                            <th>T2</th>
+                            <th>Tồn1</th>
+                            <th>Tồn2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -563,10 +566,12 @@ body.popupnhanh .sq-stock-popup {
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
+                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+
+
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
                 </div>
@@ -655,19 +660,16 @@ body.popupnhanh .sq-stock-popup {
 
     </div>
 
-    <script src="scripts/stockQuickPopup.js"></script>
-
-
-    <!-- Khung đăng nhập dùng module dùng chung --> 
+    <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1", // API backend mới
+            loginApiPath: "/api/login-cs2", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -742,14 +744,11 @@ body.popupnhanh .sq-stock-popup {
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
-
-
-
-
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
+        
         // Hàm show popup
         function showPopupTimKH() {
             const popup = document.getElementById('popupTimKH');
@@ -847,6 +846,8 @@ body.popupnhanh .sq-stock-popup {
             console.log('window.bangKetQua:', window.bangKetQua);
         });
 
+
+
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
@@ -873,7 +874,7 @@ body.popupnhanh .sq-stock-popup {
     </script>
 
 
-    <!-- Overlay loading khi backup --> 
+    <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
     display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
     background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
@@ -940,19 +941,17 @@ body.popupnhanh .sq-stock-popup {
             sessionStorage.removeItem('draft_hoadon');
 
             document.getElementById('login-manv').focus();
-            location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
-        
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-
+    <script src="scripts/stockQuickPopup.js"></script>
 
     <script src="scripts/menu-component.js"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -978,7 +977,8 @@ body.popupnhanh .sq-stock-popup {
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });       
+        });
+        
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1033,7 +1033,7 @@ body.popupnhanh .sq-stock-popup {
                 btn.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                        btn.click(); // = gọi xacNhanSuaHoaDon()
                     }
                 });
             }
@@ -1046,7 +1046,7 @@ body.popupnhanh .sq-stock-popup {
     </script>
 
     <script>
-         // Sau khi DOMContentLoaded hoặc ở script type="module"
+        // Sau khi DOMContentLoaded hoặc ở script type="module"
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
             window.dangLuu = true;
@@ -1064,6 +1064,7 @@ body.popupnhanh .sq-stock-popup {
             this.innerText = "💾 Lưu";
         };
     </script>
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
