@@ -139,12 +139,16 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     if (tuDongKhoaCoSo) csSelect.disabled = true;
 
     function showAppAfterLogin(nhanvienLike, context) {
-        if (appContainer) appContainer.style.display = '';
-        loginContainer.style.display = 'none';
+        // Chạy hook trước (nếu có). Nếu hook trả về false -> KHÔNG show app.
+        const hook = (typeof onLoginSuccess === 'function')
+            ? Promise.resolve(onLoginSuccess(nhanvienLike, context))
+            : Promise.resolve(true);
 
-        if (typeof onLoginSuccess === 'function') {
-            Promise.resolve(onLoginSuccess(nhanvienLike, context)).catch(console.error);
-        }
+        hook.then((res) => {
+            if (res === false) return; // bị chặn bởi onLoginSuccess
+            if (appContainer) appContainer.style.display = '';
+            loginContainer.style.display = 'none';
+        }).catch(console.error);
     }
 
     async function checkIsAdminBestEffort() {
