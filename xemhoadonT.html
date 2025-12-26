@@ -1113,91 +1113,6 @@
 
 
     // ====== T2: XÓA HÓA ĐƠN (giống 111 nhưng áp dụng cho bảng T) ======
-    function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
-      const popup = document.getElementById('popupXacThucNV');
-      const txtId = document.getElementById('maNVCheck');       // dùng cho Email admin (hoặc mã NV nếu cần)
-      const txtPw = document.getElementById('matkhauNVCheck');  // mật khẩu
-      const msg = document.getElementById('msgCheckNV');
-      const btn = document.getElementById('btnKiemTraNV');
-
-      // Ưu tiên gợi ý email admin đã dùng gần nhất
-      const savedId = (
-        localStorage.getItem('last_login_identifier') ||
-        localStorage.getItem('manv') ||
-        ''
-      ).trim();
-
-      if (txtId) txtId.value = savedId.includes('@') ? savedId : '';
-      if (txtPw) txtPw.value = '';
-      if (msg) msg.textContent = '';
-
-      if (popup) popup.style.display = 'block';
-
-      if (!btn) return;
-
-      btn.onclick = async () => {
-        try {
-          const id = (txtId?.value || '').trim();
-          const pw = (txtPw?.value || '').trim();
-          if (!id || !pw) {
-            if (msg) msg.textContent = 'Vui lòng nhập Email admin và mật khẩu.';
-            return;
-          }
-
-          // ====== 1) Nếu nhập email -> xác thực theo cách ADMIN mới (Supabase Auth) ======
-          if (id.includes('@')) {
-            // Đăng nhập lại để xác thực (Supabase không có "reauth" riêng)
-            const { data: signInData, error: signInError } =
-              await window.supabase.auth.signInWithPassword({ email: id, password: pw });
-
-            if (signInError || !signInData?.session) {
-              if (msg) msg.textContent = 'Sai email hoặc mật khẩu.';
-              return;
-            }
-
-            // Check quyền admin thật sự bằng RPC is_admin()
-            const { data: isAdmin, error: rpcErr } = await window.supabase.rpc('is_admin');
-            if (rpcErr || isAdmin !== true) {
-              await window.supabase.auth.signOut().catch(() => {});
-              if (msg) msg.textContent = 'Tài khoản này không có quyền xóa.';
-              return;
-            }
-
-            // OK
-            localStorage.setItem('last_login_identifier', id);
-            if (popup) popup.style.display = 'none';
-            callbackSauXacThuc?.({ ok: true, kind: 'admin', email: id });
-            return;
-          }
-
-          // ====== 2) Fallback (trường hợp anh vẫn muốn dùng mã NV) ======
-          const manvUpper = id.toUpperCase();
-          const { data: nvRows, error: nvErr } = await window.supabase
-            .from('dmnhanvien')
-            .select('manv, tennv, is_admin')
-            .eq('manv', manvUpper)
-            .eq('matkhau', pw)
-            .limit(1);
-
-          if (nvErr || !nvRows || nvRows.length === 0) {
-            if (msg) msg.textContent = 'Sai mã NV hoặc mật khẩu.';
-            return;
-          }
-          const nv = nvRows[0];
-          if (!nv?.is_admin) {
-            if (msg) msg.textContent = 'Tài khoản này không có quyền xóa.';
-            return;
-          }
-
-          if (popup) popup.style.display = 'none';
-          callbackSauXacThuc?.({ ok: true, kind: 'nv', manv: nv.manv, tennv: nv.tennv });
-        } catch (err) {
-          console.error(err);
-          if (msg) msg.textContent = 'Lỗi xác thực. Vui lòng thử lại.';
-        }
-      };
-    }
-
     async function xoaHoaDonDaChon() {
       // Chỉ cho xóa khi đang ở chế độ chi tiết
       if (__loaiTongHopCurrent !== 'chitiet') {
@@ -1211,8 +1126,8 @@
         return;
       }
 
-      // Xác thực lại nhân viên giống 111
-      kiemTraNhanVienTruocKhiXoa(async function () {
+      // Không cần xác thực lại (trang đã khóa ADMIN + policy đã chặn). Chỉ hỏi xác nhận rồi xóa.
+      (async () => {
 
         // --- Gom danh sách sohd cần xóa + tự động thêm đối ứng (kể cả nếu hiện tại chưa có) ---
         let dsXoa = [];
@@ -1284,7 +1199,7 @@
 
         alert(` Đã xóa thành công ${dsXoa.length} hóa đơn (bao gồm đối ứng nếu có).`);
         await window.taiDanhSachHoaDon(); // refresh lại bảng
-      });    
+      })();    
 
         }
 
@@ -1294,8 +1209,7 @@
     window.xemChiTiet = xemChiTiet;
     window.dongPopup = dongPopup;
     window.xoaHoaDonDaChon = xoaHoaDonDaChon;
-    window.kiemTraNhanVienTruocKhiXoa = kiemTraNhanVienTruocKhiXoa;
-    khoiTaoDangNhapDungChung({
+khoiTaoDangNhapDungChung({
       appContainerId: 'app-container',
 
       // Không khóa cứng cơ sở, để nhân viên chọn CS1 / CS2
@@ -1409,21 +1323,7 @@
 
 
   <!-- Popup xác thực nhân viên (dùng cho xóa hóa đơn) -->
-  <div id="popupXacThucNV"
-    style="display:none;position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #ccc;box-shadow:0 2px 10px rgba(0,0,0,0.25);padding:24px;z-index:10000;border-radius:8px;min-width:320px;">
-    <h3 style="color:#1976d2;margin:0 0 10px 0;">Xác thực quyền xóa</h3>
-    <div style="margin-bottom:10px;">
-      <label>Email admin: <input type="text" id="maNVCheck" style="width:240px" placeholder="email admin"></label>
-    </div>
-    <div style="margin-bottom:10px;">
-      <label>Mật khẩu: <input type="password" id="matkhauNVCheck" style="width:240px" placeholder="mật khẩu admin"></label>
-    </div>
-    <div id="msgCheckNV" style="color:#ad3a2b;margin:8px 0;min-height:18px;font-size:0.97em"></div>
-    <button id="btnKiemTraNV"
-      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm tra</button>
-    <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
-      style="margin-left:8px;">Hủy</button>
-  </div>
+  
 
 </body>
 
