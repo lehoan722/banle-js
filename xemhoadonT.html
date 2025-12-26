@@ -1115,64 +1115,85 @@
     // ====== T2: XÓA HÓA ĐƠN (giống 111 nhưng áp dụng cho bảng T) ======
     function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
       const popup = document.getElementById('popupXacThucNV');
-      const txtMa = document.getElementById('maNVCheck');
-      const txtMk = document.getElementById('matkhauNVCheck');
+      const txtId = document.getElementById('maNVCheck');       // dùng cho Email admin (hoặc mã NV nếu cần)
+      const txtPw = document.getElementById('matkhauNVCheck');  // mật khẩu
       const msg = document.getElementById('msgCheckNV');
+      const btn = document.getElementById('btnKiemTraNV');
 
-      const savedMa =
+      // Ưu tiên gợi ý email admin đã dùng gần nhất
+      const savedId = (
+        localStorage.getItem('last_login_identifier') ||
         localStorage.getItem('manv') ||
-        localStorage.getItem('last_login_manv') ||
-        '';
+        ''
+      ).trim();
 
-      const savedMk =
-        localStorage.getItem('last_login_password') || '';
-
-      if (txtMa) txtMa.value = savedMa;
-      if (txtMk) txtMk.value = savedMk;
+      if (txtId) txtId.value = savedId.includes('@') ? savedId : '';
+      if (txtPw) txtPw.value = '';
       if (msg) msg.textContent = '';
 
       if (popup) popup.style.display = 'block';
 
-      const btn = document.getElementById('btnKiemTraNV');
       if (!btn) return;
 
-      btn.onclick = async function () {
+      btn.onclick = async () => {
         try {
-          const manv = (txtMa?.value || '').trim();
-          const matkhau = (txtMk?.value || '').trim();
-
-          if (!manv || !matkhau) {
-            msg.textContent = 'Vui lòng nhập đủ mã NV và mật khẩu.';
+          const id = (txtId?.value || '').trim();
+          const pw = (txtPw?.value || '').trim();
+          if (!id || !pw) {
+            if (msg) msg.textContent = 'Vui lòng nhập Email admin và mật khẩu.';
             return;
           }
 
-          // Kiểm tra lại trên dmnhanvien (giống 111)
-          const { data, error } = await window.supabase
+          // ====== 1) Nếu nhập email -> xác thực theo cách ADMIN mới (Supabase Auth) ======
+          if (id.includes('@')) {
+            // Đăng nhập lại để xác thực (Supabase không có "reauth" riêng)
+            const { data: signInData, error: signInError } =
+              await window.supabase.auth.signInWithPassword({ email: id, password: pw });
+
+            if (signInError || !signInData?.session) {
+              if (msg) msg.textContent = 'Sai email hoặc mật khẩu.';
+              return;
+            }
+
+            // Check quyền admin thật sự bằng RPC is_admin()
+            const { data: isAdmin, error: rpcErr } = await window.supabase.rpc('is_admin');
+            if (rpcErr || isAdmin !== true) {
+              await window.supabase.auth.signOut().catch(() => {});
+              if (msg) msg.textContent = 'Tài khoản này không có quyền xóa.';
+              return;
+            }
+
+            // OK
+            localStorage.setItem('last_login_identifier', id);
+            if (popup) popup.style.display = 'none';
+            callbackSauXacThuc?.({ ok: true, kind: 'admin', email: id });
+            return;
+          }
+
+          // ====== 2) Fallback (trường hợp anh vẫn muốn dùng mã NV) ======
+          const manvUpper = id.toUpperCase();
+          const { data: nvRows, error: nvErr } = await window.supabase
             .from('dmnhanvien')
-            .select('manv, tennv, matkhau, is_admin')
-            .eq('manv', manv)
-            .eq('matkhau', matkhau)
-            .maybeSingle();
+            .select('manv, tennv, is_admin')
+            .eq('manv', manvUpper)
+            .eq('matkhau', pw)
+            .limit(1);
 
-          if (error || !data) {
-            msg.textContent = 'Sai mã NV hoặc mật khẩu.';
+          if (nvErr || !nvRows || nvRows.length === 0) {
+            if (msg) msg.textContent = 'Sai mã NV hoặc mật khẩu.';
             return;
           }
-
-          // (Tuỳ bạn) chỉ cho admin xóa
-          const isAdmin = (data.is_admin === true || data.is_admin === 'true' || data.is_admin === 1);
-          if (!isAdmin) {
-            msg.textContent = 'Bạn không có quyền xóa hóa đơn.';
+          const nv = nvRows[0];
+          if (!nv?.is_admin) {
+            if (msg) msg.textContent = 'Tài khoản này không có quyền xóa.';
             return;
           }
 
           if (popup) popup.style.display = 'none';
-          msg.textContent = '';
-
-          if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data);
+          callbackSauXacThuc?.({ ok: true, kind: 'nv', manv: nv.manv, tennv: nv.tennv });
         } catch (err) {
-          console.error('Exception khi kiểm tra NV:', err);
-          msg.textContent = 'Có lỗi xảy ra khi kiểm tra nhân viên.';
+          console.error(err);
+          if (msg) msg.textContent = 'Lỗi xác thực. Vui lòng thử lại.';
         }
       };
     }
@@ -1265,32 +1286,7 @@
         await window.taiDanhSachHoaDon(); // refresh lại bảng
       });    
 
-    // Xác thực lại nhân viên giống 111
-    kiemTraNhanVienTruocKhiXoa(async function () {
-      const dsXoa = Array.from(checkboxes).map(cb => cb.getAttribute("data-sohd")).filter(Boolean);
-
-      // Xác nhận lần cuối (an toàn hơn)
-      const ok = confirm(`Bạn có chắc muốn XÓA ${dsXoa.length} hóa đơn đã chọn không?\nLưu ý: thao tác này không thể hoàn tác.`);
-      if (!ok) return;
-
-      // Xóa: chỉ bảng T (không có đối ứng chuyển chi nhánh)
-      for (const sohd of dsXoa) {
-        const { error: e1 } = await window.supabase.from("ct_hoadon_banleT").delete().eq("sohd", sohd);
-        if (e1) {
-          alert(` Lỗi xóa chi tiết hóa đơn ${sohd}: ${e1.message}`);
-          return;
         }
-        const { error: e2 } = await window.supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
-        if (e2) {
-          alert(` Lỗi xóa hóa đơn ${sohd}: ${e2.message}`);
-          return;
-        }
-      }
-
-      alert(` Đã xóa thành công ${dsXoa.length} hóa đơn.`);
-      await window.taiDanhSachHoaDon();
-    });
-    }
 
 
     // Expose functions for inline onclick handlers
@@ -1414,18 +1410,17 @@
 
   <!-- Popup xác thực nhân viên (dùng cho xóa hóa đơn) -->
   <div id="popupXacThucNV"
-    style="display:none;position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #ccc;box-shadow:0 6px 22px rgba(0,0,0,0.25);padding:24px;z-index:10000;border-radius:8px;min-width:300px;">
-    <h3 style="color:#1976d2;margin:0 0 10px 0;">Xác thực nhân viên</h3>
+    style="display:none;position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #ccc;box-shadow:0 2px 10px rgba(0,0,0,0.25);padding:24px;z-index:10000;border-radius:8px;min-width:320px;">
+    <h3 style="color:#1976d2;margin:0 0 10px 0;">Xác thực quyền xóa</h3>
     <div style="margin-bottom:10px;">
-      <label>Mã NV: <input type="password" id="maNVCheck" style="width:120px"></label>
+      <label>Email admin: <input type="text" id="maNVCheck" style="width:240px" placeholder="email admin"></label>
     </div>
     <div style="margin-bottom:10px;">
-      <label>Mật khẩu: <input type="password" id="matkhauNVCheck" style="width:120px"></label>
+      <label>Mật khẩu: <input type="password" id="matkhauNVCheck" style="width:240px" placeholder="mật khẩu admin"></label>
     </div>
     <div id="msgCheckNV" style="color:#ad3a2b;margin:8px 0;min-height:18px;font-size:0.97em"></div>
     <button id="btnKiemTraNV"
-      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm
-      tra</button>
+      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm tra</button>
     <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
       style="margin-left:8px;">Hủy</button>
   </div>
