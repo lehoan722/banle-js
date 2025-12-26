@@ -13,10 +13,18 @@ function formatTimeHHMM(dateInput) {
 }
 
 
+// Thêm biến cờ ở gần đầu file (trước export function cũng được)
+let __duyetHoaDonBound = false;
+
 export function ganSuKienDuyetHoaDon() {
+  if (__duyetHoaDonBound) return;   // ✅ tránh bind lặp
+  __duyetHoaDonBound = true;
+
   document.getElementById("quaylai")?.addEventListener("click", taiHoaDonTruoc);
   document.getElementById("tieptuc")?.addEventListener("click", taiHoaDonTiep);
-  document.getElementById("sohd")?.addEventListener("keydown", (e) => {
+
+  const sohdEl = document.getElementById("sohd");
+  sohdEl?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") taiHoaDonTuSo();
   });
 }
@@ -141,27 +149,39 @@ async function napHoaDonVaoTrang(hoadon) {
 
   if (!error && ct.length > 0) {
     ct.forEach(row => {
-      const masp = row.masp;
-      const size = row.size;
-      const sl = row.soluong;
+  const masp = String(row.masp || "").trim().toUpperCase();
+  const size = (row.size != null) ? String(row.size).trim() : "";
+  const sl = parseInt(row.soluong || 0, 10) || 0;
 
-      if (!bangKetQua[masp]) {
-        bangKetQua[masp] = {
-          masp,
-          tensp: row.tensp || "",
-          sizes: [],
-          soluongs: [],
-          tong: 0,
-          gia: row.gia || 0,
-          km: row.km || 0,
-          dvt: ""
-        };
-      }
+  if (!masp || !size || sl === 0) return;
 
-      bangKetQua[masp].sizes.push(size);
-      bangKetQua[masp].soluongs.push(sl);
-      bangKetQua[masp].tong += sl;
-    });
+  if (!bangKetQua[masp]) {
+    bangKetQua[masp] = {
+      masp,
+      tensp: row.tensp || "",
+      sizes: [],
+      soluongs: [],
+      tong: 0,
+      gia: row.gia || 0,
+      km: row.km || 0,
+      dvt: ""
+    };
+  }
+
+  const item = bangKetQua[masp];
+  const idx = item.sizes.findIndex(s => String(s).trim() === size);
+
+  if (idx === -1) {
+    item.sizes.push(size);
+    item.soluongs.push(sl);
+  } else {
+    const old = parseInt(item.soluongs[idx] || 0, 10) || 0;
+    item.soluongs[idx] = old + sl;   // ✅ gộp nếu trùng size
+  }
+
+  item.tong += sl;
+});
+
   }
 
   capNhatBangHTML(bangKetQua);
