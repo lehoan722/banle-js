@@ -375,53 +375,71 @@ export function khoiTaoDangNhapDungChung(options = {}) {
             const { data } = await window.supabase.auth.getSession();
             const session = data?.session;
             if (session) {
+
+
                 const isAdmin = await checkIsAdminBestEffort();
                 localStorage.setItem('is_admin', isAdmin ? 'true' : 'false');
-                // nếu là admin: lấy manv/tennv từ bảng admin_users để hiển thị/ghi DB đúng theo admin đang đăng nhập
-                try {
-                    const uid = session?.user?.id;
-                    if (uid) {
-                        const { data: prof, error: profErr } = await window.supabase
-                            .from('admin_users')
-                            .select('manv, tenadmin, active')
-                            .eq('user_id', uid)
-                            .maybeSingle();
 
-                        if (!profErr && prof) {
-                            if (prof.active === false) {
-                                await window.supabase.auth.signOut().catch(() => { });
-                                throw new Error('Tài khoản admin đang bị khóa');
+                const uid = session?.user?.id;
+
+                // ✅ CHỈ admin mới được phép “hydrate” từ admin_users
+                if (isAdmin) {
+                    try {
+                        if (uid) {
+                            const { data: prof, error: profErr } = await window.supabase
+                                .from('admin_users')
+                                .select('manv, tenadmin, active')
+                                .eq('user_id', uid)
+                                .maybeSingle();
+
+                            if (!profErr && prof) {
+                                if (prof.active === false) {
+                                    await window.supabase.auth.signOut().catch(() => { });
+                                    throw new Error('Tài khoản admin đang bị khóa');
+                                }
+                                const manvAdmin = String(prof.manv || 'ADMIN').trim().toUpperCase();
+                                const tenAdmin = String(prof.tenadmin || manvAdmin).trim();
+
+                                localStorage.setItem('is_admin', 'true');
+                                localStorage.setItem('manv', manvAdmin);
+                                localStorage.setItem('tennv', tenAdmin);
+                                localStorage.setItem('quyen_sua_hoadon', 'true');
+                            } else {
+                                // ✅ admin nhưng không lấy được profile -> giữ nguyên manv/tennv hiện có, KHÔNG ép ADMIN bừa
+                                localStorage.setItem('is_admin', 'true');
+                                localStorage.setItem('quyen_sua_hoadon', 'true');
                             }
-                            const manvAdmin = String(prof.manv || 'ADMIN').trim().toUpperCase();
-                            const tenAdmin = String(prof.tenadmin || manvAdmin).trim();
-
-                            localStorage.setItem('is_admin', 'true');
-                            localStorage.setItem('manv', manvAdmin);
-                            localStorage.setItem('tennv', tenAdmin);
-                            localStorage.setItem('quyen_sua_hoadon', 'true');
-                        } else {
-                            // fallback tối thiểu nếu không lấy được profile
-                            localStorage.setItem('is_admin', 'true');
-                            localStorage.setItem('manv', localStorage.getItem('manv') || 'ADMIN');
-                            localStorage.setItem('tennv', localStorage.getItem('tennv') || 'ADMIN');
-                            localStorage.setItem('quyen_sua_hoadon', 'true');
                         }
+                    } catch (e) {
+                        console.warn('Auto session: không lấy được profile admin_users:', e);
+                        localStorage.setItem('is_admin', 'true');
+                        localStorage.setItem('quyen_sua_hoadon', 'true');
                     }
-                } catch (e) {
-                    console.warn('Auto session: không lấy được profile admin_users:', e);
-                    localStorage.setItem('is_admin', 'true');
-                    localStorage.setItem('manv', localStorage.getItem('manv') || 'ADMIN');
-                    localStorage.setItem('tennv', localStorage.getItem('tennv') || 'ADMIN');
-                    localStorage.setItem('quyen_sua_hoadon', 'true');
+                } else {
+                    // ✅ nhân viên: TUYỆT ĐỐI không set manv=ADMIN
+                    localStorage.setItem('is_admin', 'false');
+
+                    // (Khuyến nghị) nếu muốn chắc chắn đúng manv/tennv khi mở tab mới:
+                    try {
+                        if (uid) {
+                            const { data: nv, error: nvErr } = await window.supabase
+                                .from('dmnhanvien')
+                                .select('manv, tennv, sua_hoadon')
+                                .eq('user_id', uid)
+                                .maybeSingle();
+
+                            if (!nvErr && nv) {
+                                localStorage.setItem('manv', String(nv.manv || '').trim().toUpperCase());
+                                localStorage.setItem('tennv', String(nv.tennv || '').trim());
+                                localStorage.setItem('quyen_sua_hoadon', nv.sua_hoadon ? 'true' : 'false');
+                            }
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
                 }
-                showAppAfterLogin(
-                    {
-                        manv: localStorage.getItem('manv') || '',
-                        tennv: localStorage.getItem('tennv') || '',
-                        is_admin: isAdmin
-                    },
-                    { diadiem: localStorage.getItem('diadiem') || macDinhDiaDiem, session }
-                );
+
+
             }
         } catch (e) {
             // ignore
