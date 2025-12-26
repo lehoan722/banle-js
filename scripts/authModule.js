@@ -88,7 +88,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     // ===== Email dropdown gợi ý (vừa chọn vừa gõ) =====
     const emailDatalist = document.getElementById('email-suggest');
     const FIXED_ADMIN_EMAILS = [
-        'nguyennhuyet140175@gmail.com',
+        'nguyenanhtuyet140175@gmail.com',
         'danghoanghai02@gmail.com',
         'lehoan722@gmail.com'
     ];
