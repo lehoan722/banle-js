@@ -129,7 +129,24 @@ async function saveAllVitriForPickedBranch() {
 
     try {
         // Upsert theo khóa chính masp
-        const { error } = await supabase.from('dmhanghoa').upsert(updates, { onConflict: 'masp' });
+
+        // Update theo khóa chính masp (KHÔNG dùng upsert để khỏi dính policy INSERT)
+        const tasks = updates.map(u => {
+            const payload = (diadiem === 'cs1')
+                ? { vitrikho1: u.vitrikho1 }
+                : { vitrikho2: u.vitrikho2 };
+
+            return supabase
+                .from('dmhanghoa')
+                .update(payload)
+                .eq('masp', u.masp);
+        });
+
+        const results = await Promise.all(tasks);
+        const firstErr = results.find(r => r.error)?.error;
+        if (firstErr) throw firstErr;
+
+
         if (error) throw error;
 
         showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
@@ -1664,7 +1681,7 @@ function initXntHot(containerEl, rowMap, masp) {
             }
         },
         // 👉 Click vào bất kỳ ô nào trên dòng size (trừ dòng Tổng) để mở tìm tương đồng
-                // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
+        // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
         afterOnCellMouseDown: (event, coords) => {
             const row = coords?.row;
             if (row == null || row <= 0) return;   // bỏ hàng Tổng (row 0)
