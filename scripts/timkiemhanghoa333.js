@@ -144,10 +144,7 @@ async function saveAllVitriForPickedBranch() {
 
         const results = await Promise.all(tasks);
         const firstErr = results.find(r => r.error)?.error;
-        if (firstErr) throw firstErr;
-
-
-        if (error) throw error;
+        if (firstErr) throw firstErr;        
 
         showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
         if (stt) { stt.style.color = 'green'; stt.textContent = 'Đã lưu!'; }
