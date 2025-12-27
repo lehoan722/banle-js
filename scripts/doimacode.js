@@ -72,33 +72,67 @@ function capNhatTrangThaiQuyenUI() {
  * - Chỉ cho phép nếu: is_admin = true OR sua_hoadon = true OR xoa_hoadon = true
  * - Fallback: nếu lỗi đọc dmnhanvien, dùng info.sua_hoadon, info.xoa_hoadon
  */
-async function kiemTraQuyenDoiMa(thongTinNguoiDung) {
-  console.log("Thông tin đăng nhập dùng để kiểm tra quyền đổi mã:", thongTinNguoiDung);
+/**
+ * Kiểm tra quyền đổi mã:
+ * - Ưu tiên: localStorage do authModule set (is_admin, quyen_sua_hoadon, quyen_xoa_hoadon)
+ * - Sau đó: data trả về từ authModule (nhanvienLike/context)
+ * - Cuối cùng: nếu có manv thì đọc dmnhanvien để xác nhận quyền
+ */
+async function kiemTraQuyenDoiMa(thongTinNguoiDung, context) {
+  console.log("Thông tin đăng nhập dùng để kiểm tra quyền đổi mã:", { thongTinNguoiDung, context });
 
-  if (!thongTinNguoiDung) {
-    coQuyenDoiMa = false;
+  // ==== 1) ƯU TIÊN QUYỀN TỪ localStorage (authModule đã set) ====
+  let lsIsAdmin = false;
+  let lsSua = false;
+  let lsXoa = false;
+
+  try {
+    lsIsAdmin = localStorage.getItem("is_admin") === "true";
+    lsSua = localStorage.getItem("quyen_sua_hoadon") === "true";
+    lsXoa = localStorage.getItem("quyen_xoa_hoadon") === "true"; // nếu bạn có lưu cờ này
+  } catch (e) { }
+
+  // ==== 2) QUYỀN TỪ object authModule trả về ====
+  const objIsAdmin =
+    thongTinNguoiDung?.is_admin === true ||
+    context?.nhanvien?.is_admin === true;
+
+  const objSua =
+    thongTinNguoiDung?.sua_hoadon === true ||
+    thongTinNguoiDung?.suaHoaDon === true ||
+    context?.nhanvien?.sua_hoadon === true;
+
+  const objXoa =
+    thongTinNguoiDung?.xoa_hoadon === true ||
+    thongTinNguoiDung?.xoaHoaDon === true ||
+    context?.nhanvien?.xoa_hoadon === true;
+
+  // Fallback tổng hợp ngay từ localStorage + object
+  const fallbackIsAdmin = lsIsAdmin || objIsAdmin;
+  const fallbackSua = lsSua || objSua;
+  const fallbackXoa = lsXoa || objXoa;
+
+  // Nếu đã là admin hoặc có quyền sửa/xóa hóa đơn theo localStorage/object → cho phép luôn
+  coQuyenDoiMa = fallbackIsAdmin || fallbackSua || fallbackXoa;
+
+  // Nếu đã đủ quyền thì cập nhật UI và thoát (không cần query dmnhanvien nữa)
+  if (coQuyenDoiMa) {
     capNhatTrangThaiQuyenUI();
     return;
   }
 
+  // ==== 3) Nếu chưa rõ quyền: cố gắng lấy manv để check dmnhanvien ====
   const manv =
-    thongTinNguoiDung.manv ||
-    thongTinNguoiDung.ma_nv ||
-    thongTinNguoiDung.maNhanVien ||
-    thongTinNguoiDung.ma_nhan_vien ||
+    thongTinNguoiDung?.manv ||
+    thongTinNguoiDung?.ma_nv ||
+    thongTinNguoiDung?.maNhanVien ||
+    thongTinNguoiDung?.ma_nhan_vien ||
+    context?.nhanvien?.manv ||
     null;
 
-  const fallbackSua =
-    thongTinNguoiDung.sua_hoadon === true || thongTinNguoiDung.suaHoaDon === true;
-  const fallbackXoa =
-    thongTinNguoiDung.xoa_hoadon === true || thongTinNguoiDung.xoaHoaDon === true;
-
-  // Mặc định: không có quyền
-  coQuyenDoiMa = false;
-
+  // Không có manv thì đành dùng fallback (đang false)
   if (!manv) {
-    // không có manv, chỉ còn fallback
-    coQuyenDoiMa = fallbackSua || fallbackXoa;
+    coQuyenDoiMa = false;
     capNhatTrangThaiQuyenUI();
     return;
   }
@@ -107,20 +141,13 @@ async function kiemTraQuyenDoiMa(thongTinNguoiDung) {
     const { data, error } = await supabase
       .from("dmnhanvien")
       .select("manv, is_admin, sua_hoadon, xoa_hoadon")
-      .eq("manv", manv)
+      .eq("manv", String(manv).trim().toUpperCase())
       .maybeSingle();
 
     console.log("Kết quả đọc dmnhanvien theo manv:", { data, error });
 
-    if (error) {
-      console.error("Lỗi kiểm tra quyền trong dmnhanvien:", error);
-      coQuyenDoiMa = fallbackSua || fallbackXoa;
-      capNhatTrangThaiQuyenUI();
-      return;
-    }
-
-    if (!data) {
-      coQuyenDoiMa = fallbackSua || fallbackXoa;
+    if (error || !data) {
+      coQuyenDoiMa = false;
       capNhatTrangThaiQuyenUI();
       return;
     }
@@ -129,14 +156,15 @@ async function kiemTraQuyenDoiMa(thongTinNguoiDung) {
     const coSua = data.sua_hoadon === true;
     const coXoa = data.xoa_hoadon === true;
 
-    coQuyenDoiMa = isAdmin || coSua || coXoa || fallbackSua || fallbackXoa;
+    coQuyenDoiMa = isAdmin || coSua || coXoa;
     capNhatTrangThaiQuyenUI();
   } catch (e) {
     console.error("Lỗi ngoại lệ khi kiểm tra quyền:", e);
-    coQuyenDoiMa = fallbackSua || fallbackXoa;
+    coQuyenDoiMa = false;
     capNhatTrangThaiQuyenUI();
   }
 }
+
 
 function showResult(data, mode, oldCode, newCode) {
   errorBox?.classList.add("hidden");
@@ -250,16 +278,17 @@ function attachEventsSauKhiCoQuyen() {
   oldCodeInput?.focus();
 }
 
-// Gọi sau khi login thành công – GIỐNG duyetca.js: nhận thông tin người dùng
-async function onLoginSuccess(thongTinNguoiDung) {
-  thongTinNguoiDungHienTai = thongTinNguoiDung;
+// Nhận đúng chữ ký mà authModule gọi: onLoginSuccess(nhanvienLike, context)
+async function onLoginSuccess(nhanvienLike, context) {
+  thongTinNguoiDungHienTai = nhanvienLike || null;
 
-  await kiemTraQuyenDoiMa(thongTinNguoiDung);
-  // Nếu có quyền thì mới gắn event và cho phép dùng form
+  await kiemTraQuyenDoiMa(nhanvienLike, context);
+
   if (coQuyenDoiMa) {
     attachEventsSauKhiCoQuyen();
   }
 }
+
 
 // Khởi tạo login giống trang duyệt ca
 document.addEventListener("DOMContentLoaded", () => {
