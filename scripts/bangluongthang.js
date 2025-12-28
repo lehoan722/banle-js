@@ -1,13 +1,8 @@
-// bangluongthang.js - Bảng lương tháng tất cả nhân viên 
+// bangluongthang.js - Bảng lương tháng tất cả nhân viên
 import * as authModule from "./authModule.js";
 
-function getSupabase() {
-  const sb = window.supabase;
-  if (!sb) {
-    throw new Error("Chưa khởi tạo supabase (window.supabase). Hãy đảm bảo authModule đã được load trước.");
-  }
-  return sb;
-}
+// Dùng chung 1 Supabase client do authModule khởi tạo (tránh tạo nhiều GoTrueClient)
+const supabase = window.supabase;
 
 const tuNgayInput = document.getElementById("tu_ngay");
 const denNgayInput = document.getElementById("den_ngay");
@@ -34,30 +29,18 @@ let hotBangCong = null;
 // =============================
 
 async function kiemTraQuyenXemTrang(pathTrang) {
-  let nv = null;
-  try {
-    nv = await authModule.getCurrentUserInfo();
-  } catch (e) {
-    // ignore
-  }
+  // 1. Lấy nhân viên đang đăng nhập
+  const nv = await authModule.getCurrentUserInfo();
 
   if (!nv || !nv.manv) {
     hienCamTruyCap("Bạn chưa đăng nhập.");
     return false;
   }
 
-  const isAdmin = (nv.is_admin === true) || (localStorage.getItem("is_admin") === "true");
-
-  // Admin: cho phép vào thẳng, không gọi RPC phân quyền (tránh chậm / lỗi)
-  if (isAdmin) {
-    const appDiv = document.getElementById("app-container");
-    if (appDiv) appDiv.style.display = "";
-    return true;
-  }
-
-  // Người thường: kiểm tra theo bảng phân quyền
-  const supabase = getSupabase();
-  const { data, error } = await supabase.rpc("get_pages_for_manv", { p_manv: nv.manv });
+  // 2. Lấy danh sách trang được phép xem
+  const { data, error } = await supabase.rpc("get_pages_for_manv", {
+    p_manv: nv.manv
+  });
 
   if (error) {
     hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
@@ -65,17 +48,21 @@ async function kiemTraQuyenXemTrang(pathTrang) {
   }
 
   const dsTrang = data?.map(r => r.path) || [];
-  if (!dsTrang.includes(pathTrang)) {
-    hienCamTruyCap("Tài khoản không được phép truy cập trang: " + pathTrang);
+
+  // 3. Nếu không phải admin và không nằm trong danh sách → CẤM
+  if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
+    hienCamTruyCap(
+      `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
+    );
     return false;
   }
 
-  const appDiv = document.getElementById("app-container");
-  if (appDiv) appDiv.style.display = "";
+  // 4. Cho phép hiển thị trang
+  document.getElementById("app").style.display = "";
   return true;
 }
 
- // Hàm hiện thông báo cấm truy cập
+// Hàm hiện thông báo cấm truy cập
 function hienCamTruyCap(msg) {
   document.body.innerHTML = `
         <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
@@ -251,7 +238,6 @@ async function taiBangLuong() {
   tbodyLuong.innerHTML = `<tr><td colspan="13">Đang tải...</td></tr>`;
 
   try {
-    const supabase = getSupabase();
     // 1) Lấy chấm công tháng tất cả NV
     const { data: congData, error: congErr } = await supabase.rpc(
       "chamcong_tinhcong_monthly",
@@ -498,8 +484,6 @@ async function taiBangCong() {
 
   tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
 
-  const supabase = getSupabase();
-
   const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
     p_month: thang,
     p_year: nam
@@ -654,5 +638,5 @@ document.addEventListener("DOMContentLoaded", () => {
 window.taiBangLuong = taiBangLuong;
 window.taiBangCong = taiBangCong;
 
+// Expose để authModule gọi kiểm tra quyền
 window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
-window.__bangluongReady = true;
