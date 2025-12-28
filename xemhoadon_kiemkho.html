@@ -240,6 +240,11 @@
 
   // Dùng client supabase chuẩn của authModule (đã gán vào window.supabase)
   const supabase = window.supabase;
+  // expose for DevTools testing
+  window.supabaseClient = supabase;
+  if (!supabase) {
+    console.error('window.supabase is undefined. Kiểm tra đường dẫn import authModule.js và đảm bảo bạn đang deploy đúng file xemhoadon_kiemkho.html.');
+  }
 
   // (Tuỳ chọn) client anon riêng để xác thực popup xóa (giữ logic cũ của bạn)
   const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
