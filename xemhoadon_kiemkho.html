@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Xem kiem kho</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    
     <style>
         body {
             font-family: Arial;
@@ -105,8 +105,9 @@
 </head>
 
 <body>
+  <div id="login-container"></div>
+  <div id="app-container">
     <h2>📋 tra cứu bản kiểm kho tạm</h2>
-
 
     <label>Từ ngày: <input type="date" id="tuNgay"></label>
     <label>Đến ngày: <input type="date" id="denNgay"></label>
@@ -119,7 +120,6 @@
     <label>Mã SP chứa:
         <input type="text" id="locMasp" placeholder="VD: dp1304" style="width:120px;text-transform:uppercase">
     </label>
-
 
     <label>Loại chứng từ:</label>
     <select id="loaiChungTu" multiple style="min-width:140px;">
@@ -138,7 +138,6 @@
             <option value="nam">Tổng hợp theo năm</option>
         </select>
     </label>
-
 
     <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
     <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
@@ -160,8 +159,6 @@
             <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Hourglass.gif" width="36" alt="loading" />
         </div>
     </div>
-
-
 
     <table>
         <thead>
@@ -190,11 +187,9 @@
                 </tr>
             </thead>
 
-
         </thead>
         <tbody id="dsHoaDon"></tbody>
     </table>
-
 
     <div id="popup">
         <div class="drag-header" id="popupHeader">
@@ -219,652 +214,9 @@
         <button onclick="dongPopup()">Đóng</button>
     </div>
 
+    
 
-
-    <script>
-        const supabase = window.supabase.createClient(
-            'https://rddjrmbyftlcvrgzlyby.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-        );
-        let rowDangChon = null;
-
-        // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
-        async function getAllHoaDon(query, pageSize = 1000) {
-            let from = 0;
-            let allData = [];
-            while (true) {
-                let { data, error } = await query.range(from, from + pageSize - 1);
-                if (error) {
-                    alert("❌ Lỗi tải hóa đơn: " + error.message);
-                    break;
-                }
-                if (data && data.length > 0) {
-                    allData = allData.concat(data);
-                    if (data.length < pageSize) break; // Trang cuối cùng
-                    from += pageSize;
-                } else {
-                    break;
-                }
-            }
-            return allData;
-        }
-
-
-        async function taiDanhSachHoaDon() {
-            // 1. Lấy các giá trị lọc từ giao diện
-            const tuNgay = document.getElementById("tuNgay").value;
-            let denNgay = document.getElementById("denNgay").value;
-            if (denNgay) denNgay = denNgay + "T23:59:59.999";
-
-            const nv = document.getElementById("locNV").value.trim().toUpperCase();
-            const sohd = document.getElementById("locSoHD").value.trim();
-            const khach = document.getElementById("locKhach").value.trim();
-            const tienTu = Number(document.getElementById("tienTu").value);
-            const tienDen = Number(document.getElementById("tienDen").value);
-            const maspTK = (document.getElementById("locMasp")?.value || "").trim().toUpperCase();
-
-
-            const selectLoai = document.getElementById("loaiChungTu");
-            const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
-
-            const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
-
-            const tbody = document.getElementById("dsHoaDon");
-            tbody.innerHTML = "";
-
-            let filtered = [];
-
-            // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
-            if (loaiChungTuArr.length > 0) {
-                let arr = [];
-                for (const loai of loaiChungTuArr) {
-                    let query = supabase
-                        .from('kiemkho')
-                        .select('*')
-                        .order('created_at', { ascending: true })    // SỬA: dùng 'ngay'
-                        .ilike('sohd', `${loai}_%`);
-
-                    if (tuNgay && denNgay) query = query.gte('ngaygio', tuNgay).lte('ngaygio', denNgay);
-                    else if (tuNgay) query = query.gte('ngaygio', tuNgay);
-                    else if (denNgay) query = query.lte('ngaygio', denNgay);
-
-                    if (maspTK) query = query.ilike('masp', `%${maspTK}%`);
-
-                    if (nv) query = query.ilike('tennv', `%${nv}%`);
-                    if (sohd) query = query.ilike('sohd', `%${sohd}%`);
-                    if (khach) query = query.ilike('khachhang', `%${khach}%`);
-                    if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
-                    if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
-
-                    let data = await getAllHoaDon(query, 1000);
-                    arr = arr.concat(data);
-                }
-                // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
-                const hash = {};
-                filtered = arr.filter(hd => {
-                    if (hash[hd.sohd]) return false;
-                    hash[hd.sohd] = true;
-                    return true;
-                });
-            } else {
-                // Không chọn loại, lấy toàn bộ
-                let query = supabase
-                    .from('kiemkho')
-                    .select('*')
-                    .order('created_at', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
-
-                if (tuNgay && denNgay) query = query.gte('ngaygio', tuNgay).lte('ngaygio', denNgay);
-                else if (tuNgay) query = query.gte('ngaygio', tuNgay);
-                else if (denNgay) query = query.lte('ngaygio', denNgay);
-
-                if (maspTK) query = query.ilike('masp', `%${maspTK}%`);
-
-                if (nv) query = query.ilike('tennv', `%${nv}%`);
-                if (sohd) query = query.ilike('sohd', `%${sohd}%`);
-                if (khach) query = query.ilike('khachhang', `%${khach}%`);
-                if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
-                if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
-
-                let data = await getAllHoaDon(query, 1000);
-                filtered = data || [];
-
-            }
-
-            if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
-
-            // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
-            let hienThiData = filtered;
-            if (loaiTongHop !== "chitiet") {
-                const groupMap = new Map();
-                filtered.forEach(hd => {
-                    const d = new Date(hd.created_at);
-                    let key = "";
-                    if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
-                    if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
-                    if (loaiTongHop === "nam") key = d.getFullYear() + "";
-                    if (!groupMap.has(key)) {
-                        groupMap.set(key, {
-                            sohd: 1,
-                            created_at: hd.created_at,
-                            tongsl: Number(hd.tongsl || 0),
-                            thanhtoan: Number(hd.thanhtoan || 0)
-                        });
-                    } else {
-                        let obj = groupMap.get(key);
-                        obj.sohd += 1;
-                        obj.tongsl += Number(hd.tongsl || 0);
-                        obj.thanhtoan += Number(hd.thanhtoan || 0);
-                    }
-                });
-                hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
-                    // Định dạng lại ngày/tháng/năm để hiển thị
-                    if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
-                    if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
-                    if (loaiTongHop === "nam") val.created_at = key;
-                    return val;
-                });
-            }
-
-            // ------------- HÀM ĐỊNH DẠNG NGÀY  -------------
-
-            function dinhDangNgay(ngayStr) {
-                if (!ngayStr) return "";
-                const d = new Date(ngayStr);
-                const ngay = d.getDate().toString().padStart(2, "0");
-                const thang = (d.getMonth() + 1).toString().padStart(2, "0");
-                const nam = d.getFullYear();
-                return `${ngay}/${thang}/${nam}`;
-            }
-
-
-            // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
-            function dinhDangNgayGio(ngayStr) {
-                if (!ngayStr) return "";
-                // Nếu chuỗi có dạng dd/mm/yyyy thì giữ nguyên (đang tổng hợp)
-                if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
-                const d = new Date(ngayStr);
-                const ngay = d.getDate().toString().padStart(2, "0");
-                const thang = (d.getMonth() + 1).toString().padStart(2, "0");
-                const nam = d.getFullYear();
-                const gio = d.getHours().toString().padStart(2, "0");
-                const phut = d.getMinutes().toString().padStart(2, "0");
-                return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
-            }
-
-            // ------------- HIỂN THỊ RA BẢNG -------------
-            hienThiData.forEach((hd, idx) => {
-                const tr = document.createElement("tr");
-                const sizes = [
-                    Number(hd.size0 || 0),
-                    Number(hd.size38 || 0),
-                    Number(hd.size39 || 0),
-                    Number(hd.size40 || 0),
-                    Number(hd.size41 || 0),
-                    Number(hd.size42 || 0),
-                    Number(hd.size43 || 0),
-                    Number(hd.size44 || 0),
-                    Number(hd.size45 || 0)
-                ];
-                const tongSL = sizes.reduce((a, b) => a + b, 0);
-                tr.innerHTML = `
-  <td>${idx + 1}</td>
-  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>  
-  <td>${hd.sohd || ""}</td>
-  <td>${dinhDangNgay(hd.ngaygio)}</td>
-  <td>${dinhDangNgayGio(hd.created_at)}</td>
-  <td>${hd.tennv || ""}</td>
-  <td>${hd.masp || ""}</td>
-  <td>${tongSL || 0}</td>
-  <td>${hd.size0 ?? ""}</td>
-  <td>${hd.size38 ?? ""}</td>
-  <td>${hd.size39 ?? ""}</td>
-  <td>${hd.size40 ?? ""}</td>
-  <td>${hd.size41 ?? ""}</td>
-  <td>${hd.size42 ?? ""}</td>
-  <td>${hd.size43 ?? ""}</td>
-  <td>${hd.size44 ?? ""}</td>
-  <td>${hd.size45 ?? ""}</td>
-   <td>${hd.diadiem || ""}</td> 
-  <td>${hd.ghichu || ""}</td>
-`;
-
-                // GẮN SỰ KIỆN "CHỌN TẤT CẢ"
-                setTimeout(() => {
-                    const chonTatCa = document.getElementById('chonTatCaHD');
-                    if (chonTatCa) {
-                        chonTatCa.onclick = function () {
-                            const checkboxes = document.querySelectorAll('.chonHD');
-                            checkboxes.forEach(cb => { cb.checked = chonTatCa.checked; });
-                        };
-                    }
-                }, 10);
-
-
-
-                tr.onclick = (e) => {
-                    if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
-                        document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
-                        tr.style.backgroundColor = "#ffe066";
-                        rowDangChon = tr;
-                        //xemChiTiet(hd.sohd);
-                    }
-                };
-                tbody.appendChild(tr);
-            });
-
-            // ------------- DÒNG TỔNG CUỐI BẢNG -------------
-            let tongSL = 0, tongTien = 0;
-            hienThiData.forEach(hd => {
-                tongSL += Number(hd.tongsl || 0);
-                tongTien += Number(hd.thanhtoan || 0);
-            });
-            document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
-            document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
-
-            const trTong = document.createElement("tr");
-            trTong.style.fontWeight = "bold";
-            trTong.style.background = "#f8f8f8";
-            trTong.innerHTML = `
-  <td colspan="16" style="text-align:right">TỔNG</td>
-  <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
-  <td id="tongTien">${tongTien.toLocaleString()}</td>
-  <td></td>
-`;
-
-            tbody.appendChild(trTong);
-        }
-
-
-
-
-        async function xemChiTiet(sohd) {
-            document.getElementById("popup").style.display = "block";
-            document.getElementById("sohdCT").textContent = sohd;
-            const { data, error } = await supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
-            const tbody = document.getElementById("ctHoaDon");
-            tbody.innerHTML = "";
-            if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
-            data.forEach(row => {
-                const tt = (row.gia - row.km) * row.soluong;
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function dongPopup() {
-            document.getElementById("popup").style.display = "none";
-        }
-
-        async function xoaHoaDonDaChon() {
-            const checkboxes = document.querySelectorAll(".chonHD:checked");
-            const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
-            if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
-
-            // Gọi xác thực và chỉ xóa nếu xác thực thành công
-            kiemTraNhanVienTruocKhiXoa(async function () {
-                if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
-                // het doan  xác thực và chỉ xóa nếu xác thực thành công
-
-                // Xóa khỏi ct_hoadon_banle trước
-                const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
-                if (errCT) {
-                    alert("Không thể xóa chi tiết hóa đơn.");
-                    return;
-                }
-
-                // Sau đó xóa khỏi hoadon_banle
-                const { error: errHD } = await supabase.from('kiemkho').delete().in('sohd', sohdList);
-                if (errHD) {
-                    alert("Không thể xóa hóa đơn.");
-                    return;
-                }
-
-                alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
-                taiDanhSachHoaDon();
-            });
-        }
-
-
-
-        window.onload = function () {
-            // Set ngày mặc định là hôm nay
-            const today = new Date().toISOString().slice(0, 10);
-            document.getElementById('tuNgay').value = today;
-            document.getElementById('denNgay').value = today;
-            taiDanhSachHoaDon();
-        };
-
-        const ipMasp = document.getElementById('locMasp');
-        if (ipMasp) {
-            ipMasp.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') taiDanhSachHoaDon();
-            });
-            ipMasp.addEventListener('input', () => {
-                ipMasp.value = ipMasp.value.toUpperCase();
-            });
-        }
-
-        document.getElementById("loaiTongHop").onchange = taiDanhSachHoaDon;
-
-        // DRAG POPUP (kéo popup)
-        (function dragPopup() {
-            let popup = document.getElementById('popup');
-            let header = document.getElementById('popupHeader');
-            let offsetX, offsetY, isDragging = false;
-            if (header) {
-                header.onmousedown = function (e) {
-                    isDragging = true;
-                    let rect = popup.getBoundingClientRect();
-                    offsetX = e.clientX - rect.left;
-                    offsetY = e.clientY - rect.top;
-                    document.onmousemove = function (ev) {
-                        if (isDragging) {
-                            popup.style.left = (ev.clientX - offsetX) + 'px';
-                            popup.style.top = (ev.clientY - offsetY) + 'px';
-                        }
-                    };
-                    document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
-                };
-            }
-        })();
-
-        // Đóng popup bằng phím ESC
-        document.addEventListener('keydown', function (e) {
-            if (e.key === "Escape") dongPopup();
-        });
-
-
-        document.getElementById('btnCopyHD').onclick = function () {
-            // Lấy bảng chi tiết hóa đơn
-            let table = document.querySelector("#popup table");
-            let rows = Array.from(table.rows);
-            let text = rows.map(row =>
-                Array.from(row.cells).map(cell => cell.innerText).join("\t")
-            ).join("\n");
-            // Copy vào clipboard
-            navigator.clipboard.writeText(text).then(() => {
-                alert("✅ Đã copy dữ liệu vào clipboard, bạn chỉ cần Ctrl+V vào Excel!");
-            });
-        };
-
-        document.getElementById('btnCopyTable').onclick = function () {
-            let rows = Array.from(document.querySelectorAll("tbody#dsHoaDon tr"));
-            if (!rows.length) return alert("Không có dữ liệu để copy!");
-
-            // Vị trí các cột:  0-stt 1-chọn 2-số HĐ 3-ngày 4-ngày sửa 5-nv 6-masp 7-tổngsl 8-size0 ... 16-45
-            let lines = rows
-                .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
-                .map(tr => {
-                    let tds = Array.from(tr.cells);
-                    // Lấy từ cột masp (6) đến 45 (16), tương ứng index 6 đến 16
-                    // Bạn có thể mở rộng nếu có thêm cột khác
-                    return tds.slice(6, 17).map(td => td.innerText).join('\t');
-                });
-
-            let all = lines.join('\n');
-
-            navigator.clipboard.writeText(all).then(() => {
-                alert("✅ Đã copy dải dữ liệu từ Mã SP đến 45! Ctrl+V để dán vào Excel.");
-            });
-        };
-
-
-
-    </script>
-
-    <script>
-        // Supabase project của bạn (dùng anon key)  xax nhan sua hoa don
-        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-
-        // Hàm xác thực nhân viên, gọi ở bất kỳ đâu!
-        async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
-            document.getElementById('maNVCheck').value = '';
-            document.getElementById('matkhauNVCheck').value = '';
-            document.getElementById('msgCheckNV').textContent = '';
-            document.getElementById('popupXacThucNV').style.display = 'block';
-
-            // Đặt lại màu báo lỗi
-            document.getElementById('msgCheckNV').style.color = '#ad3a2b';
-
-            // Xử lý khi bấm nút kiểm tra
-            document.getElementById('btnKiemTraNV').onclick = async function () {
-                const manv = document.getElementById('maNVCheck').value.trim();
-                const mk = document.getElementById('matkhauNVCheck').value.trim();
-                const msg = document.getElementById('msgCheckNV');
-                msg.style.color = '#ad3a2b';
-                msg.textContent = '';
-
-                if (!manv || !mk) {
-                    msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
-                    return;
-                }
-
-                // Import SDK Supabase
-                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-                const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                const { data, error } = await supabase
-                    .from('dmnhanvien')
-                    .select('*')
-                    .eq('manv', manv)
-                    .single();
-
-                if (error || !data) {
-                    msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
-                    return;
-                }
-                if (data.matkhau !== mk) {
-                    msg.textContent = "❌ Mật khẩu không đúng!";
-                    return;
-                }
-                if (!data.xoa_hoadon) { // Nếu cần phân quyền khác thì đổi tên trường này
-                    msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
-                    return;
-                }
-                // Thành công!
-                msg.style.color = 'green';
-                msg.textContent = "✅ Đã xác thực, đang xử lý...";
-                setTimeout(() => {
-                    document.getElementById('popupXacThucNV').style.display = 'none';
-                    msg.textContent = '';
-                    if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data); // Truyền data nếu cần
-                }, 450);
-            };
-        }
-
-        async function kiemKhoTuDong() {
-            // 1. Hiện overlay loading, khóa màn hình
-            document.getElementById('overlayLoading').style.display = 'flex';
-            document.getElementById('msgLoading').textContent = 'Đang thực hiện tạo chứng từ kiểm kho tự động... Vui lòng đợi!';
-
-            try {
-                // 2. Lấy dữ liệu bảng chưa kiểm (như cũ)
-                let rows = Array.from(document.querySelectorAll("#dsHoaDon tr"))
-                    .filter(tr => tr.querySelectorAll("td").length > 0)
-                    .map(tr => {
-                        let tds = Array.from(tr.cells);
-                        return {
-                            stt: tds[0]?.innerText,
-                            sohd: tds[2]?.innerText,
-                            masp: tds[6]?.innerText.trim().toUpperCase(),
-                            diadiem: tds[17]?.innerText.trim(),
-                            ghichu: tds[18]?.innerText.trim(),
-                            sizes: [
-                                Number(tds[8]?.innerText || 0),  // size0
-                                Number(tds[9]?.innerText || 0),  // 38
-                                Number(tds[10]?.innerText || 0), // 39
-                                Number(tds[11]?.innerText || 0), // 40
-                                Number(tds[12]?.innerText || 0), // 41
-                                Number(tds[13]?.innerText || 0), // 42
-                                Number(tds[14]?.innerText || 0), // 43
-                                Number(tds[15]?.innerText || 0), // 44
-                                Number(tds[16]?.innerText || 0), // 45
-                            ]
-                        };
-                    });
-
-                let chuaKiem = rows.filter(row =>
-                    !((row.ghichu || "").includes("đã kiểm")) &&
-                    row.masp && row.masp !== "undefined" && row.masp.trim() !== ""
-                );
-
-                // Kiểm tra trùng mã + địa điểm như cũ...
-                let checkMap = {};
-                let trung = [];
-                chuaKiem.forEach(row => {
-                    let key = row.masp + "::" + row.diadiem;
-                    if (!checkMap[key]) checkMap[key] = [];
-                    checkMap[key].push(row.stt);
-                });
-                for (let key in checkMap) {
-                    if (checkMap[key].length > 1)
-                        trung.push(key + " (dòng: " + checkMap[key].join(", ") + ")");
-                }
-                if (trung.length > 0) {
-                    document.getElementById('overlayLoading').style.display = 'none';
-                    alert("❌ Có mã sản phẩm trùng kiểm kho tại cùng địa điểm chưa được kiểm. Vui lòng kiểm tra:\n" + trung.join("\n"));
-                    return;
-                }
-
-                // 3. Gom tất cả mã cần kiểm để gọi function tồn kho hàng loạt (tăng tốc)
-                const sizeLabels = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
-                let arrAllMasp = [...new Set(chuaKiem.map(r => r.masp))];
-                // Gọi nhiều promise song song để lấy tồn kho từng mã
-                let maspTonMap = {}; // {masp: [tonList]}
-                await Promise.all(arrAllMasp.map(async masp => {
-                    let { data: tonList, error } = await supabase.rpc('timkiemhanghoa', { masp_query: masp });
-                    if (error || !tonList) throw new Error("Lỗi lấy tồn kho cho mã: " + masp);
-                    maspTonMap[masp] = tonList;
-                }));
-
-                // Gom phát sinh nhập/xuất kiểm kho như cũ, nhưng dùng dữ liệu đã lấy hàng loạt!
-                let nhapKiem = {}, xuatKiem = {};
-                let ghiChuUpdates = []; // Gom batch update ghi chú
-
-                for (const row of chuaKiem) {
-                    let masp = row.masp;
-                    if (!masp || masp === "undefined" || masp.length === 0) continue;
-                    let diadiem = row.diadiem || 'cs1';
-                    let tonList = maspTonMap[masp] || [];
-                    // Map tồn kho từng size
-                    let tonSize = {};
-                    tonList.forEach(item => {
-                        if (!item.size) return;
-                        tonSize[item.size] = diadiem == 'cs1' ? Number(item.ton_cs1 || 0) : Number(item.ton_cs2 || 0);
-                    });
-
-                    for (let i = 0; i < sizeLabels.length; i++) {
-                        let sz = sizeLabels[i];
-                        let thucTe = row.sizes[i] || 0;
-                        let tonHT = tonSize[sz] || 0;
-                        if (thucTe > tonHT) {
-                            if (!nhapKiem[diadiem]) nhapKiem[diadiem] = [];
-                            nhapKiem[diadiem].push({ masp, size: sz, sl: thucTe - tonHT });
-                        } else if (thucTe < tonHT) {
-                            if (!xuatKiem[diadiem]) xuatKiem[diadiem] = [];
-                            xuatKiem[diadiem].push({ masp, size: sz, sl: tonHT - thucTe });
-                        }
-                    }
-                    // Gom để lát nữa update ghi chú 1 mẻ
-                    ghiChuUpdates.push({ sohd: row.sohd, masp });
-                }
-
-                // 4. Tạo hóa đơn nhập/xuất kho tự động, gom từng địa điểm
-                let errorDetails = [];
-                for (const diadiem in nhapKiem) {
-                    if (nhapKiem[diadiem].length > 0) {
-                        try {
-                            await taoPhieuKiemKhoAuto('nhapkiem', diadiem, nhapKiem[diadiem]);
-                        } catch (err) {
-                            errorDetails.push(`Lỗi nhập kiểm tại ${diadiem}: ${err.message || err}`);
-                        }
-                    }
-                }
-                for (const diadiem in xuatKiem) {
-                    if (xuatKiem[diadiem].length > 0) {
-                        try {
-                            await taoPhieuKiemKhoAuto('xuatkiem', diadiem, xuatKiem[diadiem]);
-                        } catch (err) {
-                            errorDetails.push(`Lỗi xuất kiểm tại ${diadiem}: ${err.message || err}`);
-                        }
-                    }
-                }
-
-                // 5. Nếu không lỗi mới update ghi chú, thực hiện batch (song song 20 dòng 1 lần)
-                if (errorDetails.length === 0 && ghiChuUpdates.length > 0) {
-                    for (let i = 0; i < ghiChuUpdates.length; i += 20) {
-                        let batch = ghiChuUpdates.slice(i, i + 20);
-                        await Promise.all(batch.map(row =>
-                            supabase.from('kiemkho').update({ ghichu: "đã kiểm" }).eq('sohd', row.sohd).eq('masp', row.masp)
-                        ));
-                    }
-                }
-
-                document.getElementById('overlayLoading').style.display = 'none';
-
-                if (errorDetails.length === 0) {
-                    alert("✅ Đã thực hiện kiểm kho tự động thành công!");
-                    if (typeof taiDanhSachHoaDon === 'function') taiDanhSachHoaDon();
-                } else {
-                    alert("Có lỗi xảy ra khi tạo chứng từ:\n" + errorDetails.join("\n"));
-                }
-
-            } catch (err) {
-                document.getElementById('overlayLoading').style.display = 'none';
-                alert("❌ Lỗi kiểm kho tự động: " + (err.message || err));
-            }
-        }
-
-
-        // Hàm phát sinh số hóa đơn CHUẨN (dùng bảng sochungtu)
-        async function genSohd(loaihd) {
-            let { data, error } = await supabase
-                .from('sochungtu')
-                .select('so_hientai')
-                .eq('loai', loaihd)
-                .maybeSingle();
-            if (error || !data) throw new Error("Không lấy được số chứng từ hiện tại");
-            let num = (data.so_hientai || 0) + 1;
-            let { error: updateError } = await supabase
-                .from('sochungtu')
-                .update({ so_hientai: num })
-                .eq('loai', loaihd);
-            if (updateError) throw new Error("Không cập nhật được số chứng từ mới");
-            return loaihd + '_' + String(num).padStart(5, '0');
-        }
-
-        // Hàm tạo phiếu kiểm kho (1 lần/1 số chứng từ/1 loại/1 địa điểm)
-        // Thêm hàm này trên đầu
-        function getLoaihd(loai, diadiem) {
-            // loai: 'nhapkiem' hoặc 'xuatkiem'
-            // diadiem: 'cs1', 'cs2'
-            return loai + diadiem; // vd: 'nhapkiemcs2'
-        }
-
-        // Sửa lại hàm tạo phiếu kiểm kho chuẩn:
-        async function taoPhieuKiemKhoAuto(loai, diadiem, arrChiTiet) {
-            diadiem = diadiem.toLowerCase();
-            if (diadiem !== 'cs1' && diadiem !== 'cs2') diadiem = 'cs1';
-            let loaihd = getLoaihd(loai, diadiem); // 'nhapkiemcs2'
-            let sohd = await genSohd(loaihd);      // 'nhapkiemcs2_00023'
-            let ngay = new Date().toISOString();
-            await supabase.from('hoadon_banle').upsert([{
-                sohd, loaihd, diadiem, ngay
-            }]);
-            for (const ct of arrChiTiet) {
-                await supabase.from('ct_hoadon_banle').insert([{
-                    sohd, masp: ct.masp, size: ct.size, soluong: ct.sl, diadiem, ngay, created_at: ngay
-                }]);
-            }
-        }
-
-
-
-
-
-    </script>
-
+    
 
     <!-- Popup xác thực nhân viên -->
     <div id="popupXacThucNV"
@@ -881,10 +233,618 @@
             style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm
             tra</button>
         <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
+
+<script type="module">
+  import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm';
+
+  // Dùng client supabase chuẩn của authModule (đã gán vào window.supabase)
+  const supabase = window.supabase;
+
+  // (Tuỳ chọn) client anon riêng để xác thực popup xóa (giữ logic cũ của bạn)
+  const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+  const supabaseCheck = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let rowDangChon = null;
+
+  // ===== Helpers =====
+  function isAdmin() {
+    return localStorage.getItem('is_admin') === 'true';
+  }
+  function canEdit() {
+    return isAdmin() || localStorage.getItem('quyen_sua_hoadon') === 'true';
+  }
+  function canDelete() {
+    return isAdmin() || localStorage.getItem('quyen_xoa_hoadon') === 'true';
+  }
+
+  // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
+  async function getAllHoaDon(query, pageSize = 1000) {
+    let from = 0;
+    let allData = [];
+    while (true) {
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) {
+        alert("❌ Lỗi tải hóa đơn: " + error.message);
+        break;
+      }
+      if (data && data.length > 0) {
+        allData = allData.concat(data);
+        if (data.length < pageSize) break; // Trang cuối cùng
+        from += pageSize;
+      } else break;
+    }
+    return allData;
+  }
+
+  function dinhDangNgay(ngayStr) {
+    if (!ngayStr) return "";
+    const d = new Date(ngayStr);
+    const ngay = d.getDate().toString().padStart(2, "0");
+    const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+    const nam = d.getFullYear();
+    return `${ngay}/${thang}/${nam}`;
+  }
+
+  function dinhDangNgayGio(ngayStr) {
+    if (!ngayStr) return "";
+    // Nếu chuỗi có dạng dd/mm/yyyy thì giữ nguyên (đang tổng hợp)
+    if (ngayStr.match(/^\d{2}\/\d{2}\/\d{4}$/) || ngayStr.match(/^\d{2}\/\d{4}$/) || ngayStr.length === 4) return ngayStr;
+    const d = new Date(ngayStr);
+    const ngay = d.getDate().toString().padStart(2, "0");
+    const thang = (d.getMonth() + 1).toString().padStart(2, "0");
+    const nam = d.getFullYear();
+    const gio = d.getHours().toString().padStart(2, "0");
+    const phut = d.getMinutes().toString().padStart(2, "0");
+    return `${ngay}/${thang}/${nam} ${gio}h${phut}`;
+  }
+
+  async function taiDanhSachHoaDon() {
+    const tuNgay = document.getElementById("tuNgay").value;
+    let denNgay = document.getElementById("denNgay").value;
+    if (denNgay) denNgay = denNgay + "T23:59:59.999";
+
+    const nv = document.getElementById("locNV").value.trim().toUpperCase();
+    const sohd = document.getElementById("locSoHD").value.trim();
+    const khach = document.getElementById("locKhach").value.trim();
+    const tienTu = Number(document.getElementById("tienTu").value);
+    const tienDen = Number(document.getElementById("tienDen").value);
+    const maspTK = (document.getElementById("locMasp")?.value || "").trim().toUpperCase();
+
+    const selectLoai = document.getElementById("loaiChungTu");
+    const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+
+    const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+
+    const tbody = document.getElementById("dsHoaDon");
+    tbody.innerHTML = "";
+
+    let filtered = [];
+
+    // Nếu chọn loại chứng từ: Truy vấn từng loại (gộp lại)
+    if (loaiChungTuArr.length > 0) {
+      let arr = [];
+      for (const loai of loaiChungTuArr) {
+        let query = supabase
+          .from('kiemkho')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .ilike('sohd', `${loai}_%`);
+
+        if (tuNgay && denNgay) query = query.gte('ngaygio', tuNgay).lte('ngaygio', denNgay);
+        else if (tuNgay) query = query.gte('ngaygio', tuNgay);
+        else if (denNgay) query = query.lte('ngaygio', denNgay);
+
+        if (maspTK) query = query.ilike('masp', `%${maspTK}%`);
+
+        if (nv) query = query.ilike('tennv', `%${nv}%`);
+        if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+        if (khach) query = query.ilike('khachhang', `%${khach}%`);
+        if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+        if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+        const data = await getAllHoaDon(query, 1000);
+        arr = arr.concat(data || []);
+      }
+
+      // Loại bỏ trùng
+      const hash = {};
+      filtered = arr.filter(hd => {
+        if (hash[hd.sohd]) return false;
+        hash[hd.sohd] = true;
+        return true;
+      });
+    } else {
+      // Không chọn loại, lấy toàn bộ
+      let query = supabase
+        .from('kiemkho')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (tuNgay && denNgay) query = query.gte('ngaygio', tuNgay).lte('ngaygio', denNgay);
+      else if (tuNgay) query = query.gte('ngaygio', tuNgay);
+      else if (denNgay) query = query.lte('ngaygio', denNgay);
+
+      if (maspTK) query = query.ilike('masp', `%${maspTK}%`);
+
+      if (nv) query = query.ilike('tennv', `%${nv}%`);
+      if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+      if (khach) query = query.ilike('khachhang', `%${khach}%`);
+      if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+      if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+      const data = await getAllHoaDon(query, 1000);
+      filtered = data || [];
+    }
+
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="19">Không có dữ liệu</td></tr>`;
+      document.getElementById('tongSoLuong2').textContent = '0';
+      document.getElementById('tongTien2').textContent = '0';
+      return;
+    }
+
+    // ----------- TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
+    let hienThiData = filtered;
+    if (loaiTongHop !== "chitiet") {
+      const groupMap = new Map();
+      filtered.forEach(hd => {
+        const d = new Date(hd.created_at);
+        let key = "";
+        if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+        if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+        if (loaiTongHop === "nam") key = d.getFullYear() + "";
+        if (!groupMap.has(key)) {
+          groupMap.set(key, {
+            sohd: 1,
+            created_at: hd.created_at,
+            tongsl: Number(hd.tongsl || 0),
+            thanhtoan: Number(hd.thanhtoan || 0)
+          });
+        } else {
+          const obj = groupMap.get(key);
+          obj.sohd += 1;
+          obj.tongsl += Number(hd.tongsl || 0);
+          obj.thanhtoan += Number(hd.thanhtoan || 0);
+        }
+      });
+      hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
+        if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+        if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
+        if (loaiTongHop === "nam") val.created_at = key;
+        return val;
+      });
+    }
+
+    // ------------- HIỂN THỊ RA BẢNG -------------
+    hienThiData.forEach((hd, idx) => {
+      const tr = document.createElement("tr");
+      const sizes = [
+        Number(hd.size0 || 0),
+        Number(hd.size38 || 0),
+        Number(hd.size39 || 0),
+        Number(hd.size40 || 0),
+        Number(hd.size41 || 0),
+        Number(hd.size42 || 0),
+        Number(hd.size43 || 0),
+        Number(hd.size44 || 0),
+        Number(hd.size45 || 0)
+      ];
+      const tongSL = sizes.reduce((a, b) => a + b, 0);
+
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+        <td>${hd.sohd || ""}</td>
+        <td>${dinhDangNgay(hd.ngaygio)}</td>
+        <td>${dinhDangNgayGio(hd.created_at)}</td>
+        <td>${hd.tennv || ""}</td>
+        <td>${hd.masp || ""}</td>
+        <td>${tongSL || 0}</td>
+        <td>${hd.size0 ?? ""}</td>
+        <td>${hd.size38 ?? ""}</td>
+        <td>${hd.size39 ?? ""}</td>
+        <td>${hd.size40 ?? ""}</td>
+        <td>${hd.size41 ?? ""}</td>
+        <td>${hd.size42 ?? ""}</td>
+        <td>${hd.size43 ?? ""}</td>
+        <td>${hd.size44 ?? ""}</td>
+        <td>${hd.size45 ?? ""}</td>
+        <td>${hd.diadiem || ""}</td>
+        <td>${hd.ghichu || ""}</td>
+      `;
+
+      tr.onclick = (e) => {
+        if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
+          document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
+          tr.style.backgroundColor = "#ffe066";
+          rowDangChon = tr;
+        }
+      };
+
+      document.getElementById("dsHoaDon").appendChild(tr);
+    });
+
+    // checkbox "chọn tất cả"
+    const chonTatCa = document.getElementById('chonTatCaHD');
+    if (chonTatCa) {
+      chonTatCa.onclick = function () {
+        const checkboxes = document.querySelectorAll('.chonHD');
+        checkboxes.forEach(cb => { cb.checked = chonTatCa.checked; });
+      };
+    }
+
+    // ------------- TỔNG -------------
+    let tongSL = 0, tongTien = 0;
+    hienThiData.forEach(hd => {
+      tongSL += Number(hd.tongsl || 0);
+      tongTien += Number(hd.thanhtoan || 0);
+    });
+    document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
+    document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
+  }
+
+  function dongPopup() {
+    document.getElementById("popup").style.display = "none";
+  }
+
+  async function xoaHoaDonDaChon() {
+    const checkboxes = document.querySelectorAll(".chonHD:checked");
+    const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd).filter(Boolean);
+
+    if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+
+    // Admin -> cho xóa luôn; Nhân viên -> vẫn popup xác thực như cũ
+    const runDelete = async () => {
+      if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} chứng từ khỏi hệ thống?`)) return;
+
+      const { error: errHD } = await supabase.from('kiemkho').delete().in('sohd', sohdList);
+      if (errHD) return alert("Không thể xóa chứng từ: " + errHD.message);
+
+      alert(`✅ Đã xóa ${sohdList.length} chứng từ.`);
+      taiDanhSachHoaDon();
+    };
+
+    if (isAdmin()) return runDelete();
+
+    // Nếu bạn có cờ quyen_xoa_hoadon thì cho qua luôn
+    if (canDelete()) return runDelete();
+
+    // Nếu không có quyền sẵn -> popup xác thực nhân viên (giữ logic cũ)
+    kiemTraNhanVienTruocKhiXoa(() => runDelete());
+  }
+
+  // ===== Popup xác thực nhân viên trước khi xóa (giữ logic cũ nhưng không còn lỗi "supabase redeclared") =====
+  async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+    document.getElementById('maNVCheck').value = '';
+    document.getElementById('matkhauNVCheck').value = '';
+    document.getElementById('msgCheckNV').textContent = '';
+    document.getElementById('popupXacThucNV').style.display = 'block';
+    document.getElementById('msgCheckNV').style.color = '#ad3a2b';
+
+    document.getElementById('btnKiemTraNV').onclick = async function () {
+      const manv = document.getElementById('maNVCheck').value.trim().toUpperCase();
+      const mk = document.getElementById('matkhauNVCheck').value.trim();
+      const msg = document.getElementById('msgCheckNV');
+      msg.style.color = '#ad3a2b';
+      msg.textContent = '';
+
+      if (!manv || !mk) {
+        msg.textContent = "Vui lòng nhập đủ mã NV và mật khẩu!";
+        return;
+      }
+
+      const { data, error } = await supabaseCheck
+        .from('dmnhanvien')
+        .select('*')
+        .eq('manv', manv)
+        .maybeSingle();
+
+      if (error || !data) {
+        msg.textContent = "❌ Sai mã nhân viên hoặc không tồn tại!";
+        return;
+      }
+      if (data.matkhau !== mk) {
+        msg.textContent = "❌ Mật khẩu không đúng!";
+        return;
+      }
+      if (!data.xoa_hoadon) {
+        msg.textContent = "❌ Bạn không có quyền thực hiện thao tác này!";
+        return;
+      }
+
+      msg.style.color = 'green';
+      msg.textContent = "✅ Đã xác thực, đang xử lý...";
+      setTimeout(() => {
+        document.getElementById('popupXacThucNV').style.display = 'none';
+        msg.textContent = '';
+        if (typeof callbackSauXacThuc === 'function') callbackSauXacThuc(data);
+      }, 350);
+    };
+  }
+
+  // ===== KIỂM KHO TỰ ĐỘNG (chỉ admin / người có quyền sửa) =====
+  async function kiemKhoTuDong() {
+    if (!canEdit()) {
+      alert("❌ Bạn không có quyền thực hiện Kiểm kho tự động.");
+      return;
+    }
+
+    document.getElementById('overlayLoading').style.display = 'flex';
+    document.getElementById('msgLoading').textContent = 'Đang thực hiện tạo chứng từ kiểm kho tự động... Vui lòng đợi!';
+
+    try {
+      let rows = Array.from(document.querySelectorAll("#dsHoaDon tr"))
+        .filter(tr => tr.querySelectorAll("td").length > 0)
+        .map(tr => {
+          let tds = Array.from(tr.cells);
+          return {
+            stt: tds[0]?.innerText,
+            sohd: tds[2]?.innerText,
+            masp: tds[6]?.innerText.trim().toUpperCase(),
+            diadiem: tds[17]?.innerText.trim(),
+            ghichu: tds[18]?.innerText.trim(),
+            sizes: [
+              Number(tds[8]?.innerText || 0),
+              Number(tds[9]?.innerText || 0),
+              Number(tds[10]?.innerText || 0),
+              Number(tds[11]?.innerText || 0),
+              Number(tds[12]?.innerText || 0),
+              Number(tds[13]?.innerText || 0),
+              Number(tds[14]?.innerText || 0),
+              Number(tds[15]?.innerText || 0),
+              Number(tds[16]?.innerText || 0),
+            ]
+          };
+        });
+
+      let chuaKiem = rows.filter(row =>
+        !((row.ghichu || "").includes("đã kiểm")) &&
+        row.masp && row.masp !== "undefined" && row.masp.trim() !== ""
+      );
+
+      // Check trùng mã + địa điểm
+      let checkMap = {};
+      let trung = [];
+      chuaKiem.forEach(row => {
+        let key = row.masp + "::" + row.diadiem;
+        if (!checkMap[key]) checkMap[key] = [];
+        checkMap[key].push(row.stt);
+      });
+      for (let key in checkMap) {
+        if (checkMap[key].length > 1)
+          trung.push(key + " (dòng: " + checkMap[key].join(", ") + ")");
+      }
+      if (trung.length > 0) {
+        document.getElementById('overlayLoading').style.display = 'none';
+        alert("❌ Có mã sản phẩm trùng kiểm kho tại cùng địa điểm chưa được kiểm. Vui lòng kiểm tra:\n" + trung.join("\n"));
+        return;
+      }
+
+      const sizeLabels = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+      let arrAllMasp = [...new Set(chuaKiem.map(r => r.masp))];
+
+      let maspTonMap = {};
+      await Promise.all(arrAllMasp.map(async masp => {
+        let { data: tonList, error } = await supabase.rpc('timkiemhanghoa', { masp_query: masp });
+        if (error || !tonList) throw new Error("Lỗi lấy tồn kho cho mã: " + masp);
+        maspTonMap[masp] = tonList;
+      }));
+
+      let nhapKiem = {}, xuatKiem = {};
+      let ghiChuUpdates = [];
+
+      for (const row of chuaKiem) {
+        let masp = row.masp;
+        if (!masp || masp === "undefined" || masp.length === 0) continue;
+        let diadiem = (row.diadiem || 'cs1').toLowerCase();
+        let tonList = maspTonMap[masp] || [];
+        let tonSize = {};
+        tonList.forEach(item => {
+          if (!item.size) return;
+          tonSize[item.size] = diadiem === 'cs1' ? Number(item.ton_cs1 || 0) : Number(item.ton_cs2 || 0);
+        });
+
+        for (let i = 0; i < sizeLabels.length; i++) {
+          let sz = sizeLabels[i];
+          let thucTe = row.sizes[i] || 0;
+          let tonHT = tonSize[sz] || 0;
+          if (thucTe > tonHT) {
+            if (!nhapKiem[diadiem]) nhapKiem[diadiem] = [];
+            nhapKiem[diadiem].push({ masp, size: sz, sl: thucTe - tonHT });
+          } else if (thucTe < tonHT) {
+            if (!xuatKiem[diadiem]) xuatKiem[diadiem] = [];
+            xuatKiem[diadiem].push({ masp, size: sz, sl: tonHT - thucTe });
+          }
+        }
+
+        ghiChuUpdates.push({ sohd: row.sohd, masp });
+      }
+
+      let errorDetails = [];
+      for (const diadiem in nhapKiem) {
+        if (nhapKiem[diadiem].length > 0) {
+          try { await taoPhieuKiemKhoAuto('nhapkiem', diadiem, nhapKiem[diadiem]); }
+          catch (err) { errorDetails.push(`Lỗi nhập kiểm tại ${diadiem}: ${err.message || err}`); }
+        }
+      }
+      for (const diadiem in xuatKiem) {
+        if (xuatKiem[diadiem].length > 0) {
+          try { await taoPhieuKiemKhoAuto('xuatkiem', diadiem, xuatKiem[diadiem]); }
+          catch (err) { errorDetails.push(`Lỗi xuất kiểm tại ${diadiem}: ${err.message || err}`); }
+        }
+      }
+
+      if (errorDetails.length === 0 && ghiChuUpdates.length > 0) {
+        for (let i = 0; i < ghiChuUpdates.length; i += 20) {
+          let batch = ghiChuUpdates.slice(i, i + 20);
+          await Promise.all(batch.map(row =>
+            supabase.from('kiemkho').update({ ghichu: "đã kiểm" }).eq('sohd', row.sohd).eq('masp', row.masp)
+          ));
+        }
+      }
+
+      document.getElementById('overlayLoading').style.display = 'none';
+
+      if (errorDetails.length === 0) {
+        alert("✅ Đã thực hiện kiểm kho tự động thành công!");
+        taiDanhSachHoaDon();
+      } else {
+        alert("Có lỗi xảy ra khi tạo chứng từ:\n" + errorDetails.join("\n"));
+      }
+    } catch (err) {
+      document.getElementById('overlayLoading').style.display = 'none';
+      alert("❌ Lỗi kiểm kho tự động: " + (err.message || err));
+    }
+  }
+
+  // ===== Sinh số chứng từ chuẩn (sochungtu) =====
+  async function genSohd(loaihd) {
+    let { data, error } = await supabase
+      .from('sochungtu')
+      .select('so_hientai')
+      .eq('loai', loaihd)
+      .maybeSingle();
+
+    if (error || !data) throw new Error("Không lấy được số chứng từ hiện tại");
+
+    let num = (data.so_hientai || 0) + 1;
+
+    let { error: updateError } = await supabase
+      .from('sochungtu')
+      .update({ so_hientai: num })
+      .eq('loai', loaihd);
+
+    if (updateError) throw new Error("Không cập nhật được số chứng từ mới");
+    return loaihd + '_' + String(num).padStart(5, '0');
+  }
+
+  function getLoaihd(loai, diadiem) {
+    return loai + diadiem; // vd: 'nhapkiemcs2'
+  }
+
+  async function taoPhieuKiemKhoAuto(loai, diadiem, arrChiTiet) {
+    diadiem = String(diadiem || '').toLowerCase();
+    if (diadiem !== 'cs1' && diadiem !== 'cs2') diadiem = 'cs1';
+
+    let loaihd = getLoaihd(loai, diadiem);
+    let sohd = await genSohd(loaihd);
+    let ngay = new Date().toISOString();
+
+    await supabase.from('hoadon_banle').upsert([{ sohd, loaihd, diadiem, ngay }]);
+
+    for (const ct of arrChiTiet) {
+      await supabase.from('ct_hoadon_banle').insert([{
+        sohd, masp: ct.masp, size: ct.size, soluong: ct.sl, diadiem, ngay, created_at: ngay
+      }]);
+    }
+  }
+
+  // ===== Init sau khi đăng nhập =====
+  function initAfterLogin() {
+    const today = new Date().toISOString().slice(0, 10);
+    const tuNgayEl = document.getElementById('tuNgay');
+    const denNgayEl = document.getElementById('denNgay');
+    if (tuNgayEl && !tuNgayEl.value) tuNgayEl.value = today;
+    if (denNgayEl && !denNgayEl.value) denNgayEl.value = today;
+
+    // event lọc nhanh
+    const ipMasp = document.getElementById('locMasp');
+    if (ipMasp) {
+      ipMasp.addEventListener('keydown', (e) => { if (e.key === 'Enter') taiDanhSachHoaDon(); });
+      ipMasp.addEventListener('input', () => { ipMasp.value = ipMasp.value.toUpperCase(); });
+    }
+
+    const loaiTongHopEl = document.getElementById("loaiTongHop");
+    if (loaiTongHopEl) loaiTongHopEl.onchange = taiDanhSachHoaDon;
+
+    // copy buttons
+    const btnCopyTable = document.getElementById('btnCopyTable');
+    if (btnCopyTable) {
+      btnCopyTable.onclick = function () {
+        let rows = Array.from(document.querySelectorAll("tbody#dsHoaDon tr"));
+        if (!rows.length) return alert("Không có dữ liệu để copy!");
+        let lines = rows
+          .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
+          .map(tr => {
+            let tds = Array.from(tr.cells);
+            return tds.slice(6, 17).map(td => td.innerText).join('\t');
+          });
+        navigator.clipboard.writeText(lines.join('\n')).then(() => {
+          alert("✅ Đã copy dải dữ liệu từ Mã SP đến 45! Ctrl+V để dán vào Excel.");
+        });
+      };
+    }
+
+    const btnCopyHD = document.getElementById('btnCopyHD');
+    if (btnCopyHD) {
+      btnCopyHD.onclick = function () {
+        let table = document.querySelector("#popup table");
+        if (!table) return;
+        let rows = Array.from(table.rows);
+        let text = rows.map(row =>
+          Array.from(row.cells).map(cell => cell.innerText).join("\t")
+        ).join("\n");
+        navigator.clipboard.writeText(text).then(() => {
+          alert("✅ Đã copy dữ liệu vào clipboard, bạn chỉ cần Ctrl+V vào Excel!");
+        });
+      };
+    }
+
+    // ESC đóng popup
+    document.addEventListener('keydown', function (e) {
+      if (e.key === "Escape") dongPopup();
+    });
+
+    // drag popup
+    (function dragPopup() {
+      let popup = document.getElementById('popup');
+      let header = document.getElementById('popupHeader');
+      let offsetX, offsetY, isDragging = false;
+      if (header && popup) {
+        header.onmousedown = function (e) {
+          isDragging = true;
+          let rect = popup.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          document.onmousemove = function (ev) {
+            if (isDragging) {
+              popup.style.left = (ev.clientX - offsetX) + 'px';
+              popup.style.top = (ev.clientY - offsetY) + 'px';
+            }
+          };
+          document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
+        };
+      }
+    })();
+
+    // tải dữ liệu lần đầu
+    taiDanhSachHoaDon();
+  }
+
+  // ===== Expose để onclick trong HTML vẫn hoạt động =====
+  window.taiDanhSachHoaDon = taiDanhSachHoaDon;
+  window.xoaHoaDonDaChon = xoaHoaDonDaChon;
+  window.kiemKhoTuDong = kiemKhoTuDong;
+  window.dongPopup = dongPopup;
+
+  // ===== Khởi tạo đăng nhập chuẩn authModule =====
+  khoiTaoDangNhapDungChung({
+    loginContainerId: 'login-container',
+    appContainerId: 'app-container',
+    macDinhDiaDiem: (localStorage.getItem('diadiem') || 'cs1'),
+    tuDongKhoaCoSo: false,
+    onLoginSuccess: () => {
+      initAfterLogin();
+    }
+  });
+</script>
+
             style="margin-left:8px;">Hủy</button>
     </div>
 
-
+  </div>
 </body>
 
 </html>
