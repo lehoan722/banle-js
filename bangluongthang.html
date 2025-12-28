@@ -231,39 +231,33 @@
 
   <!-- Hàng rào đăng nhập chuẩn cho Bảng lương tháng -->
   <script type="module">
-
     import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-    // Chờ bangluongthang.js gắn các hàm ra window (tránh lỗi load theo thứ tự)
-    async function waitBangLuongReady(timeoutMs = 8000) {
-      const start = Date.now();
-      while (!window.__bangluongReady) {
-        if (Date.now() - start > timeoutMs) break;
-        await new Promise(r => setTimeout(r, 50));
-      }
-    }
-
     khoiTaoDangNhapDungChung({
-      appContainerId: 'app-container',
+      appContainerId: 'app',        // hoặc 'app-container' tuỳ bạn đang dùng id nào
       macDinhDiaDiem: '',
       tuDongKhoaCoSo: false,
-      loginApiPath: '/api/login-cs1',
 
       async onLoginSuccess(nv, ctx) {
-        await waitBangLuongReady();
-
-        // 1) Kiểm tra quyền xem trang (người thường) / admin cho vào thẳng
+        // 1. Kiểm tra quyền xem trang theo bảng phân quyền
         if (window.kiemTraQuyenXemTrang) {
           const ok = await window.kiemTraQuyenXemTrang("bangluongthang.html");
-          if (!ok) return;
+          if (!ok) {
+            // kiemTraQuyenXemTrang đã tự hiển thị thông báo cấm truy cập
+            return;
+          }
         }
 
-        // 2) Cho hiển thị app & load dữ liệu
-        const appDiv = document.getElementById('app-container');
+        // 2. Nếu qua được bước 1 -> cho hiển thị app & load dữ liệu
+        const appDiv = document.getElementById('app');
         if (appDiv) appDiv.style.display = '';
 
-        if (window.taiBangLuong) await window.taiBangLuong();
-        if (window.taiBangCong) await window.taiBangCong();
+        if (window.taiBangLuong) {
+          await window.taiBangLuong();
+        }
+        if (window.taiBangCong) {
+          await window.taiBangCong();
+        }
       }
     });
 
