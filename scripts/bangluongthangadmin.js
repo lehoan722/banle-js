@@ -297,6 +297,11 @@ function renderLuongHot(data) {
     dropdownMenu: true,
     columnSorting: true,
     wordWrap: true,
+    // ✅ QUAN TRỌNG: đặt chiều cao header đủ cho 2 dòng
+  columnHeaderHeight: 44,  // bạn có thể chỉnh 40/44/48 tuỳ header dài
+
+  // (khuyến nghị) chiều cao dòng dữ liệu ổn định
+  rowHeights: 26,
     hiddenColumns: hiddenColsConfig,
     licenseKey: "non-commercial-and-evaluation"
   };
@@ -305,6 +310,7 @@ function renderLuongHot(data) {
     hotLuong = new HOT(hotLuongContainer, settings);
   } else {
     hotLuong.updateSettings(settings);
+    hotLuong.render();
   }
 }
 
