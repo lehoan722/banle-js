@@ -491,13 +491,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
           if (uid) {
             const { data: nv, error: nvErr } = await window.supabase
               .from("dmnhanvien")
-              .select("manv, tennv, sua_hoadon, xoa_hoadon, active")
+              .select("manv, tennv, sua_hoadon, xoa_hoadon")
               .eq("user_id", uid)
               .maybeSingle();
 
             if (!nvErr && nv) {
-              if (nv.active === false) {
-                await window.supabase.auth.signOut().catch(() => { });
+              if (nv && Object.prototype.hasOwnProperty.call(nv, "active") && nv.active === false) {
+                await window.supabase.auth.signOut().catch(() => {});
                 throw new Error("Tài khoản nhân viên đang bị khóa");
               }
 
