@@ -3,8 +3,8 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bảng lương tháng - tất cả nhân viên</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Handsontable CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
@@ -25,23 +25,30 @@
 
     .card {
       background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
       margin-bottom: 8px;
     }
 
-    label {
-      font-size: 13px;
-      margin-right: 4px;
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
     }
 
-    input[type="date"],
-    input[type="number"],
-    select {
-      padding: 2px 4px;
-      font-size: 13px;
+    label {
+      font-size: 12px;
+      color: #333;
       margin-right: 4px;
+      white-space: nowrap;
+    }
+
+    input,
+    select {
+      padding: 4px 6px;
+      font-size: 12px;
     }
 
     button {
@@ -66,7 +73,6 @@
       border-radius: 4px;
     }
 
-
     table {
       border-collapse: collapse;
       width: 100%;
@@ -76,22 +82,20 @@
     th,
     td {
       border: 1px solid #ddd;
-      padding: 3px 4px;
+      padding: 4px 6px;
       text-align: right;
+      white-space: nowrap;
     }
 
-    th:first-child,
-    td:first-child {
+    th {
+      background: #eee;
+      text-align: center;
+    }
+
+    td:first-child,
+    td:nth-child(2),
+    td:nth-child(3) {
       text-align: left;
-    }
-
-    th:nth-child(2),
-    td:nth-child(2) {
-      text-align: left;
-    }
-
-    .table-secondary {
-      background-color: #e9ecef;
     }
 
     .fw-bold {
@@ -107,75 +111,87 @@
       white-space: normal !important;
       line-height: 1.2;
     }
+
+    /* ===== Auto fit column width theo dữ liệu (cho bảng HTML) ===== */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    /* Bảng sẽ rộng theo nội dung, nếu vượt màn hình sẽ có scroll ngang */
+    .table-auto {
+      width: max-content !important;
+      min-width: 100%;
+      table-layout: auto !important;
+    }
+
+    .table-auto th,
+    .table-auto td {
+      white-space: nowrap;
+    }
   </style>
 </head>
 
 <body>
-  <!-- Bọc toàn bộ app bằng app-container -->
-  <div id="app-container">
+  <div class="card">
+    <h1 style="font-size: 16px; margin-bottom: 6px">
+      Bảng lương tháng - tất cả nhân viên
+    </h1>
 
-    <!-- KHUNG TRÊN: THÔNG TIN TÍNH LƯƠNG -->
-    <div class="card">
-      <h1 style="font-size: 16px; text-align: center; margin-bottom: 8px">
-        Bảng lương tháng - tất cả nhân viên
-      </h1>
-
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
-        <div>
-          <label for="tu_ngay">Từ ngày:</label>
-          <input type="date" id="tu_ngay" />
-        </div>
-
-        <div>
-          <label for="den_ngay">Đến ngày:</label>
-          <input type="date" id="den_ngay" />
-        </div>
-
-        <div>
-          <label for="diadiem">Cơ sở:</label>
-          <select id="diadiem">
-            <option value="">Tất cả</option>
-            <option value="cs1">cs1</option>
-            <option value="cs2">cs2</option>
-          </select>
-        </div>
+    <div class="row">
+      <div>
+        <label for="tu_ngay">Từ ngày:</label>
+        <input type="date" id="tu_ngay" />
       </div>
 
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px">
-        <div>
-          <label for="luong_gio">Lương/giờ (VND):</label>
-          <input type="number" id="luong_gio" value="26000" />
-        </div>
-
-        <div>
-          <label for="khoan_gio">Khoán doanh thu / giờ (VND):</label>
-          <input type="number" id="khoan_gio" value="700000" />
-        </div>
-
-        <div>
-          <label for="pct_thuong">% thưởng trên phần vượt khoán:</label>
-          <input type="number" id="pct_thuong" value="1" step="0.1" />
-        </div>
-
-        <div style="align-self: flex-end">
-          <button id="btn-tai">Tải bảng lương</button>
-        </div>
+      <div>
+        <label for="den_ngay">Đến ngày:</label>
+        <input type="date" id="den_ngay" />
       </div>
 
-      <div id="status"></div>
+      <div>
+        <label for="diadiem">Cơ sở:</label>
+        <select id="diadiem">
+          <option value="">Tất cả</option>
+          <option value="cs1">cs1</option>
+          <option value="cs2">cs2</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="luong_gio">Lương/giờ (VND):</label>
+        <input id="luong_gio" type="number" value="26000" />
+      </div>
+
+      <div>
+        <label for="khoan_gio">Khoán doanh thu / giờ (VND):</label>
+        <input id="khoan_gio" type="number" value="700000" />
+      </div>
+
+      <div>
+        <label for="pct_thuong">% thưởng trên phần vượt khoán:</label>
+        <input id="pct_thuong" type="number" value="1" step="0.1" />
+      </div>
+
+      <div style="align-self: flex-end">
+        <button id="btn-tai">Tải bảng lương</button>
+      </div>
     </div>
 
-    <!-- DANH SÁCH LƯƠNG -->
+    <div id="status"></div>
+  </div>
 
-    <div class="card">
-      <h2 style="font-size: 14px; margin-bottom: 4px">Danh sách lương</h2>
+  <!-- DANH SÁCH LƯƠNG -->
+  <div class="card">
+    <h2 style="font-size: 14px; margin-bottom: 4px">Danh sách lương</h2>
 
-      <!-- Bảng lương dùng Handsontable -->
-      <div id="hotLuong" class="hot-container"></div>
+    <!-- Handsontable -->
+    <div id="hotLuong" class="hot-container"></div>
 
-      <!-- Bảng HTML cũ: luôn hiển thị (fallback) -->
-      <div style="max-height: 480px; overflow: auto; margin-top: 6px; display:none;">
-        <table>
+    <!-- Bảng HTML cũ: luôn hiển thị (fallback) -->
+    <div style="max-height: 480px; overflow: auto; margin-top: 6px; display:none;">
+      <div class="table-wrap">
+        <table id="bangluongTable" class="table-auto">
           <thead>
             <tr>
               <th>Mã NV</th>
@@ -197,39 +213,51 @@
         </table>
       </div>
     </div>
+  </div>
 
-    <!-- BẢNG CÔNG THÁNG -->
-    <div class="card">
-      <h2 style="font-size: 14px; margin-bottom: 4px">BẢNG CÔNG THÁNG</h2>
+  <!-- BẢNG CÔNG THÁNG -->
+  <div class="card">
+    <h2 style="font-size: 14px; margin-bottom: 4px">BẢNG CÔNG THÁNG</h2>
 
-      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px">
-        <div>
-          <label for="bc-thang">Tháng:</label>
-          <input type="number" id="bc-thang" min="1" max="12" value="1" style="width: 60px" />
-        </div>
-        <div>
-          <label for="bc-nam">Năm:</label>
-          <input type="number" id="bc-nam" value="2025" style="width: 80px" />
-        </div>
-        <div>
-          <button onclick="taiBangCong()">Tải bảng công</button>
-        </div>
+    <div class="row" style="margin-bottom:6px;">
+      <div>
+        <label for="bc-thang">Tháng:</label>
+        <input id="bc-thang" type="number" min="1" max="12" style="width:70px;" />
       </div>
+      <div>
+        <label for="bc-nam">Năm:</label>
+        <input id="bc-nam" type="number" style="width:90px;" />
+      </div>
+      <div>
+        <button id="btn-bangcong">Tải bảng công</button>
+      </div>
+    </div>
 
-      <!-- Bảng công dùng Handsontable -->
-      <div id="hotBangCong" class="hot-container"></div>
+    <!-- Handsontable -->
+    <div id="hotBangCong" class="hot-container"></div>
 
-      <!-- Bảng HTML cũ: ẩn, chỉ dùng làm fallback --> 
-      <div class="table-responsive mt-2" style="max-height: 500px; overflow: auto; display:none;">
-        <table class="table table-bordered table-sm">
+    <!-- Bảng HTML cũ: ẩn, chỉ dùng làm fallback -->
+    <div class="table-responsive mt-2" style="max-height: 500px; overflow: auto; display:none;">
+      <div class="table-wrap">
+        <table id="bangcongTable" class="table table-bordered table-sm table-auto">
           <thead id="thead-bangcong" class="table-dark"></thead>
           <tbody id="tbody-bangcong"></tbody>
         </table>
       </div>
     </div>
   </div>
+
   <!-- Handsontable JS -->
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+
+  <script>
+    // Tự động ước lượng độ rộng cột theo nội dung (Handsontable)
+    // LƯU Ý: sẽ có tác dụng nếu file JS không ép colWidths hoặc stretchH="all"
+    if (window.Handsontable) {
+      Handsontable.DefaultSettings.autoColumnSize = { useHeaders: true, syncLimit: 2000 };
+      Handsontable.DefaultSettings.stretchH = 'none';
+    }
+  </script>
 
   <!-- Script xử lý -->
   <script type="module" src="./scripts/bangluongthangadmin.js"></script>
