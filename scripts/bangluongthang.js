@@ -1,9 +1,9 @@
 // bangluongthang.js - Bảng lương tháng tất cả nhân viên
 import * as authModule from "./authModule.js";
 
-// Dùng chung 1 Supabase client do authModule khởi tạo (tránh tạo nhiều GoTrueClient)
-const supabase = window.supabase;
 
+// Dùng chung 1 Supabase client đã đồng bộ session trong authModule
+const supabase = authModule.getSupabaseClient();
 const tuNgayInput = document.getElementById("tu_ngay");
 const denNgayInput = document.getElementById("den_ngay");
 const diadiemSelect = document.getElementById("diadiem");
@@ -58,7 +58,8 @@ async function kiemTraQuyenXemTrang(pathTrang) {
   }
 
   // 4. Cho phép hiển thị trang
-  document.getElementById("app").style.display = "";
+  const appEl = document.getElementById("app-container") || document.getElementById("app");
+  if (appEl) appEl.style.display = "";
   return true;
 }
 
@@ -615,28 +616,57 @@ async function taiBangCong() {
 // ===================== INIT =====================
 
 document.addEventListener("DOMContentLoaded", () => {
-  setDefaultDates();
-  setStatus(
-    "Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương."
-  );
-  btnTai.addEventListener("click", taiBangLuong);
+// 0) Khởi tạo "hàng rào đăng nhập" theo authModule (chuẩn mới)
+authModule.khoiTaoDangNhapDungChung({
+  appContainerId: "app-container",
+  macDinhDiaDiem: "",
+  tuDongKhoaCoSo: false,
+  // ✅ Quan trọng: API login phải theo cơ sở người dùng chọn (cs1/cs2)
+  loginApiPath: (cs) => `/api/login-${cs}`,
 
-  const today = new Date();
-  const thangEl = document.getElementById("bc-thang");
-  const namEl = document.getElementById("bc-nam");
-  if (thangEl && namEl) {
-    thangEl.value = today.getMonth() + 1;
-    namEl.value = today.getFullYear();
+  async onLoginSuccess(nv, ctx) {
+    // 1) Kiểm tra quyền xem trang theo bảng phân quyền
+    const ok = await kiemTraQuyenXemTrang("bangluongthang.html");
+    if (!ok) return false; // giữ overlay (kiemTraQuyenXemTrang sẽ tự hiển thị thông báo)
+
+    // 2) Đồng bộ lọc cơ sở (tuỳ nhu cầu)
+    // - Admin: cho chọn "Tất cả" hoặc cs1/cs2
+    // - NV thường: tự set cơ sở theo tài khoản để tránh xem chéo
+    try {
+      if (nv && !nv.is_admin) {
+        const cs = (nv.diadiem || localStorage.getItem("diadiem") || "").trim();
+        if (cs && diadiemSelect) {
+          diadiemSelect.value = cs;
+          diadiemSelect.disabled = true;
+        }
+      }
+    } catch (e) {}
+
+    // 3) Load dữ liệu sau khi login OK (tránh lỗi timing khi auto-session)
+    if (typeof taiBangLuong === "function") await taiBangLuong();
+    if (typeof taiBangCong === "function") await taiBangCong();
   }
-
-  // tự tải khi mở trang
-  //taiBangLuong();
-  //taiBangCong();
 });
 
-// Cho phép gọi từ bên ngoài (authModule)
+// 1) Thiết lập input mặc định
+setDefaultDates();
+setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
+
+// 2) Button load lương
+btnTai.addEventListener("click", taiBangLuong);
+
+// 3) Default tháng/năm cho bảng công
+const today = new Date();
+const thangEl = document.getElementById("bc-thang");
+const namEl = document.getElementById("bc-nam");
+if (thangEl && namEl) {
+  thangEl.value = today.getMonth() + 1;
+  namEl.value = today.getFullYear();
+}
+
+// 4) Expose các hàm cho HTML onclick / module khác
 window.taiBangLuong = taiBangLuong;
 window.taiBangCong = taiBangCong;
-
-// Expose để authModule gọi kiểm tra quyền
 window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
+});
+
