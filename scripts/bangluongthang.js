@@ -1,9 +1,7 @@
 // bangluongthang.js - Bảng lương tháng tất cả nhân viên
+import { supabase } from "./supabaseClient.js";
 import * as authModule from "./authModule.js";
 
-
-// Dùng chung 1 Supabase client đã đồng bộ session trong authModule
-const supabase = authModule.getSupabaseClient();
 const tuNgayInput = document.getElementById("tu_ngay");
 const denNgayInput = document.getElementById("den_ngay");
 const diadiemSelect = document.getElementById("diadiem");
@@ -58,8 +56,7 @@ async function kiemTraQuyenXemTrang(pathTrang) {
   }
 
   // 4. Cho phép hiển thị trang
-  const appEl = document.getElementById("app-container") || document.getElementById("app");
-  if (appEl) appEl.style.display = "";
+  document.getElementById("app").style.display = "";
   return true;
 }
 
@@ -485,30 +482,10 @@ async function taiBangCong() {
 
   tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
 
-  let { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
+  const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
     p_month: thang,
     p_year: nam
   });
-
-  // ✅ FIX: nếu là ADMIN mà function trả rỗng (thường do function đang lọc theo auth.uid() trong dmnhanvien),
-  // thử gọi function admin (nếu bạn tạo thêm ở DB) để lấy đủ dữ liệu.
-  try {
-    if ((!error) && (!data || data.length === 0)) {
-      const nv = await authModule.getCurrentUserInfo();
-      if (nv?.is_admin) {
-        const alt = await supabase.rpc("chamcong_bangcong_monthly_admin", {
-          p_month: thang,
-          p_year: nam
-        });
-        if (!alt.error && alt.data && alt.data.length > 0) {
-          data = alt.data;
-        }
-      }
-    }
-  } catch (e) {
-    // ignore - nếu DB chưa có function *_admin thì bỏ qua
-  }
-
 
   if (error) {
     console.error(error);
@@ -520,13 +497,7 @@ async function taiBangCong() {
   if (!data || data.length === 0) {
     thead.innerHTML = "";
     tbody.innerHTML = `<tr><td colspan="50">Không có dữ liệu.</td></tr>`;
-
-    // ✅ Vì bảng HTML fallback đang ẩn, cần hiển thị thông báo ngay trong Handsontable
-    const nvInfo = await authModule.getCurrentUserInfo().catch(() => null);
-    const msg = nvInfo?.is_admin
-      ? "ADMIN không lấy được bảng công: function chamcong_bangcong_monthly đang lọc theo auth.uid()/dmnhanvien. Hãy cập nhật DB hoặc tạo chamcong_bangcong_monthly_admin."
-      : "Không có dữ liệu bảng công trong tháng này.";
-    renderBangCongHot(["Thông báo"], [[msg]]);
+    renderBangCongHot([], []);
     return;
   }
 
@@ -642,57 +613,25 @@ async function taiBangCong() {
 // ===================== INIT =====================
 
 document.addEventListener("DOMContentLoaded", () => {
-// 0) Khởi tạo "hàng rào đăng nhập" theo authModule (chuẩn mới)
-authModule.khoiTaoDangNhapDungChung({
-  appContainerId: "app-container",
-  macDinhDiaDiem: "",
-  tuDongKhoaCoSo: false,
-  // ✅ Quan trọng: API login phải theo cơ sở người dùng chọn (cs1/cs2)
-  loginApiPath: (cs) => `/api/login-${cs}`,
+  setDefaultDates();
+  setStatus(
+    "Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương."
+  );
+  btnTai.addEventListener("click", taiBangLuong);
 
-  async onLoginSuccess(nv, ctx) {
-    // 1) Kiểm tra quyền xem trang theo bảng phân quyền
-    const ok = await kiemTraQuyenXemTrang("bangluongthang.html");
-    if (!ok) return false; // giữ overlay (kiemTraQuyenXemTrang sẽ tự hiển thị thông báo)
-
-    // 2) Đồng bộ lọc cơ sở (tuỳ nhu cầu)
-    // - Admin: cho chọn "Tất cả" hoặc cs1/cs2
-    // - NV thường: tự set cơ sở theo tài khoản để tránh xem chéo
-    try {
-      if (nv && !nv.is_admin) {
-        const cs = (nv.diadiem || localStorage.getItem("diadiem") || "").trim();
-        if (cs && diadiemSelect) {
-          diadiemSelect.value = cs;
-          diadiemSelect.disabled = true;
-        }
-      }
-    } catch (e) {}
-
-    // 3) Load dữ liệu sau khi login OK (tránh lỗi timing khi auto-session)
-    if (typeof taiBangLuong === "function") await taiBangLuong();
-    if (typeof taiBangCong === "function") await taiBangCong();
+  const today = new Date();
+  const thangEl = document.getElementById("bc-thang");
+  const namEl = document.getElementById("bc-nam");
+  if (thangEl && namEl) {
+    thangEl.value = today.getMonth() + 1;
+    namEl.value = today.getFullYear();
   }
+
+  // tự tải khi mở trang
+  //taiBangLuong();
+  //taiBangCong();
 });
 
-// 1) Thiết lập input mặc định
-setDefaultDates();
-setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
-
-// 2) Button load lương
-btnTai.addEventListener("click", taiBangLuong);
-
-// 3) Default tháng/năm cho bảng công
-const today = new Date();
-const thangEl = document.getElementById("bc-thang");
-const namEl = document.getElementById("bc-nam");
-if (thangEl && namEl) {
-  thangEl.value = today.getMonth() + 1;
-  namEl.value = today.getFullYear();
-}
-
-// 4) Expose các hàm cho HTML onclick / module khác
+// Cho phép gọi từ bên ngoài (authModule)
 window.taiBangLuong = taiBangLuong;
 window.taiBangCong = taiBangCong;
-window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
-});
-
