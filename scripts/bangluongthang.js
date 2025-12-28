@@ -1,4 +1,4 @@
-// bangluongthang.js - Bảng lương tháng tất cả nhân viên
+// bangluongthang.js - Bảng lương tháng tất cả nhân viên 
 import * as authModule from "./authModule.js";
 
 function getSupabase() {
