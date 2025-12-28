@@ -223,6 +223,10 @@
 
     <script>
         var supabase = null; // sẽ được gán sau khi đăng nhập (authModule)
+
+        function isAdminLoggedIn() {
+            return (localStorage.getItem('is_admin') === 'true');
+        }
 let rowDangChon = null;
 
         // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
@@ -497,11 +501,11 @@ let rowDangChon = null;
             const checkboxes = document.querySelectorAll(".chonHD:checked");
             const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
             if (sohdList.length === 0) return alert("❗ Vui lòng chọn ít nhất một hóa đơn cần xóa.");
+            if (!supabase) return alert("❗ Chưa đăng nhập hoặc chưa khởi tạo Supabase.");
 
-            // Gọi xác thực và chỉ xóa nếu xác thực thành công
-            kiemTraNhanVienTruocKhiXoa(async function () {
+            // Hàm xóa thật sự
+            const thucHienXoa = async () => {
                 if (!confirm(`Bạn có chắc muốn xóa ${sohdList.length} hóa đơn khỏi hệ thống?`)) return;
-                // het doan  xác thực và chỉ xóa nếu xác thực thành công
 
                 // Xóa khỏi ct_hoadon_banle trước
                 const { error: errCT } = await supabase.from('ct_hoadon_banle').delete().in('sohd', sohdList);
@@ -510,7 +514,7 @@ let rowDangChon = null;
                     return;
                 }
 
-                // Sau đó xóa khỏi hoadon_banle
+                // Sau đó xóa khỏi bảng kiemkho
                 const { error: errHD } = await supabase.from('kiemkho').delete().in('sohd', sohdList);
                 if (errHD) {
                     alert("Không thể xóa hóa đơn.");
@@ -519,7 +523,16 @@ let rowDangChon = null;
 
                 alert(`✅ Đã xóa ${sohdList.length} hóa đơn.`);
                 taiDanhSachHoaDon();
-            });
+            };
+
+            // ✅ Admin: chỉ hỏi xác nhận, KHÔNG yêu cầu nhập lại mã NV/mật khẩu
+            if (isAdminLoggedIn()) {
+                thucHienXoa();
+                return;
+            }
+
+            // Nhân viên thường: giữ lại bước xác thực cũ
+            kiemTraNhanVienTruocKhiXoa(thucHienXoa);
         }
 
 
