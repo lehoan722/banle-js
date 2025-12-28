@@ -485,10 +485,30 @@ async function taiBangCong() {
 
   tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
 
-  const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
+  let { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
     p_month: thang,
     p_year: nam
   });
+
+  // ✅ FIX: nếu là ADMIN mà function trả rỗng (thường do function đang lọc theo auth.uid() trong dmnhanvien),
+  // thử gọi function admin (nếu bạn tạo thêm ở DB) để lấy đủ dữ liệu.
+  try {
+    if ((!error) && (!data || data.length === 0)) {
+      const nv = await authModule.getCurrentUserInfo();
+      if (nv?.is_admin) {
+        const alt = await supabase.rpc("chamcong_bangcong_monthly_admin", {
+          p_month: thang,
+          p_year: nam
+        });
+        if (!alt.error && alt.data && alt.data.length > 0) {
+          data = alt.data;
+        }
+      }
+    }
+  } catch (e) {
+    // ignore - nếu DB chưa có function *_admin thì bỏ qua
+  }
+
 
   if (error) {
     console.error(error);
@@ -500,7 +520,13 @@ async function taiBangCong() {
   if (!data || data.length === 0) {
     thead.innerHTML = "";
     tbody.innerHTML = `<tr><td colspan="50">Không có dữ liệu.</td></tr>`;
-    renderBangCongHot([], []);
+
+    // ✅ Vì bảng HTML fallback đang ẩn, cần hiển thị thông báo ngay trong Handsontable
+    const nvInfo = await authModule.getCurrentUserInfo().catch(() => null);
+    const msg = nvInfo?.is_admin
+      ? "ADMIN không lấy được bảng công: function chamcong_bangcong_monthly đang lọc theo auth.uid()/dmnhanvien. Hãy cập nhật DB hoặc tạo chamcong_bangcong_monthly_admin."
+      : "Không có dữ liệu bảng công trong tháng này.";
+    renderBangCongHot(["Thông báo"], [[msg]]);
     return;
   }
 
