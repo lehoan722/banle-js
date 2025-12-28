@@ -1,9 +1,50 @@
 import { supabase } from "./supabaseClient.js";
+import { khoiTaoDangNhapDungChung } from "./authModule.js";
 
 let hot; // Handsontable instance
 let maNhanVien = '';
 let tenNhanVien = '';
 let coSo = window.coSo || 'cs1'; // Lấy từ HTML truyền vào
+
+// ====== AUTH STATE (theo chuẩn authModule.js) ======
+let AUTH = {
+  isLoggedIn: false,
+  isAdmin: false,
+  canEdit: false,
+  manv: "",
+  tennv: "",
+  diadiem: coSo,
+  userId: null
+};
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function lockAppUI(isLocked) {
+  const ids = ["kiemtraBtn", "themmoiBtn", "kiemtontBtn", "btnXoaKiemTon", "luuBtn"];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!isLocked;
+  });
+
+  const txt = document.getElementById("maspInput");
+  if (txt) txt.disabled = !!isLocked;
+
+  const manvInput = document.getElementById("manvInput");
+  if (manvInput && isLocked) {
+    // trước login: cho phép nhập tay để test (nếu bạn muốn)
+    // nhưng mặc định khóa vì sẽ lấy từ authModule
+    manvInput.disabled = true;
+  }
+}
+
+
 //let coSo = 'cs1'; // cs1 hoặc cs2
 
 const SIZE_FIELDS = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
@@ -40,9 +81,11 @@ const COLS = [
 ];
 const COL_HEADERS = ['Mã SP', 'Tổng', ...SIZE_FIELDS, 'Vị trí', 'Ghi chú'];
 
-window.onload = function () {
+document.addEventListener("DOMContentLoaded", () => {
     initUI();
-};
+    lockAppUI(true);
+    initAuth();
+});
 
 function uniqueMasps(rows) {
     const s = new Set();
@@ -67,6 +110,70 @@ function initUI() {
     createHotTable([]);
     document.getElementById('popupSearchInput').addEventListener('input', onPopupInput);
 }
+
+async function initAuth() {
+  // coSo: cố định theo trang (cs1 hoặc cs2) -> khóa dropdown cơ sở trong form login
+  const branch = (window.coSo || coSo || "cs1").toString().toLowerCase();
+
+  khoiTaoDangNhapDungChung({
+    loginContainerId: "login-container",
+    appContainerId: "app-container",
+    macDinhDiaDiem: branch,
+    tuDongKhoaCoSo: true,
+    loginApiPath: `/api/login-${branch}`,
+    onLoginSuccess: async (nhanvienLike, context) => {
+      await onAuthSuccess(nhanvienLike, context);
+    }
+  });
+}
+
+async function onAuthSuccess(nhanvienLike, context) {
+  AUTH.isLoggedIn = true;
+  AUTH.isAdmin = (nhanvienLike && nhanvienLike.is_admin === true) || localStorage.getItem("is_admin") === "true";
+  AUTH.manv = String(nhanvienLike?.manv || localStorage.getItem("manv") || "").trim().toUpperCase();
+  AUTH.tennv = String(nhanvienLike?.tennv || localStorage.getItem("tennv") || "").trim();
+  AUTH.diadiem = String(context?.diadiem || localStorage.getItem("diadiem") || window.coSo || coSo || "cs1").toLowerCase();
+  AUTH.canEdit =
+    AUTH.isAdmin ||
+    nhanvienLike?.sua_hoadon === true ||
+    localStorage.getItem("quyen_sua_hoadon") === "true";
+
+  // lấy user id nếu có
+  try {
+    const { data } = await window.supabase?.auth?.getUser?.();
+    AUTH.userId = data?.user?.id || null;
+  } catch (e) {
+    AUTH.userId = null;
+  }
+
+  // đồng bộ coSo theo session
+  coSo = AUTH.diadiem;
+  window.coSo = coSo;
+
+  // update UI
+  const manvInput = document.getElementById("manvInput");
+  if (manvInput) {
+    manvInput.value = AUTH.manv;
+    manvInput.disabled = true;
+  }
+
+  const tennvDisplay = document.getElementById("tennvDisplay");
+  if (tennvDisplay) {
+    const badge = AUTH.isAdmin ? ' <span style="color:#d32f2f">(ADMIN)</span>' : "";
+    tennvDisplay.innerHTML = `Tên: <b style="color:blue">${escapeHtml(AUTH.tennv || AUTH.manv)}</b>${badge}`;
+  }
+
+  const cosoSelect = document.getElementById("cosoSelect");
+  if (cosoSelect) {
+    cosoSelect.value = coSo;
+    cosoSelect.disabled = true;
+  }
+
+  lockAppUI(false);
+  showMsg(AUTH.isAdmin ? "✅ Đăng nhập ADMIN: có quyền phát sinh phiếu nhập/xuất kiểm kho." : "✅ Đăng nhập thành công.");
+}
+
+
 
 // Popup tìm kiếm dùng chung
 window.openPopupSearch = async function (type) {
@@ -124,6 +231,8 @@ function onChangeCoSo() {
 }
 // Xác thực mã NV, show tên
 async function onManvBlur() {
+    const manvInputEl = document.getElementById("manvInput");
+    if (!manvInputEl || manvInputEl.disabled || AUTH.isLoggedIn) return;
     const manv = document.getElementById('manvInput').value.trim();
     if (!manv) { document.getElementById('tennvDisplay').innerText = ""; return; }
     const { data, error } = await supabase.from('dmnhanvien').select('tennv').eq('manv', manv).maybeSingle();
@@ -319,136 +428,112 @@ function createHotTable(data, readonlySysRows = false) {
 
 // Xử lý nút Lưu
 async function onLuu() {
-    // 1. Gọi kiểm tồn trước
+    if (!AUTH.isLoggedIn) {
+        showMsg("❌ Vui lòng đăng nhập trước khi lưu.");
+        return;
+    }
+
+    // 1) Gọi kiểm tồn trước (đảm bảo có đủ dữ liệu tồn kho trong bảng)
     await onKiemTon();
-    if (!hot) return;
-    // Phân quyền user (kiểm tra trên dmnhanvien, quyền = "sua" thì mới được phát sinh phiếu)
-    const manv = document.getElementById('manvInput').value.trim();
-    const { data: nvinfo } = await supabase.from('dmnhanvien').select('sua_hoadon,tennv').eq('manv', manv).maybeSingle();
-    if (!nvinfo) { showMsg("Mã nhân viên không hợp lệ!"); return; }
-    const canEdit = nvinfo && nvinfo.sua_hoadon === true;
 
-    // Lấy dữ liệu kiểm kho thực tế (bỏ dòng tồn hệ thống)
-    let rows = hot.getSourceData().filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế"));
-    if (!rows.length) { showMsg("Chưa có dữ liệu kiểm kho thực tế để lưu!"); return; }
-    // Sinh số chứng từ kiểm kho
-    let sohd_kiem = await genSohd('kiemkhocs' + (coSo === 'cs1' ? '1' : '2'));
-    let ngaygio = new Date().toISOString();
+    // 2) Lấy thông tin người đăng nhập theo chuẩn authModule.js
+    const manv = AUTH.manv;
+    const tennv = AUTH.tennv || manv;
+    const isAdmin = AUTH.isAdmin;
+    const canEdit = AUTH.canEdit;
 
-    // Ghi vào bảng kiểm kho
-    const insertKiemKho = rows.map(row => ({
-        sohd: sohd_kiem,
-        masp: row.masp,
-        size0: Number(row.size0) || 0,
-        size38: Number(row.size38) || 0,
-        size39: Number(row.size39) || 0,
-        size40: Number(row.size40) || 0,
-        size41: Number(row.size41) || 0,
-        size42: Number(row.size42) || 0,
-        size43: Number(row.size43) || 0,
-        size44: Number(row.size44) || 0,
-        size45: Number(row.size45) || 0,
-        tennv: nvinfo.tennv,
-        user_id: null, // bạn bổ sung user_id nếu dùng Supabase Auth
-        ngaygio,
-        diadiem: coSo,
-        ghichu: row.ghichu || '',
-        created_at: ngaygio
-    }));
-    let taoPhieuThanhCong = true; // <--- Thêm biến trạng thái
-    let errorMsg = "";
-    let res = await supabase.from('kiemkho').insert(insertKiemKho);
-    if (res.error) errorMsg += "- Lỗi lưu kiểm kho: " + res.error.message + "<br>";
+    // 3) Lấy dữ liệu từ hot
+    const htData = hot.getData();
+    const now = new Date();
+    const ngay = now.toISOString(); // lưu dạng ISO (UTC); DB có thể convert
+    const ngay2 = now.toISOString().slice(0, 10);
+    const sohd = `${coSo}_kiemkho_${ngay2.replace(/-/g, "")}_${Math.floor(Math.random() * 100000)}`;
 
-    // Nếu user có quyền chỉnh sửa thì phát sinh phiếu xuất/nhập kiểm kho
+    const rowsKiemKho = [];
+    const rowsChenhLechNhap = [];
+    const rowsChenhLechXuat = [];
 
-    // Sửa lại: tìm đúng từng mã và loại, không lệch nếu bảng thay đổi thứ tự
-    if (canEdit) {
-        let allRows = hot.getSourceData();
-        let rowKiemList = allRows.filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế"));
-        for (let rowKiem of rowKiemList) {
-            let rowTon = allRows.find(r =>
-                r.masp === rowKiem.masp && r.type === "Tồn hệ thống"
-            );
-            if (!rowTon) continue;
+    for (let i = 0; i < htData.length; i++) {
+        const ma = (htData[i][0] || "").toString().trim();
+        const size = (htData[i][1] || "").toString().trim();
+        const slKiem = Number(htData[i][2]) || 0;
+        const slMay = Number(htData[i][3]) || 0;
 
-            let chenhlechSizes = [];
-            for (let sz of SIZE_FIELDS) {
-                const k = Number(rowKiem['size' + sz] || 0), t = Number(rowTon['size' + sz] || 0);
-                if (k > t) chenhlechSizes.push({ type: 'nhap', sz, sl: k - t });
-                if (k < t) chenhlechSizes.push({ type: 'xuat', sz, sl: t - k });
+        if (!ma) continue;
+
+        // ghi log kiểm kho (luôn ghi, kể cả không có chênh)
+        rowsKiemKho.push({
+            sohd,
+            diadiem: coSo,
+            masp: ma,
+            size,
+            sl_kiem: slKiem,
+            sl_may: slMay,
+            chenhlech: slKiem - slMay,
+            manv,
+            tennv,
+            ngay,
+            user_id: AUTH.userId
+        });
+
+        // Nếu có quyền phát sinh phiếu nhập/xuất theo kiểm kho (admin hoặc nhân viên có quyền)
+        if (canEdit) {
+            if (slKiem > slMay) {
+                // Thừa so với máy -> tạo phiếu nhập điều chỉnh (+)
+                rowsChenhLechNhap.push({
+                    masp: ma,
+                    size,
+                    soluong: slKiem - slMay
+                });
+            } else if (slMay > slKiem) {
+                // Thiếu so với kiểm -> tạo phiếu xuất điều chỉnh (-)
+                rowsChenhLechXuat.push({
+                    masp: ma,
+                    size,
+                    soluong: slMay - slKiem
+                });
             }
-            let sohd_nhap = null, sohd_xuat = null;
-            for (let ch of chenhlechSizes) {
-                try {
-                    if (ch.type === 'nhap') {
-                        if (!sohd_nhap) sohd_nhap = await genSohd('nhapkiem' + coSo);
-                        await taoPhieuKiem('nhap', coSo, rowKiem.masp, ch.sz, ch.sl, sohd_nhap, manv, ngaygio);
-                    }
-                    if (ch.type === 'xuat') {
-                        if (!sohd_xuat) sohd_xuat = await genSohd('xuatkiem' + coSo);
-                        await taoPhieuKiem('xuat', coSo, rowKiem.masp, ch.sz, ch.sl, sohd_xuat, manv, ngaygio);
-                    }
-                } catch (err) {
-                    taoPhieuThanhCong = false;
-                    errorMsg += "- Lỗi tạo phiếu: " + (err.message || err) + "<br>";
-                }
-            }
-        }
-
-        if (taoPhieuThanhCong) {
-            await supabase.from('kiemkho')
-                .update({ ghichu: 'đã kiểm' })
-                .eq('sohd', sohd_kiem);
         }
     }
 
-    // 2.x ĐÁNH DẤU quản lý kích cỡ cho các mã vừa kiểm
+    if (rowsKiemKho.length === 0) {
+        showMsg("⚠️ Không có dữ liệu để lưu.");
+        return;
+    }
+
+    // 4) Ghi bảng kiemkho
     try {
-        // Lấy danh sách mã từ các dòng "Kiểm thực tế" vừa lưu
-        const maspToMark = uniqueMasps(
-            hot.getSourceData().filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế"))
-        );
-
-        // Nếu muốn chỉ đánh dấu những mã có SL kiểm > 0, dùng dòng dưới thay cho dòng trên:
-        // const maspToMark = uniqueMasps(
-        //   hot.getSourceData().filter(r => r.masp && (!r.type || r.type === "Kiểm thực tế") && (Number(r.tong)||0) > 0)
-        // );
-
-        // Chunk để tránh mệnh đề IN quá dài (an toàn khi nhiều mã)
-        const chunks = [];
-        const CHUNK_SIZE = 500;
-        for (let i = 0; i < maspToMark.length; i += CHUNK_SIZE) {
-            chunks.push(maspToMark.slice(i, i + CHUNK_SIZE));
-        }
-
-        let updatedCount = 0;
-        const nowIso = new Date().toISOString();
-        for (const c of chunks) {
-            const { data, error } = await supabase
-                .from('dmhanghoa')
-                .update({ quanlykichco: true, ngaysua: nowIso })
-                .in('masp', c)
-                .select('masp'); // để đếm số dòng cập nhật
-
-            if (error) {
-                errorMsg += "- Lỗi cập nhật 'quanlykichco' trong dmhanghoa: " + error.message + "<br>";
-            } else {
-                updatedCount += (data?.length || 0);
-            }
-        }
-        if (updatedCount > 0) {
-            showMsg((errorMsg || "") + `Đã bật quản lý kích cỡ cho ${updatedCount} mã trong dmhanghoa...`);
+        const { error } = await supabase.from("kiemkho").insert(rowsKiemKho);
+        if (error) {
+            console.error(error);
+            showMsg("❌ Lưu kiểm kho thất bại.");
+            return;
         }
     } catch (e) {
-        errorMsg += "- Lỗi đánh dấu 'quanlykichco': " + (e.message || e) + "<br>";
+        console.error(e);
+        showMsg("❌ Lưu kiểm kho thất bại.");
+        return;
     }
 
+    // 5) Nếu có quyền thì phát sinh phiếu điều chỉnh
+    // - Thừa: nhập điều chỉnh
+    if (canEdit && rowsChenhLechNhap.length > 0) {
+        await taoPhieuKiem("nhapdieuchinh", rowsChenhLechNhap, manv, tennv);
+    }
 
-    // 3. Thông báo và reload
-    showMsg((errorMsg ? errorMsg : "✔️ Lưu dữ liệu thành công!") + "<br><span style='color:red'>Trang sẽ tự động tải lại để làm mới dữ liệu!</span>");
-    setTimeout(() => location.reload(), 3000); // 3s
+    // - Thiếu: xuất điều chỉnh
+    if (canEdit && rowsChenhLechXuat.length > 0) {
+        await taoPhieuKiem("xuatdieuchinh", rowsChenhLechXuat, manv, tennv);
+    }
+
+    if (!canEdit) {
+        showMsg("✅ Đã lưu dữ liệu kiểm kho. (Tài khoản này không có quyền phát sinh phiếu điều chỉnh)");
+    } else {
+        showMsg("✅ Đã lưu kiểm kho" + (rowsChenhLechNhap.length || rowsChenhLechXuat.length ? " và đã phát sinh phiếu điều chỉnh." : "."));
+    }
 }
+
+
 
 // Sinh số chứng từ tự động theo loại phiếu
 // Sinh số chứng từ đồng bộ với bảng sochungtu (dùng trường loai và so_hientai)
