@@ -228,42 +228,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Hàng rào đăng nhập chuẩn cho Bảng lương tháng -->
-  <script type="module">
-    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
-
-    khoiTaoDangNhapDungChung({
-      appContainerId: 'app',        // hoặc 'app-container' tuỳ bạn đang dùng id nào
-      macDinhDiaDiem: '',
-      tuDongKhoaCoSo: false,
-
-      async onLoginSuccess(nv, ctx) {
-        // 1. Kiểm tra quyền xem trang theo bảng phân quyền
-        if (window.kiemTraQuyenXemTrang) {
-          const ok = await window.kiemTraQuyenXemTrang("bangluongthang.html");
-          if (!ok) {
-            // kiemTraQuyenXemTrang đã tự hiển thị thông báo cấm truy cập
-            return;
-          }
-        }
-
-        // 2. Nếu qua được bước 1 -> cho hiển thị app & load dữ liệu
-        const appDiv = document.getElementById('app');
-        if (appDiv) appDiv.style.display = '';
-
-        if (window.taiBangLuong) {
-          await window.taiBangLuong();
-        }
-        if (window.taiBangCong) {
-          await window.taiBangCong();
-        }
-      }
-    });
-
-  </script>
-
-
   <!-- Handsontable JS -->
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
