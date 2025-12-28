@@ -1,7 +1,4 @@
-// bangluongthang.js - Bảng lương tháng tất cả nhân viên (đã tối ưu & hỗ trợ login dùng chung)
-// - Fix hiển thị Tên NV (fallback lấy từ bảng công nếu dmnhanvien bị RLS)
-// - Tăng tốc tải KPI (doanh thu) bằng chạy song song có giới hạn
-// - Tích hợp authModule.khoiTaoDangNhapDungChung + kiểm tra quyền trang
+// bangluongthang_xem.js - Bảng lương tháng (NV + Admin xem) - ẩn Doanh thu / Khoán / Tiền vượt
 import { supabase } from "./supabaseClient.js";
 import * as authModule from "./authModule.js";
 
@@ -16,53 +13,28 @@ const btnTai = document.getElementById("btn-tai");
 const tbodyLuong = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
 
-// Container Handsontable
 const hotLuongContainer = document.getElementById("hotLuong");
 const hotBangCongContainer = document.getElementById("hotBangCong");
 
-// Biến lưu instance Handsontable
 let hotLuong = null;
 let hotBangCong = null;
 
 // =============================
-// KIỂM SOÁT QUYỀN TRUY CẬP TRANG
+// QUYỀN TRUY CẬP: trang này cho phép cả NV + ADMIN xem
 // =============================
-async function kiemTraQuyenXemTrang(pathTrang) {
+async function kiemTraQuyenXemTrang(_pathTrang) {
   const nv = authModule.getCurrentUserInfo();
-
-  // Chưa login: để authModule giữ overlay đăng nhập
   if (!nv || !nv.manv) return false;
-
-  const { data, error } = await supabase.rpc("get_pages_for_manv", {
-    p_manv: nv.manv
-  });
-
-  if (error) {
-    hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
-    return false;
-  }
-
-  const dsTrang = (data || []).map(r => r.path);
-
-  // Không phải admin và không nằm trong danh sách → CẤM
-  if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
-    hienCamTruyCap(
-      `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
-    );
-    return false;
-  }
-
   return true;
 }
 
-// Hàm hiện thông báo cấm truy cập
+// Hàm hiện thông báo cấm truy cập (giữ lại phòng khi bạn muốn bật lại phân quyền theo nv_page)
 function hienCamTruyCap(msg) {
   document.body.innerHTML = `
-        <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
-            ⛔ Không có quyền truy cập<br>
-            <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
-        </div>
-    `;
+    <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
+      ⛔ Không có quyền truy cập<br>
+      <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
+    </div>`;
 }
 
 function toIsoDate(d) {
@@ -73,9 +45,8 @@ function setDefaultDates() {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-  if (tuNgayInput) tuNgayInput.value = toIsoDate(firstDay);
-  if (denNgayInput) denNgayInput.value = toIsoDate(lastDay);
+  tuNgayInput.value = toIsoDate(firstDay);
+  denNgayInput.value = toIsoDate(lastDay);
 }
 
 function fmt(n, d = 0) {
@@ -92,7 +63,7 @@ function setStatus(msg, isError = false) {
   statusEl.style.color = isError ? "#b00020" : "#222";
 }
 
-// =================== HELPERS (tối ưu & normalize) ===================
+// =================== HELPERS ===================
 function normalizeManv(v) {
   return String(v || "").trim().toUpperCase();
 }
@@ -117,15 +88,10 @@ function listMonthsBetween(tu_ngay, den_ngay) {
   return out;
 }
 
-/**
- * Lấy map {MANV: TENNV}
- * - Ưu tiên: dmnhanvien (nhanh)
- * - Fallback: chamcong_bangcong_monthly (để admin login vẫn có Tên NV dù dmnhanvien bị RLS)
- */
+// Lấy tên NV: dmnhanvien (nếu được) -> fallback từ bảng công tháng
 async function loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr) {
   const mapTen = {};
 
-  // (A) Thử lấy từ dmnhanvien
   try {
     const { data: nvData, error: nvErr } = await supabase
       .from("dmnhanvien")
@@ -139,11 +105,8 @@ async function loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr) {
       });
       return mapTen;
     }
-  } catch (e) {
-    console.warn("Không lấy được dmnhanvien (có thể do RLS):", e);
-  }
+  } catch (_) {}
 
-  // (B) Fallback: lấy từ bảng công tháng
   try {
     const months = listMonthsBetween(tu_ngay, den_ngay);
     for (const { year, month } of months) {
@@ -158,17 +121,12 @@ async function loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr) {
         if (k && !mapTen[k]) mapTen[k] = String(r.tennv || "").trim();
       }
     }
-  } catch (e) {
-    console.warn("Fallback lấy tên từ chamcong_bangcong_monthly bị lỗi:", e);
-  }
+  } catch (_) {}
 
   return mapTen;
 }
 
-/**
- * Lấy doanh thu KPI theo nhân viên (RPC nv_match2h_summary_all)
- * - Chạy song song có giới hạn để nhanh (mặc định 6 luồng)
- */
+// KPI chạy song song có giới hạn
 async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency = 6) {
   const map = {};
   const list = [...manvArr];
@@ -191,18 +149,11 @@ async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency
           }
         );
 
-        if (kpiErr) {
-          console.error(`Lỗi nv_match2h_summary_all cho NV ${manv}:`, kpiErr);
-          map[manv] = 0;
-        } else {
-          map[manv] = Number(kpiData?.[0]?.tong_doanh_thu || 0);
-        }
-      } catch (e) {
-        console.error(`KPI exception cho ${manv}:`, e);
+        map[manv] = kpiErr ? 0 : Number(kpiData?.[0]?.tong_doanh_thu || 0);
+      } catch (_) {
         map[manv] = 0;
       } finally {
         done++;
-        // cập nhật nhẹ trạng thái (không spam quá nhiều)
         if (done % 5 === 0 || done === list.length) {
           setStatus(`Đang tải doanh thu KPI... (${done}/${list.length})`);
         }
@@ -218,33 +169,25 @@ async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency
   return map;
 }
 
+// =================== HOT: BẢNG LƯƠNG (ẨN CỘT NHẠY CẢM) ===================
 function renderLuongHot(data) {
   if (!hotLuongContainer) return;
   const HOT = window.Handsontable;
-  if (!HOT) {
-    console.error("Handsontable chưa được nạp.");
-    return;
-  }
+  if (!HOT) return;
 
-  // Tiêu đề có xuống dòng (\n)
   const colHeaders = [
     "Mã NV",
     "Tên NV",
     "Cơ sở",
-    "Giờ công ",
-    "Giờ trừ ",
+    "Giờ công",
+    "Giờ trừ",
     "Giờ tính lương",
-    "Doanh thu",
-    "Khoán /g",
-    "Khoán tháng",
-    "Tiền vượt",
-    "Thưởng vượt kh",
+    "Thưởng vượt khoán",
     "Lương cứng",
     "Tổng lương",
     "Lương/1 giờ"
   ];
 
-  // Kiểu dữ liệu từng cột
   const columns = [
     { data: 0, type: "text" },
     { data: 1, type: "text" },
@@ -255,37 +198,10 @@ function renderLuongHot(data) {
     { data: 6, type: "numeric", numericFormat: { pattern: "0,0" } },
     { data: 7, type: "numeric", numericFormat: { pattern: "0,0" } },
     { data: 8, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } },
-    // Lương/1 giờ
-    { data: 13, type: "numeric", numericFormat: { pattern: "0,0" } }
+    { data: 9, type: "numeric", numericFormat: { pattern: "0,0" } }
   ];
 
-  // 👇 Độ rộng từng cột (bạn muốn chỉnh thì chỉ sửa mảng này)
-  const colWidths = [
-    70,   // Mã NV
-    90,  // Tên NV
-    80,   // Cơ sở
-    90,   // Giờ công (thực)
-    100,   // Giờ trừ TANCA_LỊCH
-    100,   // Giờ tính lương
-    70,   // Doanh thu
-    70,   // Khoán / giờ
-    70,   // Khoán theo giờ công
-    110,   // Doanh thu vượt khoán
-    110,   // Thưởng vượt khoán
-    90,   // Lương cứng
-    90,   // Tổng lương
-    90    // Lương/1 giờ
-  ];
-
-  // Ẩn cột tự động (nếu muốn)
-  const hiddenColsConfig = {
-    columns: [],
-    indicators: true
-  };
+  const colWidths = [80, 110, 70, 90, 90, 110, 140, 110, 110, 110];
 
   const settings = {
     data,
@@ -297,24 +213,18 @@ function renderLuongHot(data) {
     dropdownMenu: true,
     columnSorting: true,
     wordWrap: true,
-    hiddenColumns: hiddenColsConfig,
     licenseKey: "non-commercial-and-evaluation"
   };
 
-  if (!hotLuong) {
-    hotLuong = new HOT(hotLuongContainer, settings);
-  } else {
-    hotLuong.updateSettings(settings);
-  }
+  if (!hotLuong) hotLuong = new HOT(hotLuongContainer, settings);
+  else hotLuong.updateSettings(settings);
 }
 
+// =================== HOT: BẢNG CÔNG (GIỮ NGUYÊN) ===================
 function renderBangCongHot(colHeaders, data) {
   if (!hotBangCongContainer) return;
   const HOT = window.Handsontable;
-  if (!HOT) {
-    console.error("Handsontable chưa được nạp.");
-    return;
-  }
+  if (!HOT) return;
 
   const settings = {
     data,
@@ -331,76 +241,49 @@ function renderBangCongHot(colHeaders, data) {
     licenseKey: "non-commercial-and-evaluation"
   };
 
-  if (!hotBangCong) {
-    hotBangCong = new HOT(hotBangCongContainer, settings);
-  } else {
-    hotBangCong.updateSettings(settings);
-  }
+  if (!hotBangCong) hotBangCong = new HOT(hotBangCongContainer, settings);
+  else hotBangCong.updateSettings(settings);
 }
 
+// =================== TẢI BẢNG LƯƠNG ===================
 async function taiBangLuong() {
-  const tu_ngay = tuNgayInput?.value;
-  const den_ngay = denNgayInput?.value;
+  const tu_ngay = tuNgayInput.value;
+  const den_ngay = denNgayInput.value;
   const diadiem = diadiemSelect?.value || null;
-  const luong_gio = parseFloat(luongGioInput?.value || "0") || 0;
-  const khoan_gio = parseFloat(khoanGioInput?.value || "0") || 0;
-  const pct_thuong = parseFloat(pctThuongInput?.value || "0") || 0;
-
-  if (!tu_ngay || !den_ngay) {
-    alert("Vui lòng chọn khoảng Từ ngày - Đến ngày.");
-    return;
-  }
+  const luong_gio = parseFloat(luongGioInput.value || "0") || 0;
+  const khoan_gio = parseFloat(khoanGioInput.value || "0") || 0;
+  const pct_thuong = parseFloat(pctThuongInput.value || "0") || 0;
 
   setStatus("Đang tải dữ liệu lương...");
-  if (tbodyLuong) tbodyLuong.innerHTML = `<tr><td colspan="14">Đang tải...</td></tr>`;
+  tbodyLuong.innerHTML = `<tr><td colspan="10">Đang tải...</td></tr>`;
 
   try {
-    // 1) Lấy chấm công tháng tất cả NV
     const { data: congData, error: congErr } = await supabase.rpc(
       "chamcong_tinhcong_monthly",
-      {
-        tu_ngay,
-        den_ngay,
-        p_diadiem: diadiem,
-        p_manv: null
-      }
+      { tu_ngay, den_ngay, p_diadiem: diadiem, p_manv: null }
     );
 
     if (congErr) {
-      console.error("Lỗi chamcong_tinhcong_monthly:", congErr);
       setStatus("Lỗi lấy dữ liệu chấm công.", true);
-      if (tbodyLuong) {
-        tbodyLuong.innerHTML = `<tr><td colspan="14" style="color:red;">Lỗi chamcong_tinhcong_monthly.</td></tr>`;
-      }
-      renderLuongHot([]); // clear HOT
+      tbodyLuong.innerHTML = `<tr><td colspan="10" style="color:red;">Lỗi chamcong_tinhcong_monthly.</td></tr>`;
+      renderLuongHot([]);
       return;
     }
-
     if (!congData || congData.length === 0) {
-      setStatus("Không có dữ liệu.");
-      if (tbodyLuong) tbodyLuong.innerHTML = `<tr><td colspan="14">Không có dữ liệu.</td></tr>`;
-      renderLuongHot([]); // clear HOT
+      setStatus("Không có dữ liệu chấm công trong khoảng này.");
+      tbodyLuong.innerHTML = `<tr><td colspan="10">Không có dữ liệu.</td></tr>`;
+      renderLuongHot([]);
       return;
     }
 
-    // 2) Danh sách MANV
-    const manvSet = new Set(congData.map(r => normalizeManv(r.manv)));
-    const manvArr = Array.from(manvSet).filter(Boolean);
+    const manvArr = Array.from(new Set(congData.map(r => normalizeManv(r.manv)))).filter(Boolean);
 
-    // 2a) Tên NV (2 tầng)
     setStatus(`Đang lấy tên nhân viên... (${manvArr.length} NV)`);
     const mapTen = await loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr);
 
-    // 2b) Doanh thu KPI (song song)
     setStatus(`Đang tải doanh thu KPI... (0/${manvArr.length})`);
-    const mapDoanhThuKPI = await loadDoanhThuKPIConcurrent(
-      manvArr,
-      tu_ngay,
-      den_ngay,
-      6
-    );
+    const mapDoanhThuKPI = await loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, 6);
 
-    // 3) Gom dữ liệu theo MANV
     const byManv = {};
     congData.forEach(r => {
       const k = normalizeManv(r.manv);
@@ -409,28 +292,21 @@ async function taiBangLuong() {
       byManv[k].push({ ...r, manv: k });
     });
 
-    // Reset bảng HTML
-    if (tbodyLuong) tbodyLuong.innerHTML = "";
-
-    // Dữ liệu cho Handsontable
+    tbodyLuong.innerHTML = "";
     const bangLuongData = [];
 
-    // Cộng dồn tổng
     let sum_gio_cong = 0;
     let sum_gio_phat = 0;
     let sum_gio_tinh = 0;
-    let sum_doanhthu = 0;
-    let sum_khoan_thang = 0;
-    let sum_tien_vuot = 0;
     let sum_tien_thuong = 0;
     let sum_luong_cung = 0;
     let sum_tong_luong = 0;
 
-    // 4) Tính theo nhân viên
     const manvKeys = Object.keys(byManv).sort();
+
     for (const manv of manvKeys) {
       const rows = byManv[manv];
-      const ten = mapTen[normalizeManv(manv)] || "";
+      const ten = mapTen[manv] || "";
       const dia = rows?.[0]?.diadiem || "";
 
       let gio_cong = 0;
@@ -443,53 +319,43 @@ async function taiBangLuong() {
       const gio_phat_tanca_lich = so_ngay_tanca_lich * 1.0;
       const gio_tinh = Math.max(gio_cong - gio_phat_tanca_lich, 0);
 
-      const doanhthu = Number(mapDoanhThuKPI[normalizeManv(manv)] || 0);
-
+      // ✅ vẫn tính nội bộ để ra lương (chỉ ẩn cột hiển thị)
+      const doanhthu = Number(mapDoanhThuKPI[manv] || 0);
       const khoan_thang = gio_tinh * khoan_gio;
-      const tien_vuot = doanhthu - khoan_thang;              // cho phép âm
-      const tien_thuong = tien_vuot * (pct_thuong / 100.0);  // thưởng/phạt
+      const tien_vuot = doanhthu - khoan_thang;
+      const tien_thuong = tien_vuot * (pct_thuong / 100.0);
 
       const luong_cung = gio_tinh * luong_gio;
       const tong_luong = luong_cung + tien_thuong;
       const luong_1_gio = gio_cong > 0 ? tong_luong / gio_cong : 0;
 
-      // Cộng dồn
       sum_gio_cong += gio_cong;
       sum_gio_phat += gio_phat_tanca_lich;
       sum_gio_tinh += gio_tinh;
-      sum_doanhthu += doanhthu;
-      sum_khoan_thang += khoan_thang;
-      sum_tien_vuot += tien_vuot;
       sum_tien_thuong += tien_thuong;
       sum_luong_cung += luong_cung;
       sum_tong_luong += tong_luong;
 
-      // HTML row
-      if (tbodyLuong) {
-        const tr = document.createElement("tr");
-        const add = (txt) => {
-          const td = document.createElement("td");
-          td.textContent = txt;
-          tr.appendChild(td);
-        };
-        add(manv);
-        add(ten);
-        add(dia);
-        add(fmt(gio_cong, 2));
-        add(fmt(gio_phat_tanca_lich, 2));
-        add(fmt(gio_tinh, 2));
-        add(fmt(doanhthu, 0));
-        add(fmt(khoan_gio, 0));
-        add(fmt(khoan_thang, 0));
-        add(fmt(tien_vuot, 0));
-        add(fmt(tien_thuong, 0));
-        add(fmt(luong_cung, 0));
-        add(fmt(tong_luong, 0));
-        add(fmt(luong_1_gio, 0));
-        tbodyLuong.appendChild(tr);
-      }
+      const tr = document.createElement("tr");
+      const add = (txt) => {
+        const td = document.createElement("td");
+        td.textContent = txt;
+        tr.appendChild(td);
+      };
 
-      // Handsontable row
+      // ✅ chỉ render các cột được phép xem
+      add(manv);
+      add(ten);
+      add(dia);
+      add(fmt(gio_cong, 2));
+      add(fmt(gio_phat_tanca_lich, 2));
+      add(fmt(gio_tinh, 2));
+      add(fmt(tien_thuong, 0));
+      add(fmt(luong_cung, 0));
+      add(fmt(tong_luong, 0));
+      add(fmt(luong_1_gio, 0));
+      tbodyLuong.appendChild(tr);
+
       bangLuongData.push([
         manv,
         ten,
@@ -497,10 +363,6 @@ async function taiBangLuong() {
         Number(gio_cong.toFixed(2)),
         Number(gio_phat_tanca_lich.toFixed(2)),
         Number(gio_tinh.toFixed(2)),
-        Math.round(doanhthu),
-        Math.round(khoan_gio),
-        Math.round(khoan_thang),
-        Math.round(tien_vuot),
         Math.round(tien_thuong),
         Math.round(luong_cung),
         Math.round(tong_luong),
@@ -508,38 +370,30 @@ async function taiBangLuong() {
       ]);
     }
 
-    // 5) Dòng tổng
-    if (tbodyLuong) {
-      const trTotal = document.createElement("tr");
-      trTotal.className = "table-secondary fw-bold";
-      const addTotal = (txt, colspan = 1) => {
-        const td = document.createElement("td");
-        if (colspan > 1) td.colSpan = colspan;
-        td.textContent = txt;
-        trTotal.appendChild(td);
-      };
+    // Total row (HTML)
+    const trTotal = document.createElement("tr");
+    trTotal.className = "table-secondary fw-bold";
+    const addTotal = (txt, colspan = 1) => {
+      const td = document.createElement("td");
+      if (colspan > 1) td.colSpan = colspan;
+      td.textContent = txt;
+      trTotal.appendChild(td);
+    };
 
-      addTotal("TỔNG");
-      addTotal("", 2); // Tên NV + Cơ sở
-      addTotal(fmt(sum_gio_cong, 2));
-      addTotal(fmt(sum_gio_phat, 2));
-      addTotal(fmt(sum_gio_tinh, 2));
-      addTotal(fmt(sum_doanhthu, 0));
-      addTotal(fmt(khoan_gio, 0));
-      addTotal(fmt(sum_khoan_thang, 0));
-      addTotal(fmt(sum_tien_vuot, 0));
-      addTotal(fmt(sum_tien_thuong, 0));
-      addTotal(fmt(sum_luong_cung, 0));
-      addTotal(fmt(sum_tong_luong, 0));
+    addTotal("TỔNG", 3);
+    addTotal(fmt(sum_gio_cong, 2));
+    addTotal(fmt(sum_gio_phat, 2));
+    addTotal(fmt(sum_gio_tinh, 2));
+    addTotal(fmt(sum_tien_thuong, 0));
+    addTotal(fmt(sum_luong_cung, 0));
+    addTotal(fmt(sum_tong_luong, 0));
 
-      // Lương/1 giờ tổng: lấy theo tổng giờ công để tránh lệch
-      const luong1hTong = sum_gio_cong > 0 ? sum_tong_luong / sum_gio_cong : 0;
-      addTotal(fmt(luong1hTong, 0));
+    const luong1hTong = sum_gio_cong > 0 ? sum_tong_luong / sum_gio_cong : 0;
+    addTotal(fmt(luong1hTong, 0));
 
-      tbodyLuong.appendChild(trTotal);
-    }
+    tbodyLuong.appendChild(trTotal);
 
-    // Thêm dòng tổng vào HOT
+    // Total row (HOT)
     bangLuongData.push([
       "TỔNG",
       "",
@@ -547,30 +401,24 @@ async function taiBangLuong() {
       Number(sum_gio_cong.toFixed(2)),
       Number(sum_gio_phat.toFixed(2)),
       Number(sum_gio_tinh.toFixed(2)),
-      Math.round(sum_doanhthu),
-      Math.round(khoan_gio),
-      Math.round(sum_khoan_thang),
-      Math.round(sum_tien_vuot),
       Math.round(sum_tien_thuong),
       Math.round(sum_luong_cung),
       Math.round(sum_tong_luong),
-      Math.round(sum_gio_cong > 0 ? sum_tong_luong / sum_gio_cong : 0)
+      Math.round(luong1hTong)
     ]);
 
-    // Render HOT
     renderLuongHot(bangLuongData);
 
-    setStatus(`Đã tải xong. Tổng lương: ${fmt(sum_tong_luong, 0)} đ`);
-  } catch (e) {
-    console.error(e);
+    setStatus(`Đã tải ${congData.length} dòng. Tổng lương: ${fmt(sum_tong_luong, 0)} đ.`);
+  } catch (err) {
+    console.error(err);
     setStatus("Có lỗi xảy ra khi tải bảng lương.", true);
-    if (tbodyLuong) {
-      tbodyLuong.innerHTML = `<tr><td colspan="14" style="color:red;">Có lỗi xảy ra.</td></tr>`;
-    }
+    tbodyLuong.innerHTML = `<tr><td colspan="10" style="color:red;">Có lỗi xảy ra.</td></tr>`;
     renderLuongHot([]);
   }
 }
 
+// =================== TẢI BẢNG CÔNG (GIỮ NGUYÊN) ===================
 async function taiBangCong() {
   const thang = parseInt(document.getElementById("bc-thang")?.value || "0");
   const nam = parseInt(document.getElementById("bc-nam")?.value || "0");
@@ -607,12 +455,11 @@ async function taiBangCong() {
 
   if (nhanvien.length === 0) {
     thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
-    tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công trong tháng này.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công.</td></tr>`;
     renderBangCongHot([], []);
     return;
   }
 
-  // Header HTML dự phòng
   let header = `<th>Ngày</th><th>Thứ</th>`;
   nhanvien.forEach(n => {
     const [, tennv] = n.split("|");
@@ -621,31 +468,22 @@ async function taiBangCong() {
   header += `<th>Tổng</th>`;
   thead.innerHTML = `<tr>${header}</tr>`;
 
-  // Group theo ngày
   const groupByNgay = {};
   data.forEach(d => {
     groupByNgay[d.ngay] = groupByNgay[d.ngay] || [];
     groupByNgay[d.ngay].push(d);
   });
 
-  // Header cho Handsontable
   const colHeaders = ["Ngày", "Thứ"];
-  nhanvien.forEach(n => {
-    const [, tennv] = n.split("|");
-    colHeaders.push(tennv);
-  });
+  nhanvien.forEach(n => colHeaders.push(n.split("|")[1]));
   colHeaders.push("Tổng");
 
   const hotData = [];
   const tongTheoNhanVien = {};
-  nhanvien.forEach(n => {
-    const manv = normalizeManv(n.split("|")[0]);
-    tongTheoNhanVien[manv] = 0;
-  });
+  nhanvien.forEach(n => (tongTheoNhanVien[normalizeManv(n.split("|")[0])] = 0));
   let tongTatCa = 0;
 
   const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
-
   let html = "";
 
   ngayList.forEach(ng => {
@@ -654,7 +492,6 @@ async function taiBangCong() {
     let sum = 0;
 
     const rowData = [Number(ng), thu];
-
     let cellsHtml = "";
 
     nhanvien.forEach(n => {
@@ -671,12 +508,11 @@ async function taiBangCong() {
 
     tongTatCa += sum;
     rowData.push(Number(sum.toFixed(2)));
-
     hotData.push(rowData);
+
     html += `<tr><td>${ng}</td><td>${thu}</td>${cellsHtml}<td>${sum ? sum.toFixed(2) : ""}</td></tr>`;
   });
 
-  // Total row
   let totalHtml = `<tr style="font-weight:bold;background:#f3f3f3"><td colspan="2">Tổng</td>`;
   const totalRow = ["Tổng", ""];
   nhanvien.forEach(n => {
@@ -688,30 +524,23 @@ async function taiBangCong() {
   totalHtml += `<td>${tongTatCa ? tongTatCa.toFixed(2) : ""}</td></tr>`;
 
   hotData.push(totalRow);
-
   tbody.innerHTML = html + totalHtml;
 
-  // Render Handsontable
   renderBangCongHot(colHeaders, hotData);
 }
 
 // ===================== INIT =====================
 document.addEventListener("DOMContentLoaded", () => {
-  // Tương thích: nếu HTML cũ dùng id="app" thì đổi sang app-container
+  // tương thích id app/app-container
   const legacyApp = document.getElementById("app");
-  if (legacyApp && !document.getElementById("app-container")) {
-    legacyApp.id = "app-container";
-  }
+  if (legacyApp && !document.getElementById("app-container")) legacyApp.id = "app-container";
 
   setDefaultDates();
   setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
 
-  if (btnTai) btnTai.addEventListener("click", taiBangLuong);
+  btnTai?.addEventListener("click", taiBangLuong);
+  document.getElementById("btn-bangcong")?.addEventListener("click", taiBangCong);
 
-  const btnBangCong = document.getElementById("btn-bangcong");
-  if (btnBangCong) btnBangCong.addEventListener("click", taiBangCong);
-
-  // Default tháng/năm bảng công
   const today = new Date();
   const thangEl = document.getElementById("bc-thang");
   const namEl = document.getElementById("bc-nam");
@@ -720,18 +549,14 @@ document.addEventListener("DOMContentLoaded", () => {
     namEl.value = today.getFullYear();
   }
 
-  // Đăng nhập dùng chung (NV: mã + mật khẩu; Admin: email + mật khẩu)
   authModule.khoiTaoDangNhapDungChung({
     appContainerId: "app-container",
     onLoginSuccess: async () => {
       const ok = await kiemTraQuyenXemTrang(window.location.pathname);
-      // Nếu OK, bạn có thể tự động tải dữ liệu ở đây nếu muốn:
-      // if (ok) taiBangLuong();
       return ok;
     }
   });
 });
 
-// Cho phép gọi từ bên ngoài
 window.taiBangLuong = taiBangLuong;
 window.taiBangCong = taiBangCong;
