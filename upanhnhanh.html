@@ -471,10 +471,12 @@
 
     function openSourcePicker() {
       // Mở hộp chọn Camera / Thư viện
+      if (!sourcePickerEl) return;
       sourcePickerEl.style.display = 'flex';
     }
 
     function closeSourcePicker() {
+      if (!sourcePickerEl) return;
       sourcePickerEl.style.display = 'none';
     }
 
@@ -837,6 +839,11 @@
       btnRetake = $('#btnRetake');
       statusEl = $('#status');
       cameraInp = $('#camera');
+      galleryInp = $('#gallery');
+      sourcePickerEl = $('#sourcePicker');
+      spCameraBtn = $('#spCamera');
+      spGalleryBtn = $('#spGallery');
+      spCancelBtn = $('#spCancel');
       thumb = $('#thumb');
       thumbImg = $('#thumbImg');
       thumbMeta = $('#thumbMeta');
@@ -862,19 +869,19 @@
         hideMaspSuggest();
       });
 
-      cameraInp.addEventListener('change', onFileChange);
-      galleryInp.addEventListener('change', onFileChange);
+      cameraInp?.addEventListener('change', onFileChange);
+      galleryInp?.addEventListener('change', onFileChange);
 
       // Source picker buttons
-      spCameraBtn.addEventListener('click', () => {
+      spCameraBtn?.addEventListener('click', () => {
         closeSourcePicker();
         requestImageFrom('camera');
       });
-      spGalleryBtn.addEventListener('click', () => {
+      spGalleryBtn?.addEventListener('click', () => {
         closeSourcePicker();
         requestImageFrom('gallery');
       });
-      spCancelBtn.addEventListener('click', () => {
+      spCancelBtn?.addEventListener('click', () => {
         closeSourcePicker();
         setStatus('Đã hủy chèn ảnh.', 'warn');
         // không đổi state nếu đang ở idle
@@ -882,7 +889,7 @@
       });
 
       // Click ra ngoài card để đóng
-      sourcePickerEl.addEventListener('click', (e) => {
+      sourcePickerEl?.addEventListener('click', (e) => {
         if (e.target === sourcePickerEl) spCancelBtn.click();
       });
       maspInput.addEventListener('keydown', (e) => {
