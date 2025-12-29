@@ -11,25 +11,25 @@ let currentPage = 1;
 const POSTGREST_MAX_ROWS = 1000;
 
 async function rpc_baocao_page_chunked(filters, limit, offset) {
-    const out = [];
-    let fetched = 0;
+  const out = [];
+  let fetched = 0;
 
-    while (fetched < limit) {
-        const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
-        const params = { ...filters, p_limit: take, p_offset: offset + fetched };
+  while (fetched < limit) {
+    const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
+    const params = { ...filters, p_limit: take, p_offset: offset + fetched };
 
-        const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
-        if (error) throw error;
+    const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
+    if (error) throw error;
 
-        const part = data || [];
-        out.push(...part);
-        fetched += part.length;
+    const part = data || [];
+    out.push(...part);
+    fetched += part.length;
 
-        // Nếu trả về ít hơn "take" => đã hết dữ liệu
-        if (part.length < take) break;
-    }
+    // Nếu trả về ít hơn "take" => đã hết dữ liệu
+    if (part.length < take) break;
+  }
 
-    return out;
+  return out;
 }
 
 
@@ -158,59 +158,50 @@ window.taiBaoCaoChiTiet = async function () {
 
 // (C) Thêm hàm render KPI
 async function taiKPI_Match2h() {
-    // map filter sang hàm summary của match-2h
-    const f = {
+    // KPI Match-2h (lọc theo địa điểm)
+    const ddRaw = (currentFilters?.p_diadiem || "").toString().toLowerCase().trim();
+    const p_diadiem = (!ddRaw || ddRaw === "tatca" || ddRaw === "all") ? null : ddRaw;
+
+    const params = {
         tu_ngay: currentFilters.tu_ngay,
         den_ngay: currentFilters.den_ngay,
         p_manv: currentFilters.p_nhanvien || null,
         p_masp_list: currentFilters.p_masp_list || null,
+        p_min_price: (currentFilters.p_tu_gia != null ? Number(currentFilters.p_tu_gia) : 0),
         p_size: currentFilters.p_size || null,
-        p_min_price: currentFilters.p_tu_gia || 35000,
-        p_diadiem: currentFilters.p_diadiem || 'cs1'
-    };
-    const diadiemRaw = (document.getElementById("diadiem")?.value || "").toLowerCase();
-    const p_diadiem = (!diadiemRaw || diadiemRaw === "tatca" || diadiemRaw === "all") ? null : diadiemRaw;
-
-    const params = {
-        tu_ngay,
-        den_ngay,
-        p_manv,
-        p_masp_list,
-        p_min_price,
-        p_size,
-        p_diadiem,        // ✅ thêm dòng này
+        p_diadiem,
     };
 
     const { data, error } = await supabase.rpc("nv_match2h_summary_by_diadiem", params);
+    if (error) {
+        console.error(error);
+        document.getElementById("tonghop").innerHTML = "";
+        return;
+    }
 
-
-    if (error) { console.error(error); document.getElementById("tonghop").innerHTML = ""; return; }
-
-    // tổng hợp KPI
-    const rows = data || [];
-    const sumB = rows.reduce((s, r) => s + Number(r.doanh_thu_gia_b || 0), 0);
-    const slGhep = rows.reduce((s, r) => s + Number(r.tong_sl_ghep || 0), 0);
-    const slKhong = rows.reduce((s, r) => s + Number(r.sl_khong_ghep || 0), 0);
-    const tyle = (slGhep + slKhong) ? (slGhep / (slGhep + slKhong)) : 0;
-    const soGiaKhac = rows.reduce((s, r) => s + Number(r.so_sp_gia_khac || 0), 0);
-    const avgDelta = rows.length ? (rows.reduce((s, r) => s + Number(r.delta_tb_min || 0), 0) / rows.length) : 0;
+    const r = (data && data[0]) ? data[0] : {};
+    const tongDoanhThu = Number(r.tong_doanh_thu || 0);
+    const tongSlWeb = Number(r.tong_sl_web || 0);
+    const tyLeGhep = Number(r.ty_le_ghep || 0);
+    const soGiaKhac = Number(r.so_sp_khac_gia || 0);
+    const tbPhut = Number(r.tb_phut || 0);
 
     document.getElementById("tonghop").innerHTML = `
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
-        <b>Doanh thu (giá B):</b> ${sumB.toLocaleString('vi-VN')}
+        <b>Doanh thu:</b> ${tongDoanhThu.toLocaleString('vi-VN')}
       </div>
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
-        <b>Tổng SL Web:</b> ${slGhep.toLocaleString('vi-VN')}
+        <b>Tổng SL Web:</b> ${tongSlWeb.toLocaleString('vi-VN')}
       </div>
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
-        <b>Tỷ lệ ghép:</b> ${(tyle * 100).toFixed(1)}%
+        <b>Tỷ lệ ghép:</b> ${(tyLeGhep * 100).toFixed(1)}%
       </div>
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
         <b>Số SP khác giá:</b> ${soGiaKhac.toLocaleString('vi-VN')}
       </div>
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
-        <b>Δ trung bình:</b> ${(avgDelta || 0).toFixed(1)} phút
+        <b>Δ trung bình:</b> ${(tbPhut || 0).toFixed(1)} phút
       </div>
     </div>`;
 }
