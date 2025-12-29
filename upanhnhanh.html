@@ -806,11 +806,12 @@
       macDinhDiaDiem: 'cs1',
       tuDongKhoaCoSo: true,
 
-      // Đồng bộ cách gọi API giống trang xemhoadon111 (tự theo cơ sở)
-      // (với trang này đang khóa cs1, nên thực tế sẽ luôn gọi /api/login-cs1)
+      // Giống xemhoadon111: login API theo cơ sở (nhưng trang này đang khóa cs1)
       loginApiPath: (cs) => `/api/login-${cs}`,
 
-      // Giống xemhoadon111: chỉ cho ADMIN vào trang
+      // ✅ Cho cả ADMIN và nhân viên thường dùng được.
+      // Nếu là ADMIN (đăng nhập email/password) thì rpc('is_admin') sẽ true.
+      // Nếu là NV thường (đăng nhập qua bảng dmnhanvien) thì isAdmin sẽ false.
       async onLoginSuccess(nv, ctx) {
         let isAdmin = false;
         try {
@@ -820,20 +821,11 @@
           isAdmin = false;
         }
 
-        if (!isAdmin) {
-          alert('Bạn không phải ADMIN, không được phép dùng trang Up ảnh nhanh.');
-          const login = document.getElementById('login-container');
-          if (login) login.style.display = 'none';
-          const app = document.getElementById('app-container') || document.body;
-          app.style.display = '';
-          app.innerHTML = `
-            <h2 style="color:#c00; margin-top:20px; font-weight:bold;">🚫 Bạn không có quyền dùng trang này</h2>
-          `;
-          return false; // chặn không cho show app theo flow mặc định
-        }
+        // Lưu cờ quyền để các hàm khác (nếu cần) có thể dùng
+        window.__UPANH_IS_ADMIN__ = isAdmin;
 
-        // ✅ Admin OK -> init app
-        initUpAnhNhanh();
+        // Init app cho cả 2 loại tài khoản
+        initUpAnhNhanh({ nv, ctx, isAdmin });
         return true;
       }
     });
