@@ -223,7 +223,67 @@
       padding: 6px 8px;
       border-radius: 8px;
     }
-  </style>
+  
+    /* === Source Picker (Camera / Gallery) === */
+    .sp-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 14px;
+    }
+    .sp-card{
+      width: min(420px, 100%);
+      background:#fff;
+      border-radius: 14px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.25);
+    }
+    .sp-title{
+      font-size: 18px;
+      font-weight: 800;
+      margin: 2px 0 6px;
+    }
+    .sp-sub{
+      font-size: 13px;
+      color:#555;
+      margin-bottom: 12px;
+      line-height: 1.35;
+    }
+    .sp-actions{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .sp-actions2{
+      grid-template-columns: 1fr;
+      margin-bottom: 0;
+    }
+    #sourcePicker button{
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background: #111;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #sourcePicker button.secondary{
+      background: #fff;
+      color: #111;
+    }
+    #sourcePicker button.ghostbtn{
+      background: #f6f6f6;
+      color:#111;
+      border-color:#e5e5e5;
+      font-weight: 700;
+    }
+
+</style>
 </head>
 
 <body>
@@ -256,6 +316,23 @@
       </div>
 
       <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
+      <!-- Chọn ảnh từ thư viện (không capture để mở kho ảnh) -->
+      <input id="gallery" class="ghost" type="file" accept="image/*" />
+
+      <!-- Hộp chọn nguồn ảnh: Camera / Thư viện -->
+      <div id="sourcePicker" class="sp-backdrop" style="display:none;">
+        <div class="sp-card">
+          <div class="sp-title">Chèn ảnh mới</div>
+          <div class="sp-sub">Bạn muốn chụp ảnh hay chọn từ kho ảnh?</div>
+          <div class="sp-actions">
+            <button id="spCamera">📷 Chụp ảnh</button>
+            <button id="spGallery" class="secondary">🖼️ Chọn từ kho ảnh</button>
+          </div>
+          <div class="sp-actions sp-actions2">
+            <button id="spCancel" class="ghostbtn">Hủy</button>
+          </div>
+        </div>
+      </div>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
     </div>
   </div>
@@ -291,7 +368,8 @@
     /******** TIỆN ÍCH ********/
     const $ = (s) => document.querySelector(s);
     let supabase;          // sẽ lấy từ window.supabase sau khi đăng nhập
-    let maspInput, btnCheck, btnRetake, statusEl, cameraInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
+    let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
+    let sourcePickerEl, spCameraBtn, spGalleryBtn, spCancelBtn;
 
     // ===== GỢI Ý MÃ SẢN PHẨM (dmhanghoa) – giống trang in mã vạch =====
     function positionMaspSuggestList() {
@@ -362,29 +440,48 @@
 
     const INSTANT_AUTO_ON_CACHE_MISS = true;
 
-    function openCameraPicker() {
-      cameraInp.value = '';
-      setState('waiting_capture');
-
+    
+    function startWaitingPickerTimer() {
       clearTimeout(waitingPickerTimer);
       waitingPickerTimer = setTimeout(() => {
         if (STATE === 'waiting_capture') {
-          setStatus('Đã hủy camera hoặc không chọn ảnh.', 'warn');
+          setStatus('Đã hủy chọn ảnh / camera. Bấm "Chèn ảnh mới" để thử lại.', 'warn');
           setState('idle');
-          if (nextMaspQueued) {
-            maspInput.value = nextMaspQueued;
-            nextMaspQueued = null;
-            handleCheck();
-          } else {
-            focusSelect();
-          }
         }
-      }, 8000);
-
-      if (cameraInp.showPicker) cameraInp.showPicker();
-      else cameraInp.click();
+      }, 12000);
     }
 
+    function requestImageFrom(source) {
+      // source: 'camera' | 'gallery'
+      if (source === 'camera') {
+        cameraInp.value = '';
+        setState('waiting_capture');
+        cameraInp.click();
+        startWaitingPickerTimer();
+        return;
+      }
+      if (source === 'gallery') {
+        galleryInp.value = '';
+        setState('waiting_capture');
+        galleryInp.click();
+        startWaitingPickerTimer();
+        return;
+      }
+    }
+
+    function openSourcePicker() {
+      // Mở hộp chọn Camera / Thư viện
+      sourcePickerEl.style.display = 'flex';
+    }
+
+    function closeSourcePicker() {
+      sourcePickerEl.style.display = 'none';
+    }
+
+    function openCameraPicker() {
+      // Trước đây auto mở camera; nay mở hộp chọn để user chọn Camera hoặc Thư viện
+      openSourcePicker();
+    }
     function canInstantAutoOpen() {
       return AUTO_OPEN_CAMERA &&
         (FORCE_AUTO_ON_IOS || !(/iP(hone|od|ad)/.test(navigator.platform) || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document))) &&
@@ -541,11 +638,11 @@
     }
 
     function openCamera() {
-      cameraInp.value = '';
-      cameraInp.click();
+      // Giữ tên hàm để code cũ không vỡ, nhưng hành vi mới là cho chọn nguồn ảnh
+      openSourcePicker();
     }
 
-    async function onCameraChange(e) {
+    async function onFileChange(e) {
       clearTimeout(waitingPickerTimer);
 
       const file = e.target.files?.[0];
@@ -765,7 +862,29 @@
         hideMaspSuggest();
       });
 
-      cameraInp.addEventListener('change', onCameraChange);
+      cameraInp.addEventListener('change', onFileChange);
+      galleryInp.addEventListener('change', onFileChange);
+
+      // Source picker buttons
+      spCameraBtn.addEventListener('click', () => {
+        closeSourcePicker();
+        requestImageFrom('camera');
+      });
+      spGalleryBtn.addEventListener('click', () => {
+        closeSourcePicker();
+        requestImageFrom('gallery');
+      });
+      spCancelBtn.addEventListener('click', () => {
+        closeSourcePicker();
+        setStatus('Đã hủy chèn ảnh.', 'warn');
+        // không đổi state nếu đang ở idle
+        if (STATE === 'waiting_capture') setState('idle');
+      });
+
+      // Click ra ngoài card để đóng
+      sourcePickerEl.addEventListener('click', (e) => {
+        if (e.target === sourcePickerEl) spCancelBtn.click();
+      });
       maspInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
