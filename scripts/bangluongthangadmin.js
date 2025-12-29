@@ -218,6 +218,36 @@ async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency
   return map;
 }
 
+async function loadDoanhThuKPIBulk(manvArr, tu_ngay, den_ngay) {
+  const map = {};
+  const list = [...new Set(manvArr.map(normalizeManv).filter(Boolean))];
+
+  const { data, error } = await supabase.rpc("nv_match2h_doanhthu_bulk_safe", {
+    tu_ngay,
+    den_ngay,
+    p_manv_list: list
+  });
+
+  if (error) {
+    console.error("Lỗi nv_match2h_doanhthu_bulk_safe:", error);
+    // fallback: tất cả 0
+    list.forEach(m => (map[m] = 0));
+    return map;
+  }
+
+  (data || []).forEach(r => {
+    map[normalizeManv(r.manv)] = Number(r.tong_doanh_thu || 0);
+  });
+
+  // NV nào không có dòng trả về thì set 0
+  list.forEach(m => {
+    if (map[m] == null) map[m] = 0;
+  });
+
+  return map;
+}
+
+
 function renderLuongHot(data) {
   if (!hotLuongContainer) return;
   const HOT = window.Handsontable;
@@ -399,12 +429,7 @@ async function taiBangLuong() {
 
     // 2b) Doanh thu KPI (song song)
     setStatus(`Đang tải doanh thu KPI... (0/${manvArr.length})`);
-    const mapDoanhThuKPI = await loadDoanhThuKPIConcurrent(
-      manvArr,
-      tu_ngay,
-      den_ngay,
-      1
-    );
+    const mapDoanhThuKPI = await loadDoanhThuKPIBulk(manvArr, tu_ngay, den_ngay);
 
     // 3) Gom dữ liệu theo MANV
     const byManv = {};
