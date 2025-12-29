@@ -11,25 +11,25 @@ let currentPage = 1;
 const POSTGREST_MAX_ROWS = 1000;
 
 async function rpc_baocao_page_chunked(filters, limit, offset) {
-  const out = [];
-  let fetched = 0;
+    const out = [];
+    let fetched = 0;
 
-  while (fetched < limit) {
-    const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
-    const params = { ...filters, p_limit: take, p_offset: offset + fetched };
+    while (fetched < limit) {
+        const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
+        const params = { ...filters, p_limit: take, p_offset: offset + fetched };
 
-    const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
-    if (error) throw error;
+        const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
+        if (error) throw error;
 
-    const part = data || [];
-    out.push(...part);
-    fetched += part.length;
+        const part = data || [];
+        out.push(...part);
+        fetched += part.length;
 
-    // Nếu trả về ít hơn "take" => đã hết dữ liệu
-    if (part.length < take) break;
-  }
+        // Nếu trả về ít hơn "take" => đã hết dữ liệu
+        if (part.length < take) break;
+    }
 
-  return out;
+    return out;
 }
 
 
@@ -168,7 +168,21 @@ async function taiKPI_Match2h() {
         p_min_price: currentFilters.p_tu_gia || 35000,
         p_diadiem: currentFilters.p_diadiem || 'cs1'
     };
-    const { data, error } = await supabase.rpc("nv_match2h_summary_all", f);
+    const diadiemRaw = (document.getElementById("diadiem")?.value || "").toLowerCase();
+    const p_diadiem = (!diadiemRaw || diadiemRaw === "tatca" || diadiemRaw === "all") ? null : diadiemRaw;
+
+    const params = {
+        tu_ngay,
+        den_ngay,
+        p_manv,
+        p_masp_list,
+        p_min_price,
+        p_size,
+        p_diadiem,        // ✅ thêm dòng này
+    };
+
+    const { data, error } = await supabase.rpc("nv_match2h_summary_by_diadiem", params);
+
 
     if (error) { console.error(error); document.getElementById("tonghop").innerHTML = ""; return; }
 
