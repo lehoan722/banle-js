@@ -403,7 +403,7 @@ async function taiBangLuong() {
       manvArr,
       tu_ngay,
       den_ngay,
-      6
+      1
     );
 
     // 3) Gom dữ liệu theo MANV
