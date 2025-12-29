@@ -801,11 +801,40 @@
     khoiTaoDangNhapDungChung({
       loginContainerId: 'login-container',
       appContainerId: 'app-container',
+
+      // Khóa cứng CS1 (giữ đúng hành vi hiện tại của trang up ảnh nhanh)
       macDinhDiaDiem: 'cs1',
       tuDongKhoaCoSo: true,
-      loginApiPath: '/api/login-cs1',
-      onLoginSuccess: () => {
+
+      // Đồng bộ cách gọi API giống trang xemhoadon111 (tự theo cơ sở)
+      // (với trang này đang khóa cs1, nên thực tế sẽ luôn gọi /api/login-cs1)
+      loginApiPath: (cs) => `/api/login-${cs}`,
+
+      // Giống xemhoadon111: chỉ cho ADMIN vào trang
+      async onLoginSuccess(nv, ctx) {
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) {
+          isAdmin = false;
+        }
+
+        if (!isAdmin) {
+          alert('Bạn không phải ADMIN, không được phép dùng trang Up ảnh nhanh.');
+          const login = document.getElementById('login-container');
+          if (login) login.style.display = 'none';
+          const app = document.getElementById('app-container') || document.body;
+          app.style.display = '';
+          app.innerHTML = `
+            <h2 style="color:#c00; margin-top:20px; font-weight:bold;">🚫 Bạn không có quyền dùng trang này</h2>
+          `;
+          return false; // chặn không cho show app theo flow mặc định
+        }
+
+        // ✅ Admin OK -> init app
         initUpAnhNhanh();
+        return true;
       }
     });
   </script>
