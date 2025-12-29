@@ -6,6 +6,33 @@ let totalRows = 0;
 let pageSize = 1000;
 let currentPage = 1;
 
+// ⚠️ Supabase (PostgREST) thường giới hạn tối đa ~1000 dòng trả về cho mỗi request RPC qua REST.
+// Vì vậy nếu pageSize > 1000, cần tải theo nhiều "chunk" rồi ghép lại để hiển thị đủ.
+const POSTGREST_MAX_ROWS = 1000;
+
+async function rpc_baocao_page_chunked(filters, limit, offset) {
+  const out = [];
+  let fetched = 0;
+
+  while (fetched < limit) {
+    const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
+    const params = { ...filters, p_limit: take, p_offset: offset + fetched };
+
+    const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
+    if (error) throw error;
+
+    const part = data || [];
+    out.push(...part);
+    fetched += part.length;
+
+    // Nếu trả về ít hơn "take" => đã hết dữ liệu
+    if (part.length < take) break;
+  }
+
+  return out;
+}
+
+
 // ở CUỐI FILE, thêm:
 window.trangTruoc = window.trangTruoc;
 window.trangSau = window.trangSau;
@@ -181,21 +208,15 @@ async function taiTrang(page) {
 
 
     const offset = (page - 1) * pageSize;
-    const params = {
-        ...currentFilters,
-        p_limit: pageSize,
-        p_offset: offset
-    };
 
-    const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
-
-    if (error) {
+    let data;
+    try {
+        data = await rpc_baocao_page_chunked(currentFilters, pageSize, offset);
+    } catch (error) {
         console.error(error);
         alert("Lỗi tải dữ liệu trang!");
         return;
     }
-
-
 
     // ánh xạ thêm cột STT như cũ
     const startIndex = offset + 1;
@@ -333,10 +354,15 @@ window.xuatExcelToanBo = async function () {
     const allRows = [];
     for (let p = 1; p <= totalPages; p++) {
         const offset = (p - 1) * pageSize;
-        const params = { ...currentFilters, p_limit: pageSize, p_offset: offset };
-        const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
 
-        if (error) { console.error(error); alert("Lỗi tải dữ liệu khi xuất!"); return; }
+        let data;
+        try {
+            data = await rpc_baocao_page_chunked(currentFilters, pageSize, offset);
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi tải dữ liệu khi xuất!");
+            return;
+        }
         (data || []).forEach((r, idx) => allRows.push({
             stt: offset + idx + 1, ...r
         }));
@@ -473,7 +499,6 @@ window.searchPopup = async function (keyword) {
         </div>
     `).join('');
 };
-
 
 
 
