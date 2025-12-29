@@ -801,11 +801,32 @@
     khoiTaoDangNhapDungChung({
       loginContainerId: 'login-container',
       appContainerId: 'app-container',
+
+      // Khóa cứng CS1 (giữ đúng hành vi hiện tại của trang up ảnh nhanh)
       macDinhDiaDiem: 'cs1',
       tuDongKhoaCoSo: true,
-      loginApiPath: '/api/login-cs1',
-      onLoginSuccess: () => {
-        initUpAnhNhanh();
+
+      // Giống xemhoadon111: login API theo cơ sở (nhưng trang này đang khóa cs1)
+      loginApiPath: (cs) => `/api/login-${cs}`,
+
+      // ✅ Cho cả ADMIN và nhân viên thường dùng được.
+      // Nếu là ADMIN (đăng nhập email/password) thì rpc('is_admin') sẽ true.
+      // Nếu là NV thường (đăng nhập qua bảng dmnhanvien) thì isAdmin sẽ false.
+      async onLoginSuccess(nv, ctx) {
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) {
+          isAdmin = false;
+        }
+
+        // Lưu cờ quyền để các hàm khác (nếu cần) có thể dùng
+        window.__UPANH_IS_ADMIN__ = isAdmin;
+
+        // Init app cho cả 2 loại tài khoản
+        initUpAnhNhanh({ nv, ctx, isAdmin });
+        return true;
       }
     });
   </script>
