@@ -21,9 +21,10 @@ import { startSessionKeeper } from "./supabaseClient.js";
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
   const ua = navigator.userAgent || navigator.vendor || window.opera || "";
-  //return ( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
-    //(typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1)
-  //);
+  return (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+    (typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1)
+  );
 }
 
 async function checkInStoreLocation(pointsOverride) {
@@ -782,6 +783,7 @@ export async function khoiTaoUngDung() {
     }
   }
 
+  return true;
 }
 
 // --- Đặt ở cuối file main.js ---
