@@ -122,7 +122,7 @@ export async function khoiTaoUngDung() {
       } catch (e) {
         console.warn("Không ẩn/hiện được container sau khi chặn thiết bị:", e);
       }
-      return;
+      //return;
     }
 
     // Chọn tọa độ tùy theo trang
