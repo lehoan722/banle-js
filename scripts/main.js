@@ -20,9 +20,10 @@ import { startSessionKeeper } from "./supabaseClient.js";
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
-  //const ua = navigator.userAgent || navigator.vendor || window.opera;
-  // Các từ khoá phổ biến trên điện thoại / tablet
-  //return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const ua = navigator.userAgent || navigator.vendor || window.opera || "";
+  return ( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+    (typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1)
+  );
 }
 
 async function checkInStoreLocation(pointsOverride) {
@@ -122,7 +123,7 @@ export async function khoiTaoUngDung() {
       } catch (e) {
         console.warn("Không ẩn/hiện được container sau khi chặn thiết bị:", e);
       }
-      //return;
+      return false;
     }
 
     // Chọn tọa độ tùy theo trang
