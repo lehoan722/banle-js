@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>BAN NV cs1</title>
-    <!-- Backup: các thư viện ngoài --> 
+    <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -704,16 +704,21 @@
                 }
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
-                try {
-                    const module = await import("./scripts/main.js");
-                    if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
-                    }
-                } catch (e) {
-                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-                }
-
-                // 6. Chọn tab & checkbox mặc định giống code cũ
+//    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
+//    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
+let okInit = true;
+try {
+    const module = await import("./scripts/main.js");
+    if (typeof module.khoiTaoUngDung === "function") {
+        okInit = await module.khoiTaoUngDung();
+    }
+} catch (e) {
+    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+    return false;
+}
+if (okInit === false) return false;
+// 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
                 }
@@ -948,7 +953,7 @@
 
         // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
         }, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
@@ -986,6 +991,7 @@
             setTimeout(() => {
                 const manv = document.getElementById('xacmanv');
                 if (manv) { manv.focus(); manv.select(); }
+                return true;
             }, 0);
         }
 
