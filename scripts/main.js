@@ -30,7 +30,7 @@ async function checkInStoreLocation(pointsOverride) {
   const STORE_POINTS = pointsOverride || [
     { lat: 21.5525047, lng: 105.8423559 }  // CS1 – Tích Lương
   ];
-  const MAX_DISTANCE_M = 200; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
+  const MAX_DISTANCE_M = 1400; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
 
   // Nếu thiết bị không hỗ trợ định vị
   if (!navigator.geolocation) {
