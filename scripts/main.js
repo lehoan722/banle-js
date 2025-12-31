@@ -1126,11 +1126,11 @@ function showBayMauPopup(tasks, context) {
   });
 
   // Click ra ngoài box thì đóng
-  //overlay.addEventListener("click", (e) => {
-    //if (e.target === overlay) {
-     // closePopup();
-    //}
-  //});
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      closePopup();
+    }
+  });
 }
 
 
