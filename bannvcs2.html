@@ -706,14 +706,20 @@
                 }
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
+                //    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
+                //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
+                let okInit = true;
                 try {
                     const module = await import("./scripts/main.js");
                     if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
+                        okInit = await module.khoiTaoUngDung();
                     }
                 } catch (e) {
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+                    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+                    return false;
                 }
+                if (okInit === false) return false;
 
                 // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
@@ -954,7 +960,7 @@
 
         // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
         }, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
