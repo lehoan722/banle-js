@@ -202,16 +202,7 @@ export async function luuHoaDonQuaAPI() {
             await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
             return;
         }
-
-        // [FIX] NEW nhập: không ghi ngày sửa khi vừa tạo mới
-        // (một số DB có default/trigger updated_at, nên ta ép về null để báo cáo không hiện "ngày sửa")
-        try {
-            const { error: e1 } = await supabase.from("hoadon_banle").update({ updated_at: null }).eq("sohd", sohdThucTe);
-            const { error: e2 } = await supabase.from("ct_hoadon_banle").update({ updated_at: null }).eq("sohd", sohdThucTe);
-            if (e1 || e2) console.warn("Không clear được updated_at (NEW nhập):", e1 || e2);
-        } catch (e) {
-            console.warn("Không clear được updated_at (NEW nhập):", e);
-        }
+        
 
         // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
         await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
