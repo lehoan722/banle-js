@@ -183,10 +183,18 @@ export async function handleSpecialSoHoaDon(sohd) {
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
     const tienHoaDon = getIntValue("phaithanhtoan");
 
-    if (tongTien + tienHoaDon > hanMuc) {
-        // Vượt hạn mức → chỉ lưu bản thường
+    // ✅ NEW RULE: chỉ gửi Viettel nếu tổng tiền hóa đơn <= 1.200.000
+    const MAX_VIETTEL_PER_INVOICE = 1200000;
+    if (tienHoaDon > MAX_VIETTEL_PER_INVOICE) {
+        // Hóa đơn lớn hơn 1.2tr → chỉ lưu bản thường, KHÔNG lưu 2 bản, KHÔNG gửi Viettel
         return false;
     }
+
+    if (tongTien + tienHoaDon > hanMuc) {
+        // Vượt hạn mức theo ngày → chỉ lưu bản thường
+        return false;
+    }
+
 
     // ✅ Đủ điều kiện → lưu 2 bản và gọi Viettel (logic nằm trong luuHoaDonCaHaiBan)
     await luuHoaDonCaHaiBan();
