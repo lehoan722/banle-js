@@ -339,6 +339,11 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+    
+        .kh-row{display:flex;gap:8px;align-items:flex-start;width:100%;}
+        .kh-col{flex:1;min-width:0;}
+        .kh-col input{width:100%;}
+
     </style>
 
 
@@ -536,19 +541,22 @@
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
                         <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
-
                         <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mã khách"
-                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
-                            <button id="btnPopupKH" type="button"
-                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                🔍
-                            </button>
-                        </div>
-                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+                        <div class="kh-row">
+                            <div class="kh-col" style="position: relative;">
+                                <input id="makh" placeholder="mã khách"
+                                    style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                                <button id="btnPopupKH" type="button"
+                                    style="position:absolute;right:2px;top:2px;width:28px;height:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                    🔍
+                                </button>
+                            </div>
 
-                        <!-- Popup tìm khách hàng -->
+                            <label class="kh-col" style="margin:0;">Khách hàng
+                                <input id="khachhang" readonly="" style="width:100%;box-sizing:border-box;" />
+                            </label>
+                        </div>
+<!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
                             style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
                             <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
@@ -947,7 +955,36 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
+        function precheckNhaCungCapBeforeSave() {
+            const makhEl = document.getElementById('makh');
+            const tenEl = document.getElementById('khachhang');
+            const makh = (makhEl?.value || '').trim();
+            const ten = (tenEl?.value || '').trim();
+            if (!makh && !ten) {
+                const ok = confirm('Bạn có muốn lưu dữ liệu khi chưa có nhà cung cấp không?');
+                if (!ok) {
+                    makhEl?.focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Chặn phím F2 (lưu) nếu chưa có nhà cung cấp và người dùng chọn "Không"
+        dispatchTarget.addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                const ok = precheckNhaCungCapBeforeSave();
+                if (!ok) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }
+        }, true);
+
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ (có pre-check)
         document.getElementById('btn-luu')?.addEventListener('click', () => {
+            if (!precheckNhaCungCapBeforeSave()) return;
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
