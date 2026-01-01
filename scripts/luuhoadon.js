@@ -1,4 +1,63 @@
 // luuhoadon.js
+
+/**
+ * =========================
+ * MODULE: LƯU HÓA ĐƠN MT
+ * =========================
+ * Mục tiêu: Lưu hóa đơn bán lẻ / nhập-xuất theo luồng chuẩn (NEW/EDIT),
+ *           và có cơ chế đặc biệt "Lưu 2 bản" để gửi hóa đơn điện tử Viettel.
+ *
+ * Tổng quan luồng:
+ * - luuhoadon.js là file điều phối chính: đọc UI → validate → quyết định NEW/EDIT →
+ *   gọi RPC cấp số (NEW) → insert header + chi tiết → (nếu số đặc biệt) thì chuyển sang lưu 2 bản →
+ *   in hóa đơn / reset form / thông báo.
+ *
+ * Danh sách file và nhiệm vụ:
+ *
+ * 1) luuhoadon.js  (Orchestrator / Controller)
+ *    - Điều phối toàn bộ thao tác bấm "Lưu"
+ *    - Nhánh NEW/EDIT:
+ *       + NEW: gọi RPC save_new_header_v2 để cấp số sohd
+ *       + EDIT: kiểm tra quyền sửa, xác thực sửa
+ *    - Ghi dữ liệu:
+ *       + Lưu 1 bản: hoadon_banle + ct_hoadon_banle
+ *       + Lưu 2 bản: hoadon_banle + ct_hoadon_banle + hoadon_banleT + ct_hoadon_banleT
+ *    - Sau khi lưu: in hóa đơn, reset UI, gọi các update phụ (nếu có)
+ *
+ * 2) builders.js  (Rules / Gating / Điều kiện đặc biệt)
+ *    - Các hàm suy luận bối cảnh:
+ *       + Lấy cơ sở từ pathname/title (cs1/cs2)
+ *       + Lấy loại chứng từ (prefix) từ ô số hóa đơn hoặc từ trang
+ *    - Cơ chế "SỐ ĐẶC BIỆT → LƯU 2 BẢN → GỬI VIETTEL":
+ *       + Chỉ áp dụng cho bancs1/bancs2
+ *       + Quy tắc chia hết theo cơ sở (cs1 mod 4, cs2 mod 6)
+ *       + Khống chế hạn mức tiền theo ngày dựa trên bảng hoadon_banleT
+ *       + Nếu đạt điều kiện → gọi luuHoaDonCaHaiBan() (hàm nằm trong luuhoadon.js)
+ *
+ * 3) pricing.js  (Tính tiền / Chuẩn hóa số liệu)
+ *    - Chuẩn hóa dữ liệu tiền/số lượng từ bảng sản phẩm
+ *    - Tính tổng thành tiền / tổng KM / phải thanh toán (nếu module dùng)
+ *    - Nơi hợp lý để thống nhất cách tính thay vì rải rác trong luuhoadon.js
+ *
+ * 4) validators.js  (Ràng buộc / Kiểm tra đầu vào)
+ *    - Các rule validate trước khi cho lưu:
+ *       + Mã sản phẩm hợp lệ, size hợp lệ, số lượng hợp lệ
+ *       + Các rule đặc thù theo cơ sở / nhóm hàng / quản lý kích cỡ
+ *    - Nếu fail → chặn lưu + thông báo
+ *
+ * 5) api.js  (API helper / Các tác vụ phụ liên quan Supabase)
+ *    - Các hàm gọi Supabase dùng chung:
+ *       + kiểm tra hóa đơn tồn tại (hoaDonDaTonTai...)
+ *       + refresh session / xử lý lỗi mạng (nếu có)
+ *       + các update phụ sau lưu (capNhatUsedTuVan... / đồng bộ liên quan)
+ *
+ * Ghi chú quan trọng khi làm việc với module:
+ * - Khi sửa logic "gửi Viettel / lưu 2 bản" → thường nằm ở builders.js + luuhoadon.js
+ * - Khi sửa logic "tính tiền" → ưu tiên pricing.js
+ * - Khi sửa rule chặn lưu (validate) → ưu tiên validators.js
+ */
+
+
 import { supabase } from './supabaseClient.js';
 import { resetBangKetQua, getBangKetQua } from './hoadon.js';
 
