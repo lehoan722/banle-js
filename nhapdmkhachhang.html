@@ -208,307 +208,12 @@
             color: #b0b;
         }
     </style>
-    <script type="module">
-  // ✅ Trang này đã chuyển sang cơ chế đăng nhập mới (authModule.js)
-  // Nếu file authModule.js của bạn không nằm trong /scripts/ thì đổi đường dẫn import bên dưới cho đúng.
-  import {
-    khoiTaoDangNhapDungChung,
-    dangXuatDungChung,
-    getSupabaseClient,
-  } from "./scripts/authModule.js";
-
-  const TABLE = "dmkhachhang";
-  let supabase = null;
-  let editingOld = false;
-
-  let khSuggestList = [];
-  let suggestIndex = -1;
-
-  // ===== UI message =====
-  function showMsg(msg, type) {
-    const box = document.getElementById("msgBox");
-    if (!box) return;
-    box.textContent = msg || "";
-    box.className = "msg" + (type ? " " + type : "");
-    if (msg && type !== "error") {
-      setTimeout(() => { box.textContent = ""; }, 2500);
-    }
-  }
-
-  function getVal(id) { return document.getElementById(id)?.value || ""; }
-  function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
-
-  // ===== Validate =====
-  function validateForm() {
-    const makh = getVal("makh").trim().toUpperCase();
-    const tenkh = getVal("tenkh").trim();
-    const dienthoai = getVal("dienthoai").trim();
-
-    if (!makh) return "Mã khách hàng không được bỏ trống!";
-    if (!tenkh) return "Tên khách hàng không được bỏ trống!";
-    if (!dienthoai) return "Số điện thoại không được bỏ trống!";
-
-    const phoneDigits = dienthoai.replace(/[^\d]/g, "");
-    if (!/^\d{8,13}$/.test(phoneDigits)) return "SĐT phải là số, 8-13 ký tự!";
-
-    return null;
-  }
-
-  // ===== Reset =====
-  function resetForm() {
-    [
-      "makh", "tenkh", "dienthoai", "ngaysinh", "diachi",
-      "email", "taikhoan", "mst", "cccd"
-    ].forEach(id => setVal(id, ""));
-
-    // select "la_ncc" có thể là select hoặc input => set rỗng
-    setVal("la_ncc", "");
-
-    editingOld = false;
-
-    const mk = document.getElementById("makh");
-    if (mk) mk.readOnly = false;
-
-    showMsg("");
-    mk?.focus();
-  }
-
-  // ===== Fetch KH theo makh =====
-  async function fetchKH() {
-    const makh = getVal("makh").trim().toUpperCase();
-    if (!makh) return;
-
-    showMsg("Đang kiểm tra...", "");
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select("*")
-      .eq("makh", makh)
-      .maybeSingle();
-
-    if (error) {
-      showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
-      return;
-    }
-
-    if (data && data.makh) {
-      setVal("tenkh", data.tenkh);
-      setVal("dienthoai", data.dienthoai);
-      setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0, 10) : "");
-      setVal("diachi", data.diachi);
-      setVal("email", data.email);
-      setVal("taikhoan", data.taikhoan);
-      setVal("mst", data.mst);
-      setVal("cccd", data.cccd);
-
-      // la_ncc có thể là boolean
-      setVal("la_ncc", data.la_ncc ? "true" : "");
-
-      const mk = document.getElementById("makh");
-      if (mk) mk.readOnly = true;
-
-      editingOld = true;
-      showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
-    } else {
-      editingOld = false;
-      const mk = document.getElementById("makh");
-      if (mk) mk.readOnly = false;
-
-      [
-        "tenkh", "dienthoai", "ngaysinh", "diachi",
-        "email", "taikhoan", "mst", "cccd", "la_ncc"
-      ].forEach(id => setVal(id, ""));
-
-      showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
-    }
-  }
-
-  // ===== Save KH =====
-  async function saveKH() {
-    const err = validateForm();
-    if (err) { showMsg(err, "error"); return; }
-
-    const obj = {
-      makh: getVal("makh").trim().toUpperCase(),
-      tenkh: getVal("tenkh").trim(),
-      dienthoai: getVal("dienthoai").trim(),
-      ngaysinh: getVal("ngaysinh") || null,
-      diachi: getVal("diachi") || null,
-      email: getVal("email") || null,
-      taikhoan: getVal("taikhoan") || null,
-      mst: getVal("mst") || null,
-      cccd: getVal("cccd") || null,
-      la_ncc: getVal("la_ncc") === "true",
-    };
-
-    let error;
-    if (editingOld) {
-      ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
-    } else {
-      ({ error } = await supabase.from(TABLE).insert(obj));
-    }
-
-    if (!error) {
-      showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
-      setTimeout(resetForm, 900);
-    } else {
-      showMsg("Lỗi: " + error.message, "error");
-    }
-  }
-
-  // ===== Delete KH =====
-  async function deleteKH() {
-    const makh = getVal("makh").trim().toUpperCase();
-    if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
-    if (!editingOld) return showMsg("Chưa có khách hàng để xóa!", "error");
-    if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
-
-    const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
-    if (!error) {
-      showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
-      resetForm();
-    } else {
-      showMsg("❌ Lỗi khi xóa: " + error.message, "error");
-    }
-  }
-
-  // ===== Suggest popup =====
-  async function suggestKH() {
-    const inp = document.getElementById("makh");
-    const txt = (inp?.value || "").trim().toUpperCase();
-    const popup = document.getElementById("makhSuggestList");
-    if (!popup) return;
-
-    let query = supabase
-      .from(TABLE)
-      .select("makh, tenkh, dienthoai")
-      .order("makh", { ascending: true })
-      .limit(200);
-
-    if (txt) {
-      query = supabase
-        .from(TABLE)
-        .select("makh, tenkh, dienthoai")
-        .or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`)
-        .order("makh", { ascending: true })
-        .limit(60);
-    }
-
-    const { data, error } = await query;
-    if (error || !data || !data.length) {
-      popup.style.display = "none";
-      return;
-    }
-
-    khSuggestList = data;
-    suggestIndex = 0;
-
-    popup.innerHTML = data.map((r, i) => `
-      <div class="suggest-item${i === 0 ? " active" : ""}" data-idx="${i}">
-        <span class="suggest-makh">${r.makh}</span>
-        <span class="suggest-tenkh">${r.tenkh || ""}</span>
-        <span class="suggest-note">${r.dienthoai || ""}</span>
-      </div>
-    `).join("");
-
-    popup.style.display = "block";
-  }
-
-  function chooseKHFromSuggest(idx) {
-    const r = khSuggestList[idx];
-    if (!r) return;
-    document.getElementById("makh").value = r.makh;
-    document.getElementById("makhSuggestList").style.display = "none";
-    fetchKH();
-    setTimeout(() => document.getElementById("tenkh")?.focus(), 60);
-  }
-
-  function updateSuggestActive() {
-    const popup = document.getElementById("makhSuggestList");
-    if (!popup) return;
-    popup.querySelectorAll(".suggest-item").forEach((it, i) => {
-      it.classList.toggle("active", i === suggestIndex);
-      if (i === suggestIndex) it.scrollIntoView({ block: "nearest" });
-    });
-  }
-
-  function bindEvents() {
-    // Click chọn item trong suggest
-    document.getElementById("makhSuggestList")?.addEventListener("mousedown", (ev) => {
-      const item = ev.target.closest(".suggest-item");
-      if (!item) return;
-      ev.preventDefault();
-      const idx = Number(item.getAttribute("data-idx"));
-      chooseKHFromSuggest(idx);
-    });
-
-    // Phím điều hướng suggest khi đang focus makh
-    document.addEventListener("keydown", (ev) => {
-      const active = document.activeElement;
-      if (!active || active.id !== "makh") return;
-
-      const popup = document.getElementById("makhSuggestList");
-      const shown = popup && popup.style.display !== "none" && khSuggestList.length > 0;
-      if (!shown) return;
-
-      if (ev.key === "ArrowDown" || ev.key === "Tab") {
-        ev.preventDefault();
-        suggestIndex = (suggestIndex + 1) % khSuggestList.length;
-        updateSuggestActive();
-      } else if (ev.key === "ArrowUp") {
-        ev.preventDefault();
-        suggestIndex = (suggestIndex - 1 + khSuggestList.length) % khSuggestList.length;
-        updateSuggestActive();
-      } else if (ev.key === "Enter") {
-        ev.preventDefault();
-        if (suggestIndex >= 0) chooseKHFromSuggest(suggestIndex);
-      } else if (ev.key === "Escape") {
-        popup.style.display = "none";
-      }
-    });
-
-    // Click ra ngoài -> ẩn list suggest
-    document.addEventListener("mousedown", (ev) => {
-      const popup = document.getElementById("makhSuggestList");
-      if (!popup) return;
-      if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
-    });
-
-    // Expose cho onclick sẵn có trong HTML
-    window.fetchKH = fetchKH;
-    window.saveKH = saveKH;
-    window.resetForm = resetForm;
-    window.deleteKH = deleteKH;
-    window.suggestKH = suggestKH;
-
-    // Logout theo module mới
-    window.doLogout = () => dangXuatDungChung({ reloadPage: true });
-  }
-
-  // ===== INIT AUTH =====
-  document.addEventListener("DOMContentLoaded", () => {
-    khoiTaoDangNhapDungChung({
-      appContainerId: "app-container",
-      tuDongKhoaCoSo: false,
-      macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
-      onLoginSuccess: async () => {
-        supabase = getSupabaseClient();
-        bindEvents();
-        resetForm();
-      },
-    });
-  });
-</script>
-</head>
+    </head>
 
 <body>
-    <!-- Login Box -->
-
-        <div class="actions" style="margin-top:14px;">
-</div>
-</div>
     <!-- Main Form -->
-    <div id="app-container" style="display:none">
-    <div id="mainform" class="center-box" style="display:none">
+    <div id="app-container" style="display:none;">
+<div id="mainform" class="center-box" >
         <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
 
         <div class="row" style="position:relative;">
@@ -571,6 +276,218 @@
         <div id="msgBox" class="msg"></div>
     </div>
 </div>
+<script type="module">
+  import {
+    khoiTaoDangNhapDungChung,
+    dangXuatDungChung,
+    getSupabaseClient,
+  } from "./scripts/authModule.js";
+
+  const TABLE = "dmkhachhang";
+  let supabase = null;
+  let editingOld = false;
+  let khSuggestList = [];
+  let suggestIndex = -1;
+
+  function showMsg(msg, type) {
+    const box = document.getElementById("msgBox");
+    if (!box) return;
+    box.textContent = msg || "";
+    box.className = "msg" + (type ? " " + type : "");
+    if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
+  }
+  function getVal(id) { return document.getElementById(id)?.value || ""; }
+  function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
+
+  function validateForm() {
+    const makh = getVal("makh").trim().toUpperCase();
+    const tenkh = getVal("tenkh").trim();
+    const dienthoai = getVal("dienthoai").trim();
+    if (!makh) return "Mã khách hàng không được bỏ trống!";
+    if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+    if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+    const digits = dienthoai.replace(/[^\d]/g, "");
+    if (!/^\d{8,13}$/.test(digits)) return "SĐT phải là số, 8-13 ký tự!";
+    return null;
+  }
+
+  function resetForm() {
+    ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id, ""));
+    setVal("la_ncc", "");
+    editingOld = false;
+    const mk = document.getElementById("makh");
+    if (mk) mk.readOnly = false;
+    showMsg("");
+    mk?.focus();
+  }
+
+  async function fetchKH() {
+    const makh = getVal("makh").trim().toUpperCase();
+    if (!makh) return;
+
+    showMsg("Đang kiểm tra...", "");
+    const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
+    if (error) return showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
+
+    if (data && data.makh) {
+      setVal("tenkh", data.tenkh);
+      setVal("dienthoai", data.dienthoai);
+      setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0,10) : "");
+      setVal("diachi", data.diachi);
+      setVal("email", data.email);
+      setVal("taikhoan", data.taikhoan);
+      setVal("mst", data.mst);
+      setVal("cccd", data.cccd);
+      setVal("la_ncc", data.la_ncc ? "true" : "");
+      const mk = document.getElementById("makh");
+      if (mk) mk.readOnly = true;
+      editingOld = true;
+      showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
+    } else {
+      editingOld = false;
+      const mk = document.getElementById("makh");
+      if (mk) mk.readOnly = false;
+      ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id => setVal(id, ""));
+      showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
+    }
+  }
+
+  async function saveKH() {
+    const err = validateForm();
+    if (err) return showMsg(err, "error");
+
+    const obj = {
+      makh: getVal("makh").trim().toUpperCase(),
+      tenkh: getVal("tenkh").trim(),
+      dienthoai: getVal("dienthoai").trim(),
+      ngaysinh: getVal("ngaysinh") || null,
+      diachi: getVal("diachi") || null,
+      email: getVal("email") || null,
+      taikhoan: getVal("taikhoan") || null,
+      mst: getVal("mst") || null,
+      cccd: getVal("cccd") || null,
+      la_ncc: getVal("la_ncc") === "true",
+    };
+
+    let error;
+    if (editingOld) {
+      ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
+    } else {
+      ({ error } = await supabase.from(TABLE).insert(obj));
+    }
+
+    if (!error) {
+      showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
+      setTimeout(resetForm, 900);
+    } else {
+      showMsg("Lỗi: " + error.message, "error");
+    }
+  }
+
+  async function deleteKH() {
+    const makh = getVal("makh").trim().toUpperCase();
+    if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
+    if (!editingOld) return showMsg("Chưa có khách hàng để xóa!", "error");
+    if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
+
+    const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
+    if (!error) {
+      showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
+      resetForm();
+    } else {
+      showMsg("❌ Lỗi khi xóa: " + error.message, "error");
+    }
+  }
+
+  async function suggestKH() {
+    const inp = document.getElementById("makh");
+    const txt = (inp?.value || "").trim().toUpperCase();
+    const popup = document.getElementById("makhSuggestList");
+    if (!popup) return;
+
+    let q = supabase.from(TABLE).select("makh, tenkh, dienthoai").order("makh", { ascending: true }).limit(200);
+    if (txt) q = supabase.from(TABLE).select("makh, tenkh, dienthoai").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
+
+    const { data, error } = await q;
+    if (error || !data || !data.length) { popup.style.display = "none"; return; }
+
+    khSuggestList = data;
+    suggestIndex = 0;
+    popup.innerHTML = data.map((r,i)=>`
+      <div class="suggest-item${i===0?" active":""}" data-idx="${i}">
+        <span class="suggest-makh">${r.makh}</span>
+        <span class="suggest-tenkh">${r.tenkh || ""}</span>
+        <span class="suggest-note">${r.dienthoai || ""}</span>
+      </div>`).join("");
+    popup.style.display = "block";
+  }
+
+  function chooseKHFromSuggest(idx) {
+    const r = khSuggestList[idx];
+    if (!r) return;
+    document.getElementById("makh").value = r.makh;
+    document.getElementById("makhSuggestList").style.display = "none";
+    fetchKH();
+    setTimeout(() => document.getElementById("tenkh")?.focus(), 60);
+  }
+
+  function updateSuggestActive() {
+    const popup = document.getElementById("makhSuggestList");
+    if (!popup) return;
+    popup.querySelectorAll(".suggest-item").forEach((it,i)=>{
+      it.classList.toggle("active", i===suggestIndex);
+      if (i===suggestIndex) it.scrollIntoView({ block:"nearest" });
+    });
+  }
+
+  function bindEvents() {
+    const makhInp = document.getElementById("makh");
+    makhInp?.addEventListener("input", suggestKH);
+    makhInp?.addEventListener("focus", suggestKH);
+    document.getElementById("makhSuggestList")?.addEventListener("mousedown",(ev)=>{
+      const item = ev.target.closest(".suggest-item");
+      if (!item) return;
+      ev.preventDefault();
+      chooseKHFromSuggest(Number(item.getAttribute("data-idx")));
+    });
+    document.addEventListener("mousedown",(ev)=>{
+      const popup = document.getElementById("makhSuggestList");
+      if (!popup) return;
+      if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
+    });
+    document.addEventListener("keydown",(ev)=>{
+      const inp = document.activeElement;
+      if (inp && inp.id==="makh") {
+        const popup = document.getElementById("makhSuggestList");
+        if (popup && popup.style.display!=="none" && khSuggestList.length>0) {
+          if (ev.key==="ArrowDown" || ev.key==="Tab") { ev.preventDefault(); suggestIndex=(suggestIndex+1)%khSuggestList.length; updateSuggestActive(); }
+          else if (ev.key==="ArrowUp") { ev.preventDefault(); suggestIndex=(suggestIndex-1+khSuggestList.length)%khSuggestList.length; updateSuggestActive(); }
+          else if (ev.key==="Enter") { if (khSuggestList[suggestIndex]) { ev.preventDefault(); chooseKHFromSuggest(suggestIndex); } }
+          else if (ev.key==="Escape") { popup.style.display="none"; }
+        }
+      }
+    });
+
+    window.fetchKH = fetchKH;
+    window.saveKH = saveKH;
+    window.resetForm = resetForm;
+    window.deleteKH = deleteKH;
+    window.doLogout = () => dangXuatDungChung({ reloadPage: true });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    khoiTaoDangNhapDungChung({
+      appContainerId: "app-container",
+      tuDongKhoaCoSo: false,
+      macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
+      onLoginSuccess: async () => {
+        supabase = getSupabaseClient();
+        bindEvents();
+        resetForm();
+      },
+    });
+  });
+</script>
 </body>
 
 </html>
