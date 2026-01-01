@@ -307,7 +307,7 @@
     if (!tenkh) return "Tên khách hàng không được bỏ trống!";
     if (!dienthoai) return "Số điện thoại không được bỏ trống!";
     const digits = dienthoai.replace(/[^\d]/g, "");
-    if (!/^\d{8,13}$/.test(digits)) return "SĐT phải là số, 8-13 ký tự!";
+    if (!/^\d{10}$/.test(digits)) return "SĐT phải là số, 8-13 ký tự!";
     return null;
   }
 
