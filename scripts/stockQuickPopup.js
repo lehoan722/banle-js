@@ -104,13 +104,41 @@
     background: #f9fafb;
   }
 
-  .sq-stock-popup-header {
+    .sq-stock-popup-header {
     font-weight: 600;
     margin-bottom: 4px;
     text-align: left;
     cursor: move;
     user-select: none;
+
+    /* NEW: cho tiêu đề + nút nằm chung 1 hàng */
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+
+  /* NEW: nút chụp ảnh */
+  .sq-photo-btn {
+    margin-left: auto;            /* đẩy nút về cuối dòng */
+    font-size: 14px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    cursor: pointer;
+    line-height: 1.2;
+    user-select: none;
+  }
+  .sq-photo-btn:active {
+    transform: translateY(1px);
+  }
+
+  .sq-photo-btn .ok {
+    font-size: 12px;
+    margin-left: 6px;
+    opacity: 0.8;
+  }
+
 
   .sq-vitri-row td {
     font-weight: 500;
@@ -235,6 +263,41 @@
   function isTouchDevice() {
     return "ontouchstart" in window || navigator.maxTouchPoints > 0;
   }
+
+  async function copyTextToClipboard(text) {
+    const t = String(text || "").trim();
+    if (!t) return false;
+
+    // ưu tiên Clipboard API (cần HTTPS)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(t);
+        return true;
+      } catch (e) {
+        // fallback xuống dưới
+      }
+    }
+
+    // fallback iOS/Safari cũ
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = t;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
 
   function getDenNgay() {
     try {
@@ -412,7 +475,11 @@
     return `
       <div class="sq-stock-popup" data-masp="${upper}">
         <span class="sq-close">✕</span>
-        <div class="sq-stock-popup-header">Mã: ${upper} – bán/tồn đến ${getDenNgay()}</div>
+        <div class="sq-stock-popup-header">
+  <span class="sq-title-text">Mã: ${upper} – bán/tồn đến ${getDenNgay()}</span>
+  <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh</button>
+</div>
+
         <div class="sq-stock-layout">
           <div class="sq-stock-table-wrapper">
             <table>
@@ -665,6 +732,25 @@
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
 
+    // NEW: nút chụp ảnh -> copy MASP + mở trang up ảnh nhanh
+    const btnPhoto = popup.querySelector(".sq-photo-btn");
+    if (btnPhoto) {
+      btnPhoto.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const maspPopup = String(popup.dataset.masp || "").trim().toUpperCase();
+        const ok = await copyTextToClipboard(maspPopup);
+
+        // feedback nhỏ cho user (không bắt buộc)
+        const old = btnPhoto.innerHTML;
+        btnPhoto.innerHTML = ok ? "📷 Chụp ảnh <span class='ok'>(đã copy)</span>" : "📷 Chụp ảnh <span class='ok'>(copy lỗi)</span>";
+        setTimeout(() => (btnPhoto.innerHTML = old), 900);
+
+        // mở trang up ảnh nhanh (tab mới)
+        window.open("https://banle-js.vercel.app/upanhnhanh.html", "_blank");
+      };
+    }
 
     const closeBtn = popup.querySelector(".sq-close");
     if (closeBtn) {
