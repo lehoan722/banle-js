@@ -150,6 +150,33 @@
       margin-top: 8px;
     }
 
+    /* Bảng tự canh độ rộng theo nội dung */
+#stockQuickPopupTable {
+  table-layout: auto;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Mặc định không xuống dòng để đo width chuẩn */
+#stockQuickPopupTable th,
+#stockQuickPopupTable td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+
+/* Cột Size không xuống dòng */
+#stockQuickPopupTable td.col-size,
+#stockQuickPopupTable th.col-size {
+  white-space: nowrap;
+}
+
+/* Cột Sai: cho phép xuống dòng (đang theo dạng 1.\n2.\n...) */
+#stockQuickPopupTable td.col-sai,
+#stockQuickPopupTable th.col-sai {
+  white-space: pre-line;
+}
+
+
     .sq-img-wrapper img {
       max-height: 30vh;         /* ảnh không quá cao, vẫn cuộn được */
     }
@@ -412,6 +439,31 @@
     });
   }
 
+  // Sau khi dựng xong HTML table
+const table = document.getElementById("stockQuickPopupTable");
+
+// (tuỳ bạn) gắn class cho đúng CSS
+if (table) {
+  const ths = table.querySelectorAll("thead th");
+  ths.forEach(th => {
+    const t = (th.textContent || "").trim();
+    if (t === "Size") th.classList.add("col-size");
+    if (t === "Sai") th.classList.add("col-sai");
+  });
+  const trs = table.querySelectorAll("tbody tr");
+  trs.forEach(tr => {
+    const tds = tr.querySelectorAll("td");
+    // giả sử cột 0 là Size, cột Sai bạn đang để ở cột 1 hoặc cuối — nếu khác thì nói mình
+    if (tds[0]) tds[0].classList.add("col-size");
+    // nếu "Sai" là cột cuối:
+    if (tds[tds.length - 1]) tds[tds.length - 1].classList.add("col-sai");
+  });
+
+  // Auto fit
+  autoFitTableColumns(table, { minPx: 70, maxPx: 420, paddingPx: 28, wrapColumns: new Set(["Sai"]) });
+}
+
+
   // ===== Drag để kéo popup =====
   function makeDraggable(popup, handle) {
     if (!popup || !handle) return;
@@ -564,3 +616,73 @@
     };
   }
 })();
+
+function autoFitTableColumns(table, opts = {}) {
+  const {
+    minPx = 70,
+    maxPx = 420,
+    paddingPx = 26,
+    wrapColumns = new Set(["Sai"]) // cột cho phép xuống dòng thì không cần fit quá rộng
+  } = opts;
+
+  if (!table) return;
+
+  // Canvas để đo độ rộng text giống font thật
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const getFont = (el) => {
+    const s = window.getComputedStyle(el);
+    return `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+  };
+
+  const rows = Array.from(table.rows);
+  if (!rows.length) return;
+
+  const headerCells = Array.from(rows[0].cells);
+  const colCount = headerCells.length;
+
+  // Tạo <colgroup> để set width chuẩn
+  let colgroup = table.querySelector("colgroup");
+  if (!colgroup) {
+    colgroup = document.createElement("colgroup");
+    table.insertBefore(colgroup, table.firstChild);
+  }
+  // đủ số <col>
+  while (colgroup.children.length < colCount) colgroup.appendChild(document.createElement("col"));
+
+  // Tên cột theo header
+  const headers = headerCells.map(th => (th.textContent || "").trim());
+
+  for (let c = 0; c < colCount; c++) {
+    const headerName = headers[c] || "";
+    // nếu là cột cho phép wrap (Sai) thì chỉ giới hạn vừa phải để khỏi chiếm hết popup
+    const isWrap = wrapColumns.has(headerName);
+
+    let maxW = 0;
+
+    for (let r = 0; r < rows.length; r++) {
+      const cell = rows[r].cells[c];
+      if (!cell) continue;
+
+      // Font theo cell
+      ctx.font = getFont(cell);
+
+      // Với cột "Sai" (multi-line), đo theo dòng dài nhất
+      const raw = (cell.textContent || "").trim();
+      const lines = raw.split("\n").map(s => s.trim()).filter(Boolean);
+      const toMeasure = lines.length ? lines : [raw];
+
+      for (const t of toMeasure) {
+        const w = ctx.measureText(t).width + paddingPx;
+        if (w > maxW) maxW = w;
+      }
+    }
+
+    // Clamp
+    let finalW = Math.max(minPx, Math.min(maxW, isWrap ? 260 : maxPx));
+
+    // set width qua colgroup
+    colgroup.children[c].style.width = `${Math.round(finalW)}px`;
+  }
+}
