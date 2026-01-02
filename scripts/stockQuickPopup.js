@@ -66,7 +66,7 @@
   .sq-stock-popup table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
+    table-layout: auto;
   }
 
   .sq-stock-popup th,
@@ -76,6 +76,18 @@
     border-bottom: 1px solid #e5e7eb;
     white-space: nowrap;
   }
+  /* Auto-fit support: allow specific columns to wrap if needed */
+  .sq-stock-popup th.col-sai,
+  .sq-stock-popup td.col-sai { 
+    white-space: pre-line; 
+    text-align: left;
+  }
+  .sq-stock-popup th.col-size,
+  .sq-stock-popup td.col-size {
+    white-space: nowrap;
+    text-align: left;
+  }
+
 
   .sq-stock-popup th {
     background: #f3f4f6;
@@ -173,37 +185,9 @@
   }
 
   function displaySizeLabel(size) {
-    // Hiển thị giống ảnh bạn gửi:
-    // - Size "0" giữ nguyên là "0"
-    // - Size 38..45 hiển thị dạng: "38,S,46,240,165" ...
-    // - Nếu dữ liệu đã là chuỗi có dấu phẩy (vd: "39,M,48,245,170") thì giữ nguyên
-    // - Nếu dữ liệu có dạng "size 39" thì bỏ tiền tố "size "
-    const raw = String(size ?? "").trim();
-    if (!raw) return "";
-    const noPrefix = raw.replace(/^size\s+/i, "").trim();
-
-    // Nếu đã là dạng đầy đủ (có dấu phẩy) thì trả thẳng
-    if (noPrefix.includes(",")) return noPrefix;
-
-    // Map size 38..45 -> mô tả đầy đủ
-    const SIZE_FULL_MAP = {
-      "38": "38,S,46,240,165",
-      "39": "39,M,48,245,170",
-      "40": "40,L,50,250,175",
-      "41": "41,XL,52,255,180",
-      "42": "42,2XL,54,260,185",
-      "43": "43,3X,56,265,190",
-      "44": "44,4X,58,270,195",
-      "45": "45,5X,60,275,200",
-    };
-
-    // Rút số size nếu chuỗi có lẫn chữ (vd: "39", "39.0", "Size 39", "39 ")
-    const m = noPrefix.match(/(\d{1,2})/);
-    const num = m ? m[1] : noPrefix;
-
-    if (num === "0") return "0";
-
-    return SIZE_FULL_MAP[num] || num;
+    const s = String(size || "").toLowerCase();
+    const m = s.match(/(\d{1,2})/);
+    return m ? m[1] : size;
   }
 
   function isTouchDevice() {
@@ -366,8 +350,8 @@
               <thead>
                 <tr>
                   <th>Size</th>
-                  <th>Tồn CS1</th>
-                  <th>Tồn CS2</th>
+                  <th>CS1</th>
+                  <th>CS2</th>
                   <th>Bán CS1</th>
                   <th>Bán CS2</th>
                 </tr>
@@ -392,7 +376,114 @@
 
   let globalCloseBound = false;
 
-  function bindGlobalCloseHandlers() {
+  
+  // ===== Auto-fit độ rộng cột theo nội dung (giống Excel) =====
+  function autoFitTableColumns(table, opts = {}) {
+    const {
+      minPx = 70,
+      maxPx = 420,
+      paddingPx = 28,
+      // cột cho phép xuống dòng: giới hạn nhỏ hơn để không "ăn" hết popup
+      wrapColumns = new Set(["Sai"]),
+      wrapMaxPx = 260,
+    } = opts;
+
+    if (!table) return;
+
+    // Canvas để đo độ rộng chữ theo font thật
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const getFont = (el) => {
+      const s = window.getComputedStyle(el);
+      return `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+    };
+
+    const rows = Array.from(table.rows);
+    if (!rows.length) return;
+
+    const headerCells = Array.from(rows[0].cells || []);
+    const colCount = headerCells.length;
+    if (!colCount) return;
+
+    const headers = headerCells.map((th) => (th.textContent || "").trim());
+
+    // Tạo colgroup để set width
+    let colgroup = table.querySelector("colgroup");
+    if (!colgroup) {
+      colgroup = document.createElement("colgroup");
+      table.insertBefore(colgroup, table.firstChild);
+    }
+    while (colgroup.children.length < colCount) colgroup.appendChild(document.createElement("col"));
+
+    for (let c = 0; c < colCount; c++) {
+      const headerName = headers[c] || "";
+      const isWrap = wrapColumns.has(headerName);
+
+      let maxW = 0;
+
+      for (let r = 0; r < rows.length; r++) {
+        const cell = rows[r].cells[c];
+        if (!cell) continue;
+
+        ctx.font = getFont(cell);
+
+        const raw = (cell.textContent || "").trim();
+        // nếu cell có nhiều dòng (vd: cột Sai), đo dòng dài nhất
+        const parts = raw.split("\n").map((s) => s.trim()).filter(Boolean);
+        const list = parts.length ? parts : [raw];
+
+        for (const t of list) {
+          const w = ctx.measureText(t).width + paddingPx;
+          if (w > maxW) maxW = w;
+        }
+      }
+
+      let finalW = Math.max(minPx, Math.min(maxW, isWrap ? wrapMaxPx : maxPx));
+      colgroup.children[c].style.width = `${Math.round(finalW)}px`;
+    }
+  }
+
+  function applyAutoFitInPopup(popupEl) {
+    if (!popupEl) return;
+
+    const table = popupEl.querySelector("table");
+    if (!table) return;
+
+    // gắn class để CSS xử lý wrap đúng cột
+    const ths = table.querySelectorAll("thead th");
+    ths.forEach((th, idx) => {
+      const t = (th.textContent || "").trim();
+      if (t === "Size") th.classList.add("col-size");
+      if (t === "Sai") th.classList.add("col-sai");
+    });
+
+    const headerTexts = Array.from(ths).map(th => (th.textContent || "").trim());
+    const idxSize = headerTexts.indexOf("Size");
+    const idxSai = headerTexts.indexOf("Sai");
+
+    const trs = table.querySelectorAll("tbody tr");
+    trs.forEach((tr) => {
+      const tds = tr.querySelectorAll("td");
+      if (idxSize >= 0 && tds[idxSize]) tds[idxSize].classList.add("col-size");
+      if (idxSai >= 0 && tds[idxSai]) tds[idxSai].classList.add("col-sai");
+    });
+
+    // chạy auto-fit sau khi DOM đã gắn xong
+    requestAnimationFrame(() => {
+      autoFitTableColumns(table, { minPx: 70, maxPx: 420, paddingPx: 28, wrapColumns: new Set(["Sai"]), wrapMaxPx: 260 });
+    });
+
+    // nếu ảnh bên phải load xong làm layout đổi -> fit lại lần nữa
+    const img = popupEl.querySelector(".sq-stock-img img");
+    if (img) {
+      img.addEventListener("load", () => {
+        autoFitTableColumns(table, { minPx: 70, maxPx: 420, paddingPx: 28, wrapColumns: new Set(["Sai"]), wrapMaxPx: 260 });
+      }, { once: true });
+    }
+  }
+
+function bindGlobalCloseHandlers() {
     if (globalCloseBound) return;
     globalCloseBound = true;
 
@@ -501,6 +592,10 @@
 
     // đảm bảo có data-masp (để toggle theo mã)
     popup.dataset.masp = String(masp || "").trim().toUpperCase();
+
+    // auto-fit độ rộng cột theo nội dung
+    applyAutoFitInPopup(popup);
+
 
     const closeBtn = popup.querySelector(".sq-close");
     if (closeBtn) {
