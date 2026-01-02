@@ -369,8 +369,7 @@
 <body class="popupnhanh">
 
     <style>
-
-         /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
         body.popupnhanh .sq-stock-popup {
             top: 8px !important;
             left: 8px !important;
@@ -947,6 +946,33 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
+        function precheckNhaCungCapBeforeSave() {
+            const makhEl = document.getElementById('makh');
+            const tenEl = document.getElementById('khachhang');
+            const makh = (makhEl?.value || '').trim();
+            const ten = (tenEl?.value || '').trim();
+            if (!makh && !ten) {
+                const ok = confirm('Bạn có muốn lưu dữ liệu khi chưa có nhà cung cấp không?');
+                if (!ok) {
+                    makhEl?.focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Chặn phím F2 (lưu) nếu chưa có nhà cung cấp và người dùng chọn "Không"
+        dispatchTarget.addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                const ok = precheckNhaCungCapBeforeSave();
+                if (!ok) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }
+        }, true);
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
