@@ -77,6 +77,23 @@
     white-space: nowrap;
   }
 
+  /* Cho phép xuống dòng ở cột Size + Sai (giống ảnh 2) */
+  .sq-stock-popup th.col-size,
+  .sq-stock-popup td.col-size {
+    white-space: normal;
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+  }
+
+  .sq-stock-popup th.col-sai,
+  .sq-stock-popup td.col-sai {
+    white-space: pre-line; /* xuống dòng theo \n */
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+  }
+
   .sq-stock-popup th {
     background: #f3f4f6;
     font-weight: 600;
@@ -178,6 +195,55 @@
     return m ? m[1] : size;
   }
 
+  // ===== Diễn giải cột "Sai" (tuỳ biến theo bộ mã sai của bạn) =====
+  // Bạn sửa nội dung mô tả bên dưới cho đúng với hệ thống của bạn.
+  const SAI_MAP = {
+    1: "Sai 1: (bạn điền mô tả tại đây)",
+    2: "Sai 2: (bạn điền mô tả tại đây)",
+    3: "Sai 3: (bạn điền mô tả tại đây)",
+    4: "Sai 4: (bạn điền mô tả tại đây)",
+    5: "Sai 5: (bạn điền mô tả tại đây)",
+  };
+
+  function formatSaiCell(saiVal) {
+    if (saiVal == null) return "";
+    // Nếu đã là câu có xuống dòng / có dấu chấm thứ tự thì giữ nguyên
+    const asText = String(saiVal).trim();
+    if (!asText) return "";
+    if (asText.includes("\n") || /^\d+\./.test(asText)) return asText;
+
+    // Hỗ trợ dạng: "1,3" / "1;3" / "[1,3]" / "1 3"
+    let codes = [];
+    try {
+      if (Array.isArray(saiVal)) {
+        codes = saiVal.map((x) => String(x).trim()).filter(Boolean);
+      } else if (asText.startsWith("[") && asText.endsWith("]")) {
+        const arr = JSON.parse(asText);
+        if (Array.isArray(arr)) codes = arr.map((x) => String(x).trim());
+      } else {
+        codes = asText
+          .split(/[^0-9]+/g)
+          .map((x) => x.trim())
+          .filter(Boolean);
+      }
+    } catch (e) {
+      codes = asText
+        .split(/[^0-9]+/g)
+        .map((x) => x.trim())
+        .filter(Boolean);
+    }
+
+    if (!codes.length) return asText;
+
+    // Unique + sort số tăng dần
+    const uniq = Array.from(new Set(codes.map((c) => Number(c)).filter((n) => !isNaN(n))))
+      .sort((a, b) => a - b);
+
+    return uniq
+      .map((code) => `${code}. ${SAI_MAP[code] || `Sai ${code}`}`)
+      .join("\n");
+  }
+
   function isTouchDevice() {
     return "ontouchstart" in window || navigator.maxTouchPoints > 0;
   }
@@ -228,14 +294,24 @@
 
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
-        rows = data.map((r) => ({
-          masp: String(r.masp || "").toUpperCase(),
-          size: normalizeSize(r.size),
-          ton_cs1: Number(r.ton_cs1 || 0),
-          ton_cs2: Number(r.ton_cs2 || 0),
-          ban_cs1: Number(r.ban_cs1 || 0),
-          ban_cs2: Number(r.ban_cs2 || 0),
-        }));
+        rows = data.map((r) => {
+          const sizeRaw = String(r.size ?? "").trim();
+          const saiRaw =
+            r.sai ?? r.sai_codes ?? r.sai_code ?? r.loi ?? r.error_codes ?? "";
+          return {
+            masp: String(r.masp || "").toUpperCase(),
+            // size_raw: hiển thị đầy đủ như ảnh 2 (vd: "39,M,48,245,170")
+            size_raw: sizeRaw,
+            // size: dùng nội bộ nếu bạn muốn chuẩn hoá (vẫn giữ để không phá logic cũ)
+            size: normalizeSize(sizeRaw),
+            ton_cs1: Number(r.ton_cs1 || 0),
+            ton_cs2: Number(r.ton_cs2 || 0),
+            ban_cs1: Number(r.ban_cs1 || 0),
+            ban_cs2: Number(r.ban_cs2 || 0),
+            // sai: có thể là "1,3" hoặc [1,3] tuỳ RPC bạn trả về
+            sai: saiRaw,
+          };
+        });
       } else if (error) {
         console.warn("xnt17_tonban_snapshot error:", error);
       }
@@ -281,7 +357,10 @@
 
     const body = (rows || [])
       .map((r) => {
-        const sizeLabel = displaySizeLabel(r.size);
+        const sizeText =
+          String(r.size_raw ?? "").trim() || displaySizeLabel(r.size);
+        const saiText = formatSaiCell(r.sai);
+
         sum1 += r.ton_cs1;
         sum2 += r.ton_cs2;
         sumBan1 += r.ban_cs1;
@@ -289,11 +368,12 @@
 
         return `
         <tr>
-          <td>${sizeLabel}</td>
+          <td class="col-size">${sizeText}</td>
           <td class="num">${r.ton_cs1 || ""}</td>
           <td class="num">${r.ton_cs2 || ""}</td>
           <td class="num">${r.ban_cs1 || ""}</td>
           <td class="num">${r.ban_cs2 || ""}</td>
+          <td class="col-sai">${saiText || ""}</td>
         </tr>`;
       })
       .join("");
@@ -306,6 +386,7 @@
         <td class="num">${sum2 || ""}</td>
         <td class="num">${sumBan1 || ""}</td>
         <td class="num">${sumBan2 || ""}</td>
+        <td class="col-sai"></td>
       </tr>`
       : "";
 
@@ -316,7 +397,7 @@
     const vitriRow = vitriParts.length
       ? `
       <tr class="sq-vitri-row">
-        <td colspan="5">Vị trí: ${vitriParts.join(" , ")}</td>
+        <td colspan="6">Vị trí: ${vitriParts.join(" , ")}</td>
       </tr>`
       : "";
 
@@ -337,11 +418,12 @@
             <table>
               <thead>
                 <tr>
-                  <th>Size</th>
+                  <th class="col-size">Size</th>
                   <th>CS1</th>
                   <th>CS2</th>
                   <th>Bán CS1</th>
                   <th>Bán CS2</th>
+                  <th class="col-sai">Sai</th>
                 </tr>
               </thead>
               <tbody>
