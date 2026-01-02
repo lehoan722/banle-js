@@ -339,11 +339,22 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
-    
-        .kh-row{display:flex;gap:8px;align-items:flex-start;width:100%;}
-        .kh-col{flex:1;min-width:0;}
-        .kh-col input{width:100%;}
 
+        .kh-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .kh-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kh-col input {
+            width: 100%;
+        }
     </style>
 
 
@@ -556,7 +567,7 @@
                                 <input id="khachhang" readonly="" style="width:100%;box-sizing:border-box;" />
                             </label>
                         </div>
-<!-- Popup tìm khách hàng -->
+                        <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
                             style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
                             <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
@@ -617,7 +628,9 @@
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
-                <button id="btnNapNhapTam" class="btnChuyen" title="Tự động lấy size chi tiết từ nhaptamcs2_ trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU">⬇️ nạp nhập tạm</button>
+                <button id="btnNapNhapTam" class="btnChuyen"
+                    title="Tự động lấy size chi tiết từ nhaptamcs2_ trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU">⬇️
+                    nạp nhập tạm</button>
             </div>
             <button id="btnOpenInTem">In mã vạch</button>
             <button id="btnImportFromGS">Nhập từ Google Sheet</button>kiemkhocs2/kiemkhocs2
@@ -956,17 +969,19 @@
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
+        // ===== Pre-check nhà cung cấp trước khi lưu (F2) - BẮT BUỘC CÓ TÊN KH =====
         function precheckNhaCungCapBeforeSave() {
             const makhEl = document.getElementById('makh');
             const tenEl = document.getElementById('khachhang');
-            const makh = (makhEl?.value || '').trim();
+
             const ten = (tenEl?.value || '').trim();
-            if (!makh && !ten) {
-                const ok = confirm('Bạn có muốn lưu dữ liệu khi chưa có nhà cung cấp không?');
-                if (!ok) {
-                    makhEl?.focus();
-                    return false;
-                }
+
+            // ✅ BẮT BUỘC: phải có tên khách hàng thì mới cho lưu
+            if (!ten) {
+                alert('⚠️ Bạn chưa chọn/nhập khách hàng. Vui lòng chọn khách hàng trước khi lưu!');
+                // ưu tiên đưa con trỏ về mã khách để người dùng tìm/nhập
+                if (makhEl) { makhEl.focus(); makhEl.select?.(); }
+                return false;
             }
             return true;
         }
