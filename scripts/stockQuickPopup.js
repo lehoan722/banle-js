@@ -748,7 +748,9 @@
         setTimeout(() => (btnPhoto.innerHTML = old), 900);
 
         // mở trang up ảnh nhanh (tab mới)
-        window.open("https://banle-js.vercel.app/upanhnhanh.html", "_blank");
+        const url = "https://banle-js.vercel.app/upanhnhanh.html?masp=" + encodeURIComponent(maspPopup);
+        window.open(url, "_blank");
+
       };
     }
 
