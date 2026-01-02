@@ -185,9 +185,37 @@
   }
 
   function displaySizeLabel(size) {
-    const s = String(size || "").toLowerCase();
-    const m = s.match(/(\d{1,2})/);
-    return m ? m[1] : size;
+    // Hiển thị giống ảnh bạn gửi:
+    // - Size "0" giữ nguyên là "0"
+    // - Size 38..45 hiển thị dạng: "38,S,46,240,165" ...
+    // - Nếu dữ liệu đã là chuỗi có dấu phẩy (vd: "39,M,48,245,170") thì giữ nguyên
+    // - Nếu dữ liệu có dạng "size 39" thì bỏ tiền tố "size "
+    const raw = String(size ?? "").trim();
+    if (!raw) return "";
+    const noPrefix = raw.replace(/^size\s+/i, "").trim();
+
+    // Nếu đã là dạng đầy đủ (có dấu phẩy) thì trả thẳng
+    if (noPrefix.includes(",")) return noPrefix;
+
+    // Map size 38..45 -> mô tả đầy đủ
+    const SIZE_FULL_MAP = {
+      "38": "38,S,46,240,165",
+      "39": "39,M,48,245,170",
+      "40": "40,L,50,250,175",
+      "41": "41,XL,52,255,180",
+      "42": "42,2XL,54,260,185",
+      "43": "43,3X,56,265,190",
+      "44": "44,4X,58,270,195",
+      "45": "45,5X,60,275,200",
+    };
+
+    // Rút số size nếu chuỗi có lẫn chữ (vd: "39", "39.0", "Size 39", "39 ")
+    const m = noPrefix.match(/(\d{1,2})/);
+    const num = m ? m[1] : noPrefix;
+
+    if (num === "0") return "0";
+
+    return SIZE_FULL_MAP[num] || num;
   }
 
   function isTouchDevice() {
