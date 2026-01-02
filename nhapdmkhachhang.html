@@ -265,13 +265,15 @@
             <label>CCCD/CMND</label>
             <input id="cccd" maxlength="20">
         </div>
-        <div id="msgBox" class="msg"></div>
+
         <div class="actions">
             <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
             <button class="new" onclick="resetForm()">Thêm mới</button>
             <button class="logout" onclick="doLogout()">Đăng xuất</button>
             <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
-        </div>        
+        </div>
+
+        <div id="msgBox" class="msg"></div>
     </div>
 </div>
 <script type="module">
@@ -403,8 +405,8 @@
     const popup = document.getElementById("makhSuggestList");
     if (!popup) return;
 
-    let q = supabase.from(TABLE).select("makh, tenkh, dienthoai").order("makh", { ascending: true }).limit(200);
-    if (txt) q = supabase.from(TABLE).select("makh, tenkh, dienthoai").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
+    let q = supabase.from(TABLE).select("makh, tenkh").order("makh", { ascending: true }).limit(200);
+    if (txt) q = supabase.from(TABLE).select("makh, tenkh").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
 
     const { data, error } = await q;
     if (error || !data || !data.length) { popup.style.display = "none"; return; }
@@ -415,7 +417,6 @@
       <div class="suggest-item${i===0?" active":""}" data-idx="${i}">
         <span class="suggest-makh">${r.makh}</span>
         <span class="suggest-tenkh">${r.tenkh || ""}</span>
-        <span class="suggest-note">${r.dienthoai || ""}</span>
       </div>`).join("");
     popup.style.display = "block";
   }
