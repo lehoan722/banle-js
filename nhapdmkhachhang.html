@@ -216,8 +216,6 @@
 <div id="mainform" class="center-box" >
         <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
 
-        <div id="msgBox" class="msg"></div>
-
         <div class="row" style="position:relative;">
             <label class="required">Mã KH *</label>
             <input id="makh" maxlength="20" autocomplete="off"
@@ -267,15 +265,13 @@
             <label>CCCD/CMND</label>
             <input id="cccd" maxlength="20">
         </div>
-
+        <div id="msgBox" class="msg"></div>
         <div class="actions">
             <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
             <button class="new" onclick="resetForm()">Thêm mới</button>
             <button class="logout" onclick="doLogout()">Đăng xuất</button>
             <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
-        </div>
-
-        
+        </div>        
     </div>
 </div>
 <script type="module">
