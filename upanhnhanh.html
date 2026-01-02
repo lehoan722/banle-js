@@ -851,6 +851,23 @@
       maspSuggestDiv = document.getElementById('maspSuggestList');
       toastEl = $('#toast');
 
+            // === NEW: Nhận masp từ URL (?masp=ABC...) rồi tự kiểm tra ===
+      try {
+        const params = new URLSearchParams(window.location.search || "");
+        const maspFromUrl = (params.get("masp") || "").trim();
+        if (maspFromUrl) {
+          maspInput.value = maspFromUrl.toUpperCase();
+          hideMaspSuggest();
+          setStatus("Đã nhận mã từ popup: " + maspInput.value, "ok");
+
+          // tự chạy kiểm tra sau khi DOM & supabase sẵn sàng
+          setTimeout(() => handleCheck(), 50);
+        }
+      } catch (e) {
+        console.warn("Không đọc được masp từ URL:", e);
+      }
+
+
       // Gắn event cho input MÃ SP
       maspInput.addEventListener('input', () => {
         const v = maspInput.value || '';
