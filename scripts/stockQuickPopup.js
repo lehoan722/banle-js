@@ -744,7 +744,7 @@
 
         // feedback nhỏ cho user (không bắt buộc)
         const old = btnPhoto.innerHTML;
-        btnPhoto.innerHTML = ok ? "📷 Chụp ảnh <span class='ok'>(đã copy)</span>" : "📷 Chụp ảnh <span class='ok'>(copy lỗi)</span>";
+        btnPhoto.innerHTML = ok ? "📷 Chụp ảnh/copy <span class='ok'>(đã copy)</span>" : "📷 Chụp ảnh <span class='ok'>(copy lỗi)</span>";
         setTimeout(() => (btnPhoto.innerHTML = old), 900);
 
         // mở trang up ảnh nhanh (tab mới)
