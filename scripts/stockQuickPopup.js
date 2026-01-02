@@ -319,24 +319,51 @@
       sumBan1 = 0,
       sumBan2 = 0;
 
-    const body = (rows || [])
-      .map((r) => {
+    // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
+    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+
+    // Map dữ liệu trả về theo số size (0/38/39...)
+    const bySizeNum = new Map();
+    (rows || []).forEach((r) => {
+      const raw = String(r.size ?? "").trim();
+      // normalizeSize() tạo dạng "size 39" -> rút số
+      const noPrefix = raw.replace(/^size\s+/i, "").trim();
+      const m = noPrefix.match(/(\d{1,2})/);
+      const num = (m ? m[1] : noPrefix).trim();
+      if (!num) return;
+      bySizeNum.set(num, r);
+    });
+
+    const body = SIZE_ORDER
+      .map((sizeNum) => {
+        const r = bySizeNum.get(sizeNum) || {
+          size: "size " + sizeNum,
+          ton_cs1: 0,
+          ton_cs2: 0,
+          ban_cs1: 0,
+          ban_cs2: 0,
+        };
+
         const sizeLabel = displaySizeLabel(r.size);
-        sum1 += r.ton_cs1;
-        sum2 += r.ton_cs2;
-        sumBan1 += r.ban_cs1;
-        sumBan2 += r.ban_cs2;
+
+        // cộng tổng (dòng thiếu dữ liệu sẽ là 0)
+        sum1 += Number(r.ton_cs1 || 0);
+        sum2 += Number(r.ton_cs2 || 0);
+        sumBan1 += Number(r.ban_cs1 || 0);
+        sumBan2 += Number(r.ban_cs2 || 0);
 
         return `
         <tr>
           <td>${sizeLabel}</td>
-          <td class="num">${r.ton_cs1 || ""}</td>
-          <td class="num">${r.ton_cs2 || ""}</td>
-          <td class="num">${r.ban_cs1 || ""}</td>
-          <td class="num">${r.ban_cs2 || ""}</td>
+          <td class="num">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
+          <td class="num">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
+          <td class="num">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
+          <td class="num">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
         </tr>`;
       })
       .join("");
+
+        
 
     const sumRow = rows.length
       ? `
@@ -687,3 +714,4 @@ function bindGlobalCloseHandlers() {
     };
   }
 })();
+
