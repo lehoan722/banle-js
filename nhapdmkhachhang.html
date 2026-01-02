@@ -299,6 +299,22 @@
   function getVal(id) { return document.getElementById(id)?.value || ""; }
   function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
 
+  // Quy ước: nếu Mã KH người dùng nhập là dạng số hoàn toàn (ví dụ: 0987...),
+  // thì tự động ghi sang ô Điện thoại để nhân viên chỉ cần nhập 1 lần.
+  // Trường hợp Mã KH có cả chữ và số thì giữ nguyên như hiện tại.
+  function autoSyncPhoneFromMaKH() {
+    const raw = getVal("makh").trim();
+    if (!raw) return;
+
+    // Chỉ đồng bộ khi Mã KH là số hoàn toàn (không có chữ/ký tự khác)
+    // Ví dụ: "0987654321" => copy sang Điện thoại
+    if (/^\d+$/.test(raw)) {
+      // Chỉ set nếu ô điện thoại đang trống hoặc đang giống mã KH (tránh ghi đè khi user đã nhập khác)
+      const curPhone = getVal("dienthoai").trim();
+      if (!curPhone || curPhone === raw) setVal("dienthoai", raw);
+    }
+  }
+
   function validateForm() {
     const makh = getVal("makh").trim().toUpperCase();
     const tenkh = getVal("tenkh").trim();
@@ -442,8 +458,12 @@
 
   function bindEvents() {
     const makhInp = document.getElementById("makh");
-    makhInp?.addEventListener("input", suggestKH);
+    makhInp?.addEventListener("input", () => {
+      autoSyncPhoneFromMaKH();
+      suggestKH();
+    });
     makhInp?.addEventListener("focus", suggestKH);
+    makhInp?.addEventListener("blur", autoSyncPhoneFromMaKH);
     document.getElementById("makhSuggestList")?.addEventListener("mousedown",(ev)=>{
       const item = ev.target.closest(".suggest-item");
       if (!item) return;
