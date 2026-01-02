@@ -164,21 +164,46 @@
     "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
   // ===== Helpers =====
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+  function normalizeSize(v) {
+    const s = String(v ?? "").trim().toLowerCase();
+    if (!s) return "";
+    if (/^\d+$/.test(s)) return "size " + s;
+    if (s.startsWith("size ")) return s;
+    return "size " + s.replace(/^size\s*/, "").trim();
   }
 
-  // Hiển thị Size theo kiểu "ảnh 2": giữ nguyên chuỗi size gốc (vd: "39,M,48,245,170")
-  // Nếu dữ liệu trả về có dạng "size 39" thì bỏ tiền tố "size" để gọn.
-  function displaySizeFull(sizeRaw) {
-    const raw = String(sizeRaw ?? "").trim();
+  function displaySizeLabel(size) {
+    // Hiển thị giống ảnh bạn gửi:
+    // - Size "0" giữ nguyên là "0"
+    // - Size 38..45 hiển thị dạng: "38,S,46,240,165" ...
+    // - Nếu dữ liệu đã là chuỗi có dấu phẩy (vd: "39,M,48,245,170") thì giữ nguyên
+    // - Nếu dữ liệu có dạng "size 39" thì bỏ tiền tố "size "
+    const raw = String(size ?? "").trim();
     if (!raw) return "";
-    return raw.replace(/^size\s+/i, "");
+    const noPrefix = raw.replace(/^size\s+/i, "").trim();
+
+    // Nếu đã là dạng đầy đủ (có dấu phẩy) thì trả thẳng
+    if (noPrefix.includes(",")) return noPrefix;
+
+    // Map size 38..45 -> mô tả đầy đủ
+    const SIZE_FULL_MAP = {
+      "38": "38,S,46,240,165",
+      "39": "39,M,48,245,170",
+      "40": "40,L,50,250,175",
+      "41": "41,XL,52,255,180",
+      "42": "42,2XL,54,260,185",
+      "43": "43,3X,56,265,190",
+      "44": "44,4X,58,270,195",
+      "45": "45,5X,60,275,200",
+    };
+
+    // Rút số size nếu chuỗi có lẫn chữ (vd: "39", "39.0", "Size 39", "39 ")
+    const m = noPrefix.match(/(\d{1,2})/);
+    const num = m ? m[1] : noPrefix;
+
+    if (num === "0") return "0";
+
+    return SIZE_FULL_MAP[num] || num;
   }
 
   function isTouchDevice() {
@@ -233,9 +258,7 @@
       if (!error && data && data.length) {
         rows = data.map((r) => ({
           masp: String(r.masp || "").toUpperCase(),
-          // Giữ nguyên size gốc để hiển thị đúng như ảnh 2 (vd: "39,M,48,245,170")
-          // Nếu RPC trả "size 39" thì displaySizeFull() sẽ bỏ tiền tố "size".
-          size: String(r.size ?? "").trim(),
+          size: normalizeSize(r.size),
           ton_cs1: Number(r.ton_cs1 || 0),
           ton_cs2: Number(r.ton_cs2 || 0),
           ban_cs1: Number(r.ban_cs1 || 0),
@@ -286,7 +309,7 @@
 
     const body = (rows || [])
       .map((r) => {
-        const sizeLabel = escapeHtml(displaySizeFull(r.size));
+        const sizeLabel = displaySizeLabel(r.size);
         sum1 += r.ton_cs1;
         sum2 += r.ton_cs2;
         sumBan1 += r.ban_cs1;
