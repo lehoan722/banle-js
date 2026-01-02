@@ -198,9 +198,9 @@
   // ===== Diễn giải cột "Sai" (tuỳ biến theo bộ mã sai của bạn) =====
   // Bạn sửa nội dung mô tả bên dưới cho đúng với hệ thống của bạn.
   const SAI_MAP = {
-    1: "Sai 1: (bạn điền mô tả tại đây)",
-    2: "Sai 2: (bạn điền mô tả tại đây)",
-    3: "Sai 3: (bạn điền mô tả tại đây)",
+    1: ",S,46,240,165",
+    2: ",M,48,245,170",
+    3: "Sai 3: (,L,50,250,175)",
     4: "Sai 4: (bạn điền mô tả tại đây)",
     5: "Sai 5: (bạn điền mô tả tại đây)",
   };
