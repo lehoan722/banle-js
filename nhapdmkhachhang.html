@@ -445,10 +445,13 @@
     return /^\d+$/.test(String(str || "").trim());
   }
 
-  function autoFillPhoneFromMaKH() {
+  function autoFillPhoneFromMaKH(force = false) {
     const mkEl = document.getElementById("makh");
     const dtEl = document.getElementById("dienthoai");
     if (!mkEl || !dtEl) return;
+
+    // Nếu đang ở chế độ sửa khách cũ (makh bị khóa) thì không tự động chèn lại
+    if (mkEl.readOnly) return;
 
     const mk = String(mkEl.value || "").trim();
     if (!mk) return;
@@ -456,10 +459,12 @@
     // Chỉ auto-fill nếu Mã KH là số hoàn toàn (không có chữ)
     if (!isAllDigits(mk)) return;
 
-    const dt = String(dtEl.value || "").trim();
-    // Không ghi đè nếu người dùng đã nhập SĐT khác
-    if (!dt || dt === mk) dtEl.value = mk;
+    // An toàn khi người dùng sửa lại Mã KH: luôn cập nhật lại SĐT theo Mã KH (theo quy ước Mã KH = SĐT)
+    // - áp dụng cho cả blur lẫn Enter
+    // - không phụ thuộc SĐT đang có gì (tránh trường hợp nhập nhầm rồi sửa Mã KH mà SĐT không cập nhật)
+    dtEl.value = mk;
   }
+
 
   // Thứ tự chuyển focus khi nhấn Enter
   const ENTER_FLOW = ["makh","tenkh","dienthoai","la_ncc","ngaysinh","diachi","email","taikhoan","mst","cccd"];
