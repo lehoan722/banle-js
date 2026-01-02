@@ -211,278 +211,283 @@
     </head>
 
 <body>
-  <!-- Main Form -->
-  <div id="app-container" style="display:none;">
-    <div id="mainform" class="center-box">
-      <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
+    <!-- Main Form -->
+    <div id="app-container" style="display:none;">
+<div id="mainform" class="center-box" >
+        <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
 
-      <!-- 1) Điện thoại -->
-      <div class="row">
-        <label class="required">Điện thoại *</label>
-        <input id="dienthoai" maxlength="10" autocomplete="off" placeholder="Nhập SĐT 10 số...">
-      </div>
+        <div class="row" style="position:relative;">
+            <label class="required">Mã KH *</label>
+            <input id="makh" maxlength="20" autocomplete="off"
+                placeholder="Nhập mã khách hàng...">
+            <div id="makhSuggestList"
+                style="position:absolute;left:124px;top:37px;width:calc(100% - 124px);z-index:11;display:none;"></div>
+        </div>
 
-      <!-- 2) Tên khách -->
-      <div class="row">
-        <label class="required">Tên KH *</label>
-        <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
-      </div>
 
-      <!-- 3) Mã KH (tự động = SĐT 10 số) -->
-      <div class="row">
-        <label class="required">Mã KH *</label>
-        <input id="makh" maxlength="20" autocomplete="off" placeholder="Tự động theo SĐT" readonly
-               style="background:#f3f4f6;">
-      </div>
+        <div class="row">
+            <label class="required">Tên KH *</label>
+            <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
+        </div>
+        <div class="row">
+            <label class="required">Điện thoại *</label>
+            <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
+        </div>
+        <div class="row">
+            <label>Là nhà cung cấp</label>
+            <select id="la_ncc">
+                <option value=""></option>
+                <option value="">Không</option>
+                <option value="true">Có</option>
+            </select>
+        </div>
+        <div class="row">
+            <label>Ngày sinh</label>
+            <input id="ngaysinh" type="date" maxlength="12">
+        </div>
+        <div class="row">
+            <label>Địa chỉ</label>
+            <input id="diachi" maxlength="100">
+        </div>
+        <div class="row">
+            <label>Email</label>
+            <input id="email" maxlength="60">
+        </div>
+        <div class="row">
+            <label>Tài khoản NH</label>
+            <input id="taikhoan" maxlength="40">
+        </div>
+        <div class="row">
+            <label>Mã số thuế</label>
+            <input id="mst" maxlength="20">
+        </div>
+        <div class="row">
+            <label>CCCD/CMND</label>
+            <input id="cccd" maxlength="20">
+        </div>
 
-      <div class="row">
-        <label>Là nhà cung cấp</label>
-        <select id="la_ncc">
-          <option value=""></option>
-          <option value="">Không</option>
-          <option value="true">Có</option>
-        </select>
-      </div>
-      <div class="row">
-        <label>Ngày sinh</label>
-        <input id="ngaysinh" type="date" maxlength="12">
-      </div>
-      <div class="row">
-        <label>Địa chỉ</label>
-        <input id="diachi" maxlength="100">
-      </div>
-      <div class="row">
-        <label>Email</label>
-        <input id="email" maxlength="60">
-      </div>
-      <div class="row">
-        <label>Tài khoản NH</label>
-        <input id="taikhoan" maxlength="40">
-      </div>
-      <div class="row">
-        <label>Mã số thuế</label>
-        <input id="mst" maxlength="20">
-      </div>
-      <div class="row">
-        <label>CCCD/CMND</label>
-        <input id="cccd" maxlength="20">
-      </div>
+        <div class="actions">
+            <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
+            <button class="new" onclick="resetForm()">Thêm mới</button>
+            <button class="logout" onclick="doLogout()">Đăng xuất</button>
+            <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
+        </div>
 
-      <div class="actions">
-        <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
-        <button class="new" onclick="resetForm()">Thêm mới</button>
-        <button class="logout" onclick="doLogout()">Đăng xuất</button>
-        <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
-      </div>
-
-      <div id="msgBox" class="msg"></div>
+        <div id="msgBox" class="msg"></div>
     </div>
-  </div>
+</div>
+<script type="module">
+  import {
+    khoiTaoDangNhapDungChung,
+    dangXuatDungChung,
+    getSupabaseClient,
+  } from "./scripts/authModule.js";
 
-  <script type="module">
-    import {
-      khoiTaoDangNhapDungChung,
-      dangXuatDungChung,
-      getSupabaseClient,
-    } from "./scripts/authModule.js";
+  const TABLE = "dmkhachhang";
+  let supabase = null;
+  let editingOld = false;
+  let khSuggestList = [];
+  let suggestIndex = -1;
 
-    const TABLE = "dmkhachhang";
-    let supabase = null;
-    let editingOld = false;
-    let lastLookupKey = "";
+  function showMsg(msg, type) {
+    const box = document.getElementById("msgBox");
+    if (!box) return;
+    box.textContent = msg || "";
+    box.className = "msg" + (type ? " " + type : "");
+    if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
+  }
+  function getVal(id) { return document.getElementById(id)?.value || ""; }
+  function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
 
-    function showMsg(msg, type) {
-      const box = document.getElementById("msgBox");
-      if (!box) return;
-      box.textContent = msg || "";
-      box.className = "msg" + (type ? " " + type : "");
-      if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
-    }
+  function validateForm() {
+    const makh = getVal("makh").trim().toUpperCase();
+    const tenkh = getVal("tenkh").trim();
+    const dienthoai = getVal("dienthoai").trim();
+    if (!makh) return "Mã khách hàng không được bỏ trống!";
+    if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+    if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+    const digits = dienthoai.replace(/[^\d]/g, "");
+    if (!/^\d{10}$/.test(digits)) return "SĐT phải là số, 10 ký tự!";
+    return null;
+  }
 
-    function getVal(id) { return document.getElementById(id)?.value || ""; }
-    function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
+  function resetForm() {
+    ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id, ""));
+    setVal("la_ncc", "");
+    editingOld = false;
+    const mk = document.getElementById("makh");
+    if (mk) mk.readOnly = false;
+    showMsg("");
+    mk?.focus();
+  }
 
-    function digits10FromPhone(raw) {
-      const digits = (raw || "").replace(/[^\d]/g, "");
-      return digits.slice(0, 10);
-    }
+  async function fetchKH() {
+    const makh = getVal("makh").trim().toUpperCase();
+    if (!makh) return;
 
-    function clearFieldsExceptPhone() {
-      ["tenkh","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id, ""));
-      setVal("la_ncc", "");
-    }
+    showMsg("Đang kiểm tra...", "");
+    const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
+    if (error) return showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
 
-    function setReadOnlyForExisting(isExisting) {
-      const phone = document.getElementById("dienthoai");
-      const makh = document.getElementById("makh");
-      if (makh) makh.readOnly = true; // luôn khóa
-      if (phone) phone.readOnly = !!isExisting; // có dữ liệu thì khóa SĐT để tránh đổi khóa chính
-    }
-
-    function validateForm() {
-      const phone10 = digits10FromPhone(getVal("dienthoai"));
-      const makh = getVal("makh").trim();
-      const tenkh = getVal("tenkh").trim();
-      if (!phone10 || phone10.length !== 10) return "SĐT phải là số, 10 ký tự!";
-      if (!makh) return "Mã khách hàng đang trống (tự động theo SĐT).";
-      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
-      return null;
-    }
-
-    function resetForm() {
-      setVal("dienthoai", "");
-      setVal("makh", "");
-      clearFieldsExceptPhone();
+    if (data && data.makh) {
+      setVal("tenkh", data.tenkh);
+      setVal("dienthoai", data.dienthoai);
+      setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0,10) : "");
+      setVal("diachi", data.diachi);
+      setVal("email", data.email);
+      setVal("taikhoan", data.taikhoan);
+      setVal("mst", data.mst);
+      setVal("cccd", data.cccd);
+      setVal("la_ncc", data.la_ncc ? "true" : "");
+      const mk = document.getElementById("makh");
+      if (mk) mk.readOnly = true;
+      editingOld = true;
+      showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
+    } else {
       editingOld = false;
-      lastLookupKey = "";
-      setReadOnlyForExisting(false);
-      showMsg("");
-      document.getElementById("dienthoai")?.focus();
+      const mk = document.getElementById("makh");
+      if (mk) mk.readOnly = false;
+      ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id => setVal(id, ""));
+      showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
+    }
+  }
+
+  async function saveKH() {
+    const err = validateForm();
+    if (err) return showMsg(err, "error");
+
+    const obj = {
+      makh: getVal("makh").trim().toUpperCase(),
+      tenkh: getVal("tenkh").trim(),
+      dienthoai: getVal("dienthoai").trim(),
+      ngaysinh: getVal("ngaysinh") || null,
+      diachi: getVal("diachi") || null,
+      email: getVal("email") || null,
+      taikhoan: getVal("taikhoan") || null,
+      mst: getVal("mst") || null,
+      cccd: getVal("cccd") || null,
+      la_ncc: getVal("la_ncc") === "true",
+    };
+
+    let error;
+    if (editingOld) {
+      ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
+    } else {
+      ({ error } = await supabase.from(TABLE).insert(obj));
     }
 
-    async function fetchByMakh(makh) {
-      if (!makh) return;
-      if (makh === lastLookupKey) return; // tránh gọi lặp
-      lastLookupKey = makh;
-
-      showMsg("Đang kiểm tra...", "");
-      const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
-      if (error) return showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
-
-      if (data && data.makh) {
-        // tồn tại -> nạp dữ liệu
-        setVal("tenkh", data.tenkh);
-        setVal("dienthoai", digits10FromPhone(data.dienthoai || makh)); // hiển thị 10 số
-        setVal("makh", data.makh);
-        setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0,10) : "");
-        setVal("diachi", data.diachi);
-        setVal("email", data.email);
-        setVal("taikhoan", data.taikhoan);
-        setVal("mst", data.mst);
-        setVal("cccd", data.cccd);
-        setVal("la_ncc", data.la_ncc ? "true" : "");
-        editingOld = true;
-        setReadOnlyForExisting(true);
-        showMsg("Đã nạp thông tin khách hàng. (SĐT là mã KH)", "success");
-        setTimeout(() => document.getElementById("tenkh")?.focus(), 80);
-      } else {
-        // mã mới -> cho nhập
-        editingOld = false;
-        setReadOnlyForExisting(false);
-        clearFieldsExceptPhone();
-        showMsg("SĐT chưa có trong hệ thống. Nhập thông tin và bấm Lưu để thêm mới.", "");
-        setTimeout(() => document.getElementById("tenkh")?.focus(), 80);
-      }
+    if (!error) {
+      showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
+      setTimeout(resetForm, 900);
+    } else {
+      showMsg("Lỗi: " + error.message, "error");
     }
+  }
 
-    function onPhoneInput() {
-      const inp = document.getElementById("dienthoai");
-      if (!inp || inp.readOnly) return;
+  async function deleteKH() {
+    const makh = getVal("makh").trim().toUpperCase();
+    if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
+    if (!editingOld) return showMsg("Chưa có khách hàng để xóa!", "error");
+    if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
 
-      const phone10 = digits10FromPhone(inp.value);
-      inp.value = phone10; // luôn chuẩn 10 số (tối đa)
-      setVal("makh", phone10); // tự động đẩy vào mã KH
-
-      // Nếu chưa đủ 10 số -> coi như đang nhập, reset trạng thái "mới"
-      if (phone10.length < 10) {
-        editingOld = false;
-        lastLookupKey = "";
-        clearFieldsExceptPhone();
-        showMsg("");
-        return;
-      }
-
-      // đủ 10 số -> kiểm tra tồn tại
-      fetchByMakh(phone10);
+    const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
+    if (!error) {
+      showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
+      resetForm();
+    } else {
+      showMsg("❌ Lỗi khi xóa: " + error.message, "error");
     }
+  }
 
-    async function saveKH() {
-      const err = validateForm();
-      if (err) return showMsg(err, "error");
+  async function suggestKH() {
+    const inp = document.getElementById("makh");
+    const txt = (inp?.value || "").trim().toUpperCase();
+    const popup = document.getElementById("makhSuggestList");
+    if (!popup) return;
 
-      const phone10 = digits10FromPhone(getVal("dienthoai"));
-      const obj = {
-        makh: phone10,                // khóa chính = SĐT 10 số
-        tenkh: getVal("tenkh").trim(),
-        dienthoai: phone10,           // lưu luôn chuẩn 10 số
-        ngaysinh: getVal("ngaysinh") || null,
-        diachi: getVal("diachi") || null,
-        email: getVal("email") || null,
-        taikhoan: getVal("taikhoan") || null,
-        mst: getVal("mst") || null,
-        cccd: getVal("cccd") || null,
-        la_ncc: getVal("la_ncc") === "true",
-      };
+    let q = supabase.from(TABLE).select("makh, tenkh, dienthoai").order("makh", { ascending: true }).limit(200);
+    if (txt) q = supabase.from(TABLE).select("makh, tenkh, dienthoai").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
 
-      let error;
-      if (editingOld) {
-        ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
-      } else {
-        ({ error } = await supabase.from(TABLE).insert(obj));
-      }
+    const { data, error } = await q;
+    if (error || !data || !data.length) { popup.style.display = "none"; return; }
 
-      if (!error) {
-        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
-        // sau khi lưu xong -> coi như đã có
-        editingOld = true;
-        setReadOnlyForExisting(true);
-        setTimeout(() => document.getElementById("tenkh")?.focus(), 100);
-      } else {
-        showMsg("Lỗi: " + error.message, "error");
-      }
-    }
+    khSuggestList = data;
+    suggestIndex = 0;
+    popup.innerHTML = data.map((r,i)=>`
+      <div class="suggest-item${i===0?" active":""}" data-idx="${i}">
+        <span class="suggest-makh">${r.makh}</span>
+        <span class="suggest-tenkh">${r.tenkh || ""}</span>
+        <span class="suggest-note">${r.dienthoai || ""}</span>
+      </div>`).join("");
+    popup.style.display = "block";
+  }
 
-    async function deleteKH() {
-      const makh = getVal("makh").trim();
-      if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
-      if (!editingOld) return showMsg("SĐT này chưa có trong hệ thống để xóa!", "error");
-      if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
+  function chooseKHFromSuggest(idx) {
+    const r = khSuggestList[idx];
+    if (!r) return;
+    document.getElementById("makh").value = r.makh;
+    document.getElementById("makhSuggestList").style.display = "none";
+    fetchKH();
+    setTimeout(() => document.getElementById("tenkh")?.focus(), 60);
+  }
 
-      const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
-      if (!error) {
-        showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
-        resetForm();
-      } else {
-        showMsg("❌ Lỗi khi xóa: " + error.message, "error");
-      }
-    }
-
-    function bindEvents() {
-      const phone = document.getElementById("dienthoai");
-      phone?.addEventListener("input", onPhoneInput);
-      phone?.addEventListener("blur", onPhoneInput);
-
-      // Enter: nhảy field theo thứ tự mới (SĐT -> Tên -> ... )
-      const order = ["dienthoai","tenkh","la_ncc","ngaysinh","diachi","email","taikhoan","mst","cccd"];
-      document.querySelectorAll("#mainform input, #mainform select").forEach(el => {
-        el.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter") {
-            ev.preventDefault();
-            const idx = order.indexOf(el.id);
-            if (idx >= 0 && idx < order.length - 1) document.getElementById(order[idx + 1])?.focus();
-            else document.getElementById("tenkh")?.focus();
-          }
-        });
-      });
-
-      window.saveKH = saveKH;
-      window.resetForm = resetForm;
-      window.deleteKH = deleteKH;
-      window.doLogout = () => dangXuatDungChung({ reloadPage: true });
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      khoiTaoDangNhapDungChung({
-        appContainerId: "app-container",
-        tuDongKhoaCoSo: false,
-        macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
-        onLoginSuccess: async () => {
-          supabase = getSupabaseClient();
-          bindEvents();
-          resetForm();
-        },
-      });
+  function updateSuggestActive() {
+    const popup = document.getElementById("makhSuggestList");
+    if (!popup) return;
+    popup.querySelectorAll(".suggest-item").forEach((it,i)=>{
+      it.classList.toggle("active", i===suggestIndex);
+      if (i===suggestIndex) it.scrollIntoView({ block:"nearest" });
     });
-  </script>
+  }
+
+  function bindEvents() {
+    const makhInp = document.getElementById("makh");
+    makhInp?.addEventListener("input", suggestKH);
+    makhInp?.addEventListener("focus", suggestKH);
+    document.getElementById("makhSuggestList")?.addEventListener("mousedown",(ev)=>{
+      const item = ev.target.closest(".suggest-item");
+      if (!item) return;
+      ev.preventDefault();
+      chooseKHFromSuggest(Number(item.getAttribute("data-idx")));
+    });
+    document.addEventListener("mousedown",(ev)=>{
+      const popup = document.getElementById("makhSuggestList");
+      if (!popup) return;
+      if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
+    });
+    document.addEventListener("keydown",(ev)=>{
+      const inp = document.activeElement;
+      if (inp && inp.id==="makh") {
+        const popup = document.getElementById("makhSuggestList");
+        if (popup && popup.style.display!=="none" && khSuggestList.length>0) {
+          if (ev.key==="ArrowDown" || ev.key==="Tab") { ev.preventDefault(); suggestIndex=(suggestIndex+1)%khSuggestList.length; updateSuggestActive(); }
+          else if (ev.key==="ArrowUp") { ev.preventDefault(); suggestIndex=(suggestIndex-1+khSuggestList.length)%khSuggestList.length; updateSuggestActive(); }
+          else if (ev.key==="Enter") { if (khSuggestList[suggestIndex]) { ev.preventDefault(); chooseKHFromSuggest(suggestIndex); } }
+          else if (ev.key==="Escape") { popup.style.display="none"; }
+        }
+      }
+    });
+
+    window.fetchKH = fetchKH;
+    window.saveKH = saveKH;
+    window.resetForm = resetForm;
+    window.deleteKH = deleteKH;
+    window.doLogout = () => dangXuatDungChung({ reloadPage: true });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    khoiTaoDangNhapDungChung({
+      appContainerId: "app-container",
+      tuDongKhoaCoSo: false,
+      macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
+      onLoginSuccess: async () => {
+        supabase = getSupabaseClient();
+        bindEvents();
+        resetForm();
+      },
+    });
+  });
+</script>
 </body>
+
 </html>
