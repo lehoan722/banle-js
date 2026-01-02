@@ -144,12 +144,26 @@
   }
 
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
+
+  
   @media (max-width: 800px) and (orientation: portrait) {
     .sq-stock-popup {
-      max-width: 47.5vw;          /* gần full chiều ngang */
-      max-height: 45vh;         /* full chiều cao, cho phép cuộn */
-      overflow: auto;
-    }
+    /* RỘNG HƠN ~20% */
+    width: 68vw;          /* trước ~47.5vw */
+    max-width: 68vw;
+
+    /* CAO GẤP ĐÔI */
+    height: 90vh;         /* trước ~45vh */
+    max-height: 90vh;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* giữ cố định góc trên phải */
+    top: 6px;
+    right: 6px;
+    left: auto;
+  
 
     .sq-stock-layout {
       flex-direction: column;   /* xếp dọc: bảng trên, ảnh dưới */
@@ -229,7 +243,7 @@
         const f = JSON.parse(raw);
         if (f.den_ngay) return f.den_ngay;
       }
-    } catch (e) {}
+    } catch (e) { }
     return new Date().toISOString().slice(0, 10);
   }
 
@@ -363,7 +377,7 @@
       })
       .join("");
 
-        
+
 
     const sumRow = rows.length
       ? `
@@ -431,7 +445,7 @@
 
   let globalCloseBound = false;
 
-  
+
   // ===== Auto-fit độ rộng cột theo nội dung (giống Excel) =====
   function autoFitTableColumns(table, opts = {}) {
     const {
@@ -538,7 +552,7 @@
     }
   }
 
-function bindGlobalCloseHandlers() {
+  function bindGlobalCloseHandlers() {
     if (globalCloseBound) return;
     globalCloseBound = true;
 
@@ -666,7 +680,7 @@ function bindGlobalCloseHandlers() {
       headerEl.dataset.dragBound = "1";
     }
 
-        // Luôn cố định popup ở góc trên bên phải
+    // Luôn cố định popup ở góc trên bên phải
     popup.style.position = "fixed";
     popup.style.top = "8px";
     popup.style.right = "8px";
@@ -714,4 +728,5 @@ function bindGlobalCloseHandlers() {
     };
   }
 })();
+
 
