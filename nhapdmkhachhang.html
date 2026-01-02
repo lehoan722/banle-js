@@ -299,22 +299,6 @@
   function getVal(id) { return document.getElementById(id)?.value || ""; }
   function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
 
-  // Quy ước: nếu Mã KH người dùng nhập là dạng số hoàn toàn (ví dụ: 0987...),
-  // thì tự động ghi sang ô Điện thoại để nhân viên chỉ cần nhập 1 lần.
-  // Trường hợp Mã KH có cả chữ và số thì giữ nguyên như hiện tại.
-  function autoSyncPhoneFromMaKH() {
-    const raw = getVal("makh").trim();
-    if (!raw) return;
-
-    // Chỉ đồng bộ khi Mã KH là số hoàn toàn (không có chữ/ký tự khác)
-    // Ví dụ: "0987654321" => copy sang Điện thoại
-    if (/^\d+$/.test(raw)) {
-      // Chỉ set nếu ô điện thoại đang trống hoặc đang giống mã KH (tránh ghi đè khi user đã nhập khác)
-      const curPhone = getVal("dienthoai").trim();
-      if (!curPhone || curPhone === raw) setVal("dienthoai", raw);
-    }
-  }
-
   function validateForm() {
     const makh = getVal("makh").trim().toUpperCase();
     const tenkh = getVal("tenkh").trim();
@@ -456,14 +440,43 @@
     });
   }
 
+  // --- Auto-fill SĐT từ Mã KH nếu Mã KH là số hoàn toàn ---
+  function isAllDigits(str) {
+    return /^\d+$/.test(String(str || "").trim());
+  }
+
+  function autoFillPhoneFromMaKH() {
+    const mkEl = document.getElementById("makh");
+    const dtEl = document.getElementById("dienthoai");
+    if (!mkEl || !dtEl) return;
+
+    const mk = String(mkEl.value || "").trim();
+    if (!mk) return;
+
+    // Chỉ auto-fill nếu Mã KH là số hoàn toàn (không có chữ)
+    if (!isAllDigits(mk)) return;
+
+    const dt = String(dtEl.value || "").trim();
+    // Không ghi đè nếu người dùng đã nhập SĐT khác
+    if (!dt || dt === mk) dtEl.value = mk;
+  }
+
+  // Thứ tự chuyển focus khi nhấn Enter
+  const ENTER_FLOW = ["makh","tenkh","dienthoai","la_ncc","ngaysinh","diachi","email","taikhoan","mst","cccd"];
+  function focusNextFrom(id) {
+    const idx = ENTER_FLOW.indexOf(id);
+    if (idx < 0) return;
+    const nextId = ENTER_FLOW[idx + 1];
+    if (!nextId) return;
+    const el = document.getElementById(nextId);
+    el?.focus();
+  }
+
   function bindEvents() {
     const makhInp = document.getElementById("makh");
-    makhInp?.addEventListener("input", () => {
-      autoSyncPhoneFromMaKH();
-      suggestKH();
-    });
+    makhInp?.addEventListener("input", suggestKH);
     makhInp?.addEventListener("focus", suggestKH);
-    makhInp?.addEventListener("blur", autoSyncPhoneFromMaKH);
+    makhInp?.addEventListener("blur", autoFillPhoneFromMaKH);
     document.getElementById("makhSuggestList")?.addEventListener("mousedown",(ev)=>{
       const item = ev.target.closest(".suggest-item");
       if (!item) return;
@@ -476,17 +489,35 @@
       if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
     });
     document.addEventListener("keydown",(ev)=>{
-      const inp = document.activeElement;
-      if (inp && inp.id==="makh") {
+      const active = document.activeElement;
+
+      // 1) Trường Mã KH: giữ nguyên logic popup gợi ý (Arrow/Enter chọn)
+      if (active && active.id==="makh") {
         const popup = document.getElementById("makhSuggestList");
-        if (popup && popup.style.display!=="none" && khSuggestList.length>0) {
+        const popupOpen = popup && popup.style.display!=="none" && khSuggestList.length>0;
+
+        if (popupOpen) {
           if (ev.key==="ArrowDown" || ev.key==="Tab") { ev.preventDefault(); suggestIndex=(suggestIndex+1)%khSuggestList.length; updateSuggestActive(); }
           else if (ev.key==="ArrowUp") { ev.preventDefault(); suggestIndex=(suggestIndex-1+khSuggestList.length)%khSuggestList.length; updateSuggestActive(); }
           else if (ev.key==="Enter") { if (khSuggestList[suggestIndex]) { ev.preventDefault(); chooseKHFromSuggest(suggestIndex); } }
           else if (ev.key==="Escape") { popup.style.display="none"; }
+          return;
         }
       }
+
+      // 2) Flow Enter: chuyển lần lượt từ trên xuống dưới
+      if (ev.key==="Enter" && active && ENTER_FLOW.includes(active.id)) {
+        ev.preventDefault();
+
+        if (active.id === "makh") {
+          // Khi thoát khỏi Mã KH (Enter), nếu Mã KH là số hoàn toàn thì tự điền SĐT
+          autoFillPhoneFromMaKH();
+        }
+
+        focusNextFrom(active.id);
+      }
     });
+
 
     window.fetchKH = fetchKH;
     window.saveKH = saveKH;
