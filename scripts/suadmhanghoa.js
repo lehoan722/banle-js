@@ -577,27 +577,34 @@ async function backupTruocKhiGhi() {
 
 // 1) Thêm hàm chuẩn hóa giá trị trước khi ghi
 function resolveUpdateValue(colname, rawVal) {
-  // Trả về null nếu người dùng để trống (xóa dữ liệu cũ)
+  // 1. Trả về null nếu người dùng để trống (xóa dữ liệu cũ)
   if (rawVal === undefined || rawVal === null) return null;
-  const s = rawVal.toString().trim();
+
+  let s = rawVal.toString().trim();
   if (s === '') return null;
 
-  // Cột kiểu ngày dùng chuẩn hóa sẵn có
+  // 2. Cột ngày
   if (["ngaysua", "ngaykiem", "nhapdau"].includes(colname)) {
-    return normalizeDate(s); // normalizeDate đã có sẵn, rỗng -> null
+    return normalizeDate(s);
   }
 
-  // Nếu có cột boolean (vd: active, quanlykichco) muốn hỗ trợ:
+  // 3. Cột boolean
   if (["active", "quanlykichco"].includes(colname)) {
-    // chấp nhận true/false, 1/0, "true"/"false"
     if (s === '1' || s.toLowerCase() === 'true') return true;
     if (s === '0' || s.toLowerCase() === 'false') return false;
-    // để trống đã xử lý ở trên -> null
+    return null;
   }
 
-  // Mặc định: giữ nguyên chuỗi đã trim
-  return s;
+  // 4. Cột số (giữ nguyên, KHÔNG uppercase)
+  if (["gianhap", "giale", "giasi"].includes(colname)) {
+    const n = Number(s.replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // 5. MẶC ĐỊNH: TEXT → CHUYỂN SANG IN HOA
+  return s.toUpperCase();
 }
+
 
 // Tạo timestamp hiện tại (giờ máy) dạng YYYY-MM-DD HH:mm:ss
 function nowLocalTimestamp() {
