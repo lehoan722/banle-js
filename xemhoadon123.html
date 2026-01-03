@@ -548,15 +548,7 @@
       });
 
       // ------------- DÒNG TỔNG CUỐI BẢNG -------------
-      let tongSL = 0, tongThanhTien = 0, tongChietKhau = 0, tongTien = 0;
-      hienThiData.forEach(hd => {
-        tongSL += Number(hd.tongsl || 0);
-        tongThanhTien += Number(hd.tongthanhtien || 0);
-        tongChietKhau += Number(hd.chietkhau || 0);
-        tongTien += Number(hd.thanhtoan || 0);
-      });
-      document.getElementById('tongSoLuong2').textContent = tongSL.toLocaleString();
-      document.getElementById('tongTien2').textContent = tongTien.toLocaleString();
+      
 
       const trTong = document.createElement("tr");
       trTong.style.fontWeight = "bold";
