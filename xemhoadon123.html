@@ -494,6 +494,57 @@
 
     async function loadPage() {
       if (!lastParamsBase) return;
+      // Nếu đang ở chế độ TỔNG HỢP (ngày/tháng/năm) => phải lấy TOÀN BỘ dữ liệu theo filter (không chỉ 1 trang)
+      const loaiTongHopNow = document.getElementById('loaiTongHop')?.value || 'chitiet';
+      if (loaiTongHopNow !== 'chitiet') {
+        const infoEl = document.getElementById('dangHienThiInfo');
+        if (infoEl) infoEl.textContent = 'Đang tải dữ liệu tổng hợp (toàn bộ)...';
+
+        const BATCH_ALL = 1000;
+        let all = [];
+        let offsetAll = 0;
+        while (true) {
+          const { data, error } = await window.supabase.rpc('xemhoadon111_v2_paged', {
+            ...lastParamsBase,
+            p_limit: BATCH_ALL,
+            p_offset: offsetAll
+          });
+          if (error) {
+            alert('Lỗi tải dữ liệu tổng hợp: ' + error.message);
+            if (infoEl) infoEl.textContent = '';
+            return;
+          }
+          const rows = (data || []).map(r => ({
+            sohd: r.sohd,
+            ngay: r.ngay,
+            manv: r.manv,
+            tennv: r.tennv,
+            diadiem: r.diadiem,
+            khachhang: r.khachhang,
+            tongsl: r.sl_detail,
+            tongthanhtien: r.tong_detail,
+            chietkhau: r.chietkhau,
+            thanhtoan: r.thanhtoan_v2,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+            loaihd: r.loaihd,
+            tongsl_header: r.sl_header,
+            lech_sl: r.lech_sl
+          }));
+          all.push(...rows);
+          if (rows.length < BATCH_ALL) break;
+          offsetAll += BATCH_ALL;
+        }
+
+        // render theo cơ chế tổng hợp hiện có (renderBangHoaDon sẽ tự group theo loaiTongHop)
+        renderBangHoaDon(all);
+
+        const pageInfo = document.getElementById('pageInfo');
+        if (pageInfo) pageInfo.textContent = `Tổng hợp (toàn bộ): ${all.length.toLocaleString()} hóa đơn`;
+        if (infoEl) infoEl.textContent = '';
+        return;
+      }
+
 
       const pageSize = Number(document.getElementById('pageSize')?.value || 5000);
       const baseOffset = (currentPage - 1) * pageSize;
