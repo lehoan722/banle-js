@@ -7,7 +7,7 @@
 
     <style>
         body {
-            
+
             font-family: Arial, sans-serif;
             width: 80mm;
             margin-left: 2mm;
@@ -167,7 +167,7 @@
             flex-direction: column;
             gap: 2px;
             font-size: 13px;
-           
+
 
         }
 
@@ -183,6 +183,18 @@
             /* ĐẢM BẢO nằm dưới, cách xa các dòng trên */
             margin-bottom: 5px;
         }
+
+        @media print {
+    @page {
+        size: 80mm auto;
+        margin: 2mm;
+    }
+
+    body {
+        width: 80mm;
+    }
+}
+
     </style>
 </head>
 
@@ -190,7 +202,7 @@
     <div class="header">
         <div class="bold big">SHOP HOÀN TUYẾT</div>
         <div>CS1: SN 540 Đường 3-2 TP Thái Nguyên</div>
-        <div>CS2: SN 561 Đường LNQ - Thái Nguyên</div>        
+        <div>CS2: SN 561 Đường LNQ - Thái Nguyên</div>
         <div>ĐT: 0835.190.402; 0916.747.401</div>
         <div>facebook.com/shophoantuyet</div>
         <div class="bold">HÓA ĐƠN BÁN LẺ</div>
@@ -271,8 +283,16 @@
         document.getElementById("diadiem").textContent = hoadon.diadiem || "";
         document.getElementById("khachhang").textContent = hoadon.khachhang || "";
         document.getElementById("sohd").textContent = hoadon.sohd || "";
-        document.getElementById("ngay").textContent = hoadon.ngay || "";
-        document.getElementById("gio").textContent = hoadon.gio || "";
+
+        function formatDateTime(d = new Date()) {
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(d.getDate())} ${pad(d.getMonth() + 1)} ${d.getFullYear()} ${pad(d.getHours())} ${pad(d.getMinutes())}`;
+        }
+
+        const timeSrc = hoadon.created_at ? new Date(hoadon.created_at) : new Date();
+        document.getElementById("ngay").textContent = formatDateTime(timeSrc);
+        document.getElementById("gio").textContent = "";
+
 
         // Hiển thị danh sách sản phẩm
         const tbody = document.getElementById("noidungchitiet");
