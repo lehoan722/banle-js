@@ -1,13 +1,19 @@
 // xemhoadon333.js
 // Chuẩn tính theo DETAIL (ct_hoadon_banle) + lọc ngày theo hd.ngay
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// Trang 333 dùng đăng nhập chung qua ./scripts/authModule.js giống xemhoadon111
+// => Supabase client lấy từ window.supabase (được authModule gắn sau khi login)
 
-const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX...cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true }
-});
+let sb = null;
 
+// gọi trong onLoginSuccess để khởi tạo trang
+export function initXemHoaDon333() {
+  sb = window.supabase;
+  if (!sb) {
+    alert('Chưa khởi tạo Supabase (window.supabase). Hãy đăng nhập qua authModule trước.');
+    return;
+  }
+  init();
+}
 // ===== Helpers
 const $ = (id) => document.getElementById(id);
 
@@ -208,7 +214,7 @@ function copyTable() {
 }
 
 // ===== init defaults
-(function init() {
+function init() {
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
   $('tuNgay').value = toYMD(firstDay);
@@ -232,4 +238,4 @@ function copyTable() {
       if (ev.key === 'Enter') runSearch(true);
     });
   });
-})();
+}
