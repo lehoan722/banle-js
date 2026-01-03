@@ -35,7 +35,9 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div id="login-container"></div>
+  <div id="app-container" style="display:none;">
+    <div class="wrap">
     <h2>📄 Tra cứu Hóa Đơn Bán Lẻ (333)</h2>
 
     <div class="card">
@@ -156,6 +158,45 @@ AT02, AT03"></textarea>
     </div>
   </div>
 
-  <script type="module" src="scripts/xemhoadon333.js"></script>
+  
+    </div>
+  </div>
+
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+    import { initXemHoaDon333 } from '.scripts/xemhoadon333.js';
+
+    khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+      // không khóa cơ sở để admin chọn
+      macDinhDiaDiem: '',
+      tuDongKhoaCoSo: false,
+      // API đăng nhập theo cơ sở
+      loginApiPath: (cs) => `/api/login-${cs}`, 
+
+      async onLoginSuccess(nv, ctx) {
+        // kiểm tra admin bằng RPC nguồn thật
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) { isAdmin = false; }
+
+        if (!isAdmin) {
+          alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
+          const login = document.getElementById('login-container');
+          if (login) login.style.display = 'none';
+          const app = document.getElementById('app-container') || document.body;
+          app.style.display = '';
+          app.innerHTML = `<h2 style="color:#c00; margin-top:20px; font-weight:bold;">🚫 Bạn không có quyền xem báo cáo này</h2>`;
+          return false;
+        }
+
+        // Admin OK -> init trang 333
+        initXemHoaDon333();
+        return true;
+      }
+    });
+  </script>
 </body>
 </html>
