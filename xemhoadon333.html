@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tra cứu Hóa Đơn Bán Lẻ (333) - Chuẩn theo CHI TIẾT</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 18px; background: #fff; color: #111; }
+    h2 { margin: 0 0 10px 0; font-size: 26px; display:flex; align-items:center; gap:10px; }
+    .wrap { max-width: 1400px; margin: 0 auto; }
+    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: 160px 160px 180px 220px 140px 140px 180px 1fr; gap: 10px; align-items: center; }
+    .grid .row2 { grid-column: 1 / -1; display:grid; grid-template-columns: 260px 260px 260px 260px 1fr auto; gap:10px; align-items:center; }
+    label { font-size: 13px; color: #333; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cfd6df; border-radius: 6px; font-size: 14px; }
+    textarea { min-height: 46px; resize: vertical; }
+    .btns { display:flex; gap:10px; flex-wrap: wrap; align-items:center; }
+    button { cursor: pointer; border: 1px solid #cfd6df; background: #f3f4f6; padding: 9px 12px; border-radius: 8px; font-weight: 700; }
+    button.primary { background: #2563eb; color: #fff; border-color:#1d4ed8; }
+    button.danger { background: #ef4444; color:#fff; border-color:#dc2626; }
+    button:disabled { opacity: .6; cursor:not-allowed; }
+    .meta { margin-top: 8px; font-weight: 700; color:#0b5; }
+    .meta b { color:#0b5; }
+    .meta .warn { color:#b00; }
+    .paging { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px 8px; font-size: 14px; vertical-align: top; overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th { background: #f9fafb; text-align: left; }
+    tr:hover { background: #fff7ed; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .center { text-align:center; }
+    .small { font-size: 12px; color:#666; }
+    .link { color:#1d4ed8; font-weight: 700; text-decoration: underline; cursor:pointer; }
+    .loading { color:#b00; font-size: 12px; margin-top: 6px; display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>📄 Tra cứu Hóa Đơn Bán Lẻ (333)</h2>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>Từ ngày</label>
+          <input id="tuNgay" type="date" />
+        </div>
+        <div>
+          <label>Đến ngày</label>
+          <input id="denNgay" type="date" />
+        </div>
+        <div>
+          <label>Loại chứng từ</label>
+          <select id="loai">
+            <option value="">Tất cả</option>
+            <option value="bancs1">ban cs1</option>
+            <option value="bancs2">ban cs2</option>
+            <option value="bannvcs1">ban nv cs1</option>
+            <option value="bannvcs2">ban nv cs2</option>
+            <option value="nhapmuacs1">nhập mua cs1</option>
+            <option value="nhapmuacs2">nhập mua cs2</option>
+            <option value="xuatcncs1">xuất CN cs1</option>
+            <option value="xuatcncs2">xuất CN cs2</option>
+            <option value="ncncs1">nhập CN cs1</option>
+            <option value="ncncs2">nhập CN cs2</option>
+          </select>
+        </div>
+        <div>
+          <label>Cơ sở</label>
+          <select id="diadiem">
+            <option value="">Tất cả cơ sở</option>
+            <option value="cs1">cs1</option>
+            <option value="cs2">cs2</option>
+          </select>
+        </div>
+        <div>
+          <label>Mã nhân viên</label>
+          <input id="manv" placeholder="VD: 2312" />
+        </div>
+        <div>
+          <label>Khách hàng</label>
+          <input id="khachhang" placeholder="Tên khách / mã khách..." />
+        </div>
+        <div>
+          <label>Số HĐ</label>
+          <input id="sohd" placeholder="VD: bancs1_00001" />
+        </div>
+        <div>
+          <label>Danh sách mã SP (cách nhau dấu cách, xuống dòng, hoặc dấu phẩy)</label>
+          <textarea id="maspList" placeholder="VD:
+AT01
+AT02, AT03"></textarea>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label>Tiền từ</label>
+            <input id="tienTu" inputmode="numeric" placeholder="VD: 200000" />
+          </div>
+          <div>
+            <label>Tiền đến</label>
+            <input id="tienDen" inputmode="numeric" placeholder="VD: 1500000" />
+          </div>
+          <div>
+            <label>Số dòng / trang</label>
+            <select id="pageSize">
+              <option value="1000">1.000</option>
+              <option value="2000">2.000</option>
+              <option value="5000" selected>5.000</option>
+              <option value="10000">10.000</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input id="mustAll" type="checkbox" style="width:auto;" />
+            <label for="mustAll" style="margin:0;">HĐ phải chứa tất cả mã</label>
+          </div>
+          <div class="btns">
+            <button id="btnLoc" class="primary">🔎 Lọc</button>
+            <button id="btnCopy">📋 Copy bảng</button>
+          </div>
+          <div class="loading" id="loading">Đang tải dữ liệu...</div>
+        </div>
+      </div>
+
+      <div class="meta" id="meta"></div>
+      <div class="small">Chuẩn tính theo <b>ct_hoadon_banle</b> (detail). Lọc ngày luôn theo <b>hd.ngay</b>.</div>
+    </div>
+
+    <div class="card">
+      <div class="paging">
+        <button id="btnPrev">⬅ Trang trước</button>
+        <button id="btnNext">Trang sau ➡</button>
+        <div class="small" id="pageInfo"></div>
+      </div>
+
+      <div style="overflow:auto; max-height: 70vh;">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th style="width:48px;" class="center">#</th>
+              <th style="width:120px;">Ngày</th>
+              <th style="width:170px;">Số HĐ</th>
+              <th style="width:70px;">Cơ sở</th>
+              <th style="width:140px;">NV</th>
+              <th style="width:220px;">Khách</th>
+              <th style="width:110px;" class="num">SL (detail)</th>
+              <th style="width:140px;" class="num">TT (detail)</th>
+              <th style="width:110px;" class="num">SL (header)</th>
+              <th style="width:90px;" class="num">Lệch SL</th>
+              <th style="width:170px;">Tạo lúc</th>
+              <th style="width:220px;">Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./xemhoadon333.js"></script>
+</body>
+</html>
