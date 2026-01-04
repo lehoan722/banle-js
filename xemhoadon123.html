@@ -998,7 +998,7 @@
     // ================= HANDSONTABLE (Sort + Filter) =================
     let hotHoaDon = null;
     let hotMode = null; // 'chitiet' | 'ngay' | 'thang' | 'nam'
-    let hotData = [];   // data đang hiển thị (array of objects)
+    var hotData = [];   // data đang hiển thị (array of objects)
 
     function _numRenderer(instance, td, row, col, prop, value, cellProperties) {
       Handsontable.renderers.TextRenderer.apply(this, arguments);
