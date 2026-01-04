@@ -439,14 +439,36 @@
         }
 }
 
-      // 2) PAGED (lấy toàn bộ theo batch)
-      let filtered = [];
-      const LIMIT = 10000; // tối đa 10.000 dòng/batch cho chế độ tổng hợp
+      // 2) TỔNG HỢP (ngày/tháng/năm) => tải TOÀN BỘ theo batch và gom nhóm chuẩn
+      // Lưu ý: KHÔNG dựa vào "rows.length < LIMIT" để break, vì RPC có thể trả ít hơn p_limit.
+      const groupMap = new Map();
+      const LIMIT = 10000; // batch tối đa 10.000
       let offset = 0;
 
+      // helper: parse ngày local (tránh lệch UTC)
+      function toLocalDate(ngayStr, isoStr) {
+        if (ngayStr) {
+          const s = String(ngayStr);
+          // hỗ trợ cả YYYY-MM-DD và DD/MM/YYYY
+          if (s.includes("-")) {
+            const [y, m, d] = s.split("-").map(Number);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d, 12, 0, 0);
+          }
+          if (s.includes("/")) {
+            const [d, m, y] = s.split("/").map(Number);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d, 12, 0, 0);
+          }
+        }
+        return isoStr ? new Date(isoStr) : new Date();
+      }
+
+      // reset hiển thị "đang hiển thị"
+      const dangHienThiEl2 = document.getElementById('dangHienThiInfo');
+      if (dangHienThiEl2) dangHienThiEl2.textContent = 'Đang tổng hợp...';
+
       while (true) {
-        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
         if (lastTotalRows && offset >= lastTotalRows) break;
+
         const { data, error } = await window.supabase.rpc('xemhoadon111_v2_paged', {
           ...paramsBase,
           p_limit: LIMIT,
@@ -461,35 +483,97 @@
         const rows = data || [];
         if (rows.length === 0) break;
 
-        // map về format cũ để phần render phía dưới không phải đập lại nhiều
+        // gom nhóm trực tiếp để tránh giữ toàn bộ mảng
         rows.forEach(r => {
-          filtered.push({
-            sohd: r.sohd,
-            // dùng NGÀY BÁN làm “ngày hiển thị chính”
-            ngay: r.ngay,
-            // vẫn giữ created_at để ai cần đối chiếu thời điểm ghi DB
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            manv: r.manv,
-            tennv: r.tennv,
-            khachhang: r.khachhang,
-            ghichu: r.ghichu,
+          const ngay = r.ngay; // date (YYYY-MM-DD) hoặc string
+          const d = toLocalDate(ngay, r.created_at);
 
-            // --- số chuẩn theo detail ---
-            tongsl: r.sl_detail,
-            tongthanhtien: r.tong_detail,     // tổng sau km dòng
-            chietkhau: r.chietkhau,           // chiết khấu hóa đơn (header)
-            thanhtoan: r.thanhtoan_v2,        // tổng detail - chiết khấu
+          let key = "";
+          if (loaiTongHop === "ngay") key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+          if (loaiTongHop === "thang") key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+          if (loaiTongHop === "nam") key = `${d.getFullYear()}`;
 
-            // --- đối chiếu (tuỳ bạn có dùng không) ---
-            tongsl_header: r.sl_header,
-            lech_sl: r.lech_sl
-          });
+          if (!groupMap.has(key)) {
+            groupMap.set(key, {
+              sohd: 1,
+              created_at: key, // sẽ format lúc render
+              tongsl: Number(r.sl_detail || 0),
+              tongthanhtien: Number(r.tong_detail || 0),
+              chietkhau: Number(r.chietkhau || 0),
+              thanhtoan: Number(r.thanhtoan_v2 || 0)
+            });
+          } else {
+            const obj = groupMap.get(key);
+            obj.sohd += 1;
+            obj.tongsl += Number(r.sl_detail || 0);
+            obj.tongthanhtien += Number(r.tong_detail || 0);
+            obj.chietkhau += Number(r.chietkhau || 0);
+            obj.thanhtoan += Number(r.thanhtoan_v2 || 0);
+          }
         });
 
-        if (rows.length < LIMIT) break;
-        offset += LIMIT;
+        // QUAN TRỌNG: tăng offset theo số dòng thực tế nhận được
+        offset += rows.length;
+
+        if (lastTotalRows && offset >= lastTotalRows) break;
       }
+
+      // map => array + format hiển thị ngày/tháng/năm
+      let hienThiData = Array.from(groupMap.entries())
+        .map(([key, val]) => {
+          if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+          if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
+          if (loaiTongHop === "nam") val.created_at = key;
+          return val;
+        })
+        .sort((a,b) => (a.created_at || "").localeCompare(b.created_at || ""));
+
+      // render bảng theo format giống renderFromFiltered (cột sohd = số hóa đơn)
+      tbody.innerHTML = "";
+      let stt = 1;
+      let sumSL = 0, sumTong = 0, sumCK = 0, sumTT = 0;
+
+      hienThiData.forEach(hd => {
+        sumSL += Number(hd.tongsl || 0);
+        sumTong += Number(hd.tongthanhtien || 0);
+        sumCK += Number(hd.chietkhau || 0);
+        sumTT += Number(hd.thanhtoan || 0);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${stt++}</td>
+          <td><input type="checkbox" class="chkRow"/></td>
+          <td style="font-weight:600">${Number(hd.sohd || 0).toLocaleString()}</td>
+          <td>${hd.created_at || ""}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td style="text-align:right">${Number(hd.tongsl || 0).toLocaleString()}</td>
+          <td style="text-align:right">${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+          <td style="text-align:right">${Number(hd.chietkhau || 0).toLocaleString()}</td>
+          <td style="text-align:right">${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+          <td></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // footer tổng
+      const trSum = document.createElement("tr");
+      trSum.innerHTML = `
+        <td colspan="7" style="text-align:right; font-weight:700">TỔNG</td>
+        <td style="text-align:right; font-weight:700">${sumSL.toLocaleString()}</td>
+        <td style="text-align:right; font-weight:700">${sumTong.toLocaleString()}</td>
+        <td style="text-align:right; font-weight:700">${sumCK.toLocaleString()}</td>
+        <td style="text-align:right; font-weight:700">${sumTT.toLocaleString()}</td>
+        <td></td>
+      `;
+      tbody.appendChild(trSum);
+
+      // cập nhật info
+      if (dangHienThiEl2) {
+        dangHienThiEl2.textContent = `Đang hiển thị ${hienThiData.length} dòng tổng hợp | SL: ${sumSL.toLocaleString()} | TT: ${sumTT.toLocaleString()}`;
+      }
+      return;
       // ====== END V2 ======
 
       renderFromFiltered(filtered, loaiTongHop);
