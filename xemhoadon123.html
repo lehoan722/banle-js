@@ -240,6 +240,18 @@
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
   <script>
+    // ===== Helper: parse ngày theo local (tránh lệch UTC) =====
+    function toLocalDate(ngayStr, isoStr) {
+      if (ngayStr) {
+        const parts = String(ngayStr).split('-').map(Number);
+        const y = parts[0] || 1970;
+        const m = (parts[1] || 1) - 1;
+        const d = parts[2] || 1;
+        return new Date(y, m, d, 12, 0, 0); // 12h để tránh edge UTC/DST
+      }
+      return new Date(isoStr);
+    }
+
 
     let rowDangChon = null;
 
@@ -394,9 +406,26 @@
         const totalRows = Number(row.total_rows || 0);
         lastTotalRows = totalRows;
 
-        // Hiện phân trang chỉ khi ở chế độ "Chi tiết từng hóa đơn"
+        // Phân trang: chỉ áp dụng cho chế độ "Chi tiết từng hóa đơn"
+        // Với Tổng hợp ngày/tháng/năm: tải toàn bộ theo filter rồi gom nhóm, nên không phân trang.
         const pagingBar = document.getElementById('pagingBar');
-        if (pagingBar) pagingBar.style.display = (loaiTongHop === 'chitiet') ? 'flex' : 'none';
+        const pageSizeSel = document.getElementById('pageSize');
+        const btnPrev = document.getElementById('btnPrevPage');
+        const btnNext = document.getElementById('btnNextPage');
+        const pageInfoEl = document.getElementById('pageInfo');
+        const dangHienThiEl = document.getElementById('dangHienThiInfo');
+
+        if (pagingBar) pagingBar.style.display = 'flex';
+
+        const isChiTiet = (loaiTongHop === 'chitiet');
+        if (pageSizeSel) pageSizeSel.disabled = !isChiTiet;
+        if (btnPrev) btnPrev.disabled = !isChiTiet;
+        if (btnNext) btnNext.disabled = !isChiTiet;
+
+        if (!isChiTiet) {
+          if (pageInfoEl) pageInfoEl.textContent = 'Tổng hợp: không phân trang';
+          if (dangHienThiEl) dangHienThiEl.textContent = '';
+        }
 
         if (loaiTongHop === 'chitiet') {
           const pageSize = Number(document.getElementById('pageSize')?.value || 10000);
