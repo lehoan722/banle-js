@@ -257,6 +257,8 @@
       let from = 0;
       let allData = [];
       while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
         let { data, error } = await query.range(from, from + pageSize - 1);
         if (error) {
           alert("❌ Lỗi tải hóa đơn: " + error.message);
@@ -281,6 +283,8 @@
       let from = 0;
       const sohdSet = new Set();
       while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
         const { data, error } = await window.supabase
           .from('ct_hoadon_banle')
           .select('sohd, masp')
@@ -408,10 +412,12 @@
 
       // 2) PAGED (lấy toàn bộ theo batch)
       let filtered = [];
-      const LIMIT = 2000;
+      const LIMIT = 10000; // tối đa 10.000 dòng/batch cho chế độ tổng hợp
       let offset = 0;
 
       while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
         const { data, error } = await window.supabase.rpc('xemhoadon111_v2_paged', {
           ...paramsBase,
           p_limit: LIMIT,
@@ -477,10 +483,10 @@
             if (loaiTongHop !== "chitiet") {
               const groupMap = new Map();
               filtered.forEach(hd => {
-                const d = new Date(hd.ngay || hd.created_at);
+                const d = toLocalDate(hd.ngay, hd.created_at);
 
                 let key = "";
-                if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+                if (loaiTongHop === "ngay") key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
                 if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
                 if (loaiTongHop === "nam") key = d.getFullYear() + "";
                 if (!groupMap.has(key)) {
@@ -1196,3 +1202,16 @@
 </body>
 
 </html>
+    function toLocalDate(ngayStr, isoStr) {
+      // ngayStr dạng YYYY-MM-DD (hoặc YYYY-MM) => tự dựng Date local để không bị lệch ngày do UTC
+      if (ngayStr) {
+        const parts = String(ngayStr).split('-').map(Number);
+        const y = parts[0] || 1970;
+        const m = (parts[1] || 1) - 1;
+        const d = parts[2] || 1;
+        return new Date(y, m, d, 12, 0, 0); // 12h để tránh DST/UTC edge
+      }
+      return new Date(isoStr);
+    }
+
+
