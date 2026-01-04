@@ -170,23 +170,7 @@
     </div>
 
 
-    
-  <div id="pagingBar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <label><b>Số dòng/trang:</b></label>
-    <select id="pageSize">
-      <option value="1000">1.000</option>
-      <option value="2000">2.000</option>
-      <option value="5000" selected>5.000</option>
-      <option value="10000">10.000</option>
-    </select>
-
-    <button id="btnPrevPage" type="button">← Trang trước</button>
-    <span id="pageInfo">Trang 1/1</span>
-    <button id="btnNextPage" type="button">Trang sau →</button>
-
-    <span id="dangHienThiInfo" style="color:#666;"></span>
-  </div>
-<table>
+    <table>
       <thead>
         <thead>
           <tr>
@@ -320,7 +304,7 @@
       // 1. Lấy các giá trị lọc từ giao diện
       const tuNgay = document.getElementById("tuNgay").value;
       let denNgay = document.getElementById("denNgay").value;
-      // v2 lọc theo DATE => KHÔNG nối giờ phút giây
+      if (denNgay) denNgay = denNgay + "T23:59:59.999";
 
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
@@ -336,78 +320,98 @@
       const tbody = document.getElementById("dsHoaDon");
       tbody.innerHTML = "";
 
-      // ====== V2: GỌI RPC (DETAIL LÀM CHUẨN) ======
+      // --- THÊM: chuẩn bị lọc theo mã sản phẩm ---
       const maspRaw = document.getElementById('locMasp').value.trim();
       const matchAll = document.getElementById('chkMatchAll').checked;
+      let sohdFilterSet = null;
 
-      const maspList = maspRaw
-        ? maspRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
-        : null;
-
-      // loaiChungTuArr đang là mảng multi-select => pass thẳng vào RPC
-      const loaiList = (loaiChungTuArr && loaiChungTuArr.length) ? loaiChungTuArr : null;
-
-      // chuẩn hóa tiền
-      const tienTu2 = (!isNaN(tienTu) && tienTu > 0) ? tienTu : null;
-      const tienDen2 = (!isNaN(tienDen) && tienDen > 0) ? tienDen : null;
-
-      // params chung
-      const paramsBase = {
-        p_tu_ngay: tuNgay || null,
-        p_den_ngay: denNgay || null,
-        p_loaihd_list: loaiList,
-        p_manv: nv || null,
-        p_khachhang: khach || null,
-        p_sohd: sohd || null,
-        p_tien_tu: tienTu2,
-        p_tien_den: tienDen2,
-        p_masp_list: maspList,
-        p_must_contain_all: !!matchAll
-      };
-
-      // 1) COUNT (để set tổng nhanh)
-      {
-        const { data, error } = await window.supabase.rpc('xemhoadon111_v2_count', paramsBase);
-        if (error) {
-          tbody.innerHTML = `<tr><td colspan="12">❌ Lỗi count: ${error.message}</td></tr>`;
-          return;
+      if (maspRaw) {
+        // chuẩn hóa & loại trống
+        const maspList = maspRaw.split(',')
+          .map(s => s.trim().toUpperCase())
+          .filter(Boolean);
+        if (maspList.length) {
+          sohdFilterSet = await getSohdByMaspList(maspList, matchAll);
+          if (sohdFilterSet.size === 0) {
+            tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu (không có HĐ chứa các mã đã nhập)</td></tr>`;
+            // cũng reset tổng
+            document.getElementById('tongSoLuong2').textContent = '0';
+            document.getElementById('tongTien2').textContent = '0';
+            return;
+          }
         }
-        const row = data?.[0] || {};
-        // tổng trên UI: dùng số "chuẩn theo detail"
-        document.getElementById('tongSoLuong2').textContent = Number(row.total_sl_detail || 0).toLocaleString();
-        document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan_v2 || 0).toLocaleString();
       }
 
-      // 2) PAGED (lấy toàn bộ theo batch)
-      
-      // ====== V2: LẤY TỔNG BẰNG COUNT + PHÂN TRANG 10.000 (batch 1000) ======
-      // 1) COUNT (tổng chuẩn theo detail, KHÔNG phụ thuộc số dòng đang hiển thị)
-      const { data: countData, error: countErr } = await window.supabase.rpc('xemhoadon111_v2_count', paramsBase);
-      if (countErr) {
-        tbody.innerHTML = `<tr><td colspan="12">❌ Lỗi count: ${countErr.message}</td></tr>`;
-        return;
+      let filtered = [];
+
+      // Nếu chọn loại chứng từ: Truy vấn từng loại (song song, gộp lại)
+      if (loaiChungTuArr.length > 0) {
+        let arr = [];
+        for (const loai of loaiChungTuArr) {
+          let query = supabase
+            .from('hoadon_banle')
+            .select('*')
+            .order('created_at', { ascending: true })    // SỬA: dùng 'ngay'
+            .ilike('sohd', `${loai}_%`);
+
+          if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);   // SỬA: dùng 'ngay'
+          else if (tuNgay) query = query.gte('ngay', tuNgay);
+          else if (denNgay) query = query.lte('ngay', denNgay);
+
+          if (nv) query = query.ilike('manv', `%${nv}%`);
+
+          if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+          if (khach) query = query.ilike('khachhang', `%${khach}%`);
+          if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+          if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+          if (sohdFilterSet && sohdFilterSet.size > 0) {
+            // Giới hạn sohd theo ct_hoadon_xxx đã tìm được
+            query = query.in('sohd', Array.from(sohdFilterSet));
+          }
+
+          let data = await getAllHoaDon(query, 1000);
+          arr = arr.concat(data);
+        }
+        // Loại bỏ trùng hóa đơn (nếu 2 loại overlap)
+        const hash = {};
+        filtered = arr.filter(hd => {
+          if (hash[hd.sohd]) return false;
+          hash[hd.sohd] = true;
+          return true;
+        });
+      } else {
+        // Không chọn loại, lấy toàn bộ
+        let query = supabase
+          .from('hoadon_banle')
+          .select('*')
+          .order('ngay', { ascending: true }) // Ưu tiên order theo ngày hóa đơn thực tế
+
+        if (tuNgay && denNgay) query = query.gte('created_at', tuNgay).lte('created_at', denNgay);
+        else if (tuNgay) query = query.gte('ngay', tuNgay);
+        else if (denNgay) query = query.lte('ngay', denNgay);
+
+
+        if (nv) query = query.ilike('manv', `%${nv}%`);
+
+        if (sohd) query = query.ilike('sohd', `%${sohd}%`);
+        if (khach) query = query.ilike('khachhang', `%${khach}%`);
+        if (!isNaN(tienTu) && tienTu > 0) query = query.gte('thanhtoan', tienTu);
+        if (!isNaN(tienDen) && tienDen > 0) query = query.lte('thanhtoan', tienDen);
+
+        if (sohdFilterSet && sohdFilterSet.size > 0) {
+          query = query.in('sohd', Array.from(sohdFilterSet));
+        }
+        let data = await getAllHoaDon(query, 1000);
+        filtered = data || [];
+
       }
-      const row = countData?.[0] || {};
-      document.getElementById('tongSoLuong2').textContent = Number(row.total_sl_detail || 0).toLocaleString();
-      document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan_v2 || 0).toLocaleString();
 
-      const totalRows = Number(row.total_rows || 0);
-      const pageSize = Number(document.getElementById('pageSize')?.value || 5000);
-      totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-      currentPage = 1;
-      lastParamsBase = paramsBase;
-
-      await loadPage();
-      return;
-      // ====== END V2 PAGING ======
-
-
+      if (!filtered.length) return tbody.innerHTML = `<tr><td colspan="9">Không có dữ liệu</td></tr>`;
 
       // SẮP XẾP THEO SỐ HÓA ĐƠN TỪ NHỎ ĐẾN LỚN (chỉ áp dụng cho chế độ chi tiết)
       if (loaiTongHop === "chitiet") {
         filtered.sort((a, b) => {
-
-
           const s1 = (a.sohd || "").toString();
           const s2 = (b.sohd || "").toString();
           return s1.localeCompare(s2); // tăng dần
@@ -419,8 +423,7 @@
       if (loaiTongHop !== "chitiet") {
         const groupMap = new Map();
         filtered.forEach(hd => {
-          const d = new Date(hd.ngay || hd.created_at);
-
+          const d = new Date(hd.created_at);
           let key = "";
           if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
           if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
@@ -466,96 +469,7 @@
       }
 
       // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
-      
-    // ===== Render bảng (dùng data đã map theo format cũ) =====
-    function renderBangHoaDon(filtered) {
-      const tbody = document.querySelector("table tbody");
-      tbody.innerHTML = "";
-      filtered.forEach((hd, i) => {
-        const tr = document.createElement("tr");
-        // Giữ đúng số cột theo bảng hiện tại
-        tr.innerHTML = `
-          <td>${i + 1}</td>
-          <td><input type="checkbox" class="chkRow" data-sohd="${hd.sohd}"></td>
-          <td><a href="xemcthoadonbanle.html?sohd=${encodeURIComponent(hd.sohd)}" target="_blank">${hd.sohd}</a></td>
-          <td>${dinhDangNgayGio(hd.ngay || hd.created_at)}</td>
-          <td>${dinhDangNgayGio(hd.updated_at)}</td>
-          <td>${hd.manv || ""}</td>
-          <td>${hd.khachhang || ""}</td>
-          <td style="text-align:right;">${Number(hd.tongsl || 0).toLocaleString()}</td>
-          <td style="text-align:right;">${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
-          <td style="text-align:right;">${Number(hd.chietkhau || 0).toLocaleString()}</td>
-          <td style="text-align:right;">${Number(hd.thanhtoan || 0).toLocaleString()}</td>
-          <td>${hd.ghichu || ""}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    async function loadPage() {
-      if (!lastParamsBase) return;
-
-      const pageSize = Number(document.getElementById('pageSize')?.value || 5000);
-      const baseOffset = (currentPage - 1) * pageSize;
-
-      const BATCH = 1000; // Supabase thường giới hạn ~1000 rows mỗi request
-      let filtered = [];
-
-      // hiển thị trạng thái
-      const infoEl = document.getElementById('dangHienThiInfo');
-      if (infoEl) infoEl.textContent = `Đang tải trang ${currentPage}...`;
-
-      for (let i = 0; i < pageSize; i += BATCH) {
-        const take = Math.min(BATCH, pageSize - i);
-
-        const { data, error } = await window.supabase.rpc('xemhoadon111_v2_paged', {
-          ...lastParamsBase,
-          p_limit: take,
-          p_offset: baseOffset + i
-        });
-
-        if (error) {
-          alert('Lỗi paged: ' + error.message);
-          if (infoEl) infoEl.textContent = '';
-          return;
-        }
-
-        const rows = data || [];
-        if (rows.length === 0) break;
-
-        rows.forEach(r => {
-          filtered.push({
-            sohd: r.sohd,
-            ngay: r.ngay,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            manv: r.manv,
-            tennv: r.tennv,
-            khachhang: r.khachhang,
-            ghichu: r.ghichu,
-
-            tongsl: r.sl_detail,
-            tongthanhtien: r.tong_detail,
-            chietkhau: r.chietkhau,
-            thanhtoan: r.thanhtoan_v2,
-
-            tongsl_header: r.sl_header,
-            lech_sl: r.lech_sl
-          });
-        });
-
-        if (rows.length < take) break;
-      }
-
-      renderBangHoaDon(filtered);
-
-      const pageInfo = document.getElementById('pageInfo');
-      if (pageInfo) pageInfo.textContent = `Trang ${currentPage}/${totalPages}`;
-
-      if (infoEl) infoEl.textContent = `Đang hiển thị ${filtered.length.toLocaleString()} hóa đơn của trang này`;
-    }
-
-function dinhDangNgayGio(ngayStr) {
+      function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
 
         // Nếu chuỗi có dạng dd/mm/yyyy hoặc mm/yyyy hoặc yyyy thì giữ nguyên (đang tổng hợp)
@@ -590,7 +504,7 @@ function dinhDangNgayGio(ngayStr) {
   <td>${idx + 1}</td>
   <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
   <td>${hd.sohd || ""}</td>
-  <td>${dinhDangNgayGio(hd.ngay || hd.created_at)}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
   <td>${dinhDangNgayGio(hd.updated_at || hd.updatedAt)}</td>
   <td>${hd.manv || ""}</td>
   <td>${hd.khachhang || ""}</td>
