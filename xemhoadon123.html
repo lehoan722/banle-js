@@ -521,8 +521,7 @@
         thanhtoan: Number(hd.thanhtoan || 0),
         ghichu: (hd.ghichu ?? "")
       }));
-
-      ensureHot(loaiTongHop);
+      (window.ensureHot ? window.ensureHot(loaiTongHop) : null);
       // ------------- DÒNG TỔNG CUỐI BẢNG -------------
       let tongSL = 0, tongThanhTien = 0, tongChietKhau = 0, tongTien = 0;
       hienThiData.forEach(hd => {
@@ -1086,7 +1085,10 @@
 
       hotMode = mode;
       hotHoaDon.loadData(hotData);
-    }
+    };
+    // expose for older code paths
+    window.ensureHot = ensureHot;
+
 
     function getSelectedSoHdFromHot() {
       if (!Array.isArray(hotData)) return [];
