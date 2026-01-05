@@ -175,9 +175,7 @@
 
 
     <!-- Bảng HTML cũ (ẩn) để giữ tương thích code cũ -->
-    <table id="tblHoaDonHidden" style="display:none;">
-      <tbody id="dsHoaDon"></tbody>
-    </table>
+    <table id="tblHoaDonHidden" style="display:none;"><tbody id="dsHoaDon"></tbody></table>
     <div id="hotHoaDon" style="width:100%; margin-top:10px;"></div>
 
 
@@ -1014,6 +1012,26 @@
       td.textContent = (value === null || value === undefined) ? "" : String(value);
     }
 
+     function renderFromFiltered(rows) {
+      // rows là dữ liệu bạn đang dùng để vẽ table cũ
+
+      hotData = rows.map((r, idx) => ({
+        stt: idx + 1,
+        sohd: r.sohd || '',
+        ngay: r.ngay || r.created_at || '',
+        ngay_sua: r.updated_at || '',
+        manv: r.manv || '',
+        khach: r.khach || '',
+        tongsl: Number(r.tongsl || 0),
+        tongthanhtien: Number(r.tongthanhtien || 0),
+        chietkhau: Number(r.chietkhau || 0),
+        thanhtoan: Number(r.thanhtoan || 0),
+        ghichu: r.ghichu || '',
+      }));
+
+      initHot();
+    }
+
     function ensureHot(mode) {
       const el = document.getElementById('hotHoaDon');
       if (!el) return;
@@ -1099,27 +1117,6 @@
         .filter(r => r && r._chk && r.sohd)
         .map(r => String(r.sohd));
     }
-
-    function renderFromFiltered(rows) {
-      // rows là dữ liệu bạn đang dùng để vẽ table cũ
-
-      hotData = rows.map((r, idx) => ({
-        stt: idx + 1,
-        sohd: r.sohd || '',
-        ngay: r.ngay || r.created_at || '',
-        ngay_sua: r.updated_at || '',
-        manv: r.manv || '',
-        khach: r.khach || '',
-        tongsl: Number(r.tongsl || 0),
-        tongthanhtien: Number(r.tongthanhtien || 0),
-        chietkhau: Number(r.chietkhau || 0),
-        thanhtoan: Number(r.thanhtoan || 0),
-        ghichu: r.ghichu || '',
-      }));
-
-      initHot();
-    }
-
 
   </script>
 
