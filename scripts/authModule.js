@@ -14,7 +14,15 @@ if (
   !window.supabase.auth ||
   typeof window.supabase.auth.setSession !== "function"
 ) {
-  window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      persistSession: true,
+      storage: sessionStorage,   // ✅ tách session theo từng tab
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+
 }
 
 // Helper: lấy client Supabase chuẩn (cho page nào muốn dùng chung)
@@ -28,12 +36,13 @@ export function getSupabaseClient() {
 // Nhiều trang của anh đang gọi: await authModule.getCurrentUserInfo()
 // -> Phải tồn tại hàm này để không bị TypeError.
 export function getCurrentUserInfo() {
+  const get = (k) => (sessionStorage.getItem(k) || localStorage.getItem(k) || "").trim();
   return {
-    diadiem: (localStorage.getItem("diadiem") || "").trim(),
-    manv: (localStorage.getItem("manv") || "").trim(),
-    tennv: (localStorage.getItem("tennv") || "").trim(),
-    is_admin: localStorage.getItem("is_admin") === "true",
-    quyen_sua_hoadon: localStorage.getItem("quyen_sua_hoadon") === "true",
+    diadiem: get("diadiem"),
+    manv: get("manv"),
+    tennv: get("tennv"),
+    is_admin: (sessionStorage.getItem("is_admin") || localStorage.getItem("is_admin")) === "true",
+    quyen_sua_hoadon: (sessionStorage.getItem("quyen_sua_hoadon") || localStorage.getItem("quyen_sua_hoadon")) === "true",
   };
 }
 
@@ -497,7 +506,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
             if (!nvErr && nv) {
               if (nv && Object.prototype.hasOwnProperty.call(nv, "active") && nv.active === false) {
-                await window.supabase.auth.signOut().catch(() => {});
+                await window.supabase.auth.signOut().catch(() => { });
                 throw new Error("Tài khoản nhân viên đang bị khóa");
               }
 
