@@ -648,17 +648,31 @@
       }
 
 
+      // ------------- HÀM ĐỊNH DẠNG NGÀY  -------------
+
+      function dinhDangNgay(ngayStr) {
+        if (!ngayStr) return "";
+        const d = new Date(ngayStr);
+        return new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
+      }
+
+      // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
       function dinhDangNgayGio(ngayStr) {
         if (!ngayStr) return "";
 
+        // Nếu chuỗi có dạng dd/mm/yyyy hoặc mm/yyyy hoặc yyyy thì giữ nguyên (đang tổng hợp)
         if (
           /^\d{2}\/\d{2}\/\d{4}$/.test(ngayStr) ||
           /^\d{2}\/\d{4}$/.test(ngayStr) ||
           /^\d{4}$/.test(ngayStr)
         ) return ngayStr;
 
-        const d = new Date(normalizePgTimestamp(ngayStr));   // <-- FIX Ở ĐÂY
-
+        const d = new Date(ngayStr);
         const datePart = new Intl.DateTimeFormat("vi-VN", {
           timeZone: "Asia/Ho_Chi_Minh",
           day: "2-digit",
@@ -673,39 +687,26 @@
           hour12: false,
         }).format(d);
 
+        // timePart thường ra "09:18" => đổi thành "09h18"
         return `${datePart} ${timePart.replace(":", "h")}`;
       }
-
-      function dinhDangNgayOnly(ngayStr) {
-        if (!ngayStr) return "";
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(ngayStr)) return ngayStr;
-
-        const d = new Date(normalizePgTimestamp(ngayStr));   // <-- FIX Ở ĐÂY
-        return new Intl.DateTimeFormat("vi-VN", {
-          timeZone: "Asia/Ho_Chi_Minh",
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }).format(d);
-      }
-
       // ------------- HIỂN THỊ RA BẢNG -------------
       hienThiData.forEach((hd, idx) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-        <td>${hd.sohd || ""}</td>
-        <td>${hd.created_at ? dinhDangNgayGio(hd.created_at) : dinhDangNgayOnly(hd.ngay)}</td>
-        <td>${dinhDangNgayGio(hd.updated_at || hd.updatedAt)}</td>
-        <td>${hd.manv || ""}</td>
-        <td>${hd.khachhang || ""}</td>
-        <td>${hd.tongsl || 0}</td>
-        <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
-        <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
-        <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
-        <td>${hd.ghichu || ""}</td>
-      `;
+  <td>${idx + 1}</td>
+  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+  <td>${hd.sohd || ""}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
+  <td>${dinhDangNgayGio(hd.updated_at || hd.updatedAt)}</td>
+  <td>${hd.manv || ""}</td>
+  <td>${hd.khachhang || ""}</td>
+  <td>${hd.tongsl || 0}</td>
+  <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+  <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
+  <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+  <td>${hd.ghichu || ""}</td>
+`;
 
         // Click chọn dòng => tô vàng + hiện popup chi tiết
         tr.addEventListener('click', async (ev) => {
