@@ -694,8 +694,8 @@
         <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
         <td>${hd.sohd || ""}</td>
         <td>${hd.created_at ? dinhDangNgayGio(hd.created_at) : dinhDangNgayOnly(hd.ngay)}</td>
-        <td>${dinhDangNgayGio(hd.updated_at || hd.updatedAt)}</td>
-        <td>${hd.manv || ""}</td>
+        <td>${hd.created_at ? dinhDangNgayGio(hd.updated_at) : dinhDangNgayOnly(hd.ngay)}</td>
+        
         <td>${hd.khachhang || ""}</td>
         <td>${hd.tongsl || 0}</td>
         <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
