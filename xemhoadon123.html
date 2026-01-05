@@ -175,8 +175,10 @@
 
 
     <!-- Bảng HTML cũ (ẩn) để giữ tương thích code cũ -->
-    <table id="tblHoaDonHidden" style="display:none;"><tbody id="dsHoaDon"></tbody></table>
-    
+    <table id="tblHoaDonHidden" style="display:none;">
+      <tbody id="dsHoaDon"></tbody>
+    </table>
+
     <div id="hotHoaDon" style="width:100%; height:520px; margin-top:8px;"></div>
 
 
@@ -1086,7 +1088,8 @@
 
       hotMode = mode;
       hotHoaDon.loadData(hotData);
-      hotHoaDon.render();
+      hot.render();
+      hot.refreshDimensions();
     };
     // expose for older code paths
     window.ensureHot = ensureHot;
