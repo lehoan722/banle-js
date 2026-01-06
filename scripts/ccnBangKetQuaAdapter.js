@@ -150,6 +150,7 @@
       "nhapmoimtcs1",
       "nhaptamcs1",
       "kiemtamcs1", 
+      "kiemtamcs2", 
       "ccn2v1cs1",
       "nhapmoimtcs2",
       "nhaptamcs2",
