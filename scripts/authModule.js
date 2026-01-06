@@ -251,6 +251,49 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     return `/api/login-${cs}`;
   }
 
+  function isForceLoginNoRememberPage() {
+    const p = (location.pathname || "").toLowerCase();
+
+    // ✅ Chỉ cần match theo tên file/đường dẫn bạn dùng thực tế
+    // Ví dụ: /ccn2v1cs2.html, /ccn1v2cs1.html ...
+    return (
+      p.includes("ccn1v2") ||
+      p.includes("ccn2v1")
+    );
+  }
+
+  function clearAuthMemoryForThisPage() {
+    // Xóa các key “nhớ đăng nhập” của app
+    [
+      "supabase_access_token",
+      "supabase_refresh_token",
+      "manv",
+      "tennv",
+      "is_admin",
+      "quyen_sua_hoadon",
+      "last_login_identifier",
+    ].forEach((k) => {
+      try { localStorage.removeItem(k); } catch { }
+      try { sessionStorage.removeItem(k); } catch { }
+    });
+
+    // Xóa token supabase-js (sb-...-auth-token) để không có session auto
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+          localStorage.removeItem(key);
+        }
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+          sessionStorage.removeItem(key);
+        }
+      }
+    } catch { }
+  }
+
   function saveSessionLegacy(session) {
     try {
       if (session?.access_token) localStorage.setItem("supabase_access_token", session.access_token);
@@ -435,6 +478,20 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   // =======================================================
   (async () => {
     try {
+      // ✅ Nếu là trang chuyển chi nhánh: không nhớ đăng nhập, không auto điền
+      if (isForceLoginNoRememberPage()) {
+        clearAuthMemoryForThisPage();
+
+        // đảm bảo overlay login vẫn hiện, app vẫn ẩn
+        if (appContainer) appContainer.style.display = "none";
+        loginContainer.style.display = "flex";
+
+        // không set manvInput.value, không set csSelect.value từ localStorage
+        // không tryRestoreSessionFromLegacyTokens, không getSession để auto-pass
+        return;
+      }
+
+      // ====== (phần code cũ giữ nguyên từ đây trở xuống) ======
       const savedId =
         localStorage.getItem("last_login_identifier") ||
         localStorage.getItem("manv") ||
