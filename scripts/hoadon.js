@@ -86,9 +86,6 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("nhaptam")) {
             loai = diadiem === "cs1" ? "nhaptamcs1" : "nhaptamcs2";
 
-        } else if (pathname.includes("kiemtam")) {
-            loai = diadiem === "cs1" ? "kiemtamcs1" : "kiemtamcs2";
-
         } else if (pathname.includes("kiemkho")) {
             const isTang = document.title.includes("Tăng");
             loai = isTang
