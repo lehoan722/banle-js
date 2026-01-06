@@ -149,6 +149,7 @@
       "banlemtcs1",
       "nhapmoimtcs1",
       "nhaptamcs1",
+      "kiemtamcs1", 
       "ccn2v1cs1",
       "nhapmoimtcs2",
       "nhaptamcs2",
