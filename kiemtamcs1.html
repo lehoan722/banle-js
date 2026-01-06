@@ -5,8 +5,8 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>kiemkhocs1</title>
-    <!-- Backup: các thư viện ngoài -->
+    <title>kiemtamcs1</title>
+    <!-- Backup: các thư viện ngoài --> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -61,7 +61,7 @@
 
         #masp {
             width: 250px;
-            background: rgb(255, 0, 238);
+            background: rgb(230, 0, 255);
         }
 
         #soluong {
@@ -339,6 +339,22 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+        .kh-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .kh-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kh-col input {
+            width: 100%;
+        }
     </style>
 
 
@@ -378,7 +394,7 @@
         }
 
         .menu-bar {
-            background: #cc009c;
+            background: #cc00cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -536,18 +552,21 @@
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
                         <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
-
                         <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mã khách"
-                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
-                            <button id="btnPopupKH" type="button"
-                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                🔍
-                            </button>
-                        </div>
-                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+                        <div class="kh-row">
+                            <div class="kh-col" style="position: relative;">mã khách
+                                <input id="makh" placeholder="mã khách"
+                                    style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                                <button id="btnPopupKH" type="button"
+                                    style="position:absolute;right:2px;top:2px;width:28px;height:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                    🔍
+                                </button>
+                            </div>
 
+                            <label class="kh-col" style="margin:0;">Khách hàng
+                                <input id="khachhang" readonly="" style="width:100%;box-sizing:border-box;" />
+                            </label>
+                        </div>
                         <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
                             style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
@@ -609,9 +628,12 @@
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+                <button id="btnNapNhapTam" class="btnChuyen"
+                    title="Tự động lấy size chi tiết từ nhaptamcs2_ trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU">⬇️
+                    nạp nhập tạm</button>
             </div>
             <button id="btnOpenInTem">In mã vạch</button>
-            <button id="btnImportFromGS">Nhập từ Google Sheet</button>
+            <button id="btnImportFromGS">Nhập từ Google Sheet</button>kiemkhocs2/kiemkhocs2
 
 
             <!-- Popup tìm khách hàng
@@ -659,17 +681,16 @@
 
     </div>
 
-
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1", // API backend mới
+            loginApiPath: "/api/login-cs2", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -739,7 +760,6 @@
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
-
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
@@ -806,6 +826,7 @@
 
 
         // Dán từ clipboard (Excel) vào bảng web
+
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
@@ -915,7 +936,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs2");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -948,6 +969,7 @@
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
+        // ===== Pre-check nhà cung cấp trước khi lưu (F2) - BẮT BUỘC CÓ TÊN KH =====
         function precheckNhaCungCapBeforeSave() {
             const makhEl = document.getElementById('makh');
             const tenEl = document.getElementById('khachhang');
@@ -974,8 +996,10 @@
                 }
             }
         }, true);
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ (có pre-check)
         document.getElementById('btn-luu')?.addEventListener('click', () => {
+            if (!precheckNhaCungCapBeforeSave()) return;
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
@@ -1053,22 +1077,6 @@
             }
 
         });
-    </script>
-
-    <script>
-        // Tránh "URI malformed" khi có % không hợp lệ
-        function safeDecodeURIComponent(str) {
-            if (typeof str !== 'string') return '';
-            try {
-                // Ép encode các dấu % không theo sau là 2 ký tự hex
-                // ... rồi mới decode bình thường
-                const protectedStr = str.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
-                return decodeURIComponent(protectedStr.replace(/\+/g, ' ')); // '+' -> space
-            } catch (e) {
-                // Nếu vẫn lỗi (do bị decode 2 lần hoặc không phải URI), trả về nguyên bản
-                return str;
-            }
-        }
     </script>
 
     <script>
@@ -1246,18 +1254,18 @@
                 });
             });
 
-            const payload = { source: "nhap-hd", cs: "cs1", items };
+            const payload = { source: "nhap-hd", cs: "cs2", items };
             const json = JSON.stringify(payload);
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs2.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
 
         // Gắn vào nút
-        // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
+        // nhapmoimtcs2.html (hoặc module xử lý nút in mã vạch)
 
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
@@ -1291,14 +1299,14 @@
 
             const payload = {
                 source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
+                cs: localStorage.getItem("diadiem") || "cs2",
                 items
             };
             console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs2.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
@@ -1383,8 +1391,8 @@
         // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
 
         async function importFromGoogleSheet() {
-            const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
-            const sheetName = "kiemkhocs1";
+            const sheetId = "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8";
+            const sheetName = "kiemkhocs2";
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
 
             try {
@@ -1529,38 +1537,224 @@
     <script type="module">
         import { popupNgang } from './scripts/popupNgang.js';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btnChuyenngang');
-            if (!btn) return;
+        // ✅ Nút "Nạp nhập tạm" (nhaptamcs2_) -> tự đổ dữ liệu size chi tiết vào bảng kết quả của nmcs2_
+        async function napNhapTamTuSupabase() {
+            // 1) Cập nhật dữ liệu mới nhất từ bảng DOM (tránh lấy thiếu nếu user vừa sửa)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
 
-            btn.addEventListener('click', () => {
-                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM
-                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                    window.capNhatBangKetQuaTuDOM();
+            const sohd = (document.getElementById('sohd')?.value || '').trim();
+            const diadiem = (document.getElementById('diadiem')?.value || '').trim() || 'cs2';
+
+            if (!sohd.startsWith('nmcs2_')) {
+                alert('⚠️ Nút này chỉ dùng khi đang mở hóa đơn nhập mới MT cơ sở 2 (sohd bắt đầu bằng nmcs2_)');
+                return;
+            }
+
+            const bang = window.bangKetQua || {};
+            const masps = Object.keys(bang).map(x => (x || '').toUpperCase()).filter(Boolean);
+
+            if (masps.length === 0) {
+                alert('⚠️ Chưa có mã sản phẩm nào trong bảng kết quả để đối chiếu.');
+                return;
+            }
+
+            if (!window.supabase) {
+                alert('❌ Không tìm thấy window.supabase. Trang này cần khởi tạo Supabase client trước khi nạp nhập tạm.');
+                return;
+            }
+
+            // 2) Lấy created_at của hóa đơn nmcs2_ hiện tại (mốc quét)
+            const { data: nm, error: nmErr } = await window.supabase
+                .from('hoadon_banle')
+                .select('created_at, diadiem')
+                .eq('sohd', sohd)
+                .single();
+
+            if (nmErr || !nm?.created_at) {
+                console.error('nmErr:', nmErr);
+                alert('❌ Không lấy được created_at của hóa đơn nhập mới. Hãy chắc chắn hóa đơn nmcs2_ đã LƯU trước khi nạp nhập tạm.');
+                return;
+            }
+
+            const nmCreatedAt = new Date(nm.created_at);
+            // ✅ Ngưỡng quét mặc định: lấy NHẬP TẠM trong "NGÀY tạo nmcs2_" và "NGÀY HÔM SAU"
+            // (để bao cả trường hợp nhaptam phát sinh TRƯỚC thời điểm tạo nmcs2_ nhưng vẫn trong cùng ngày)
+            const dayStart = new Date(nmCreatedAt);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 2); // [dayStart, dayEnd) = hôm nay + ngày mai
+
+            const cs = (nm.diadiem || diadiem || 'cs2').trim();
+
+            // 3) Lấy danh sách hóa đơn nhập tạm trong khoảng thời gian (NGÀY tạo nmcs2_ + NGÀY HÔM SAU)
+            const { data: hdsTam, error: hdErr } = await window.supabase
+                .from('hoadon_banle')
+                .select('sohd, created_at')
+                .eq('diadiem', cs)
+                .ilike('sohd', 'nhaptamcs2_%')
+                .gte('created_at', dayStart.toISOString())
+                .lt('created_at', dayEnd.toISOString());
+
+            if (hdErr) {
+                console.error('hdErr:', hdErr);
+                alert('❌ Lỗi khi tìm hóa đơn nhập tạm.');
+                return;
+            }
+
+            const sohdTamList = (hdsTam || []).map(x => x.sohd).filter(Boolean);
+
+            if (sohdTamList.length === 0) {
+                alert('ℹ️ Không tìm thấy hóa đơn nhaptamcs2_ nào trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU.');
+                return;
+            }
+
+            // 4) Lấy chi tiết từ ct_hoadon_banle theo sohd nhập tạm, sau đó lọc masp trùng ở phía JS (an toàn khi masps nhiều)
+            const maspSet = new Set(masps);
+            const chunk = (arr, size) => {
+                const out = [];
+                for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+                return out;
+            };
+
+            let ctRows = [];
+            let ctErr = null;
+
+            for (const sohdChunk of chunk(sohdTamList, 200)) {
+                const { data, error } = await window.supabase
+                    .from('ct_hoadon_banle')
+                    .select('sohd, masp, tensp, size, soluong, gia, km, dvt, diadiem')
+                    .eq('diadiem', cs)
+                    .in('sohd', sohdChunk)
+                    .neq('size', '0'); // chỉ lấy size chi tiết
+
+                if (error) { ctErr = error; break; }
+                if (data?.length) {
+                    // lọc masp trùng (upper)
+                    ctRows = ctRows.concat(
+                        data.filter(r => maspSet.has(((r.masp || '').toUpperCase().trim())))
+                    );
                 }
+            }
 
-                // 2️⃣ Lấy dữ liệu dọc hiện tại
-                const bang = window.bangKetQua || {};
-                const rows = [];
-                Object.values(bang).forEach(item => {
-                    item.sizes.forEach((sz, i) => {
-                        rows.push({
-                            masp: item.masp,
-                            tenhang: item.tensp || '',
-                            size: sz,
-                            sl: item.soluongs[i] || 0
+            if (ctErr) {
+                console.error('ctErr:', ctErr);
+                alert('❌ Lỗi khi tải chi tiết nhập tạm.');
+                return;
+            }
+
+            if (!ctRows || ctRows.length === 0) {
+                alert('ℹ️ Có hóa đơn nhập tạm, nhưng không có dòng nào trùng mã sản phẩm với hóa đơn nmcs2_ hiện tại.');
+                return;
+            }
+
+            // 5) Gom nhóm theo (MASP, SIZE) -> SUM(soluong)
+            const agg = new Map(); // key: MASP|SIZE
+            for (const r of ctRows) {
+                const masp = (r.masp || '').toUpperCase().trim();
+                const size = (r.size || '').toString().trim();
+                if (!masp || !size) continue;
+
+                const key = masp + '|' + size;
+                const prev = agg.get(key) || {
+                    masp,
+                    tensp: r.tensp || '',
+                    size,
+                    soluong: 0,
+                    dvt: r.dvt || '',
+                    gia: (typeof r.gia === 'number' ? r.gia : Number(r.gia)) || 0,
+                    km: (typeof r.km === 'number' ? r.km : Number(r.km)) || 0
+                };
+                prev.soluong += Number(r.soluong) || 0;
+                // giữ thông tin phụ nếu thiếu
+                if (!prev.tensp && r.tensp) prev.tensp = r.tensp;
+                if (!prev.dvt && r.dvt) prev.dvt = r.dvt;
+                if (!prev.gia && r.gia) prev.gia = (typeof r.gia === 'number' ? r.gia : Number(r.gia)) || 0;
+                agg.set(key, prev);
+            }
+
+            // 6) Tự "dán" vào window.bangKetQua: size đã có thì overwrite SL, chưa có thì thêm mới
+            let countAdded = 0;
+            let countUpdated = 0;
+
+            for (const item of agg.values()) {
+                const masp = item.masp;
+                const size = item.size;
+                const sl = item.soluong;
+
+                const target = bang[masp];
+                if (!target) continue; // chỉ xử lý masp trùng trong hóa đơn nmcs2_
+
+                // bổ sung tên hàng nếu thiếu
+                if (!target.tensp && item.tensp) target.tensp = item.tensp;
+                // ưu tiên dvt/gia nếu target đang trống
+                if (!target.dvt && item.dvt) target.dvt = item.dvt;
+                if ((!target.gia || Number(target.gia) === 0) && item.gia) target.gia = item.gia;
+
+                const idx = (target.sizes || []).findIndex(sz => String(sz).trim() === String(size).trim());
+                if (idx >= 0) {
+                    target.soluongs[idx] = sl;
+                    countUpdated++;
+                } else {
+                    target.sizes.push(size);
+                    target.soluongs.push(sl);
+                    countAdded++;
+                }
+            }
+
+            // 7) Render lại bảng
+            window.bangKetQua = bang;
+            if (typeof window.renderBangKetQua === 'function') window.renderBangKetQua(bang);
+            if (typeof window.capNhatTongTien === 'function') window.capNhatTongTien(bang);
+
+            alert(`✅ Đã nạp dữ liệu từ nhập tạm\n- Hóa đơn tạm tìm thấy: ${sohdTamList.length}\n- Dòng size mới thêm: ${countAdded}\n- Dòng size cập nhật: ${countUpdated}\n\nTiếp theo: bấm 🔁 ngang để đối chiếu và tô màu lệch.`);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 🔁 Nút ngang (giữ nguyên)
+            const btnNgang = document.getElementById('btnChuyenngang');
+            if (btnNgang) {
+                btnNgang.addEventListener('click', () => {
+                    // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM 
+                    if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                        window.capNhatBangKetQuaTuDOM();
+                    }
+
+                    // 2️⃣ Lấy dữ liệu dọc hiện tại
+                    const bang = window.bangKetQua || {};
+                    const rows = [];
+                    Object.values(bang).forEach(item => {
+                        item.sizes.forEach((sz, i) => {
+                            rows.push({
+                                masp: item.masp,
+                                tenhang: item.tensp || '',
+                                size: sz,
+                                sl: item.soluongs[i] || 0
+                            });
                         });
                     });
+
+                    if (rows.length === 0) {
+                        alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
+                        return;
+                    }
+
+                    // 3️⃣ Gọi popup để hiển thị bảng ngang
+                    popupNgang.open(rows);
                 });
+            }
 
-                if (rows.length === 0) {
-                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
-                    return;
-                }
-
-                // 3️⃣ Gọi popup để hiển thị bảng ngang
-                popupNgang.open(rows);
-            });
+            // ⬇️ Nút nạp nhập tạm
+            const btnNap = document.getElementById('btnNapNhapTam');
+            if (btnNap) {
+                btnNap.addEventListener('click', () => {
+                    napNhapTamTuSupabase().catch(err => {
+                        console.error(err);
+                        alert('❌ Có lỗi khi nạp nhập tạm. Mở Console để xem chi tiết.');
+                    });
+                });
+            }
         });
     </script>
 
@@ -1587,6 +1781,7 @@
             /* tùy, thích center thì bỏ dòng này */
         }
     </style>
+
 </body>
 
 </html>
