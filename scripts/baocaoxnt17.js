@@ -833,7 +833,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
     const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = false;
+    if (cb) cb.checked = true;
 
     // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
     try {
