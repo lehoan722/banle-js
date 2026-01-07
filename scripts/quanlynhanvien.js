@@ -119,6 +119,49 @@ async function loadStatus() {
         return;
     }
 
+    // ✅ SORT: ưu tiên theo cơ sở (CS1 trước CS2), trong cơ sở sort theo giờ đăng ký tăng dần
+    const baseDiaRank = (d) => {
+        const x = String(d || "").toLowerCase();
+        if (x === "cs1") return 1;
+        if (x === "cs2") return 2;
+        return 99; // cơ sở lạ đưa xuống cuối
+    };
+
+    // Nếu sau này bạn cho phép "Tất cả" nhưng vẫn muốn ưu tiên cơ sở đang chọn,
+    // ta lấy diadiemSelect làm ưu tiên 0 (không ảnh hưởng nếu backend đã lọc theo p_diadiem)
+    const selectedDia = String(diadiemSelect.value || "").toLowerCase();
+    const diaRank = (d) => {
+        const x = String(d || "").toLowerCase();
+        if (selectedDia && x === selectedDia) return 0;
+        return baseDiaRank(x);
+    };
+
+    const timeToMin = (t) => {
+        if (!t) return 999999;
+        const s = String(t);
+        const parts = s.split(":");
+        const h = Number(parts[0]);
+        const m = Number(parts[1] || 0);
+        if (Number.isNaN(h) || Number.isNaN(m)) return 999999;
+        return h * 60 + m;
+    };
+
+    rows.sort((a, b) => {
+        // 1) ưu tiên cơ sở
+        const ra = diaRank(a.diadiem);
+        const rb = diaRank(b.diadiem);
+        if (ra !== rb) return ra - rb;
+
+        // 2) trong cơ sở: ưu tiên theo giờ đăng ký bắt đầu tăng dần
+        const ta = timeToMin(a.gio_dangky_bat_dau);
+        const tb = timeToMin(b.gio_dangky_bat_dau);
+        if (ta !== tb) return ta - tb;
+
+        // 3) phụ: nếu trùng giờ bắt đầu thì sort theo mã NV cho ổn định
+        return String(a.manv || "").localeCompare(String(b.manv || ""), "vi");
+    });
+
+
     tbodyStatus.innerHTML = "";
     rows.forEach((r, idx) => {
         const tr = document.createElement("tr");
