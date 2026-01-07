@@ -89,9 +89,7 @@ function setStatusMessage(text) {
 async function loadStatus() {
     const diadiem = diadiemSelect.value || null;
 
-    setStatusMessage("Đang tải dữ liệu...");
-
-    const nowIso = new Date().toISOString();
+    setStatusMessage("Đang tải dữ liệu...");    
 
     const { data, error } = await supabase.rpc("nhanvien_status_now", {
         p_diadiem: diadiem
