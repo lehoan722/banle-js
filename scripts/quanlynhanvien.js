@@ -28,6 +28,8 @@ function trangThaiLabel(code) {
         case "DA_TAN_CA": return "Đã tan ca";
         case "SAP_VAO_CA": return "Sắp vào ca";
         case "CHUA_VAO_CA": return "Chưa vào ca";
+        case "KHONG_DI_LAM": return "Không đi làm";
+        case "KHONG_CO_LICH": return "Không có lịch";
         default: return "Khác";
     }
 }
@@ -69,6 +71,13 @@ function formatTimeVN(value) {
     return "";
 }
 
+function formatTimeHM(value) {
+    // trả về HH:MM (dùng cho giờ đăng ký / giờ kết thúc)
+    const full = formatTimeVN(value);
+    if (!full) return "";
+    return full.slice(0, 5);
+}
+
 function formatMinutes(m) {
     if (m == null || Number.isNaN(Number(m))) return "";
     const val = Number(m);
@@ -89,22 +98,21 @@ function setStatusMessage(text) {
 async function loadStatus() {
     const diadiem = diadiemSelect.value || null;
 
-    setStatusMessage("Đang tải dữ liệu...");    
+    setStatusMessage("Đang tải dữ liệu...");
 
     const { data, error } = await supabase.rpc("nhanvien_status_now", {
         p_diadiem: diadiem
     });
-
     if (error) {
         console.error("Lỗi gọi nhanvien_status_now:", error);
-        tbodyStatus.innerHTML = `<tr><td colspan="8" style="color:red;">Lỗi tải dữ liệu, xem console để biết chi tiết.</td></tr>`;
+        tbodyStatus.innerHTML = `<tr><td colspan="7" style="color:red;">Lỗi tải dữ liệu, xem console để biết chi tiết.</td></tr>`;
         setStatusMessage("Lỗi tải dữ liệu.");
         return;
     }
 
     const rows = (data || []);
     if (rows.length === 0) {
-        tbodyStatus.innerHTML = `<tr><td colspan="8">Không có dữ liệu chấm công hôm nay.</td></tr>`;
+        tbodyStatus.innerHTML = `<tr><td colspan="7">Không có dữ liệu chấm công hôm nay.</td></tr>`;
         setStatusMessage("Đã tải xong (không có dữ liệu hôm nay).");
         return;
     }
@@ -129,24 +137,36 @@ async function loadStatus() {
         tdDia.textContent = r.diadiem || "";
         tr.appendChild(tdDia);
 
-        const tdTrangThai = document.createElement("td");
+        // Cột gộp: Trạng thái, Sự kiện cuối, Giờ(VN)
+        const tdGop = document.createElement("td");
         const span = document.createElement("span");
         span.className = `status-badge status-${r.trang_thai || "KHAC"}`;
-        span.textContent = trangThaiLabel(r.trang_thai);
-        tdTrangThai.appendChild(span);
-        tr.appendChild(tdTrangThai);
 
-        const tdSuKien = document.createElement("td");
-        tdSuKien.textContent = suKienLabel(r.su_kien_cuoi);
-        tr.appendChild(tdSuKien);
+        const tt = trangThaiLabel(r.trang_thai);
+        const sk = suKienLabel(r.su_kien_cuoi);
+        const gio = formatTimeVN(r.gio_cuoi_vn || r.gio_cuoi);
 
-        const tdGio = document.createElement("td");
-        tdGio.textContent = formatTimeVN(r.gio_cuoi_vn || r.gio_cuoi);
-        tr.appendChild(tdGio);
+        // Nếu không có log chấm công (sk/gio rỗng), hiển thị kèm giờ đăng ký bắt đầu
+        let text = "";
+        if (sk && gio) {
+            text = `${tt}, ${sk}, ${gio}`;
+        } else {
+            const gioDk = formatTimeHM(r.gio_dangky_bat_dau);
+            text = gioDk ? `${tt} ${gioDk}` : tt;
+        }
 
-        const tdPhut = document.createElement("td");
-        tdPhut.textContent = formatMinutes(r.phut_tu_su_kien_cuoi);
-        tr.appendChild(tdPhut);
+        span.textContent = text;
+        tdGop.appendChild(span);
+        tr.appendChild(tdGop);
+
+        // Giờ đăng ký / Giờ kết thúc
+        const tdGioDk = document.createElement("td");
+        tdGioDk.textContent = formatTimeHM(r.gio_dangky_bat_dau);
+        tr.appendChild(tdGioDk);
+
+        const tdGioKt = document.createElement("td");
+        tdGioKt.textContent = formatTimeHM(r.gio_dangky_ket_thuc);
+        tr.appendChild(tdGioKt);
 
         tbodyStatus.appendChild(tr);
     });
