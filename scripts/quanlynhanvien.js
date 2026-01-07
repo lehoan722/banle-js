@@ -26,6 +26,7 @@ function trangThaiLabel(code) {
         case "NGHI_TRUA": return "Nghỉ trưa";
         case "NGHI_CHIEU": return "Nghỉ chiều";
         case "DA_TAN_CA": return "Đã tan ca";
+        case "KHONG_CHAM_TAN_CA": return "Không chấm tan ca";
         case "SAP_VAO_CA": return "Sắp vào ca";
         case "CHUA_VAO_CA": return "Chưa vào ca";
         case "KHONG_DI_LAM": return "Không đi làm";
@@ -33,6 +34,7 @@ function trangThaiLabel(code) {
         default: return "Khác";
     }
 }
+
 
 function suKienLabel(code) {
     const map = {
