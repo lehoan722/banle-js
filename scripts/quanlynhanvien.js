@@ -94,7 +94,6 @@ async function loadStatus() {
     const nowIso = new Date().toISOString();
 
     const { data, error } = await supabase.rpc("nhanvien_status_now", {
-        p_time: nowIso,
         p_diadiem: diadiem
     });
 
