@@ -158,7 +158,7 @@ export async function handleSpecialSoHoaDon(sohd) {
 
     // Xác định cơ sở và điều kiện chia hết
     const diadiem = (prefixFull === "bancs2") ? "cs2" : "cs1";
-    const modulus = (diadiem === "cs1") ? 4 : 6;
+    const modulus = (diadiem === "cs1") ? 3 : 4;
 
     // Không phải số đặc biệt → thôi
     if (Number.isNaN(num) || num % modulus !== 0) return false;
