@@ -423,8 +423,11 @@ export async function luuHoaDonQuaAPI() {
 }
 
 
-export async function luuHoaDonNhapQuaAPI() {
+export async function luuHoaDonQuaAPI() {
     capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
+
+    // ✅ Trạng thái UI: "moi" | "xem" (input readonly nhưng JS set)
+    const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
     if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -437,41 +440,49 @@ export async function luuHoaDonNhapQuaAPI() {
     const sohd = document.getElementById("sohd").value.trim();
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
-    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên nhập hàng.");
+    if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
-    // Xác định ý đồ: chỉ SỬA khi đã xác thực (đặt cờ EDIT)
+    // ✅ Chốt an toàn: chỉ coi là EDIT khi đã xác thực (KHÔNG dựa vào UI)
     const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
+
+    // ✅ Nếu đang XEM hóa đơn cũ mà chưa xác thực sửa -> CHẶN LƯU và bật popup xác thực sửa
+    if (hdState === "xem" && !IS_EDIT) {
+        const popup = document.getElementById("popupXacThucSua");
+        if (popup) {
+            popup.style.display = "block";
+            document.getElementById("xacmanv")?.focus();
+        } else {
+            alert("⚠️ Hóa đơn đang ở trạng thái XEM. Nếu muốn sửa, vui lòng xác thực SỬA trước khi lưu.");
+        }
+        return;
+    }
+
+    // 2) KHỐI SỐ ĐẶC BIỆT (phải đứng SAU dòng IS_EDIT)
+    // - Chỉ chạy khi NEW và số hiện tại chưa tồn tại
+    // - Nếu hdState = moi thì vẫn cho chạy bình thường (đúng ý bạn)
     if (!IS_EDIT) {
-        const existed = await hoaDonDaTonTai(sohd);
-        if (existed) {
-            const choice = await showExistDialog(sohd); // 'new' | 'edit'
-            if (choice === 'edit') {
-                const p = document.getElementById("popupXacThucSua");
-                if (p) {
-                    p.style.display = "block";
-                    document.getElementById("xacmanv")?.focus();
-                }
-                return; // dừng lại để người dùng xác thực rồi bấm Lưu lại → vào EDIT
-            }
-            // choice === 'new' → giữ IS_EDIT=false để đi nhánh NEW, RPC sẽ cấp số mới
+        const existed = await hoaDonDaTonTaiAny(sohd);
+        if (!existed && await handleSpecialSoHoaDon(sohd)) {
+            return; // đã lưu 2 bản xong thì thoát sớm
         }
     }
 
-    // (giữ nguyên nhánh EDIT nhập của bạn)
-
+    // ✅ BỎ HOÀN TOÀN showExistDialog
+    // - Nếu hdState = "moi": không hỏi trùng số, cứ để nhánh NEW xử lý (RPC cấp số mới)
+    // - Nếu hdState = "xem": đã chặn ở trên rồi
+    // - Nếu IS_EDIT = true: đi nhánh EDIT
 
     // === NHÁNH NEW: dùng RPC save_new_header_v2 cấp số & insert header ===
-
     if (!IS_EDIT) {
         // LẤY LOẠI CHỨNG TỪ TỪ Ô #sohd (đã phát sinh sẵn bởi capNhatSoHoaDonTuDong)
         let loai = getLoaiFromSoHDInput();
         if (!loai) {
+            // nếu ô #sohd chưa có, phát sinh lại rồi lấy
             await capNhatSoHoaDonTuDong();
             loai = getLoaiFromSoHDInput();
             if (!loai) { alert("❗Chưa xác định được loại chứng từ từ số hóa đơn."); return; }
         }
         const diadiemTrang = loai.includes('cs2') ? 'cs2' : 'cs1';
-
 
         const getIntValue = (id) => parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
         const header = {
@@ -482,7 +493,7 @@ export async function luuHoaDonNhapQuaAPI() {
             khachhang: document.getElementById("khachhang").value,
             tongsl: getIntValue("tongsl"),
             tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: 0,
+            tongkm: getIntValue("tongkm"),
             chietkhau: getIntValue("chietkhau"),
             thanhtoan: getIntValue("phaithanhtoan"),
             hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -490,8 +501,7 @@ export async function luuHoaDonNhapQuaAPI() {
             dvt: "",
             loaihd: loai,
             loai: loai,
-            nhacc: "",
-            updated_at: null
+            nhacc: ""
         };
 
         await refreshSessionIfNeeded();
@@ -504,36 +514,30 @@ export async function luuHoaDonNhapQuaAPI() {
 
         if (rpcErr || !rpcRes || !rpcRes[0]?.sohd) {
             console.error(rpcErr);
-            alert("❌ Lưu HĐ nhập thất bại (cấp số).");
+            alert("❌ Lưu hóa đơn thất bại (cấp số).");
             return;
         }
 
-
         const sohdThucTe = rpcRes[0].sohd;
         document.getElementById("sohd").value = sohdThucTe;
+
         normalizeBangKetQua(getBangKetQua());
         const createdAt = new Date().toISOString();
         const bangKetQuaNEW = getBangKetQua();
-
 
         const chitiet = [];
         Object.values(bangKetQuaNEW).forEach(item => {
             item.sizes.forEach((sz, i) => {
                 const sl = item.soluongs[i];
-                let gia = 0;
-                if (window.sanPhamData && window.sanPhamData[item.masp]) {
-                    gia = window.sanPhamData[item.masp].gianhap || 0;
-                }
-                const km = 0;
                 chitiet.push({
                     sohd: sohdThucTe,
                     masp: item.masp,
                     tensp: item.tensp,
                     size: sz,
                     soluong: sl,
-                    gia,
-                    km,
-                    thanhtien: (gia - km) * sl,
+                    gia: item.gia,
+                    km: item.km,
+                    thanhtien: (item.gia - item.km) * sl,
                     dvt: item.dvt || '',
                     diadiem: diadiemTrang,
                     created_at: createdAt,
@@ -544,21 +548,23 @@ export async function luuHoaDonNhapQuaAPI() {
 
         const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
         if (errCT) {
-            alert("❌ Lỗi khi lưu chi tiết nhập.");
+            alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
             console.error(errCT);
             await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
             return;
         }
 
-        alert("✅ Đã lưu hóa đơn nhập thành công!");
+        // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
+        await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
+
         inHoaDon({ ...header, sohd: sohdThucTe }, chitiet);
         await lamMoiSauKhiLuu();
+
         choPhepSua = false;
         return;
     }
 
     // === PHẦN DƯỚI: Nhánh EDIT (giữ nguyên luồng cũ) ===
-
     const { data: tonTai } = await supabase
         .from("hoadon_banle")
         .select("sohd, created_at")
@@ -566,23 +572,48 @@ export async function luuHoaDonNhapQuaAPI() {
         .maybeSingle();
 
     if (!tonTai) {
-        alert("❌ Không tìm thấy hóa đơn để sửa (nhập).");
+        alert("❌ Không tìm thấy hóa đơn để sửa. Vui lòng kiểm tra lại số HĐ hoặc chuyển sang tạo mới.");
         return;
     }
 
-
     if (tonTai && !choPhepSua) {
-        const p = document.getElementById("popupXacThucSua");
-        p.style.display = "block";
-        const manvEl = document.getElementById("xacmanv");
-        if (manvEl) { manvEl.focus(); manvEl.select(); }
-        return;
+        const ok = confirm("Hóa đơn đã tồn tại. Bạn có chắc muốn SỬA / GHI ĐÈ hóa đơn này không?");
+        if (!ok) return;
+
+        // CHỐT: chỉ MIN/Admin mới được sửa (tránh nhân viên thường vô tình ghi đè)
+        let isAdmin = false;
+        try {
+            const { data, error } = await supabase.rpc('is_admin');
+            isAdmin = !error && data === true;
+        } catch (e) {
+            isAdmin = false;
+        }
+        if (!isAdmin) {
+            alert("❌ Bạn không có quyền sửa hóa đơn. Chỉ tài khoản MIN/Admin mới được sửa/xóa.");
+            return;
+        }
+
+        choPhepSua = true;
+        window.choPhepSua = true;
+        if (window.HD_CTX) window.HD_CTX.mode = "EDIT";
     }
 
     if (tonTai && choPhepSua) {
-        await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        const { error: delCTErr } = await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        if (delCTErr) {
+            alert("❌ Không xóa được chi tiết hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
+            console.error(delCTErr);
+            return;
+        }
+
+        const { error: delHDErr } = await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        if (delHDErr) {
+            alert("❌ Không xóa được hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
+            console.error(delHDErr);
+            return;
+        }
     }
+
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
     const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
     const createdAt = (tonTai && choPhepSua && tonTai.created_at) ? tonTai.created_at : new Date().toISOString();
@@ -599,7 +630,7 @@ export async function luuHoaDonNhapQuaAPI() {
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-        tongkm: 0, // Nhập mới không có khuyến mại
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -611,25 +642,19 @@ export async function luuHoaDonNhapQuaAPI() {
         nhacc: ""
     };
 
-    const chitiet2 = [];
+    const chitiet = [];
     Object.values(bangKetQua).forEach(item => {
         item.sizes.forEach((sz, i) => {
             const sl = item.soluongs[i];
-            // Ép giá nhập từ dmhanghoa nếu có
-            let gia = 0;
-            if (window.sanPhamData && window.sanPhamData[item.masp]) {
-                gia = window.sanPhamData[item.masp].gianhap || 0;
-            }
-            const km = 0;
-            chitiet2.push({
+            chitiet.push({
                 sohd,
                 masp: item.masp,
                 tensp: item.tensp,
                 size: sz,
                 soluong: sl,
-                gia,
-                km,
-                thanhtien: (gia - km) * sl,
+                gia: item.gia,
+                km: item.km,
+                thanhtien: (item.gia - item.km) * sl,
                 dvt: item.dvt || '',
                 diadiem: (sohd.split("_")[0] || "").includes("cs2") ? "cs2" : "cs1",
                 created_at: createdAt,
@@ -640,20 +665,21 @@ export async function luuHoaDonNhapQuaAPI() {
 
     if (updatedAt) {
         hoadon.updated_at = updatedAt;
-        chitiet2.forEach((r) => r.updated_at = updatedAt);
+        chitiet.forEach(r => r.updated_at = updatedAt);
     }
 
     const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
     if (errHD) {
-        alert("❌ Lỗi khi lưu hóa đơn nhập (header). Có thể bạn không có quyền sửa, hoặc số HĐ bị trùng.");
+        alert("❌ Lỗi khi lưu hóa đơn (header). Có thể bạn không có quyền sửa, hoặc số HĐ bị trùng.");
         console.error(errHD);
         return;
     }
 
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet2);
+    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
     if (errCT) {
-        alert("❌ Lỗi khi lưu chi tiết hóa đơn nhập.");
+        alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
         console.error(errCT);
+        // rollback best-effort để tránh header không có chi tiết
         try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) { }
         return;
     }
@@ -676,20 +702,15 @@ export async function luuHoaDonNhapQuaAPI() {
                 .eq("loai", loai);
         }
 
-        alert("✅ Đã lưu hóa đơn nhập thành công!");
-        inHoaDon(hoadon, chitiet2);
+        inHoaDon(hoadon, chitiet);
         await lamMoiSauKhiLuu();
         choPhepSua = false;
-    }
-    else {
-        alert("❌ Lỗi khi lưu hóa đơn nhập");
+    } else {
+        alert("❌ Lỗi khi lưu hóa đơn");
         console.error(errHD || errCT);
     }
-
-    choPhepSua = false;
-    window.HD_CTX = null;
-
 }
+
 
 export async function luuHoaDonCaHaiBan() {
     const sohd = document.getElementById("sohd").value.trim();
