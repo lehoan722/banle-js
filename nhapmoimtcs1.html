@@ -5,12 +5,13 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>nhapmoics1</title>
+    <title>NHAP DOI cs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -61,7 +62,7 @@
 
         #masp {
             width: 250px;
-            background: rgb(255, 0, 238);
+            background: rgb(247, 0, 255);
         }
 
         #soluong {
@@ -366,19 +367,11 @@
 
 </head>
 
-<body class="popupnhanh">
+<body>
 
     <style>
-        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-        body.popupnhanh .sq-stock-popup {
-            top: 8px !important;
-            left: 8px !important;
-            left: auto !important;
-            transform: none !important;
-        }
-
         .menu-bar {
-            background: #cc009c;
+            background: #b800cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -454,8 +447,12 @@
     <div class="menu-bar">
         <div class="tennv">
 
-            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+            <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
+                style="width:55px; text-align:center; font-weight:bold;" />
             <input id="ngay" type="date" readonly />
+
             <input id="gio" type="text" readonly style="width:70px" />
 
             <input id="manv" type="hidden" />
@@ -493,10 +490,11 @@
             <button id="ghivitri">✏️</button>
         </div>
 
+
         <div class="main">
             <div class="table-area">
 
-                <table id="bangketqua" data-mode="doc">
+                <table id="bangketqua">
                     <thead>
                         <tr>
                             <th>Mã hàng</th>
@@ -564,7 +562,7 @@
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-                            <label><input id="nhapsize" checked="" type="checkbox" /> nhap size lien tiep</label>
+                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
                             <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
@@ -607,11 +605,6 @@
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
-            <div style="margin-bottom:6px;">
-                <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
-            </div>
-            <button id="btnOpenInTem">In mã vạch</button>
-            <button id="btnImportFromGS">Nhập từ Google Sheet</button>
 
 
             <!-- Popup tìm khách hàng
@@ -810,64 +803,34 @@
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.querySelector('#bangketqua tbody');
-
-            // ❌ KHÔNG xoá dữ liệu cũ nữa
-            // tbody.innerHTML = '';
-
-            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            tbody.innerHTML = '';
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
                 const tr = document.createElement('tr');
-                rowArr.forEach((cell) => {
+                rowArr.forEach(cell => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
+            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
+            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                window.capNhatBangKetQuaTuDOM();
-            }
-
-            // ✅ Cập nhật tổng
-            if (typeof capNhatThongTinTong === 'function') {
+            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
+            if (typeof capNhatThongTinTong === "function") {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log kiểm tra
-            console.log('window.bangKetQua:', window.bangKetQua);
+            // Log để kiểm tra
+            console.log("window.bangKetQua:", window.bangKetQua);
+            if (typeof bangKetQua !== "undefined") {
+                console.log("bangKetQua:", bangKetQua);
+            }
         });
 
-        function capNhatBangKetQuaTuDOM() {
-            const tbody = document.querySelector("#bangketqua tbody");
-            const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
-            const bangObj = {};
 
-            rows.forEach(tr => {
-                const cells = tr.querySelectorAll("td");
-                if (cells.length >= 6) {
-                    const masp = (cells[0].innerText || "").toUpperCase();
-                    const tensp = cells[1].innerText || "";
-                    const size = cells[2].innerText || "0";
-                    const sl = Number(cells[3].innerText) || 0;
-                    const dvt = cells[4].innerText || "sp";
-                    const gia = Number(cells[5].innerText) || 0;
-
-                    if (!bangObj[masp]) {
-                        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
-                    }
-                    bangObj[masp].sizes.push(size);
-                    bangObj[masp].soluongs.push(sl);
-                }
-            });
-
-            window.bangKetQua = bangObj;
-            console.log("🔎 [capNhatBangKetQuaTuDOM] ->", bangObj);
-            return bangObj;
-        }
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
@@ -906,10 +869,47 @@
         </div>
     </div>
 
+    <script type="module">
+        import { backupAllTablesToZip } from './scripts/backup.js';
 
+        document.getElementById('btn-logout').onclick = async function () {
 
-    <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-    <script src="scripts/stockQuickPopup.js"></script>
+            document.getElementById('backup-overlay').style.display = "block";
+            try {
+                await backupAllTablesToZip();
+                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
+            } catch (err) {
+                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+            }
+            document.getElementById('backup-overlay').style.display = "none";
+            await dangXuatApp();
+        };
+
+        async function dangXuatApp() {
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+            }
+            document.getElementById('login-manv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+            document.getElementById('login-manv').focus();
+        }
+    </script>
 
     <script src="scripts/menu-component.js"></script>
 
@@ -935,9 +935,9 @@
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
-        //setTimeout(function () {
-        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
-        //}, 1000);
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        }, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
@@ -946,34 +946,6 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
-        function precheckNhaCungCapBeforeSave() {
-            const makhEl = document.getElementById('makh');
-            const tenEl = document.getElementById('khachhang');
-
-            const ten = (tenEl?.value || '').trim();
-
-            // ✅ BẮT BUỘC: phải có tên khách hàng thì mới cho lưu
-            if (!ten) {
-                alert('⚠️ Bạn chưa chọn/nhập khách hàng. Vui lòng chọn khách hàng trước khi lưu!');
-                // ưu tiên đưa con trỏ về mã khách để người dùng tìm/nhập
-                if (makhEl) { makhEl.focus(); makhEl.select?.(); }
-                return false;
-            }
-            return true;
-        }
-
-        // Chặn phím F2 (lưu) nếu chưa có nhà cung cấp và người dùng chọn "Không"
-        dispatchTarget.addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                const ok = precheckNhaCungCapBeforeSave();
-                if (!ok) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                }
-            }
-        }, true);
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
@@ -1055,446 +1027,6 @@
         });
     </script>
 
-    <script>
-        // Tránh "URI malformed" khi có % không hợp lệ
-        function safeDecodeURIComponent(str) {
-            if (typeof str !== 'string') return '';
-            try {
-                // Ép encode các dấu % không theo sau là 2 ký tự hex
-                // ... rồi mới decode bình thường
-                const protectedStr = str.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
-                return decodeURIComponent(protectedStr.replace(/\+/g, ' ')); // '+' -> space
-            } catch (e) {
-                // Nếu vẫn lỗi (do bị decode 2 lần hoặc không phải URI), trả về nguyên bản
-                return str;
-            }
-        }
-    </script>
-
-    <script>
-        // ===== script nhap xuat du lieu tu in ma vavh Parse payload từ hash/localStorage → trả về bangObj { MASP:{...sizes,soluongs} } =====
-        window.parseImportPayload = function () {
-            const hash = location.hash || '';
-            if (!hash) return null;
-
-            const params = new URLSearchParams(hash.slice(1));
-            let payload = null;
-
-            // 1) Base64 hash
-            if (params.get('imp')) {
-                try {
-                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
-                    payload = JSON.parse(json);
-                } catch (e) { console.error('Decode imp error', e); }
-            }
-
-            // 2) localStorage key
-            if (!payload && params.get('impkey')) {
-                const key = params.get('impkey');
-                try {
-                    const json = localStorage.getItem(key);
-                    if (json) {
-                        payload = JSON.parse(json);
-                        localStorage.removeItem(key);
-                    }
-                } catch (e) { console.error('Load impkey error', e); }
-            }
-
-            if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return null;
-
-            // Gộp theo MASP@@SIZE → rồi quy về bangObj { MASP:{sizes,soluongs,...} }
-            const perKey = new Map();
-            payload.items.forEach(it => {
-                const masp = (it.masp || '').toUpperCase();
-                const size = ((it.size ?? '').toString().trim()) || '0';
-                const key = masp + '@@' + size;
-
-                const tensp = it.tensp || (window.sanPhamData?.[masp]?.tensp) || '';
-                const dvt = it.dvt || (window.sanPhamData?.[masp]?.dvt) || 'sp';
-                const gia = Number(it.gianhap) || (window.sanPhamData?.[masp]?.gianhap) || 0;
-                const sl = Number(it.sl) || 1;
-
-                if (!perKey.has(key)) perKey.set(key, { masp, tensp, dvt, gia, km: 0, size, sl });
-                else perKey.get(key).sl += sl;
-            });
-
-            const bangObj = {};
-            for (const o of perKey.values()) {
-                if (!bangObj[o.masp]) {
-                    bangObj[o.masp] = { masp: o.masp, tensp: o.tensp, dvt: o.dvt, gia: o.gia, km: 0, sizes: [], soluongs: [] };
-                }
-                bangObj[o.masp].sizes.push(o.size);
-                bangObj[o.masp].soluongs.push(o.sl);
-            }
-            return bangObj;
-        };
-
-        // ===== Tiêu thụ payload sau khi app sẵn sàng (được gọi sau login/khởi tạo) =====
-        window.consumeImportPayload = function () {
-            const bangObj = window.parseImportPayload();
-            if (!bangObj) return false;
-
-            // Hợp nhất vào window.bangKetQua (định dạng object theo mã)
-            window.bangKetQua = window.bangKetQua && Object.keys(window.bangKetQua).length ? window.bangKetQua : {};
-            for (const masp in bangObj) {
-                if (!window.bangKetQua[masp]) {
-                    window.bangKetQua[masp] = bangObj[masp];
-                } else {
-                    const cur = window.bangKetQua[masp];
-                    bangObj[masp].sizes.forEach((sz, i) => {
-                        const idx = cur.sizes.indexOf(sz);
-                        if (idx >= 0) cur.soluongs[idx] = (Number(cur.soluongs[idx]) || 0) + (bangObj[masp].soluongs[i] || 0);
-                        else { cur.sizes.push(sz); cur.soluongs.push(bangObj[masp].soluongs[i] || 0); }
-                    });
-                    cur.gia = cur.gia || bangObj[masp].gia;
-                    cur.dvt = cur.dvt || bangObj[masp].dvt;
-                }
-            }
-
-            // Render (chờ hàm sẵn sàng)
-            const tryRender = () => {
-                if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
-                    window.capNhatBangHTML(window.bangKetQua);
-                    window.capNhatThongTinTong(window.bangKetQua);
-                    window.bangKetQua = bangObj;
-
-                    // Xoá hash sau khi nạp xong để tránh nạp lại
-                    history.replaceState(null, '', location.pathname);
-                    return true;
-                }
-                return false;
-            };
-
-            if (!tryRender()) {
-                const tm = setInterval(() => { if (tryRender()) clearInterval(tm); }, 200);
-            }
-            return true;
-        };
-
-        document.addEventListener("DOMContentLoaded", () => {
-            // Thử nạp payload sau khi load
-            const bangObj = window.parseImportPayload && window.parseImportPayload();
-            console.log("[NHAP] parseImportPayload:", bangObj);
-
-            if (bangObj) {
-                window.bangKetQua = bangObj; // lưu vào global
-                renderBangKetQua(bangObj);
-                capNhatTongTien(bangObj);
-                // xoá hash để F5 không nạp lại
-                history.replaceState(null, '', location.pathname);
-            }
-        });
-
-        function renderBangKetQua(bangObj) {
-            const tbody = document.querySelector("#bangketqua tbody");
-            if (!tbody) return;
-            tbody.innerHTML = "";
-            Object.values(bangObj).forEach(row => {
-                // mỗi size + sl một dòng
-                row.sizes?.forEach((sz, i) => {
-                    const sl = row.soluongs[i] || 0;
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `
-        <td>${row.masp}</td>
-        <td>${row.tensp || ""}</td>
-        <td>${sz || ""}</td>
-        <td>${sl}</td>
-        <td>${row.dvt || ""}</td>
-        <td>${row.gia || 0}</td>
-        <td>${row.km || 0}</td>
-        <td>${(row.gia || 0) * sl}</td>
-      `;
-                    tbody.appendChild(tr);
-                });
-            });
-        }
-
-        function capNhatTongTien(bangObj) {
-            let mathang = 0, tongsl = 0, tongkm = 0, phaitra = 0;
-            Object.values(bangObj).forEach(r => {
-                r.soluongs?.forEach((sl, i) => {
-                    mathang++;
-                    tongsl += Number(sl) || 0;
-                    phaitra += (Number(r.gia) || 0) * (Number(sl) || 0);
-                });
-            });
-            document.getElementById("mathang")?.setAttribute("value", mathang);
-            document.getElementById("tongsl")?.setAttribute("value", tongsl);
-            document.getElementById("tongkm")?.setAttribute("value", tongkm);
-            document.getElementById("phaithanhtoan")?.setAttribute("value", phaitra.toLocaleString("vi-VN"));
-        }
-
-        // ===== GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH =====
-        function openInTemFromNhap(bangKetQua) {
-            if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
-                alert("Chưa có dữ liệu để in mã vạch");
-                return;
-            }
-
-            // Chuyển bangKetQua → danh sách items
-            const items = [];
-            Object.values(bangKetQua).forEach(row => {
-                row.sizes.forEach((sz, i) => {
-                    items.push({
-                        masp: row.masp,
-                        tensp: row.tensp,
-                        size: sz,
-                        sl: row.soluongs[i],
-                        dvt: row.dvt,
-                        gianhap: row.gia
-                    });
-                });
-            });
-
-            const payload = { source: "nhap-hd", cs: "cs1", items };
-            const json = JSON.stringify(payload);
-            let b64 = btoa(unescape(encodeURIComponent(json)))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
-            console.log("[NHAP] Mở trang in với dữ liệu:", items);
-            window.open(url, "_blank");
-        }
-
-        // Gắn vào nút
-        // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
-
-        // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-        // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
-        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            console.log("🔎 [In mã vạch] Bắt đầu thu thập dữ liệu...");
-
-            if (window.capNhatBangKetQuaTuDOM) {
-                window.capNhatBangKetQuaTuDOM();
-            }
-
-            const bang = window.bangKetQua || {};
-            console.log("📦 [In mã vạch] bangKetQua gom được:", JSON.stringify(bang, null, 2));
-
-            if (!bang || Object.keys(bang).length === 0) {
-                alert("❌ Chưa có dữ liệu để in mã vạch!");
-                return;
-            }
-
-            // Chỉ gửi các trường tối thiểu
-            const items = [];
-            Object.values(bang).forEach(item => {
-                item.sizes.forEach((sz, idx) => {
-                    items.push({
-                        masp: item.masp,
-                        tensp: item.tensp,
-                        size: sz,
-                        sl: item.soluongs[idx]
-                    });
-                });
-            });
-
-            const payload = {
-                source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
-                items
-            };
-            console.log("📤 [In mã vạch] payload gửi đi:", payload);
-
-            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
-                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
-            window.open(url, "_blank");
-        });
-
-
-    </script>
-    <script>
-        // ===== Helper: tách 1 dòng CSV có dấu "..." và dấu phẩy trong chuỗi
-        function splitCSVLine(line) {
-            const out = [];
-            let cur = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-                const ch = line[i];
-                if (ch === '"') {
-                    // gặp dấu " → đảo trạng thái, nhưng xử lý cặp "" => là dấu " thật trong dữ liệu
-                    if (inQuotes && line[i + 1] === '"') {
-                        cur += '"'; // thêm 1 dấu " vào dữ liệu
-                        i++;        // bỏ qua ký tự " kế tiếp
-                    } else {
-                        inQuotes = !inQuotes;
-                    }
-                } else if (ch === ',' && !inQuotes) {
-                    out.push(cur);
-                    cur = '';
-                } else {
-                    cur += ch;
-                }
-            }
-            out.push(cur);
-            return out;
-        }
-
-        // ===== Helper: bỏ ngoặc kép bao ngoài + trim
-        function unquote(s) {
-            if (s == null) return '';
-            s = String(s).trim();
-            if (s.startsWith('"') && s.endsWith('"')) {
-                s = s.slice(1, -1).replace(/""/g, '"'); // bỏ " bao và đổi "" -> "
-            }
-            return s.trim();
-        }
-
-
-        // Nạp bổ sung danh mục cho các mã chưa có trong sanPhamData
-        async function ensureSanPhamDataFor(masps = []) {
-            if (!Array.isArray(masps) || masps.length === 0) return;
-
-            // Chuẩn hóa: IN HOA + loại trùng
-            const need = Array.from(new Set(masps.map(m => (m || '').toUpperCase())))
-                .filter(m => m && !(window.sanPhamData && window.sanPhamData[m]));
-
-            if (need.length === 0) return;
-
-            // Chia lô 100 mã/lần để query
-            const chunk = (arr, n = 100) => arr.reduce((a, _, i) => (i % n ? a : [...a, arr.slice(i, i + n)]), []);
-            const batches = chunk(need, 100);
-
-            window.sanPhamData = window.sanPhamData || {};
-
-            for (const list of batches) {
-                const { data, error } = await window.supabase
-                    .from('dmhanghoa')
-                    .select('masp,tensp,dvt,gianhap')
-                    .in('masp', list);
-
-                if (error) { console.warn('ensureSanPhamDataFor error:', error); continue; }
-                (data || []).forEach(sp => {
-                    const k = (sp.masp || '').toUpperCase();
-                    window.sanPhamData[k] = {
-                        masp: k,
-                        tensp: sp.tensp || '',
-                        dvt: sp.dvt || 'sp',
-                        gianhap: Number(sp.gianhap) || 0
-                    };
-                });
-            }
-        }
-
-
-
-        // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
-
-        async function importFromGoogleSheet() {
-            const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
-            const sheetName = "kiemkhocs1";
-            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
-
-            try {
-                const res = await fetch(url);
-                const raw = await res.text();
-
-                // 1) Parse CSV chuẩn (đã có splitCSVLine / unquote ở file của bạn)
-                const csv = raw.replace(/^\uFEFF/, '');
-                const lines = csv.split(/\r?\n/).filter(x => x.trim().length);
-
-                let start = 0;
-                const first = (lines[0] || '').toLowerCase();
-                if (first.includes('mã') || first.includes('masp') || first.includes('size')) start = 1;
-
-                // Lưu tạm tất cả dòng đọc được
-                const rows = [];
-                for (let i = start; i < lines.length; i++) {
-                    const cols = splitCSVLine(lines[i]).map(unquote);
-                    const masp = (cols[0] || '').toUpperCase().trim();
-                    const size = (cols[1] || '0').trim();
-                    const sl = Number(String(cols[2] || '0').replace(/\s/g, '')) || 0;
-                    if (!masp) continue;
-                    rows.push({ masp, size, sl, __row: i + 1 });
-                }
-
-                // 2) Pha 1: đảm bảo danh mục đã có đủ mã (nếu thiếu thì gọi Supabase nạp thêm)
-                await ensureSanPhamDataFor(rows.map(r => r.masp));
-
-                // 3) Pha 2: build bangObj + gom size/SL; đồng thời ghi nhận các mã thật sự không có
-                const bangObj = {};
-                const invalid = [];
-
-                for (const r of rows) {
-                    const sp = window.sanPhamData?.[r.masp]; // sau pha 1 đã cố gắng nạp
-                    if (!sp) { invalid.push(r); continue; }
-
-                    if (!bangObj[r.masp]) {
-                        bangObj[r.masp] = {
-                            masp: r.masp,
-                            tensp: sp.tensp || '',
-                            dvt: sp.dvt || 'sp',
-                            gia: Number(sp.gianhap) || 0,
-                            km: 0,
-                            sizes: [],
-                            soluongs: []
-                        };
-                    }
-                    const idx = bangObj[r.masp].sizes.indexOf(r.size);
-                    if (idx >= 0) bangObj[r.masp].soluongs[idx] += r.sl;
-                    else { bangObj[r.masp].sizes.push(r.size); bangObj[r.masp].soluongs.push(r.sl); }
-                }
-
-                // 4) Đẩy vào bangKetQua + render
-                window.bangKetQua = bangObj;
-                if (typeof window.capNhatBangHTML === "function") window.capNhatBangHTML(window.bangKetQua);
-                if (typeof window.capNhatThongTinTong === "function") window.capNhatThongTinTong(window.bangKetQua);
-                // --- Fallback: nếu bảng chưa có dòng nào, tự render ---
-                const tbody = document.querySelector("#bangketqua tbody");
-                const beforeCount = tbody ? tbody.children.length : 0;
-
-                // Đợi một nhịp cho capNhatBangHTML (nếu có) vẽ xong:
-                setTimeout(() => {
-                    const afterCount = tbody ? tbody.children.length : 0;
-                    console.log("[GS] tbody rows before/after capNhatBangHTML:", beforeCount, "→", afterCount);
-
-                    // Nếu vẫn chưa có dữ liệu → tự render + tính tổng
-                    if (afterCount === beforeCount) {
-                        console.warn("[GS] capNhatBangHTML không vẽ ra bảng – dùng renderBangKetQua fallback.");
-                        if (typeof window.renderBangKetQua === "function") window.renderBangKetQua(window.bangKetQua);
-                        if (typeof window.capNhatTongTien === "function") window.capNhatTongTien(window.bangKetQua);
-                    }
-                }, 50);
-
-                // 5) Tô đỏ & cảnh báo cho phần còn lại (thật sự không có trong CSDL)
-
-                if (invalid.length) {
-                    invalid.forEach(item => {
-                        const tr = document.createElement('tr');
-                        tr.style.backgroundColor = '#f8d7da';
-                        tr.innerHTML = `
-          <td>${item.masp}</td>
-          <td></td>
-          <td>${item.size}</td>
-          <td>${item.sl}</td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>`;
-                        tbody.appendChild(tr);
-                    });
-                    alert("⚠ Có mã sản phẩm không tồn tại trong danh mục. Vui lòng kiểm tra lại.");
-                    // (tùy chọn) chặn lưu khi còn dòng đỏ:
-                    // document.getElementById('btn-luu').disabled = true;
-                } else {
-                    // document.getElementById('btn-luu').disabled = false;
-                }
-
-                // Log hỗ trợ debug
-                console.log('[GS] rows:', rows);
-                console.log('[GS] bangKetQua:', window.bangKetQua);
-                console.log('[GS] invalid:', invalid);
-
-            } catch (err) {
-                console.error("Import Google Sheet error:", err);
-                alert("Không thể lấy dữ liệu từ Google Sheet.");
-            }
-        }
-        document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
-    </script>
-
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
         <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
@@ -1526,67 +1058,7 @@
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
-    <script type="module">
-        import { popupNgang } from './scripts/popupNgang.js';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btnChuyenngang');
-            if (!btn) return;
-
-            btn.addEventListener('click', () => {
-                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM
-                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                    window.capNhatBangKetQuaTuDOM();
-                }
-
-                // 2️⃣ Lấy dữ liệu dọc hiện tại
-                const bang = window.bangKetQua || {};
-                const rows = [];
-                Object.values(bang).forEach(item => {
-                    item.sizes.forEach((sz, i) => {
-                        rows.push({
-                            masp: item.masp,
-                            tenhang: item.tensp || '',
-                            size: sz,
-                            sl: item.soluongs[i] || 0
-                        });
-                    });
-                });
-
-                if (rows.length === 0) {
-                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
-                    return;
-                }
-
-                // 3️⃣ Gọi popup để hiển thị bảng ngang
-                popupNgang.open(rows);
-            });
-        });
-    </script>
-
-    <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
-    <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
-    <script>
-        if (window.initCCNAdapter) {
-            window.initCCNAdapter();
-        }
-    </script>
-
-    <style>
-        /* Cột size của bảng kết quả CCN1V2:
-     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
-        #bangketqua th:nth-child(3),
-        #bangketqua td:nth-child(3) {
-            width: 40px;
-            max-width: 40px;
-            white-space: normal;
-            /* cho phép xuống dòng */
-
-            /* nếu cần thì bẻ từ */
-            text-align: left;
-            /* tùy, thích center thì bỏ dòng này */
-        }
-    </style>
 </body>
 
 </html>
