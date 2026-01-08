@@ -104,7 +104,7 @@ export async function khoiTaoUngDung() {
 
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
 
-  
+
 
   // Xác định đang ở trang nào (dựa theo URL)
   const path = (window.location && window.location.pathname) || "";
@@ -312,7 +312,7 @@ export async function khoiTaoUngDung() {
     e.target.dataset.modified = true;
     capNhatThongTinTong(getBangKetQua());
   });
- 
+
   // ================== MỚI: đọc tham số trên URL để auto mở hóa đơn ==================
   const urlParams = new URLSearchParams(window.location.search || "");
   const sohdUrl = urlParams.get("sohd");
@@ -398,6 +398,16 @@ export async function khoiTaoUngDung() {
       // 3. Nạp chi tiết hóa đơn vào bảng
       await napLaiChiTietHoaDon(sohdUrl);
 
+      // ✅ Nếu mở hóa đơn từ URL => luôn là trạng thái XEM
+      const st = document.getElementById("hd_state");
+      if (st) st.value = "xem";
+
+      // ✅ Đồng bộ cờ chặn sửa (giống duyetHoaDon.js) để tránh vô tình sửa
+      window.HD_CTX = { mode: "VIEW", version: hd?.updated_at || null };
+      window.choPhepSua = false;
+      window.dangSuaHoaDon = false;
+
+
     } catch (e) {
       console.error("Lỗi nạp hóa đơn từ URL:", e);
       alert("Có lỗi khi nạp hóa đơn. Hệ thống sẽ tạo hóa đơn mới.");
@@ -408,6 +418,13 @@ export async function khoiTaoUngDung() {
     // ===== TRƯỜNG HỢP HÓA ĐƠN MỚI (luồng cũ) =====
     document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
     await capNhatSoHoaDonTuDong();
+
+    const st = document.getElementById("hd_state");
+    if (st) st.value = "moi";
+    window.HD_CTX = { mode: "NEW", version: null };
+    window.choPhepSua = true;
+    window.dangSuaHoaDon = false;
+
   }
 
   // Focus + autocomplete luôn dùng cho cả 2 trường hợp
@@ -841,9 +858,9 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
     });
 
     //const { data, error } = await supabase.rpc("baymau_get_tasks", {
-      //p_diadiem: diadiem,
-      //p_mode: mode,
-     // p_manv: mode === "nv" ? manvDangNhap : null, // lọc theo nhân viên
+    //p_diadiem: diadiem,
+    //p_mode: mode,
+    // p_manv: mode === "nv" ? manvDangNhap : null, // lọc theo nhân viên
     //});
 
     if (error) {
