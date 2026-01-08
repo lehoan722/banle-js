@@ -44,7 +44,7 @@ async function taiHoaDonTuSo() {
   else alert("❌ Không tìm thấy hóa đơn: " + sohd);
 }
 
-// Lấy tiền tố của số hóa đơn, ví dụ "bancs1_00003" -> "bancs1"
+// Lấy tiền tố của số hóa đơn, ví dụ "bancs1_00003" -> "bancs1" 
 function getSohdPrefix(sohd) {
   if (!sohd) return null;
   const idx = sohd.indexOf('_');
@@ -119,7 +119,7 @@ async function napHoaDonVaoTrang(hoadon) {
   document.getElementById("sohd").value = hoadon.sohd || "";
   document.getElementById("ngay").value = hoadon.ngay || "";
 
-  
+
   const gioEl = document.getElementById("gio");
   if (gioEl) {
     if (hoadon.created_at) {
@@ -149,40 +149,50 @@ async function napHoaDonVaoTrang(hoadon) {
 
   if (!error && ct.length > 0) {
     ct.forEach(row => {
-  const masp = String(row.masp || "").trim().toUpperCase();
-  const size = (row.size != null) ? String(row.size).trim() : "";
-  const sl = parseInt(row.soluong || 0, 10) || 0;
+      const masp = String(row.masp || "").trim().toUpperCase();
+      const size = (row.size != null) ? String(row.size).trim() : "";
+      const sl = parseInt(row.soluong || 0, 10) || 0;
 
-  if (!masp || !size || sl === 0) return;
+      if (!masp || !size || sl === 0) return;
 
-  if (!bangKetQua[masp]) {
-    bangKetQua[masp] = {
-      masp,
-      tensp: row.tensp || "",
-      sizes: [],
-      soluongs: [],
-      tong: 0,
-      gia: row.gia || 0,
-      km: row.km || 0,
-      dvt: ""
-    };
+      if (!bangKetQua[masp]) {
+        bangKetQua[masp] = {
+          masp,
+          tensp: row.tensp || "",
+          sizes: [],
+          soluongs: [],
+          tong: 0,
+          gia: row.gia || 0,
+          km: row.km || 0,
+          dvt: ""
+        };
+      }
+
+      const item = bangKetQua[masp];
+      const idx = item.sizes.findIndex(s => String(s).trim() === size);
+
+      if (idx === -1) {
+        item.sizes.push(size);
+        item.soluongs.push(sl);
+      } else {
+        const old = parseInt(item.soluongs[idx] || 0, 10) || 0;
+        item.soluongs[idx] = old + sl;   // ✅ gộp nếu trùng size
+      }
+
+      item.tong += sl;
+    });
+
   }
 
-  const item = bangKetQua[masp];
-  const idx = item.sizes.findIndex(s => String(s).trim() === size);
+  // ✅ Chuyển sang chế độ XEM khi nạp hóa đơn cũ
+  const st = document.getElementById("hd_state");
+  if (st) st.value = "xem";
 
-  if (idx === -1) {
-    item.sizes.push(size);
-    item.soluongs.push(sl);
-  } else {
-    const old = parseInt(item.soluongs[idx] || 0, 10) || 0;
-    item.soluongs[idx] = old + sl;   // ✅ gộp nếu trùng size
-  }
+  // ✅ đồng thời chặn “vô tình sửa” bằng cách reset HD_CTX về VIEW/NEW
+  window.HD_CTX = { mode: "VIEW", version: hoadon?.updated_at || null };
+  window.choPhepSua = false;
+  window.dangSuaHoaDon = false;
 
-  item.tong += sl;
-});
-
-  }
 
   capNhatBangHTML(bangKetQua);
   capNhatThongTinTong(bangKetQua);
