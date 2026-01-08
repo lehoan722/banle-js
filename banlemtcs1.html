@@ -340,13 +340,13 @@
             /* vàng nhạt */
         }
 
-            /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-body.popupnhanh .sq-stock-popup {
-  top: 8px !important;
-  left: 8px !important;
-  left: auto !important;
-  transform: none !important;
-}
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
     </style>
 
 
@@ -453,9 +453,17 @@ body.popupnhanh .sq-stock-popup {
 
     <div class="menu-bar">
         <div class="tennv">
+            
 
-            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+            <input id="hd_flag" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
+                style="width:55px; text-align:center; font-weight:bold;" />
+
             <input id="ngay" type="date" readonly />
+
+
             <input id="gio" type="text" readonly style="width:70px" />
 
             <input id="manv" type="hidden" />
@@ -658,7 +666,7 @@ body.popupnhanh .sq-stock-popup {
     <script src="scripts/stockQuickPopup.js"></script>
 
 
-    <!-- Khung đăng nhập dùng module dùng chung --> 
+    <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
@@ -873,7 +881,7 @@ body.popupnhanh .sq-stock-popup {
     </script>
 
 
-    <!-- Overlay loading khi backup --> 
+    <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
     display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
     background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
@@ -942,7 +950,7 @@ body.popupnhanh .sq-stock-popup {
             document.getElementById('login-manv').focus();
             location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
-        
+
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
