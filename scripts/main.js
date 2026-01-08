@@ -18,22 +18,9 @@ import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
 
-export function setHoaDonState(state) {
-  const el = document.getElementById("hd_state");
-  if (!el) return;
-  const s = String(state || "").toLowerCase();
-  el.value = (s === "sua" || s === "xem" || s === "moi") ? s : "moi";
-}
-
-export function getHoaDonState() {
-  const el = document.getElementById("hd_state");
-  return (el?.value || "moi").trim().toLowerCase();
-}
-
-
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
-  //const ua = navigator.userAgent || navigator.vendor || window.opera; 
+  //const ua = navigator.userAgent || navigator.vendor || window.opera;
   // Các từ khoá phổ biến trên điện thoại / tablet
   //return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
@@ -116,6 +103,8 @@ export async function khoiTaoUngDung() {
   window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
 
   console.log("🚀 Khởi động hệ thống sau đăng nhập...");
+
+  
 
   // Xác định đang ở trang nào (dựa theo URL)
   const path = (window.location && window.location.pathname) || "";
@@ -323,7 +312,7 @@ export async function khoiTaoUngDung() {
     e.target.dataset.modified = true;
     capNhatThongTinTong(getBangKetQua());
   });
-
+ 
   // ================== MỚI: đọc tham số trên URL để auto mở hóa đơn ==================
   const urlParams = new URLSearchParams(window.location.search || "");
   const sohdUrl = urlParams.get("sohd");
@@ -796,6 +785,18 @@ export async function khoiTaoUngDung() {
 
 }
 
+export function setHoaDonState(state) {
+  const el = document.getElementById("hd_state");
+  if (!el) return;
+  const s = String(state || "").toLowerCase();
+  el.value = (s === "sua" || s === "xem" || s === "moi") ? s : "moi";
+}
+
+export function getHoaDonState() {
+  const el = document.getElementById("hd_state");
+  return (el?.value || "moi").trim().toLowerCase();
+}
+
 // --- Đặt ở cuối file main.js ---
 function saveQuickActionState() {
   const states = {
@@ -840,9 +841,9 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
     });
 
     //const { data, error } = await supabase.rpc("baymau_get_tasks", {
-    //p_diadiem: diadiem,
-    //p_mode: mode,
-    // p_manv: mode === "nv" ? manvDangNhap : null, // lọc theo nhân viên
+      //p_diadiem: diadiem,
+      //p_mode: mode,
+     // p_manv: mode === "nv" ? manvDangNhap : null, // lọc theo nhân viên
     //});
 
     if (error) {
