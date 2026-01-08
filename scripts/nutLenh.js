@@ -26,11 +26,26 @@ export function ganSuKienNutLenh() {
 
 
     document.querySelectorAll("input").forEach(input => {
-      if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
+      // ✅ Giữ lại cả ô trạng thái hóa đơn
+      if (!["diadiem", "manv", "tennv", "hd_state"].includes(input.id)) input.value = "";
     });
+
+    // ✅ Bắt đầu hóa đơn mới => set trạng thái "moi"
+    const st = document.getElementById("hd_state");
+    if (st) st.value = "moi";
+
+    // ✅ reset cờ sửa để tránh còn sót chế độ sửa từ hóa đơn trước
+    window.HD_CTX = { mode: "NEW", version: null };
+    window.choPhepSua = false;
+    window.dangSuaHoaDon = false;
+
 
     resetBangKetQua();
     await capNhatSoHoaDonTuDong();
+
+    // ✅ Sau khi cấp số mới xong, đảm bảo vẫn ở trạng thái "moi"
+    const st2 = document.getElementById("hd_state");
+    if (st2) st2.value = "moi";
 
     const now = new Date();
 
