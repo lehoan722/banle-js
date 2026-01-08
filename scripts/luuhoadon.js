@@ -17,7 +17,7 @@
  * 1) luuhoadon.js  (Orchestrator / Controller)
  *    - Điều phối toàn bộ thao tác bấm "Lưu"
  *    - Nhánh NEW/EDIT:
- *       + NEW: gọi RPC save_new_header_v2 để cấp số sohd
+ *       + NEW: gọi RPC save_new_header_v2 để cấp số sohd 
  *       + EDIT: kiểm tra quyền sửa, xác thực sửa
  *    - Ghi dữ liệu:
  *       + Lưu 1 bản: hoadon_banle + ct_hoadon_banle
@@ -261,7 +261,7 @@ export async function luuHoaDonQuaAPI() {
             await supabase.from("hoadon_banle").delete().eq("sohd", sohdThucTe);
             return;
         }
-        
+
 
         // Sau khi lưu chi tiết thành công: cập nhật used_for_mt cho các dòng tư vấn nhân viên (nếu có)
         await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
@@ -339,7 +339,7 @@ export async function luuHoaDonQuaAPI() {
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: getIntValue("tongkm"),
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -390,7 +390,7 @@ export async function luuHoaDonQuaAPI() {
         alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
         console.error(errCT);
         // rollback best-effort để tránh header không có chi tiết
-        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) {}
+        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) { }
         return;
     }
 
@@ -599,7 +599,7 @@ export async function luuHoaDonNhapQuaAPI() {
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: 0, // Nhập mới không có khuyến mại
+        tongkm: 0, // Nhập mới không có khuyến mại
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -654,7 +654,7 @@ export async function luuHoaDonNhapQuaAPI() {
     if (errCT) {
         alert("❌ Lỗi khi lưu chi tiết hóa đơn nhập.");
         console.error(errCT);
-        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) {}
+        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) { }
         return;
     }
 
@@ -685,7 +685,7 @@ export async function luuHoaDonNhapQuaAPI() {
         alert("❌ Lỗi khi lưu hóa đơn nhập");
         console.error(errHD || errCT);
     }
-    
+
     choPhepSua = false;
     window.HD_CTX = null;
 
@@ -819,7 +819,7 @@ export async function luuHoaDonCaHaiBan() {
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: getIntValue("tongkm"),
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -901,7 +901,7 @@ async function lamMoiSauKhiLuu() {
     const tennvVal = document.getElementById("tennv").value;
 
     document.querySelectorAll("input").forEach(input => {
-        if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
+        if (!["diadiem", "manv", "tennv", "hd_state"].includes(input.id)) input.value = "";
     });
 
     resetBangKetQua();
@@ -914,6 +914,10 @@ async function lamMoiSauKhiLuu() {
     // Reset mode về NEW sau khi lưu
     window.HD_CTX = { mode: "NEW", version: null };
     await capNhatSoHoaDonTuDong();
+    // ✅ sau khi reset + cấp số mới => trạng thái mặc định là "moi"
+    const st = document.getElementById("hd_state");
+    if (st) st.value = "moi";
+
     document.getElementById("masp").focus();
 }
 
@@ -925,9 +929,9 @@ export async function xacNhanSuaHoaDon() {
 
     //const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
     //if (!ok) {
-     //   closePopup();
-      //  return;
-   // }
+    //   closePopup();
+    //  return;
+    // }
 
     // 1) Bắt buộc phải có session đăng nhập
     try {
@@ -1180,7 +1184,7 @@ export async function luuHoaDonccn1v2() {
         khachhang: document.getElementById("khachhang").value,
         tongsl: getIntValue("tongsl"),
         tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-            tongkm: getIntValue("tongkm"),
+        tongkm: getIntValue("tongkm"),
         chietkhau: getIntValue("chietkhau"),
         thanhtoan: getIntValue("phaithanhtoan"),
         hinhthuctt: document.getElementById("hinhthuctt").value,
@@ -1224,11 +1228,11 @@ export async function luuHoaDonccn1v2() {
         });
     });
 
-    
+
     if (updatedAt) {
         chitiet.forEach((r) => r.updated_at = updatedAt);
     }
-const { error: errHD } = await supabase
+    const { error: errHD } = await supabase
         .from("hoadon_banle")
         .upsert([hoadon], { onConflict: "sohd" });
     const { error: errCT } = await supabase
@@ -1286,11 +1290,11 @@ const { error: errHD } = await supabase
         });
     });
 
-    
+
     if (updatedAt) {
         chitietDoiUng.forEach((r) => r.updated_at = updatedAt);
     }
-const { error: errDU1 } = await supabase
+    const { error: errDU1 } = await supabase
         .from("hoadon_banle")
         .upsert([hoadonDoiUng], { onConflict: "sohd" });
     const { error: errDU2 } = await supabase
