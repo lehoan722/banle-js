@@ -198,8 +198,9 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
   // Set default cơ sở (ưu tiên localStorage)
   try {
-    const savedBranch = localStorage.getItem("diadiem");
+    const savedBranch = (localStorage.getItem("diadiem") || "").trim().toLowerCase();
     if (savedBranch) csSelect.value = savedBranch;
+
     else if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
   } catch {
     if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
