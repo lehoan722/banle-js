@@ -11,25 +11,25 @@ let currentPage = 1;
 const POSTGREST_MAX_ROWS = 1000;
 
 async function rpc_baocao_page_chunked(filters, limit, offset) {
-  const out = [];
-  let fetched = 0;
+    const out = [];
+    let fetched = 0;
 
-  while (fetched < limit) {
-    const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
-    const params = { ...filters, p_limit: take, p_offset: offset + fetched };
+    while (fetched < limit) {
+        const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
+        const params = { ...filters, p_limit: take, p_offset: offset + fetched };
 
-    const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
-    if (error) throw error;
+        const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
+        if (error) throw error;
 
-    const part = data || [];
-    out.push(...part);
-    fetched += part.length;
+        const part = data || [];
+        out.push(...part);
+        fetched += part.length;
 
-    // Nếu trả về ít hơn "take" => đã hết dữ liệu
-    if (part.length < take) break;
-  }
+        // Nếu trả về ít hơn "take" => đã hết dữ liệu
+        if (part.length < take) break;
+    }
 
-  return out;
+    return out;
 }
 
 
@@ -90,30 +90,20 @@ function safeDestroyHot() {
 // ========== HÀM CHÍNH LẤY BÁO CÁO =============
 window.taiBaoCaoChiTiet = async function () {
     // 1) Lấy filter từ giao diện
-    const tuNgay = document.getElementById("tuNgay").value;
-    const denNgay = document.getElementById("denNgay").value;
-    const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
-    const diadiem = document.getElementById("diadiemSelect").value || null;
-    const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
-    const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
-    const masp = (document.getElementById("maspInput").value || "").trim().toUpperCase();
-    const tensp = (document.getElementById("tenspInput").value || "").trim() || null;
-    const size = (document.getElementById("sizeInput").value || "").trim() || null;
-    const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
-    const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
+    // 1) Lấy filter từ giao diện (dùng hàm chuẩn hoá)
+    const f = getFiltersFromUI();
 
-    // Lấy nhiều mã SP từ textarea (nếu có) -> ưu tiên hơn ô mã đơn
-    const maspListRaw = document.getElementById("maspList").value || "";
+    // hỗ trợ textarea maspList như code cũ: nếu có danh sách thì override
+    const maspListRaw = document.getElementById("maspList")?.value || "";
     let maspListArr = maspListRaw
         .split("\n")
         .map(s => s.trim().toUpperCase())
         .filter(Boolean);
-    maspListArr = Array.from(new Set(maspListArr)); // loại trùng
-
-    const finalMaspList = maspListArr.length > 0 ? maspListArr : (masp ? [masp] : null);
+    maspListArr = Array.from(new Set(maspListArr));
+    if (maspListArr.length > 0) f.p_masp_list = maspListArr;
 
     // 2) Kiểm tra đủ ngày
-    if (!tuNgay || !denNgay) {
+    if (!f.tu_ngay || !f.den_ngay) {
         alert("Vui lòng chọn đủ Từ ngày và Đến ngày!");
         return;
     }
@@ -124,22 +114,10 @@ window.taiBaoCaoChiTiet = async function () {
     container.innerHTML = "<div style='color:#888'>Đang đếm dữ liệu...</div>";
 
     // 4) Lưu filter & state phân trang
-    const f = {
-        tu_ngay: tuNgay,
-        den_ngay: denNgay,
-        p_loaihd_arr: loaihdArr.length ? loaihdArr : null,
-        p_diadiem: diadiem,
-        p_khachhang: khachhang,
-        p_nhanvien: nhanvien,
-        p_masp_list: finalMaspList,
-        p_tensp: tensp,
-        p_size: size,
-        p_tu_gia: tuGia,
-        p_den_gia: denGia
-    };
     currentFilters = f;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
     currentPage = 1;
+
 
     // 5) Gọi RPC đếm tổng dòng
     const { data: cnt, error: errCnt } = await supabase.rpc("baocaochitietnv11_bh_count_v3", currentFilters);
