@@ -348,7 +348,24 @@
             transform: none !important;
         }
     </style>
+    <style>
+        /* hd_state = xem => chữ đỏ nền hồng */
+        #hd_state[data-state="xem"] {
+            color: red !important;
+            background: #ffecec !important;
+            border: 1px solid red !important;
+            font-weight: bold;
+            text-align: center;
+        }
 
+        /* sohd chia hết cho 3 => nền đỏ chữ trắng */
+        #sohd[data-mod3="yes"] {
+            background: #d50000 !important;
+            color: #ffffff !important;
+            border: 2px solid #8b0000 !important;
+            font-weight: bold;
+        }
+    </style>
 
     <script>
 
@@ -1063,6 +1080,49 @@
                 });
             }
 
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const hd = document.getElementById("hd_state");
+            const sohdEl = document.getElementById("sohd");
+
+            function getLastNumber(str) {
+                const m = String(str || "").match(/\d+/g);
+                if (!m || !m.length) return NaN;
+                return parseInt(m[m.length - 1], 10);
+            }
+
+            function syncAll() {
+                // 1) hd_state -> data-state
+                if (hd) {
+                    hd.setAttribute("data-state", hd.value);
+                }
+
+                // 2) sohd -> data-mod3
+                if (sohdEl) {
+                    const n = getLastNumber(sohdEl.value);
+                    const isDivBy3 = Number.isFinite(n) && n !== 0 && (n % 4 === 0);
+                    if (isDivBy3) sohdEl.setAttribute("data-mod3", "yes");
+                    else sohdEl.removeAttribute("data-mod3");
+                }
+            }
+
+            // chạy lần đầu
+            syncAll();
+
+            // bắt input/change để phản ứng ngay khi người dùng gõ
+            if (hd) {
+                hd.addEventListener("input", syncAll);
+                hd.addEventListener("change", syncAll);
+            }
+            if (sohdEl) {
+                sohdEl.addEventListener("input", syncAll);
+                sohdEl.addEventListener("change", syncAll);
+            }
+
+            // fallback: vì nhiều chỗ trong hệ thống set .value bằng JS
+            setInterval(syncAll, 300);
         });
     </script>
 
