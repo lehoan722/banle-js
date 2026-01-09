@@ -347,26 +347,14 @@
             left: auto !important;
             transform: none !important;
         }
+    </style>
 
-        @keyframes hdBlinkGreenRed {
-            0% {
-                background: #00c853;
-                color: #fff;
-            }
-
-            50% {
-                background: #d50000;
-                color: #fff;
-            }
-
-            100% {
-                background: #00c853;
-                color: #fff;
-            }
-        }
-
-        #hd_state.hd_view_blink {
-            animation: hdBlinkGreenRed 0.8s infinite;
+    <style>
+        /* Khi hd_state = xem → chữ đỏ */
+        #hd_state[data-state="xem"] {
+            color: red !important;
+            background: #ffecec;
+            border: 1px solid red;
         }
     </style>
 
@@ -1090,6 +1078,26 @@
                 });
             }
 
+        });
+    </script>
+
+    <script>
+        // Đồng bộ giá trị .value -> data-state để CSS nhận biết
+        document.addEventListener("DOMContentLoaded", () => {
+            const hd = document.getElementById("hd_state");
+            if (!hd) return;
+
+            const sync = () => hd.setAttribute("data-state", hd.value);
+
+            // sync lần đầu
+            sync();
+
+            // theo dõi mọi thay đổi value (kể cả do JS khác set)
+            const observer = new MutationObserver(sync);
+            observer.observe(hd, { attributes: true, attributeFilter: ["value"] });
+
+            // fallback: kiểm tra định kỳ (rất nhẹ)
+            setInterval(sync, 300);
         });
     </script>
 
