@@ -1099,12 +1099,25 @@
                     hd.setAttribute("data-state", hd.value);
                 }
 
-                // 2) sohd -> data-mod3
+                // 2) sohd -> data-mod3 (có điều kiện tổng phải trả)
                 if (sohdEl) {
                     const n = getLastNumber(sohdEl.value);
                     const isDivBy3 = Number.isFinite(n) && n !== 0 && (n % 4 === 0);
-                    if (isDivBy3) sohdEl.setAttribute("data-mod3", "yes");
-                    else sohdEl.removeAttribute("data-mod3");
+
+                    // 🔴 LẤY GIÁ TRỊ TỔNG PHẢI TRẢ
+                    const totalEl = document.getElementById("phaithanhtoan");
+                    const total = totalEl
+                        ? parseInt(String(totalEl.value || "0").replace(/\D/g, ""), 10)
+                        : 0;
+
+                    // ✅ CHỈ TÔ ĐỎ KHI:
+                    // - chia hết cho 3
+                    // - VÀ tổng phải trả <= 1.200.000
+                    if (isDivBy3 && total <= 1200000) {
+                        sohdEl.setAttribute("data-mod3", "yes");
+                    } else {
+                        sohdEl.removeAttribute("data-mod3");
+                    }
                 }
             }
 
