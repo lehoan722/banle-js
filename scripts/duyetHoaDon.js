@@ -186,10 +186,7 @@ async function napHoaDonVaoTrang(hoadon) {
 
   // ✅ Chuyển sang chế độ XEM khi nạp hóa đơn cũ
   const st = document.getElementById("hd_state");
-  if (st) {
-    st.value = "xem";
-    st.classList.add("hd_view_blink");
-  }
+  if (st) st.value = "xem";
 
   // ✅ đồng thời chặn “vô tình sửa” bằng cách reset HD_CTX về VIEW/NEW
   window.HD_CTX = { mode: "VIEW", version: hoadon?.updated_at || null };
