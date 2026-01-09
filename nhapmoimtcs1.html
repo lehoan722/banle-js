@@ -454,7 +454,7 @@
     <div class="menu-bar">
         <div class="tennv">
 
-           <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
             <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
@@ -1591,6 +1591,35 @@
             /* tùy, thích center thì bỏ dòng này */
         }
     </style>
+
+    <style>
+        /* Khi hd_state = xem → chữ đỏ */
+        #hd_state[data-state="xem"] {
+            color: red !important;
+            background: #ffecec;
+            border: 1px solid red;
+        }
+    </style>
+    <script>
+        // Đồng bộ giá trị .value -> data-state để CSS nhận biết
+        document.addEventListener("DOMContentLoaded", () => {
+            const hd = document.getElementById("hd_state");
+            if (!hd) return;
+
+            const sync = () => hd.setAttribute("data-state", hd.value);
+
+            // sync lần đầu
+            sync();
+
+            // theo dõi mọi thay đổi value (kể cả do JS khác set)
+            const observer = new MutationObserver(sync);
+            observer.observe(hd, { attributes: true, attributeFilter: ["value"] });
+
+            // fallback: kiểm tra định kỳ (rất nhẹ)
+            setInterval(sync, 300);
+        });
+    </script>
+
 </body>
 
 </html>
