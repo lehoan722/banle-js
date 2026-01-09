@@ -11,25 +11,25 @@ let currentPage = 1;
 const POSTGREST_MAX_ROWS = 1000;
 
 async function rpc_baocao_page_chunked(filters, limit, offset) {
-  const out = [];
-  let fetched = 0;
+    const out = [];
+    let fetched = 0;
 
-  while (fetched < limit) {
-    const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
-    const params = { ...filters, p_limit: take, p_offset: offset + fetched };
+    while (fetched < limit) {
+        const take = Math.min(POSTGREST_MAX_ROWS, limit - fetched);
+        const params = { ...filters, p_limit: take, p_offset: offset + fetched };
 
-    const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
-    if (error) throw error;
+        const { data, error } = await supabase.rpc("baocaochitietnv11_bh_page_v3", params);
+        if (error) throw error;
 
-    const part = data || [];
-    out.push(...part);
-    fetched += part.length;
+        const part = data || [];
+        out.push(...part);
+        fetched += part.length;
 
-    // Nếu trả về ít hơn "take" => đã hết dữ liệu
-    if (part.length < take) break;
-  }
+        // Nếu trả về ít hơn "take" => đã hết dữ liệu
+        if (part.length < take) break;
+    }
 
-  return out;
+    return out;
 }
 
 
@@ -42,7 +42,10 @@ function getFiltersFromUI() {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
-    const diadiem = document.getElementById("diadiemSelect").value || null;
+
+    let diadiem = (document.getElementById("diadiemSelect")?.value || "").trim().toLowerCase();
+    if (!diadiem || diadiem === "tatca" || diadiem === "all") diadiem = null;
+
     const khachhang = document.getElementById("khachhangInput").value.trim() || null;
     const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
 
