@@ -5,12 +5,12 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN LE cs1</title>
+    <title>BAN NV cs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -339,16 +339,38 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
-
-        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-        body.popupnhanh .sq-stock-popup {
-            top: 8px !important;
-            left: 8px !important;
-            left: auto !important;
-            transform: none !important;
-        }
     </style>
 
+    <script>
+        function setHoaDonState(state) {
+  const el = document.getElementById("hd_state");
+  if (!el) return;
+
+  el.value = state;
+
+  // reset style
+  el.style.color = "#000";
+  el.style.background = "#f5f5f5";
+  el.style.border = "1px solid #ccc";
+
+  if (state === "xem") {
+    el.style.color = "red";
+    el.style.background = "#ffecec";
+    el.style.border = "1px solid red";
+  }
+  else if (state === "sua") {
+    el.style.color = "#d97706"; // cam
+    el.style.background = "#fff7ed";
+    el.style.border = "1px solid #d97706";
+  }
+  else if (state === "moi") {
+    el.style.color = "green";
+    el.style.background = "#ecfdf5";
+    el.style.border = "1px solid green";
+  }
+}
+
+    </script>
 
     <script>
 
@@ -374,7 +396,7 @@
 
 </head>
 
-<body class="popupnhanh">
+<body>
 
     <style>
         .menu-bar {
@@ -453,16 +475,12 @@
 
     <div class="menu-bar">
         <div class="tennv">
-            
 
-            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
-
-            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+             <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) --> 
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
-
             <input id="ngay" type="date" readonly />
-
 
             <input id="gio" type="text" readonly style="width:70px" />
 
@@ -470,15 +488,19 @@
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
-        </div>
+        </div>  
+        
+        
 
         <div id="app-menu" class="menu-item"></div>
-
-        <!--
+        
+        <!--        
         <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
+
+    
 
     <div id="app-container" style="display:none;">
 
@@ -663,7 +685,7 @@
 
     </div>
 
-    <script src="scripts/stockQuickPopup.js"></script>
+    
 
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -720,16 +742,21 @@
                 }
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
-                try {
-                    const module = await import("./scripts/main.js");
-                    if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
-                    }
-                } catch (e) {
-                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-                }
-
-                // 6. Chọn tab & checkbox mặc định giống code cũ
+//    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
+//    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
+let okInit = true;
+try {
+    const module = await import("./scripts/main.js");
+    if (typeof module.khoiTaoUngDung === "function") {
+        okInit = await module.khoiTaoUngDung();
+    }
+} catch (e) {
+    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+    return false;
+}
+if (okInit === false) return false;
+// 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
                 }
@@ -738,6 +765,9 @@
 
                 const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
+
+                const nhapsize = document.getElementById("nhapsize");
+                if (nhapsize) nhapsize.checked = true;
 
                 // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
                 const appContainer = document.getElementById("app-container");
@@ -748,10 +778,10 @@
             }
         });
     </script>
-    <!-- het  Khung đăng nhập dùng module dùng chung -->
+      <!-- het  Khung đăng nhập dùng module dùng chung -->
 
 
-
+      
 
 
     <script type="module">
@@ -895,33 +925,21 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
-        // Gắn lại sự kiện cho nút THOAT PM
         document.getElementById('btn-logout').onclick = async function () {
-            const overlay = document.getElementById('backup-overlay');
 
-            // Hỏi người dùng có muốn tạo file dự phòng không
-            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
-
-            if (muonBackup) {
-                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
-                overlay.style.display = "block";
-                try {
-                    await backupAllTablesToZip();
-                    // Có thể bật lại thông báo nếu muốn:
-                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
-                } catch (err) {
-                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
-                } finally {
-                    overlay.style.display = "none";
-                }
+            document.getElementById('backup-overlay').style.display = "block";
+            try {
+                await backupAllTablesToZip();
+                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
+            } catch (err) {
+                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
             }
-            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
-
+            document.getElementById('backup-overlay').style.display = "none";
             await dangXuatApp();
         };
 
         async function dangXuatApp() {
-            // Copy logic đăng xuất cũ của anh
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
                 localStorage.clear();
@@ -929,32 +947,24 @@
                 localStorage.removeItem("quyen_sua_hoadon");
             }
             document.getElementById('login-manv').value = "";
-            document.getElementById('login-password-nv').value = "";
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
-
             const tbody = document.getElementById('bangketqua').querySelector('tbody');
             if (tbody) tbody.innerHTML = '';
             if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-
             const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
             idsToClear.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
-
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
-
             document.getElementById('login-manv').focus();
-            location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
-
     </script>
-
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-
+    <script src="scripts/stockQuickPopup.js"></script>
 
     <script src="scripts/menu-component.js"></script>
 
@@ -964,7 +974,7 @@
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
-        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk_sua_o_day';
         const SHEET_NAME = 'menubanlemt';
 
         MenuComponent.mount({
@@ -1019,6 +1029,7 @@
             setTimeout(() => {
                 const manv = document.getElementById('xacmanv');
                 if (manv) { manv.focus(); manv.select(); }
+                return true;
             }, 0);
         }
 
