@@ -350,11 +350,33 @@
     </style>
 
     <style>
-        /* Khi hd_state = xem → chữ đỏ */
+        /* Nhấp nháy xanh ↔ đỏ khi hd_state = xem */
         #hd_state[data-state="xem"] {
-            color: red !important;
-            background: #ffecec;
-            border: 1px solid red;
+            animation: blinkGreenRed 1s infinite;
+            font-weight: bold;
+        }
+
+        /* Keyframes nhấp nháy */
+        @keyframes blinkGreenRed {
+            0% {
+                color: white;
+                background: #d50000;
+                /* đỏ */
+                border: 1px solid #d50000;
+            }
+
+            50% {
+                color: white;
+                background: #00c853;
+                /* xanh */
+                border: 1px solid #00c853;
+            }
+
+            100% {
+                color: white;
+                background: #d50000;
+                border: 1px solid #d50000;
+            }
         }
     </style>
 
