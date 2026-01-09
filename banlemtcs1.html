@@ -350,58 +350,13 @@
     </style>
 
     <style>
-        /* Fallback chắc chắn nhìn thấy chữ khi state = xem */
+        /* Khi hd_state = xem → chữ đỏ */
         #hd_state[data-state="xem"] {
-            color: #fff !important;
-            background-color: #d50000 !important;
-            /* đỏ */
-            border: 1px solid #d50000 !important;
-            animation: blinkGreenRed 0.9s steps(1, end) infinite !important;
-            -webkit-animation: blinkGreenRed 0.9s steps(1, end) infinite !important;
-        }
-
-        @keyframes blinkGreenRed {
-            0% {
-                background-color: #d50000;
-                border-color: #d50000;
-                color: #fff;
-            }
-
-            50% {
-                background-color: #00c853;
-                border-color: #00c853;
-                color: #000;
-            }
-
-            /* chữ đen cho dễ đọc */
-            100% {
-                background-color: #d50000;
-                border-color: #d50000;
-                color: #fff;
-            }
-        }
-
-        @-webkit-keyframes blinkGreenRed {
-            0% {
-                background-color: #d50000;
-                border-color: #d50000;
-                color: #fff;
-            }
-
-            50% {
-                background-color: #00c853;
-                border-color: #00c853;
-                color: #000;
-            }
-
-            100% {
-                background-color: #d50000;
-                border-color: #d50000;
-                color: #fff;
-            }
+            color: hsl(108, 100%, 50%) !important;
+            background: red;
+            border: 1px solid rgb(0, 51, 255);
         }
     </style>
-
 
 
     <script>
