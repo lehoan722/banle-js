@@ -787,7 +787,7 @@ window.moTrangAnh = function () {
     // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
     sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
 
-    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới
+    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới 
     window.open("xemanhxnt14.html", "_blank");
 };
 
@@ -804,7 +804,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
     const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = false;
+    if (cb) cb.checked = true;
 
     // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
     try {
