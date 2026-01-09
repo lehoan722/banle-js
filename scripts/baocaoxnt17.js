@@ -355,40 +355,11 @@ async function fetchCount(params) {
 
 
 
-const POSTGREST_MAX_ROWS = 1000;
-
-// Supabase (PostgREST) thường giới hạn ~1000 dòng trả về cho mỗi request RPC qua REST.
-// Vì vậy nếu p_limit > 1000, cần tải theo nhiều "chunk" rồi ghép lại để đủ số dòng/trang.
 async function fetchPaged(params) {
     const fn = "baocaoxnt17_paged";
-    const want = Number(params?.p_limit ?? POSTGREST_MAX_ROWS) || POSTGREST_MAX_ROWS;
-    const baseOffset = Number(params?.p_offset ?? 0) || 0;
-
-    // Trường hợp <= 1000: gọi 1 lần
-    if (want <= POSTGREST_MAX_ROWS) {
-        const { data, error } = await supabase.rpc(fn, params);
-        if (error) throw error;
-        return data || [];
-    }
-
-    // Trường hợp > 1000: gọi nhiều lần theo chunk 1000
-    const out = [];
-    let fetched = 0;
-    while (fetched < want) {
-        const take = Math.min(POSTGREST_MAX_ROWS, want - fetched);
-        const pageParams = { ...params, p_limit: take, p_offset: baseOffset + fetched };
-
-        const { data, error } = await supabase.rpc(fn, pageParams);
-        if (error) throw error;
-
-        const part = data || [];
-        out.push(...part);
-        fetched += part.length;
-
-        // Nếu trả về ít hơn chunk => đã hết dữ liệu
-        if (part.length < take) break;
-    }
-    return out;
+    const { data, error } = await supabase.rpc(fn, params);
+    if (error) throw error;
+    return data || [];
 }
 
 
@@ -833,7 +804,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
     const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = true;
+    if (cb) cb.checked = false;
 
     // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
     try {
@@ -1032,7 +1003,8 @@ window.moTrangChuyenKho = async () => {
     const all = [];
     for (let offset = 0; offset < total; offset += pageSize) {
         const pageParams = { ...p, p_limit: pageSize, p_offset: offset };
-        const data = await fetchPaged(pageParams);
+        const { data, error } = await supabase.rpc('baocaoxnt17_paged', pageParams);
+        if (error) { alert('Lỗi Paged: ' + error.message); return; }
         all.push(...(data || []));
     }
 
