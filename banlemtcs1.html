@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -341,36 +341,6 @@
         }
     </style>
 
-    <script>
-        function setHoaDonState(state) {
-  const el = document.getElementById("hd_state");
-  if (!el) return;
-
-  el.value = state;
-
-  // reset style
-  el.style.color = "#000";
-  el.style.background = "#f5f5f5";
-  el.style.border = "1px solid #ccc";
-
-  if (state === "xem") {
-    el.style.color = "red";
-    el.style.background = "#ffecec";
-    el.style.border = "1px solid red";
-  }
-  else if (state === "sua") {
-    el.style.color = "#d97706"; // cam
-    el.style.background = "#fff7ed";
-    el.style.border = "1px solid #d97706";
-  }
-  else if (state === "moi") {
-    el.style.color = "green";
-    el.style.background = "#ecfdf5";
-    el.style.border = "1px solid green";
-  }
-}
-
-    </script>
 
     <script>
 
@@ -476,8 +446,8 @@
     <div class="menu-bar">
         <div class="tennv">
 
-             <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
-            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) --> 
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
             <input id="ngay" type="date" readonly />
@@ -488,19 +458,15 @@
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
-        </div>  
-        
-        
+        </div>
 
         <div id="app-menu" class="menu-item"></div>
-        
+
         <!--        
         <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
-
-    
 
     <div id="app-container" style="display:none;">
 
@@ -685,7 +651,7 @@
 
     </div>
 
-    
+
 
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -742,21 +708,21 @@
                 }
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
-//    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
-//    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
-let okInit = true;
-try {
-    const module = await import("./scripts/main.js");
-    if (typeof module.khoiTaoUngDung === "function") {
-        okInit = await module.khoiTaoUngDung();
-    }
-} catch (e) {
-    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-    alert("Không tải được module main.js. Vui lòng tải lại trang.");
-    return false;
-}
-if (okInit === false) return false;
-// 6. Chọn tab & checkbox mặc định giống code cũ
+                //    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
+                //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
+                let okInit = true;
+                try {
+                    const module = await import("./scripts/main.js");
+                    if (typeof module.khoiTaoUngDung === "function") {
+                        okInit = await module.khoiTaoUngDung();
+                    }
+                } catch (e) {
+                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+                    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+                    return false;
+                }
+                if (okInit === false) return false;
+                // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
                 }
@@ -778,10 +744,10 @@ if (okInit === false) return false;
             }
         });
     </script>
-      <!-- het  Khung đăng nhập dùng module dùng chung -->
+    <!-- het  Khung đăng nhập dùng module dùng chung -->
 
 
-      
+
 
 
     <script type="module">
@@ -1081,6 +1047,37 @@ if (okInit === false) return false;
             }
 
         });
+    </script>
+
+    <script>
+        function setHoaDonState(state) {
+            const el = document.getElementById("hd_state");
+            if (!el) return;
+
+            el.value = state;
+
+            // reset style
+            el.style.color = "#000";
+            el.style.background = "#f5f5f5";
+            el.style.border = "1px solid #ccc";
+
+            if (state === "xem") {
+                el.style.color = "red";
+                el.style.background = "#ffecec";
+                el.style.border = "1px solid red";
+            }
+            else if (state === "sua") {
+                el.style.color = "#d97706"; // cam
+                el.style.background = "#fff7ed";
+                el.style.border = "1px solid #d97706";
+            }
+            else if (state === "moi") {
+                el.style.color = "green";
+                el.style.background = "#ecfdf5";
+                el.style.border = "1px solid green";
+            }
+        }
+
     </script>
 
     <!-- Overlay quét -->
