@@ -805,9 +805,16 @@ export async function khoiTaoUngDung() {
 export function setHoaDonState(state) {
   const el = document.getElementById("hd_state");
   if (!el) return;
+
   const s = String(state || "").toLowerCase();
-  el.value = (s === "sua" || s === "xem" || s === "moi") ? s : "moi";
+  const finalState = (s === "xem" || s === "moi") ? s : "moi";
+
+  el.value = finalState;
+
+  // ✅ Chỉ nhấp nháy khi xem
+  el.classList.toggle("hd_view_blink", finalState === "xem");
 }
+
 
 export function getHoaDonState() {
   const el = document.getElementById("hd_state");
