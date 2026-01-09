@@ -806,12 +806,13 @@ export function setHoaDonState(state) {
   const el = document.getElementById("hd_state");
   if (!el) return;
 
-  const s = String(state || "").toLowerCase();
-  const finalState = (s === "xem" || s === "moi") ? s : "moi";
+  // Chỉ dùng 2 trạng thái: moi | xem
+  const s = String(state || "").trim().toLowerCase();
+  const finalState = (s === "xem") ? "xem" : "moi";
 
   el.value = finalState;
 
-  // ✅ Chỉ nhấp nháy khi xem
+  // Chỉ nhấp nháy khi xem
   el.classList.toggle("hd_view_blink", finalState === "xem");
 }
 
