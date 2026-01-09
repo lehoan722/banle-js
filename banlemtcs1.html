@@ -347,6 +347,27 @@
             left: auto !important;
             transform: none !important;
         }
+
+        @keyframes hdBlinkGreenRed {
+            0% {
+                background: #00c853;
+                color: #fff;
+            }
+
+            50% {
+                background: #d50000;
+                color: #fff;
+            }
+
+            100% {
+                background: #00c853;
+                color: #fff;
+            }
+        }
+
+        #hd_state.hd_view_blink {
+            animation: hdBlinkGreenRed 0.8s infinite;
+        }
     </style>
 
 
@@ -371,21 +392,6 @@
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
-
-    <style>
-/* Nhấp nháy xanh – đỏ khi trạng thái = xem */
-#hd_state[value="xem"] {
-  animation: blinkHdState 1s infinite;
-}
-
-/* Hiệu ứng nhấp nháy */
-@keyframes blinkHdState {
-  0%   { color: red;   background: #ffecec; border: 1px solid red; }
-  50%  { color: green; background: #ecfdf5; border: 1px solid green; }
-  100% { color: red;   background: #ffecec; border: 1px solid red; }
-}
-</style>
-
 
 </head>
 
@@ -464,8 +470,7 @@
             font-size: 15px;
             margin-left: 2px;
         }
-    </style>   
-
+    </style>
 
     <div class="menu-bar">
         <div class="tennv">
