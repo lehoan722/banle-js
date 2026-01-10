@@ -308,6 +308,8 @@
       <div class="payqr-note">Nội dung: Shop Hoàn Tuyết ${hoadon.sohd || ""}</div>
     </div>
   </div>
+`;
+
 
 
        // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
@@ -344,7 +346,8 @@
 
         function formatDateTime(d = new Date()) {
             const pad = n => String(n).padStart(2, '0');
-            return `${pad(d.getDate())} ${pad(d.getMonth() + 1)} ${d.getFullYear()} ${pad(d.getHours())} ${pad(d.getMinutes())}`;
+            // dd/mm/yyyy hh:mm
+            return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
         }
 
         const timeSrc = hoadon.created_at ? new Date(hoadon.created_at) : new Date();
