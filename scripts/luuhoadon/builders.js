@@ -7,7 +7,7 @@ export function buildCCNCtxFromPathname() {
         isCCN: false,
         src: 'CS1',
         dst: 'CS2',
-        loaihdGoc: '',     // xcncs1 | xcncs2
+        loaihdGoc: '',     // xcncs1 | xcncs2 
         loaihdDoiUng: '',  // ncncs2 | ncncs1
         page: p
     };
@@ -143,63 +143,52 @@ export function getLoaiFromSoHDInput() {
     return '';
 }
 
-export async function handleSpecialSoHoaDon(sohd) {
-    // Chỉ cho phép chạy cơ chế "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
+// ✅ Đồng bộ 100% với UI tô đỏ (RPC preview_viettel_eligibility)
+export async function handleSpecialSoHoaDon(sb, sohd) {
+    // Chỉ cho phép "số đặc biệt → lưu 2 bản" với bán lẻ cs1/cs2
     const prefixFull = (sohd.split("_")[0] || "").toLowerCase();
-    if (prefixFull !== "bancs1" && prefixFull !== "bancs2") {
-        // Không phải hóa đơn bán lẻ → không kích hoạt nhánh 2 bản
-        return false;
-    }
+    if (prefixFull !== "bancs1" && prefixFull !== "bancs2") return false;
 
-    // Lấy số thứ tự
-    const parts = sohd.split("_");
-    if (parts.length < 2) return false;
-    const num = parseInt(parts[1], 10);
-
-    // Xác định cơ sở và điều kiện chia hết
     const diadiem = (prefixFull === "bancs2") ? "cs2" : "cs1";
-    const modulus = (diadiem === "cs1") ? 3 : 4;
-
-    // Không phải số đặc biệt → thôi
-    if (Number.isNaN(num) || num % modulus !== 0) return false;
-
-    // Giới hạn tiền theo cơ sở
-    const ngay = document.getElementById("ngay").value;
-    let hanMuc = (diadiem === "cs1") ? 2500000 : 7000000;
-
-    // Tổng đã lưu trong ngày của bảng T tại cơ sở này
-    const { data, error } = await supabase
-        .from("hoadon_banleT")
-        .select("thanhtoan")
-        .eq("ngay", ngay)
-        .eq("diadiem", diadiem);
-
-    let tongTien = 0;
-    if (data && data.length) {
-        tongTien = data.reduce((sum, hd) => sum + (Number(hd.thanhtoan) || 0), 0);
-    }
+    const ngayRaw = document.getElementById("ngay")?.value;
+    const ngay = ngayRaw ? String(ngayRaw).trim() : "";
+    if (!ngay) return false;
 
     const getIntValue = (id) =>
-        parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
-    const tienHoaDon = getIntValue("phaithanhtoan");
+        parseInt((document.getElementById(id)?.value || "").replace(/[^\d]/g, "") || "0", 10);
 
-    // ✅ NEW RULE: chỉ gửi Viettel nếu tổng tiền hóa đơn <= 1.200.000
-    const MAX_VIETTEL_PER_INVOICE = 1200000;
-    if (tienHoaDon > MAX_VIETTEL_PER_INVOICE) {
-        // Hóa đơn lớn hơn 1.2tr → chỉ lưu bản thường, KHÔNG lưu 2 bản, KHÔNG gửi Viettel
+    const thanhtoan = getIntValue("phaithanhtoan");
+
+    // sb là supabase client truyền từ luuhoadon.js
+    if (!sb?.rpc) {
+        console.error("handleSpecialSoHoaDon: missing supabase client (sb.rpc)");
         return false;
     }
 
-    if (tongTien + tienHoaDon > hanMuc) {
-        // Vượt hạn mức theo ngày → chỉ lưu bản thường
+    // ✅ gọi đúng RPC đang dùng để tô đỏ trên UI
+    const { data, error } = await sb.rpc("preview_viettel_eligibility", {
+        p_diadiem: diadiem,
+        p_ngay: ngay,          // date
+        p_sohd: sohd,
+        p_thanhtoan: thanhtoan // numeric
+    });
+
+    if (error) {
+        console.error("preview_viettel_eligibility error:", error);
         return false;
     }
 
+    const row = Array.isArray(data) ? data[0] : data;
+    const eligible = !!row?.eligible;
 
-    // ✅ Đủ điều kiện → lưu 2 bản và gọi Viettel (logic nằm trong luuHoaDonCaHaiBan)
+    // Không đủ điều kiện (không số đặc biệt / vượt 1.2tr / vượt hạn mức ngày) → lưu thường
+    if (!eligible) return false;
+
+    // ✅ Đủ điều kiện → lưu 2 bản & gọi Viettel (logic nằm trong luuHoaDonCaHaiBan)
     await luuHoaDonCaHaiBan();
     return true;
 }
+
 
 export function inferBranches() {
     const ctx = buildCCNCtxFromPathname();
