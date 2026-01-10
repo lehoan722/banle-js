@@ -310,7 +310,7 @@
   </div>
 
 
-        // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
+       // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
 (function renderVietQR() {
   const img = document.getElementById("vietqr_img");
   if (!img) return;
@@ -324,10 +324,15 @@
 
   const amount = Math.round(Number(thanhtoan) || 0);
 
-            const url = `https://img.vietqr.io/image/${bankId}-${accountNo}-print.png?amount=${encodeURIComponent(amount)}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
+  const url =
+    "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-print.png" +
+    "?amount=" + encodeURIComponent(amount) +
+    "&addInfo=" + encodeURIComponent(addInfo) +
+    "&accountName=" + encodeURIComponent(accountName);
 
-            img.src = url;
-        })();
+  img.src = url;
+})();
+
 
 
 
