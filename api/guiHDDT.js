@@ -10,7 +10,7 @@ const viettelAccounts = {
     mst: '4600370592',
     invoiceSeries: 'C25MLH',
     templateCode: '2/001',
-    endpoint: 'https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600370592'
+    endpoint: 'https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600370592'
   },
   cs2: {
     username: '4600960665',
