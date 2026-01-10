@@ -1124,10 +1124,13 @@
                 const thanhtoan = getMoney(totalEl);
 
                 // Nếu chưa đủ dữ liệu tối thiểu thì bỏ tô đỏ
+
                 if (!sohd || !ngay) {
                     sohdEl.removeAttribute("data-mod3");
+                    lastKey = "";            // ✅ reset cache để lát nữa dữ liệu về lại sẽ check lại
                     return;
                 }
+
 
                 // Cache theo key để giảm gọi lặp
                 const key = `${DIADIEM}|${ngay}|${sohd}|${thanhtoan}`;
@@ -1149,8 +1152,8 @@
                     if (reqId !== inFlight) return;
 
                     if (error) {
-                        // lỗi RPC => an toàn: không tô đỏ
                         sohdEl.removeAttribute("data-mod3");
+                        lastKey = "";            // ✅
                         return;
                     }
 
@@ -1163,6 +1166,7 @@
 
                 } catch (e) {
                     sohdEl.removeAttribute("data-mod3");
+                    lastKey = "";            // ✅
                 }
             }
 
