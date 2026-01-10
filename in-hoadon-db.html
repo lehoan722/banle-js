@@ -311,18 +311,18 @@
 
 
         // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
-        (function renderVietQR() {
-            const img = document.getElementById("vietqr_img");
-            if (!img) return;
+(function renderVietQR() {
+  const img = document.getElementById("vietqr_img");
+  if (!img) return;
 
-            const bankId = "TCB";            // Techcombank (có thể dùng BIN 970407)
-            const accountNo = "2662222333";
-            const accountName = "DANG LE HOAN";
+  const bankId = "TCB"; // Techcombank (có thể dùng BIN 970407)
+  const accountNo = "2662222333";
+  const accountName = "DANG LE HOAN";
 
-            const sohdText = (hoadon.sohd || "").toString().trim();
-            const addInfo = (`Shop Hoàn Tuyết ${sohdText}`).trim();
+  const sohdText = (hoadon.sohd || "").toString().trim();
+  const addInfo = ("Shop Hoàn Tuyết " + sohdText).trim();
 
-            const amount = Math.round(Number(thanhtoan) || 0);
+  const amount = Math.round(Number(thanhtoan) || 0);
 
             const url = `https://img.vietqr.io/image/${bankId}-${accountNo}-print.png?amount=${encodeURIComponent(amount)}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
 
