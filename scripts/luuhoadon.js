@@ -1010,7 +1010,10 @@ function inHoaDon(hoadon, chitiet) {
 
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
-    iframe.src = "/in-hoadon.html";
+
+    const isHoaDonDacBiet = (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
+    iframe.src = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
+
     document.body.appendChild(iframe);
 
     iframe.onload = () => {
