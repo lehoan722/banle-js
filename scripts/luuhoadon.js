@@ -12,7 +12,7 @@
  *   gọi RPC cấp số (NEW) → insert header + chi tiết → (nếu số đặc biệt) thì chuyển sang lưu 2 bản →
  *   in hóa đơn / reset form / thông báo.
  *
- * Danh sách file và nhiệm vụ:
+ * Danh sách file và nhiệm vụ: 
  *
  * 1) luuhoadon.js  (Orchestrator / Controller)
  *    - Điều phối toàn bộ thao tác bấm "Lưu"
@@ -149,49 +149,49 @@ export async function luuHoaDonQuaAPI() {
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
 
     // ✅ trạng thái UI: "moi" | "xem"
-const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
+    const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
 
-// ✅ chốt an toàn: chỉ coi là EDIT khi đã xác thực
-const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
+    // ✅ chốt an toàn: chỉ coi là EDIT khi đã xác thực
+    const IS_EDIT = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
 
-// ✅ đang xem hóa đơn cũ => không cho lưu trực tiếp, bắt xác thực sửa
-if (hdState === "xem" && !IS_EDIT) {
-  const p = document.getElementById("popupXacThucSua");
-  if (p) {
-    p.style.display = "block";
-    document.getElementById("xacmanv")?.focus();
-  } else {
-    alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
-  }
-  return;
-}
+    // ✅ đang xem hóa đơn cũ => không cho lưu trực tiếp, bắt xác thực sửa
+    if (hdState === "xem" && !IS_EDIT) {
+        const p = document.getElementById("popupXacThucSua");
+        if (p) {
+            p.style.display = "block";
+            document.getElementById("xacmanv")?.focus();
+        } else {
+            alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
+        }
+        return;
+    }
 
 
     // 2) KHỐI SỐ ĐẶC BIỆT (phải đứng SAU dòng trên)
     if (!IS_EDIT) {
         const existed = await hoaDonDaTonTaiAny(sohd);
-        if (!existed && await handleSpecialSoHoaDon(sohd)) {
+        if (!existed && await handleSpecialSoHoaDon(supabase, sohd)) {
             return; // đã lưu 2 bản xong thì thoát sớm
         }
     }
 
     // ✅ Nếu số đang gõ bị trùng:
-// - hd_state="moi"  => vẫn cho NEW (RPC sẽ tự cấp số mới, không hỏi)
-// - hd_state="xem"  => bắt xác thực sửa (đã chặn ở đầu hàm)
-// - IS_EDIT=true    => cho đi sửa
-if (!IS_EDIT) {
-  const existed = await hoaDonDaTonTaiAny(sohd);
-  if (existed && hdState !== "moi") {
-    const p = document.getElementById("popupXacThucSua");
-    if (p) {
-      p.style.display = "block";
-      document.getElementById("xacmanv")?.focus();
-    } else {
-      alert("❌ Hóa đơn đã tồn tại. Vui lòng xác thực sửa trước khi lưu.");
+    // - hd_state="moi"  => vẫn cho NEW (RPC sẽ tự cấp số mới, không hỏi)
+    // - hd_state="xem"  => bắt xác thực sửa (đã chặn ở đầu hàm)
+    // - IS_EDIT=true    => cho đi sửa
+    if (!IS_EDIT) {
+        const existed = await hoaDonDaTonTaiAny(sohd);
+        if (existed && hdState !== "moi") {
+            const p = document.getElementById("popupXacThucSua");
+            if (p) {
+                p.style.display = "block";
+                document.getElementById("xacmanv")?.focus();
+            } else {
+                alert("❌ Hóa đơn đã tồn tại. Vui lòng xác thực sửa trước khi lưu.");
+            }
+            return;
+        }
     }
-    return;
-  }
-}
 
     // === NHÁNH NEW: dùng RPC save_new_header_v2 cấp số & insert header ===
 
