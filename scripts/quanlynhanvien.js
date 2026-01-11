@@ -44,7 +44,9 @@ function suKienLabel(code) {
         NCH: "Nghỉ chiều",
         NCHD: "Nghỉ Chiều đến",
         TANCA: "Tan ca",
-        AUTO_TANCA: "Tự tan ca"
+        AUTO_TANCA: "Tự tan ca",
+        TANCA_LICH: "Tan ca (theo lịch dang ky cong)"
+
     };
     return map[code] || (code || "");
 }
