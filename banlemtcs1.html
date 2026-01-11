@@ -1008,7 +1008,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
@@ -1075,18 +1075,23 @@
     </script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
-                });
+        // Sau khi DOMContentLoaded hoặc ở script type="module" 
+        document.getElementById('btn-luu').onclick = async function () {
+            if (window.dangLuu) return;
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await window.luuHoaDonCaHaiBan?.();
+            } catch (e) {
+                alert("Lỗi lưu hóa đơn: " + e.message);
             }
 
-        });
+            window.dangLuu = false;
+            this.disabled = false;
+            this.innerText = "💾 Lưu";
+        };
     </script>
 
     <script>
