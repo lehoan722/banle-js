@@ -197,7 +197,7 @@
             margin-bottom:6px;
         }
         .vietqr-img{
-            width: 230px;
+            width: 130px;
             max-width: 100%;
             height: auto;
             display:block;
@@ -305,7 +305,7 @@
       <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span></div>
       <div id="qr_account_name">DANG LE HOAN</div>
       <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
-      <div class="payqr-note">Nội dung: <span id="qr_addinfo">Shop Hoàn Tuyết</span></div>
+      
     </div>
   </div>
 `;
@@ -332,12 +332,12 @@
   if (isCS2) {
     bankId = "TCB";
     bankLabel = "Techcombank";
-    accountNo = "MSOOP00000000635573";
+    accountNo = "MS00P00000000635573";
     accountName = "NGUYEN ANH TUYET";
   }
 
   const sohdText = (hoadon.sohd || "").toString().trim();
-  const addInfo = ("Shop Hoàn Tuyết " + sohdText).trim();
+  const addInfo = "Shop Hoàn Tuyết " ;
 
   const amount = Math.round(Number(thanhtoan) || 0);
 
@@ -355,7 +355,7 @@
   if (elAddInfo) elAddInfo.textContent = addInfo;
 
   const url =
-    "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-print.png" +
+    "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
     "?amount=" + encodeURIComponent(amount) +
     "&addInfo=" + encodeURIComponent(addInfo) +
     "&accountName=" + encodeURIComponent(accountName);
