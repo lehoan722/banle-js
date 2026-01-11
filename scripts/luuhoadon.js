@@ -903,8 +903,10 @@ export async function luuHoaDonCaHaiBan() {
 
     // Sau khi lưu chi tiết CHÍNH thành công: cập nhật used_for_mt cho tư vấn nhân viên
     await capNhatUsedTuVanSauKhiLuuCT(chitietChinh, hoadonChinh.loaihd, diadiem);
+    // ✅ Lưu 2 bản = hóa đơn đặc biệt (gửi Viettel) ⇒ ép in template đặc biệt
+    inHoaDon(hoadonChinh, chitietChinh, true);
+    //inHoaDon(hoadonChinh, chitietChinh); 
 
-    inHoaDon(hoadonChinh, chitietChinh);
     await lamMoiSauKhiLuu();
     guiHoaDonViettel(sohdT);
 
@@ -1004,14 +1006,17 @@ export async function xacNhanSuaHoaDon() {
     }
 }
 
-function inHoaDon(hoadon, chitiet) {
+// forceSpecial = true ⇒ luôn in hóa đơn đặc biệt (/in-hoadon-db.html)
+function inHoaDon(hoadon, chitiet, forceSpecial = false) {
     const data = { hoadon, chitiet };
     localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
 
-    const isHoaDonDacBiet = (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
+    const isHoaDonDacBiet =
+        forceSpecial || (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
+
     iframe.src = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
 
     document.body.appendChild(iframe);
