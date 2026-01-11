@@ -127,7 +127,7 @@ async function loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr) {
 }
 
 // KPI chạy song song có giới hạn
-async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency = 6) {
+async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency = 2) {
   const map = {};
   const list = [...manvArr];
   let idx = 0;
