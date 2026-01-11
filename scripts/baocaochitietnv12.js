@@ -192,7 +192,7 @@ async function taiKPI_Match2h() {
         <b>Doanh thu:</b> ${tongDoanhThu.toLocaleString('vi-VN')}
       </div>
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
-        <b>Tổng SL Web:</b> ${tongSlWeb.toLocaleString('vi-VN')}
+        <b>Tổng SL ghép:</b> ${tongSlWeb.toLocaleString('vi-VN')}
       </div>
       <div style="background:#f7fafd;border:1px solid #e3e6f3;border-radius:8px;padding:8px 12px">
         <b>Tỷ lệ ghép:</b> ${(tyLeGhep * 100).toFixed(1)}%
@@ -504,6 +504,7 @@ window.searchPopup = async function (keyword) {
         </div>
     `).join('');
 };
+
 
 
 
