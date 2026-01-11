@@ -305,7 +305,7 @@
       <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span></div>
       <div id="qr_account_name">DANG LE HOAN</div>
       <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
-      <div class="payqr-note">Nội dung: <span id="qr_addinfo">Shop Hoàn Tuyết</span></div>
+      
     </div>
   </div>
 `;
@@ -355,7 +355,7 @@
   if (elAddInfo) elAddInfo.textContent = addInfo;
 
   const url =
-    "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-print.png" +
+    "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
     "?amount=" + encodeURIComponent(amount) +
     "&addInfo=" + encodeURIComponent(addInfo) +
     "&accountName=" + encodeURIComponent(accountName);
