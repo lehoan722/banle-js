@@ -302,10 +302,10 @@
     <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
     <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
     <div class="payqr-info">
-      <div><b>Techcombank</b> - 2662222333</div>
-      <div>DANG LE HOAN</div>
-      <div class="payqr-amount">Số tiền: ${formatSo(thanhtoan)} đ</div>
-      <div class="payqr-note">Nội dung: Shop Hoàn Tuyết ${hoadon.sohd || ""}</div>
+      <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span></div>
+      <div id="qr_account_name">DANG LE HOAN</div>
+      <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
+      <div class="payqr-note">Nội dung: <span id="qr_addinfo">Shop Hoàn Tuyết</span></div>
     </div>
   </div>
 `;
@@ -317,14 +317,42 @@
   const img = document.getElementById("vietqr_img");
   if (!img) return;
 
-  const bankId = "TCB"; // Techcombank (có thể dùng BIN 970407)
-  const accountNo = "2662222333";
-  const accountName = "DANG LE HOAN";
+  // ===== Nhận biết cơ sở =====
+  const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
+  const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
+
+  // ===== Tài khoản nhận theo cơ sở =====
+  // CS1: DANG LE HOAN - Techcombank 2662222333
+  // CS2: NGUYEN ANH TUYET - Techcombank 2552222333
+  let bankId = "TCB";
+  let bankLabel = "Techcombank";
+  let accountNo = "2662222333";
+  let accountName = "DANG LE HOAN";
+
+  if (isCS2) {
+    bankId = "TCB";
+    bankLabel = "Techcombank";
+    accountNo = "2552222333";
+    accountName = "NGUYEN ANH TUYET";
+  }
 
   const sohdText = (hoadon.sohd || "").toString().trim();
   const addInfo = ("Shop Hoàn Tuyết " + sohdText).trim();
 
   const amount = Math.round(Number(thanhtoan) || 0);
+
+  // cập nhật thông tin hiển thị dưới QR (nếu có)
+  const elBank = document.getElementById("qr_bank_label");
+  const elAccNo = document.getElementById("qr_account_no");
+  const elAccName = document.getElementById("qr_account_name");
+  const elAmount = document.getElementById("qr_amount");
+  const elAddInfo = document.getElementById("qr_addinfo");
+
+  if (elBank) elBank.textContent = bankLabel;
+  if (elAccNo) elAccNo.textContent = accountNo;
+  if (elAccName) elAccName.textContent = accountName;
+  if (elAmount) elAmount.textContent = (typeof formatSo === "function") ? formatSo(amount) : String(amount);
+  if (elAddInfo) elAddInfo.textContent = addInfo;
 
   const url =
     "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-print.png" +
