@@ -8,6 +8,8 @@ const trangThaiSelect = document.getElementById("trang_thai");
 const btnLoad = document.getElementById("btn-load");
 const tbody = document.getElementById("tbody-duyet");
 const msgEl = document.getElementById("msg");
+const summaryEl = document.getElementById("summary");
+
 
 const fromDateInput = document.getElementById("from_date");
 const toDateInput = document.getElementById("to_date");
@@ -36,6 +38,79 @@ function defaultRangeIfEmpty() {
   if (!fromDateInput.value) fromDateInput.value = formatISO(threeDaysBefore);
   if (!toDateInput.value) toDateInput.value = formatISO(threeDaysAfter);
 }
+
+function clearSummary() {
+  if (summaryEl) summaryEl.innerHTML = "";
+}
+
+// "HH:MM" -> phút trong ngày
+function toMinutes(hhmm) {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+// Xác định ca dựa theo giờ bắt đầu
+function getCaByStartTime(gioBatDauHHMM) {
+  const t = toMinutes(gioBatDauHHMM);
+  if (t === null) return null;
+
+  const SANG_START = 7 * 60 + 30;   // 07:30
+  const TRUA_START = 12 * 60;       // 12:00
+  const CHIEU_START = 13 * 60;      // 13:00
+  const TOI_START = 18 * 60;        // 18:00
+  const END = 22 * 60;              // 22:00
+
+  if (t >= SANG_START && t < TRUA_START) return "sang";
+  if (t >= TRUA_START && t < CHIEU_START) return "trua";
+  if (t >= CHIEU_START && t < TOI_START) return "chieu";
+  if (t >= TOI_START && t <= END) return "toi";
+  return null; // ngoài khung giờ quy định
+}
+
+function buildSummaryLine(diadiem, counts) {
+  const labelColor = diadiem === "cs1" ? "blue" : "red";
+  const txt = `${diadiem}: ca sáng ${counts.sang}, ca trưa ${counts.trua}, ca chiều ${counts.chieu}, ca tối ${counts.toi}.`;
+  return `<div style="color:${labelColor};">${txt}</div>`;
+}
+
+function renderSummaryIfSingleDay(data, fromDate, toDate, diadiemFilter) {
+  if (!summaryEl) return;
+
+  // Chỉ hiển thị khi chọn đúng 1 ngày
+  const isOneDay = fromDate && toDate && fromDate === toDate;
+  if (!isOneDay) {
+    clearSummary();
+    return;
+  }
+
+  const initCounts = () => ({ sang: 0, trua: 0, chieu: 0, toi: 0 });
+  const cs1 = initCounts();
+  const cs2 = initCounts();
+
+  for (const row of data) {
+    const ca = getCaByStartTime(row.gio_bat_dau?.slice(0, 5));
+    if (!ca) continue;
+
+    if (row.diadiem === "cs1") cs1[ca] += 1;
+    if (row.diadiem === "cs2") cs2[ca] += 1;
+  }
+
+  // Nếu user đang lọc theo cơ sở thì chỉ hiện đúng cơ sở đó
+  let html = "";
+  if (!diadiemFilter) {
+    html += buildSummaryLine("cs1", cs1);
+    html += buildSummaryLine("cs2", cs2);
+  } else if (diadiemFilter === "cs1") {
+    html += buildSummaryLine("cs1", cs1);
+  } else if (diadiemFilter === "cs2") {
+    html += buildSummaryLine("cs2", cs2);
+  }
+
+  summaryEl.innerHTML = html;
+}
+
 
 
 /**
@@ -217,7 +292,9 @@ async function loadRequests() {
     `;
   });
 
+    renderSummaryIfSingleDay(data, fromDate, toDate, diadiem);
   setMsg(`Đã tải xong (${data.length} dòng).`);
+
 }
 
 async function updateStatus(id, newStatus) {
