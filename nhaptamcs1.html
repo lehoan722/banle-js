@@ -950,34 +950,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
-        function precheckNhaCungCapBeforeSave() {
-            const makhEl = document.getElementById('makh');
-            const tenEl = document.getElementById('khachhang');
-
-            const ten = (tenEl?.value || '').trim();
-
-            // ✅ BẮT BUỘC: phải có tên khách hàng thì mới cho lưu
-            if (!ten) {
-                alert('⚠️ Bạn chưa chọn/nhập khách hàng. Vui lòng chọn khách hàng trước khi lưu!');
-                // ưu tiên đưa con trỏ về mã khách để người dùng tìm/nhập
-                if (makhEl) { makhEl.focus(); makhEl.select?.(); }
-                return false;
-            }
-            return true;
-        }
-
-        // Chặn phím F2 (lưu) nếu chưa có nhà cung cấp và người dùng chọn "Không"
-        dispatchTarget.addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                const ok = precheckNhaCungCapBeforeSave();
-                if (!ok) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                }
-            }
-        }, true);
+                
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
