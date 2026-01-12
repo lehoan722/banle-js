@@ -11,7 +11,7 @@ const refreshBtn = document.getElementById("btn-refresh");
 
 // --- DOM elements: tổng quan theo giờ ---
 const summaryDateInput = document.getElementById("summary-date");
-const tbodySummary = document.getElementById("tbody-summary");
+const summaryTimelineEl = document.getElementById("summary-timeline");
 const summaryMsg = document.getElementById("summary-msg");
 const summaryBtn = document.getElementById("btn-load-summary");
 
