@@ -9,6 +9,7 @@ const btnLoad = document.getElementById("btn-load");
 const tbody = document.getElementById("tbody-duyet");
 const msgEl = document.getElementById("msg");
 const summaryEl = document.getElementById("summary");
+const btnApproveAll = document.getElementById("btn-approve-all");
 
 
 const fromDateInput = document.getElementById("from_date");
@@ -16,6 +17,7 @@ const toDateInput = document.getElementById("to_date");
 
 // người đăng nhập hiện tại có quyền duyệt hay không
 let coQuyenDuyetCa = false;
+let currentRows = []; // lưu data đang hiển thị theo filter hiện tại
 
 function setMsg(text, isError = false) {
   msgEl.textContent = text || "";
@@ -318,6 +320,8 @@ async function loadRequests() {
     return;
   }
 
+  currentRows = data || [];
+
   // Nếu không có quyền -> disable nút Duyệt / Từ chối + readonly ghi chú
   const disabledAttr = coQuyenDuyetCa ? "" : "disabled";
 
@@ -382,8 +386,52 @@ async function updateStatus(id, newStatus) {
   await loadRequests();
 }
 
+async function approveAllVisible() {
+  if (!coQuyenDuyetCa) {
+    alert("Bạn không có quyền duyệt/từ chối ca (chỉ admin được phép).");
+    return;
+  }
+
+  if (!currentRows || currentRows.length === 0) {
+    alert("Không có dữ liệu để duyệt.");
+    return;
+  }
+
+  // Chỉ duyệt những dòng đang CHO_DUYET trong danh sách hiện tại
+  const ids = currentRows
+    .filter((r) => r.trang_thai === "CHO_DUYET")
+    .map((r) => r.id);
+
+  if (ids.length === 0) {
+    alert("Không có ca nào ở trạng thái CHỜ DUYỆT trong danh sách hiện tại.");
+    return;
+  }
+
+  const ok = confirm(`Bạn có chắc muốn DUYỆT TẤT CẢ ${ids.length} ca đang CHỜ DUYỆT không?`);
+  if (!ok) return;
+
+  // Update hàng loạt
+  const { error } = await supabase
+    .from("lichlam_dangky")
+    .update({
+      trang_thai: "DA_DUYET",
+      updated_at: new Date().toISOString()
+    })
+    .in("id", ids);
+
+  if (error) {
+    console.error("Lỗi duyệt tất cả:", error);
+    alert("Duyệt tất cả thất bại.");
+    return;
+  }
+
+  await loadRequests();
+}
+
+
 function attachEvents() {
   btnLoad.addEventListener("click", loadRequests);
+  btnApproveAll?.addEventListener("click", approveAllVisible);
 
   tbody.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
