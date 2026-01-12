@@ -43,74 +43,131 @@ function clearSummary() {
   if (summaryEl) summaryEl.innerHTML = "";
 }
 
-// "HH:MM" -> phút trong ngày
-function toMinutes(hhmm) {
-  if (!hhmm) return null;
-  const [h, m] = hhmm.split(":").map(Number);
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+// nhận "07:30" hoặc "07:30:00" -> phút trong ngày
+function toMinutes(timeStr) {
+  if (!timeStr) return null;
+  const s = String(timeStr).slice(0, 5); // "HH:MM"
+  const [h, m] = s.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
 }
 
-// Xác định ca dựa theo giờ bắt đầu
-function getCaByStartTime(gioBatDauHHMM) {
-  const t = toMinutes(gioBatDauHHMM);
-  if (t === null) return null;
-
-  const SANG_START = 7 * 60 + 30;   // 07:30
-  const TRUA_START = 12 * 60;       // 12:00
-  const CHIEU_START = 13 * 60;      // 13:00
-  const TOI_START = 18 * 60;        // 18:00
-  const END = 22 * 60;              // 22:00
-
-  if (t >= SANG_START && t < TRUA_START) return "sang";
-  if (t >= TRUA_START && t < CHIEU_START) return "trua";
-  if (t >= CHIEU_START && t < TOI_START) return "chieu";
-  if (t >= TOI_START && t <= END) return "toi";
-  return null; // ngoài khung giờ quy định
+function minutesToHHMM(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${pad2(h)}:${pad2(m)}`;
 }
 
-function buildSummaryLine(diadiem, counts) {
-  const labelColor = diadiem === "cs1" ? "blue" : "red";
-  const txt = `${diadiem}: ca sáng ${counts.sang}, ca trưa ${counts.trua}, ca chiều ${counts.chieu}, ca tối ${counts.toi}.`;
-  return `<div style="color:${labelColor};">${txt}</div>`;
+// multiset để tránh lỗi nếu 1 manv có overlap nhiều dòng
+function addActive(activeCount, manv) {
+  if (!manv) return;
+  activeCount.set(manv, (activeCount.get(manv) || 0) + 1);
 }
 
-function renderSummaryIfSingleDay(data, fromDate, toDate, diadiemFilter) {
+function removeActive(activeCount, manv) {
+  if (!manv) return;
+  const cur = activeCount.get(manv) || 0;
+  if (cur <= 1) activeCount.delete(manv);
+  else activeCount.set(manv, cur - 1);
+}
+
+function buildTimelineForOneSite(rows) {
+  // rows: đã lọc theo diadiem + 1 ngày (và đã apply trạng thái nếu user chọn)
+  const events = new Map(); // minute -> { starts:[], ends:[] }
+  const points = new Set();
+
+  for (const r of rows) {
+    const sMin = toMinutes(r.gio_bat_dau);
+    const eMin = toMinutes(r.gio_ket_thuc);
+    if (sMin == null || eMin == null) continue;
+    if (eMin <= sMin) continue;
+
+    points.add(sMin);
+    points.add(eMin);
+
+    if (!events.has(sMin)) events.set(sMin, { starts: [], ends: [] });
+    if (!events.has(eMin)) events.set(eMin, { starts: [], ends: [] });
+
+    events.get(sMin).starts.push(r.manv);
+    events.get(eMin).ends.push(r.manv);
+  }
+
+  const sorted = Array.from(points).sort((a, b) => a - b);
+  if (sorted.length < 2) return [];
+
+  const activeCount = new Map(); // manv -> count
+  const lines = [];
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const t = sorted[i];
+    const next = sorted[i + 1];
+
+    // QUY TẮC MỐC: kết thúc tại t -> bỏ trước, bắt đầu tại t -> thêm sau
+    const ev = events.get(t);
+    if (ev?.ends?.length) ev.ends.forEach((m) => removeActive(activeCount, m));
+    if (ev?.starts?.length) ev.starts.forEach((m) => addActive(activeCount, m));
+
+    // trạng thái trong đoạn [t, next)
+    const manvs = Array.from(activeCount.keys()).sort();
+    const count = manvs.length;
+
+    lines.push({
+      from: minutesToHHMM(t),
+      to: minutesToHHMM(next),
+      count,
+      manvs
+    });
+  }
+
+  return lines;
+}
+
+function renderTimelineSummaryIfSingleDay(data, fromDate, toDate, diadiemFilter) {
   if (!summaryEl) return;
 
-  // Chỉ hiển thị khi chọn đúng 1 ngày
+  // chỉ khi đúng 1 ngày
   const isOneDay = fromDate && toDate && fromDate === toDate;
   if (!isOneDay) {
     clearSummary();
     return;
   }
 
-  const initCounts = () => ({ sang: 0, trua: 0, chieu: 0, toi: 0 });
-  const cs1 = initCounts();
-  const cs2 = initCounts();
+  const makeBlock = (site, color) => {
+    const rows = data.filter((x) => x.diadiem === site);
+    const lines = buildTimelineForOneSite(rows);
 
-  for (const row of data) {
-    const ca = getCaByStartTime(row.gio_bat_dau?.slice(0, 5));
-    if (!ca) continue;
+    if (lines.length === 0) {
+      return `<div style="color:${color};font-weight:600;">${site}: (không có dữ liệu)</div>`;
+    }
 
-    if (row.diadiem === "cs1") cs1[ca] += 1;
-    if (row.diadiem === "cs2") cs2[ca] += 1;
-  }
+    let html = `<div style="color:${color};font-weight:600;">${site}:</div>`;
+    for (const ln of lines) {
+      const txt =
+        ln.count === 0
+          ? `${ln.from} - ${ln.to} : 0 người`
+          : `${ln.from} - ${ln.to} : ${ln.count} người (${ln.manvs.join(", ")})`;
 
-  // Nếu user đang lọc theo cơ sở thì chỉ hiện đúng cơ sở đó
+      html += `<div style="margin-left:14px;color:${ln.count === 0 ? "#c62828" : "#333"};">${txt}</div>`;
+    }
+    return html;
+  };
+
   let html = "";
   if (!diadiemFilter) {
-    html += buildSummaryLine("cs1", cs1);
-    html += buildSummaryLine("cs2", cs2);
+    html += makeBlock("cs1", "blue");
+    html += makeBlock("cs2", "red");
   } else if (diadiemFilter === "cs1") {
-    html += buildSummaryLine("cs1", cs1);
+    html += makeBlock("cs1", "blue");
   } else if (diadiemFilter === "cs2") {
-    html += buildSummaryLine("cs2", cs2);
+    html += makeBlock("cs2", "red");
   }
 
   summaryEl.innerHTML = html;
 }
-
 
 
 /**
@@ -292,8 +349,9 @@ async function loadRequests() {
     `;
   });
 
-    renderSummaryIfSingleDay(data, fromDate, toDate, diadiem);
+  renderTimelineSummaryIfSingleDay(data, fromDate, toDate, diadiem);
   setMsg(`Đã tải xong (${data.length} dòng).`);
+  
 
 }
 
