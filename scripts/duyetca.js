@@ -29,9 +29,9 @@ function defaultRangeIfEmpty() {
   const today = new Date();
 
   // 3 ngày trước
-  const threeDaysBefore = new Date(today.getTime() - 0 * 24 * 60 * 60 * 1000);
+  const threeDaysBefore = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000); // - la truoc + la sau ngay hien tai
   // 3 ngày sau
-  const threeDaysAfter  = new Date(today.getTime() + 0 * 24 * 60 * 60 * 1000);
+  const threeDaysAfter  = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
 
   if (!fromDateInput.value) fromDateInput.value = formatISO(threeDaysBefore);
   if (!toDateInput.value)   toDateInput.value   = formatISO(threeDaysAfter);
