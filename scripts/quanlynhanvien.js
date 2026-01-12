@@ -51,6 +51,32 @@ function suKienLabel(code) {
     return map[code] || (code || "");
 }
 
+function buildTimelineText(eventsToday) {
+    if (!eventsToday) return "";
+
+    // Supabase thường trả về object/array, nhưng phòng khi bị stringify
+    let arr = eventsToday;
+    if (typeof arr === "string") {
+        try { arr = JSON.parse(arr); } catch { return ""; }
+    }
+    if (!Array.isArray(arr) || arr.length === 0) return "";
+
+    // "Vào ca, 07:30:00, Nghỉ trưa, 12:00:00, ..."
+    return arr
+        .map(it => {
+            const ev = it?.su_kien;
+            const t = it?.gio_vn;
+            const evLabel = suKienLabel(ev);
+            const time = (t && typeof t === "string") ? t : "";
+            if (!evLabel && !time) return "";
+            if (!time) return `${evLabel}`;
+            if (!evLabel) return `${time}`;
+            return `${evLabel}, ${time}`;
+        })
+        .filter(Boolean)
+        .join(", ");
+}
+
 function formatTimeVN(value) {
     if (!value) return "";
     // nếu là ISO string
@@ -104,7 +130,7 @@ async function loadStatus() {
 
     setStatusMessage("Đang tải dữ liệu...");
 
-    const { data, error } = await supabase.rpc("nhanvien_status_now", {
+    const { data, error } = await supabase.rpc("nhanvien_status_now_v2", {
         p_diadiem: diadiem
     });
     if (error) {
@@ -190,14 +216,23 @@ async function loadStatus() {
         span.className = `status-badge status-${r.trang_thai || "KHAC"}`;
 
         const tt = trangThaiLabel(r.trang_thai);
+
+        // ✅ NEW: timeline sự kiện trong ca
+        const timeline = buildTimelineText(r.events_today);
+
+        // fallback cũ (nếu vì lý do nào đó chưa có events_today)
         const sk = suKienLabel(r.su_kien_cuoi);
         const gio = formatTimeVN(r.gio_cuoi_vn || r.gio_cuoi);
 
-        // Nếu không có log chấm công (sk/gio rỗng), hiển thị kèm giờ đăng ký bắt đầu
         let text = "";
-        if (sk && gio) {
+        if (timeline) {
+            // ✅ yêu cầu mới: Trạng thái + tất cả sự kiện trong ngày/ca kèm giờ
+            text = `${tt}, ${timeline}`;
+        } else if (sk && gio) {
+            // fallback cũ
             text = `${tt}, ${sk}, ${gio}`;
         } else {
+            // fallback cũ: không có log -> kèm giờ đăng ký bắt đầu
             const gioDk = formatTimeHM(r.gio_dangky_bat_dau);
             text = gioDk ? `${tt} ${gioDk}` : tt;
         }
