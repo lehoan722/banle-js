@@ -130,7 +130,7 @@ async function loadStatus() {
 
     setStatusMessage("Đang tải dữ liệu...");
 
-    const { data, error } = await supabase.rpc("nhanvien_status_now_v2", {
+    const { data, error } = await supabase.rpc("nhanvien_status_day_now", {
         p_diadiem: diadiem
     });
     if (error) {
