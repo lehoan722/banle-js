@@ -3,14 +3,14 @@
 import { supabase } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung } from "./authModule.js";
 
-const diadiemSelect   = document.getElementById("diadiem");
+const diadiemSelect = document.getElementById("diadiem");
 const trangThaiSelect = document.getElementById("trang_thai");
-const btnLoad         = document.getElementById("btn-load");
-const tbody           = document.getElementById("tbody-duyet");
-const msgEl           = document.getElementById("msg");
+const btnLoad = document.getElementById("btn-load");
+const tbody = document.getElementById("tbody-duyet");
+const msgEl = document.getElementById("msg");
 
-const fromDateInput   = document.getElementById("from_date");
-const toDateInput     = document.getElementById("to_date");
+const fromDateInput = document.getElementById("from_date");
+const toDateInput = document.getElementById("to_date");
 
 // người đăng nhập hiện tại có quyền duyệt hay không
 let coQuyenDuyetCa = false;
@@ -31,10 +31,10 @@ function defaultRangeIfEmpty() {
   // 3 ngày trước
   const threeDaysBefore = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000); // - la truoc + la sau ngay hien tai
   // 3 ngày sau
-  const threeDaysAfter  = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
+  const threeDaysAfter = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
 
   if (!fromDateInput.value) fromDateInput.value = formatISO(threeDaysBefore);
-  if (!toDateInput.value)   toDateInput.value   = formatISO(threeDaysAfter);
+  if (!toDateInput.value) toDateInput.value = formatISO(threeDaysAfter);
 }
 
 
@@ -144,10 +144,10 @@ async function kiemTraQuyenDuyetCa(thongTinNguoiDung) {
 async function loadRequests() {
   defaultRangeIfEmpty();
 
-  const diadiem    = diadiemSelect.value;
+  const diadiem = diadiemSelect.value;
   const trang_thai = trangThaiSelect.value;
-  const fromDate   = fromDateInput.value;
-  const toDate     = toDateInput.value;
+  const fromDate = fromDateInput.value;
+  const toDate = toDateInput.value;
 
   if (fromDate && toDate && fromDate > toDate) {
     setMsg("'Từ ngày' phải nhỏ hơn hoặc bằng 'Đến ngày'.", true);
@@ -158,15 +158,18 @@ async function loadRequests() {
 
   let query = supabase.from("lichlam_dangky").select("*");
 
-  if (diadiem)    query = query.eq("diadiem", diadiem);
+  if (diadiem) query = query.eq("diadiem", diadiem);
   if (trang_thai) query = query.eq("trang_thai", trang_thai);
-  if (fromDate)   query = query.gte("ngay", fromDate);
-  if (toDate)     query = query.lte("ngay", toDate);
+  if (fromDate) query = query.gte("ngay", fromDate);
+  if (toDate) query = query.lte("ngay", toDate);
+
 
   query = query
-    .order("ngay")
-    .order("diadiem")
-    .order("manv");
+    .order("ngay", { ascending: true })
+    .order("diadiem", { ascending: true })
+    .order("gio_bat_dau", { ascending: true })
+    .order("manv", { ascending: true });
+
 
   const { data, error } = await query;
 
@@ -194,7 +197,7 @@ async function loadRequests() {
         <td>${row.ngay}</td>
         <td>${row.diadiem}</td>
         <td>${row.manv}</td>
-        <td>${row.gio_bat_dau?.slice(0,5)} - ${row.gio_ket_thuc?.slice(0,5)}</td>
+        <td>${row.gio_bat_dau?.slice(0, 5)} - ${row.gio_ket_thuc?.slice(0, 5)}</td>
         <td class="status-${row.trang_thai}">${row.trang_thai}</td>
         <td>${row.ly_do || ""}</td>
         <td>
@@ -251,7 +254,7 @@ function attachEvents() {
     const btn = e.target.closest("button");
     if (!btn) return;
 
-    const id  = btn.dataset.id;
+    const id = btn.dataset.id;
     const act = btn.dataset.act;
     if (!id || !act) return;
 
