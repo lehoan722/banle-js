@@ -18,7 +18,7 @@ const fromDateInput = document.getElementById("from_date");
 const toDateInput = document.getElementById("to_date");
 const btnTaiDangKy = document.getElementById("btn-tai-dangky");
 
-let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại
+let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại 
 let currentManv = null; // mã NV lấy từ login
 
 // --- Tiện ích chung ---
@@ -32,12 +32,12 @@ function getDefaultRange7Days() {
 
   // 3 ngày trước hôm nay
   const threeDaysAgo = new Date(
-    today.getTime() - 3 * 24 * 60 * 60 * 1000
+    today.getTime() - 1 * 24 * 60 * 60 * 1000
   );
 
   // 7 ngày sau hôm nay
   const sevenDaysAfter = new Date(
-    today.getTime() + 7 * 24 * 60 * 60 * 1000
+    today.getTime() + 1 * 24 * 60 * 60 * 1000
   );
 
   return {
