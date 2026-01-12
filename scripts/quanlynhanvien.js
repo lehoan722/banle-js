@@ -529,91 +529,158 @@ function buildTimelineFromRows(scheduleRows, logRows) {
 
 
 async function loadSummary() {
-    // Ngày chọn, mặc định hôm nay
-    let ngay = summaryDateInput.value;
-    if (!ngay) {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, "0");
-        const dd = String(today.getDate()).padStart(2, "0");
-        ngay = `${yyyy}-${mm}-${dd}`;
-        summaryDateInput.value = ngay;
-    }
+  // Ngày chọn, mặc định hôm nay
+  let ngay = summaryDateInput.value;
+  if (!ngay) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    ngay = `${yyyy}-${mm}-${dd}`;
+    summaryDateInput.value = ngay;
+  }
 
-    setSummaryMessage("Đang tải tổng quan nhân lực...");
+  setSummaryMessage("Đang tải đăng ký ca...");
 
-    const { data, error } = await supabase
-        .from("lichlam_dangky_v") // DÙNG VIEW MỚI
-        .select("diadiem, manv, tennv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
-        .eq("ngay", ngay);
+  clearSummaryTimeline();
 
+  const { data, error } = await supabase
+    .from("lichlam_dangky")
+    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
+    .eq("ngay", ngay)
+    .in("trang_thai", ["CHO_DUYET", "DA_DUYET"])
+    .order("diadiem", { ascending: true })
+    .order("gio_bat_dau", { ascending: true })
+    .order("manv", { ascending: true });
 
-    if (error) {
-        console.error("Lỗi đọc lichlam_dangky:", error);
-        tbodySummary.innerHTML = `<tr><td colspan="3" style="color:red;">Lỗi tải dữ liệu, xem console.</td></tr>`;
-        setSummaryMessage("Lỗi tải tổng quan.");
-        return;
-    }
+  if (error) {
+    console.error("Lỗi đọc lichlam_dangky:", error);
+    setSummaryMessage("Lỗi tải đăng ký ca.");
+    if (summaryTimelineEl) summaryTimelineEl.innerHTML = `<div style="color:#c62828;">Lỗi tải dữ liệu, xem console.</div>`;
+    return;
+  }
 
-    const rows = data || [];
-    if (rows.length === 0) {
-        tbodySummary.innerHTML = `<tr><td colspan="3">Không có đăng ký ca trong ngày ${ngay}.</td></tr>`;
-        setSummaryMessage("Không có dữ liệu.");
-        return;
-    }
+  const rows = data || [];
+  if (rows.length === 0) {
+    setSummaryMessage(`Không có đăng ký ca (CHO_DUYET/DA_DUYET) trong ngày ${ngay}.`);
+    if (summaryTimelineEl) summaryTimelineEl.innerHTML = `<div>Không có đăng ký phù hợp.</div>`;
+    return;
+  }
 
-    // Đọc thêm log chấm công trong ngày để lấy giờ làm thực tế
-    const from = `${ngay}T00:00:00+07:00`;
-    const to = `${ngay}T23:59:59.999+07:00`;
-
-    let logRows = [];
-    try {
-        const { data: logs, error: logError } = await supabase
-            .from("chamcong_log")
-            .select("manv, diadiem, su_kien, created_at")
-            .gte("created_at", from)
-            .lte("created_at", to);
-
-        if (logError) {
-            console.error("Lỗi đọc chamcong_log cho summary:", logError);
-        } else {
-            logRows = logs || [];
-        }
-    } catch (e) {
-        console.error("Lỗi không mong muốn khi đọc chamcong_log cho summary:", e);
-    }
-
-    // Xây timeline linh hoạt từ đăng ký + giờ thực tế
-    const slots = buildTimelineFromRows(rows, logRows);
-    if (slots.length === 0) {
-        tbodySummary.innerHTML = `<tr><td colspan="3">Không tạo được khung giờ hiển thị.</td></tr>`;
-        setSummaryMessage("Không có dữ liệu phù hợp.");
-        return;
-    }
-
-    tbodySummary.innerHTML = "";
-    slots.forEach(s => {
-        const tr = document.createElement("tr");
-
-        const tdTime = document.createElement("td");
-        tdTime.textContent = s.label;
-        tr.appendChild(tdTime);
-
-        const tdCS1 = document.createElement("td");
-        tdCS1.textContent = s.cs1Text || "";
-        tr.appendChild(tdCS1);
-
-        const tdCS2 = document.createElement("td");
-        tdCS2.textContent = s.cs2Text || "";
-        tr.appendChild(tdCS2);
-
-        tbodySummary.appendChild(tr);
-    });
-
-    setSummaryMessage(`Đã tải ${slots.length} mốc thời gian.`);
-
-
+  renderTimelineBlocks(rows);
+  setSummaryMessage(`Đã tải xong (${rows.length} dòng đăng ký).`);
 }
+
+
+function clearSummaryTimeline() {
+  if (summaryTimelineEl) summaryTimelineEl.innerHTML = "";
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function toMinutes(timeStr) {
+  if (!timeStr) return null;
+  const s = String(timeStr).slice(0, 5); // "HH:MM"
+  const [h, m] = s.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function minutesToHHMM(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${pad2(h)}:${pad2(m)}`;
+}
+
+function addActive(activeCount, manv) {
+  if (!manv) return;
+  activeCount.set(manv, (activeCount.get(manv) || 0) + 1);
+}
+
+function removeActive(activeCount, manv) {
+  if (!manv) return;
+  const cur = activeCount.get(manv) || 0;
+  if (cur <= 1) activeCount.delete(manv);
+  else activeCount.set(manv, cur - 1);
+}
+
+function buildTimelineForOneSite(rows) {
+  const events = new Map(); // minute -> { starts:[], ends:[] }
+  const points = new Set();
+
+  for (const r of rows) {
+    const sMin = toMinutes(r.gio_bat_dau);
+    const eMin = toMinutes(r.gio_ket_thuc);
+    if (sMin == null || eMin == null) continue;
+    if (eMin <= sMin) continue;
+
+    points.add(sMin);
+    points.add(eMin);
+
+    if (!events.has(sMin)) events.set(sMin, { starts: [], ends: [] });
+    if (!events.has(eMin)) events.set(eMin, { starts: [], ends: [] });
+
+    events.get(sMin).starts.push(r.manv);
+    events.get(eMin).ends.push(r.manv);
+  }
+
+  const sorted = Array.from(points).sort((a, b) => a - b);
+  if (sorted.length < 2) return [];
+
+  const activeCount = new Map(); // manv -> count
+  const lines = [];
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const t = sorted[i];
+    const next = sorted[i + 1];
+
+    // QUY TẮC MỐC: end trước start tại cùng thời điểm
+    const ev = events.get(t);
+    if (ev?.ends?.length) ev.ends.forEach((m) => removeActive(activeCount, m));
+    if (ev?.starts?.length) ev.starts.forEach((m) => addActive(activeCount, m));
+
+    const manvs = Array.from(activeCount.keys()).sort();
+    const count = manvs.length;
+
+    lines.push({
+      from: minutesToHHMM(t),
+      to: minutesToHHMM(next),
+      count,
+      manvs,
+    });
+  }
+
+  return lines;
+}
+
+function renderTimelineBlocks(rows) {
+  if (!summaryTimelineEl) return;
+
+  const makeBlock = (site, color) => {
+    const r = rows.filter((x) => String(x.diadiem || "").toLowerCase() === site);
+    const lines = buildTimelineForOneSite(r);
+
+    if (lines.length === 0) {
+      return `<div style="color:${color};font-weight:600;">${site}: (không có dữ liệu)</div>`;
+    }
+
+    let html = `<div style="color:${color};font-weight:600;">${site}:</div>`;
+    for (const ln of lines) {
+      const txt =
+        ln.count === 0
+          ? `${ln.from} - ${ln.to} : 0 người`
+          : `${ln.from} - ${ln.to} : ${ln.count} người (${ln.manvs.join(", ")})`;
+
+      html += `<div style="margin-left:14px;color:${ln.count === 0 ? "#c62828" : "#333"};">${txt}</div>`;
+    }
+    return html;
+  };
+
+  summaryTimelineEl.innerHTML = makeBlock("cs1", "blue") + makeBlock("cs2", "red");
+}
+
 
 // ========== KHỞI TẠO ==========
 
@@ -648,3 +715,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadSummary();
 });
+
