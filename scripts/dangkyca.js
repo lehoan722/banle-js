@@ -72,11 +72,11 @@ function validateDangKyUI() {
   selectedDate.setHours(0, 0, 0, 0);
 
   // quá 19h
-  if (now.getHours() >= 19) {
-    btnDangKy.style.display = "none";
-    setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
-    return;
-  }
+ // if (now.getHours() >= 19) {
+    //btnDangKy.style.display = "none";
+    //setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
+   // return;
+ // }
 
   // ngày hôm nay hoặc quá khứ
   if (selectedDate <= today) {
