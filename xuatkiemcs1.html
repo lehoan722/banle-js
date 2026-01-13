@@ -366,9 +366,17 @@
 
 </head>
 
-<body>
+<body class="popupnhanh">
 
     <style>
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        body.popupnhanh .sq-stock-popup {
+            top: 8px !important;
+            left: 8px !important;
+            left: auto !important;
+            transform: none !important;
+        }
+
         .menu-bar {
             background: #cc009c;
             padding: 8px 20px;
@@ -446,9 +454,15 @@
     <div class="menu-bar">
         <div class="tennv">
 
-            <input id="diadiem" placeholder="diadiem" readonly />
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+            <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
+                style="width:55px; text-align:center; font-weight:bold;" />
             <input id="ngay" type="date" readonly />
-            <input id="manv" type="password" placeholder="Mã NV" />
+
+            <input id="gio" type="text" readonly style="width:70px" />
+
+            <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
@@ -649,7 +663,6 @@
 
     </div>
 
-    <script src="scripts/stockQuickPopup.js"></script>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
@@ -731,20 +744,6 @@
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
 
-
-    <script type="module">
-        import * as BKQ from './scripts/bangketqua.js';
-
-        // Xuất các hàm module ra global để các đoạn code cũ (gọi window.*) dùng được
-        window.capNhatBangHTML = BKQ.capNhatBangHTML;
-        window.resetFormBang = BKQ.resetFormBang?.bind(BKQ) || (() => { });
-        window.resetFormSauKhiNhapSize = BKQ.resetFormSauKhiNhapSize?.bind(BKQ) || (() => { });
-        window.toggleBangKetQua = BKQ.toggleBangKetQua?.bind(BKQ) || (() => { });
-    </script>
-
-
-
-
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
@@ -790,160 +789,89 @@
             });
         }
 
-        // Copy bảng sang clipboard: MỖI SIZE = 1 DÒNG
+        // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
-            // 1️⃣ Đồng bộ dữ liệu mới nhất từ DOM vào bangKetQua (nếu có hàm)
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                try { window.capNhatBangKetQuaTuDOM(); } catch (e) { console.warn(e); }
-            }
-
-            const bang = window.bangKetQua || {};
-
-            // 2️⃣ Lấy thêm thông tin vị trí / T1 / T2 từ dòng đang hiển thị (nếu cần)
-            const vitriMap = {};
-            const t1Map = {};
-            const t2Map = {};
-            const tbody = document.querySelector('#bangketqua tbody');
-            if (tbody) {
-                for (const row of tbody.rows) {
-                    const masp = (row.cells[0]?.innerText || '').toUpperCase().trim();
-                    if (!masp || vitriMap[masp]) continue; // mỗi mã lấy 1 lần
-                    vitriMap[masp] = row.cells[8]?.innerText || '';   // cột Vị trí
-                    t1Map[masp] = row.cells[9]?.innerText || '';   // T1
-                    t2Map[masp] = row.cells[10]?.innerText || '';  // T2
-                }
-            }
-
-            // 3️⃣ Ghép chuỗi: duyệt bangKetQua, MỖI SIZE 1 DÒNG
+            const table = document.getElementById('bangketqua');
             let str = '';
 
-            Object.values(bang).forEach(item => {
-                if (!item || !Array.isArray(item.sizes) || !Array.isArray(item.soluongs)) return;
-
-                const masp = item.masp || '';
-                const tensp = item.tensp || '';
-                const dvt = item.dvt || '';
-                const gia = Number(item.gia) || 0;
-                const km = Number(item.km) || 0;
-                const vitri = vitriMap[masp.toUpperCase()] || '';
-                const t1 = t1Map[masp.toUpperCase()] || '';
-                const t2 = t2Map[masp.toUpperCase()] || '';
-
-                item.sizes.forEach((sz, idx) => {
-                    const size = (sz == null ? '' : String(sz).trim());
-                    const sl = Number(item.soluongs[idx]) || 0;
-                    if (!size && !sl) return;
-
-                    const thanhtien = gia * sl - km;
-
-                    const line = [
-                        masp,           // Mã hàng
-                        tensp,          // Tên hàng
-                        size,           // Kích cỡ
-                        sl,             // S.lượng
-                        dvt,            // ĐVT
-                        gia,            // Đơn giá
-                        km,             // Khuyến mại
-                        thanhtien,      // Thành tiền
-                        vitri,          // Vị trí
-                        t1,             // T1
-                        t2              // T2
-                    ];
-
-                    str += line.join('\t') + '\n';
-                });
-            });
-
-            if (!str) {
-                alert('Chưa có dữ liệu để copy!');
-                return;
+            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('✅ Đã copy dữ liệu chi tiết từng size ra clipboard!'));
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
         };
 
 
-        // Dán từ Excel/Sheet → cập nhật window.bangKetQua → vẽ bảng
+
+        // Dán từ clipboard (Excel) vào bảng web
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            const rows = text.trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.querySelector('#bangketqua tbody');
 
-            const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
-            const rows = text.trim().split(/\r?\n/)
-                .map(r => r.split('\t'))
-                .filter(r => r.length && r.some(c => String(c).trim() !== ''));
+            // ❌ KHÔNG xoá dữ liệu cũ nữa
+            // tbody.innerHTML = '';
 
-            // (tùy chọn) nếu bạn có sửa tay trên ô trước đó:
+            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+                const tr = document.createElement('tr');
+                rowArr.forEach((cell) => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            const bang = window.bangKetQua || {};
-            const toInt = v => {
-                if (v == null) return 0;
-                const s = String(v).replace(/[^\d-]/g, '');
-                const n = parseInt(s, 10);
-                return isNaN(n) ? 0 : n;
-            };
-
-            for (const r of rows) {
-                // MASP | Tên | Size | SL | DVT? | Giá? | KM?
-                const masp = String(r[0] || '').toUpperCase().trim();
-                if (!masp) continue;
-
-                const tensp = String(r[1] || '').trim();
-                const size = String((r[2] ?? '0')).trim();
-                const sl = toInt(r[3] ?? 1);
-
-                const dvt = String(r[4] || (bang[masp]?.dvt ?? 'sp')).trim();
-                const gia = toInt(r[5] ?? (bang[masp]?.gia ?? 0));
-                const km = toInt(r[6] ?? (bang[masp]?.km ?? 0));
-
-                if (!bang[masp]) {
-                    bang[masp] = { masp, tensp, dvt, gia, km, sizes: [], soluongs: [], tong: 0 };
-                } else {
-                    if (!bang[masp].tensp) bang[masp].tensp = tensp;
-                    if (!bang[masp].dvt) bang[masp].dvt = dvt;
-                    if (!bang[masp].gia) bang[masp].gia = gia;
-                    if (!bang[masp].km) bang[masp].km = km;
-                }
-
-                const i = bang[masp].sizes.findIndex(s => String(s).trim() === size);
-                if (i >= 0) bang[masp].soluongs[i] = sl;
-                else { bang[masp].sizes.push(size); bang[masp].soluongs.push(sl); }
-
-                bang[masp].tong = (bang[masp].soluongs || []).reduce((a, b) => a + (Number(b) || 0), 0);
+            // ✅ Cập nhật tổng
+            if (typeof capNhatThongTinTong === 'function') {
+                capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            window.bangKetQua = bang;
-
-            // --- VẼ BẢNG ---
-            const tbody = document.querySelector('#bangketqua tbody');
-            const before = tbody ? tbody.children.length : 0;
-
-            if (typeof window.capNhatBangHTML === 'function') {
-                window.capNhatBangHTML(window.bangKetQua, null);
-            }
-            if (typeof window.capNhatThongTinTong === 'function') {
-                window.capNhatThongTinTong(window.bangKetQua);
-            }
-
-            // Fallback: nếu chưa có dòng nào → tự render
-            setTimeout(() => {
-                const after = tbody ? tbody.children.length : 0;
-                if (after === before) {
-                    if (typeof window.renderBangKetQua === 'function') {
-                        window.renderBangKetQua(window.bangKetQua);
-                    }
-                    if (typeof window.capNhatTongTien === 'function') {
-                        window.capNhatTongTien(window.bangKetQua);
-                    }
-                }
-            }, 30);
-
-            console.log('[PASTE] merged → window.bangKetQua =', window.bangKetQua);
+            // Log kiểm tra
+            console.log('window.bangKetQua:', window.bangKetQua);
         });
 
+        function capNhatBangKetQuaTuDOM() {
+            const tbody = document.querySelector("#bangketqua tbody");
+            const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+            const bangObj = {};
+
+            rows.forEach(tr => {
+                const cells = tr.querySelectorAll("td");
+                if (cells.length >= 6) {
+                    const masp = (cells[0].innerText || "").toUpperCase();
+                    const tensp = cells[1].innerText || "";
+                    const size = cells[2].innerText || "0";
+                    const sl = Number(cells[3].innerText) || 0;
+                    const dvt = cells[4].innerText || "sp";
+                    const gia = Number(cells[5].innerText) || 0;
+
+                    if (!bangObj[masp]) {
+                        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
+                    }
+                    bangObj[masp].sizes.push(size);
+                    bangObj[masp].soluongs.push(sl);
+                }
+            });
+
+            window.bangKetQua = bangObj;
+            console.log("🔎 [capNhatBangKetQuaTuDOM] ->", bangObj);
+            return bangObj;
+        }
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
@@ -982,47 +910,10 @@
         </div>
     </div>
 
-    <script type="module">
-        import { backupAllTablesToZip } from './scripts/backup.js';
 
-        document.getElementById('btn-logout').onclick = async function () {
 
-            document.getElementById('backup-overlay').style.display = "block";
-            try {
-                await backupAllTablesToZip();
-                //alert("Đã backup toàn bộ dữ liệu!\nSau khi tải về, hãy di chuyển file vào thư mục D:\\backup để lưu trữ.");
-            } catch (err) {
-                alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
-            }
-            document.getElementById('backup-overlay').style.display = "none";
-            await dangXuatApp();
-        };
-
-        async function dangXuatApp() {
-            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
-            }
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-            document.getElementById('login-manv').focus();
-        }
-    </script>
+    <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
     <script src="scripts/menu-component.js"></script>
 
@@ -1059,6 +950,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+                
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
@@ -1237,19 +1129,18 @@
             }
 
             // Render (chờ hàm sẵn sàng)
-            if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
-                // 1) cập nhật state thật
-                window.bangKetQua = bangObj;
+            const tryRender = () => {
+                if (typeof window.capNhatBangHTML === 'function' && typeof window.capNhatThongTinTong === 'function') {
+                    window.capNhatBangHTML(window.bangKetQua);
+                    window.capNhatThongTinTong(window.bangKetQua);
+                    window.bangKetQua = bangObj;
 
-                // 2) render & tổng theo state mới
-                window.capNhatBangHTML(window.bangKetQua);
-                window.capNhatThongTinTong(window.bangKetQua);
-
-                // 3) dọn hash
-                history.replaceState(null, '', location.pathname);
-                return true;
-            }
-
+                    // Xoá hash sau khi nạp xong để tránh nạp lại
+                    history.replaceState(null, '', location.pathname);
+                    return true;
+                }
+                return false;
+            };
 
             if (!tryRender()) {
                 const tm = setInterval(() => { if (tryRender()) clearInterval(tm); }, 200);
@@ -1650,70 +1541,6 @@
         });
     </script>
 
-    <script>
-        // Nhận rows ở dạng: [{ masp, tenhang, size, sl }, ...]
-        window.handlePopupNgangSave = function (rows = []) {
-            if (!Array.isArray(rows) || rows.length === 0) return;
-
-            // Đồng bộ dữ liệu hiện có về object (phòng trường hợp đang nhập dở)
-            try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
-
-            const bang = window.bangKetQua || {};
-            for (const r of rows) {
-                const key = String(r.masp || '').toUpperCase().trim();
-                if (!key) continue;
-
-                // Lấy lại thông tin DM nếu có
-                const dm = (window.sanPhamData && window.sanPhamData[key]) || {};
-                const tensp = (r.tenhang ?? dm.tensp ?? '');
-                const dvt = (dm.dvt ?? 'sp');
-                const gia = Number(dm.gianhap ?? 0) || 0;
-
-                // Khởi tạo dòng nếu chưa có
-                if (!bang[key]) {
-                    bang[key] = { masp: key, tensp, dvt, gia, km: 0, sizes: [], soluongs: [], tong: 0 };
-                } else {
-                    // Bổ sung tên/DVT/giá nếu đang trống
-                    bang[key].tensp = bang[key].tensp || tensp;
-                    if (!bang[key].dvt) bang[key].dvt = dvt;
-                    if (!bang[key].gia) bang[key].gia = gia;
-                }
-
-                const s = String(r.size ?? '0').trim();
-                const sl = Number(r.sl) || 0;
-                if (!s || sl === 0) continue;
-
-                const i = bang[key].sizes.findIndex(x => String(x).trim() === s);
-                if (i >= 0) {
-                    bang[key].soluongs[i] = sl;               // cập nhật số lượng size đã có
-                } else {
-                    bang[key].sizes.push(s);                   // thêm size mới
-                    bang[key].soluongs.push(sl);
-                }
-
-                // Recalc tổng SL theo kích cỡ
-                bang[key].tong = (bang[key].soluongs || []).reduce((a, b) => a + (Number(b) || 0), 0);
-            }
-
-            window.bangKetQua = bang;
-
-            // Render lại bảng + tổng (nếu các hàm có sẵn)
-            if (typeof window.capNhatBangHTML === 'function') {
-                window.capNhatBangHTML(window.bangKetQua, null);
-            } else if (typeof window.renderBangKetQua === 'function') {
-                window.renderBangKetQua(window.bangKetQua);
-            }
-
-            if (typeof window.capNhatThongTinTong === 'function') {
-                window.capNhatThongTinTong(window.bangKetQua);
-            } else if (typeof window.capNhatTongTien === 'function') {
-                window.capNhatTongTien(window.bangKetQua);
-            }
-
-            console.log('[popup-ngang] merged → window.bangKetQua =', window.bangKetQua);
-        };
-    </script>
-
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
     <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
     <script>
@@ -1737,6 +1564,34 @@
             /* tùy, thích center thì bỏ dòng này */
         }
     </style>
+
+    <style>
+        /* Khi hd_state = xem → chữ đỏ */
+        #hd_state[data-state="xem"] {
+            color: red !important;
+            background: #ffecec;
+            border: 1px solid red;
+        }
+    </style>
+    <script>
+        // Đồng bộ giá trị .value -> data-state để CSS nhận biết
+        document.addEventListener("DOMContentLoaded", () => {
+            const hd = document.getElementById("hd_state");
+            if (!hd) return;
+
+            const sync = () => hd.setAttribute("data-state", hd.value);
+
+            // sync lần đầu
+            sync();
+
+            // theo dõi mọi thay đổi value (kể cả do JS khác set)
+            const observer = new MutationObserver(sync);
+            observer.observe(hd, { attributes: true, attributeFilter: ["value"] });
+
+            // fallback: kiểm tra định kỳ (rất nhẹ)
+            setInterval(sync, 300);
+        });
+    </script>
 
 </body>
 
