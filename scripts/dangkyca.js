@@ -281,8 +281,8 @@ async function handleDangKy() {
     return;
   }
 
-  if (!data.ok) {
-    setMsg(data.message, true);
+  if (!data || data.ok !== true) {
+    setMsg(data?.message || "RPC không trả về dữ liệu. Kiểm tra lại rpc_dangky_ca.", true);
     validateDangKyUI();
     return;
   }
