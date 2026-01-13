@@ -99,7 +99,7 @@ function validateDangKyUI() {
   const selectedDate = new Date(ngayInput.value);
   selectedDate.setHours(0, 0, 0, 0);
 
-  
+
   // ngày hôm nay hoặc quá khứ
   if (selectedDate <= today) {
     btnDangKy.style.display = "none";
@@ -107,7 +107,7 @@ function validateDangKyUI() {
     return;
   }
 
-    // quá 19h (chỉ áp dụng cho nhân viên thường)
+  // quá 19h (chỉ áp dụng cho nhân viên thường)
   if (!isAdmin && now.getHours() >= 19) {
     btnDangKy.style.display = "none";
     setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
@@ -280,7 +280,7 @@ async function handleDangKy() {
   const gio_bd = gioBdInput.value;
   const gio_kt = gioKtInput.value;
   const ly_do = lyDoInput.value.trim();
-  
+
 
   if (!manv || !ngay || !gio_bd || !gio_kt || !diadiem) {
     setMsg(
@@ -297,7 +297,7 @@ async function handleDangKy() {
 
   setMsg("Đang gửi đăng ký...");
 
-    const actor = currentManv;
+  const actor = currentManv;
   const target = isAdmin ? String(manvInput.value || "").trim() : currentManv;
 
   if (!target) {
@@ -340,8 +340,16 @@ function attachEventsOnce() {
   if (daGanEvent) return;
   daGanEvent = true;
 
-  btnDangKy.addEventListener("click", handleDangKy);
-  btnTaiDangKy.addEventListener("click", loadMyRequests);
+  btnDangKy.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleDangKy();
+  });
+
+  btnTaiDangKy.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadMyRequests();
+  });
+
   ngayInput.addEventListener("change", validateDangKyUI);
 
 }
@@ -362,7 +370,7 @@ async function onLoginSuccess(thongTinNguoiDung) {
 
   // Tải đăng ký mặc định 7 ngày gần đây cho đúng manv
   loadMyRequests();
-    // kiểm tra quyền admin
+  // kiểm tra quyền admin
   await kiemTraQuyenAdmin();
 
   if (isAdmin) {
@@ -374,7 +382,7 @@ async function onLoginSuccess(thongTinNguoiDung) {
   }
 
   validateDangKyUI();
-  
+
 }
 
 // --- Khởi tạo login giống trang up ảnh nhanh ---
