@@ -49,7 +49,8 @@ function getDefaultRange7Days() {
 
 function setTodayAndDefaultRange() {
   const today = new Date();
-  ngayInput.value = formatISODate(today);
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  ngayInput.value = formatISODate(tomorrow);
 
   const { fromDate, toDate } = getDefaultRange7Days();
   if (!fromDateInput.value) fromDateInput.value = fromDate;
@@ -59,6 +60,33 @@ function setTodayAndDefaultRange() {
 function setMsg(text, isError = false) {
   msgEl.textContent = text || "";
   msgEl.style.color = isError ? "#c62828" : "#555";
+}
+
+function validateDangKyUI() {
+  const now = new Date();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const selectedDate = new Date(ngayInput.value);
+  selectedDate.setHours(0, 0, 0, 0);
+
+  // quá 19h
+  if (now.getHours() >= 19) {
+    btnDangKy.style.display = "none";
+    setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
+    return;
+  }
+
+  // ngày hôm nay hoặc quá khứ
+  if (selectedDate <= today) {
+    btnDangKy.style.display = "none";
+    setMsg("Chỉ được đăng ký ca từ ngày mai trở đi.", true);
+    return;
+  }
+
+  btnDangKy.style.display = "";
+  setMsg("");
 }
 
 // Chuyển "HH:MM" -> phút
@@ -236,80 +264,34 @@ async function handleDangKy() {
     return;
   }
 
-  // --- KIỂM TRA GIỚI HẠN 3 CA / NGÀY / ĐỊA ĐIỂM + KHÔNG TRÙNG GIỜ ---
-
-  // 1) Lấy tất cả đăng ký của NV trong NGÀY đó (mọi địa điểm),
-  //    bỏ qua các ca đã hủy / từ chối nếu có.
-  const { data: existing, error: existError } = await supabase
-    .from("lichlam_dangky")
-    .select("id, diadiem, gio_bat_dau, gio_ket_thuc, trang_thai")
-    .eq("manv", manv)
-    .eq("ngay", ngay)
-    .not("trang_thai", "in", "(HUY,TU_CHOI)");
-
-  if (existError) {
-    console.error("Lỗi kiểm tra đăng ký ca hiện có:", existError);
-    setMsg("Lỗi kiểm tra lịch đăng ký hiện có. Vui lòng thử lại.", true);
-    return;
-  }
-
-  const list = existing || [];
-
-  // 1.1. Kiểm tra tối đa 3 ca trong cùng 1 địa điểm
-  const caCungDiaDiem = list.filter(r => r.diadiem === diadiem);
-  if (caCungDiaDiem.length >= 3) {
-    setMsg(
-      `Bạn đã đăng ký tối đa 3 ca trong ngày ${ngay} tại cơ sở ${diadiem}. Không thể đăng ký thêm ca mới.`,
-      true
-    );
-    return;
-  }
-
-  // 1.2. Kiểm tra trùng giờ với bất kỳ ca nào đã đăng ký (mọi địa điểm)
-  const newStart = timeToMinutes(gio_bd);
-  const newEnd = timeToMinutes(gio_kt);
-
-  const overlap = list.find(r => {
-    const s = timeToMinutes(r.gio_bat_dau);
-    const e = timeToMinutes(r.gio_ket_thuc);
-    if (s == null || e == null) return false;
-    // điều kiện trùng: thời đoạn [start,end) cắt nhau
-    return newStart < e && newEnd > s;
-  });
-
-  if (overlap) {
-    setMsg(
-      `Khoảng giờ ${gio_bd} - ${gio_kt} bị trùng với ca đã đăng ký ` +
-      `${overlap.gio_bat_dau?.slice(0, 5)} - ${overlap.gio_ket_thuc?.slice(0, 5)
-      } tại cơ sở ${overlap.diadiem}. ` +
-      "Không thể đăng ký trùng giờ ở bất kỳ cửa hàng nào.",
-      true
-    );
-    return;
-  }
-
-  // --- Nếu qua hết kiểm tra thì mới insert ---
   setMsg("Đang gửi đăng ký...");
 
-  const { error } = await supabase.from("lichlam_dangky").insert({
-    manv,
-    diadiem,
-    ngay,
-    gio_bat_dau: gio_bd,
-    gio_ket_thuc: gio_kt,
-    ly_do,
-    trang_thai: "CHO_DUYET",
-    created_by: manv
+  const { data, error } = await supabase.rpc("rpc_dangky_ca", {
+    p_manv: manv,
+    p_diadiem: diadiem,
+    p_ngay: ngay,
+    p_gio_bat_dau: gio_bd,
+    p_gio_ket_thuc: gio_kt,
+    p_ly_do: ly_do
   });
 
   if (error) {
-    console.error("Lỗi insert lichlam_dangky:", error);
-    setMsg("Gửi đăng ký thất bại.", true);
+    console.error("RPC error:", error);
+    setMsg("Lỗi hệ thống khi gửi đăng ký.", true);
     return;
   }
 
-  setMsg("Đã gửi đăng ký, chờ quản lý duyệt.");
+  if (!data.ok) {
+    setMsg(data.message, true);
+    validateDangKyUI();
+    return;
+  }
+
+  setMsg(data.message);
   await loadMyRequests();
+  validateDangKyUI();
+
+
 }
 
 // --- Gắn event sau khi login thành công ---
@@ -319,6 +301,8 @@ function attachEventsOnce() {
 
   btnDangKy.addEventListener("click", handleDangKy);
   btnTaiDangKy.addEventListener("click", loadMyRequests);
+  ngayInput.addEventListener("change", validateDangKyUI);
+
 }
 
 // --- onLoginSuccess từ authModule ---
@@ -337,6 +321,7 @@ function onLoginSuccess(thongTinNguoiDung) {
 
   // Tải đăng ký mặc định 7 ngày gần đây cho đúng manv
   loadMyRequests();
+  validateDangKyUI();
 }
 
 // --- Khởi tạo login giống trang up ảnh nhanh ---
