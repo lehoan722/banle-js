@@ -17,7 +17,7 @@ const toDateInput = document.getElementById("to_date");
 
 // người đăng nhập hiện tại có quyền duyệt hay không
 let coQuyenDuyetCa = false;
-let currentRows = []; // lưu data đang hiển thị theo filter hiện tại
+let currentRows = []; // lưu data đang hiển thị theo filter hiện tại 
 
 function setMsg(text, isError = false) {
   msgEl.textContent = text || "";
@@ -348,6 +348,8 @@ async function loadRequests() {
         <td>
           <button data-act="approve" data-id="${row.id}" ${disabledAttr}>Duyệt</button>
           <button data-act="reject"  data-id="${row.id}" ${disabledAttr}>Từ chối</button>
+          <button data-act="delete"  data-id="${row.id}" ${disabledAttr}>Xóa</button>
+
         </td>
       </tr>
     `;
@@ -355,7 +357,7 @@ async function loadRequests() {
 
   renderTimelineSummaryIfSingleDay(data, fromDate, toDate, diadiem);
   setMsg(`Đã tải xong (${data.length} dòng).`);
-  
+
 
 }
 
@@ -385,6 +387,30 @@ async function updateStatus(id, newStatus) {
 
   await loadRequests();
 }
+
+async function deleteRequest(id) {
+  if (!coQuyenDuyetCa) {
+    alert("Bạn không có quyền xóa đăng ký ca (chỉ admin được phép).");
+    return;
+  }
+
+  const ok = confirm(`Bạn có chắc muốn XÓA đăng ký ca này không? (ID=${id})`);
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from("lichlam_dangky")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Lỗi delete lichlam_dangky:", error);
+    alert("Xóa đăng ký thất bại.");
+    return;
+  }
+
+  await loadRequests();
+}
+
 
 async function approveAllVisible() {
   if (!coQuyenDuyetCa) {
@@ -446,6 +472,10 @@ function attachEvents() {
     } else if (act === "reject") {
       updateStatus(id, "TU_CHOI");
     }
+    else if (act === "delete") {
+      deleteRequest(id);
+    }
+
   });
 }
 
