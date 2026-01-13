@@ -398,6 +398,7 @@ async function onLoginSuccess(thongTinNguoiDung) {
   loadMyRequests();
   // kiểm tra quyền admin
   await kiemTraQuyenAdmin();
+  await loadNhanVienDatalist();
 
   if (isAdmin) {
     // admin có thể nhập mã NV để đăng ký hộ
@@ -406,7 +407,7 @@ async function onLoginSuccess(thongTinNguoiDung) {
     manvInput.title = "Admin có thể nhập mã NV để đăng ký hộ.";
     setMsg("Chế độ Admin: có thể đăng ký hộ nhân viên khác.");
   }
-  await loadNhanVienDatalist();
+  
   validateDangKyUI();
 
 }
