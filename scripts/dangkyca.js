@@ -44,9 +44,8 @@ async function loadNhanVienDatalist() {
   dlManv.innerHTML = "";
   (data || []).forEach((r) => {
     const opt = document.createElement("option");
-    opt.value = r.manv;
-    // label giúp nhìn thấy tên khi chọn (Chrome hiển thị tùy)
-    opt.label = `${r.manv} - ${r.tennv || ""}`;
+    opt.value = r.out_manv;
+    opt.label = `${r.out_manv} - ${r.out_tennv || ""}`;
     dlManv.appendChild(opt);
   });
 }
@@ -407,7 +406,7 @@ async function onLoginSuccess(thongTinNguoiDung) {
     manvInput.title = "Admin có thể nhập mã NV để đăng ký hộ.";
     setMsg("Chế độ Admin: có thể đăng ký hộ nhân viên khác.");
   }
-  
+
   validateDangKyUI();
 
 }
