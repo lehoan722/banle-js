@@ -17,12 +17,40 @@ const msgEl = document.getElementById("msg");
 const fromDateInput = document.getElementById("from_date");
 const toDateInput = document.getElementById("to_date");
 const btnTaiDangKy = document.getElementById("btn-tai-dangky");
+const dlManv = document.getElementById("dl-manv");
 
 let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại 
 let currentManv = null; // mã NV lấy từ login
 let isAdmin = false; // admin hoặc có quyền đặc biệt (is_admin / sua_hoadon)
 
 // --- Tiện ích chung ---
+
+async function loadNhanVienDatalist() {
+  if (!isAdmin) return;
+  if (!dlManv) return;
+
+  const manvActor = currentManv;
+  if (!manvActor) return;
+
+  const { data, error } = await supabase.rpc("rpc_dmnhanvien_list", {
+    p_manv_actor: manvActor
+  });
+
+  if (error) {
+    console.warn("Không load được danh sách nhân viên:", error);
+    return;
+  }
+
+  dlManv.innerHTML = "";
+  (data || []).forEach((r) => {
+    const opt = document.createElement("option");
+    opt.value = r.manv;
+    // label giúp nhìn thấy tên khi chọn (Chrome hiển thị tùy)
+    opt.label = `${r.manv} - ${r.tennv || ""}`;
+    dlManv.appendChild(opt);
+  });
+}
+
 
 function formatISODate(d) {
   return d.toISOString().slice(0, 10);
@@ -378,7 +406,7 @@ async function onLoginSuccess(thongTinNguoiDung) {
     manvInput.title = "Admin có thể nhập mã NV để đăng ký hộ.";
     setMsg("Chế độ Admin: có thể đăng ký hộ nhân viên khác.");
   }
-
+  await loadNhanVienDatalist();
   validateDangKyUI();
 
 }
@@ -394,3 +422,4 @@ document.addEventListener("DOMContentLoaded", () => {
     onLoginSuccess
   });
 });
+
