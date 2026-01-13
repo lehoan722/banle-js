@@ -170,18 +170,15 @@ function autoFillManvFromLogin(thongTinNguoiDung) {
 }
 
 // --- Load đăng ký theo mã NV + khoảng ngày ---
-async function loadMyRequests() {
-  // Chỉ cho phép xem theo mã NV đã đăng nhập
-  if (!currentManv) {
-    tbodyLich.innerHTML = `<tr><td colspan="6">Vui lòng đăng nhập để xem lịch đăng ký ca.</td></tr>`;
-    setMsg(
-      "Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.",
-      true
-    );
-    return;
-  }
+async function loadMyRequests(manvOverride = null, keepMsg = false) {
+  const manv = (manvOverride || currentManv || "").trim();
 
-  const manv = currentManv;
+  if (!manv) {
+    tbodyLich.innerHTML = `<tr><td colspan="6">Vui lòng đăng nhập để xem lịch đăng ký ca.</td></tr>`;
+    setMsg("Không xác định được Mã NV từ phiên đăng nhập. Vui lòng đăng nhập lại.", true);
+    return;
+  } 
+
 
   let fromDate = fromDateInput.value;
   let toDate = toDateInput.value;
@@ -260,7 +257,8 @@ async function loadMyRequests() {
     tbodyLich.appendChild(tr);
   });
 
-  setMsg("");
+  if (!keepMsg) setMsg("");
+
 }
 
 // --- Gửi đăng ký ca ---
@@ -329,8 +327,8 @@ async function handleDangKy() {
   }
 
   setMsg(data.message);
-  await loadMyRequests();
-  validateDangKyUI();
+await loadMyRequests(target, true); // load theo người vừa đăng ký, giữ msg
+validateDangKyUI();
 
 
 }
