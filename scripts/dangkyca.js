@@ -20,6 +20,7 @@ const btnTaiDangKy = document.getElementById("btn-tai-dangky");
 
 let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại 
 let currentManv = null; // mã NV lấy từ login
+let isAdmin = false; // admin hoặc có quyền đặc biệt (is_admin / sua_hoadon)
 
 // --- Tiện ích chung ---
 
@@ -61,6 +62,33 @@ function setMsg(text, isError = false) {
   msgEl.textContent = text || "";
   msgEl.style.color = isError ? "#c62828" : "#555";
 }
+async function kiemTraQuyenAdmin() {
+  try {
+    const manv = currentManv;
+    if (!manv) {
+      isAdmin = false;
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("dmnhanvien")
+      .select("is_admin, sua_hoadon")
+      .eq("manv", manv)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Không kiểm tra được quyền admin:", error);
+      isAdmin = false;
+      return;
+    }
+
+    isAdmin = !!(data?.is_admin || data?.sua_hoadon);
+  } catch (e) {
+    console.warn("Lỗi kiemTraQuyenAdmin:", e);
+    isAdmin = false;
+  }
+}
+
 
 function validateDangKyUI() {
   const now = new Date();
@@ -84,6 +112,14 @@ function validateDangKyUI() {
     setMsg("Chỉ được đăng ký ca từ ngày mai trở đi.", true);
     return;
   }
+
+    // quá 19h (chỉ áp dụng cho nhân viên thường)
+  if (!isAdmin && now.getHours() >= 19) {
+    btnDangKy.style.display = "none";
+    setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
+    return;
+  }
+
 
   btnDangKy.style.display = "";
   setMsg("");
@@ -123,11 +159,11 @@ function autoFillManvFromLogin(thongTinNguoiDung) {
       currentManv = String(manv).trim(); // lưu lại mã NV đăng nhập
       manvInput.value = currentManv;
 
-      // khóa hẳn ô mã NV
+      // tạm thời khóa theo mặc định; sẽ được mở lại nếu là admin ở onLoginSuccess()
       manvInput.readOnly = true;
       manvInput.disabled = true;
-      manvInput.title =
-        "Mã nhân viên được lấy từ tài khoản đăng nhập, không thể sửa.";
+      manvInput.title = "Mã nhân viên được lấy từ tài khoản đăng nhập.";
+
     } else {
       console.warn(
         "Không tìm được trường manv trong thongTinNguoiDung:",
@@ -250,6 +286,7 @@ async function handleDangKy() {
   const gio_bd = gioBdInput.value;
   const gio_kt = gioKtInput.value;
   const ly_do = lyDoInput.value.trim();
+  
 
   if (!manv || !ngay || !gio_bd || !gio_kt || !diadiem) {
     setMsg(
@@ -266,14 +303,24 @@ async function handleDangKy() {
 
   setMsg("Đang gửi đăng ký...");
 
-  const { data, error } = await supabase.rpc("rpc_dangky_ca", {
-    p_manv: manv,
+    const actor = currentManv;
+  const target = isAdmin ? String(manvInput.value || "").trim() : currentManv;
+
+  if (!target) {
+    setMsg("Vui lòng nhập mã nhân viên cần đăng ký.", true);
+    return;
+  }
+
+  const { data, error } = await supabase.rpc("rpc_dangky_ca_v2", {
+    p_manv_actor: actor,
+    p_manv_target: target,
     p_diadiem: diadiem,
     p_ngay: ngay,
     p_gio_bat_dau: gio_bd,
     p_gio_ket_thuc: gio_kt,
     p_ly_do: ly_do
   });
+
 
   if (error) {
     console.error("RPC error:", error);
@@ -321,7 +368,19 @@ function onLoginSuccess(thongTinNguoiDung) {
 
   // Tải đăng ký mặc định 7 ngày gần đây cho đúng manv
   loadMyRequests();
+    // kiểm tra quyền admin
+  await kiemTraQuyenAdmin();
+
+  if (isAdmin) {
+    // admin có thể nhập mã NV để đăng ký hộ
+    manvInput.disabled = false;
+    manvInput.readOnly = false;
+    manvInput.title = "Admin có thể nhập mã NV để đăng ký hộ.";
+    setMsg("Chế độ Admin: có thể đăng ký hộ nhân viên khác.");
+  }
+
   validateDangKyUI();
+  
 }
 
 // --- Khởi tạo login giống trang up ảnh nhanh ---
