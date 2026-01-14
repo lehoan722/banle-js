@@ -127,8 +127,15 @@ function validateDangKyUI() {
   selectedDate.setHours(0, 0, 0, 0);
 
 
-  // ngày hôm nay hoặc quá khứ
-  if (selectedDate <= today) {
+  // Chặn ngày quá khứ cho tất cả
+  if (selectedDate < today) {
+    btnDangKy.style.display = "none";
+    setMsg("Không được đăng ký cho ngày quá khứ.", true);
+    return;
+  }
+
+  // Chặn hôm nay cho user thường, nhưng cho admin đăng ký hôm nay
+  if (!isAdmin && selectedDate.getTime() === today.getTime()) {
     btnDangKy.style.display = "none";
     setMsg("Chỉ được đăng ký ca từ ngày mai trở đi.", true);
     return;
@@ -408,6 +415,13 @@ async function onLoginSuccess(thongTinNguoiDung) {
   }
 
   validateDangKyUI();
+  // Admin: nếu đang để mặc định ngày mai thì chuyển về hôm nay để đăng ký nhanh
+  const todayISO = formatISODate(new Date());
+  const tomorrowISO = formatISODate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  if (!ngayInput.value || ngayInput.value === tomorrowISO) {
+    ngayInput.value = todayISO;
+  }
+
 
 }
 
@@ -422,4 +436,5 @@ document.addEventListener("DOMContentLoaded", () => {
     onLoginSuccess
   });
 });
+
 
