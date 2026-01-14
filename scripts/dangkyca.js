@@ -116,8 +116,7 @@ async function kiemTraQuyenAdmin() {
   }
 }
 
-
-function validateDangKyUI() {
+function validateDangKyUI(keepMsg = false) {
   const now = new Date();
 
   const today = new Date();
@@ -126,32 +125,33 @@ function validateDangKyUI() {
   const selectedDate = new Date(ngayInput.value);
   selectedDate.setHours(0, 0, 0, 0);
 
-
   // Chặn ngày quá khứ cho tất cả
   if (selectedDate < today) {
     btnDangKy.style.display = "none";
-    setMsg("Không được đăng ký cho ngày quá khứ.", true);
+    if (!keepMsg) setMsg("Không được đăng ký cho ngày quá khứ.", true);
     return;
   }
 
   // Chặn hôm nay cho user thường, nhưng cho admin đăng ký hôm nay
   if (!isAdmin && selectedDate.getTime() === today.getTime()) {
     btnDangKy.style.display = "none";
-    setMsg("Chỉ được đăng ký ca từ ngày mai trở đi.", true);
+    if (!keepMsg) setMsg("Chỉ được đăng ký ca từ ngày mai trở đi.", true);
     return;
   }
 
   // quá 19h (chỉ áp dụng cho nhân viên thường)
   if (!isAdmin && now.getHours() >= 19) {
     btnDangKy.style.display = "none";
-    setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
+    if (!keepMsg) setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
     return;
   }
 
-
   btnDangKy.style.display = "";
-  setMsg("");
+
+  // ✅ Quan trọng: đừng tự xóa msg nếu đang muốn giữ msg (ví dụ lỗi RPC)
+  if (!keepMsg) setMsg("");
 }
+
 
 // Chuyển "HH:MM" -> phút
 function timeToMinutes(hhmm) {
@@ -235,7 +235,7 @@ async function loadMyRequests(manvOverride = null, keepMsg = false) {
     return;
   }
 
-  setMsg("Đang tải đăng ký...");
+  if (!keepMsg) setMsg("Đang tải đăng ký...");
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
@@ -254,7 +254,7 @@ async function loadMyRequests(manvOverride = null, keepMsg = false) {
 
   if (!data || data.length === 0) {
     tbodyLich.innerHTML = `<tr><td colspan="6">Không có đăng ký nào trong khoảng ngày đã chọn.</td></tr>`;
-    setMsg("");
+    if (!keepMsg) setMsg("");
     return;
   }
 
@@ -350,20 +350,19 @@ async function handleDangKy() {
 
   if (error) {
     console.error("RPC error:", error);
-    setMsg("Lỗi hệ thống khi gửi đăng ký.", true);
+    setMsg(error?.message || "Lỗi hệ thống khi gửi đăng ký.", true);
     return;
   }
 
   if (!data || data.ok !== true) {
-    setMsg(data?.message || "RPC không trả về dữ liệu. Kiểm tra lại rpc_dangky_ca.", true);
-    validateDangKyUI();
+    setMsg(data?.message || "Không đăng ký được ca. Vui lòng thử lại.", true);
+    validateDangKyUI(true); // ✅ giữ msg lỗi, không bị xóa
     return;
   }
 
-  setMsg(data.message);
-  await loadMyRequests(target, true); // load theo người vừa đăng ký, giữ msg
-  validateDangKyUI();
-
+  setMsg(data.message, false);
+  await loadMyRequests(target, true); // ✅ giờ sẽ không ghi đè msg nữa
+  validateDangKyUI(true);             // ✅ giữ msg thành công
 
 }
 
