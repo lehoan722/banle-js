@@ -23,7 +23,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     cs2: {
       sellerLegalName: "NGUYỄN ÁNH TUYẾT",
       sellerTaxCode: "4600960665",
-      sellerAddressLine: "Số 561, Tổ 23, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
+      sellerAddressLine: "Số 561, Tổ 11, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
       sellerPhoneNumber: "0763424342",
       sellerEmail: "nguyenanhtuyet140175@gmail.com",
       sellerBankAccount: "",
