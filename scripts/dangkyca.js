@@ -341,7 +341,7 @@ async function handleDangKy() {
       "Việc đăng ký ca của bạn đang vi phạm quy chế đăng ký ca nên bạn sẽ bị trừ 20k tiền thưởng.\n\nBạn có muốn tiếp tục đăng ký không?"
     );
     if (!ok) return;
-    ly_do_final = appendLyDoTag(ly_do_final, "DK_ADMIN");
+    ly_do_final = appendLyDoTag(ly_do_final, "-20.000");
   }
 
 
