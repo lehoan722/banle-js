@@ -132,20 +132,6 @@ function validateDangKyUI(keepMsg = false) {
     return;
   }
 
-  // Chặn hôm nay cho user thường, nhưng cho admin đăng ký hôm nay
-  if (!isAdmin && selectedDate.getTime() === today.getTime()) {
-    btnDangKy.style.display = "none";
-    if (!keepMsg) setMsg("Chỉ được đăng ký ca từ ngày mai trở đi.", true);
-    return;
-  }
-
-  // quá 19h (chỉ áp dụng cho nhân viên thường)
-  if (!isAdmin && now.getHours() >= 19) {
-    btnDangKy.style.display = "none";
-    if (!keepMsg) setMsg("Đã quá 19:00, hệ thống đã khóa đăng ký cho ngày mai.", true);
-    return;
-  }
-
   btnDangKy.style.display = "";
 
   // ✅ Quan trọng: đừng tự xóa msg nếu đang muốn giữ msg (ví dụ lỗi RPC)
@@ -160,6 +146,41 @@ function timeToMinutes(hhmm) {
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
 }
+
+// --- Quy chế: cho phép đăng ký nhưng đánh dấu VI PHẠM ---
+// Vi phạm nếu: (1) đăng ký ca NGÀY HÔM NAY; hoặc (2) sau 19:00 mà đăng ký ca NGÀY MAI
+function isDangKyViPham(ngayISO) {
+  if (!ngayISO) return false;
+  const now = new Date();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const selected = new Date(ngayISO);
+  selected.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const isToday = selected.getTime() === today.getTime();
+  const isTomorrow = selected.getTime() === tomorrow.getTime();
+
+  const after19 = now.getHours() >= 19;
+  return isToday || (after19 && isTomorrow);
+}
+
+function appendLyDoTag(lydoRaw, tag) {
+  const lydo = (lydoRaw || "").trim();
+  if (!tag) return lydo;
+
+  // Tránh trùng tag
+  const reTag = new RegExp(`(^|\\s|\\||,)${tag}(\\s|\\||,|$)`, "i");
+  if (reTag.test(lydo)) return lydo;
+
+  if (!lydo) return tag;
+  return `${tag} | ${lydo}`;
+}
+
 
 // --- Tự điền mã NV sau khi đăng nhập và khóa ô ---
 function autoFillManvFromLogin(thongTinNguoiDung) {
@@ -312,6 +333,16 @@ async function handleDangKy() {
   const gio_bd = gioBdInput.value;
   const gio_kt = gioKtInput.value;
   const ly_do = lyDoInput.value.trim();
+  let ly_do_final = ly_do;
+
+  // ✅ Nếu vi phạm quy chế (hôm nay / sau 19:00 đăng ký ngày mai) thì cảnh báo & tự gắn DK_ADMIN
+  if (isDangKyViPham(ngay)) {
+    const ok = window.confirm(
+      "Việc đăng ký ca của bạn đang vi phạm quy chế đăng ký ca nên bạn sẽ bị trừ 20k tiền thưởng.\n\nBạn có muốn tiếp tục đăng ký không?"
+    );
+    if (!ok) return;
+    ly_do_final = appendLyDoTag(ly_do_final, "DK_ADMIN");
+  }
 
 
   if (!manv || !ngay || !gio_bd || !gio_kt || !diadiem) {
@@ -344,7 +375,7 @@ async function handleDangKy() {
     p_ngay: ngay,
     p_gio_bat_dau: gio_bd,
     p_gio_ket_thuc: gio_kt,
-    p_ly_do: ly_do
+    p_ly_do: ly_do_final
   });
 
 
