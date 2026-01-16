@@ -1,13 +1,9 @@
-// Trang này dùng authModule chung của dự án.
-// Yêu cầu: chỉ ADMIN được phép đăng nhập / sử dụng.
-import {
-  khoiTaoDangNhapDungChung,
-  getSupabaseClient,
-  dangXuatDungChung,
-} from "./authModule.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-let supabase = null;
-let _bound = false;
+// 1) CẤU HÌNH - bạn thay bằng project của bạn
+const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 2) DOM
 const elFrom = document.getElementById("fromDate");
@@ -17,7 +13,6 @@ const btnRefresh = document.getElementById("btnRefresh");
 const statusEl = document.getElementById("status");
 const shortageWrap = document.getElementById("shortageWrap");
 const assignWrap = document.getElementById("assignWrap");
-const appContainer = document.getElementById("appContainer");
 
 // 3) tiện ích
 function setStatus(msg, type = "muted") {
@@ -53,7 +48,6 @@ function renderTable(rows, columns) {
 
 // 4) load views
 async function loadShortageSuggestions(fromISO, toISO) {
-  if (!supabase) throw new Error("Chưa đăng nhập / chưa khởi tạo Supabase client");
   setStatus("Đang tải shortage & suggestions...");
   const { data, error } = await supabase
     .from("v_shift_shortage_suggestions")
@@ -79,7 +73,6 @@ async function loadShortageSuggestions(fromISO, toISO) {
 }
 
 async function loadAssignments(fromISO, toISO) {
-  if (!supabase) throw new Error("Chưa đăng nhập / chưa khởi tạo Supabase client");
   setStatus("Đang tải shift_assignments...");
   const { data, error } = await supabase
     .from("shift_assignments")
@@ -125,10 +118,6 @@ async function refreshAll() {
 
 // 5) chạy auto schedule
 async function runAutoSchedule() {
-  if (!supabase) {
-    setStatus("Bạn cần đăng nhập admin trước.", "err");
-    return;
-  }
   const fromISO = elFrom.value;
   const toISO = elTo.value;
   if (!fromISO || !toISO) {
@@ -165,38 +154,8 @@ function initDefaultDates() {
   elTo.value = addDaysISO(t, 6); // mặc định 7 ngày
 }
 
-function bindEventsOnce() {
-  if (_bound) return;
-  btnRun.addEventListener("click", runAutoSchedule);
-  btnRefresh.addEventListener("click", refreshAll);
-  _bound = true;
-}
+btnRun.addEventListener("click", runAutoSchedule);
+btnRefresh.addEventListener("click", refreshAll);
 
-async function afterAdminLogin() {
-  supabase = getSupabaseClient();
-  bindEventsOnce();
-  initDefaultDates();
-  await refreshAll();
-}
-
-// Khởi tạo đăng nhập chung + chặn non-admin
-khoiTaoDangNhapDungChung({
-  authContainerId: "authContainer",
-  appContainerId: "appContainer",
-  onLoginSuccess: async ({ profile }) => {
-    // profile lấy từ bảng dmnhanvien (theo authModule)
-    if (!profile?.is_admin) {
-      if (appContainer) appContainer.style.display = "none";
-      setStatus("Tài khoản này KHÔNG phải admin. Bạn không có quyền sử dụng trang này.", "err");
-      await dangXuatDungChung();
-      return;
-    }
-    await afterAdminLogin();
-  },
-  onLogout: () => {
-    supabase = null;
-    if (shortageWrap) shortageWrap.innerHTML = "";
-    if (assignWrap) assignWrap.innerHTML = "";
-    setStatus("Đã đăng xuất.", "muted");
-  },
-});
+initDefaultDates();
+refreshAll();
