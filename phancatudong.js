@@ -1,15 +1,10 @@
-// Trang này dùng authModule chung của dự án.
-// Yêu cầu: chỉ ADMIN được phép đăng nhập / sử dụng.
-import {
-  khoiTaoDangNhapDungChung,
-  getSupabaseClient,
-  dangXuatDungChung,
-} from ".scripts/authModule.js";
+// Auto Scheduling (Demo)
+// - Dùng chung authModule.js (giống trang nhapdmnhanvien.html)
+// - Chỉ admin mới được vào
 
-let supabase = null;
-let _bound = false;
+import { khoiTaoDangNhapDungChung, dangXuatDungChung, getSupabaseClient } from "./authModule.js";
 
-// 2) DOM
+// ===== DOM =====
 const elFrom = document.getElementById("fromDate");
 const elTo = document.getElementById("toDate");
 const btnRun = document.getElementById("btnRun");
@@ -17,12 +12,11 @@ const btnRefresh = document.getElementById("btnRefresh");
 const statusEl = document.getElementById("status");
 const shortageWrap = document.getElementById("shortageWrap");
 const assignWrap = document.getElementById("assignWrap");
-const appContainer = document.getElementById("appContainer");
 
-// 3) tiện ích
+// ===== Utils =====
 function setStatus(msg, type = "muted") {
   statusEl.className = type === "err" ? "err" : type === "ok" ? "ok" : "muted";
-  statusEl.textContent = msg;
+  statusEl.textContent = msg || "";
 }
 
 function todayISO() {
@@ -32,9 +26,8 @@ function todayISO() {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
-
 function addDaysISO(iso, days) {
-  const d = new Date(iso);
+  const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + days);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -42,19 +35,42 @@ function addDaysISO(iso, days) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function renderTable(rows, columns) {
-  if (!rows || rows.length === 0) return `<div class="muted">Không có dữ liệu</div>`;
-  const thead = `<tr>${columns.map(c => `<th>${c.label}</th>`).join("")}</tr>`;
-  const tbody = rows.map(r => {
-    return `<tr>${columns.map(c => `<td>${(r[c.key] ?? "")}</td>`).join("")}</tr>`;
-  }).join("");
-  return `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-// 4) load views
+function renderTable(container, rows, cols, title) {
+  if (!rows || rows.length === 0) {
+    container.innerHTML = `<div class="muted">${escapeHtml(title)}: (0 dòng)</div>`;
+    return;
+  }
+  const thead = cols.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("");
+  const tbody = rows
+    .map((r) => {
+      const tds = cols.map((c) => `<td>${escapeHtml(r[c.key])}</td>`).join("");
+      return `<tr>${tds}</tr>`;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div class="muted" style="margin-bottom:6px;">${escapeHtml(title)}: (${rows.length} dòng)</div>
+    <div style="overflow:auto;">
+      <table class="tbl">
+        <thead><tr>${thead}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ===== Data =====
 async function loadShortageSuggestions(fromISO, toISO) {
-  if (!supabase) throw new Error("Chưa đăng nhập / chưa khởi tạo Supabase client");
-  setStatus("Đang tải shortage & suggestions...");
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("v_shift_shortage_suggestions")
     .select("*")
@@ -66,24 +82,28 @@ async function loadShortageSuggestions(fromISO, toISO) {
 
   if (error) throw error;
 
-  shortageWrap.innerHTML = renderTable(data, [
-    { key: "ngay", label: "ngày" },
-    { key: "coso", label: "cơ sở" },
-    { key: "slot", label: "slot" },
-    { key: "required_count", label: "cần" },
-    { key: "assigned_count", label: "đã xếp" },
-    { key: "shortage", label: "thiếu" },
-    { key: "assigned_list", label: "đã xếp (list)" },
-    { key: "recommended_candidates", label: "gợi ý" },
-  ]);
+  renderTable(
+    shortageWrap,
+    data,
+    [
+      { key: "ngay", label: "ngày" },
+      { key: "coso", label: "cơ sở" },
+      { key: "slot", label: "slot" },
+      { key: "required_count", label: "cần" },
+      { key: "assigned_count", label: "đã xếp" },
+      { key: "shortage", label: "thiếu" },
+      { key: "assigned_list", label: "đã xếp (list)" },
+      { key: "recommended_candidates", label: "gợi ý" },
+    ],
+    "1) Shift Shortage + Suggestions"
+  );
 }
 
 async function loadAssignments(fromISO, toISO) {
-  if (!supabase) throw new Error("Chưa đăng nhập / chưa khởi tạo Supabase client");
-  setStatus("Đang tải shift_assignments...");
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("shift_assignments")
-    .select("ngay, coso, slot, manv, source_used, score, reason, created_at")
+    .select("*")
     .gte("ngay", fromISO)
     .lte("ngay", toISO)
     .order("ngay", { ascending: true })
@@ -93,110 +113,92 @@ async function loadAssignments(fromISO, toISO) {
 
   if (error) throw error;
 
-  assignWrap.innerHTML = renderTable(data, [
-    { key: "ngay", label: "ngày" },
-    { key: "coso", label: "cơ sở" },
-    { key: "slot", label: "slot" },
-    { key: "manv", label: "mã NV" },
-    { key: "source_used", label: "nguồn" },
-    { key: "score", label: "score" },
-    { key: "reason", label: "reason" },
-    { key: "created_at", label: "created_at" },
-  ]);
+  renderTable(
+    assignWrap,
+    data,
+    [
+      { key: "ngay", label: "ngày" },
+      { key: "coso", label: "cơ sở" },
+      { key: "slot", label: "slot" },
+      { key: "manv", label: "mã NV" },
+      { key: "source_used", label: "nguồn" },
+      { key: "score", label: "điểm" },
+      { key: "reason", label: "ghi chú" },
+      { key: "created_at", label: "tạo lúc" },
+    ],
+    "2) Shift Assignments (trong khoảng ngày)"
+  );
 }
 
-async function refreshAll() {
-  const fromISO = elFrom.value;
-  const toISO = elTo.value;
-  if (!fromISO || !toISO) {
-    setStatus("Bạn cần chọn từ ngày và đến ngày.", "err");
-    return;
-  }
-
-  try {
-    await loadShortageSuggestions(fromISO, toISO);
-    await loadAssignments(fromISO, toISO);
-    setStatus("Tải dữ liệu xong.", "ok");
-  } catch (e) {
-    console.error(e);
-    setStatus(`Lỗi load dữ liệu: ${e.message || e}`, "err");
-  }
+async function refreshAll(fromISO, toISO) {
+  setStatus("Đang tải dữ liệu...", "muted");
+  await Promise.all([loadShortageSuggestions(fromISO, toISO), loadAssignments(fromISO, toISO)]);
+  setStatus("Đã tải xong.", "ok");
 }
 
-// 5) chạy auto schedule
-async function runAutoSchedule() {
-  if (!supabase) {
-    setStatus("Bạn cần đăng nhập admin trước.", "err");
-    return;
-  }
-  const fromISO = elFrom.value;
-  const toISO = elTo.value;
-  if (!fromISO || !toISO) {
-    setStatus("Bạn cần chọn từ ngày và đến ngày.", "err");
-    return;
-  }
+// ===== Actions =====
+async function runAutoSchedule(fromISO, toISO) {
+  const supabase = getSupabaseClient();
+  setStatus("Đang chạy auto_schedule...", "muted");
 
-  try {
-    setStatus("Đang chạy auto_schedule...");
-    btnRun.disabled = true;
+  const { error } = await supabase.rpc("auto_schedule", {
+    p_from: fromISO,
+    p_to: toISO,
+  });
 
-    // RPC: auto_schedule(p_from date, p_to date)
-    const { data, error } = await supabase.rpc("auto_schedule", {
-      p_from: fromISO,
-      p_to: toISO,
-    });
+  if (error) throw error;
 
-    if (error) throw error;
-
-    setStatus(`Chạy xong auto_schedule. (return rows: ${data?.length ?? 0})`, "ok");
-    await refreshAll();
-  } catch (e) {
-    console.error(e);
-    setStatus(`Lỗi chạy auto_schedule: ${e.message || e}`, "err");
-  } finally {
-    btnRun.disabled = false;
-  }
+  setStatus("Chạy auto_schedule xong. Đang refresh...", "ok");
+  await refreshAll(fromISO, toISO);
 }
 
-// 6) init
-function initDefaultDates() {
-  const t = todayISO();
-  elFrom.value = t;
-  elTo.value = addDaysISO(t, 6); // mặc định 7 ngày
-}
+// ===== App Init (sau login) =====
+function initApp() {
+  // set mặc định ngày
+  const d0 = todayISO();
+  if (!elFrom.value) elFrom.value = d0;
+  if (!elTo.value) elTo.value = addDaysISO(d0, 6);
 
-function bindEventsOnce() {
-  if (_bound) return;
-  btnRun.addEventListener("click", runAutoSchedule);
-  btnRefresh.addEventListener("click", refreshAll);
-  _bound = true;
-}
-
-async function afterAdminLogin() {
-  supabase = getSupabaseClient();
-  bindEventsOnce();
-  initDefaultDates();
-  await refreshAll();
-}
-
-// Khởi tạo đăng nhập chung + chặn non-admin
-khoiTaoDangNhapDungChung({
-  authContainerId: "authContainer",
-  appContainerId: "appContainer",
-  onLoginSuccess: async ({ profile }) => {
-    // profile lấy từ bảng dmnhanvien (theo authModule)
-    if (!profile?.is_admin) {
-      if (appContainer) appContainer.style.display = "none";
-      setStatus("Tài khoản này KHÔNG phải admin. Bạn không có quyền sử dụng trang này.", "err");
-      await dangXuatDungChung();
-      return;
+  btnRun.addEventListener("click", async () => {
+    try {
+      const fromISO = elFrom.value;
+      const toISO = elTo.value;
+      if (!fromISO || !toISO) return setStatus("Bạn phải chọn đủ Từ ngày / Đến ngày.", "err");
+      await runAutoSchedule(fromISO, toISO);
+    } catch (e) {
+      console.error(e);
+      setStatus(`Lỗi: ${e?.message || e}`, "err");
     }
-    await afterAdminLogin();
+  });
+
+  btnRefresh.addEventListener("click", async () => {
+    try {
+      const fromISO = elFrom.value;
+      const toISO = elTo.value;
+      if (!fromISO || !toISO) return setStatus("Bạn phải chọn đủ Từ ngày / Đến ngày.", "err");
+      await refreshAll(fromISO, toISO);
+    } catch (e) {
+      console.error(e);
+      setStatus(`Lỗi: ${e?.message || e}`, "err");
+    }
+  });
+
+  // tải lần đầu
+  btnRefresh.click();
+}
+
+// ===== Auth bootstrap (GIỐNG nhapdmnhanvien) =====
+khoiTaoDangNhapDungChung({
+  parentElementId: "authContainer",   // đúng id trong phancatudong.html
+  appElementId: "appContainer",       // đúng id trong phancatudong.html
+  macDinhDiaDiem: "cs1",
+  tuDongKhoaCoSo: true,
+  loginApiPath: "/api/login-cs1",
+  kiemTraAdmin: true,                 // CHỈ admin
+  onLoginSuccess: async () => {
+    initApp();
   },
   onLogout: () => {
-    supabase = null;
-    if (shortageWrap) shortageWrap.innerHTML = "";
-    if (assignWrap) assignWrap.innerHTML = "";
     setStatus("Đã đăng xuất.", "muted");
   },
 });
