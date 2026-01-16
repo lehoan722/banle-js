@@ -25,37 +25,44 @@
   <h2>Auto Scheduling (Demo)</h2>
   <div class="muted">Chạy auto xếp ca + xem thiếu ca & gợi ý ứng viên</div>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label>Từ ngày</label><br/>
-        <input type="date" id="fromDate">
-      </div>
-      <div>
-        <label>Đến ngày</label><br/>
-        <input type="date" id="toDate">
-      </div>
+  <!-- Đăng nhập Supabase (chỉ ADMIN được phép vào) -->
+  <div id="authContainer" class="card" style="margin-top:12px;"></div>
 
-      <button id="btnRun">Chạy Auto Schedule</button>
-      <button id="btnRefresh">Refresh dữ liệu</button>
+  <!-- App: chỉ hiển thị sau khi đăng nhập admin -->
+  <div id="appContainer" style="display:none;">
 
-      <span id="status" class="muted"></span>
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Từ ngày</label><br/>
+          <input type="date" id="fromDate">
+        </div>
+        <div>
+          <label>Đến ngày</label><br/>
+          <input type="date" id="toDate">
+        </div>
+
+        <button id="btnRun">Chạy Auto Schedule</button>
+        <button id="btnRefresh">Refresh dữ liệu</button>
+
+        <span id="status" class="muted"></span>
+      </div>
     </div>
+
+    <div class="card">
+      <h3>1) Shift Shortage + Suggestions</h3>
+      <div class="muted">Nguồn: <span class="mono">v_shift_shortage_suggestions</span></div>
+      <div id="shortageWrap"></div>
+    </div>
+
+    <div class="card">
+      <h3>2) Shift Assignments (trong khoảng ngày)</h3>
+      <div class="muted">Nguồn: <span class="mono">shift_assignments</span></div>
+      <div id="assignWrap"></div>
+    </div>
+
   </div>
 
-  <div class="card">
-    <h3>1) Shift Shortage + Suggestions</h3>
-    <div class="muted">Nguồn: <span class="mono">v_shift_shortage_suggestions</span></div>
-    <div id="shortageWrap"></div>
-  </div>
-
-  <div class="card">
-    <h3>2) Shift Assignments (trong khoảng ngày)</h3>
-    <div class="muted">Nguồn: <span class="mono">shift_assignments</span></div>
-    <div id="assignWrap"></div>
-  </div>
-
-   <script type="module" src="scripts/phancatudong.js"></script>
+  <script type="module" src="./phancatudong.js"></script>
 </body>
 </html>
-
