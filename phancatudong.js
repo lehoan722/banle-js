@@ -4,7 +4,7 @@ import {
   khoiTaoDangNhapDungChung,
   getSupabaseClient,
   dangXuatDungChung,
-} from "./authModule.js";
+} from "scripts/authModule.js";
 
 let supabase = null;
 let _bound = false;
