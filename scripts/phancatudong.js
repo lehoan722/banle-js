@@ -189,13 +189,17 @@ function initApp() {
 
 // ===== Auth bootstrap (GIỐNG nhapdmnhanvien) =====
 khoiTaoDangNhapDungChung({
-  parentElementId: "authContainer",   // đúng id trong phancatudong.html
-  appElementId: "appContainer",       // đúng id trong phancatudong.html
-  macDinhDiaDiem: "cs1",
-  tuDongKhoaCoSo: true,
+  // AuthModule dùng các option: loginContainerId, appContainerId, coSoMacDinh,
+  // tuDongKhoaCoSo, requireAdmin, onLoginSuccess, onLogout...
+  loginContainerId: "authContainer",  // đúng id trong phancatudong.html
+  appContainerId: "appContainer",     // đúng id trong phancatudong.html
+  coSoMacDinh: "cs1",
+  tuDongKhoaCoSo: false,
   loginApiPath: "/api/login-cs1",
-  kiemTraAdmin: true,                 // CHỈ admin
-  onLoginSuccess: async () => {
+  requireAdmin: true,                  // CHỈ admin
+  onLoginSuccess: async ({ coSo }) => {
+    // lưu lại cơ sở đang làm việc (nếu cần dùng về sau)
+    localStorage.setItem("selectedCoso", coSo);
     initApp();
   },
   onLogout: () => {
