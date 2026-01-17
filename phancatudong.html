@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Auto Scheduling - Demo</title>
+  <title>Phân ca tự động</title>
   <style>
     body{font-family:Arial, sans-serif; margin:16px;}
     .row{display:flex; gap:12px; align-items:end; flex-wrap:wrap;}
@@ -18,12 +18,14 @@
     .ok{color:green;}
     .err{color:#c00;}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, monospace;}
+    .num-red{color:#c00; font-weight:600;}
+    .num-blue{color:#1565c0; font-weight:600;}
   </style>
 </head>
 
 <body>
-  <h2>phancatudong</h2>
-  <div class="muted">Chạy auto xếp ca + xem thiếu ca & gợi ý ứng viên</div>
+  <h2>Phân ca tự động</h2>
+  <div class="muted">Chạy tự động xếp ca + xem tổng hợp nhân lực theo ngày, ca và cơ sở</div>
 
   <!-- Đăng nhập Supabase (chỉ ADMIN được phép vào) -->
   <div id="authContainer" class="card" style="margin-top:12px;"></div>
@@ -42,21 +44,27 @@
           <input type="date" id="toDate">
         </div>
 
-        <button id="btnRun">Chạy Auto Schedule</button>
-        <button id="btnRefresh">Refresh dữ liệu</button>
+        <button id="btnRun">Chạy tự động phân ca</button>
+        <button id="btnRefresh">Tải lại dữ liệu</button>
 
         <span id="status" class="muted"></span>
       </div>
     </div>
 
     <div class="card">
-      <h3>1) Shift Shortage + Suggestions</h3>
+      <h3>1) Tổng hợp phân ca theo ngày</h3>
+      <div class="muted">Tổng hợp từ: <span class="mono">shift_assignments</span> + <span class="mono">v_shift_shortage_suggestions</span></div>
+      <div id="summaryWrap"></div>
+    </div>
+
+    <div class="card">
+      <h3>2) Thiếu người theo ca + gợi ý bổ sung</h3>
       <div class="muted">Nguồn: <span class="mono">v_shift_shortage_suggestions</span></div>
       <div id="shortageWrap"></div>
     </div>
 
     <div class="card">
-      <h3>2) Shift Assignments (trong khoảng ngày)</h3>
+      <h3>3) Danh sách phân ca chi tiết (trong khoảng ngày)</h3>
       <div class="muted">Nguồn: <span class="mono">shift_assignments</span></div>
       <div id="assignWrap"></div>
     </div>
