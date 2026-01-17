@@ -12,6 +12,7 @@ const btnRefresh = document.getElementById("btnRefresh");
 const statusEl = document.getElementById("status");
 const shortageWrap = document.getElementById("shortageWrap");
 const assignWrap = document.getElementById("assignWrap");
+const summaryWrap = document.getElementById("summaryWrap");
 
 // ===== Utils =====
 function setStatus(msg, type = "muted") {
@@ -68,8 +69,167 @@ function renderTable(container, rows, cols, title) {
   `;
 }
 
+function slotToCaVN(slot) {
+  const s = String(slot || "").toLowerCase();
+  if (s === "morning" || s === "sang") return "sáng";
+  if (s === "lunch" || s === "noon" || s === "trua") return "trưa";
+  if (s === "afternoon" || s === "chieu") return "chiều";
+  if (s === "evening" || s === "toi" || s === "night") return "tối";
+  return slot; // fallback
+}
+
+function caSortKey(caVN) {
+  // sắp xếp theo thứ tự: sáng -> trưa -> chiều -> tối
+  const c = String(caVN || "").toLowerCase();
+  if (c === "sáng") return 1;
+  if (c === "trưa") return 2;
+  if (c === "chiều") return 3;
+  if (c === "tối") return 4;
+  return 9;
+}
+
+function normalizeListStr(s) {
+  const raw = String(s || "").trim();
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function buildSummaryRows(shortageRows, assignmentRows) {
+  // index shortage by key
+  const shortageByKey = new Map();
+  for (const r of shortageRows || []) {
+    const key = `${r.ngay}__${r.coso}__${r.slot}`;
+    shortageByKey.set(key, r);
+  }
+
+  // group assignments
+  const group = new Map();
+  for (const a of assignmentRows || []) {
+    const key = `${a.ngay}__${a.coso}__${a.slot}`;
+    if (!group.has(key)) group.set(key, []);
+    group.get(key).push(a);
+  }
+
+  // union keys
+  const keys = new Set([...shortageByKey.keys(), ...group.keys()]);
+  const rows = [];
+
+  for (const key of keys) {
+    const [ngay, coso, slot] = key.split("__");
+    const s = shortageByKey.get(key);
+    const as = group.get(key) || [];
+    const ca = slotToCaVN(slot);
+
+    // required_count: ưu tiên từ view thiếu người; nếu không có thì coi như bằng số đã xếp
+    const assignedCount = as.length;
+    const requiredCount = Number.isFinite(Number(s?.required_count))
+      ? Number(s.required_count)
+      : assignedCount;
+
+    const thieu = Math.max(0, requiredCount - assignedCount);
+    const thua = Math.max(0, assignedCount - requiredCount);
+
+    // danh sách đã xếp
+    const daXepList = as
+      .slice()
+      .sort((x, y) => String(x.manv || "").localeCompare(String(y.manv || "")))
+      .map((x) => x.manv)
+      .filter(Boolean);
+
+    // gợi ý thêm: lấy từ view thiếu người
+    const goiYThem = s?.recommended_candidates || "";
+
+    // gợi ý bớt: nếu thừa thì đề xuất các NV có score thấp hơn
+    let goiYBot = "";
+    if (thua > 0) {
+      const candidates = as
+        .slice()
+        .sort((x, y) => {
+          const sx = Number(x.score ?? 0);
+          const sy = Number(y.score ?? 0);
+          return sx - sy; // thấp trước
+        })
+        .slice(0, thua)
+        .map((x) => x.manv)
+        .filter(Boolean);
+      goiYBot = candidates.join(", ");
+    }
+
+    rows.push({
+      ngay,
+      coso,
+      ca,
+      can: requiredCount,
+      dangky_cung: s?.assigned_count ?? "", // để đối chiếu nếu bạn cần
+      da_xep: assignedCount,
+      thieu,
+      thua,
+      da_xep_list: daXepList.join(", "),
+      goi_y_them: goiYThem,
+      goi_y_bot: goiYBot,
+    });
+  }
+
+  // sort: ngày -> cơ sở -> ca
+  rows.sort((a, b) => {
+    if (a.ngay !== b.ngay) return String(a.ngay).localeCompare(String(b.ngay));
+    if (a.coso !== b.coso) return String(a.coso).localeCompare(String(b.coso));
+    return caSortKey(a.ca) - caSortKey(b.ca);
+  });
+
+  return rows;
+}
+
+function renderSummaryTable(container, rows) {
+  if (!rows || rows.length === 0) {
+    container.innerHTML = `<div class="muted">Không có dữ liệu tổng hợp trong khoảng ngày đã chọn.</div>`;
+    return;
+  }
+
+  const cols = [
+    { key: "ngay", label: "ngày" },
+    { key: "coso", label: "cơ sở" },
+    { key: "ca", label: "ca" },
+    { key: "can", label: "cần" },
+    { key: "da_xep", label: "đã xếp" },
+    { key: "thieu", label: "thiếu" },
+    { key: "thua", label: "thừa" },
+    { key: "da_xep_list", label: "đã xếp (list)" },
+    { key: "goi_y_them", label: "gợi ý thêm" },
+    { key: "goi_y_bot", label: "gợi ý bớt" },
+  ];
+
+  const thead = cols.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("");
+  const tbody = rows
+    .map((r) => {
+      const tds = cols
+        .map((c) => {
+          const v = r[c.key];
+          if (c.key === "thieu" && Number(v) > 0) return `<td class="num-red">${escapeHtml(v)}</td>`;
+          if (c.key === "thua" && Number(v) > 0) return `<td class="num-blue">${escapeHtml(v)}</td>`;
+          return `<td>${escapeHtml(v)}</td>`;
+        })
+        .join("");
+      return `<tr>${tds}</tr>`;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div class="muted" style="margin-bottom:6px;">Tổng hợp: (${rows.length} dòng)</div>
+    <div style="overflow:auto;">
+      <table class="tbl">
+        <thead><tr>${thead}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 // ===== Data =====
-async function loadShortageSuggestions(fromISO, toISO) {
+async function loadShortageSuggestionsData(fromISO, toISO) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("v_shift_shortage_suggestions")
@@ -82,24 +242,10 @@ async function loadShortageSuggestions(fromISO, toISO) {
 
   if (error) throw error;
 
-  renderTable(
-    shortageWrap,
-    data,
-    [
-      { key: "ngay", label: "ngày" },
-      { key: "coso", label: "cơ sở" },
-      { key: "slot", label: "slot" },
-      { key: "required_count", label: "cần" },
-      { key: "assigned_count", label: "đã xếp" },
-      { key: "shortage", label: "thiếu" },
-      { key: "assigned_list", label: "đã xếp (list)" },
-      { key: "recommended_candidates", label: "gợi ý" },
-    ],
-    "1) Shift Shortage + Suggestions"
-  );
+  return data || [];
 }
 
-async function loadAssignments(fromISO, toISO) {
+async function loadAssignmentsData(fromISO, toISO) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("shift_assignments")
@@ -113,26 +259,63 @@ async function loadAssignments(fromISO, toISO) {
 
   if (error) throw error;
 
+  return data || [];
+}
+
+async function refreshAll(fromISO, toISO) {
+  setStatus("Đang tải dữ liệu...", "muted");
+
+  const [shortageRows, assignmentRows] = await Promise.all([
+    loadShortageSuggestionsData(fromISO, toISO),
+    loadAssignmentsData(fromISO, toISO),
+  ]);
+
+  // 1) Tổng hợp theo ngày
+  const summaryRows = buildSummaryRows(shortageRows, assignmentRows);
+  renderSummaryTable(summaryWrap, summaryRows);
+
+  // 2) Chi tiết thiếu người (để đối chiếu)
+  const shortageDisplayRows = (shortageRows || []).map((r) => ({
+    ...r,
+    ca: slotToCaVN(r.slot),
+  }));
   renderTable(
-    assignWrap,
-    data,
+    shortageWrap,
+    shortageDisplayRows,
     [
       { key: "ngay", label: "ngày" },
       { key: "coso", label: "cơ sở" },
-      { key: "slot", label: "slot" },
+      { key: "ca", label: "ca" },
+      { key: "required_count", label: "cần" },
+      { key: "assigned_count", label: "đã xếp" },
+      { key: "shortage", label: "thiếu" },
+      { key: "assigned_list", label: "đã xếp (list)" },
+      { key: "recommended_candidates", label: "gợi ý" },
+    ],
+    "Thiếu người theo ca"
+  );
+
+  // 3) Chi tiết đã xếp
+  const assignmentDisplayRows = (assignmentRows || []).map((r) => ({
+    ...r,
+    ca: slotToCaVN(r.slot),
+  }));
+  renderTable(
+    assignWrap,
+    assignmentDisplayRows,
+    [
+      { key: "ngay", label: "ngày" },
+      { key: "coso", label: "cơ sở" },
+      { key: "ca", label: "ca" },
       { key: "manv", label: "mã NV" },
       { key: "source_used", label: "nguồn" },
       { key: "score", label: "điểm" },
       { key: "reason", label: "ghi chú" },
       { key: "created_at", label: "tạo lúc" },
     ],
-    "2) Shift Assignments (trong khoảng ngày)"
+    "Danh sách phân ca chi tiết"
   );
-}
 
-async function refreshAll(fromISO, toISO) {
-  setStatus("Đang tải dữ liệu...", "muted");
-  await Promise.all([loadShortageSuggestions(fromISO, toISO), loadAssignments(fromISO, toISO)]);
   setStatus("Đã tải xong.", "ok");
 }
 
@@ -206,3 +389,4 @@ khoiTaoDangNhapDungChung({
     setStatus("Đã đăng xuất.", "muted");
   },
 });
+
