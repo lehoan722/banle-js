@@ -131,6 +131,13 @@ const CCN_CTX = buildCCNCtxFromPathname();
 
 // luuhoadon.js
 
+const manv = document.getElementById("manv")?.value || localStorage.getItem("manv");
+
+if (!manv || manv === "ADMIN") {
+  alert("❌ Lỗi xác định nhân viên. Vui lòng đăng nhập lại.");
+  return;
+}
+
 
 export async function luuHoaDonQuaAPI() {
     capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
