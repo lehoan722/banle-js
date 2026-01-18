@@ -369,8 +369,17 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     }
 
     // Load profile admin
-    let manvAdmin = "ADMIN";
-    let tenAdmin = "ADMIN";
+    let manvAdmin = prof?.manv ? String(prof.manv).toUpperCase() : null;
+
+    if (!manvAdmin) {
+      alert("⚠️ Admin chưa được gán mã nhân viên (manv) trong hệ thống.");
+      await supabase.auth.signOut();
+      return;
+    }
+
+    localStorage.setItem("manv", manvAdmin);
+    localStorage.setItem("is_admin", "true");
+
 
     try {
       const uid = signInData?.user?.id || signInData?.session?.user?.id;
@@ -534,17 +543,23 @@ export function khoiTaoDangNhapDungChung(options = {}) {
                 throw new Error("Tài khoản admin đang bị khóa");
               }
 
-              const manvAdmin = String(prof.manv || "ADMIN").trim().toUpperCase();
-              const tenAdmin = String(prof.tenadmin || manvAdmin).trim();
+              let manvAdmin = prof?.manv ? String(prof.manv).toUpperCase() : null;
+
+              // nếu không lấy được manv từ admin_users → KHÔNG fallback ADMIN
+              if (!manvAdmin) {
+                const oldManv = localStorage.getItem("manv");
+                if (oldManv && oldManv !== "ADMIN") {
+                  manvAdmin = oldManv;
+                } else {
+                  alert("⚠️ Tài khoản admin chưa cấu hình mã nhân viên (manv). Vui lòng liên hệ quản trị.");
+                  await supabase.auth.signOut();
+                  return;
+                }
+              }
 
               localStorage.setItem("manv", manvAdmin);
-              localStorage.setItem("tennv", tenAdmin);
-              localStorage.setItem("quyen_sua_hoadon", "true");
               localStorage.setItem("is_admin", "true");
-            } else {
-              // Không ép ADMIN bừa: giữ nguyên manv/tennv hiện có nếu có
-              localStorage.setItem("quyen_sua_hoadon", "true");
-              localStorage.setItem("is_admin", "true");
+
             }
           }
         } catch (e) {
