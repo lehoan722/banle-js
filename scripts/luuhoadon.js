@@ -147,6 +147,18 @@ export async function luuHoaDonQuaAPI() {
     if (!sohd) return alert("❌ Chưa có số hóa đơn.");
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+    // =========================
+    // GUARD: CHẶN manv KHÔNG HỢP LỆ (ADMIN / rỗng)
+    // =========================
+    const manvGuard =
+        document.getElementById("manv")?.value?.trim() ||
+        localStorage.getItem("manv");
+
+    if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
+        alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
+        console.error("GUARD BLOCKED SAVE – manv =", manvGuard);
+        return;
+    }
 
     // ✅ trạng thái UI: "moi" | "xem"
     const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
@@ -769,6 +781,18 @@ export async function luuHoaDonCaHaiBan() {
 
     const tennv = document.getElementById("tennv").value.trim();
     if (!tennv) return alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+    // =========================
+    // GUARD: CHẶN manv KHÔNG HỢP LỆ (ADMIN / rỗng)
+    // =========================
+    const manvGuard =
+        document.getElementById("manv")?.value?.trim() ||
+        localStorage.getItem("manv");
+
+    if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
+        alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
+        console.error("GUARD BLOCKED SAVE – manv =", manvGuard);
+        return;
+    }
 
     // Lấy địa điểm từ localStorage (không lấy từ input)
     //const diadiem = localStorage.getItem("diadiem");
