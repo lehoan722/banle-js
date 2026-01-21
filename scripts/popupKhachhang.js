@@ -232,17 +232,21 @@ async function loadListKH(keyword = '') {
   });
 }
 
+
 // ===== Public API =====
-export function showPopupTimKH(onSelect) {
+export function showPopupTimKH(onSelect, initialQuery = '') {
   currentOnSelect = onSelect || null;
   ensurePopupDom();
   const popup = document.getElementById('popupTimKH');
   const txt = document.getElementById('txtSearchKH');
 
   if (popup) popup.style.display = 'flex';
-  if (txt) txt.value = '';
 
-  // load lần đầu (hiển thị 200 KH đầu)
-  loadListKH('');
+  const q = (initialQuery || '').trim();
+  if (txt) txt.value = q;
+
+  // load lần đầu (nếu có q thì load theo q, không thì 200 KH đầu)
+  loadListKH(q);
   if (txt) txt.focus();
 }
+
