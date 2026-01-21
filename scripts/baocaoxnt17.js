@@ -957,18 +957,6 @@ function getMaspAtVisualRow(r) {
 }
 
 
-
-/* ===== LOAD & PAGINATION ===== */
-async function taiBaoCao() {
-    const p = buildParams(currentPage);
-    totalRows = await fetchCount(p);
-    const rows = await fetchPaged(p);
-    renderTable(rows);
-    showPreviewForRow(0);
-    updatePaging();
-};
-
-
 // === ở cuối file hoặc gần các hàm button ===
 // Gom tất cả dữ liệu theo filter hiện tại rồi mở trang chuyển kho
 window.moTrangChuyenKho = async () => {
