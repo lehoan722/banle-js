@@ -1351,41 +1351,24 @@
           // nếu module popup không tồn tại thì bỏ qua
         }
 
-        // Gắn popup tìm KHÁCH HÀNG (chỉ admin) - giống cách mã sản phẩm
+        // Gắn dropdown gợi ý KHÁCH HÀNG (giống cách mã sản phẩm)
         try {
-          const { showPopupTimKH } = await import('./scripts/popupKhachhang.js');
+          const { attachKhachPopup } = await import('./scripts/popupKhachhang.js');
           const elKh = document.getElementById('locKhach');
 
           if (elKh) {
-            const openKH = () => {
-              const current = (elKh.value || '').trim();
-              showPopupTimKH((makh, tenkh) => {
-                // Ưu tiên set MAK H để filter chính xác
-                elKh.value = (makh || '').trim();
-                // Lưu thêm tên để bạn hover thấy, không ảnh hưởng filter
-                elKh.title = tenkh || '';
-                elKh.dataset.tenkh = tenkh || '';
-
-                // nếu bạn muốn chọn xong là tự load luôn:
+            attachKhachPopup({
+              supabase: window.supabase,
+              khInput: elKh,
+              onPick: (kh) => {
+                // chọn xong tự load luôn (giống bạn đang làm)
                 taiDanhSachHoaDon();
-              }, current);
-            };
-
-            // Mở popup khi double click
-            elKh.addEventListener('dblclick', openKH);
-
-            // Mở popup khi nhấn F4 (giống thao tác nhanh)
-            elKh.addEventListener('keydown', (e) => {
-              if (e.key === 'F4') {
-                e.preventDefault();
-                openKH();
               }
             });
           }
         } catch (e) {
-          // nếu module popup không tồn tại thì bỏ qua
+          // nếu module không tồn tại thì bỏ qua
         }
-
         await taiDanhSachHoaDon();
         return true;
       }
