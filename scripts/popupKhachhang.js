@@ -250,3 +250,160 @@ export function showPopupTimKH(onSelect, initialQuery = '') {
   if (txt) txt.focus();
 }
 
+// ===== INLINE DROPDOWN: GỢI Ý KHÁCH HÀNG NGAY TRONG Ô INPUT (giống attachMaspPopup) =====
+export function attachKhachPopup({
+  supabase: sb,          // truyền window.supabase vào để đồng bộ theo login
+  khInput,               // input #locKhach
+  onPick,                // callback (kh) => {}
+  limit = 50,
+  minChars = 1,
+  debounceMs = 120
+}) {
+  if (!sb || !khInput) throw new Error('Thiếu supabase hoặc khInput');
+
+  const popup = document.createElement('div');
+  popup.style.position = 'fixed';
+  popup.style.zIndex = '9999';
+  popup.style.background = 'white';
+  popup.style.border = '1px solid #ddd';
+  popup.style.maxHeight = '270px';
+  popup.style.overflowY = 'auto';
+  popup.style.display = 'none';
+  popup.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+  popup.style.fontSize = '13px';
+  document.body.appendChild(popup);
+
+  function positionPopup() {
+    const rect = khInput.getBoundingClientRect();
+    popup.style.top = rect.bottom + 'px';
+    popup.style.left = rect.left + 'px';
+    popup.style.width = rect.width + 'px';
+  }
+
+  let disposed = false;
+  let tmr = null;
+
+  async function fetchKhByKeyword(keyword) {
+    const q = (keyword || '').trim();
+    if (!q) return [];
+
+    // escape % và , giống code modal của bạn
+    const qq = q.replace(/%/g, '\\%').replace(/,/g, '\\,');
+
+    const { data, error } = await sb
+      .from('dmkhachhang')
+      .select('makh, tenkh, dienthoai')
+      .or(`makh.ilike.%${qq}%,tenkh.ilike.%${qq}%,dienthoai.ilike.%${qq}%`)
+      .order('makh', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('[attachKhachPopup] Lỗi đọc dmkhachhang:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  function renderPopup(rows) {
+    const head =
+      '<table style="width:100%;border-collapse:collapse">' +
+      '<tr>' +
+      '<th style="text-align:left;border-bottom:1px solid #eee;padding:2px 5px;width:110px">Mã KH</th>' +
+      '<th style="text-align:left;border-bottom:1px solid #eee;padding:2px 5px">Tên khách</th>' +
+      '<th style="text-align:left;border-bottom:1px solid #eee;padding:2px 5px;width:110px">SĐT</th>' +
+      '</tr>';
+
+    const body = rows.map(r => `
+      <tr data-makh="${(r.makh || '').replace(/"/g, '&quot;')}"
+          data-tenkh="${(r.tenkh || '').replace(/"/g, '&quot;')}"
+          data-dt="${(r.dienthoai || '').replace(/"/g, '&quot;')}"
+          style="cursor:pointer">
+        <td style="padding:2px 5px;border-bottom:1px solid #f3f4f6">${r.makh || ''}</td>
+        <td style="padding:2px 5px;border-bottom:1px solid #f3f4f6">${r.tenkh || ''}</td>
+        <td style="padding:2px 5px;border-bottom:1px solid #f3f4f6">${r.dienthoai || ''}</td>
+      </tr>
+    `).join('');
+
+    popup.innerHTML = head + body + '</table>';
+    popup.style.display = 'block';
+    positionPopup();
+
+    popup.querySelectorAll('tr[data-makh]').forEach(tr => {
+      tr.onclick = () => {
+        const kh = {
+          makh: tr.dataset.makh || '',
+          tenkh: tr.dataset.tenkh || '',
+          dienthoai: tr.dataset.dt || ''
+        };
+
+        // đổ MAK H để filter chuẩn
+        khInput.value = (kh.makh || '').trim();
+
+        // lưu tên để hover xem nhanh (không ảnh hưởng filter)
+        khInput.title = kh.tenkh || '';
+        khInput.dataset.tenkh = kh.tenkh || '';
+
+        popup.style.display = 'none';
+        onPick && onPick(kh);
+      };
+    });
+  }
+
+  async function onTypeNow() {
+    if (disposed) return;
+
+    const val = (khInput.value || '').trim();
+    if (!val || val.length < minChars) {
+      popup.style.display = 'none';
+      popup.innerHTML = '';
+      return;
+    }
+
+    const rows = await fetchKhByKeyword(val);
+    if (!rows || rows.length === 0) {
+      popup.style.display = 'none';
+      popup.innerHTML = '';
+      return;
+    }
+    renderPopup(rows);
+  }
+
+  function onTypeDebounced() {
+    if (tmr) clearTimeout(tmr);
+    tmr = setTimeout(onTypeNow, debounceMs);
+  }
+
+  // Ẩn khi click ra ngoài
+  function onDocMouseDown(e) {
+    if (!popup.contains(e.target) && e.target !== khInput) {
+      popup.style.display = 'none';
+    }
+  }
+
+  const onResize = () => positionPopup();
+  const onScroll = () => positionPopup();
+  const onFocus = () => {
+    if (popup.innerHTML.trim() !== '') {
+      popup.style.display = 'block';
+      positionPopup();
+    }
+  };
+
+  khInput.addEventListener('input', onTypeDebounced);
+  document.addEventListener('mousedown', onDocMouseDown);
+  window.addEventListener('resize', onResize);
+  window.addEventListener('scroll', onScroll);
+  khInput.addEventListener('focus', onFocus);
+
+  return function cleanup() {
+    disposed = true;
+    if (tmr) clearTimeout(tmr);
+    khInput.removeEventListener('input', onTypeDebounced);
+    document.removeEventListener('mousedown', onDocMouseDown);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('scroll', onScroll);
+    khInput.removeEventListener('focus', onFocus);
+    popup.remove();
+  };
+}
+
