@@ -376,10 +376,7 @@ window.taiBaoCaoXNT = async function () {
         totalRows = await fetchCount(params);
 
         // Lấy dữ liệu trang hiện tại
-        let rows = await fetchPaged(params);
-        // ❌ LOẠI DÒNG RỖNG ĐẦU TIÊN (FIX LỆCH DÒNG)
-        rows = (rows || []).filter(r => r && r.masp && String(r.masp).trim() !== "");
-
+        const rows = await fetchPaged(params);
         // Lấy danh sách mã theo thứ tự trang hiện tại rồi render ảnh
         const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
         renderPreviewForMasps(masps);
@@ -790,7 +787,7 @@ window.moTrangAnh = function () {
     // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
     sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
 
-    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới 
+    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới
     window.open("xemanhxnt14.html", "_blank");
 };
 
@@ -807,7 +804,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
     const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = true;
+    if (cb) cb.checked = false;
 
     // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
     try {
