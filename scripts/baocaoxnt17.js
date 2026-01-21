@@ -353,13 +353,13 @@ async function fetchCount(params) {
     return data;
 }
 
-
-
 async function fetchPaged(params) {
     const fn = "baocaoxnt17_paged";
     const { data, error } = await supabase.rpc(fn, params);
     if (error) throw error;
-    return data || [];
+
+    // ✅ FIX: loại mọi dòng rỗng (masp null/""), tránh lệch dòng toàn bảng
+    return (data || []).filter(r => r && r.masp && String(r.masp).trim() !== "");
 }
 
 
@@ -787,7 +787,7 @@ window.moTrangAnh = function () {
     // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
     sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
 
-    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới
+    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới 
     window.open("xemanhxnt14.html", "_blank");
 };
 
@@ -804,7 +804,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
     const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = false;
+    if (cb) cb.checked = true;
 
     // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
     try {
@@ -966,23 +966,8 @@ async function taiBaoCao() {
     renderTable(rows);
     showPreviewForRow(0);
     updatePaging();
-}
-function updatePaging() {
-    const psEl = document.getElementById("pageSize");
-    pageSize = Number(psEl?.value || pageSize || 1000);
-    const totalPages = Math.max(1, Math.ceil((totalRows || 0) / pageSize));
-    document.getElementById("pageInfo").textContent =
-        `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
-    document.getElementById("btnPrev").disabled = currentPage <= 1;
-    document.getElementById("btnNext").disabled = currentPage >= totalPages;
-}
-window.prevPage = async () => { if (currentPage > 1) { currentPage--; await taiBaoCao(); } };
-window.nextPage = async () => { const max = Math.max(1, Math.ceil(totalRows / pageSize)); if (currentPage < max) { currentPage++; await taiBaoCao(); } };
-window.gotoPage = async () => {
-    const n = Number(document.getElementById("gotoPage").value || "1");
-    const max = Math.max(1, Math.ceil(totalRows / pageSize));
-    if (n >= 1 && n <= max) { currentPage = n; await taiBaoCao(); }
 };
+
 
 // === ở cuối file hoặc gần các hàm button ===
 // Gom tất cả dữ liệu theo filter hiện tại rồi mở trang chuyển kho
