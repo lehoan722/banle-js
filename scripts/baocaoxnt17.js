@@ -376,7 +376,10 @@ window.taiBaoCaoXNT = async function () {
         totalRows = await fetchCount(params);
 
         // Lấy dữ liệu trang hiện tại
-        const rows = await fetchPaged(params);
+        let rows = await fetchPaged(params);
+        // ❌ LOẠI DÒNG RỖNG ĐẦU TIÊN (FIX LỆCH DÒNG)
+        rows = (rows || []).filter(r => r && r.masp && String(r.masp).trim() !== "");
+
         // Lấy danh sách mã theo thứ tự trang hiện tại rồi render ảnh
         const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
         renderPreviewForMasps(masps);
