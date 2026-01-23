@@ -39,8 +39,7 @@
     font-size: 20px;
     line-height: 1.35;
     z-index: 9999;
-    display: none;
-    overflow: hidden;
+    display: none;    
     top: 8px;
     right: 8px;
     left: auto;
