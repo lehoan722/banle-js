@@ -429,7 +429,7 @@
 </head>
 
 <body>
-
+  <div id="app-container">
 
   <div class="filters-row">
     <div class="filters-left">
@@ -794,37 +794,34 @@
       // Tự động chạy báo cáo sau 250ms
       setTimeout(() => {
         if (window.taiBaoCaoXNT) {
+          if (window.enableBaoCaoRun) window.enableBaoCaoRun();
           window.taiBaoCaoXNT();
         }
       }, 250);
     });
   </script>
 
-  <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
+  </div>
+
+  <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN cho bantheosize (chạy độc lập như XNT17) -->
   <script type="module">
     import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
     khoiTaoDangNhapDungChung({
-      // id bọc toàn bộ app – sửa đúng theo trang của bạn:
-      appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
-
+      appContainerId: "app-container",
       macDinhDiaDiem: "",
       tuDongKhoaCoSo: false,
-      loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
+      loginApiPath: "/api/login-cs1",
 
       async onLoginSuccess(nv, ctx) {
-        // 1. Kiểm tra quyền xem trang theo bảng nv_page
-        if (window.kiemTraQuyenXemTrang) {
-          const ok = await window.kiemTraQuyenXemTrang("baocaoxnt17.html");
-          if (!ok) {
-            // hienCamTruyCap đã hiển thị lý do, nên chỉ return
-            return;
-          }
-        }
+        // Cho phép chạy báo cáo sau khi đăng nhập (bỏ chặn auto-run)
+        if (window.enableBaoCaoRun) window.enableBaoCaoRun();
 
-        // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
-        if (window.taiBaoCaoXNT) {
-          await window.taiBaoCaoXNT();
+        // Nếu vào từ trang tìm tương đồng (mode=similar) thì tự chạy lại như cũ
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("mode") === "similar" && window.taiBaoCaoXNT) {
+          // đợi module bantheosize.js gắn hàm lên window
+          setTimeout(() => window.taiBaoCaoXNT(), 150);
         }
       },
     });
