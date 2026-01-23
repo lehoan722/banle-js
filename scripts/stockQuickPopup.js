@@ -39,7 +39,8 @@
     font-size: 20px;
     line-height: 1.35;
     z-index: 9999;
-    display: none;    
+    display: none;
+    overflow: visible;
     top: 8px;
     right: 8px;
     left: auto;
@@ -68,6 +69,7 @@
     width: 100%;
     border-collapse: collapse;
     table-layout: auto;
+   
   }
 
   .sq-stock-popup th,
@@ -186,7 +188,7 @@
     max-height: 90vh;
 
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: visible;
 
     /* giữ cố định góc trên phải */
     top: 6px;
