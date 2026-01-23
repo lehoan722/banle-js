@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Báo cáo XNT17</title>
+    <title>bantheosize</title>
     <!-- Liên kết Supabase và JS mới -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
@@ -797,6 +797,36 @@
           window.taiBaoCaoXNT();
         }
       }, 250);
+    });
+  </script>
+
+  <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+    khoiTaoDangNhapDungChung({
+      // id bọc toàn bộ app – sửa đúng theo trang của bạn:
+      appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
+
+      macDinhDiaDiem: "",
+      tuDongKhoaCoSo: false,
+      loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
+
+      async onLoginSuccess(nv, ctx) {
+        // 1. Kiểm tra quyền xem trang theo bảng nv_page
+        if (window.kiemTraQuyenXemTrang) {
+          const ok = await window.kiemTraQuyenXemTrang("baocaoxnt17.html");
+          if (!ok) {
+            // hienCamTruyCap đã hiển thị lý do, nên chỉ return
+            return;
+          }
+        }
+
+        // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
+        if (window.taiBaoCaoXNT) {
+          await window.taiBaoCaoXNT();
+        }
+      },
     });
   </script>
 
