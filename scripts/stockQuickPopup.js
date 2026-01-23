@@ -58,10 +58,12 @@
     gap: 8px;
   }
 
-  .sq-stock-table-wrapper {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+  .sq-stock-table-wrapper{
+  overflow: auto;                 /* bật cuộn dọc + ngang */
+  -webkit-overflow-scrolling: touch; /* iOS cuộn mượt */
+  max-height: 60vh;               /* giới hạn chiều cao để cuộn dọc xuất hiện */
+  touch-action: pan-x pan-y;      /* giúp kéo ngang/dọc dễ hơn trên mobile */
+}
 
   .sq-stock-popup table {
     width: 100%;
