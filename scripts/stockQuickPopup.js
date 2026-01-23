@@ -352,6 +352,8 @@
           ton_cs2: Number(r.ton_cs2 || 0),
           ban_cs1: Number(r.ban_cs1 || 0),
           ban_cs2: Number(r.ban_cs2 || 0),
+          tong_nhap: Number(r.tong_nhap || 0),
+          tong_ton: Number(r.tong_ton || 0),
         }));
       } else if (error) {
         console.warn("xntnhanh error:", error);
@@ -394,7 +396,9 @@
     let sum1 = 0,
       sum2 = 0,
       sumBan1 = 0,
-      sumBan2 = 0;
+      sumBan2 = 0,
+      sumNhap = 0,
+      sumTongTon = 0;
 
     // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
     const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
@@ -419,6 +423,8 @@
           ton_cs2: 0,
           ban_cs1: 0,
           ban_cs2: 0,
+          tong_nhap: 0,
+          tong_ton: 0,
         };
 
         const sizeLabel = displaySizeLabel(r.size);
@@ -428,6 +434,8 @@
         sum2 += Number(r.ton_cs2 || 0);
         sumBan1 += Number(r.ban_cs1 || 0);
         sumBan2 += Number(r.ban_cs2 || 0);
+        sumNhap += Number(r.tong_nhap || 0);
+        sumTongTon += Number(r.tong_ton || 0);
 
         return `
         <tr>
@@ -436,6 +444,8 @@
           <td class="num">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
           <td class="num">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
+          <td class="num sq-red">${r.tong_nhap ? r.tong_nhap : ""}</td>
+          <td class="num sq-red">${r.tong_ton ? r.tong_ton : ""}</td>
         </tr>`;
       })
       .join("");
@@ -450,6 +460,8 @@
         <td class="num">${sum2 || ""}</td>
         <td class="num">${sumBan1 || ""}</td>
         <td class="num">${sumBan2 || ""}</td>
+        <td class="num sq-red">${sumNhap || ""}</td>
+        <td class="num sq-red">${sumTongTon || ""}</td>
       </tr>`
       : "";
 
@@ -460,7 +472,7 @@
     const vitriRow = vitriParts.length
       ? `
       <tr class="sq-vitri-row">
-        <td colspan="5">Vị trí: ${vitriParts.join(" , ")}</td>
+        <td colspan="7">Vị trí: ${vitriParts.join(" , ")}</td>
       </tr>`
       : "";
 
@@ -490,6 +502,8 @@
                   <th>CS2</th>
                   <th>Bán CS1</th>
                   <th>Bán CS2</th>
+                  <th class="sq-red">Tổng nhập</th>
+                  <th class="sq-red">Tổng tồn</th>
                 </tr>
               </thead>
               <tbody>
