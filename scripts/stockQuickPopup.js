@@ -1,5 +1,5 @@
 // stockQuickPopup.js
-// Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xnt17_tonban_snapshot
+// Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xntnhanh
 // LƯU Ý: supabase phải được tạo global ở nơi khác (authModule.js / supabaseClient.js)
 
 (function () {
@@ -310,7 +310,7 @@
     return new Date().toISOString().slice(0, 10);
   }
 
-  // ===== Gọi RPC xnt17_tonban_snapshot + lấy vị trí kho =====
+  // ===== Gọi RPC xntnhanh + lấy vị trí kho =====
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) {
@@ -318,7 +318,7 @@
     }
 
     const denNgay = getDenNgay();
-    console.log("[StockQuickPopup] Gọi xnt17_tonban_snapshot", { masp, denNgay });
+    console.log("[StockQuickPopup] Gọi xntnhanh", { masp, denNgay });
 
     let rows = [];
     let vitri_cs1 = "";
@@ -332,7 +332,7 @@
 
     try {
       const [snapRes, vitriRes] = await Promise.all([
-        client.rpc("xnt17_tonban_snapshot", {
+        client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
           p_tonghop_size: false,
@@ -354,7 +354,7 @@
           ban_cs2: Number(r.ban_cs2 || 0),
         }));
       } else if (error) {
-        console.warn("xnt17_tonban_snapshot error:", error);
+        console.warn("xntnhanh error:", error);
       }
 
       const { data: vitriData, error: vitriErr } = vitriRes || {};
