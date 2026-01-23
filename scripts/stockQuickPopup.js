@@ -500,10 +500,10 @@
                   <th>Size</th>
                   <th>CS1</th>
                   <th>CS2</th>
-                  <th>Bán CS1</th>
-                  <th>Bán CS2</th>
-                  <th class="sq-red">Tổng nhập</th>
-                  <th class="sq-red">Tổng tồn</th>
+                  <th>B CS1</th>
+                  <th>B CS2</th>
+                  <th class="sq-red">T nhập</th>
+                  <th class="sq-red">T tồn</th>
                 </tr>
               </thead>
               <tbody>
