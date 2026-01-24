@@ -40,12 +40,15 @@
     line-height: 1.35;
     z-index: 9999;
     display: none;
-    overflow: hidden;
+    overflow: visible;
     top: 8px;
     right: 8px;
     left: auto;
     transform: none;
   }
+
+  .sq-red { color:#dc2626; font-weight:700; }
+.sq-blue { color:#2563eb; font-weight:700; }
 
   .sq-stock-popup.show {
     display: block;
@@ -58,15 +61,18 @@
     gap: 8px;
   }
 
-  .sq-stock-table-wrapper {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+  .sq-stock-table-wrapper{
+  overflow: auto;                 /* bật cuộn dọc + ngang */
+  -webkit-overflow-scrolling: touch; /* iOS cuộn mượt */
+  max-height: 70vh;               /* giới hạn chiều cao để cuộn dọc xuất hiện */
+  touch-action: pan-x pan-y;      /* giúp kéo ngang/dọc dễ hơn trên mobile */
+}
 
   .sq-stock-popup table {
     width: 100%;
     border-collapse: collapse;
     table-layout: auto;
+   
   }
 
   .sq-stock-popup th,
@@ -185,7 +191,7 @@
     max-height: 90vh;
 
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: visible;
 
     /* giữ cố định góc trên phải */
     top: 6px;
@@ -314,7 +320,7 @@
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) {
-      return { masp: "", rows: [], vitri_cs1: "", vitri_cs2: "" };
+      return { masp: "", rows: [], vitri_cs1: "", vitri_cs2: "", nhap_dau_ma: "", nhap_cuoi_ma: "" };
     }
 
     const denNgay = getDenNgay();
@@ -323,11 +329,13 @@
     let rows = [];
     let vitri_cs1 = "";
     let vitri_cs2 = "";
+    let nhap_dau_ma = "";
+    let nhap_cuoi_ma = "";
 
     const client = getSupabaseClient();
     if (!client) {
       // Không có client → không crash, chỉ trả về rỗng
-      return { masp, rows, vitri_cs1, vitri_cs2 };
+      return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
     }
 
     try {
@@ -345,14 +353,27 @@
 
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
-        rows = data.map((r) => ({
-          masp: String(r.masp || "").toUpperCase(),
-          size: normalizeSize(r.size),
-          ton_cs1: Number(r.ton_cs1 || 0),
-          ton_cs2: Number(r.ton_cs2 || 0),
-          ban_cs1: Number(r.ban_cs1 || 0),
-          ban_cs2: Number(r.ban_cs2 || 0),
-        }));
+        // lấy ngày nhập đầu/cuối (ddmmyy) từ RPC xntnhanh
+        nhap_dau_ma = String(data[0].nhap_dau_ma || "").trim();
+        nhap_cuoi_ma = String(data[0].nhap_cuoi_ma || "").trim();
+
+        rows = data.map((r) => {
+          const ban1 = Number(r.ban_cs1 || 0);
+          const ban2 = Number(r.ban_cs2 || 0);
+
+          return {
+            masp: String(r.masp || "").toUpperCase(),
+            size: normalizeSize(r.size),
+            ton_cs1: Number(r.ton_cs1 || 0),
+            ton_cs2: Number(r.ton_cs2 || 0),
+            ban_cs1: ban1,
+            ban_cs2: ban2,
+            tong_ban: ban1 + ban2,                 // ✅ THÊM
+            tong_nhap: Number(r.tong_nhap || 0),
+            tong_ton: Number(r.tong_ton || 0),
+          };
+        });
+
       } else if (error) {
         console.warn("xntnhanh error:", error);
       }
@@ -368,7 +389,7 @@
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
 
-    return { masp, rows, vitri_cs1, vitri_cs2 };
+    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
   }
 
   // ===== HTML popup =====
@@ -382,6 +403,9 @@
     const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : "";
     const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : "";
 
+    const nhap_dau_ma = payload && payload.nhap_dau_ma ? String(payload.nhap_dau_ma).trim() : "";
+    const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
+
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
       return `
         <div class="sq-stock-popup" data-masp="${upper}">
@@ -394,7 +418,10 @@
     let sum1 = 0,
       sum2 = 0,
       sumBan1 = 0,
-      sumBan2 = 0;
+      sumBan2 = 0,
+      sumNhap = 0,
+      sumTongBan = 0,     // ✅ THÊM
+      sumTongTon = 0;
 
     // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
     const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
@@ -419,6 +446,9 @@
           ton_cs2: 0,
           ban_cs1: 0,
           ban_cs2: 0,
+          tong_ban: 0,        // ✅ THÊM
+          tong_nhap: 0,
+          tong_ton: 0,
         };
 
         const sizeLabel = displaySizeLabel(r.size);
@@ -428,6 +458,12 @@
         sum2 += Number(r.ton_cs2 || 0);
         sumBan1 += Number(r.ban_cs1 || 0);
         sumBan2 += Number(r.ban_cs2 || 0);
+        sumNhap += Number(r.tong_nhap || 0);
+        sumTongBan += Number(r.tong_ban || 0);   // ✅ THÊM
+
+        const tonTong = Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0);
+        sumTongTon += tonTong;
+
 
         return `
         <tr>
@@ -436,6 +472,10 @@
           <td class="num">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
           <td class="num">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
+          <td class="num sq-blue">${r.tong_nhap ? r.tong_nhap : ""}</td>
+          <td class="num">${r.tong_ban ? r.tong_ban : ""}</td>          <!-- ✅ THÊM -->
+          <td class="num sq-red">${tonTong ? tonTong : ""}</td>
+
         </tr>`;
       })
       .join("");
@@ -450,6 +490,10 @@
         <td class="num">${sum2 || ""}</td>
         <td class="num">${sumBan1 || ""}</td>
         <td class="num">${sumBan2 || ""}</td>
+        <td class="num sq-blue">${sumNhap || ""}</td>
+        <td class="num">${sumTongBan || ""}</td>       <!-- ✅ THÊM -->
+        <td class="num sq-red">${sumTongTon || ""}</td>
+
       </tr>`
       : "";
 
@@ -460,7 +504,7 @@
     const vitriRow = vitriParts.length
       ? `
       <tr class="sq-vitri-row">
-        <td colspan="5">Vị trí: ${vitriParts.join(" , ")}</td>
+        <td colspan="8">Vị trí: ${vitriParts.join(" , ")}</td>
       </tr>`
       : "";
 
@@ -476,7 +520,7 @@
       <div class="sq-stock-popup" data-masp="${upper}">
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
-  <span class="sq-title-text">Mã: ${upper} – bán/tồn đến ${getDenNgay()}</span>
+  <span class="sq-title-text">Mã: ${upper} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}</span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
 </div>
 
@@ -486,10 +530,14 @@
               <thead>
                 <tr>
                   <th>Size</th>
-                  <th>CS1</th>
-                  <th>CS2</th>
-                  <th>Bán CS1</th>
-                  <th>Bán CS2</th>
+                  <th>T1</th>
+                  <th>T2</th>
+                  <th>B1</th>
+                  <th>B2</th>
+                  <th class="sq-blue">Tnhập</th>
+                  <th>Tban</th>                 <!-- ✅ THÊM -->
+                  <th class="sq-red">Ttồn</th>
+
                 </tr>
               </thead>
               <tbody>
@@ -816,5 +864,7 @@
     };
   }
 })();
+
+
 
 
