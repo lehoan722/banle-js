@@ -47,6 +47,9 @@
     transform: none;
   }
 
+  .sq-red { color:#dc2626; font-weight:700; }
+.sq-blue { color:#2563eb; font-weight:700; }
+
   .sq-stock-popup.show {
     display: block;
   }
@@ -851,7 +854,6 @@
     };
   }
 })();
-
 
 
 
