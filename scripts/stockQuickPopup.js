@@ -64,7 +64,7 @@
   .sq-stock-table-wrapper{
   overflow: auto;                 /* bật cuộn dọc + ngang */
   -webkit-overflow-scrolling: touch; /* iOS cuộn mượt */
-  max-height: 60vh;               /* giới hạn chiều cao để cuộn dọc xuất hiện */
+  max-height: 70vh;               /* giới hạn chiều cao để cuộn dọc xuất hiện */
   touch-action: pan-x pan-y;      /* giúp kéo ngang/dọc dễ hơn trên mobile */
 }
 
