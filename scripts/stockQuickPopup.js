@@ -517,10 +517,10 @@
               <thead>
                 <tr>
                   <th>Size</th>
-                  <th>TCS1</th>
-                  <th>TCS2</th>
-                  <th>BCS1</th>
-                  <th>BCS2</th>
+                  <th>T1</th>
+                  <th>T2</th>
+                  <th>B1</th>
+                  <th>B2</th>
                   <th class="sq-blue">Tnhập</th>
                   <th>Tban</th>                 <!-- ✅ THÊM -->
                   <th class="sq-red">Ttồn</th>
@@ -851,6 +851,7 @@
     };
   }
 })();
+
 
 
 
