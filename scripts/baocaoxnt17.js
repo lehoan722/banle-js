@@ -2,6 +2,8 @@
 // scripts/baocaoxnt17.js
 import { supabase } from "./supabaseClient.js";
 import * as authModule from "./authModule.js";
+// THÊM DÒNG NÀY (quan trọng), đảm bảo popup chạy được trên mọi trang kiểu module.
+window.supabase = supabase;
 
 
 let hotInstance;
@@ -283,8 +285,13 @@ function renderTable(rows) {
             afterRender() {
                 // nothing
             },
+            afterOnCellMouseDown(event, coords, TD) {
+                openStockQuickForRowCol(coords.row, coords.col);
+            },
             afterSelectionEnd(r) { showPreviewForRow(r); }
         });
+
+
 
 
         attachMaspLinkHandler(container);
@@ -952,6 +959,24 @@ function getMaspAtVisualRow(r) {
     // Lấy trực tiếp từ lưới (visual cell), không cần map physical
     const v = hotInstance.getDataAtCell(r, COL_MASP);
     return String(v || "").toUpperCase().trim();
+}
+
+function openStockQuickForRowCol(r, c) {
+    if (!hotInstance) return;
+    if (r == null || r < 0) return;
+
+    // chỉ mở khi click cột "Mã hàng" (cột 0)
+    if (c !== 0) return;
+
+    const masp = getMaspAtVisualRow(r);
+    if (!masp) return;
+
+    // mở popup (dạng đơn giản)
+    if (window.stockQuickPopup) {
+        window.stockQuickPopup(masp);
+    } else {
+        console.warn("Chưa load stockQuickPopup.js");
+    }
 }
 
 
