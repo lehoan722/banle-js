@@ -348,16 +348,23 @@
 
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
-        rows = data.map((r) => ({
-          masp: String(r.masp || "").toUpperCase(),
-          size: normalizeSize(r.size),
-          ton_cs1: Number(r.ton_cs1 || 0),
-          ton_cs2: Number(r.ton_cs2 || 0),
-          ban_cs1: Number(r.ban_cs1 || 0),
-          ban_cs2: Number(r.ban_cs2 || 0),
-          tong_nhap: Number(r.tong_nhap || 0),
-          tong_ton: Number(r.tong_ton || 0),
-        }));
+        rows = data.map((r) => {
+          const ban1 = Number(r.ban_cs1 || 0);
+          const ban2 = Number(r.ban_cs2 || 0);
+
+          return {
+            masp: String(r.masp || "").toUpperCase(),
+            size: normalizeSize(r.size),
+            ton_cs1: Number(r.ton_cs1 || 0),
+            ton_cs2: Number(r.ton_cs2 || 0),
+            ban_cs1: ban1,
+            ban_cs2: ban2,
+            tong_ban: ban1 + ban2,                 // ✅ THÊM
+            tong_nhap: Number(r.tong_nhap || 0),
+            tong_ton: Number(r.tong_ton || 0),
+          };
+        });
+
       } else if (error) {
         console.warn("xntnhanh error:", error);
       }
@@ -401,6 +408,7 @@
       sumBan1 = 0,
       sumBan2 = 0,
       sumNhap = 0,
+      sumTongBan = 0,     // ✅ THÊM
       sumTongTon = 0;
 
     // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
@@ -426,6 +434,7 @@
           ton_cs2: 0,
           ban_cs1: 0,
           ban_cs2: 0,
+          tong_ban: 0,        // ✅ THÊM
           tong_nhap: 0,
           tong_ton: 0,
         };
@@ -438,7 +447,10 @@
         sumBan1 += Number(r.ban_cs1 || 0);
         sumBan2 += Number(r.ban_cs2 || 0);
         sumNhap += Number(r.tong_nhap || 0);
+        sumTongBan += Number(r.tong_ban || 0);   // ✅ THÊM
+
         sumTongTon += Number(r.tong_ton || 0);
+
 
         return `
         <tr>
@@ -447,8 +459,10 @@
           <td class="num">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
           <td class="num">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
-          <td class="num sq-red">${r.tong_nhap ? r.tong_nhap : ""}</td>
+          <td class="num sq-blue">${r.tong_nhap ? r.tong_nhap : ""}</td>
+          <td class="num">${r.tong_ban ? r.tong_ban : ""}</td>          <!-- ✅ THÊM -->
           <td class="num sq-red">${r.tong_ton ? r.tong_ton : ""}</td>
+
         </tr>`;
       })
       .join("");
@@ -463,8 +477,10 @@
         <td class="num">${sum2 || ""}</td>
         <td class="num">${sumBan1 || ""}</td>
         <td class="num">${sumBan2 || ""}</td>
-        <td class="num sq-red">${sumNhap || ""}</td>
+        <td class="num sq-blue">${sumNhap || ""}</td>
+        <td class="num">${sumTongBan || ""}</td>       <!-- ✅ THÊM -->
         <td class="num sq-red">${sumTongTon || ""}</td>
+
       </tr>`
       : "";
 
@@ -475,7 +491,7 @@
     const vitriRow = vitriParts.length
       ? `
       <tr class="sq-vitri-row">
-        <td colspan="7">Vị trí: ${vitriParts.join(" , ")}</td>
+        <td colspan="8">Vị trí: ${vitriParts.join(" , ")}</td>
       </tr>`
       : "";
 
@@ -501,12 +517,14 @@
               <thead>
                 <tr>
                   <th>Size</th>
-                  <th>CS1</th>
-                  <th>CS2</th>
-                  <th>B CS1</th>
-                  <th>B CS2</th>
-                  <th class="sq-red">T nhập</th>
-                  <th class="sq-red">T tồn</th>
+                  <th>TCS1</th>
+                  <th>TCS2</th>
+                  <th>BCS1</th>
+                  <th>BCS2</th>
+                  <th class="sq-blue">Tnhập</th>
+                  <th>Tban</th>                 <!-- ✅ THÊM -->
+                  <th class="sq-red">Ttồn</th>
+
                 </tr>
               </thead>
               <tbody>
@@ -833,5 +851,6 @@
     };
   }
 })();
+
 
 
