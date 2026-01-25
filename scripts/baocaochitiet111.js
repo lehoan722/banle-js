@@ -215,6 +215,8 @@ window.toiTrang = function () {
     taiTrang(n);
 };
 
+let popupReqId = 0;
+
 document.getElementById("pageSize").addEventListener("change", async function () {
     if (!currentFilters) return;
     pageSize = Number(this.value) || 1000;
@@ -490,35 +492,73 @@ window.clearInput = function (inputId) {
 };
 
 document.getElementById('popupSearchInput').addEventListener('input', async function () {
-    let keyword = this.value.trim();
-    if (keyword.length < 2) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
-        return;
-    }
-    let type = window.currentPopupType;
-    let table = '', field = '', extraFields = '';
-    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
-    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else return;
+  const keyword = this.value.trim();
+  const type = window.currentPopupType;
 
-    let { data, error } = await supabase
-        .from(table)
-        .select(`${field}${extraFields}`)
-        .ilike(field, `%${keyword}%`)
-        .limit(100);
+  // Cho phép gõ 1 ký tự cũng tìm (đỡ cảm giác "không hiện")
+  if (keyword.length < 1) {
+    document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa...</i>';
+    return;
+  }
 
-    if (error || !data || data.length === 0) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-        return;
+  let table = '', field = '', extraFields = '';
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else return;
+
+  // token chống đua request
+  const myReqId = ++popupReqId;
+
+  // UI loading nhỏ cho rõ
+  const listEl = document.getElementById('popupSearchList');
+  listEl.innerHTML = '<i>Đang tìm...</i>';
+
+  try {
+    const { data, error } = await supabase
+      .from(table)
+      .select(`${field}${extraFields}`)
+      .ilike(field, `%${keyword}%`)
+      .limit(100);
+
+    // Nếu có request mới hơn => bỏ kết quả này
+    if (myReqId !== popupReqId) return;
+
+    if (error) {
+      console.error('popup search error:', error);
+      listEl.innerHTML = `<i>Lỗi tải dữ liệu (${error.message || error})</i>`;
+      return;
     }
-    document.getElementById('popupSearchList').innerHTML = data.map(row => `
+
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<i>Không tìm thấy dữ liệu</i>';
+      return;
+    }
+
+    listEl.innerHTML = data.map(row => {
+      const code = String(row[field] ?? '');
+      // escape an toàn cho onclick (tránh lỗi ký tự lạ)
+      const safe = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const label =
+        code
+        + (row.tensp ? " - " + row.tensp : "")
+        + (row.tenkh ? " - " + row.tenkh : "")
+        + (row.tennv ? " - " + row.tennv : "");
+      return `
         <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
+             onclick="selectPopupValue('${type}', '${safe}', this)">
+          ${label}
         </div>
-    `).join('');
+      `;
+    }).join('');
+
+  } catch (e) {
+    if (myReqId !== popupReqId) return;
+    console.error('popup search exception:', e);
+    document.getElementById('popupSearchList').innerHTML = `<i>Lỗi: ${e?.message || e}</i>`;
+  }
 });
+
 window.selectPopupValue = function (type, value, el) {
     let inputId = '';
     let ten = '';
@@ -556,27 +596,51 @@ window.onload = function () {
 
 
 window.searchPopup = async function (keyword) {
-    let type = window.currentPopupType;
-    let table = '', field = '', extraFields = '';
-    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
-    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else return;
+  const type = window.currentPopupType;
+  let table = '', field = '', extraFields = '';
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else return;
 
-    let { data, error } = await supabase
-        .from(table)
-        .select(`${field}${extraFields}`)
-        .ilike(field, keyword ? `%${keyword}%` : "%")
-        .limit(100);
+  const myReqId = ++popupReqId;
+  const listEl = document.getElementById('popupSearchList');
+  listEl.innerHTML = '<i>Đang tải...</i>';
+
+  try {
+    const { data, error } = await supabase
+      .from(table)
+      .select(`${field}${extraFields}`)
+      .ilike(field, keyword ? `%${keyword}%` : "%")
+      .limit(100);
+
+    if (myReqId !== popupReqId) return;
 
     if (error || !data || data.length === 0) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-        return;
+      listEl.innerHTML = error ? `<i>Lỗi tải dữ liệu (${error.message || error})</i>` : '<i>Không tìm thấy dữ liệu</i>';
+      return;
     }
-    document.getElementById('popupSearchList').innerHTML = data.map(row => `
+
+    listEl.innerHTML = data.map(row => {
+      const code = String(row[field] ?? '');
+      const safe = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const label =
+        code
+        + (row.tensp ? " - " + row.tensp : "")
+        + (row.tenkh ? " - " + row.tenkh : "")
+        + (row.tennv ? " - " + row.tennv : "");
+      return `
         <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
+             onclick="selectPopupValue('${type}', '${safe}', this)">
+          ${label}
         </div>
-    `).join('');
+      `;
+    }).join('');
+
+  } catch (e) {
+    if (myReqId !== popupReqId) return;
+    console.error(e);
+    listEl.innerHTML = `<i>Lỗi: ${e?.message || e}</i>`;
+  }
 };
+
