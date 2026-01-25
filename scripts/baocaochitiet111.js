@@ -281,6 +281,11 @@ function renderTable(hotData) {
         manualColumnResize: true,
         filters: true,
         dropdownMenu: true,
+        columnSorting: {
+            indicator: true,
+            headerAction: true,
+            sortEmptyCells: true
+        },
         hiddenColumns: { columns: [], indicators: true },
 
         // Dùng afterOnCellMouseDown + event.detail để bắt DOUBLE CLICK
