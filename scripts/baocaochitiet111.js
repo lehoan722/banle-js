@@ -508,7 +508,7 @@ window.selectPopupValue = function (type, value, el) {
         ten = value;
     } else if (type === 'nhanvien') {
         inputId = 'nhanvienInput';
-        // với nhân viên, ta muốn nhập MÃ NV, không phải tên
+        // với nhân viên, ta muốn nhập MÃ NV, không phải tên 
         ten = value;   // value chính là manv
     }
     if (inputId) document.getElementById(inputId).value = ten;
@@ -518,13 +518,57 @@ window.selectPopupValue = function (type, value, el) {
 
 // ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
 window.onload = function () {
-    const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
 
-    // Từ ngày cố định: 01/05/2025
-    document.getElementById('tuNgay').value = '2025-05-01';
+  // Từ ngày cố định: 01/05/2025
+  document.getElementById('tuNgay').value = '2025-05-01';
 
-    // Đến ngày là hôm nay
-    document.getElementById('denNgay').value = today;
+  // Đến ngày là hôm nay
+  document.getElementById('denNgay').value = today;
+
+  // === NHẬN MÃ SP TỪ URL & AUTO CHẠY ===
+  try {
+    const params = new URLSearchParams(window.location.search);
+
+    // hỗ trợ 2 kiểu: ?masp=ABC hoặc ?maspList=ABC,DEF
+    const masp = params.get("masp");
+    const maspList = params.get("maspList");
+
+    let listText = "";
+    if (masp) {
+      listText = String(masp).trim();
+    } else if (maspList) {
+      listText = String(maspList)
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    if (listText) {
+      // chuẩn hóa IN HOA
+      listText = listText
+        .split("\n")
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean)
+        .join("\n");
+
+      const ta = document.getElementById("maspList");
+      if (ta) ta.value = listText;
+
+      const inp = document.getElementById("maspInput");
+      if (inp) inp.value = listText.split("\n")[0];
+
+      // auto chạy báo cáo luôn
+      setTimeout(() => {
+        if (typeof window.taiBaoCaoChiTiet === "function") {
+          window.taiBaoCaoChiTiet();
+        }
+      }, 0);
+    }
+  } catch (err) {
+    console.warn("Auto nhận masp từ URL bị lỗi:", err);
+  }
 };
 
 
