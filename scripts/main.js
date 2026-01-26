@@ -448,6 +448,16 @@ export async function khoiTaoUngDung() {
       .trim();
   }
 
+  // === OPEN BÁO CÁO CHI TIẾT 111 THEO MÃ SP (dùng chung) ===
+  window.openBaoCaoChiTiet111ByMasp = function (masp) {
+    const maspClean = layMaspGoc(masp);
+    if (!maspClean) return;
+
+    // mở cùng domain hiện tại
+    const url = `${window.location.origin}/baocaochitiet111.html?masp=${encodeURIComponent(maspClean)}`;
+    window.open(url, "_blank");
+  };
+
   async function hienThiAnhSanPhamTuMasp() {
     const imgEl = document.querySelector(".product-image");
     if (!imgEl) return;
@@ -648,9 +658,35 @@ export async function khoiTaoUngDung() {
   // === TỒN KHO TỨC THÌ: Observer + batch RPC (KHÔNG đụng code render cũ) ===
   {
     const tbody = document.querySelector('#bangketqua tbody');
-    if (!tbody) console.warn('Không thấy #bangketqua tbody');
+    if (!tbody) {
+      console.warn('Không thấy #bangketqua tbody');
+      return; // tránh lỗi ở các trang không có bảng này
+    }
+
+    // === DOUBLE CLICK CỘT MÃ SP (CỘT 1) => MỞ BÁO CÁO 111 ===
+    tbody.addEventListener("dblclick", (e) => {
+      const td = e.target.closest("td");
+      if (!td) return;
+
+      const tr = td.closest("tr");
+      if (!tr) return;
+
+      // kiểm tra đúng cột đầu tiên (cột Mã hàng)
+      const cellIndex = Array.from(tr.children).indexOf(td);
+      if (cellIndex !== 0) return;
+
+      const masp = td.textContent?.trim();
+      if (!masp) return;
+
+      // tránh “ăn” vào các click khác của dòng
+      e.preventDefault();
+      e.stopPropagation();
+
+      window.openBaoCaoChiTiet111ByMasp(masp);
+    });
+
     const memo = new Map(); // cache theo key "MASP|SIZE"
-    let queue = new Map();  // gom batch {key -> {masp,size,row}}
+    let queue = new Map();
     let batchTimer = null;
 
     function keyOf(masp, size) {
