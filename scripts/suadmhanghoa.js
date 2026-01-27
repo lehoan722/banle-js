@@ -53,6 +53,48 @@ const FILTER_BATCH = 1000;
 const FILTER_NUMERIC_COLS = new Set(['gianhap', 'giale', 'giasi']);
 const FILTER_BOOLEAN_COLS = new Set(['active', 'quanlykichco']);
 
+// ==== Lọc theo khoảng ngày tạo (created_at) ====
+// Nếu người dùng chọn từ ngày/đến ngày, ta sẽ chỉ tải các mã sản phẩm có created_at nằm trong khoảng đó.
+// Input type="date" trả về YYYY-MM-DD. Ta convert theo múi giờ VN (+07:00) rồi đưa về ISO (UTC) để so sánh chính xác với timestamptz.
+function getCreatedAtRangeISO() {
+  const fromEl = document.getElementById('date-from');
+  const toEl = document.getElementById('date-to');
+
+  const fromDate = (fromEl?.value || '').toString().trim(); // YYYY-MM-DD hoặc ''
+  const toDate = (toEl?.value || '').toString().trim();
+
+  if (!fromDate && !toDate) return null;
+
+  // Nếu chỉ chọn 1 đầu mút: cho phép lọc 1 chiều
+  // Chuyển sang ISO UTC theo mốc giờ VN (Asia/Ho_Chi_Minh ~ +07:00)
+  const mkStart = (d) => new Date(`${d}T00:00:00+07:00`).toISOString();
+  const mkEnd = (d) => new Date(`${d}T23:59:59.999+07:00`).toISOString();
+
+  const range = {};
+  if (fromDate) range.fromISO = mkStart(fromDate);
+  if (toDate) range.toISO = mkEnd(toDate);
+
+  // Validate: nếu có cả 2 mà from > to thì báo lỗi
+  if (range.fromISO && range.toISO) {
+    const a = new Date(range.fromISO).getTime();
+    const b = new Date(range.toISO).getTime();
+    if (a > b) {
+      alert('Khoảng ngày không hợp lệ: "Từ ngày" phải nhỏ hơn hoặc bằng "Đến ngày".');
+      return null;
+    }
+  }
+
+  return range;
+}
+
+function applyCreatedAtRange(q, range) {
+  if (!range) return q;
+  if (range.fromISO) q = q.gte('created_at', range.fromISO);
+  if (range.toISO) q = q.lte('created_at', range.toISO);
+  return q;
+}
+
+
 function applyFilterQuery(q, colname, rawValue) {
 
 
@@ -144,7 +186,7 @@ function isDistinctAllowed(colname) {
   return DISTINCT_WHITELIST.has(colname);
 }
 
-async function fetchDistinctValuesFromDmHangHoa(colname) {
+async function fetchDistinctValuesFromDmHangHoa(colname, createdAtRange) {
   const set = new Set();
   let from = 0;
 
@@ -155,6 +197,8 @@ async function fetchDistinctValuesFromDmHangHoa(colname) {
       .from('dmhanghoa')
       .select(colname)
       .not(colname, 'is', null)
+      // áp dụng lọc created_at nếu có
+      
       .range(from, to);
 
     if (error) throw error;
@@ -177,7 +221,7 @@ async function fetchDistinctValuesFromDmHangHoa(colname) {
   return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
-async function fetchRowsByFilterFromDmHangHoa(colname, filterValue) {
+async function fetchRowsByFilterFromDmHangHoa(colname, filterValue, createdAtRange) {
   const rows = [];
   let from = 0;
 
@@ -187,6 +231,8 @@ async function fetchRowsByFilterFromDmHangHoa(colname, filterValue) {
     let q = supabase
       .from('dmhanghoa')
       .select(`masp,${colname}`);
+
+    q = applyCreatedAtRange(q, createdAtRange);
 
     q = applyFilterQuery(q, colname, filterValue);
 
@@ -455,9 +501,15 @@ async function taiDanhSachGiaTriCotDangChon() {
   }
 
   try {
-    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách giá trị của cột <b>${colLabel}</b>...</span>`;
+    const createdAtRange = getCreatedAtRangeISO();
+    const rangeNote = (createdAtRange?.fromISO || createdAtRange?.toISO)
+      ? ` (lọc theo created_at${createdAtRange?.fromISO ? ' từ ' + (document.getElementById('date-from')?.value || '') : ''}${createdAtRange?.toISO ? ' đến ' + (document.getElementById('date-to')?.value || '') : ''})`
+      : '';
 
-    const values = await fetchDistinctValuesFromDmHangHoa(colname);
+    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách giá trị của cột <b>${colLabel}</b>${rangeNote}...</span>`;
+
+    
+    const values = await fetchDistinctValuesFromDmHangHoa(colname, createdAtRange);
 
     const rows = values.map(v => ({
       masp: "",
@@ -504,10 +556,14 @@ async function taiDanhSachTheoDieuKien() {
 
   try {
     const filterText = filterValues.join(', ');
+    const createdAtRange = getCreatedAtRangeISO();
+    const rangeNote = (createdAtRange?.fromISO || createdAtRange?.toISO)
+      ? ` (lọc theo created_at${createdAtRange?.fromISO ? ' từ ' + (document.getElementById('date-from')?.value || '') : ''}${createdAtRange?.toISO ? ' đến ' + (document.getElementById('date-to')?.value || '') : ''})`
+      : '';
 
-    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách sản phẩm có <b>${colLabel}</b> thuộc: <b>${filterText}</b>...</span>`;
+    if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách sản phẩm có <b>${colLabel}</b> thuộc: <b>${filterText}</b>${rangeNote}...</span>`;
 
-    const foundRows = await fetchRowsByFilterFromDmHangHoa(colname, (filterValues.length === 1 ? filterValues[0] : filterValues));
+    const foundRows = await fetchRowsByFilterFromDmHangHoa(colname, (filterValues.length === 1 ? filterValues[0] : filterValues), createdAtRange);
 
     if (!foundRows || foundRows.length === 0) {
       hot.loadData([{ masp: "", [colname]: "", trangthai: "KHÔNG CÓ KẾT QUẢ" }]);
