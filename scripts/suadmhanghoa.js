@@ -256,7 +256,6 @@ async function fetchRowsByFilterFromDmHangHoa(colname, filterValue, createdAtRan
 function renderColSelect() {
   let html = `<option value="" selected disabled>-- Chọn mục cần ghi --</option>` +
     COLS
-      .filter(c => c.name !== "masp")
       .map(c => `<option value="${c.name}">${c.label}</option>`)
       .join("");
 
@@ -265,6 +264,7 @@ function renderColSelect() {
     colSelect.innerHTML = html;
   }
 }
+
 
 // ==== Table Handsontable (chỉ gồm masp, cột cần sửa, trạng thái) ====
 let hot;
