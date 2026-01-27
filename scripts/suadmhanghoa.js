@@ -222,49 +222,33 @@ async function fetchDistinctValuesFromDmHangHoa(colname, createdAtRange) {
 }
 
 async function fetchRowsByFilterFromDmHangHoa(colname, filterValue, createdAtRange) {
-  let q = supabase
-    .from('dmhanghoa')
-    .select('*')
-    .order('masp', { ascending: true });
+  const rows = [];
+  let from = 0;
 
-  // ===== ÁP LỌC THEO created_at (từ ngày - đến ngày) =====
-  if (createdAtRange) {
-    if (createdAtRange.fromISO) {
-      q = q.gte('created_at', createdAtRange.fromISO);
-    }
-    if (createdAtRange.toISO) {
-      q = q.lte('created_at', createdAtRange.toISO);
-    }
+  while (rows.length < FILTER_MAX_ROWS) {
+    const to = from + FILTER_BATCH - 1;
+
+    let q = supabase
+      .from('dmhanghoa')
+      .select(`masp,${colname}`);
+
+    q = applyCreatedAtRange(q, createdAtRange);
+
+    q = applyFilterQuery(q, colname, filterValue);
+
+    const { data, error } = await q.range(from, to);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) break;
+
+    rows.push(...data);
+
+    if (data.length < FILTER_BATCH) break;
+    from += FILTER_BATCH;
   }
 
-  // ===== ÁP ĐIỀU KIỆN LỌC THEO CỘT =====
-  if (Array.isArray(filterValue)) {
-    // Trường hợp chọn nhiều giá trị (checkbox)
-    q = q.in(colname, filterValue);
-  } else {
-    // Trường hợp nhập tay giá trị lọc
-
-    if (colname === 'masp') {
-      // 🔹 masp dùng tìm CHỨA chuỗi
-      const keyword = filterValue.toString().trim();
-      if (keyword !== '') {
-        q = q.ilike('masp', `%${keyword}%`);
-      }
-    } else {
-      // 🔹 các cột khác giữ nguyên logic cũ (bằng tuyệt đối)
-      q = q.eq(colname, filterValue);
-    }
-  }
-
-  const { data, error } = await q;
-
-  if (error) {
-    console.error('Lỗi fetchRowsByFilterFromDmHangHoa:', error);
-    alert('Lỗi tải dữ liệu: ' + error.message);
-    return [];
-  }
-
-  return data || [];
+  return rows;
 }
 
 
@@ -272,6 +256,7 @@ async function fetchRowsByFilterFromDmHangHoa(colname, filterValue, createdAtRan
 function renderColSelect() {
   let html = `<option value="" selected disabled>-- Chọn mục cần ghi --</option>` +
     COLS
+      .filter(c => c.name !== "masp")
       .map(c => `<option value="${c.name}">${c.label}</option>`)
       .join("");
 
@@ -280,7 +265,6 @@ function renderColSelect() {
     colSelect.innerHTML = html;
   }
 }
-
 
 // ==== Table Handsontable (chỉ gồm masp, cột cần sửa, trạng thái) ====
 let hot;
