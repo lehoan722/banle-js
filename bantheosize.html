@@ -827,6 +827,27 @@
     });
   </script>
 
+  <!-- Popup chọn cơ sở khi bấm Hiển thị ảnh -->
+<div id="branchPickModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:999999;">
+  <div style="width:min(520px,92vw); margin:14vh auto; background:#fff; border-radius:12px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.2);">
+    <div style="font-weight:700; font-size:16px; margin-bottom:10px;">
+      Bạn muốn xem tồn kho của cơ sở nào?
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button type="button" id="btnPickCS1" style="padding:10px 14px; border-radius:10px; border:1px solid #ddd; cursor:pointer;">Cơ sở 1</button>
+      <button type="button" id="btnPickCS2" style="padding:10px 14px; border-radius:10px; border:1px solid #ddd; cursor:pointer;">Cơ sở 2</button>
+      <button type="button" id="btnPickALL" style="padding:10px 14px; border-radius:10px; border:1px solid #ddd; cursor:pointer;">Cả hai cơ sở</button>
+      <button type="button" id="btnPickCancel" style="margin-left:auto; padding:10px 14px; border-radius:10px; border:1px solid #ddd; cursor:pointer; background:#f3f4f6;">Hủy</button>
+    </div>
+
+    <div style="margin-top:10px; font-size:13px; color:#666;">
+      (CS1 sẽ lọc theo tồn CS1 > 0, CS2 lọc theo tồn CS2 > 0.)
+    </div>
+  </div>
+</div>
+
+
 </body>
 
 </html>
