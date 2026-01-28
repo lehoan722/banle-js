@@ -54,6 +54,32 @@ let totalRows = 0;
     };
 })();
 
+function pickBranchForImages() {
+    return new Promise((resolve) => {
+        const modal = document.getElementById("branchPickModal");
+        if (!modal) return resolve(null);
+
+        const cleanup = () => { modal.style.display = "none"; };
+
+        modal.style.display = "block";
+
+        const cs1 = document.getElementById("btnPickCS1");
+        const cs2 = document.getElementById("btnPickCS2");
+        const all = document.getElementById("btnPickALL");
+        const cancel = document.getElementById("btnPickCancel");
+
+        const onPick = (v) => { cleanup(); resolve(v); };
+
+        cs1.onclick = () => onPick("cs1");
+        cs2.onclick = () => onPick("cs2");
+        all.onclick = () => onPick("all");
+        cancel.onclick = () => onPick(null);
+
+        // click ra nền -> hủy
+        modal.onclick = (e) => { if (e.target === modal) onPick(null); };
+    });
+}
+
 
 // ================== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (chuẩn auth) ==================
 async function kiemTraQuyenXemTrang(pathTrang) {
@@ -732,62 +758,50 @@ window.clearInput = function (id) { const el = document.getElementById(id); if (
 // nhưng chỉ lấy những mã còn tồn kho > 0 tại cơ sở đang chọn (CS1/CS2)
 // Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
 // và lọc theo tồn kho từng cơ sở (CS1/CS2) theo dropdown Địa điểm
-window.moTrangAnh = function () {
+window.moTrangAnh = async function () {
     if (!hotInstance) {
         alert("Chưa có dữ liệu để hiển thị ảnh.");
         return;
     }
 
-    // Lấy nguồn dữ liệu gốc của Handsontable (đúng theo thứ tự/đang có trong trang)
+    // 1) Hỏi người dùng muốn xem cơ sở nào
+    const choice = await pickBranchForImages();
+    if (!choice) return; // bấm Hủy
+
+    // 2) Lấy dữ liệu gốc
     const src = hotInstance.getSourceData() || [];
 
-    // Đọc địa điểm đang chọn: '', 'cs1', 'cs2'
-    const diadiemEl = document.getElementById("diadiemSelect");
-    const branch = diadiemEl ? (diadiemEl.value || "") : "";
-
-    // Lọc theo tồn kho từng cơ sở
+    // 3) Lọc theo lựa chọn
     let filteredRows = src;
-    if (branch === "cs1") {
-        filteredRows = src.filter(r => {
-            const tonCS1 = Number(r?.toncs1 ?? r?.ton_cs1 ?? 0);
-            return tonCS1 > 0;
-        });
-    } else if (branch === "cs2") {
-        filteredRows = src.filter(r => {
-            const tonCS2 = Number(r?.toncs2 ?? r?.ton_cs2 ?? 0);
-            return tonCS2 > 0;
-        });
-    }
-    // Nếu để Tất cả (''), không lọc thêm
 
-    // Gom theo mã sản phẩm, ưu tiên giữ bản ghi có giale khác 0 nếu có
-    const map = new Map(); // key = MASP, value = { masp, giale }
+    if (choice === "cs1") {
+        filteredRows = src.filter(r => Number(r?.ton_cs1 ?? r?.toncs1 ?? 0) > 0);
+    } else if (choice === "cs2") {
+        filteredRows = src.filter(r => Number(r?.ton_cs2 ?? r?.toncs2 ?? 0) > 0);
+    } // choice === "all" -> không lọc
+
+    // 4) Gom theo MASP (giữ logic cũ ưu tiên giale > 0)
+    const map = new Map();
     for (const r of filteredRows) {
         const code = String(r?.masp || "").trim().toUpperCase();
         if (!code) continue;
         const price = Number(r?.giale || 0) || 0;
 
-        if (!map.has(code)) {
-            map.set(code, { masp: code, giale: price });
-        } else {
-            // nếu đã có rồi nhưng giale đang 0, mà bản mới có giá > 0 → ưu tiên bản có giá
+        if (!map.has(code)) map.set(code, { masp: code, giale: price });
+        else {
             const cur = map.get(code);
-            if ((cur.giale || 0) === 0 && price > 0) {
-                map.set(code, { masp: code, giale: price });
-            }
+            if ((cur.giale || 0) === 0 && price > 0) map.set(code, { masp: code, giale: price });
         }
     }
 
     const list = Array.from(map.values());
     if (!list.length) {
-        alert("Không có mã hàng phù hợp với điều kiện tồn kho/địa điểm.");
+        alert("Không có mã hàng phù hợp (theo tồn kho cơ sở đã chọn).");
         return;
     }
 
-    // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
+    // 5) Đẩy danh sách sang trang xem ảnh
     sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
-
-    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới 
     window.open("xemanhxnt14.html", "_blank");
 };
 
