@@ -262,6 +262,7 @@
         }
 
         /* ====== Phụ: flash/toast/popup sẵn có ====== */
+        /* ====== Popup tìm kiếm: luôn nằm trên cùng ====== */
         #popupSearch {
             display: none;
             position: fixed;
@@ -274,7 +275,29 @@
             border: 1px solid #e5e7eb;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
-            z-index: 5000
+
+            /* QUAN TRỌNG: cao hơn Handsontable / sticky header */
+            z-index: 999999;
+        }
+
+        /* Danh sách kết quả: cuộn + không bị tràn */
+        #popupSearchList {
+            max-height: 60vh;
+            overflow: auto;
+        }
+
+        /* Mỗi dòng trong danh sách: tăng khoảng cách 1.5 lần + dễ click */
+        #popupSearchList>div {
+            padding: 14px 14px;
+            line-height: 1.5;
+            /* ✅ tăng 1.5 lần */
+            font-size: 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        #popupSearchList>div:hover {
+            background: #f6f8fa;
         }
 
         #flashOverlay {
