@@ -144,7 +144,7 @@ async function saveAllVitriForPickedBranch() {
 
         const results = await Promise.all(tasks);
         const firstErr = results.find(r => r.error)?.error;
-        if (firstErr) throw firstErr;        
+        if (firstErr) throw firstErr;
 
         showToast('✅ Đã lưu vị trí theo cơ sở đã chọn!', 'success');
         if (stt) { stt.style.color = 'green'; stt.textContent = 'Đã lưu!'; }
@@ -195,6 +195,8 @@ window.openPopupSearch = async function (type) {
 
     // Hiển thị popup
     popup.style.display = 'block';
+    popup.style.zIndex = '999999';
+    popup.style.position = 'fixed';
 
     // Tăng kích cỡ & độ rộng ô nhập trong popup
     // (18px cho "lớn hơn nữa"; có thể chỉnh lại 16–20 tùy ý)
@@ -401,7 +403,7 @@ function flushScanBufferToTextareaAndSearch() {
     // đóng modal quét nhưng KHÔNG xóa buffer (theo yêu cầu)
     closeScanner();
 
-    // gọi tìm kiếm 1 lần cho tất cả
+    // gọi tìm kiếm 1 lần cho tất cả 
     triggerSearch();
 }
 
