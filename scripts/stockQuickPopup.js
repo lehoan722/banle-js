@@ -316,28 +316,35 @@
     return new Date().toISOString().slice(0, 10);
   }
 
-  function toYYYYMMDD(v) {
-    if (!v) return "";
-    // nếu đã là YYYY-MM-DD thì trả luôn
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return String(v).trim();
-    return d.toISOString().slice(0, 10);
-  }
-
-  function yyyymmddToDDMMYY(s) {
-    if (!s) return "";
-    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return String(s).trim();
-    const yy = m[1].slice(2);
-    return `${m[3]}${m[2]}${yy}`; // ddmmyy
-  }
-
   // ===== Gọi RPC xntnhanh + lấy vị trí kho =====
+
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) {
       return { masp: "", rows: [], vitri_cs1: "", vitri_cs2: "", nhap_dau_ma: "", nhap_cuoi_ma: "" };
+    }
+
+    // ===== Helpers nội bộ (tự chứa, không cần thêm nơi khác) =====
+    function toYYYYMMDD(v) {
+      if (!v) return "";
+      const s = String(v).trim();
+      if (!s) return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return s;
+      return d.toISOString().slice(0, 10);
+    }
+    function yyyymmddToDDMMYY(s) {
+      if (!s) return "";
+      const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return String(s).trim();
+      const yy = m[1].slice(2);
+      return `${m[3]}${m[2]}${yy}`; // ddmmyy
+    }
+    function normalizeND(v) {
+      // nhận mọi kiểu input -> ddmmyy (giống RPC)
+      const ymd = toYYYYMMDD(v);
+      return yyyymmddToDDMMYY(ymd);
     }
 
     const denNgay = getDenNgay();
@@ -350,16 +357,13 @@
     let nhap_cuoi_ma = "";
 
     const client = getSupabaseClient();
-    if (nhap_dau_ma) nhap_dau_ma = yyyymmddToDDMMYY(toYYYYMMDD(nhap_dau_ma));
-    if (nhap_cuoi_ma) nhap_cuoi_ma = yyyymmddToDDMMYY(toYYYYMMDD(nhap_cuoi_ma));
-
     if (!client) {
-      // Không có client → không crash, chỉ trả về rỗng
       return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
     }
 
     try {
-      const [snapRes, vitriRes] = await Promise.all([
+      // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
+      const [snapRes, hhRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -372,9 +376,10 @@
           .maybeSingle(),
       ]);
 
+      // --- A) dữ liệu từ RPC ---
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
-        // lấy ngày nhập đầu/cuối (ddmmyy) từ RPC xntnhanh
+        // RPC trả ddmmyy sẵn
         nhap_dau_ma = String(data[0].nhap_dau_ma || "").trim();
         nhap_cuoi_ma = String(data[0].nhap_cuoi_ma || "").trim();
 
@@ -389,61 +394,72 @@
             ton_cs2: Number(r.ton_cs2 || 0),
             ban_cs1: ban1,
             ban_cs2: ban2,
-            tong_ban: ban1 + ban2,                 // ✅ THÊM
+            tong_ban: ban1 + ban2,
             tong_nhap: Number(r.tong_nhap || 0),
             tong_ton: Number(r.tong_ton || 0),
           };
         });
-
       } else if (error) {
         console.warn("xntnhanh error:", error);
       }
 
-      const { data: hh, error: vitriErr } = vitriRes || {};
-      if (vitriErr) {
-        console.warn("[StockQuickPopup] Lỗi đọc dmhanghoa:", vitriErr);
+      // --- B) dữ liệu từ dmhanghoa: vị trí + ưu tiên ND từ nhapdau ---
+      const { data: hh, error: hhErr } = hhRes || {};
+      if (hhErr) {
+        console.warn("[StockQuickPopup] Lỗi đọc dmhanghoa:", hhErr);
       } else if (hh) {
         vitri_cs1 = hh.vitrikho1 || "";
         vitri_cs2 = hh.vitrikho2 || "";
 
-        // ✅ Ưu tiên ND từ dmhanghoa.nhapdau
-        const nd = hh.nhapdau ? String(hh.nhapdau).trim() : "";
-        if (nd) nhap_dau_ma = nd; // tạm để raw, bước dưới sẽ format
+        // ✅ Ưu tiên ND từ dmhanghoa.nhapdau (nếu có)
+        const ndRaw = hh.nhapdau ? String(hh.nhapdau).trim() : "";
+        if (ndRaw) {
+          nhap_dau_ma = normalizeND(ndRaw);
+        }
       }
+
+      // 3) Fallback ND/NC theo hóa đơn nếu còn thiếu (giống trang tìm kiếm 333)
+      // - Chỉ chạy khi thiếu ND hoặc thiếu NC
+      if (!nhap_dau_ma || !nhap_cuoi_ma) {
+        try {
+          const { data: nhapList, error: nhapErr } = await client
+            .from("hoadon_banle")
+            .select("ngay, sohd")
+            .in("loaihd", ["nmcs1", "nmcs2"])
+            .order("ngay", { ascending: true });
+
+          if (nhapErr) throw nhapErr;
+
+          const list = nhapList || [];
+          if (list.length) {
+            const sohdArr = list.map((e) => e.sohd);
+
+            const { data: cts, error: ctErr } = await client
+              .from("ct_hoadon_banle")
+              .select("sohd")
+              .in("sohd", sohdArr)
+              .eq("masp", masp);
+
+            if (ctErr) throw ctErr;
+
+            const setSohd = new Set((cts || []).map((e) => e.sohd));
+            const filtered = list.filter((e) => setSohd.has(e.sohd));
+
+            if (filtered.length) {
+              if (!nhap_dau_ma) nhap_dau_ma = normalizeND(filtered[0].ngay);
+              if (!nhap_cuoi_ma) nhap_cuoi_ma = normalizeND(filtered[filtered.length - 1].ngay);
+            }
+          }
+        } catch (e) {
+          console.warn("[StockQuickPopup] fallback ND/NC lỗi:", e);
+        }
+      }
+
+      // 4) Chuẩn hoá lại lần cuối (phòng khi RPC trả rỗng hoặc dữ liệu lạ)
+      if (nhap_dau_ma) nhap_dau_ma = String(nhap_dau_ma).trim();
+      if (nhap_cuoi_ma) nhap_cuoi_ma = String(nhap_cuoi_ma).trim();
     } catch (e) {
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
-    }
-
-    // ✅ Fallback ND/NC theo hóa đơn nếu thiếu (giống timkiemhanghoa333)
-    if ((!nhap_dau_ma || !nhap_cuoi_ma)) {
-      try {
-        const { data: nhapList } = await client
-          .from("hoadon_banle")
-          .select("ngay,sohd")
-          .in("loaihd", ["nmcs1", "nmcs2"])
-          .order("ngay", { ascending: true });
-
-        const list = nhapList || [];
-        if (list.length) {
-          const sohdArr = list.map(e => e.sohd);
-
-          const { data: cts } = await client
-            .from("ct_hoadon_banle")
-            .select("sohd,masp")
-            .in("sohd", sohdArr)
-            .eq("masp", masp);
-
-          const setSohd = new Set((cts || []).map(e => e.sohd));
-          const filtered = list.filter(e => setSohd.has(e.sohd));
-
-          if (filtered.length) {
-            if (!nhap_dau_ma) nhap_dau_ma = filtered[0].ngay;
-            if (!nhap_cuoi_ma) nhap_cuoi_ma = filtered[filtered.length - 1].ngay;
-          }
-        }
-      } catch (e) {
-        console.warn("[StockQuickPopup] fallback ND/NC lỗi:", e);
-      }
     }
 
     return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
