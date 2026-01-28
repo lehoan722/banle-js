@@ -316,6 +316,23 @@
     return new Date().toISOString().slice(0, 10);
   }
 
+  function toYYYYMMDD(v) {
+    if (!v) return "";
+    // nếu đã là YYYY-MM-DD thì trả luôn
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v).trim();
+    return d.toISOString().slice(0, 10);
+  }
+
+  function yyyymmddToDDMMYY(s) {
+    if (!s) return "";
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return String(s).trim();
+    const yy = m[1].slice(2);
+    return `${m[3]}${m[2]}${yy}`; // ddmmyy
+  }
+
   // ===== Gọi RPC xntnhanh + lấy vị trí kho =====
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
@@ -333,6 +350,9 @@
     let nhap_cuoi_ma = "";
 
     const client = getSupabaseClient();
+    if (nhap_dau_ma) nhap_dau_ma = yyyymmddToDDMMYY(toYYYYMMDD(nhap_dau_ma));
+    if (nhap_cuoi_ma) nhap_cuoi_ma = yyyymmddToDDMMYY(toYYYYMMDD(nhap_cuoi_ma));
+
     if (!client) {
       // Không có client → không crash, chỉ trả về rỗng
       return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
@@ -347,8 +367,9 @@
         }),
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2")
-          .eq("masp", masp),
+          .select("vitrikho1, vitrikho2, nhapdau")
+          .eq("masp", masp)
+          .maybeSingle(),
       ]);
 
       const { data, error } = snapRes || {};
@@ -378,15 +399,51 @@
         console.warn("xntnhanh error:", error);
       }
 
-      const { data: vitriData, error: vitriErr } = vitriRes || {};
+      const { data: hh, error: vitriErr } = vitriRes || {};
       if (vitriErr) {
-        console.warn("[StockQuickPopup] Lỗi đọc vị trí kho:", vitriErr);
-      } else if (Array.isArray(vitriData) && vitriData.length > 0) {
-        vitri_cs1 = vitriData[0].vitrikho1 || "";
-        vitri_cs2 = vitriData[0].vitrikho2 || "";
+        console.warn("[StockQuickPopup] Lỗi đọc dmhanghoa:", vitriErr);
+      } else if (hh) {
+        vitri_cs1 = hh.vitrikho1 || "";
+        vitri_cs2 = hh.vitrikho2 || "";
+
+        // ✅ Ưu tiên ND từ dmhanghoa.nhapdau
+        const nd = hh.nhapdau ? String(hh.nhapdau).trim() : "";
+        if (nd) nhap_dau_ma = nd; // tạm để raw, bước dưới sẽ format
       }
     } catch (e) {
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
+    }
+
+    // ✅ Fallback ND/NC theo hóa đơn nếu thiếu (giống timkiemhanghoa333)
+    if ((!nhap_dau_ma || !nhap_cuoi_ma)) {
+      try {
+        const { data: nhapList } = await client
+          .from("hoadon_banle")
+          .select("ngay,sohd")
+          .in("loaihd", ["nmcs1", "nmcs2"])
+          .order("ngay", { ascending: true });
+
+        const list = nhapList || [];
+        if (list.length) {
+          const sohdArr = list.map(e => e.sohd);
+
+          const { data: cts } = await client
+            .from("ct_hoadon_banle")
+            .select("sohd,masp")
+            .in("sohd", sohdArr)
+            .eq("masp", masp);
+
+          const setSohd = new Set((cts || []).map(e => e.sohd));
+          const filtered = list.filter(e => setSohd.has(e.sohd));
+
+          if (filtered.length) {
+            if (!nhap_dau_ma) nhap_dau_ma = filtered[0].ngay;
+            if (!nhap_cuoi_ma) nhap_cuoi_ma = filtered[filtered.length - 1].ngay;
+          }
+        }
+      } catch (e) {
+        console.warn("[StockQuickPopup] fallback ND/NC lỗi:", e);
+      }
     }
 
     return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
