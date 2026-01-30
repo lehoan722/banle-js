@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tạo XML khai thuế quý (TT40 - mẫu 473) - Offline</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:18px; line-height:1.35}
+  h1{font-size:18px; margin:0 0 12px}
+  .row{display:flex; gap:12px; flex-wrap:wrap}
+  .card{border:1px solid #ddd; border-radius:10px; padding:12px; margin:10px 0}
+  label{display:block; font-size:13px; color:#333; margin:8px 0 4px}
+  input, select{padding:8px 10px; border:1px solid #ccc; border-radius:8px; min-width:220px}
+  input[type="number"]{min-width:160px}
+  table{border-collapse:collapse; width:100%}
+  th, td{border:1px solid #ddd; padding:8px; font-size:13px}
+  th{background:#f6f6f6; text-align:left}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .btn{padding:10px 12px; border:1px solid #111; border-radius:10px; background:#111; color:#fff; cursor:pointer}
+  .btn2{padding:10px 12px; border:1px solid #111; border-radius:10px; background:#fff; color:#111; cursor:pointer}
+  .small{font-size:12px; color:#555}
+  .warn{color:#b00020}
+</style>
+</head>
+<body>
+<h1>Offline tạo file XML khai thuế theo quý (bám theo XML mẫu của bạn)</h1>
+
+<div class="card">
+  <div class="row">
+    <div>
+      <label>Quý</label>
+      <select id="quarter">
+        <option value="1">Quý 1</option>
+        <option value="2">Quý 2</option>
+        <option value="3">Quý 3</option>
+        <option value="4" selected>Quý 4</option>
+      </select>
+    </div>
+    <div>
+      <label>Năm</label>
+      <input id="year" type="number" value="2025" min="2000" max="2100"/>
+    </div>
+    <div>
+      <label>Kỳ kê khai (tự sinh)</label>
+      <input id="kyKKhai" class="mono" type="text" readonly/>
+    </div>
+    <div>
+      <label>Từ ngày</label>
+      <input id="fromDate" type="date"/>
+    </div>
+    <div>
+      <label>Đến ngày</label>
+      <input id="toDate" type="date"/>
+    </div>
+    <div>
+      <label>Ngày ký</label>
+      <input id="signDate" type="date"/>
+    </div>
+  </div>
+  <div class="small">Gợi ý: bạn chỉ cần đổi quý/năm, các ngày sẽ tự nhảy đúng theo quý.</div>
+</div>
+
+<div class="card">
+  <div class="row">
+    <div>
+      <label>MST (lấy từ file mẫu, bạn có thể sửa)</label>
+      <input id="mst" class="mono" type="text"/>
+    </div>
+    <div style="flex:1; min-width:320px">
+      <label>Tên người nộp thuế (lấy từ file mẫu, bạn có thể sửa)</label>
+      <input id="tenNNT" type="text" style="min-width:320px; width:100%"/>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="margin-bottom:8px">
+    <b>Doanh thu theo nhóm (ct28–ct31)</b>
+    <div class="small">Mặc định tỷ lệ giống file bạn gửi: ct28 GTGT 1% và TNCN 0.5%. Bạn có thể chỉnh tỷ lệ nếu cần.</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Chỉ tiêu</th>
+        <th>Doanh thu (VND)</th>
+        <th>Tỷ lệ GTGT (%)</th>
+        <th>Thuế GTGT (VND)</th>
+        <th>Tỷ lệ TNCN (%)</th>
+        <th>Thuế TNCN (VND)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="mono">ct28</td>
+        <td><input id="dt_ct28" type="number" min="0" step="1" value="176953400"/></td>
+        <td><input id="rate_vat_ct28" type="number" min="0" step="0.1" value="1"/></td>
+        <td class="mono" id="vat_ct28">0</td>
+        <td><input id="rate_pit_ct28" type="number" min="0" step="0.1" value="0.5"/></td>
+        <td class="mono" id="pit_ct28">0</td>
+      </tr>
+      <tr>
+        <td class="mono">ct29</td>
+        <td><input id="dt_ct29" type="number" min="0" step="1" value="0"/></td>
+        <td><input id="rate_vat_ct29" type="number" min="0" step="0.1" value="1"/></td>
+        <td class="mono" id="vat_ct29">0</td>
+        <td><input id="rate_pit_ct29" type="number" min="0" step="0.1" value="0.5"/></td>
+        <td class="mono" id="pit_ct29">0</td>
+      </tr>
+      <tr>
+        <td class="mono">ct30</td>
+        <td><input id="dt_ct30" type="number" min="0" step="1" value="0"/></td>
+        <td><input id="rate_vat_ct30" type="number" min="0" step="0.1" value="1"/></td>
+        <td class="mono" id="vat_ct30">0</td>
+        <td><input id="rate_pit_ct30" type="number" min="0" step="0.1" value="0.5"/></td>
+        <td class="mono" id="pit_ct30">0</td>
+      </tr>
+      <tr>
+        <td class="mono">ct31</td>
+        <td><input id="dt_ct31" type="number" min="0" step="1" value="0"/></td>
+        <td><input id="rate_vat_ct31" type="number" min="0" step="0.1" value="1"/></td>
+        <td class="mono" id="vat_ct31">0</td>
+        <td><input id="rate_pit_ct31" type="number" min="0" step="0.1" value="0.5"/></td>
+        <td class="mono" id="pit_ct31">0</td>
+      </tr>
+      <tr>
+        <th>Tổng (ct32)</th>
+        <th class="mono" id="dt_ct32">0</th>
+        <th></th>
+        <th class="mono" id="vat_ct32">0</th>
+        <th></th>
+        <th class="mono" id="pit_ct32">0</th>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:10px" class="row">
+    <button class="btn2" id="btnCalc" type="button">Tính lại</button>
+    <button class="btn" id="btnExport" type="button">Tạo & tải file XML</button>
+    <div id="status" class="small"></div>
+  </div>
+  <div class="small warn" style="margin-top:8px">
+    Lưu ý: Đây là bản offline “nhập tay”. Nếu cổng thuế đổi schema XML về sau, mình sẽ cập nhật template theo file mới bạn tải về.
+  </div>
+</div>
+
+<script>
+(() => {
+  const NS = "http://kekhaithue.gdt.gov.vn/TKhaiThue";
+  const TEMPLATE_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<HSoThueDTu xmlns="http://kekhaithue.gdt.gov.vn/TKhaiThue" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <HSoKhaiThue>
+        <TTinChung>
+            <TTinDVu>
+                <maDVu>TTGQ TTHC</maDVu>
+                <tenDVu>TTGQ TTHC</tenDVu>
+                <pbanDVu>1.0.0</pbanDVu>
+                <ttinNhaCCapDVu>TTGQ TTHC</ttinNhaCCapDVu>
+            </TTinDVu>
+            <TTinTKhaiThue>
+                <TKhaiThue>
+                    <maTKhai>473</maTKhai>
+                    <tenTKhai>Tờ khai thuế đối với cá nhân kinh doanh TT40</tenTKhai>
+                    <moTaBMau>(Ban hành kèm theo Thông tư số 92/2015/TT-BTC ngày 15/06/2015 của Bộ Tài chính)</moTaBMau>
+                    <pbanTKhaiXML>2.8.3</pbanTKhaiXML>
+                    <loaiTKhai>C</loaiTKhai>
+                    <soLan>0</soLan>
+                    <KyKKhaiThue>
+                        <kieuKy>Q</kieuKy>
+                        <kyKKhai>4/2025</kyKKhai>
+                        <kyKKhaiTuNgay>01/10/2025</kyKKhaiTuNgay>
+                        <kyKKhaiDenNgay>31/12/2025</kyKKhaiDenNgay>
+                        <kyKKhaiTuThang></kyKKhaiTuThang>
+                        <kyKKhaiDenThang></kyKKhaiDenThang>
+                    </KyKKhaiThue>
+                    <maCQTNoiNop>21501</maCQTNoiNop>
+                    <tenCQTNoiNop>Thuế cơ sở 1 tỉnh Thái Nguyên</tenCQTNoiNop>
+                    <ngayLapTKhai>30/01/2026</ngayLapTKhai>
+                    <nguoiKy></nguoiKy>
+                    <ngayKy>2026-01-30</ngayKy>
+                    <nganhNgheKD></nganhNgheKD>
+                </TKhaiThue>
+                <NNT>
+                    <mst>025074015704</mst>
+                    <tenNNT>Đặng Lê Hoàn</tenNNT>
+                    <dchiNNT>Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương(Hết hiệu lưc), Thái Nguyên</dchiNNT>
+                    <maHuyenNNT></maHuyenNNT>
+                    <tenHuyenNNT></tenHuyenNNT>
+                    <maTinhNNT>215</maTinhNNT>
+                    <tenTinhNNT>Thái Nguyên</tenTinhNNT>
+                    <dthoaiNNT>0916747401</dthoaiNNT>
+                    <faxNNT></faxNNT>
+                    <emailNNT>lehoan722@gmail.com</emailNNT>
+                </NNT>
+            </TTinTKhaiThue>
+        </TTinChung>
+        <CTieuTKhaiChinh>
+            <mst_cu>4600370592</mst_cu>
+            <Header>
+                <hkdcnkdnopthuekhoan>false</hkdcnkdnopthuekhoan>
+                <cnkdnopps>false</cnkdnopps>
+                <tccnkhainopthay>false</tccnkhainopthay>
+                <hkdcnkdnopkekhai>true</hkdcnkdnopkekhai>
+                <hkdcnkdnnxddoanhthu>false</hkdcnkdnnxddoanhthu>
+                <hkdchuyendoipptinhthue>false</hkdchuyendoipptinhthue>
+                <ct05>shop hoàn tuyết</ct05>
+                <ct06></ct06>
+                <CT08>
+                    <NNgheKDoanh id="1">
+                        <maNNgheKDoanh>G47711..</maNNgheKDoanh>
+                        <tenNNgheKDoanh>Bán lẻ hàng may mặc</tenNNgheKDoanh>
+                    </NNgheKDoanh>
+                    <NNgheKDoanh id="1">
+                        <maNNgheKDoanh>G47712..</maNNgheKDoanh>
+                        <tenNNgheKDoanh>Bán lẻ giày, dép</tenNNgheKDoanh>
+                    </NNgheKDoanh>
+                    <NNgheKDoanh id="1">
+                        <maNNgheKDoanh>G47713..</maNNgheKDoanh>
+                        <tenNNgheKDoanh>Bán lẻ cặp, túi, ví, hàng da và giả da khác</tenNNgheKDoanh>
+                    </NNgheKDoanh>
+                </CT08>
+                <ct08a>false</ct08a>
+                <ct09>200.00</ct09>
+                <ct09a>false</ct09a>
+                <ct10>2</ct10>
+                <CT11>
+                    <tuGio>8</tuGio>
+                    <tuPhut>0</tuPhut>
+                    <denGio>22</denGio>
+                    <denPhut>0</denPhut>
+                </CT11>
+                <CT12>
+                    <ct12a_tdtt>false</ct12a_tdtt>
+                    <ct12b_soNha>Số nhà 540, đường 3/2, tổ 8</ct12b_soNha>
+                    <ct12c_maPhuong>21501003</ct12c_maPhuong>
+                    <ct12c_tenPhuong>Phường Tích Lương</ct12c_tenPhuong>
+                    <ct12d_maQuan></ct12d_maQuan>
+                    <ct12d_tenQuan></ct12d_tenQuan>
+                    <ct12d_maTinh>215</ct12d_maTinh>
+                    <ct12d_tenTinh>Tỉnh Thái Nguyên</ct12d_tenTinh>
+                    <ct12e_kdbiengioi>false</ct12e_kdbiengioi>
+                </CT12>
+                <CT13>
+                    <ct13a_soNha>Số nhà 540, đường 3/2, tổ 8</ct13a_soNha>
+                    <ct13b_maPhuong>21501001</ct13b_maPhuong>
+                    <ct13b_tenPhuong>Phường Phan Đình Phùng</ct13b_tenPhuong>
+                    <ct13c_maQuan></ct13c_maQuan>
+                    <ct13c_tenQuan></ct13c_tenQuan>
+                    <ct13d_maTinh>215</ct13d_maTinh>
+                    <ct13d_tenTinh>Tỉnh Thái Nguyên</ct13d_tenTinh>
+                </CT13>
+                <ct17></ct17>
+                <ct17_ngay></ct17_ngay>
+                <CNKDChuaDangKyThue>
+                    <ct18a_ngaySinh></ct18a_ngaySinh>
+                    <ct18b_maQuocTich></ct18b_maQuocTich>
+                    <ct18b_tenQuocTich></ct18b_tenQuocTich>
+                    <ct18c_ma></ct18c_ma>
+                    <ct18c_ten></ct18c_ten>
+                    <ct18c_soCMND_CCCD></ct18c_soCMND_CCCD>
+                    <ct18c_1_ngayCap xsi:nil="true"/>
+                    <ct18c_2_noiCap_loai></ct18c_2_noiCap_loai>
+                    <ct18c_2_noiCap_ten></ct18c_2_noiCap_ten>
+                    <ct18c_2_noiCap_ma></ct18c_2_noiCap_ma>
+                </CNKDChuaDangKyThue>
+                <CNKDKhongCoCMND_CCCD>
+                    <ct18d_ma></ct18d_ma>
+                    <ct18d_ten></ct18d_ten>
+                    <ct18d_soHoChieu></ct18d_soHoChieu>
+                    <ct18d_1_ngayCap xsi:nil="true"/>
+                    <ct18d_2_noiCap_loai></ct18d_2_noiCap_loai>
+                    <ct18d_2_noiCap_ten></ct18d_2_noiCap_ten>
+                    <ct18d_2_noiCap_ma></ct18d_2_noiCap_ma>
+                    <ct18dd_ma></ct18dd_ma>
+                    <ct18dd_ten></ct18dd_ten>
+                    <ct18dd_soGiayThongHanh></ct18dd_soGiayThongHanh>
+                    <ct18dd_1_ngayCap xsi:nil="true"/>
+                    <ct18dd_2_noiCap_loai></ct18dd_2_noiCap_loai>
+                    <ct18dd_2_noiCap_ten></ct18dd_2_noiCap_ten>
+                    <ct18dd_2_noiCap_ma></ct18dd_2_noiCap_ma>
+                    <ct18e_ma></ct18e_ma>
+                    <ct18e_ten></ct18e_ten>
+                    <ct18e_soCMNDBienGioi></ct18e_soCMNDBienGioi>
+                    <ct18e_1_ngayCap xsi:nil="true"/>
+                    <ct18e_2_noiCap_loai></ct18e_2_noiCap_loai>
+                    <ct18e_2_noiCap_ten></ct18e_2_noiCap_ten>
+                    <ct18e_2_noiCap_ma></ct18e_2_noiCap_ma>
+                    <ct18f_ma></ct18f_ma>
+                    <ct18f_ten></ct18f_ten>
+                    <ct18f_soGiayToKhac></ct18f_soGiayToKhac>
+                    <ct18f_1_ngayCap xsi:nil="true"/>
+                    <ct18f_2_noiCap_loai></ct18f_2_noiCap_loai>
+                    <ct18f_2_noiCap_ten></ct18f_2_noiCap_ten>
+                    <ct18f_2_noiCap_ma></ct18f_2_noiCap_ma>
+                </CNKDKhongCoCMND_CCCD>
+                <CT18g>
+                    <ct18g_soNha></ct18g_soNha>
+                    <ct18g_maPhuong></ct18g_maPhuong>
+                    <ct18g_tenPhuong></ct18g_tenPhuong>
+                    <ct18g_maQuan></ct18g_maQuan>
+                    <ct18g_tenQuan></ct18g_tenQuan>
+                    <ct18g_maTinh></ct18g_maTinh>
+                    <ct18g_tenTinh></ct18g_tenTinh>
+                </CT18g>
+                <CT18h>
+                    <ct18h_soNha></ct18h_soNha>
+                    <ct18h_maPhuong></ct18h_maPhuong>
+                    <ct18h_tenPhuong></ct18h_tenPhuong>
+                    <ct18h_maQuan></ct18h_maQuan>
+                    <ct18h_tenQuan></ct18h_tenQuan>
+                    <ct18h_maTinh></ct18h_maTinh>
+                    <ct18h_tenTinh></ct18h_tenTinh>
+                </CT18h>
+                <CT18i>
+                    <ct18i_soGiayTo></ct18i_soGiayTo>
+                    <ct18i_ngayCap xsi:nil="true"/>
+                    <ct18i_coQuanCap></ct18i_coQuanCap>
+                </CT18i>
+                <ct18k>0</ct18k>
+                <ToChucKThay>
+                    <ct22></ct22>
+                    <ct23/>
+                    <ct24></ct24>
+                    <ct25></ct25>
+                    <ct26></ct26>
+                    <ct27></ct27>
+                </ToChucKThay>
+            </Header>
+            <KKThueGTGT_TNCN>
+                <DoanhThuThueGTGT>
+                    <ct28>176953400</ct28>
+                    <ct29>0</ct29>
+                    <ct30>0</ct30>
+                    <ct31>0</ct31>
+                    <ct32>176953400</ct32>
+                </DoanhThuThueGTGT>
+                <SoThueGTGT>
+                    <ct28>1769534</ct28>
+                    <ct29>0</ct29>
+                    <ct30>0</ct30>
+                    <ct31>0</ct31>
+                    <ct32>1769534</ct32>
+                </SoThueGTGT>
+                <DoanhThuThueTNCN>
+                    <ct28>176953400</ct28>
+                    <ct29>0</ct29>
+                    <ct30>0</ct30>
+                    <ct31>0</ct31>
+                    <ct32>176953400</ct32>
+                </DoanhThuThueTNCN>
+                <SoThueTNCN>
+                    <ct28>884767</ct28>
+                    <ct29>0</ct29>
+                    <ct30>0</ct30>
+                    <ct31>0</ct31>
+                    <ct32>884767</ct32>
+                </SoThueTNCN>
+            </KKThueGTGT_TNCN>
+            <KKhaiThueTTDB>
+                <CTietKKhaiThueTTDB id="1">
+                    <ct2_ma></ct2_ma>
+                    <ct2_ten></ct2_ten>
+                    <ct3>33.a</ct3>
+                    <ct4>0</ct4>
+                    <ct5>0</ct5>
+                    <ct6>0.0</ct6>
+                    <ct7>0</ct7>
+                </CTietKKhaiThueTTDB>
+                <tong_ct5>0</tong_ct5>
+                <tong_ct7>0</tong_ct7>
+            </KKhaiThueTTDB>
+            <KKhaiTBVMT_TN>
+                <ThueTaiNguyen>
+                    <CTietThueTaiNguyen id="1">
+                        <ct2_ma></ct2_ma>
+                        <ct2_ten></ct2_ten>
+                        <ct3>34.a</ct3>
+                        <ct4>0</ct4>
+                        <ct5>0.0000</ct5>
+                        <ct6>0.0000</ct6>
+                        <ct7>0.0</ct7>
+                        <ct8>0</ct8>
+                    </CTietThueTaiNguyen>
+                    <tongCong>0</tongCong>
+                </ThueTaiNguyen>
+                <ThueBVMT>
+                    <CTietThueBVMT id="1">
+                        <ct2_ma></ct2_ma>
+                        <ct2_ten></ct2_ten>
+                        <ct3>35.a</ct3>
+                        <ct4>0</ct4>
+                        <ct5>0.0000</ct5>
+                        <ct6>0.0000</ct6>
+                        <ct8>0</ct8>
+                    </CTietThueBVMT>
+                    <tongCong>0</tongCong>
+                </ThueBVMT>
+                <PhiBVMT>
+                    <CTietPhiBVMT id="1">
+                        <ct2_ma></ct2_ma>
+                        <ct2_ten></ct2_ten>
+                        <ct3>36.a</ct3>
+                        <ct4>0</ct4>
+                        <ct5>0.0000</ct5>
+                        <ct6>0.0000</ct6>
+                        <ct8>0</ct8>
+                    </CTietPhiBVMT>
+                    <tongCong>0</tongCong>
+                </PhiBVMT>
+            </KKhaiTBVMT_TN>
+        </CTieuTKhaiChinh>
+        <PLuc>
+            <PLuc_01_2_BK_HDKD>
+                <VlieuDcuSPHH>
+                    <BKeVLDCSPHH>
+                        <CTietHKDCNKD id="1">
+                            <ct06>phụ kiện, đồ lót, mũ, ví,, tất, túi xách, dây lưng, kính mắt,</ct06>
+                            <ct07>CAI</ct07>
+                            <ct08>1310.000</ct08>
+                            <ct09>96010932</ct09>
+                            <ct10>0</ct10>
+                            <ct11>0</ct11>
+                            <ct12>258.000</ct12>
+                            <ct13>53890000</ct13>
+                            <ct14>1052.000</ct14>
+                            <ct15>42120932</ct15>
+                        </CTietHKDCNKD>
+                        <CTietHKDCNKD id="1">
+                            <ct06>Quần áo nam các loại</ct06>
+                            <ct07>CAI</ct07>
+                            <ct08>8008.000</ct08>
+                            <ct09>1560075572</ct09>
+                            <ct10>57.000</ct10>
+                            <ct11>35260000</ct11>
+                            <ct12>215.000</ct12>
+                            <ct13>92748400</ct13>
+                            <ct14>7850.000</ct14>
+                            <ct15>1502587172</ct15>
+                        </CTietHKDCNKD>
+                        <CTietHKDCNKD id="1">
+                            <ct06>giày dép giày dép các loại, da, nhựa, cao su.</ct06>
+                            <ct07>DOI</ct07>
+                            <ct08>2568.000</ct08>
+                            <ct09>702792270</ct09>
+                            <ct10>2.000</ct10>
+                            <ct11>1228280</ct11>
+                            <ct12>78.000</ct12>
+                            <ct13>30315000</ct13>
+                            <ct14>2492.000</ct14>
+                            <ct15>673705550</ct15>
+                        </CTietHKDCNKD>
+                        <ct17>2358878774</ct17>
+                        <ct19>36488280</ct19>
+                        <ct21>176953400</ct21>
+                        <ct23>2218413654</ct23>
+                    </BKeVLDCSPHH>
+                </VlieuDcuSPHH>
+                <ChiPhiQL>
+                    <ct24>7000000</ct24>
+                    <ct25>1500000</ct25>
+                    <ct26>50000</ct26>
+                    <ct27>100000</ct27>
+                    <ct28>0</ct28>
+                    <ct29>0</ct29>
+                    <ct30>0</ct30>
+                    <ct31>8650000</ct31>
+                </ChiPhiQL>
+            </PLuc_01_2_BK_HDKD>
+        </PLuc>
+    </HSoKhaiThue>
+    <CKyDTu/>
+</HSoThueDTu>
+`;
+
+  const $ = (id) => document.getElementById(id);
+
+  function pad2(n) { return String(n).padStart(2,'0'); }
+  function fmtInt(n) {
+    if (!Number.isFinite(n)) return "0";
+    return String(Math.trunc(n));
+  }
+
+  function quarterRange(q, y) {
+    const qn = Number(q), yn = Number(y);
+    const startMonth = (qn - 1) * 3; // 0-based
+    const start = new Date(yn, startMonth, 1);
+    const end = new Date(yn, startMonth + 3, 0); // last day of quarter
+    const toISO = (d) => d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate());
+    return { from: toISO(start), to: toISO(end) };
+  }
+
+  function updateKyDates() {
+    const q = $("quarter").value;
+    const y = $("year").value;
+    $("kyKKhai").value = q + "/" + y;
+    const r = quarterRange(q, y);
+    $("fromDate").value = r.from;
+    $("toDate").value = r.to;
+  }
+
+  function calc() {
+    const cts = [28,29,30,31];
+    let sumDT = 0, sumVAT = 0, sumPIT = 0;
+
+    for (const n of cts) {
+      const dt = Number($("dt_ct"+n).value || 0);
+      const rv = Number($("rate_vat_ct"+n).value || 0);
+      const rp = Number($("rate_pit_ct"+n).value || 0);
+
+      const vat = Math.round(dt * rv / 100);
+      const pit = Math.round(dt * rp / 100);
+
+      sumDT += dt;
+      sumVAT += vat;
+      sumPIT += pit;
+
+      $("vat_ct"+n).textContent = fmtInt(vat);
+      $("pit_ct"+n).textContent = fmtInt(pit);
+    }
+
+    $("dt_ct32").textContent = fmtInt(sumDT);
+    $("vat_ct32").textContent = fmtInt(sumVAT);
+    $("pit_ct32").textContent = fmtInt(sumPIT);
+  }
+
+  function setTextInParent(parentEl, tagName, value) {
+    const nodes = parentEl.getElementsByTagNameNS(NS, tagName);
+    if (!nodes || !nodes.length) throw new Error("Không tìm thấy tag <"+tagName+"> trong block " + parentEl.tagName);
+    nodes[0].textContent = String(value);
+  }
+
+  function setCTBlock(doc, blockTagName, values) {
+    const blocks = doc.getElementsByTagNameNS(NS, blockTagName);
+    if (!blocks || !blocks.length) throw new Error("Không tìm thấy block <"+blockTagName+">");
+    const block = blocks[0];
+    for (const k of Object.keys(values)) {
+      setTextInParent(block, k, values[k]);
+    }
+  }
+
+  function buildXml() {
+    calc();
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(TEMPLATE_XML, "application/xml");
+
+    const perr = xmlDoc.getElementsByTagName("parsererror");
+    if (perr && perr.length) throw new Error("Template XML bị lỗi parse (parsererror).");
+
+    const setFirst = (tag, val) => {
+      const el = xmlDoc.getElementsByTagNameNS(NS, tag)[0];
+      if (!el) throw new Error("Không tìm thấy tag <"+tag+">");
+      el.textContent = String(val);
+    };
+
+    // Period
+    setFirst("kieuKy", "Q");
+    setFirst("kyKKhai", $("kyKKhai").value.trim());
+    setFirst("kyKKhaiTuNgay", $("fromDate").value);
+    setFirst("kyKKhaiDenNgay", $("toDate").value);
+
+    // Sign date
+    const sign = $("signDate").value;
+    if (sign) {
+      const el = xmlDoc.getElementsByTagNameNS(NS, "ngayKy")[0];
+      if (el) el.textContent = sign;
+    }
+
+    // NNT info
+    const mst = $("mst").value.trim();
+    const ten = $("tenNNT").value.trim();
+    if (mst) setFirst("mst", mst);
+    if (ten) setFirst("tenNNT", ten);
+
+    // Values
+    const dt28 = Number($("dt_ct28").value || 0);
+    const dt29 = Number($("dt_ct29").value || 0);
+    const dt30 = Number($("dt_ct30").value || 0);
+    const dt31 = Number($("dt_ct31").value || 0);
+    const dt32 = Number($("dt_ct32").textContent || 0);
+
+    const vat28 = Number($("vat_ct28").textContent || 0);
+    const vat29 = Number($("vat_ct29").textContent || 0);
+    const vat30 = Number($("vat_ct30").textContent || 0);
+    const vat31 = Number($("vat_ct31").textContent || 0);
+    const vat32 = Number($("vat_ct32").textContent || 0);
+
+    const pit28 = Number($("pit_ct28").textContent || 0);
+    const pit29 = Number($("pit_ct29").textContent || 0);
+    const pit30 = Number($("pit_ct30").textContent || 0);
+    const pit31 = Number($("pit_ct31").textContent || 0);
+    const pit32 = Number($("pit_ct32").textContent || 0);
+
+    setCTBlock(xmlDoc, "DoanhThuThueGTGT", {ct28: dt28, ct29: dt29, ct30: dt30, ct31: dt31, ct32: dt32});
+    setCTBlock(xmlDoc, "DoanhThuThueTNCN", {ct28: dt28, ct29: dt29, ct30: dt30, ct31: dt31, ct32: dt32});
+    setCTBlock(xmlDoc, "SoThueGTGT", {ct28: vat28, ct29: vat29, ct30: vat30, ct31: vat31, ct32: vat32});
+    setCTBlock(xmlDoc, "SoThueTNCN", {ct28: pit28, ct29: pit29, ct30: pit30, ct31: pit31, ct32: pit32});
+
+    const serializer = new XMLSerializer();
+    let out = serializer.serializeToString(xmlDoc);
+    if (!out.startsWith("<?xml")) out = '<?xml version="1.0" encoding="UTF-8"?>\n' + out;
+    return out;
+  }
+
+  function download(filename, text) {
+    const blob = new Blob([text], {type: "application/xml"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 0);
+  }
+
+  function nowStamp() {
+    const d = new Date();
+    return (
+      d.getFullYear() +
+      pad2(d.getMonth()+1) +
+      pad2(d.getDate()) +
+      pad2(d.getHours()) +
+      pad2(d.getMinutes()) +
+      pad2(d.getSeconds())
+    );
+  }
+
+  function initFromTemplate() {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(TEMPLATE_XML, "application/xml");
+
+    const getFirst = (tag) => {
+      const el = xmlDoc.getElementsByTagNameNS(NS, tag)[0];
+      return el ? (el.textContent || "").trim() : "";
+    };
+
+    $("mst").value = getFirst("mst");
+    $("tenNNT").value = getFirst("tenNNT");
+
+    const block = xmlDoc.getElementsByTagNameNS(NS, "DoanhThuThueGTGT")[0];
+    if (block) {
+      const getCt = (ct) => {
+        const el = block.getElementsByTagNameNS(NS, ct)[0];
+        return el ? (el.textContent || "0").trim() : "0";
+      };
+      $("dt_ct28").value = getCt("ct28") || 0;
+      $("dt_ct29").value = getCt("ct29") || 0;
+      $("dt_ct30").value = getCt("ct30") || 0;
+      $("dt_ct31").value = getCt("ct31") || 0;
+    }
+
+    const ky = getFirst("kyKKhai");
+    if (ky && ky.includes("/")) {
+      const parts = ky.split("/");
+      if (parts[0]) $("quarter").value = parts[0];
+      if (parts[1]) $("year").value = parts[1];
+    }
+
+    updateKyDates();
+
+    // signDate = today
+    const d = new Date();
+    $("signDate").value = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+
+    calc();
+  }
+
+  $("quarter").addEventListener("change", () => { updateKyDates(); calc(); });
+  $("year").addEventListener("input", () => { updateKyDates(); calc(); });
+
+  [
+    "dt_ct28","dt_ct29","dt_ct30","dt_ct31",
+    "rate_vat_ct28","rate_vat_ct29","rate_vat_ct30","rate_vat_ct31",
+    "rate_pit_ct28","rate_pit_ct29","rate_pit_ct30","rate_pit_ct31"
+  ].forEach(id => $(id).addEventListener("input", calc));
+
+  $("btnCalc").addEventListener("click", () => {
+    try { calc(); $("status").textContent = "Đã tính xong."; }
+    catch (e) { $("status").textContent = "Lỗi tính: " + e.message; }
+  });
+
+  $("btnExport").addEventListener("click", () => {
+    try {
+      const xml = buildXml();
+      const filename = "473-1.011022-" + nowStamp() + ".xml";
+      download(filename, xml);
+      $("status").textContent = "Đã tạo file: " + filename;
+    } catch (e) {
+      console.error(e);
+      $("status").textContent = "Lỗi tạo XML: " + e.message;
+    }
+  });
+
+  updateKyDates();
+  initFromTemplate();
+})();
+</script>
+
+</body>
+</html>
