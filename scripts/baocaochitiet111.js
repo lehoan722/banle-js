@@ -215,6 +215,8 @@ window.toiTrang = function () {
     taiTrang(n);
 };
 
+let popupReqId = 0;
+
 document.getElementById("pageSize").addEventListener("change", async function () {
     if (!currentFilters) return;
     pageSize = Number(this.value) || 1000;
@@ -281,6 +283,11 @@ function renderTable(hotData) {
         manualColumnResize: true,
         filters: true,
         dropdownMenu: true,
+        columnSorting: {
+            indicator: true,
+            headerAction: true,
+            sortEmptyCells: true
+        },
         hiddenColumns: { columns: [], indicators: true },
 
         // Dùng afterOnCellMouseDown + event.detail để bắt DOUBLE CLICK
@@ -484,36 +491,7 @@ window.clearInput = function (inputId) {
     document.getElementById(inputId).value = '';
 };
 
-document.getElementById('popupSearchInput').addEventListener('input', async function () {
-    let keyword = this.value.trim();
-    if (keyword.length < 2) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Nhập từ khóa (≥2 ký tự)...</i>';
-        return;
-    }
-    let type = window.currentPopupType;
-    let table = '', field = '', extraFields = '';
-    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
-    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else return;
 
-    let { data, error } = await supabase
-        .from(table)
-        .select(`${field}${extraFields}`)
-        .ilike(field, `%${keyword}%`)
-        .limit(100);
-
-    if (error || !data || data.length === 0) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-        return;
-    }
-    document.getElementById('popupSearchList').innerHTML = data.map(row => `
-        <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
-        </div>
-    `).join('');
-});
 window.selectPopupValue = function (type, value, el) {
     let inputId = '';
     let ten = '';
@@ -530,7 +508,7 @@ window.selectPopupValue = function (type, value, el) {
         ten = value;
     } else if (type === 'nhanvien') {
         inputId = 'nhanvienInput';
-        // với nhân viên, ta muốn nhập MÃ NV, không phải tên
+        // với nhân viên, ta muốn nhập MÃ NV, không phải tên 
         ten = value;   // value chính là manv
     }
     if (inputId) document.getElementById(inputId).value = ten;
@@ -540,38 +518,106 @@ window.selectPopupValue = function (type, value, el) {
 
 // ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
 window.onload = function () {
-    const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
 
-    // Từ ngày cố định: 01/05/2025
-    document.getElementById('tuNgay').value = '2025-05-01';
+  // Từ ngày cố định: 01/05/2025
+  document.getElementById('tuNgay').value = '2025-05-01';
 
-    // Đến ngày là hôm nay
-    document.getElementById('denNgay').value = today;
+  // Đến ngày là hôm nay
+  document.getElementById('denNgay').value = today;
+
+  // === NHẬN MÃ SP TỪ URL & AUTO CHẠY ===
+  try {
+    const params = new URLSearchParams(window.location.search);
+
+    // hỗ trợ 2 kiểu: ?masp=ABC hoặc ?maspList=ABC,DEF
+    const masp = params.get("masp");
+    const maspList = params.get("maspList");
+
+    let listText = "";
+    if (masp) {
+      listText = String(masp).trim();
+    } else if (maspList) {
+      listText = String(maspList)
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    if (listText) {
+      // chuẩn hóa IN HOA
+      listText = listText
+        .split("\n")
+        .map(s => s.trim().toUpperCase())
+        .filter(Boolean)
+        .join("\n");
+
+      const ta = document.getElementById("maspList");
+      if (ta) ta.value = listText;
+
+      const inp = document.getElementById("maspInput");
+      if (inp) inp.value = listText.split("\n")[0];
+
+      // auto chạy báo cáo luôn
+      setTimeout(() => {
+        if (typeof window.taiBaoCaoChiTiet === "function") {
+          window.taiBaoCaoChiTiet();
+        }
+      }, 0);
+    }
+  } catch (err) {
+    console.warn("Auto nhận masp từ URL bị lỗi:", err);
+  }
 };
 
 
 window.searchPopup = async function (keyword) {
-    let type = window.currentPopupType;
-    let table = '', field = '', extraFields = '';
-    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
-    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-    else return;
+  const type = window.currentPopupType;
+  let table = '', field = '', extraFields = '';
+  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+  else return;
 
-    let { data, error } = await supabase
-        .from(table)
-        .select(`${field}${extraFields}`)
-        .ilike(field, keyword ? `%${keyword}%` : "%")
-        .limit(100);
+  const myReqId = ++popupReqId;
+  const listEl = document.getElementById('popupSearchList');
+  listEl.innerHTML = '<i>Đang tải...</i>';
+
+  try {
+    const { data, error } = await supabase
+      .from(table)
+      .select(`${field}${extraFields}`)
+      .ilike(field, keyword ? `%${keyword}%` : "%")
+      .limit(100);
+
+    if (myReqId !== popupReqId) return;
 
     if (error || !data || data.length === 0) {
-        document.getElementById('popupSearchList').innerHTML = '<i>Không tìm thấy dữ liệu</i>';
-        return;
+      listEl.innerHTML = error ? `<i>Lỗi tải dữ liệu (${error.message || error})</i>` : '<i>Không tìm thấy dữ liệu</i>';
+      return;
     }
-    document.getElementById('popupSearchList').innerHTML = data.map(row => `
+
+    listEl.innerHTML = data.map(row => {
+      const code = String(row[field] ?? '');
+      const safe = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const label =
+        code
+        + (row.tensp ? " - " + row.tensp : "")
+        + (row.tenkh ? " - " + row.tenkh : "")
+        + (row.tennv ? " - " + row.tennv : "");
+      return `
         <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
-            onclick="selectPopupValue('${type}', '${row[field].replace(/'/g, "\\'")}', this)">
-            ${row[field]}${row.tensp ? " - " + row.tensp : ""}${row.tenkh ? " - " + row.tenkh : ""}${row.tennv ? " - " + row.tennv : ""}
+             onclick="selectPopupValue('${type}', '${safe}', this)">
+          ${label}
         </div>
-    `).join('');
+      `;
+    }).join('');
+
+  } catch (e) {
+    if (myReqId !== popupReqId) return;
+    console.error(e);
+    listEl.innerHTML = `<i>Lỗi: ${e?.message || e}</i>`;
+  }
 };
+
