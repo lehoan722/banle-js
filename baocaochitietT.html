@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
   <meta charset="UTF-8">
   <title>BÁO CÁO CHI TIẾT BÁN HÀNG (T)</title>
@@ -11,168 +10,32 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f8f8f8;
-      padding: 16px;
-    }
-
-    .container {
-      max-width: 1300px;
-      margin: auto;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 1px 6px #e3e3e3;
-      padding: 24px 26px 48px 26px;
-    }
-
-    h2 {
-      text-align: center;
-      color: #1976d2;
-      margin-top: 0;
-    }
-
-    .filters-row {
-      display: flex;
-      gap: 0;
-      margin-bottom: 10px;
-    }
-
-    .filters-left {
-      flex: 1;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      gap: 10px 22px;
-    }
-
-    .filters-right {
-      min-width: 120px;
-      max-width: 220px;
-      padding: 6px 10px;
-      background: #f7fafd;
-      border-radius: 7px;
-      border: 1px solid #e3e6f3;
-      margin-left: 8px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .filters-right textarea {
-      width: 100%;
-      border-radius: 5px;
-      padding: 7px;
-      min-height: 140px;
-      border: 1px solid #bbb;
-      font-size: 15px;
-    }
-
-    .filters label {
-      margin-bottom: 0;
-      font-weight: 600;
-    }
-
-    .filters select,
-    .filters input[type="date"],
-    .filters input[type="number"],
-    .filters input[type="text"] {
-      padding: 6px 9px;
-      border-radius: 3px;
-      border: 1px solid #ccc;
-      font-size: 15px;
-    }
-
-    .main-btn {
-      background: #2196f3;
-      color: #fff;
-      border: none;
-      font-weight: bold;
-      padding: 8px 22px;
-      border-radius: 5px;
-      margin-right: 8px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-
-    .main-btn:hover {
-      background: #1769aa;
-    }
-
-    .input-popup-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      margin-right: 8px;
-    }
-
-    .input-popup-group input {
-      width: 130px;
-      padding: 6px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-    }
-
-    .input-popup-group button {
-      background: #eee;
-      color: #222;
-      border: 1px solid #bbb;
-      padding: 0 8px;
-      font-size: 15px;
-      border-radius: 3px;
-      cursor: pointer;
-      height: 32px;
-    }
-
-    .input-popup-group button:hover {
-      background: #ddd;
-    }
-
-    #hot {
-      margin-top: 16px;
-    }
-
-    #popupSearch {
-      display: none;
-      position: fixed;
-      top: 18%;
-      left: 50%;
-      transform: translate(-50%, 0);
-      background: #fff;
-      z-index: 2000;
-      border: 1px solid #ccc;
-      min-width: 320px;
-      max-width: 95vw;
-      box-shadow: 0 0 12px #888;
-      border-radius: 8px;
-    }
-
-    #popupSearch input {
-      width: 94%;
-      margin-bottom: 5px;
-    }
-
-    #popupSearchList {
-      max-height: 260px;
-      overflow: auto;
-      font-size: 15px;
-    }
-
-    #popupSearchList div {
-      padding: 5px 10px;
-      cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
-    }
-
-    #popupSearchList div:hover {
-      background: #e3f0ff;
-    }
+    body{font-family:Arial,sans-serif;background:#f8f8f8;padding:16px;}
+    .container{max-width:1300px;margin:auto;background:#fff;border-radius:8px;box-shadow:0 1px 6px #e3e3e3;padding:24px 26px 48px 26px;}
+    h2{text-align:center;color:#1976d2;margin-top:0;}
+    .filters-row{display:flex;gap:0;margin-bottom:10px;}
+    .filters-left{flex:1;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 22px;}
+    .filters-right{min-width:120px;max-width:220px;padding:6px 10px;background:#f7fafd;border-radius:7px;border:1px solid #e3e6f3;margin-left:8px;display:flex;flex-direction:column;}
+    .filters-right textarea{width:100%;border-radius:5px;padding:7px;min-height:140px;border:1px solid #bbb;font-size:15px;}
+    .filters label{margin-bottom:0;font-weight:600;}
+    .filters select,.filters input[type="date"],.filters input[type="number"],.filters input[type="text"]{padding:6px 9px;border-radius:3px;border:1px solid #ccc;font-size:15px;}
+    .main-btn{background:#2196f3;color:#fff;border:none;font-weight:bold;padding:8px 22px;border-radius:5px;margin-right:8px;cursor:pointer;font-size:16px;}
+    .main-btn:hover{background:#1769aa;}
+    .input-popup-group{display:inline-flex;align-items:center;gap:2px;margin-right:8px;}
+    .input-popup-group input{width:130px;padding:6px;border:1px solid #ddd;border-radius:3px;}
+    .input-popup-group button{background:#eee;color:#222;border:1px solid #bbb;padding:0 8px;font-size:15px;border-radius:3px;cursor:pointer;height:32px;}
+    .input-popup-group button:hover{background:#ddd;}
+    #hot{margin-top:16px;}
+    #popupSearch{display:none;position:fixed;top:18%;left:50%;transform:translate(-50%,0);background:#fff;z-index:2000;border:1px solid #ccc;min-width:320px;max-width:95vw;box-shadow:0 0 12px #888;border-radius:8px;}
+    #popupSearch input{width:94%;margin-bottom:5px;}
+    #popupSearchList{max-height:260px;overflow:auto;font-size:15px;}
+    #popupSearchList div{padding:5px 10px;cursor:pointer;border-bottom:1px solid #f0f0f0;}
+    #popupSearchList div:hover{background:#e3f0ff;}
   </style>
 </head>
-
 <body>
   <div class="container">
-    <h2>📊 BÁO CÁO CHI TIẾT BÁN HÀNG (T) <span style="font-size:0.7em;color:#666;">(nguồn: hoadon_banleT /
-        ct_hoadon_banleT)</span></h2>
+    <h2>📊 BÁO CÁO CHI TIẾT BÁN HÀNG (T) <span style="font-size:0.7em;color:#666;">(nguồn: hoadon_banleT / ct_hoadon_banleT)</span></h2>
 
     <div class="filters-row">
       <div class="filters-left filters">
@@ -180,7 +43,7 @@
         <label>Đến ngày: <input type="date" id="denNgay"></label>
 
         <label>Loại hóa đơn:
-          <select id="loaihdSelect">
+          <select id="loaihdSelect" multiple style="min-width:140px;max-width:220px;">
             <option value="" selected>Tất cả</option>
             <option value="bancs1T">bancs1</option>
             <option value="bancs2T">bancs2</option>
@@ -229,14 +92,14 @@
         <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;" placeholder="Đến"></label>
 
         <label>Chủng loại:
-          <input id="chungloaiInput" list="chungloaiList" placeholder="Chủng loại" style="min-width:140px;">
-          <datalist id="chungloaiList"></datalist>
-        </label>
+  <input id="chungloaiInput" list="chungloaiList" placeholder="Chủng loại" style="min-width:140px;">
+  <datalist id="chungloaiList"></datalist>
+</label>
 
-        <label>Nhóm hàng:
-          <input id="nhomhangInput" list="nhomhangList" placeholder="Nhóm hàng" style="min-width:140px;">
-          <datalist id="nhomhangList"></datalist>
-        </label>
+<label>Nhóm hàng:
+  <input id="nhomhangInput" list="nhomhangList" placeholder="Nhóm hàng" style="min-width:140px;">
+  <datalist id="nhomhangList"></datalist>
+</label>
 
 
         <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
@@ -278,5 +141,4 @@
     <div id="popupSearchList"></div>
   </div>
 </body>
-
 </html>
