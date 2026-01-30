@@ -83,7 +83,9 @@ window.taiBaoCaoChiTiet = async function () {
 
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
-    const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    const loaihdVal = document.getElementById("loaihdSelect").value;
+    const loaihdArr = loaihdVal ? [loaihdVal] : [];
+    
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
     const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
@@ -446,3 +448,6 @@ window.onload = function () {
     })();
 
 };
+
+document.getElementById("loaihdSelect").value = "";
+
