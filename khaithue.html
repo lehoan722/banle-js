@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tạo XML khai thuế quý (TT40 - mẫu 473) - Offline</title>
+<title>khai thue</title>
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:18px; line-height:1.35}
   h1{font-size:18px; margin:0 0 12px}
@@ -136,6 +136,7 @@
 
   <div style="margin-top:10px" class="row">
     <button class="btn2" id="btnCalc" type="button">Tính lại</button>
+    <button class="btn2" id="btnLoadGS" type="button">Tải dữ liệu từ Google Sheet</button>
     <button class="btn" id="btnExport" type="button">Tạo & tải file XML</button>
     <div id="status" class="small"></div>
   </div>
@@ -953,6 +954,126 @@
       $("status").textContent = "Lỗi tạo XML: " + e.message;
     }
   });
+
+  $("btnLoadGS").addEventListener("click", async () => {
+    try { await loadFromGoogleSheet(); }
+    catch (e) { console.error(e); $("status").textContent = "Lỗi tải Google Sheet: " + e.message; }
+  });
+
+
+  // ====== Google Sheet loader (CSV public) ======
+  const GS_SHEET_ID = "19HZs_H0RDgus78XATEXCtsuCniZydvfvDY6AXYWblMw";
+  const GS_GID = "723953966"; // tab: khaithue (CS1)
+
+  function gsExportCsvUrl() {
+    // Public sheet: Anyone with link can view
+    return `https://docs.google.com/spreadsheets/d/${GS_SHEET_ID}/export?format=csv&gid=${GS_GID}`;
+  }
+
+  function parseCsv(text) {
+    // RFC4180-ish parser with quotes support
+    const rows = [];
+    let row = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
+
+      if (inQuotes) {
+        if (ch === '"' && next === '"') { cur += '"'; i++; continue; }
+        if (ch === '"') { inQuotes = false; continue; }
+        cur += ch;
+        continue;
+      }
+
+      if (ch === '"') { inQuotes = true; continue; }
+      if (ch === ',') { row.push(cur); cur = ""; continue; }
+      if (ch === '\r') continue;
+      if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ""; continue; }
+      cur += ch;
+    }
+    // last cell
+    row.push(cur);
+    rows.push(row);
+    // trim trailing empty last line
+    if (rows.length && rows[rows.length - 1].every(c => String(c ?? "").trim() === "")) rows.pop();
+    return rows;
+  }
+
+  function toNumberLikeVN(s) {
+    // Handles "386.222.308" or "6.590" or "3,578,209,230"
+    const t = String(s ?? "").trim();
+    if (!t) return 0;
+    // keep digits, minus, dot, comma
+    // strategy: remove all non-digit except - then parse int
+    const digits = t.replace(/[^\d\-]/g, "");
+    if (!digits || digits === "-") return 0;
+    return Number(digits);
+  }
+
+  function trySetQuarterYearFromA1(a1) {
+    const t = String(a1 ?? "").trim();
+    const m = t.match(/Q\s*([1-4])\s*([0-9]{4})/i);
+    if (!m) return false;
+    const q = m[1];
+    const y = m[2];
+    if ($("quarter")) $("quarter").value = q;
+    if ($("year")) $("year").value = y;
+    updateKyDates();
+    return true;
+  }
+
+  async function loadFromGoogleSheet() {
+    $("status").textContent = "Đang tải dữ liệu từ Google Sheet...";
+    const res = await fetch(gsExportCsvUrl(), { cache: "no-store" });
+    if (!res.ok) throw new Error("Không tải được Google Sheet (HTTP " + res.status + "). Kiểm tra sheet đang public view.");
+    const csvText = await res.text();
+    const rows = parseCsv(csvText);
+
+    // rows: sheet row1 => index0; row2 => index1; row3 => index2; row4 => index3; row5 => index4
+    if (rows.length < 5) throw new Error("Sheet không đủ dòng dữ liệu (cần ít nhất tới dòng 5).");
+
+    // A1 contains quarter label like "Q4 2025"
+    trySetQuarterYearFromA1(rows[0][0]);
+
+    const dataRows = [rows[2], rows[3], rows[4]];
+
+    // clear current phụ lục rows
+    $("plRows").innerHTML = "";
+
+    dataRows.forEach(r => {
+      // column mapping (0-based):
+      // A0: group, B1: DVT, C2: SL đầu, E4: tiền đầu, F5: SL nhập, H7: tiền nhập,
+      // I8: SL bán, K10: tiền bán, L11: SL cuối, N13: tiền cuối
+      const rowData = {
+        ct06: (r[0] ?? "").trim(),
+        ct07: (r[1] ?? "").trim(),
+        ct08: fmtQty(toNumberLikeVN(r[2])),
+        ct09: fmtMoney(toNumberLikeVN(r[4])),
+        ct10: fmtQty(toNumberLikeVN(r[5])),
+        ct11: fmtMoney(toNumberLikeVN(r[7])),
+        ct12: fmtQty(toNumberLikeVN(r[8])),
+        ct13: fmtMoney(toNumberLikeVN(r[10])),
+        ct14: fmtQty(toNumberLikeVN(r[11])),
+        ct15: fmtMoney(toNumberLikeVN(r[13])),
+      };
+
+      // Skip empty group rows
+      if (!rowData.ct06) return;
+      plAddRow(rowData);
+    });
+
+    plCalcTotals();
+
+    // Đổ doanh thu tổng phụ lục sang ct28 (tờ khai chính) để tính thuế
+    const totalSales = toNumberLikeVN($("pl_ct21").value);
+    $("dt_ct28").value = String(totalSales);
+
+    calc();
+    $("status").textContent = "Đã tải dữ liệu từ Google Sheet và tự điền phụ lục + ct28.";
+  }
 
   updateKyDates();
   initFromTemplate();
