@@ -144,6 +144,80 @@
   </div>
 </div>
 
+<div class="card">
+  <div style="margin-bottom:8px">
+    <b>Phụ lục 01-2/BK-HĐKD (PLuc_01_2_BK_HDKD) — Kê khai theo nhóm hàng</b>
+    <div class="small">Nhập tay theo bảng của bạn. Có thể thêm/xóa dòng. Hệ thống tự cộng ct17/ct19/ct21/ct23 và tự đổ <span class="mono">ct21</span> (tiền bán) sang <span class="mono">ct28</span> của tờ khai chính.</div>
+  </div>
+
+  <div style="overflow:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Nhóm hàng (ct06)</th>
+          <th>ĐVT (ct07)</th>
+          <th>SL đầu (ct08)</th>
+          <th>Tiền đầu (ct09)</th>
+          <th>SL nhập (ct10)</th>
+          <th>Tiền nhập (ct11)</th>
+          <th>SL bán (ct12)</th>
+          <th>Tiền bán (ct13)</th>
+          <th>SL cuối (ct14)</th>
+          <th>Tiền cuối (ct15)</th>
+          <th>Xóa</th>
+        </tr>
+      </thead>
+      <tbody id="plRows"></tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3">Tổng tiền</th>
+          <th class="mono" id="pl_ct17">0</th>
+          <th></th>
+          <th class="mono" id="pl_ct19">0</th>
+          <th></th>
+          <th class="mono" id="pl_ct21">0</th>
+          <th></th>
+          <th class="mono" id="pl_ct23">0</th>
+          <th></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="row" style="margin-top:10px; align-items:center">
+    <button class="btn2" id="btnAddRow" type="button">➕ Thêm dòng</button>
+    <button class="btn2" id="btnClearRows" type="button">🧹 Xóa sạch dòng</button>
+    <span class="small">Gợi ý: nhập số lượng dạng số nguyên (vd: 258) — XML sẽ tự đổi thành <span class="mono">258.000</span>.</span>
+  </div>
+
+  <div style="margin-top:14px">
+    <b>Chi phí quản lý (ChiPhiQL)</b>
+    <div class="row">
+      <div>
+        <label>ct24</label>
+        <input id="cp_ct24" type="number" min="0" step="1" value="0"/>
+      </div>
+      <div>
+        <label>ct25</label>
+        <input id="cp_ct25" type="number" min="0" step="1" value="0"/>
+      </div>
+      <div>
+        <label>ct26</label>
+        <input id="cp_ct26" type="number" min="0" step="1" value="0"/>
+      </div>
+      <div>
+        <label>ct27</label>
+        <input id="cp_ct27" type="number" min="0" step="1" value="0"/>
+      </div>
+      <div>
+        <label>Tổng ct31</label>
+        <input id="cp_ct31" class="mono" type="text" readonly value="0"/>
+      </div>
+    </div>
+    <div class="small">Các ct28–ct30 trong ChiPhiQL sẽ để 0 giống file mẫu của bạn.</div>
+  </div>
+</div>
+
 <script>
 (() => {
   const NS = "http://kekhaithue.gdt.gov.vn/TKhaiThue";
@@ -523,6 +597,153 @@
     $("pit_ct32").textContent = fmtInt(sumPIT);
   }
 
+
+  // ===== Phụ lục 01-2/BK-HĐKD =====
+  function fmtQty(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x)) return "0.000";
+    return (Math.round(x * 1000) / 1000).toFixed(3);
+  }
+
+  function fmtMoney(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x)) return "0";
+    return String(Math.trunc(x));
+  }
+
+  function plAddRow(data = {}) {
+    const tr = document.createElement("tr");
+    const esc = (s) => String(s ?? "").replaceAll('"', '&quot;');
+    tr.innerHTML = `
+      <td><input class="pl_ct06" type="text" value="${esc(data.ct06)}"/></td>
+      <td><input class="pl_ct07" type="text" value="${esc(data.ct07 || "CAI")}"/></td>
+      <td><input class="pl_ct08" type="number" min="0" step="1" value="${data.ct08 ?? 0}"/></td>
+      <td><input class="pl_ct09" type="number" min="0" step="1" value="${data.ct09 ?? 0}"/></td>
+      <td><input class="pl_ct10" type="number" min="0" step="1" value="${data.ct10 ?? 0}"/></td>
+      <td><input class="pl_ct11" type="number" min="0" step="1" value="${data.ct11 ?? 0}"/></td>
+      <td><input class="pl_ct12" type="number" min="0" step="1" value="${data.ct12 ?? 0}"/></td>
+      <td><input class="pl_ct13" type="number" min="0" step="1" value="${data.ct13 ?? 0}"/></td>
+      <td><input class="pl_ct14" type="number" min="0" step="1" value="${data.ct14 ?? 0}"/></td>
+      <td><input class="pl_ct15" type="number" min="0" step="1" value="${data.ct15 ?? 0}"/></td>
+      <td><button class="btn2" type="button">✖</button></td>
+    `;
+    tr.querySelector("button").addEventListener("click", () => { tr.remove(); plCalcTotals(); });
+    tr.querySelectorAll("input").forEach(inp => inp.addEventListener("input", plCalcTotals));
+    $("plRows").appendChild(tr);
+  }
+
+  function plClearRows() {
+    $("plRows").innerHTML = "";
+    plCalcTotals();
+  }
+
+  function plGetRows() {
+    const rows = [];
+    $("plRows").querySelectorAll("tr").forEach(tr => {
+      const get = (cls) => tr.querySelector("."+cls)?.value ?? "";
+      rows.push({
+        ct06: get("pl_ct06").trim(),
+        ct07: get("pl_ct07").trim(),
+        ct08: Number(get("pl_ct08") || 0),
+        ct09: Number(get("pl_ct09") || 0),
+        ct10: Number(get("pl_ct10") || 0),
+        ct11: Number(get("pl_ct11") || 0),
+        ct12: Number(get("pl_ct12") || 0),
+        ct13: Number(get("pl_ct13") || 0),
+        ct14: Number(get("pl_ct14") || 0),
+        ct15: Number(get("pl_ct15") || 0),
+      });
+    });
+    return rows;
+  }
+
+  function plCalcTotals() {
+    const rows = plGetRows();
+    let ct17 = 0, ct19 = 0, ct21 = 0, ct23 = 0;
+    for (const r of rows) {
+      ct17 += (Number(r.ct09) || 0);
+      ct19 += (Number(r.ct11) || 0);
+      ct21 += (Number(r.ct13) || 0);
+      ct23 += (Number(r.ct15) || 0);
+    }
+    $("pl_ct17").textContent = fmtMoney(ct17);
+    $("pl_ct19").textContent = fmtMoney(ct19);
+    $("pl_ct21").textContent = fmtMoney(ct21);
+    $("pl_ct23").textContent = fmtMoney(ct23);
+
+    const cp24 = Number($("cp_ct24").value || 0);
+    const cp25 = Number($("cp_ct25").value || 0);
+    const cp26 = Number($("cp_ct26").value || 0);
+    const cp27 = Number($("cp_ct27").value || 0);
+    $("cp_ct31").value = fmtMoney(cp24 + cp25 + cp26 + cp27);
+
+    $("dt_ct28").value = fmtMoney(ct21);
+    calc();
+  }
+
+  $("btnAddRow")?.addEventListener("click", () => { plAddRow(); plCalcTotals(); });
+  $("btnClearRows")?.addEventListener("click", () => { plClearRows(); });
+
+  ["cp_ct24","cp_ct25","cp_ct26","cp_ct27"].forEach(id => {
+    $(id)?.addEventListener("input", plCalcTotals);
+  });
+
+  function setDirectChildText(parentEl, tagName, value) {
+    const kids = Array.from(parentEl.childNodes).filter(n => n.nodeType === 1);
+    const node = kids.find(n => (n.localName === tagName));
+    if (!node) throw new Error("Không tìm thấy tag trực tiếp <"+tagName+"> trong " + parentEl.localName);
+    node.textContent = String(value);
+  }
+
+  function rebuildPhuLuc(xmlDoc) {
+    const pl = xmlDoc.getElementsByTagNameNS(NS, "PLuc_01_2_BK_HDKD")[0];
+    if (!pl) throw new Error("Không tìm thấy <PLuc_01_2_BK_HDKD> trong template XML");
+
+    const bke = pl.getElementsByTagNameNS(NS, "BKeVLDCSPHH")[0];
+    if (!bke) throw new Error("Không tìm thấy <BKeVLDCSPHH> trong phụ lục");
+
+    Array.from(bke.getElementsByTagNameNS(NS, "CTietHKDCNKD")).forEach(node => node.parentNode.removeChild(node));
+
+    const rows = plGetRows();
+    for (const r of rows) {
+      if (!r.ct06) continue;
+      const item = xmlDoc.createElementNS(NS, "CTietHKDCNKD");
+      item.setAttribute("id", "1");
+
+      const add = (tag, val) => {
+        const el = xmlDoc.createElementNS(NS, tag);
+        el.textContent = String(val);
+        item.appendChild(el);
+      };
+
+      add("ct06", r.ct06);
+      add("ct07", r.ct07 || "CAI");
+      add("ct08", fmtQty(r.ct08));
+      add("ct09", fmtMoney(r.ct09));
+      add("ct10", fmtQty(r.ct10));
+      add("ct11", fmtMoney(r.ct11));
+      add("ct12", fmtQty(r.ct12));
+      add("ct13", fmtMoney(r.ct13));
+      add("ct14", fmtQty(r.ct14));
+      add("ct15", fmtMoney(r.ct15));
+
+      bke.appendChild(item);
+    }
+
+    setDirectChildText(bke, "ct17", $("pl_ct17").textContent || "0");
+    setDirectChildText(bke, "ct19", $("pl_ct19").textContent || "0");
+    setDirectChildText(bke, "ct21", $("pl_ct21").textContent || "0");
+    setDirectChildText(bke, "ct23", $("pl_ct23").textContent || "0");
+
+    const chiPhi = pl.getElementsByTagNameNS(NS, "ChiPhiQL")[0];
+    if (!chiPhi) throw new Error("Không tìm thấy <ChiPhiQL> trong phụ lục");
+
+    setDirectChildText(chiPhi, "ct24", fmtMoney(Number($("cp_ct24").value || 0)));
+    setDirectChildText(chiPhi, "ct25", fmtMoney(Number($("cp_ct25").value || 0)));
+    setDirectChildText(chiPhi, "ct26", fmtMoney(Number($("cp_ct26").value || 0)));
+    setDirectChildText(chiPhi, "ct27", fmtMoney(Number($("cp_ct27").value || 0)));
+    setDirectChildText(chiPhi, "ct31", $("cp_ct31").value || "0");
+  }
   function setTextInParent(parentEl, tagName, value) {
     const nodes = parentEl.getElementsByTagNameNS(NS, tagName);
     if (!nodes || !nodes.length) throw new Error("Không tìm thấy tag <"+tagName+"> trong block " + parentEl.tagName);
@@ -596,6 +817,9 @@
     setCTBlock(xmlDoc, "SoThueGTGT", {ct28: vat28, ct29: vat29, ct30: vat30, ct31: vat31, ct32: vat32});
     setCTBlock(xmlDoc, "SoThueTNCN", {ct28: pit28, ct29: pit29, ct30: pit30, ct31: pit31, ct32: pit32});
 
+    // cập nhật phụ lục 01-2/BK-HĐKD từ giao diện
+    rebuildPhuLuc(xmlDoc);
+
     const serializer = new XMLSerializer();
     let out = serializer.serializeToString(xmlDoc);
     if (!out.startsWith("<?xml")) out = '<?xml version="1.0" encoding="UTF-8"?>\n' + out;
@@ -664,6 +888,43 @@
     const d = new Date();
     $("signDate").value = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
 
+
+    // ----- Nạp dữ liệu phụ lục 01-2/BK-HĐKD từ template -----
+    try{
+      $("plRows").innerHTML = "";
+      const pl = xmlDoc.getElementsByTagNameNS(NS, "PLuc_01_2_BK_HDKD")[0];
+      const bke = pl?.getElementsByTagNameNS(NS, "BKeVLDCSPHH")[0];
+      const items = bke ? Array.from(bke.getElementsByTagNameNS(NS, "CTietHKDCNKD")) : [];
+      for(const it of items){
+        const g = (tag) => it.getElementsByTagNameNS(NS, tag)[0]?.textContent ?? "";
+        plAddRow({
+          ct06: g("ct06"),
+          ct07: g("ct07"),
+          ct08: parseFloat(g("ct08")||"0"),
+          ct09: parseFloat(g("ct09")||"0"),
+          ct10: parseFloat(g("ct10")||"0"),
+          ct11: parseFloat(g("ct11")||"0"),
+          ct12: parseFloat(g("ct12")||"0"),
+          ct13: parseFloat(g("ct13")||"0"),
+          ct14: parseFloat(g("ct14")||"0"),
+          ct15: parseFloat(g("ct15")||"0"),
+        });
+      }
+      if(items.length === 0){
+        plAddRow(); plAddRow(); plAddRow();
+      }
+
+      const chi = pl?.getElementsByTagNameNS(NS,"ChiPhiQL")[0];
+      const cg = (tag) => chi?.getElementsByTagNameNS(NS, tag)[0]?.textContent ?? "0";
+      $("cp_ct24").value = cg("ct24");
+      $("cp_ct25").value = cg("ct25");
+      $("cp_ct26").value = cg("ct26");
+      $("cp_ct27").value = cg("ct27");
+    }catch(e){
+      console.warn("Không nạp được phụ lục từ template:", e);
+      plAddRow(); plAddRow(); plAddRow();
+    }
+    plCalcTotals();
     calc();
   }
 
