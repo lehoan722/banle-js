@@ -127,7 +127,7 @@
             background-color: #f0f0f0;
         }
 
-        .dropdown:hover .dropdown-content {
+        .dropdown.open .dropdown-content {
             display: block;
         }
 
@@ -347,6 +347,11 @@
 
     <div class="main-content">
         <div class="data-container">
+            <!-- ✅ dòng thông báo tải dữ liệu -->
+            <div id="statusLoad" style="display:none; color:red; font-weight:bold; margin:6px 0;">
+                Đang tải dữ liệu...
+            </div>
+
             <div id="loading" class="loading"></div>
             <div id="hot"></div>
         </div>
@@ -382,6 +387,36 @@
             height: '600px',
             licenseKey: 'non-commercial-and-evaluation'
         });
+
+        // ===== Dropdown open/close bằng click (đóng được bằng JS) =====
+        function initDropdowns() {
+            const dropdowns = document.querySelectorAll('.dropdown');
+
+            dropdowns.forEach(dd => {
+                const btn = dd.querySelector('.dropdown-button');
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    // đóng các dropdown khác
+                    dropdowns.forEach(other => { if (other !== dd) other.classList.remove('open'); });
+
+                    // toggle dropdown hiện tại
+                    dd.classList.toggle('open');
+                });
+            });
+
+            // click ra ngoài -> đóng hết
+            document.addEventListener('click', () => {
+                dropdowns.forEach(dd => dd.classList.remove('open'));
+            });
+        }
+
+        function closeAllDropdowns() {
+            document.querySelectorAll('.dropdown').forEach(dd => dd.classList.remove('open'));
+        }
+
+        initDropdowns();
+
 
         //---------------------lenh--lay dia chi may chu -------------------------------
         function getServerIP() {
@@ -931,14 +966,21 @@
         }
 
         async function load4ColsFromSheet(sheetName) {
+            // ✅ đóng dropdown ngay khi bấm
+            closeAllDropdowns();
+
             // Abort request trước nếu còn đang chạy
             if (currentAbortController) currentAbortController.abort();
             currentAbortController = new AbortController();
 
             const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}`;
 
+            const statusLoad = document.getElementById("statusLoad");
+
             try {
-                document.getElementById("loading").style.display = "block";
+                // ✅ hiện dòng đang tải ngay trên bảng
+                statusLoad.style.display = "block";
+                statusLoad.textContent = "Đang tải dữ liệu...";
 
                 const response = await fetch(url, { signal: currentAbortController.signal });
                 const json = await response.json();
@@ -956,16 +998,21 @@
                 apply4ColsLayout();
                 hot.loadData([...formattedData, ...emptyRows]);
 
+                // ✅ tải ảnh luôn sau khi load data xong
+                // (để UI kịp vẽ bảng trước, tránh cảm giác đơ)
+                setTimeout(() => {
+                    searchImages();
+                }, 30);
+
             } catch (err) {
                 if (err.name !== "AbortError") {
                     console.error("Lỗi khi tải dữ liệu:", err);
                     alert("❌ Không thể tải dữ liệu từ Google Sheet.");
                 }
             } finally {
-                document.getElementById("loading").style.display = "none";
+                // ✅ ẩn dòng đang tải
+                statusLoad.style.display = "none";
             }
-            searchImages();   // ❌ bỏ auto load ảnh để tăng tốc
-            alert("da tai xong kiem hang."); // ❌ bỏ alert
         }
 
         // ===== 4 nút MENU2 gọi vào đây =====
