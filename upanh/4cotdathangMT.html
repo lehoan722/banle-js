@@ -308,8 +308,7 @@
             <div class="dropdown-button">☰ MENU</div>
             <div class="dropdown-content">
                 <button onclick="searchImages()">Hiện ảnh sản phẩm</button>
-                <button
-                    onclick="window.open('https://banle-js.vercel.app/timkiemhanghoa111.html')">Tim Kiem NV</button>
+                <button onclick="window.open('https://banle-js.vercel.app/timkiemhanghoa111.html')">Tim Kiem NV</button>
                 <button onclick="window.open('upanhmoi2.html')">Up ảnh mới</button>
                 <button onclick="window.open('/a/upanhdathang.html', '_blank')">Trang đặt hàng</button>
                 <button onclick="loadDataFromDatHang()">Lấy đặt hàng</button>
@@ -326,6 +325,7 @@
 
                 <button onclick="loadDataFrombaymaucs1()">Lấy baymaucs1</button>
                 <button onclick="loadDataFrombaymaucs2()">Lấy baymaucs2</button>
+
                 <button onclick="loadDataFrom2v1()">Lấy 2v1</button>
                 <button onclick="loadDataFrom1v2()">Lấy 1v2</button>
 
@@ -374,8 +374,9 @@
                 { data: 3, type: 'numeric', wordWrap: true }
             ],
             autoWrapRow: true,
-            autoRowSize: true,
-            autoColumnSize: true,
+            autoRowSize: false,
+            autoColumnSize: false,
+
             stretchH: 'all',
             width: '100%',
             height: '600px',
@@ -914,164 +915,76 @@
 
         //---------------------lenh--tai ve du lieu kiem hang -------------------------------
 
-        async function loadDataFromKiemHangcs1() {
-            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-            const url = `${baseURL}?sheet=kiemhangcs1`;
+        const GAS_BASE_URL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+        let currentAbortController = null;
+
+        function apply4ColsLayout() {
+            hot.updateSettings({
+                colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
+                columns: [
+                    { data: 0, type: 'text' },
+                    { data: 1, type: 'numeric' },
+                    { data: 2, type: 'numeric' },
+                    { data: 3, type: 'numeric' }
+                ]
+            });
+        }
+
+        async function load4ColsFromSheet(sheetName) {
+            // Abort request trước nếu còn đang chạy
+            if (currentAbortController) currentAbortController.abort();
+            currentAbortController = new AbortController();
+
+            const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}`;
 
             try {
                 document.getElementById("loading").style.display = "block";
 
-                const response = await fetch(url);
+                const response = await fetch(url, { signal: currentAbortController.signal });
                 const json = await response.json();
 
                 const formattedData = json.map(row => [
                     row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
                 ]);
 
-                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-                hot.updateSettings({
-                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-                    columns: [
-                        { data: 0, type: 'text' },
-                        { data: 1, type: 'numeric' },
-                        { data: 2, type: 'numeric' },
-                        { data: 3, type: 'numeric' }
-                    ]
-                });
+                const emptyRows = Array.from(
+                    { length: Math.max(0, 400 - formattedData.length) },
+                    () => ["", "", "", ""]
+                );
+
+                // Update layout trước, rồi load data
+                apply4ColsLayout();
                 hot.loadData([...formattedData, ...emptyRows]);
+
             } catch (err) {
-                console.error("Lỗi khi tải dữ liệu:", err);
-                alert("❌ Không thể tải dữ liệu Kiểm hàng.");
+                if (err.name !== "AbortError") {
+                    console.error("Lỗi khi tải dữ liệu:", err);
+                    alert("❌ Không thể tải dữ liệu từ Google Sheet.");
+                }
             } finally {
                 document.getElementById("loading").style.display = "none";
             }
-
-            searchImages();
-
-            alert("da tai xong kiem hang.");
-
+            searchImages();   // ❌ bỏ auto load ảnh để tăng tốc
+            alert("da tai xong kiem hang."); // ❌ bỏ alert
         }
 
-         //---------------------lenh--tai ve du lieu kiem hang -------------------------------
+        // ===== 4 nút MENU2 gọi vào đây =====
+        async function loadDataFromKiemHangcs1() {
+            await load4ColsFromSheet("kiemhangcs1");
+        }
 
         async function loadDataFromKiemHangcs2() {
-            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-            const url = `${baseURL}?sheet=kiemhangcs2`;
-
-            try {
-                document.getElementById("loading").style.display = "block";
-
-                const response = await fetch(url);
-                const json = await response.json();
-
-                const formattedData = json.map(row => [
-                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-                ]);
-
-                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-                hot.updateSettings({
-                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-                    columns: [
-                        { data: 0, type: 'text' },
-                        { data: 1, type: 'numeric' },
-                        { data: 2, type: 'numeric' },
-                        { data: 3, type: 'numeric' }
-                    ]
-                });
-                hot.loadData([...formattedData, ...emptyRows]);
-            } catch (err) {
-                console.error("Lỗi khi tải dữ liệu:", err);
-                alert("❌ Không thể tải dữ liệu Kiểm hàng.");
-            } finally {
-                document.getElementById("loading").style.display = "none";
-            }
-
-            searchImages();
-
-            alert("da tai xong kiem hang.");
-
+            await load4ColsFromSheet("kiemhangcs2");
         }
-
-        //---------------------lenh--tai ve du lieu baymaucs1 -------------------------------
 
         async function loadDataFrombaymaucs1() {
-            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-            const url = `${baseURL}?sheet=baymaucs1`;
-
-            try {
-                document.getElementById("loading").style.display = "block";
-
-                const response = await fetch(url);
-                const json = await response.json();
-
-                const formattedData = json.map(row => [
-                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-                ]);
-
-                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-                hot.updateSettings({
-                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-                    columns: [
-                        { data: 0, type: 'text' },
-                        { data: 1, type: 'numeric' },
-                        { data: 2, type: 'numeric' },
-                        { data: 3, type: 'numeric' }
-                    ]
-                });
-                hot.loadData([...formattedData, ...emptyRows]);
-            } catch (err) {
-                console.error("Lỗi khi tải dữ liệu:", err);
-                alert("❌ Không thể tải dữ liệu Kiểm hàng.");
-            } finally {
-                document.getElementById("loading").style.display = "none";
-            }
-
-            searchImages();
-
-            alert("da tai xong bay mau cs1.");
-
+            await load4ColsFromSheet("baymaucs1");
         }
-
-        //---------------------lenh--tai ve du lieu baymaucs2 -------------------------------
-
 
         async function loadDataFrombaymaucs2() {
-            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-            const url = `${baseURL}?sheet=baymaucs2`;
-
-            try {
-                document.getElementById("loading").style.display = "block";
-
-                const response = await fetch(url);
-                const json = await response.json();
-
-                const formattedData = json.map(row => [
-                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-                ]);
-
-                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-                hot.updateSettings({
-                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-                    columns: [
-                        { data: 0, type: 'text' },
-                        { data: 1, type: 'numeric' },
-                        { data: 2, type: 'numeric' },
-                        { data: 3, type: 'numeric' }
-                    ]
-                });
-                hot.loadData([...formattedData, ...emptyRows]);
-            } catch (err) {
-                console.error("Lỗi khi tải dữ liệu:", err);
-                alert("❌ Không thể tải dữ liệu Kiểm hàng.");
-            } finally {
-                document.getElementById("loading").style.display = "none";
-            }
-
-            searchImages();
-
-            alert("da tai xong bay mau cs2.");
-
+            await load4ColsFromSheet("baymaucs2");
         }
+
 
 
         function resetPage() {
