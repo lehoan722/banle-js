@@ -2,814 +2,999 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>DAT / KIEM - HANG</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.css">
 
-  <title>DAT / KIEM - HANG</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.css">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
 
-  <style>
-    html,
-    body {
-      margin: 0;
-      /* Xóa khoảng cách mặc định của trình duyệt */
-      padding: 0;
-      /* Xóa lề bên trong mặc định */
-      height: 100vh;
-      /* Chiều cao bằng toàn bộ chiều cao màn hình */
-      overflow: hidden;
-      /* Ẩn thanh cuộn, không cho cuộn trang */
-      font-family: Arial, sans-serif;
-      /* Sử dụng font chữ Arial */
-    }
+        .nutlenh {
+            width: 100%;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #ccc;
+        }
 
-    body {
-      display: flex;
-      /* Kích hoạt chế độ flexbox */
-      flex-wrap: nowrap;
-      /* Không cho phép các phần tử con xuống dòng */
-    }
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            height: calc(100vh - 50px);
+        }
 
-    /* =================== MÀN HÌNH MÁY TÍNH (>=800px) =================== */
-    @media (min-width: 800px) {
-      body {
-        flex-direction: row;
-        /* Sắp xếp các phần tử theo chiều ngang */
-      }
+        .data-container {
+            width: 50%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            border-right: 1px solid #ddd;
+        }
 
-      .nutlenh {
-        order: 1;
-        /* Sắp xếp phần tử này ở vị trí đầu tiên */
-        width: 50%;
-        /* Rộng bằng 50% màn hình */
-        height: auto;
-        /* Chiều cao tự động theo nội dung */
-        padding: 5px;
-        /* Thêm khoảng trống bên trong 10px */
-        box-sizing: border-box;
-        /* Tính padding vào tổng kích thước */
-        background-color: #f8f9fa;
-        /* Màu nền xám nhạt */
-      }
+        .gallery-container {
+            width: 50%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #f1f1f1;
+        }
 
-      .data-container {
-        order: 2;
-        /* Vị trí thứ hai trong flex */
-        width: 50%;
-        /* Rộng bằng 50% màn hình */
-        height: calc(100vh - auto);
-        /* Cao bằng phần còn lại sau nút */
-        overflow-y: auto;
-        /* Cho phép cuộn dọc nếu nội dung dài */
-        padding: 10px;
-        /* Khoảng cách bên trong */
-        box-sizing: border-box;
-        /* Kích thước bao gồm padding */
-      }
+        .gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
 
-      .gallery-container {
-        order: 3;
-        /* Vị trí thứ ba – hiển thị sau bảng */
-        width: 50%;
-        /* Rộng 50% – nằm bên phải */
-        height: 100vh;
-        /* Cao bằng toàn bộ màn hình */
-        overflow-y: auto;
-        /* Cuộn dọc nếu nhiều ảnh */
-        position: sticky;
-        /* Dính khi cuộn trang */
-        top: 0;
-        /* Dính sát mép trên */
-        background: #f1f1f1;
-        /* Màu nền sáng hơn */
-        padding: 10px;
-        /* Lề trong 10px */
-        box-sizing: border-box;
-        /* Tính kích thước gồm padding */
-      }
+        .gallery img {
+            display: block;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin: 0 auto;
+            max-width: 100%;
+            max-height: 320px;
+            min-width: 0;
+            min-height: 0;
+        }
 
-      .gallery {
-        display: flex;
-        /* Dùng flex để dàn ảnh */
-        flex-wrap: wrap;
-        /* Cho phép xuống dòng */
-        justify-content: space-between;
-        /* Dàn đều các ảnh với khoảng cách */
-        gap: 10px;
-        /* Khoảng cách giữa các ảnh */
-      }
-
-      .gallery img {
-        width: calc(50% - 10px);
-        /* Mỗi ảnh chiếm khoảng 50%, trừ khoảng cách */
-        height: auto;
-        /* Chiều cao tự động theo tỷ lệ ảnh */
-        border: 1px solid #ccc;
-        /* Viền xám mỏng */
-        border-radius: 4px;
-        /* Bo tròn nhẹ ở góc ảnh */
-      }
-    }
-
-    /* =================== MÀN HÌNH ĐIỆN THOẠI (<=600px) =================== */
-    @media (max-width: 600px) {
-      body {
-        flex-direction: column;
-        /* Sắp xếp dọc theo chiều từ trên xuống */
-      }
-
-      .gallery-container {
-        order: 1;
-        /* Hiển thị đầu tiên */
-        height: 40vh;
-        /* Chiếm 50% chiều cao màn hình */
-        width: 100vw;
-        /* Chiếm toàn bộ chiều rộng màn hình */
-        overflow-y: auto;
-        /* Cuộn dọc nếu ảnh nhiều */
-        position: sticky;
-        /* Cố định khi cuộn */
-        top: 0;
-        /* Sát trên cùng */
-        background: #f1f1f1;
-        /* Nền sáng nhẹ */
-        padding: 10px;
-        /* Lề trong */
-        box-sizing: border-box;
-        /* Bao gồm cả padding trong kích thước */
-      }
-
-      .gallery {
-        display: flex;
-        /* Kích hoạt flex */
-        flex-direction: column;
-        /* Ảnh xếp theo cột */
-        align-items: center;
-        /* Căn giữa ảnh theo chiều ngang */
-        gap: 10px;
-        /* Khoảng cách giữa các ảnh */
-      }
-
-      .gallery img {
-        width: 100%;
-        /* Mỗi ảnh chiếm toàn chiều ngang */
-        height: auto;
-        /* Tự điều chỉnh chiều cao theo tỷ lệ */
-        border: 1px solid #ccc;
-        /* Viền ảnh */
-        border-radius: 4px;
-        /* Bo tròn nhẹ */
-      }
-
-      .nutlenh {
-        order: 2;
-        /* Vị trí thứ hai */
-        height: 7vh;
-        /* Cao 10% màn hình */
-        width: 100vw;
-        /* Rộng toàn màn hình */
-        padding: 5px;
-        /* Lề trong 5px */
-        box-sizing: border-box;
-        /* Bao gồm cả padding trong tổng kích thước */
-        background-color: #f8f9fa;
-        /* Màu nền nhạt */
-        display: flex;
-        /* Bố trí các nút bằng flex */
-        flex-wrap: wrap;
-        /* Xuống hàng khi tràn */
-        justify-content: center;
-        /* Căn giữa các nút theo chiều ngang */
-        align-items: center;
-        /* Căn giữa các nút theo chiều dọc */
-        gap: 4px;
-        /* Khoảng cách giữa các nút */
-      }
-
-      .data-container {
-        order: 3;
-        /* Vị trí cuối cùng */
-        height: 40vh;
-        /* Cao 40% màn hình */
-        width: 100vw;
-        /* Rộng toàn màn hình */
-        overflow-y: auto;
-        /* Cuộn dọc nếu dài */
-        padding: 10px;
-        /* Khoảng cách bên trong */
-        box-sizing: border-box;
-        /* Bao gồm padding trong tổng kích thước */
-      }
-    }
-
-    button {
-      margin: 2px;
-      /* Cách các nút ra 2px */
-      padding: 2px 2px;
-      /* Padding trong nút */
-      font-size: 12px;
-      /* Cỡ chữ nhỏ */
-      border: 2px solid #ccc;
-      /* Viền nút màu xám nhạt */
-      border-radius: 4px;
-      /* Bo tròn góc nút */
-      cursor: pointer;
-      /* Con trỏ biến thành bàn tay khi di chuột */
-    }
-
-    .handsontable input[type="checkbox"] {
-      transform: scale(1.3);
-      /* Phóng to checkbox */
-      width: 60%;
-      /* Rộng bằng ô */
-      height: 60%;
-      /* Cao bằng ô */
-      cursor: pointer;
-      /* Đổi chuột thành bàn tay */
-    }
-
-    .htCheckboxRenderer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  </style>
-
-<style>
-.dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.dropdown-button {
-  padding: 5px 5px;
-  font-size: 14px;
-  border: 2px solid #ccc;
-  border-radius: 4px;
-  background-color: #f8f9fa;
-  cursor: pointer;
-}
-
-.dropdown-content {
-  display: none;
-  position: absolute;
-  z-index: 9999;
-  background-color: white;
-  min-width: 220px;
-  box-shadow: 0px 4px 8px rgba(0,0,0,0.15);
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-
-.dropdown-content button {
-  width: 100%;
-  padding: 10px;
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  font-size: 13px;
-  border-bottom: 1px solid #eee;
-}
-
-.dropdown-content button:hover {
-  background-color: #f0f0f0;
-}
-
-.dropdown:hover .dropdown-content {
-  display: block;
-}
-</style>
+        .gallery-item {
+            width: 320px;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f8f8;
+            border-radius: 8px;
+            box-shadow: 0 1px 6px #eee;
+            margin: 0 auto;
+            flex-direction: column;
+        }
 
 
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-button {
+            padding: 5px 5px;
+            font-size: 14px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            z-index: 9999;
+            background-color: white;
+            min-width: 220px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .dropdown-content button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dropdown-content button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* =================== MÀN HÌNH ĐIỆN THOẠI (<=600px) =================== */
+        @media (max-width: 600px) {
+            body {
+                flex-direction: column;
+                /* Sắp xếp dọc theo chiều từ trên xuống */
+            }
+
+            .gallery-container {
+                order: 1;
+                /* Hiển thị đầu tiên */
+                height: 40vh;
+                /* Chiếm 50% chiều cao màn hình */
+                width: 100vw;
+                /* Chiếm toàn bộ chiều rộng màn hình */
+                overflow-y: auto;
+                /* Cuộn dọc nếu ảnh nhiều */
+                position: sticky;
+                /* Cố định khi cuộn */
+                top: 0;
+                /* Sát trên cùng */
+                background: #f1f1f1;
+                /* Nền sáng nhẹ */
+                padding: 10px;
+                /* Lề trong */
+                box-sizing: border-box;
+                /* Bao gồm cả padding trong kích thước */
+            }
+
+            .gallery {
+                display: flex;
+                /* Kích hoạt flex */
+                flex-direction: column;
+                /* Ảnh xếp theo cột */
+                align-items: center;
+                /* Căn giữa ảnh theo chiều ngang */
+                gap: 10px;
+                /* Khoảng cách giữa các ảnh */
+            }
+
+            .gallery img {
+                width: 100%;
+                /* Mỗi ảnh chiếm toàn chiều ngang */
+                height: auto;
+                /* Tự điều chỉnh chiều cao theo tỷ lệ */
+                border: 1px solid #ccc;
+                /* Viền ảnh */
+                border-radius: 4px;
+                /* Bo tròn nhẹ */
+            }
+
+            .nutlenh {
+                order: 2;
+                /* Vị trí thứ hai */
+                height: 7vh;
+                /* Cao 10% màn hình */
+                width: 100vw;
+                /* Rộng toàn màn hình */
+                padding: 5px;
+                /* Lề trong 5px */
+                box-sizing: border-box;
+                /* Bao gồm cả padding trong tổng kích thước */
+                background-color: #f8f9fa;
+                /* Màu nền nhạt */
+                display: flex;
+                /* Bố trí các nút bằng flex */
+                flex-wrap: wrap;
+                /* Xuống hàng khi tràn */
+                justify-content: center;
+                /* Căn giữa các nút theo chiều ngang */
+                align-items: center;
+                /* Căn giữa các nút theo chiều dọc */
+                gap: 4px;
+                /* Khoảng cách giữa các nút */
+            }
+
+            .data-container {
+                order: 3;
+                /* Vị trí cuối cùng */
+                height: 40vh;
+                /* Cao 40% màn hình */
+                width: 100vw;
+                /* Rộng toàn màn hình */
+                overflow-y: auto;
+                /* Cuộn dọc nếu dài */
+                padding: 10px;
+                /* Khoảng cách bên trong */
+                box-sizing: border-box;
+                /* Bao gồm padding trong tổng kích thước */
+            }
+        }
+
+        button {
+            margin: 2px;
+            /* Cách các nút ra 2px */
+            padding: 2px 2px;
+            /* Padding trong nút */
+            font-size: 12px;
+            /* Cỡ chữ nhỏ */
+            border: 2px solid #ccc;
+            /* Viền nút màu xám nhạt */
+            border-radius: 4px;
+            /* Bo tròn góc nút */
+            cursor: pointer;
+            /* Con trỏ biến thành bàn tay khi di chuột */
+        }
+
+        .handsontable input[type="checkbox"] {
+            transform: scale(1.3);
+            /* Phóng to checkbox */
+            width: 60%;
+            /* Rộng bằng ô */
+            height: 60%;
+            /* Cao bằng ô */
+            cursor: pointer;
+            /* Đổi chuột thành bàn tay */
+        }
+
+        .htCheckboxRenderer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+
+    <style>
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-button {
+            padding: 5px 5px;
+            font-size: 14px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            z-index: 9999;
+            background-color: white;
+            min-width: 220px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .dropdown-content button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dropdown-content button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nutlenh">
+        <div class="dropdown">
+            <div class="dropdown-button">☰ MENU</div>
+            <div class="dropdown-content">
+                <button onclick="searchImages()">Hiện ảnh sản phẩm</button>
+                <button onclick="window.open('https://banle-js.vercel.app/timkiemhanghoa111.html')">Tim Kiem NV</button>
+                <button onclick="window.open('upanhmoi2.html')">Up ảnh mới</button>
+                <button onclick="window.open('/a/upanhdathang.html', '_blank')">Trang đặt hàng</button>
+                <button onclick="loadDataFromDatHang()">Lấy đặt hàng</button>
+                <button onclick="saveTraHangData()">Lưu trả hàng</button>
+
+            </div>
+        </div>
+        <div class="dropdown">
+            <div class="dropdown-button">☰ MENU2</div>
+            <div class="dropdown-content">
+
+                <button onclick="loadDataFromKiemHangcs1()">Lấy kiểm hàng cs1</button>
+                <button onclick="loadDataFromKiemHangcs2()">Lấy kiểm hàng cs2</button>
+
+                <button onclick="loadDataFrombaymaucs1()">Lấy baymaucs1</button>
+                <button onclick="loadDataFrombaymaucs2()">Lấy baymaucs2</button>
+
+                <button onclick="loadDataFrom2v1()">Lấy 2v1</button>
+                <button onclick="loadDataFrom1v2()">Lấy 1v2</button>
 
 
+            </div>
+        </div>
 
-
-  <!-- KHU VỰC ẢNH (hiển thị ảnh sản phẩm) -->
-  <div class="gallery-container">
-    <div class="gallery" id="gallery"></div>
-  </div>
-
-  <!-- KHU VỰC NÚT LỆNH (các chức năng thao tác) -->
-  <div class="nutlenh">
-  <div class="dropdown">
-    <div class="dropdown-button">☰ MENU</div>
-    <div class="dropdown-content">
-        <button onclick="searchImages()">Hiện ảnh sản phẩm</button>
-        <button onclick="window.open('https://script.google.com/macros/s/AKfycbzWlrP_Z_xwFgYqx21RAtYRHKaIjQ2O9jbPnorQgEeXR7ZA0OsKCmJp4w9aoMvfDA0P/exec', '_blank')">Tim Kiem NV</button>
-        <button onclick="window.open('/a/upanhmoi2.html', '_blank')">Up ảnh mới</button>
-        <button onclick="window.open('/a/upanhdathang.html', '_blank')">Trang đặt hàng</button>
-        <button onclick="loadDataFromDatHang()">Lấy đặt hàng</button>
-        <button onclick="saveTraHangData()">Lưu trả hàng</button>
-        <button onclick="loadDataFromKiemHang()">Lấy kiểm hàng</button>
-        <button onclick="loadDataFrombaymaucs1()">Lấy baymaucs1</button>
-        <button onclick="loadDataFrombaymaucs2()">Lấy baymaucs2</button>
+        <label for="fromDate">Từ:</label>
+        <input type="date" id="fromDate">
+        <label for="toDate">Đến:</label>
+        <input type="date" id="toDate">
     </div>
 
-    
-  </div>
-
-  <label for="fromDate">Từ:</label>
-  <input type="date" id="fromDate">
- 
-  <label for="toDate">Đến:</label>
-  <input type="date" id="toDate">
-</div>
-
-<div id="statusMessage" style="margin: 10px; color: green; font-weight: bold;"></div>
-
-  </div>
-
-  <!-- KHU VỰC BẢNG DỮ LIỆU (hiển thị dữ liệu sản phẩm) -->
-  <div class="data-container">
-    <div id="loading" class="loading"></div>
-
-    <div id="hot"></div>
-  </div>
+    <button id="btnLuu2v1" style="display:none;" onclick="save2v1()">Lưu 2v1</button>
+    <button id="btnLuu1v2" style="display:none;" onclick="save1v2()">Lưu 1v2</button>
 
 
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
-  <script>
-    //---------------------lenh---khai bao bang -------------------------------
-    let allImages = [];
-    let checkAlltrahang = false;
+    <div id="statusMessage" style="margin: 10px; color: green; font-weight: bold;"></div>
 
-    const container = document.getElementById('hot');
-    const hot = new Handsontable(container, {
-      data: Handsontable.helper.createEmptySpreadsheetData(400, 4),
-      colHeaders: ['Tên sp', 'Nhập', 'Bán', 'Tồn'],
-      rowHeaders: true,
-      columns: [
-        { data: 0, type: 'text', wordWrap: true },
-        { data: 1, type: 'numeric', wordWrap: true },
-        { data: 2, type: 'numeric', wordWrap: true },
-        { data: 3, type: 'numeric', wordWrap: true }
-      ],
-      autoWrapRow: true,
-      autoRowSize: true,
-      autoColumnSize: true,
-      stretchH: 'all',
-      width: '100%',
-      height: '600px',
-      licenseKey: 'non-commercial-and-evaluation'
-    });
-    
-  //---------------------lenh--lay dia chi may chu -------------------------------
-    function getServerIP() {
-      const url = window.location.href;
-      const ipMatch = url.match(/^(https?:\/\/[^\/]+)/);
-      return ipMatch ? ipMatch[1] : null;
-    }
-    //---------------------lenh--lay dia chi may chu -------------------------------
-async function fetchImageList() {
-  const serverIP = getServerIP();
+    <div class="main-content">
+        <div class="data-container">
+            <div id="loading" class="loading"></div>
+            <div id="hot"></div>
+        </div>
+        <div class="gallery-container">
+            <div class="gallery" id="gallery"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
+    <script>
+
+        //---------------------lenh---khai bao bang -------------------------------
+        let allImages = [];
+        let checkAlltrahang = false;
+
+        const container = document.getElementById('hot');
+        const hot = new Handsontable(container, {
+            data: Handsontable.helper.createEmptySpreadsheetData(400, 4),
+            colHeaders: ['Tên sp', 'Nhập', 'Bán', 'Tồn'],
+            rowHeaders: true,
+            columns: [
+                { data: 0, type: 'text', wordWrap: true },
+                { data: 1, type: 'numeric', wordWrap: true },
+                { data: 2, type: 'numeric', wordWrap: true },
+                { data: 3, type: 'numeric', wordWrap: true }
+            ],
+            autoWrapRow: true,
+            autoRowSize: false,
+            autoColumnSize: false,
+
+            stretchH: 'all',
+            width: '100%',
+            height: '600px',
+            licenseKey: 'non-commercial-and-evaluation'
+        });
+
+        //---------------------lenh--lay dia chi may chu -------------------------------
+        function getServerIP() {
+            const url = window.location.href;
+            const ipMatch = url.match(/^(https?:\/\/[^\/]+)/);
+            return ipMatch ? ipMatch[1] : null;
+        }
+
+
+        //---------------------lenh--hien thi anh -------------------------------
+
+        function displayImages(images) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            images.forEach((image, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.id = `image-${index}`;
+
+                const link = document.createElement('a');
+                const nameNoExt = image.name.replace(/\.[^/.]+$/, "");
+                link.href = `${getServerIP()}/index.php?mdl=tonkho&ma=${nameNoExt}`;
+                link.target = "_blank";
+
+                const img = document.createElement('img');
+                img.src = image.url || '';
+                img.alt = image.name || 'Không có ảnh';
+                link.appendChild(img);
+
+                const caption = document.createElement('div');
+                caption.className = 'caption';
+                caption.textContent = image.url ? `${image.name} / ${image.date.toLocaleDateString()}` : `Không có ảnh`;
+
+                const itemNumber = document.createElement('div');
+                itemNumber.className = 'item-number';
+                itemNumber.textContent = index + 1;
+
+                galleryItem.appendChild(link);
+                galleryItem.appendChild(caption);
+                galleryItem.appendChild(itemNumber);
+                gallery.appendChild(galleryItem);
+            });
+        }
+        //---------------------lenh--tim kiem anh-------------------------------
+
+        async function searchImages() {
+            const data = hot.getData();
+            const searchNames = data
+                .map((row, index) => {
+                    const raw = row[0];
+                    const name = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
+                    return { name: name.toUpperCase(), index };
+                })
+                .filter(({ name }) => name);
+
+            if (searchNames.length === 0) {
+                alert("Vui lòng nhập ít nhất một tên ảnh để tìm kiếm.");
+                return;
+            }
+
+            document.getElementById("loading").style.display = "block";
+
+            const supabaseDomain = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
+            const matchedImages = searchNames.map(({ name, index }) => ({
+                name,
+                url: supabaseDomain + name + '.JPG',
+                date: new Date(),
+                notFound: false,
+                index
+            }));
+
+            displayImages(matchedImages);
+            document.getElementById("loading").style.display = "none";
+        }
+
+        function displayImages(images) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            images.forEach((image, index) => {
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                galleryItem.id = `image-${index}`;
+
+                const link = document.createElement('a');
+                link.href = image.url;
+                link.target = "_blank";
+
+                const img = document.createElement('img');
+                img.src = image.url || '';
+                img.onerror = function () {
+                    if (img.src.endsWith('.JPG')) {
+                        img.src = img.src.replace('.JPG', '.png');
+                    } else if (img.src.endsWith('.png')) {
+                        img.alt = 'Không có ảnh';
+                    }
+                };
+
+                img.alt = image.name || 'Không có ảnh';
+                img.onerror = function () {
+                    if (img.src.endsWith('.JPG')) {
+                        img.src = img.src.replace('.JPG', '.png');
+                    } else if (img.src.endsWith('.png')) {
+                        img.alt = 'Không có ảnh';
+                    }
+                };
+                link.appendChild(img);
+
+                const caption = document.createElement('div');
+                caption.className = 'caption';
+                caption.textContent = image.url ? image.name : `Không có ảnh`;
+
+                const itemNumber = document.createElement('div');
+                itemNumber.className = 'item-number';
+                itemNumber.textContent = index + 1;
+
+                galleryItem.appendChild(link);
+                galleryItem.appendChild(caption);
+                galleryItem.appendChild(itemNumber);
+                gallery.appendChild(galleryItem);
+            });
+        }
+
+
+        //---------------------lenh---tu dong chuyen den hinh anh duoc chon------------------------------
+
+        hot.addHook('afterOnCellMouseDown', function (event, coords, TD) {
+            if (coords.col === 0) {
+                const rowIndex = coords.row;
+                const galleryItem = document.getElementById(`image-${rowIndex}`);
+                if (galleryItem) {
+                    galleryItem.scrollIntoView({ behavior: 'smooth' });
+
+                    const clickedName = hot.getDataAtCell(coords.row, coords.col);
+
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(clickedName).catch(err => {
+                            console.warn("Không thể sao chép vào clipboard:", err);
+                        });
+                    } else {
+                        console.warn("Clipboard API không hỗ trợ trình duyệt này.");
+                    }
+                }
+            }
+        });
+
+        //-----lenh-----JavaScript dùng để xử lý hành vi dán dữ liệu------------------
+
+        document.addEventListener('paste', async (event) => {
+            const selected = hot.getSelected();
+            if (selected && selected.length === 1) {
+                const [startRow, startCol] = selected[0];
+                const clipboardData = event.clipboardData || window.clipboardData;
+                const pastedData = clipboardData.getData('Text');
+                if (pastedData.includes('\n')) {
+                    event.preventDefault();
+                    const rows = pastedData.split('\n').filter(row => row.trim() !== '');
+                    rows.forEach((row, index) => {
+                        hot.setDataAtCell(startRow + index, startCol, row);
+                    });
+                    hot.deselectCell();
+                }
+            }
+        });
+        //---------------------bo tap lenh nay  ----------------------------------
+        async function loadDataFromSheet(sheetName = "dathangcs1") {
+            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+            const url = `${baseURL}?sheet=${sheetName}`;
+
+            try {
+                document.getElementById("loading").style.display = "block"; // ✅ báo hiệu đang tải
+
+                const response = await fetch(url);
+                const json = await response.json();
+
+                const formattedData = json.map(row => [
+                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
+                ]);
+
+                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
+                hot.loadData([...formattedData, ...emptyRows]);
+
+                //alert("✅ Đã tải dữ liệu thành công!");  khong hien thong bao
+            } catch (err) {
+                console.error("Lỗi khi tải dữ liệu:", err);
+                alert("❌ Không thể tải dữ liệu từ Google Sheet.");
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+        }
+
+        //---------------------lenh--tai ve du lieu dat hang -------------------------------
+
+        async function loadDataFromDatHang() {
+            const fromDate = document.getElementById("fromDate").value.trim();
+            const toDate = document.getElementById("toDate").value.trim();
+            const statusMessage = document.getElementById("statusMessage");
+
+            // ✅ Kiểm tra ngày bắt buộc phải chọn
+            if (!fromDate || !toDate) {
+                alert("❌ Bạn phải chọn TỪ NGÀY và ĐẾN NGÀY trước khi tìm kiếm.");
+                return;
+            }
+
+            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+            const url = `${baseURL}?sheet=dathangcs1&fromDate=${fromDate}&toDate=${toDate}`;
+
+            try {
+                document.getElementById("loading").style.display = "block";
+
+                const response = await fetch(url);
+                const json = await response.json();
+
+                const formattedData = json.map(row => [
+                    row.ten || "",
+                    row.nhap || "",
+                    row.ban || "",
+                    row.ton || "",
+                    row.ghichu || ""
+                ]);
+
+                originalData = JSON.parse(JSON.stringify(formattedData)); // ✅ lưu bản gốc để so sánh
+                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", "", ""]);
+
+                hot.updateSettings({
+                    colHeaders: [
+                        'Tên SP',
+                        'Đặt hàng',
+                        `<input type="checkbox" id="checkAllTraHang" title="Chọn tất cả">`,
+                        'Ngày tháng',
+                        'Số CT'
+                    ],
+                    columns: [
+                        { data: 0, type: 'text', width: 120 },    // Cột Tên SP
+                        { data: 1, type: 'numeric', width: 190 }, // Cột Đặt hàng
+                        {
+                            data: 2,
+                            type: 'checkbox',
+                            checkedTemplate: 'có',
+                            uncheckedTemplate: 'không',
+                            width: 50                              // Cột Trả hàng
+                        },
+                        { data: 3, type: 'text', width: 100 },    // Cột Ngày tháng
+                        { data: 4, type: 'text', width: 120 }     // Cột Số CT
+                    ]
+                });
+
+                setTimeout(() => {
+                    const checkAll = document.getElementById("checkAllTraHang");
+                    if (checkAll) {
+                        checkAll.addEventListener("change", toggleCheckAll);
+                    }
+                }, 50);
+
+                hot.loadData([...formattedData, ...emptyRows]);
+                statusMessage.innerText = `✅ Đã tải ${formattedData.length} dòng dữ liệu.`;
+                setTimeout(() => statusMessage.innerText = "", 3000);
+            } catch (err) {
+                console.error("Lỗi khi tải dữ liệu:", err);
+                alert("❌ Không thể tải dữ liệu Đặt hàng.");
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+
+            searchImages();
+        }
+
+
+        function toggleCheckAll() {
+            const checked = document.getElementById("checkAllTraHang").checked;
+            const rowCount = hot.countRows();
+
+            for (let i = 0; i < rowCount; i++) {
+                const masp = hot.getDataAtCell(i, 0);
+                const soct = hot.getDataAtCell(i, 4);
+                if (masp && soct) {
+                    hot.setDataAtCell(i, 2, checked ? "có" : "không");
+                }
+            }
+        }
+
+
+        //---------------------lenh--tai ve du lieu trahang -------------------------------
+
+        async function saveTraHangData() {
+            const data = hot.getData();
+            const serverURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+
+            const payload = [];
+
+            for (let i = 0; i < data.length; i++) {
+                const masp = (data[i][0] || "").toString().trim();
+                const trahang = (data[i][2] || "").toString().trim();
+                const soct = (data[i][4] || "").toString().trim();
+
+                if (!masp || !trahang || !soct) continue;
+
+                const oldRow = originalData[i] || [];
+                const oldTraHang = (oldRow[2] || "").toString().trim();
+
+                if (trahang !== oldTraHang) {
+                    payload.push({ masp, soct, trahang });
+                }
+            }
+
+            if (payload.length === 0) {
+                alert("Không có dòng nào thay đổi để ghi.");
+                return;
+            }
+
+            try {
+                const encoded = encodeURIComponent(JSON.stringify(payload));
+                const url = `${serverURL}?action=batchUpdateTraHang&data=${encoded}`;
+
+                const res = await fetch(url);
+                const result = await res.text();
+                alert(result);
+            } catch (err) {
+                console.error("Lỗi khi gửi dữ liệu:", err);
+                alert("❌ Không thể gửi dữ liệu trả hàng.");
+            }
+
+            // Sau khi lưu thành công
+            hot.loadData([]);                          // Xóa bảng
+            document.getElementById("gallery").innerHTML = "";  // Xóa ảnh
+            loadDataFromDatHang(); // goi lai du lieu da luu
+
+        }
+
+
+        //---------------------lenh--tai ve du lieu 2v1 -------------------------------
+
+        async function loadDataFrom2v1() {
+            const fromDate = document.getElementById("fromDate").value.trim();
+            const toDate = document.getElementById("toDate").value.trim();
+
+            if (!fromDate || !toDate) {
+                alert("❌ Bạn phải chọn TỪ NGÀY và ĐẾN NGÀY.");
+                return;
+            }
+
+            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+            const url = `${baseURL}?sheet=2v1&fromDate=${fromDate}&toDate=${toDate}`;
+
+            try {
+                document.getElementById("loading").style.display = "block";
+                const response = await fetch(url);
+                const json = await response.json();
+
+                const formattedData = json.map(row => [
+                    row.ten || "",
+                    row.nhap || "",
+                    row.ban || "",
+                    row.ton || "",
+                    row.ghichu || "",
+                    row.cot5 || "",
+                    row.cot6 || "",
+                    row.cot7 || "",
+                    row.cot8 || "",
+                    row.cot9 || "",
+                    row.cot10 || "",
+                    row.realRow || 0  // CỘT 12: lưu dòng thật
+                ]);
+
+                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => Array(12).fill(""));
+
+                hot.updateSettings({
+                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn', 'Ghi chú', 'Người kiểm', 'Size', 'Vị trí', 'Loại', 'Ghi chú 2', 'Phản hồi', 'Dòng thực'],
+                    columns: Array.from({ length: 12 }, (_, i) => ({
+                        data: i,
+                        type: (i === 1 || i === 2 || i === 3) ? 'numeric' : 'text',
+                        readOnly: i === 11 // Cột "Dòng thực" không cho sửa
+                    }))
+                });
+
+                hot.loadData([...formattedData, ...emptyRows]);
+                document.getElementById("btnLuu2v1").style.display = "inline-block";
+            } catch (err) {
+                console.error("Lỗi khi tải dữ liệu:", err);
+                alert("❌ Không thể tải dữ liệu từ 2v1.");
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+
+            searchImages();
+        }
+
+
+        //---------------------lenh--save2v1 -------------------------------
+
+        async function save2v1() {
+            const data = hot.getData();
+            const payload = [];
+
+            for (let i = 0; i < data.length; i++) {
+                const value = (data[i][10] || "").toString().trim();  // Cột phản hồi
+                const realRow = parseInt(data[i][11], 10);            // Cột dòng thật
+                if (value && realRow) {
+                    payload.push({ index: realRow, value });
+                }
+            }
+
+            if (payload.length === 0) {
+                alert("Không có dòng nào để lưu.");
+                return;
+            }
+
+            try {
+                const serverURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+                const encoded = encodeURIComponent(JSON.stringify(payload));
+                const url = `${serverURL}?action=save2v1&data=${encoded}`;
+
+                const res = await fetch(url);
+                const result = await res.text();
+                alert(result);
+
+                document.getElementById("btnLuu2v1").style.display = "none";
+            } catch (err) {
+                console.error("Lỗi khi lưu dữ liệu:", err);
+                alert("❌ Không thể lưu dữ liệu về 2v1.");
+            }
+        }
+
+
+
+        //---------------------lenh--tai ve du lieu 1v2 -------------------------------
+
+        async function loadDataFrom1v2() {
+            const fromDate = document.getElementById("fromDate").value.trim();
+            const toDate = document.getElementById("toDate").value.trim();
+
+            if (!fromDate || !toDate) {
+                alert("❌ Bạn phải chọn TỪ NGÀY và ĐẾN NGÀY.");
+                return;
+            }
+
+            const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+            const url = `${baseURL}?sheet=1v2&fromDate=${fromDate}&toDate=${toDate}`;
+
+            try {
+                document.getElementById("loading").style.display = "block";
+                const response = await fetch(url);
+                const json = await response.json();
+
+
+                if (!Array.isArray(json) || json.length === 0) {
+                    alert("✅ Kết nối thành công nhưng không có dữ liệu trong khoảng thời gian đã chọn hoặc sheet 1v2 rỗng.");
+                    document.getElementById("loading").style.display = "none";
+                    return;
+                }
+
+
+                const formattedData = json.map(row => [
+                    row.ten || "",
+                    row.nhap || "",
+                    row.ban || "",
+                    row.ton || "",
+                    row.ghichu || "",
+                    row.cot5 || "",
+                    row.cot6 || "",
+                    row.cot7 || "",
+                    row.cot8 || "",
+                    row.cot9 || "",
+                    row.cot10 || "",
+                    row.realRow || 0  // CỘT 12: lưu dòng thật
+                ]);
+
+                const emptyRows = Array.from({ length: 400 - formattedData.length }, () => Array(12).fill(""));
+
+                hot.updateSettings({
+                    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn', 'Ghi chú', 'Người kiểm', 'Size', 'Vị trí', 'Loại', 'Ghi chú 2', 'Phản hồi', 'Dòng thực'],
+                    columns: Array.from({ length: 12 }, (_, i) => ({
+                        data: i,
+                        type: (i === 1 || i === 2 || i === 3) ? 'numeric' : 'text',
+                        readOnly: i === 11 // Cột "Dòng thực" không cho sửa
+                    }))
+                });
+
+                hot.loadData([...formattedData, ...emptyRows]);
+                document.getElementById("btnLuu1v2").style.display = "inline-block";
+            } catch (err) {
+                console.error("Lỗi khi tải dữ liệu:", err);
+                alert("❌ Không thể tải dữ liệu từ 1v2.");
+            } finally {
+                document.getElementById("loading").style.display = "none";
+            }
+
+            searchImages();
+        }
+
+
+        //---------------------lenh--save1v2 -------------------------------
+
+        async function save1v2() {
+            const data = hot.getData();
+            const payload = [];
+
+            for (let i = 0; i < data.length; i++) {
+                const value = (data[i][10] || "").toString().trim();  // Cột phản hồi
+                const realRow = parseInt(data[i][11], 10);            // Cột dòng thật
+                if (value && realRow) {
+                    payload.push({ index: realRow, value });
+                }
+            }
+
+            if (payload.length === 0) {
+                alert("Không có dòng nào để lưu.");
+                return;
+            }
+
+            try {
+                const serverURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+                const encoded = encodeURIComponent(JSON.stringify(payload));
+                const url = `${serverURL}?action=save1v2&data=${encoded}`;
+
+                const res = await fetch(url);
+                const result = await res.text();
+                alert(result);
+
+                document.getElementById("btnLuu1v2").style.display = "none";
+            } catch (err) {
+                console.error("Lỗi khi lưu dữ liệu:", err);
+                alert("❌ Không thể lưu dữ liệu về 1v2.");
+            }
+        }
+
+
+
+
+
+        //---------------------lenh--tai ve du lieu kiem hang -------------------------------
+
+        const GAS_BASE_URL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
+let currentAbortController = null;
+
+function apply4ColsLayout() {
+  hot.updateSettings({
+    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
+    columns: [
+      { data: 0, type: 'text' },
+      { data: 1, type: 'numeric' },
+      { data: 2, type: 'numeric' },
+      { data: 3, type: 'numeric' }
+    ]
+  });
+}
+
+async function load4ColsFromSheet(sheetName) {
+  // Abort request trước nếu còn đang chạy
+  if (currentAbortController) currentAbortController.abort();
+  currentAbortController = new AbortController();
+
+  const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}`;
+
   try {
-    const response = await fetch(`${serverIP}/anh/`);
-    const data = await response.text();
-    const parser = new DOMParser();
-    const htmlDocument = parser.parseFromString(data, 'text/html');
-    const links = htmlDocument.querySelectorAll('a');
-    const images = [];
+    document.getElementById("loading").style.display = "block";
 
-    for (let link of links) {
-      const href = link.getAttribute('href');
-      if (href.match(/\.(jpg|jpeg|png|gif)$/i)) {
-        const imageUrl = `${serverIP}/anh/${href}`;
-        images.push({ url: imageUrl, name: href, date: new Date() }); // ⚡️ không HEAD
-      }
+    const response = await fetch(url, { signal: currentAbortController.signal });
+    const json = await response.json();
+
+    const formattedData = json.map(row => [
+      row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
+    ]);
+
+    const emptyRows = Array.from(
+      { length: Math.max(0, 400 - formattedData.length) },
+      () => ["", "", "", ""]
+    );
+
+    // Update layout trước, rồi load data
+    apply4ColsLayout();
+    hot.loadData([...formattedData, ...emptyRows]);
+
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      console.error("Lỗi khi tải dữ liệu:", err);
+      alert("❌ Không thể tải dữ liệu từ Google Sheet.");
     }
-
-    return images;
-  } catch (error) {
-    console.error('Error fetching image list:', error);
-    return [];
+  } finally {
+    document.getElementById("loading").style.display = "none";
   }
 }
 
-//---------------------lenh--hien thi anh -------------------------------
+// ===== 4 nút MENU2 gọi vào đây =====
+async function loadDataFromKiemHangcs1() { 
+  await load4ColsFromSheet("kiemhangcs1"); 
+}
 
-   function displayImages(images) {
-      const gallery = document.getElementById('gallery');
-      gallery.innerHTML = '';
+async function loadDataFromKiemHangcs2() { 
+  await load4ColsFromSheet("kiemhangcs2"); 
+}
 
-      images.forEach((image, index) => {
-        const galleryItem = document.createElement('div');
-        galleryItem.className = 'gallery-item';
-        galleryItem.id = `image-${index}`;
+async function loadDataFrombaymaucs1() {   
+  await load4ColsFromSheet("baymaucs1"); 
+}
 
-        const link = document.createElement('a');
-        const nameNoExt = image.name.replace(/\.[^/.]+$/, "");
-        link.href = `${getServerIP()}/index.php?mdl=tonkho&ma=${nameNoExt}`;
-        link.target = "_blank";
+async function loadDataFrombaymaucs2() {   
+  await load4ColsFromSheet("baymaucs2"); 
+}
 
-        const img = document.createElement('img');
-        img.src = image.url || '';
-        img.alt = image.name || 'Không có ảnh';
-        link.appendChild(img);
 
-        const caption = document.createElement('div');
-        caption.className = 'caption';
-        caption.textContent = image.url ? `${image.name} / ${image.date.toLocaleDateString()}` : `Không có ảnh`;
-
-        const itemNumber = document.createElement('div');
-        itemNumber.className = 'item-number';
-        itemNumber.textContent = index + 1;
-
-        galleryItem.appendChild(link);
-        galleryItem.appendChild(caption);
-        galleryItem.appendChild(itemNumber);
-        gallery.appendChild(galleryItem);
-      });
-    }
-    //---------------------lenh--tim kiem anh-------------------------------
-
-    async function searchImages() {
-      const data = hot.getData();
-
-      const searchNames = data
-        .map((row, index) => {
-          const raw = row[0];
-          const name = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
-          return { name: name.toUpperCase(), index };
-        })
-        .filter(({ name }) => name);
-
-      if (searchNames.length === 0) {
-        alert("Vui lòng nhập ít nhất một tên ảnh để tìm kiếm.");
-        return;
-      }
-
-      document.getElementById("loading").style.display = "block";
-
-      // ✅ Chỉ tải danh sách ảnh 1 lần duy nhất
-      if (allImages.length === 0) {
-        allImages = await fetchImageList();
-      }
-
-      const matchedImages = searchNames.map(({ name, index }) => {
-        const image = allImages.find(image => {
-          const imageNameWithoutExtension = image.name.replace(/\.[^/.]+$/, "").toUpperCase();
-          return imageNameWithoutExtension === name;
-        });
-
-        return image
-          ? { ...image, notFound: false, index }
-          : { name, url: "", date: new Date(), notFound: true, index };
-      });
-
-      displayImages(matchedImages);
-
-      //matchedImages.forEach(({ notFound, index }) => {
-      //if (notFound) {
-      //  hot.setDataAtCell(index, 1, "Kca");
-      //}
-      // });
-
-      document.getElementById("loading").style.display = "none";
-    }
-
-    //---------------------lenh---tu dong chuyen den hinh anh duoc chon------------------------------
-
-    hot.addHook('afterOnCellMouseDown', function (event, coords, TD) {
-      if (coords.col === 0) {
-        const rowIndex = coords.row;
-        const galleryItem = document.getElementById(`image-${rowIndex}`);
-        if (galleryItem) {
-          galleryItem.scrollIntoView({ behavior: 'smooth' });
-
-          const clickedName = hot.getDataAtCell(coords.row, coords.col);
-
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(clickedName).catch(err => {
-              console.warn("Không thể sao chép vào clipboard:", err);
-            });
-          } else {
-            console.warn("Clipboard API không hỗ trợ trình duyệt này.");
-          }
+     
+        function resetPage() {
+            hot.loadData(Handsontable.helper.createEmptySpreadsheetData(400, 1));
+            document.getElementById("gallery").innerHTML = "";
+            document.getElementById("loading").style.display = "none";
         }
-      }
-    });
 
-    //-----lenh-----JavaScript dùng để xử lý hành vi dán dữ liệu------------------
 
-    document.addEventListener('paste', async (event) => {
-      const selected = hot.getSelected();
-      if (selected && selected.length === 1) {
-        const [startRow, startCol] = selected[0];
-        const clipboardData = event.clipboardData || window.clipboardData;
-        const pastedData = clipboardData.getData('Text');
-        if (pastedData.includes('\n')) {
-          event.preventDefault();
-          const rows = pastedData.split('\n').filter(row => row.trim() !== '');
-          rows.forEach((row, index) => {
-            hot.setDataAtCell(startRow + index, startCol, row);
-          });
-          hot.deselectCell();
-        }
-      }
-    });
-    //---------------------bo tap lenh nay  ----------------------------------
-    async function loadDataFromSheet(sheetName = "dathangcs1") {
-      const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-      const url = `${baseURL}?sheet=${sheetName}`;
 
-      try {
-        document.getElementById("loading").style.display = "block"; // ✅ báo hiệu đang tải
 
-        const response = await fetch(url);
-        const json = await response.json();
-
-        const formattedData = json.map(row => [
-          row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-        ]);
-
-        const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-        hot.loadData([...formattedData, ...emptyRows]);
-
-        //alert("✅ Đã tải dữ liệu thành công!");  khong hien thong bao
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu:", err);
-        alert("❌ Không thể tải dữ liệu từ Google Sheet.");
-      } finally {
-        document.getElementById("loading").style.display = "none";
-      }
-    }
-
-    //---------------------lenh--tai ve du lieu dat hang -------------------------------
-
-    async function loadDataFromDatHang() {
-      const fromDate = document.getElementById("fromDate").value.trim();
-      const toDate = document.getElementById("toDate").value.trim();
-      const statusMessage = document.getElementById("statusMessage");
-
-      // ✅ Kiểm tra ngày bắt buộc phải chọn
-      if (!fromDate || !toDate) {
-        alert("❌ Bạn phải chọn TỪ NGÀY và ĐẾN NGÀY trước khi tìm kiếm.");
-        return;
-      }
-
-      const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-      const url = `${baseURL}?sheet=dathangcs1&fromDate=${fromDate}&toDate=${toDate}`;
-
-      try {
-        document.getElementById("loading").style.display = "block";
-
-        const response = await fetch(url);
-        const json = await response.json();
-
-        const formattedData = json.map(row => [
-          row.ten || "",
-          row.nhap || "",
-          row.ban || "",
-          row.ton || "",
-          row.ghichu || ""
-        ]);
-
-        originalData = JSON.parse(JSON.stringify(formattedData)); // ✅ lưu bản gốc để so sánh
-        const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", "", ""]);
-
-        hot.updateSettings({
-          colHeaders: [
-            'Tên SP',
-            'Đặt hàng',
-            `<input type="checkbox" id="checkAllTraHang" title="Chọn tất cả">`,
-            'Ngày tháng',
-            'Số CT'
-          ],
-          columns: [
-            { data: 0, type: 'text', width: 120 },    // Cột Tên SP
-            { data: 1, type: 'numeric', width: 190 }, // Cột Đặt hàng
-            {
-              data: 2,
-              type: 'checkbox',
-              checkedTemplate: 'có',
-              uncheckedTemplate: 'không',
-              width: 50                              // Cột Trả hàng
-            },
-            { data: 3, type: 'text', width: 100 },    // Cột Ngày tháng
-            { data: 4, type: 'text', width: 120 }     // Cột Số CT
-          ],
-          filters: true,
-          dropdownMenu: true,
-        });
-
-        setTimeout(() => {
-          const checkAll = document.getElementById("checkAllTraHang");
-          if (checkAll) {
-            checkAll.addEventListener("change", toggleCheckAll);
-          }
-        }, 50);
-
-        hot.loadData([...formattedData, ...emptyRows]);
-        statusMessage.innerText = `✅ Đã tải ${formattedData.length} dòng dữ liệu.`;
-        setTimeout(() => statusMessage.innerText = "", 3000);
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu:", err);
-        alert("❌ Không thể tải dữ liệu Đặt hàng.");
-      } finally {
-        document.getElementById("loading").style.display = "none";
-      }
-
-      searchImages();
-    }
-
-
-    function toggleCheckAll() {
-      const checked = document.getElementById("checkAllTraHang").checked;
-      const rowCount = hot.countRows();
-
-      for (let i = 0; i < rowCount; i++) {
-        const masp = hot.getDataAtCell(i, 0);
-        const soct = hot.getDataAtCell(i, 4);
-        if (masp && soct) {
-          hot.setDataAtCell(i, 2, checked ? "có" : "không");
-        }
-      }
-    }
-
-
-
-    //---------------------lenh--tai ve du lieu kiem hang -------------------------------
-
-    async function loadDataFromKiemHang() {
-      const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-      const url = `${baseURL}?sheet=kiemhang`;
-
-      try {
-        document.getElementById("loading").style.display = "block";
-
-        const response = await fetch(url);
-        const json = await response.json();
-
-        const formattedData = json.map(row => [
-          row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-        ]);
-
-        const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-        hot.updateSettings({
-          colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-          columns: [
-            { data: 0, type: 'text' },
-            { data: 1, type: 'numeric' },
-            { data: 2, type: 'numeric' },
-            { data: 3, type: 'numeric' }
-          ]
-        });
-        hot.loadData([...formattedData, ...emptyRows]);
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu:", err);
-        alert("❌ Không thể tải dữ liệu Kiểm hàng.");
-      } finally {
-        document.getElementById("loading").style.display = "none";
-      }
-
-      searchImages();
-      
-    }
-
-
-    async function loadDataFrombaymaucs1() {
-      const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-      const url = `${baseURL}?sheet=baymaucs1`;
-
-      try {
-        document.getElementById("loading").style.display = "block";
-
-        const response = await fetch(url);
-        const json = await response.json();
-
-        const formattedData = json.map(row => [
-          row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-        ]);
-
-        const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-        hot.updateSettings({
-          colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-          columns: [
-            { data: 0, type: 'text' },
-            { data: 1, type: 'numeric' },
-            { data: 2, type: 'numeric' },
-            { data: 3, type: 'numeric' }
-          ],
-          filters: true,
-    dropdownMenu: true,
-        });
-        hot.loadData([...formattedData, ...emptyRows]);
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu:", err);
-        alert("❌ Không thể tải dữ liệu Kiểm hàng.");
-      } finally {
-        document.getElementById("loading").style.display = "none";
-      }
-
-      searchImages();
-      
-    }
-
-
-    async function loadDataFrombaymaucs2() {
-      const baseURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-      const url = `${baseURL}?sheet=baymaucs2`;
-
-      try {
-        document.getElementById("loading").style.display = "block";
-
-        const response = await fetch(url);
-        const json = await response.json();
-
-        const formattedData = json.map(row => [
-          row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-        ]);
-
-        const emptyRows = Array.from({ length: 400 - formattedData.length }, () => ["", "", "", ""]);
-        hot.updateSettings({
-          colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-          columns: [
-            { data: 0, type: 'text' },
-            { data: 1, type: 'numeric' },
-            { data: 2, type: 'numeric' },
-            { data: 3, type: 'numeric' }
-          ],
-          filters: true,
-    dropdownMenu: true,
-        });
-        hot.loadData([...formattedData, ...emptyRows]);
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu:", err);
-        alert("❌ Không thể tải dữ liệu Kiểm hàng.");
-      } finally {
-        document.getElementById("loading").style.display = "none";
-      }
-
-      searchImages();
-      
-    }
-
-
-
-    async function init() {
-      allImages = await fetchImageList();
-    }
-    init();
-
-    function resetPage() {
-      hot.loadData(Handsontable.helper.createEmptySpreadsheetData(400, 1));
-      document.getElementById("gallery").innerHTML = "";
-      document.getElementById("loading").style.display = "none";
-    }
-
-
-    async function saveTraHangData() {
-      const data = hot.getData();
-      const serverURL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-
-      const payload = [];
-
-      for (let i = 0; i < data.length; i++) {
-        const masp = (data[i][0] || "").toString().trim();
-        const trahang = (data[i][2] || "").toString().trim();
-        const soct = (data[i][4] || "").toString().trim();
-
-        if (!masp || !trahang || !soct) continue;
-
-        const oldRow = originalData[i] || [];
-        const oldTraHang = (oldRow[2] || "").toString().trim();
-
-        if (trahang !== oldTraHang) {
-          payload.push({ masp, soct, trahang });
-        }
-      }
-
-      if (payload.length === 0) {
-        alert("Không có dòng nào thay đổi để ghi.");
-        return;
-      }
-
-      try {
-        const encoded = encodeURIComponent(JSON.stringify(payload));
-        const url = `${serverURL}?action=batchUpdateTraHang&data=${encoded}`;
-
-        const res = await fetch(url);
-        const result = await res.text();
-        alert(result);
-      } catch (err) {
-        console.error("Lỗi khi gửi dữ liệu:", err);
-        alert("❌ Không thể gửi dữ liệu trả hàng.");
-      }
-
-      // Sau khi lưu thành công
-      hot.loadData([]);                          // Xóa bảng
-      document.getElementById("gallery").innerHTML = "";  // Xóa ảnh
-      loadDataFromDatHang(); // goi lai du lieu da luu
-
-    }
-
-
-
-
-
-  </script>
+    </script>
 </body>
 
 </html>
