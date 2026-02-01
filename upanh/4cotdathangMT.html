@@ -299,6 +299,18 @@
         .dropdown:hover .dropdown-content {
             display: block;
         }
+
+        /* ✅ Ảnh đang chọn: nổi bật rõ ràng */
+        .gallery-item.selected {
+            border: 3px solid #ff3b30;
+            box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.18);
+            background: #ffffff;
+        }
+
+        /* (tuỳ chọn) viền ảnh bên trong đẹp hơn */
+        .gallery-item.selected img {
+            border-color: #ff3b30;
+        }
     </style>
 </head>
 
@@ -544,25 +556,33 @@
 
         //---------------------lenh---tu dong chuyen den hinh anh duoc chon------------------------------
 
+        // ✅ Click vào cột MASP -> nhảy ngay tới ảnh, không trượt + highlight ảnh đang chọn
         hot.addHook('afterOnCellMouseDown', function (event, coords, TD) {
-            if (coords.col === 0) {
-                const rowIndex = coords.row;
-                const galleryItem = document.getElementById(`image-${rowIndex}`);
-                if (galleryItem) {
-                    galleryItem.scrollIntoView({ behavior: 'smooth' });
+            if (coords.col !== 0) return;
 
-                    const clickedName = hot.getDataAtCell(coords.row, coords.col);
+            const rowIndex = coords.row;
+            const galleryItem = document.getElementById(`image-${rowIndex}`);
+            if (!galleryItem) return;
 
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(clickedName).catch(err => {
-                            console.warn("Không thể sao chép vào clipboard:", err);
-                        });
-                    } else {
-                        console.warn("Clipboard API không hỗ trợ trình duyệt này.");
-                    }
-                }
+            // 1) Bỏ chọn tất cả ảnh cũ
+            document.querySelectorAll('.gallery-item.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // 2) Chọn ảnh hiện tại
+            galleryItem.classList.add('selected');
+
+            // 3) Nhảy ngay tới ảnh (không smooth)
+            // block:'center' để đưa ảnh vào giữa khung nhìn
+            galleryItem.scrollIntoView({ behavior: 'auto', block: 'center' });
+
+            // 4) Copy MASP vào clipboard (giữ logic cũ)
+            const clickedName = hot.getDataAtCell(coords.row, coords.col);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(clickedName).catch(() => { });
             }
         });
+
 
         //-----lenh-----JavaScript dùng để xử lý hành vi dán dữ liệu------------------
 
