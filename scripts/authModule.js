@@ -86,6 +86,8 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     loginApiPath = null,
     onLoginSuccess,
   } = options;
+  // ✅ đăng ký 1 lần để các trang gọi window.capNhatQuyenGiaoDien()
+  registerGlobalUiPermissionHook();
 
   // Tạo/đảm bảo có div login
   let loginContainer = document.getElementById(loginContainerId);
@@ -227,6 +229,12 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       .then((res) => {
         if (res === false) return;
         syncGlobalsFromLocalStorage();
+
+        // ✅ áp quyền UI ngay sau login/auto-session
+        try { window.capNhatQuyenGiaoDien?.(); } catch { }
+        // hoặc gọi thẳng:
+        // try { applyBanLeHeaderEditPermission(); } catch {}
+
         if (appContainer) appContainer.style.display = "";
         loginContainer.style.display = "none";
       })
@@ -682,6 +690,75 @@ export async function dangXuatDungChung(options = {}) {
       // ignore
     }
   }
+}
+
+// =======================================================
+// 2.1) PHÂN QUYỀN UI BÁN LẺ: chỉ ADMIN được sửa #sohd, #chietkhau
+// =======================================================
+export function applyBanLeHeaderEditPermission(options = {}) {
+  const {
+    sohdSelector = "#sohd",
+    chietkhauSelector = "#chietkhau",
+    // nếu sau này muốn mở rộng thêm ô khác thì thêm vào đây
+  } = options;
+
+  const info = getCurrentUserInfo();
+  const isAdmin = !!info.is_admin;
+
+  const lockInput = (el, locked, reasonText) => {
+    if (!el) return;
+
+    // locked = true => chỉ xem
+    // locked = false => admin sửa được
+    el.readOnly = !!locked;
+
+    // gợi ý UX
+    if (locked) {
+      el.setAttribute("data-locked-by-role", "1");
+      el.title = reasonText || "Chỉ ADMIN mới được phép chỉnh sửa ô này.";
+      // vẫn cho copy nên KHÔNG dùng disabled
+      // chặn một số trình duyệt/tiện ích vẫn cố set value qua UI
+      el.addEventListener(
+        "keydown",
+        (e) => {
+          // cho phép Ctrl/Cmd + C/A và phím điều hướng
+          const k = e.key;
+          const ctrl = e.ctrlKey || e.metaKey;
+          const okKeys = ["Tab", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+          if (ctrl && (k.toLowerCase() === "c" || k.toLowerCase() === "a")) return;
+          if (okKeys.includes(k)) return;
+          // chặn nhập liệu
+          e.preventDefault();
+        },
+        { passive: false }
+      );
+    } else {
+      el.removeAttribute("data-locked-by-role");
+      el.title = "";
+      // readOnly=false là đủ để admin sửa
+    }
+  };
+
+  const sohdEl = document.querySelector(sohdSelector);
+  const ckEl = document.querySelector(chietkhauSelector);
+
+  // Nhân viên: khóa; Admin: mở
+  const locked = !isAdmin;
+  const msg = "Chỉ ADMIN mới được phép chỉnh sửa.";
+  lockInput(sohdEl, locked, msg);
+  lockInput(ckEl, locked, msg);
+
+  return { isAdmin, locked };
+}
+
+// helper legacy: để các trang cũ chỉ cần gọi window.capNhatQuyenGiaoDien()
+export function registerGlobalUiPermissionHook() {
+  try {
+    window.capNhatQuyenGiaoDien = function () {
+      // an toàn: trang nào không có #sohd hoặc #chietkhau thì hàm tự bỏ qua
+      applyBanLeHeaderEditPermission();
+    };
+  } catch { }
 }
 
 
