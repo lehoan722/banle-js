@@ -1,317 +1,128 @@
-// scripts/cackhoantru.js
-// Giao diện nhập + xem danh sách các khoản trừ
-// - Dùng supabaseClient.js + authModule.js giống trang lương của bạn. :contentReference[oaicite:1]{index=1}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Các khoản trừ nhân viên</title>
 
-import { supabase } from "./supabaseClient.js";
-import * as authModule from "./authModule.js";
+  <!-- Handsontable CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
 
-const el = (id) => document.getElementById(id);
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 8px; background: #f5f5f5; }
+    h1, h2 { margin: 0; padding: 0; }
+    .card { background:#fff; border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:8px; }
+    .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    label { font-size:12px; color:#333; margin-right:4px; white-space:nowrap; }
+    input, select { padding:4px 6px; font-size:12px; }
+    button { padding:4px 10px; font-size:13px; cursor:pointer; }
+    #status { font-size:12px; margin-top:6px; }
+    .hot-container { height: 520px; overflow:auto; margin-top:8px; background:#fff; border:1px solid #ddd; border-radius:4px; }
+    .muted { color:#666; font-size:12px; }
+  </style>
+</head>
 
-const statusEl = el("status");
-const btnLuu = el("btn-luu");
-const btnMoi = el("btn-moi");
-const btnTai = el("btn-tai");
-const btnXoa = el("btn-xoa");
+<body>
+  <div class="card">
+    <h1 style="font-size:16px; margin-bottom:6px;">Nhập các khoản trừ (Ứng lương / Phạt / Trừ khác)</h1>
 
-const inpNgay = el("ngay_phatsinh");
-const inpDiaDiem = el("diadiem");
-const inpManv = el("manv");
-const inpTennv = el("tennv");
-const selLoai = el("loai_khoan_tru");
-const inpSoTien = el("so_tien");
-const inpGhiChu = el("ghi_chu");
+    <div class="row">
+      <div>
+        <label for="ngay_phatsinh">Ngày phát sinh:</label>
+        <input type="date" id="ngay_phatsinh" />
+      </div>
 
-const locTuNgay = el("tu_ngay");
-const locDenNgay = el("den_ngay");
-const locDiaDiem = el("loc_diadiem");
-const locManv = el("loc_manv");
+      <div>
+        <label for="diadiem">Cơ sở:</label>
+        <select id="diadiem">
+          <option value="">(trống / tất cả)</option>
+          <option value="cs1">cs1</option>
+          <option value="cs2">cs2</option>
+        </select>
+      </div>
 
-const hotContainer = el("hotKhoanTru");
-let hot = null;
-let currentSelectedRow = null; // row index trong HOT
+      <div>
+        <label for="manv">Mã NV:</label>
+        <input id="manv" type="text" placeholder="VD: NV01" style="width:110px;" />
+      </div>
 
-function setStatus(msg, isError = false) {
-    if (!statusEl) return;
-    statusEl.textContent = msg || "";
-    statusEl.style.color = isError ? "#b00020" : "#222";
-}
+      <div>
+        <label for="tennv">Tên NV:</label>
+        <input id="tennv" type="text" placeholder="tự điền hoặc nhập tay" style="width:160px;" />
+      </div>
 
-function toIsoDate(d) {
-    return d.toISOString().slice(0, 10);
-}
+      <div>
+        <label for="loai_khoan_tru">Loại:</label>
+        <select id="loai_khoan_tru">
+          <option value="UNG_LUONG">Ứng lương</option>
+          <option value="KO_BAY_MAU">Phạt kỷ luật</option>
+          <option value="VAO_CA_MUON">Phạt kỷ luật</option>
+          <option value="KO_TAN_CA">Phạt kỷ luật</option>
 
-function normalizeManv(v) {
-    return String(v || "").trim().toUpperCase();
-}
+          <option value="TRU_KHAC" selected>Trừ khác</option>
+        </select>
+      </div>
 
-function parseNum(v) {
-    const n = Number(String(v || "").replace(/,/g, "").trim());
-    return Number.isFinite(n) ? n : 0;
-}
+      <div>
+        <label for="so_tien">Số tiền (VND):</label>
+        <input id="so_tien" type="number" min="1" step="1000" placeholder="VD: 200000" style="width:130px;" />
+      </div>
 
-function genRefCode({ manv, ngay_phatsinh, loai }) {
-    // ví dụ: UNG_LUONG_2026-02-05_NV01_1700000000000
-    return `${loai}_${ngay_phatsinh}_${manv}_${Date.now()}`;
-}
+      <div style="flex:1; min-width:220px;">
+        <label for="ghi_chu">Ghi chú:</label>
+        <input id="ghi_chu" type="text" placeholder="VD: Ứng ngày 05/02" style="width:100%;" />
+      </div>
 
-// =============================
-// Quyền truy cập (theo pattern trang lương)
-// =============================
-async function kiemTraQuyenXemTrang(pathTrang) {
-    const nv = authModule.getCurrentUserInfo?.();
-    if (!nv || !nv.manv) return false;
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="btn-luu">Lưu khoản trừ</button>
+        <button id="btn-moi" type="button">Làm mới form</button>
+        <button id="btn-xoa" type="button" style="display:none;">Xóa dòng đang chọn</button>
+      </div>
+    </div>
 
-    const { data, error } = await supabase.rpc("get_pages_for_manv", { p_manv: nv.manv });
-    if (error) {
-        hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
-        return false;
-    }
+    <div class="muted" style="margin-top:6px;">
+      Tip: Mình khuyến nghị lưu <b>so_tien</b> là số dương (khoản bị trừ). Trang lương sẽ lấy SUM để trừ.
+    </div>
 
-    const dsTrang = (data || []).map(r => r.path);
-    if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
-        hienCamTruyCap(`Không có quyền truy cập.<br> Mã NV: ${nv.manv} – ${nv.tennv}`);
-        return false;
-    }
-    return true;
-}
+    <div id="status"></div>
+  </div>
 
-function hienCamTruyCap(msg) {
-    document.body.innerHTML = `
-    <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
-      ⛔ Không có quyền truy cập<br>
-      <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
-    </div>`;
-}
+  <div class="card">
+    <h2 style="font-size:14px; margin-bottom:6px;">Danh sách khoản trừ</h2>
 
-// =============================
-// Default dates
-// =============================
-function setDefaultDates() {
-    const today = new Date();
-    inpNgay.value = toIsoDate(today);
+    <div class="row">
+      <div>
+        <label for="tu_ngay">Từ ngày:</label>
+        <input type="date" id="tu_ngay" />
+      </div>
+      <div>
+        <label for="den_ngay">Đến ngày:</label>
+        <input type="date" id="den_ngay" />
+      </div>
+      <div>
+        <label for="loc_diadiem">Cơ sở:</label>
+        <select id="loc_diadiem">
+          <option value="">Tất cả</option>
+          <option value="cs1">cs1</option>
+          <option value="cs2">cs2</option>
+        </select>
+      </div>
+      <div>
+        <label for="loc_manv">Mã NV:</label>
+        <input id="loc_manv" type="text" placeholder="lọc theo manv" style="width:120px;" />
+      </div>
+      <div style="align-self:flex-end;">
+        <button id="btn-tai">Tải danh sách</button>
+      </div>
+    </div>
 
-    // mặc định lọc: đầu tháng -> hôm nay
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    locTuNgay.value = toIsoDate(firstDay);
-    locDenNgay.value = toIsoDate(today);
-}
+    <div id="hotKhoanTru" class="hot-container"></div>
+  </div>
 
-// =============================
-// Handsontable
-// =============================
-function renderHot(rows) {
-    const colHeaders = [
-        "ID",
-        "Ngày",
-        "Cơ sở",
-        "Mã NV",
-        "Tên NV",
-        "Loại",
-        "Số tiền",
-        "Ghi chú",
-        "Ref",
-        "Tạo lúc",
-        "Tạo bởi"
-    ];
+  <!-- Handsontable JS -->
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
-    const columns = [
-        { data: "id", type: "numeric", readOnly: true },
-        { data: "ngay_phatsinh", type: "text", readOnly: true },
-        { data: "diadiem", type: "text", readOnly: true },
-        { data: "manv", type: "text", readOnly: true },
-        { data: "tennv", type: "text", readOnly: true },
-        { data: "loai_khoan_tru", type: "text", readOnly: true },
-        { data: "so_tien", type: "numeric", numericFormat: { pattern: "0,0" }, readOnly: true },
-        { data: "ghi_chu", type: "text", readOnly: true },
-        { data: "ref_code", type: "text", readOnly: true },
-        { data: "created_at", type: "text", readOnly: true },
-        { data: "created_by", type: "text", readOnly: true },
-    ];
-
-    if (!hot) {
-        hot = new Handsontable(hotContainer, {
-            data: rows,
-            colHeaders,
-            columns,
-            rowHeaders: true,
-            filters: true,
-            dropdownMenu: true,
-            columnSorting: true,
-            wordWrap: true,
-            stretchH: "all",
-            width: "100%",
-            height: 480,            // ✅ CHỐT: dùng số, không dùng "100%"
-            rowHeights: 26,
-            columnHeaderHeight: 34,
-            manualColumnResize: true,
-            manualRowResize: true,
-            licenseKey: "non-commercial-and-evaluation",
-
-            afterSelection: (r) => {
-                currentSelectedRow = r;
-            },
-        });
-    } else {
-        hot.loadData(rows);
-        hot.render(); // ✅ ép render lại sau khi load dữ liệu
-    }
-}
-
-// =============================
-// CRUD
-// =============================
-async function taiDanhSach() {
-    const tu_ngay = locTuNgay.value;
-    const den_ngay = locDenNgay.value;
-    const dd = locDiaDiem.value;
-    const manv = normalizeManv(locManv.value);
-
-    if (!tu_ngay || !den_ngay) {
-        setStatus("Vui lòng chọn Từ ngày / Đến ngày để tải danh sách.", true);
-        return;
-    }
-
-    setStatus("Đang tải danh sách...");
-    try {
-        let q = supabase
-            .from("cackhoantru")
-            .select("*")
-            .gte("ngay_phatsinh", tu_ngay)
-            .lte("ngay_phatsinh", den_ngay)
-            .order("ngay_phatsinh", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(2000);
-
-        if (dd) q = q.eq("diadiem", dd);
-        if (manv) q = q.eq("manv", manv);
-
-        const { data, error } = await q;
-        if (error) throw error;
-
-        renderHot(data || []);
-        setStatus(`Đã tải ${data?.length || 0} dòng.`);
-    } catch (e) {
-        console.error(e);
-        setStatus("Lỗi tải danh sách: " + (e?.message || e), true);
-        renderHot([]);
-    }
-}
-
-function resetForm() {
-    inpManv.value = "";
-    inpTennv.value = "";
-    inpSoTien.value = "";
-    inpGhiChu.value = "";
-    selLoai.value = "TRU_KHAC";
-    inpDiaDiem.value = "";
-    inpNgay.value = toIsoDate(new Date());
-    inpManv.focus();
-}
-
-async function luuKhoanTru() {
-    const nv = authModule.getCurrentUserInfo?.() || {};
-    const manv = normalizeManv(inpManv.value);
-    const tennv = String(inpTennv.value || "").trim();
-    const diadiem = String(inpDiaDiem.value || "").trim();
-    const ngay_phatsinh = inpNgay.value;
-    const loai_khoan_tru = selLoai.value;
-    const so_tien = parseNum(inpSoTien.value);
-    const ghi_chu = String(inpGhiChu.value || "").trim();
-
-    if (!manv) return setStatus("Thiếu Mã NV.", true);
-    if (!ngay_phatsinh) return setStatus("Thiếu Ngày phát sinh.", true);
-    if (!loai_khoan_tru) return setStatus("Thiếu Loại khoản trừ.", true);
-    if (!(so_tien > 0)) return setStatus("Số tiền phải > 0.", true);
-
-    setStatus("Đang lưu...");
-    try {
-        const ref_code = genRefCode({ manv, ngay_phatsinh, loai: loai_khoan_tru });
-
-        const payload = {
-            manv,
-            tennv: tennv || null,
-            diadiem: diadiem || null,
-            ngay_phatsinh,
-            loai_khoan_tru,
-            so_tien,
-            ghi_chu: ghi_chu || null,
-            ref_code,
-            created_by: nv?.manv || null
-        };
-
-        const { error } = await supabase.from("cackhoantru").insert([payload]);
-        if (error) throw error;
-
-        setStatus("✅ Đã lưu khoản trừ.");
-        await taiDanhSach();
-        resetForm();
-    } catch (e) {
-        console.error(e);
-        // nếu ref_code bị trùng (hiếm), sẽ báo unique
-        setStatus("Lỗi lưu: " + (e?.message || e), true);
-    }
-}
-
-async function xoaDongDangChon() {
-    const nv = authModule.getCurrentUserInfo?.() || {};
-    if (!nv?.is_admin) {
-        setStatus("Chỉ admin mới được xóa.", true);
-        return;
-    }
-
-    if (!hot || currentSelectedRow == null) {
-        setStatus("Chưa chọn dòng để xóa.", true);
-        return;
-    }
-
-    const row = hot.getSourceDataAtRow(currentSelectedRow);
-    const id = row?.id;
-    if (!id) {
-        setStatus("Không lấy được ID dòng đang chọn.", true);
-        return;
-    }
-
-    const ok = confirm(`Bạn chắc chắn muốn xóa khoản trừ ID=${id}?`);
-    if (!ok) return;
-
-    setStatus("Đang xóa...");
-    try {
-        const { error } = await supabase.from("cackhoantru").delete().eq("id", id);
-        if (error) throw error;
-
-        setStatus("✅ Đã xóa.");
-        await taiDanhSach();
-    } catch (e) {
-        console.error(e);
-        setStatus("Lỗi xóa: " + (e?.message || e), true);
-    }
-}
-
-// =============================
-// Init
-// =============================
-async function main() {
-    // Khởi tạo login dùng chung giống trang lương :contentReference[oaicite:2]{index=2}
-    if (authModule.khoiTaoDangNhapDungChung) {
-        await authModule.khoiTaoDangNhapDungChung();
-    }
-
-    // Đổi path này đúng theo route bạn deploy
-    const ok = await kiemTraQuyenXemTrang("/cackhoantru.html");
-    if (!ok) return;
-
-    setDefaultDates();
-
-    const nv = authModule.getCurrentUserInfo?.() || {};
-    if (nv?.is_admin) btnXoa.style.display = "inline-block";
-
-    btnTai.addEventListener("click", taiDanhSach);
-    btnLuu.addEventListener("click", luuKhoanTru);
-    btnMoi.addEventListener("click", resetForm);
-    btnXoa.addEventListener("click", xoaDongDangChon);
-
-    // tải danh sách lần đầu
-    await taiDanhSach();
-}
-
-main();
+  <!-- Script xử lý -->
+  <script type="module" src="./scripts/cackhoantru.js"></script>
+</body>
+</html>
