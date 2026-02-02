@@ -72,10 +72,9 @@ function toIsoDate(d) {
 function setDefaultDates() {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
   if (tuNgayInput) tuNgayInput.value = toIsoDate(firstDay);
-  if (denNgayInput) denNgayInput.value = toIsoDate(lastDay);
+  if (denNgayInput) denNgayInput.value = toIsoDate(today);
 }
 
 function fmt(n, d = 0) {
@@ -348,7 +347,7 @@ function renderLuongHot(data) {
 
   // Ẩn cột tự động (nếu muốn)
   const hiddenColsConfig = {
-    columns: [6, 9, 10],
+    columns: [],
     indicators: true
   };
 
