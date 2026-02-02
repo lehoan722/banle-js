@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,16 +10,71 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
 
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 8px; background: #f5f5f5; }
-    h1, h2 { margin: 0; padding: 0; }
-    .card { background:#fff; border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:8px; }
-    .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-    label { font-size:12px; color:#333; margin-right:4px; white-space:nowrap; }
-    input, select { padding:4px 6px; font-size:12px; }
-    button { padding:4px 10px; font-size:13px; cursor:pointer; }
-    #status { font-size:12px; margin-top:6px; }
-    .hot-container { height: 520px; overflow:auto; margin-top:8px; background:#fff; border:1px solid #ddd; border-radius:4px; }
-    .muted { color:#666; font-size:12px; }
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 8px;
+      background: #f5f5f5;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      padding: 0;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    label {
+      font-size: 12px;
+      color: #333;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+
+    input,
+    select {
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    button {
+      padding: 4px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    #status {
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .hot-container {
+      height: 520px;
+      overflow: auto;
+      margin-top: 8px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 12px;
+    }
   </style>
 </head>
 
@@ -43,7 +99,9 @@
 
       <div>
         <label for="manv">Mã NV:</label>
-        <input id="manv" type="text" placeholder="VD: NV01" style="width:110px;" />
+        <input id="manv" type="text" list="ds-manv" placeholder="VD: NV01" style="width:110px;" />
+        <datalist id="ds-manv"></datalist>
+
       </div>
 
       <div>
@@ -122,4 +180,5 @@
   <!-- Script xử lý -->
   <script type="module" src="./scripts/cackhoantru.js"></script>
 </body>
+
 </html>
