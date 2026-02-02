@@ -120,6 +120,7 @@
     <label><input type="date" id="denNgay" placeholder="Đến ngày:"></label>
     <label><input type="text" id="locNV" placeholder="Mã nhân viên:"></label>
     <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
+    <label><input type="text" id="locGhiChu" placeholder="Ghi chú (tìm chứa):"></label>
     <label><input type="number" id="tienTu" style="width:80px" placeholder="Tiền từ:"></label>
     <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
     <label> <input type="text" id="locSoHD" placeholder="so hd:"></label>
@@ -367,6 +368,7 @@
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
       const khach = document.getElementById("locKhach").value.trim();
+      const ghichu = document.getElementById("locGhiChu")?.value.trim() || "";
       const tienTu = Number(document.getElementById("tienTu").value);
       const tienDen = Number(document.getElementById("tienDen").value);
 
@@ -400,6 +402,7 @@
         p_loaihd_list: loaiList,
         p_manv: nv || null,
         p_khachhang: khach || null,
+        p_ghichu: (ghichu ? ghichu : null),
         p_sohd: sohd || null,
         p_tien_tu: tienTu2,
         p_tien_den: tienDen2,
