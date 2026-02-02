@@ -17,6 +17,9 @@ const inpNgay = el("ngay_phatsinh");
 const inpDiaDiem = el("diadiem");
 const inpManv = el("manv");
 const inpTennv = el("tennv");
+const manvDatalist = el("ds-manv");
+const mapTenTheoManv = {}; // { MANV: TENNV }
+
 const selLoai = el("loai_khoan_tru");
 const inpSoTien = el("so_tien");
 const inpGhiChu = el("ghi_chu");
@@ -43,6 +46,81 @@ function toIsoDate(d) {
 function normalizeManv(v) {
     return String(v || "").trim().toUpperCase();
 }
+
+function bindAutoFillTenNv() {
+    if (!inpManv || !inpTennv) return;
+
+    const apply = () => {
+        const manv = normalizeManv(inpManv.value);
+        if (!manv) return;
+
+        // ép chuẩn in hoa
+        if (inpManv.value !== manv) inpManv.value = manv;
+
+        const ten = mapTenTheoManv[manv];
+        if (ten) inpTennv.value = ten; // tự điền tên khi tìm thấy
+    };
+
+    inpManv.addEventListener("change", apply);
+    inpManv.addEventListener("blur", apply);
+}
+
+async function initNhanVienDatalist() {
+    if (!manvDatalist) return;
+
+    // (A) thử dùng module dùng chung giống trang báo cáo lương
+    try {
+        const mod = await import("./dmnhanvien.js");
+        if (mod?.fillNhanVienDropdown) {
+            await mod.fillNhanVienDropdown(manvDatalist, { showName: true });
+
+            // tạo map từ option (hỗ trợ cả dạng value=MANV, label="MANV | TENNV")
+            Array.from(manvDatalist.options || []).forEach(opt => {
+                const manv = normalizeManv(opt.value);
+                const label = String(opt.label || opt.text || "").trim();
+                if (!manv) return;
+
+                // cố gắng tách tên từ label nếu có "MANV | TENNV"
+                const parts = label.split("|").map(s => s.trim());
+                const ten = parts.length >= 2 ? parts.slice(1).join(" | ") : "";
+                if (ten) mapTenTheoManv[manv] = ten;
+            });
+
+            return;
+        }
+    } catch (e) {
+        // bỏ qua và fallback
+        console.warn("Không dùng được dmnhanvien.js, fallback query dmnhanvien:", e);
+    }
+
+    // (B) fallback: query trực tiếp bảng dmnhanvien
+    const { data, error } = await supabase
+        .from("dmnhanvien")
+        .select("manv, tennv")
+        .order("manv", { ascending: true })
+        .limit(5000);
+
+    if (error) {
+        console.warn("Lỗi load dmnhanvien:", error);
+        setStatus("Không tải được danh mục nhân viên (datalist).", true);
+        return;
+    }
+
+    manvDatalist.innerHTML = "";
+    (data || []).forEach(r => {
+        const manv = normalizeManv(r.manv);
+        const ten = String(r.tennv || "").trim();
+        if (!manv) return;
+
+        mapTenTheoManv[manv] = ten;
+
+        const opt = document.createElement("option");
+        opt.value = manv;
+        opt.label = ten ? `${manv} | ${ten}` : manv;
+        manvDatalist.appendChild(opt);
+    });
+}
+
 
 function parseNum(v) {
     const n = Number(String(v || "").replace(/,/g, "").trim());
@@ -301,6 +379,8 @@ async function main() {
     if (!ok) return;
 
     setDefaultDates();
+    await initNhanVienDatalist();
+    bindAutoFillTenNv();
 
     const nv = authModule.getCurrentUserInfo?.() || {};
     if (nv?.is_admin) btnXoa.style.display = "inline-block";
