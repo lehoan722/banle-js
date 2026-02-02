@@ -41,16 +41,7 @@ async function kiemTraQuyenXemTrang(pathTrang) {
     hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
     return false;
   }
-
-  const dsTrang = (data || []).map(r => r.path);
-
-  // Không phải admin và không nằm trong danh sách → CẤM
-  if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
-    hienCamTruyCap(
-      `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
-    );
-    return false;
-  }
+  
 
   return true;
 }
@@ -800,16 +791,21 @@ async function taiBangCong() {
 
 // ===================== INIT =====================
 document.addEventListener("DOMContentLoaded", () => {
-  // tương thích id app/app-container
+  // Tương thích: nếu HTML cũ dùng id="app" thì đổi sang app-container
   const legacyApp = document.getElementById("app");
-  if (legacyApp && !document.getElementById("app-container")) legacyApp.id = "app-container";
+  if (legacyApp && !document.getElementById("app-container")) {
+    legacyApp.id = "app-container";
+  }
 
   setDefaultDates();
   setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
 
-  btnTai?.addEventListener("click", taiBangLuong);
-  document.getElementById("btn-bangcong")?.addEventListener("click", taiBangCong);
+  if (btnTai) btnTai.addEventListener("click", taiBangLuong);
 
+  const btnBangCong = document.getElementById("btn-bangcong");
+  if (btnBangCong) btnBangCong.addEventListener("click", taiBangCong);
+
+  // Default tháng/năm bảng công
   const today = new Date();
   const thangEl = document.getElementById("bc-thang");
   const namEl = document.getElementById("bc-nam");
@@ -818,10 +814,13 @@ document.addEventListener("DOMContentLoaded", () => {
     namEl.value = today.getFullYear();
   }
 
+  // Đăng nhập dùng chung (NV: mã + mật khẩu; Admin: email + mật khẩu)
   authModule.khoiTaoDangNhapDungChung({
     appContainerId: "app-container",
     onLoginSuccess: async () => {
       const ok = await kiemTraQuyenXemTrang(window.location.pathname);
+      // Nếu OK, bạn có thể tự động tải dữ liệu ở đây nếu muốn:
+      // if (ok) taiBangLuong();
       return ok;
     }
   });
