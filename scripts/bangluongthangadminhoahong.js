@@ -348,7 +348,7 @@ function renderLuongHot(data) {
 
   // Ẩn cột tự động (nếu muốn)
   const hiddenColsConfig = {
-    columns: [],
+    columns: [6, 9, 10],
     indicators: true
   };
 
