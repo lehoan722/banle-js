@@ -63,11 +63,11 @@ function toIsoDate(d) {
 function setDefaultDates() {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
   if (tuNgayInput) tuNgayInput.value = toIsoDate(firstDay);
-  if (denNgayInput) denNgayInput.value = toIsoDate(lastDay);
+  if (denNgayInput) denNgayInput.value = toIsoDate(today);
 }
+
 
 function fmt(n, d = 0) {
   if (n == null || Number.isNaN(Number(n))) return "0";
