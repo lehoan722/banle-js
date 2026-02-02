@@ -198,12 +198,12 @@ async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency
           mapHoaHong[manv] = 0;
         } else {
           mapDoanhThu[manv] = Number(kpiData?.[0]?.tong_doanh_thu || 0);
-          mapHoaHong[manv]  = Number(kpiData?.[0]?.tong_hoa_hong || 0);
+          mapHoaHong[manv] = Number(kpiData?.[0]?.tong_hoa_hong || 0);
         }
       } catch (e) {
         console.error(`KPI exception cho ${manv}:`, e);
         mapDoanhThu[manv] = 0;
-          mapHoaHong[manv] = 0;
+        mapHoaHong[manv] = 0;
       } finally {
         done++;
         // cập nhật nhẹ trạng thái (không spam quá nhiều)
@@ -221,6 +221,51 @@ async function loadDoanhThuKPIConcurrent(manvArr, tu_ngay, den_ngay, concurrency
   await Promise.all(workers);
   return { mapDoanhThu, mapHoaHong };
 }
+
+/**
+ * Lấy map khoản trừ: { MANV: tong_so_tien }
+ * Rule diadiem:
+ * - Nếu trang lương chọn cs1/cs2: lấy (diadiem = csX) OR (diadiem IS NULL) OR (diadiem = "")
+ * - Nếu chọn "Tất cả": không lọc diadiem
+ */
+async function loadKhoanTruForRange(tu_ngay, den_ngay, diadiem, manvArr) {
+  const mapKhoanTru = {};
+  const list = (manvArr || []).map(normalizeManv).filter(Boolean);
+
+  if (!list.length) return mapKhoanTru;
+
+  try {
+    let q = supabase
+      .from("cackhoantru")
+      .select("manv, so_tien, diadiem")
+      .gte("ngay_phatsinh", tu_ngay)
+      .lte("ngay_phatsinh", den_ngay)
+      .in("manv", list);
+
+    // Nếu đang chọn cs1/cs2: vẫn tính cả diadiem trống
+    if (diadiem) {
+      q = q.or(`diadiem.eq.${diadiem},diadiem.is.null,diadiem.eq.""`);
+    }
+
+    const { data, error } = await q;
+    if (error) {
+      console.error("Lỗi loadKhoanTruForRange:", error);
+      return mapKhoanTru;
+    }
+
+    (data || []).forEach(r => {
+      const k = normalizeManv(r.manv);
+      if (!k) return;
+      mapKhoanTru[k] = (mapKhoanTru[k] || 0) + Number(r.so_tien || 0);
+    });
+
+    return mapKhoanTru;
+  } catch (e) {
+    console.error("Exception loadKhoanTruForRange:", e);
+    return mapKhoanTru;
+  }
+}
+
 
 function renderLuongHot(data) {
   if (!hotLuongContainer) return;
@@ -246,10 +291,12 @@ function renderLuongHot(data) {
     "Thưởng vượt kh",
     "Lương cứng",
     "Tổng lương",
+    "Các khoản trừ",
+    "Thực lĩnh",
     "Lương/1 giờ"
   ];
 
-    // Kiểu dữ liệu từng cột
+  // Kiểu dữ liệu từng cột
   const columns = [
     { data: 0, type: "text" },
     { data: 1, type: "text" },
@@ -264,27 +311,39 @@ function renderLuongHot(data) {
     { data: 10, type: "numeric", numericFormat: { pattern: "0,0" } },
     { data: 11, type: "numeric", numericFormat: { pattern: "0,0" } },
     { data: 12, type: "numeric", numericFormat: { pattern: "0,0" } },
+
+    // Tổng lương
     { data: 13, type: "numeric", numericFormat: { pattern: "0,0" } },
-    { data: 14, type: "numeric", numericFormat: { pattern: "0,0" } }
+
+    // ✅ 2 cột mới
+    { data: 14, type: "numeric", numericFormat: { pattern: "0,0" } }, // Các khoản trừ
+    { data: 15, type: "numeric", numericFormat: { pattern: "0,0" } }, // Thực lĩnh
+
+    // Lương/1 giờ
+    { data: 16, type: "numeric", numericFormat: { pattern: "0,0" } }
   ];
 
   // 👇 Độ rộng từng cột (bạn muốn chỉnh thì chỉ sửa mảng này)
   const colWidths = [
-    70,   // Mã NV
+    70,  // Mã NV
     90,  // Tên NV
-    80,   // Cơ sở
-    90,   // Giờ công (thực)
-    100,   // Giờ trừ TANCA_LỊCH
-    100,   // Giờ tính lương
-    70,   // Doanh thu
-    70,   // Hoa hồng
-    70,   // Khoán / giờ
-    70,   // Khoán theo giờ công
-    110,   // Doanh thu vượt khoán
-    110,   // Thưởng vượt khoán
-    90,   // Lương cứng
-    90,   // Tổng lương
-    90    // Lương/1 giờ
+    80,  // Cơ sở
+    90,  // Giờ công (thực)
+    100, // Giờ trừ TANCA_LỊCH
+    100, // Giờ tính lương
+    70,  // Doanh thu
+    70,  // Hoa hồng
+    70,  // Khoán / giờ
+    70,  // Khoán theo giờ công
+    110, // Doanh thu vượt khoán
+    110, // Thưởng vượt khoán
+    90,  // Lương cứng
+    90,  // Tổng lương
+
+    90,  // ✅ Các khoản trừ
+    90,  // ✅ Thực lĩnh
+
+    90   // Lương/1 giờ
   ];
 
   // Ẩn cột tự động (nếu muốn)
@@ -304,10 +363,10 @@ function renderLuongHot(data) {
     columnSorting: true,
     wordWrap: true,
     // ✅ QUAN TRỌNG: đặt chiều cao header đủ cho 2 dòng
-  columnHeaderHeight: 44,  // bạn có thể chỉnh 40/44/48 tuỳ header dài
+    columnHeaderHeight: 44,  // bạn có thể chỉnh 40/44/48 tuỳ header dài
 
-  // (khuyến nghị) chiều cao dòng dữ liệu ổn định
-  rowHeights: 26,
+    // (khuyến nghị) chiều cao dòng dữ liệu ổn định
+    rowHeights: 26,
     hiddenColumns: hiddenColsConfig,
     licenseKey: "non-commercial-and-evaluation"
   };
@@ -412,6 +471,10 @@ async function taiBangLuong() {
       2
     );
 
+    // 2c) Khoản trừ (ứng lương / phạt...) theo kỳ
+    setStatus(`Đang tải các khoản trừ...`);
+    const mapKhoanTru = await loadKhoanTruForRange(tu_ngay, den_ngay, diadiem, manvArr);
+
     // 3) Gom dữ liệu theo MANV
     const byManv = {};
     congData.forEach(r => {
@@ -438,6 +501,8 @@ async function taiBangLuong() {
     let sum_tien_thuong = 0;
     let sum_luong_cung = 0;
     let sum_tong_luong = 0;
+    let sum_khoan_tru = 0;
+    let sum_thuc_linh = 0;
 
     // 4) Tính theo nhân viên
     const manvKeys = Object.keys(byManv).sort();
@@ -465,7 +530,10 @@ async function taiBangLuong() {
 
       const luong_cung = gio_tinh * luong_gio;
       const tong_luong = luong_cung + tien_thuong + hoa_hong;
+      const khoan_tru = Number(mapKhoanTru[normalizeManv(manv)] || 0);
+      const thuc_linh = tong_luong - khoan_tru;
       const luong_1_gio = gio_cong > 0 ? tong_luong / gio_cong : 0;
+
 
       // Cộng dồn
       sum_gio_cong += gio_cong;
@@ -478,6 +546,8 @@ async function taiBangLuong() {
       sum_tien_thuong += tien_thuong;
       sum_luong_cung += luong_cung;
       sum_tong_luong += tong_luong;
+      sum_khoan_tru += khoan_tru;
+      sum_thuc_linh += thuc_linh;
 
       // HTML row
       if (tbodyLuong) {
@@ -501,6 +571,8 @@ async function taiBangLuong() {
         add(fmt(tien_thuong, 0));
         add(fmt(luong_cung, 0));
         add(fmt(tong_luong, 0));
+        add(fmt(khoan_tru, 0));
+        add(fmt(thuc_linh, 0));
         add(fmt(luong_1_gio, 0));
         tbodyLuong.appendChild(tr);
       }
@@ -521,6 +593,10 @@ async function taiBangLuong() {
         Math.round(tien_thuong),
         Math.round(luong_cung),
         Math.round(tong_luong),
+
+        Math.round(khoan_tru),     // ✅ mới
+        Math.round(thuc_linh),     // ✅ mới
+
         Math.round(luong_1_gio)
       ]);
     }
@@ -549,6 +625,8 @@ async function taiBangLuong() {
       addTotal(fmt(sum_tien_thuong, 0));
       addTotal(fmt(sum_luong_cung, 0));
       addTotal(fmt(sum_tong_luong, 0));
+      addTotal(fmt(sum_khoan_tru, 0));
+      addTotal(fmt(sum_thuc_linh, 0));
 
       // Lương/1 giờ tổng: lấy theo tổng giờ công để tránh lệch
       const luong1hTong = sum_gio_cong > 0 ? sum_tong_luong / sum_gio_cong : 0;
@@ -573,13 +651,19 @@ async function taiBangLuong() {
       Math.round(sum_tien_thuong),
       Math.round(sum_luong_cung),
       Math.round(sum_tong_luong),
+      Math.round(sum_khoan_tru),   // ✅ mới
+      Math.round(sum_thuc_linh),   // ✅ mới
       Math.round(sum_gio_cong > 0 ? sum_tong_luong / sum_gio_cong : 0)
     ]);
 
     // Render HOT
     renderLuongHot(bangLuongData);
 
-    setStatus(`Đã tải xong. Tổng lương: ${fmt(sum_tong_luong, 0)} đ`);
+    setStatus(
+      `Đã tải xong. Tổng lương: ${fmt(sum_tong_luong, 0)} đ | ` +
+      `Khoản trừ: ${fmt(sum_khoan_tru, 0)} đ | ` +
+      `Thực lĩnh: ${fmt(sum_thuc_linh, 0)} đ`
+    );
   } catch (e) {
     console.error(e);
     setStatus("Có lỗi xảy ra khi tải bảng lương.", true);
