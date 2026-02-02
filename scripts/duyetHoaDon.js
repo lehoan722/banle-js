@@ -133,6 +133,10 @@ async function napHoaDonVaoTrang(hoadon) {
   document.getElementById("diadiem").value = hoadon.diadiem || "";
   document.getElementById("khachhang").value = hoadon.khachhang || "";
   document.getElementById("hinhthuctt").value = hoadon.hinhthuctt || "";
+  // ✅ NẠP GHI CHÚ HÓA ĐƠN
+  const ghichuEl = document.getElementById("ghichu");
+  if (ghichuEl) ghichuEl.value = hoadon.ghichu || "";
+
   document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
   document.getElementById("tongkm").value = hoadon.tongkm || "0";
   document.getElementById("phaithanhtoan").value = hoadon.phaithanhtoan || "0";
