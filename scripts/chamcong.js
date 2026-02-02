@@ -445,24 +445,41 @@ async function enforceBayMauBeforeChamCong({ diadiem }) {
 // ====== HET NHẮC BAY MAU TRƯỚC KHI CHẤM CÔNG ======
 
 // Ghi 1 dòng chấm công vào bảng chamcong_log
+// Ghi 1 dòng chấm công (chuẩn server) + tự phạt nếu vi phạm
 async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu = null }) {
-    const sp = await ensureSupabase();
-    if (!sp) return false;
+  const sp = await ensureSupabase();
+  if (!sp) return false;
 
-    const { error } = await sp.from("chamcong_log").insert({
-        manv,
-        diadiem,
-        su_kien,
-        nguon,
-        ghi_chu
-    });
-    if (error) {
-        console.error("Lỗi ghi chấm công:", error);
-        alert("Lỗi ghi chấm công, vui lòng thử lại.");
-        return false;
-    }
-    return true;
+  const { data, error } = await sp.rpc("rpc_chamcong_log_v2", {
+    p_manv: String(manv || "").trim().toUpperCase(),
+    p_diadiem: String(diadiem || "").trim().toLowerCase(),
+    p_su_kien: String(su_kien || "").trim().toUpperCase(),
+    p_nguon: nguon,
+    p_ghi_chu: ghi_chu
+  });
+
+  if (error) {
+    console.error("Lỗi RPC chấm công:", error);
+    alert("Lỗi chấm công, vui lòng thử lại.");
+    return false;
+  }
+
+  if (data && data.ok === false) {
+    console.error("RPC trả về lỗi:", data);
+    alert("Lỗi chấm công: " + (data.error || "Không rõ lỗi"));
+    return false;
+  }
+
+  // Optional: nếu có phát sinh phạt thì bạn có thể hiện thông báo nhẹ
+  if (data?.phat_rows > 0 && Number(data?.phat) > 0) {
+    console.log("Đã ghi phạt:", data);
+    // bạn muốn popup cũng được, còn không thì để console
+    // alert(`Bạn bị trừ ${Number(data.phat).toLocaleString("vi-VN")}đ: ${data.note}`);
+  }
+
+  return true;
 }
+
 
 // Tải toàn bộ log chấm công của hôm nay cho nhân viên & cơ sở
 // Tải toàn bộ log chấm công của hôm nay cho nhân viên & cơ sở
