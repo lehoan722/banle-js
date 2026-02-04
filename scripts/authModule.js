@@ -271,7 +271,52 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     );
   }
 
-  
+  function getCcnUnlockKey() {
+    // khóa theo từng trang + từng tab
+    const p = (location.pathname || "").toLowerCase();
+    return `ccn_unlocked:${p}`;
+  }
+
+  function isCcnUnlockedInThisTab() {
+    try { return sessionStorage.getItem(getCcnUnlockKey()) === "1"; } catch { return false; }
+  }
+
+  function setCcnUnlockedForThisTab() {
+    try { sessionStorage.setItem(getCcnUnlockKey(), "1"); } catch { }
+  }
+
+
+  function clearAuthMemoryForThisPage() {
+    // Xóa các key “nhớ đăng nhập” của app
+    [
+      "supabase_access_token",
+      "supabase_refresh_token",
+      "manv",
+      "tennv",
+      "is_admin",
+      "quyen_sua_hoadon",
+      "last_login_identifier",
+    ].forEach((k) => {
+      try { localStorage.removeItem(k); } catch { }
+      try { sessionStorage.removeItem(k); } catch { }
+    });
+
+    // Xóa token supabase-js (sb-...-auth-token) để không có session auto
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+          localStorage.removeItem(key);
+        }
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+          sessionStorage.removeItem(key);
+        }
+      }
+    } catch { }
+  }
 
   function saveSessionLegacy(session) {
     try {
@@ -458,14 +503,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   (async () => {
     try {
       // ✅ Nếu là trang chuyển chi nhánh: không nhớ đăng nhập, không auto điền
-      if (isForceLoginNoRememberPage()) {
-        
-
+      // ✅ Trang chuyển chi nhánh: bắt xác nhận lại (unlock theo tab), KHÔNG xóa nhớ đăng nhập
+      if (isForceLoginNoRememberPage() && !isCcnUnlockedInThisTab()) {
         // đảm bảo overlay login vẫn hiện, app vẫn ẩn
         if (appContainer) appContainer.style.display = "none";
         loginContainer.style.display = "flex";
 
-        // không set manvInput.value, không set csSelect.value từ localStorage
+        // có thể cho phép auto-fill manv/cs (tùy bạn thích), nhưng tuyệt đối không auto-pass
         // không tryRestoreSessionFromLegacyTokens, không getSession để auto-pass
         return;
       }
