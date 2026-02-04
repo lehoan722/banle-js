@@ -271,37 +271,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     );
   }
 
-  function clearAuthMemoryForThisPage() {
-    // Xóa các key “nhớ đăng nhập” của app
-    [
-      "supabase_access_token",
-      "supabase_refresh_token",
-      "manv",
-      "tennv",
-      "is_admin",
-      "quyen_sua_hoadon",
-      "last_login_identifier",
-    ].forEach((k) => {
-      try { localStorage.removeItem(k); } catch { }
-      try { sessionStorage.removeItem(k); } catch { }
-    });
-
-    // Xóa token supabase-js (sb-...-auth-token) để không có session auto
-    try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
-          localStorage.removeItem(key);
-        }
-      }
-      for (let i = sessionStorage.length - 1; i >= 0; i--) {
-        const key = sessionStorage.key(i);
-        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
-          sessionStorage.removeItem(key);
-        }
-      }
-    } catch { }
-  }
+  
 
   function saveSessionLegacy(session) {
     try {
@@ -489,7 +459,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     try {
       // ✅ Nếu là trang chuyển chi nhánh: không nhớ đăng nhập, không auto điền
       if (isForceLoginNoRememberPage()) {
-        clearAuthMemoryForThisPage();
+        
 
         // đảm bảo overlay login vẫn hiện, app vẫn ẩn
         if (appContainer) appContainer.style.display = "none";
