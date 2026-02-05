@@ -9,7 +9,7 @@ let supabase = null;
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 400;                // bán kính cho phép (m)
+const MAX_DISTANCE_M = 4000;                // bán kính cho phép (m)
 const AUTO_CHECK_INTERVAL_MS = 300000;     // 3 phút
 const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 
@@ -450,7 +450,7 @@ async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu =
     const sp = await ensureSupabase();
     if (!sp) return false;
 
-    const { data, error } = await sp.rpc("rpc_chamcong_log_v2", {
+    const { data, error } = await sp.rpc("rpc_chamcong_log_v3", {
         p_manv: String(manv || "").trim().toUpperCase(),
         p_diadiem: String(diadiem || "").trim().toLowerCase(),
         p_su_kien: String(su_kien || "").trim().toUpperCase(),
@@ -1010,7 +1010,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
-
 
 
 
