@@ -93,10 +93,10 @@ async function checkInStore(diadiem) {
 // Check trước khi chấm công một sự kiện
 async function ensureInStoreBeforeAction(diadiem) {
     // Chỉ cho phép trên mobile
-    if (!isMobileDevice()) {
-        alert("Ứng dụng chấm công chỉ được dùng trên điện thoại.");
-        return false;
-    }
+    //if (!isMobileDevice()) {
+      //  alert("Ứng dụng chấm công chỉ được dùng trên điện thoại.");
+       // return false;
+    //}
     const ok = await checkInStore(diadiem);
     return ok;
 }
