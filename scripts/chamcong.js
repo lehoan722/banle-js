@@ -17,8 +17,8 @@ const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 let todayEvents = []; // mỗi phần tử: { su_kien, createdAt: Date, nguon }
 
 function isMobileDevice() {
-    const ua = navigator.userAgent || navigator.vendor || window.opera;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    //const ua = navigator.userAgent || navigator.vendor || window.opera;
+    //return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
 
 // Tính khoảng cách 2 tọa độ (haversine)
@@ -1010,6 +1010,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
 
 
 
