@@ -809,7 +809,7 @@ function attachEventsOnce() {
         handleDangKy();
     });
 
-    btnTaiDangKy.addEventListener("click", (e) => {
+    btnTaiDangKy.addEventListener("change", (e) => {
         e.preventDefault();
         loadMyRequests();
     });
