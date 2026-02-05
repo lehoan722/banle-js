@@ -625,7 +625,7 @@ async function handleDangKy() {
     }
 
 
-    const { data, error } = await supabase.rpc("rpc_lichlam_dangky_create_v4", {
+    const { data, error } = await supabase.rpc("rpc_lichlam_dangky_create_v3", {
         p_manv_actor: actor,
         p_manv_target: target,
         p_diadiem: diadiem,
@@ -908,5 +908,6 @@ document.addEventListener("DOMContentLoaded", () => {
         onLoginSuccess
     });
 });
+
 
 
