@@ -2,196 +2,252 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <title>Đăng ký ca làm</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 8px;
-      background: #f5f5f5;
-    }
+    <meta charset="UTF-8">
+    <title>Đăng ký ca làm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 8px;
+            background: #f5f5f5;
+        }
 
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 10px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
 
-    h1 {
-      font-size: 18px;
-      margin: 0 0 8px 0;
-    }
+        h1 {
+            font-size: 18px;
+            margin: 0 0 8px 0;
+        }
 
-    h2 {
-      font-size: 16px;
-      margin: 0 0 8px 0;
-    }
+        h2 {
+            font-size: 16px;
+            margin: 0 0 8px 0;
+        }
 
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 8px;
-      align-items: flex-end;
-    }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: flex-end;
+        }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      font-size: 13px;
-    }
+        .field {
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+        }
 
-    .field label {
-      margin-bottom: 2px;
-    }
+        .field label {
+            margin-bottom: 2px;
+        }
 
-    .field input,
-    .field select,
-    .field textarea {
-      font-size: 13px;
-      padding: 4px 6px;
-    }
+        .field input,
+        .field select,
+        .field textarea {
+            font-size: 13px;
+            padding: 4px 6px;
+        }
 
-    textarea {
-      min-width: 200px;
-      min-height: 50px;
-    }
+        textarea {
+            min-width: 200px;
+            min-height: 50px;
+        }
 
-    button {
-      font-size: 13px;
-      padding: 6px 10px;
-      cursor: pointer;
-    }
+        button {
+            font-size: 13px;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      background: #fff;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: #fff;
+        }
 
-    th,
-    td {
-      border: 1px solid #ddd;
-      padding: 4px 6px;
-    }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 4px 6px;
+        }
 
-    thead {
-      background: #e0e0e0;
-    }
+        thead {
+            background: #e0e0e0;
+        }
 
-    .status-CHO_DUYET {
-      color: #ff9800;
-    }
+        .status-CHO_DUYET {
+            color: #ff9800;
+        }
 
-    .status-DA_DUYET {
-      color: #2e7d32;
-      font-weight: 600;
-    }
+        .status-DA_DUYET {
+            color: #2e7d32;
+            font-weight: 600;
+        }
 
-    .status-TU_CHOI {
-      color: #c62828;
-    }
+        .status-TU_CHOI {
+            color: #c62828;
+        }
 
-    /* ô manv bị khóa sau khi login cho dễ nhận biết */
-    #manv[readonly] {
-      background-color: #f0f0f0;
-    }
-  </style>
+        /* ô manv bị khóa sau khi login cho dễ nhận biết */
+        #manv[readonly] {
+            background-color: #f0f0f0;
+        }
+    </style>
 </head>
 
 <body>
-  <!-- Khung login: authModule.js sẽ render form đăng nhập -->
-  <div id="login-container"></div>
+    <!-- Khung login: authModule.js sẽ render form đăng nhập -->
+    <div id="login-container"></div>
 
-  <!-- Toàn bộ app chính nằm trong đây, chỉ hiện sau khi đăng nhập -->
-  <div id="app-container" style="display:none;">
-    <div class="card">
-      <h1>Đăng ký ca làm</h1>
-      <div class="row">
-        <div class="field">
-          <label>Mã nhân viên:</label>
-          <input id="manv" list="dl-manv" placeholder="Chọn/nhập mã NV">
-          <datalist id="dl-manv"></datalist>
+    <!-- Toàn bộ app chính nằm trong đây, chỉ hiện sau khi đăng nhập -->
+    <div id="app-container" style="display:none;">
+        <div class="card">
+            <h1>Đăng ký ca làm</h1>
+            <div class="row">
+                <div class="field">
+                    <label>Mã nhân viên:</label>
+                    <input id="manv" list="dl-manv" placeholder="Chọn/nhập mã NV">
+                    <datalist id="dl-manv"></datalist>
+                </div>
+
+                <div class="field">
+                    <label>Cơ sở:</label>
+                    <select id="diadiem">
+                        <option value="">-- Chọn cơ sở --</option>
+                        <option value="cs1">CS1</option>
+                        <option value="cs2">CS2</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Loại đăng ký:</label>
+                    <select id="loai_dang_ky">
+                        <option value="CA_LAM">Ca làm</option>
+                        <option value="NGHI_CA_NGAY">Xin nghỉ cả ngày</option>
+                        <option value="NGHI_THEO_GIO">Xin nghỉ theo giờ</option>
+                        <option value="DI_MUON">Xin đi muộn (chọn ca)</option>
+                        <option value="VE_SOM">Xin về sớm (chọn ca)</option>
+                    </select>
+                </div>
+
+
+                <div class="field">
+                    <label>Ngày làm:</label>
+                    <input type="date" id="ngay">
+                </div>
+
+                <div class="field">
+                    <label>Giờ bắt đầu:</label>
+                    <input type="time" id="gio_bat_dau" value="07:30">
+                </div>
+
+                <div class="field">
+                    <label>Giờ kết thúc:</label>
+                    <input type="time" id="gio_ket_thuc" value="22:00">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="field" id="wrap-ca-goc" style="display:none;">
+                    <label>Chọn ca (bắt buộc):</label>
+                    <select id="ca_goc">
+                        <option value="">-- Chọn ca --</option>
+                    </select>
+                    <div style="font-size:12px;color:#666;margin-top:2px;">
+                        (Chỉ áp dụng cho: Xin đi muộn / Xin về sớm)
+                    </div>
+                </div>
+
+                <div class="field" id="wrap-tu-gio" style="display:none;">
+                    <label>Từ giờ:</label>
+                    <input type="time" id="tu_gio">
+                </div>
+
+                <div class="field" id="wrap-den-gio" style="display:none;">
+                    <label>Đến giờ:</label>
+                    <input type="time" id="den_gio">
+                </div>
+
+                <div class="field" style="flex:1;">
+                    <label>Lý do / ghi chú:</label>
+                    <textarea id="ly_do" placeholder="VD: đổi ca, tăng ca ..."></textarea>
+                </div>
+                <button id="btn-dang-ky">Gửi đăng ký</button>
+            </div>
+
+            <div id="msg" style="font-size:12px;color:#555;margin-top:4px;"></div>
         </div>
 
-        <div class="field">
-          <label>Cơ sở:</label>
-          <select id="diadiem">
-            <option value="">-- Chọn cơ sở --</option>
-            <option value="cs1">CS1</option>
-            <option value="cs2">CS2</option>
-          </select>
-        </div>
 
-        <div class="field">
-          <label>Ngày làm:</label>
-          <input type="date" id="ngay">
-        </div>
+        <div class="card">
+            <h2>Đăng ký của tôi</h2>
 
-        <div class="field">
-          <label>Giờ bắt đầu:</label>
-          <input type="time" id="gio_bat_dau" value="07:30">
-        </div>
+            <div class="card" style="margin-top:12px;">
+                <h3 style="margin-bottom:6px;">
+                    Tổng hợp nhân sự theo giờ
+                    <span id="summary-title-extra" style="font-size:13px;color:#666;"></span>
+                </h3>
 
-        <div class="field">
-          <label>Giờ kết thúc:</label>
-          <input type="time" id="gio_ket_thuc" value="22:00">
-        </div>
-      </div>
+                <div id="summary-hourly" style="font-family:monospace; font-size:13px; white-space:pre-line;">
+                    Chưa có dữ liệu.
+                </div>
+            </div>
 
-      <div class="row">
-        <div class="field" style="flex:1;">
-          <label>Lý do / ghi chú:</label>
-          <textarea id="ly_do" placeholder="VD: đổi ca, tăng ca ..."></textarea>
-        </div>
-        <button id="btn-dang-ky">Gửi đăng ký</button>
-      </div>
 
-      <div id="msg" style="font-size:12px;color:#555;margin-top:4px;"></div>
+            <!-- Bộ lọc từ ngày / đến ngày -->
+            <div class="row">
+                <div class="field">
+                    <label>Từ ngày:</label>
+                    <input type="date" id="from_date">
+                </div>
+                <div class="field">
+                    <label>Đến ngày:</label>
+                    <input type="date" id="to_date">
+                </div>
+
+                <div class="field" style="align-self:flex-end;">
+                    <label style="font-size:13px; display:flex; gap:6px; align-items:center;">
+                        <input type="checkbox" id="chk-xem-tatca">
+                        Xem toàn bộ (theo cơ sở)
+                    </label>
+                </div>
+
+                <button id="btn-tai-dangky">Tải đăng ký</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Cơ sở</th>
+                        <th>Mã NV</th>
+                        <th>Loại</th>
+                        <th>Giờ</th>
+                        <th>Trạng thái</th>
+                        <th>Lý do</th>
+                        <th>Ghi chú quản lý</th>
+                    </tr>
+
+                </thead>
+                <tbody id="tbody-lich">
+                    <tr>
+                        <td colspan="6">Nhập / đăng nhập Mã NV để xem lịch.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <div class="card">
-      <h2>Đăng ký của tôi</h2>
-
-      <!-- Bộ lọc từ ngày / đến ngày -->
-      <div class="row">
-        <div class="field">
-          <label>Từ ngày:</label>
-          <input type="date" id="from_date">
-        </div>
-        <div class="field">
-          <label>Đến ngày:</label>
-          <input type="date" id="to_date">
-        </div>
-        <button id="btn-tai-dangky">Tải đăng ký</button>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Ngày</th>
-            <th>Cơ sở</th>
-            <th>Giờ</th>
-            <th>Trạng thái</th>
-            <th>Lý do</th>
-            <th>Ghi chú quản lý</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-lich">
-          <tr>
-            <td colspan="6">Nhập / đăng nhập Mã NV để xem lịch.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <script type="module" src="./scripts/dangkyca.js"></script>
+    <script type="module" src="./scripts/dangkyca.js"></script>
 </body>
 
 </html>
