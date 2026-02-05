@@ -587,6 +587,7 @@ async function hasRegisteredShiftToday(manv, diadiem) {
         .select("id")
         .eq("manv", manv)
         .eq("diadiem", diadiem)
+        .eq("loai_dang_ky", "CA_LAM")
         .eq("ngay", todayStr)
         .not("trang_thai", "in", "(HUY,TU_CHOI)");
 
