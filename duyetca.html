@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <title>Duyệt đăng ký ca</title>
@@ -12,21 +13,25 @@
       padding: 8px;
       background: #f5f5f5;
     }
+
     .card {
       background: #fff;
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
+
     h1 {
       font-size: 18px;
       margin: 0 0 8px 0;
     }
+
     h2 {
       font-size: 16px;
       margin: 0 0 8px 0;
     }
+
     .row {
       display: flex;
       flex-wrap: wrap;
@@ -34,43 +39,61 @@
       margin-bottom: 8px;
       align-items: flex-end;
     }
+
     .field {
       display: flex;
       flex-direction: column;
       font-size: 13px;
     }
+
     .field label {
       margin-bottom: 2px;
     }
+
     .field input,
     .field select {
       font-size: 13px;
       padding: 4px 6px;
     }
+
     button {
       font-size: 13px;
       padding: 6px 10px;
       cursor: pointer;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
       background: #fff;
     }
-    th, td {
+
+    th,
+    td {
       border: 1px solid #ddd;
       padding: 4px 6px;
     }
+
     thead {
       background: #e0e0e0;
     }
 
-    .status-CHO_DUYET { color: #ff9800; }
-    .status-DA_DUYET { color: #2e7d32; font-weight: 600; }
-    .status-TU_CHOI  { color: #c62828; }
+    .status-CHO_DUYET {
+      color: #ff9800;
+    }
+
+    .status-DA_DUYET {
+      color: #2e7d32;
+      font-weight: 600;
+    }
+
+    .status-TU_CHOI {
+      color: #c62828;
+    }
   </style>
 </head>
+
 <body>
   <!-- KHUNG LOGIN -->
   <div id="login-container"></div>
@@ -126,16 +149,20 @@
             <th>ID</th>
             <th>Ngày</th>
             <th>Cơ sở</th>
-            <th>Nhân viên</th>
             <th>Giờ</th>
+            <th>Loại</th> <!-- ✅ THÊM -->
+            <th>Nhân viên</th>
             <th>Trạng thái</th>
             <th>Lý do</th>
             <th>Ghi chú</th>
             <th>Hành động</th>
           </tr>
         </thead>
+
         <tbody id="tbody-duyet">
-          <tr><td colspan="9">Chưa có dữ liệu.</td></tr>
+          <tr>
+            <td colspan="9">Chưa có dữ liệu.</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -143,4 +170,5 @@
 
   <script type="module" src="./scripts/duyetca.js"></script>
 </body>
+
 </html>
