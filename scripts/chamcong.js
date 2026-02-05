@@ -447,37 +447,37 @@ async function enforceBayMauBeforeChamCong({ diadiem }) {
 // Ghi 1 dòng chấm công vào bảng chamcong_log
 // Ghi 1 dòng chấm công (chuẩn server) + tự phạt nếu vi phạm
 async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu = null }) {
-  const sp = await ensureSupabase();
-  if (!sp) return false;
+    const sp = await ensureSupabase();
+    if (!sp) return false;
 
-  const { data, error } = await sp.rpc("rpc_chamcong_log_v2", {
-    p_manv: String(manv || "").trim().toUpperCase(),
-    p_diadiem: String(diadiem || "").trim().toLowerCase(),
-    p_su_kien: String(su_kien || "").trim().toUpperCase(),
-    p_nguon: nguon,
-    p_ghi_chu: ghi_chu
-  });
+    const { data, error } = await sp.rpc("rpc_chamcong_log_v3", {
+        p_manv: String(manv || "").trim().toUpperCase(),
+        p_diadiem: String(diadiem || "").trim().toLowerCase(),
+        p_su_kien: String(su_kien || "").trim().toUpperCase(),
+        p_nguon: nguon,
+        p_ghi_chu: ghi_chu
+    });
 
-  if (error) {
-    console.error("Lỗi RPC chấm công:", error);
-    alert("Lỗi chấm công, vui lòng thử lại.");
-    return false;
-  }
+    if (error) {
+        console.error("Lỗi RPC chấm công:", error);
+        alert("Lỗi chấm công, vui lòng thử lại.");
+        return false;
+    }
 
-  if (data && data.ok === false) {
-    console.error("RPC trả về lỗi:", data);
-    alert("Lỗi chấm công: " + (data.error || "Không rõ lỗi"));
-    return false;
-  }
+    if (data && data.ok === false) {
+        console.error("RPC trả về lỗi:", data);
+        alert("Lỗi chấm công: " + (data.error || "Không rõ lỗi"));
+        return false;
+    }
 
-  // Optional: nếu có phát sinh phạt thì bạn có thể hiện thông báo nhẹ
-  if (data?.phat_rows > 0 && Number(data?.phat) > 0) {
-    console.log("Đã ghi phạt:", data);
-    // bạn muốn popup cũng được, còn không thì để console
-    // alert(`Bạn bị trừ ${Number(data.phat).toLocaleString("vi-VN")}đ: ${data.note}`);
-  }
+    // Optional: nếu có phát sinh phạt thì bạn có thể hiện thông báo nhẹ
+    if (data?.phat_rows > 0 && Number(data?.phat) > 0) {
+        console.log("Đã ghi phạt:", data);
+        // bạn muốn popup cũng được, còn không thì để console
+        // alert(`Bạn bị trừ ${Number(data.phat).toLocaleString("vi-VN")}đ: ${data.note}`);
+    }
 
-  return true;
+    return true;
 }
 
 
@@ -532,6 +532,7 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
             .eq("diadiem", diadiem)
             .eq("ngay", todayStr)
             .eq("trang_thai", "CHO_DUYET")
+            .eq("loai_dang_ky", "CA_LAM")
             .order("gio_bat_dau", { ascending: true });
 
         if (error) {
@@ -557,6 +558,8 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
             .from("lichlam_dangky")
             .update({
                 trang_thai: "DA_DUYET",
+                nguoi_duyet: "AUTO",
+                thoi_gian_duyet: new Date().toISOString(),
                 ghi_chu_admin: (target.ghi_chu_admin || "") + " (auto duyệt khi vào ca)",
                 updated_at: new Date().toISOString()
             })
@@ -587,8 +590,8 @@ async function hasRegisteredShiftToday(manv, diadiem) {
         .select("id")
         .eq("manv", manv)
         .eq("diadiem", diadiem)
-        .eq("loai_dang_ky", "CA_LAM")
         .eq("ngay", todayStr)
+        .eq("loai_dang_ky", "CA_LAM")
         .not("trang_thai", "in", "(HUY,TU_CHOI)");
 
     if (error) {
@@ -909,7 +912,7 @@ function attachChamCongButtons(diadiem) {
             // 4) MỖI LẦN CHẤM CÔNG ĐỀU PHẢI XỬ LÝ BÀY MẪU (NẾU CÒN)
             //    Nếu còn dòng chưa bày mẫu & chưa ghi chú -> popup sẽ chặn không cho qua.
             // Chỉ nhắc bày mẫu cho các sự kiện KHÁC VÀO CA
-            
+
             if (su_kien !== "VAOCA") {
                 await enforceBayMauBeforeChamCong({ diadiem });
             }
