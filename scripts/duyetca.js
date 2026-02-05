@@ -330,11 +330,27 @@ async function loadRequests() {
     tbody.innerHTML += `
       <tr>
         <td>${row.id}</td>
-        <td>${row.ngay}</td>
-        <td>${row.diadiem}</td>
-        <td>${row.manv}</td>
-        <td>${row.gio_bat_dau?.slice(0, 5)} - ${row.gio_ket_thuc?.slice(0, 5)}</td>
-        <td class="status-${row.trang_thai}">${row.trang_thai}</td>
+<td>${row.ngay}</td>
+<td>${row.diadiem}</td>
+
+<!-- GIỜ -->
+<td>${row.gio_bat_dau?.slice(0, 5)} - ${row.gio_ket_thuc?.slice(0, 5)}</td>
+
+<!-- LOẠI -->
+<td style="font-weight:600; color:${row.loai_dang_ky?.startsWith("NGHI")
+        ? "#d35400"
+        : row.loai_dang_ky === "DI_MUON" || row.loai_dang_ky === "VE_SOM"
+          ? "#8e44ad"
+          : "#2c3e50"
+      }">
+  ${row.loai_dang_ky || "CA_LAM"}
+</td>
+
+<!-- NHÂN VIÊN -->
+<td>${row.manv}</td>
+
+<td class="status-${row.trang_thai}">${row.trang_thai}</td>
+
         <td>${row.ly_do || ""}</td>
         <td>
           <input
