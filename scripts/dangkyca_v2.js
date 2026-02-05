@@ -30,8 +30,10 @@ const denGioInput = document.getElementById("den_gio");
 
 const chkXemTatCa = document.getElementById("chk-xem-tatca");
 
-const summaryHourlyDiv = document.getElementById("summary-hourly");
+
+const summaryHourlyEl = document.getElementById("summary-hourly");
 const summaryTitleExtra = document.getElementById("summary-title-extra");
+
 
 let daGanEvent = false; // tránh gắn event nhiều lần nếu onLoginSuccess được gọi lại 
 let currentManv = null; // mã NV lấy từ login
@@ -657,7 +659,145 @@ async function handleDangKy() {
     await loadMyRequests(target, true); // ✅ giờ sẽ không ghi đè msg nữa
     validateDangKyUI(true);             // ✅ giữ msg thành công
 
+    loadHourlySummaryForRegisterPage();
+
 }
+
+function toMinutes2(t) {
+  if (!t) return null;
+  const s = String(t).slice(0, 5); // HH:MM
+  const [hh, mm] = s.split(":").map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  return hh * 60 + mm;
+}
+function minutesToHHMM2(m) {
+  const hh = String(Math.floor(m / 60)).padStart(2, "0");
+  const mm = String(m % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+function addActive2(map, manv) {
+  map.set(manv, (map.get(manv) || 0) + 1);
+}
+function removeActive2(map, manv) {
+  const v = (map.get(manv) || 0) - 1;
+  if (v <= 0) map.delete(manv);
+  else map.set(manv, v);
+}
+function buildTimelineForRows2(rows) {
+  const events = new Map();   // minute -> {starts:[], ends:[]}
+  const points = new Set();
+
+  for (const r of rows) {
+    const sMin = toMinutes2(r.gio_bat_dau);
+    const eMin = toMinutes2(r.gio_ket_thuc);
+    if (sMin == null || eMin == null) continue;
+    if (eMin <= sMin) continue;
+
+    points.add(sMin);
+    points.add(eMin);
+
+    if (!events.has(sMin)) events.set(sMin, { starts: [], ends: [] });
+    if (!events.has(eMin)) events.set(eMin, { starts: [], ends: [] });
+
+    events.get(sMin).starts.push(r.manv);
+    events.get(eMin).ends.push(r.manv);
+  }
+
+  const sorted = Array.from(points).sort((a, b) => a - b);
+  if (sorted.length < 2) return [];
+
+  const active = new Map(); // manv -> count
+  const lines = [];
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const t = sorted[i];
+    const next = sorted[i + 1];
+
+    // kết thúc tại t -> bỏ trước; bắt đầu tại t -> thêm sau
+    const ev = events.get(t);
+    if (ev?.ends?.length) ev.ends.forEach(m => removeActive2(active, m));
+    if (ev?.starts?.length) ev.starts.forEach(m => addActive2(active, m));
+
+    const manvs = Array.from(active.keys()).sort();
+    lines.push({
+      from: minutesToHHMM2(t),
+      to: minutesToHHMM2(next),
+      count: manvs.length,
+      manvs
+    });
+  }
+
+  return lines;
+}
+
+async function loadHourlySummaryForRegisterPage() {
+  if (!summaryHourlyEl) return;
+
+  const ngay = ngayInput.value;
+  const dia = diadiemSelect.value; // nếu rỗng => lấy cả 2 cơ sở
+
+  if (!ngay) {
+    summaryHourlyEl.textContent = "Chưa chọn ngày.";
+    if (summaryTitleExtra) summaryTitleExtra.textContent = "";
+    return;
+  }
+
+  if (summaryTitleExtra) {
+    summaryTitleExtra.textContent = dia ? `(${dia.toUpperCase()} – ${ngay})` : `(CS1+CS2 – ${ngay})`;
+  }
+  summaryHourlyEl.textContent = "Đang tải tổng hợp...";
+
+  let q = supabase
+    .from("lichlam_dangky")
+    .select("manv, diadiem, gio_bat_dau, gio_ket_thuc, trang_thai, loai_dang_ky")
+    .eq("ngay", ngay)
+    .eq("loai_dang_ky", "CA_LAM")
+    .in("trang_thai", ["CHO_DUYET", "DA_DUYET"])   // ✅ đây là điểm FIX thiếu người
+    .order("diadiem", { ascending: true })
+    .order("gio_bat_dau", { ascending: true });
+
+  if (dia) q = q.eq("diadiem", dia);
+
+  const { data, error } = await q;
+  if (error) {
+    console.error(error);
+    summaryHourlyEl.textContent = "Lỗi tải tổng hợp.";
+    return;
+  }
+
+  const rows = data || [];
+  if (rows.length === 0) {
+    summaryHourlyEl.textContent = "Chưa có đăng ký CA_LAM.";
+    return;
+  }
+
+  // nếu không chọn cơ sở -> hiển thị cả 2 cơ sở
+  const sites = dia ? [dia] : ["cs1", "cs2"];
+  let out = "";
+
+  for (const site of sites) {
+    const siteRows = rows.filter(r => r.diadiem === site);
+    out += `${site}:\n`;
+
+    if (siteRows.length === 0) {
+      out += `  (không có dữ liệu)\n\n`;
+      continue;
+    }
+
+    const lines = buildTimelineForRows2(siteRows);
+    for (const ln of lines) {
+      const txt =
+        ln.count === 0
+          ? `${ln.from} - ${ln.to} : 0 người`
+          : `${ln.from} - ${ln.to} : ${ln.count} người (${ln.manvs.join(", ")})`;
+      out += `  ${txt}\n`;
+    }
+    out += `\n`;
+  }
+
+  summaryHourlyEl.textContent = out.trim();
+}
+
 
 // --- Gắn event sau khi login thành công ---
 function attachEventsOnce() {
@@ -706,6 +846,11 @@ function attachEventsOnce() {
     chkXemTatCa.addEventListener("change", () => {
         loadMyRequests(); // reload theo mode cá nhân / toàn bộ
     });
+
+    ngayInput.addEventListener("change", loadHourlySummaryForRegisterPage);
+diadiemSelect.addEventListener("change", loadHourlySummaryForRegisterPage);
+btnTaiDangKy?.addEventListener("click", () => setTimeout(loadHourlySummaryForRegisterPage, 150));
+
 
     ngayInput.addEventListener("change", loadHourlySummary);
     diadiemSelect.addEventListener("change", loadHourlySummary);
