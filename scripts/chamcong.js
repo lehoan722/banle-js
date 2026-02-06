@@ -94,8 +94,8 @@ async function checkInStore(diadiem) {
 async function ensureInStoreBeforeAction(diadiem) {
     // Chỉ cho phép trên mobile
     //if (!isMobileDevice()) {
-      //  alert("Ứng dụng chấm công chỉ được dùng trên điện thoại.");
-       // return false;
+    //  alert("Ứng dụng chấm công chỉ được dùng trên điện thoại.");
+    // return false;
     //}
     const ok = await checkInStore(diadiem);
     return ok;
@@ -450,13 +450,15 @@ async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu =
     const sp = await ensureSupabase();
     if (!sp) return false;
 
-    const { data, error } = await sp.rpc("rpc_chamcong_log_v3", {
+    const { data, error } = await sp.rpc("rpc_chamcong_log_v5", {
         p_manv: String(manv || "").trim().toUpperCase(),
         p_diadiem: String(diadiem || "").trim().toLowerCase(),
         p_su_kien: String(su_kien || "").trim().toUpperCase(),
         p_nguon: nguon,
         p_ghi_chu: ghi_chu
     });
+    console.log("RPC DATA =", data);
+    console.log("RPC ERROR =", error);
 
     if (error) {
         console.error("Lỗi RPC chấm công:", error);
@@ -1010,6 +1012,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
 
 
 
