@@ -450,7 +450,7 @@ async function logChamCong({ manv, diadiem, su_kien, nguon = "manual", ghi_chu =
     const sp = await ensureSupabase();
     if (!sp) return false;
 
-    const { data, error } = await sp.rpc("rpc_chamcong_log_v5", {
+    const { data, error } = await sp.rpc("rpc_chamcong_log_v6", {
         p_manv: String(manv || "").trim().toUpperCase(),
         p_diadiem: String(diadiem || "").trim().toLowerCase(),
         p_su_kien: String(su_kien || "").trim().toUpperCase(),
