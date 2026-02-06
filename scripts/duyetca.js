@@ -78,49 +78,109 @@ function removeActive(activeCount, manv) {
 }
 
 function buildTimelineForOneSite(rows) {
-  // rows: đã lọc theo diadiem + 1 ngày (và đã apply trạng thái nếu user chọn)
-  const events = new Map(); // minute -> { starts:[], ends:[] }
-  const points = new Set();
+  if (!rows || rows.length === 0) return [];
 
-  for (const r of rows) {
-    const sMin = toMinutes(r.gio_bat_dau);
-    const eMin = toMinutes(r.gio_ket_thuc);
-    if (sMin == null || eMin == null) continue;
-    if (eMin <= sMin) continue;
+  // --- Helper: parse "HH:MM" -> minutes
+  const toMin = (t) => hhmmToMinutes(t);
+  const norm = (s) => (s || "").toString().trim().toUpperCase();
 
-    points.add(sMin);
-    points.add(eMin);
+  // --- 1) Tách nhóm theo loại đăng ký
+  const caLam = rows.filter(r => norm(r.loai_dang_ky) === "CA_LAM");
+  const nghiCaNgay = rows.filter(r => norm(r.loai_dang_ky) === "NGHI_CA_NGAY");
+  const nghiTheoGio = rows.filter(r => norm(r.loai_dang_ky) === "NGHI_THEO_GIO");
 
-    if (!events.has(sMin)) events.set(sMin, { starts: [], ends: [] });
-    if (!events.has(eMin)) events.set(eMin, { starts: [], ends: [] });
+  // --- 2) Tập nhân viên nghỉ cả ngày (loại khỏi mọi giờ)
+  const offAllDay = new Set(nghiCaNgay.map(r => norm(r.manv)).filter(Boolean));
 
-    events.get(sMin).starts.push(r.manv);
-    events.get(eMin).ends.push(r.manv);
+  // --- 3) Build work intervals từ CA_LAM
+  // intervals: { manv, start, end }
+  let intervals = [];
+  for (const r of caLam) {
+    const manv = norm(r.manv);
+    if (!manv) continue;
+    if (offAllDay.has(manv)) continue;
+
+    const start = toMin(r.gio_bat_dau);
+    const end = toMin(r.gio_ket_thuc);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+
+    intervals.push({ manv, start, end });
   }
 
-  const sorted = Array.from(points).sort((a, b) => a - b);
-  if (sorted.length < 2) return [];
+  // --- 4) Trừ nghỉ theo giờ khỏi intervals (split interval)
+  // nghỉ theo giờ ưu tiên dùng tu_gio/den_gio nếu có, không thì fallback gio_bat_dau/gio_ket_thuc
+  const subtractOne = (work, off) => {
+    // no overlap
+    if (off.end <= work.start || off.start >= work.end) return [work];
+    // off covers all
+    if (off.start <= work.start && off.end >= work.end) return [];
+    // cut left
+    if (off.start <= work.start && off.end < work.end) {
+      return [{ ...work, start: off.end }];
+    }
+    // cut right
+    if (off.start > work.start && off.end >= work.end) {
+      return [{ ...work, end: off.start }];
+    }
+    // split middle
+    return [
+      { ...work, end: off.start },
+      { ...work, start: off.end }
+    ].filter(x => x.end > x.start);
+  };
 
-  const activeCount = new Map(); // manv -> count
+  for (const r of nghiTheoGio) {
+    const manv = norm(r.manv);
+    if (!manv) continue;
+
+    const s = r.tu_gio || r.gio_bat_dau;
+    const e = r.den_gio || r.gio_ket_thuc;
+
+    const offStart = toMin(s);
+    const offEnd = toMin(e);
+    if (!Number.isFinite(offStart) || !Number.isFinite(offEnd) || offEnd <= offStart) continue;
+
+    const off = { start: offStart, end: offEnd };
+
+    // apply subtract to all work intervals of this manv
+    const newIntervals = [];
+    for (const w of intervals) {
+      if (w.manv !== manv) {
+        newIntervals.push(w);
+      } else {
+        const parts = subtractOne(w, off);
+        newIntervals.push(...parts);
+      }
+    }
+    intervals = newIntervals;
+  }
+
+  // --- 5) Build timeline edges from intervals
+  if (intervals.length === 0) return [];
+
+  const edges = new Set();
+  for (const it of intervals) {
+    edges.add(it.start);
+    edges.add(it.end);
+  }
+  const points = [...edges].sort((a, b) => a - b);
+
   const lines = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const from = points[i];
+    const to = points[i + 1];
+    if (to <= from) continue;
 
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const t = sorted[i];
-    const next = sorted[i + 1];
+    const manvSet = new Set();
+    for (const it of intervals) {
+      if (it.start < to && it.end > from) manvSet.add(it.manv);
+    }
 
-    // QUY TẮC MỐC: kết thúc tại t -> bỏ trước, bắt đầu tại t -> thêm sau
-    const ev = events.get(t);
-    if (ev?.ends?.length) ev.ends.forEach((m) => removeActive(activeCount, m));
-    if (ev?.starts?.length) ev.starts.forEach((m) => addActive(activeCount, m));
-
-    // trạng thái trong đoạn [t, next)
-    const manvs = Array.from(activeCount.keys()).sort();
-    const count = manvs.length;
-
+    const manvs = [...manvSet].sort();
     lines.push({
-      from: minutesToHHMM(t),
-      to: minutesToHHMM(next),
-      count,
+      from: minutesToHHMM(from),
+      to: minutesToHHMM(to),
+      count: manvs.length,
       manvs
     });
   }
