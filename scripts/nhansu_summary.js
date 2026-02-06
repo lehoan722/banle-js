@@ -132,6 +132,57 @@ function isLoaiNghiTheoGio(loai) {
   return x === "NGHI_THEO_GIO" || x === "NGHI_GIO" || x === "NGHI_PHEP_GIO";
 }
 
+function getStaffColorType(site, count) {
+  const n = Number(count || 0);
+
+  // CS1:
+  // <=1 đỏ, 2-3 xanh, >3 vàng
+  if (site === "cs1") {
+    if (n <= 1) return "red";
+    if (n <= 3) return "green";
+    return "yellow";
+  }
+
+  // CS2:
+  // <=2 đỏ, 3-5 xanh, >5 vàng
+  if (site === "cs2") {
+    if (n <= 2) return "red";
+    if (n <= 5) return "green";
+    return "yellow";
+  }
+
+  // default
+  return "";
+}
+
+function applyStaffLineStyle(el, type) {
+  // style chung để nhìn “như dòng cảnh báo”
+  el.style.padding = "2px 6px";
+  el.style.borderRadius = "4px";
+  el.style.margin = "2px 0";
+
+  if (type === "red") {
+    el.style.background = "#ffebee";
+    el.style.color = "#b71c1c";
+    el.style.fontWeight = "700";
+    return;
+  }
+
+  if (type === "green") {
+    el.style.background = "#e8f5e9";
+    el.style.color = "#1b5e20";
+    el.style.fontWeight = "600";
+    return;
+  }
+
+  if (type === "yellow") {
+    el.style.background = "#fff8e1";
+    el.style.color = "#e65100";
+    el.style.fontWeight = "700";
+    return;
+  }
+}
+
 // Subtract leave intervals from a work interval [s,e)
 function subtractOne(work, leave) {
   const out = [];
