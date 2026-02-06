@@ -78,115 +78,165 @@ function removeActive(activeCount, manv) {
 }
 
 function buildTimelineForOneSite(rows) {
-  if (!rows || rows.length === 0) return [];
+  // Build headcount timeline by time blocks for ONE site (diadiem)
+  // ✅ Only CA_LAM adds headcount
+  // ✅ Any NGHI_* removes headcount in the overlapped time range (e.g. NGHI_CA_NGAY, NGHI_THEO_GIO)
+  // ❌ DI_MUON / VE_SOM / etc. do not affect headcount summary
 
-  // --- Helper: parse "HH:MM" -> minutes
-  const toMin = (t) => hhmmToMinutes(t);
-  const norm = (s) => (s || "").toString().trim().toUpperCase();
-
-  // --- 1) Tách nhóm theo loại đăng ký
-  const caLam = rows.filter(r => norm(r.loai_dang_ky) === "CA_LAM");
-  const nghiCaNgay = rows.filter(r => norm(r.loai_dang_ky) === "NGHI_CA_NGAY");
-  const nghiTheoGio = rows.filter(r => norm(r.loai_dang_ky) === "NGHI_THEO_GIO");
-
-  // --- 2) Tập nhân viên nghỉ cả ngày (loại khỏi mọi giờ)
-  const offAllDay = new Set(nghiCaNgay.map(r => norm(r.manv)).filter(Boolean));
-
-  // --- 3) Build work intervals từ CA_LAM
-  // intervals: { manv, start, end }
-  let intervals = [];
-  for (const r of caLam) {
-    const manv = norm(r.manv);
-    if (!manv) continue;
-    if (offAllDay.has(manv)) continue;
-
-    const start = toMin(r.gio_bat_dau);
-    const end = toMin(r.gio_ket_thuc);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
-
-    intervals.push({ manv, start, end });
-  }
-
-  // --- 4) Trừ nghỉ theo giờ khỏi intervals (split interval)
-  // nghỉ theo giờ ưu tiên dùng tu_gio/den_gio nếu có, không thì fallback gio_bat_dau/gio_ket_thuc
-  const subtractOne = (work, off) => {
-    // no overlap
-    if (off.end <= work.start || off.start >= work.end) return [work];
-    // off covers all
-    if (off.start <= work.start && off.end >= work.end) return [];
-    // cut left
-    if (off.start <= work.start && off.end < work.end) {
-      return [{ ...work, start: off.end }];
-    }
-    // cut right
-    if (off.start > work.start && off.end >= work.end) {
-      return [{ ...work, end: off.start }];
-    }
-    // split middle
-    return [
-      { ...work, end: off.start },
-      { ...work, start: off.end }
-    ].filter(x => x.end > x.start);
+  const toMin = (t) => {
+    if (!t) return null;
+    const s = String(t).trim();
+    // supports 'HH:MM' or 'HH:MM:SS'
+    const parts = s.split(":");
+    if (parts.length < 2) return null;
+    const hh = parseInt(parts[0], 10);
+    const mm = parseInt(parts[1], 10);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+    return hh * 60 + mm;
   };
 
-  for (const r of nghiTheoGio) {
-    const manv = norm(r.manv);
+  const toHM = (m) => {
+    const hh = String(Math.floor(m / 60)).padStart(2, "0");
+    const mm = String(m % 60).padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+
+  const normType = (x) => String(x || "").trim().toUpperCase();
+
+  const intervalsWork = [];   // { manv, s, e }
+  const intervalsOff = [];    // { manv, s, e }
+
+  for (const r of rows) {
+    const loai = normType(r.loai_dang_ky);
+    const stt = normType(r.trang_thai);
+
+    // skip cancelled/rejected for all types
+    if (stt === "HUY" || stt === "TU_CHOI") continue;
+
+    const s = toMin(r.gio_bat_dau);
+    const e = toMin(r.gio_ket_thuc);
+
+    if (s == null || e == null) continue;
+
+    const manv = String(r.manv || "").trim().toUpperCase();
     if (!manv) continue;
 
-    const s = r.tu_gio || r.gio_bat_dau;
-    const e = r.den_gio || r.gio_ket_thuc;
+    // only CA_LAM counts as working
+    if (loai === "CA_LAM") {
+      intervalsWork.push({ manv, s, e });
+      continue;
+    }
 
-    const offStart = toMin(s);
-    const offEnd = toMin(e);
-    if (!Number.isFinite(offStart) || !Number.isFinite(offEnd) || offEnd <= offStart) continue;
+    // any NGHI_* removes headcount (nghỉ cả ngày / nghỉ theo giờ / ...)
+    if (loai.startsWith("NGHI")) {
+      intervalsOff.push({ manv, s, e });
+      continue;
+    }
+  }
 
-    const off = { start: offStart, end: offEnd };
+  // if no working interval -> no blocks
+  if (intervalsWork.length === 0) return [];
 
-    // apply subtract to all work intervals of this manv
-    const newIntervals = [];
-    for (const w of intervals) {
-      if (w.manv !== manv) {
-        newIntervals.push(w);
-      } else {
-        const parts = subtractOne(w, off);
-        newIntervals.push(...parts);
+  // Boundaries are built from BOTH working and off intervals (to split correctly)
+  const boundsSet = new Set();
+  for (const it of intervalsWork) {
+    boundsSet.add(it.s);
+    boundsSet.add(it.e);
+  }
+  for (const it of intervalsOff) {
+    boundsSet.add(it.s);
+    boundsSet.add(it.e);
+  }
+  const bounds = Array.from(boundsSet).sort((a, b) => a - b);
+
+  // Helper: who is "present" in [a,b)
+  const presentSet = (a, b) => {
+    const pres = new Set();
+
+    // add CA_LAM covering segment
+    for (const it of intervalsWork) {
+      if (it.s <= a && it.e >= b) pres.add(it.manv);
+    }
+
+    if (pres.size === 0) return pres;
+
+    // remove any NGHI covering segment
+    for (const it of intervalsOff) {
+      if (it.s <= a && it.e >= b) pres.delete(it.manv);
+    }
+
+    return pres;
+  };
+
+  const blocks = [];
+  let lastKey = null;
+  let lastSet = new Set();
+  let blockStart = null;
+
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const a = bounds[i];
+    const b = bounds[i + 1];
+    if (a === b) continue;
+
+    const curSet = presentSet(a, b);
+    const curArr = Array.from(curSet).sort();
+    const curKey = curArr.join("|");
+
+    // skip empty segments (nobody present)
+    if (!curKey) {
+      // close existing block if any
+      if (lastKey) {
+        blocks.push({
+          start: toHM(blockStart),
+          end: toHM(a),
+          employees: Array.from(lastSet).sort(),
+          count: lastSet.size,
+        });
+        lastKey = null;
+        lastSet = new Set();
+        blockStart = null;
       }
-    }
-    intervals = newIntervals;
-  }
-
-  // --- 5) Build timeline edges from intervals
-  if (intervals.length === 0) return [];
-
-  const edges = new Set();
-  for (const it of intervals) {
-    edges.add(it.start);
-    edges.add(it.end);
-  }
-  const points = [...edges].sort((a, b) => a - b);
-
-  const lines = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    const from = points[i];
-    const to = points[i + 1];
-    if (to <= from) continue;
-
-    const manvSet = new Set();
-    for (const it of intervals) {
-      if (it.start < to && it.end > from) manvSet.add(it.manv);
+      continue;
     }
 
-    const manvs = [...manvSet].sort();
-    lines.push({
-      from: minutesToHHMM(from),
-      to: minutesToHHMM(to),
-      count: manvs.length,
-      manvs
+    if (!lastKey) {
+      // start new block
+      lastKey = curKey;
+      lastSet = curSet;
+      blockStart = a;
+      continue;
+    }
+
+    if (curKey !== lastKey) {
+      // close old block at boundary a
+      blocks.push({
+        start: toHM(blockStart),
+        end: toHM(a),
+        employees: Array.from(lastSet).sort(),
+        count: lastSet.size,
+      });
+
+      // start new block
+      lastKey = curKey;
+      lastSet = curSet;
+      blockStart = a;
+    }
+  }
+
+  // close last block
+  if (lastKey) {
+    const endMin = bounds[bounds.length - 1];
+    blocks.push({
+      start: toHM(blockStart),
+      end: toHM(endMin),
+      employees: Array.from(lastSet).sort(),
+      count: lastSet.size,
     });
   }
 
-  return lines;
+  return blocks;
 }
+
 
 function renderTimelineSummaryIfSingleDay(data, fromDate, toDate, diadiemFilter) {
   if (!summaryEl) return;
