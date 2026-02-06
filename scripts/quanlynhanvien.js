@@ -546,7 +546,10 @@ async function loadSummary() {
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
-    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
+    // IMPORTANT: need loai_dang_ky + (tu_gio/den_gio) so we can:
+    // - treat NGHI_CA_NGAY as full-day off (remove all work intervals)
+    // - subtract NGHI_THEO_GIO from CA_LAM when building the summary timeline
+    .select("diadiem, manv, loai_dang_ky, gio_bat_dau, gio_ket_thuc, tu_gio, den_gio, trang_thai, ngay")
     .eq("ngay", ngay)
     .in("trang_thai", ["CHO_DUYET", "DA_DUYET"])
     .order("diadiem", { ascending: true })
@@ -612,6 +615,18 @@ function removeActive(activeCount, manv) {
   function safeUpper(v) { return String(v ?? "").trim().toUpperCase(); }
   function safeLower(v) { return String(v ?? "").trim().toLowerCase(); }
 
+  // Normalize diadiem/coso variants to 'cs1' / 'cs2' (defensive for legacy data)
+  function normalizeSite(v) {
+    const s = safeLower(v);
+    if (!s) return "";
+    if (s === "cs1" || s === "cs 1" || s === "co so 1" || s === "cơ sở 1" || s === "1" || s === "cs_1" || s === "cs-1") return "cs1";
+    if (s === "cs2" || s === "cs 2" || s === "co so 2" || s === "cơ sở 2" || s === "2" || s === "cs_2" || s === "cs-2") return "cs2";
+    // fallback: if string contains cs1/cs2
+    if (s.includes("cs1")) return "cs1";
+    if (s.includes("cs2")) return "cs2";
+    return s;
+  }
+
   // Backward-compat alias (some versions call timeToMinutes)
   function timeToMinutes(timeStr) { return toMinutes(timeStr); }
 
@@ -656,7 +671,7 @@ function removeActive(activeCount, manv) {
   function buildEffectiveRowsForSummary(rows) {
     const bySite = new Map(); // site -> Map(manv -> { work:[], leaves:[], hasDayOff:false })
     for (const r of (rows || [])) {
-      const site = safeLower(r.diadiem);
+      const site = normalizeSite(r.diadiem ?? r.co_so ?? r.coso ?? r.site);
       const manv = safeUpper(r.manv);
       if (!site || !manv) continue;
 
@@ -777,7 +792,7 @@ function renderTimelineBlocks(rows) {
   if (!summaryTimelineEl) return;
 
   const makeBlock = (site, color) => {
-    const r = rows.filter((x) => String(x.diadiem || "").toLowerCase() === site);
+    const r = rows.filter((x) => normalizeSite(x.diadiem ?? x.co_so ?? x.coso ?? x.site) === site);
     const lines = buildTimelineForOneSite(r);
 
     if (lines.length === 0) {
