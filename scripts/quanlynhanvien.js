@@ -529,23 +529,22 @@ function buildTimelineFromRows(scheduleRows, logRows) {
 }
 
 
-
 // ===== Workforce-by-hour summary (shared module) =====
 let nhansuSummaryApi = null;
-function ensureNhansuSummary() {
-  if (!nhansuSummaryApi) {
-    nhansuSummaryApi = initNhansuSummary({
-      supabase,
-      dateInputEl: summaryDateInput,
-      buttonEl: summaryBtn,
-      timelineEl: summaryTimelineEl,
-      messageEl: summaryMsg,
-      statusFilter: ["CHO_DUYET", "DA_DUYET"],
-      autoLoadOnInit: true
-    });
-  }
-}
 
+function ensureNhansuSummary() {
+    if (!nhansuSummaryApi) {
+        nhansuSummaryApi = initNhansuSummary({
+            supabase,
+            dateInputEl: summaryDateInput,
+            loadButtonEl: summaryBtn,                 // ✅ đúng tên
+            timelineEl: summaryTimelineEl,
+            messageEl: summaryMsg,
+            statuses: ["CHO_DUYET", "DA_DUYET"],       // ✅ đúng tên
+            autoLoad: false                           // ✅ đúng tên (bạn muốn auto thì true)
+        });
+    }
+}
 
 
 // ========== KHỞI TẠO ==========
@@ -566,4 +565,5 @@ document.addEventListener("DOMContentLoaded", () => {
     // workforce summary (shared module)
     ensureNhansuSummary();
 });
+
 
