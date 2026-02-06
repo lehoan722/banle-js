@@ -546,7 +546,7 @@ async function loadSummary() {
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
-    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
+    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay, loai_dang_ky, tu_gio, den_gio")
     .eq("ngay", ngay)
     .in("trang_thai", ["CHO_DUYET", "DA_DUYET"])
     .order("diadiem", { ascending: true })
@@ -567,7 +567,7 @@ async function loadSummary() {
     return;
   }
 
-  renderTimelineBlocks(rows);
+  renderTimelineBlocks(buildEffectiveRowsForSummary(rows));
   setSummaryMessage(`Đã tải xong (${rows.length} dòng đăng ký).`);
 }
 
@@ -593,6 +593,107 @@ function minutesToHHMM(min) {
   const m = min % 60;
   return `${pad2(h)}:${pad2(m)}`;
 }
+
+// ===== NEW: build effective staffing intervals from approved registrations =====
+function isLoaiNghiCaNgay(loai) {
+  return String(loai || "").toUpperCase() === "NGHI_CA_NGAY";
+}
+function isLoaiNghiTheoGio(loai) {
+  return String(loai || "").toUpperCase() === "NGHI_THEO_GIO";
+}
+function isLoaiCaLam(loai) {
+  return String(loai || "").toUpperCase() === "CA_LAM";
+}
+function safeLower(x) {
+  return String(x || "").trim().toLowerCase();
+}
+function safeUpper(x) {
+  return String(x || "").trim().toUpperCase();
+}
+
+function subtractOneInterval(workIntervals, leaveStart, leaveEnd) {
+  // workIntervals: [{s,e}] in minutes. return new list after subtracting [leaveStart, leaveEnd]
+  const out = [];
+  for (const w of workIntervals) {
+    const s = w.s, e = w.e;
+    if (leaveEnd <= s || leaveStart >= e) {
+      out.push({ s, e });
+      continue;
+    }
+    // overlap
+    if (leaveStart > s) out.push({ s, e: Math.min(leaveStart, e) });
+    if (leaveEnd < e) out.push({ s: Math.max(leaveEnd, s), e });
+  }
+  // remove invalid
+  return out.filter(x => x.e > x.s);
+}
+
+function buildEffectiveRowsForSummary(rows) {
+  // Only uses records that are DA_DUYET.
+  // Logic:
+  // - CA_LAM => work interval [gio_bat_dau, gio_ket_thuc]
+  // - NGHI_CA_NGAY (approved) => remove ALL work intervals of that employee that day/site
+  // - NGHI_THEO_GIO (approved) => subtract [tu_gio, den_gio] from work intervals
+  // Other loai_dang_ky ignored for staffing summary.
+  const bySite = new Map(); // site -> manv -> {work:[{s,e}], leaves:[{s,e}], hasDayOff:boolean}
+  for (const r of rows || []) {
+    if (safeUpper(r.trang_thai) !== "DA_DUYET") continue;
+
+    const site = safeLower(r.diadiem);
+    const manv = safeUpper(r.manv);
+    if (!site || !manv) continue;
+
+    if (!bySite.has(site)) bySite.set(site, new Map());
+    const byManv = bySite.get(site);
+    if (!byManv.has(manv)) byManv.set(manv, { work: [], leaves: [], hasDayOff: false });
+    const st = byManv.get(manv);
+
+    const loai = safeUpper(r.loai_dang_ky);
+
+    if (isLoaiNghiCaNgay(loai)) {
+      st.hasDayOff = true;
+      continue;
+    }
+
+    if (isLoaiCaLam(loai)) {
+      const s = timeToMinutes(r.gio_bat_dau);
+      const e = timeToMinutes(r.gio_ket_thuc);
+      if (s != null && e != null && e > s) st.work.push({ s, e });
+      continue;
+    }
+
+    if (isLoaiNghiTheoGio(loai)) {
+      const s = timeToMinutes(r.tu_gio || r.gio_bat_dau);
+      const e = timeToMinutes(r.den_gio || r.gio_ket_thuc);
+      if (s != null && e != null && e > s) st.leaves.push({ s, e });
+      continue;
+    }
+  }
+
+  // Build final effective work intervals
+  const outRows = [];
+  for (const [site, byManv] of bySite.entries()) {
+    for (const [manv, st] of byManv.entries()) {
+      let work = st.work.slice();
+      if (st.hasDayOff) work = []; // nghỉ cả ngày => không tính nhân lực
+      for (const lv of st.leaves) {
+        work = subtractOneInterval(work, lv.s, lv.e);
+      }
+      for (const w of work) {
+        outRows.push({
+          diadiem: site,
+          manv,
+          gio_bat_dau: minutesToTime(w.s),
+          gio_ket_thuc: minutesToTime(w.e),
+          trang_thai: "DA_DUYET",
+          loai_dang_ky: "CA_LAM",
+        });
+      }
+    }
+  }
+  return outRows;
+}
+// ===== END NEW HELPERS =====
 
 function addActive(activeCount, manv) {
   if (!manv) return;
@@ -671,7 +772,7 @@ function renderTimelineBlocks(rows) {
       const txt =
         ln.count === 0
           ? `${ln.from} - ${ln.to} : 0 người`
-          : `${ln.from} - ${ln.to} : ${ln.count} người (${ln.manvs.join(", ")})`;
+          : `${ln.from} - ${ln.to} : ${ln.count} người (${(ln.manvs || []).join(", ")})`;
 
       html += `<div style="margin-left:14px;color:${ln.count === 0 ? "#c62828" : "#333"};">${txt}</div>`;
     }
