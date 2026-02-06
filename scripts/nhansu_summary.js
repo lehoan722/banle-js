@@ -373,8 +373,14 @@ function renderTimelineBlocks(containerEl, rows) {
 
     for (const b of blocks) {
       const line = document.createElement("div");
+
+      // ✅ Tô màu theo ngưỡng từng cơ sở
+      const colorType = getStaffColorType(site, b.count);
+      applyStaffLineStyle(line, colorType);
+
       line.textContent = `${b.start} - ${b.end} : ${b.count} người (${b.names.join(", ")})`;
       containerEl.appendChild(line);
     }
+
   }
 }
