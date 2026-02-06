@@ -2,6 +2,7 @@
 // Hiển thị trạng thái nhân viên hiện tại + tổng quan nhân lực theo giờ (từ đăng ký ca đã duyệt)
 
 import { supabase } from "./supabaseClient.js";
+import { initNhansuSummary } from "./nhansu_summary.js";
 
 // --- DOM elements: trạng thái hiện tại ---
 const tbodyStatus = document.getElementById("tbody-status");
@@ -528,291 +529,23 @@ function buildTimelineFromRows(scheduleRows, logRows) {
 }
 
 
-async function loadSummary() {
-  // Ngày chọn, mặc định hôm nay
-  let ngay = summaryDateInput.value;
-  if (!ngay) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    ngay = `${yyyy}-${mm}-${dd}`;
-    summaryDateInput.value = ngay;
-  }
 
-  setSummaryMessage("Đang tải đăng ký ca...");
-
-  clearSummaryTimeline();
-
-  const { data, error } = await supabase
-    .from("lichlam_dangky")
-    // IMPORTANT: need loai_dang_ky + (tu_gio/den_gio) so we can:
-    // - treat NGHI_CA_NGAY as full-day off (remove all work intervals)
-    // - subtract NGHI_THEO_GIO from CA_LAM when building the summary timeline
-    .select("diadiem, manv, loai_dang_ky, gio_bat_dau, gio_ket_thuc, tu_gio, den_gio, trang_thai, ngay")
-    .eq("ngay", ngay)
-    .in("trang_thai", ["CHO_DUYET", "DA_DUYET"])
-    .order("diadiem", { ascending: true })
-    .order("gio_bat_dau", { ascending: true })
-    .order("manv", { ascending: true });
-
-  if (error) {
-    console.error("Lỗi đọc lichlam_dangky:", error);
-    setSummaryMessage("Lỗi tải đăng ký ca.");
-    if (summaryTimelineEl) summaryTimelineEl.innerHTML = `<div style="color:#c62828;">Lỗi tải dữ liệu, xem console.</div>`;
-    return;
-  }
-
-  const rows = data || [];
-  if (rows.length === 0) {
-    setSummaryMessage(`Không có đăng ký ca (CHO_DUYET/DA_DUYET) trong ngày ${ngay}.`);
-    if (summaryTimelineEl) summaryTimelineEl.innerHTML = `<div>Không có đăng ký phù hợp.</div>`;
-    return;
-  }
-
-  renderTimelineBlocks(buildEffectiveRowsForSummary(rows));
-  setSummaryMessage(`Đã tải xong (${rows.length} dòng đăng ký).`);
-}
-
-
-function clearSummaryTimeline() {
-  if (summaryTimelineEl) summaryTimelineEl.innerHTML = "";
-}
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-function toMinutes(timeStr) {
-  if (!timeStr) return null;
-  const s = String(timeStr).slice(0, 5); // "HH:MM"
-  const [h, m] = s.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  return h * 60 + m;
-}
-
-function minutesToHHMM(min) {
-  if (min == null || !Number.isFinite(min)) return null;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${pad2(h)}:${pad2(m)}`;
-}
-
-function addActive(activeCount, manv) {
-  if (!manv) return;
-  activeCount.set(manv, (activeCount.get(manv) || 0) + 1);
-}
-
-function removeActive(activeCount, manv) {
-  if (!manv) return;
-  const cur = activeCount.get(manv) || 0;
-  if (cur <= 1) activeCount.delete(manv);
-  else activeCount.set(manv, cur - 1);
-}
-
-
-  // ===== v2 SUMMARY HELPERS (support NGHI_CA_NGAY / NGHI_THEO_GIO) =====
-  function safeUpper(v) { return String(v ?? "").trim().toUpperCase(); }
-  function safeLower(v) { return String(v ?? "").trim().toLowerCase(); }
-
-  // Normalize diadiem/coso variants to 'cs1' / 'cs2' (defensive for legacy data)
-  function normalizeSite(v) {
-    const s = safeLower(v);
-    if (!s) return "";
-    if (s === "cs1" || s === "cs 1" || s === "co so 1" || s === "cơ sở 1" || s === "1" || s === "cs_1" || s === "cs-1") return "cs1";
-    if (s === "cs2" || s === "cs 2" || s === "co so 2" || s === "cơ sở 2" || s === "2" || s === "cs_2" || s === "cs-2") return "cs2";
-    // fallback: if string contains cs1/cs2
-    if (s.includes("cs1")) return "cs1";
-    if (s.includes("cs2")) return "cs2";
-    return s;
-  }
-
-  // Backward-compat alias (some versions call timeToMinutes)
-  function timeToMinutes(timeStr) { return toMinutes(timeStr); }
-
-  function isLoaiCaLam(loai) {
-    return safeUpper(loai) === "CA_LAM";
-  }
-  function isLoaiNghiCaNgay(loai) {
-    const x = safeUpper(loai);
-    return x === "NGHI_CA_NGAY" || x === "NGHI_PHEP_NGAY" || x === "NGHI_CA";
-  }
-  function isLoaiNghiTheoGio(loai) {
-    const x = safeUpper(loai);
-    return x === "NGHI_THEO_GIO" || x === "NGHI_GIO" || x === "NGHI_PHEP_GIO";
-  }
-
-  // Subtract leave intervals from a work interval [s,e)
-  function subtractOne(work, leave) {
-    const out = [];
-    const s = work.s, e = work.e, ls = leave.s, le = leave.e;
-    if (le <= s || ls >= e) { out.push(work); return out; } // no overlap
-    if (ls <= s && le >= e) { return out; } // fully covered
-    if (ls <= s && le < e) { out.push({ s: le, e }); return out; }
-    if (ls > s && le >= e) { out.push({ s, e: ls }); return out; }
-    // split in middle
-    out.push({ s, e: ls });
-    out.push({ s: le, e });
-    return out;
-  }
-
-  function subtractLeaves(workIntervals, leaveIntervals) {
-    let current = [...workIntervals];
-    for (const lv of leaveIntervals) {
-      const next = [];
-      for (const w of current) next.push(...subtractOne(w, lv));
-      current = next;
-      if (current.length === 0) break;
-    }
-    return current;
-  }
-
-  // Build "effective" CA_LAM rows after applying NGHI_CA_NGAY and NGHI_THEO_GIO
-  function buildEffectiveRowsForSummary(rows) {
-    const bySite = new Map(); // site -> Map(manv -> { work:[], leaves:[], hasDayOff:false })
-    for (const r of (rows || [])) {
-      const site = normalizeSite(r.diadiem ?? r.co_so ?? r.coso ?? r.site);
-      const manv = safeUpper(r.manv);
-      if (!site || !manv) continue;
-
-      if (!bySite.has(site)) bySite.set(site, new Map());
-      const byManv = bySite.get(site);
-      if (!byManv.has(manv)) byManv.set(manv, { work: [], leaves: [], hasDayOff: false });
-      const st = byManv.get(manv);
-
-      const loai = safeUpper(r.loai_dang_ky);
-
-      if (isLoaiNghiCaNgay(loai)) {
-        st.hasDayOff = true;
-        continue;
-      }
-
-      if (isLoaiCaLam(loai)) {
-        const s = toMinutes(r.gio_bat_dau);
-        const e = toMinutes(r.gio_ket_thuc);
-        if (s != null && e != null && e > s) st.work.push({ s, e });
-        continue;
-      }
-
-      if (isLoaiNghiTheoGio(loai)) {
-        const s = toMinutes(r.tu_gio ?? r.gio_bat_dau);
-        const e = toMinutes(r.den_gio ?? r.gio_ket_thuc);
-        if (s != null && e != null && e > s) st.leaves.push({ s, e });
-        continue;
-      }
-    }
-
-    const out = [];
-    for (const [site, byManv] of bySite.entries()) {
-      for (const [manv, st] of byManv.entries()) {
-        if (st.hasDayOff) continue;
-
-        // sort + merge work, sort leaves
-        const work = st.work.sort((a,b)=>a.s-b.s);
-        const mergedWork = [];
-        for (const w of work) {
-          const last = mergedWork[mergedWork.length-1];
-          if (!last || w.s > last.e) mergedWork.push({ ...w });
-          else last.e = Math.max(last.e, w.e);
-        }
-
-        const leaves = st.leaves.sort((a,b)=>a.s-b.s);
-        const effective = subtractLeaves(mergedWork, leaves);
-
-        for (const it of effective) {
-          const sStr = minutesToHHMM(it.s);
-          const eStr = minutesToHHMM(it.e);
-          if (!sStr || !eStr) continue;
-          out.push({
-            ngay: rows?.[0]?.ngay ?? null,
-            diadiem: site,
-            manv: manv,
-            gio_bat_dau: sStr,
-            gio_ket_thuc: eStr,
-            loai_dang_ky: "CA_LAM",
-            trang_thai: "DA_DUYET"
-          });
-        }
-      }
-    }
-    return out;
-  }
-  // ===== end v2 helpers =====
-
-function buildTimelineForOneSite(rows) {
-  const events = new Map(); // minute -> { starts:[], ends:[] }
-  const points = new Set();
-
-  for (const r of rows) {
-    const sMin = toMinutes(r.gio_bat_dau);
-    const eMin = toMinutes(r.gio_ket_thuc);
-    if (sMin == null || eMin == null) continue;
-    if (eMin <= sMin) continue;
-
-    points.add(sMin);
-    points.add(eMin);
-
-    if (!events.has(sMin)) events.set(sMin, { starts: [], ends: [] });
-    if (!events.has(eMin)) events.set(eMin, { starts: [], ends: [] });
-
-    events.get(sMin).starts.push(r.manv);
-    events.get(eMin).ends.push(r.manv);
-  }
-
-  const sorted = Array.from(points).sort((a, b) => a - b);
-  if (sorted.length < 2) return [];
-
-  const activeCount = new Map(); // manv -> count
-  const lines = [];
-
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const t = sorted[i];
-    const next = sorted[i + 1];
-
-    // QUY TẮC MỐC: end trước start tại cùng thời điểm
-    const ev = events.get(t);
-    if (ev?.ends?.length) ev.ends.forEach((m) => removeActive(activeCount, m));
-    if (ev?.starts?.length) ev.starts.forEach((m) => addActive(activeCount, m));
-
-    const manvs = Array.from(activeCount.keys()).sort();
-    const count = manvs.length;
-
-    lines.push({
-      from: minutesToHHMM(t),
-      to: minutesToHHMM(next),
-      count,
-      manvs,
+// ===== Workforce-by-hour summary (shared module) =====
+let nhansuSummaryApi = null;
+function ensureNhansuSummary() {
+  if (!nhansuSummaryApi) {
+    nhansuSummaryApi = initNhansuSummary({
+      supabase,
+      dateInputEl: summaryDateInput,
+      buttonEl: summaryBtn,
+      timelineEl: summaryTimelineEl,
+      messageEl: summaryMsg,
+      statusFilter: ["CHO_DUYET", "DA_DUYET"],
+      autoLoadOnInit: true
     });
   }
-
-  return lines;
 }
 
-function renderTimelineBlocks(rows) {
-  if (!summaryTimelineEl) return;
-
-  const makeBlock = (site, color) => {
-    const r = rows.filter((x) => normalizeSite(x.diadiem ?? x.co_so ?? x.coso ?? x.site) === site);
-    const lines = buildTimelineForOneSite(r);
-
-    if (lines.length === 0) {
-      return `<div style="color:${color};font-weight:600;">${site}: (không có dữ liệu)</div>`;
-    }
-
-    let html = `<div style="color:${color};font-weight:600;">${site}:</div>`;
-    for (const ln of lines) {
-      const txt =
-        ln.count === 0
-          ? `${ln.from} - ${ln.to} : 0 người`
-          : `${ln.from} - ${ln.to} : ${ln.count} người (${ln.manvs.join(", ")})`;
-
-      html += `<div style="margin-left:14px;color:${ln.count === 0 ? "#c62828" : "#333"};">${txt}</div>`;
-    }
-    return html;
-  };
-
-  summaryTimelineEl.innerHTML = makeBlock("cs1", "blue") + makeBlock("cs2", "red");
-}
 
 
 // ========== KHỞI TẠO ==========
@@ -830,21 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loadStatus();
     });
 
-    // tổng quan theo giờ
-    if (summaryBtn) {
-        summaryBtn.addEventListener("click", () => {
-            loadSummary();
-        });
-    }
-
-    // set mặc định ngày hôm nay cho summary
-    if (summaryDateInput) {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, "0");
-        const dd = String(today.getDate()).padStart(2, "0");
-        summaryDateInput.value = `${yyyy}-${mm}-${dd}`;
-    }
-
-    loadSummary();
+    // workforce summary (shared module)
+    ensureNhansuSummary();
 });
+
