@@ -589,6 +589,7 @@ function toMinutes(timeStr) {
 }
 
 function minutesToHHMM(min) {
+  if (min == null || !Number.isFinite(min)) return null;
   const h = Math.floor(min / 60);
   const m = min % 60;
   return `${pad2(h)}:${pad2(m)}`;
@@ -624,13 +625,6 @@ function removeActive(activeCount, manv) {
   function isLoaiNghiTheoGio(loai) {
     const x = safeUpper(loai);
     return x === "NGHI_THEO_GIO" || x === "NGHI_GIO" || x === "NGHI_PHEP_GIO";
-  }
-
-  function minutesToHHMM(mins) {
-    if (mins == null || !Number.isFinite(mins)) return null;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
   }
 
   // Subtract leave intervals from a work interval [s,e)
