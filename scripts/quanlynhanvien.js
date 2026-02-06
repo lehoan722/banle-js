@@ -546,7 +546,7 @@ async function loadSummary() {
 
   const { data, error } = await supabase
     .from("lichlam_dangky")
-    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay, loai_dang_ky, tu_gio, den_gio")
+    .select("diadiem, manv, gio_bat_dau, gio_ket_thuc, trang_thai, ngay")
     .eq("ngay", ngay)
     .in("trang_thai", ["CHO_DUYET", "DA_DUYET"])
     .order("diadiem", { ascending: true })
@@ -594,107 +594,6 @@ function minutesToHHMM(min) {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
-// ===== NEW: build effective staffing intervals from approved registrations =====
-function isLoaiNghiCaNgay(loai) {
-  return String(loai || "").toUpperCase() === "NGHI_CA_NGAY";
-}
-function isLoaiNghiTheoGio(loai) {
-  return String(loai || "").toUpperCase() === "NGHI_THEO_GIO";
-}
-function isLoaiCaLam(loai) {
-  return String(loai || "").toUpperCase() === "CA_LAM";
-}
-function safeLower(x) {
-  return String(x || "").trim().toLowerCase();
-}
-function safeUpper(x) {
-  return String(x || "").trim().toUpperCase();
-}
-
-function subtractOneInterval(workIntervals, leaveStart, leaveEnd) {
-  // workIntervals: [{s,e}] in minutes. return new list after subtracting [leaveStart, leaveEnd]
-  const out = [];
-  for (const w of workIntervals) {
-    const s = w.s, e = w.e;
-    if (leaveEnd <= s || leaveStart >= e) {
-      out.push({ s, e });
-      continue;
-    }
-    // overlap
-    if (leaveStart > s) out.push({ s, e: Math.min(leaveStart, e) });
-    if (leaveEnd < e) out.push({ s: Math.max(leaveEnd, s), e });
-  }
-  // remove invalid
-  return out.filter(x => x.e > x.s);
-}
-
-function buildEffectiveRowsForSummary(rows) {
-  // Only uses records that are DA_DUYET.
-  // Logic:
-  // - CA_LAM => work interval [gio_bat_dau, gio_ket_thuc]
-  // - NGHI_CA_NGAY (approved) => remove ALL work intervals of that employee that day/site
-  // - NGHI_THEO_GIO (approved) => subtract [tu_gio, den_gio] from work intervals
-  // Other loai_dang_ky ignored for staffing summary.
-  const bySite = new Map(); // site -> manv -> {work:[{s,e}], leaves:[{s,e}], hasDayOff:boolean}
-  for (const r of rows || []) {
-    if (safeUpper(r.trang_thai) !== "DA_DUYET") continue;
-
-    const site = safeLower(r.diadiem);
-    const manv = safeUpper(r.manv);
-    if (!site || !manv) continue;
-
-    if (!bySite.has(site)) bySite.set(site, new Map());
-    const byManv = bySite.get(site);
-    if (!byManv.has(manv)) byManv.set(manv, { work: [], leaves: [], hasDayOff: false });
-    const st = byManv.get(manv);
-
-    const loai = safeUpper(r.loai_dang_ky);
-
-    if (isLoaiNghiCaNgay(loai)) {
-      st.hasDayOff = true;
-      continue;
-    }
-
-    if (isLoaiCaLam(loai)) {
-      const s = timeToMinutes(r.gio_bat_dau);
-      const e = timeToMinutes(r.gio_ket_thuc);
-      if (s != null && e != null && e > s) st.work.push({ s, e });
-      continue;
-    }
-
-    if (isLoaiNghiTheoGio(loai)) {
-      const s = timeToMinutes(r.tu_gio || r.gio_bat_dau);
-      const e = timeToMinutes(r.den_gio || r.gio_ket_thuc);
-      if (s != null && e != null && e > s) st.leaves.push({ s, e });
-      continue;
-    }
-  }
-
-  // Build final effective work intervals
-  const outRows = [];
-  for (const [site, byManv] of bySite.entries()) {
-    for (const [manv, st] of byManv.entries()) {
-      let work = st.work.slice();
-      if (st.hasDayOff) work = []; // nghỉ cả ngày => không tính nhân lực
-      for (const lv of st.leaves) {
-        work = subtractOneInterval(work, lv.s, lv.e);
-      }
-      for (const w of work) {
-        outRows.push({
-          diadiem: site,
-          manv,
-          gio_bat_dau: minutesToTime(w.s),
-          gio_ket_thuc: minutesToTime(w.e),
-          trang_thai: "DA_DUYET",
-          loai_dang_ky: "CA_LAM",
-        });
-      }
-    }
-  }
-  return outRows;
-}
-// ===== END NEW HELPERS =====
-
 function addActive(activeCount, manv) {
   if (!manv) return;
   activeCount.set(manv, (activeCount.get(manv) || 0) + 1);
@@ -706,6 +605,130 @@ function removeActive(activeCount, manv) {
   if (cur <= 1) activeCount.delete(manv);
   else activeCount.set(manv, cur - 1);
 }
+
+
+  // ===== v2 SUMMARY HELPERS (support NGHI_CA_NGAY / NGHI_THEO_GIO) =====
+  function safeUpper(v) { return String(v ?? "").trim().toUpperCase(); }
+  function safeLower(v) { return String(v ?? "").trim().toLowerCase(); }
+
+  // Backward-compat alias (some versions call timeToMinutes)
+  function timeToMinutes(timeStr) { return toMinutes(timeStr); }
+
+  function isLoaiCaLam(loai) {
+    return safeUpper(loai) === "CA_LAM";
+  }
+  function isLoaiNghiCaNgay(loai) {
+    const x = safeUpper(loai);
+    return x === "NGHI_CA_NGAY" || x === "NGHI_PHEP_NGAY" || x === "NGHI_CA";
+  }
+  function isLoaiNghiTheoGio(loai) {
+    const x = safeUpper(loai);
+    return x === "NGHI_THEO_GIO" || x === "NGHI_GIO" || x === "NGHI_PHEP_GIO";
+  }
+
+  function minutesToHHMM(mins) {
+    if (mins == null || !Number.isFinite(mins)) return null;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+  }
+
+  // Subtract leave intervals from a work interval [s,e)
+  function subtractOne(work, leave) {
+    const out = [];
+    const s = work.s, e = work.e, ls = leave.s, le = leave.e;
+    if (le <= s || ls >= e) { out.push(work); return out; } // no overlap
+    if (ls <= s && le >= e) { return out; } // fully covered
+    if (ls <= s && le < e) { out.push({ s: le, e }); return out; }
+    if (ls > s && le >= e) { out.push({ s, e: ls }); return out; }
+    // split in middle
+    out.push({ s, e: ls });
+    out.push({ s: le, e });
+    return out;
+  }
+
+  function subtractLeaves(workIntervals, leaveIntervals) {
+    let current = [...workIntervals];
+    for (const lv of leaveIntervals) {
+      const next = [];
+      for (const w of current) next.push(...subtractOne(w, lv));
+      current = next;
+      if (current.length === 0) break;
+    }
+    return current;
+  }
+
+  // Build "effective" CA_LAM rows after applying NGHI_CA_NGAY and NGHI_THEO_GIO
+  function buildEffectiveRowsForSummary(rows) {
+    const bySite = new Map(); // site -> Map(manv -> { work:[], leaves:[], hasDayOff:false })
+    for (const r of (rows || [])) {
+      const site = safeLower(r.diadiem);
+      const manv = safeUpper(r.manv);
+      if (!site || !manv) continue;
+
+      if (!bySite.has(site)) bySite.set(site, new Map());
+      const byManv = bySite.get(site);
+      if (!byManv.has(manv)) byManv.set(manv, { work: [], leaves: [], hasDayOff: false });
+      const st = byManv.get(manv);
+
+      const loai = safeUpper(r.loai_dang_ky);
+
+      if (isLoaiNghiCaNgay(loai)) {
+        st.hasDayOff = true;
+        continue;
+      }
+
+      if (isLoaiCaLam(loai)) {
+        const s = toMinutes(r.gio_bat_dau);
+        const e = toMinutes(r.gio_ket_thuc);
+        if (s != null && e != null && e > s) st.work.push({ s, e });
+        continue;
+      }
+
+      if (isLoaiNghiTheoGio(loai)) {
+        const s = toMinutes(r.tu_gio ?? r.gio_bat_dau);
+        const e = toMinutes(r.den_gio ?? r.gio_ket_thuc);
+        if (s != null && e != null && e > s) st.leaves.push({ s, e });
+        continue;
+      }
+    }
+
+    const out = [];
+    for (const [site, byManv] of bySite.entries()) {
+      for (const [manv, st] of byManv.entries()) {
+        if (st.hasDayOff) continue;
+
+        // sort + merge work, sort leaves
+        const work = st.work.sort((a,b)=>a.s-b.s);
+        const mergedWork = [];
+        for (const w of work) {
+          const last = mergedWork[mergedWork.length-1];
+          if (!last || w.s > last.e) mergedWork.push({ ...w });
+          else last.e = Math.max(last.e, w.e);
+        }
+
+        const leaves = st.leaves.sort((a,b)=>a.s-b.s);
+        const effective = subtractLeaves(mergedWork, leaves);
+
+        for (const it of effective) {
+          const sStr = minutesToHHMM(it.s);
+          const eStr = minutesToHHMM(it.e);
+          if (!sStr || !eStr) continue;
+          out.push({
+            ngay: rows?.[0]?.ngay ?? null,
+            diadiem: site,
+            manv: manv,
+            gio_bat_dau: sStr,
+            gio_ket_thuc: eStr,
+            loai_dang_ky: "CA_LAM",
+            trang_thai: "DA_DUYET"
+          });
+        }
+      }
+    }
+    return out;
+  }
+  // ===== end v2 helpers =====
 
 function buildTimelineForOneSite(rows) {
   const events = new Map(); // minute -> { starts:[], ends:[] }
@@ -772,7 +795,7 @@ function renderTimelineBlocks(rows) {
       const txt =
         ln.count === 0
           ? `${ln.from} - ${ln.to} : 0 người`
-          : `${ln.from} - ${ln.to} : ${ln.count} người (${(ln.manvs || []).join(", ")})`;
+          : `${ln.from} - ${ln.to} : ${ln.count} người (${ln.manvs.join(", ")})`;
 
       html += `<div style="margin-left:14px;color:${ln.count === 0 ? "#c62828" : "#333"};">${txt}</div>`;
     }
@@ -816,4 +839,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadSummary();
 });
-
