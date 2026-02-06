@@ -541,7 +541,7 @@ function ensureNhansuSummary() {
             timelineEl: summaryTimelineEl,
             messageEl: summaryMsg,
             statuses: ["CHO_DUYET", "DA_DUYET"],       // ✅ đúng tên
-            autoLoad: false                           // ✅ đúng tên (bạn muốn auto thì true)
+            autoLoad: true                           // ✅ đúng tên (bạn muốn auto thì true)
         });
     }
 }
@@ -561,6 +561,11 @@ document.addEventListener("DOMContentLoaded", () => {
     diadiemSelect.addEventListener("change", () => {
         loadStatus();
     });
+
+    // ✅ set ngày mặc định = hôm nay (yyyy-mm-dd) để khỏi phải chọn
+if (summaryDateInput && !summaryDateInput.value) {
+  summaryDateInput.value = new Date().toISOString().slice(0, 10);
+}
 
     // workforce summary (shared module)
     ensureNhansuSummary();
