@@ -949,7 +949,8 @@ function focusPreview(masp) {
     const el = document.getElementById(`img-${masp}`);
     if (el) {
         el.classList.add('selected');
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        box.style.scrollBehavior = "auto";
+        el.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
     }
 }
 
