@@ -1010,13 +1010,39 @@
         }
         if (!xacNhan) return;
 
-        // Thực hiện xóa
-        for (const sohd of dsXoa) {
-          await window.supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-          await window.supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        // Thực hiện xóa (Bước 6: KHÔNG delete trực tiếp, chỉ gọi RPC)
+        const reason = prompt("Nhập lý do xóa (bắt buộc):", "Xóa nhầm") || "";
+        if (!reason.trim()) {
+          alert("❌ Bạn chưa nhập lý do xóa.");
+          return;
         }
 
-        alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
+        let okCount = 0;
+        let fail = [];
+
+        for (const sohd of dsXoa) {
+          const { data, error } = await window.supabase.rpc("admin_delete_invoice_hard_to_trash", {
+            p_sohd: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Xóa được ${okCount}/${dsXoa.length} hóa đơn.\n` +
+            `Các hóa đơn lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa thành công ${okCount} hóa đơn (bao gồm đối ứng nếu có).`);
+        }
+
         await taiDanhSachHoaDon(); // refresh lại bảng
 
       });
