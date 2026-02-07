@@ -105,10 +105,6 @@
       background: #ffe599;
     }
   </style>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
-
 </head>
 
 <body>
@@ -124,6 +120,7 @@
     <label><input type="date" id="denNgay" placeholder="Đến ngày:"></label>
     <label><input type="text" id="locNV" placeholder="Mã nhân viên:"></label>
     <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
+    <label><input type="text" id="locGhiChu" placeholder="Ghi chú (tìm chứa):"></label>
     <label><input type="number" id="tienTu" style="width:80px" placeholder="Tiền từ:"></label>
     <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
     <label> <input type="text" id="locSoHD" placeholder="so hd:"></label>
@@ -135,19 +132,36 @@
     <select id="loaiChungTu" multiple style="min-width:140px;">
       <option value="bancs1">ban cs1</option>
       <option value="bancs2">ban cs2</option>
+
       <option value="bannvcs1">ban nv cs1</option>
       <option value="bannvcs2">ban nv cs2</option>
+
       <option value="nmcs1">nhap moi cs1</option>
       <option value="nmcs2">nhap moics2</option>
-      <option value="nhaptamcs1">nhap tamcs1</option>
-      <option value="nhaptamcs2">nhap tamcs2</option>
-      <option value="xcncs">xuat cn</option>
-      <option value="ncncs">nhap cn</option>
-      <option value="nhapkiem">nhap kiem</option>
-      <option value="xuatkiem">xuat kiem</option>
-      <option value="nhapdoi">nhap doi tu khach</option>
-      <option value="tralaincc">xuat tra lai ncc</option>
-      <option value="xuathuy">xuat huy</option>
+
+      <option value="nhaptamcs1">nhap tam cs1</option>
+      <option value="nhaptamcs2">nhap tam cs2</option>
+
+      <option value="xcncs1">xuat cn cs1</option>
+      <option value="ncncs1">nhap cn cs1</option>
+
+      <option value="xcncs2">xuat cn cs2</option>
+      <option value="ncncs2">nhap cn cs2 </option>
+
+      <option value="nhapkiemcs1">nhap kiem cs1</option>
+      <option value="nhapkiemcs2">nhap kiem cs2</option>
+
+      <option value="xuatkiemcs1">xuat kiem cs1</option>
+      <option value="xuatkiemcs2">xuat kiem cs2</option>
+
+      <option value="nhapdoics1">nhap doi tu khach cs1</option>
+      <option value="nhapdoics2">nhap doi tu khach cs2</option>
+
+      <option value="tralaincccs1">xuat tra lai ncc cs1</option>
+      <option value="tralaincccs2">xuat tra lai ncc cs2</option>
+
+      <option value="xuathuycs1">xuat huy cs1</option>
+      <option value="xuathuycs2">xuat huy cs2</option>
 
 
     </select>
@@ -174,7 +188,44 @@
     </div>
 
 
-    <div id="hotHoaDon" style="width:100%; margin-top:10px;"></div>
+    <div id="pagingBar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <label><b>Số dòng/trang:</b></label>
+      <select id="pageSize">
+        <option value="1000">1.000</option>
+        <option value="2000">2.000</option>
+        <option value="5000">5.000</option>
+        <option value="10000" selected>10.000</option>
+      </select>
+
+      <button id="btnPrevPage" type="button">← Trang trước</button>
+      <span id="pageInfo">Trang 1/1</span>
+      <button id="btnNextPage" type="button">Trang sau →</button>
+
+      <span id="dangHienThiInfo" style="color:#666;"></span>
+    </div>
+
+    <table>
+      <thead>
+        <thead>
+          <tr>
+            <th>stt</th>
+            <th><input type="checkbox" id="chonTatCaHD"></th>
+            <th>Số HĐ</th>
+            <th>Ngày Tạo</th>
+            <th>Ngày sửa</th>
+            <th>NV</th>
+            <th>Khách</th>
+            <th>Tổng SL</th>
+            <th>Tổng thành tiền</th>
+            <th>Chiết khấu</th>
+            <th>TT</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+
+      </thead>
+      <tbody id="dsHoaDon"></tbody>
+    </table>
 
 
     <div id="popup">
@@ -207,14 +258,37 @@
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
   <script>
+    // ===== Helper: parse ngày theo local (tránh lệch UTC) =====
+    function toLocalDate(ngayStr, isoStr) {
+      if (ngayStr) {
+        const parts = String(ngayStr).split('-').map(Number);
+        const y = parts[0] || 1970;
+        const m = (parts[1] || 1) - 1;
+        const d = parts[2] || 1;
+        return new Date(y, m, d, 12, 0, 0); // 12h để tránh edge UTC/DST
+      }
+      return new Date(isoStr);
+    }
+
 
     let rowDangChon = null;
+
+
+
+    // ====== V2 PAGING (tối đa 10.000 dòng/trang) ======
+    let currentPage = 1;
+    let totalPages = 1;
+    let lastParamsBase = null;   // params lọc (không gồm limit/offset)
+    let lastTotalRows = 0;
+    let lastLoaiTongHop = "chitiet";
 
     // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
     async function getAllHoaDon(query, pageSize = 1000) {
       let from = 0;
       let allData = [];
       while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
         let { data, error } = await query.range(from, from + pageSize - 1);
         if (error) {
           alert("❌ Lỗi tải hóa đơn: " + error.message);
@@ -239,6 +313,8 @@
       let from = 0;
       const sohdSet = new Set();
       while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
         const { data, error } = await window.supabase
           .from('ct_hoadon_banle')
           .select('sohd, masp')
@@ -292,6 +368,7 @@
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
       const khach = document.getElementById("locKhach").value.trim();
+      const ghichu = document.getElementById("locGhiChu")?.value.trim() || "";
       const tienTu = Number(document.getElementById("tienTu").value);
       const tienDen = Number(document.getElementById("tienDen").value);
 
@@ -325,6 +402,7 @@
         p_loaihd_list: loaiList,
         p_manv: nv || null,
         p_khachhang: khach || null,
+        p_ghichu: (ghichu ? ghichu : null),
         p_sohd: sohd || null,
         p_tien_tu: tienTu2,
         p_tien_den: tienDen2,
@@ -343,14 +421,74 @@
         // tổng trên UI: dùng số "chuẩn theo detail"
         document.getElementById('tongSoLuong2').textContent = Number(row.total_sl_detail || 0).toLocaleString();
         document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan_v2 || 0).toLocaleString();
+
+
+        const totalRows = Number(row.total_rows || 0);
+        lastTotalRows = totalRows;
+
+        // Phân trang: chỉ áp dụng cho chế độ "Chi tiết từng hóa đơn"
+        // Với Tổng hợp ngày/tháng/năm: tải toàn bộ theo filter rồi gom nhóm, nên không phân trang.
+        const pagingBar = document.getElementById('pagingBar');
+        const pageSizeSel = document.getElementById('pageSize');
+        const btnPrev = document.getElementById('btnPrevPage');
+        const btnNext = document.getElementById('btnNextPage');
+        const pageInfoEl = document.getElementById('pageInfo');
+        const dangHienThiEl = document.getElementById('dangHienThiInfo');
+
+        if (pagingBar) pagingBar.style.display = 'flex';
+
+        const isChiTiet = (loaiTongHop === 'chitiet');
+        if (pageSizeSel) pageSizeSel.disabled = !isChiTiet;
+        if (btnPrev) btnPrev.disabled = !isChiTiet;
+        if (btnNext) btnNext.disabled = !isChiTiet;
+
+        if (!isChiTiet) {
+          if (pageInfoEl) pageInfoEl.textContent = 'Tổng hợp: không phân trang';
+          if (dangHienThiEl) dangHienThiEl.textContent = '';
+        }
+
+        if (loaiTongHop === 'chitiet') {
+          const pageSize = Number(document.getElementById('pageSize')?.value || 10000);
+          totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+          currentPage = 1;
+          lastParamsBase = paramsBase;
+          lastLoaiTongHop = loaiTongHop;
+
+          await loadPage();
+          return;
+        }
       }
 
-      // 2) PAGED (lấy toàn bộ theo batch)
-      let filtered = [];
-      const LIMIT = 2000;
+      // 2) TỔNG HỢP (ngày/tháng/năm) => tải TOÀN BỘ theo batch và gom nhóm chuẩn
+      // Lưu ý: KHÔNG dựa vào "rows.length < LIMIT" để break, vì RPC có thể trả ít hơn p_limit.
+      const groupMap = new Map();
+      const LIMIT = 10000; // batch tối đa 10.000
       let offset = 0;
 
+      // helper: parse ngày local (tránh lệch UTC)
+      function toLocalDate(ngayStr, isoStr) {
+        if (ngayStr) {
+          const s = String(ngayStr);
+          // hỗ trợ cả YYYY-MM-DD và DD/MM/YYYY
+          if (s.includes("-")) {
+            const [y, m, d] = s.split("-").map(Number);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d, 12, 0, 0);
+          }
+          if (s.includes("/")) {
+            const [d, m, y] = s.split("/").map(Number);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d, 12, 0, 0);
+          }
+        }
+        return isoStr ? new Date(isoStr) : new Date();
+      }
+
+      // reset hiển thị "đang hiển thị"
+      const dangHienThiEl2 = document.getElementById('dangHienThiInfo');
+      if (dangHienThiEl2) dangHienThiEl2.textContent = 'Đang tổng hợp...';
+
       while (true) {
+        if (lastTotalRows && offset >= lastTotalRows) break;
+
         const { data, error } = await window.supabase.rpc('xemhoadon111_v2_paged', {
           ...paramsBase,
           p_limit: LIMIT,
@@ -365,38 +503,103 @@
         const rows = data || [];
         if (rows.length === 0) break;
 
-        // map về format cũ để phần render phía dưới không phải đập lại nhiều
+        // gom nhóm trực tiếp để tránh giữ toàn bộ mảng
         rows.forEach(r => {
-          filtered.push({
-            sohd: r.sohd,
-            // dùng NGÀY BÁN làm “ngày hiển thị chính”
-            ngay: r.ngay,
-            // vẫn giữ created_at để ai cần đối chiếu thời điểm ghi DB
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-            manv: r.manv,
-            tennv: r.tennv,
-            khachhang: r.khachhang,
-            ghichu: r.ghichu,
+          const ngay = r.ngay; // date (YYYY-MM-DD) hoặc string
+          const d = toLocalDate(ngay, r.created_at);
 
-            // --- số chuẩn theo detail ---
-            tongsl: r.sl_detail,
-            tongthanhtien: r.tong_detail,     // tổng sau km dòng
-            chietkhau: r.chietkhau,           // chiết khấu hóa đơn (header)
-            thanhtoan: r.thanhtoan_v2,        // tổng detail - chiết khấu
+          let key = "";
+          if (loaiTongHop === "ngay") key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          if (loaiTongHop === "thang") key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          if (loaiTongHop === "nam") key = `${d.getFullYear()}`;
 
-            // --- đối chiếu (tuỳ bạn có dùng không) ---
-            tongsl_header: r.sl_header,
-            lech_sl: r.lech_sl
-          });
+          if (!groupMap.has(key)) {
+            groupMap.set(key, {
+              sohd: 1,
+              created_at: key, // sẽ format lúc render
+              tongsl: Number(r.sl_detail || 0),
+              tongthanhtien: Number(r.tong_detail || 0),
+              chietkhau: Number(r.chietkhau || 0),
+              thanhtoan: Number(r.thanhtoan_v2 || 0)
+            });
+          } else {
+            const obj = groupMap.get(key);
+            obj.sohd += 1;
+            obj.tongsl += Number(r.sl_detail || 0);
+            obj.tongthanhtien += Number(r.tong_detail || 0);
+            obj.chietkhau += Number(r.chietkhau || 0);
+            obj.thanhtoan += Number(r.thanhtoan_v2 || 0);
+          }
         });
 
-        if (rows.length < LIMIT) break;
-        offset += LIMIT;
+        // QUAN TRỌNG: tăng offset theo số dòng thực tế nhận được
+        offset += rows.length;
+
+        if (lastTotalRows && offset >= lastTotalRows) break;
       }
+
+      // map => array + format hiển thị ngày/tháng/năm
+      let hienThiData = Array.from(groupMap.entries())
+        .map(([key, val]) => {
+          if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+          if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
+          if (loaiTongHop === "nam") val.created_at = key;
+          return val;
+        })
+        .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+
+      // render bảng theo format giống renderFromFiltered (cột sohd = số hóa đơn)
+      tbody.innerHTML = "";
+      let stt = 1;
+      let sumSL = 0, sumTong = 0, sumCK = 0, sumTT = 0;
+
+      hienThiData.forEach(hd => {
+        sumSL += Number(hd.tongsl || 0);
+        sumTong += Number(hd.tongthanhtien || 0);
+        sumCK += Number(hd.chietkhau || 0);
+        sumTT += Number(hd.thanhtoan || 0);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${stt++}</td>
+          <td><input type="checkbox" class="chkRow"/></td>
+          <td style="font-weight:600">${Number(hd.sohd || 0).toLocaleString()}</td>
+          <td>${hd.created_at || ""}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td style="text-align:right">${Number(hd.tongsl || 0).toLocaleString()}</td>
+          <td style="text-align:right">${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+          <td style="text-align:right">${Number(hd.chietkhau || 0).toLocaleString()}</td>
+          <td style="text-align:right">${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+          <td></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // footer tổng
+      const trSum = document.createElement("tr");
+      trSum.innerHTML = `
+        <td colspan="7" style="text-align:right; font-weight:700">TỔNG</td>
+        <td style="text-align:right; font-weight:700">${sumSL.toLocaleString()}</td>
+        <td style="text-align:right; font-weight:700">${sumTong.toLocaleString()}</td>
+        <td style="text-align:right; font-weight:700">${sumCK.toLocaleString()}</td>
+        <td style="text-align:right; font-weight:700">${sumTT.toLocaleString()}</td>
+        <td></td>
+      `;
+      tbody.appendChild(trSum);
+
+      // cập nhật info
+      if (dangHienThiEl2) {
+        dangHienThiEl2.textContent = `Đang hiển thị ${hienThiData.length} dòng tổng hợp | SL: ${sumSL.toLocaleString()} | TT: ${sumTT.toLocaleString()}`;
+      }
+      return;
       // ====== END V2 ======
 
-
+      renderFromFiltered(filtered, loaiTongHop);
+    }
+    function renderFromFiltered(filtered, loaiTongHop) {
+      const tbody = document.getElementById('dsHoaDon');
       // SẮP XẾP THEO SỐ HÓA ĐƠN TỪ NHỎ ĐẾN LỚN (chỉ áp dụng cho chế độ chi tiết)
       if (loaiTongHop === "chitiet") {
         filtered.sort((a, b) => {
@@ -413,10 +616,10 @@
       if (loaiTongHop !== "chitiet") {
         const groupMap = new Map();
         filtered.forEach(hd => {
-          const d = new Date(hd.ngay || hd.created_at);
+          const d = toLocalDate(hd.ngay, hd.created_at);
 
           let key = "";
-          if (loaiTongHop === "ngay") key = d.toISOString().slice(0, 10);
+          if (loaiTongHop === "ngay") key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
           if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
           if (loaiTongHop === "nam") key = d.getFullYear() + "";
           if (!groupMap.has(key)) {
@@ -448,9 +651,40 @@
 
       // ------------- HÀM ĐỊNH DẠNG NGÀY  -------------
 
+      function normalizePgTimestamp(input) {
+        if (!input) return input;
+        let s = String(input).trim();
+
+        // nếu đang là dạng tổng hợp dd/mm/yyyy, mm/yyyy, yyyy thì giữ nguyên
+        if (
+          /^\d{2}\/\d{2}\/\d{4}$/.test(s) ||
+          /^\d{2}\/\d{4}$/.test(s) ||
+          /^\d{4}$/.test(s)
+        ) return s;
+
+        // Dạng Postgres hay gặp: "2026-01-05 12:45:53.299+00" hoặc "+07"
+        // -> đổi space thành 'T' để Date parse ổn định hơn
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+          s = s.replace(' ', 'T');
+        }
+
+        // Nếu timezone là +00 hoặc +07 (thiếu :00) -> thêm :00
+        // ví dụ: 2026-01-05T12:45:53.299+00  ->  ...+00:00
+        //        2026-01-05T12:45:53+07      ->  ...+07:00
+        s = s.replace(/([+-]\d{2})$/, '$1:00');
+
+        // Nếu không có Z hoặc offset => ép về UTC (tránh bị hiểu như giờ local)
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:\d{2})$/.test(s)) {
+          s += 'Z';
+        }
+
+        return s;
+      }
+
+
       function dinhDangNgay(ngayStr) {
         if (!ngayStr) return "";
-        const d = new Date(ngayStr);
+        const d = new Date(normalizePgTimestamp(ngayStr));
         return new Intl.DateTimeFormat("vi-VN", {
           timeZone: "Asia/Ho_Chi_Minh",
           day: "2-digit",
@@ -470,7 +704,7 @@
           /^\d{4}$/.test(ngayStr)
         ) return ngayStr;
 
-        const d = new Date(ngayStr);
+        const d = new Date(normalizePgTimestamp(ngayStr));
         const datePart = new Intl.DateTimeFormat("vi-VN", {
           timeZone: "Asia/Ho_Chi_Minh",
           day: "2-digit",
@@ -494,7 +728,7 @@
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(ngayStr)) return ngayStr;
 
         // nhận 'yyyy-mm-dd' hoặc timestamp => lấy phần ngày theo Asia/Ho_Chi_Minh
-        const d = new Date(ngayStr);
+        const d = new Date(normalizePgTimestamp(ngayStr));
         return new Intl.DateTimeFormat("vi-VN", {
           timeZone: "Asia/Ho_Chi_Minh",
           day: "2-digit",
@@ -503,24 +737,66 @@
         }).format(d);
       }
 
-      // ------------- HIỂN THỊ RA BẢNG (Handsontable) -------------
-      // Map dữ liệu sang hotData (giữ số để sort/filter đúng)
-      hotData = (hienThiData || []).map((hd, idx) => ({
-        stt: idx + 1,
-        _chk: false,
-        sohd: (hd.sohd ?? ""),
-        ngaytao: (hd.created_at ? dinhDangNgayGio(hd.created_at) : dinhDangNgayOnly(hd.ngay)),
-        ngaysua: dinhDangNgayGio(hd.updated_at || hd.updatedAt),
-        nv: (hd.manv ?? ""),
-        khach: (hd.khachhang ?? ""),
-        tongsl: Number(hd.tongsl || 0),
-        tongthanhtien: Number(hd.tongthanhtien || 0),
-        chietkhau: Number(hd.chietkhau || 0),
-        thanhtoan: Number(hd.thanhtoan || 0),
-        ghichu: (hd.ghichu ?? "")
-      }));
+      // ------------- HIỂN THỊ RA BẢNG -------------
+      hienThiData.forEach((hd, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+        <td>${hd.sohd || ""}</td>
+        <td>${dinhDangNgayGio(hd.created_at)}</td>
+        <td>${dinhDangNgayGio(hd.updated_at)}</td>
+        <td>${hd.manv || ""}</td>
+        <td>${hd.khachhang || ""}</td>
+        <td>${hd.tongsl || 0}</td>
+        <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+        <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
+        <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+        <td>${hd.ghichu || ""}</td>
+      `;
 
-      ensureHot(loaiTongHop);
+        // Click chọn dòng => tô vàng + hiện popup chi tiết
+        tr.addEventListener('click', async (ev) => {
+          // nếu bấm vào checkbox thì bỏ qua
+          if (ev.target && (ev.target.matches('input[type="checkbox"]') || ev.target.closest('input[type="checkbox"]'))) return;
+
+          if (rowDangChon && rowDangChon !== tr) rowDangChon.style.background = '';
+          rowDangChon = tr;
+          tr.style.background = '#ffe08a';
+
+          if (hd && hd.sohd) {
+            await xemChiTiet(hd.sohd);
+          }
+        });
+
+        // tránh click checkbox làm kích hoạt chọn dòng
+        const chk = tr.querySelector('input.chonHD');
+        if (chk) chk.addEventListener('click', (e) => e.stopPropagation());
+        tr.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
+            document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
+            tr.style.backgroundColor = "#ffe066";
+            rowDangChon = tr;
+            xemChiTiet(hd.sohd);
+          }
+        };
+
+        // Double-click vào cột Số HĐ để mở trang hóa đơn tương ứng
+        const sohdCell = tr.cells[2]; // cột thứ 3 = Số HĐ
+        if (sohdCell) {
+          sohdCell.style.cursor = 'pointer';
+          sohdCell.style.textDecoration = 'underline';
+
+          sohdCell.ondblclick = (ev) => {
+            ev.stopPropagation();           // không kích hoạt click chọn dòng
+            if (!hd.sohd) return;
+            openInvoiceBySohd(hd.sohd);     // hàm sẽ khai báo ở dưới
+          };
+        }
+
+        tbody.appendChild(tr);
+      });
+
       // ------------- DÒNG TỔNG CUỐI BẢNG -------------
       let tongSL = 0, tongThanhTien = 0, tongChietKhau = 0, tongTien = 0;
       hienThiData.forEach(hd => {
@@ -537,13 +813,13 @@
       trTong.style.fontWeight = "bold";
       trTong.style.background = "#f8f8f8";
       trTong.innerHTML = `
-    <td colspan="7" style="text-align:right">TỔNG</td>
-    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
-    <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
-    <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
-    <td id="tongTien">${tongTien.toLocaleString()}</td>
-    <td></td>
-  `;
+          <td colspan="7" style="text-align:right">TỔNG</td>
+          <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+          <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
+          <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
+          <td id="tongTien">${tongTien.toLocaleString()}</td>
+          <td></td>
+        `;
       tbody.appendChild(trTong);
 
       // GẮN SỰ KIỆN CHỌN TẤT CẢ
@@ -556,8 +832,99 @@
           };
         }
       }, 10);
-
     }
+
+
+    async function loadPage() {
+      if (!lastParamsBase) return;
+
+      const pageSize = Number(document.getElementById('pageSize')?.value || 10000);
+      const baseOffset = (currentPage - 1) * pageSize;
+
+      const BATCH = 1000; // Supabase thường giới hạn ~1000 rows mỗi request
+      let filtered = [];
+
+      const infoEl = document.getElementById('dangHienThiInfo');
+      if (infoEl) infoEl.textContent = `Đang tải trang ${currentPage}...`;
+
+      for (let i = 0; i < pageSize; i += BATCH) {
+        const take = Math.min(BATCH, pageSize - i);
+
+        const { data, error } = await window.supabase.rpc('xemhoadon111_v2_paged', {
+          ...lastParamsBase,
+          p_limit: take,
+          p_offset: baseOffset + i
+        });
+
+        if (error) {
+          const tbody = document.getElementById('dsHoaDon');
+          if (tbody) tbody.innerHTML = `<tr><td colspan="12">❌ Lỗi paged: ${error.message}</td></tr>`;
+          return;
+        }
+
+        const rows = data || [];
+        if (rows.length === 0) break;
+
+        rows.forEach(r => {
+          filtered.push({
+            sohd: r.sohd,
+            ngay: r.ngay,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+            manv: r.manv,
+            tennv: r.tennv,
+            khachhang: r.khachhang,
+            ghichu: r.ghichu,
+
+            tongsl: r.sl_detail,
+            tongthanhtien: r.tong_detail,
+            chietkhau: r.chietkhau,
+            thanhtoan: r.thanhtoan_v2,
+
+            tongsl_header: r.sl_header,
+            lech_sl: r.lech_sl
+          });
+        });
+
+        if (rows.length < take) break;
+      }
+
+      renderFromFiltered(filtered, lastLoaiTongHop);
+
+      const pageInfo = document.getElementById('pageInfo');
+      if (pageInfo) pageInfo.textContent = `Trang ${currentPage}/${totalPages}`;
+
+      if (infoEl) infoEl.textContent = `Đang hiển thị ${filtered.length.toLocaleString()} hóa đơn của trang này`;
+    }
+
+    function bindPagingEvents() {
+      const prev = document.getElementById('btnPrevPage');
+      const next = document.getElementById('btnNextPage');
+      const pageSizeEl = document.getElementById('pageSize');
+
+      if (prev) prev.addEventListener('click', async () => {
+        if (currentPage <= 1) return;
+        currentPage -= 1;
+        await loadPage();
+      });
+
+      if (next) next.addEventListener('click', async () => {
+        if (currentPage >= totalPages) return;
+        currentPage += 1;
+        await loadPage();
+      });
+
+      if (pageSizeEl) pageSizeEl.addEventListener('change', async () => {
+        // đổi số dòng/trang -> về trang 1
+        currentPage = 1;
+        const ps = Number(pageSizeEl.value || 10000);
+        totalPages = Math.max(1, Math.ceil((lastTotalRows || 0) / ps));
+        const pageInfo = document.getElementById('pageInfo');
+        if (pageInfo) pageInfo.textContent = `Trang ${currentPage}/${totalPages}`;
+        if (lastParamsBase) await loadPage();
+      });
+    }
+
 
 
 
@@ -590,12 +957,11 @@
     }
 
     async function xoaHoaDonDaChon() {
-      const dsSoHd = getSelectedSoHdFromHot();
-      if (!dsSoHd.length) {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      if (checkboxes.length === 0) {
         alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
         return;
       }
-
 
       // Gọi xác thực và chỉ xóa nếu xác thực thành công
       kiemTraNhanVienTruocKhiXoa(async function () {
@@ -604,7 +970,8 @@
         let doiUngList = [];
         let coCCN = false;
 
-        for (const sohd of dsSoHd) {
+        for (const cb of checkboxes) {
+          const sohd = cb.getAttribute("data-sohd");
           if (!sohd) continue;
 
           const prefix = sohd.split("_")[0] || "";
@@ -643,11 +1010,41 @@
         }
         if (!xacNhan) return;
 
-        // Thực hiện xóa
-        for (const sohd of dsXoa) {
-          await window.supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-          await window.supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        // Thực hiện xóa (Bước 6: KHÔNG delete trực tiếp, chỉ gọi RPC)
+        const reason = prompt("Nhập lý do xóa (bắt buộc):", "Xóa nhầm") || "";
+        if (!reason.trim()) {
+          alert("❌ Bạn chưa nhập lý do xóa.");
+          return;
         }
+
+        let okCount = 0;
+        let fail = [];
+
+        for (const sohd of dsXoa) {
+          const { data, error } = await window.supabase.rpc("admin_delete_invoice_hard_to_trash", {
+            p_sohd: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Xóa được ${okCount}/${dsXoa.length} hóa đơn.\n` +
+            `Các hóa đơn lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa thành công ${okCount} hóa đơn (bao gồm đối ứng nếu có).`);
+        }
+
+        await taiDanhSachHoaDon(); // refresh lại bảng
+
 
         alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
         await taiDanhSachHoaDon(); // refresh lại bảng
@@ -705,7 +1102,9 @@
     function bindEventsAfterAdmin() {
       const el = document.getElementById("loaiTongHop");
       if (el) el.onchange = taiDanhSachHoaDon;
+      bindPagingEvents();
     }
+
 
 
     // DRAG POPUP (kéo popup)
@@ -753,35 +1152,32 @@
 
 
     document.getElementById('btnCopyTable').onclick = function () {
-      if (!hotHoaDon || !Array.isArray(hotData) || !hotData.length) return alert("Không có dữ liệu để copy!");
+      let table = document.querySelector("table");
+      if (!table) return alert("Không tìm thấy bảng dữ liệu!");
 
-      // headers (bỏ cột chọn)
-      const isChiTiet = (hotMode === 'chitiet');
-      const headers = (isChiTiet
-        ? ['stt', 'Số HĐ', 'Ngày tạo', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'Tổng thành tiền', 'Chiết khấu', 'TT', 'Ghi chú']
-        : ['stt', 'Số HĐ', 'Ngày', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'Tổng thành tiền', 'Chiết khấu', 'TT', 'Ghi chú']
-      ).join('\t');
+      // Xác định vị trí cột checkbox
+      let ths = Array.from(table.querySelectorAll("thead tr th"));
+      let colChon = ths.findIndex(th => th.innerText.toLowerCase().includes("chon"));
 
-      const lines = hotData.map(r => ([
-        r.stt,
-        r.sohd,
-        r.ngaytao,
-        r.ngaysua,
-        r.nv,
-        r.khach,
-        r.tongsl,
-        (r.tongthanhtien ?? ''),
-        (r.chietkhau ?? ''),
-        (r.thanhtoan ?? ''),
-        (r.ghichu ?? '')
-      ].map(x => (x === null || x === undefined) ? '' : String(x).replace(/\n/g, ' ')).join('\t'))).join('\n');
+      // Lấy tiêu đề (bỏ cột chon nếu có)
+      let headers = ths.map((th, i) => i !== colChon ? th.innerText.replace(/\n/g, " ") : null)
+        .filter(x => x !== null).join('\t');
 
-      const text = headers + '\n' + lines;
+      // Lấy từng dòng dữ liệu
+      let rows = Array.from(table.querySelectorAll("tbody#dsHoaDon tr"));
+      if (!rows.length) return alert("Không có dữ liệu để copy!");
 
-      navigator.clipboard.writeText(text).then(() => {
-        // OK
-      }).catch(err => {
-        alert("❌ Copy thất bại: " + err);
+      let lines = rows
+        .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
+        .map(tr => Array.from(tr.cells)
+          .map((td, i) => i !== colChon ? td.innerText.replace(/\n/g, " ") : null)
+          .filter(x => x !== null).join('\t')
+        );
+
+      let all = [headers].concat(lines).join('\n');
+
+      navigator.clipboard.writeText(all).then(() => {
+        //alert("✅ Đã copy toàn bộ bảng dữ liệu! Ctrl+V để dán vào Excel.");
       });
     };
 
@@ -988,109 +1384,40 @@
           // nếu module popup không tồn tại thì bỏ qua
         }
 
+        // Gắn dropdown gợi ý KHÁCH HÀNG (giống cách mã sản phẩm)
+        try {
+          const { attachKhachPopup } = await import('./scripts/popupKhachhang.js');
+          const elKh = document.getElementById('locKhach');
+
+          if (elKh) {
+            attachKhachPopup({
+              supabase: window.supabase,
+              khInput: elKh,
+              onPick: (kh) => {
+                // chọn xong tự load luôn (giống bạn đang làm)
+                taiDanhSachHoaDon();
+              }
+            });
+          }
+        } catch (e) {
+          // nếu module không tồn tại thì bỏ qua
+        }
+
         await taiDanhSachHoaDon();
         return true;
       }
     });
 
-
-    // ================= HANDSONTABLE (Sort + Filter) =================
-    let hotHoaDon = null;
-    let hotMode = null; // 'chitiet' | 'ngay' | 'thang' | 'nam'
-    let hotData = [];   // data đang hiển thị (array of objects)
-
-    function _numRenderer(instance, td, row, col, prop, value, cellProperties) {
-      Handsontable.renderers.TextRenderer.apply(this, arguments);
-      const v = (value === null || value === undefined || value === "") ? "" : Number(value);
-      td.textContent = (v === "" || Number.isNaN(v)) ? "" : v.toLocaleString();
-      td.style.textAlign = "right";
-    }
-
-    function _textRenderer(instance, td, row, col, prop, value, cellProperties) {
-      Handsontable.renderers.TextRenderer.apply(this, arguments);
-      td.textContent = (value === null || value === undefined) ? "" : String(value);
-    }
-
-    function ensureHot(mode) {
-      const el = document.getElementById('hotHoaDon');
-      if (!el) return;
-
-      // cấu hình cột theo mode
-      const isChiTiet = (mode === 'chitiet');
-
-      const columns = [
-        { data: 'stt', type: 'numeric', readOnly: true, width: 60, renderer: _textRenderer },
-        { data: '_chk', type: 'checkbox', readOnly: !isChiTiet, width: 60 },
-        { data: 'sohd', type: 'text', readOnly: true, width: 150, renderer: _textRenderer },
-        { data: 'ngaytao', type: 'text', readOnly: true, width: 160, renderer: _textRenderer },
-        { data: 'ngaysua', type: 'text', readOnly: true, width: 160, renderer: _textRenderer },
-        { data: 'nv', type: 'text', readOnly: true, width: 90, renderer: _textRenderer },
-        { data: 'khach', type: 'text', readOnly: true, width: 180, renderer: _textRenderer },
-        { data: 'tongsl', type: 'numeric', readOnly: true, width: 90, renderer: _numRenderer },
-        { data: 'tongthanhtien', type: 'numeric', readOnly: true, width: 150, renderer: _numRenderer },
-        { data: 'chietkhau', type: 'numeric', readOnly: true, width: 120, renderer: _numRenderer },
-        { data: 'thanhtoan', type: 'numeric', readOnly: true, width: 150, renderer: _numRenderer },
-        { data: 'ghichu', type: 'text', readOnly: true, width: 260, renderer: _textRenderer },
-      ];
-
-      // Header theo chế độ tổng hợp: cột 'Số HĐ' thực tế là số lượng hóa đơn
-      const colHeaders = isChiTiet
-        ? ['stt', 'Chọn', 'Số HĐ', 'Ngày tạo', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'Tổng thành tiền', 'Chiết khấu', 'TT', 'Ghi chú']
-        : ['stt', 'Chọn', 'Số HĐ', 'Ngày', 'Ngày sửa', 'NV', 'Khách', 'Tổng SL', 'Tổng thành tiền', 'Chiết khấu', 'TT', 'Ghi chú'];
-
-      if (!hotHoaDon) {
-        hotHoaDon = new Handsontable(el, {
-          data: hotData,
-          columns,
-          colHeaders,
-          rowHeaders: true,
-          height: 560,
-          stretchH: 'all',
-          licenseKey: 'non-commercial-and-evaluation',
-
-          // SORT + FILTER
-          dropdownMenu: true,
-          filters: true,
-          columnSorting: true,
-
-          // UX
-          manualColumnResize: true,
-          manualRowResize: true,
-          contextMenu: ['copy'],
-          copyPaste: true,
-          search: true,
-          outsideClickDeselects: false,
-
-          afterOnCellMouseDown: async function (event, coords, td) {
-            try {
-              if (!isChiTiet) return;
-              if (!coords || coords.row < 0) return;
-
-              const colProp = this.colToProp(coords.col);
-              if (colProp === '_chk') return; // click checkbox không mở chi tiết
-
-              const rowObj = this.getSourceDataAtRow(coords.row);
-              if (rowObj && rowObj.sohd) {
-                await xemChiTiet(rowObj.sohd);
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          }
-        });
-      } else if (hotMode !== mode) {
-        hotHoaDon.updateSettings({ columns, colHeaders });
+    function toLocalDate(ngayStr, isoStr) {
+      // ngayStr dạng YYYY-MM-DD (hoặc YYYY-MM) => tự dựng Date local để không bị lệch ngày do UTC
+      if (ngayStr) {
+        const parts = String(ngayStr).split('-').map(Number);
+        const y = parts[0] || 1970;
+        const m = (parts[1] || 1) - 1;
+        const d = parts[2] || 1;
+        return new Date(y, m, d, 12, 0, 0); // 12h để tránh DST/UTC edge
       }
-
-      hotMode = mode;
-      hotHoaDon.loadData(hotData);
-    }
-
-    function getSelectedSoHdFromHot() {
-      if (!Array.isArray(hotData)) return [];
-      return hotData
-        .filter(r => r && r._chk && r.sohd)
-        .map(r => String(r.sohd));
+      return new Date(isoStr);
     }
 
   </script>
