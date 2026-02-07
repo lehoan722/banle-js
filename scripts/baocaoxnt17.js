@@ -385,8 +385,8 @@ window.taiBaoCaoXNT = async function () {
         // Lấy dữ liệu trang hiện tại
         const rows = await fetchPaged(params);
         // Lấy danh sách mã theo thứ tự trang hiện tại rồi render ảnh
-        //const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
-        //renderPreviewForMasps(masps);
+        const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
+        renderPreviewForMasps(masps);
 
 
         // Render
@@ -394,7 +394,7 @@ window.taiBaoCaoXNT = async function () {
         renderSummary(rows);
         // focus ảnh của hàng đầu tiên (nếu có)
         if (rows && rows.length) {
-            renderSinglePreview(String(rows[0].masp || "").toUpperCase());
+            focusPreview(String(rows[0].masp || '').toUpperCase());
         }
 
         updatePagingBar();
@@ -897,29 +897,6 @@ function getImageUrl(masp) {
     return IMG_BASE + encodeURIComponent(masp) + ".JPG";
 }
 
-function renderSinglePreview(masp) {
-    masp = String(masp || "").trim().toUpperCase();
-    if (!masp) return;
-
-    const img = document.getElementById("previewImg");
-    const cap = document.getElementById("previewCaption");
-    const title = document.getElementById("previewTitle");
-    if (!img || !cap || !title) return;
-
-    title.textContent = "Ảnh sản phẩm";
-    cap.textContent = masp;
-
-    // reset thử đuôi ảnh
-    img.dataset.try = "0";
-    img.onerror = () => window.handleImageError(img, masp);
-
-    // set ảnh (hiện ngay, không trượt)
-    img.src = getImageUrl(masp);
-
-    // click phóng to (dùng lightbox sẵn có)
-    img.onclick = () => window.openLightbox?.(img.src);
-}
-
 
 // Lưu danh sách hiện tại để không render lại khi chỉ đổi selection
 let currentMaspsList = [];
@@ -964,8 +941,11 @@ function focusPreview(masp) {
     if (old) old.classList.remove('selected');
     const el = document.getElementById(`img-${masp}`);
     if (el) {
+
         el.classList.add('selected');
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        box.style.scrollBehavior = "auto";
+        el.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
+
     }
 }
 
@@ -973,7 +953,7 @@ function focusPreview(masp) {
 function showPreviewForRow(r) {
     const masp = getMaspAtVisualRow(r);
     if (!masp) return;
-    renderSinglePreview(masp); // hiện ngay 1 ảnh, không scroll/trượt
+    focusPreview(masp);   // chỉ focus/scroll tới ảnh mã này (không re-render)
 }
 
 function getMaspAtVisualRow(r) {
