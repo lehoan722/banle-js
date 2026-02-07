@@ -14,7 +14,7 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/14.3.0/handsontable.full.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
-
+   
 
     <style>
         /* Body không cuộn; bảng cuộn trong vùng của nó */
@@ -433,12 +433,12 @@
 </head>
 
 <body>
-    <div id="app-container">
+    <div id="app-container">        
 
         <div class="filters-row">
             <div class="filters-left">
                 <div class="filters">
-
+                    
                     <label>
                         Địa điểm:
                         <select id="diadiemSelect">
@@ -552,15 +552,9 @@
 
             <!-- Cột phải: Ảnh (40%) -->
             <div class="grid-right">
-                <div id="previewTitle">Ảnh sản phẩm</div>
-
-                <div id="previewMain" style="overflow:auto;">
-                    <img id="previewImg" alt="Ảnh sản phẩm"
-                        style="width:100%; height:auto; object-fit:contain; display:block; cursor:zoom-in;" />
-                    <div id="previewCaption" style="margin-top:6px; text-align:center; font-weight:700;"></div>
-                </div>
+                <div id="previewTitle">Ảnh nhanh</div>
+                <div id="previewGrid"></div>
             </div>
-
         </div>
 
 
@@ -605,38 +599,38 @@
 
     </div>
 
-    <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
-    <script type="module">
-        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+      <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        khoiTaoDangNhapDungChung({
-            // id bọc toàn bộ app – sửa đúng theo trang của bạn:
-            appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
+    khoiTaoDangNhapDungChung({
+      // id bọc toàn bộ app – sửa đúng theo trang của bạn:
+      appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
 
-            macDinhDiaDiem: "",
-            tuDongKhoaCoSo: false,
-            loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
+      macDinhDiaDiem: "",
+      tuDongKhoaCoSo: false,
+      loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
 
-            async onLoginSuccess(nv, ctx) {
-                // 1. Kiểm tra quyền xem trang theo bảng nv_page
-                if (window.kiemTraQuyenXemTrang) {
-                    const ok = await window.kiemTraQuyenXemTrang("baocaoxnt17.html");
-                    if (!ok) {
-                        // hienCamTruyCap đã hiển thị lý do, nên chỉ return
-                        return;
-                    }
-                }
+      async onLoginSuccess(nv, ctx) {
+        // 1. Kiểm tra quyền xem trang theo bảng nv_page
+        if (window.kiemTraQuyenXemTrang) {
+          const ok = await window.kiemTraQuyenXemTrang("baocaoxnt17.html");
+          if (!ok) {
+            // hienCamTruyCap đã hiển thị lý do, nên chỉ return
+            return;
+          }
+        }
 
-                // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
-                if (window.taiBaoCaoXNT) {
-                    await window.taiBaoCaoXNT();
-                }
-            },
-        });
-    </script>
+        // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
+        if (window.taiBaoCaoXNT) {
+          await window.taiBaoCaoXNT();
+        }
+      },
+    });
+  </script>
 
-
-
+  
+    
 </body>
 
 </html>
