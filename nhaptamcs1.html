@@ -950,7 +950,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-                
+
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
@@ -1598,7 +1598,7 @@
 
         attachRequireImageBeforeSave({
             saveButtonId: "btn-luu",
-            dispatchTarget
+            dispatchTarget: (document.body || document.documentElement)
         });
     </script>
 
