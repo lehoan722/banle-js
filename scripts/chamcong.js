@@ -9,7 +9,7 @@ let supabase = null;
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 4000;                // bán kính cho phép (m)
+const MAX_DISTANCE_M = 2500;                // bán kính cho phép (m)
 const AUTO_CHECK_INTERVAL_MS = 300000;     // 3 phút
 const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 
@@ -149,34 +149,47 @@ async function fetchBayMauTasksForChamCong({ diadiem, manv }) {
 }
 
 // Lưu thay đổi bày mẫu / ghi chú cho các dòng được sửa
-async function saveBayMauRowsFromChamCong(changes, { manv }) {
-    if (!changes.length) return true;
+async function saveBayMauRowsFromChamCong(payload, { manv }) {
+  const { doneIds = [], noteUpdates = [], confirmIds = [] } = payload || {};
+  if (!doneIds.length && !noteUpdates.length && !confirmIds.length) return true;
 
-    const sp = await ensureSupabase();
-    if (!sp) return false;
+  const sp = await ensureSupabase();
+  if (!sp) return false;
 
-    for (const row of changes) {
-        const updates = {};
-        if (row.newBayMauBy !== row.oldBayMauBy) {
-            updates.baymau_by = row.newBayMauBy;
-        }
-        if (row.newNote !== row.oldNote) {
-            updates.baymau_note = row.newNote;
-        }
-        if (Object.keys(updates).length === 0) continue;
-
-        const { error } = await sp
-            .from("ct_hoadon_banle")
-            .update(updates)
-            .eq("id", row.id_ct);
-
-        if (error) {
-            console.error("Lỗi cập nhật bày mẫu từ chấm công:", error);
-            alert("Lỗi lưu trạng thái bày mẫu, vui lòng thử lại hoặc báo quản lý.");
-            return false;
-        }
+  // 1) set A: baymau_by
+  if (doneIds.length > 0) {
+    const { error } = await sp.rpc("baymau_set_done", {
+      p_ids: doneIds,
+      p_manv: manv
+    });
+    if (error) {
+      console.error("Lỗi baymau_set_done:", error);
+      alert("Lỗi lưu 'bày mẫu' (A). Vui lòng thử lại hoặc báo quản lý.");
+      return false;
     }
-    return true;
+  }
+
+  // 2) note + confirm (B)
+  if (noteUpdates.length > 0 || confirmIds.length > 0) {
+    const noteJsonb = (noteUpdates || []).map(x => ({
+      id_ct: x.id_ct,
+      note: (x.note || "").trim()
+    }));
+
+    const { error } = await sp.rpc("baymau_update_note_and_confirm", {
+      p_note_updates: noteJsonb,
+      p_confirm_ids: confirmIds,
+      p_admin: manv
+    });
+
+    if (error) {
+      console.error("Lỗi baymau_update_note_and_confirm:", error);
+      alert(error.message || "Lỗi lưu ghi chú/xác nhận bày mẫu. Vui lòng thử lại hoặc báo quản lý.");
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Hiển thị popup bày mẫu dạng chặn (blocking) cho trang chấm công
@@ -251,7 +264,7 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
 
         const thead = document.createElement("thead");
         const headRow = document.createElement("tr");
-        const headers = ["bày mẫu", "mã sp", "nv bán", "GHI CHÚ"];
+        const headers = ["bày mẫu", "mã sp", "nv bán", "GHI CHÚ", "admin confirm"];
         headers.forEach((h) => {
             const th = document.createElement("th");
             th.textContent = h;
@@ -302,15 +315,67 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
             tdNote.appendChild(inputNote);
             tr.appendChild(tdNote);
 
+            // --- CỘT admin confirm (NV khác xác nhận) ---
+            const tdConfirm = document.createElement("td");
+            tdConfirm.style.textAlign = "center";
+            tdConfirm.style.padding = "4px";
+
+            const cbConfirm = document.createElement("input");
+            cbConfirm.type = "checkbox";
+
+            // tick sẵn nếu đã có confirm
+            cbConfirm.checked = !!t.baymau_admin_confirm_by;
+
+            // rule UI: nếu có ghi chú thì confirm không cần thiết
+            const hasNote0 = !!(t.baymau_note && String(t.baymau_note).trim());
+            if (hasNote0) cbConfirm.disabled = true;
+
+            // rule UI: không cho tự xác nhận nếu A chính là manv hiện tại
+            const by0 = t.baymau_by ? String(t.baymau_by).trim() : "";
+            if (by0 && by0 === String(manv).trim()) cbConfirm.disabled = true;
+
+            // nếu tick bày mẫu (A = manv) thì cũng disable confirm ngay
+            cb.addEventListener("change", () => {
+                const effectiveBy = cb.checked ? String(manv).trim() : (t.baymau_by ? String(t.baymau_by).trim() : "");
+                const noteVal = inputNote.value.trim();
+
+                if (noteVal) {
+                    cbConfirm.checked = false;
+                    cbConfirm.disabled = true;
+                    return;
+                }
+                // disable confirm nếu A = manv
+                cbConfirm.disabled = (effectiveBy && effectiveBy === String(manv).trim());
+            });
+
+            inputNote.addEventListener("input", () => {
+                const noteVal = inputNote.value.trim();
+                if (noteVal) {
+                    cbConfirm.checked = false;
+                    cbConfirm.disabled = true;
+                } else {
+                    // bật lại nếu hợp lệ (không tự xác nhận)
+                    const effectiveBy = cb.checked ? String(manv).trim() : (t.baymau_by ? String(t.baymau_by).trim() : "");
+                    cbConfirm.disabled = (effectiveBy && effectiveBy === String(manv).trim());
+                }
+            });
+
+            tdConfirm.appendChild(cbConfirm);
+            tr.appendChild(tdConfirm);
+
+
             tbody.appendChild(tr);
 
             rowStates.push({
-                id_ct: t.id_ct,
-                checkbox: cb,
-                inputNote,
-                oldBayMauBy: t.baymau_by || null,
-                oldNote: t.baymau_note || ""
-            });
+  id_ct: t.id_ct,
+  checkbox: cb,
+  checkboxConfirm: cbConfirm,
+  inputNote,
+  oldBayMauBy: t.baymau_by ? String(t.baymau_by) : null,
+  oldConfirmBy: t.baymau_admin_confirm_by ? String(t.baymau_admin_confirm_by) : null,
+  oldNote: t.baymau_note ? String(t.baymau_note) : ""
+});
+
         });
 
         table.appendChild(tbody);
@@ -372,41 +437,69 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
 
         btnSave.addEventListener("click", async () => {
             // Chuẩn bị danh sách cần lưu
-            const changes = [];
-            for (const row of rowStates) {
-                const newBayMauBy = row.checkbox.checked ? manv : null;
-                const newNote = row.inputNote.value.trim();
-                if (newBayMauBy !== row.oldBayMauBy || newNote !== row.oldNote) {
-                    changes.push({
-                        id_ct: row.id_ct,
-                        newBayMauBy,
-                        newNote,
-                        oldBayMauBy: row.oldBayMauBy,
-                        oldNote: row.oldNote
-                    });
-                }
-            }
+            // --- Chuẩn bị dữ liệu cần lưu theo RPC ---
+const doneIds = [];        // các dòng cần set baymau_by = manv (A tick)
+const noteUpdates = [];    // [{id_ct, note}]
+let confirmIds = [];       // các dòng cần confirm (B tick)
 
-            // Nếu vẫn còn dòng chưa tích & chưa ghi chú -> nhắc và không đóng
-            const unresolved = rowStates.filter((row) => {
-                const isChecked = row.checkbox.checked;
-                const noteVal = row.inputNote.value.trim();
-                return !isChecked && !noteVal;
-            });
-            if (unresolved.length > 0) {
-                alert(
-                    "Vẫn còn sản phẩm chưa bày mẫu và chưa có ghi chú. Vui lòng xử lý hết trước khi đóng."
-                );
-                return;
-            }
+// validate + build payload
+const unresolved = [];
 
-            const ok = await saveBayMauRowsFromChamCong(changes, { manv });
-            if (!ok) {
-                // lỗi lưu thì không đóng, caller sẽ xử lý tiếp
-                return;
-            }
+for (const row of rowStates) {
+  const id = Number(row.id_ct);
 
-            cleanup(true);
+  const noteVal = row.inputNote.value.trim();
+  const hasNote = !!noteVal;
+
+  // effective A
+  const effectiveBy = row.checkbox.checked
+    ? String(manv).trim()
+    : (row.oldBayMauBy ? String(row.oldBayMauBy).trim() : "");
+
+  // effective B (confirm_by)
+  const effectiveConfirm = row.checkboxConfirm && row.checkboxConfirm.checked
+    ? String(manv).trim()
+    : (row.oldConfirmBy ? String(row.oldConfirmBy).trim() : "");
+
+  // điều kiện hoàn tất:
+  const isDone =
+    hasNote ||
+    (effectiveBy && effectiveConfirm && effectiveBy !== effectiveConfirm);
+
+  if (!isDone) unresolved.push(id);
+
+  // build doneIds: chỉ push khi trước đó chưa có baymau_by mà giờ tick
+  if (row.checkbox.checked && !row.oldBayMauBy) doneIds.push(id);
+
+  // build noteUpdates: note thay đổi và note không rỗng (ghi chú là đường thoát)
+  if (noteVal !== (row.oldNote || "")) {
+    noteUpdates.push({ id_ct: id, note: noteVal });
+  }
+
+  // build confirmIds: tick confirm mới (chỉ khi không có note)
+  if (row.checkboxConfirm && row.checkboxConfirm.checked && !row.oldConfirmBy && !hasNote) {
+    confirmIds.push(id);
+  }
+}
+
+// Nếu vẫn còn dòng chưa hoàn tất -> nhắc và không đóng
+if (unresolved.length > 0) {
+  alert("Vẫn còn sản phẩm chưa hoàn tất (cần ghi chú hoặc cần nhân viên khác xác nhận). Vui lòng xử lý hết trước khi đóng.");
+  return;
+}
+
+// Chặn tự xác nhận (B = A) từ phía client (server cũng chặn)
+confirmIds = confirmIds.filter((id) => {
+  const r = rowStates.find(x => Number(x.id_ct) === Number(id));
+  const by = r && (r.checkbox.checked ? String(manv).trim() : (r.oldBayMauBy ? String(r.oldBayMauBy).trim() : ""));
+  return by && by !== String(manv).trim();
+});
+
+const ok = await saveBayMauRowsFromChamCong({ doneIds, noteUpdates, confirmIds }, { manv });
+if (!ok) return;
+
+cleanup(true);
+
         });
     });
 }
@@ -424,7 +517,15 @@ async function enforceBayMauBeforeChamCong({ diadiem }) {
         }
 
         // Chỉ chặn theo các dòng chưa bày mẫu & chưa có ghi chú
-        const needAction = tasks.filter((t) => !t.baymau_by && !t.baymau_note);
+        const needAction = tasks.filter((t) => {
+            const hasNote = !!(t.baymau_note && String(t.baymau_note).trim());
+            if (hasNote) return false;
+            const by = t.baymau_by ? String(t.baymau_by).trim() : "";
+            const cf = t.baymau_admin_confirm_by ? String(t.baymau_admin_confirm_by).trim() : "";
+            // chưa hoàn tất nếu thiếu A, hoặc thiếu B, hoặc B = A
+            return (!by || !cf || cf === by);
+        });
+
         if (!needAction.length) {
             // Tất cả dòng đã có người bày hoặc có ghi chú → cho qua
             return;
