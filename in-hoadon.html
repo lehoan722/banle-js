@@ -6,184 +6,142 @@
     <title>In Hóa Đơn</title>
 
     <style>
-        body {
+  :root{
+    --scale: 1.5;                /* TĂNG 1.5 LẦN */
+    --paperW: 80mm;              /* khổ giấy */
+    --pageM: 2mm;                /* lề in đều 2mm */
+    --fontBase: 14px;            /* cỡ chữ gốc */
+  }
 
-            font-family: Arial, sans-serif;
-            width: 80mm;
-            margin-left: 2mm;
-            margin-right: 2mm;
-            font-size: 14px;
-        }
+  /* Khóa khổ in + lề để tránh Chrome tự co (shrink) */
+  @page {
+    size: var(--paperW) auto;
+    margin: var(--pageM);
+  }
 
-        /* ... (các đoạn khác giữ nguyên) ... */
-        th,
-        td {
-            border: 1px solid black;
-            padding: 2px;
-            text-align: center;
-            font-size: 13px;
-        }
+  * { box-sizing: border-box; }
 
-        @media print {
-            body {
-                margin-left: 2mm !important;
-                margin-right: 2mm !important;
-            }
-        }
+  html, body{
+    padding: 0;
+    margin: 0;
+  }
 
+  body{
+    font-family: Arial, sans-serif;
+    /* Không dùng width 80mm + margin-left/right nữa (dễ gây lệch & bị shrink) */
+    width: calc(var(--paperW) - (var(--pageM) * 2));
+    padding: 0; /* lề đã do @page quản */
+    font-size: calc(var(--fontBase) * var(--scale));
+    line-height: 1.25;
+  }
 
-        .header,
-        .invoice-info {
-            margin-top: 0 !important;
-            padding-top: 0 !important;
-        }
+  .header, .footer { text-align: center; }
+  .header, .invoice-info { margin-top: 0 !important; padding-top: 0 !important; }
 
+  .bold { font-weight: 700; }
+  .big  { font-size: calc(20px * var(--scale)); }
 
-        /* ... (các đoạn khác giữ nguyên) ... */
-        th,
-        td {
-            border: 1px solid black;
-            padding: 2px;
-            text-align: center;
-            font-size: 13px;
-        }
+  .invoice-info,
+  .totals,
+  .note { margin-top: 4px; }
 
-        .header,
-        .footer {
-            text-align: center;
-        }
+  table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    table-layout: fixed; /* quan trọng: tránh tràn bề ngang */
+  }
 
-        .bold {
-            font-weight: bold;
-        }
+  th, td{
+    border: 1px solid #000;
+    padding: 4px;
+    text-align: center;
+    font-size: calc(13px * var(--scale));
+    vertical-align: top;
+    word-break: break-word;
+    white-space: normal;
+  }
 
-        .invoice-info,
-        .totals,
-        .note {
-            margin-top: 0px;
-        }
+  /* Cột TÊN HÀNG cho xuống dòng + canh trái để dễ đọc */
+  th:first-child, td:first-child{
+    text-align: left;
+  }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 0px;
-        }
+  /* Gợi ý phân bổ độ rộng cột để khỏi bị ép co */
+  thead th:nth-child(1){ width: 40%; }
+  thead th:nth-child(2){ width: 10%; }
+  thead th:nth-child(3){ width: 18%; }
+  thead th:nth-child(4){ width: 14%; }
+  thead th:nth-child(5){ width: 18%; }
 
-        th,
-        td {
-            border: 1px solid black;
-            padding: 4px;
-            text-align: center;
-            font-size: 13px;
-        }
+  .note{
+    font-size: calc(12px * var(--scale));
+    margin-top: 8px;
+    font-style: italic;
+  }
 
-        .totals td {
-            text-align: right;
-        }
+  .thankyou{
+    font-size: calc(16px * var(--scale));
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin-top: 6px;
+    font-weight: 700;
+  }
 
-        .note {
-            font-size: 12px;
-            margin-top: 0px;
-            font-style: italic;
-        }
+  .totals-flex{
+    width: 100%;
+    margin: 8px 0 0 0;
+  }
 
-        .thankyou {
-            font-size: 16px;
-            font-family: 'Comic Sans MS', cursive;
-            text-align: center;
-            margin-top: 0px;
-        }
+  .totals-row{
+    display: flex;
+    gap: 6px;
+    width: 100%;
+  }
 
-        .big {
-            font-size: 20px;
-        }
+  .totals-left{
+    flex: 5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    font-size: calc(13px * var(--scale));
+    line-height: 1.35;
+    min-width: 0;
+  }
 
-        .totals-flex {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            gap: 24px;
-            margin: 10px 0 0 0;
-        }
+  .totals-right{
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: calc(13px * var(--scale));
+    line-height: 1.35;
+    min-width: 0;
+  }
 
-        .totals-col {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 13px;
-        }
+  .label{ display: inline-block; }
+  .value{ font-weight: 700; }
 
-        .totals-col .label {
-            display: inline-block;
-            min-width: 90px;
-        }
+  .totals-pay{
+    border-top: 2px dashed #555;
+    margin-top: 6px;
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-weight: 800;
+    font-size: calc(18px * var(--scale)); /* tăng luôn cả dòng này */
+  }
 
-        .totals-col .value {
-            font-weight: bold;
-            float: right;
-            margin-left: 8px;
-        }
+  .totals-pay .value{
+    font-size: calc(22px * var(--scale)); /* số tiền lớn hơn chữ */
+  }
 
-        .total-line {
-            border-top: 1px dashed #555;
-            padding-top: 2px;
-            margin-top: 3px;
-        }
+  @media print{
+    body{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
 
-
-        .totals-flex {
-            width: 100%;
-            display: block;
-            /* Đảm bảo không còn là flex! */
-            margin: 10px 0 0 0;
-        }
-
-        .totals-row {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: flex-start;
-            width: 100%;
-            gap: 4px;
-        }
-
-        .totals-left {
-            flex: 5;
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            align-items: flex-start;
-            gap: 2px;
-            font-size: 13px;
-            min-width: 0;
-            line-height: 1.6;
-            display: flex;
-        }
-
-        .totals-right {
-            flex: 3;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            font-size: 13px;
-
-
-        }
-
-        .totals-pay {
-            border-top: 2px dashed #555;
-            margin-top: 3px;
-            padding-top: 6px;
-            font-size: 26px;
-
-            justify-content: space-between;
-            width: 100%;
-            font-weight: bold;
-            /* ĐẢM BẢO nằm dưới, cách xa các dòng trên */
-            margin-bottom: 5px;
-        }
-    </style>
 </head>
 
 <body>
