@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>kiemtamcs1</title>
+    <title>nhaptamcs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -950,7 +950,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-
+                
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
@@ -970,16 +970,6 @@
         });
 
     </script>
-
-    <script type="module">
-        import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
-
-        attachRequireImageBeforeSave({
-            saveButtonId: "btn-luu",
-            dispatchTarget
-        });
-    </script>
-
 
     <script>
         // Mở popup xác thực + focus ngay vào #xacmanv
@@ -1600,6 +1590,15 @@
 
             // fallback: kiểm tra định kỳ (rất nhẹ)
             setInterval(sync, 300);
+        });
+    </script>
+
+    <script type="module">
+        import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
+
+        attachRequireImageBeforeSave({
+            saveButtonId: "btn-luu",
+            dispatchTarget
         });
     </script>
 
