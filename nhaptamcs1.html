@@ -949,13 +949,7 @@
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });
-
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+        });        
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1594,16 +1588,11 @@
     </script>
 
     <script type="module">
-        // ví dụ trong nhaptamcs1.html (module cuối)
         import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
 
         attachRequireImageBeforeSave({
             saveButtonId: "btn-luu",
-            dispatchTarget: (document.body || document.documentElement),
-            checkBeforeSave: async () => {
-                // TODO: dùng đúng logic check ảnh bạn đã làm
-                // return { ok:true } hoặc { ok:false, missing:["ABC","XYZ"] }
-            }
+            dispatchTarget: (document.body || document.documentElement)
         });
     </script>
 
