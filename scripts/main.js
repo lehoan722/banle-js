@@ -1022,7 +1022,7 @@ function showBayMauPopup(tasks, context) {
   const thConfirm = mkTh("");
   const chkAllConfirm = document.createElement("input");
   chkAllConfirm.type = "checkbox";
-  if (!isAdmin) chkAllConfirm.disabled = true;
+  //if (!isAdmin) chkAllConfirm.disabled = true;
   thConfirm.appendChild(chkAllConfirm);
   trHead.appendChild(thConfirm);
 
@@ -1102,7 +1102,7 @@ function showBayMauPopup(tasks, context) {
     chkConfirm.type = "checkbox";
     chkConfirm.dataset.idCt = row.id_ct;
     chkConfirm.checked = !!row.baymau_admin_confirm_by;
-    if (!isAdmin) chkConfirm.disabled = true;
+    //if (!isAdmin) chkConfirm.disabled = true;
     tdConfirm.appendChild(chkConfirm);
     tr.appendChild(tdConfirm);
     confirmCheckboxes.push(chkConfirm);
@@ -1154,13 +1154,32 @@ function showBayMauPopup(tasks, context) {
         }
       });
 
-      let confirmIds = [];
-      if (isAdmin) {
-        confirmIds = confirmCheckboxes
-          .filter((c) => c.checked)
-          .map((c) => Number(c.dataset.idCt))
-          .filter((v) => Number.isFinite(v));
+      let confirmIds = confirmCheckboxes
+        .filter((c) => c.checked)
+        .map((c) => Number(c.dataset.idCt))
+        .filter((v) => Number.isFinite(v));
+
+      // --- Chặn tự xác nhận: B phải khác A ---
+      // Xác định "baymau_by hiệu lực" cho từng dòng ngay trong popup
+      const bayMauByMap = new Map(); // id_ct -> baymau_by
+      tasks.forEach((row, idx) => {
+        const id = Number(row.id_ct);
+        const checkedBayMau = bayMauCheckboxes[idx]?.checked;
+        const effectiveBy = row.baymau_by || (checkedBayMau ? context.manvDangNhap : null);
+        bayMauByMap.set(id, effectiveBy);
+      });
+
+      // Loại các confirmIds mà người xác nhận trùng người bày
+      const beforeLen = confirmIds.length;
+      confirmIds = confirmIds.filter((id) => {
+        const by = bayMauByMap.get(id);
+        return by && String(by).trim() !== String(currentManv).trim();
+      });
+      if (beforeLen !== confirmIds.length) {
+        // báo nhẹ cho người dùng biết
+        try { showToast("Không thể tự xác nhận. Cần nhân viên khác xác nhận.", "warning"); } catch { }
       }
+
 
       if (noteUpdates.length > 0 || confirmIds.length > 0) {
         const { error: errNote } = await supabase.rpc(
@@ -1168,7 +1187,7 @@ function showBayMauPopup(tasks, context) {
           {
             p_note_updates: noteUpdates,
             p_confirm_ids: confirmIds,
-            p_admin: isAdmin ? currentManv : null,
+            p_admin: currentManv,
           }
         );
         if (errNote) {
