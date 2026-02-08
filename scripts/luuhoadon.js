@@ -334,21 +334,10 @@ export async function luuHoaDonQuaAPI() {
         if (window.HD_CTX) window.HD_CTX.mode = "EDIT";
     }
 
-    if (tonTai && choPhepSua) {
-        const { error: delCTErr } = await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-        if (delCTErr) {
-            alert("❌ Không xóa được chi tiết hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
-            console.error(delCTErr);
-            return;
-        }
-
-        const { error: delHDErr } = await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-        if (delHDErr) {
-            alert("❌ Không xóa được hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
-            console.error(delHDErr);
-            return;
-        }
-    }
+    // ===== EDIT MODE (ghi đè) =====
+    // Nếu đang sửa hóa đơn (đã tồn tại + đã được cho phép sửa), ta KHÔNG delete/insert trực tiếp ở client nữa.
+    // Thay vào đó sẽ gọi RPC (transaction) để: log diff + replace an toàn.
+    const isEditMode = !!(tonTai && choPhepSua);
 
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
     const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
@@ -405,23 +394,46 @@ export async function luuHoaDonQuaAPI() {
         chitiet.forEach(r => r.updated_at = updatedAt);
     }
 
-    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
-    if (errHD) {
-        alert("❌ Lỗi khi lưu hóa đơn (header). Có thể bạn không có quyền sửa, hoặc số HĐ bị trùng.");
-        console.error(errHD);
-        return;
+    // ===== LƯU HÓA ĐƠN =====
+    // - Nếu isEditMode: gọi RPC để log + replace trong 1 transaction
+    // - Nếu không: insert như cũ
+    let errHD = null;
+    let errCT = null;
+
+    if (isEditMode) {
+        const { error: rpcErr } = await supabase.rpc('admin_edit_invoice_replace_with_log', {
+            p_sohd: sohd,
+            p_source: location.pathname,
+            p_new_header: hoadon,
+            p_new_details: chitiet
+        });
+        if (rpcErr) {
+            alert('❌ Sửa hóa đơn thất bại: ' + (rpcErr.message || rpcErr));
+            console.error(rpcErr);
+            return;
+        }
+    } else {
+        const r1 = await supabase.from("hoadon_banle").insert([hoadon]);
+        errHD = r1.error;
+        if (errHD) {
+            alert("❌ Lỗi khi lưu hóa đơn (header). Có thể bạn không có quyền sửa, hoặc số HĐ bị trùng.");
+            console.error(errHD);
+            return;
+        }
+
+        const r2 = await supabase.from("ct_hoadon_banle").insert(chitiet);
+        errCT = r2.error;
+        if (errCT) {
+            alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
+            console.error(errCT);
+            // rollback best-effort để tránh header không có chi tiết
+            try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) { }
+            return;
+        }
     }
 
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
-    if (errCT) {
-        alert("❌ Lỗi khi lưu chi tiết hóa đơn.");
-        console.error(errCT);
-        // rollback best-effort để tránh header không có chi tiết
-        try { await supabase.from("hoadon_banle").delete().eq("sohd", sohd); } catch (e) { }
-        return;
-    }
-
-    if (!errHD && !errCT) {
+    // Nếu tới đây là OK
+    {
         // Cập nhật lại số_hientai vào bảng sochungtu theo đúng loại và số mới lưu
         const [loai, so] = sohd.split('_');
         const soMoi = parseInt(so, 10);
@@ -442,10 +454,6 @@ export async function luuHoaDonQuaAPI() {
         inHoaDon(hoadon, chitiet);
         await lamMoiSauKhiLuu();
         choPhepSua = false;
-    }
-    else {
-        alert("❌ Lỗi khi lưu hóa đơn");
-        console.error(errHD || errCT);
     }
 }
 
