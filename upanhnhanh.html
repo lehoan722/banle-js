@@ -223,47 +223,53 @@
       padding: 6px 8px;
       border-radius: 8px;
     }
-  
+
     /* === Source Picker (Camera / Gallery) === */
-    .sp-backdrop{
+    .sp-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,.45);
+      background: rgba(0, 0, 0, .45);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 9999;
       padding: 14px;
     }
-    .sp-card{
+
+    .sp-card {
       width: min(420px, 100%);
-      background:#fff;
+      background: #fff;
       border-radius: 14px;
       padding: 14px 14px 12px;
-      box-shadow: 0 14px 40px rgba(0,0,0,.25);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, .25);
     }
-    .sp-title{
+
+    .sp-title {
       font-size: 18px;
       font-weight: 800;
       margin: 2px 0 6px;
     }
-    .sp-sub{
+
+    .sp-sub {
       font-size: 13px;
-      color:#555;
+      color: #555;
       margin-bottom: 12px;
       line-height: 1.35;
     }
-    .sp-actions{
+
+    .sp-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       margin-bottom: 10px;
     }
-    .sp-actions2{
+
+    .sp-actions2 {
       grid-template-columns: 1fr;
       margin-bottom: 0;
     }
-    #sourcePicker button{
+
+    #sourcePicker button {
       height: 44px;
       border-radius: 12px;
       border: 1px solid #ddd;
@@ -272,18 +278,19 @@
       font-weight: 700;
       cursor: pointer;
     }
-    #sourcePicker button.secondary{
+
+    #sourcePicker button.secondary {
       background: #fff;
       color: #111;
     }
-    #sourcePicker button.ghostbtn{
+
+    #sourcePicker button.ghostbtn {
       background: #f6f6f6;
-      color:#111;
-      border-color:#e5e5e5;
+      color: #111;
+      border-color: #e5e5e5;
       font-weight: 700;
     }
-
-</style>
+  </style>
 </head>
 
 <body>
@@ -440,7 +447,7 @@
 
     const INSTANT_AUTO_ON_CACHE_MISS = true;
 
-    
+
     function startWaitingPickerTimer() {
       clearTimeout(waitingPickerTimer);
       waitingPickerTimer = setTimeout(() => {
@@ -676,7 +683,9 @@
         setState('uploading');
         setStatus('Đang xử lý & lưu ảnh…');
 
-        const blob = await resizeImage(file, 1024, 1024, 0.82);
+        const manv = window.__UPANH_MANV__ || '';
+        const blob = await resizeImage(file, 1024, 1024, 0.82, masp, manv);
+
         const key = FILE_NAMER(masp);
 
         const { error } = await supabase.storage
@@ -724,7 +733,7 @@
       });
     }
 
-    async function resizeImage(file, maxW, maxH, quality = 0.85) {
+    async function resizeImage(file, maxW, maxH, quality = 0.85, masp = '', manv = '') {
       const img = await fileToImage(file);
       const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
       const w = Math.round(img.width * ratio);
@@ -736,8 +745,57 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
+
+      // ✅ thêm dòng này để vẽ chữ lên ảnh
+      drawBottomLeftTag(ctx, w, h, masp, manv);
+
       return await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', quality));
     }
+
+    function drawTopLeftTag(ctx, w, h, masp, manv) {
+      const pad = Math.max(10, Math.round(Math.min(w, h) * 0.02)); // ~2%
+      const lineGap = Math.max(6, Math.round(Math.min(w, h) * 0.01));
+
+      const maspText = String(masp || '').trim().toUpperCase();
+      const manvText = String(manv || '').trim();
+      if (!maspText && !manvText) return;
+
+      // Font theo kích thước ảnh
+      const fontSize = Math.max(22, Math.round(Math.min(w, h) * 0.05)); // ~5%
+      ctx.font = `700 ${fontSize}px -apple-system, system-ui, Segoe UI, Roboto, Arial`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top'; // ✅ QUAN TRỌNG: căn theo đỉnh
+
+      // Đổ bóng + viền
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+
+      ctx.lineWidth = Math.max(3, Math.round(fontSize * 0.12));
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillStyle = 'rgba(255,255,255,0.98)';
+
+      // 2 dòng ở góc trên trái
+      const y1 = pad;                       // dòng MASP
+      const y2 = y1 + fontSize + lineGap;   // dòng MANV
+
+      if (maspText) {
+        ctx.strokeText(maspText, pad, y1);
+        ctx.fillText(maspText, pad, y1);
+      }
+      if (manvText) {
+        ctx.strokeText(manvText, pad, y2);
+        ctx.fillText(manvText, pad, y2);
+      }
+
+      // reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+
 
     async function handleCheck() {
       const masp = maspInput.value.trim();
@@ -851,7 +909,7 @@
       maspSuggestDiv = document.getElementById('maspSuggestList');
       toastEl = $('#toast');
 
-            // === NEW: Nhận masp từ URL (?masp=ABC...) rồi tự kiểm tra ===
+      // === NEW: Nhận masp từ URL (?masp=ABC...) rồi tự kiểm tra ===
       try {
         const params = new URLSearchParams(window.location.search || "");
         const maspFromUrl = (params.get("masp") || "").trim();
@@ -967,6 +1025,9 @@
 
         // Lưu cờ quyền để các hàm khác (nếu cần) có thể dùng
         window.__UPANH_IS_ADMIN__ = isAdmin;
+
+        // ✅ thêm dòng này
+        window.__UPANH_MANV__ = (nv?.manv || nv?.MANV || '').toString().trim();
 
         // Init app cho cả 2 loại tài khoản
         initUpAnhNhanh({ nv, ctx, isAdmin });
