@@ -470,6 +470,30 @@
                     }
                 });
 
+                // ✅ Chỉ click cột "Mã hàng" (col = 1) mới mở popup tồn nhanh
+                hot.addHook('afterOnCellMouseDown', function (event, coords) {
+                    try {
+                        if (!coords || coords.row < 0) return;
+
+                        // CHỈ cho phép click cột Mã hàng (index 1)
+                        if (coords.col !== 1) return;
+
+                        const row = hot.getDataAtRow(coords.row);
+                        const masp = (row && row[1]) ? String(row[1]).trim().toUpperCase() : "";
+                        if (!masp) return;
+
+                        if (window.stockQuickPopup) {
+                            window.stockQuickPopup(masp);
+                        } else if (window.StockQuick && window.StockQuick.showFor) {
+                            window.StockQuick.showFor(document.body, masp);
+                        } else {
+                            console.warn("stockQuickPopup chưa được load.");
+                        }
+                    } catch (e) {
+                        console.warn("Open stockQuickPopup error:", e);
+                    }
+                });
+
                 window.hotInstance = hot;
                 window.hot = hot;
 
@@ -1904,6 +1928,10 @@
         </script>
 
     </div>
+
+    <!-- Sau khi window.supabase đã sẵn sàng -->
+    <script src="/scripts/stockQuickPopup.js"></script>
+
 </body>
 
 </html>
