@@ -472,6 +472,30 @@
                     }
                 });
 
+                // ✅ Click 1 dòng trong bảng "Danh sách tem in" => bật popup tồn nhanh
+                hot.addHook('afterOnCellMouseDown', function (event, coords) {
+                    try {
+                        // coords.row là index dòng (0-based). Nếu click header thì row = -1
+                        if (!coords || coords.row < 0) return;
+
+                        const row = hot.getDataAtRow(coords.row);
+                        const masp = (row && row[1]) ? String(row[1]).trim().toUpperCase() : ""; // cột 1 = "Mã hàng"
+                        if (!masp) return;
+
+                        // Gọi popup tồn nhanh
+                        if (window.stockQuickPopup) {
+                            window.stockQuickPopup(masp);
+                        } else if (window.StockQuick && window.StockQuick.showFor) {
+                            window.StockQuick.showFor(document.body, masp);
+                        } else {
+                            console.warn("stockQuickPopup chưa được load.");
+                        }
+                    } catch (e) {
+                        console.warn("Open stockQuickPopup error:", e);
+                    }
+                });
+
+
                 window.hotInstance = hot;
                 window.hot = hot;
 
