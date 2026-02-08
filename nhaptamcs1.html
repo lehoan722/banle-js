@@ -1594,11 +1594,16 @@
     </script>
 
     <script type="module">
+        // ví dụ trong nhaptamcs1.html (module cuối)
         import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
 
         attachRequireImageBeforeSave({
             saveButtonId: "btn-luu",
-            dispatchTarget: (document.body || document.documentElement)
+            dispatchTarget: (document.body || document.documentElement),
+            checkBeforeSave: async () => {
+                // TODO: dùng đúng logic check ảnh bạn đã làm
+                // return { ok:true } hoặc { ok:false, missing:["ABC","XYZ"] }
+            }
         });
     </script>
 
