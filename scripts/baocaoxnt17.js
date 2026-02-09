@@ -802,19 +802,27 @@ window.moTrangAnh = function () {
     // Nếu để Tất cả (''), không lọc thêm
 
     // Gom theo mã sản phẩm, ưu tiên giữ bản ghi có giale khác 0 nếu có
-    const map = new Map(); // key = MASP, value = { masp, giale }
+    const map = new Map(); // key = MASP, value = { masp, giale, toncs1, toncs2 }
     for (const r of filteredRows) {
         const code = String(r?.masp || "").trim().toUpperCase();
         if (!code) continue;
+
         const price = Number(r?.giale || 0) || 0;
+        const t1 = Number(r?.toncs1 ?? r?.ton_cs1 ?? 0) || 0;
+        const t2 = Number(r?.toncs2 ?? r?.ton_cs2 ?? 0) || 0;
 
         if (!map.has(code)) {
-            map.set(code, { masp: code, giale: price });
+            map.set(code, { masp: code, giale: price, toncs1: t1, toncs2: t2 });
         } else {
-            // nếu đã có rồi nhưng giale đang 0, mà bản mới có giá > 0 → ưu tiên bản có giá
             const cur = map.get(code);
+
+            // ưu tiên bản có giá nếu bản cũ đang 0
             if ((cur.giale || 0) === 0 && price > 0) {
-                map.set(code, { masp: code, giale: price });
+                map.set(code, { masp: code, giale: price, toncs1: t1, toncs2: t2 });
+            } else {
+                // nếu giá đã ổn, nhưng tồn đang 0 mà bản mới có tồn -> cập nhật tồn
+                if ((cur.toncs1 || 0) === 0 && t1 > 0) cur.toncs1 = t1;
+                if ((cur.toncs2 || 0) === 0 && t2 > 0) cur.toncs2 = t2;
             }
         }
     }
