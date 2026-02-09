@@ -9,7 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.5/dist/umd/supabase.min.js"></script>
     <meta name="app:page_path" content="nhapvitrikhocs1.html">
-    <script src="scripts/page_guard.js"></script>
+
     <style>
         html,
         body {
@@ -232,584 +232,589 @@
             background: #eaf2ff
         }
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            PageGuard.enforce({
-                url: 'https://rddjrmbyftlcvrgzlyby.supabase.co',
-                key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-            });
-        });
-    </script>
 
 
 </head>
 
 <body>
-    <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
-    <div id="loginModule">
-        <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
-        <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
-        <input id="login-password" type="password" value="123123" placeholder="Mật khẩu" style="display:none">
 
-        <button id="login-submit">Đăng nhập</button>
-        <span id="login-status"></span>
-    </div>
-
-    <div style="display:flex;justify-content:center;margin-bottom:7px;">
-        <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
-        <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
-        <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
-        <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
-    </div>
-
-    <!-- Ô nhập MASP có gợi ý -->
-    <div class="typeahead-wrap">
-
-        <input id="maspSearch" type="text" placeholder="Nhập mã sản phẩm..." autocomplete="off"
-            inputmode="latin-prose" />
-        <div id="maspSuggest" class="typeahead-list" hidden></div>
-
-        <button id="btnFetchSheet" class="btn btn-info"
-            style="background:#4aa3ff;color:#fff;border:none;border-radius:12px;padding:10px 16px;margin:4px 8px;">
-            📥 Lấy dữ liệu
-        </button> từ trang ghivitrikhocs1/ kiem kho cs1
-
-
-    </div>
-
-
-    <div id="preview"></div>
-
-    <div id="hot"></div>
-
-    <script>
-        // Thông tin Supabase
-        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-
-        const TABLE_NAME = 'dmhanghoa';
-
-        // Khởi tạo Supabase client (token đăng nhập)
-        function getSupabaseClient() {
-            if (window.__sbClient) return window.__sbClient;
-            const token = localStorage.getItem('supabase_access_token');
-            window.__sbClient = window.supabase.createClient(
-                SUPABASE_URL,
-                SUPABASE_KEY,
-                {
-                    auth: { storageKey: 'nhapvitrikhocs1_auth' },
-                    global: { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-                }
-            );
-            return window.__sbClient;
-        }
-        // Cấu hình bảng
-        let hot;
-        let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
-        let columns = [
-            { data: 'masp', type: 'text', width: 150 },
-            { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
-            { data: 'trangthai', type: 'text', width: 110, readOnly: true }
-        ];
-
-        function initTable() {
-            const container = document.getElementById('hot');
-            if (hot) hot.destroy();
-            hot = new Handsontable(container, {
-                data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
-                columns,
-                colHeaders,
-                rowHeaders: true,
-                minSpareRows: 1,
-                width: '100%',
-                height: 420,
-                stretchH: 'all',
-                manualColumnResize: true,
-                licenseKey: 'non-commercial-and-evaluation',
-                cells: function (row, col) {
-                    const cellProperties = {};
-                    // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
-                    if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
-                    if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
-                    if (col === 2) cellProperties.readOnly = true;
-
-                    // Màu cho trạng thái
-                    if (col === 2) {
-                        const val = this.instance.getDataAtCell(row, col);
-                        if (val === "OK") cellProperties.className = "trangthai-ok";
-                        if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
-                        if (val === "LỖI") cellProperties.className = "trangthai-loi";
-                        if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
-                        if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
-                    }
-
-                    return cellProperties;
-                }
-            });
-            window.hot = hot;   // ✅ expose ra global để getHOT() lấy được
-            // Ban đầu chỉ nhập mã sản phẩm
-            window.editableMASP = true;
-            window.editableVITRI = false;
-        }
-
-        initTable();
-
-        // === BỔ SUNG: tự đọc danh sách mã do F8 đẩy sang và chạy kiểm tra ===
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const raw = localStorage.getItem('VITRIKHO_IMPORT');
-                if (!raw) return;
-                const payload = JSON.parse(raw);
-                // Chỉ xử lý nếu không ghi cs hoặc cs === 'cs1'
-                if (payload?.cs && payload.cs.toLowerCase() !== 'cs1') return;
-
-                const list = Array.isArray(payload?.list) ? payload.list : [];
-                if (!list.length) return;
-
-                const uniq = Array.from(new Set(
-                    list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)
-                ));
-                const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
-                hot.loadData(rows);
-
-                // Dọn khóa sau khi dùng để tránh dính ca sau
-                localStorage.removeItem('VITRIKHO_IMPORT');
-
-                // Tự chạy kiểm tra vị trí
-                setTimeout(() => kiemTraViTri(), 0);
-            } catch (err) {
-                console.error('VITRIKHO_IMPORT parse error:', err);
-            }
-        });
-        // Đăng nhập Supabase (bắt buộc)
-        document.getElementById('login-submit').onclick = async function () {
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value.trim();
-            const sb = getSupabaseClient();
-            document.getElementById('login-status').textContent = 'Đang đăng nhập...';
-            const { data, error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) {
-                document.getElementById('login-status').textContent = 'Sai tài khoản hoặc mật khẩu!';
-            } else {
-                document.getElementById('login-status').textContent = 'Đăng nhập thành công!';
-                localStorage.setItem('supabase_access_token', data.session.access_token);
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        };
-
-        // Làm lại bảng
-        function resetTable() {
-            window.editableMASP = true;
-            window.editableVITRI = false;
-            initTable();
-            document.getElementById('preview').innerHTML = "";
-        }
-
-        // 2) JS – đọc Google Sheet + ghi vào HOT
-        (() => {
-            // ===== Cấu hình =====
-            const SHEET_ID = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
-            const SHEET_TAB = 'ghivitrikhocs1';  // tên sheet trong file
-            const HOT_COL_MASP = 0;               // cột "Mã sản phẩm" trong HOT
-            const MAKE_UPPERCASE = true;          // in hoa mã sản phẩm
-            const DEDUP = false;                  // có loại trùng không (mặc định KHÔNG)
-            const CLEAR_BEFORE_INSERT = true;     // xóa dữ liệu cũ trước khi nạp
-
-            const $btn = document.getElementById('btnFetchSheet');
-
-            function getHOT() {
-                return window.hot || window.hotTable || window.HOT || null;
-            }
-
-            // Parse JSON kiểu GViz: /*O_o*/ google.visualization.Query.setResponse({...});
-            function parseGvizJson(txt) {
-                const start = txt.indexOf('(');
-                const end = txt.lastIndexOf(')');
-                if (start === -1 || end === -1) return [];
-                const payload = JSON.parse(txt.slice(start + 1, end));
-                const rows = payload?.table?.rows || [];
-                const out = [];
-                for (const r of rows) {
-                    const v = r?.c?.[0]?.v; // cột A
-                    if (v != null) out.push(String(v));
-                }
-                return out;
-            }
-
-            async function fetchMaspsFromGoogleSheet() {
-                // Yêu cầu: file Sheets để chế độ "Anyone with the link can view" hoặc Publish to web
-                const urlJSON = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
-                    `tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&range=A:A&headers=0`;
-                // Ưu tiên JSON vì tách header gọn; có thể fallback CSV nếu cần
-                const resp = await fetch(urlJSON, { cache: 'no-store' });
-                if (!resp.ok) throw new Error(`Fetch Google Sheet lỗi: HTTP ${resp.status}`);
-                const text = await resp.text();
-                let arr = parseGvizJson(text);
-
-                // Làm sạch
-                arr = arr.map(s => (s ?? '').toString().trim()).filter(s => s.length > 0);
-                if (MAKE_UPPERCASE) arr = arr.map(s => s.toUpperCase());
-                if (DEDUP) {
-                    const set = new Set(); const tmp = [];
-                    for (const v of arr) { if (!set.has(v)) { set.add(v); tmp.push(v); } }
-                    arr = tmp;
-                }
-                return arr;
-            }
-
-            function loadMaspsIntoHOT(masps) {
-                const hot = getHOT();
-                if (!hot) { alert('Không tìm thấy bảng dữ liệu (Handsontable).'); return; }
-
-                if (CLEAR_BEFORE_INSERT) {
-                    // Xóa toàn bộ dòng cũ
-                    const old = hot.countRows();
-                    if (old > 0) hot.alter('remove_row', 0, old);
-                }
-
-                // Chèn đủ dòng
-                if (masps.length > 0) {
-                    hot.alter('insert_row', 0, masps.length);
-                    // Ghi vào cột MASP
-                    const ops = [];
-                    for (let i = 0; i < masps.length; i++) {
-                        ops.push([i, HOT_COL_MASP, masps[i]]);
-                    }
-                    hot.setDataAtCell(ops);
-                    hot.render();
-                }
-
-                // Thông báo nhỏ
-                const msg = `Đã nạp ${masps.length} mã từ Google Sheet (${SHEET_TAB}).`;
-                console.log(msg);
-                // nếu bạn có toast riêng, thay alert bằng toast
-                alert(msg);
-            }
-
-            async function handleFetchClick() {
-                try {
-                    $btn.disabled = true; $btn.textContent = 'Đang lấy...';
-                    const masps = await fetchMaspsFromGoogleSheet();
-                    loadMaspsIntoHOT(masps);
-                } catch (err) {
-                    console.error(err);
-                    alert('Không lấy được dữ liệu từ Google Sheet. Kiểm tra quyền chia sẻ & tên sheet.');
-                } finally {
-                    $btn.disabled = false; $btn.textContent = '📥 Lấy dữ liệu';
-                }
-            }
-
-            if ($btn) $btn.addEventListener('click', handleFetchClick);
-        })();
-
-
-
-        // 3) Thêm JS (lọc gợi ý + ghi vào HOT) — kiểu query liên tục như trang in mã vạch
-        (() => {
-            // ====== Cấu hình ======
-            const HOT_COL_MASP = 0;               // Cột "Mã sản phẩm"
-            const MAX_SUGGESTIONS = 50;           // Tối đa gợi ý hiển thị
-            const DEBOUNCE_MS = 120;
-            const PAGE_SIZE = 100;                // mỗi lần nạp 100 dòng như trang in mã vạch
-            const MIN_LEN = 2;                    // gõ >= 2 ký tự mới tìm
-
-            const $input = document.getElementById('maspSearch');
-            const $list = document.getElementById('maspSuggest');
-
-            let currentQuery = '';
-            let page = 0;
-            let loading = false;
-            let endReached = false;
-            let results = [];    // cache tạm cho 1 query đang gõ
-            let filtered = [];
-            let activeIndex = -1;
-            let debTimer = null;
-
-            // ===== Helpers =====
-            function getHOT() { return window.hot || window.hotTable || window.HOT || null; }
-            function norm(s) { return (s || '').toString().trim(); }
-            function up(s) { return norm(s).toUpperCase(); }
-            function buildLike(q) {
-                const qq = q.replace(/[%_]/g, ''); // tránh wildcard
-                return `%${qq}%`;
-            }
-
-            async function fetchPage(q, pageIndex) {
-                const sb = getSupabaseClient();
-                const from = pageIndex * PAGE_SIZE;
-                const to = from + PAGE_SIZE - 1;
-                const { data, error } = await sb
-                    .from('dmhanghoa')
-                    .select('masp,tensp')
-                    .or(`masp.ilike.${buildLike(q)},tensp.ilike.${buildLike(q)}`)
-                    .order('masp', { ascending: true })
-                    .range(from, to);
-                if (error) { console.warn('[search] error:', error.message); return []; }
-                const seen = new Set(results.map(x => x._MASP));
-                const rows = (data || []).map(r => ({
-                    masp: norm(r.masp),
-                    tensp: norm(r.tensp),
-                    _MASP: up(r.masp),
-                    _TENSP: up(r.tensp)
-                })).filter(r => r.masp && !seen.has(r._MASP));
-                return rows;
-            }
-
-            function renderList(items) {
-                $list.innerHTML = ''; activeIndex = -1;
-                if (!items.length) { $list.hidden = true; return; }
-                const frag = document.createDocumentFragment();
-                items.forEach((it, idx) => {
-                    const div = document.createElement('div');
-                    div.className = 'typeahead-item';
-                    div.dataset.index = idx;
-                    div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` <small>— ${it.tensp}</small>` : ''}`;
-                    div.addEventListener('mousedown', (e) => { e.preventDefault(); chooseItem(idx); });
-                    frag.appendChild(div);
-                });
-                $list.appendChild(frag);
-                $list.hidden = false;
-            }
-
-            function moveActive(delta) {
-                if ($list.hidden || !filtered.length) return;
-                activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
-                [...$list.children].forEach((el, i) => el.classList.toggle('active', i === activeIndex));
-                const el = $list.children[activeIndex]; if (!el) return;
-                const r = el.getBoundingClientRect(), lr = $list.getBoundingClientRect();
-                if (r.bottom > lr.bottom) $list.scrollTop += (r.bottom - lr.bottom);
-                else if (r.top < lr.top) $list.scrollTop -= (lr.top - r.top);
-            }
-
-            function jumpToExistingRow(m) {
-                const hot = getHOT(); if (!hot) return false;
-                const rows = hot.countRows();
-                for (let r = 0; r < rows; r++) {
-                    if (up(hot.getDataAtCell(r, HOT_COL_MASP)) === m) {
-                        hot.selectCell(r, HOT_COL_MASP);
-                        const cell = hot.getCell(r, HOT_COL_MASP);
-                        if (cell) { cell.style.transition = 'background .15s'; cell.style.background = '#fff2cc'; setTimeout(() => { cell.style.background = ''; }, 350); }
-                        return true;
-                    }
-                }
-                return false;
-            }
-            function insertToNextEmpty(m) {
-                const hot = getHOT(); if (!hot) return;
-                let target = -1; const rows = hot.countRows();
-                for (let r = 0; r < rows; r++) { const v = norm(hot.getDataAtCell(r, HOT_COL_MASP)); if (!v) { target = r; break; } }
-                if (target === -1) { target = rows; hot.alter('insert_row', target, 1); }
-                hot.setDataAtCell(target, HOT_COL_MASP, m);
-                hot.selectCell(target, HOT_COL_MASP + 1);
-            }
-            function chooseItem(idx) {
-                const it = filtered[idx]; if (!it) return;
-                const masp = up(it.masp);
-                const exists = jumpToExistingRow(masp);
-                if (!exists) insertToNextEmpty(masp);
-                $input.value = ''; $list.hidden = true; setTimeout(() => $input.focus(), 10);
-            }
-
-            async function startNewSearch(q) {
-                currentQuery = q;
-                page = 0;
-                endReached = false;
-                results = [];
-                filtered = [];
-                $list.scrollTop = 0;
-
-                if (q.length < MIN_LEN) { $list.hidden = true; return; }
-
-                loading = true;
-                const pageRows = await fetchPage(q, page);
-                loading = false;
-
-                results.push(...pageRows);
-                filtered = results.slice(0, MAX_SUGGESTIONS);
-                renderList(filtered);
-
-                if (pageRows.length < PAGE_SIZE) endReached = true;
-            }
-
-            async function maybeLoadMore() {
-                if (loading || endReached || currentQuery.length < MIN_LEN) return;
-                const nearBottom = ($list.scrollTop + $list.clientHeight) >= ($list.scrollHeight - 8);
-                if (!nearBottom) return;
-
-                loading = true;
-                page += 1;
-                const more = await fetchPage(currentQuery, page);
-                loading = false;
-
-                if (!more.length) { endReached = true; return; }
-
-                results.push(...more);
-                filtered = results.slice(0, MAX_SUGGESTIONS);
-                renderList(filtered);
-
-                if (more.length < PAGE_SIZE) endReached = true;
-            }
-
-            // ===== Events =====
-            document.addEventListener('click', (e) => { if (!e.target.closest('.typeahead-wrap')) { $list.hidden = true; } });
-
-            $input.addEventListener('input', () => {
-                clearTimeout(debTimer);
-                debTimer = setTimeout(() => {
-                    const q = up($input.value);
-                    startNewSearch(q);
-                }, DEBOUNCE_MS);
-            });
-
-            $input.addEventListener('keydown', (e) => {
-                if ($list.hidden) return;
-                if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
-                else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
-                else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
-                else if (e.key === 'Escape') { $list.hidden = true; }
-            });
-
-            $list.addEventListener('scroll', () => { maybeLoadMore(); });
-        })();
-        
-
-        // Kiểm tra vị trí kho
-        async function kiemTraViTri() {
-            window.editableMASP = false;
-            window.editableVITRI = false;
-            hot.updateSettings({ cells: hot.getSettings().cells });
-
-            // Lấy dữ liệu, chuẩn hóa mã sản phẩm thành in hoa, loại trùng
-            let allRows = hot.getSourceData();
-            let uniqueMasps = [];
-            let uniqueRows = [];
-            let seen = {};
-            for (let row of allRows) {
-                let masp = (row.masp || "").toString().trim().toUpperCase();
-                if (masp && !seen[masp]) {
-                    seen[masp] = true;
-                    uniqueMasps.push(masp);
-                    uniqueRows.push({ masp, vitrikho1: null, trangthai: null });
-                }
-            }
-            if (uniqueMasps.length === 0) {
-                alert("Nhập mã sản phẩm để kiểm tra!");
-                return;
-            }
-
-            // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
-            hot.loadData(uniqueRows);
-
-            // Truy vấn Supabase để lấy cả mã tồn tại và vị trí kho
-            const sb = getSupabaseClient();
-            const { data: found, error } = await sb
-                .from(TABLE_NAME)
-                .select('masp,vitrikho1')
-                .in('masp', uniqueMasps);
-
-            if (error) return alert('Lỗi kết nối Supabase!');
-
-            // Tạo map: mã tồn tại => vị trí kho
-            const maspMap = {};
-            found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
-
-            hot.batch(() => {
-                for (let r = 0; r < hot.countRows(); r++) {
-                    const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
-                    hot.setDataAtCell(r, 0, masp); // Đảm bảo in hoa
-
-                    if (!masp) {
-                        hot.setDataAtCell(r, 1, null);
-                        hot.setDataAtCell(r, 2, null);
-                        continue;
-                    }
-                    if (typeof maspMap[masp] === "undefined") {
-                        // Không tồn tại trong danh mục
-                        hot.setDataAtCell(r, 1, null);
-                        hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI");
-                    } else if (maspMap[masp]) {
-                        // Đã có vị trí kho
-                        hot.setDataAtCell(r, 1, maspMap[masp]);
-                        hot.setDataAtCell(r, 2, "BỎ QUA");
-                    } else {
-                        // Có mã, chưa có vị trí
-                        hot.setDataAtCell(r, 1, null);
-                        hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ");
-                    }
-                }
-            });
-
-            document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
-            hot.updateSettings({ cells: hot.getSettings().cells });
-        }
-
-
-
-        // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
-        function xoaDaCoViTri() {
-            let tableData = hot.getSourceData();
-            tableData = tableData.filter(row =>
-                row.masp && row.trangthai !== "BỎ QUA" // chi xoa dong bo qua
-            );
-            // Nếu không còn dòng nào, thêm dòng trống mới
-            if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
-            hot.loadData(tableData);
-
-            // Cho phép nhập cột mã và cột vị trí
-            window.editableMASP = true;
-            window.editableVITRI = true;
-            hot.updateSettings({ cells: hot.getSettings().cells });
-            document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
-        }
-
-        // Lưu dữ liệu mới
-        // Lưu dữ liệu mới
-        async function luuDuLieu() {
-            // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
-            let rows = hot.getSourceData().filter(r =>
-                r.masp &&
-                r.vitrikho1 &&
-                r.trangthai === "CHƯA CÓ VỊ TRÍ"
-            );
-            if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
-
-            if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
-            const sb = getSupabaseClient();
-
-            let success = 0, fail = 0, errorMsg = [];
-            // Dùng for...of tuần tự để đánh đúng dòng
-            for (let idx = 0; idx < rows.length; idx++) {
-                let row = rows[idx];
-                // Chỉ update vị trí nếu chưa có (nghiệp vụ)
-                const { data, error } = await sb.from(TABLE_NAME)
-                    .update({ vitrikho1: row.vitrikho1 })
-                    .eq('masp', row.masp.toString().trim().toUpperCase())
-                    .is('vitrikho1', null)
-                    .select(); // dùng select để lấy dòng bị ảnh hưởng!
-
-                if (!error && data && data.length === 1) {
-                    // Đánh dấu OK
-                    hot.setDataAtCell(idx, 2, "OK");
-                    success++;
-                } else {
-                    // Có lỗi hoặc không có dòng nào update được
-                    hot.setDataAtCell(idx, 2, "LỖI");
-                    fail++;
-                    let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)';
-                    errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
-                }
-            }
-
-            let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
-            if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
-            document.getElementById('preview').innerHTML = html;
-            // Sau lưu lại khóa cột vị trí
-            window.editableMASP = false;
-            window.editableVITRI = false;
-            hot.updateSettings({ cells: hot.getSettings().cells });
-        }
-
+    <script type="module">
+        import { ensureAccess } from "./scripts/auth_guard.js";
+        const ok = await ensureAccess();          // đọc manv từ localStorage/currentUser
+        if (ok) document.getElementById("app-container").style.display = "";
     </script>
+
+
+    <div id="app-container" style="display:none">
+        <!-- TOÀN BỘ NỘI DUNG TRANG CŨ BỎ VÀO ĐÂY -->
+
+        <h2>🏷️ NHẬP VỊ TRÍ KHO CS1</h2>
+        <div id="loginModule">
+            <!-- Ẩn input email (vẫn có trong DOM để JS lấy) -->
+            <input id="login-email" type="email" value="khohangcs1@gmail.com" style="display:none">
+            <input id="login-password" type="password" value="123123" placeholder="Mật khẩu" style="display:none">
+
+            <button id="login-submit">Đăng nhập</button>
+            <span id="login-status"></span>
+        </div>
+
+        <div style="display:flex;justify-content:center;margin-bottom:7px;">
+            <button class="main-btn" onclick="resetTable()">🔁 Làm lại</button>
+            <button class="main-btn" onclick="kiemTraViTri()">🔍 Kiểm tra vị trí kho</button>
+            <button class="main-btn" onclick="xoaDaCoViTri()">🧹 Xóa sản phẩm đã có vị trí</button>
+            <button class="main-btn" onclick="luuDuLieu()">💾 Lưu dữ liệu</button>
+        </div>
+
+        <!-- Ô nhập MASP có gợi ý -->
+        <div class="typeahead-wrap">
+
+            <input id="maspSearch" type="text" placeholder="Nhập mã sản phẩm..." autocomplete="off"
+                inputmode="latin-prose" />
+            <div id="maspSuggest" class="typeahead-list" hidden></div>
+
+            <button id="btnFetchSheet" class="btn btn-info"
+                style="background:#4aa3ff;color:#fff;border:none;border-radius:12px;padding:10px 16px;margin:4px 8px;">
+                📥 Lấy dữ liệu
+            </button> từ trang ghivitrikhocs1/ kiem kho cs1
+
+
+        </div>
+
+
+        <div id="preview"></div>
+
+        <div id="hot"></div>
+
+        <script>
+            // Thông tin Supabase
+            const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+
+            const TABLE_NAME = 'dmhanghoa';
+
+            // Khởi tạo Supabase client (token đăng nhập)
+            function getSupabaseClient() {
+                if (window.__sbClient) return window.__sbClient;
+                const token = localStorage.getItem('supabase_access_token');
+                window.__sbClient = window.supabase.createClient(
+                    SUPABASE_URL,
+                    SUPABASE_KEY,
+                    {
+                        auth: { storageKey: 'nhapvitrikhocs1_auth' },
+                        global: { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                    }
+                );
+                return window.__sbClient;
+            }
+            // Cấu hình bảng
+            let hot;
+            let colHeaders = ['Mã sản phẩm', 'Vị trí kho cs1', 'Trạng thái'];
+            let columns = [
+                { data: 'masp', type: 'text', width: 150 },
+                { data: 'vitrikho1', type: 'text', width: 150, readOnly: true },
+                { data: 'trangthai', type: 'text', width: 110, readOnly: true }
+            ];
+
+            function initTable() {
+                const container = document.getElementById('hot');
+                if (hot) hot.destroy();
+                hot = new Handsontable(container, {
+                    data: Array.from({ length: 30 }, () => ({ masp: null, vitrikho1: null, trangthai: null })),
+                    columns,
+                    colHeaders,
+                    rowHeaders: true,
+                    minSpareRows: 1,
+                    width: '100%',
+                    height: 420,
+                    stretchH: 'all',
+                    manualColumnResize: true,
+                    licenseKey: 'non-commercial-and-evaluation',
+                    cells: function (row, col) {
+                        const cellProperties = {};
+                        // Chỉ cho phép nhập cột mã sản phẩm khi chưa kiểm tra
+                        if (col === 0 && window.editableMASP) cellProperties.readOnly = false;
+                        if (col === 1 && window.editableVITRI) cellProperties.readOnly = false;
+                        if (col === 2) cellProperties.readOnly = true;
+
+                        // Màu cho trạng thái
+                        if (col === 2) {
+                            const val = this.instance.getDataAtCell(row, col);
+                            if (val === "OK") cellProperties.className = "trangthai-ok";
+                            if (val === "BỎ QUA") cellProperties.className = "trangthai-boqua";
+                            if (val === "LỖI") cellProperties.className = "trangthai-loi";
+                            if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
+                            if (val === "CHƯA CÓ VỊ TRÍ") cellProperties.className = "trangthai-chuacovitri";
+                        }
+
+                        return cellProperties;
+                    }
+                });
+                window.hot = hot;   // ✅ expose ra global để getHOT() lấy được
+                // Ban đầu chỉ nhập mã sản phẩm
+                window.editableMASP = true;
+                window.editableVITRI = false;
+            }
+
+            initTable();
+
+            // === BỔ SUNG: tự đọc danh sách mã do F8 đẩy sang và chạy kiểm tra ===
+            document.addEventListener('DOMContentLoaded', () => {
+                try {
+                    const raw = localStorage.getItem('VITRIKHO_IMPORT');
+                    if (!raw) return;
+                    const payload = JSON.parse(raw);
+                    // Chỉ xử lý nếu không ghi cs hoặc cs === 'cs1'
+                    if (payload?.cs && payload.cs.toLowerCase() !== 'cs1') return;
+
+                    const list = Array.isArray(payload?.list) ? payload.list : [];
+                    if (!list.length) return;
+
+                    const uniq = Array.from(new Set(
+                        list.map(s => (s || '').toString().trim().toUpperCase()).filter(Boolean)
+                    ));
+                    const rows = uniq.map(masp => ({ masp, vitrikho1: null, trangthai: null }));
+                    hot.loadData(rows);
+
+                    // Dọn khóa sau khi dùng để tránh dính ca sau
+                    localStorage.removeItem('VITRIKHO_IMPORT');
+
+                    // Tự chạy kiểm tra vị trí
+                    setTimeout(() => kiemTraViTri(), 0);
+                } catch (err) {
+                    console.error('VITRIKHO_IMPORT parse error:', err);
+                }
+            });
+            // Đăng nhập Supabase (bắt buộc)
+            document.getElementById('login-submit').onclick = async function () {
+                const email = document.getElementById('login-email').value.trim();
+                const password = document.getElementById('login-password').value.trim();
+                const sb = getSupabaseClient();
+                document.getElementById('login-status').textContent = 'Đang đăng nhập...';
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) {
+                    document.getElementById('login-status').textContent = 'Sai tài khoản hoặc mật khẩu!';
+                } else {
+                    document.getElementById('login-status').textContent = 'Đăng nhập thành công!';
+                    localStorage.setItem('supabase_access_token', data.session.access_token);
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            };
+
+            // Làm lại bảng
+            function resetTable() {
+                window.editableMASP = true;
+                window.editableVITRI = false;
+                initTable();
+                document.getElementById('preview').innerHTML = "";
+            }
+
+            // 2) JS – đọc Google Sheet + ghi vào HOT
+            (() => {
+                // ===== Cấu hình =====
+                const SHEET_ID = '1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA';
+                const SHEET_TAB = 'ghivitrikhocs1';  // tên sheet trong file
+                const HOT_COL_MASP = 0;               // cột "Mã sản phẩm" trong HOT
+                const MAKE_UPPERCASE = true;          // in hoa mã sản phẩm
+                const DEDUP = false;                  // có loại trùng không (mặc định KHÔNG)
+                const CLEAR_BEFORE_INSERT = true;     // xóa dữ liệu cũ trước khi nạp
+
+                const $btn = document.getElementById('btnFetchSheet');
+
+                function getHOT() {
+                    return window.hot || window.hotTable || window.HOT || null;
+                }
+
+                // Parse JSON kiểu GViz: /*O_o*/ google.visualization.Query.setResponse({...});
+                function parseGvizJson(txt) {
+                    const start = txt.indexOf('(');
+                    const end = txt.lastIndexOf(')');
+                    if (start === -1 || end === -1) return [];
+                    const payload = JSON.parse(txt.slice(start + 1, end));
+                    const rows = payload?.table?.rows || [];
+                    const out = [];
+                    for (const r of rows) {
+                        const v = r?.c?.[0]?.v; // cột A
+                        if (v != null) out.push(String(v));
+                    }
+                    return out;
+                }
+
+                async function fetchMaspsFromGoogleSheet() {
+                    // Yêu cầu: file Sheets để chế độ "Anyone with the link can view" hoặc Publish to web
+                    const urlJSON = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
+                        `tqx=out:json&sheet=${encodeURIComponent(SHEET_TAB)}&range=A:A&headers=0`;
+                    // Ưu tiên JSON vì tách header gọn; có thể fallback CSV nếu cần
+                    const resp = await fetch(urlJSON, { cache: 'no-store' });
+                    if (!resp.ok) throw new Error(`Fetch Google Sheet lỗi: HTTP ${resp.status}`);
+                    const text = await resp.text();
+                    let arr = parseGvizJson(text);
+
+                    // Làm sạch
+                    arr = arr.map(s => (s ?? '').toString().trim()).filter(s => s.length > 0);
+                    if (MAKE_UPPERCASE) arr = arr.map(s => s.toUpperCase());
+                    if (DEDUP) {
+                        const set = new Set(); const tmp = [];
+                        for (const v of arr) { if (!set.has(v)) { set.add(v); tmp.push(v); } }
+                        arr = tmp;
+                    }
+                    return arr;
+                }
+
+                function loadMaspsIntoHOT(masps) {
+                    const hot = getHOT();
+                    if (!hot) { alert('Không tìm thấy bảng dữ liệu (Handsontable).'); return; }
+
+                    if (CLEAR_BEFORE_INSERT) {
+                        // Xóa toàn bộ dòng cũ
+                        const old = hot.countRows();
+                        if (old > 0) hot.alter('remove_row', 0, old);
+                    }
+
+                    // Chèn đủ dòng
+                    if (masps.length > 0) {
+                        hot.alter('insert_row', 0, masps.length);
+                        // Ghi vào cột MASP
+                        const ops = [];
+                        for (let i = 0; i < masps.length; i++) {
+                            ops.push([i, HOT_COL_MASP, masps[i]]);
+                        }
+                        hot.setDataAtCell(ops);
+                        hot.render();
+                    }
+
+                    // Thông báo nhỏ
+                    const msg = `Đã nạp ${masps.length} mã từ Google Sheet (${SHEET_TAB}).`;
+                    console.log(msg);
+                    // nếu bạn có toast riêng, thay alert bằng toast
+                    alert(msg);
+                }
+
+                async function handleFetchClick() {
+                    try {
+                        $btn.disabled = true; $btn.textContent = 'Đang lấy...';
+                        const masps = await fetchMaspsFromGoogleSheet();
+                        loadMaspsIntoHOT(masps);
+                    } catch (err) {
+                        console.error(err);
+                        alert('Không lấy được dữ liệu từ Google Sheet. Kiểm tra quyền chia sẻ & tên sheet.');
+                    } finally {
+                        $btn.disabled = false; $btn.textContent = '📥 Lấy dữ liệu';
+                    }
+                }
+
+                if ($btn) $btn.addEventListener('click', handleFetchClick);
+            })();
+
+
+
+            // 3) Thêm JS (lọc gợi ý + ghi vào HOT) — kiểu query liên tục như trang in mã vạch
+            (() => {
+                // ====== Cấu hình ======
+                const HOT_COL_MASP = 0;               // Cột "Mã sản phẩm"
+                const MAX_SUGGESTIONS = 50;           // Tối đa gợi ý hiển thị
+                const DEBOUNCE_MS = 120;
+                const PAGE_SIZE = 100;                // mỗi lần nạp 100 dòng như trang in mã vạch
+                const MIN_LEN = 2;                    // gõ >= 2 ký tự mới tìm
+
+                const $input = document.getElementById('maspSearch');
+                const $list = document.getElementById('maspSuggest');
+
+                let currentQuery = '';
+                let page = 0;
+                let loading = false;
+                let endReached = false;
+                let results = [];    // cache tạm cho 1 query đang gõ
+                let filtered = [];
+                let activeIndex = -1;
+                let debTimer = null;
+
+                // ===== Helpers =====
+                function getHOT() { return window.hot || window.hotTable || window.HOT || null; }
+                function norm(s) { return (s || '').toString().trim(); }
+                function up(s) { return norm(s).toUpperCase(); }
+                function buildLike(q) {
+                    const qq = q.replace(/[%_]/g, ''); // tránh wildcard
+                    return `%${qq}%`;
+                }
+
+                async function fetchPage(q, pageIndex) {
+                    const sb = getSupabaseClient();
+                    const from = pageIndex * PAGE_SIZE;
+                    const to = from + PAGE_SIZE - 1;
+                    const { data, error } = await sb
+                        .from('dmhanghoa')
+                        .select('masp,tensp')
+                        .or(`masp.ilike.${buildLike(q)},tensp.ilike.${buildLike(q)}`)
+                        .order('masp', { ascending: true })
+                        .range(from, to);
+                    if (error) { console.warn('[search] error:', error.message); return []; }
+                    const seen = new Set(results.map(x => x._MASP));
+                    const rows = (data || []).map(r => ({
+                        masp: norm(r.masp),
+                        tensp: norm(r.tensp),
+                        _MASP: up(r.masp),
+                        _TENSP: up(r.tensp)
+                    })).filter(r => r.masp && !seen.has(r._MASP));
+                    return rows;
+                }
+
+                function renderList(items) {
+                    $list.innerHTML = ''; activeIndex = -1;
+                    if (!items.length) { $list.hidden = true; return; }
+                    const frag = document.createDocumentFragment();
+                    items.forEach((it, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'typeahead-item';
+                        div.dataset.index = idx;
+                        div.innerHTML = `<b>${it.masp}</b>${it.tensp ? ` <small>— ${it.tensp}</small>` : ''}`;
+                        div.addEventListener('mousedown', (e) => { e.preventDefault(); chooseItem(idx); });
+                        frag.appendChild(div);
+                    });
+                    $list.appendChild(frag);
+                    $list.hidden = false;
+                }
+
+                function moveActive(delta) {
+                    if ($list.hidden || !filtered.length) return;
+                    activeIndex = (activeIndex + delta + filtered.length) % filtered.length;
+                    [...$list.children].forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+                    const el = $list.children[activeIndex]; if (!el) return;
+                    const r = el.getBoundingClientRect(), lr = $list.getBoundingClientRect();
+                    if (r.bottom > lr.bottom) $list.scrollTop += (r.bottom - lr.bottom);
+                    else if (r.top < lr.top) $list.scrollTop -= (lr.top - r.top);
+                }
+
+                function jumpToExistingRow(m) {
+                    const hot = getHOT(); if (!hot) return false;
+                    const rows = hot.countRows();
+                    for (let r = 0; r < rows; r++) {
+                        if (up(hot.getDataAtCell(r, HOT_COL_MASP)) === m) {
+                            hot.selectCell(r, HOT_COL_MASP);
+                            const cell = hot.getCell(r, HOT_COL_MASP);
+                            if (cell) { cell.style.transition = 'background .15s'; cell.style.background = '#fff2cc'; setTimeout(() => { cell.style.background = ''; }, 350); }
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                function insertToNextEmpty(m) {
+                    const hot = getHOT(); if (!hot) return;
+                    let target = -1; const rows = hot.countRows();
+                    for (let r = 0; r < rows; r++) { const v = norm(hot.getDataAtCell(r, HOT_COL_MASP)); if (!v) { target = r; break; } }
+                    if (target === -1) { target = rows; hot.alter('insert_row', target, 1); }
+                    hot.setDataAtCell(target, HOT_COL_MASP, m);
+                    hot.selectCell(target, HOT_COL_MASP + 1);
+                }
+                function chooseItem(idx) {
+                    const it = filtered[idx]; if (!it) return;
+                    const masp = up(it.masp);
+                    const exists = jumpToExistingRow(masp);
+                    if (!exists) insertToNextEmpty(masp);
+                    $input.value = ''; $list.hidden = true; setTimeout(() => $input.focus(), 10);
+                }
+
+                async function startNewSearch(q) {
+                    currentQuery = q;
+                    page = 0;
+                    endReached = false;
+                    results = [];
+                    filtered = [];
+                    $list.scrollTop = 0;
+
+                    if (q.length < MIN_LEN) { $list.hidden = true; return; }
+
+                    loading = true;
+                    const pageRows = await fetchPage(q, page);
+                    loading = false;
+
+                    results.push(...pageRows);
+                    filtered = results.slice(0, MAX_SUGGESTIONS);
+                    renderList(filtered);
+
+                    if (pageRows.length < PAGE_SIZE) endReached = true;
+                }
+
+                async function maybeLoadMore() {
+                    if (loading || endReached || currentQuery.length < MIN_LEN) return;
+                    const nearBottom = ($list.scrollTop + $list.clientHeight) >= ($list.scrollHeight - 8);
+                    if (!nearBottom) return;
+
+                    loading = true;
+                    page += 1;
+                    const more = await fetchPage(currentQuery, page);
+                    loading = false;
+
+                    if (!more.length) { endReached = true; return; }
+
+                    results.push(...more);
+                    filtered = results.slice(0, MAX_SUGGESTIONS);
+                    renderList(filtered);
+
+                    if (more.length < PAGE_SIZE) endReached = true;
+                }
+
+                // ===== Events =====
+                document.addEventListener('click', (e) => { if (!e.target.closest('.typeahead-wrap')) { $list.hidden = true; } });
+
+                $input.addEventListener('input', () => {
+                    clearTimeout(debTimer);
+                    debTimer = setTimeout(() => {
+                        const q = up($input.value);
+                        startNewSearch(q);
+                    }, DEBOUNCE_MS);
+                });
+
+                $input.addEventListener('keydown', (e) => {
+                    if ($list.hidden) return;
+                    if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+                    else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); chooseItem(activeIndex); }
+                    else if (e.key === 'Escape') { $list.hidden = true; }
+                });
+
+                $list.addEventListener('scroll', () => { maybeLoadMore(); });
+            })();
+
+
+            // Kiểm tra vị trí kho
+            async function kiemTraViTri() {
+                window.editableMASP = false;
+                window.editableVITRI = false;
+                hot.updateSettings({ cells: hot.getSettings().cells });
+
+                // Lấy dữ liệu, chuẩn hóa mã sản phẩm thành in hoa, loại trùng
+                let allRows = hot.getSourceData();
+                let uniqueMasps = [];
+                let uniqueRows = [];
+                let seen = {};
+                for (let row of allRows) {
+                    let masp = (row.masp || "").toString().trim().toUpperCase();
+                    if (masp && !seen[masp]) {
+                        seen[masp] = true;
+                        uniqueMasps.push(masp);
+                        uniqueRows.push({ masp, vitrikho1: null, trangthai: null });
+                    }
+                }
+                if (uniqueMasps.length === 0) {
+                    alert("Nhập mã sản phẩm để kiểm tra!");
+                    return;
+                }
+
+                // Ghi lại bảng chỉ còn các mã duy nhất (đã in hoa)
+                hot.loadData(uniqueRows);
+
+                // Truy vấn Supabase để lấy cả mã tồn tại và vị trí kho
+                const sb = getSupabaseClient();
+                const { data: found, error } = await sb
+                    .from(TABLE_NAME)
+                    .select('masp,vitrikho1')
+                    .in('masp', uniqueMasps);
+
+                if (error) return alert('Lỗi kết nối Supabase!');
+
+                // Tạo map: mã tồn tại => vị trí kho
+                const maspMap = {};
+                found.forEach(row => { maspMap[row.masp.toUpperCase()] = row.vitrikho1; });
+
+                hot.batch(() => {
+                    for (let r = 0; r < hot.countRows(); r++) {
+                        const masp = (hot.getDataAtCell(r, 0) || "").toString().trim().toUpperCase();
+                        hot.setDataAtCell(r, 0, masp); // Đảm bảo in hoa
+
+                        if (!masp) {
+                            hot.setDataAtCell(r, 1, null);
+                            hot.setDataAtCell(r, 2, null);
+                            continue;
+                        }
+                        if (typeof maspMap[masp] === "undefined") {
+                            // Không tồn tại trong danh mục
+                            hot.setDataAtCell(r, 1, null);
+                            hot.setDataAtCell(r, 2, "MÃ KHÔNG TỒN TẠI");
+                        } else if (maspMap[masp]) {
+                            // Đã có vị trí kho
+                            hot.setDataAtCell(r, 1, maspMap[masp]);
+                            hot.setDataAtCell(r, 2, "BỎ QUA");
+                        } else {
+                            // Có mã, chưa có vị trí
+                            hot.setDataAtCell(r, 1, null);
+                            hot.setDataAtCell(r, 2, "CHƯA CÓ VỊ TRÍ");
+                        }
+                    }
+                });
+
+                document.getElementById('preview').innerHTML = `<span>✅ Đã kiểm tra, báo rõ mã không tồn tại, chưa có vị trí hoặc đã có vị trí.</span>`;
+                hot.updateSettings({ cells: hot.getSettings().cells });
+            }
+
+
+
+            // Xóa các sản phẩm đã có vị trí kho (và dòng trống)
+            function xoaDaCoViTri() {
+                let tableData = hot.getSourceData();
+                tableData = tableData.filter(row =>
+                    row.masp && row.trangthai !== "BỎ QUA" // chi xoa dong bo qua
+                );
+                // Nếu không còn dòng nào, thêm dòng trống mới
+                if (tableData.length === 0) tableData.push({ masp: null, vitrikho1: null, trangthai: null });
+                hot.loadData(tableData);
+
+                // Cho phép nhập cột mã và cột vị trí
+                window.editableMASP = true;
+                window.editableVITRI = true;
+                hot.updateSettings({ cells: hot.getSettings().cells });
+                document.getElementById('preview').innerHTML = `<span>👉 Bây giờ bạn nhập <b>vị trí kho</b> cho các sản phẩm chưa có vị trí, có thể nhập thêm mã mới nếu cần.</span>`;
+            }
+
+            // Lưu dữ liệu mới
+            // Lưu dữ liệu mới
+            async function luuDuLieu() {
+                // Chỉ lấy các dòng hợp lệ: có mã sản phẩm, có vị trí kho, chưa có trạng thái "OK"
+                let rows = hot.getSourceData().filter(r =>
+                    r.masp &&
+                    r.vitrikho1 &&
+                    r.trangthai === "CHƯA CÓ VỊ TRÍ"
+                );
+                if (rows.length === 0) return alert("Không có dữ liệu hợp lệ để ghi.");
+
+                if (!confirm(`Bạn chắc chắn muốn lưu ${rows.length} vị trí mới vào kho?`)) return;
+                const sb = getSupabaseClient();
+
+                let success = 0, fail = 0, errorMsg = [];
+                // Dùng for...of tuần tự để đánh đúng dòng
+                for (let idx = 0; idx < rows.length; idx++) {
+                    let row = rows[idx];
+                    // Chỉ update vị trí nếu chưa có (nghiệp vụ)
+                    const { data, error } = await sb.from(TABLE_NAME)
+                        .update({ vitrikho1: row.vitrikho1 })
+                        .eq('masp', row.masp.toString().trim().toUpperCase())
+                        .is('vitrikho1', null)
+                        .select(); // dùng select để lấy dòng bị ảnh hưởng!
+
+                    if (!error && data && data.length === 1) {
+                        // Đánh dấu OK
+                        hot.setDataAtCell(idx, 2, "OK");
+                        success++;
+                    } else {
+                        // Có lỗi hoặc không có dòng nào update được
+                        hot.setDataAtCell(idx, 2, "LỖI");
+                        fail++;
+                        let reason = error?.message || 'Không có dòng nào được cập nhật (mã không tồn tại hoặc đã có vị trí)';
+                        errorMsg.push(`Dòng ${idx + 1} (${row.masp}): ${reason}`);
+                    }
+                }
+
+                let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
+                if (fail) html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+                document.getElementById('preview').innerHTML = html;
+                // Sau lưu lại khóa cột vị trí
+                window.editableMASP = false;
+                window.editableVITRI = false;
+                hot.updateSettings({ cells: hot.getSettings().cells });
+            }
+
+        </script>
+
+    </div>
 </body>
 
 </html>
