@@ -1,18 +1,33 @@
 // scripts/auth_guard.js
-// Guard quyền truy cập trang theo phân quyền nv_page + app_page
-// Cơ chế: gọi RPC has_access_path(p_manv, p_path) => true/false
-// - p_path là "tên file" dạng: banlemtcs1.html (lowercase, không dấu /)
-// - Admin (localStorage.is_admin === "true") => cho qua tất cả
+// Guard dùng chung để chặn truy cập theo quyền trang.
+// - ADMIN: kiểm tra bằng RPC public.is_admin() (bảng admin_users) => nếu true thì cho phép vào mọi trang.
+// - NV thường: kiểm tra quyền theo path bằng RPC has_access_path(p_manv, p_path) (dựa trên nv_page + app_page).
 
-// Cache TTL (ms) để tránh gọi RPC liên tục khi reload/đi lại trong cùng trang
-const CACHE_TTL_MS = 60_000; // 60s
+import { supabase } from "./supabaseClient.js";
+
+// Cache quyền theo từng trang (theo manv + page)
+const CACHE_KEY = "perm_cache_page_ok_v2";
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 phút
+
+function getCurrentPagePath() {
+  // Ưu tiên meta (nếu bạn set), fallback pathname
+  const meta = document.querySelector('meta[name="app:page_path"]');
+  const raw = (meta && meta.content ? meta.content : (window.location.pathname || "")).trim();
+
+  // bỏ query/hash
+  const p = raw.split("?")[0].split("#")[0];
+
+  // lấy tên file cuối cùng, bỏ dấu / nếu có
+  const file = (p || "").split("/").pop() || p || "";
+  return String(file).trim().toLowerCase();
+}
 
 function readJSON(key, fallback = null) {
   try {
-    const s = localStorage.getItem(key);
-    if (!s) return fallback;
-    return JSON.parse(s);
-  } catch {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
     return fallback;
   }
 }
@@ -20,157 +35,148 @@ function readJSON(key, fallback = null) {
 function writeJSON(key, val) {
   try {
     localStorage.setItem(key, JSON.stringify(val));
-  } catch { }
+  } catch (e) {}
 }
 
-// Cho phép override path bằng meta nếu anh muốn fix các route đặc biệt
-// <meta name="app:page_path" content="banlemtcs1.html">
-function getCurrentPagePath() {
-  const meta = document.querySelector('meta[name="app:page_path"]');
-  const raw = (meta && meta.content ? meta.content : (window.location.pathname || "")).trim();
-
-  // bỏ query/hash, lấy tên file cuối cùng
-  const p = raw.split("?")[0].split("#")[0];
-  const file = (p.split("/").pop() || p).trim();
-
-  return file.replace(/^\//, "").toLowerCase();
-}
-
-function isPublicPage(pagePath) {
-  // Các trang không cần chốt quyền (tuỳ anh chỉnh thêm)
-  const pub = new Set([
-    "",                 // root (nếu có)
-    "index.html",
-    "login.html",
-    "404.html",
-  ]);
-  return pub.has(pagePath);
-}
-
-function isAdminByLocalFlag() {
+async function getIsAdmin() {
   try {
-    return (localStorage.getItem("is_admin") || "").trim() === "true";
-  } catch {
+    const { data, error } = await supabase.rpc("is_admin");
+    if (error) return false;
+    return !!data;
+  } catch (e) {
     return false;
   }
 }
 
-function renderBlocked(htmlMessage) {
-  // Block UI kiểu "chắc chắn không dùng được"
-  // Không redirect ngay để tránh loop nếu trang index cũng chặn.
-  document.documentElement.innerHTML = `
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width,initial-scale=1" />
-      <title>Không có quyền</title>
-      <style>
-        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#f6f7fb}
-        .wrap{max-width:680px;margin:60px auto;background:#fff;border:1px solid #eee;border-radius:14px;padding:18px 18px 14px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-        .ttl{font-size:18px;font-weight:800;margin:0 0 8px;color:#b00020}
-        .msg{font-size:14px;line-height:1.5;color:#111}
-        .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-        button{padding:10px 12px;border-radius:10px;border:1px solid #d0d7de;background:#fff;cursor:pointer;font-weight:600}
-        button.primary{background:#0b84ff;color:#fff;border-color:#0b84ff}
-        .hint{margin-top:10px;color:#6b7280;font-size:13px}
-      </style>
-    </head>
-    <body>
-      <div class="wrap">
-        <h1 class="ttl">⛔ Không có quyền truy cập</h1>
-        <div class="msg">${htmlMessage || "Tài khoản của bạn không được phép sử dụng trang này."}</div>
-        <div class="row">
-          <button class="primary" id="btnGoHome">Về trang chính</button>
-          <button id="btnLogout">Đăng xuất</button>
-          <button id="btnReload">Tải lại</button>
-        </div>
-        <div class="hint">Nếu bạn cần quyền, hãy liên hệ quản lý để cấp quyền trên trang “Phân quyền nhân viên”.</div>
-      </div>
+function renderBlocked(message) {
+  const wrap = document.createElement("div");
+  wrap.id = "auth-guard-block";
+  wrap.style.cssText = [
+    "position:fixed",
+    "inset:0",
+    "z-index:999999",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "background:#f5f6f8",
+    "font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial"
+  ].join(";");
 
-      <script>
-        document.getElementById('btnGoHome')?.addEventListener('click', () => {
-          try { location.href = '/index.html'; } catch(e){ location.href = 'index.html'; }
-        });
-        document.getElementById('btnReload')?.addEventListener('click', () => location.reload());
-        document.getElementById('btnLogout')?.addEventListener('click', () => {
-          try {
-            // Xoá những key phổ biến (tuỳ dự án anh có thể thêm)
-            [
-              'manv','tennv','is_admin','quyen_sua_hoadon',
-              'supabase_access_token','supabase_refresh_token',
-              'currentUser'
-            ].forEach(k => { try{localStorage.removeItem(k);}catch(e){}; try{sessionStorage.removeItem(k);}catch(e){}; });
-          } catch(e){}
-          try { location.href = '/index.html'; } catch(e){ location.href = 'index.html'; }
-        });
-      </script>
-    </body>
+  wrap.innerHTML = `
+    <div style="width:min(560px,92vw);background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 24px;box-shadow:0 12px 30px rgba(0,0,0,.08)">
+      <div style="font-size:26px;font-weight:800;letter-spacing:.2px;margin-bottom:10px">Không có quyền truy cập</div>
+      <div style="color:#374151;font-size:15px;line-height:1.5;margin-bottom:18px">${message}</div>
+      <div style="display:flex;gap:10px">
+        <button id="auth-guard-back" style="padding:10px 14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer">Quay lại</button>
+        <button id="auth-guard-logout" style="padding:10px 14px;border:1px solid #ef4444;border-radius:10px;background:#ef4444;color:#fff;cursor:pointer">Đăng xuất</button>
+      </div>
+    </div>
   `;
+  document.body.appendChild(wrap);
+
+  wrap.querySelector("#auth-guard-back")?.addEventListener("click", () => history.back());
+  wrap.querySelector("#auth-guard-logout")?.addEventListener("click", async () => {
+    try { localStorage.clear(); } catch (e) {}
+    try { await supabase.auth.signOut(); } catch (e) {}
+    location.href = "/"; // hoặc trang login của bạn
+  });
+}
+
+// ✅ Check quyền theo path bằng RPC has_access_path
+async function hasAccessByPath(manv, pagePath) {
+  // Cache theo manv + page
+  const mv = String(manv || "").trim().toUpperCase();
+  const pg = String(pagePath || "").trim().toLowerCase();
+
+  if (!mv || !pg) return false;
+
+  const now = Date.now();
+  const cache = readJSON(CACHE_KEY, null);
+  if (
+    cache &&
+    cache.manv === mv &&
+    cache.page === pg &&
+    (now - cache.ts) < CACHE_TTL_MS &&
+    typeof cache.ok === "boolean"
+  ) {
+    return cache.ok;
+  }
+
+  // DB của anh có thể lưu path dạng "banlemtcs1.html" hoặc "/banlemtcs1.html"
+  // => thử 2 biến thể để chắc chắn không lệch dữ liệu hiện có.
+  const tries = [pg, pg.startsWith("/") ? pg : ("/" + pg)];
+
+  let ok = false;
+  for (const pTry of tries) {
+    try {
+      const { data, error } = await supabase.rpc("has_access_path", {
+        p_manv: mv,
+        p_path: pTry
+      });
+      if (!error && data === true) {
+        ok = true;
+        break;
+      }
+    } catch (e) {}
+  }
+
+  writeJSON(CACHE_KEY, { manv: mv, page: pg, ts: now, ok });
+  return ok;
 }
 
 /**
- * ensureAccess({ supabase, manv })
- * - supabase: client supabase-js đã login
- * - manv: mã NV đang login (localStorage.manv)
- *
- * Trả về:
- * - true: được phép vào
- * - false: bị chặn (đã render UI block)
+ * ensureAccess({ manv })
+ * - manv: mã nhân viên lấy từ localStorage (bạn set sau khi login nội bộ).
  */
-export async function ensureAccess({ supabase, manv }) {
+export async function ensureAccess({ manv } = {}) {
+  const page = getCurrentPagePath();
+
+  // Cho qua các trang login (tùy bạn thêm/bớt)
+  const lower = page.toLowerCase();
+  if (lower.includes("login") || lower.includes("dangnhap")) return true;
+
+  // Nếu đang có session supabase => có thể check admin
+  let user = null;
   try {
-    const pagePath = getCurrentPagePath();
+    const r = await supabase.auth.getUser();
+    user = r?.data?.user || null;
+  } catch (e) {}
 
-    // Trang public => không chốt
-    if (isPublicPage(pagePath)) return true;
+  // Đồng bộ is_admin vào currentUser nếu có
+  let currentUser = readJSON("currentUser", null);
+  const isAdmin = user ? await getIsAdmin() : !!currentUser?.is_admin;
 
-    // Admin => cho qua
-    if (isAdminByLocalFlag()) return true;
+  // Đồng bộ lại currentUser để main.js và các trang khác nhận đúng trạng thái ADMIN
+  if (!currentUser && isAdmin) {
+    currentUser = {
+      manv: "ADMIN",
+      email: user?.email || "",
+      is_admin: true,
+      ts: Date.now()
+    };
+    writeJSON("currentUser", currentUser);
+    try { localStorage.setItem("manv", "ADMIN"); } catch (e) {}
+  } else if (currentUser) {
+    currentUser.is_admin = !!isAdmin;
+    writeJSON("currentUser", currentUser);
+  }
 
-    const mv = String(manv || "").trim().toUpperCase();
-    if (!mv) {
-      renderBlocked("Bạn chưa đăng nhập (không tìm thấy <b>manv</b>). Vui lòng đăng nhập lại.");
-      return false;
-    }
+  // ADMIN được vào mọi trang
+  if (isAdmin) return true;
 
-    if (!supabase || typeof supabase.rpc !== "function") {
-      renderBlocked("Hệ thống chưa khởi tạo Supabase client. Vui lòng tải lại trang.");
-      return false;
-    }
-
-    // Cache theo manv + pagePath
-    const now = Date.now();
-    const cacheKey = `perm_ok:${mv}:${pagePath}`;
-    const cache = readJSON(cacheKey, null);
-
-    if (cache && typeof cache.ok === "boolean" && (now - (cache.ts || 0)) < CACHE_TTL_MS) {
-      if (!cache.ok) {
-        renderBlocked(`Tài khoản <b>${mv}</b> không được mở trang "<b>${pagePath}</b>".`);
-        return false;
-      }
-      return true;
-    }
-
-    // ✅ Check quyền trực tiếp bằng RPC has_access_path
-    const { data, error } = await supabase.rpc("has_access_path", {
-      p_manv: mv,
-      p_path: pagePath
-    });
-
-    const ok = !error && data === true;
-    writeJSON(cacheKey, { ts: now, ok });
-
-    if (!ok) {
-      // Nếu muốn debug nhanh:
-      // console.warn("Denied", { mv, pagePath, error, data });
-
-      renderBlocked(`Tài khoản <b>${mv}</b> không được mở trang "<b>${pagePath}</b>".`);
-      return false;
-    }
-
-    return true;
-  } catch (e) {
-    console.error("ensureAccess error:", e);
-    renderBlocked("Có lỗi khi kiểm tra quyền truy cập. Vui lòng tải lại trang hoặc liên hệ quản lý.");
+  // NV thường: cần manv
+  const mv = (manv || currentUser?.manv || localStorage.getItem("manv") || "").toString().trim();
+  if (!mv) {
+    renderBlocked("Bạn chưa đăng nhập hoặc thiếu <b>mã nhân viên</b> trong phiên.");
     return false;
   }
+
+  // ✅ CHỐT QUYỀN TRANG THEO DB nv_page + app_page
+  const ok = await hasAccessByPath(mv, page);
+
+  if (!ok) {
+    renderBlocked(`Tài khoản <b>${mv}</b> không được mở "<b>${page}</b>".`);
+    return false;
+  }
+  return true;
 }
