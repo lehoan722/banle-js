@@ -746,7 +746,41 @@ window.moTrangAnh = function () {
     }
 
     // Lấy nguồn dữ liệu gốc của Handsontable (đúng theo thứ tự/đang có trong trang)
-    const src = hotInstance.getSourceData() || [];
+    // Lấy dữ liệu theo THỨ TỰ ĐANG HIỂN THỊ trên bảng (sau khi bạn sort)
+    // (không lấy sourceData nữa, vì sourceData luôn theo thứ tự gốc)
+    const rowCount = hotInstance.countRows();
+    const colMasp = (hotInstance.propToCol ? hotInstance.propToCol("masp") : 0);
+
+    // Một số cột có thể đặt tên khác nhau giữa các phiên bản
+    const colGiale = (hotInstance.propToCol ? hotInstance.propToCol("giale") : -1);
+
+    const colTonCS1 =
+        (hotInstance.propToCol && hotInstance.propToCol("toncs1") >= 0) ? hotInstance.propToCol("toncs1")
+            : (hotInstance.propToCol && hotInstance.propToCol("ton_cs1") >= 0) ? hotInstance.propToCol("ton_cs1")
+                : -1;
+
+    const colTonCS2 =
+        (hotInstance.propToCol && hotInstance.propToCol("toncs2") >= 0) ? hotInstance.propToCol("toncs2")
+            : (hotInstance.propToCol && hotInstance.propToCol("ton_cs2") >= 0) ? hotInstance.propToCol("ton_cs2")
+                : -1;
+
+    const src = [];
+    for (let r = 0; r < rowCount; r++) {
+        const masp = (colMasp >= 0) ? hotInstance.getDataAtCell(r, colMasp) : "";
+        const giale = (colGiale >= 0) ? hotInstance.getDataAtCell(r, colGiale) : 0;
+        const toncs1 = (colTonCS1 >= 0) ? hotInstance.getDataAtCell(r, colTonCS1) : 0;
+        const toncs2 = (colTonCS2 >= 0) ? hotInstance.getDataAtCell(r, colTonCS2) : 0;
+
+        // Dựng object tối thiểu để phần filter/map phía dưới dùng lại y nguyên
+        src.push({
+            masp,
+            giale,
+            toncs1,
+            toncs2,
+            ton_cs1: toncs1,
+            ton_cs2: toncs2
+        });
+    }
 
     // Đọc địa điểm đang chọn: '', 'cs1', 'cs2'
     const diadiemEl = document.getElementById("diadiemSelect");
