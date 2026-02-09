@@ -139,7 +139,7 @@
         if (!list.length) {
             document.getElementById("empty").style.display = "block";
         } else {
-            list.forEach(({ masp, giale }) => {
+            list.forEach(({ masp, giale, toncs1, toncs2 }) => {
                 const card = document.createElement("div");
                 card.className = "card";
 
@@ -168,7 +168,7 @@
                 cap.innerHTML =
                     `<a class="cap-link" href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" 
            target="_blank" rel="noopener">
-           ${masp} / ${fmtVND(giale)}
+           ${masp} / ${fmtVND(giale)} ${Number(toncs1||0)}/${Number(toncs2||0)}
          </a>`;
 
                 // gắn vào card
