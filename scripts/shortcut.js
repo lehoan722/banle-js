@@ -15,7 +15,7 @@ let _shortcutInited = false;
 //  - Quét **** => Thêm mới (như bấm 'Có' ở popup F1)
 // ===============================
 const SCAN_CMD_SAVE = '##';
-const SCAN_CMD_NEW  = '**';
+const SCAN_CMD_NEW = '**';
 let _scanCmdInited = false;
 
 function khoiTaoLenhQuetDacBiet() {
@@ -76,7 +76,7 @@ export function khoiTaoShortcut() {
   _shortcutInited = true;
   // ✅ Khởi tạo lệnh quét đặc biệt #### / ****
   khoiTaoLenhQuetDacBiet();
-  
+
   document.addEventListener("keydown", async function (e) {
     // F1: popup thêm mới
     if (e.key === "F1") {
@@ -158,28 +158,35 @@ export function khoiTaoShortcut() {
       }, { once: true });
     }
 
-    // F5: toggle nhập nhanh
+    // F5: Quay lại (duyệt hóa đơn)
     if (e.key === "F5") {
       e.preventDefault();
-      const box = document.getElementById("nhapnhanh");
-      if (box) {
-        box.checked = !box.checked;
-        console.log("Toggle Nhập Nhanh:", box.checked);
-      }
+      const btn = document.getElementById("quaylai");
+      if (btn) btn.click();
+      else console.warn("Không tìm thấy nút #quaylai");
     }
 
-    // F6: toggle size 45
+    // F6: Tiếp tục (duyệt hóa đơn)
     if (e.key === "F6") {
       e.preventDefault();
-      const box = document.getElementById("size45");
-      if (box) {
-        box.checked = !box.checked;
-        console.log("Toggle Size 45:", box.checked);
+      const btn = document.getElementById("tieptuc");
+      if (btn) btn.click();
+      else console.warn("Không tìm thấy nút #tieptuc");
+    }
+
+    // F7: Xem in hóa đơn
+    if (e.key === "F7") {
+      e.preventDefault();
+      const btn = document.getElementById("xemin");
+      if (btn) {
+        btn.click();
+      } else {
+        console.warn("Không tìm thấy nút #xemin");
       }
     }
 
     // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền danh sách mã
-    if (e.key === "F7") {
+    if (e.key === "F8") {
       e.preventDefault();
 
       // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
@@ -202,7 +209,7 @@ export function khoiTaoShortcut() {
     }
 
     // F8: mở trang nhập vị trí kho (theo cơ sở đích), có ngoại lệ ccn1v2/ccn2v1
-    if (e.key === "F8") {
+    if (e.key === "F9") {
       e.preventDefault();
 
       // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
@@ -264,7 +271,7 @@ async function taoMoiHoaDon() {
     if (!["diadiem", "manv", "tennv"].includes(input.id)) input.value = "";
   });
 
-    resetBangKetQua();
+  resetBangKetQua();
   await capNhatSoHoaDonTuDong();
 
   const now = new Date();
