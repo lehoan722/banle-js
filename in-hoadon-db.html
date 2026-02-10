@@ -6,23 +6,59 @@
     <title>In Hóa Đơn</title>
 
     <style>
-        body {
 
-            font-family: Arial, sans-serif;
-            width: 80mm;
-            margin-left: 2mm;
-            margin-right: 2mm;
-            font-size: 14px;
-        }
+        :root{
+  --scale: 1.5;      /* tăng chữ 1.5 lần */
+  --paperW: 80mm;    /* khổ giấy in */
+  --pageM: 2mm;      /* lề in */
+  --fontBase: 14px;  /* cỡ chữ gốc */
+}
+
+/* Khóa khổ in + lề để tránh Chrome tự co (shrink) */
+@page{
+  size: var(--paperW) auto;
+  margin: var(--pageM);
+}
+
+*{ box-sizing: border-box; }
+html, body{ padding:0; margin:0; }
+
+
+        body{
+  font-family: Arial, sans-serif;
+
+  /* MÀN HÌNH: full màn hình */
+  width: 100%;
+  padding: 0;
+  margin: 0;
+
+  /* scale chữ */
+  font-size: calc(var(--fontBase) * var(--scale));
+  line-height: 1.25;
+}
+
+/* ====== CHẾ ĐỘ XEM TRÊN ĐIỆN THOẠI / TRÌNH DUYỆT ====== */
+.screen-center{
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px 8px;
+}
+
+/* “Tờ hóa đơn” khi xem trên màn hình */
+.paper{
+  width: min(96vw, 520px);
+  max-width: 100%;
+}
+
 
         /* ... (các đoạn khác giữ nguyên) ... */
-        th,
-        td {
-            border: 1px solid black;
-            padding: 2px;
-            text-align: center;
-            font-size: 13px;
-        }
+        .note{
+  font-size: calc(12px * var(--scale));
+  font-style: italic;
+}
+
 
         @media print {
             body {
@@ -87,16 +123,14 @@
             font-style: italic;
         }
 
-        .thankyou {
-            font-size: 16px;
-            font-family: 'Comic Sans MS', cursive;
-            text-align: center;
-            margin-top: 0px;
-        }
+        .thankyou{
+  font-size: calc(16px * var(--scale));
+  text-align: center;
+}
 
-        .big {
-            font-size: 20px;
-        }
+        .totals-left, .totals-right{
+  font-size: calc(13px * var(--scale));
+}
 
         .totals-flex {
             display: flex;
@@ -171,18 +205,17 @@
 
         }
 
-        .totals-pay {
-            border-top: 2px dashed #555;
-            margin-top: 3px;
-            padding-top: 6px;
-            font-size: 26px;
+        .totals-pay{
+  border-top: 2px dashed #555;
+  margin-top: 6px;
+  padding-top: 8px;
+  font-weight: bold;
+  font-size: calc(18px * var(--scale));
+  display:flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
 
-            justify-content: space-between;
-            width: 100%;
-            font-weight: bold;
-            /* ĐẢM BẢO nằm dưới, cách xa các dòng trên */
-            margin-bottom: 5px;
-        }
     
         /* --- QR chuyển khoản (hóa đơn đặc biệt) --- */
         .payqr {
@@ -203,6 +236,9 @@
             display:block;
             margin: 0 auto 6px auto;
         }
+
+        .vietqr-img{ width: 120px !important; }
+
         .payqr-info{
             font-size:12px;
             line-height:1.35;
@@ -216,10 +252,34 @@
             margin-top:2px;
         }
 
+        @media print{
+  body{
+    width: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .screen-center{
+    display:block;
+    padding:0;
+    min-height:auto;
+  }
+  .paper{
+    width: calc(var(--paperW) - (var(--pageM) * 2));
+  }
+
+  /* QR vẫn giữ đúng kích thước */
+  .vietqr-img{ width: 120px !important; }
+}
+
+
     </style>
 </head>
 
 <body>
+
+     <div class="screen-center">
+    <div class="paper">
+
     <div class="header">
         <div class="bold big">SHOP HOÀN TUYẾT</div>
         <div>CS1: SN 540 Đường 3-2 TP Thái Nguyên</div>
@@ -406,6 +466,9 @@
             }
         });
     </script>
+
+    </div>
+  </div>
 
 </body>
 
