@@ -891,6 +891,53 @@
             }
         });
     </script>
+    <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const hdState = document.getElementById("hd_state");
+    const btnXemIn = document.getElementById("xemin");
+    if (!hdState || !btnXemIn) return;
+
+    function normalizeState(v) {
+      return String(v || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " "); // gộp khoảng trắng
+    }
+
+    function isChuaXemState(v) {
+      const s = normalizeState(v);
+      // chấp nhận nhiều biến thể để khỏi lệ thuộc chính tả/dấu
+      return (
+        s === "chua xem" ||
+        s === "chưa xem" ||
+        s === "chuaxem" ||
+        s === "xem"
+      );
+    }
+
+    // Double click / double tap vào ô trạng thái -> gọi "Xem in"
+    hdState.addEventListener("dblclick", (e) => {
+      if (!isChuaXemState(hdState.value)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Gọi đúng logic hiện có của nút "Xem in"
+      btnXemIn.click();
+    });
+
+    // (Tùy chọn) nếu điện thoại đôi khi không bắn dblclick tốt,
+    // bạn có thể bật "double tap" thủ công (giữ an toàn, không ảnh hưởng PC)
+    let lastTap = 0;
+    hdState.addEventListener("touchend", () => {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        if (isChuaXemState(hdState.value)) btnXemIn.click();
+      }
+      lastTap = now;
+    });
+  });
+</script>
 
 
     <!-- Overlay loading khi backup -->
