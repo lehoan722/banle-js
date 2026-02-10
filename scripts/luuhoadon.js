@@ -968,7 +968,7 @@ export async function xacNhanSuaHoaDon() {
         if (popup) popup.style.display = "none";
     };
 
-    //const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?");
+    //const ok = confirm("Bạn có chắc muốn SỬA (ghi đè) hóa đơn này không?"); 
     //if (!ok) {
     //   closePopup();
     //  return;
@@ -1031,32 +1031,53 @@ export async function xacNhanSuaHoaDon() {
 }
 
 // forceSpecial = true ⇒ luôn in hóa đơn đặc biệt (/in-hoadon-db.html)
+// forceSpecial = true ⇒ luôn in hóa đơn đặc biệt (/in-hoadon-db.html)
 function inHoaDon(hoadon, chitiet, forceSpecial = false) {
-    const data = { hoadon, chitiet };
-    localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+  const data = { hoadon, chitiet };
+  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
+  const isHoaDonDacBiet =
+    forceSpecial || (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
 
-    const isHoaDonDacBiet =
-        forceSpecial || (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
+  const url = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
 
-    iframe.src = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
+  // =========================================================
+  // ✅ NEW: Nếu trang có overlay in/xem in => dùng overlay
+  // - Tick "In nhanh" => autoPrint
+  // - Không tick => chỉ xem (preview)
+  // =========================================================
+  if (typeof window.openPrintOverlay === "function") {
+    // hỗ trợ 2 id checkbox để bạn dùng cho nhiều trang:
+    const fast1 = document.getElementById("inNhanh")?.checked;
+    const fast2 = document.getElementById("chk_innhanh")?.checked;
+    const fast = !!(fast1 || fast2);
 
-    document.body.appendChild(iframe);
+    window.openPrintOverlay(url, { autoPrint: fast });
+    return;
+  }
 
-    iframe.onload = () => {
-        setTimeout(() => {
-            try {
-                iframe.contentWindow.print();
-            } catch (e) {
-                console.error("Không thể gọi print() từ iframe:", e);
-            } finally {
-                iframe.remove();
-            }
-        }, 500);
-    };
+  // =========================================================
+  // ✅ FALLBACK: Trang chưa nâng cấp overlay => giữ cơ chế cũ
+  // =========================================================
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.src = url;
+
+  document.body.appendChild(iframe);
+
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error("Không thể gọi print() từ iframe:", e);
+      } finally {
+        iframe.remove();
+      }
+    }, 500);
+  };
 }
+
 
 /* ========================= LƯU CHUYỂN CHI NHÁNH – ĐÃ TÍCH HỢP CCN_CTX ========================= */
 export async function luuHoaDonccn1v2() {
