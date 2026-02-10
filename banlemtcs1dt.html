@@ -625,6 +625,8 @@
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
 
+            <button id="btn-in" type="button">🖨️ In hóa đơn</button>
+
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
             <button id="quaylai">Quay lại</button>
@@ -884,6 +886,32 @@
         });
 
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+
+        document.getElementById('btn-in')?.addEventListener('click', async () => {
+  // 1) Lấy dữ liệu đã render/in giống file in-hoadondt
+  const dataIn = JSON.parse(localStorage.getItem("data_hoadon_in") || "{}");
+  const sohd = String(dataIn?.hoadon?.sohd || "").trim();
+  if (!sohd) {
+    alert("Chưa có hóa đơn để in. Hãy Lưu trước.");
+    return;
+  }
+
+  // 2) Gửi lệnh in (queue)
+  const diadiem = "cs1"; // trang cs1dt cố định
+  const { data, error } = await window.supabase
+    .from("print_jobs")
+    .insert([{ diadiem, sohd, payload: dataIn }])
+    .select("id")
+    .single();
+
+  if (error) {
+    alert("Gửi lệnh in thất bại: " + error.message);
+    return;
+  }
+
+  alert("Đã gửi lệnh in. PC sẽ tự in ra máy PRP-085.");
+});
+
     </script>
 
     <script>
