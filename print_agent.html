@@ -1,0 +1,1015 @@
+Bạn đã nói:
+máy in hóa đơn PRP0 85 của tôi đăng kết nối với máy tính sử dụng Windows 10 tôi muốn xe nó ra mạng lan để các máy máy
+tính hoặc máy điện thoại khác trong sử dụng chung để in hóa đơn cho phần mềm bán hàng của tôi thì phải làm thế nào hướng
+dẫn tôi chi tiết từng bước
+
+ChatGPT đã nói:
+OK, mình hướng dẫn từng bước – đúng kiểu “làm tới đâu chạy được tới đó” cho máy in hóa đơn PRP0-85 dùng Windows 10, chia
+sẻ để máy khác + điện thoại cùng in qua LAN/Wi-Fi nhé 👌
+
+Mình chia làm 2 cách (bạn chọn 1 cách phù hợp hạ tầng hiện tại):
+
+🔹 CÁCH 1 (KHUYẾN NGHỊ): CHIA SẺ QUA MÁY TÍNH CHỦ (Windows 10)
+➡️ Dễ làm – không cần mua thêm thiết bị
+➡️ Phù hợp nếu máy bán hàng luôn bật
+
+🧱 Mô hình
+PRP0-85 → USB → PC chính (Win 10)
+↓
+LAN / WiFi Router
+↓ ↓
+PC khác Điện thoại
+✅ BƯỚC 1: Cài driver & in test trên máy chính
+Cắm PRP0-85 → USB → PC
+
+Cài driver PRP0-85
+
+Vào
+Control Panel → Devices and Printers
+
+Chuột phải PRP0-85 → Printer properties → Print Test Page
+👉 Bắt buộc in OK trước khi làm bước sau
+
+✅ BƯỚC 2: Bật chia sẻ máy in
+Chuột phải PRP0-85 → Printer properties
+
+Tab Sharing
+
+Tick:
+
+✅ Share this printer
+
+Share name: ví dụ
+
+PRP085
+OK
+
+📌 Tên share ngắn – không dấu – không khoảng trắng
+
+✅ BƯỚC 3: Cho phép chia sẻ trong Windows
+Control Panel → Network and Sharing Center
+
+Change advanced sharing settings
+
+Bật:
+
+✅ Turn on network discovery
+
+✅ Turn on file and printer sharing
+
+Save
+
+✅ BƯỚC 4: Gán IP cố định cho máy chính (RẤT QUAN TRỌNG)
+Nhấn Win + R → gõ cmd
+
+Gõ:
+
+ipconfig
+Ghi lại IP, ví dụ:
+
+192.168.1.10
+Vào Router → DHCP → Bind IP cho MAC của PC
+👉 Tránh đổi IP → các máy khác in ổn định
+
+✅ BƯỚC 5: Máy tính khác kết nối máy in
+Trên PC khác (Win 10):
+
+Control Panel → Devices and Printers
+
+Add printer
+
+Nếu không thấy → chọn:
+The printer that I want isn’t listed
+
+Chọn:
+
+Select a shared printer by name
+Nhập:
+
+\\192.168.1.10\PRP085
+Next → cài driver → Finish
+
+👉 In test OK là xong 🎉
+
+🔹 CÁCH 2: IN TỪ ĐIỆN THOẠI (ANDROID / iOS)
+Lưu ý quan trọng:
+Máy in PRP0-85 KHÔNG in trực tiếp từ điện thoại, mà:
+📱 Điện thoại → 🌐 Phần mềm bán hàng → 🖥 PC → 🖨 Máy in
+
+✅ Phương án ổn định nhất
+Phần mềm bán hàng Web / Cloud
+
+Khi bấm In hóa đơn:
+
+Gửi lệnh về PC bán hàng
+
+PC tự in qua PRP0-85
+
+📌 Đây là cách 99% shop đang dùng
+
+🔁 Nếu bạn dùng Web POS (rất phù hợp với hệ thống bạn đang làm)
+Mình gợi ý kiến trúc này (chuẩn – lâu dài):
+
+Điện thoại / Tablet
+↓
+Web bán hàng
+↓
+Local Print Service (JS / Node / Electron)
+↓
+PRP0-85
+👉 Bạn có thể:
+
+Dùng QZ Tray
+
+Hoặc NodeJS local print service
+
+Hoặc Electron app in hóa đơn
+
+(Nếu bạn muốn, mình viết luôn module in cho hệ thống Supabase/Web của bạn)
+
+❌ KHÔNG KHUYẾN NGHỊ
+Cách Lý do
+Cắm USB → Router PRP0-85 không hỗ trợ
+Bluetooth in từ iPhone Rất chập chờn
+App in nhiệt iOS Không kiểm soát khổ giấy
+🟢 TÓM TẮT CÁCH NÊN LÀM
+Nhu cầu Giải pháp
+Nhiều PC in Share printer qua Win 10
+Điện thoại in In gián tiếp qua PC
+Ổn định lâu dài Web POS + Local print service
+👉 Bước tiếp theo mình cần bạn xác nhận:
+
+Phần mềm bán hàng của bạn là:
+
+🌐 Web (HTML/JS)?
+
+🖥 Desktop?
+
+In từ:
+
+PC?
+
+iPhone?
+
+Android?
+
+Có dùng Supabase / Firebase / server riêng không?
+
+👉 Trả lời 3 ý trên, mình vẽ luôn sơ đồ + viết giải pháp in đúng cho hệ thống của bạn 🚀
+
+
+Bạn đã nói:
+Đã tải lên ảnh
+Đã tải lên ảnh
+Đã tải lên ảnh
+Đã tải lên ảnh
+Đã tải lên ảnh
+Tôi đã chia sẻ máy in ra mạng lan như thế này nhưng phần mềm của tôi vẫn báo không tìm thấy máy in
+
+ChatGPT đã nói:
+Mình xem kỹ tất cả ảnh bạn gửi rồi 👍
+Kết luận rất rõ ràng như sau (và bạn đang đi đúng 80%, chỉ vướng đúng “nút thắt” cuối):
+
+🔴 NGUYÊN NHÂN CHÍNH (QUAN TRỌNG)
+👉 PRP-085 KHÔNG PHẢI là máy in AirPrint
+👉 iPhone sẽ KHÔNG BAO GIỜ tìm thấy máy in này trong danh sách AirPrint, dù bạn đã share LAN đúng 100%
+
+📸 Ảnh iPhone của bạn hiển thị:
+
+“Không tìm thấy máy in AirPrint nào”
+➡️ ĐIỀU NÀY LÀ BÌNH THƯỜNG – KHÔNG PHẢI LỖI
+
+Vì sao lại như vậy?
+Chia sẻ máy in trên Windows = SMB / Windows Print
+
+iOS chỉ tìm:
+
+AirPrint
+
+Bonjour
+
+PRP-085 chỉ là USB thermal printer
+
+Windows KHÔNG tự biến máy in USB thành AirPrint
+
+👉 Nên:
+
+✔ PC thấy máy in
+✔ PC khác trong LAN in được
+❌ iPhone KHÔNG thấy (bình thường)
+
+✅ KIỂM TRA NHANH: PHẦN WINDOWS CỦA BẠN ĐÃ ĐÚNG CHƯA?
+Dựa vào ảnh:
+
+✔ IP máy chủ
+192.168.1.15
+➡ OK
+
+✔ Printer share
+Share name: inhd
+➡ OK
+
+✔ Quyền
+Everyone → Print ✓
+➡ OK
+
+✔ Network discovery + File & Printer sharing
+➡ ĐÃ BẬT (ảnh cuối)
+
+👉 PHẦN WINDOWS CỦA BẠN ĐÃ ĐÚNG – KHÔNG CẦN SỬA GÌ NỮA
+
+🔥 VẤN ĐỀ THỰC SỰ NẰM Ở ĐÂY
+❌ Phần mềm của bạn đang tìm máy in theo kiểu AirPrint / thiết bị in trực tiếp
+❌ Nhưng máy in của bạn là máy in LAN gián tiếp qua PC
+
+🟢 GIẢI PHÁP ĐÚNG – ỔN ĐỊNH – DÙNG ĐƯỢC NGAY
+CÁCH CHUẨN NHẤT (99% SHOP DÙNG)
+❗ Nguyên tắc
+📱 iPhone KHÔNG in trực tiếp
+🖥 PC LÀM TRẠM IN
+
+iPhone / Tablet
+↓
+Phần mềm bán hàng (Web)
+↓
+Gửi lệnh in
+↓
+PC nhận lệnh
+↓
+PRP-085 (USB)
+CÁCH 1 – NHANH, DỄ, MIỄN PHÍ: QZ Tray ⭐⭐⭐⭐⭐
+Bước 1: Cài QZ Tray trên PC
+👉 https://qz.io/download/
+
+Cài xong
+
+Biểu tượng QZ xuất hiện dưới taskbar
+
+KHÔNG tắt
+
+Bước 2: Test in từ trình duyệt trên PC
+Vào:
+
+http://localhost:8181
+➡ Chọn máy in PRP-085 / inhd
+➡ In test
+
+✔ Nếu in OK → sang bước 3
+❌ Nếu không in → dừng lại báo mình
+
+Bước 3: Kết nối từ phần mềm bán hàng của bạn
+Trong Web bán hàng (HTML/JS):
+
+qz.websocket.connect().then(() => {
+return qz.printers.find("inhd"); // hoặc PRP-085
+}).then(printer => {
+var config = qz.configs.create(printer);
+var data = [
+'\x1B\x40', // init
+'SHOP HOÀN TUYẾT\n',
+'Tong tien: 150.000đ\n',
+'\x1D\x56\x41' // cut
+];
+return qz.print(config, data);
+});
+👉 iPhone chỉ cần mở web → bấm In
+👉 PC tự in
+
+CÁCH 2 – CHỈ ĐỂ XEM (KHÔNG KHUYẾN NGHỊ)
+App in qua SMB
+
+App in Bluetooth
+❌ Chậm
+❌ Lỗi khổ giấy
+❌ Không kiểm soát ESC/POS
+
+🧠 TÓM TẮT NGẮN GỌN
+Vấn đề Trạng thái
+Chia sẻ máy in Windows ✅ ĐÚNG
+LAN ✅ ĐÚNG
+iPhone không thấy AirPrint ✅ BÌNH THƯỜNG
+In trực tiếp từ iPhone ❌ KHÔNG
+Giải pháp đúng 🟢 PC làm trạm in
+👉 MÌNH CẦN BẠN XÁC NHẬN 3 ĐIỀU (RẤT QUAN TRỌNG)
+Phần mềm bán hàng của bạn là:
+
+🌐 Web (HTML / JS)?
+
+🖥 App Windows?
+
+Bạn in hóa đơn khi:
+
+Bán trên PC?
+
+Bán trên iPhone?
+
+Có dùng Supabase / Firebase / API server không?
+
+➡️ Trả lời 3 ý này, mình viết luôn đoạn in hoàn chỉnh đúng với hệ thống của bạn, không lý thuyết nữa 🚀
+
+
+Bạn đã nói:
+Web (HTML / JS)
+Bán trên iPhone
+dùng Supabase / Firebase / API server
+
+ChatGPT đã nói:
+Giải pháp đúng cho mô hình của bạn là: iPhone chỉ gửi lệnh – PC làm trạm in qua QZ Tray, không dùng AirPrint.
+
+OK, cảm ơn bạn xác nhận 👍
+Mình chốt đúng bài toán của bạn và hướng dẫn chuẩn – làm tới đâu chạy tới đó, đúng với hệ Web (HTML/JS) + bán trên
+iPhone + Supabase/Firebase.
+
+🎯 KẾT LUẬN NGẮN GỌN (RẤT QUAN TRỌNG)
+❌ KHÔNG in trực tiếp từ iPhone
+
+❌ KHÔNG dùng AirPrint
+
+✅ PC Windows = Print Server
+
+✅ iPhone/Web chỉ gửi lệnh in
+
+✅ QZ Tray = cầu nối Web ↔ Máy in PRP-085
+
+🧱 KIẾN TRÚC CHUẨN (ĐÚNG 100%)
+iPhone (Safari / Chrome)
+|
+| HTTPS (Supabase / API)
+v
+Web bán hàng (HTML / JS)
+|
+| WebSocket (LAN)
+v
+PC Windows (QZ Tray chạy nền)
+|
+| USB
+v
+Máy in PRP-085
+👉 iPhone không cần thấy máy in
+👉 Chỉ cần PC mở + QZ Tray chạy
+
+PHẦN A — THIẾT LẬP 1 LẦN TRÊN PC (10 PHÚT)
+✅ BƯỚC 1: Cài QZ Tray
+👉 https://qz.io/download/
+
+Cài xong
+
+Thấy biểu tượng QZ ở góc phải taskbar
+
+Chuột phải → Allow unsigned requests (hoặc nhớ accept khi hỏi)
+
+📌 PC phải luôn bật khi bán hàng
+
+✅ BƯỚC 2: Test QZ Tray
+Mở Chrome trên PC, truy cập:
+
+http://localhost:8181
+Printers → phải thấy:
+
+PRP-085
+
+hoặc inhd
+
+❌ Không thấy → dừng lại báo mình
+✅ Thấy → sang bước tiếp
+
+✅ BƯỚC 3: Test in thủ công
+Trong trang test của QZ → chọn máy in → Print test
+
+👉 Nếu máy in nhả giấy = OK 100%
+
+PHẦN B — TÍCH HỢP VÀO WEB BÁN HÀNG (HTML / JS)
+1️⃣ Thêm QZ Tray vào web
+Trong file index.html hoặc banle.html:
+
+<script src="https://unpkg.com/qz-tray@2.2.4/qz-tray.js"></script>
+2️⃣ Hàm kết nối QZ Tray
+async function connectQZ() {
+if (!qz.websocket.isActive()) {
+await qz.websocket.connect();
+}
+}
+3️⃣ Hàm in hóa đơn (ESC/POS – chuẩn máy nhiệt)
+async function printReceipt(text) {
+await connectQZ();
+
+const printer = await qz.printers.find("inhd"); // hoặc "PRP-085"
+const config = qz.configs.create(printer, {
+encoding: 'GB18030'
+});
+
+const data = [
+'\x1B\x40', // init
+text,
+'\n\n',
+'\x1D\x56\x41' // cắt giấy
+];
+
+return qz.print(config, data);
+}
+4️⃣ Gọi in sau khi lưu hóa đơn (Supabase / Firebase)
+Ví dụ:
+
+async function onSaveInvoice(invoice) {
+// 1. Lưu hóa đơn lên Supabase
+await saveInvoiceToSupabase(invoice);
+
+// 2. Tạo nội dung in
+const text = `
+SHOP HOÀN TUYẾT
+----------------
+HD: ${invoice.so_hd}
+Tong tien: ${invoice.tong_tien} đ
+Thanh toan: ${invoice.thanh_toan} đ
+----------------
+Cam on quy khach
+`;
+
+// 3. Gửi lệnh in
+await printReceipt(text);
+}
+👉 iPhone bấm “Lưu / In”
+👉 PC tự in – không popup – không AirPrint
+
+PHẦN C — CÁCH DÙNG HẰNG NGÀY (RẤT THỰC TẾ)
+Trước giờ mở shop:
+Bật PC
+
+QZ Tray chạy
+
+Mở web bán hàng (PC hoặc iPhone đều được)
+
+Khi bán trên iPhone:
+Nhập hàng
+
+Bấm Lưu / In
+
+Hóa đơn tự in ở PC
+
+❌ NHỮNG THỨ BẠN KHÔNG CẦN LÀM NỮA
+Thứ Lý do
+Tìm AirPrint PRP-085 không hỗ trợ
+App in iOS Không kiểm soát khổ
+Share printer cho iPhone iOS không dùng SMB
+Bluetooth Chập chờn
+🔐 BẢO MẬT & ỔN ĐỊNH
+QZ Tray chỉ nhận lệnh từ LAN
+
+Có thể whitelist domain web bán hàng
+
+Không ảnh hưởng Supabase / Firebase
+
+👉 BƯỚC TIẾP THEO MÌNH LÀM GIÚP BẠN
+Nếu bạn muốn, mình có thể:
+
+✅ Viết module in hóa đơn hoàn chỉnh đúng chuẩn hệ của bạn
+
+✅ Gắn vào banle.html / banlemt.html
+
+✅ Tách logic:
+
+In khi bán trên iPhone
+
+In lại hóa đơn
+
+In không hỏi / in sau lưu
+
+👉 Chỉ cần nói:
+
+“Gắn in QZ Tray vào trang XYZ.html theo chuẩn hiện tại của tôi”
+
+Mình làm đúng code – đúng luồng – dùng được ngay 🚀
+
+
+Bạn đã nói:
+Đã tải lên ảnh
+Đã tải lên ảnh
+
+ChatGPT đã nói:
+OK, ảnh bạn gửi chốt được lỗi rồi 👍
+Đây không phải lỗi máy in, không phải lỗi LAN, mà là lỗi đúng kiểu “hay gặp lần đầu với QZ Tray”.
+
+🔴 LỖI BẠN ĐANG GẶP (CHỐT NGUYÊN NHÂN)
+Trình duyệt báo:
+
+ERR_INVALID_HTTP_RESPONSE
+“localhost đã gửi phản hồi không hợp lệ”
+
+👉 Điều này xảy ra khi bạn mở http://localhost:8181 trực tiếp bằng Chrome
+👉 Trong khi QZ Tray KHÔNG phải là web server HTTP bình thường
+
+⛔ 8181 là cổng WebSocket, không phải cổng trang web
+
+➡️ Mở bằng trình duyệt = lỗi là ĐÚNG
+
+✅ CÁCH ĐÚNG ĐỂ TEST QZ TRAY (LÀM THEO THỨ TỰ)
+🔹 CÁCH 1 (NHANH – CHUẨN): dùng trang test chính thức của QZ
+👉 Mở Chrome (PC) → vào:
+
+https://demo.qz.io
+📌 KHÔNG dùng localhost nữa
+
+🔹 BƯỚC 1: Cho phép QZ Tray
+QZ Tray ở góc phải (biểu tượng xanh)
+
+Khi web hỏi → Allow / Trust
+
+Nếu không hiện:
+
+Chuột phải QZ Tray → Advanced → Allow unsigned requests
+
+🔹 BƯỚC 2: Test in trên demo.qz.io
+Trong trang demo:
+
+Tab Printers
+
+Bấm Find Printers
+
+Phải thấy:
+
+PRP-085
+
+hoặc inhd
+
+Chọn máy in
+
+Tab Raw → Print
+
+👉 Nếu máy in nhả giấy → QZ TRAY OK 100%
+
+❌ VÌ SAO localhost:8181 BỊ LỖI?
+Giải thích ngắn gọn:
+
+Cổng Chức năng
+8181 WebSocket nội bộ
+❌ HTTP Không hỗ trợ
+✔ Web Phải gọi qua JS
+👉 Nên Chrome mở trực tiếp = lỗi
+
+✅ SAU KHI TEST OK → LÀM BƯỚC QUAN TRỌNG NHẤT
+📌 KHÔNG test QZ nữa
+📌 TÍCH HỢP THẲNG VÀO WEB BÁN HÀNG
+🧩 CODE CHUẨN CHO WEB (BẠN COPY DÙNG LUÔN)
+1️⃣ Nhúng QZ Tray
+<script src="https://unpkg.com/qz-tray@2.2.4/qz-tray.js"></script>
+2️⃣ Hàm kết nối QZ
+async function connectQZ() {
+if (!qz.websocket.isActive()) {
+await qz.websocket.connect();
+}
+}
+3️⃣ Hàm in PRP-085 (ESC/POS)
+async function printReceipt(text) {
+await connectQZ();
+
+const printer = await qz.printers.find("inhd"); // hoặc PRP-085
+const config = qz.configs.create(printer, {
+encoding: "GB18030"
+});
+
+const data = [
+'\x1B\x40',
+text,
+'\n\n',
+'\x1D\x56\x41'
+];
+
+return qz.print(config, data);
+}
+4️⃣ Gọi khi bán trên iPhone
+async function banHang(invoice) {
+await saveInvoiceSupabase(invoice);
+
+const text = `
+SHOP HOÀN TUYẾT
+----------------
+HD: ${invoice.so_hd}
+Tong tien: ${invoice.tong_tien}đ
+Thanh toan: ${invoice.thanh_toan}đ
+----------------
+Xin cam on!
+`;
+
+await printReceipt(text);
+}
+📱 iPhone chỉ bấm Lưu / In
+🖥 PC tự in
+🖨 Máy in chạy
+
+🟢 TÓM TẮT SIÊU NGẮN
+Vấn đề Trạng thái
+Share máy in ✅ OK
+LAN ✅ OK
+QZ Tray ✅ Đã chạy
+localhost:8181 lỗi ✅ BÌNH THƯỜNG
+demo.qz.io ✅ Dùng đúng
+iPhone in ✅ Qua PC
+👉 BƯỚC TIẾP THEO (MÌNH LÀM CHO BẠN)
+Bạn chỉ cần nói 1 câu:
+
+“Gắn in QZ Tray vào trang banle.html của tôi theo luồng hiện tại”
+
+👉 Mình sẽ:
+
+Gắn đúng file
+
+Không phá code cũ
+
+Hỗ trợ:
+
+In sau khi lưu
+
+In lại
+
+In không hỏi
+
+💪 Tới đây là 90% shop dừng, bạn đang đi đúng hướng rồi.
+
+
+Bạn đã nói:
+Đã tải lên ảnh
+Đã tải lên ảnh
+Đã tải lên ảnh
+Đã tải lên ảnh
+Đã tải lên ảnh
+tôi đang thực hiện việc share máy in hóa đơn trên một máy tính khác của cửa hàng là máy chủ kết nối máy in tôi đang
+share máy in in bill. Đã cài đặt đầy đủ như ảnh tôi gửi cho bạn ở trang Web qz tôi thấy nó đã nhận biết được máy in này
+nhưng bấm vào tìm máy in bây giờ nó lại báo lỗi như ảnh tôi gửi bạn kiểm tra xem vì sao
+
+ChatGPT đã nói:
+OK, mình xem toàn bộ ảnh bạn gửi và có thể chốt chính xác nguyên nhân + cách sửa ngay.
+Bạn đang rất gần đích, chỉ vướng 1 lỗi logic rất hay gặp với QZ Tray.
+
+🔴 CHỐT NGUYÊN NHÂN (RẤT QUAN TRỌNG)
+❌ Error: Specified printer could not be found
+
+⛔ KHÔNG phải do share LAN sai
+⛔ KHÔNG phải do QZ Tray không nhận máy in
+
+👉 Nguyên nhân thật sự là:
+
+❗ Bạn đang tìm máy in theo tên không khớp 100% với tên mà QZ Tray đang nhận
+📌 BẰNG CHỨNG TỪ ẢNH CỦA BẠN
+✅ QZ Tray ĐÃ NHẬN MÁY IN
+Trong danh sách bên trái của demo.qz.io, bạn thấy rõ:
+
+PRP-085 Printer
+và
+
+Connection: PORTPROMPT
+👉 Điều này chứng minh:
+
+QZ Tray chạy ✔
+
+Driver OK ✔
+
+Máy in hoạt động ✔
+
+❌ Nhưng bạn đang:
+Gõ zebra để search
+
+Hoặc click Find Printer khi Current printer = NONE
+
+Hoặc code tìm "inhd" / "in bill"
+
+👉 Tên share Windows ≠ Tên printer trong QZ Tray
+
+🧠 NGUYÊN TẮC SỐNG CÒN VỚI QZ TRAY
+🔥 QZ Tray CHỈ quan tâm tên printer của Windows,
+❌ KHÔNG quan tâm tên share LAN
+
+Trong trường hợp của bạn:
+Thứ Giá trị
+Tên share Windows in bill
+❌ Không dùng cho QZ ❌
+Tên printer QZ nhận PRP-085 Printer
+✅ Phải dùng ✅
+✅ CÁCH SỬA NGAY TRÊN demo.qz.io (LÀM THEO ĐÚNG THỨ TỰ)
+🔹 BƯỚC 1: KHÔNG search gì cả
+Xóa ô Search
+
+Bấm Find All Printers
+
+👉 Đợi danh sách hiện
+
+🔹 BƯỚC 2: SET PRINTER ĐÚNG CÁCH
+Click vào:
+
+PRP-085 Printer
+Bấm nút:
+
+Set To Host
+📌 Current printer phải đổi từ:
+
+NONE
+➡ thành:
+
+PRP-085 Printer
+🔹 BƯỚC 3: Test in ĐÚNG CHẾ ĐỘ
+Tab Raw Printing
+
+Chọn ESC/POS (⚠️ không chọn EPL2)
+
+Bấm file:
+
+escpos_sample.bin
+🖨️ Nếu máy in nhả giấy → OK 100%
+
+❌ NHỮNG THỨ BẠN ĐANG LÀM SAI (CẦN DỪNG)
+Việc Vì sao sai
+Search zebra PRP-085 ≠ Zebra
+Dùng in bill Đây là tên share
+Find Printer khi chưa set QZ không biết in vào đâu
+Dùng EPL2 PRP-085 là ESC/POS
+🧩 CHỐT LẠI BẰNG 1 CÂU
+QZ Tray chỉ in được khi Current printer ≠ NONE
+và tên printer phải đúng 100% như danh sách QZ nhận
+
+🔧 SAU KHI TEST OK → SỬA CODE WEB CHO ĐÚNG
+❌ Sai (rất nhiều người mắc)
+qz.printers.find("in bill");
+✅ ĐÚNG (theo máy của bạn)
+qz.printers.find("PRP-085 Printer");
+📌 Hoặc an toàn nhất:
+
+const printer = await qz.printers.getDefault();
+👉 BƯỚC TIẾP THEO (MÌNH LÀM CHO BẠN)
+Nếu bạn đồng ý, mình sẽ:
+
+Viết module in hoàn chỉnh cho hệ Web + Supabase của bạn
+
+Tự động:
+
+Tìm printer đúng
+
+In khi bán trên iPhone
+
+In lại hóa đơn
+
+Không phụ thuộc tên share
+
+👉 Chỉ cần nói:
+
+“OK, viết module in QZ Tray cho banle.html theo hệ hiện tại”
+
+Mình làm đúng – gọn – chạy ngay 💪
+
+
+Bạn đã nói:
+
+Tôi đã test máy in ok hiện tại file in hóa đơn này tôi in từ máy tính đang rất tốt và in từ điện thoại thì chưa in được
+bạn hỗ trợ tôi hướng dẫn tôi nhé bạn đọc tôi gửi xem có ổn không
+
+ChatGPT đã nói:
+
+Đã suy nghĩ trong 29s
+OK, mình đã đọc file in-hoadon.html của bạn và xác nhận:
+
+✅ In từ PC đang tốt vì file đang dùng window.print() + dữ liệu lấy từ localStorage("data_hoadon_in").
+in-hoadon
+
+
+❌ In từ iPhone không được vì iPhone không thể gọi trực tiếp window.print() trên PC, và cũng không truy cập được
+localStorage của PC.
+
+Vì vậy để “bán trên iPhone → tự in ra máy PRP-085 ở PC”, bạn cần thêm 1 tầng “Print Agent” trên PC: PC sẽ nghe lệnh in
+(qua Supabase Realtime / API) rồi tự mở hóa đơn và in.
+
+Dưới đây là hướng dẫn chuẩn, làm theo là chạy được.
+
+A. Kết luận nhanh: Luồng đúng cho iPhone → PC in
+iPhone (Web bán hàng)
+→ ghi 1 “lệnh in” vào Supabase (bảng print_jobs)
+→ PC (mở 1 trang print_agent.html) subscribe realtime
+→ PC nhận lệnh → đổ dữ liệu vào localStorage(data_hoadon_in) → mở in-hoadon.html?autoprint=1 → in
+
+Bạn đang có sẵn “mẫu in” rồi, chỉ thiếu “người nhận lệnh in” thôi.
+
+B. Tạo bảng hàng đợi in trên Supabase (1 lần)
+Chạy SQL:
+
+create table if not exists public.print_jobs (
+id uuid primary key default gen_random_uuid(),
+created_at timestamptz not null default now(),
+status text not null default 'new', -- new | printing | printed | error
+target text not null, -- ví dụ: cs1 / cs2 / may1
+payload jsonb not null, -- chứa { hoadon, chitiet }
+printed_at timestamptz,
+error text
+);
+
+create index if not exists print_jobs_new_idx
+on public.print_jobs (status, target, created_at desc);
+RLS:
+
+Nếu bạn đang dùng hệ “đăng nhập supabase”, có thể cho role admin/nhân viên được insert.
+
+Còn print_agent trên PC có thể dùng service role (khuyến nghị) hoặc 1 user admin login.
+
+C. Sửa in-hoadon.html để tự in khi có ?autoprint=1
+Trong file bạn có đoạn cuối:
+
+document.addEventListener("keydown", function (e) {
+if (e.key === "Enter") {
+window.print();
+}
+});
+✅ Bạn thêm auto print (không cần bấm Enter nữa):
+
+Chèn ngay trước đoạn “Cho phép in bằng phím Enter”:
+
+// Auto print nếu có ?autoprint=1
+const qs = new URLSearchParams(location.search);
+if (qs.get("autoprint") === "1") {
+// đợi DOM render xong rồi in
+setTimeout(() => window.print(), 250);
+}
+📌 Lưu ý nhỏ: bạn đang localStorage.removeItem("data_hoadon_in"); khá sớm.
+in-hoadon
+
+
+Để chắc chắn không mất dữ liệu nếu in lỗi, bạn nên xóa sau khi in xong:
+
+Thay vì xóa ngay, đổi thành:
+
+window.addEventListener("afterprint", () => {
+localStorage.removeItem("data_hoadon_in");
+});
+D. Tạo trang print_agent.html chạy trên PC (mở suốt ngày)
+Trang này:
+
+đăng nhập Supabase (bằng service role hoặc account admin)
+
+subscribe realtime bảng print_jobs
+
+khi có job mới đúng target → lock job → đổ localStorage → mở tab in
+
+1) Tạo file print_agent.html (đặt cùng host với web của bạn)
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Print Agent</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 12px
+        }
+
+        .ok {
+            color: green
+        }
+
+        .err {
+            color: red
+        }
+    </style>
+</head>
+
+<body>
+    <h3>Print Agent - CS1</h3>
+    <div id="st">Đang khởi động...</div>
+
+    <script type="module">
+        import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+        // TODO: thay bằng project của bạn
+
+        const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const TARGET = "cs1";
+
+
+        const st = (msg, cls = "") => {
+            const el = document.getElementById("st");
+            el.className = cls;
+            el.textContent = msg;
+        };
+
+        st("Đang subscribe print_jobs...", "ok");
+
+        async function claimJob(jobId) {
+            // lock job: new -> printing (tránh in trùng)
+            const { data, error } = await supabase
+                .from("print_jobs")
+                .update({ status: "printing" })
+                .eq("id", jobId)
+                .eq("status", "new")
+                .select("id")
+                .maybeSingle();
+
+            if (error) return false;
+            return !!data;
+        }
+
+        async function doneJob(jobId) {
+            await supabase
+                .from("print_jobs")
+                .update({ status: "printed", printed_at: new Date().toISOString() })
+                .eq("id", jobId);
+        }
+
+        async function errorJob(jobId, err) {
+            await supabase
+                .from("print_jobs")
+                .update({ status: "error", error: String(err || "unknown") })
+                .eq("id", jobId);
+        }
+
+        function openAndPrint(payload) {
+            // payload chính là { hoadon, chitiet } giống file in-hoadon.html đang dùng
+            localStorage.setItem("data_hoadon_in", JSON.stringify(payload));
+
+            // mở trang in của bạn
+            // sửa URL này theo đúng đường dẫn bạn đang dùng
+            const url = "/in-hoadon.html?autoprint=1";
+
+            // mở tab mới để in (có thể bị popup-block nếu không cho phép)
+            window.open(url, "_blank");
+        }
+
+        // Subscribe realtime
+        supabase
+            .channel("print_jobs_channel_cs1")
+            .on("postgres_changes", {
+                event: "INSERT",
+                schema: "public",
+                table: "print_jobs"
+            }, async (payloadEvent) => {
+                try {
+                    const job = payloadEvent.new;
+                    if (!job) return;
+                    if (job.status !== "new") return;
+                    if (job.target !== TARGET) return;
+
+                    st("Có lệnh in mới: " + job.id, "ok");
+
+                    const ok = await claimJob(job.id);
+                    if (!ok) return; // bị máy khác claim
+
+                    openAndPrint(job.payload);
+
+                    // đánh dấu printed sau 3s (bạn có thể làm “afterprint” nâng cao sau)
+                    setTimeout(() => doneJob(job.id), 3000);
+
+                } catch (e) {
+                    st("Lỗi in: " + e, "err");
+                    try { await errorJob(payloadEvent.new?.id, e); } catch { }
+                }
+            })
+            .subscribe((status) => {
+                st("Realtime status: " + status, status === "SUBSCRIBED" ? "ok" : "");
+            });
+    </script>
+</body>
+
+</html>
+2) Trên PC: mở print_agent.html và để đó (không tắt)
+Lần đầu Chrome có thể chặn popup (window.open).
+→ Bạn bật: Allow pop-ups cho domain của bạn.
+
+E. iPhone: Khi bấm “In hóa đơn” thì tạo 1 print_job
+Trong code bán hàng của bạn (chỗ lưu hóa đơn xong), thêm:
+
+// payload đúng format in-hoadon.html đang đọc
+const payload = { hoadon, chitiet };
+
+await supabase.from("print_jobs").insert({
+target: "cs1", // đúng với print_agent
+payload
+});
+✅ Xong: iPhone chỉ “đẩy lệnh”, PC tự in.
+
+F. Điểm quan trọng để chạy mượt
+PC phải mở print_agent (hoặc bạn gắn nó chạy startup)
+
+Chrome trên PC phải cho phép pop-up cho domain
+
+Nếu bạn muốn in không hiện hộp thoại, thì mới dùng QZ Tray (bước nâng cao).
+Còn cách trên sẽ mở trang in và gọi window.print() (thường vẫn hiện dialog tùy cấu hình).
+
+G. Nhận xét về file in-hoadon.html của bạn
+File của bạn ổn để in trên PC. Mình chỉ khuyên 2 chỉnh sửa nhỏ mình nói ở trên:
+
+auto print theo query autoprint=1
+
+xóa localStorage sau afterprint
+
+Còn lại giữ nguyên được.
+in-hoadon
+
+
+Nếu bạn muốn mình “gắn đúng vào dự án của bạn”
+Bạn nói giúp mình 2 thông tin (ngắn thôi):
+
+in-hoadon.html đang nằm URL nào? (ví dụ /print/in-hoadon.html hay /in-hoadon.html)
+
+Bạn muốn target theo cơ sở kiểu gì? cs1/cs2 hay theo “máy in 1/máy in 2”?
+
+Không cần gửi lại file—mình sẽ đưa bạn patch chính xác (đoạn nào thêm vào đâu) theo đúng thói quen cập nhật dự án của
+bạn.
+
+
+Nguồn
