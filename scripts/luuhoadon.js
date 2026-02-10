@@ -1047,14 +1047,20 @@ function inHoaDon(hoadon, chitiet, forceSpecial = false) {
   // - Không tick => chỉ xem (preview)
   // =========================================================
   if (typeof window.openPrintOverlay === "function") {
-    // hỗ trợ 2 id checkbox để bạn dùng cho nhiều trang:
-    const fast1 = document.getElementById("inNhanh")?.checked;
-    const fast2 = document.getElementById("chk_innhanh")?.checked;
-    const fast = !!(fast1 || fast2);
+  const fast1 = document.getElementById("inNhanh")?.checked;
+  const fast2 = document.getElementById("chk_innhanh")?.checked;
+  const fast = !!(fast1 || fast2);
 
-    window.openPrintOverlay(url, { autoPrint: fast });
-    return;
+  if (fast && typeof window.quickPrint === "function") {
+    // ✅ In nhanh: in luôn, không mở xem in
+    window.quickPrint(url);
+  } else {
+    // ✅ Không in nhanh: mở xem in đè lên trang
+    window.openPrintOverlay(url, { autoPrint: false });
   }
+  return;
+}
+
 
   // =========================================================
   // ✅ FALLBACK: Trang chưa nâng cấp overlay => giữ cơ chế cũ
