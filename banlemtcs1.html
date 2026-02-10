@@ -347,6 +347,23 @@
             left: auto !important;
             transform: none !important;
         }
+
+        #printOverlay{ position:fixed; inset:0; z-index:99999; }
+#printOverlay .po-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.35); }
+#printOverlay .po-panel{
+  position:absolute; inset:10px;
+  background:#fff; border-radius:10px;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+#printOverlay .po-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px; border-bottom:1px solid #eee;
+}
+#printOverlay .po-title{ font-weight:700; }
+#printOverlay .po-actions{ display:flex; gap:8px; }
+#printOverlay #poFrame{ width:100%; height:100%; border:0; }
+
     </style>
     <style>
         /* hd_state = xem => chữ đỏ nền hồng */
@@ -1009,10 +1026,10 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
-        //document.getElementById('btn-luu')?.addEventListener('click', () => {
-           // const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-           // dispatchTarget.dispatchEvent(ev);
-        //});
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+         const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+         dispatchTarget.dispatchEvent(ev);
+        });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1074,7 +1091,7 @@
         });
     </script>
 
-    <script>
+    <!-- <script>
         // Sau khi DOMContentLoaded hoặc ở script type="module" 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
@@ -1092,7 +1109,7 @@
             this.disabled = false;
             this.innerText = "💾 Lưu";
         };
-    </script>
+    </script>  -->
 
     <script>
         //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
@@ -1196,7 +1213,7 @@
         });
     </script>
 
-     <script>
+    <script>
         document.addEventListener("DOMContentLoaded", () => {
             const hdState = document.getElementById("hd_state");
             const btnXemIn = document.getElementById("xemin");
@@ -1368,6 +1385,24 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 });
 </script>
+
+    <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
+<div id="printOverlay" style="display:none;">
+  <div class="po-backdrop"></div>
+
+  <div class="po-panel">
+    <div class="po-header">
+      <div class="po-title">In hóa đơn</div>
+      <div class="po-actions">
+        <button id="poBtnPrint" type="button">In</button>
+        <button id="poBtnClose" type="button">Đóng</button>
+      </div>
+    </div>
+
+    <iframe id="poFrame" src="about:blank"></iframe>
+  </div>
+</div>
+
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
