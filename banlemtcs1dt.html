@@ -1261,20 +1261,19 @@
         });
     </script>
 
-    <script>
+   <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // Lấy phần tử sau khi DOM đã có đủ
-  const chk = document.getElementById('inNhanh');
+  const chk = document.getElementById('inNhanh') || document.getElementById('chk_innhanh');
   const overlay = document.getElementById('printOverlay');
   const frame = document.getElementById('poFrame');
   const btnClose = document.getElementById('poBtnClose');
   const btnPrint = document.getElementById('poBtnPrint');
 
-  // Nếu trang nào không có overlay thì thoát nhẹ nhàng
+  // Nếu trang không có overlay thì vẫn tạo móc tối thiểu
   if (!overlay || !frame) {
-    // vẫn tạo móc để luuhoadon.js không bị lỗi
     window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
-    window.openPrintOverlay = (url) => window.open(url, '_blank');
+    window.openPrintOverlay = (url) => window.open(url, '_blank'); // fallback
+    window.quickPrint = (url) => window.open(url, '_blank');
     return;
   }
 
@@ -1285,7 +1284,10 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('banle_print_fast', chk.checked ? '1' : '0');
   });
 
+  let printedOnce = false;
+
   function openOverlay(url) {
+    printedOnce = false;
     overlay.style.display = 'block';
     frame.src = url;
   }
@@ -1293,36 +1295,93 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeOverlay() {
     frame.src = 'about:blank';
     overlay.style.display = 'none';
+    printedOnce = false;
+  }
+
+  function doPrint() {
+    try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch(e) {}
+    printedOnce = true;
   }
 
   btnClose?.addEventListener('click', closeOverlay);
   overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlay);
 
   // Nút In trong overlay
-  btnPrint?.addEventListener('click', () => {
-    try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch (e) {}
-  });
+  btnPrint?.addEventListener('click', doPrint);
 
-  // ESC đóng overlay (guard an toàn)
+  // ✅ Enter để In, Enter lần 2 để Đóng (chỉ trên máy tính)
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay && overlay.style.display === 'block') closeOverlay();
+    if (overlay.style.display !== 'block') return;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!printedOnce) doPrint();
+      else closeOverlay();
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeOverlay();
+    }
   });
 
-  // ====== 2 hàm MÓC cho luuhoadon.js dùng chung ======
+  // ✅ Sau khi in xong (đóng dialog in), tự đóng overlay (đỡ phải Enter lần 2)
+  function bindAutoCloseAfterPrint(win) {
+    if (!win) return;
+    const handler = () => {
+      // tránh đóng khi overlay đã bị tắt
+      if (overlay.style.display === 'block') closeOverlay();
+      win.removeEventListener('afterprint', handler);
+    };
+    win.addEventListener('afterprint', handler);
+  }
+
+  // ====== API cho luuhoadon.js dùng chung ======
   window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
 
+  // Mở overlay để xem/in
   window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
     openOverlay(url);
 
-    if (autoPrint) {
-      frame.onload = () => {
-        setTimeout(() => {
-          try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch (e) {}
-        }, 150);
-      };
-    } else {
-      frame.onload = null;
-    }
+    frame.onload = () => {
+      if (autoPrint) {
+        // gắn tự đóng sau in
+        bindAutoCloseAfterPrint(frame.contentWindow);
+        // gọi in
+        setTimeout(doPrint, 150);
+      }
+    };
+  };
+
+  // ✅ In nhanh thật sự: KHÔNG mở overlay, chỉ gọi print bằng iframe ẩn
+  window.quickPrint = (url) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          // gắn tự remove sau in (nếu có afterprint)
+          const w = iframe.contentWindow;
+          const cleanup = () => {
+            try { iframe.remove(); } catch(e) {}
+            w?.removeEventListener?.('afterprint', cleanup);
+          };
+          w?.addEventListener?.('afterprint', cleanup);
+
+          w?.focus();
+          w?.print();
+
+          // fallback: remove sau 2s nếu afterprint không chạy
+          setTimeout(cleanup, 2000);
+        } catch (e) {
+          console.error(e);
+          try { iframe.remove(); } catch(_) {}
+        }
+      }, 150);
+    };
   };
 });
 </script>
