@@ -167,7 +167,7 @@ export function khoiTaoShortcut() {
     }
 
     // F6: Tiếp tục (duyệt hóa đơn)
-    if (e.key === "F6") {
+    if (e.key === "F7") {
       e.preventDefault();
       const btn = document.getElementById("tieptuc");
       if (btn) btn.click();
@@ -175,7 +175,7 @@ export function khoiTaoShortcut() {
     }
 
     // F7: Xem in hóa đơn
-    if (e.key === "F7") {
+    if (e.key === "F6") {
       e.preventDefault();
       const btn = document.getElementById("xemin");
       if (btn) {
