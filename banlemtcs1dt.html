@@ -625,8 +625,6 @@
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
 
-            <button id="btn-in" type="button">🖨️ In hóa đơn</button>
-
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
             <button id="quaylai">Quay lại</button>
@@ -886,32 +884,6 @@
         });
 
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
-
-        document.getElementById('btn-in')?.addEventListener('click', async () => {
-  // 1) Lấy dữ liệu đã render/in giống file in-hoadondt
-  const dataIn = JSON.parse(localStorage.getItem("data_hoadon_in") || "{}");
-  const sohd = String(dataIn?.hoadon?.sohd || "").trim();
-  if (!sohd) {
-    alert("Chưa có hóa đơn để in. Hãy Lưu trước.");
-    return;
-  }
-
-  // 2) Gửi lệnh in (queue)
-  const diadiem = "cs1"; // trang cs1dt cố định
-  const { data, error } = await window.supabase
-    .from("print_jobs")
-    .insert([{ diadiem, sohd, payload: dataIn }])
-    .select("id")
-    .single();
-
-  if (error) {
-    alert("Gửi lệnh in thất bại: " + error.message);
-    return;
-  }
-
-  alert("Đã gửi lệnh in. PC sẽ tự in ra máy PRP-085.");
-});
-
     </script>
 
     <script>
@@ -1038,8 +1010,8 @@
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
         document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+         const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+         dispatchTarget.dispatchEvent(ev);
         });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
@@ -1102,7 +1074,7 @@
         });
     </script>
 
-   <!-- <script>
+    <!-- <script>
         // Sau khi DOMContentLoaded hoặc ở script type="module" 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
@@ -1120,7 +1092,7 @@
             this.disabled = false;
             this.innerText = "💾 Lưu";
         };
-    </script> -->
+    </script>  -->
 
     <script>
         //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
@@ -1224,6 +1196,53 @@
         });
     </script>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const hdState = document.getElementById("hd_state");
+            const btnXemIn = document.getElementById("xemin");
+            if (!hdState || !btnXemIn) return;
+
+            function normalizeState(v) {
+                return String(v || "")
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, " "); // gộp khoảng trắng
+            }
+
+            function isChuaXemState(v) {
+                const s = normalizeState(v);
+                // chấp nhận nhiều biến thể để khỏi lệ thuộc chính tả/dấu
+                return (
+                    s === "chua xem" ||
+                    s === "chưa xem" ||
+                    s === "chuaxem" ||
+                    s === "xem"
+                );
+            }
+
+            // Double click / double tap vào ô trạng thái -> gọi "Xem in"
+            hdState.addEventListener("dblclick", (e) => {
+                if (!isChuaXemState(hdState.value)) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Gọi đúng logic hiện có của nút "Xem in"
+                btnXemIn.click();
+            });
+
+            // (Tùy chọn) nếu điện thoại đôi khi không bắn dblclick tốt,
+            // bạn có thể bật "double tap" thủ công (giữ an toàn, không ảnh hưởng PC)
+            let lastTap = 0;
+            hdState.addEventListener("touchend", () => {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    if (isChuaXemState(hdState.value)) btnXemIn.click();
+                }
+                lastTap = now;
+            });
+        });
+    </script>
 
 
     <!-- Overlay quét -->
@@ -1256,54 +1275,6 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
-
-    <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const hdState = document.getElementById("hd_state");
-    const btnXemIn = document.getElementById("xemin");
-    if (!hdState || !btnXemIn) return;
-
-    function normalizeState(v) {
-      return String(v || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " "); // gộp khoảng trắng
-    }
-
-    function isChuaXemState(v) {
-      const s = normalizeState(v);
-      // chấp nhận nhiều biến thể để khỏi lệ thuộc chính tả/dấu
-      return (
-        s === "chua xem" ||
-        s === "chưa xem" ||
-        s === "chuaxem" ||
-        s === "xem"
-      );
-    }
-
-    // Double click / double tap vào ô trạng thái -> gọi "Xem in"
-    hdState.addEventListener("click", (e) => {
-      if (!isChuaXemState(hdState.value)) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Gọi đúng logic hiện có của nút "Xem in"
-      btnXemIn.click();
-    });
-
-    // (Tùy chọn) nếu điện thoại đôi khi không bắn dblclick tốt,
-    // bạn có thể bật "double tap" thủ công (giữ an toàn, không ảnh hưởng PC)
-    let lastTap = 0;
-    hdState.addEventListener("touchend", () => {
-      const now = Date.now();
-      if (now - lastTap < 300) {
-        if (isChuaXemState(hdState.value)) btnXemIn.click();
-      }
-      lastTap = now;
-    });
-  });
-</script>
 
 </body>
 
