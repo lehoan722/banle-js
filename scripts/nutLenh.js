@@ -132,7 +132,7 @@ export function ganSuKienNutLenh() {
     localStorage.setItem("data_hoadon_in", JSON.stringify({ hoadon, chitiet }));
 
     // Mở tab in hóa đơn (hoặc reload lại nếu đã mở)
-    window.open("/in-hoadon.html", "_blank");
+    window.open("/in-hoadondt.html", "_blank");
   });
 
 
