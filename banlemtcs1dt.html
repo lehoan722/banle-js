@@ -1262,59 +1262,69 @@
     </script>
 
     <script>
-(function initPrintOverlay(){
+document.addEventListener('DOMContentLoaded', () => {
+  // Lấy phần tử sau khi DOM đã có đủ
   const chk = document.getElementById('inNhanh');
   const overlay = document.getElementById('printOverlay');
   const frame = document.getElementById('poFrame');
   const btnClose = document.getElementById('poBtnClose');
   const btnPrint = document.getElementById('poBtnPrint');
 
+  // Nếu trang nào không có overlay thì thoát nhẹ nhàng
+  if (!overlay || !frame) {
+    // vẫn tạo móc để luuhoadon.js không bị lỗi
+    window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
+    window.openPrintOverlay = (url) => window.open(url, '_blank');
+    return;
+  }
+
   // nhớ lựa chọn In nhanh theo máy
   const saved = localStorage.getItem('banle_print_fast');
   if (saved !== null && chk) chk.checked = (saved === '1');
-  chk?.addEventListener('change', ()=> {
+  chk?.addEventListener('change', () => {
     localStorage.setItem('banle_print_fast', chk.checked ? '1' : '0');
   });
 
-  function openOverlay(url){
+  function openOverlay(url) {
     overlay.style.display = 'block';
     frame.src = url;
   }
-  function closeOverlay(){
+
+  function closeOverlay() {
     frame.src = 'about:blank';
     overlay.style.display = 'none';
   }
 
   btnClose?.addEventListener('click', closeOverlay);
-  overlay?.querySelector('.po-backdrop')?.addEventListener('click', closeOverlay);
+  overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlay);
 
   // Nút In trong overlay
-  btnPrint?.addEventListener('click', ()=> {
-    try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch(e){}
+  btnPrint?.addEventListener('click', () => {
+    try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch (e) {}
   });
 
-  // ESC đóng overlay
-  document.addEventListener('keydown', (e)=> {
-    if (e.key === 'Escape' && overlay.style.display === 'block') closeOverlay();
+  // ESC đóng overlay (guard an toàn)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay && overlay.style.display === 'block') closeOverlay();
   });
 
   // ====== 2 hàm MÓC cho luuhoadon.js dùng chung ======
   window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
 
-  window.openPrintOverlay = (url, { autoPrint=false } = {}) => {
+  window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
     openOverlay(url);
 
-    if (autoPrint){
+    if (autoPrint) {
       frame.onload = () => {
-        setTimeout(()=> {
-          try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch(e){}
+        setTimeout(() => {
+          try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch (e) {}
         }, 150);
       };
     } else {
       frame.onload = null;
     }
   };
-})();
+});
 </script>
 
     <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
