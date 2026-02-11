@@ -719,11 +719,60 @@
             <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
-                <button onclick="dongTatCaPopup()">❌ Không</button>
+                <button id="btnThemMoiKhong" type="button">❌ Không</button>
             </div>
         </div>
 
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const popup = document.getElementById('popupThemMoi');
+            const btnCo = document.getElementById('btnThemMoiCo');
+            const btnKhong = document.getElementById('btnThemMoiKhong');
+
+            if (!popup) return;
+
+            function focusMasp() {
+                const el = document.getElementById('masp');
+                if (!el) return;
+                setTimeout(() => {
+                    try { el.focus(); el.select?.(); } catch (e) { }
+                }, 0);
+            }
+
+            function dongPopupThemMoi() {
+                popup.style.display = 'none';
+                focusMasp();
+            }
+
+            // ✅ Nút "Không" đóng popup
+            btnKhong?.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dongPopupThemMoi();
+            });
+
+            // ✅ ESC khi popup đang mở => đóng popup
+            document.addEventListener('keydown', (e) => {
+                if (popup.style.display !== 'block') return;
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dongPopupThemMoi();
+                }
+
+                // (tuỳ chọn) Enter = Có
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    btnCo?.click();
+                }
+            }, true); // capture: chặn từ sớm
+
+        });
+    </script>
 
     <script src="scripts/stockQuickPopup.js"></script>
 
