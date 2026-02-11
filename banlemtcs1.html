@@ -1448,6 +1448,18 @@
                 iframe.src = url;
                 document.body.appendChild(iframe);
 
+                // ✅ gom lại 1 hàm “dọn + focus” để gọi ở mọi nhánh
+                const cleanupAndFocus = () => {
+                    try { iframe.remove(); } catch (e) { }
+                    try {
+                        // focus về trang chính trước (một số máy cần)
+                        window.focus?.();
+                    } catch (e) { }
+
+                    // ✅ trả focus về ô mã sản phẩm
+                    try { focusMasp(); } catch (e) { }
+                };
+
                 iframe.onload = () => {
                     setTimeout(() => {
                         try {
@@ -1455,27 +1467,36 @@
                             __blockEnterUntil = Date.now() + 1500;
 
                             const w = iframe.contentWindow;
-                            const cleanup = () => {
-                                try { iframe.remove(); } catch (e) { }
-                                try { w?.removeEventListener?.('afterprint', cleanup); } catch (e) { }
+
+                            // cleanup 1 lần thôi
+                            let cleaned = false;
+                            const cleanupOnce = () => {
+                                if (cleaned) return;
+                                cleaned = true;
+                                try { w?.removeEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+                                cleanupAndFocus();
                             };
 
-                            // gắn tự remove sau in (nếu có afterprint)
-                            try { w?.addEventListener?.('afterprint', cleanup); } catch (e) { }
+                            // gắn tự cleanup sau in (nếu afterprint chạy)
+                            try { w?.addEventListener?.('afterprint', cleanupOnce); } catch (e) { }
 
+                            // gọi in
                             w?.focus();
                             w?.print();
 
-                            // fallback: remove sau 2s nếu afterprint không chạy
-                            setTimeout(cleanup, 2000);
+                            // fallback: nếu afterprint không chạy → vẫn cleanup + focus
+                            setTimeout(cleanupOnce, 2000);
                         } catch (e) {
                             console.error(e);
-                            try { iframe.remove(); } catch (_) { }
+                            cleanupAndFocus();
                         }
                     }, 150);
                 };
             };
+
         });
+
+
     </script>
 
     <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
