@@ -1324,6 +1324,17 @@
 
             let printedOnce = false;
 
+            function focusMasp() {
+                // bạn đổi id nếu ô mã của bạn không phải "masp"
+                const el = document.getElementById('masp')
+                    || document.querySelector('#masp, input[name="masp"], input[data-field="masp"]');
+
+                if (!el) return;
+                setTimeout(() => {
+                    try { el.focus(); el.select?.(); } catch (e) { }
+                }, 0);
+            }
+
             function openOverlay(url) {
                 printedOnce = false;
                 overlay.style.display = 'block';
@@ -1345,6 +1356,9 @@
                 try { frame.src = 'about:blank'; } catch (e) { }
                 overlay.style.display = 'none';
                 printedOnce = false;
+
+                // ✅ trả focus về ô mã sản phẩm để nhập tiếp
+                focusMasp();
             }
 
             // Sau khi in xong (đóng dialog in), tự đóng cứng overlay
