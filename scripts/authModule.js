@@ -82,7 +82,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     loginContainerId = "login-container",
     appContainerId = "app-container",
     macDinhDiaDiem = "cs1",
-    tuDongKhoaCoSo = true,
+    tuDongKhoaCoSo = false,
     loginApiPath = null,
     onLoginSuccess,
   } = options;
