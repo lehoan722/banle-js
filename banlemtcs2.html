@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN LE CS2</title>
+    <title>BAN LE cs2</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -347,6 +347,51 @@
             left: auto !important;
             transform: none !important;
         }
+
+        #printOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+        }
+
+        #printOverlay .po-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .35);
+        }
+
+        #printOverlay .po-panel {
+            position: absolute;
+            inset: 10px;
+            background: #fff;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #printOverlay .po-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #printOverlay .po-title {
+            font-weight: 700;
+        }
+
+        #printOverlay .po-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        #printOverlay #poFrame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
     </style>
     <style>
         /* hd_state = xem => chữ đỏ nền hồng */
@@ -471,11 +516,15 @@
     <div class="menu-bar">
         <div class="tennv">
 
+
             <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+
             <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
+
             <input id="ngay" type="date" readonly />
+
 
             <input id="gio" type="text" readonly style="width:70px" />
 
@@ -488,10 +537,7 @@
         <div id="app-menu" class="menu-item"></div>
 
         <!--
-        <label>Giờ <input id="gio" /></label>
-         
-        
-         <label><input type="checkbox" id="quanlysizetheogia" />QL170</label> -->
+        <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
@@ -534,8 +580,8 @@
                             <th>Thành tiền</th>
                             <th>Vị trí</th> <!-- (giữ nguyên) -->
                             <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>Tồn1</th>
-                            <th>Tồn2</th>
+                            <th>T1</th>
+                            <th>T2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -587,12 +633,10 @@
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
-                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
-                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input id="inNhanh" type="checkbox" /> In nhanh </label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-
-
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
+                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
                 </div>
@@ -681,6 +725,9 @@
 
     </div>
 
+    <script src="scripts/stockQuickPopup.js"></script>
+
+
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
@@ -695,14 +742,23 @@
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
                 // 1. Lưu thông tin vào localStorage giống logic cũ
-                // lưu theo tab
-                sessionStorage.setItem("diadiem", diadiem);
-                sessionStorage.setItem("manv", nhanvien.manv);
-                sessionStorage.setItem("tennv", nhanvien.tennv);
-                sessionStorage.setItem("quyen_sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                sessionStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
-                sessionStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                sessionStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
+                if (diadiem) {
+                    localStorage.setItem("diadiem", diadiem);
+                }
+                if (session && session.access_token) {
+                    localStorage.setItem("supabase_access_token", session.access_token);
+                }
+                localStorage.setItem("manv", nhanvien.manv);
+                localStorage.setItem("tennv", nhanvien.tennv);
+                localStorage.setItem(
+                    "quyen_sua_hoadon",
+                    nhanvien.sua_hoadon ? "true" : "false"
+                );
+
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
                 // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
@@ -756,17 +812,13 @@
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
+
+
+
+
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-
-        // Nhấn F2 trong ô mã khách cũng bật popup
-        document.getElementById('makh').addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                showPopupTimKH();
-            }
-        });
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -824,7 +876,7 @@
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
+                .then(() => alert('Đã copy dữ liệu ra clipboard'));
         };
 
 
@@ -864,8 +916,6 @@
             // Log kiểm tra
             console.log('window.bangKetQua:', window.bangKetQua);
         });
-
-
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
@@ -960,17 +1010,19 @@
             sessionStorage.removeItem('draft_hoadon');
 
             document.getElementById('login-manv').focus();
+            location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
+
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-    <script src="scripts/stockQuickPopup.js"></script>
+
 
     <script src="scripts/menu-component.js"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
+        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1001,11 +1053,11 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        //document.getElementById('btn-luu')?.addEventListener('click', () => {
-        //const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-        // dispatchTarget.dispatchEvent(ev);
-        //});
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1060,14 +1112,14 @@
                 btn.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon()
+                        btn.click(); // = gọi xacNhanSuaHoaDon() 
                     }
                 });
             }
         });
     </script>
 
-    <script>
+    <!-- <script>
         // Sau khi DOMContentLoaded hoặc ở script type="module" 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
@@ -1085,7 +1137,7 @@
             this.disabled = false;
             this.innerText = "💾 Lưu";
         };
-    </script>
+    </script>  -->
 
     <script>
         //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
@@ -1099,7 +1151,7 @@
 
             if (!sohdEl) return;
 
-            // Trang CS1 nên diadiem cố định = cs1 (đúng mục tiêu của bạn)
+            // Trang cs2 nên diadiem cố định = cs2 (đúng mục tiêu của bạn)
             const DIADIEM = "cs2";
 
             const getMoney = (el) => {
@@ -1188,6 +1240,281 @@
             checkViettelEligibility();
         });
     </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const hdState = document.getElementById("hd_state");
+            const btnXemIn = document.getElementById("xemin");
+            if (!hdState || !btnXemIn) return;
+
+            function normalizeState(v) {
+                return String(v || "")
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, " "); // gộp khoảng trắng
+            }
+
+            function isChuaXemState(v) {
+                const s = normalizeState(v);
+                // chấp nhận nhiều biến thể để khỏi lệ thuộc chính tả/dấu
+                return (
+                    s === "chua xem" ||
+                    s === "chưa xem" ||
+                    s === "chuaxem" ||
+                    s === "xem"
+                );
+            }
+
+            // Double click / double tap vào ô trạng thái -> gọi "Xem in"
+            hdState.addEventListener("click", (e) => {
+                if (!isChuaXemState(hdState.value)) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Gọi đúng logic hiện có của nút "Xem in"
+                btnXemIn.click();
+            });
+
+            // (Tùy chọn) nếu điện thoại đôi khi không bắn dblclick tốt,
+            // bạn có thể bật "double tap" thủ công (giữ an toàn, không ảnh hưởng PC)
+            let lastTap = 0;
+            hdState.addEventListener("touchend", () => {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    if (isChuaXemState(hdState.value)) btnXemIn.click();
+                }
+                lastTap = now;
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chk = document.getElementById('inNhanh') || document.getElementById('chk_innhanh');
+            const overlay = document.getElementById('printOverlay');
+            const frame = document.getElementById('poFrame');
+            const btnClose = document.getElementById('poBtnClose');
+            const btnPrint = document.getElementById('poBtnPrint');
+
+            // Nếu trang không có overlay thì vẫn tạo móc tối thiểu
+            if (!overlay || !frame) {
+                window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
+                window.openPrintOverlay = (url) => window.open(url, '_blank'); // fallback
+                window.quickPrint = (url) => window.open(url, '_blank');
+                return;
+            }
+
+            // nhớ lựa chọn In nhanh theo máy
+            const saved = localStorage.getItem('banle_print_fast');
+            if (saved !== null && chk) chk.checked = (saved === '1');
+            chk?.addEventListener('change', () => {
+                localStorage.setItem('banle_print_fast', chk.checked ? '1' : '0');
+            });
+
+            // ====== CHỐT CHẶN ENTER “DỘI” sau khi đóng dialog in ======
+            // (ngăn Enter từ hộp thoại in rơi xuống hoadon.js làm bật alert mã SP)
+            let __blockEnterUntil = 0;
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && Date.now() < __blockEnterUntil) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true); // capture
+
+            let printedOnce = false;
+
+            function focusMasp() {
+                // bạn đổi id nếu ô mã của bạn không phải "masp"
+                const el = document.getElementById('masp')
+                    || document.querySelector('#masp, input[name="masp"], input[data-field="masp"]');
+
+                if (!el) return;
+                setTimeout(() => {
+                    try { el.focus(); el.select?.(); } catch (e) { }
+                }, 0);
+            }
+
+            function openOverlay(url) {
+                printedOnce = false;
+                overlay.style.display = 'block';
+                frame.src = url;
+
+                // đưa focus lên overlay để Enter không dính ô masp phía sau
+                setTimeout(() => {
+                    (btnPrint || btnClose || overlay).focus?.();
+                }, 0);
+            }
+
+            // Đóng “mềm”: chỉ ẩn overlay, giữ iframe để print không lỗi
+            function hideOverlayOnly() {
+                overlay.style.display = 'none';
+            }
+
+            // Đóng “cứng”: dọn iframe + reset
+            function closeOverlayHard() {
+                try { frame.src = 'about:blank'; } catch (e) { }
+                overlay.style.display = 'none';
+                printedOnce = false;
+
+                // ✅ trả focus về ô mã sản phẩm để nhập tiếp
+                focusMasp();
+            }
+
+            // Sau khi in xong (đóng dialog in), tự đóng cứng overlay
+            function bindAutoCloseAfterPrint(win) {
+                if (!win) return;
+
+                const handler = () => {
+                    closeOverlayHard();
+                    try { win.removeEventListener('afterprint', handler); } catch (e) { }
+                };
+
+                try { win.addEventListener('afterprint', handler); } catch (e) { }
+
+                // fallback nếu afterprint không chạy ổn định
+                setTimeout(() => {
+                    try { closeOverlayHard(); } catch (e) { }
+                    try { win.removeEventListener('afterprint', handler); } catch (e) { }
+                }, 2000);
+            }
+
+            // In và thoát luôn về màn bán hàng (không quay lại overlay)
+            function doPrintAndExit() {
+                try {
+                    // chặn Enter “dội” ~ 1.5s
+                    __blockEnterUntil = Date.now() + 1500;
+
+                    // gắn auto-close sau in
+                    bindAutoCloseAfterPrint(frame.contentWindow);
+
+                    // ẩn overlay ngay để in xong quay về màn bán hàng
+                    hideOverlayOnly();
+
+                    // gọi in
+                    frame.contentWindow?.focus();
+                    frame.contentWindow?.print();
+                } catch (e) { }
+
+                printedOnce = true;
+            }
+
+            btnClose?.addEventListener('click', closeOverlayHard);
+            overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlayHard);
+
+            // Nút In trong overlay: In xong thoát luôn
+            btnPrint?.addEventListener('click', (e) => {
+                e.preventDefault?.();
+                e.stopPropagation?.();
+                doPrintAndExit();
+            });
+
+            // ✅ Overlay: Enter => In & thoát | ESC => đóng overlay & về màn bán hàng
+            document.addEventListener('keydown', (e) => {
+                if (overlay.style.display !== 'block') return;
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    doPrintAndExit();
+                }
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeOverlayHard();
+                }
+            }, true); // capture
+
+            // ====== API cho luuhoadon.js dùng chung ======
+            window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
+
+            // Mở overlay để xem/in
+            window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
+                openOverlay(url);
+
+                frame.onload = () => {
+                    if (autoPrint) {
+                        // autoPrint: in luôn và thoát luôn
+                        setTimeout(doPrintAndExit, 150);
+                    }
+                };
+            };
+
+            // ✅ In nhanh thật sự: KHÔNG mở overlay, chỉ gọi print bằng iframe ẩn
+            window.quickPrint = (url) => {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+
+                // ✅ gom lại 1 hàm “dọn + focus” để gọi ở mọi nhánh
+                const cleanupAndFocus = () => {
+                    try { iframe.remove(); } catch (e) { }
+                    try {
+                        // focus về trang chính trước (một số máy cần)
+                        window.focus?.();
+                    } catch (e) { }
+
+                    // ✅ trả focus về ô mã sản phẩm
+                    try { focusMasp(); } catch (e) { }
+                };
+
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        try {
+                            // chặn Enter “dội” sau khi in nhanh
+                            __blockEnterUntil = Date.now() + 1500;
+
+                            const w = iframe.contentWindow;
+
+                            // cleanup 1 lần thôi
+                            let cleaned = false;
+                            const cleanupOnce = () => {
+                                if (cleaned) return;
+                                cleaned = true;
+                                try { w?.removeEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+                                cleanupAndFocus();
+                            };
+
+                            // gắn tự cleanup sau in (nếu afterprint chạy)
+                            try { w?.addEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+
+                            // gọi in
+                            w?.focus();
+                            w?.print();
+
+                            // fallback: nếu afterprint không chạy → vẫn cleanup + focus
+                            setTimeout(cleanupOnce, 2000);
+                        } catch (e) {
+                            console.error(e);
+                            cleanupAndFocus();
+                        }
+                    }, 150);
+                };
+            };
+
+        });
+
+
+    </script>
+
+    <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
+    <div id="printOverlay" style="display:none;">
+        <div class="po-backdrop"></div>
+
+        <div class="po-panel">
+            <div class="po-header">
+                <div class="po-title">In hóa đơn</div>
+                <div class="po-actions">
+                    <button id="poBtnPrint" type="button">In</button>
+                    <button id="poBtnClose" type="button">Đóng</button>
+                </div>
+            </div>
+
+            <iframe id="poFrame" src="about:blank"></iframe>
+        </div>
+    </div>
 
 
     <!-- Overlay quét -->
