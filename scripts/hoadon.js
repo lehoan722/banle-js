@@ -375,14 +375,6 @@ export async function chuyenFocus(e) {
     const nhapNhanh = document.getElementById("nhapnhanh").checked;
     const size45 = document.getElementById("size45").checked;
 
-    // ✅ GUARD: nếu đang mở overlay in/xem in thì bỏ qua Enter
-  const po = document.getElementById('printOverlay');
-  if (po && po.style.display === 'block') {
-    e.preventDefault?.();
-    e.stopPropagation?.();
-    return;
-  }
-
     if (e.target.id === "masp") {
         // Đóng gợi ý MASP ngay khi Enter ở #masp
         window.closePopupMasp && window.closePopupMasp();
