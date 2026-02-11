@@ -1312,60 +1312,119 @@
                 localStorage.setItem('banle_print_fast', chk.checked ? '1' : '0');
             });
 
+            // ====== CHỐT CHẶN ENTER “DỘI” sau khi đóng dialog in ======
+            // (ngăn Enter từ hộp thoại in rơi xuống hoadon.js làm bật alert mã SP)
+            let __blockEnterUntil = 0;
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && Date.now() < __blockEnterUntil) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true); // capture
+
             let printedOnce = false;
+
+            function focusMasp() {
+                // bạn đổi id nếu ô mã của bạn không phải "masp"
+                const el = document.getElementById('masp')
+                    || document.querySelector('#masp, input[name="masp"], input[data-field="masp"]');
+
+                if (!el) return;
+                setTimeout(() => {
+                    try { el.focus(); el.select?.(); } catch (e) { }
+                }, 0);
+            }
 
             function openOverlay(url) {
                 printedOnce = false;
                 overlay.style.display = 'block';
                 frame.src = url;
+
+                // đưa focus lên overlay để Enter không dính ô masp phía sau
+                setTimeout(() => {
+                    (btnPrint || btnClose || overlay).focus?.();
+                }, 0);
             }
 
-            function closeOverlay() {
-                frame.src = 'about:blank';
+            // Đóng “mềm”: chỉ ẩn overlay, giữ iframe để print không lỗi
+            function hideOverlayOnly() {
+                overlay.style.display = 'none';
+            }
+
+            // Đóng “cứng”: dọn iframe + reset
+            function closeOverlayHard() {
+                try { frame.src = 'about:blank'; } catch (e) { }
                 overlay.style.display = 'none';
                 printedOnce = false;
+
+                // ✅ trả focus về ô mã sản phẩm để nhập tiếp
+                focusMasp();
             }
 
-            function doPrint() {
-                try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch (e) { }
+            // Sau khi in xong (đóng dialog in), tự đóng cứng overlay
+            function bindAutoCloseAfterPrint(win) {
+                if (!win) return;
+
+                const handler = () => {
+                    closeOverlayHard();
+                    try { win.removeEventListener('afterprint', handler); } catch (e) { }
+                };
+
+                try { win.addEventListener('afterprint', handler); } catch (e) { }
+
+                // fallback nếu afterprint không chạy ổn định
+                setTimeout(() => {
+                    try { closeOverlayHard(); } catch (e) { }
+                    try { win.removeEventListener('afterprint', handler); } catch (e) { }
+                }, 2000);
+            }
+
+            // In và thoát luôn về màn bán hàng (không quay lại overlay)
+            function doPrintAndExit() {
+                try {
+                    // chặn Enter “dội” ~ 1.5s
+                    __blockEnterUntil = Date.now() + 1500;
+
+                    // gắn auto-close sau in
+                    bindAutoCloseAfterPrint(frame.contentWindow);
+
+                    // ẩn overlay ngay để in xong quay về màn bán hàng
+                    hideOverlayOnly();
+
+                    // gọi in
+                    frame.contentWindow?.focus();
+                    frame.contentWindow?.print();
+                } catch (e) { }
+
                 printedOnce = true;
             }
 
-            btnClose?.addEventListener('click', closeOverlay);
-            overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlay);
+            btnClose?.addEventListener('click', closeOverlayHard);
+            overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlayHard);
 
-            // Nút In trong overlay
-            btnPrint?.addEventListener('click', doPrint);
+            // Nút In trong overlay: In xong thoát luôn
+            btnPrint?.addEventListener('click', (e) => {
+                e.preventDefault?.();
+                e.stopPropagation?.();
+                doPrintAndExit();
+            });
 
-            // ✅ Enter để In, Enter lần 2 để Đóng (chỉ trên máy tính)
+            // ✅ Overlay: Enter => In & thoát | ESC => đóng overlay & về màn bán hàng
             document.addEventListener('keydown', (e) => {
                 if (overlay.style.display !== 'block') return;
 
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    e.stopPropagation();        // ✅ CHỐT: không cho lọt xuống handler phía sau
-                    if (!printedOnce) doPrint();
-                    else closeOverlay();
+                    e.stopPropagation();
+                    doPrintAndExit();
                 }
 
                 if (e.key === 'Escape') {
                     e.preventDefault();
-                    e.stopPropagation();        // ✅ thêm luôn cho đồng bộ
-                    closeOverlay();
+                    e.stopPropagation();
+                    closeOverlayHard();
                 }
-            }, true); // ✅ capture = true để chặn từ sớm
-
-
-            // ✅ Sau khi in xong (đóng dialog in), tự đóng overlay (đỡ phải Enter lần 2)
-            function bindAutoCloseAfterPrint(win) {
-                if (!win) return;
-                const handler = () => {
-                    // tránh đóng khi overlay đã bị tắt
-                    if (overlay.style.display === 'block') closeOverlay();
-                    win.removeEventListener('afterprint', handler);
-                };
-                win.addEventListener('afterprint', handler);
-            }
+            }, true); // capture
 
             // ====== API cho luuhoadon.js dùng chung ======
             window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
@@ -1376,10 +1435,8 @@
 
                 frame.onload = () => {
                     if (autoPrint) {
-                        // gắn tự đóng sau in
-                        bindAutoCloseAfterPrint(frame.contentWindow);
-                        // gọi in
-                        setTimeout(doPrint, 150);
+                        // autoPrint: in luôn và thoát luôn
+                        setTimeout(doPrintAndExit, 150);
                     }
                 };
             };
@@ -1391,30 +1448,55 @@
                 iframe.src = url;
                 document.body.appendChild(iframe);
 
+                // ✅ gom lại 1 hàm “dọn + focus” để gọi ở mọi nhánh
+                const cleanupAndFocus = () => {
+                    try { iframe.remove(); } catch (e) { }
+                    try {
+                        // focus về trang chính trước (một số máy cần)
+                        window.focus?.();
+                    } catch (e) { }
+
+                    // ✅ trả focus về ô mã sản phẩm
+                    try { focusMasp(); } catch (e) { }
+                };
+
                 iframe.onload = () => {
                     setTimeout(() => {
                         try {
-                            // gắn tự remove sau in (nếu có afterprint)
-                            const w = iframe.contentWindow;
-                            const cleanup = () => {
-                                try { iframe.remove(); } catch (e) { }
-                                w?.removeEventListener?.('afterprint', cleanup);
-                            };
-                            w?.addEventListener?.('afterprint', cleanup);
+                            // chặn Enter “dội” sau khi in nhanh
+                            __blockEnterUntil = Date.now() + 1500;
 
+                            const w = iframe.contentWindow;
+
+                            // cleanup 1 lần thôi
+                            let cleaned = false;
+                            const cleanupOnce = () => {
+                                if (cleaned) return;
+                                cleaned = true;
+                                try { w?.removeEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+                                cleanupAndFocus();
+                            };
+
+                            // gắn tự cleanup sau in (nếu afterprint chạy)
+                            try { w?.addEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+
+                            // gọi in
                             w?.focus();
                             w?.print();
 
-                            // fallback: remove sau 2s nếu afterprint không chạy
-                            setTimeout(cleanup, 2000);
+                            // fallback: nếu afterprint không chạy → vẫn cleanup + focus
+                            setTimeout(cleanupOnce, 2000);
                         } catch (e) {
                             console.error(e);
-                            try { iframe.remove(); } catch (_) { }
+                            cleanupAndFocus();
                         }
                     }, 150);
                 };
             };
+
         });
+
+
     </script>
 
     <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
