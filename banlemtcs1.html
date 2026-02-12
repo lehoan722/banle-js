@@ -678,6 +678,7 @@
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
+            <button id="btnOpenInTem">In mã vạch</button>
 
 
             <!-- Popup tìm khách hàng
@@ -693,7 +694,7 @@
 
 
         <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục, 
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
             F8: xem tồn kho nhanh, F9: nhập vị trí kho
         </div>
         <div class="top-inputs">
@@ -1546,6 +1547,97 @@
         });
 
 
+    </script>
+
+    <script>
+        // ===== FALLBACK: nếu banlemt chưa có capNhatBangKetQuaTuDOM thì tự gom từ bảng HTML =====
+        function capNhatBangKetQuaTuDOM_Fallback_BanLe() {
+            const tbody = document.querySelector("#bangketqua tbody");
+            const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+            const bangObj = {};
+
+            rows.forEach(tr => {
+                const cells = tr.querySelectorAll("td");
+                // Bảng bán lẻ của bạn: Mã, Tên, Size, SL, ĐVT, Đơn giá, ...
+                if (cells.length >= 6) {
+                    const masp = (cells[0].innerText || "").toUpperCase().trim();
+                    const tensp = (cells[1].innerText || "").trim();
+                    const size = (cells[2].innerText || "0").trim();
+                    const sl = Number((cells[3].innerText || "0").toString().replace(/[^\d.-]/g, "")) || 0;
+                    const dvt = (cells[4].innerText || "sp").trim();
+                    const gia = Number((cells[5].innerText || "0").toString().replace(/[^\d.-]/g, "")) || 0;
+
+                    if (!masp) return;
+
+                    if (!bangObj[masp]) {
+                        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
+                    }
+                    bangObj[masp].sizes.push(size);
+                    bangObj[masp].soluongs.push(sl);
+                }
+            });
+
+            window.bangKetQua = bangObj;
+            console.log("✅ [BanLe] Fallback capNhatBangKetQuaTuDOM ->", bangObj);
+            return bangObj;
+        }
+
+        // ===== GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH (GIỐNG NHẬP MỚI) =====
+        function openInTemFromBanLe(bangKetQua) {
+            if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
+                alert("Chưa có dữ liệu để in mã vạch");
+                return;
+            }
+
+            const items = [];
+            Object.values(bangKetQua).forEach(row => {
+                (row.sizes || []).forEach((sz, i) => {
+                    const sl = (row.soluongs && row.soluongs[i]) ? row.soluongs[i] : 0;
+                    if (!sl) return; // bỏ dòng SL=0
+
+                    items.push({
+                        masp: row.masp,
+                        tensp: row.tensp || "",
+                        size: sz || "0",
+                        sl: sl,
+                        dvt: row.dvt || "sp",
+                        // giữ key "gianhap" để tương thích trang inmavach (như trang Nhập Mới)
+                        gianhap: row.gia || 0
+                    });
+                });
+            });
+
+            // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.
+            const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
+            const cs = (csRaw.includes("2")) ? "cs2" : "cs1";
+            const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs1.html";
+
+            const payload = { source: "banle", cs, items };
+            const json = JSON.stringify(payload);
+
+            // base64url (giống nhapmoimtcs1)
+            let b64 = btoa(unescape(encodeURIComponent(json)))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+            const url = `${location.origin}/${page}#imp=${b64}`;
+            console.log("[BANLE] Mở trang in với dữ liệu:", items);
+            window.open(url, "_blank");
+        }
+
+        // ===== GẮN NÚT "In mã vạch" =====
+        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
+            console.log("🔎 [BanLe In mã vạch] Bắt đầu thu thập dữ liệu...");
+
+            // 1) Ưu tiên dùng hàm sẵn có của bạn (nếu banlemt đã có)
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            } else {
+                capNhatBangKetQuaTuDOM_Fallback_BanLe();
+            }
+
+            // 2) Mở trang in tem
+            openInTemFromBanLe(window.bangKetQua || {});
+        });
     </script>
 
     <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
