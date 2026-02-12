@@ -6,16 +6,6 @@
   <title>In Hóa Đơn</title>
 
   <style>
-    /* ✅ Khi xem trong overlay: ẩn header để rộng chỗ cho QR */
-    body.preview-only .header {
-      display: none !important;
-    }
-
-    /* (tuỳ chọn) Khi ẩn header, kéo sát lên cho gọn */
-    body.preview-only .invoice-info {
-      margin-top: 0 !important;
-    }
-
     :root {
       --scale: 1.1;
       /* tăng chữ 1.5 lần */
@@ -305,11 +295,6 @@
       .payqr {
         display: none !important;
       }
-
-      /* ✅ In thật: luôn hiện header, dù đang xem overlay */
-      body.preview-only .header {
-        display: block !important;
-      }
     }
   </style>
 </head>
@@ -378,16 +363,6 @@
           return Number(val).toLocaleString();
         }
 
-        // ✅ Nếu trang đang chạy trong iframe (Overlay xem/in) => ẩn header
-        try {
-          if (window.self !== window.top) {
-            document.body.classList.add('preview-only');
-          }
-        } catch (e) {
-          // Nếu bị chặn truy cập top (hiếm), cứ coi như đang trong iframe
-          document.body.classList.add('preview-only');
-        }
-
         // Render tổng hợp hai cột
         document.querySelector('.totals-flex').innerHTML = `
   <div class="totals-row">
@@ -407,7 +382,7 @@
     <span class="value" style="font-size:18px;">${formatSo(thanhtoan)}</span>
   </div>
 
-  <div class="payqr">
+  <div class="payqr" id="payqr">
     <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
     <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
     <div class="payqr-info">
@@ -472,8 +447,43 @@
           img.src = url;
         })();
 
+        // ✅ Khi xem (overlay hoặc mở xem in): tự cuộn xuống cuối để QR luôn hiện
+        (function autoScrollToBottomForQR() {
+          // Nếu đang in/chuẩn bị in thì không làm gì
+          let printing = false;
+          window.addEventListener('beforeprint', () => printing = true);
+          window.addEventListener('afterprint', () => printing = false);
 
+          // Chỉ chạy khi ở chế độ "xem" (iframe overlay) HOẶC có query ?preview=1
+          const qs = new URLSearchParams(location.search);
+          const isPreview = (qs.get('preview') === '1');
 
+          let inIframe = false;
+          try { inIframe = (window.self !== window.top); } catch (e) { inIframe = true; }
+
+          if (!isPreview && !inIframe) return;
+
+          // Đợi ảnh QR load xong để scroll chính xác
+          const target = document.getElementById('payqr') || document.querySelector('.payqr');
+          const img = document.getElementById('vietqr_img');
+
+          function doScroll() {
+            if (printing) return;
+            // cuộn xuống cho QR nằm giữa/ cuối màn hình
+            (target || document.body).scrollIntoView({ behavior: 'auto', block: 'end' });
+          }
+
+          // Nếu ảnh đã có src thì chờ load, còn không thì cứ setTimeout
+          if (img) {
+            img.addEventListener('load', () => setTimeout(doScroll, 50), { once: true });
+            // fallback: nếu load quá nhanh / cache
+            setTimeout(doScroll, 150);
+            setTimeout(doScroll, 350);
+          } else {
+            setTimeout(doScroll, 150);
+            setTimeout(doScroll, 350);
+          }
+        })();
 
 
         // Hiển thị thông tin hóa đơn
