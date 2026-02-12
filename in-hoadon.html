@@ -69,6 +69,16 @@
       font-style: italic;
     }
 
+    /* ✅ Khi xem trong overlay: ẩn header để rộng chỗ cho QR */
+    body.preview-only .header {
+      display: none !important;
+    }
+
+    /* (tuỳ chọn) Khi ẩn header, kéo sát lên cho gọn */
+    body.preview-only .invoice-info {
+      margin-top: 0 !important;
+    }
+
 
     @media print {
       body {
@@ -295,6 +305,11 @@
       .payqr {
         display: none !important;
       }
+
+      /* ✅ In thật: luôn hiện header, dù đang xem overlay */
+      body.preview-only .header {
+        display: block !important;
+      }
     }
   </style>
 </head>
@@ -361,6 +376,16 @@
         function formatSo(val) {
           if (isNaN(val)) return '0';
           return Number(val).toLocaleString();
+        }
+
+        // ✅ Nếu trang đang chạy trong iframe (Overlay xem/in) => ẩn header
+        try {
+          if (window.self !== window.top) {
+            document.body.classList.add('preview-only');
+          }
+        } catch (e) {
+          // Nếu bị chặn truy cập top (hiếm), cứ coi như đang trong iframe
+          document.body.classList.add('preview-only');
         }
 
         // Render tổng hợp hai cột
