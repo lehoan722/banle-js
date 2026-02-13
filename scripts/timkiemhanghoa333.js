@@ -1637,6 +1637,30 @@ function initXntHot(containerEl, rowMap, masp) {
         delete xntHotInstances[masp];
     }
 
+    function _openSimilarByRow(row) {
+        if (row == null || row <= 0) return; // bỏ hàng Tổng
+
+        const sourceData = hot.getSourceData();
+        const rowObj = sourceData[row];
+        if (!rowObj) return;
+
+        const rawSize = rowObj.size || '';
+        const sizeEU = String(rawSize).split('/')[0].trim();
+        if (!sizeEU) return;
+
+        const branch = (window.CURRENT_BRANCH || '').trim().toLowerCase();
+        if (!branch) {
+            showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
+            return;
+        }
+
+        const groupMap = window.PRODUCT_GROUP_MAP || {};
+        const groupVal = (masp && groupMap[masp]) || (window.CURRENT_GROUP || '');
+
+        openSimilarSearchFromSize({ masp, sizeEU, branch, group: groupVal });
+    }
+
+
     const hot = new Handsontable(containerEl, {
         data,
         columns,
@@ -1679,20 +1703,40 @@ function initXntHot(containerEl, rowMap, masp) {
                 hot.render();
             }
         },
-        // 👉 Click vào bất kỳ ô nào trên dòng size (trừ dòng Tổng) để mở tìm tương đồng
+
         // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
+        afterOnCellDblClick: (event, coords) => {
+            _openSimilarByRow(coords?.row);
+        },
+
+        // Fallback cho Safari iOS (double tap) + vẫn giữ cho desktop
         afterOnCellMouseDown: (event, coords) => {
             const row = coords?.row;
-            if (row == null || row <= 0) return;   // bỏ hàng Tổng (row 0)
+            if (row == null || row <= 0) return;
 
             const now = Date.now();
 
-            // kiểm tra có phải double-click cùng dòng & cùng mã không
+            // Một số browser có event.detail = số lần click
+            if (event && typeof event.detail === 'number' && event.detail >= 2) {
+                _openSimilarByRow(row);
+                lastSizeClick = { time: now, row, masp };
+                return;
+            }
+
+            // Fallback double-tap: nới ngưỡng lên 650ms cho Safari
+            const THRESH = 650;
+
             if (
                 lastSizeClick.row === row &&
                 lastSizeClick.masp === masp &&
-                (now - lastSizeClick.time) < 350   // ngưỡng double-click ~ 350ms
+                (now - lastSizeClick.time) < THRESH
             ) {
+                _openSimilarByRow(row);
+            }
+
+            lastSizeClick = { time: now, row, masp };
+
+            {
                 // === xử lý mở bán theo size ===
                 const sourceData = hot.getSourceData();
                 const rowObj = sourceData[row];
