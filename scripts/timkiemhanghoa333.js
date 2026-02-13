@@ -1778,7 +1778,8 @@ function openSimilarSearchFromSize({ masp, sizeEU, branch, group }) {
 
     // Mở trang bán theo size (cùng thư mục với trang 333)
     const url = 'bantheosize.html?mode=similar';
-    window.location.href = url;
+    //window.location.href = url;
+     window.open(url, '_blank');
 }
 
 
