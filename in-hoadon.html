@@ -86,12 +86,13 @@
 
 
     /* ... (các đoạn khác giữ nguyên) ... */
+
     th,
     td {
       border: 1px solid black;
       padding: 2px;
       text-align: center;
-      font-size: 13px;
+      font-size: calc(13px * var(--scale));
     }
 
     .header,
@@ -113,14 +114,6 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 0px;
-    }
-
-    th,
-    td {
-      border: 1px solid black;
-      padding: 4px;
-      text-align: center;
-      font-size: 13px;
     }
 
     .totals td {
@@ -524,7 +517,7 @@
         document.addEventListener("keydown", function (e) {
           if (e.key === "Enter") {
             e.preventDefault();
-            window.print();
+            safePrint();
           }
 
           if (e.key === "F6") {
