@@ -1736,41 +1736,8 @@ function initXntHot(containerEl, rowMap, masp) {
 
             lastSizeClick = { time: now, row, masp };
 
-            {
-                // === xử lý mở bán theo size ===
-                const sourceData = hot.getSourceData();
-                const rowObj = sourceData[row];
-                if (!rowObj) return;
 
-                const rawSize = rowObj.size || '';
-                if (!rawSize) return;
 
-                const sizeEU = String(rawSize).split('/')[0].trim();
-                if (!sizeEU) return;
-
-                const branch = (window.CURRENT_BRANCH || '').trim().toLowerCase();
-                if (!branch) {
-                    showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
-                    return;
-                }
-
-                const groupMap = window.PRODUCT_GROUP_MAP || {};
-                const groupVal = (masp && groupMap[masp]) || (window.CURRENT_GROUP || '');
-
-                openSimilarSearchFromSize({
-                    masp,
-                    sizeEU,
-                    branch,
-                    group: groupVal
-                });
-            }
-
-            // lưu lại click hiện tại để lần sau so double-click
-            lastSizeClick = {
-                time: now,
-                row,
-                masp
-            };
         }
 
     });
