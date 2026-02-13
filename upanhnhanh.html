@@ -731,7 +731,7 @@
         img.onerror = rej;
         img.src = URL.createObjectURL(file);
       });
-    }    
+    }
 
     async function resizeImageFixed(file, quality = 0.78, masp = '', manv = '') {
       const img = await fileToImage(file);
@@ -1044,7 +1044,34 @@
         window.__UPANH_IS_ADMIN__ = isAdmin;
 
         // ✅ thêm dòng này
-        window.__UPANH_MANV__ = (nv?.manv || nv?.MANV || '').toString().trim();
+        // Lấy mã nhân viên an toàn cho mọi loại tài khoản
+        let manvSafe = '';
+
+        try {
+          // 1. Nhân viên thường
+          manvSafe =
+            nv?.manv ||
+            nv?.MANV ||
+            nv?.ma_nv ||
+            '';
+
+          // 2. Nếu vẫn rỗng → thử lấy từ Supabase user metadata
+          if (!manvSafe && window.supabase?.auth) {
+            const { data } = await window.supabase.auth.getUser();
+            manvSafe =
+              data?.user?.user_metadata?.manv ||
+              data?.user?.user_metadata?.ma_nv ||
+              data?.user?.email ||
+              '';
+          }
+
+        } catch (e) {
+          console.warn('Không lấy được mã nhân viên:', e);
+        }
+
+        window.__UPANH_MANV__ = String(manvSafe).toUpperCase().trim();
+        console.log('MANV đang dùng:', window.__UPANH_MANV__);
+
 
         // Init app cho cả 2 loại tài khoản
         initUpAnhNhanh({ nv, ctx, isAdmin });
