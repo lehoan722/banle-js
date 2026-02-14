@@ -63,10 +63,11 @@
     }
 
 
-    
+
     /* ===== Layout xem in: PC 2 cột, Mobile 1 cột ===== */
     .invoice-layout {
-      display: block; /* mobile default */
+      display: block;
+      /* mobile default */
     }
 
     .invoice-left {
@@ -74,7 +75,8 @@
     }
 
     .invoice-right {
-      margin-top: 10px; /* mobile: QR nằm dưới */
+      margin-top: 10px;
+      /* mobile: QR nằm dưới */
     }
 
     /* Desktop / màn hình rộng: chia 2 cột */
@@ -114,7 +116,7 @@
       }
     }
 
-/* ... (các đoạn khác giữ nguyên) ... */
+    /* ... (các đoạn khác giữ nguyên) ... */
     .note {
       font-size: calc(12px * var(--scale));
       font-style: italic;
@@ -347,6 +349,40 @@
         display: none !important;
       }
     }
+
+    /* ===== FIX độ rộng cột theo % trong colgroup ===== */
+    table.items {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      /* QUAN TRỌNG: giữ đúng width cột */
+    }
+
+    table.items th,
+    table.items td {
+      padding: 4px;
+      font-size: 13px;
+      border: 1px solid #000;
+    }
+
+    /* Các cột số: căn phải + không xuống dòng */
+    table.items td:nth-child(2),
+    table.items td:nth-child(3),
+    table.items td:nth-child(4),
+    table.items td:nth-child(5) {
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      /* QUAN TRỌNG */
+      text-overflow: clip;
+      /* cắt thẳng */
+    }
+
+    /* Cột tên hàng: cho phép bẻ dòng hợp lý nếu vẫn quá dài */
+    table.items td:nth-child(1) {
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
 
@@ -359,42 +395,51 @@
       <div class="invoice-layout">
         <div class="invoice-left">
 
-      <div class="header">
-        <div class="bold big">SHOP HOÀN TUYẾT</div>
-        <div>CS1: SN 540 Đường 3-2 TP Thái Nguyên</div>
-        <div>CS2: SN 561 Đường LNQ - Thái Nguyên</div>
-        <div>ĐT: 0835.190.402; 0916.747.401</div>
-        <div>facebook.com/shophoantuyet</div>
-        <div class="bold">HÓA ĐƠN BÁN LẺ</div>
-      </div>
+          <div class="header">
+            <div class="bold big">SHOP HOÀN TUYẾT</div>
+            <div>CS1: SN 540 Đường 3-2 TP Thái Nguyên</div>
+            <div>CS2: SN 561 Đường LNQ - Thái Nguyên</div>
+            <div>ĐT: 0835.190.402; 0916.747.401</div>
+            <div>facebook.com/shophoantuyet</div>
+            <div class="bold">HÓA ĐƠN BÁN LẺ</div>
+          </div>
 
-      <div class="invoice-info">
-        NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
-        (<span id="sohd"></span>)<br>
-        Date: <span id="ngay"></span> - <span id="gio"></span>
-      </div>
+          <div class="invoice-info">
+            NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
+            (<span id="sohd"></span>)<br>
+            Date: <span id="ngay"></span> - <span id="gio"></span>
+          </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>TÊN HÀNG</th>
-            <th>S.L</th>
-            <th>ĐƠN GIÁ</th>
-            <th>K. MAI</th>
-            <th>T.TIỀN</th>
-          </tr>
-        </thead>
-        <tbody id="noidungchitiet"></tbody>
-      </table>
+          <table class="items">
+            <colgroup>
+              <col style="width:45%">
+              <col style="width:10%">
+              <col style="width:15%">
+              <col style="width:15%">
+              <col style="width:15%">
+            </colgroup>
 
-      <div class="totals-flex"></div>
+            <thead>
+              <tr>
+                <th>TÊN HÀNG</th>
+                <th>S.L</th>
+                <th>ĐƠN GIÁ</th>
+                <th>K. MAI</th>
+                <th>T.TIỀN</th>
+              </tr>
+            </thead>
+            <tbody id="noidungchitiet"></tbody>
+          </table>
+
+          <div class="totals-flex"></div>
 
 
-      <div class="note">
-        Chú ý: Hàng chỉ được đổi lại trong 03 ngày phải còn nguyên nhãn, chưa sử dụng. không nhận hàng trả lại.
-      </div>
+          <div class="note">
+            Chú ý: Hàng chỉ được đổi lại trong 03 ngày phải còn nguyên nhãn, chưa sử dụng. không nhận hàng
+            trả lại.
+          </div>
 
-      <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
+          <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
 
 
         </div>
@@ -404,7 +449,8 @@
             <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
             <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
             <div class="payqr-info">
-              <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span></div>
+              <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span>
+              </div>
               <div id="qr_account_name">DANG LE HOAN</div>
               <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
             </div>
