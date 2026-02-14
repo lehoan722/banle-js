@@ -63,7 +63,58 @@
     }
 
 
-    /* ... (các đoạn khác giữ nguyên) ... */
+    
+    /* ===== Layout xem in: PC 2 cột, Mobile 1 cột ===== */
+    .invoice-layout {
+      display: block; /* mobile default */
+    }
+
+    .invoice-left {
+      min-width: 0;
+    }
+
+    .invoice-right {
+      margin-top: 10px; /* mobile: QR nằm dưới */
+    }
+
+    /* Desktop / màn hình rộng: chia 2 cột */
+    @media (min-width: 900px) {
+      .paper {
+        width: min(96vw, 1100px);
+      }
+
+      .invoice-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .invoice-right {
+        margin-top: 0;
+        position: sticky;
+        top: 10px;
+      }
+
+      /* QR nằm trong cột phải: bỏ đường kẻ trên để gọn */
+      .invoice-right .payqr {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+      }
+
+      /* Cho QR to hơn trên PC, nhưng vẫn vừa cột */
+      .invoice-right .vietqr-img {
+        width: min(100%, 420px) !important;
+      }
+
+      .invoice-right .payqr-info {
+        max-width: 420px;
+        margin: 0 auto;
+      }
+    }
+
+/* ... (các đoạn khác giữ nguyên) ... */
     .note {
       font-size: calc(12px * var(--scale));
       font-style: italic;
@@ -304,6 +355,10 @@
   <div class="screen-center">
     <div class="paper">
 
+
+      <div class="invoice-layout">
+        <div class="invoice-left">
+
       <div class="header">
         <div class="bold big">SHOP HOÀN TUYẾT</div>
         <div>CS1: SN 540 Đường 3-2 TP Thái Nguyên</div>
@@ -340,6 +395,22 @@
       </div>
 
       <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
+
+
+        </div>
+
+        <div class="invoice-right">
+          <div class="payqr" id="payqr">
+            <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
+            <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
+            <div class="payqr-info">
+              <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span></div>
+              <div id="qr_account_name">DANG LE HOAN</div>
+              <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <script>
         // Lấy dữ liệu từ localStorage
@@ -380,17 +451,6 @@
   <div class="totals-pay bold">
     <span class="label">Tổng phải trả:</span>
     <span class="value" style="font-size:18px;">${formatSo(thanhtoan)}</span>
-  </div>
-
-  <div class="payqr" id="payqr">
-    <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
-    <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
-    <div class="payqr-info">
-      <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span></div>
-      <div id="qr_account_name">DANG LE HOAN</div>
-      <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
-      
-    </div>
   </div>
 `;
 
