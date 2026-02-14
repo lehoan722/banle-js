@@ -155,8 +155,8 @@ export async function khoiTaoUngDung() {
 
   }
 
-  // === TỰ ĐỘNG KIỂM TRA LẠI VỊ TRÍ ĐỊNH KỲ ===
-  if (isBannvcs1Page || isBannvcs2Page) {
+  // === TỰ ĐỘNG KIỂM TRA LẠI VỊ TRÍ ĐỊNH KỲ ===  tam ngung
+  /* if (isBannvcs1Page || isBannvcs2Page) {
     setInterval(async () => {
       let stillInStore = false;
 
@@ -185,7 +185,7 @@ export async function khoiTaoUngDung() {
         location.reload(); // tải lại trang → yêu cầu định vị lại
       }
     }, 300000); // kiểm tra mỗi 60 giây (60000 ms)  5 PHUT
-  }
+  } */
 
 
   // === 2. GUARD QUYỀN TRUY CẬP TRANG (DÙNG CHUNG CHO TẤT CẢ CÁC TRANG) ===
