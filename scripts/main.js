@@ -156,7 +156,7 @@ export async function khoiTaoUngDung() {
   }
 
   // === TỰ ĐỘNG KIỂM TRA LẠI VỊ TRÍ ĐỊNH KỲ ===  tam ngung
-  /* if (isBannvcs1Page || isBannvcs2Page) {
+  if (isBannvcs1Page || isBannvcs2Page) {
     setInterval(async () => {
       let stillInStore = false;
 
@@ -185,7 +185,7 @@ export async function khoiTaoUngDung() {
         location.reload(); // tải lại trang → yêu cầu định vị lại
       }
     }, 300000); // kiểm tra mỗi 60 giây (60000 ms)  5 PHUT
-  } */
+  }
 
 
   // === 2. GUARD QUYỀN TRUY CẬP TRANG (DÙNG CHUNG CHO TẤT CẢ CÁC TRANG) ===
@@ -952,10 +952,8 @@ function showBayMauPopup(tasks, context) {
     background: "rgba(0,0,0,0.05)",
     zIndex: "9998",
     display: "flex",
-    justifyContent: "flex-start",   // ✅ canh trái
-    alignItems: "flex-end",         // ✅ canh xuống dưới
-    paddingLeft: "12px",            // ✅ cách mép trái
-    paddingBottom: "12px",          // ✅ cách mép dưới
+    justifyContent: "center",
+    alignItems: "flex-end",
     pointerEvents: "auto",
   });
 
