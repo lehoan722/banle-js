@@ -952,8 +952,10 @@ function showBayMauPopup(tasks, context) {
     background: "rgba(0,0,0,0.05)",
     zIndex: "9998",
     display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-end",
+    justifyContent: "flex-start",   // ✅ canh trái
+    alignItems: "flex-end",         // ✅ canh xuống dưới
+    paddingLeft: "12px",            // ✅ cách mép trái
+    paddingBottom: "12px",          // ✅ cách mép dưới
     pointerEvents: "auto",
   });
 
