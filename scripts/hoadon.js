@@ -239,7 +239,7 @@ function isNhapMode() {
     if (isCCNMode()) return false;
     const p = (location.pathname || "").toLowerCase();
     //if (p.includes("nhap") || p.includes("nhaptam") || p.includes("nhapmoi") || p.includes("doitra")) return true;
-    if ( p.includes("nhapmoi") || p.includes("doitra")) return true;
+    if (p.includes("nhapmoi") || p.includes("doitra")) return true;
 
     const loai = (window.loaihd || "").toLowerCase();
     return loai.startsWith("nm") || loai.startsWith("nt") || loai.startsWith("ndoi") || loai.startsWith("ncn");
@@ -1129,28 +1129,28 @@ export function suaDongDangChon() {
     const idx = item.sizes.findIndex(s => String(s).trim() === size);
     if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
 
-    // 3) Đẩy dữ liệu lên form
+    // 3) Đẩy mã sản phẩm lên form theo cách mới
     const maspEl = document.getElementById("masp");
-    if (maspEl) {
-        maspEl.value = masp.toUpperCase();                 // ghi lại MASP
-        try { maspEl.dispatchEvent(new Event("change", { bubbles: true })); } catch (_) { }
-    }
-    document.getElementById("size").value = item.sizes[idx] || "";
-    document.getElementById("soluong").value = item.soluongs[idx] || "1";
-    document.getElementById("dvt").value = item.dvt || "";
-    document.getElementById("gia").value = item.gia || "";
-    document.getElementById("khuyenmai").value = item.km || "";
-    (function recalc() {
-        const sl = parseInt(document.getElementById("soluong").value || "0", 10) || 0;
-        const gia = parseInt(String(document.getElementById("gia").value).replace(/[.\s]/g, "")) || 0;
-        const km = parseInt(String(document.getElementById("khuyenmai").value).replace(/[.\s]/g, "")) || 0;
-        const tt = (gia - km) * sl;
-        const ttEl = document.getElementById("thanhtien");
-        if (ttEl) ttEl.value = tt.toLocaleString();
-    })();
-    const slEl = document.getElementById("soluong");
-    if (slEl) { slEl.focus(); slEl.select(); }
+    const sizeEl = document.getElementById("size");
 
+    if (maspEl) {
+        maspEl.value = masp.toUpperCase();
+
+        try {
+            maspEl.dispatchEvent(new Event("change", { bubbles: true }));
+        } catch (_) { }
+
+        // focus + bôi đen toàn bộ mã sản phẩm
+        setTimeout(() => {
+            maspEl.focus();
+            maspEl.select();
+        }, 50);
+    }
+
+    // xóa trắng size để người dùng nhập lại
+    if (sizeEl) {
+        sizeEl.value = "";
+    }
     // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
     const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
     item.sizes.splice(idx, 1);
