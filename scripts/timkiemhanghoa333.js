@@ -1779,7 +1779,7 @@ function openSimilarSearchFromSize({ masp, sizeEU, branch, group }) {
     // Mở trang bán theo size (cùng thư mục với trang 333)
     const url = 'bantheosize.html?mode=similar';
     //window.location.href = url;
-     window.open(url, '_blank');
+    window.open(url, '_blank');
 }
 
 
@@ -1992,18 +1992,10 @@ window.openDatHangFor = async function (masp, anchorEl) {
     }
 
     if (!hasImg) {
-        if (isDesktopDevice()) {
-            // Cho phép đặt hàng không ảnh khi dùng máy tính
-            showToast('ℹ️ Đặt hàng trên máy tính: cho phép không có ảnh sản phẩm.', 'ok');
-        } else {
-            // Điện thoại: vẫn buộc chụp/chọn ảnh trước
-            setProductImageByMasp(CURRENT_MASP);
-            _orderAutoFlow = true; // lưu xong tự mở popup
-            document.getElementById('imgFileInput')?.click();
-            return false;
-        }
+        const url = `https://banle-js.vercel.app/upanhnhanh.html?masp=${encodeURIComponent(CURRENT_MASP)}`;
+        window.open(url, '_blank');
+        return false;
     }
-
 
     // Sinh số HĐ & mở popup
     const sohd = await getNextSohd(diadiem).catch(() => null);
