@@ -166,15 +166,7 @@ export function khoiTaoShortcut() {
       else console.warn("Không tìm thấy nút #quaylai");
     }
 
-    // F6: Tiếp tục (duyệt hóa đơn)
-    if (e.key === "F7") {
-      e.preventDefault();
-      const btn = document.getElementById("tieptuc");
-      if (btn) btn.click();
-      else console.warn("Không tìm thấy nút #tieptuc");
-    }
-
-    // F7: Xem in hóa đơn
+    // F6: Xem in hóa đơn
     if (e.key === "F6") {
       e.preventDefault();
       const btn = document.getElementById("xemin");
@@ -186,7 +178,7 @@ export function khoiTaoShortcut() {
     }
 
     // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền danh sách mã
-    if (e.key === "F8") {
+    if (e.key === "F7") {
       e.preventDefault();
 
       // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
@@ -209,7 +201,7 @@ export function khoiTaoShortcut() {
     }
 
     // F8: mở trang nhập vị trí kho (theo cơ sở đích), có ngoại lệ ccn1v2/ccn2v1
-    if (e.key === "F9") {
+    if (e.key === "F8") {
       e.preventDefault();
 
       // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
@@ -247,7 +239,7 @@ export function khoiTaoShortcut() {
       window.open(targetUrl, "_blank");
     }
 
-
+    
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
     if (e.ctrlKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
