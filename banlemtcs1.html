@@ -412,6 +412,43 @@
         }
     </style>
 
+    <style>
+        #popupChonThanhToan {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.18);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #popupChonThanhToan .pptt-box {
+            width: 420px;
+            max-width: 90vw;
+            background: #fff;
+            border: 1px solid #bfbfbf;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            padding: 18px;
+        }
+
+        #popupChonThanhToan .pptt-line {
+            font-size: 26px;
+            line-height: 1.45;
+            margin-bottom: 6px;
+        }
+
+        #popupChonThanhToan .pptt-input {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 10px;
+            padding: 10px 12px;
+            font-size: 34px;
+            border: 2px solid #2f75ff;
+            outline: none;
+        }
+    </style>
+
     <script>
 
         function switchTab(tabName) {
@@ -724,6 +761,15 @@
             </div>
         </div>
 
+        <!-- Popup chọn hình thức thanh toán -->
+        <div id="popupChonThanhToan">
+            <div class="pptt-box">
+                <div class="pptt-line">Nhấn enter để lựa chọn tiền mặt.</div>
+                <div class="pptt-line">Nhập ký tự bất kỳ để chọn chuyển khoản.</div>
+                <input id="txtChonThanhToan" class="pptt-input" type="text" autocomplete="off" />
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -992,6 +1038,151 @@
         });
     </script>
 
+    <script>
+        (() => {
+            let daPatchHamLuu = false;
+            let dangLuuSauKhiChonThanhToan = false;
+            let argsLuuTam = [];
+
+            function layTrangThaiHoaDon() {
+                return String(document.getElementById('hd_state')?.value || '').trim().toLowerCase();
+            }
+
+            function laHoaDonMoi() {
+                return layTrangThaiHoaDon() === 'moi';
+            }
+
+            function focusMasp() {
+                const el = document.getElementById('masp');
+                if (!el) return;
+                setTimeout(() => {
+                    try {
+                        el.focus();
+                        el.select?.();
+                    } catch (e) { }
+                }, 0);
+            }
+
+            function moPopupChonThanhToan(args = []) {
+                argsLuuTam = args;
+                const popup = document.getElementById('popupChonThanhToan');
+                const input = document.getElementById('txtChonThanhToan');
+                if (!popup || !input) return;
+
+                input.value = '';
+                popup.style.display = 'flex';
+
+                setTimeout(() => {
+                    input.focus();
+                    input.select?.();
+                }, 0);
+            }
+
+            function dongPopupChonThanhToan(traFocusMasp = true) {
+                const popup = document.getElementById('popupChonThanhToan');
+                const input = document.getElementById('txtChonThanhToan');
+                if (popup) popup.style.display = 'none';
+                if (input) input.value = '';
+
+                if (traFocusMasp) {
+                    focusMasp();
+                }
+            }
+
+            function ganHinhThucThanhToan(value) {
+                const select = document.getElementById('hinhthuctt');
+                if (!select) return;
+
+                select.value = value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            async function xacNhanVaLuuTiep() {
+                const input = document.getElementById('txtChonThanhToan');
+                const kieuThanhToan = input && input.value.trim() !== '' ? 'ck' : 'tm';
+
+                ganHinhThucThanhToan(kieuThanhToan);
+                dongPopupChonThanhToan(false);
+
+                dangLuuSauKhiChonThanhToan = true;
+                try {
+                    if (typeof window.__luuHoaDonQuaAPI_Goc === 'function') {
+                        await window.__luuHoaDonQuaAPI_Goc.apply(window, argsLuuTam);
+                    }
+                } catch (err) {
+                    console.error('Lỗi lưu hóa đơn:', err);
+                    throw err;
+                } finally {
+                    dangLuuSauKhiChonThanhToan = false;
+                    argsLuuTam = [];
+                }
+            }
+
+            function khoiTaoPopupThanhToan() {
+                const popup = document.getElementById('popupChonThanhToan');
+                const input = document.getElementById('txtChonThanhToan');
+                if (!popup || !input) return;
+
+                input.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        await xacNhanVaLuuTiep();
+                        return;
+                    }
+
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dongPopupChonThanhToan(true);
+                    }
+                });
+
+                popup.addEventListener('click', (e) => {
+                    if (e.target === popup) {
+                        dongPopupChonThanhToan(true);
+                    }
+                });
+            }
+
+            function patchHamLuu() {
+                if (daPatchHamLuu) return true;
+                if (typeof window.luuHoaDonQuaAPI !== 'function') return false;
+
+                window.__luuHoaDonQuaAPI_Goc = window.luuHoaDonQuaAPI;
+
+                window.luuHoaDonQuaAPI = async function (...args) {
+                    if (dangLuuSauKhiChonThanhToan) {
+                        return await window.__luuHoaDonQuaAPI_Goc.apply(this, args);
+                    }
+
+                    if (!laHoaDonMoi()) {
+                        return await window.__luuHoaDonQuaAPI_Goc.apply(this, args);
+                    }
+
+                    moPopupChonThanhToan(args);
+                    return false;
+                };
+
+                window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
+                daPatchHamLuu = true;
+                console.log('Đã gắn popup chọn hình thức thanh toán trước khi lưu.');
+                return true;
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                khoiTaoPopupThanhToan();
+
+                const timer = setInterval(() => {
+                    if (patchHamLuu()) {
+                        clearInterval(timer);
+                    }
+                }, 300);
+
+                setTimeout(() => clearInterval(timer), 15000);
+            });
+        })();
+    </script>
 
     <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
