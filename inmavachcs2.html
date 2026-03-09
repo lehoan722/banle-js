@@ -1175,7 +1175,19 @@
                         if (pop) pop.style.display = 'none';
                     } catch (_) { }
 
-                    // Giữ luồng cũ: kiểm tra tồn tại + fill form, rồi sang Tên SP
+                    // Nếu vừa lưu xong và đang quay lại ô mã SP,
+                    // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
+                    if (justSavedReturnToMasp) {
+                        justSavedReturnToMasp = false;
+                        const mausac = document.getElementById('mausacInput');
+                        if (mausac) {
+                            mausac.focus();
+                            setTimeout(() => mausac.select?.(), 10);
+                        }
+                        return;
+                    }
+
+                    // Luồng cũ
                     checkExistAndFillForm();
                     const tensp = document.getElementById('tenspInput');
                     if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
@@ -1211,8 +1223,15 @@
             });
 
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
+            let justSavedReturnToMasp = false; // vừa lưu xong và đang đứng lại ở ô mã sản phẩm
+            let skipNextAutoFillFromMaspBlur = false; // bỏ qua 1 lần auto fill khi rời ô mã SP sau khi lưu
 
             async function checkExistAndFillForm() {
+                if (skipNextAutoFillFromMaspBlur) {
+                    skipNextAutoFillFromMaspBlur = false;
+                    return;
+                }
+
                 const masp = document.getElementById('maspInput').value.trim().toUpperCase();
                 if (!masp) return;
 
@@ -1366,21 +1385,28 @@
                 document.getElementById('addProductMessage').style.color = '#0a9e1c';
                 document.getElementById('addProductMessage').textContent = existed ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
 
-                // Giữ lại mã sản phẩm vừa lưu để tiếp tục tạo mã cùng loại khác màu
-                const savedMasp = data.masp;
+                // Lưu lại mã vừa dùng trước khi reset form
+                const savedMasp = data.masp || '';
 
                 // Reset lại form theo giữ lại trường
                 resetForm();
 
-                // Gán lại mã sản phẩm vừa lưu vào ô mã sản phẩm
+                // Sau khi reset:
+                // - giữ nguyên mã sản phẩm
+                // - xóa trắng màu sắc
+                // - focus lại vào ô mã sản phẩm
+                // - bôi đen toàn bộ mã để người dùng gõ mã mới thì tự đè,
+                //   còn nếu muốn giữ mã cũ thì chỉ việc Enter / nhập màu mới
                 const maspInput = document.getElementById('maspInput');
-                maspInput.value = savedMasp;
+                const mausacInput = document.getElementById('mausacInput');
 
-                // Focus và bôi đen toàn bộ để:
-                // - nếu người dùng gõ mã mới -> tự đè lên mã cũ
-                // - nếu không gõ mã mới mà nhấn Enter -> vẫn dùng lại mã cũ
+                maspInput.value = savedMasp;
+                mausacInput.value = '';
+
                 maspInput.focus();
                 setTimeout(() => maspInput.select(), 10);
+                justSavedReturnToMasp = true;
+                skipNextAutoFillFromMaspBlur = true;
 
                 // Load lại dropdown option (nếu có giá trị mới)
                 loadDropdownOptions();
@@ -1388,7 +1414,7 @@
                 // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
                 searchProducts(document.getElementById('search').value.trim().toLowerCase());
 
-                // Đẩy mã vừa lập vào danh sách tem in
+                // Đẩy sản phẩm vừa lưu vào danh sách tem in
                 pushProductToGrid(data);
             }
 
@@ -1679,8 +1705,17 @@
                 order.forEach((id, idx) => {
                     const el = document.getElementById(id);
                     if (!el) return;
+
+                    // Riêng ô mã sản phẩm đã có logic Enter riêng,
+                    // nên không gắn điều hướng Enter tuần tự ở đây nữa
+                    if (id === 'maspInput') {
+                        el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
+                        return;
+                    }
+
                     // bỏ listener cũ nếu có
-                    el.onkeydown = null; el.onkeypress = null;
+                    el.onkeydown = null;
+                    el.onkeypress = null;
 
                     const h = handlerFactory(idx);
                     el.addEventListener('keydown', h, true);
