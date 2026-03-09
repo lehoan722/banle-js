@@ -1182,6 +1182,33 @@
                 }
             });
 
+            document.getElementById('maspInput').addEventListener('dblclick', async function () {
+                const masp = (this.value || '').trim().toUpperCase();
+                if (!masp) return;
+
+                // Ẩn popup gợi ý nếu đang mở để tránh vướng giao diện
+                try {
+                    const pop = document.getElementById('maspSuggestList');
+                    if (pop) pop.style.display = 'none';
+                } catch (_) { }
+
+                // Lấy đúng sản phẩm theo mã hiện có trong ô
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('*')
+                    .eq('masp', masp)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error('Lỗi lấy sản phẩm để đẩy sang danh sách tem in:', error);
+                    return;
+                }
+
+                // Nếu mã hợp lệ và có tồn tại thì đẩy vào danh sách tem in
+                if (data) {
+                    pushProductToGrid(data);
+                }
+            });
 
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
 
@@ -1339,13 +1366,29 @@
                 document.getElementById('addProductMessage').style.color = '#0a9e1c';
                 document.getElementById('addProductMessage').textContent = existed ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
 
+                // Giữ lại mã sản phẩm vừa lưu để tiếp tục tạo mã cùng loại khác màu
+                const savedMasp = data.masp;
+
                 // Reset lại form theo giữ lại trường
                 resetForm();
-                document.getElementById('maspInput').focus();
+
+                // Gán lại mã sản phẩm vừa lưu vào ô mã sản phẩm
+                const maspInput = document.getElementById('maspInput');
+                maspInput.value = savedMasp;
+
+                // Focus và bôi đen toàn bộ để:
+                // - nếu người dùng gõ mã mới -> tự đè lên mã cũ
+                // - nếu không gõ mã mới mà nhấn Enter -> vẫn dùng lại mã cũ
+                maspInput.focus();
+                setTimeout(() => maspInput.select(), 10);
+
                 // Load lại dropdown option (nếu có giá trị mới)
                 loadDropdownOptions();
+
                 // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
                 searchProducts(document.getElementById('search').value.trim().toLowerCase());
+
+                // Đẩy mã vừa lập vào danh sách tem in
                 pushProductToGrid(data);
             }
 
