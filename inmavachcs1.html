@@ -1214,7 +1214,6 @@
                 }
             });
 
-
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
 
             async function checkExistAndFillForm() {
@@ -1484,27 +1483,11 @@
 
                 // Sự kiện chọn
                 maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
-                    row.onclick = async function () {
-                        const selectedMasp = (row.dataset.masp || '').trim().toUpperCase();
-
-                        maspInput.value = selectedMasp;
-                        document.getElementById('tenspInput').value = row.dataset.tensp || '';
+                    row.onclick = function () {
+                        maspInput.value = row.dataset.masp;
+                        document.getElementById('tenspInput').value = row.dataset.tensp;
                         maspSuggestDiv.style.display = 'none';
-
-                        // Nạp dữ liệu sản phẩm lên form sửa
-                        await checkExistAndFillForm();
-
-                        // Lấy lại dữ liệu đầy đủ của mã đang chọn để đẩy vào danh sách tem in
-                        const { data: productData, error } = await supabase
-                            .from('dmhanghoa')
-                            .select('*')
-                            .eq('masp', selectedMasp)
-                            .maybeSingle();
-
-                        if (!error && productData) {
-                            pushProductToGrid(productData);
-                        }
-
+                        checkExistAndFillForm(); // Tải info nếu có
                         document.getElementById('tenspInput').focus();
                     }
                 });
