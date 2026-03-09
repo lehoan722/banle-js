@@ -1169,34 +1169,34 @@
             // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
             document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
             document.getElementById('maspInput').addEventListener('keydown', function (e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        e.stopPropagation();
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-        // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
-        try {
-            const pop = document.getElementById('maspSuggestList');
-            if (pop) pop.style.display = 'none';
-        } catch (_) { }
+                    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
+                    try {
+                        const pop = document.getElementById('maspSuggestList');
+                        if (pop) pop.style.display = 'none';
+                    } catch (_) { }
 
-        // Nếu vừa lưu xong và đang quay lại ô mã SP,
-        // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
-        if (justSavedReturnToMasp) {
-            justSavedReturnToMasp = false;
-            const mausac = document.getElementById('mausacInput');
-            if (mausac) {
-                mausac.focus();
-                setTimeout(() => mausac.select?.(), 10);
-            }
-            return;
-        }
+                    // Nếu vừa lưu xong và đang quay lại ô mã SP,
+                    // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
+                    if (justSavedReturnToMasp) {
+                        justSavedReturnToMasp = false;
+                        const mausac = document.getElementById('mausacInput');
+                        if (mausac) {
+                            mausac.focus();
+                            setTimeout(() => mausac.select?.(), 10);
+                        }
+                        return;
+                    }
 
-        // Luồng cũ
-        checkExistAndFillForm();
-        const tensp = document.getElementById('tenspInput');
-        if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
-    }
-});
+                    // Luồng cũ
+                    checkExistAndFillForm();
+                    const tensp = document.getElementById('tenspInput');
+                    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
+                }
+            });
 
             document.getElementById('maspInput').addEventListener('dblclick', async function () {
                 const masp = (this.value || '').trim().toUpperCase();
@@ -1703,8 +1703,17 @@
                 order.forEach((id, idx) => {
                     const el = document.getElementById(id);
                     if (!el) return;
+
+                    // Riêng ô mã sản phẩm đã có logic Enter riêng,
+                    // nên không gắn điều hướng Enter tuần tự ở đây nữa
+                    if (id === 'maspInput') {
+                        el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
+                        return;
+                    }
+
                     // bỏ listener cũ nếu có
-                    el.onkeydown = null; el.onkeypress = null;
+                    el.onkeydown = null;
+                    el.onkeypress = null;
 
                     const h = handlerFactory(idx);
                     el.addEventListener('keydown', h, true);
