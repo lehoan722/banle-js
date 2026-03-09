@@ -1582,17 +1582,20 @@
             // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
             mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
 
-            // ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
+            // ENTER trong ô Màu -> nối hậu tố + nhảy thẳng xuống nút Lưu
             mausacInput?.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
+                    e.stopPropagation();
+
                     updateMaspWithColorSuffix();
-                    // chuyển sang ô Khuyến mãi như thứ tự formOrder
-                    const km = document.getElementById('khuyenmaiInput');
-                    if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
+
+                    const btn = document.getElementById('saveFormBtn');
+                    if (btn) {
+                        btn.focus();
+                    }
                 }
             });
-
 
             //Format số cho giá nhập & giá lẻ trên FORM
             [gianhapInput, gialeInput].forEach(inp => {
