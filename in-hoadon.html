@@ -2,463 +2,322 @@
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <title>In Hóa Đơn</title>
-
-  <style>
-    :root {
-      --scale: 1.1;
-      /* tăng chữ 1.5 lần */
-      --paperW: 80mm;
-      /* khổ giấy in */
-      --pageM: 2mm;
-      /* lề in */
-      --fontBase: 14px;
-      /* cỡ chữ gốc */
-    }
-
-    /* Khóa khổ in + lề để tránh Chrome tự co (shrink) */
-    @page {
-      size: var(--paperW) auto;
-      margin: var(--pageM);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      padding: 0;
-      margin: 0;
-    }
-
-
-    body {
-      font-family: Arial, sans-serif;
-
-      /* MÀN HÌNH: full màn hình */
-      width: 100%;
-      padding: 0;
-      margin: 0;
-
-      /* scale chữ */
-      font-size: calc(var(--fontBase) * var(--scale));
-      line-height: 1.25;
-    }
-
-    /* ====== CHẾ ĐỘ XEM TRÊN ĐIỆN THOẠI / TRÌNH DUYỆT ====== */
-    .screen-center {
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 10px 8px;
-    }
-
-    /* “Tờ hóa đơn” khi xem trên màn hình */
-    .paper {
-      width: min(96vw, 520px);
-      max-width: 100%;
-    }
-
-
-
-    /* ===== Layout xem in: PC 2 cột, Mobile 1 cột ===== */
-    .invoice-layout {
-      display: block;
-      /* mobile default */
-    }
-
-    .invoice-left {
-      min-width: 0;
-    }
-
-    .invoice-right {
-      margin-top: 10px;
-      /* mobile: QR nằm dưới */
-    }
-
-    /* Desktop / màn hình rộng: chia 2 cột */
-    @media (min-width: 900px) {
-      .paper {
-        width: min(96vw, 1100px);
-      }
-
-      .invoice-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px;
-        align-items: start;
-      }
-
-      .invoice-right {
-        margin-top: 0;
-        position: sticky;
-        top: 10px;
-      }
-
-      /* QR nằm trong cột phải: bỏ đường kẻ trên để gọn */
-      .invoice-right .payqr {
-        margin-top: 0;
-        padding-top: 0;
-        border-top: none;
-      }
-
-      /* Cho QR to hơn trên PC, nhưng vẫn vừa cột */
-      .invoice-right .vietqr-img {
-        width: min(100%, 350px) !important;
-      }
-
-      .invoice-right .payqr-info {
-        max-width: 420px;
-        margin: 0 auto;
-      }
-    }
-
-    /* ... (các đoạn khác giữ nguyên) ... */
-    .note {
-      font-size: calc(12px * var(--scale));
-      font-style: italic;
-    }
-
-
-    @media print {
-      body {
-        margin-left: 2mm !important;
-        margin-right: 2mm !important;
-      }
-    }
-
-
-    .header,
-    .invoice-info {
-      margin-top: 0 !important;
-      padding-top: 0 !important;
-    }
-
-
-    /* ... (các đoạn khác giữ nguyên) ... */
-    th,
-    td {
-      border: 1px solid black;
-      padding: 2px;
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .header,
-    .footer {
-      text-align: center;
-    }
-
-    .bold {
-      font-weight: bold;
-    }
-
-    .invoice-info,
-    .totals,
-    .note {
-      margin-top: 0px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0px;
-    }
-
-    th,
-    td {
-      border: 1px solid black;
-      padding: 4px;
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .totals td {
-      text-align: right;
-    }
-
-    .note {
-      font-size: 12px;
-      margin-top: 0px;
-      font-style: italic;
-    }
-
-    .thankyou {
-      font-size: calc(16px * var(--scale));
-      text-align: center;
-    }
-
-    .totals-left,
-    .totals-right {
-      font-size: calc(13px * var(--scale));
-    }
-
-    .totals-flex {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      gap: 24px;
-      margin: 10px 0 0 0;
-    }
-
-    .totals-col {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 13px;
-    }
-
-    .totals-col .label {
-      display: inline-block;
-      min-width: 90px;
-    }
-
-    .totals-col .value {
-      font-weight: bold;
-      float: right;
-      margin-left: 8px;
-    }
-
-    .total-line {
-      border-top: 1px dashed #555;
-      padding-top: 2px;
-      margin-top: 3px;
-    }
-
-
-    .totals-flex {
-      width: 100%;
-      display: block;
-      /* Đảm bảo không còn là flex! */
-      margin: 10px 0 0 0;
-    }
-
-    .totals-row {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: flex-start;
-      width: 100%;
-      gap: 4px;
-    }
-
-    .totals-left {
-      flex: 5;
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      gap: 2px;
-      font-size: 13px;
-      min-width: 0;
-      line-height: 1.6;
-      display: flex;
-    }
-
-    .totals-right {
-      flex: 3;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      font-size: 13px;
-
-
-    }
-
-    .totals-pay {
-      border-top: 2px dashed #555;
-      margin-top: 6px;
-      padding-top: 8px;
-      font-weight: bold;
-      font-size: calc(18px * var(--scale));
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-
-
-    /* --- QR chuyển khoản (hóa đơn đặc biệt) --- */
-    .payqr {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px dashed #333;
-      text-align: center;
-    }
-
-    .payqr-title {
-      font-weight: 700;
-      font-size: 13px;
-      margin-bottom: 6px;
-    }
-
-    .vietqr-img {
-      width: 220px;
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 0 auto 6px auto;
-    }
-
-    .vietqr-img {
-      width: 250px !important;
-    }
-
-    .payqr-info {
-      font-size: 12px;
-      line-height: 1.35;
-      text-align: left;
-    }
-
-    .payqr-amount {
-      font-weight: 700;
-      margin-top: 4px;
-    }
-
-    .payqr-note {
-      margin-top: 2px;
-    }
-
-    @media print {
-      body {
-        width: auto;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      .screen-center {
-        display: block;
-        padding: 0;
-        min-height: auto;
-      }
-
-      .paper {
-        width: calc(var(--paperW) - (var(--pageM) * 2));
-      }
-
-      /* QR vẫn giữ đúng kích thước */
-      .vietqr-img {
-        width: 120px !important;
-      }
-
-      /* ✅ IN THẬT: ẩn khối QR + thông tin chuyển khoản */
-      .payqr {
-        display: none !important;
-      }
-    }
-
-    /* ===== FIX độ rộng cột theo % trong colgroup ===== */
-    table.items {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      /* QUAN TRỌNG: giữ đúng width cột */
-    }
-
-    table.items th,
-    table.items td {
-      padding: 4px;
-      font-size: 13px;
-      border: 1px solid #000;
-    }
-
-    /* Các cột số: căn phải + không xuống dòng */
-    table.items td:nth-child(2),
-    table.items td:nth-child(3),
-    table.items td:nth-child(4),
-    table.items td:nth-child(5) {
-      text-align: right;
-      white-space: nowrap;
-      overflow: hidden;
-      /* QUAN TRỌNG */
-      text-overflow: clip;
-      /* cắt thẳng */
-    }
-
-    /* Cột tên hàng: cho phép bẻ dòng hợp lý nếu vẫn quá dài */
-    table.items td:nth-child(1) {
-      text-align: left;
-      overflow-wrap: anywhere;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>In Hóa Đơn</title>
+
+    <style>
+
+        :root{
+  --scale: 1.1;      /* tăng chữ 1.5 lần */
+  --paperW: 80mm;    /* khổ giấy in */
+  --pageM: 2mm;      /* lề in */
+  --fontBase: 14px;  /* cỡ chữ gốc */
+}
+
+/* Khóa khổ in + lề để tránh Chrome tự co (shrink) */
+@page{
+  size: var(--paperW) auto;
+  margin: var(--pageM);
+}
+
+*{ box-sizing: border-box; }
+html, body{ padding:0; margin:0; }
+
+
+        body{
+  font-family: Arial, sans-serif;
+
+  /* MÀN HÌNH: full màn hình */
+  width: 100%;
+  padding: 0;
+  margin: 0;
+
+  /* scale chữ */
+  font-size: calc(var(--fontBase) * var(--scale));
+  line-height: 1.25;
+}
+
+/* ====== CHẾ ĐỘ XEM TRÊN ĐIỆN THOẠI / TRÌNH DUYỆT ====== */
+.screen-center{
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px 8px;
+}
+
+/* “Tờ hóa đơn” khi xem trên màn hình */
+.paper{
+  width: min(96vw, 520px);
+  max-width: 100%;
+}
+
+
+        /* ... (các đoạn khác giữ nguyên) ... */
+        .note{
+  font-size: calc(12px * var(--scale));
+  font-style: italic;
+}
+
+
+        @media print {
+            body {
+                margin-left: 2mm !important;
+                margin-right: 2mm !important;
+            }
+        }
+
+
+        .header,
+        .invoice-info {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+
+
+        /* ... (các đoạn khác giữ nguyên) ... */
+        th,
+        td {
+            border: 1px solid black;
+            padding: 2px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .header,
+        .footer {
+            text-align: center;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .invoice-info,
+        .totals,
+        .note {
+            margin-top: 0px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0px;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 4px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .totals td {
+            text-align: right;
+        }
+
+        .note {
+            font-size: 12px;
+            margin-top: 0px;
+            font-style: italic;
+        }
+
+        .thankyou{
+  font-size: calc(16px * var(--scale));
+  text-align: center;
+}
+
+        .totals-left, .totals-right{
+  font-size: calc(13px * var(--scale));
+}
+
+        .totals-flex {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 24px;
+            margin: 10px 0 0 0;
+        }
+
+        .totals-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .totals-col .label {
+            display: inline-block;
+            min-width: 90px;
+        }
+
+        .totals-col .value {
+            font-weight: bold;
+            float: right;
+            margin-left: 8px;
+        }
+
+        .total-line {
+            border-top: 1px dashed #555;
+            padding-top: 2px;
+            margin-top: 3px;
+        }
+
+
+        .totals-flex {
+            width: 100%;
+            display: block;
+            /* Đảm bảo không còn là flex! */
+            margin: 10px 0 0 0;
+        }
+
+        .totals-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            gap: 4px;
+        }
+
+        .totals-left {
+            flex: 5;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 2px;
+            font-size: 13px;
+            min-width: 0;
+            line-height: 1.6;
+            display: flex;
+        }
+
+        .totals-right {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 13px;
+
+
+        }
+
+        .totals-pay{
+  border-top: 2px dashed #555;
+  margin-top: 6px;
+  padding-top: 8px;
+  font-weight: bold;
+  font-size: calc(18px * var(--scale));
+  display:flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+    
+        /* --- QR chuyển khoản (hóa đơn đặc biệt) --- */
+        .payqr {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #333;
+            text-align: center;
+        }
+        .payqr-title{
+            font-weight:700;
+            font-size:13px;
+            margin-bottom:6px;
+        }
+        .vietqr-img{
+            width: 180px;
+            max-width: 100%;
+            height: auto;
+            display:block;
+            margin: 0 auto 6px auto;
+        }
+
+        .vietqr-img{ width: 180px !important; }
+
+        .payqr-info{
+            font-size:12px;
+            line-height:1.35;
+            text-align:left;
+        }
+        .payqr-amount{
+            font-weight:700;
+            margin-top:4px;
+        }
+        .payqr-note{
+            margin-top:2px;
+        }
+
+        @media print{
+  body{
+    width: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .screen-center{
+    display:block;
+    padding:0;
+    min-height:auto;
+  }
+  .paper{
+    width: calc(var(--paperW) - (var(--pageM) * 2));
+  }
+
+  /* QR vẫn giữ đúng kích thước */
+  .vietqr-img{ width: 120px !important; }
+}
+
+
+    </style>
 </head>
 
 <body>
 
-  <div class="screen-center">
+     <div class="screen-center">
     <div class="paper">
 
+    <div class="header">
+        <div class="bold big">SHOP HOÀN TUYẾT</div>
+        <div>CS1: SN 540 Đường 3-2 TP Thái Nguyên</div>
+        <div>CS2: SN 561 Đường LNQ - Thái Nguyên</div>
+        <div>ĐT: 0835.190.402; 0916.747.401</div>
+        <div>facebook.com/shophoantuyet</div>
+        <div class="bold">HÓA ĐƠN BÁN LẺ</div>
+    </div>
 
-      <div class="invoice-layout">
-        <div class="invoice-left">
+    <div class="invoice-info">
+        NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
+        (<span id="sohd"></span>)<br>
+        Date: <span id="ngay"></span> - <span id="gio"></span>
+    </div>
 
-          <div class="header">
-            <div class="bold big">SHOP HOÀN TUYẾT</div>
-            <div>CS1:SN 540 Đường 3-2 Thái Nguyên</div>
-            <div>CS2:SN 561 Đường LNQ -T Nguyên</div>
-            <div>ĐT: 0835.190.402; 0916.747.401</div>
-            <div>facebook.com/shophoantuyet</div>
-            <div class="bold">HÓA ĐƠN BÁN LẺ</div>
-          </div>
-
-          <div class="invoice-info">
-            NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
-            (<span id="sohd"></span>)<br>
-            Date: <span id="ngay"></span> - <span id="gio"></span>
-          </div>
-
-          <table class="items">
-            <colgroup>
-              <col style="width:45%">
-              <col style="width:10%">
-              <col style="width:15%">
-              <col style="width:15%">
-              <col style="width:15%">
-            </colgroup>
-
-            <thead>
-              <tr>
+    <table>
+        <thead>
+            <tr>
                 <th>TÊN HÀNG</th>
                 <th>S.L</th>
                 <th>ĐƠN GIÁ</th>
                 <th>K. MAI</th>
                 <th>T.TIỀN</th>
-              </tr>
-            </thead>
-            <tbody id="noidungchitiet"></tbody>
-          </table>
+            </tr>
+        </thead>
+        <tbody id="noidungchitiet"></tbody>
+    </table>
 
-          <div class="totals-flex"></div>
-
-
-          <div class="note">
-            Chú ý: Hàng chỉ được đổi lại trong 03 ngày phải còn nguyên nhãn, chưa sử dụng. không nhận hàng
-            trả lại.
-          </div>
-
-          <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
+    <div class="totals-flex"></div>
 
 
-        </div>
+    <div class="note">
+        Chú ý: Hàng chỉ được đổi lại trong 03 ngày phải còn nguyên nhãn, chưa sử dụng. không nhận hàng trả lại.
+    </div>
 
-        <div class="invoice-right">
-          <div class="payqr" id="payqr">
-            <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
-            <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
-            <div class="payqr-info">
-              <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span>
-              </div>
-              <div id="qr_account_name">DANG LE HOAN</div>
-              <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
 
-      <script>
+    <script>
         // Lấy dữ liệu từ localStorage
         const dataIn = JSON.parse(localStorage.getItem("data_hoadon_in") || "{}");
         const hoadon = dataIn.hoadon || {};
@@ -476,8 +335,8 @@
         const giamthue = Number(hoadon.giamthue) || -thuegtgt;
 
         function formatSo(val) {
-          if (isNaN(val)) return '0';
-          return Number(val).toLocaleString();
+            if (isNaN(val)) return '0';
+            return Number(val).toLocaleString();
         }
 
         // Render tổng hợp hai cột
@@ -498,98 +357,64 @@
     <span class="label">Tổng phải trả:</span>
     <span class="value" style="font-size:18px;">${formatSo(thanhtoan)}</span>
   </div>
+
+  
 `;
 
 
 
-        // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
-        (function renderVietQR() {
-          const img = document.getElementById("vietqr_img");
-          if (!img) return;
+       // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
+(function renderVietQR() {
+  const img = document.getElementById("vietqr_img");
+  if (!img) return;
 
-          // ===== Nhận biết cơ sở =====
-          const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
-          const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
+  // ===== Nhận biết cơ sở =====
+  const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
+  const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
 
-          // ===== Tài khoản nhận theo cơ sở =====
-          // CS1: DANG LE HOAN - Techcombank 2662222333
-          // CS2: NGUYEN ANH TUYET - Techcombank 2552222333
-          let bankId = "VietinBank";
-          let bankLabel = "VietinBank";
-          let accountNo = "101880222833";
-          let accountName = "DANG LE HOAN";
+  // ===== Tài khoản nhận theo cơ sở =====
+  // CS1: DANG LE HOAN - Techcombank 2662222333
+  // CS2: NGUYEN ANH TUYET - Techcombank 2552222333
+  let bankId = "TCB";
+  let bankLabel = "Techcombank";
+  let accountNo = "2662222333";
+  let accountName = "DANG LE HOAN";
 
-          if (isCS2) {
-            bankId = "TCB";
-            bankLabel = "Techcombank";
-            accountNo = "MS00P00000000635573";
-            accountName = "NGUYEN ANH TUYET";
-          }
+  if (isCS2) {
+    bankId = "TCB";
+    bankLabel = "Techcombank";
+    accountNo = "MS00P00000000635573";
+    accountName = "NGUYEN ANH TUYET";
+  }
 
-          const sohdText = (hoadon.sohd || "").toString().trim();
-          const addInfo = " CK ";
+  const sohdText = (hoadon.sohd || "").toString().trim();
+  const addInfo = "Shop Hoàn Tuyết " ;
 
-          const amount = Math.round(Number(thanhtoan) || 0);
+  const amount = Math.round(Number(thanhtoan) || 0);
 
-          // cập nhật thông tin hiển thị dưới QR (nếu có)
-          const elBank = document.getElementById("qr_bank_label");
-          const elAccNo = document.getElementById("qr_account_no");
-          const elAccName = document.getElementById("qr_account_name");
-          const elAmount = document.getElementById("qr_amount");
-          const elAddInfo = document.getElementById("qr_addinfo");
+  // cập nhật thông tin hiển thị dưới QR (nếu có)
+  const elBank = document.getElementById("qr_bank_label");
+  const elAccNo = document.getElementById("qr_account_no");
+  const elAccName = document.getElementById("qr_account_name");
+  const elAmount = document.getElementById("qr_amount");
+  const elAddInfo = document.getElementById("qr_addinfo");
 
-          if (elBank) elBank.textContent = bankLabel;
-          if (elAccNo) elAccNo.textContent = accountNo;
-          if (elAccName) elAccName.textContent = accountName;
-          if (elAmount) elAmount.textContent = (typeof formatSo === "function") ? formatSo(amount) : String(amount);
-          if (elAddInfo) elAddInfo.textContent = addInfo;
+  if (elBank) elBank.textContent = bankLabel;
+  if (elAccNo) elAccNo.textContent = accountNo;
+  if (elAccName) elAccName.textContent = accountName;
+  if (elAmount) elAmount.textContent = (typeof formatSo === "function") ? formatSo(amount) : String(amount);
+  if (elAddInfo) elAddInfo.textContent = addInfo;
 
-          const url =
-            "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
-            "?amount=" + encodeURIComponent(amount) +
-            "&addInfo=" + encodeURIComponent(addInfo) +
-            "&accountName=" + encodeURIComponent(accountName);
+  const url =
+    "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
+    "?amount=" + encodeURIComponent(amount) +
+    "&addInfo=" + encodeURIComponent(addInfo) +
+    "&accountName=" + encodeURIComponent(accountName);
 
-          img.src = url;
-        })();
+  img.src = url;
+})();
 
-        // ✅ Khi xem (overlay hoặc mở xem in): tự cuộn xuống cuối để QR luôn hiện
-        (function autoScrollToBottomForQR() {
-          // Nếu đang in/chuẩn bị in thì không làm gì
-          let printing = false;
-          window.addEventListener('beforeprint', () => printing = true);
-          window.addEventListener('afterprint', () => printing = false);
 
-          // Chỉ chạy khi ở chế độ "xem" (iframe overlay) HOẶC có query ?preview=1
-          const qs = new URLSearchParams(location.search);
-          const isPreview = (qs.get('preview') === '1');
-
-          let inIframe = false;
-          try { inIframe = (window.self !== window.top); } catch (e) { inIframe = true; }
-
-          if (!isPreview && !inIframe) return;
-
-          // Đợi ảnh QR load xong để scroll chính xác
-          const target = document.getElementById('payqr') || document.querySelector('.payqr');
-          const img = document.getElementById('vietqr_img');
-
-          function doScroll() {
-            if (printing) return;
-            // cuộn xuống cho QR nằm giữa/ cuối màn hình
-            (target || document.body).scrollIntoView({ behavior: 'auto', block: 'end' });
-          }
-
-          // Nếu ảnh đã có src thì chờ load, còn không thì cứ setTimeout
-          if (img) {
-            img.addEventListener('load', () => setTimeout(doScroll, 50), { once: true });
-            // fallback: nếu load quá nhanh / cache
-            setTimeout(doScroll, 150);
-            setTimeout(doScroll, 350);
-          } else {
-            setTimeout(doScroll, 150);
-            setTimeout(doScroll, 350);
-          }
-        })();
 
 
 
@@ -599,9 +424,9 @@
         document.getElementById("sohd").textContent = hoadon.sohd || "";
 
         function formatDateTime(d = new Date()) {
-          const pad = n => String(n).padStart(2, '0');
-          // dd/mm/yyyy hh:mm
-          return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            const pad = n => String(n).padStart(2, '0');
+            // dd/mm/yyyy hh:mm
+            return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
         }
 
         const timeSrc = hoadon.created_at ? new Date(hoadon.created_at) : new Date();
@@ -612,43 +437,26 @@
         // Hiển thị danh sách sản phẩm
         const tbody = document.getElementById("noidungchitiet");
         data.forEach(sp => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
+            const row = document.createElement("tr");
+            row.innerHTML = `
             <td>${sp.tensp} ${sp.masp || ""}</td>
             <td>${sp.soluong}</td>
             <td>${Number(sp.gia).toLocaleString()}</td>
             <td>${Number(sp.km || 0).toLocaleString()}</td>
             <td>${Number(sp.thanhtien).toLocaleString()}</td>
         `;
-          tbody.appendChild(row);
+            tbody.appendChild(row);
         });
 
         localStorage.removeItem("data_hoadon_in");
 
         // Cho phép in bằng phím Enter
-        // Cho phép in bằng phím Enter + đóng tab bằng F5
         document.addEventListener("keydown", function (e) {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            window.print();
-          }
-
-          if (e.key === "F6") {
-            e.preventDefault();
-
-            // Đóng tab nếu tab được mở bằng window.open
-            window.close();
-
-            // Nếu bị chặn (mở trực tiếp), fallback: quay về trang trước
-            setTimeout(() => {
-              if (!document.hidden) {
-                history.back();
-              }
-            }, 150);
-          }
+            if (e.key === "Enter") {
+                window.print();
+            }
         });
-
-      </script>
+    </script>
 
     </div>
   </div>
