@@ -1169,34 +1169,34 @@
             // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
             document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
             document.getElementById('maspInput').addEventListener('keydown', function (e) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    e.stopPropagation();
+    if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
 
-                    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
-                    try {
-                        const pop = document.getElementById('maspSuggestList');
-                        if (pop) pop.style.display = 'none';
-                    } catch (_) { }
+        // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
+        try {
+            const pop = document.getElementById('maspSuggestList');
+            if (pop) pop.style.display = 'none';
+        } catch (_) { }
 
-                    // Nếu vừa lưu xong và đang quay lại ô mã SP,
-                    // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
-                    if (justSavedReturnToMasp) {
-                        justSavedReturnToMasp = false;
-                        const mausac = document.getElementById('mausacInput');
-                        if (mausac) {
-                            mausac.focus();
-                            setTimeout(() => mausac.select?.(), 10);
-                        }
-                        return;
-                    }
+        // Nếu vừa lưu xong và đang quay lại ô mã SP,
+        // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
+        if (justSavedReturnToMasp) {
+            justSavedReturnToMasp = false;
+            const mausac = document.getElementById('mausacInput');
+            if (mausac) {
+                mausac.focus();
+                setTimeout(() => mausac.select?.(), 10);
+            }
+            return;
+        }
 
-                    // Luồng cũ
-                    checkExistAndFillForm();
-                    const tensp = document.getElementById('tenspInput');
-                    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
-                }
-            });
+        // Luồng cũ
+        checkExistAndFillForm();
+        const tensp = document.getElementById('tenspInput');
+        if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
+    }
+});
 
             document.getElementById('maspInput').addEventListener('dblclick', async function () {
                 const masp = (this.value || '').trim().toUpperCase();
@@ -1383,19 +1383,24 @@
                 document.getElementById('addProductMessage').style.color = '#0a9e1c';
                 document.getElementById('addProductMessage').textContent = existed ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
 
-                // Giữ lại mã sản phẩm vừa lưu để tiếp tục tạo mã cùng loại khác màu
-                const savedMasp = data.masp;
+                // Lưu lại mã vừa dùng trước khi reset form
+                const savedMasp = data.masp || '';
 
                 // Reset lại form theo giữ lại trường
                 resetForm();
 
-                // Gán lại mã sản phẩm vừa lưu vào ô mã sản phẩm
+                // Sau khi reset:
+                // - giữ nguyên mã sản phẩm
+                // - xóa trắng màu sắc
+                // - focus lại vào ô mã sản phẩm
+                // - bôi đen toàn bộ mã để người dùng gõ mã mới thì tự đè,
+                //   còn nếu muốn giữ mã cũ thì chỉ việc Enter / nhập màu mới
                 const maspInput = document.getElementById('maspInput');
-                maspInput.value = savedMasp;
+                const mausacInput = document.getElementById('mausacInput');
 
-                // Focus và bôi đen toàn bộ để:
-                // - nếu người dùng gõ mã mới -> tự đè lên mã cũ
-                // - nếu không gõ mã mới mà nhấn Enter -> vẫn dùng lại mã cũ
+                maspInput.value = savedMasp;
+                mausacInput.value = '';
+
                 maspInput.focus();
                 setTimeout(() => maspInput.select(), 10);
                 justSavedReturnToMasp = true;
@@ -1406,13 +1411,9 @@
                 // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
                 searchProducts(document.getElementById('search').value.trim().toLowerCase());
 
-                // Đẩy mã vừa lập vào danh sách tem in
+                // Đẩy sản phẩm vừa lưu vào danh sách tem in
                 pushProductToGrid(data);
             }
-
-            document.getElementById('maspInput').addEventListener('input', function () {
-    justSavedReturnToMasp = false;
-});
 
             loadDropdownOptions();
 
