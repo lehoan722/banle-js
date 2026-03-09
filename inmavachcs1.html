@@ -1186,6 +1186,34 @@
                 }
             });
 
+            document.getElementById('maspInput').addEventListener('dblclick', async function () {
+                const masp = (this.value || '').trim().toUpperCase();
+                if (!masp) return;
+
+                // Ẩn popup gợi ý nếu đang mở để tránh vướng giao diện
+                try {
+                    const pop = document.getElementById('maspSuggestList');
+                    if (pop) pop.style.display = 'none';
+                } catch (_) { }
+
+                // Lấy đúng sản phẩm theo mã hiện có trong ô
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('*')
+                    .eq('masp', masp)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error('Lỗi lấy sản phẩm để đẩy sang danh sách tem in:', error);
+                    return;
+                }
+
+                // Nếu mã hợp lệ và có tồn tại thì đẩy vào danh sách tem in
+                if (data) {
+                    pushProductToGrid(data);
+                }
+            });
+
 
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
 
