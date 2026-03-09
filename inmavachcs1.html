@@ -1228,8 +1228,14 @@
 
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
             let justSavedReturnToMasp = false; // vừa lưu xong và đang đứng lại ở ô mã sản phẩm
+            let skipNextAutoFillFromMaspBlur = false; // bỏ qua 1 lần auto fill khi rời ô mã SP sau khi lưu
 
             async function checkExistAndFillForm() {
+                if (skipNextAutoFillFromMaspBlur) {
+                    skipNextAutoFillFromMaspBlur = false;
+                    return;
+                }
+
                 const masp = document.getElementById('maspInput').value.trim().toUpperCase();
                 if (!masp) return;
 
@@ -1404,6 +1410,7 @@
                 maspInput.focus();
                 setTimeout(() => maspInput.select(), 10);
                 justSavedReturnToMasp = true;
+                skipNextAutoFillFromMaspBlur = true;
 
                 // Load lại dropdown option (nếu có giá trị mới)
                 loadDropdownOptions();
