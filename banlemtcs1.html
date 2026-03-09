@@ -1105,14 +1105,48 @@
                 dongPopupChonThanhToan(false);
 
                 dangLuuSauKhiChonThanhToan = true;
+
                 try {
-                    if (typeof window.__luuHoaDonQuaAPI_Goc === 'function') {
+
+                    const hinhThuc = (document.getElementById('hinhthuctt')?.value || '').toLowerCase();
+
+                    // ===============================
+                    // TIỀN MẶT
+                    // ===============================
+                    if (hinhThuc === 'tm') {
+
+                        if (typeof window.__luuHoaDonQuaAPI_Goc !== 'function') {
+                            throw new Error('Không tìm thấy hàm luuHoaDonQuaAPI');
+                        }
+
                         await window.__luuHoaDonQuaAPI_Goc.apply(window, argsLuuTam);
                     }
+
+                    // ===============================
+                    // CHUYỂN KHOẢN
+                    // ===============================
+                    else if (hinhThuc === 'ck') {
+
+                        if (typeof window.luuHoaDonCaHaiBan !== 'function') {
+                            throw new Error('Không tìm thấy hàm luuHoaDonCaHaiBan để gửi hóa đơn Viettel');
+                        }
+
+                        await window.luuHoaDonCaHaiBan.apply(window, argsLuuTam);
+                    }
+
+                    else {
+                        throw new Error('Hình thức thanh toán không hợp lệ');
+                    }
+
                 } catch (err) {
-                    console.error('Lỗi lưu hóa đơn:', err);
+
+                    console.error('Lỗi khi lưu hóa đơn:', err);
+                    alert('Lưu hóa đơn thất bại: ' + err.message);
+
                     throw err;
+
                 } finally {
+
                     dangLuuSauKhiChonThanhToan = false;
                     argsLuuTam = [];
                 }
