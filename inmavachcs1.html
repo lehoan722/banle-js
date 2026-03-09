@@ -1582,18 +1582,14 @@
             // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
             mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
 
-            // ENTER trong ô Màu -> nối hậu tố + nhảy thẳng xuống nút Lưu
+            // ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
             mausacInput?.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    e.stopPropagation();
-
                     updateMaspWithColorSuffix();
-
-                    const btn = document.getElementById('saveFormBtn');
-                    if (btn) {
-                        btn.focus();
-                    }
+                    // chuyển sang ô Khuyến mãi như thứ tự formOrder
+                    const km = document.getElementById('khuyenmaiInput');
+                    if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
                 }
             });
 
@@ -1714,9 +1710,9 @@
                     const el = document.getElementById(id);
                     if (!el) return;
 
-                    // Riêng ô mã sản phẩm và ô màu sắc đã có logic Enter riêng,
+                    // Riêng ô mã sản phẩm đã có logic Enter riêng,
                     // nên không gắn điều hướng Enter tuần tự ở đây nữa
-                    if (id === 'maspInput' || id === 'mausacInput') {
+                    if (id === 'maspInput') {
                         el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
                         return;
                     }
