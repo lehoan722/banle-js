@@ -1000,7 +1000,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        
+
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
@@ -1013,22 +1013,6 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
-    </script>
-
-    <script>
-        // Ép phím F2 đi đúng luồng của nút Lưu
-        document.addEventListener('keydown', function (e) {
-            if (e.key !== 'F2') return;
-
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.click();   // chạy đúng luồng nút Lưu => guard kiểm tra ảnh sẽ chạy
-            }
-        }, true); // dùng capture để chặn luồng F2 cũ trước
     </script>
 
     <script>
@@ -1585,6 +1569,21 @@
         });
     </script>
 
+    <script>
+        // Ép phím F2 đi đúng luồng của nút Lưu
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'F2') return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.click();   // chạy đúng luồng nút Lưu => guard kiểm tra ảnh sẽ chạy
+            }
+        }, true); // dùng capture để chặn luồng F2 cũ trước
+    </script>
 
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
     <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
