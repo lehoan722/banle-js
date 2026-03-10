@@ -610,6 +610,7 @@
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
+            <button id="btnGoiyChuyenKho">📦 Gợi ý chuyển kho</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
@@ -620,7 +621,7 @@
 
             <!-- Popup tìm khách hàng
              
-             <button id="xuatexcel">Xuất Excel</button>
+             
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
             <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
@@ -949,7 +950,7 @@
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });        
+        });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1464,6 +1465,51 @@
             }
         }
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
+    </script>
+
+    <script>
+
+        document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
+
+            const rows = document.querySelectorAll("#bangketqua tbody tr");
+
+            const maspSet = new Set();
+
+            rows.forEach(tr => {
+
+                const maspCell = tr.cells[0]; // cột mã hàng
+
+                if (!maspCell) return;
+
+                const masp = maspCell.innerText.trim().toUpperCase();
+
+                if (masp) {
+                    maspSet.add(masp);
+                }
+
+            });
+
+            const maspList = Array.from(maspSet);
+
+            if (maspList.length === 0) {
+                alert("Phiếu chưa có mã sản phẩm.");
+                return;
+            }
+
+            // lưu localStorage để XNT17 đọc
+            localStorage.setItem(
+                "XNT17_MASPS_LS",
+                JSON.stringify({ list: maspList })
+            );
+
+            // mở trang gợi ý chuyển kho
+            window.open(
+                "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html",
+                "_blank"
+            );
+
+        });
+
     </script>
 
     <!-- Overlay quét -->
