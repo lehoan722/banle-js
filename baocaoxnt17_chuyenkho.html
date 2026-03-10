@@ -476,44 +476,48 @@ C789"></textarea>
     <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
 
     <script>
-
         window.addEventListener("load", function () {
-
             try {
-
                 const data = localStorage.getItem("XNT17_MASPS_LS");
                 if (!data) return;
 
                 const obj = JSON.parse(data);
-                if (!obj.list) return;
+                if (!obj.list || !Array.isArray(obj.list) || obj.list.length === 0) return;
 
-                const textarea = document.querySelector("textarea");
-                if (!textarea) return;
+                const textarea = document.getElementById("maspTextarea");
+                if (!textarea) {
+                    console.error("Không tìm thấy textarea #maspTextarea");
+                    return;
+                }
 
-                // điền mã sản phẩm
+                // Điền mã sản phẩm
                 textarea.value = obj.list.join("\n");
-
                 console.log("Đã nhận danh sách masp:", obj.list);
 
-                // tự bấm nút chuyển kho sau 300ms
+                // Phát sự kiện input/change nếu code trang có lắng nghe
+                textarea.dispatchEvent(new Event("input", { bubbles: true }));
+                textarea.dispatchEvent(new Event("change", { bubbles: true }));
+
+                // Chờ trang và module gắn xong sự kiện cho nút rồi mới bấm
                 setTimeout(function () {
+                    const btn = document.getElementById("btnChuyenKho");
 
-                    const btn = document.querySelector("btnChuyenKho");
-
-                    if (btn) {
-                        btn.click();
-                        console.log("Auto chạy chuyển kho");
+                    if (!btn) {
+                        console.error("Không tìm thấy nút #btnChuyenKho");
+                        return;
                     }
 
-                }, 300);
+                    btn.click();
+                    console.log("Đã tự bấm nút Chuyển kho");
 
-            }
-            catch (e) {
+                    // Xóa dữ liệu để tránh lần sau bị dính lại
+                    localStorage.removeItem("XNT17_MASPS_LS");
+                }, 800);
+
+            } catch (e) {
                 console.error("Lỗi đọc XNT17_MASPS_LS", e);
             }
-
         });
-
     </script>
 
 </body>
