@@ -1103,65 +1103,89 @@ export function xoaDongDangChon() {
 
 // hoadon.js
 export function suaDongDangChon() {
-    // 1) Đồng bộ lại data từ DOM (trường hợp vừa dán Excel / nhập ngang)
+    // 1) Đồng bộ lại data từ DOM
     try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
-    // 2) Lấy selection hiện tại; nếu chưa có → lấy dòng đầu bảng
+    // 2) Lấy dòng đang chọn; nếu chưa có thì lấy dòng đầu tiên
     let dangChon = getMaspspDangChon();
     if (!dangChon) {
         const firstRow = document.querySelector("#bangketqua tbody tr");
-        if (!firstRow) { alert("Không có dòng nào để sửa."); return; }
+        if (!firstRow) {
+            alert("Không có dòng nào để sửa.");
+            return;
+        }
+
         const tds = firstRow.querySelectorAll("td");
         const masp = (tds[0]?.textContent || "").trim();
-        const size = (tds[2]?.textContent || "").trim();
-        if (!masp || !size) { alert("Không đọc được dữ liệu dòng đầu tiên để sửa."); return; }
-        setMaspspDangChon({ masp, size });
-        dangChon = { masp, size };
+
+        if (!masp) {
+            alert("Không đọc được mã sản phẩm của dòng đầu tiên để sửa.");
+            return;
+        }
+
+        // Chỉ lưu masp, không cần size nữa
+        setMaspspDangChon({ masp });
+        dangChon = { masp };
     }
 
-    const masp = String(dangChon.masp || "").trim();
-    const size = String(dangChon.size || "").trim();
+    const masp = String(dangChon.masp || "").trim().toUpperCase();
+    if (!masp) {
+        alert("Không xác định được mã sản phẩm để sửa.");
+        return;
+    }
 
     const data = _data();
     const item = data[masp];
-    if (!item) { alert("Không tìm thấy dòng để sửa."); return; }
 
-    const idx = item.sizes.findIndex(s => String(s).trim() === size);
-    if (idx === -1) { alert("Không tìm thấy size để sửa."); return; }
+    if (!item) {
+        alert("Không tìm thấy dòng để sửa.");
+        return;
+    }
 
-    // 3) Đẩy mã sản phẩm lên form theo cách mới
+    // 3) Đẩy dữ liệu nhóm mã về form nhập
     const maspEl = document.getElementById("masp");
+    const soluongEl = document.getElementById("soluong");
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+    const thanhtienEl = document.getElementById("thanhtien");
     const sizeEl = document.getElementById("size");
 
+    const tong = parseInt(item.tong || 0, 10) || 0;
+    const gia = parseInt(item.gia || 0, 10) || 0;
+    const km = parseInt(item.km || 0, 10) || 0;
+    const thanhtien = (gia - km) * tong;
+
     if (maspEl) {
-        maspEl.value = masp.toUpperCase();
+        maspEl.value = masp;
 
         try {
             maspEl.dispatchEvent(new Event("change", { bubbles: true }));
         } catch (_) { }
+    }
 
-        // focus + bôi đen toàn bộ mã sản phẩm
+    if (soluongEl) soluongEl.value = tong > 0 ? String(tong) : "1";
+    if (giaEl) giaEl.value = gia.toLocaleString();
+    if (kmEl) kmEl.value = km.toLocaleString();
+    if (thanhtienEl) thanhtienEl.value = thanhtien.toLocaleString();
+
+    // Không dùng cột kích cỡ nữa → xóa trắng size
+    if (sizeEl) sizeEl.value = "";
+
+    // 4) Xóa cả nhóm mã khỏi state để người dùng nhập lại
+    delete data[masp];
+
+    // 5) Ghi lại state và render bảng
+    setMaspspDangChon(null);
+    _sync(data);
+    capNhatBangHTML(data, null);
+
+    // 6) Focus lại ô mã sản phẩm và bôi đen như cũ
+    if (maspEl) {
         setTimeout(() => {
             maspEl.focus();
             maspEl.select();
         }, 50);
     }
-
-    // xóa trắng size để người dùng nhập lại
-    if (sizeEl) {
-        sizeEl.value = "";
-    }
-    // 4) Rút đúng 1 size khỏi state để người dùng sửa rồi thêm lại
-    const slCu = parseInt(item.soluongs[idx] || 0, 10) || 0;
-    item.sizes.splice(idx, 1);
-    item.soluongs.splice(idx, 1);
-    item.tong = Math.max(0, (item.tong || 0) - slCu);
-    if (item.sizes.length === 0) delete data[masp];
-
-    // 5) Ghi state & render
-    setMaspspDangChon(null);
-    _sync(data);
-    capNhatBangHTML(data, window.lastAdded);
 }
 
 // Chạy Sửa với lớp bọc _wrapEnsureState (nếu trang đã khai báo), fallback gọi trực tiếp
