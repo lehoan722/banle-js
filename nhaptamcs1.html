@@ -610,7 +610,6 @@
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
-            <button id="btnGoiyChuyenKho">📦 Gợi ý chuyển kho</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
@@ -950,7 +949,7 @@
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });
+        });        
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1595,67 +1594,6 @@
             saveButtonId: "btn-luu",
             dispatchTarget: (document.body || document.documentElement)
         });
-    </script>
-
-    <script>
-        // Ép phím F2 đi đúng luồng của nút Lưu
-        document.addEventListener('keydown', function (e) {
-            if (e.key !== 'F2') return;
-
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.click();   // chạy đúng luồng nút Lưu => guard kiểm tra ảnh sẽ chạy
-            }
-        }, true); // dùng capture để chặn luồng F2 cũ trước
-    </script>
-
-    <script>
-
-        document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
-
-            const rows = document.querySelectorAll("#bangketqua tbody tr");
-
-            const maspSet = new Set();
-
-            rows.forEach(tr => {
-
-                const maspCell = tr.cells[0]; // cột mã hàng
-
-                if (!maspCell) return;
-
-                const masp = maspCell.innerText.trim().toUpperCase();
-
-                if (masp) {
-                    maspSet.add(masp);
-                }
-
-            });
-
-            const maspList = Array.from(maspSet);
-
-            if (maspList.length === 0) {
-                alert("Phiếu chưa có mã sản phẩm.");
-                return;
-            }
-
-            // lưu localStorage để XNT17 đọc
-            localStorage.setItem(
-                "XNT17_MASPS_LS",
-                JSON.stringify({ list: maspList })
-            );
-
-            // mở trang gợi ý chuyển kho
-            window.open(
-                "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html",
-                "_blank"
-            );
-
-        });
-
     </script>
 
 </body>
