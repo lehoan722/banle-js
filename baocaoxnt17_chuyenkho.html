@@ -475,6 +475,37 @@ C789"></textarea>
     <!-- Logic riêng của trang -->
     <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
 
+    <script>
+
+        window.addEventListener("load", function () {
+
+            try {
+
+                const data = localStorage.getItem("XNT17_MASPS_LS");
+
+                if (!data) return;
+
+                const obj = JSON.parse(data);
+
+                if (!obj.list) return;
+
+                const textarea = document.querySelector("textarea");
+
+                if (!textarea) return;
+
+                textarea.value = obj.list.join("\n");
+
+                console.log("Đã nhận danh sách masp:", obj.list);
+
+            }
+            catch (e) {
+                console.error("Lỗi đọc XNT17_MASPS_LS", e);
+            }
+
+        });
+
+    </script>
+
 </body>
 
 </html>
