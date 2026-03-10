@@ -482,20 +482,30 @@ C789"></textarea>
             try {
 
                 const data = localStorage.getItem("XNT17_MASPS_LS");
-
                 if (!data) return;
 
                 const obj = JSON.parse(data);
-
                 if (!obj.list) return;
 
                 const textarea = document.querySelector("textarea");
-
                 if (!textarea) return;
 
+                // điền mã sản phẩm
                 textarea.value = obj.list.join("\n");
 
                 console.log("Đã nhận danh sách masp:", obj.list);
+
+                // tự bấm nút chuyển kho sau 300ms
+                setTimeout(function () {
+
+                    const btn = document.querySelector("button");
+
+                    if (btn) {
+                        btn.click();
+                        console.log("Auto chạy chuyển kho");
+                    }
+
+                }, 300);
 
             }
             catch (e) {
