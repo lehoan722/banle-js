@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>nhaptamcs2</title>
+    <title>nhaptamcs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -670,11 +670,11 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs2", // API backend mới
+            loginApiPath: "/api/login-cs1", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -920,7 +920,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -950,7 +950,7 @@
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
-        });
+        });        
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -964,22 +964,6 @@
             dispatchTarget.dispatchEvent(ev);
         });
 
-    </script>
-
-    <script>
-        // Ép phím F2 đi đúng luồng của nút Lưu
-        document.addEventListener('keydown', function (e) {
-            if (e.key !== 'F2') return;
-
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.click();   // chạy đúng luồng nút Lưu => guard kiểm tra ảnh sẽ chạy
-            }
-        }, true); // dùng capture để chặn luồng F2 cũ trước
     </script>
 
     <script>
@@ -1234,18 +1218,18 @@
                 });
             });
 
-            const payload = { source: "nhap-hd", cs: "cs2", items };
+            const payload = { source: "nhap-hd", cs: "cs1", items };
             const json = JSON.stringify(payload);
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs2.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
 
         // Gắn vào nút
-        // nhapmoimtcs2.html (hoặc module xử lý nút in mã vạch)
+        // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
 
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
@@ -1279,14 +1263,14 @@
 
             const payload = {
                 source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs2",
+                cs: localStorage.getItem("diadiem") || "cs1",
                 items
             };
             console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs2.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
@@ -1372,7 +1356,7 @@
 
         async function importFromGoogleSheet() {
             const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
-            const sheetName = "kiemkhocs2";
+            const sheetName = "kiemkhocs1";
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
 
             try {
