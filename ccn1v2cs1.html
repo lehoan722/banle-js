@@ -5,8 +5,8 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>CCN1V2</title>
-
+    <title>CCN2V1</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -342,23 +342,6 @@
         }
     </style>
 
-    <style>
-        /* Cột size của bảng kết quả CCN1V2:
-     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
-        #bangketqua th:nth-child(3),
-        #bangketqua td:nth-child(3) {
-            width: 40px;
-            max-width: 40px;
-            white-space: normal;
-            /* cho phép xuống dòng */
-           
-            /* nếu cần thì bẻ từ */
-            text-align: left;
-            /* tùy, thích center thì bỏ dòng này */
-        }
-    </style>
-
-
 
     <script>
 
@@ -386,18 +369,18 @@
 </head>
 
 <body class="popupnhanh">
+    
     <style>
-
-         /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
         body.popupnhanh .sq-stock-popup {
             top: 8px !important;
             left: 8px !important;
             left: auto !important;
             transform: none !important;
         }
-        
+
         .menu-bar {
-            background: #cc00b8;
+            background: #be00cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -473,7 +456,7 @@
     <div class="menu-bar">
         <div class="tennv">
 
-            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+             <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
             <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
@@ -484,7 +467,6 @@
             <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-
 
         </div>
 
@@ -501,7 +483,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="CCN1V2" autocomplete="off" />
+                <input id="masp" placeholder="CCN2V1" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -519,6 +501,7 @@
             <button id="ghivitri">✏️</button>
 
         </div>
+
 
         <div class="main">
             <div class="table-area">
@@ -584,15 +567,14 @@
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
-                            <label><input id="nhapnhanh" type="checkbox" /> quan size all</label>
-                            <label><input id="size45" type="checkbox" />quan size GD</label>
+                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
+                            <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
-                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" /> Cộng dồn số lượng</label>
+                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
                         </div>
                     </div>
                 </div>
@@ -638,9 +620,10 @@
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
             </div>
+        </div>
 
-            <!-- Popup tìm khách hàng
-             <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
+        <!-- Popup tìm khách hàng
+             <button onclick="luuHoaDonccn2v1()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
@@ -648,116 +631,116 @@
             
             -->
 
-        </div>
+    </div>
 
+    <div class="top-inputs">
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
+            F8: xem tồn kho nhanh, F9: nhập vị trí kho
+        </div>
         <div class="top-inputs">
             ----------------------------------------------------------
         </div>
-        <div class="top-inputs">
-            ----------------------------------------------------------
-        </div>
 
 
-        <div class="popup" id="popupDanhMuc">
-            <div class="popup-content">
-                <strong>Tìm kiếm mã sản phẩm</strong>
-                <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
-                <div class="popup-list" id="danhSachSP"></div>
-                <button onclick="dongPopupDM()">Đóng</button>
-            </div>
+    <div class="popup" id="popupDanhMuc">
+        <div class="popup-content">
+            <strong>Tìm kiếm mã sản phẩm</strong>
+            <input id="timKiemMaspPopup" placeholder="Nhập từ khóa..." />
+            <div class="popup-list" id="danhSachSP"></div>
+            <button onclick="dongPopupDM()">Đóng</button>
         </div>
-        <!-- ✅ Popup xác thực sửa hóa đơn -->
-        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+    </div>
+    <!-- ✅ Popup xác thực sửa hóa đơn -->
+    <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
   background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-            <h3>Xác thực sửa hóa đơn</h3>
-            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
-                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
-                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
-        </div>
+        <h3>Xác thực sửa hóa đơn</h3>
+        <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+            style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+        <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+            style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+        <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+        <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+    </div>
 
-        <!-- Popup xác nhận thêm mới -->
-        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+    <!-- Popup xác nhận thêm mới -->
+    <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
   background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-            <h3>Bạn có thực sự muốn thêm mới?</h3>
-            <div style="text-align:center; margin-top:10px;">
-                <button id="btnThemMoiCo">✅ Có</button>
-                <button onclick="dongTatCaPopup()">❌ Không</button>
-            </div>
-        </div>
-
-        <!-- Popup nhập mã sản phẩm mới -->
-        <div id="popupNhapMaMoi" class="popup-confirm"
-            style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
-  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
-            <h3>Thêm mã sản phẩm mới</h3>
-            <div id="formFields"></div>
-            <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
-            <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
-            <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
-        </div>
-
-        <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
-  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
-            <h3>Cấu hình trường hiển thị</h3>
-            <div id="dsCauHinhTruong"></div>
-            <div style="text-align:right; margin-top:10px;">
-                <button onclick="luuCauHinhTruong()">Lưu</button>
-                <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
-            </div>
-        </div>
-
-
-
-        <div id="popupBangDanhMuc" class="popup"
-            style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
-            <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                <strong>Danh mục hàng hóa</strong>
-                <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
-            </div>
-            <div style="padding: 0 10px 10px;">
-                <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
-                    style="width: 300px; padding: 4px;" />
-                <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
-
-            </div>
-            <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
-        </div>
-
-        <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
-        <div id="popupNhapHangHoa"
-            style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
-  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
-            <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
-
-            <div id="fieldsNhapHangHoa"></div>
-
-            <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
-
-            <div style="margin-top:14px; text-align:center;">
-                <button onclick="themTiepSanPham()">➕ Thêm mới</button>
-                <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
-                <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
-                <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
-            </div>
-
-
+        <h3>Bạn có thực sự muốn thêm mới?</h3>
+        <div style="text-align:center; margin-top:10px;">
+            <button id="btnThemMoiCo">✅ Có</button>
+            <button onclick="dongTatCaPopup()">❌ Không</button>
         </div>
     </div>
 
+    <!-- Popup nhập mã sản phẩm mới -->
+    <div id="popupNhapMaMoi" class="popup-confirm"
+        style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
+  background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
+        <h3>Thêm mã sản phẩm mới</h3>
+        <div id="formFields"></div>
+        <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
+        <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
+        <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
+    </div>
+
+    <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+  background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
+        <h3>Cấu hình trường hiển thị</h3>
+        <div id="dsCauHinhTruong"></div>
+        <div style="text-align:right; margin-top:10px;">
+            <button onclick="luuCauHinhTruong()">Lưu</button>
+            <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
+        </div>
+    </div>
+
+
+
+    <div id="popupBangDanhMuc" class="popup"
+        style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
+        <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+            <strong>Danh mục hàng hóa</strong>
+            <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
+        </div>
+        <div style="padding: 0 10px 10px;">
+            <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
+                style="width: 300px; padding: 4px;" />
+            <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
+
+        </div>
+        <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
+    </div>
+
+    <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
+    <div id="popupNhapHangHoa"
+        style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+  background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
+        <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
+
+        <div id="fieldsNhapHangHoa"></div>
+
+        <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
+
+        <div style="margin-top:14px; text-align:center;">
+            <button onclick="themTiepSanPham()">➕ Thêm mới</button>
+            <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
+            <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
+            <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
+        </div>
+
+
+    </div>
+    </div>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1", // API backend mới
+            loginApiPath: "/api/login-cs2", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -813,7 +796,7 @@
                 const size45 = document.getElementById("size45");
                 if (size45) size45.checked = true;
 
-                const qlNhom = document.getElementById("quanlysizetheonhom");
+                const qlNhom = document.getElementById("quanlysizetheonhom"); nhapsize
                 if (qlNhom) qlNhom.checked = true;
 
                 const qlnhapsize = document.getElementById("nhapsize");
@@ -838,11 +821,11 @@
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
         const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
-        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles 
 
         // Bạn đã cung cấp:
         const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
-        const SHEET_NAME = 'menubanlemtTTT';
+        const SHEET_NAME = 'menubanlemtTTTT';
 
         MenuComponent.mount({
             el: '#app-menu',
@@ -858,13 +841,6 @@
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
-        // Nhấn F2 trong ô mã khách cũng bật popup
-        document.getElementById('makh').addEventListener('keydown', function (e) {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                showPopupTimKH();
-            }
-        });
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -907,8 +883,6 @@
             });
         }
 
-
-
         // Copy bảng sang clipboard, có cả dòng tiêu đề
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
@@ -939,39 +913,41 @@
         };
 
 
-        // Dán từ clipboard (Excel) vào bảng web
+        // Dán từ clipboard (Excel) vào bảng web 
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            tbody.innerHTML = '';
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            // ❌ KHÔNG xoá dữ liệu cũ nữa
+            // tbody.innerHTML = '';
+
+            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
                 const tr = document.createElement('tr');
-                rowArr.forEach(cell => {
+                rowArr.forEach((cell) => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
-            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
-            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
-            if (typeof capNhatThongTinTong === "function") {
+            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            // ✅ Cập nhật tổng
+            if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log để kiểm tra
-            console.log("window.bangKetQua:", window.bangKetQua);
-            if (typeof bangKetQua !== "undefined") {
-                console.log("bangKetQua:", bangKetQua);
-            }
+            // Log kiểm tra
+            console.log('window.bangKetQua:', window.bangKetQua);
         });
-
-
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
@@ -1027,7 +1003,6 @@
             document.getElementById('login-manv').focus();
         }
     </script>
-
 
     <script>
         // goi phím F2
@@ -1086,13 +1061,14 @@
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
 
+
     <script>
         function renderRowsDirectIntoTable(rows) {
             // rows: [{ masp, size, sl }]
             const table = document.getElementById('bangketqua');
-            if (!table) { console.warn('[CCN 1v2] Không tìm thấy #bangketqua'); return false; }
+            if (!table) { console.warn('[CCN 2v1] Không tìm thấy #bangketqua'); return false; }
             const tbody = table.querySelector('tbody');
-            if (!tbody) { console.warn('[CCN 1v2] Không tìm thấy tbody'); return false; }
+            if (!tbody) { console.warn('[CCN 2v1] Không tìm thấy tbody'); return false; }
 
             // Xóa cũ rồi đổ mới
             tbody.innerHTML = '';
@@ -1127,7 +1103,7 @@
             if (typeof window.capNhatThongTinTong === 'function') {
                 window.capNhatThongTinTong(window.bangKetQua || {});
             }
-            console.log('[CCN 1v2] Render trực tiếp vào bảng xong:', rows.length);
+            console.log('[CCN 2v1] Render trực tiếp vào bảng xong:', rows.length);
             return true;
         }
     </script>
@@ -1143,22 +1119,22 @@
 
 
     <script>
-        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 1v2) */
+        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 2v1) */
         function tryPrefillFromStorage(waitForRenderer = true, tries = 0) {
             try {
                 const raw = localStorage.getItem('ccn_prefill_payload');
                 if (!raw) {
-                    console.log('[CCN 1v2] Không thấy payload trong localStorage.');
+                    console.log('[CCN 2v1] Không thấy payload trong localStorage.');
                     return;
                 }
 
                 let pf;
                 try { pf = JSON.parse(raw); } catch (parseErr) {
-                    console.error('[CCN 1v2] Lỗi parse payload:', parseErr);
+                    console.error('[CCN 2v1] Lỗi parse payload:', parseErr);
                     return;
                 }
-                if (!pf || pf.dir !== '1v2') {
-                    console.log('[CCN 1v2] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
+                if (!pf || pf.dir !== '2v1') {
+                    console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
                 }
 
@@ -1171,7 +1147,7 @@
 
                     }
                 }
-                console.log('[CCN 1v2] Payload OK, rows:', rows.length);
+                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
 
                 // Ưu tiên dùng hàm render “chính chủ” nếu có public trên window
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
@@ -1182,13 +1158,13 @@
                     renderFn(window.bangKetQua);
 
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 1v2] Đã render qua hàm chính & xóa payload.');
+                    console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
                     return;
                 }
 
                 // Nếu chưa có renderFn: 1) nếu cho phép đợi & còn lượt thử -> retry
                 if (waitForRenderer && tries < 20) {
-                    console.log('[CCN 1v2] Chưa có hàm render, thử lại...', tries + 1);
+                    console.log('[CCN 2v1] Chưa có hàm render, thử lại...', tries + 1);
                     setTimeout(() => tryPrefillFromStorage(true, tries + 1), 300);
                     return;
                 }
@@ -1197,12 +1173,12 @@
                 const ok = renderRowsDirectIntoTable(rows);
                 if (ok) {
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 1v2] Render Fallback ok & đã xoá payload.');
+                    console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
                 } else {
-                    console.warn('[CCN 1v2] Fallback render không thành công.');
+                    console.warn('[CCN 2v1] Fallback render không thành công.');
                 }
             } catch (e) {
-                console.error('[CCN 1v2] Lỗi nạp payload:', e);
+                console.error('[CCN 2v1] Lỗi nạp payload:', e);
             }
         }
 
@@ -1210,8 +1186,6 @@
         document.addEventListener('DOMContentLoaded', () => tryPrefillFromStorage(true));
         window.addEventListener('load', () => setTimeout(() => tryPrefillFromStorage(true), 600));
     </script>
-
-
 
 
     <script type="module" src="scripts/feedback.js"></script>
@@ -1260,6 +1234,7 @@
         });
     </script>
 
+    </script>
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
     <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
     <script>
@@ -1267,6 +1242,22 @@
             window.initCCNAdapter();
         }
     </script>
+
+    <style>
+        /* Cột size của bảng kết quả CCN1V2:
+     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
+        #bangketqua th:nth-child(3),
+        #bangketqua td:nth-child(3) {
+            width: 40px;
+            max-width: 40px;
+            white-space: normal;
+            /* cho phép xuống dòng */
+
+            /* nếu cần thì bẻ từ */
+            text-align: left;
+            /* tùy, thích center thì bỏ dòng này */
+        }
+    </style>
 
 </body>
 
