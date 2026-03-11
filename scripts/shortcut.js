@@ -177,23 +177,28 @@ export function khoiTaoShortcut() {
       }
     }
 
-    // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền danh sách mã
+    // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền danh sách mã/SL theo từng dòng
     if (e.key === "F7") {
       e.preventDefault();
 
-      // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
+      // 1) Gom danh sách từ bảng kết quả:
+      //    cột 0 = Mã hàng, cột 3 = SL
       const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
-      const set = new Set(
-        rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase())
-          .filter(Boolean)
-      );
-      if (set.size === 0) {
+
+      const lines = rows.map(r => {
+        const masp = (r.cells?.[0]?.innerText || "").trim().toUpperCase();
+        const sl = (r.cells?.[3]?.innerText || "").trim();
+        if (!masp) return "";
+        return `${masp}/${sl || "0"}`;
+      }).filter(Boolean);
+
+      if (lines.length === 0) {
         alert("❌ Không có mã hàng nào trên bảng để mở tìm kiếm.");
         return;
       }
 
-      // 2) Lưu payload vào localStorage (mỗi mã một dòng)
-      const bulkData = Array.from(set).join("\n");
+      // 2) Lưu payload vào localStorage (giữ nguyên từng dòng, KHÔNG loại trùng)
+      const bulkData = lines.join("\n");
       localStorage.setItem("TKHH333_BULK", bulkData);
 
       // 3) Mở trang timkiemhanghoa333 trong TAB MỚI
@@ -239,7 +244,7 @@ export function khoiTaoShortcut() {
       window.open(targetUrl, "_blank");
     }
 
-    
+
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
     if (e.ctrlKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
