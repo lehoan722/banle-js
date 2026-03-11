@@ -1843,10 +1843,10 @@ function parseBulkMasp() {
     const arr = raw.split(/[\r\n,;\t]+/)
         .map(s => s.trim().toUpperCase())
         .filter(Boolean);
-    // loại trùng, giữ thứ tự; giới hạn 50 mã để tránh quá nhiều RPC
+    // loại trùng, giữ thứ tự; giới hạn 100 mã để tránh quá nhiều RPC
     const seen = new Set(), out = [];
     for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
-    return out.slice(0, 50);
+    return out.slice(0, 100);
 }
 
 function prependToBulkTextarea(code) {
