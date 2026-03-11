@@ -488,7 +488,7 @@ async function triggerSearch(_masp = null) {
             return;
         }
         let { data: list, error } = await supabase.from("dmhanghoa")
-            .select("*").ilike("masp", `%${masp}%`).order("masp").limit(50);
+            .select("*").ilike("masp", `%${masp}%`).order("masp").limit(100);
         if (error || !list || !list.length) {
             msg.textContent = "SAI MÃ";
             return;
