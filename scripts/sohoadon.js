@@ -82,6 +82,9 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("ccn2v1")) {
             // Trang chuyển CN 2 → 1: luôn xuất từ CS2
             loai = "xcncs2";
+        } else if (pathname.includes("ncncs2")) {
+            // Trang chuyển CN 2 → 1: luôn xuất từ CS2
+            loai = "ncncs2";
 
         } else if (pathname.includes("nhaptam")) {
             loai = diadiem === "cs1" ? "nhaptamcs1" : "nhaptamcs2";
