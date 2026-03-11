@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>BÁO CÁO CHI TIẾT BÁN HÀNG</title>
-    <!-- Kết nối Supabase + Handsontable + SheetJS --> 
+    <!-- Kết nối Supabase + Handsontable + SheetJS -->
     <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/baocaochitiet111.js"></script>
     <link rel="stylesheet"
@@ -194,7 +194,7 @@
                         <option value="nhapkiem">nhapkiem</option>
                         <option value="xuatkiem">xuatkiem</option>
                         <option value="nhaptamcs1">nhaptamcs1</option>
-                        <option value="nhaptamcs2">nhaptamcs2</option>  
+                        <option value="nhaptamcs2">nhaptamcs2</option>
 
                     </select>
                 </label>
@@ -220,7 +220,7 @@
                     <button onclick="openPopupSearch('mahang')">🔍</button>
                     <button onclick="clearInput('maspInput')">✖</button>
                 </span>
-                
+
                 <label>
                     Số HĐ:
                     <input type="text" id="sohdInput" placeholder="Nhập số hóa đơn cần lọc">
@@ -230,6 +230,12 @@
                 <label>Kích cỡ: <input id="sizeInput" type="text" style="width:60px" placeholder="Size"></label>
                 <label>Từ giá: <input type="number" id="tuGia" min="0" style="width:90px;" placeholder="Từ"></label>
                 <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;" placeholder="Đến"></label>
+
+                <label style="margin-left:12px;">
+                    <input type="checkbox" id="tongHopSize">
+                    Tổng hợp size
+                </label>
+                
                 <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
                 <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
                 <button class="main-btn" id="btnCompact" onclick="toggleCompact()">Rút gọn</button>
