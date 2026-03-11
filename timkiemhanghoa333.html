@@ -47,7 +47,8 @@
         .topbar-compact {
             position: sticky;
             top: 0;
-             z-index: 1000000;  /* hoặc 999999 */
+            z-index: 1000000;
+            /* hoặc 999999 */
             background: #fff;
             padding: 8px 8px 0;
             border-radius: 12px
@@ -525,7 +526,24 @@
                 if (ta && ta.value) {
                     var cleaned = ta.value
                         .split(/[\r\n,;\t]+/)
-                        .map(function (x) { return stripSizeSuffixAtEnd(x); })
+                        .map(function (x) {
+                            x = (x || '').trim();
+                            if (!x) return '';
+
+                            var idx = x.lastIndexOf('/');
+                            if (idx > 0) {
+                                var left = x.slice(0, idx).trim();
+                                var right = x.slice(idx + 1).trim();
+
+                                // Nếu đuôi sau / là số lượng thì chỉ làm sạch phần mã
+                                if (/^\d+(\.\d+)?$/.test(right)) {
+                                    left = stripSizeSuffixAtEnd(left);
+                                    return (left ? left : '') + '/' + right;
+                                }
+                            }
+
+                            return stripSizeSuffixAtEnd(x);
+                        })
                         .map(function (x) { return x.trim(); })
                         .filter(Boolean);
                     // không tự động loại trùng/đổi thứ tự — giữ nguyên “đơn giản”
