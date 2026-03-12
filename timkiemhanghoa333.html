@@ -47,7 +47,8 @@
         .topbar-compact {
             position: sticky;
             top: 0;
-             z-index: 1000000;  /* hoặc 999999 */
+            z-index: 1000000;
+            /* hoặc 999999 */
             background: #fff;
             padding: 8px 8px 0;
             border-radius: 12px
@@ -360,6 +361,17 @@
                 height: 36px
             }
         }
+
+        .bulk-note-line {
+            margin-top: 6px;
+            padding: 4px 0 0;
+            color: #ff2a2a;
+            font-size: 16px;
+            line-height: 1.45;
+            font-weight: 500;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
     </style>
 
 
@@ -486,10 +498,12 @@
                     <div class="top-info">
                         <table id="infoTopTable" class="info-table"></table>
                     </div>
-                    <div class="right-xnt scroll-x"> <!-- giữ class cũ để JS bắt được, đồng thời có scroll ngang -->
+                    <div class="right-xnt scroll-x">
                         <table id="infoTableRight" class="info-table"></table>
                     </div>
 
+                    <!-- Dòng chú thích màu đỏ dưới bảng -->
+                    <div id="bulkNoteBox" class="bulk-note-line"></div>
                 </div>
 
                 <!-- Cột phải: ảnh -->
