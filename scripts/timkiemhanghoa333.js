@@ -1837,16 +1837,46 @@ function setProductImageByMasp(masp) {
 function parseBulkMasp() {
     const ta = document.getElementById('bulkTextarea');
     if (!ta) return [];
+
     const raw = ta.value || "";
     if (!raw.trim()) return [];
-    // tách theo xuống dòng, tab, dấu phẩy/chấm phẩy → chuẩn hóa UPPERCASE
-    const arr = raw.split(/[\r\n,;\t]+/)
-        .map(s => s.trim().toUpperCase())
+
+    // Ưu tiên tách theo từng dòng
+    const lines = raw
+        .split(/\r?\n/)
+        .map(s => s.trim())
         .filter(Boolean);
-    // loại trùng, giữ thứ tự; giới hạn 100 mã để tránh quá nhiều RPC
-    const seen = new Set(), out = [];
-    for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
-    return out.slice(0, 100);
+
+    const out = [];
+    const seen = new Set();
+
+    for (const line of lines) {
+        let masp = line;
+
+        // Nếu có dạng:
+        // MASP / 5, 39/1 40/1 ...
+        // thì chỉ lấy phần trước dấu " / "
+        const pos = line.indexOf(" / ");
+        if (pos !== -1) {
+            masp = line.slice(0, pos).trim();
+        } else {
+            // fallback cho dữ liệu cũ:
+            // vẫn cho phép tách bởi tab, phẩy, chấm phẩy nếu người dùng tự nhập
+            masp = line.split(/[,;\t]+/)[0].trim();
+        }
+
+        masp = masp.toUpperCase();
+
+        if (!masp) continue;
+        if (seen.has(masp)) continue;
+
+        seen.add(masp);
+        out.push(masp);
+
+        if (out.length >= 50) break;
+    }
+
+    return out;
 }
 
 function prependToBulkTextarea(code) {
