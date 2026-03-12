@@ -459,6 +459,8 @@ function showEmptyIfZero(val) {
 async function triggerSearch(_masp = null) {
     const msg = document.getElementById("statusMsg");
     msg.textContent = "Đang tìm kiếm mã sản phẩm...";
+    // Lưu lại dòng chú thích đỏ theo từng mã trước khi textarea bị xóa
+    buildBulkNoteMap();
     document.getElementById("multiDetailBox").innerHTML = "";
     document.getElementById("multiDetailBox").style.display = "none";
     document.getElementById("singleDetailBox").style.display = "";
@@ -773,6 +775,11 @@ async function renderOneProductDetail(masp) {
         initXntHot(el, rowMap, masp);
     }
 
+    // Dòng chú thích màu đỏ dưới bảng
+    const bulkNoteBox = document.getElementById("bulkNoteBox");
+    if (bulkNoteBox) {
+        bulkNoteBox.textContent = getBulkNoteByMasp(masp);
+    }
 
     // Ảnh sản phẩm dưới bảng
     setProductImageByMasp(hanghoa.masp);
@@ -943,6 +950,8 @@ async function renderProductDetailHTML(masp) {
     window.XNT_ROW_MAPS[masp] = rowMap;
 
     const safeId = _safeIdFromMasp(masp);
+    const bulkNote = getBulkNoteByMasp(masp);
+
     return `
     <div class="detail-grid">
       <div class="top-info">
@@ -981,9 +990,13 @@ async function renderProductDetailHTML(masp) {
           </tr>
         </table>
       </div>
+
       <div class="right-xnt">
         <div id="xntHot_${safeId}" style="max-width:100%;"></div>
       </div>
+
+      <div class="bulk-note-line">${bulkNote || ""}</div>
+
       <div class="img-wrap">
         <img alt="Ảnh sản phẩm" src="${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.JPG"
              onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(hanghoa.masp)}.png';" />
@@ -1877,6 +1890,40 @@ function parseBulkMasp() {
     }
 
     return out;
+}
+
+function buildBulkNoteMap() {
+    const ta = document.getElementById('bulkTextarea');
+    const raw = ta?.value || '';
+
+    const lines = raw
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    const map = {};
+
+    for (const line of lines) {
+        let masp = line;
+        const pos = line.indexOf(" / ");
+        if (pos !== -1) {
+            masp = line.slice(0, pos).trim().toUpperCase();
+        } else {
+            masp = line.split(/[,;\t]+/)[0].trim().toUpperCase();
+        }
+
+        if (!masp) continue;
+        map[masp] = line;
+    }
+
+    window.BULK_NOTE_MAP = map;
+    return map;
+}
+
+function getBulkNoteByMasp(masp) {
+    const key = String(masp || '').trim().toUpperCase();
+    const map = window.BULK_NOTE_MAP || {};
+    return map[key] || '';
 }
 
 function prependToBulkTextarea(code) {
