@@ -474,12 +474,14 @@ async function triggerSearch(_masp = null) {
     document.getElementById("maspInput").select();
 
     // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên 
-    const bulkCodes = parseBulkMasp(); // [ '11376-GDM', ... ]
+    const bulkEntries = parseBulkEntries(); // [{ masp, qty, displayLabel, raw }, ...]
     let candidates = [];
+    let renderEntries = [];
 
-    if (bulkCodes.length > 0) {
-        candidates = bulkCodes;
-        msg.textContent = `Đang tìm ${candidates.length} mã từ Textarea...`;
+    if (bulkEntries.length > 0) {
+        renderEntries = bulkEntries;
+        candidates = [...new Set(bulkEntries.map(x => x.masp))]; // chỉ query mã thật, không query trùng
+        msg.textContent = `Đang tìm ${renderEntries.length} dòng từ Textarea...`;
     } else {
         // 2) nếu textarea trống → chạy như cũ (từ ô maspInput)
         let masp = _masp || document.getElementById("maspInput").value.trim().toUpperCase();
@@ -522,19 +524,17 @@ async function triggerSearch(_masp = null) {
     }
 
     // Gom danh sách mã có dữ liệu XNT (dùng key đã chuẩn hoá)
-    let productWithXNT = Object.keys(window.XNT_BULK_MAP);
+    let productWithXNT = [];
 
-    // Nếu đang ở chế độ nhiều mã (textarea) → sắp xếp đúng thứ tự người dùng nhập
-    if (Array.isArray(candidates) && candidates.length > 0) {
-        const norm = s => String(s || "").trim().toUpperCase();
-
-        const orderMap = new Map(candidates.map((m, i) => [norm(m), i]));
-
-        productWithXNT.sort((a, b) => {
-            const ia = orderMap.get(norm(a));
-            const ib = orderMap.get(norm(b));
-            return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
+    if (renderEntries.length > 0) {
+        // Chế độ bulk: giữ đúng từng dòng theo textarea, kể cả trùng mã
+        productWithXNT = renderEntries.filter(entry => {
+            const key = String(entry.masp || "").trim().toUpperCase();
+            return !!window.XNT_BULK_MAP[key];
         });
+    } else {
+        // Chế độ tìm 1 mã như cũ
+        productWithXNT = Object.keys(window.XNT_BULK_MAP);
     }
 
     if (productWithXNT.length === 0) {
@@ -545,7 +545,13 @@ async function triggerSearch(_masp = null) {
 
     if (productWithXNT.length === 1) {
         document.getElementById("singleDetailBox").style.display = "";
-        await renderOneProductDetail(productWithXNT[0]);
+
+        if (renderEntries.length > 0) {
+            await renderOneProductDetail(productWithXNT[0].masp, productWithXNT[0].displayLabel);
+        } else {
+            await renderOneProductDetail(productWithXNT[0]);
+        }
+
         msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
         clearBulkTextareaAfterSuccess();
         return;
@@ -557,18 +563,22 @@ async function triggerSearch(_masp = null) {
     multi.innerHTML = "";
 
     const hotList = [];
-    for (const m of productWithXNT) {
-        const html = await renderProductDetailHTML(m);
+    for (const item of productWithXNT) {
+        const isBulkEntry = typeof item === "object" && item !== null;
+        const masp = isBulkEntry ? item.masp : item;
+        const displayLabel = isBulkEntry ? item.displayLabel : item;
+
+        const html = await renderProductDetailHTML(masp, displayLabel);
         const wrap = document.createElement("div");
         wrap.innerHTML = html;
         multi.appendChild(wrap);
         toggleVitriInputsByBranch();
 
-        const safeId = _safeIdFromMasp(m);
+        const safeId = _safeIdFromMasp(masp);
         const el = wrap.querySelector(`#xntHot_${safeId}`);
-        const rowMap = window.XNT_ROW_MAPS[m];
+        const rowMap = window.XNT_ROW_MAPS[masp];
         if (el && rowMap) {
-            const hot = initXntHot(el, rowMap, m);
+            const hot = initXntHot(el, rowMap, masp);
             hotList.push(hot);
         }
     }
@@ -590,7 +600,7 @@ async function triggerSearch(_masp = null) {
 
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
 /* ====== HIỂN THỊ 1 MÃ (hai dòng/8 cột + bảng XNT + ảnh) ====== */
-async function renderOneProductDetail(masp) {
+async function renderOneProductDetail(masp, displayLabel = null) {
     const normMasp = (masp || '').toUpperCase();
     masp = normMasp;
 
@@ -738,7 +748,7 @@ async function renderOneProductDetail(masp) {
         <a href="#"
            class="order-link"
            onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-           ${(hanghoa.masp || '')}
+           ${(displayLabel || hanghoa.masp || '')}
         </a>
       </td>
       <td>
@@ -797,7 +807,7 @@ function _safeIdFromMasp(masp) {
  * - Trả về string HTML (chưa khởi tạo HOT)
  * - Lưu rowMap vào window.XNT_ROW_MAPS[masp] để lát nữa init HOT
  */
-async function renderProductDetailHTML(masp) {
+async function renderProductDetailHTML(masp, displayLabel = null) {
     const normMasp = (masp || '').toUpperCase();
     masp = normMasp;
 
@@ -904,7 +914,7 @@ async function renderProductDetailHTML(masp) {
                 <a href="#"
                    class="order-link"
                    onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-                   ${(hanghoa.masp || '')}
+                   ${(displayLabel || hanghoa.masp || '')}
                 </a>
               </td>
               <td>
@@ -956,7 +966,7 @@ async function renderProductDetailHTML(masp) {
               <a href="#"
                  class="order-link"
                  onclick="return openDatHangFor('${(hanghoa.masp || '').replace(/'/g, "\\'")}', this)">
-                 ${(hanghoa.masp || '')}
+                 ${(displayLabel || hanghoa.masp || '')}
               </a>
             </td>
             <td>
@@ -1834,19 +1844,41 @@ function setProductImageByMasp(masp) {
     tryNext();
 }
 
-function parseBulkMasp() {
+function parseBulkEntries() {
     const ta = document.getElementById('bulkTextarea');
     if (!ta) return [];
+
     const raw = ta.value || "";
     if (!raw.trim()) return [];
-    // tách theo xuống dòng, tab, dấu phẩy/chấm phẩy → chuẩn hóa UPPERCASE
+
     const arr = raw.split(/[\r\n,;\t]+/)
         .map(s => s.trim().toUpperCase())
         .filter(Boolean);
-    // loại trùng, giữ thứ tự; giới hạn 100 mã để tránh quá nhiều RPC
-    const seen = new Set(), out = [];
-    for (const m of arr) if (!seen.has(m)) { seen.add(m); out.push(m); }
-    return out.slice(0, 100);
+
+    // Giữ NGUYÊN từng dòng, không loại trùng.
+    // Giới hạn tối đa 100 dòng.
+    return arr.slice(0, 100).map(line => {
+        const idx = line.lastIndexOf('/');
+        let masp = line;
+        let qty = "";
+
+        // Chỉ coi là MASP/SL nếu phần sau dấu / là số
+        if (idx > 0) {
+            const left = line.slice(0, idx).trim();
+            const right = line.slice(idx + 1).trim();
+            if (/^\d+(\.\d+)?$/.test(right)) {
+                masp = left;
+                qty = right;
+            }
+        }
+
+        return {
+            raw: line,
+            masp: masp.trim().toUpperCase(),
+            qty,
+            displayLabel: qty ? `${masp.trim().toUpperCase()}/${qty}` : masp.trim().toUpperCase()
+        };
+    }).filter(x => x.masp);
 }
 
 function prependToBulkTextarea(code) {
