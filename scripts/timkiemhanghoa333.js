@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
-// ==== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (AUTH MỚI) ====  
+// ==== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (AUTH MỚI) ====
 import * as authModule from "./authModule.js";
 
 async function kiemTraQuyenXemTrangTimKiem333() {
@@ -1886,7 +1886,7 @@ function parseBulkMasp() {
         seen.add(masp);
         out.push(masp);
 
-        if (out.length >= 50) break;
+        if (out.length >= 100) break;
     }
 
     return out;
@@ -2299,7 +2299,5 @@ window.onLoginSuccessTimKiem = async function (nhanvien, context) {
         localStorage.setItem('tennv', nhanvien.tennv);
     }
 };
-
-
 
 
