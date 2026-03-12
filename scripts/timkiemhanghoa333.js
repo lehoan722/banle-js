@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 
-// ==== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (AUTH MỚI) ====
+// ==== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (AUTH MỚI) ==== 
 import * as authModule from "./authModule.js";
 
 async function kiemTraQuyenXemTrangTimKiem333() {
@@ -2299,5 +2299,6 @@ window.onLoginSuccessTimKiem = async function (nhanvien, context) {
         localStorage.setItem('tennv', nhanvien.tennv);
     }
 };
+
 
 
