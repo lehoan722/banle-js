@@ -177,26 +177,49 @@ export function khoiTaoShortcut() {
       }
     }
 
-    // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền danh sách mã
+    // F7: mở timkiemhanghoa333 (TAB MỚI) + truyền mã + tổng SL + size/SL
     if (e.key === "F7") {
       e.preventDefault();
 
-      // 1) Gom danh sách mã từ bảng kết quả (cột 0 = Mã hàng)
-      const rows = Array.from(document.querySelectorAll("#bangketqua tbody tr"));
-      const set = new Set(
-        rows.map(r => (r.cells?.[0]?.innerText || "").trim().toUpperCase())
-          .filter(Boolean)
-      );
-      if (set.size === 0) {
+      // Ưu tiên lấy từ state bangKetQua để đúng dữ liệu nghiệp vụ
+      const bang = getBangKetQua() || {};
+      const maspList = Object.keys(bang);
+
+      if (maspList.length === 0) {
         alert("❌ Không có mã hàng nào trên bảng để mở tìm kiếm.");
         return;
       }
 
-      // 2) Lưu payload vào localStorage (mỗi mã một dòng)
-      const bulkData = Array.from(set).join("\n");
+      const lines = maspList.map((masp) => {
+        const item = bang[masp] || {};
+        const tong = Number(item.tong || 0);
+
+        const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+        const soluongs = Array.isArray(item.soluongs) ? item.soluongs : [];
+
+        const sizeParts = [];
+        for (let i = 0; i < sizes.length; i++) {
+          const size = String(sizes[i] || "").trim();
+          const sl = Number(soluongs[i] || 0);
+          if (!size) continue;
+          sizeParts.push(`${size}/${sl}`);
+        }
+
+        // Nếu có size thì ghép dạng:
+        // MASP / TONG, 39/1 40/1 41/1
+        // Nếu không có size thì vẫn giữ:
+        // MASP / TONG
+        if (sizeParts.length > 0) {
+          return `${String(masp).trim().toUpperCase()} / ${tong}, ${sizeParts.join(" ")}`;
+        }
+
+        return `${String(masp).trim().toUpperCase()} / ${tong}`;
+      });
+
+      const bulkData = lines.join("\n");
       localStorage.setItem("TKHH333_BULK", bulkData);
 
-      // 3) Mở trang timkiemhanghoa333 trong TAB MỚI
+      // Mở trang tìm kiếm ở tab mới
       window.open("timkiemhanghoa333.html", "_blank");
     }
 
@@ -239,7 +262,7 @@ export function khoiTaoShortcut() {
       window.open(targetUrl, "_blank");
     }
 
-    
+
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
     if (e.ctrlKey && e.key.toLowerCase() === "t") {
       e.preventDefault();
