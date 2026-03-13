@@ -1037,6 +1037,10 @@ function showBayMauPopup(tasks, context) {
   const noteInputs = [];
   const confirmCheckboxes = [];
 
+  // Đánh dấu những dòng đã được lưu ngay để không xử lý lại khi đóng popup
+  const daLuuBayMauNgay = new Set();
+  const daLuuConfirmNgay = new Set();
+
   tasks.forEach((row) => {
     const tr = document.createElement("tr");
     tr.style.background = "#fdf1d6";
@@ -1045,9 +1049,19 @@ function showBayMauPopup(tasks, context) {
     const tdCheck = document.createElement("td");
     tdCheck.style.border = "1px solid #ccc";
     tdCheck.style.padding = "4px 6px";
+
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.dataset.idCt = row.id_ct;
+    cb.checked = !!row.baymau_by;
+    cb.disabled = !!row.baymau_by;
+
+    cb.addEventListener("change", async (e) => {
+      e.stopPropagation();
+      if (!cb.checked) return;
+      await saveBayMauNgay(cb, tr, row);
+    });
+
     tdCheck.appendChild(cb);
     tr.appendChild(tdCheck);
     bayMauCheckboxes.push(cb);
@@ -1098,11 +1112,19 @@ function showBayMauPopup(tasks, context) {
     const tdConfirm = document.createElement("td");
     tdConfirm.style.border = "1px solid #ccc";
     tdConfirm.style.textAlign = "center";
+
     const chkConfirm = document.createElement("input");
     chkConfirm.type = "checkbox";
     chkConfirm.dataset.idCt = row.id_ct;
     chkConfirm.checked = !!row.baymau_admin_confirm_by;
-    if (!isAdmin) chkConfirm.disabled = true;
+    if (!isAdmin || !!row.baymau_admin_confirm_by) chkConfirm.disabled = true;
+
+    chkConfirm.addEventListener("change", async (e) => {
+      e.stopPropagation();
+      if (!chkConfirm.checked) return;
+      await saveConfirmNgay(chkConfirm, tr, row);
+    });
+
     tdConfirm.appendChild(chkConfirm);
     tr.appendChild(tdConfirm);
     confirmCheckboxes.push(chkConfirm);
@@ -1111,11 +1133,21 @@ function showBayMauPopup(tasks, context) {
   });
 
   // Checkbox tổng cho cột xác nhận
-  chkAllConfirm.addEventListener("change", () => {
+  chkAllConfirm.addEventListener("change", async () => {
     if (!isAdmin) return;
-    confirmCheckboxes.forEach((chk) => {
-      if (!chk.disabled) chk.checked = chkAllConfirm.checked;
-    });
+
+    const list = [...confirmCheckboxes].filter((chk) => !chk.disabled);
+
+    for (const chk of list) {
+      chk.checked = chkAllConfirm.checked;
+
+      if (chk.checked) {
+        const tr = chk.closest("tr");
+        const idCt = Number(chk.dataset.idCt);
+        const row = tasks.find((x) => Number(x.id_ct) === idCt);
+        await saveConfirmNgay(chk, tr, row);
+      }
+    }
   });
 
   box.appendChild(header);
@@ -1123,54 +1155,142 @@ function showBayMauPopup(tasks, context) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // === Hàm đóng popup: lưu bày mẫu + ghi chú + xác nhận ===
-  async function closePopup() {
+  function xoaDongVaDongPopupNeuHet(tr) {
     try {
-      // 1. GHI NHẬN BÀY MẪU (baymau_set_done)
-      const idsBayMau = bayMauCheckboxes
-        .filter((c) => c.checked)
-        .map((c) => Number(c.dataset.idCt))
-        .filter((v) => Number.isFinite(v));
-
-      if (idsBayMau.length > 0 && context.manvDangNhap) {
-        const { error } = await supabase.rpc("baymau_set_done", {
-          p_ids: idsBayMau,
-          p_manv: context.manvDangNhap,
-        });
-        if (error) {
-          console.error("Lỗi RPC baymau_set_done:", error);
-        }
+      if (tr && tr.parentNode) {
+        tr.parentNode.removeChild(tr);
       }
 
-      // 2. GHI NHẬN GHI CHÚ + XÁC NHẬN ADMIN
+      if (tbody && tbody.children.length === 0) {
+        bayMauPopupDangMo = false;
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }
+    } catch (e) {
+      console.error("Lỗi xoaDongVaDongPopupNeuHet:", e);
+    }
+  }
+
+  async function saveBayMauNgay(cb, tr, row) {
+    const idCt = Number(cb.dataset.idCt);
+    if (!Number.isFinite(idCt)) return;
+
+    if (daLuuBayMauNgay.has(idCt)) return;
+
+    if (!cb.checked) return;
+
+    if (!context.manvDangNhap) {
+      alert("Chưa xác định được mã nhân viên đăng nhập, không thể lưu bày mẫu.");
+      cb.checked = false;
+      return;
+    }
+
+    cb.disabled = true;
+
+    try {
+      const { error } = await supabase.rpc("baymau_set_done", {
+        p_ids: [idCt],
+        p_manv: context.manvDangNhap,
+      });
+
+      if (error) {
+        console.error("Lỗi RPC baymau_set_done (lưu ngay):", error);
+        alert("Không lưu được trạng thái bày mẫu, vui lòng thử lại.");
+        cb.checked = false;
+        cb.disabled = false;
+        return;
+      }
+
+      daLuuBayMauNgay.add(idCt);
+
+      if (row) {
+        row.baymau_by = context.manvDangNhap;
+      }
+
+      xoaDongVaDongPopupNeuHet(tr);
+    } catch (e) {
+      console.error("Lỗi saveBayMauNgay:", e);
+      alert("Có lỗi khi lưu bày mẫu.");
+      cb.checked = false;
+      cb.disabled = false;
+    }
+  }
+
+  async function saveConfirmNgay(chkConfirm, tr, row) {
+    const idCt = Number(chkConfirm.dataset.idCt);
+    if (!Number.isFinite(idCt)) return;
+
+    if (daLuuConfirmNgay.has(idCt)) return;
+
+    if (!chkConfirm.checked) return;
+
+    if (!isAdmin) {
+      chkConfirm.checked = false;
+      return;
+    }
+
+    chkConfirm.disabled = true;
+
+    try {
+      const { error } = await supabase.rpc("baymau_update_note_and_confirm", {
+        p_note_updates: [],
+        p_confirm_ids: [idCt],
+        p_admin: currentManv || null,
+      });
+
+      if (error) {
+        console.error("Lỗi RPC baymau_update_note_and_confirm (lưu ngay xác nhận):", error);
+        alert("Không lưu được xác nhận admin, vui lòng thử lại.");
+        chkConfirm.checked = false;
+        chkConfirm.disabled = false;
+        return;
+      }
+
+      daLuuConfirmNgay.add(idCt);
+
+      if (row) {
+        row.baymau_admin_confirm_by = currentManv || "1";
+      }
+
+      xoaDongVaDongPopupNeuHet(tr);
+    } catch (e) {
+      console.error("Lỗi saveConfirmNgay:", e);
+      alert("Có lỗi khi lưu xác nhận admin.");
+      chkConfirm.checked = false;
+      chkConfirm.disabled = false;
+    }
+  }
+
+  // === Hàm đóng popup: lưu bày mẫu + ghi chú + xác nhận ===
+  // === Hàm đóng popup: chỉ lưu GHI CHÚ, không lưu lại bày mẫu/xác nhận đã lưu ngay ===
+  async function closePopup() {
+    try {
       const noteUpdates = [];
       noteInputs.forEach(({ input, old }) => {
         const note = input.value.trim();
+        const idCt = Number(input.dataset.idCt);
+
+        if (!Number.isFinite(idCt)) return;
+
         if (note !== (old || "")) {
           noteUpdates.push({
-            id_ct: Number(input.dataset.idCt),
+            id_ct: idCt,
             note,
           });
         }
       });
 
-      let confirmIds = [];
-      if (isAdmin) {
-        confirmIds = confirmCheckboxes
-          .filter((c) => c.checked)
-          .map((c) => Number(c.dataset.idCt))
-          .filter((v) => Number.isFinite(v));
-      }
-
-      if (noteUpdates.length > 0 || confirmIds.length > 0) {
+      if (noteUpdates.length > 0) {
         const { error: errNote } = await supabase.rpc(
           "baymau_update_note_and_confirm",
           {
             p_note_updates: noteUpdates,
-            p_confirm_ids: confirmIds,
+            p_confirm_ids: [],
             p_admin: isAdmin ? currentManv : null,
           }
         );
+
         if (errNote) {
           console.error("Lỗi RPC baymau_update_note_and_confirm:", errNote);
         }
