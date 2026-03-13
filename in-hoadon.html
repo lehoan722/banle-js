@@ -503,59 +503,17 @@
 
 
         // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
-        function resolveCoSo() {
-          // ✅ Ưu tiên URL trước
-          const cosoFromUrl = (new URLSearchParams(location.search).get("coso") || "")
-            .toLowerCase()
-            .trim();
-
-          if (cosoFromUrl === "cs2") return "cs2";
-          if (cosoFromUrl === "cs1") return "cs1";
-
-          // ✅ Sau đó mới đọc localStorage do trang bán truyền sang lúc bấm F6
-          const cosoFromPrintFlag = (localStorage.getItem("coso_inhoadon") || "")
-            .toLowerCase()
-            .trim();
-
-          if (cosoFromPrintFlag === "cs2") return "cs2";
-          if (cosoFromPrintFlag === "cs1") return "cs1";
-
-          // ✅ Cuối cùng mới fallback sang dữ liệu hóa đơn
-          const values = [
-            hoadon.diadiem,
-            hoadon.dia_diem,
-            hoadon.coso,
-            hoadon.macoso,
-            hoadon.loaihd,
-            hoadon.sohd
-          ]
-            .filter(Boolean)
-            .map(v => String(v).toLowerCase().trim());
-
-          const allText = values.join(" | ");
-
-          if (
-            allText.includes("cs2") ||
-            allText.includes("cơ sở 2") ||
-            allText.includes("co so 2") ||
-            allText.includes("bancs2") ||
-            allText.includes("nbcs2") ||
-            allText.includes("cs 2")
-          ) {
-            return "cs2";
-          }
-
-          return "cs1";
-        }
-
-        // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
         (function renderVietQR() {
           const img = document.getElementById("vietqr_img");
           if (!img) return;
 
-          const coso = resolveCoSo();
-          const isCS2 = coso === "cs2";
+          // ===== Nhận biết cơ sở =====
+          const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
+          const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
 
+          // ===== Tài khoản nhận theo cơ sở =====
+          // CS1: DANG LE HOAN - Techcombank 2662222333
+          // CS2: NGUYEN ANH TUYET - Techcombank 2552222333 
           let bankId = "VietinBank";
           let bankLabel = "VietinBank";
           let accountNo = "101880222833";
@@ -568,18 +526,23 @@
             accountName = "NGUYEN ANH TUYET";
           }
 
+          const sohdText = (hoadon.sohd || "").toString().trim();
           const addInfo = " CK ";
+
           const amount = Math.round(Number(thanhtoan) || 0);
 
+          // cập nhật thông tin hiển thị dưới QR (nếu có)
           const elBank = document.getElementById("qr_bank_label");
           const elAccNo = document.getElementById("qr_account_no");
           const elAccName = document.getElementById("qr_account_name");
           const elAmount = document.getElementById("qr_amount");
+          const elAddInfo = document.getElementById("qr_addinfo");
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
           if (elAccName) elAccName.textContent = accountName;
-          if (elAmount) elAmount.textContent = formatSo(amount);
+          if (elAmount) elAmount.textContent = (typeof formatSo === "function") ? formatSo(amount) : String(amount);
+          if (elAddInfo) elAddInfo.textContent = addInfo;
 
           const url =
             "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
@@ -631,9 +594,7 @@
 
 
         // Hiển thị thông tin hóa đơn
-        const cosoResolved = resolveCoSo();
-        document.getElementById("diadiem").textContent =
-          hoadon.diadiem || (cosoResolved === "cs2" ? "CS2" : "CS1");
+        document.getElementById("diadiem").textContent = hoadon.diadiem || "";
         document.getElementById("khachhang").textContent = hoadon.khachhang || "";
         document.getElementById("sohd").textContent = hoadon.sohd || "";
 
@@ -663,7 +624,6 @@
         });
 
         localStorage.removeItem("data_hoadon_in");
-        localStorage.removeItem("coso_inhoadon");
 
         // Cho phép in bằng phím Enter
         // Cho phép in bằng phím Enter + đóng tab bằng F5
