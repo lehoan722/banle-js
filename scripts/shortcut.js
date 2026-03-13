@@ -169,17 +169,6 @@ export function khoiTaoShortcut() {
     // F6: Xem in hóa đơn
     if (e.key === "F6") {
       e.preventDefault();
-
-      const diadiemRaw =
-        (document.getElementById("diadiem")?.value || localStorage.getItem("diadiem") || "")
-          .toLowerCase()
-          .trim();
-
-      const coso = diadiemRaw.includes("2") ? "cs2" : "cs1";
-
-      // ✅ Ghi dấu cơ sở hiện tại để trang in luôn đọc đúng
-      localStorage.setItem("coso_inhoadon", coso);
-
       const btn = document.getElementById("xemin");
       if (btn) {
         btn.click();
