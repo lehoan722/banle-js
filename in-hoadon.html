@@ -504,20 +504,33 @@
 
         // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
         function resolveCoSo() {
+          // ✅ Ưu tiên URL trước
+          const cosoFromUrl = (new URLSearchParams(location.search).get("coso") || "")
+            .toLowerCase()
+            .trim();
+
+          if (cosoFromUrl === "cs2") return "cs2";
+          if (cosoFromUrl === "cs1") return "cs1";
+
+          // ✅ Sau đó mới đọc localStorage do trang bán truyền sang lúc bấm F6
+          const cosoFromPrintFlag = (localStorage.getItem("coso_inhoadon") || "")
+            .toLowerCase()
+            .trim();
+
+          if (cosoFromPrintFlag === "cs2") return "cs2";
+          if (cosoFromPrintFlag === "cs1") return "cs1";
+
+          // ✅ Cuối cùng mới fallback sang dữ liệu hóa đơn
           const values = [
             hoadon.diadiem,
             hoadon.dia_diem,
             hoadon.coso,
             hoadon.macoso,
             hoadon.loaihd,
-            hoadon.sohd,
-            localStorage.getItem("coso_inhoadon"),
-            localStorage.getItem("coso"),
-            localStorage.getItem("macoso"),
-            new URLSearchParams(location.search).get("coso")
+            hoadon.sohd
           ]
             .filter(Boolean)
-            .map(v => String(v).toLowerCase());
+            .map(v => String(v).toLowerCase().trim());
 
           const allText = values.join(" | ");
 
@@ -650,6 +663,7 @@
         });
 
         localStorage.removeItem("data_hoadon_in");
+        localStorage.removeItem("coso_inhoadon");
 
         // Cho phép in bằng phím Enter
         // Cho phép in bằng phím Enter + đóng tab bằng F5
