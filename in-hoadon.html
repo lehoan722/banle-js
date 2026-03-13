@@ -503,17 +503,46 @@
 
 
         // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
+        function resolveCoSo() {
+          const values = [
+            hoadon.diadiem,
+            hoadon.dia_diem,
+            hoadon.coso,
+            hoadon.macoso,
+            hoadon.loaihd,
+            hoadon.sohd,
+            localStorage.getItem("coso_inhoadon"),
+            localStorage.getItem("coso"),
+            localStorage.getItem("macoso"),
+            new URLSearchParams(location.search).get("coso")
+          ]
+            .filter(Boolean)
+            .map(v => String(v).toLowerCase());
+
+          const allText = values.join(" | ");
+
+          if (
+            allText.includes("cs2") ||
+            allText.includes("cơ sở 2") ||
+            allText.includes("co so 2") ||
+            allText.includes("bancs2") ||
+            allText.includes("nbcs2") ||
+            allText.includes("cs 2")
+          ) {
+            return "cs2";
+          }
+
+          return "cs1";
+        }
+
+        // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
         (function renderVietQR() {
           const img = document.getElementById("vietqr_img");
           if (!img) return;
 
-          // ===== Nhận biết cơ sở =====
-          const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
-          const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
+          const coso = resolveCoSo();
+          const isCS2 = coso === "cs2";
 
-          // ===== Tài khoản nhận theo cơ sở =====
-          // CS1: DANG LE HOAN - Techcombank 2662222333
-          // CS2: NGUYEN ANH TUYET - Techcombank 2552222333 
           let bankId = "VietinBank";
           let bankLabel = "VietinBank";
           let accountNo = "101880222833";
@@ -526,23 +555,18 @@
             accountName = "NGUYEN ANH TUYET";
           }
 
-          const sohdText = (hoadon.sohd || "").toString().trim();
           const addInfo = " CK ";
-
           const amount = Math.round(Number(thanhtoan) || 0);
 
-          // cập nhật thông tin hiển thị dưới QR (nếu có)
           const elBank = document.getElementById("qr_bank_label");
           const elAccNo = document.getElementById("qr_account_no");
           const elAccName = document.getElementById("qr_account_name");
           const elAmount = document.getElementById("qr_amount");
-          const elAddInfo = document.getElementById("qr_addinfo");
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
           if (elAccName) elAccName.textContent = accountName;
-          if (elAmount) elAmount.textContent = (typeof formatSo === "function") ? formatSo(amount) : String(amount);
-          if (elAddInfo) elAddInfo.textContent = addInfo;
+          if (elAmount) elAmount.textContent = formatSo(amount);
 
           const url =
             "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
@@ -594,7 +618,9 @@
 
 
         // Hiển thị thông tin hóa đơn
-        document.getElementById("diadiem").textContent = hoadon.diadiem || "";
+        const cosoResolved = resolveCoSo();
+        document.getElementById("diadiem").textContent =
+          hoadon.diadiem || (cosoResolved === "cs2" ? "CS2" : "CS1");
         document.getElementById("khachhang").textContent = hoadon.khachhang || "";
         document.getElementById("sohd").textContent = hoadon.sohd || "";
 
