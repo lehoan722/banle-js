@@ -169,6 +169,10 @@ export function khoiTaoShortcut() {
     // F6: Xem in hóa đơn
     if (e.key === "F6") {
       e.preventDefault();
+
+      // 🔴 thêm dòng này
+      localStorage.setItem("coso_inhoadon", localStorage.getItem("diadiem") || "cs2");
+
       const btn = document.getElementById("xemin");
       if (btn) {
         btn.click();
