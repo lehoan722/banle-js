@@ -170,8 +170,15 @@ export function khoiTaoShortcut() {
     if (e.key === "F6") {
       e.preventDefault();
 
-      // 🔴 thêm dòng này
-      localStorage.setItem("coso_inhoadon", localStorage.getItem("diadiem") || "cs2");
+      const diadiemRaw =
+        (document.getElementById("diadiem")?.value || localStorage.getItem("diadiem") || "")
+          .toLowerCase()
+          .trim();
+
+      const coso = diadiemRaw.includes("2") ? "cs2" : "cs1";
+
+      // ✅ Ghi dấu cơ sở hiện tại để trang in luôn đọc đúng
+      localStorage.setItem("coso_inhoadon", coso);
 
       const btn = document.getElementById("xemin");
       if (btn) {
