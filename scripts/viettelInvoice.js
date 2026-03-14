@@ -197,11 +197,31 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
 
     // 2) Gửi với retry
     // 2) Đánh dấu đang gửi để chặn gọi lặp
-    await supabase
-      .from('hoadon_banleT')
-      .update({ trang_thai_gui: 'Đang gửi' })
-      .eq('sohd', mahoadon)
-      .neq('trang_thai_gui', 'Đã gửi');
+    const { data: claimData, error: claimError } = await supabase.rpc('claim_viettel_send', {
+      p_sohd: mahoadon
+    });
+
+    if (claimError) {
+      throw new Error('Không khóa được quyền gửi: ' + claimError.message);
+    }
+
+    const claim = Array.isArray(claimData) ? claimData[0] : claimData;
+
+    if (!claim?.ok) {
+      if (claim?.status === 'already_sent') {
+        alert("✅ Hóa đơn này đã gửi rồi, không gửi lại.");
+        return;
+      }
+      if (claim?.status === 'locked') {
+        alert("⏳ Hóa đơn này đang được gửi ở nơi khác, bỏ qua để tránh trùng.");
+        return;
+      }
+      if (claim?.status === 'not_found') {
+        alert("❌ Không tìm thấy hóa đơn để gửi.");
+        return;
+      }
+      throw new Error(claim?.message || 'Không claim được quyền gửi');
+    }
 
     // 3) Gửi với retry
     let lastErrorText = "";
@@ -224,16 +244,16 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
         // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
         const raw = await response.text();
 
-       // if (!response.ok) {
-          // Nếu backend lỗi nhưng bên Viettel đã tạo bản nháp (raw chứa 'success' hay 'invoiceNo')
-          //if (/\b(success|invoice|created|draft)\b/i.test(raw)) {
-            //await supabase.from('hoadon_banleT')
-           //   .update({ trang_thai_gui: 'Đã gửi' })
-           //   .eq('sohd', mahoadon);
-           // alert("✅ Gửi hóa đơn thành công (backend báo 500 nhưng Viettel đã nhận).");
-           // return;
-         // }
-       // }
+        // if (!response.ok) {
+        // Nếu backend lỗi nhưng bên Viettel đã tạo bản nháp (raw chứa 'success' hay 'invoiceNo')
+        //if (/\b(success|invoice|created|draft)\b/i.test(raw)) {
+        //await supabase.from('hoadon_banleT')
+        //   .update({ trang_thai_gui: 'Đã gửi' })
+        //   .eq('sohd', mahoadon);
+        // alert("✅ Gửi hóa đơn thành công (backend báo 500 nhưng Viettel đã nhận).");
+        // return;
+        // }
+        // }
         let result;
         try { result = JSON.parse(raw); } catch (_) { }
 
