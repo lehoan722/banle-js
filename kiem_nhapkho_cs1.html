@@ -511,11 +511,11 @@
                         </tr>
                         <tr>
                             <th>Mã hàng</th>
-                            <th>Size</th>
-                            <th>SL</th>
+                            <th>Size/SL</th>
+                            <th>Tổng SL</th>
                             <th>Mã hàng</th>
-                            <th>Size</th>
-                            <th>SL</th>
+                            <th>Size/SL</th>
+                            <th>Tổng SL</th>
                             <th>Trạng thái</th>
                             <th>Chi tiết</th>
                         </tr>
@@ -617,7 +617,7 @@
                     window.capNhatQuyenGiaoDien();
                 }
 
-                
+
 
                 // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
@@ -1596,6 +1596,37 @@
         };
     </script>
     <script src="./scripts/nhapkiemkho.js"></script>
+
+    <div id="popupChonHoaDonNguon" style="
+  display:none;
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  width:520px;
+  max-width:90vw;
+  max-height:80vh;
+  background:#fff;
+  border:1px solid #999;
+  box-shadow:0 0 12px rgba(0,0,0,0.3);
+  z-index:99999;
+  padding:12px;
+">
+        <h3 style="margin:0 0 10px 0;">Chọn hóa đơn nguồn</h3>
+
+        <div id="dsHoaDonNguonPopup" style="
+    border:1px solid #ccc;
+    max-height:420px;
+    overflow:auto;
+    padding:8px;
+    margin-bottom:10px;
+  "></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button id="btnDongPopupHoaDonNguon" type="button">Hủy</button>
+            <button id="btnXacNhanHoaDonNguon" type="button">Nạp hóa đơn đã chọn</button>
+        </div>
+    </div>
 
 </body>
 
