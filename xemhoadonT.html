@@ -254,11 +254,11 @@
     const getMauTrangThai = (trangThai) => {
       const t = getTrangThaiGui(trangThai);
       if (!t || t === "Chưa gửi") return "orange";
+      if (t === "Đang gửi") return "#0066cc";
       if (t === "Đã gửi") return "green";
       if (t.startsWith("Lỗi")) return "red";
       return "#888";
     };
-
 
     function capNhatNutXoa() {
       const btnXoa = document.getElementById('btnXoaHD');
@@ -828,6 +828,12 @@
           .eq('sohd', sohd)
           .single();
 
+        if (hoadon?.trang_thai_gui === 'Đang gửi') {
+          loiList.push(`HĐ [${sohd}]: Đang gửi, bỏ qua để tránh trùng.`);
+          thatBai++;
+          continue;
+        }
+
         const { data: chitiet } = await window.supabase
           .from('ct_hoadon_banleT')
           .select('*')
@@ -850,6 +856,30 @@
         const json = taoDuLieuHoaDon({ ...hoadon, __buyerOverride: buyerOverride }, chitiet);
 
         try {
+          const { data: claimData, error: claimError } = await window.supabase.rpc('claim_viettel_send', {
+            p_sohd: sohd
+          });
+
+          if (claimError) {
+            loiList.push(`HĐ [${sohd}]: Không khóa được quyền gửi - ${claimError.message}`);
+            thatBai++;
+            continue;
+          }
+
+          const claim = Array.isArray(claimData) ? claimData[0] : claimData;
+
+          if (!claim?.ok) {
+            if (claim?.status === 'already_sent') {
+              loiList.push(`HĐ [${sohd}]: Đã gửi rồi, bỏ qua.`);
+            } else if (claim?.status === 'locked') {
+              loiList.push(`HĐ [${sohd}]: Đang được gửi ở nơi khác, bỏ qua.`);
+            } else {
+              loiList.push(`HĐ [${sohd}]: ${claim?.message || 'Không claim được quyền gửi'}`);
+            }
+            thatBai++;
+            continue;
+          }
+
           const response = await fetch('/api/guiHDDT', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1199,9 +1229,9 @@
 
         alert(` Đã xóa thành công ${dsXoa.length} hóa đơn (bao gồm đối ứng nếu có).`);
         await window.taiDanhSachHoaDon(); // refresh lại bảng
-      })();    
+      })();
 
-        }
+    }
 
 
     // Expose functions for inline onclick handlers
@@ -1209,7 +1239,7 @@
     window.xemChiTiet = xemChiTiet;
     window.dongPopup = dongPopup;
     window.xoaHoaDonDaChon = xoaHoaDonDaChon;
-khoiTaoDangNhapDungChung({
+    khoiTaoDangNhapDungChung({
       appContainerId: 'app-container',
 
       // Không khóa cứng cơ sở, để nhân viên chọn CS1 / CS2
@@ -1323,7 +1353,7 @@ khoiTaoDangNhapDungChung({
 
 
   <!-- Popup xác thực nhân viên (dùng cho xóa hóa đơn) -->
-  
+
 
 </body>
 
