@@ -39,6 +39,14 @@
     return `${normalizeMasp(masp)}@@${normalizeSize(size)}`;
   }
 
+  function splitKey(key) {
+    const [masp = "", size = ""] = String(key || "").split("@@");
+    return {
+      masp: normalizeMasp(masp),
+      size: normalizeSize(size)
+    };
+  }
+
   function normalizeNumber(v) {
     const raw = String(v ?? "")
       .replace(/\./g, "")
@@ -164,6 +172,8 @@
       ...((xuatGroup?.items || []).map(x => x.key))
     ]);
 
+    const thieuParts = [];
+    const thuaParts = [];
     let tongThieu = 0;
     let tongThua = 0;
     let hasOk = false;
@@ -172,19 +182,32 @@
       const kq = ketQuaMap[key];
       if (!kq) continue;
 
+      const { size } = splitKey(key);
       const diff = normalizeNumber(kq.chitiet || 0);
 
-      if (kq.trangthai === "THIEU") tongThieu += diff;
-      else if (kq.trangthai === "THUA") tongThua += diff;
-      else if (kq.trangthai === "OK") hasOk = true;
+      if (kq.trangthai === "THIEU") {
+        tongThieu += diff;
+        thieuParts.push(`${size}/${diff}`);
+      } else if (kq.trangthai === "THUA") {
+        tongThua += diff;
+        thuaParts.push(`${size}/${diff}`);
+      } else if (kq.trangthai === "OK") {
+        hasOk = true;
+      }
     }
 
     if (tongThieu > 0 && tongThua === 0) {
-      return { trangthai: "THIEU", chitiet: String(tongThieu) };
+      return {
+        trangthai: "THIEU",
+        chitiet: thieuParts.join(" ")
+      };
     }
 
     if (tongThua > 0 && tongThieu === 0) {
-      return { trangthai: "THUA", chitiet: String(tongThua) };
+      return {
+        trangthai: "THUA",
+        chitiet: thuaParts.join(" ")
+      };
     }
 
     if (tongThieu === 0 && tongThua === 0 && hasOk) {
@@ -194,7 +217,7 @@
     if (tongThieu > 0 && tongThua > 0) {
       return {
         trangthai: "LECH",
-        chitiet: `Thieu ${tongThieu} / Thua ${tongThua}`
+        chitiet: `Thiếu: ${thieuParts.join(" ")} | Thừa: ${thuaParts.join(" ")}`
       };
     }
 
@@ -242,7 +265,7 @@
       <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
 
       <td>${escapeHtml(kqTong.trangthai || "")}</td>
-      <td>${escapeHtml(kqTong.chitiet || "")}</td>
+      <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
     `;
       tbody.appendChild(tr);
     }
@@ -272,11 +295,13 @@
       return;
     }
 
-    //if (!size) {
-      //alert("Vui lòng nhập size.");
-      //if (sizeEl) sizeEl.focus();
-      //return;
-   // }
+    if (!size) {
+      if (sizeEl) {
+        sizeEl.focus();
+        sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      }
+      return;
+    }
 
     if (sl <= 0) {
       alert("Số lượng phải lớn hơn 0.");
@@ -301,10 +326,16 @@
 
     renderBangKetQua();
 
-    maspEl.value = "";
     if (sizeEl) sizeEl.value = "";
     slEl.value = "1";
-    maspEl.focus();
+
+    if (sizeEl) {
+      sizeEl.focus();
+      sizeEl.dispatchEvent(new Event("focus", { bubbles: true }));
+      sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    } else {
+      maspEl.focus();
+    }
   }
 
   function bindInputEvents() {
@@ -312,20 +343,66 @@
     const sizeEl = byId("size");
     const slEl = byId("soluong");
 
-    [maspEl, sizeEl, slEl].forEach((el) => {
-      if (!el) return;
-      el.addEventListener("keydown", (e) => {
+    if (maspEl) {
+      maspEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+
+          const masp = normalizeMasp(maspEl.value);
+          if (!masp) {
+            alert("Vui lòng nhập mã sản phẩm.");
+            maspEl.focus();
+            return;
+          }
+
+          maspEl.value = masp;
+
+          if (sizeEl) {
+            sizeEl.focus();
+            sizeEl.select?.();
+
+            // kích hoạt popup size của hệ thống cũ nếu có
+            sizeEl.dispatchEvent(new Event("focus", { bubbles: true }));
+            sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+          }
+        }
+      });
+
+      maspEl.addEventListener("blur", () => {
+        maspEl.value = normalizeMasp(maspEl.value);
+      });
+    }
+
+    if (sizeEl) {
+      sizeEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+
+          const size = normalizeSize(sizeEl.value);
+          if (!size) {
+            // Không alert nữa, để user chọn trên popup cũ
+            sizeEl.focus();
+            sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+            return;
+          }
+
+          if (slEl) {
+            slEl.focus();
+            slEl.select?.();
+          }
+        }
+      });
+    }
+
+    if (slEl) {
+      slEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           themDongNhapBenTrai();
         }
       });
-    });
-
-    // Bản gộp theo mã: tạm không sửa trực tiếp trong bảng.
-    // Nếu cần đổi dữ liệu, người dùng nhập lại từ ô trên.
+    }
   }
-
   // =========================
   // RESET PHIẾU
   // =========================
@@ -400,148 +477,148 @@
   // =========================
 
   function moPopupChonHoaDonNguon(dsHd) {
-  return new Promise((resolve) => {
-    const popup = byId("popupChonHoaDonNguon");
-    const box = byId("dsHoaDonNguonPopup");
-    const btnDong = byId("btnDongPopupHoaDonNguon");
-    const btnOk = byId("btnXacNhanHoaDonNguon");
+    return new Promise((resolve) => {
+      const popup = byId("popupChonHoaDonNguon");
+      const box = byId("dsHoaDonNguonPopup");
+      const btnDong = byId("btnDongPopupHoaDonNguon");
+      const btnOk = byId("btnXacNhanHoaDonNguon");
 
-    if (!popup || !box || !btnDong || !btnOk) {
-      resolve(null);
-      return;
-    }
-
-    box.innerHTML = "";
-
-    dsHd.forEach((hd, index) => {
-      const sohd = String(hd.sohd || "").trim();
-      const ngay = hd.ngay || "";
-      const diadiem = hd.diadiem || "";
-
-      const row = document.createElement("label");
-      row.style.display = "flex";
-      row.style.alignItems = "center";
-      row.style.gap = "8px";
-      row.style.padding = "6px 4px";
-      row.style.borderBottom = "1px solid #eee";
-      row.style.cursor = "pointer";
-
-      row.innerHTML = `
-        <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}" ${index === 0 ? "checked" : ""}>
-        <span>${escapeHtml(sohd)} | ${escapeHtml(ngay)} | ${escapeHtml(diadiem)}</span>
-      `;
-      box.appendChild(row);
-    });
-
-    popup.style.display = "block";
-
-    const closePopup = (result) => {
-      popup.style.display = "none";
-      btnDong.onclick = null;
-      btnOk.onclick = null;
-      resolve(result);
-    };
-
-    btnDong.onclick = () => closePopup(null);
-
-    btnOk.onclick = () => {
-      const checked = Array.from(
-        box.querySelectorAll(".chk-hd-nguon:checked")
-      ).map(x => x.value);
-
-      if (!checked.length) {
-        alert("Vui lòng chọn ít nhất 1 hóa đơn.");
+      if (!popup || !box || !btnDong || !btnOk) {
+        resolve(null);
         return;
       }
 
-      closePopup(checked);
-    };
-  });
-}
+      box.innerHTML = "";
+
+      dsHd.forEach((hd, index) => {
+        const sohd = String(hd.sohd || "").trim();
+        const ngay = hd.ngay || "";
+        const diadiem = hd.diadiem || "";
+
+        const row = document.createElement("label");
+        row.style.display = "flex";
+        row.style.alignItems = "center";
+        row.style.gap = "8px";
+        row.style.padding = "6px 4px";
+        row.style.borderBottom = "1px solid #eee";
+        row.style.cursor = "pointer";
+
+        row.innerHTML = `
+        <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}" ${index === 0 ? "checked" : ""}>
+        <span>${escapeHtml(sohd)} | ${escapeHtml(ngay)} | ${escapeHtml(diadiem)}</span>
+      `;
+        box.appendChild(row);
+      });
+
+      popup.style.display = "block";
+
+      const closePopup = (result) => {
+        popup.style.display = "none";
+        btnDong.onclick = null;
+        btnOk.onclick = null;
+        resolve(result);
+      };
+
+      btnDong.onclick = () => closePopup(null);
+
+      btnOk.onclick = () => {
+        const checked = Array.from(
+          box.querySelectorAll(".chk-hd-nguon:checked")
+        ).map(x => x.value);
+
+        if (!checked.length) {
+          alert("Vui lòng chọn ít nhất 1 hóa đơn.");
+          return;
+        }
+
+        closePopup(checked);
+      };
+    });
+  }
 
   async function napHoaDonNguonPlaceholder() {
-  try {
-    if (!window.supabase) {
-      alert("Không tìm thấy kết nối Supabase.");
-      return;
-    }
-
-    const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
-
-    const { data: dsHd, error: errHd } = await window.supabase
-      .from("hoadon_banle")
-      .select("sohd, ngay, created_at, diadiem")
-      .ilike("sohd", `${prefixNguon}%`)
-      .order("created_at", { ascending: false })
-      .limit(30);
-
-    if (errHd) {
-      console.error("[nhapkiemkho] load ds hoa don nguon error:", errHd);
-      alert("Lỗi khi lấy danh sách hóa đơn nguồn.");
-      return;
-    }
-
-    if (!dsHd || dsHd.length === 0) {
-      alert("Không tìm thấy hóa đơn nguồn phù hợp.");
-      return;
-    }
-
-    const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd);
-    if (!dsSoHdChon || dsSoHdChon.length === 0) return;
-
-    const { data: ctRows, error: errCt } = await window.supabase
-      .from("ct_hoadon_banle")
-      .select("sohd, masp, size, soluong")
-      .in("sohd", dsSoHdChon)
-      .order("id", { ascending: true });
-
-    if (errCt) {
-      console.error("[nhapkiemkho] load ct_hoadon_banle error:", errCt);
-      alert("Lỗi khi lấy chi tiết hóa đơn nguồn.");
-      return;
-    }
-
-    if (!ctRows || ctRows.length === 0) {
-      alert("Hóa đơn nguồn không có chi tiết.");
-      return;
-    }
-
-    const xuatMap = {};
-
-    for (const row of ctRows) {
-      const masp = normalizeMasp(row.masp);
-      const size = normalizeSize(row.size);
-      const sl = normalizeNumber(row.soluong);
-
-      if (!masp || !size || sl <= 0) continue;
-
-      const key = makeKey(masp, size);
-
-      if (!xuatMap[key]) {
-        xuatMap[key] = {
-          masp,
-          size,
-          sl
-        };
-      } else {
-        xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+    try {
+      if (!window.supabase) {
+        alert("Không tìm thấy kết nối Supabase.");
+        return;
       }
+
+      const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
+
+      const { data: dsHd, error: errHd } = await window.supabase
+        .from("hoadon_banle")
+        .select("sohd, ngay, created_at, diadiem")
+        .ilike("sohd", `${prefixNguon}%`)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (errHd) {
+        console.error("[nhapkiemkho] load ds hoa don nguon error:", errHd);
+        alert("Lỗi khi lấy danh sách hóa đơn nguồn.");
+        return;
+      }
+
+      if (!dsHd || dsHd.length === 0) {
+        alert("Không tìm thấy hóa đơn nguồn phù hợp.");
+        return;
+      }
+
+      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd);
+      if (!dsSoHdChon || dsSoHdChon.length === 0) return;
+
+      const { data: ctRows, error: errCt } = await window.supabase
+        .from("ct_hoadon_banle")
+        .select("sohd, masp, size, soluong")
+        .in("sohd", dsSoHdChon)
+        .order("id", { ascending: true });
+
+      if (errCt) {
+        console.error("[nhapkiemkho] load ct_hoadon_banle error:", errCt);
+        alert("Lỗi khi lấy chi tiết hóa đơn nguồn.");
+        return;
+      }
+
+      if (!ctRows || ctRows.length === 0) {
+        alert("Hóa đơn nguồn không có chi tiết.");
+        return;
+      }
+
+      const xuatMap = {};
+
+      for (const row of ctRows) {
+        const masp = normalizeMasp(row.masp);
+        const size = normalizeSize(row.size);
+        const sl = normalizeNumber(row.soluong);
+
+        if (!masp || !size || sl <= 0) continue;
+
+        const key = makeKey(masp, size);
+
+        if (!xuatMap[key]) {
+          xuatMap[key] = {
+            masp,
+            size,
+            sl
+          };
+        } else {
+          xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+        }
+      }
+
+      const state = getState();
+      state.dsHoaDonNguon = dsSoHdChon;
+
+      const ghichuEl = byId("ghichu_top");
+      if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
+
+      window.NhapKiemKho.setXuatData(xuatMap);
+
+      alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn.`);
+    } catch (err) {
+      console.error("[nhapkiemkho] napHoaDonNguonPlaceholder exception:", err);
+      alert("Có lỗi khi nạp hóa đơn nguồn.");
     }
-
-    const state = getState();
-    state.dsHoaDonNguon = dsSoHdChon;
-
-    const ghichuEl = byId("ghichu_top");
-    if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
-
-    window.NhapKiemKho.setXuatData(xuatMap);
-
-    alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn.`);
-  } catch (err) {
-    console.error("[nhapkiemkho] napHoaDonNguonPlaceholder exception:", err);
-    alert("Có lỗi khi nạp hóa đơn nguồn.");
   }
-}
 
   // =========================
   // BUTTONS
