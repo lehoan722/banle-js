@@ -309,8 +309,117 @@
   // NẠP HÓA ĐƠN NGUỒN
   // Bản đầu: chưa query thật, chỉ placeholder
   // =========================
-  function napHoaDonNguonPlaceholder() {
-    alert("Bước tiếp theo tôi sẽ nối popup chọn hóa đơn CCN và nạp dữ liệu nguồn vào cột XUẤT.");
+  async function napHoaDonNguonPlaceholder() {
+    try {
+      if (!window.supabase) {
+        alert("Không tìm thấy kết nối Supabase.");
+        return;
+      }
+
+      const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
+
+      // 1) Lấy danh sách hóa đơn nguồn gần nhất
+      const { data: dsHd, error: errHd } = await window.supabase
+        .from("hoadon_banle")
+        .select("sohd, ngay, created_at, diadiem")
+        .ilike("sohd", `${prefixNguon}%`)
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (errHd) {
+        console.error("[nhapkiemkho] load ds hoa don nguon error:", errHd);
+        alert("Lỗi khi lấy danh sách hóa đơn nguồn.");
+        return;
+      }
+
+      if (!dsHd || dsHd.length === 0) {
+        alert("Không tìm thấy hóa đơn nguồn phù hợp.");
+        return;
+      }
+
+      // 2) Hiển thị popup chọn nhanh bằng prompt bản đầu cho gọn
+      const dsText = dsHd
+        .map((x, i) => `${i + 1}. ${x.sohd} | ${x.ngay || ""} | ${x.diadiem || ""}`)
+        .join("\n");
+
+      const chon = prompt(
+        `Chọn số thứ tự hóa đơn nguồn:\n\n${dsText}\n\nNhập số từ 1 đến ${dsHd.length}`
+      );
+
+      if (chon === null) return;
+
+      const idx = Number(chon);
+      if (!Number.isInteger(idx) || idx < 1 || idx > dsHd.length) {
+        alert("Lựa chọn không hợp lệ.");
+        return;
+      }
+
+      const hdChon = dsHd[idx - 1];
+      const sohdNguon = String(hdChon.sohd || "").trim();
+
+      if (!sohdNguon) {
+        alert("Không xác định được số hóa đơn nguồn.");
+        return;
+      }
+
+      // 3) Lấy chi tiết hóa đơn nguồn từ ct_hoadon_banle
+      const { data: ctRows, error: errCt } = await window.supabase
+        .from("ct_hoadon_banle")
+        .select("sohd, masp, size, soluong")
+        .eq("sohd", sohdNguon)
+        .order("id", { ascending: true });
+
+      if (errCt) {
+        console.error("[nhapkiemkho] load ct_hoadon_banle error:", errCt);
+        alert("Lỗi khi lấy chi tiết hóa đơn nguồn.");
+        return;
+      }
+
+      if (!ctRows || ctRows.length === 0) {
+        alert("Hóa đơn nguồn không có chi tiết.");
+        return;
+      }
+
+      // 4) Gom theo MASP, bước đầu chỉ so tổng số lượng theo mã
+      const xuatMap = {};
+
+      for (const row of ctRows) {
+        const masp = normalizeMasp(row.masp);
+        const size = normalizeSize(row.size);
+        const sl = normalizeNumber(row.soluong);
+
+        if (!masp || sl <= 0) continue;
+
+        if (!xuatMap[masp]) {
+          xuatMap[masp] = {
+            masp,
+            size,
+            sl
+          };
+        } else {
+          xuatMap[masp].sl = normalizeNumber(xuatMap[masp].sl) + sl;
+
+          // nếu size khác nhau thì tạm để rỗng, vì bản đầu đang kiểm theo tổng mã
+          if (xuatMap[masp].size !== size) {
+            xuatMap[masp].size = "";
+          }
+        }
+      }
+
+      // 5) Lưu state + hiển thị ghi chú đầu trang
+      const state = getState();
+      state.dsHoaDonNguon = [sohdNguon];
+
+      const ghichuEl = byId("ghichu_top");
+      if (ghichuEl) ghichuEl.value = sohdNguon;
+
+      window.NhapKiemKho.setXuatData(xuatMap);
+
+      alert(`Đã nạp hóa đơn nguồn: ${sohdNguon}`);
+    } catch (err) {
+      console.error("[nhapkiemkho] napHoaDonNguonPlaceholder exception:", err);
+      alert("Có lỗi khi nạp hóa đơn nguồn.");
+    }
   }
 
   // =========================
