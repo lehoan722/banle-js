@@ -47,6 +47,198 @@
     };
   }
 
+  function parseSizeSlText(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return [];
+
+    const parts = raw
+      .split(/\s+/)
+      .map(x => x.trim())
+      .filter(Boolean);
+
+    const out = [];
+
+    for (const part of parts) {
+      const m = part.match(/^(.+?)\/(-?\d+(?:[.,]\d+)?)$/);
+      if (!m) continue;
+
+      const size = normalizeSize(m[1]);
+      const sl = normalizeNumber(m[2]);
+
+      if (!size) continue;
+      if (sl <= 0) continue;
+
+      out.push({ size, sl });
+    }
+
+    return out;
+  }
+
+  function hasRealSizeItems(items) {
+    return (items || []).some(x => {
+      const size = normalizeSize(x.size);
+      return size && size !== "0";
+    });
+  }
+
+  function getAvailableSizesForMasp(masp) {
+    masp = normalizeMasp(masp);
+    if (!masp) return [];
+
+    const state = getState();
+    const sizeMap = new Map();
+
+    Object.keys(state.xuat || {}).forEach((key) => {
+      const row = state.xuat[key];
+      if (!row) return;
+      if (normalizeMasp(row.masp) !== masp) return;
+
+      const size = normalizeSize(row.size);
+      const sl = normalizeNumber(row.sl);
+      if (!size) return;
+
+      sizeMap.set(size, {
+        size,
+        slXuat: sl,
+        slNhap: 0
+      });
+    });
+
+    Object.keys(state.nhap || {}).forEach((key) => {
+      const row = state.nhap[key];
+      if (!row) return;
+      if (normalizeMasp(row.masp) !== masp) return;
+
+      const size = normalizeSize(row.size);
+      const sl = normalizeNumber(row.sl);
+      if (!size) return;
+
+      if (!sizeMap.has(size)) {
+        sizeMap.set(size, {
+          size,
+          slXuat: 0,
+          slNhap: sl
+        });
+      } else {
+        sizeMap.get(size).slNhap = sl;
+      }
+    });
+
+    const arr = Array.from(sizeMap.values());
+    arr.sort((a, b) => {
+      const na = Number(a.size);
+      const nb = Number(b.size);
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return String(a.size).localeCompare(String(b.size), "vi");
+    });
+
+    return arr;
+  }
+
+  function hideSizePopup() {
+    const popup = byId("popup_size");
+    if (!popup) return;
+    popup.style.display = "none";
+    popup.innerHTML = "";
+  }
+
+  function themNhanhTheoSize(size) {
+    const maspEl = byId("masp");
+    const sizeEl = byId("size");
+    const slEl = byId("soluong");
+
+    const masp = normalizeMasp(maspEl?.value);
+    const sizeVal = normalizeSize(size);
+    const sl = normalizeNumber(slEl?.value || 1) || 1;
+
+    if (!masp || !sizeVal) return;
+
+    const key = makeKey(masp, sizeVal);
+    const state = getState();
+
+    if (!state.nhap[key]) {
+      state.nhap[key] = {
+        masp,
+        size: sizeVal,
+        sl
+      };
+    } else {
+      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    }
+
+    delete state.ketQua[key];
+    renderBangKetQua();
+
+    if (sizeEl) sizeEl.value = "";
+    if (slEl) slEl.value = "1";
+
+    if (sizeEl) {
+      sizeEl.focus();
+      showSizePopup(masp, "");
+    }
+  }
+
+  function showSizePopup(masp, keyword = "") {
+    const popup = byId("popup_size");
+    const sizeEl = byId("size");
+    if (!popup || !sizeEl) return;
+
+    const list = getAvailableSizesForMasp(masp);
+    const kw = normalizeSize(keyword).toLowerCase();
+
+    const filtered = list.filter(item =>
+      !kw || String(item.size).toLowerCase().includes(kw)
+    );
+
+    if (!filtered.length) {
+      hideSizePopup();
+      return;
+    }
+
+    popup.innerHTML = "";
+
+    filtered.forEach(item => {
+      const row = document.createElement("div");
+      row.style.padding = "6px 8px";
+      row.style.borderBottom = "1px solid #eee";
+      row.style.cursor = "pointer";
+      row.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <b>${escapeHtml(item.size)}</b>
+        <span>X:${item.slXuat} | N:${item.slNhap}</span>
+      </div>
+    `;
+
+      row.addEventListener("mouseenter", () => {
+        row.style.background = "#f2f2f2";
+      });
+
+      row.addEventListener("mouseleave", () => {
+        row.style.background = "#fff";
+      });
+
+      row.addEventListener("mousedown", (e) => {
+        e.preventDefault(); // tránh blur làm popup tắt trước
+      });
+
+      row.addEventListener("click", () => {
+        themNhanhTheoSize(item.size);
+      });
+
+      popup.appendChild(row);
+    });
+
+    popup.style.display = "block";
+  }
+
+  function splitKey(key) {
+    const [masp = "", size = ""] = String(key || "").split("@@");
+    return {
+      masp: normalizeMasp(masp),
+      size: normalizeSize(size)
+    };
+  }
+
   function normalizeNumber(v) {
     const raw = String(v ?? "")
       .replace(/\./g, "")
@@ -257,18 +449,72 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
       <td>${escapeHtml(masp)}</td>
-      <td style="white-space: pre-line; text-align:left;">${escapeHtml(nhapText)}</td>
-      <td>${tongSoLuong(nhapGroup?.items || []) || ""}</td>
+  <td contenteditable="true"
+      class="cell-nhap-sizesl"
+      data-masp="${escapeHtml(masp)}"
+      style="white-space: pre-line; text-align:left;">${escapeHtml(nhapText)}</td>
+  <td contenteditable="true"
+      class="cell-nhap-tongsl"
+      data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
-      <td>${escapeHtml(masp)}</td>
-      <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
-      <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
+  <td>${escapeHtml(masp)}</td>
+  <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
+  <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
 
-      <td>${escapeHtml(kqTong.trangthai || "")}</td>
-      <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
+  <td>${escapeHtml(kqTong.trangthai || "")}</td>
+  <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
     `;
       tbody.appendChild(tr);
     }
+  }
+
+  function docLaiNhapTuBangHTML() {
+    const tbody = document.querySelector("#bangketqua tbody");
+    if (!tbody) return;
+
+    const state = getState();
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const nhapMoi = {};
+
+    rows.forEach((tr) => {
+      const tdMasp = tr.children[0];
+      const tdSizeSl = tr.querySelector(".cell-nhap-sizesl");
+      const tdTongSl = tr.querySelector(".cell-nhap-tongsl");
+
+      const masp = normalizeMasp(tdMasp?.innerText || "");
+      if (!masp) return;
+
+      const sizeSlText = String(tdSizeSl?.innerText || "").trim();
+      const tongSlText = String(tdTongSl?.innerText || "").trim();
+
+      const items = parseSizeSlText(sizeSlText);
+      const tongSl = normalizeNumber(tongSlText);
+
+      // Có size thật => ưu tiên kiểm chi tiết
+      if (hasRealSizeItems(items)) {
+        items.forEach((item) => {
+          const key = makeKey(masp, item.size);
+          nhapMoi[key] = {
+            masp,
+            size: item.size,
+            sl: item.sl
+          };
+        });
+        return;
+      }
+
+      // Không có size thật nhưng có tổng => kiểm tổng bằng size 0
+      if (tongSl > 0) {
+        const key = makeKey(masp, "0");
+        nhapMoi[key] = {
+          masp,
+          size: "0",
+          sl: tongSl
+        };
+      }
+    });
+
+    state.nhap = nhapMoi;
   }
 
   // Expose để HTML cũ không lỗi nếu còn gọi
@@ -356,14 +602,12 @@
           }
 
           maspEl.value = masp;
+          if (slEl) slEl.value = "1";
 
           if (sizeEl) {
             sizeEl.focus();
-            sizeEl.select?.();
-
-            // kích hoạt popup size của hệ thống cũ nếu có
-            sizeEl.dispatchEvent(new Event("focus", { bubbles: true }));
-            sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+            sizeEl.value = "";
+            showSizePopup(masp, "");
           }
         }
       });
@@ -374,22 +618,41 @@
     }
 
     if (sizeEl) {
+      sizeEl.addEventListener("focus", () => {
+        const masp = normalizeMasp(maspEl?.value);
+        if (!masp) return;
+        showSizePopup(masp, sizeEl.value);
+      });
+
+      sizeEl.addEventListener("input", () => {
+        const masp = normalizeMasp(maspEl?.value);
+        if (!masp) return;
+        showSizePopup(masp, sizeEl.value);
+      });
+
       sizeEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
 
-          const size = normalizeSize(sizeEl.value);
-          if (!size) {
-            // Không alert nữa, để user chọn trên popup cũ
-            sizeEl.focus();
-            sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+          const masp = normalizeMasp(maspEl?.value);
+          if (!masp) {
+            alert("Vui lòng nhập mã sản phẩm.");
+            maspEl?.focus();
             return;
           }
 
-          if (slEl) {
-            slEl.focus();
-            slEl.select?.();
+          const typedSize = normalizeSize(sizeEl.value);
+          if (!typedSize) {
+            showSizePopup(masp, "");
+            return;
           }
+
+          themNhanhTheoSize(typedSize);
+        }
+
+        if (e.key === "Escape") {
+          hideSizePopup();
+          maspEl?.focus();
         }
       });
     }
@@ -398,11 +661,31 @@
       slEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          themDongNhapBenTrai();
+
+          const masp = normalizeMasp(maspEl?.value);
+          if (!masp) {
+            alert("Vui lòng nhập mã sản phẩm.");
+            maspEl?.focus();
+            return;
+          }
+
+          if (sizeEl) {
+            sizeEl.focus();
+            showSizePopup(masp, sizeEl.value);
+          }
         }
       });
     }
+
+    document.addEventListener("click", (e) => {
+      const popup = byId("popup_size");
+      if (!popup) return;
+
+      if (e.target === sizeEl || popup.contains(e.target)) return;
+      hideSizePopup();
+    });
   }
+
   // =========================
   // RESET PHIẾU
   // =========================
@@ -442,28 +725,82 @@
   // Bản đầu: so tổng SL theo mã
   // =========================
   function kiemTraPhieu() {
+    // luôn đọc lại dữ liệu người dùng vừa sửa trực tiếp trên bảng
+    docLaiNhapTuBangHTML();
+
     const state = getState();
     const nhapMap = state.nhap || {};
     const xuatMap = state.xuat || {};
     const ketQua = {};
 
-    const allKeys = Array.from(
-      new Set([...Object.keys(nhapMap), ...Object.keys(xuatMap)])
-    );
+    // Gom xuat theo mã để dùng cho chế độ kiểm tổng
+    const xuatTheoMasp = {};
+    Object.keys(xuatMap).forEach((key) => {
+      const row = xuatMap[key];
+      if (!row) return;
+      const masp = normalizeMasp(row.masp);
+      const sl = normalizeNumber(row.sl);
+      xuatTheoMasp[masp] = (xuatTheoMasp[masp] || 0) + sl;
+    });
 
-    for (const key of allKeys) {
-      const nhap = nhapMap[key];
-      const xuat = xuatMap[key];
+    // Gom nhap theo mã để biết mã nào đang ở chế độ tổng
+    const nhapTheoMasp = {};
+    Object.keys(nhapMap).forEach((key) => {
+      const row = nhapMap[key];
+      if (!row) return;
+      const masp = normalizeMasp(row.masp);
+      if (!nhapTheoMasp[masp]) nhapTheoMasp[masp] = [];
+      nhapTheoMasp[masp].push(row);
+    });
 
-      const slNhap = normalizeNumber(nhap?.sl || 0);
-      const slXuat = normalizeNumber(xuat?.sl || 0);
+    const allMasps = new Set([
+      ...Object.keys(nhapTheoMasp),
+      ...Object.keys(xuatTheoMasp),
+      ...Object.values(xuatMap).map(r => normalizeMasp(r.masp))
+    ]);
 
-      if (slNhap === slXuat) {
-        ketQua[key] = { trangthai: "OK", chitiet: "" };
-      } else if (slNhap < slXuat) {
-        ketQua[key] = { trangthai: "THIEU", chitiet: String(slXuat - slNhap) };
+    for (const masp of allMasps) {
+      const nhapRows = nhapTheoMasp[masp] || [];
+      const hasRealSize = nhapRows.some(r => normalizeSize(r.size) !== "0" && normalizeSize(r.size) !== "");
+
+      // CHẾ ĐỘ 1: kiểm chi tiết theo size
+      if (hasRealSize) {
+        const xuatKeys = Object.keys(xuatMap).filter(k => normalizeMasp(xuatMap[k]?.masp) === masp);
+        const nhapKeys = Object.keys(nhapMap).filter(k => normalizeMasp(nhapMap[k]?.masp) === masp);
+
+        const allKeys = new Set([...xuatKeys, ...nhapKeys]);
+
+        for (const key of allKeys) {
+          const nhap = nhapMap[key];
+          const xuat = xuatMap[key];
+
+          const slNhap = normalizeNumber(nhap?.sl || 0);
+          const slXuat = normalizeNumber(xuat?.sl || 0);
+
+          if (slNhap === slXuat) {
+            ketQua[key] = { trangthai: "OK", chitiet: "" };
+          } else if (slNhap < slXuat) {
+            ketQua[key] = { trangthai: "THIEU", chitiet: String(slXuat - slNhap) };
+          } else {
+            ketQua[key] = { trangthai: "THUA", chitiet: String(slNhap - slXuat) };
+          }
+        }
+
+        continue;
+      }
+
+      // CHẾ ĐỘ 2: kiểm tổng
+      const tongNhap = nhapRows.reduce((sum, r) => sum + normalizeNumber(r.sl), 0);
+      const tongXuat = xuatTheoMasp[masp] || 0;
+
+      const keyTong = makeKey(masp, "0");
+
+      if (tongNhap === tongXuat) {
+        ketQua[keyTong] = { trangthai: "OK", chitiet: "" };
+      } else if (tongNhap < tongXuat) {
+        ketQua[keyTong] = { trangthai: "THIEU", chitiet: String(tongXuat - tongNhap) };
       } else {
-        ketQua[key] = { trangthai: "THUA", chitiet: String(slNhap - slXuat) };
+        ketQua[keyTong] = { trangthai: "THUA", chitiet: String(tongNhap - tongXuat) };
       }
     }
 
