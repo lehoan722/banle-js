@@ -932,7 +932,12 @@ export async function luuHoaDonCaHaiBan() {
     //inHoaDon(hoadonChinh, chitietChinh); 
 
     await lamMoiSauKhiLuu();
-    guiHoaDonViettel(sohdT);
+
+    try {
+        await guiHoaDonViettel(sohdT);
+    } catch (e) {
+        console.error("Lỗi gửi HĐĐT Viettel:", e);
+    }
 
 }
 
@@ -1033,55 +1038,55 @@ export async function xacNhanSuaHoaDon() {
 // forceSpecial = true ⇒ luôn in hóa đơn đặc biệt (/in-hoadon-db.html)
 // forceSpecial = true ⇒ luôn in hóa đơn đặc biệt (/in-hoadon-db.html)
 function inHoaDon(hoadon, chitiet, forceSpecial = false) {
-  const data = { hoadon, chitiet };
-  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+    const data = { hoadon, chitiet };
+    localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
-  const isHoaDonDacBiet =
-    forceSpecial || (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
+    const isHoaDonDacBiet =
+        forceSpecial || (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
 
-  const url = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
+    const url = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
 
-  // =========================================================
-  // ✅ NEW: Nếu trang có overlay in/xem in => dùng overlay
-  // - Tick "In nhanh" => autoPrint
-  // - Không tick => chỉ xem (preview)
-  // =========================================================
-  if (typeof window.openPrintOverlay === "function") {
-  const fast1 = document.getElementById("inNhanh")?.checked;
-  const fast2 = document.getElementById("chk_innhanh")?.checked;
-  const fast = !!(fast1 || fast2);
+    // =========================================================
+    // ✅ NEW: Nếu trang có overlay in/xem in => dùng overlay
+    // - Tick "In nhanh" => autoPrint
+    // - Không tick => chỉ xem (preview)
+    // =========================================================
+    if (typeof window.openPrintOverlay === "function") {
+        const fast1 = document.getElementById("inNhanh")?.checked;
+        const fast2 = document.getElementById("chk_innhanh")?.checked;
+        const fast = !!(fast1 || fast2);
 
-  if (fast && typeof window.quickPrint === "function") {
-    // ✅ In nhanh: in luôn, không mở xem in
-    window.quickPrint(url);
-  } else {
-    // ✅ Không in nhanh: mở xem in đè lên trang
-    window.openPrintOverlay(url, { autoPrint: false });
-  }
-  return;
-}
+        if (fast && typeof window.quickPrint === "function") {
+            // ✅ In nhanh: in luôn, không mở xem in
+            window.quickPrint(url);
+        } else {
+            // ✅ Không in nhanh: mở xem in đè lên trang
+            window.openPrintOverlay(url, { autoPrint: false });
+        }
+        return;
+    }
 
 
-  // =========================================================
-  // ✅ FALLBACK: Trang chưa nâng cấp overlay => giữ cơ chế cũ
-  // =========================================================
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.src = url;
+    // =========================================================
+    // ✅ FALLBACK: Trang chưa nâng cấp overlay => giữ cơ chế cũ
+    // =========================================================
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = url;
 
-  document.body.appendChild(iframe);
+    document.body.appendChild(iframe);
 
-  iframe.onload = () => {
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error("Không thể gọi print() từ iframe:", e);
-      } finally {
-        iframe.remove();
-      }
-    }, 500);
-  };
+    iframe.onload = () => {
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.print();
+            } catch (e) {
+                console.error("Không thể gọi print() từ iframe:", e);
+            } finally {
+                iframe.remove();
+            }
+        }, 500);
+    };
 }
 
 
