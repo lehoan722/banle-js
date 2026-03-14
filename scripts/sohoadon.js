@@ -75,6 +75,9 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("nhapkiem")) {
             loai = diadiem === "cs1" ? "nhapkiemcs1" : "nhapkiemcs2";
 
+        } else if (pathname.includes("kiem_nhapkho")) {
+            loai = diadiem === "cs1" ? "kiemnhapkhocs1" : "kiemnhapkhocs2";
+
         } else if (pathname.includes("ccn1v2")) {
             // Trang chuyển CN 1 → 2: luôn xuất từ CS1
             loai = "xcncs1";
