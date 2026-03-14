@@ -272,11 +272,11 @@
       return;
     }
 
-    if (!size) {
-      alert("Vui lòng nhập size.");
-      if (sizeEl) sizeEl.focus();
-      return;
-    }
+    //if (!size) {
+      //alert("Vui lòng nhập size.");
+      //if (sizeEl) sizeEl.focus();
+      //return;
+   // }
 
     if (sl <= 0) {
       alert("Số lượng phải lớn hơn 0.");
