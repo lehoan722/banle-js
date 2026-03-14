@@ -35,6 +35,10 @@
     return String(v || "").trim();
   }
 
+  function makeKey(masp, size) {
+  return `${normalizeMasp(masp)}@@${normalizeSize(size)}`;
+}
+
   function normalizeNumber(v) {
     const raw = String(v ?? "")
       .replace(/\./g, "")
@@ -131,8 +135,8 @@
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(nhap.masp || "")}</td>
-        <td contenteditable="true" class="cell-size-nhap" data-key="${escapeHtml(key)}">${escapeHtml(nhap.size || "")}</td>
+        <td>${escapeHtml(nhap.masp || "")}</td>       
+        <td>${escapeHtml(nhap.size || "")}</td>
         <td contenteditable="true" class="cell-sl-nhap" data-key="${escapeHtml(key)}">${nhap.sl ?? ""}</td>
 
         <td>${escapeHtml(xuat.masp || "")}</td>
@@ -154,51 +158,56 @@
   // NHẬP BÊN TRÁI
   // =========================
   function themDongNhapBenTrai() {
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
+  const maspEl = byId("masp");
+  const sizeEl = byId("size");
+  const slEl = byId("soluong");
 
-    if (!maspEl || !slEl) return;
+  if (!maspEl || !slEl) return;
 
-    const masp = normalizeMasp(maspEl.value);
-    const size = normalizeSize(sizeEl?.value);
-    const sl = normalizeNumber(slEl.value || 1);
+  const masp = normalizeMasp(maspEl.value);
+  const size = normalizeSize(sizeEl?.value);
+  const sl = normalizeNumber(slEl.value || 1);
 
-    if (!masp) {
-      alert("Vui lòng nhập mã sản phẩm.");
-      maspEl.focus();
-      return;
-    }
-
-    if (sl <= 0) {
-      alert("Số lượng phải lớn hơn 0.");
-      slEl.focus();
-      return;
-    }
-
-    const state = getState();
-
-    if (!state.nhap[masp]) {
-      state.nhap[masp] = {
-        masp,
-        size,
-        sl
-      };
-    } else {
-      state.nhap[masp].sl = normalizeNumber(state.nhap[masp].sl) + sl;
-      if (size) state.nhap[masp].size = size;
-    }
-
-    // Nếu đã từng có kết quả kiểm tra cho mã này thì xóa để tránh hiểu nhầm
-    delete state.ketQua[masp];
-
-    renderBangKetQua();
-
-    maspEl.value = "";
-    if (sizeEl) sizeEl.value = "";
-    slEl.value = "1";
+  if (!masp) {
+    alert("Vui lòng nhập mã sản phẩm.");
     maspEl.focus();
+    return;
   }
+
+  if (!size) {
+    alert("Vui lòng nhập size.");
+    if (sizeEl) sizeEl.focus();
+    return;
+  }
+
+  if (sl <= 0) {
+    alert("Số lượng phải lớn hơn 0.");
+    slEl.focus();
+    return;
+  }
+
+  const key = makeKey(masp, size);
+  const state = getState();
+
+  if (!state.nhap[key]) {
+    state.nhap[key] = {
+      masp,
+      size,
+      sl
+    };
+  } else {
+    state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+  }
+
+  delete state.ketQua[key];
+
+  renderBangKetQua();
+
+  maspEl.value = "";
+  if (sizeEl) sizeEl.value = "";
+  slEl.value = "1";
+  maspEl.focus();
+}
 
   function bindInputEvents() {
     const maspEl = byId("masp");
@@ -380,31 +389,28 @@
         return;
       }
 
-      // 4) Gom theo MASP, bước đầu chỉ so tổng số lượng theo mã
-      const xuatMap = {};
+      // 4) Gom theo MASP + SIZE
+const xuatMap = {};
 
-      for (const row of ctRows) {
-        const masp = normalizeMasp(row.masp);
-        const size = normalizeSize(row.size);
-        const sl = normalizeNumber(row.soluong);
+for (const row of ctRows) {
+  const masp = normalizeMasp(row.masp);
+  const size = normalizeSize(row.size);
+  const sl = normalizeNumber(row.soluong);
 
-        if (!masp || sl <= 0) continue;
+  if (!masp || !size || sl <= 0) continue;
 
-        if (!xuatMap[masp]) {
-          xuatMap[masp] = {
-            masp,
-            size,
-            sl
-          };
-        } else {
-          xuatMap[masp].sl = normalizeNumber(xuatMap[masp].sl) + sl;
+  const key = makeKey(masp, size);
 
-          // nếu size khác nhau thì tạm để rỗng, vì bản đầu đang kiểm theo tổng mã
-          if (xuatMap[masp].size !== size) {
-            xuatMap[masp].size = "";
-          }
-        }
-      }
+  if (!xuatMap[key]) {
+    xuatMap[key] = {
+      masp,
+      size,
+      sl
+    };
+  } else {
+    xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+  }
+}
 
       // 5) Lưu state + hiển thị ghi chú đầu trang
       const state = getState();
