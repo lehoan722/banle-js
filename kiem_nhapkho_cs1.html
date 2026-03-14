@@ -357,15 +357,8 @@
     <script>
 
         function switchTab(tabName) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            document.getElementById('btn_' + tabName).classList.add('active');
+            return;
         }
-        document.addEventListener("DOMContentLoaded", () => {
-            switchTab("thongtin");
-        });
-
 
     </script>
 
@@ -509,7 +502,36 @@
 
         <div class="main">
             <div class="table-area" style="width:100%;">
-                ...
+                <table id="bangketqua">
+                    <thead>
+                        <tr>
+                            <th colspan="3" style="color:blue;">NHẬP CS1</th>
+                            <th colspan="3" style="color:red;">XUẤT CS2</th>
+                            <th colspan="2">TRẠNG THÁI</th>
+                        </tr>
+                        <tr>
+                            <th>1</th>
+                            <th>2</th>
+                            <th>3</th>
+                            <th>4</th>
+                            <th>5</th>
+                            <th>6</th>
+                            <th>7</th>
+                            <th>8</th>
+                        </tr>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Size</th>
+                            <th>SL</th>
+                            <th>Mã hàng</th>
+                            <th>Size</th>
+                            <th>SL</th>
+                            <th>Trạng thái</th>
+                            <th>Chi tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
 
@@ -636,150 +658,6 @@
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
-    <script type="module">
-        // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-
-        // Hàm show popup
-        function showPopupTimKH() {
-            const popup = document.getElementById('popupTimKH');
-            popup.style.display = '';
-            document.getElementById('txtSearchKH').value = '';
-            document.getElementById('txtSearchKH').focus();
-            loadListKH('');
-        }
-
-        // Tìm kiếm realtime theo ký tự gõ
-        document.getElementById('txtSearchKH').oninput = function () {
-            loadListKH(this.value.trim());
-        };
-
-        // Hàm load danh sách KH (gọi Supabase)
-        async function loadListKH(keyword) {
-            const table = document.getElementById('tableKH');
-            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
-            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
-            if (keyword) {
-                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
-            }
-            const { data, error } = await query;
-            if (error || !data || !data.length) {
-                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
-                return;
-            }
-            table.innerHTML = data.map(kh =>
-                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
-        <td>${kh.makh}</td><td>${kh.tenkh}</td>
-      </tr>`
-            ).join('');
-            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
-                row.onclick = function () {
-                    document.getElementById('makh').value = this.dataset.makh;
-                    document.getElementById('khachhang').value = this.dataset.tenkh;
-                    document.getElementById('popupTimKH').style.display = 'none';
-                }
-            });
-        }
-
-        // Copy bảng sang clipboard,
-        document.getElementById('btnCopy').onclick = function () {
-            const table = document.getElementById('bangketqua');
-            let str = '';
-
-            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
-            for (let row of table.querySelectorAll('tbody tr')) {
-                let line = [];
-                for (let cell of row.cells) {
-                    line.push(cell.innerText);
-                }
-                str += line.join('\t') + '\n';
-            }
-
-            navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
-        };
-
-
-
-        // Dán từ clipboard (Excel) vào bảng web
-
-        document.getElementById('bangketqua').addEventListener('paste', function (e) {
-            e.preventDefault();
-            const text = e.clipboardData.getData('text/plain');
-            const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.querySelector('#bangketqua tbody');
-
-            // ❌ KHÔNG xoá dữ liệu cũ nữa
-            // tbody.innerHTML = '';
-
-            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
-            rows.forEach(rowArr => {
-                if (rowArr.length < 2) return;
-                const tr = document.createElement('tr');
-                rowArr.forEach((cell) => {
-                    const td = document.createElement('td');
-                    td.innerText = cell;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-
-            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                window.capNhatBangKetQuaTuDOM();
-            }
-
-            // ✅ Cập nhật tổng
-            if (typeof capNhatThongTinTong === 'function') {
-                capNhatThongTinTong(window.bangKetQua || {});
-            }
-
-            // Log kiểm tra
-            console.log('window.bangKetQua:', window.bangKetQua);
-        });
-
-        function capNhatBangKetQuaTuDOM() {
-            const tbody = document.querySelector("#bangketqua tbody");
-            const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
-            const bangObj = {};
-
-            rows.forEach(tr => {
-                const cells = tr.querySelectorAll("td");
-                if (cells.length >= 6) {
-                    const masp = (cells[0].innerText || "").toUpperCase();
-                    const tensp = cells[1].innerText || "";
-                    const size = cells[2].innerText || "0";
-                    const sl = Number(cells[3].innerText) || 0;
-                    const dvt = cells[4].innerText || "sp";
-                    const gia = Number(cells[5].innerText) || 0;
-
-                    if (!bangObj[masp]) {
-                        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
-                    }
-                    bangObj[masp].sizes.push(size);
-                    bangObj[masp].soluongs.push(sl);
-                }
-            });
-
-            window.bangKetQua = bangObj;
-            console.log("🔎 [capNhatBangKetQuaTuDOM] ->", bangObj);
-            return bangObj;
-        }
-
-        // Đóng popup khi bấm ESC hoặc click ra ngoài
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
-        });
-        document.addEventListener('click', function (e) {
-            const p = document.getElementById('popupTimKH');
-            if (p.style.display === '' && !p.contains(e.target) && e.target.id !== 'btnPopupKH') {
-                p.style.display = 'none';
-            }
-        });
-
-        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
-    </script>
-
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const img = document.querySelector('.product-image');
@@ -789,6 +667,13 @@
                 });
             }
         });
+    </script>
+
+    <script>
+        const btnReloadSP = document.getElementById('btnReloadSP');
+        if (btnReloadSP && window.taiLaiSanPhamData) {
+            btnReloadSP.onclick = window.taiLaiSanPhamData;
+        }
     </script>
 
 
@@ -1675,7 +1560,8 @@
 
     <script>
 
-        document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
+        const btnGoiyChuyenKho = document.getElementById("btnGoiyChuyenKho");
+        if (btnGoiyChuyenKho) btnGoiyChuyenKho.addEventListener("click", function () {
 
             const rows = document.querySelectorAll("#bangketqua tbody tr");
 
