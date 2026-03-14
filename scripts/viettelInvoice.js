@@ -102,9 +102,11 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
 
 
 // ===== Retry helpers & flags =====
-const RETRY_LIMIT = 3;                        // số lần thử tối đa
-const RETRY_BACKOFF_MS = [0, 800, 1600];      // độ trễ mỗi lần thử (ms)
-const ENABLE_MANUAL_RETRY_POPUP = true;       // bật/tắt popup gửi lại thủ công
+// ===== Retry helpers & flags =====
+const RETRY_LIMIT = 1;                        // chỉ thử 1 lần để tránh phát hành trùng
+const RETRY_BACKOFF_MS = [0];                 // không cần backoff nhiều lần nữa
+const ENABLE_MANUAL_RETRY_POPUP = false;      // tắt popup gửi lại ngay trên luồng phát hành thật
+const __sendingInvoices = new Set();
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -150,6 +152,14 @@ async function fetchBuyerFromDMKH(makhOrName) {
 // Hàm gửi hóa đơn từ Web (có retry tối đa 3 lần, giữ popup gửi lại)
 export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
   let json; // payload gửi Viettel
+
+  if (__sendingInvoices.has(mahoadon)) {
+    console.warn("Hóa đơn đang được gửi, chặn gọi lặp:", mahoadon);
+    return;
+  }
+
+  __sendingInvoices.add(mahoadon);
+
   try {
     // 1) Chuẩn bị dữ liệu (dùng lại duLieuHoaDonCu nếu có)
     if (duLieuHoaDonCu) {
@@ -160,6 +170,11 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
         .select('*')
         .eq('sohd', mahoadon)
         .single();
+
+      if (hoadonData?.trang_thai_gui === 'Đang gửi') {
+        alert("⏳ Hóa đơn này đang được gửi. Vui lòng chờ, không bấm gửi lại.");
+        return;
+      }
 
       const { data: chitietData, error: e2 } = await supabase
         .from('ct_hoadon_banleT')
@@ -181,6 +196,14 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
     }
 
     // 2) Gửi với retry
+    // 2) Đánh dấu đang gửi để chặn gọi lặp
+    await supabase
+      .from('hoadon_banleT')
+      .update({ trang_thai_gui: 'Đang gửi' })
+      .eq('sohd', mahoadon)
+      .neq('trang_thai_gui', 'Đã gửi');
+
+    // 3) Gửi với retry
     let lastErrorText = "";
     for (let attempt = 1; attempt <= RETRY_LIMIT; attempt++) {
       try {
@@ -244,8 +267,8 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
       // Gọi popup cho phép người dùng chủ động bấm "Gửi lại"
       // Truyền luôn JSON đã build sẵn để không phải build lại lần nữa
       hienThiThongBaoLoiVoiGuiLai(
-        "❌ Không gửi được hóa đơn sau 3 lần thử.\nLý do gần nhất: " + errorMsg +
-        "\nBạn có thể bấm 'Gửi lại' để thử thêm.",
+        "❌ Không gửi được hóa đơn sau 1 lần thử.\nLý do gần nhất: " + errorMsg +
+        "\nKhông tự gửi lại để tránh phát hành trùng.",
         json,     // duLieuHoaDonCu
         mahoadon, // số hóa đơn
         errorMsg  // cho mục đích hiển thị/log nếu cần
@@ -255,9 +278,9 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
 
     // Nếu không bật popup thì mới báo lỗi như cũ
     alert(
-      "❌ Không gửi được hóa đơn sau 3 lần thử.\n" +
+      "❌ Không gửi được hóa đơn sau 1 lần thử.\n" +
       "Lý do gần nhất: " + errorMsg + "\n" +
-      "Bạn có thể vào 'xemhoadonT.html' để gửi lại."
+      "Vui lòng vào 'xemhoadonT.html' để kiểm tra và gửi lại thủ công."
     );
 
   } catch (outerError) {
@@ -266,11 +289,10 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
       .update({ trang_thai_gui: 'Lỗi: ' + (outerError?.message || 'Không rõ') })
       .eq('sohd', mahoadon);
 
-    // Giữ nguyên hành vi cũ: hiện popup gửi lại tay
     if (ENABLE_MANUAL_RETRY_POPUP && typeof hienThiThongBaoLoiVoiGuiLai === 'function') {
       hienThiThongBaoLoiVoiGuiLai(
         "❌ Gửi hóa đơn điện tử thất bại: " + (outerError?.message || 'Không rõ') +
-        "\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.",
+        "\nVui lòng vào 'xemhoadonT.html' để gửi lại sau.",
         duLieuHoaDonCu || json,
         mahoadon,
         outerError?.message || 'Không rõ'
@@ -278,13 +300,15 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
     } else {
       alert("❌ Gửi hóa đơn điện tử thất bại: " + (outerError?.message || 'Không rõ'));
     }
+  } finally {
+    __sendingInvoices.delete(mahoadon);
   }
 }
 
 // Giữ nguyên hàm popup gửi lại; có thể nhận thêm tham số nhưng không bắt buộc
 function hienThiThongBaoLoiVoiGuiLai(message, duLieuHoaDonCu, mahoadon /*, errorText */) {
-  if (confirm(`${message}\n\nBạn muốn gửi lại hóa đơn này không?`)) {
-    // Khi người dùng chọn OK thì gọi lại đúng hàm gửi, dùng lại dữ liệu cũ
-    guiHoaDonViettel(mahoadon, duLieuHoaDonCu);
-  }
+  alert(
+    `${message}\n\n` +
+    `Vui lòng vào trang 'xemhoadonT.html' để kiểm tra và gửi lại thủ công nếu thật sự cần.`
+  );
 }
