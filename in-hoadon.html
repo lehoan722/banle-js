@@ -33,18 +33,21 @@
       margin: 0;
     }
 
-
     body {
       font-family: Arial, sans-serif;
-
-      /* MÀN HÌNH: full màn hình */
       width: 100%;
       padding: 0;
       margin: 0;
-
-      /* scale chữ */
       font-size: calc(var(--fontBase) * var(--scale));
       line-height: 1.25;
+    }
+
+    /* PHÓNG TO CHỈ KHI XEM TRÊN MÀN HÌNH */
+    @media screen {
+      .paper {
+        transform: scale(1.5);
+        transform-origin: top center;
+      }
     }
 
     /* ====== CHẾ ĐỘ XEM TRÊN ĐIỆN THOẠI / TRÌNH DUYỆT ====== */
