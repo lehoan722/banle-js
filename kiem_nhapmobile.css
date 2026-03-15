@@ -105,12 +105,12 @@
     align-items: center;
   }
 
-  /* Ẩn trường không dùng (giữ DOM để JS không lỗi) 
+  /* Ẩn trường không dùng (giữ DOM để JS không lỗi) */
   #dvt,
   #khuyenmai,
   #thanhtien {
     display: none !important;
-  }   */
+  }
 
   /* Reset width cũ (bỏ !important trước đó) + tránh iOS ép min-content */
   #masp,
@@ -243,7 +243,7 @@
     border-left: 0;
   }
 
-  /* 4) Ẩn bớt cột bảng theo thứ tự */
+  /* 4) Ẩn bớt cột bảng theo thứ tự 
   #bangketqua thead th:nth-child(2),
   #bangketqua tbody td:nth-child(2),
   #bangketqua thead th:nth-child(5),
@@ -252,6 +252,7 @@
   #bangketqua tbody td:nth-child(7) {
     display: none;
   }
+  */
 
   /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
   .btn-big {
