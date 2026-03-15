@@ -142,41 +142,73 @@
     popup.innerHTML = "";
   }
 
-  function themNhanhTheoSize(size) {
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
+  function themNhanhTheoSize(size, giuPopup = true) {
+  const maspEl = byId("masp");
+  const sizeEl = byId("size");
+  const slEl = byId("soluong");
 
-    const masp = normalizeMasp(maspEl?.value);
-    const sizeVal = normalizeSize(size);
-    const sl = normalizeNumber(slEl?.value || 1) || 1;
+  const masp = normalizeMasp(maspEl?.value);
+  const sizeVal = normalizeSize(size);
+  const sl = normalizeNumber(slEl?.value || 1) || 1;
 
-    if (!masp || !sizeVal) return;
+  if (!masp || !sizeVal) return;
 
-    const key = makeKey(masp, sizeVal);
-    const state = getState();
+  const key = makeKey(masp, sizeVal);
+  const state = getState();
 
-    if (!state.nhap[key]) {
-      state.nhap[key] = {
-        masp,
-        size: sizeVal,
-        sl
-      };
-    } else {
-      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
-    }
+  if (!state.nhap[key]) {
+    state.nhap[key] = { masp, size: sizeVal, sl };
+  } else {
+    state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+  }
 
-    delete state.ketQua[key];
-    renderBangKetQua();
+  delete state.ketQua[key];
+  renderBangKetQua();
 
-    if (sizeEl) sizeEl.value = "";
-    if (slEl) slEl.value = "1";
+  if (sizeEl) sizeEl.value = "";
+  if (slEl) slEl.value = "1";
 
-    if (sizeEl) {
+  if (giuPopup && sizeEl) {
+    setTimeout(() => {
       sizeEl.focus();
       showSizePopup(masp, "");
-    }
+    }, 0);
   }
+}
+
+function themNhanhKhongCanSize() {
+  const maspEl = byId("masp");
+  const slEl = byId("soluong");
+
+  const masp = normalizeMasp(maspEl?.value);
+  const sl = normalizeNumber(slEl?.value || 1) || 1;
+
+  if (!masp) return;
+
+  const key = makeKey(masp, "0");
+  const state = getState();
+
+  if (!state.nhap[key]) {
+    state.nhap[key] = {
+      masp,
+      size: "0",
+      sl
+    };
+  } else {
+    state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+  }
+
+  delete state.ketQua[key];
+  renderBangKetQua();
+
+  if (maspEl) {
+    maspEl.value = "";
+    maspEl.focus();
+  }
+  if (slEl) slEl.value = "1";
+
+  hideSizePopup();
+}
 
   function showSizePopup(masp, keyword = "") {
     const popup = byId("popup_size");
@@ -222,8 +254,13 @@
       });
 
       row.addEventListener("click", () => {
-        themNhanhTheoSize(item.size);
-      });
+  dangChonSizeTrongPopup = true;
+  themNhanhTheoSize(item.size, true);
+
+  setTimeout(() => {
+    dangChonSizeTrongPopup = false;
+  }, 0);
+});
 
       popup.appendChild(row);
     });
@@ -590,27 +627,38 @@
     const slEl = byId("soluong");
 
     if (maspEl) {
-      maspEl.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
+  maspEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
 
-          const masp = normalizeMasp(maspEl.value);
-          if (!masp) {
-            alert("Vui lòng nhập mã sản phẩm.");
-            maspEl.focus();
-            return;
-          }
+      const masp = normalizeMasp(maspEl.value);
+      if (!masp) {
+        alert("Vui lòng nhập mã sản phẩm.");
+        maspEl.focus();
+        return;
+      }
 
-          maspEl.value = masp;
-          if (slEl) slEl.value = "1";
+      maspEl.value = masp;
 
-          if (sizeEl) {
-            sizeEl.focus();
-            sizeEl.value = "";
-            showSizePopup(masp, "");
-          }
-        }
-      });
+      const chkNhapNhanh = byId("chkNhapNhanh");
+      const isNhapNhanh = !!chkNhapNhanh?.checked;
+
+      if (isNhapNhanh) {
+        themNhanhKhongCanSize();
+        return;
+      }
+
+      if (slEl && !normalizeNumber(slEl.value)) {
+        slEl.value = "1";
+      }
+
+      if (sizeEl) {
+        sizeEl.focus();
+        sizeEl.value = "";
+        showSizePopup(masp, "");
+      }
+    }
+  });
 
       maspEl.addEventListener("blur", () => {
         maspEl.value = normalizeMasp(maspEl.value);
@@ -678,12 +726,14 @@
     }
 
     document.addEventListener("click", (e) => {
-      const popup = byId("popup_size");
-      if (!popup) return;
+  const popup = byId("popup_size");
+  if (!popup) return;
 
-      if (e.target === sizeEl || popup.contains(e.target)) return;
-      hideSizePopup();
-    });
+  if (dangChonSizeTrongPopup) return;
+  if (e.target === sizeEl || e.target === maspEl || popup.contains(e.target)) return;
+
+  hideSizePopup();
+});
   }
 
   // =========================
@@ -696,6 +746,8 @@
       ketQua: {},
       dsHoaDonNguon: []
     };
+
+     let dangChonSizeTrongPopup = false;
 
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -999,10 +1051,13 @@
     kiemTraPhieu,
     themDongNhapBenTrai,
     getState,
+    
     setXuatData(dataMap) {
-      window.kiemNhapState.xuat = dataMap || {};
-      renderBangKetQua();
-    }
+  const state = getState();
+  state.xuat = dataMap || {};
+  state.ketQua = {}; // xóa kết quả kiểm cũ để kiểm tra lại từ đầu
+  renderBangKetQua();
+}
   };
 
   // =========================
