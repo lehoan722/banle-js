@@ -33,18 +33,21 @@
       margin: 0;
     }
 
-
     body {
       font-family: Arial, sans-serif;
-
-      /* MÀN HÌNH: full màn hình */
       width: 100%;
       padding: 0;
       margin: 0;
-
-      /* scale chữ */
       font-size: calc(var(--fontBase) * var(--scale));
       line-height: 1.25;
+    }
+
+    /* PHÓNG TO CHỈ KHI XEM TRÊN MÀN HÌNH */
+    @media screen {
+      .paper {
+        transform: scale(1.5);
+        transform-origin: top center;
+      }
     }
 
     /* ====== CHẾ ĐỘ XEM TRÊN ĐIỆN THOẠI / TRÌNH DUYỆT ====== */
@@ -107,7 +110,7 @@
 
       /* Cho QR to hơn trên PC, nhưng vẫn vừa cột */
       .invoice-right .vietqr-img {
-        width: min(100%, 350px) !important;
+        width: min(100%, 250px) !important;
       }
 
       .invoice-right .payqr-info {
@@ -537,6 +540,13 @@
           const elAccName = document.getElementById("qr_account_name");
           const elAmount = document.getElementById("qr_amount");
           const elAddInfo = document.getElementById("qr_addinfo");
+
+          if (thanhtoan <= 0) {
+            document.querySelector('.invoice-layout').style.display = 'none';
+            document.getElementById('invalidInvoiceBox').style.display = 'block';
+            localStorage.removeItem("data_hoadon_in");
+            return;
+          }
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
