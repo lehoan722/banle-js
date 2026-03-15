@@ -1,0 +1,329 @@
+/* ===== Bản mobile cho banlemtcs1.html ===== */
+@media (max-width: 480px) {
+
+  /* 1) Header & Menu */
+  .menu-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 8px 10px;
+  }
+
+  .menu-item {
+    display: none !important;
+  }
+
+  /* Ẩn menu thả xuống, giữ .tennv */
+  .app-menu {
+    display: none !important;
+  }
+
+  /* Ẩn menu thả xuống, giữ .tennv */
+
+  /* Khối tennv: luôn 1 dòng, khoảng cách gọn */
+  .tennv {
+    display: flex;
+    flex-wrap: nowrap;
+    /* không cho xuống dòng */
+    justify-content: flex-start;
+    /* không dàn đều tạo khoảng trống lớn */
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Label là flex-item thật, control bên trong fill 100% */
+  .tennv>label {
+    display: flex;
+    flex: 0 1 auto;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    /* tránh iOS ép min-content */
+  }
+
+  .tennv>label select,
+  .tennv>label input {
+    width: 100%;
+    min-width: 0;
+    height: 20px;
+    font-size: 15px;
+  }
+
+  /* Ưu tiên hiển thị Tên NV: thu gọn "Địa điểm" để không bị chèn mất */
+  /* Gợi ý: Địa điểm thường chỉ CS1/CS2 nên để dạng "fit" theo nội dung */
+  .tennv > label:has(#diadiem),
+  .tennv > label:nth-of-type(1) { /* fallback nếu #diadiem là label đầu */
+    flex: 0 0 72px;       /* ~1/3 so với khối rộng 200px+ trước đây */
+    max-width: 72px;
+    min-width: 72px;
+  }
+
+  #diadiem {
+    width: 72px;          /* giữ gọn và ổn định trên iOS */
+    min-width: 0;
+  }
+
+  .tennv > label:has(#ngay),
+  .tennv > label:nth-of-type(2) { /* fallback nếu #ngay là label thứ 2 */
+    flex: 0 0 120px;
+    max-width: 120px;
+    min-width: 120px;
+  }
+
+  #ngay {
+    width: 120px;
+    min-width: 0;
+  }
+
+/* Ô Tên NV là flex-item trực tiếp */
+  #tennv {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    height: 20px;
+    font-size: 15px;
+  }
+
+  /* Ẩn các mục không dùng */
+  #manv,
+  #btnReloadSP {
+    display: none !important;
+  }
+
+
+
+  /* 2) Khối nhập nhanh */
+  .top-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    /* cho phép tự xuống nhiều hàng */
+    gap: 6px;
+    padding: 8px;
+    background: #f6f7f9;
+    align-items: center;
+  }
+
+  /* Ẩn trường không dùng (giữ DOM để JS không lỗi) 
+  #dvt,
+  #khuyenmai,
+  #thanhtien {
+    display: none !important;
+  }   */
+
+  /* Reset width cũ (bỏ !important trước đó) + tránh iOS ép min-content */
+  #masp,
+  #soluong,
+  #size,
+  #gia,
+  #sohd,
+  #ghichu {
+    width: auto;
+    min-width: 0;
+  }
+
+  /* Mã SP nằm trong <div> wrapper -> chia % cho WRAPPER */
+  .top-inputs>div:first-child,
+  .top-inputs>div:has(#masp) {
+    /* :has là dự phòng, first-child đã đủ */
+    flex: 0 1 40%;
+    max-width: 40%;
+    min-width: 0;
+  }
+
+  /* Input #masp fill đủ bên trong wrapper */
+  #masp {
+    width: 100%;
+  }
+
+  /* Tỉ lệ bạn yêu cầu */
+  #soluong {
+    flex: 0 1 20%;
+    max-width: 10%;
+    text-align: center;
+  }
+
+  #size {
+    flex: 0 1 20%;
+    max-width: 15%;
+    text-align: center;
+  }
+
+  #gia {
+    flex: 0 1 30%;
+    max-width: 30%;
+    text-align: right;
+  }
+
+  /* Vị trí mới: 30% sau Số HĐ */
+  #vitri {
+    flex: 0 1 40%;
+    max-width: 40%;
+  }
+
+  #sohd {
+    flex: 0 1 40%;
+    max-width: 40%;
+  }
+
+  #ghichu {
+    display: none !important;
+  }
+
+  #mathang {
+    flex: 0 1 25%;
+    max-width: 25%;
+  }
+
+  #tongsl {
+    flex: 0 1 25%;
+    max-width: 25%;
+  }
+
+  /* Nút kính lúp theo nội dung, không chiếm % */
+  #masp-search {
+    display: none !important;
+  }
+
+  /* Ẩn các .top-inputs nằm SAU footer (hai dòng gạch) */
+  .footer-buttons~.top-inputs {
+    display: none !important;
+  }
+
+  /* 3) Main chuyển cột; bảng co giãn */
+  .main {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+    /* Cho mobile: mở khóa chiều cao trang & cho phép cuộn */
+  #app-container {
+    height: auto;
+    /* bỏ height:100vh của trang chính */
+    min-height: 100dvh;
+    /* vẫn đủ tối thiểu bằng viewport, tương thích iOS */
+  }
+
+  .main {
+    height: auto;
+    /* bỏ height:1px */
+    overflow: visible;
+    /* bỏ overflow:hidden để toàn trang cuộn được */
+  }
+
+  /* Bảng vẫn cao ~75% màn hình như anh muốn */
+  .table-area {
+    height: 60dvh;
+    max-height: none !important;
+    /* gỡ trần 100% từ trang chính */
+    flex: 0 0 auto;
+    /* tránh flex:1 co lại */
+  }
+
+  /* Fallback cho máy chưa hỗ trợ dvh */
+  @supports not (height: 1dvh) {
+    .table-area {
+      height: 60vh;
+    }
+  }
+
+  /* (tuỳ chọn) để panel cuộn riêng nếu nội dung dài */
+  .sidebar {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+
+  .sidebar {
+    width: 100%;
+    border-left: 0;
+  }
+
+  /* 4) Ẩn bớt cột bảng theo thứ tự */
+  #bangketqua thead th:nth-child(2),
+  #bangketqua tbody td:nth-child(2),
+  #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),
+  #bangketqua thead th:nth-child(7),
+  #bangketqua tbody td:nth-child(7) {
+    display: none;
+  }
+
+  /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
+  .btn-big {
+    width: 100%;
+    font-size: 18px;
+  }
+
+  #phaithanhtoan,
+  #khachtra,
+  #conlai {
+    width: 140px !important;
+  }
+
+  /* 6) Ảnh sản phẩm */
+  .product-image {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 3px;
+  }
+
+  /* 7) Footer nút lớn sticky */
+  .footer-buttons {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    gap: 8px;
+    background: #dce9f9;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Ẩn nút phụ */
+  #tieptuc,
+  #xemin,
+  #btnCopy,
+  #xuatexcel,
+  #btn-logout {
+    display: none !important;
+  }
+
+  .footer-buttons button {
+    height: 44px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* 8) Tabs bên phải */
+  .tabs button {
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  .tab-content {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
+/* === GIỮ HIỂN THỊ ĐẦY ĐỦ CỘT KHI Ở DẠNG NGANG === */
+.bang-ngang-mode #bangketqua th,
+.bang-ngang-mode #bangketqua td {
+  display: table-cell !important;
+  visibility: visible !important;
+}
+
+/* Chỉ mở toàn bộ cột khi đang xem "dạng ngang" trên màn hình nhỏ */
+@media (max-width: 768px) {
+  #bangketqua[data-mode="ngang"] th,
+  #bangketqua[data-mode="ngang"] td {
+    display: table-cell !important;
+    visibility: visible !important;
+  }
+}
