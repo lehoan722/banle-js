@@ -201,11 +201,18 @@ function themNhanhKhongCanSize() {
   delete state.ketQua[key];
   renderBangKetQua();
 
-  if (maspEl) {
-    maspEl.value = "";
-    maspEl.focus();
-  }
   if (slEl) slEl.value = "1";
+
+  if (maspEl) {
+    maspEl.value = masp;
+    maspEl.focus();
+
+    setTimeout(() => {
+      try {
+        maspEl.select();
+      } catch (err) {}
+    }, 0);
+  }
 
   hideSizePopup();
 }
