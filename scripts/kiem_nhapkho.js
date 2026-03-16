@@ -1284,6 +1284,53 @@
     alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
   }
 
+    function moPhieuCCNTuKetQuaKiemNhap() {
+    docLaiNhapTuBangHTML();
+    kiemTraPhieu();
+
+    const payloadThua = taoPayloadCCN2V1TuKiemNhap();
+    const payloadThieu = taoPayloadCCN1V2TuKiemNhap();
+
+    const coThua = !!(payloadThua && payloadThua.items && payloadThua.items.length > 0);
+    const coThieu = !!(payloadThieu && payloadThieu.items && payloadThieu.items.length > 0);
+
+    if (!coThua && !coThieu) {
+      alert("Không có dữ liệu thiếu hoặc thừa để tạo phiếu chuyển chi nhánh.");
+      return;
+    }
+
+    if (coThua) {
+      try {
+        localStorage.setItem("ccn_prefill_payload", JSON.stringify(payloadThua));
+        window.open("https://banle-js.vercel.app/ccn2v1cs2.html", "_blank");
+      } catch (err) {
+        console.error("[KNK] Lỗi mở phiếu CCN2V1:", err);
+        alert("Lỗi khi tạo phiếu CCN2V1.");
+        return;
+      }
+    }
+
+    if (coThieu) {
+      setTimeout(() => {
+        try {
+          localStorage.setItem("ccn_prefill_payload", JSON.stringify(payloadThieu));
+          window.open("https://banle-js.vercel.app/ccn1v2cs1.html", "_blank");
+        } catch (err) {
+          console.error("[KNK] Lỗi mở phiếu CCN1V2:", err);
+          alert("Lỗi khi tạo phiếu CCN1V2.");
+        }
+      }, coThua ? 300 : 0);
+    }
+
+    if (coThua && coThieu) {
+      alert("Đã tạo 2 phiếu chuyển chi nhánh: 1 phiếu cho hàng thừa và 1 phiếu cho hàng thiếu.");
+    } else if (coThua) {
+      alert("Đã tạo phiếu chuyển chi nhánh 2v1 cho hàng thừa.");
+    } else if (coThieu) {
+      alert("Đã tạo phiếu chuyển chi nhánh 1v2 cho hàng thiếu.");
+    }
+  }
+
   // =========================
   // CHON DONG / COPY / PASTE / XOA DONG
   // =========================
@@ -1815,19 +1862,11 @@
       });
     });
 
-    const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
-    if (btnTaoPhieuCCN2V1) {
-      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
+   const btnTaoPhieuCCN = byId("btnTaoPhieuCCN");
+    if (btnTaoPhieuCCN) {
+      btnTaoPhieuCCN.addEventListener("click", (e) => {
         e.preventDefault();
-        moTrangCCN2V1TuHangThua();
-      });
-    }
-
-     const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
-    if (btnTaoPhieuCCN1V2) {
-      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
-        e.preventDefault();
-        moTrangCCN1V2TuHangThieu();
+        moPhieuCCNTuKetQuaKiemNhap();
       });
     }
 
@@ -1874,6 +1913,7 @@
     pasteDuLieuNhap,
     xoaDongDangChon,
     moTrangCCN1V2TuHangThieu,
+     moPhieuCCNTuKetQuaKiemNhap,
 
     setXuatData(dataMap) {
       const state = getState();
