@@ -494,9 +494,9 @@
             <input id="soluong" value="1" placeholder="SL" />
             <input id="size" placeholder="SIZE" />
             <label style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap;">
-    <input type="checkbox" id="chkNhapNhanh" />
-    Nhập nhanh
-</label>
+                <input type="checkbox" id="chkNhapNhanh" />
+                Nhập nhanh
+            </label>
             <input id="sohd" placeholder="Số phiếu kiểm nhập" />
             <input id="ghichu_top" placeholder="Ghi chú / DS HĐ CCN" style="width:260px;" readonly />
 
@@ -732,10 +732,13 @@
         }, true);
 
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ (có pre-check)
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
+        document.getElementById('btn-luu')?.addEventListener('click', async (e) => {
+            e.preventDefault();
             if (!precheckNhaCungCapBeforeSave()) return;
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+
+            if (window.NhapKiemKho && typeof window.NhapKiemKho.luuPhieuKiemNhapKho === "function") {
+                await window.NhapKiemKho.luuPhieuKiemNhapKho();
+            }
         });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
@@ -1474,7 +1477,7 @@
                         return;
                     }
 
-                    // 3️⃣ Gọi popup để hiển thị bảng ngang
+                    // 3️⃣ Gọi popup để hiển thị bảng ngang 
                     popupNgang.open(rows);
                 });
             }
