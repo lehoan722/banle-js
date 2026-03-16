@@ -6,7 +6,9 @@
     pageId: "kiemnhap_cs1",
     fromBranch: "cs2",
     toBranch: "cs1",
-    soPhieuPrefix: "kiemnhap_",
+
+    soPhieuPrefix: "kiemnhap2v1cs1_",
+
     title: "KIỂM NHẬP KHO"
   };
 
@@ -22,6 +24,8 @@
     selectedMasp: ""
   };
 
+  let dangChonSizeTrongPopup = false;
+
   // =========================
   // HELPERS
   // =========================
@@ -35,6 +39,11 @@
 
   function normalizeSize(v) {
     return String(v || "").trim();
+  }
+  const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45"]);
+
+  function isValidSize(size) {
+    return VALID_SIZES.has(normalizeSize(size));
   }
 
   function makeKey(masp, size) {
@@ -68,6 +77,7 @@
       const sl = normalizeNumber(m[2]);
 
       if (!size) continue;
+      if (!isValidSize(size)) continue;
       if (sl <= 0) continue;
 
       out.push({ size, sl });
@@ -153,7 +163,10 @@
     const sizeVal = normalizeSize(size);
     const sl = normalizeNumber(slEl?.value || 1) || 1;
 
-    if (!masp || !sizeVal) return;
+    if (!isValidSize(sizeVal)) {
+      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+      return;
+    }
 
     const key = makeKey(masp, sizeVal);
     const state = getState();
@@ -307,18 +320,67 @@
     return window.kiemNhapState;
   }
 
-  function taoSoPhieuMoi() {
-    const now = new Date();
-    const stamp =
-      now.getFullYear().toString() +
-      String(now.getMonth() + 1).padStart(2, "0") +
-      String(now.getDate()).padStart(2, "0") +
-      "_" +
-      String(now.getHours()).padStart(2, "0") +
-      String(now.getMinutes()).padStart(2, "0") +
-      String(now.getSeconds()).padStart(2, "0");
+  async function laySetHoaDonDaKiem() {
+    if (!window.supabase) return new Set();
 
-    return `${CFG.soPhieuPrefix}${stamp}`;
+    const { data, error } = await window.supabase
+      .from("kiem_nhap_kho")
+      .select("sohdccn");
+
+    if (error) {
+      console.error("[KNK] laySetHoaDonDaKiem error:", error);
+      return new Set();
+    }
+
+    const set = new Set();
+
+    (data || []).forEach((row) => {
+      const raw = String(row.sohdccn || "").trim();
+      if (!raw) return;
+
+      raw.split(";").forEach((item) => {
+        const sohd = String(item || "").trim();
+        if (sohd) set.add(sohd);
+      });
+    });
+
+    return set;
+  }
+
+  async function taoSoPhieuMoi() {
+    const prefix = String(CFG.soPhieuPrefix || "kiemnhap2v1cs1_").trim();
+
+    if (!window.supabase) {
+      return `${prefix}00001`;
+    }
+
+    const { data, error } = await window.supabase
+      .from("kiem_nhap_kho")
+      .select("so_hd_kiemnhap")
+      .ilike("so_hd_kiemnhap", `${prefix}%`)
+      .order("so_hd_kiemnhap", { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error("[KNK] taoSoPhieuMoi error:", error);
+      return `${prefix}00001`;
+    }
+
+    const last = String(data?.[0]?.so_hd_kiemnhap || "").trim();
+
+    if (!last.startsWith(prefix)) {
+      return `${prefix}00001`;
+    }
+
+    const soCuoi = last.slice(prefix.length);
+    const n = Number(soCuoi);
+
+    if (!Number.isFinite(n) || n < 0) {
+      return `${prefix}00001`;
+    }
+
+    const next = String(n + 1).padStart(5, "0");
+    return `${prefix}${next}`;
   }
 
   function updateTitle() {
@@ -600,6 +662,12 @@
       return;
     }
 
+    if (!isValidSize(size)) {
+      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+      if (sizeEl) sizeEl.focus();
+      return;
+    }
+
     if (sl <= 0) {
       alert("Số lượng phải lớn hơn 0.");
       slEl.focus();
@@ -670,6 +738,20 @@
             sizeEl.focus();
             sizeEl.value = "";
             showSizePopup(masp, "");
+
+            sizeEl.addEventListener("blur", () => {
+              const v = normalizeSize(sizeEl.value);
+              if (!v) return;
+
+              if (!isValidSize(v)) {
+                alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+                sizeEl.value = "";
+                sizeEl.focus();
+                return;
+              }
+
+              sizeEl.value = v;
+            });
           }
         }
       });
@@ -753,7 +835,7 @@
   // =========================
   // RESET PHIẾU
   // =========================
-  function resetPhieu() {
+  async function resetPhieu() {
     window.kiemNhapState = {
       nhap: {},
       xuat: {},
@@ -763,7 +845,7 @@
       selectedMasp: ""
     };
 
-    let dangChonSizeTrongPopup = false;
+    dangChonSizeTrongPopup = false;
 
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -774,7 +856,7 @@
     if (maspEl) maspEl.value = "";
     if (sizeEl) sizeEl.value = "";
     if (slEl) slEl.value = "1";
-    if (sohdEl) sohdEl.value = taoSoPhieuMoi();
+    if (sohdEl) sohdEl.value = await taoSoPhieuMoi();
     if (ghichuEl) ghichuEl.value = "";
 
     const hdState = byId("hd_state");
@@ -881,7 +963,7 @@
   // Bản đầu: chưa query thật, chỉ placeholder
   // =========================
 
-  function moPopupChonHoaDonNguon(dsHd) {
+  async function moPopupChonHoaDonNguon(dsHd, setDaKiem = new Set()) {
     return new Promise((resolve) => {
       const popup = byId("popupChonHoaDonNguon");
       const box = byId("dsHoaDonNguonPopup");
@@ -908,10 +990,18 @@
         row.style.borderBottom = "1px solid #eee";
         row.style.cursor = "pointer";
 
+        const daKiem = setDaKiem.has(sohd);
+
         row.innerHTML = `
         <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}" ${index === 0 ? "checked" : ""}>
-        <span>${escapeHtml(sohd)} | ${escapeHtml(ngay)} | ${escapeHtml(diadiem)}</span>
+        <span>
+          ${escapeHtml(sohd)} | ${escapeHtml(ngay)} | ${escapeHtml(diadiem)}
+          ${daKiem ? '<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>' : ''}
+        </span>
       `;
+        if (daKiem) {
+          row.style.background = "#fff3cd";
+        }
         box.appendChild(row);
       });
 
@@ -968,7 +1058,8 @@
         return;
       }
 
-      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd);
+      const setDaKiem = await laySetHoaDonDaKiem();
+      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, setDaKiem);
       if (!dsSoHdChon || dsSoHdChon.length === 0) return;
 
       const dsHoaDonNguonInfo = dsHd
@@ -1631,9 +1722,9 @@
   function bindButtons() {
     const btnThem = byId("them");
     if (btnThem) {
-      btnThem.addEventListener("click", (e) => {
+      btnThem.addEventListener("click", async (e) => {
         e.preventDefault();
-        resetPhieu();
+        await resetPhieu();
       });
     }
 
@@ -1711,12 +1802,12 @@
   // =========================
   // INIT
   // =========================
-  function init() {
+  async function init() {
     updateTitle();
     setDefaultBranchInfo();
     bindInputEvents();
     bindButtons();
-    resetPhieu();
+    await resetPhieu();
     console.log("[nhapkiemkho] init OK", CFG);
   }
 
