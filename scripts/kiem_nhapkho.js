@@ -1126,6 +1126,18 @@
     }
   }
 
+   function taoGhiChuPhieuChuyenTuKiemNhap() {
+    const state = getState();
+    const soHdKiemNhap = String(byId("sohd")?.value || "").trim();
+    const dsNguon = (state.dsHoaDonNguon || []).join(" ; ");
+
+    let note = `Phiếu được tạo từ nhập kiểm kho`;
+    if (soHdKiemNhap) note += ` - ${soHdKiemNhap}`;
+    if (dsNguon) note += ` | HĐ nguồn: ${dsNguon}`;
+
+    return note;
+  }
+
   // =========================
   // TAO PHIEU CCN2V1 TU HANG THUA
   // =========================
@@ -1171,7 +1183,65 @@
     return groupByMaspForTransfer(rowsThua);
   }
 
-  function taoPayloadCCN2V1TuKiemNhap() {
+    function layDanhSachHangThieuDeTaoCCN1V2() {
+    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+    const chiTietLech = thongTinTong?.chiTietLech || [];
+
+    const rowsThieu = chiTietLech
+      .filter(row => String(row.trangthai_nhan || "").trim().toLowerCase() === "thieu")
+      .map(row => ({
+        masp: normalizeMasp(row.masp),
+        size: normalizeSize(row.size || "0"),
+        sl: normalizeNumber(row.sl_lech || 0)
+      }))
+      .filter(row => row.masp && row.size && row.sl > 0);
+
+    return groupByMaspForTransfer(rowsThieu);
+  }
+
+    function taoPayloadCCN1V2TuKiemNhap() {
+    const state = getState();
+    const items = layDanhSachHangThieuDeTaoCCN1V2();
+
+    if (!items || items.length === 0) return null;
+
+    return {
+      dir: "1v2",
+      source: "kiem_nhap_kho",
+      created_at: new Date().toISOString(),
+      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
+      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+      note: taoGhiChuPhieuChuyenTuKiemNhap(),
+      items
+    };
+  }
+
+    function moTrangCCN1V2TuHangThieu() {
+    docLaiNhapTuBangHTML();
+    kiemTraPhieu();
+
+    const payload = taoPayloadCCN1V2TuKiemNhap();
+
+    if (!payload) {
+      alert("Không có mã sản phẩm thiếu để tạo phiếu CCN1V2.");
+      return;
+    }
+
+    try {
+      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+    } catch (err) {
+      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
+      alert("Không lưu được dữ liệu tạm để chuyển sang trang CCN1V2.");
+      return;
+    }
+
+    const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
+    window.open(url, "_blank");
+
+    alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
+  }
+
+    function taoPayloadCCN2V1TuKiemNhap() {
     const state = getState();
     const items = layDanhSachHangThuaDeTaoCCN2V1();
 
@@ -1183,7 +1253,7 @@
       created_at: new Date().toISOString(),
       so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
       ds_hoa_don_nguon: state.dsHoaDonNguon || [],
-      note: String(byId("ghichu_top")?.value || "").trim(),
+      note: taoGhiChuPhieuChuyenTuKiemNhap(),
       items
     };
   }
@@ -1753,6 +1823,14 @@
       });
     }
 
+     const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
+    if (btnTaoPhieuCCN1V2) {
+      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
+        e.preventDefault();
+        moTrangCCN1V2TuHangThieu();
+      });
+    }
+
     const btnCopy = byId("btn-copy-nhap");
     if (btnCopy) {
       btnCopy.addEventListener("click", async (e) => {
@@ -1795,6 +1873,7 @@
     copyDuLieuNhap,
     pasteDuLieuNhap,
     xoaDongDangChon,
+    moTrangCCN1V2TuHangThieu,
 
     setXuatData(dataMap) {
       const state = getState();
