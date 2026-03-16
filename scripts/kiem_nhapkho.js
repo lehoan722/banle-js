@@ -143,79 +143,79 @@
   }
 
   function themNhanhTheoSize(size, giuPopup = true) {
-  const maspEl = byId("masp");
-  const sizeEl = byId("size");
-  const slEl = byId("soluong");
+    const maspEl = byId("masp");
+    const sizeEl = byId("size");
+    const slEl = byId("soluong");
 
-  const masp = normalizeMasp(maspEl?.value);
-  const sizeVal = normalizeSize(size);
-  const sl = normalizeNumber(slEl?.value || 1) || 1;
+    const masp = normalizeMasp(maspEl?.value);
+    const sizeVal = normalizeSize(size);
+    const sl = normalizeNumber(slEl?.value || 1) || 1;
 
-  if (!masp || !sizeVal) return;
+    if (!masp || !sizeVal) return;
 
-  const key = makeKey(masp, sizeVal);
-  const state = getState();
+    const key = makeKey(masp, sizeVal);
+    const state = getState();
 
-  if (!state.nhap[key]) {
-    state.nhap[key] = { masp, size: sizeVal, sl };
-  } else {
-    state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    if (!state.nhap[key]) {
+      state.nhap[key] = { masp, size: sizeVal, sl };
+    } else {
+      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    }
+
+    delete state.ketQua[key];
+    renderBangKetQua();
+
+    if (sizeEl) sizeEl.value = "";
+    if (slEl) slEl.value = "1";
+
+    if (giuPopup && sizeEl) {
+      setTimeout(() => {
+        sizeEl.focus();
+        showSizePopup(masp, "");
+      }, 0);
+    }
   }
 
-  delete state.ketQua[key];
-  renderBangKetQua();
+  function themNhanhKhongCanSize() {
+    const maspEl = byId("masp");
+    const slEl = byId("soluong");
 
-  if (sizeEl) sizeEl.value = "";
-  if (slEl) slEl.value = "1";
+    const masp = normalizeMasp(maspEl?.value);
+    const sl = normalizeNumber(slEl?.value || 1) || 1;
 
-  if (giuPopup && sizeEl) {
-    setTimeout(() => {
-      sizeEl.focus();
-      showSizePopup(masp, "");
-    }, 0);
+    if (!masp) return;
+
+    const key = makeKey(masp, "0");
+    const state = getState();
+
+    if (!state.nhap[key]) {
+      state.nhap[key] = {
+        masp,
+        size: "0",
+        sl
+      };
+    } else {
+      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    }
+
+    delete state.ketQua[key];
+    renderBangKetQua();
+
+    if (slEl) slEl.value = "1";
+
+    if (maspEl) {
+      maspEl.value = masp;
+      maspEl.focus();
+
+      setTimeout(() => {
+        try {
+          maspEl.select();
+        } catch (err) { }
+      }, 0);
+    }
+
+    hideSizePopup();
   }
-}
-
-function themNhanhKhongCanSize() {
-  const maspEl = byId("masp");
-  const slEl = byId("soluong");
-
-  const masp = normalizeMasp(maspEl?.value);
-  const sl = normalizeNumber(slEl?.value || 1) || 1;
-
-  if (!masp) return;
-
-  const key = makeKey(masp, "0");
-  const state = getState();
-
-  if (!state.nhap[key]) {
-    state.nhap[key] = {
-      masp,
-      size: "0",
-      sl
-    };
-  } else {
-    state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
-  }
-
-  delete state.ketQua[key];
-  renderBangKetQua();
-
-  if (slEl) slEl.value = "1";
-
-  if (maspEl) {
-    maspEl.value = masp;
-    maspEl.focus();
-
-    setTimeout(() => {
-      try {
-        maspEl.select();
-      } catch (err) {}
-    }, 0);
-  }
-
-  hideSizePopup();
-}
 
   function showSizePopup(masp, keyword = "") {
     const popup = byId("popup_size");
@@ -261,13 +261,13 @@ function themNhanhKhongCanSize() {
       });
 
       row.addEventListener("click", () => {
-  dangChonSizeTrongPopup = true;
-  themNhanhTheoSize(item.size, true);
+        dangChonSizeTrongPopup = true;
+        themNhanhTheoSize(item.size, true);
 
-  setTimeout(() => {
-    dangChonSizeTrongPopup = false;
-  }, 0);
-});
+        setTimeout(() => {
+          dangChonSizeTrongPopup = false;
+        }, 0);
+      });
 
       popup.appendChild(row);
     });
@@ -634,38 +634,38 @@ function themNhanhKhongCanSize() {
     const slEl = byId("soluong");
 
     if (maspEl) {
-  maspEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+      maspEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
 
-      const masp = normalizeMasp(maspEl.value);
-      if (!masp) {
-        alert("Vui lòng nhập mã sản phẩm.");
-        maspEl.focus();
-        return;
-      }
+          const masp = normalizeMasp(maspEl.value);
+          if (!masp) {
+            alert("Vui lòng nhập mã sản phẩm.");
+            maspEl.focus();
+            return;
+          }
 
-      maspEl.value = masp;
+          maspEl.value = masp;
 
-      const chkNhapNhanh = byId("chkNhapNhanh");
-      const isNhapNhanh = !!chkNhapNhanh?.checked;
+          const chkNhapNhanh = byId("chkNhapNhanh");
+          const isNhapNhanh = !!chkNhapNhanh?.checked;
 
-      if (isNhapNhanh) {
-        themNhanhKhongCanSize();
-        return;
-      }
+          if (isNhapNhanh) {
+            themNhanhKhongCanSize();
+            return;
+          }
 
-      if (slEl && !normalizeNumber(slEl.value)) {
-        slEl.value = "1";
-      }
+          if (slEl && !normalizeNumber(slEl.value)) {
+            slEl.value = "1";
+          }
 
-      if (sizeEl) {
-        sizeEl.focus();
-        sizeEl.value = "";
-        showSizePopup(masp, "");
-      }
-    }
-  });
+          if (sizeEl) {
+            sizeEl.focus();
+            sizeEl.value = "";
+            showSizePopup(masp, "");
+          }
+        }
+      });
 
       maspEl.addEventListener("blur", () => {
         maspEl.value = normalizeMasp(maspEl.value);
@@ -733,14 +733,14 @@ function themNhanhKhongCanSize() {
     }
 
     document.addEventListener("click", (e) => {
-  const popup = byId("popup_size");
-  if (!popup) return;
+      const popup = byId("popup_size");
+      if (!popup) return;
 
-  if (dangChonSizeTrongPopup) return;
-  if (e.target === sizeEl || e.target === maspEl || popup.contains(e.target)) return;
+      if (dangChonSizeTrongPopup) return;
+      if (e.target === sizeEl || e.target === maspEl || popup.contains(e.target)) return;
 
-  hideSizePopup();
-});
+      hideSizePopup();
+    });
   }
 
   // =========================
@@ -754,7 +754,7 @@ function themNhanhKhongCanSize() {
       dsHoaDonNguon: []
     };
 
-     let dangChonSizeTrongPopup = false;
+    let dangChonSizeTrongPopup = false;
 
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -1020,7 +1020,7 @@ function themNhanhKhongCanSize() {
   // BUTTONS
   // =========================
 
-    // =========================
+  // =========================
   // SAVE KIEM NHAP KHO
   // =========================
 
@@ -1357,13 +1357,14 @@ function themNhanhKhongCanSize() {
     kiemTraPhieu,
     themDongNhapBenTrai,
     getState,
-    
+    luuPhieuKiemNhapKho,
+
     setXuatData(dataMap) {
-  const state = getState();
-  state.xuat = dataMap || {};
-  state.ketQua = {}; // xóa kết quả kiểm cũ để kiểm tra lại từ đầu
-  renderBangKetQua();
-}
+      const state = getState();
+      state.xuat = dataMap || {};
+      state.ketQua = {}; // xóa kết quả kiểm cũ để kiểm tra lại từ đầu
+      renderBangKetQua();
+    }
   };
 
   // =========================
