@@ -18,7 +18,8 @@
     xuat: {},
     ketQua: {},
     dsHoaDonNguon: [],
-    dsHoaDonNguonInfo: []
+    dsHoaDonNguonInfo: [],
+    selectedMasp: ""
   };
 
   // =========================
@@ -492,6 +493,11 @@
       const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
 
       const tr = document.createElement("tr");
+      const selectedMasp = normalizeMasp(state.selectedMasp || "");
+      tr.dataset.masp = masp;
+      if (selectedMasp && selectedMasp === masp) {
+        tr.classList.add("row-selected");
+      }
       tr.innerHTML = `
       <td>${escapeHtml(masp)}</td>
   <td contenteditable="true"
@@ -753,7 +759,8 @@
       xuat: {},
       ketQua: {},
       dsHoaDonNguon: [],
-      dsHoaDonNguonInfo: []
+      dsHoaDonNguonInfo: [],
+      selectedMasp: ""
     };
 
     let dangChonSizeTrongPopup = false;
@@ -1029,7 +1036,7 @@
     }
   }
 
-    // =========================
+  // =========================
   // TAO PHIEU CCN2V1 TU HANG THUA
   // =========================
   function groupByMaspForTransfer(items) {
@@ -1134,6 +1141,175 @@
     window.open(url, "_blank");
 
     alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
+  }
+
+  // =========================
+  // CHON DONG / COPY / PASTE / XOA DONG
+  // =========================
+  function chonDongTheoMasp(masp) {
+    const state = getState();
+    state.selectedMasp = normalizeMasp(masp);
+    renderBangKetQua();
+  }
+
+  function bindRowSelection() {
+    const tbody = document.querySelector("#bangketqua tbody");
+    if (!tbody || tbody.dataset.rowSelectBound === "1") return;
+
+    tbody.dataset.rowSelectBound = "1";
+
+    tbody.addEventListener("click", (e) => {
+      const tr = e.target.closest("tr");
+      if (!tr) return;
+
+      const masp = normalizeMasp(tr.dataset.masp || "");
+      if (!masp) return;
+
+      chonDongTheoMasp(masp);
+    });
+  }
+
+  async function copyDuLieuNhap() {
+    try {
+      docLaiNhapTuBangHTML();
+
+      const tbody = document.querySelector("#bangketqua tbody");
+      if (!tbody) {
+        alert("Không tìm thấy bảng kết quả.");
+        return;
+      }
+
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      if (rows.length === 0) {
+        alert("Không có dữ liệu để copy.");
+        return;
+      }
+
+      const lines = rows.map((tr) => {
+        const col1 = String(tr.children[0]?.innerText || "").trim();
+        const col2 = String(tr.children[1]?.innerText || "").trim();
+        const col3 = String(tr.children[2]?.innerText || "").trim();
+        return [col1, col2, col3].join("\t");
+      }).filter(Boolean);
+
+      const text = lines.join("\n");
+      await navigator.clipboard.writeText(text);
+
+      alert(`Đã copy ${lines.length} dòng dữ liệu phần nhập.`);
+    } catch (err) {
+      console.error("[KNK] copyDuLieuNhap error:", err);
+      alert("Không copy được dữ liệu.");
+    }
+  }
+
+  function parseClipboardToNhapMap(text) {
+    const lines = String(text || "")
+      .replace(/\r/g, "")
+      .split("\n")
+      .map(x => x.trim())
+      .filter(Boolean);
+
+    const nhapMoi = {};
+
+    for (const line of lines) {
+      const cols = line.split("\t");
+
+      const masp = normalizeMasp(cols[0] || "");
+      const sizeSlText = String(cols[1] || "").trim();
+      const tongSlText = String(cols[2] || "").trim();
+
+      if (!masp) continue;
+
+      const items = parseSizeSlText(sizeSlText);
+      const tongSl = normalizeNumber(tongSlText);
+
+      if (hasRealSizeItems(items)) {
+        items.forEach((item) => {
+          const key = makeKey(masp, item.size);
+          nhapMoi[key] = {
+            masp,
+            size: item.size,
+            sl: item.sl
+          };
+        });
+        continue;
+      }
+
+      if (tongSl > 0) {
+        const key = makeKey(masp, "0");
+        nhapMoi[key] = {
+          masp,
+          size: "0",
+          sl: tongSl
+        };
+      }
+    }
+
+    return nhapMoi;
+  }
+
+  async function pasteDuLieuNhap() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!String(text || "").trim()) {
+        alert("Clipboard đang trống.");
+        return;
+      }
+
+      const nhapMoi = parseClipboardToNhapMap(text);
+      const soDong = Object.keys(nhapMoi).length;
+
+      if (soDong === 0) {
+        alert("Dữ liệu dán không hợp lệ.");
+        return;
+      }
+
+      const ok = confirm("Dán dữ liệu sẽ thay toàn bộ phần nhập hiện tại. Bạn có muốn tiếp tục không?");
+      if (!ok) return;
+
+      const state = getState();
+      state.nhap = nhapMoi;
+      state.ketQua = {};
+      state.selectedMasp = "";
+
+      renderBangKetQua();
+      alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
+    } catch (err) {
+      console.error("[KNK] pasteDuLieuNhap error:", err);
+      alert("Không đọc được dữ liệu từ clipboard.");
+    }
+  }
+
+  function xoaDongDangChon() {
+    docLaiNhapTuBangHTML();
+
+    const state = getState();
+    const masp = normalizeMasp(state.selectedMasp || "");
+
+    if (!masp) {
+      alert("Bạn chưa chọn dòng cần xóa.");
+      return;
+    }
+
+    const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`);
+    if (!ok) return;
+
+    Object.keys(state.nhap || {}).forEach((key) => {
+      const row = state.nhap[key];
+      if (normalizeMasp(row?.masp) === masp) {
+        delete state.nhap[key];
+      }
+    });
+
+    Object.keys(state.ketQua || {}).forEach((key) => {
+      const info = splitKey(key);
+      if (normalizeMasp(info.masp) === masp) {
+        delete state.ketQua[key];
+      }
+    });
+
+    state.selectedMasp = "";
+    renderBangKetQua();
   }
 
   // =========================
@@ -1481,22 +1657,31 @@
       });
     });
 
-    const btnLuu = byId("btn-luu");
-    if (btnLuu) {
-      btnLuu.addEventListener("click", async (e) => {
+    const btnCopy = byId("btn-copy-nhap");
+    if (btnCopy) {
+      btnCopy.addEventListener("click", async (e) => {
         e.preventDefault();
-        await luuPhieuKiemNhapKho();
-      });
-
-      const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
-    if (btnTaoPhieuCCN2V1) {
-      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
-        e.preventDefault();
-        moTrangCCN2V1TuHangThua();
+        await copyDuLieuNhap();
       });
     }
 
+    const btnPaste = byId("btn-paste-nhap");
+    if (btnPaste) {
+      btnPaste.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await pasteDuLieuNhap();
+      });
     }
+
+    const btnSua = byId("sua");
+    if (btnSua) {
+      btnSua.addEventListener("click", (e) => {
+        e.preventDefault();
+        xoaDongDangChon();
+      });
+    }
+
+    bindRowSelection();
   }
 
   // =========================
@@ -1509,8 +1694,11 @@
     themDongNhapBenTrai,
     getState,
     moTrangCCN2V1TuHangThua,
-    
+
     luuPhieuKiemNhapKho,
+    copyDuLieuNhap,
+    pasteDuLieuNhap,
+    xoaDongDangChon,
 
     setXuatData(dataMap) {
       const state = getState();
