@@ -14,10 +14,11 @@
   // STATE
   // =========================
   window.kiemNhapState = {
-    nhap: {},      // { MASP: { masp, size, sl } }
-    xuat: {},      // { MASP: { masp, size, sl } }
-    ketQua: {},    // { MASP: { trangthai, chitiet } }
-    dsHoaDonNguon: []
+    nhap: {},
+    xuat: {},
+    ketQua: {},
+    dsHoaDonNguon: [],
+    dsHoaDonNguonInfo: []
   };
 
   // =========================
@@ -751,7 +752,8 @@
       nhap: {},
       xuat: {},
       ketQua: {},
-      dsHoaDonNguon: []
+      dsHoaDonNguon: [],
+      dsHoaDonNguonInfo: []
     };
 
     let dangChonSizeTrongPopup = false;
@@ -962,6 +964,16 @@
       const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd);
       if (!dsSoHdChon || dsSoHdChon.length === 0) return;
 
+      const dsHoaDonNguonInfo = dsHd
+        .filter(hd => dsSoHdChon.includes(String(hd.sohd || "").trim()))
+        .map(hd => ({
+          sohd: String(hd.sohd || "").trim(),
+          ngay: hd.ngay || null,
+          diadiem: hd.diadiem || "",
+          manv: String(hd.manv || "").trim(),
+          tennv: String(hd.tennv || "").trim()
+        }));
+
       const { data: ctRows, error: errCt } = await window.supabase
         .from("ct_hoadon_banle")
         .select("sohd, masp, size, soluong")
@@ -1003,6 +1015,7 @@
 
       const state = getState();
       state.dsHoaDonNguon = dsSoHdChon;
+      state.dsHoaDonNguonInfo = dsHoaDonNguonInfo;
 
       const ghichuEl = byId("ghichu_top");
       if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
@@ -1234,12 +1247,17 @@
 
       const sohdccn = (stateSauKiem.dsHoaDonNguon || []).join(" ; ");
 
-      let nhanvienxuat = "";
-      if (stateSauKiem.dsHoaDonNguon.length === 1) {
-        nhanvienxuat = "";
-      }
+      const dsNhanVienXuat = Array.from(
+        new Set(
+          (stateSauKiem.dsHoaDonNguonInfo || [])
+            .map(x => String(x.tennv || x.manv || "").trim())
+            .filter(Boolean)
+        )
+      );
 
-            const { data: tonTaiCu, error: errCheck } = await window.supabase
+      const nhanvienxuat = dsNhanVienXuat.join(" ; ");
+      
+      const { data: tonTaiCu, error: errCheck } = await window.supabase
         .from("kiem_nhap_kho")
         .select("id, so_hd_kiemnhap")
         .eq("so_hd_kiemnhap", so_hd_kiemnhap)
