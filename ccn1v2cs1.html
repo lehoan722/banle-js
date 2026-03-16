@@ -351,7 +351,7 @@
             max-width: 40px;
             white-space: normal;
             /* cho phép xuống dòng */
-           
+
             /* nếu cần thì bẻ từ */
             text-align: left;
             /* tùy, thích center thì bỏ dòng này */
@@ -387,15 +387,14 @@
 
 <body class="popupnhanh">
     <style>
-
-         /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
+        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
         body.popupnhanh .sq-stock-popup {
             top: 8px !important;
             left: 8px !important;
             left: auto !important;
             transform: none !important;
         }
-        
+
         .menu-bar {
             background: #cc00b8;
             padding: 8px 20px;
@@ -650,7 +649,7 @@
 
         </div>
 
-         <div class="top-inputs">
+        <div class="top-inputs">
             F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
             F8: xem tồn kho nhanh, F9: nhập vị trí kho
         </div>
@@ -1160,6 +1159,11 @@
                 if (!pf || pf.dir !== '1v2') {
                     console.log('[CCN 1v2] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
+                }
+
+                const ghichuEl = document.getElementById("ghichu");
+                if (ghichuEl && pf.note) {
+                    ghichuEl.value = String(pf.note || "").trim();
                 }
 
                 const rows = [];
