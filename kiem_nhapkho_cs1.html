@@ -351,6 +351,10 @@
         .kh-col input {
             width: 100%;
         }
+
+        #bangketqua tbody tr.row-selected {
+            background: #ffe7a3 !important;
+        }
     </style>
 
 
@@ -532,7 +536,9 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
-            <button id="sua" class="btn edit" type="button">SỬA</button>
+            <button id="btn-copy-nhap" type="button">Copy</button>
+            <button id="btn-paste-nhap" type="button">Dán</button>
+            <button id="sua" class="btn edit" type="button">Xoá dòng</button>
             <button id="quaylai">Quay lại</button>
 
             <button id="btnNapHoaDonCCN_footer">Nạp HĐ CCN</button>
@@ -711,10 +717,7 @@
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
-        document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
         // ===== Pre-check nhà cung cấp trước khi lưu (F2) - BẮT BUỘC CÓ TÊN KH =====
