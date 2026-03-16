@@ -943,7 +943,7 @@
 
       const { data: dsHd, error: errHd } = await window.supabase
         .from("hoadon_banle")
-        .select("sohd, ngay, created_at, diadiem")
+        .select("sohd, ngay, created_at, diadiem, tennv, manv")
         .ilike("sohd", `${prefixNguon}%`)
         .order("created_at", { ascending: false })
         .limit(30);
@@ -1237,6 +1237,23 @@
       let nhanvienxuat = "";
       if (stateSauKiem.dsHoaDonNguon.length === 1) {
         nhanvienxuat = "";
+      }
+
+            const { data: tonTaiCu, error: errCheck } = await window.supabase
+        .from("kiem_nhap_kho")
+        .select("id, so_hd_kiemnhap")
+        .eq("so_hd_kiemnhap", so_hd_kiemnhap)
+        .maybeSingle();
+
+      if (errCheck) {
+        console.error("[kiem_nhap_kho] check ton tai error:", errCheck);
+        alert("Lỗi khi kiểm tra phiếu đã tồn tại.");
+        return;
+      }
+
+      if (tonTaiCu) {
+        alert("Số phiếu kiểm nhập này đã được lưu rồi.");
+        return;
       }
 
       const rowTong = {
