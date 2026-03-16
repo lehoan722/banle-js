@@ -1029,6 +1029,113 @@
     }
   }
 
+    // =========================
+  // TAO PHIEU CCN2V1 TU HANG THUA
+  // =========================
+  function groupByMaspForTransfer(items) {
+    const out = {};
+
+    (items || []).forEach((row) => {
+      const masp = normalizeMasp(row.masp);
+      const size = normalizeSize(row.size);
+      const sl = normalizeNumber(row.sl);
+
+      if (!masp || !size || sl <= 0) return;
+
+      if (!out[masp]) {
+        out[masp] = {
+          masp,
+          items: []
+        };
+      }
+
+      out[masp].items.push({
+        size,
+        sl
+      });
+    });
+
+    return Object.values(out);
+  }
+
+  function layDanhSachHangThuaDeTaoCCN2V1() {
+    const state = getState();
+    const nhapMap = state.nhap || {};
+    const xuatMap = state.xuat || {};
+
+    const rowsThua = [];
+
+    const allKeys = new Set([
+      ...Object.keys(nhapMap),
+      ...Object.keys(xuatMap)
+    ]);
+
+    for (const key of allKeys) {
+      const nhap = nhapMap[key];
+      const xuat = xuatMap[key];
+
+      const masp = splitKey(key).masp;
+      const size = splitKey(key).size || "0";
+
+      const slNhap = normalizeNumber(nhap?.sl || 0);
+      const slXuat = normalizeNumber(xuat?.sl || 0);
+
+      if (!masp) continue;
+
+      if (slNhap > slXuat) {
+        rowsThua.push({
+          masp,
+          size,
+          sl: slNhap - slXuat
+        });
+      }
+    }
+
+    return groupByMaspForTransfer(rowsThua);
+  }
+
+  function taoPayloadCCN2V1TuKiemNhap() {
+    const state = getState();
+    const items = layDanhSachHangThuaDeTaoCCN2V1();
+
+    if (!items || items.length === 0) return null;
+
+    return {
+      dir: "2v1",
+      source: "kiem_nhap_kho",
+      created_at: new Date().toISOString(),
+      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
+      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+      note: String(byId("ghichu_top")?.value || "").trim(),
+      items
+    };
+  }
+
+  function moTrangCCN2V1TuHangThua() {
+    docLaiNhapTuBangHTML();
+    kiemTraPhieu();
+
+    const payload = taoPayloadCCN2V1TuKiemNhap();
+
+    if (!payload) {
+      alert("Không có mã sản phẩm thừa để tạo phiếu CCN2V1.");
+      return;
+    }
+
+    try {
+      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+    } catch (err) {
+      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
+      alert("Không lưu được dữ liệu tạm để chuyển sang trang CCN2V1.");
+      return;
+    }
+
+    const url = "https://banle-js.vercel.app/ccn2v1cs2.html";
+    window.open(url, "_blank");
+
+    alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
+  }
+
   // =========================
   // BUTTONS
   // =========================
@@ -1256,7 +1363,7 @@
       );
 
       const nhanvienxuat = dsNhanVienXuat.join(" ; ");
-      
+
       const { data: tonTaiCu, error: errCheck } = await window.supabase
         .from("kiem_nhap_kho")
         .select("id, so_hd_kiemnhap")
@@ -1380,6 +1487,15 @@
         e.preventDefault();
         await luuPhieuKiemNhapKho();
       });
+
+      const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
+    if (btnTaoPhieuCCN2V1) {
+      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
+        e.preventDefault();
+        moTrangCCN2V1TuHangThua();
+      });
+    }
+
     }
   }
 
@@ -1392,6 +1508,8 @@
     kiemTraPhieu,
     themDongNhapBenTrai,
     getState,
+    moTrangCCN2V1TuHangThua,
+    
     luuPhieuKiemNhapKho,
 
     setXuatData(dataMap) {
