@@ -347,7 +347,7 @@
     return set;
   }
 
-  async function taoSoPhieuMoi() {
+    async function taoSoPhieuMoi() {
     const prefix = String(CFG.soPhieuPrefix || "kiemnhap2v1cs1_").trim();
 
     if (!window.supabase) {
@@ -357,29 +357,28 @@
     const { data, error } = await window.supabase
       .from("kiem_nhap_kho")
       .select("so_hd_kiemnhap")
-      .ilike("so_hd_kiemnhap", `${prefix}%`)
-      .order("so_hd_kiemnhap", { ascending: false })
-      .limit(1);
+      .ilike("so_hd_kiemnhap", `${prefix}%`);
 
     if (error) {
       console.error("[KNK] taoSoPhieuMoi error:", error);
       return `${prefix}00001`;
     }
 
-    const last = String(data?.[0]?.so_hd_kiemnhap || "").trim();
+    let maxSo = 0;
 
-    if (!last.startsWith(prefix)) {
-      return `${prefix}00001`;
-    }
+    (data || []).forEach((row) => {
+      const so = String(row.so_hd_kiemnhap || "").trim();
+      if (!so.startsWith(prefix)) return;
 
-    const soCuoi = last.slice(prefix.length);
-    const n = Number(soCuoi);
+      const tail = so.slice(prefix.length);
+      const n = Number(tail);
 
-    if (!Number.isFinite(n) || n < 0) {
-      return `${prefix}00001`;
-    }
+      if (Number.isFinite(n) && n > maxSo) {
+        maxSo = n;
+      }
+    });
 
-    const next = String(n + 1).padStart(5, "0");
+    const next = String(maxSo + 1).padStart(5, "0");
     return `${prefix}${next}`;
   }
 
@@ -866,7 +865,7 @@
     }
 
     renderBangKetQua();
-
+    hideSizePopup();
     if (maspEl) maspEl.focus();
   }
 
@@ -1703,14 +1702,11 @@
           alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết lệch: " + (errLech.message || ""));
           return;
         }
-      }
-
-      if (hdStateEl) {
-        hdStateEl.value = "xem";
-        hdStateEl.setAttribute("data-state", "xem");
-      }
+      }      
 
       alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
+      await resetPhieu();
+
     } catch (err) {
       console.error("[luuPhieuKiemNhapKho] exception:", err);
       alert("Có lỗi khi lưu dữ liệu kiểm nhập kho.");
@@ -1747,6 +1743,14 @@
         kiemTraPhieu();
       });
     });
+
+    const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
+    if (btnTaoPhieuCCN2V1) {
+      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
+        e.preventDefault();
+        moTrangCCN2V1TuHangThua();
+      });
+    }
 
     const btnCopy = byId("btn-copy-nhap");
     if (btnCopy) {
