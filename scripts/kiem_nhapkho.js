@@ -1155,38 +1155,18 @@
     return Object.values(out);
   }
 
-  function layDanhSachHangThuaDeTaoCCN2V1() {
-    const state = getState();
-    const nhapMap = state.nhap || {};
-    const xuatMap = state.xuat || {};
+    function layDanhSachHangThuaDeTaoCCN2V1() {
+    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+    const chiTietLech = thongTinTong?.chiTietLech || [];
 
-    const rowsThua = [];
-
-    const allKeys = new Set([
-      ...Object.keys(nhapMap),
-      ...Object.keys(xuatMap)
-    ]);
-
-    for (const key of allKeys) {
-      const nhap = nhapMap[key];
-      const xuat = xuatMap[key];
-
-      const masp = splitKey(key).masp;
-      const size = splitKey(key).size || "0";
-
-      const slNhap = normalizeNumber(nhap?.sl || 0);
-      const slXuat = normalizeNumber(xuat?.sl || 0);
-
-      if (!masp) continue;
-
-      if (slNhap > slXuat) {
-        rowsThua.push({
-          masp,
-          size,
-          sl: slNhap - slXuat
-        });
-      }
-    }
+    const rowsThua = chiTietLech
+      .filter(row => String(row.trangthai_nhan || "").trim().toLowerCase() === "thua")
+      .map(row => ({
+        masp: normalizeMasp(row.masp),
+        size: normalizeSize(row.size || "0"),
+        sl: normalizeNumber(row.sl_lech || 0)
+      }))
+      .filter(row => row.masp && row.size && row.sl > 0);
 
     return groupByMaspForTransfer(rowsThua);
   }
@@ -1213,6 +1193,7 @@
     kiemTraPhieu();
 
     const payload = taoPayloadCCN2V1TuKiemNhap();
+    console.log("[KNK] payload CCN2V1 =", payload);
 
     if (!payload) {
       alert("Không có mã sản phẩm thừa để tạo phiếu CCN2V1.");
