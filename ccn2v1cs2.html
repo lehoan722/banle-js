@@ -1133,6 +1133,11 @@
                     return;
                 }
 
+                const ghichuEl = document.getElementById("ghichu");
+                if (ghichuEl && pf.note) {
+                    ghichuEl.value = String(pf.note || "").trim();
+                }
+
                 const rows = [];
                 for (const it of pf.items || []) {
                     const masp = String(it.masp || '').toUpperCase();
