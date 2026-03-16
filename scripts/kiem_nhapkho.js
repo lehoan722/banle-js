@@ -1019,6 +1019,297 @@ function themNhanhKhongCanSize() {
   // =========================
   // BUTTONS
   // =========================
+
+    // =========================
+  // SAVE KIEM NHAP KHO
+  // =========================
+
+  function tinhTongSoLuongTheoMap(mapObj) {
+    return Object.values(mapObj || {}).reduce((sum, row) => {
+      return sum + normalizeNumber(row?.sl || 0);
+    }, 0);
+  }
+
+  function groupRowsByMasp(mapObj) {
+    const out = {};
+
+    Object.keys(mapObj || {}).forEach((key) => {
+      const row = mapObj[key];
+      if (!row) return;
+
+      const masp = normalizeMasp(row.masp);
+      const size = normalizeSize(row.size);
+      const sl = normalizeNumber(row.sl);
+
+      if (!masp) return;
+
+      if (!out[masp]) {
+        out[masp] = [];
+      }
+
+      out[masp].push({
+        masp,
+        size,
+        sl,
+        key
+      });
+    });
+
+    return out;
+  }
+
+  function tinhTongTheoMasp(groupMap) {
+    const out = {};
+    Object.keys(groupMap || {}).forEach((masp) => {
+      out[masp] = (groupMap[masp] || []).reduce((sum, row) => sum + normalizeNumber(row.sl), 0);
+    });
+    return out;
+  }
+
+  function xayDungDuLieuTongVaChiTietLech() {
+    const state = getState();
+    const nhapMap = state.nhap || {};
+    const xuatMap = state.xuat || {};
+    const ketQuaMap = state.ketQua || {};
+
+    const nhapGroup = groupRowsByMasp(nhapMap);
+    const xuatGroup = groupRowsByMasp(xuatMap);
+
+    const tongNhapTheoMasp = tinhTongTheoMasp(nhapGroup);
+    const tongXuatTheoMasp = tinhTongTheoMasp(xuatGroup);
+
+    const allMasps = Array.from(new Set([
+      ...Object.keys(nhapGroup),
+      ...Object.keys(xuatGroup)
+    ])).sort();
+
+    const chiTietLech = [];
+    let tongSlLechThieu = 0;
+    let tongSlLechThua = 0;
+
+    for (const masp of allMasps) {
+      const nhapRows = nhapGroup[masp] || [];
+      const xuatRows = xuatGroup[masp] || [];
+
+      const hasRealSizeNhap = nhapRows.some(r => {
+        const s = normalizeSize(r.size);
+        return s && s !== "0";
+      });
+
+      if (hasRealSizeNhap) {
+        const allKeys = new Set([
+          ...nhapRows.map(r => r.key),
+          ...xuatRows.map(r => r.key)
+        ]);
+
+        for (const key of allKeys) {
+          const kq = ketQuaMap[key];
+          if (!kq || kq.trangthai === "OK") continue;
+
+          const nhap = nhapMap[key];
+          const xuat = xuatMap[key];
+
+          const slNhap = normalizeNumber(nhap?.sl || 0);
+          const slXuat = normalizeNumber(xuat?.sl || 0);
+          const slLech = Math.abs(slNhap - slXuat);
+          const size = splitKey(key).size || "0";
+
+          let trangthai_nhan = "lech";
+          if (kq.trangthai === "THIEU") {
+            trangthai_nhan = "thieu";
+            tongSlLechThieu += slLech;
+          } else if (kq.trangthai === "THUA") {
+            trangthai_nhan = "thua";
+            tongSlLechThua += slLech;
+          }
+
+          chiTietLech.push({
+            masp,
+            size,
+            trangthai_nhan,
+            sl_xuat: slXuat,
+            sl_nhan: slNhap,
+            sl_lech: slLech,
+            chi_tiet: `${slNhap}/${slXuat}`
+          });
+        }
+      } else {
+        const keyTong = makeKey(masp, "0");
+        const kq = ketQuaMap[keyTong];
+        if (!kq || kq.trangthai === "OK") continue;
+
+        const slNhap = normalizeNumber(tongNhapTheoMasp[masp] || 0);
+        const slXuat = normalizeNumber(tongXuatTheoMasp[masp] || 0);
+        const slLech = Math.abs(slNhap - slXuat);
+
+        let trangthai_nhan = "lech";
+        if (kq.trangthai === "THIEU") {
+          trangthai_nhan = "thieu";
+          tongSlLechThieu += slLech;
+        } else if (kq.trangthai === "THUA") {
+          trangthai_nhan = "thua";
+          tongSlLechThua += slLech;
+        }
+
+        chiTietLech.push({
+          masp,
+          size: "0",
+          trangthai_nhan,
+          sl_xuat: slXuat,
+          sl_nhan: slNhap,
+          sl_lech: slLech,
+          chi_tiet: `${slNhap}/${slXuat}`
+        });
+      }
+    }
+
+    return {
+      tong_so_mat_hang: allMasps.length,
+      tong_so_luong_xuat: tinhTongSoLuongTheoMap(xuatMap),
+      tong_so_luong_nhan: tinhTongSoLuongTheoMap(nhapMap),
+      so_ma_lech: chiTietLech.length,
+      tong_sl_lech_thieu: tongSlLechThieu,
+      tong_sl_lech_thua: tongSlLechThua,
+      ket_qua_chung: chiTietLech.length > 0 ? "lech" : "ok",
+      chiTietLech
+    };
+  }
+
+  async function luuPhieuKiemNhapKho() {
+    try {
+      if (!window.supabase) {
+        alert("Không tìm thấy kết nối Supabase.");
+        return;
+      }
+
+      if (window.dangLuuKiemNhapKho) return;
+      window.dangLuuKiemNhapKho = true;
+
+      const sohdEl = byId("sohd");
+      const ngayEl = byId("ngay");
+      const tennvEl = byId("tennv");
+      const ghichuEl = byId("ghichu_top");
+      const hdStateEl = byId("hd_state");
+
+      const so_hd_kiemnhap = String(sohdEl?.value || "").trim();
+      const ngay_kiem = String(ngayEl?.value || "").trim();
+      const nhanvienkiem = String(tennvEl?.value || "").trim();
+      const ghi_chu = String(ghichuEl?.value || "").trim();
+
+      if (!so_hd_kiemnhap) {
+        alert("Chưa có số phiếu kiểm nhập.");
+        sohdEl?.focus();
+        return;
+      }
+
+      if (!ngay_kiem) {
+        alert("Chưa có ngày kiểm.");
+        ngayEl?.focus();
+        return;
+      }
+
+      if (!nhanvienkiem) {
+        alert("Chưa có nhân viên kiểm.");
+        return;
+      }
+
+      const state = getState();
+
+      if (!state.dsHoaDonNguon || state.dsHoaDonNguon.length === 0) {
+        alert("Bạn chưa nạp hóa đơn nguồn.");
+        return;
+      }
+
+      docLaiNhapTuBangHTML();
+      kiemTraPhieu();
+
+      const stateSauKiem = getState();
+
+      if (!stateSauKiem.nhap || Object.keys(stateSauKiem.nhap).length === 0) {
+        alert("Chưa có dữ liệu nhập để lưu.");
+        return;
+      }
+
+      const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+
+      const sohdccn = (stateSauKiem.dsHoaDonNguon || []).join(" ; ");
+
+      let nhanvienxuat = "";
+      if (stateSauKiem.dsHoaDonNguon.length === 1) {
+        nhanvienxuat = "";
+      }
+
+      const rowTong = {
+        so_hd_kiemnhap,
+        ngay_kiem,
+        nhanvienkiem,
+        sohdccn,
+        nhanvienxuat,
+        tu_co_so: CFG.fromBranch || "",
+        den_co_so: CFG.toBranch || "",
+        tong_so_mat_hang: thongTinTong.tong_so_mat_hang,
+        tong_so_luong_xuat: thongTinTong.tong_so_luong_xuat,
+        tong_so_luong_nhan: thongTinTong.tong_so_luong_nhan,
+        so_ma_lech: thongTinTong.so_ma_lech,
+        tong_sl_lech_thieu: thongTinTong.tong_sl_lech_thieu,
+        tong_sl_lech_thua: thongTinTong.tong_sl_lech_thua,
+        ket_qua_chung: thongTinTong.ket_qua_chung,
+        ghi_chu
+      };
+
+      const { data: insertedTong, error: errTong } = await window.supabase
+        .from("kiem_nhap_kho")
+        .insert([rowTong])
+        .select()
+        .single();
+
+      if (errTong) {
+        console.error("[kiem_nhap_kho] insert tong error:", errTong);
+        alert("Lỗi khi lưu bảng kiem_nhap_kho: " + (errTong.message || ""));
+        return;
+      }
+
+      if (thongTinTong.chiTietLech.length > 0) {
+        const rowsLech = thongTinTong.chiTietLech.map((row) => ({
+          kiem_nhap_id: insertedTong.id,
+          so_hd_kiemnhap,
+          sohdccn,
+          masp: row.masp,
+          tenhang: "",
+          size: row.size,
+          trangthai_nhan: row.trangthai_nhan,
+          sl_xuat: row.sl_xuat,
+          sl_nhan: row.sl_nhan,
+          sl_lech: row.sl_lech,
+          chi_tiet: row.chi_tiet,
+          ghi_chu: null
+        }));
+
+        const { error: errLech } = await window.supabase
+          .from("kiem_nhap_kho_chitiet_lech")
+          .insert(rowsLech);
+
+        if (errLech) {
+          console.error("[kiem_nhap_kho_chitiet_lech] insert error:", errLech);
+          alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết lệch: " + (errLech.message || ""));
+          return;
+        }
+      }
+
+      if (hdStateEl) {
+        hdStateEl.value = "xem";
+        hdStateEl.setAttribute("data-state", "xem");
+      }
+
+      alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
+    } catch (err) {
+      console.error("[luuPhieuKiemNhapKho] exception:", err);
+      alert("Có lỗi khi lưu dữ liệu kiểm nhập kho.");
+    } finally {
+      window.dangLuuKiemNhapKho = false;
+    }
+  }
+
   function bindButtons() {
     const btnThem = byId("them");
     if (btnThem) {
@@ -1047,6 +1338,14 @@ function themNhanhKhongCanSize() {
         kiemTraPhieu();
       });
     });
+
+    const btnLuu = byId("btn-luu");
+    if (btnLuu) {
+      btnLuu.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await luuPhieuKiemNhapKho();
+      });
+    }
   }
 
   // =========================
