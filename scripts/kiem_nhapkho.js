@@ -347,7 +347,7 @@
     return set;
   }
 
-    async function taoSoPhieuMoi() {
+  async function taoSoPhieuMoi() {
     const prefix = String(CFG.soPhieuPrefix || "kiemnhap2v1cs1_").trim();
 
     if (!window.supabase) {
@@ -1400,6 +1400,26 @@
 
     state.selectedMasp = "";
     renderBangKetQua();
+
+    const maspEl = byId("masp");
+    const sizeEl = byId("size");
+    const slEl = byId("soluong");
+
+    if (maspEl) {
+      maspEl.value = masp;
+      maspEl.focus();
+
+      setTimeout(() => {
+        try {
+          maspEl.select();
+        } catch (err) { }
+      }, 0);
+    }
+
+    if (sizeEl) sizeEl.value = "";
+    if (slEl) slEl.value = "1";
+
+    hideSizePopup();
   }
 
   // =========================
@@ -1702,7 +1722,7 @@
           alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết lệch: " + (errLech.message || ""));
           return;
         }
-      }      
+      }
 
       alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
       await resetPhieu();
