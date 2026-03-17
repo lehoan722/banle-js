@@ -1161,6 +1161,359 @@
     });
   }
 
+  function layDanhSachMaspDangNhap() {
+    const state = getState();
+    const ds = Object.values(state.nhap || {})
+      .map(r => normalizeMasp(r.masp))
+      .filter(Boolean);
+
+    return [...new Set(ds)];
+  }
+
+  function batDauNgay(dateObj) {
+    const d = new Date(dateObj);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function truNgay(dateObj, soNgay) {
+    const d = new Date(dateObj);
+    d.setDate(d.getDate() - soNgay);
+    return d;
+  }
+
+  function toIsoLocal(dateObj) {
+    const d = new Date(dateObj);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
+  }
+
+  async function layHoaDonNguonUngVienTheoMasp(dsMaspNhap) {
+    if (!window.supabase || !Array.isArray(dsMaspNhap) || !dsMaspNhap.length) {
+      return { dsHd: [], ctRows: [] };
+    }
+
+    const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
+
+    const now = new Date();
+    const start = batDauNgay(truNgay(now, 1));
+    const end = now;
+
+    // 1) lấy các hóa đơn nguồn trong khoảng thời gian cho phép
+    const { data: dsHd, error: errHd } = await window.supabase
+      .from("hoadon_banle")
+      .select("sohd, ngay, created_at, diadiem, tennv, manv")
+      .ilike("sohd", `${prefixNguon}%`)
+      .gte("created_at", toIsoLocal(start))
+      .lte("created_at", toIsoLocal(end))
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (errHd) {
+      console.error("[KNK] layHoaDonNguonUngVienTheoMasp - dsHd error:", errHd);
+      throw new Error("Lỗi khi lấy danh sách hóa đơn nguồn.");
+    }
+
+    if (!dsHd || !dsHd.length) {
+      return { dsHd: [], ctRows: [] };
+    }
+
+    const dsSoHd = dsHd
+      .map(x => String(x.sohd || "").trim())
+      .filter(Boolean);
+
+    if (!dsSoHd.length) {
+      return { dsHd: [], ctRows: [] };
+    }
+
+    // 2) lấy toàn bộ chi tiết của các hóa đơn đó
+    const { data: ctRows, error: errCt } = await window.supabase
+      .from("ct_hoadon_banle")
+      .select("sohd, masp, size, soluong")
+      .in("sohd", dsSoHd)
+      .order("id", { ascending: true });
+
+    if (errCt) {
+      console.error("[KNK] layHoaDonNguonUngVienTheoMasp - ctRows error:", errCt);
+      throw new Error("Lỗi khi lấy chi tiết hóa đơn nguồn.");
+    }
+
+    return {
+      dsHd: dsHd || [],
+      ctRows: ctRows || []
+    };
+  }
+
+  function tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem = new Map()) {
+    const setNhap = new Set((dsMaspNhap || []).map(normalizeMasp).filter(Boolean));
+    const nhomCtTheoSoHd = {};
+
+    (ctRows || []).forEach((row) => {
+      const sohd = String(row.sohd || "").trim();
+      if (!sohd) return;
+      if (!nhomCtTheoSoHd[sohd]) nhomCtTheoSoHd[sohd] = [];
+      nhomCtTheoSoHd[sohd].push(row);
+    });
+
+    const ketQua = [];
+
+    (dsHd || []).forEach((hd) => {
+      const sohd = String(hd.sohd || "").trim();
+      if (!sohd) return;
+
+      const infoDaKiem = mapDaKiem.get(sohd);
+      if (infoDaKiem) return; // bỏ qua hóa đơn đã kiểm
+
+      const rows = nhomCtTheoSoHd[sohd] || [];
+      if (!rows.length) return;
+
+      const maspTrongHoaDon = [...new Set(
+        rows.map(r => normalizeMasp(r.masp)).filter(Boolean)
+      )];
+
+      const dsMaspTrung = maspTrongHoaDon.filter(masp => setNhap.has(masp));
+      const soMaTrung = dsMaspTrung.length;
+      if (soMaTrung <= 0) return;
+
+      const tongMaNhap = setNhap.size || 1;
+      const tongMaHoaDon = maspTrongHoaDon.length || 1;
+
+      const tyLeTheoNhap = soMaTrung / tongMaNhap;
+      const tyLeTheoHoaDon = soMaTrung / tongMaHoaDon;
+
+      const createdAt = hd.created_at || hd.ngay || null;
+      let diemThoiGian = 0;
+      if (createdAt) {
+        const t = new Date(createdAt).getTime();
+        if (Number.isFinite(t)) {
+          const ageHours = Math.max(0, (Date.now() - t) / 3600000);
+          diemThoiGian = Math.max(0, 10 - Math.min(10, ageHours / 3));
+        }
+      }
+
+      const score =
+        soMaTrung * 10 +
+        tyLeTheoNhap * 40 +
+        tyLeTheoHoaDon * 40 +
+        diemThoiGian;
+
+      ketQua.push({
+        sohd,
+        ngay: hd.ngay || null,
+        created_at: hd.created_at || null,
+        diadiem: String(hd.diadiem || "").trim(),
+        manv: String(hd.manv || "").trim(),
+        tennv: String(hd.tennv || "").trim(),
+        soMaTrung,
+        tongMaNhap,
+        tongMaHoaDon,
+        tyLeTheoNhap,
+        tyLeTheoHoaDon,
+        score,
+        dsMaspTrung,
+        autoChecked:
+          soMaTrung >= 2 ||
+          tyLeTheoNhap >= 0.3 ||
+          tyLeTheoHoaDon >= 0.5
+      });
+    });
+
+    ketQua.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+    });
+
+    return ketQua;
+  }
+
+  async function moPopupChonHoaDonNguonTheoMasp(dsDeXuat) {
+    return new Promise((resolve) => {
+      const popup = byId("popupChonHoaDonNguon");
+      const box = byId("dsHoaDonNguonPopup");
+      const btnDong = byId("btnDongPopupHoaDonNguon");
+      const btnOk = byId("btnXacNhanHoaDonNguon");
+
+      if (!popup || !box || !btnDong || !btnOk) {
+        resolve(null);
+        return;
+      }
+
+      box.innerHTML = "";
+
+      if (!dsDeXuat || !dsDeXuat.length) {
+        box.innerHTML = `<div style="padding:10px; color:#b00020; font-weight:bold;">
+          Không tìm thấy hóa đơn CCN phù hợp theo các mã sản phẩm đã nhập.
+        </div>`;
+      } else {
+        dsDeXuat.forEach((hd) => {
+          const row = document.createElement("label");
+          row.style.display = "block";
+          row.style.padding = "8px";
+          row.style.borderBottom = "1px solid #eee";
+          row.style.cursor = "pointer";
+
+          const ngayGio = formatDateTimeVN(hd.created_at || hd.ngay);
+          const dsMau = (hd.dsMaspTrung || []).slice(0, 6).join(", ");
+          const checked = hd.autoChecked ? "checked" : "";
+
+          row.innerHTML = `
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <input type="checkbox" class="chk-hd-nguon-theo-masp" value="${escapeHtml(hd.sohd)}" ${checked}>
+              <div style="flex:1;">
+                <div style="font-weight:bold; color:#003366;">
+                  ${escapeHtml(hd.sohd)}
+                </div>
+                <div style="font-size:13px; color:#333; margin-top:2px;">
+                  ${escapeHtml(ngayGio)} | ${escapeHtml(hd.diadiem || "")}
+                </div>
+                <div style="font-size:13px; margin-top:3px;">
+                  Trùng: <b style="color:#c62828;">${hd.soMaTrung}</b> mã
+                  | Theo nhập: <b>${Math.round((hd.tyLeTheoNhap || 0) * 100)}%</b>
+                  | Theo HĐ: <b>${Math.round((hd.tyLeTheoHoaDon || 0) * 100)}%</b>
+                  | Điểm: <b>${Number(hd.score || 0).toFixed(1)}</b>
+                </div>
+                <div style="font-size:12px; color:#555; margin-top:3px;">
+                  Mã trùng: ${escapeHtml(dsMau || "(không có)")}
+                </div>
+              </div>
+            </div>
+          `;
+
+          if (hd.autoChecked) {
+            row.style.background = "#eef8ee";
+          }
+
+          box.appendChild(row);
+        });
+      }
+
+      popup.style.display = "block";
+
+      const closePopup = (result) => {
+        popup.style.display = "none";
+        btnDong.onclick = null;
+        btnOk.onclick = null;
+        resolve(result);
+      };
+
+      btnDong.onclick = () => closePopup(null);
+
+      btnOk.onclick = () => {
+        const checked = Array.from(
+          box.querySelectorAll(".chk-hd-nguon-theo-masp:checked")
+        ).map(x => String(x.value || "").trim()).filter(Boolean);
+
+        if (!checked.length) {
+          alert("Vui lòng chọn ít nhất 1 hóa đơn.");
+          return;
+        }
+
+        closePopup(checked);
+      };
+    });
+  }
+
+  async function napHoaDonNguonTheoMasp() {
+    try {
+      if (!window.supabase) {
+        alert("Không tìm thấy kết nối Supabase.");
+        return;
+      }
+
+      // đảm bảo state.nhap đang là dữ liệu mới nhất trên bảng
+      if (typeof docLaiNhapTuBangHTML === "function") {
+        docLaiNhapTuBangHTML();
+      }
+
+      const dsMaspNhap = layDanhSachMaspDangNhap();
+
+      if (!dsMaspNhap.length) {
+        alert("Bạn cần nhập dữ liệu kiểm bên trái trước rồi mới nạp CCN theo mã sản phẩm.");
+        return;
+      }
+
+      const mapDaKiem = await layMapHoaDonDaKiem();
+      const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
+
+      if (!dsHd.length || !ctRows.length) {
+        alert("Không tìm thấy hóa đơn CCN phù hợp trong hôm qua và hôm nay.");
+        return;
+      }
+
+      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem);
+
+      if (!dsDeXuat.length) {
+        alert("Không tìm thấy hóa đơn CCN chưa kiểm nào có mã sản phẩm trùng với phần nhập.");
+        return;
+      }
+
+      const dsSoHdChon = await moPopupChonHoaDonNguonTheoMasp(dsDeXuat);
+      if (!dsSoHdChon || !dsSoHdChon.length) return;
+
+      // lấy toàn bộ hóa đơn đã chọn, không chỉ lấy mã trùng
+      const dsHoaDonNguonInfo = dsHd
+        .filter(hd => dsSoHdChon.includes(String(hd.sohd || "").trim()))
+        .map(hd => ({
+          sohd: String(hd.sohd || "").trim(),
+          ngay: hd.ngay || null,
+          diadiem: hd.diadiem || "",
+          manv: String(hd.manv || "").trim(),
+          tennv: String(hd.tennv || "").trim()
+        }));
+
+      const ctRowsChon = (ctRows || []).filter(row =>
+        dsSoHdChon.includes(String(row.sohd || "").trim())
+      );
+
+      if (!ctRowsChon.length) {
+        alert("Các hóa đơn đã chọn không có chi tiết.");
+        return;
+      }
+
+      const xuatMap = {};
+      const xuatOrder = [];
+
+      for (const row of ctRowsChon) {
+        const masp = normalizeMasp(row.masp);
+        const size = normalizeSize(row.size);
+        const sl = normalizeNumber(row.soluong);
+
+        if (!masp || !size || sl <= 0) continue;
+
+        if (!xuatOrder.includes(masp)) {
+          xuatOrder.push(masp);
+        }
+
+        const key = makeKey(masp, size);
+
+        if (!xuatMap[key]) {
+          xuatMap[key] = { masp, size, sl };
+        } else {
+          xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+        }
+      }
+
+      const state = getState();
+      state.dsHoaDonNguon = dsSoHdChon;
+      state.dsHoaDonNguonInfo = dsHoaDonNguonInfo;
+
+      const ghichuEl = byId("ghichu_top");
+      if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
+
+      window.NhapKiemKho.setXuatData(xuatMap, xuatOrder);
+
+      alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn theo mã sản phẩm.`);
+    } catch (err) {
+      console.error("[nhapkiemkho] napHoaDonNguonTheoMasp exception:", err);
+      alert(err?.message || "Có lỗi khi nạp CCN theo mã sản phẩm.");
+    }
+  }
+
   async function napHoaDonNguonPlaceholder() {
     try {
       if (!window.supabase) {
@@ -1577,7 +1930,7 @@
       return;
     }
 
-    // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`);
+    // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`); 
     // if (!ok) return;
 
     Object.keys(state.nhap || {}).forEach((key) => {
@@ -2019,6 +2372,16 @@
         await resetPhieu();
       });
     }
+
+    const btnNapTheoMasp1 = byId("btnNapHoaDonCCNTheoMasp");
+    const btnNapTheoMasp2 = byId("btnNapHoaDonCCNTheoMasp_footer");
+    [btnNapTheoMasp1, btnNapTheoMasp2].forEach((btn) => {
+      if (!btn) return;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        napHoaDonNguonTheoMasp();
+      });
+    });
 
     const btnNap1 = byId("btnNapHoaDonCCN");
     const btnNap2 = byId("btnNapHoaDonCCN_footer");
