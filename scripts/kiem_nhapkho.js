@@ -1948,110 +1948,115 @@
   }
 
   async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
-  if (!window.supabase) {
-    alert("Không tìm thấy kết nối Supabase.");
-    return;
-  }
+    if (!window.supabase) {
+      alert("Không tìm thấy kết nối Supabase.");
+      return;
+    }
 
-  const sohd = String(soHdKiemNhap || "").trim();
-  if (!sohd) {
-    alert("Chưa có số phiếu kiểm nhập.");
-    return;
-  }
+    const sohd = String(soHdKiemNhap || "").trim();
+    if (!sohd) {
+      alert("Chưa có số phiếu kiểm nhập.");
+      return;
+    }
 
-  const { data: phieuTong, error: errTong } = await window.supabase
-    .from("kiem_nhap_kho")
-    .select("*")
-    .eq("so_hd_kiemnhap", sohd)
-    .maybeSingle();
+    const { data: phieuTong, error: errTong } = await window.supabase
+      .from("kiem_nhap_kho")
+      .select("*")
+      .eq("so_hd_kiemnhap", sohd)
+      .maybeSingle();
 
-  if (errTong) {
-    console.error(errTong);
-    alert("Lỗi khi đọc phiếu kiểm nhập.");
-    return;
-  }
+    if (errTong) {
+      console.error(errTong);
+      alert("Lỗi khi đọc phiếu kiểm nhập.");
+      return;
+    }
 
-  if (!phieuTong) {
-    alert("Không tìm thấy phiếu kiểm nhập.");
-    return;
-  }
+    if (!phieuTong) {
+      alert("Không tìm thấy phiếu kiểm nhập.");
+      return;
+    }
 
-  const { data: rows, error: errRows } = await window.supabase
-    .from("kiem_nhap_kho_chi_tiet_hoa_don")
-    .select("*")
-    .eq("so_hd_kiemnhap", sohd)
-    .order("sort_order", { ascending: true });
+    const { data: rows, error: errRows } = await window.supabase
+      .from("kiem_nhap_kho_chi_tiet_hoa_don")
+      .select("*")
+      .eq("so_hd_kiemnhap", sohd)
+      .order("sort_order", { ascending: true });
 
-  if (errRows) {
-    console.error(errRows);
-    alert("Lỗi khi đọc chi tiết hóa đơn.");
-    return;
-  }
+    if (errRows) {
+      console.error(errRows);
+      alert("Lỗi khi đọc chi tiết hóa đơn.");
+      return;
+    }
 
-  const state = getState();
-  state.nhap = {};
-  state.xuat = {};
-  state.ketQua = {};
-  state.dsHoaDonNguon = String(phieuTong.sohdccn || "")
-    .split(";")
-    .map(x => String(x || "").trim())
-    .filter(Boolean);
+    const state = getState();
+    state.nhap = {};
+    state.xuat = {};
+    state.ketQua = {};
+    state.dsHoaDonNguon = String(phieuTong.sohdccn || "")
+      .split(";")
+      .map(x => String(x || "").trim())
+      .filter(Boolean);
 
-  byId("sohd").value = phieuTong.so_hd_kiemnhap || "";
-  byId("ngay").value = phieuTong.ngay_kiem || "";
-  byId("ghichu_top").value = phieuTong.sohdccn || "";
+    byId("sohd").value = phieuTong.so_hd_kiemnhap || "";
+    byId("ngay").value = phieuTong.ngay_kiem || "";
+    byId("ghichu_top").value = phieuTong.sohdccn || "";
 
-  const hdState = byId("hd_state");
-  if (hdState) {
-    hdState.value = "xem";
-    hdState.setAttribute("data-state", "xem");
-  }
+    const tennvEl = byId("tennv");
+    if (tennvEl) {
+      tennvEl.value = phieuTong.nhanvienkiem || "";
+    }
 
-  (rows || []).forEach((row) => {
-    const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
+    const hdState = byId("hd_state");
+    if (hdState) {
+      hdState.value = "xem";
+      hdState.setAttribute("data-state", "xem");
+    }
 
-    const nhapItems = parseSizeSlText(row.size_sl_nhap || "");
-    if (nhapItems.length > 0) {
-      nhapItems.forEach(item => {
-        const key = makeKey(masp, item.size);
+    (rows || []).forEach((row) => {
+      const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
+
+      const nhapItems = parseSizeSlText(row.size_sl_nhap || "");
+      if (nhapItems.length > 0) {
+        nhapItems.forEach(item => {
+          const key = makeKey(masp, item.size);
+          state.nhap[key] = {
+            masp,
+            size: item.size,
+            sl: item.sl
+          };
+        });
+      } else if (normalizeNumber(row.tongsl_nhap) > 0) {
+        const key = makeKey(masp, "0");
         state.nhap[key] = {
           masp,
-          size: item.size,
-          sl: item.sl
+          size: "0",
+          sl: normalizeNumber(row.tongsl_nhap)
         };
-      });
-    } else if (normalizeNumber(row.tongsl_nhap) > 0) {
-      const key = makeKey(masp, "0");
-      state.nhap[key] = {
-        masp,
-        size: "0",
-        sl: normalizeNumber(row.tongsl_nhap)
-      };
-    }
+      }
 
-    const xuatItems = parseSizeSlText(row.size_sl_xuat || "");
-    if (xuatItems.length > 0) {
-      xuatItems.forEach(item => {
-        const key = makeKey(masp, item.size);
+      const xuatItems = parseSizeSlText(row.size_sl_xuat || "");
+      if (xuatItems.length > 0) {
+        xuatItems.forEach(item => {
+          const key = makeKey(masp, item.size);
+          state.xuat[key] = {
+            masp,
+            size: item.size,
+            sl: item.sl
+          };
+        });
+      } else if (normalizeNumber(row.tongsl_xuat) > 0) {
+        const key = makeKey(masp, "0");
         state.xuat[key] = {
           masp,
-          size: item.size,
-          sl: item.sl
+          size: "0",
+          sl: normalizeNumber(row.tongsl_xuat)
         };
-      });
-    } else if (normalizeNumber(row.tongsl_xuat) > 0) {
-      const key = makeKey(masp, "0");
-      state.xuat[key] = {
-        masp,
-        size: "0",
-        sl: normalizeNumber(row.tongsl_xuat)
-      };
-    }
-  });
+      }
+    });
 
-  kiemTraPhieu();
-  renderBangKetQua();
-}
+    renderBangKetQua();
+    kiemTraPhieu();
+  }
 
   // =========================
   // API công khai
