@@ -1126,7 +1126,7 @@
     }
   }
 
-   function taoGhiChuPhieuChuyenTuKiemNhap() {
+  function taoGhiChuPhieuChuyenTuKiemNhap() {
     const state = getState();
     const soHdKiemNhap = String(byId("sohd")?.value || "").trim();
     const dsNguon = (state.dsHoaDonNguon || []).join(" ; ");
@@ -1167,7 +1167,7 @@
     return Object.values(out);
   }
 
-    function layDanhSachHangThuaDeTaoCCN2V1() {
+  function layDanhSachHangThuaDeTaoCCN2V1() {
     const thongTinTong = xayDungDuLieuTongVaChiTietLech();
     const chiTietLech = thongTinTong?.chiTietLech || [];
 
@@ -1183,7 +1183,7 @@
     return groupByMaspForTransfer(rowsThua);
   }
 
-    function layDanhSachHangThieuDeTaoCCN1V2() {
+  function layDanhSachHangThieuDeTaoCCN1V2() {
     const thongTinTong = xayDungDuLieuTongVaChiTietLech();
     const chiTietLech = thongTinTong?.chiTietLech || [];
 
@@ -1199,7 +1199,7 @@
     return groupByMaspForTransfer(rowsThieu);
   }
 
-    function taoPayloadCCN1V2TuKiemNhap() {
+  function taoPayloadCCN1V2TuKiemNhap() {
     const state = getState();
     const items = layDanhSachHangThieuDeTaoCCN1V2();
 
@@ -1216,7 +1216,7 @@
     };
   }
 
-    function moTrangCCN1V2TuHangThieu() {
+  function moTrangCCN1V2TuHangThieu() {
     docLaiNhapTuBangHTML();
     kiemTraPhieu();
 
@@ -1241,7 +1241,7 @@
     alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
   }
 
-    function taoPayloadCCN2V1TuKiemNhap() {
+  function taoPayloadCCN2V1TuKiemNhap() {
     const state = getState();
     const items = layDanhSachHangThuaDeTaoCCN2V1();
 
@@ -1632,6 +1632,66 @@
     };
   }
 
+  function buildChiTietHoaDonRows(kiemNhapId, so_hd_kiemnhap, sohdccn, ngay_kiem, nhanvienkiem) {
+    const state = getState();
+    const nhapMap = state.nhap || {};
+    const xuatMap = state.xuat || {};
+    const ketQuaMap = state.ketQua || {};
+
+    const nhapGroupMap = groupByMasp(nhapMap);
+    const xuatGroupMap = groupByMasp(xuatMap);
+
+    const allMasps = Array.from(
+      new Set([
+        ...Object.keys(nhapGroupMap),
+        ...Object.keys(xuatGroupMap)
+      ])
+    ).sort();
+
+    const rows = [];
+
+    allMasps.forEach((masp, index) => {
+      const nhapGroup = nhapGroupMap[masp];
+      const xuatGroup = xuatGroupMap[masp];
+
+      const nhapText = formatSizeSl(nhapGroup?.items || []);
+      const xuatText = formatSizeSl(xuatGroup?.items || []);
+
+      const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
+
+      const hasRealSizeNhap = (nhapGroup?.items || []).some(x => {
+        const s = normalizeSize(x.size);
+        return s && s !== "0";
+      });
+
+      rows.push({
+        kiem_nhap_id: kiemNhapId,
+        so_hd_kiemnhap,
+        sohdccn,
+        ngay_kiem,
+        nhanvienkiem,
+        sort_order: index + 1,
+
+        masp_nhap: masp,
+        size_sl_nhap: nhapText || "",
+        tongsl_nhap: tongSoLuong(nhapGroup?.items || []) || 0,
+
+        masp_xuat: masp,
+        size_sl_xuat: xuatText || "",
+        tongsl_xuat: tongSoLuong(xuatGroup?.items || []) || 0,
+
+        trangthai: kqTong.trangthai || "",
+        chitiet: kqTong.chitiet || "",
+
+        masp_key: masp,
+        che_do_kiem: hasRealSizeNhap ? "size" : "tong",
+        ghi_chu: null
+      });
+    });
+
+    return rows;
+  }
+
   async function luuPhieuKiemNhapKho() {
     try {
       if (!window.supabase) {
@@ -1748,6 +1808,26 @@
         return;
       }
 
+      const rowsChiTietHoaDon = buildChiTietHoaDonRows(
+        insertedTong.id,
+        so_hd_kiemnhap,
+        sohdccn,
+        ngay_kiem,
+        nhanvienkiem
+      );
+
+      if (rowsChiTietHoaDon.length > 0) {
+        const { error: errChiTietHoaDon } = await window.supabase
+          .from("kiem_nhap_kho_chi_tiet_hoa_don")
+          .insert(rowsChiTietHoaDon);
+
+        if (errChiTietHoaDon) {
+          console.error("[kiem_nhap_kho_chi_tiet_hoa_don] insert error:", errChiTietHoaDon);
+          alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết hóa đơn: " + (errChiTietHoaDon.message || ""));
+          return;
+        }
+      }
+
       if (thongTinTong.chiTietLech.length > 0) {
         const rowsLech = thongTinTong.chiTietLech.map((row) => ({
           kiem_nhap_id: insertedTong.id,
@@ -1823,11 +1903,20 @@
       });
     }
 
-     const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
+    const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
     if (btnTaoPhieuCCN1V2) {
       btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
         e.preventDefault();
         moTrangCCN1V2TuHangThieu();
+      });
+    }
+
+    const btnMoPhieuCu = byId("btnMoPhieuCu");
+    if (btnMoPhieuCu) {
+      btnMoPhieuCu.addEventListener("click", async () => {
+        const sohd = prompt("Nhập số phiếu kiểm nhập cần mở:", byId("sohd")?.value || "");
+        if (!sohd) return;
+        await moLaiPhieuKiemNhapCu(sohd);
       });
     }
 
@@ -1874,6 +1963,7 @@
     pasteDuLieuNhap,
     xoaDongDangChon,
     moTrangCCN1V2TuHangThieu,
+    moLaiPhieuKiemNhapCu,
 
     setXuatData(dataMap) {
       const state = getState();
@@ -1901,3 +1991,109 @@
     init();
   }
 })();
+
+async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
+  if (!window.supabase) {
+    alert("Không tìm thấy kết nối Supabase.");
+    return;
+  }
+
+  const sohd = String(soHdKiemNhap || "").trim();
+  if (!sohd) {
+    alert("Chưa có số phiếu kiểm nhập.");
+    return;
+  }
+
+  const { data: phieuTong, error: errTong } = await window.supabase
+    .from("kiem_nhap_kho")
+    .select("*")
+    .eq("so_hd_kiemnhap", sohd)
+    .maybeSingle();
+
+  if (errTong) {
+    console.error(errTong);
+    alert("Lỗi khi đọc phiếu kiểm nhập.");
+    return;
+  }
+
+  if (!phieuTong) {
+    alert("Không tìm thấy phiếu kiểm nhập.");
+    return;
+  }
+
+  const { data: rows, error: errRows } = await window.supabase
+    .from("kiem_nhap_kho_chi_tiet_hoa_don")
+    .select("*")
+    .eq("so_hd_kiemnhap", sohd)
+    .order("sort_order", { ascending: true });
+
+  if (errRows) {
+    console.error(errRows);
+    alert("Lỗi khi đọc chi tiết hóa đơn.");
+    return;
+  }
+
+  const state = getState();
+  state.nhap = {};
+  state.xuat = {};
+  state.ketQua = {};
+  state.dsHoaDonNguon = String(phieuTong.sohdccn || "")
+    .split(";")
+    .map(x => String(x || "").trim())
+    .filter(Boolean);
+
+  byId("sohd").value = phieuTong.so_hd_kiemnhap || "";
+  byId("ngay").value = phieuTong.ngay_kiem || "";
+  byId("ghichu_top").value = phieuTong.sohdccn || "";
+
+  const hdState = byId("hd_state");
+  if (hdState) {
+    hdState.value = "xem";
+    hdState.setAttribute("data-state", "xem");
+  }
+
+  (rows || []).forEach((row) => {
+    const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
+
+    const nhapItems = parseSizeSlText(row.size_sl_nhap || "");
+    if (nhapItems.length > 0) {
+      nhapItems.forEach(item => {
+        const key = makeKey(masp, item.size);
+        state.nhap[key] = {
+          masp,
+          size: item.size,
+          sl: item.sl
+        };
+      });
+    } else if (normalizeNumber(row.tongsl_nhap) > 0) {
+      const key = makeKey(masp, "0");
+      state.nhap[key] = {
+        masp,
+        size: "0",
+        sl: normalizeNumber(row.tongsl_nhap)
+      };
+    }
+
+    const xuatItems = parseSizeSlText(row.size_sl_xuat || "");
+    if (xuatItems.length > 0) {
+      xuatItems.forEach(item => {
+        const key = makeKey(masp, item.size);
+        state.xuat[key] = {
+          masp,
+          size: item.size,
+          sl: item.sl
+        };
+      });
+    } else if (normalizeNumber(row.tongsl_xuat) > 0) {
+      const key = makeKey(masp, "0");
+      state.xuat[key] = {
+        masp,
+        size: "0",
+        sl: normalizeNumber(row.tongsl_xuat)
+      };
+    }
+  });
+
+  kiemTraPhieu();
+  renderBangKetQua();
+}
