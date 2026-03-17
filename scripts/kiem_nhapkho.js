@@ -474,6 +474,37 @@
     return result;
   }
 
+    function tinhThongKeTheoMap(mapObj) {
+    const maspSet = new Set();
+    let tongSl = 0;
+
+    Object.values(mapObj || {}).forEach((row) => {
+      const masp = normalizeMasp(row?.masp);
+      const sl = normalizeNumber(row?.sl || 0);
+
+      if (!masp || sl <= 0) return;
+
+      maspSet.add(masp);
+      tongSl += sl;
+    });
+
+    return {
+      soMa: maspSet.size,
+      tongSl
+    };
+  }
+
+  function capNhatThongKeDauTrang() {
+    const el = byId("thongke_dautrang");
+    if (!el) return;
+
+    const state = getState();
+    const tkNhap = tinhThongKeTheoMap(state.nhap || {});
+    const tkXuat = tinhThongKeTheoMap(state.xuat || {});
+
+    el.textContent = `Nhập: ${tkNhap.soMa}/${tkNhap.tongSl} , Xuất: ${tkXuat.soMa}/${tkXuat.tongSl}`;
+  }
+
   // =========================
   // RENDER
   // =========================
@@ -632,8 +663,10 @@
   <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
     `;
-      tbody.appendChild(tr);
+        tbody.appendChild(tr);
     }
+
+    capNhatThongKeDauTrang();
   }
 
   function docLaiNhapTuBangHTML() {
@@ -935,6 +968,7 @@
     }
 
     renderBangKetQua();
+    capNhatThongKeDauTrang();
     hideSizePopup();
     if (maspEl) maspEl.focus();
   }
