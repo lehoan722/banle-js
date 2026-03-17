@@ -1464,8 +1464,16 @@
 
       const lines = rows.map((tr) => {
         const col1 = String(tr.children[0]?.innerText || "").trim();
-        const col2 = String(tr.children[1]?.innerText || "").trim();
+
+        // đổi toàn bộ xuống dòng trong ô Size/SL thành khoảng trắng
+        const col2 = String(tr.children[1]?.innerText || "")
+          .replace(/\r/g, "")
+          .replace(/\n+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
         const col3 = String(tr.children[2]?.innerText || "").trim();
+
         return [col1, col2, col3].join("\t");
       }).filter(Boolean);
 
@@ -1548,6 +1556,7 @@
       state.nhap = nhapMoi;
       state.ketQua = {};
       state.selectedMasp = "";
+      state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
 
       renderBangKetQua();
       alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
@@ -1568,8 +1577,8 @@
       return;
     }
 
-   // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`);
-   // if (!ok) return;
+    // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`);
+    // if (!ok) return;
 
     Object.keys(state.nhap || {}).forEach((key) => {
       const row = state.nhap[key];
