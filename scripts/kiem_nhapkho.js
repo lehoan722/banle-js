@@ -356,7 +356,7 @@
 
     const { data, error } = await window.supabase
       .from("kiem_nhap_kho")
-      .select("sohdccn, tennv, manv, created_at");
+      .select("sohdccn, nhanvienkiem, created_at");
 
     if (error) {
       console.error("[KNK] layMapHoaDonDaKiem error:", error);
@@ -374,8 +374,7 @@
         if (!sohd) return;
 
         map.set(sohd, {
-          tennv: String(row.tennv || "").trim(),
-          manv: String(row.manv || "").trim(),
+          nhanvienkiem: String(row.nhanvienkiem || "").trim(),
           created_at: row.created_at || null
         });
       });
@@ -1089,7 +1088,7 @@
   // Bản đầu: chưa query thật, chỉ placeholder
   // =========================
 
-    async function moPopupChonHoaDonNguon(dsHd, mapDaKiem = new Map()) {
+  async function moPopupChonHoaDonNguon(dsHd, mapDaKiem = new Map()) {
     return new Promise((resolve) => {
       const popup = byId("popupChonHoaDonNguon");
       const box = byId("dsHoaDonNguonPopup");
@@ -1118,7 +1117,7 @@
 
         const infoDaKiem = mapDaKiem.get(sohd);
         const daKiem = !!infoDaKiem;
-        const tenNguoiKiem = String(infoDaKiem?.tennv || infoDaKiem?.manv || "").trim();
+        const tenNguoiKiem = String(infoDaKiem?.nhanvienkiem || "").trim();
 
         row.innerHTML = `
           <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}">
