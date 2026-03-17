@@ -330,23 +330,40 @@
       .replace(/'/g, "&#39;");
   }
 
+  function formatDateTimeVN(input) {
+    if (!input) return "";
+
+    const d = new Date(input);
+    if (Number.isNaN(d.getTime())) return "";
+
+    const vn = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+
+    const yyyy = vn.getFullYear();
+    const mm = String(vn.getMonth() + 1).padStart(2, "0");
+    const dd = String(vn.getDate()).padStart(2, "0");
+    const hh = String(vn.getHours()).padStart(2, "0");
+    const mi = String(vn.getMinutes()).padStart(2, "0");
+
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  }
+
   function getState() {
     return window.kiemNhapState;
   }
 
-  async function laySetHoaDonDaKiem() {
-    if (!window.supabase) return new Set();
+  async function layMapHoaDonDaKiem() {
+    if (!window.supabase) return new Map();
 
     const { data, error } = await window.supabase
       .from("kiem_nhap_kho")
-      .select("sohdccn");
+      .select("sohdccn, tennv, manv, created_at");
 
     if (error) {
-      console.error("[KNK] laySetHoaDonDaKiem error:", error);
-      return new Set();
+      console.error("[KNK] layMapHoaDonDaKiem error:", error);
+      return new Map();
     }
 
-    const set = new Set();
+    const map = new Map();
 
     (data || []).forEach((row) => {
       const raw = String(row.sohdccn || "").trim();
@@ -354,11 +371,17 @@
 
       raw.split(";").forEach((item) => {
         const sohd = String(item || "").trim();
-        if (sohd) set.add(sohd);
+        if (!sohd) return;
+
+        map.set(sohd, {
+          tennv: String(row.tennv || "").trim(),
+          manv: String(row.manv || "").trim(),
+          created_at: row.created_at || null
+        });
       });
     });
 
-    return set;
+    return map;
   }
 
   async function taoSoPhieuMoi() {
@@ -474,7 +497,7 @@
     return result;
   }
 
-    function tinhThongKeTheoMap(mapObj) {
+  function tinhThongKeTheoMap(mapObj) {
     const maspSet = new Set();
     let tongSl = 0;
 
@@ -663,7 +686,7 @@
   <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
     `;
-        tbody.appendChild(tr);
+      tbody.appendChild(tr);
     }
 
     capNhatThongKeDauTrang();
@@ -1066,7 +1089,7 @@
   // Bản đầu: chưa query thật, chỉ placeholder
   // =========================
 
-  async function moPopupChonHoaDonNguon(dsHd, setDaKiem = new Set()) {
+    async function moPopupChonHoaDonNguon(dsHd, mapDaKiem = new Map()) {
     return new Promise((resolve) => {
       const popup = byId("popupChonHoaDonNguon");
       const box = byId("dsHoaDonNguonPopup");
@@ -1080,10 +1103,10 @@
 
       box.innerHTML = "";
 
-      dsHd.forEach((hd, index) => {
+      dsHd.forEach((hd) => {
         const sohd = String(hd.sohd || "").trim();
-        const ngay = hd.ngay || "";
-        const diadiem = hd.diadiem || "";
+        const diadiem = String(hd.diadiem || "").trim();
+        const ngayGio = formatDateTimeVN(hd.created_at || hd.ngay);
 
         const row = document.createElement("label");
         row.style.display = "flex";
@@ -1093,18 +1116,23 @@
         row.style.borderBottom = "1px solid #eee";
         row.style.cursor = "pointer";
 
-        const daKiem = setDaKiem.has(sohd);
+        const infoDaKiem = mapDaKiem.get(sohd);
+        const daKiem = !!infoDaKiem;
+        const tenNguoiKiem = String(infoDaKiem?.tennv || infoDaKiem?.manv || "").trim();
 
         row.innerHTML = `
-        <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}" ${index === 0 ? "checked" : ""}>
-        <span>
-          ${escapeHtml(sohd)} | ${escapeHtml(ngay)} | ${escapeHtml(diadiem)}
-          ${daKiem ? '<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>' : ''}
-        </span>
-      `;
+          <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}">
+          <span>
+            ${escapeHtml(sohd)} | ${escapeHtml(ngayGio)} | ${escapeHtml(diadiem)}
+            ${daKiem ? `<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>` : ""}
+            ${daKiem && tenNguoiKiem ? ` | <b style="color:#333;">${escapeHtml(tenNguoiKiem)}</b>` : ""}
+          </span>
+        `;
+
         if (daKiem) {
           row.style.background = "#fff3cd";
         }
+
         box.appendChild(row);
       });
 
@@ -1161,8 +1189,8 @@
         return;
       }
 
-      const setDaKiem = await laySetHoaDonDaKiem();
-      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, setDaKiem);
+      const mapDaKiem = await layMapHoaDonDaKiem();
+      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, mapDaKiem);
       if (!dsSoHdChon || dsSoHdChon.length === 0) return;
 
       const dsHoaDonNguonInfo = dsHd
