@@ -513,11 +513,13 @@
 
           // ===== Tài khoản nhận theo cơ sở =====
           // CS1: DANG LE HOAN - Techcombank 2662222333
-          // CS2: NGUYEN ANH TUYET - Techcombank 2552222333 
+           
           let bankId = "VCB";
           let bankLabel = "VietcomBank";
           let accountNo = "1058609346";
           let accountName = "     ";
+
+          // CS2: NGUYEN ANH TUYET - Techcombank 2552222333
 
           if (isCS2) {
             bankId = "BIDV";
@@ -536,14 +538,7 @@
           const elAccNo = document.getElementById("qr_account_no");
           const elAccName = document.getElementById("qr_account_name");
           const elAmount = document.getElementById("qr_amount");
-          const elAddInfo = document.getElementById("qr_addinfo");
-
-          if (thanhtoan <= 0) {
-            document.querySelector('.invoice-layout').style.display = 'none';
-            document.getElementById('invalidInvoiceBox').style.display = 'block';
-            localStorage.removeItem("data_hoadon_in");
-            return;
-          }
+          const elAddInfo = document.getElementById("qr_addinfo");          
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
