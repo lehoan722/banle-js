@@ -1568,8 +1568,8 @@
       return;
     }
 
-    const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`);
-    if (!ok) return;
+   // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`);
+   // if (!ok) return;
 
     Object.keys(state.nhap || {}).forEach((key) => {
       const row = state.nhap[key];
