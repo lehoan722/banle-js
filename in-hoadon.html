@@ -513,7 +513,7 @@
 
           // ===== Tài khoản nhận theo cơ sở =====
           // CS1: DANG LE HOAN - Techcombank 2662222333
-           
+
           let bankId = "VCB";
           let bankLabel = "VietcomBank";
           let accountNo = "1058609346";
@@ -540,12 +540,12 @@
           const elAmount = document.getElementById("qr_amount");
           const elAddInfo = document.getElementById("qr_addinfo");
 
-          //if (thanhtoan <= 0) {
-           // document.querySelector('.invoice-layout').style.display = 'none';
-           // document.getElementById('invalidInvoiceBox').style.display = 'block';
-           // localStorage.removeItem("data_hoadon_in");
-           // return;
-         // }
+          if (thanhtoan <= 0) {
+            document.querySelector('.invoice-layout').style.display = 'none';
+            document.getElementById('invalidInvoiceBox').style.display = 'block';
+            localStorage.removeItem("data_hoadon_in");
+            return;
+          }
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
