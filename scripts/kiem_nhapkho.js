@@ -1947,52 +1947,7 @@
     bindRowSelection();
   }
 
-  // =========================
-  // API công khai
-  // =========================
-  window.NhapKiemKho = {
-    resetPhieu,
-    renderBangKetQua,
-    kiemTraPhieu,
-    themDongNhapBenTrai,
-    getState,
-    moTrangCCN2V1TuHangThua,
-
-    luuPhieuKiemNhapKho,
-    copyDuLieuNhap,
-    pasteDuLieuNhap,
-    xoaDongDangChon,
-    moTrangCCN1V2TuHangThieu,
-    moLaiPhieuKiemNhapCu,
-
-    setXuatData(dataMap) {
-      const state = getState();
-      state.xuat = dataMap || {};
-      state.ketQua = {}; // xóa kết quả kiểm cũ để kiểm tra lại từ đầu
-      renderBangKetQua();
-    }
-  };
-
-  // =========================
-  // INIT
-  // =========================
-  async function init() {
-    updateTitle();
-    setDefaultBranchInfo();
-    bindInputEvents();
-    bindButtons();
-    await resetPhieu();
-    console.log("[nhapkiemkho] init OK", CFG);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
-
-async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
+  async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
   if (!window.supabase) {
     alert("Không tìm thấy kết nối Supabase.");
     return;
@@ -2097,3 +2052,50 @@ async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
   kiemTraPhieu();
   renderBangKetQua();
 }
+
+  // =========================
+  // API công khai
+  // =========================
+  window.NhapKiemKho = {
+    resetPhieu,
+    renderBangKetQua,
+    kiemTraPhieu,
+    themDongNhapBenTrai,
+    getState,
+    moTrangCCN2V1TuHangThua,
+
+    luuPhieuKiemNhapKho,
+    copyDuLieuNhap,
+    pasteDuLieuNhap,
+    xoaDongDangChon,
+    moTrangCCN1V2TuHangThieu,
+    moLaiPhieuKiemNhapCu,
+
+    setXuatData(dataMap) {
+      const state = getState();
+      state.xuat = dataMap || {};
+      state.ketQua = {}; // xóa kết quả kiểm cũ để kiểm tra lại từ đầu
+      renderBangKetQua();
+    }
+  };
+
+  // =========================
+  // INIT
+  // =========================
+  async function init() {
+    updateTitle();
+    setDefaultBranchInfo();
+    bindInputEvents();
+    bindButtons();
+    await resetPhieu();
+    console.log("[nhapkiemkho] init OK", CFG);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+
+
