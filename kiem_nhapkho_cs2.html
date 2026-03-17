@@ -1601,15 +1601,15 @@
     </script>
 
     <script>
-    window.KIEM_NHAP_CONFIG = {
-        pageId: "kiemnhap_cs2",
-        fromBranch: "cs1",
-        toBranch: "cs2",
-        soPhieuPrefix: "kiemnhap1v2cs2_",
-        title: "KIỂM NHẬP KHO CS2"
-    };
-</script>
-<script src="./scripts/kiem_nhapkho.js"></script>
+        window.KIEM_NHAP_CONFIG = {
+            pageId: "kiemnhap_cs2",
+            fromBranch: "cs1",
+            toBranch: "cs2",
+            soPhieuPrefix: "kiemnhap1v2cs2_",
+            title: "KIỂM NHẬP KHO CS2"
+        };
+    </script>
+    <script src="./scripts/kiem_nhapkho.js"></script>
 
     <div id="popupChonHoaDonNguon" style="
   display:none;
@@ -1641,6 +1641,63 @@
             <button id="btnXacNhanHoaDonNguon" type="button">Nạp hóa đơn đã chọn</button>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('keydown', function (e) {
+            const tag = (document.activeElement?.tagName || '').toUpperCase();
+            const isTyping =
+                tag === 'INPUT' ||
+                tag === 'TEXTAREA' ||
+                tag === 'SELECT' ||
+                document.activeElement?.isContentEditable;
+
+            // Không chặn F11 của trình duyệt nếu bạn không muốn.
+            // Nhưng theo yêu cầu của bạn thì ở đây ta sẽ dùng F11 cho "Mở phiếu cũ".
+            // Nếu trình duyệt vẫn full screen trước khi code chạy, hãy dùng thêm e.returnValue = false.
+
+            if (e.key === 'F1') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('them')?.click();
+                return;
+            }
+
+            if (e.key === 'F2') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('btn-luu')?.click();
+                return;
+            }
+
+            if (e.key === 'F3') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('sua')?.click();
+                return;
+            }
+
+            if (e.key === 'F5') {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const chk = document.getElementById('chkNhapNhanh');
+                if (chk) {
+                    chk.checked = !chk.checked;
+                    chk.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                return;
+            }
+
+            if (e.key === 'F11') {
+                e.preventDefault();
+                e.stopPropagation();
+                e.returnValue = false;
+
+                document.getElementById('btnMoPhieuCu')?.click();
+                return;
+            }
+        }, true);
+    </script>
 
 </body>
 
