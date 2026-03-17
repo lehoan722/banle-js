@@ -19,6 +19,8 @@
     nhap: {},
     xuat: {},
     ketQua: {},
+    nhapOrder: [],
+    xuatOrder: [],
     dsHoaDonNguon: [],
     dsHoaDonNguonInfo: [],
     selectedMasp: ""
@@ -171,10 +173,16 @@
     const key = makeKey(masp, sizeVal);
     const state = getState();
 
+    const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+
     if (!state.nhap[key]) {
       state.nhap[key] = { masp, size: sizeVal, sl };
     } else {
       state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    }
+
+    if (isNewMasp) {
+      state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
     }
 
     delete state.ketQua[key];
@@ -203,6 +211,8 @@
     const key = makeKey(masp, "0");
     const state = getState();
 
+    const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+
     if (!state.nhap[key]) {
       state.nhap[key] = {
         masp,
@@ -211,6 +221,10 @@
       };
     } else {
       state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    }
+
+    if (isNewMasp) {
+      state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
     }
 
     delete state.ketQua[key];
@@ -413,6 +427,53 @@
     }
   }
 
+  function ensureMaspAtTop(orderArr, masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return Array.isArray(orderArr) ? orderArr : [];
+
+    const arr = Array.isArray(orderArr) ? orderArr.filter(x => normalizeMasp(x) !== m) : [];
+    arr.unshift(m);
+    return arr;
+  }
+
+  function ensureMaspAtEnd(orderArr, masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return Array.isArray(orderArr) ? orderArr : [];
+
+    const arr = Array.isArray(orderArr) ? orderArr.filter(x => normalizeMasp(x) !== m) : [];
+    arr.push(m);
+    return arr;
+  }
+
+  function buildOrderedMasps(nhapGroupMap, xuatGroupMap, state) {
+    const nhapOrder = Array.isArray(state.nhapOrder) ? state.nhapOrder.map(normalizeMasp).filter(Boolean) : [];
+    const xuatOrder = Array.isArray(state.xuatOrder) ? state.xuatOrder.map(normalizeMasp).filter(Boolean) : [];
+
+    const allSet = new Set([
+      ...Object.keys(nhapGroupMap || {}),
+      ...Object.keys(xuatGroupMap || {})
+    ]);
+
+    const result = [];
+    const pushed = new Set();
+
+    const pushOne = (masp) => {
+      const m = normalizeMasp(masp);
+      if (!m) return;
+      if (!allSet.has(m)) return;
+      if (pushed.has(m)) return;
+      pushed.add(m);
+      result.push(m);
+    };
+
+    nhapOrder.forEach(pushOne);
+    xuatOrder.forEach(pushOne);
+
+    Array.from(allSet).forEach(pushOne);
+
+    return result;
+  }
+
   // =========================
   // RENDER
   // =========================
@@ -535,12 +596,7 @@
     const nhapGroupMap = groupByMasp(nhapMap);
     const xuatGroupMap = groupByMasp(xuatMap);
 
-    const allMasps = Array.from(
-      new Set([
-        ...Object.keys(nhapGroupMap),
-        ...Object.keys(xuatGroupMap)
-      ])
-    ).sort();
+    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
 
     tbody.innerHTML = "";
 
@@ -587,6 +643,7 @@
     const state = getState();
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const nhapMoi = {};
+    const nhapOrderMoi = [];
 
     rows.forEach((tr) => {
       const tdMasp = tr.children[0];
@@ -595,6 +652,10 @@
 
       const masp = normalizeMasp(tdMasp?.innerText || "");
       if (!masp) return;
+
+      if (!nhapOrderMoi.includes(masp)) {
+        nhapOrderMoi.push(masp);
+      }
 
       const sizeSlText = String(tdSizeSl?.innerText || "").trim();
       const tongSlText = String(tdTongSl?.innerText || "").trim();
@@ -627,6 +688,7 @@
     });
 
     state.nhap = nhapMoi;
+    state.nhapOrder = nhapOrderMoi;
   }
 
   // Expose để HTML cũ không lỗi nếu còn gọi
@@ -676,6 +738,8 @@
     const key = makeKey(masp, size);
     const state = getState();
 
+    const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+
     if (!state.nhap[key]) {
       state.nhap[key] = {
         masp,
@@ -684,6 +748,10 @@
       };
     } else {
       state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    }
+
+    if (isNewMasp) {
+      state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
     }
 
     delete state.ketQua[key];
@@ -839,6 +907,8 @@
       nhap: {},
       xuat: {},
       ketQua: {},
+      nhapOrder: [],
+      xuatOrder: [],
       dsHoaDonNguon: [],
       dsHoaDonNguonInfo: [],
       selectedMasp: ""
@@ -1089,6 +1159,7 @@
       }
 
       const xuatMap = {};
+      const xuatOrder = [];
 
       for (const row of ctRows) {
         const masp = normalizeMasp(row.masp);
@@ -1096,6 +1167,10 @@
         const sl = normalizeNumber(row.soluong);
 
         if (!masp || !size || sl <= 0) continue;
+
+        if (!xuatOrder.includes(masp)) {
+          xuatOrder.push(masp);
+        }
 
         const key = makeKey(masp, size);
 
@@ -1117,7 +1192,7 @@
       const ghichuEl = byId("ghichu_top");
       if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
 
-      window.NhapKiemKho.setXuatData(xuatMap);
+      window.NhapKiemKho.setXuatData(xuatMap, xuatOrder);
 
       alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn.`);
     } catch (err) {
@@ -1992,6 +2067,8 @@
     state.nhap = {};
     state.xuat = {};
     state.ketQua = {};
+    state.nhapOrder = [];
+    state.xuatOrder = [];
     state.dsHoaDonNguon = String(phieuTong.sohdccn || "")
       .split(";")
       .map(x => String(x || "").trim())
@@ -2014,6 +2091,10 @@
 
     (rows || []).forEach((row) => {
       const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
+      if (masp) {
+        if (!state.nhapOrder.includes(masp)) state.nhapOrder.push(masp);
+        if (!state.xuatOrder.includes(masp)) state.xuatOrder.push(masp);
+      }
 
       const nhapItems = parseSizeSlText(row.size_sl_nhap || "");
       if (nhapItems.length > 0) {
@@ -2076,10 +2157,11 @@
     moTrangCCN1V2TuHangThieu,
     moLaiPhieuKiemNhapCu,
 
-    setXuatData(dataMap) {
+    setXuatData(dataMap, orderArr) {
       const state = getState();
       state.xuat = dataMap || {};
-      state.ketQua = {}; // xóa kết quả kiểm cũ để kiểm tra lại từ đầu
+      state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
+      state.ketQua = {};
       renderBangKetQua();
     }
   };
