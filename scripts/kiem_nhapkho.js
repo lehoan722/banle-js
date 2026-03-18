@@ -1749,6 +1749,7 @@
   function taoPayloadCCN1V2TuKiemNhap() {
     const state = getState();
     const items = layDanhSachHangThieuDeTaoCCN1V2();
+    const xuatNguonChiTiet = layChiTietXuatNguonTheoHangThieuCCN1V2();
 
     if (!items || items.length === 0) return null;
 
@@ -1758,8 +1759,14 @@
       created_at: new Date().toISOString(),
       so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
       ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+      ds_hoa_don_nguon_info: state.dsHoaDonNguonInfo || [],
       note: taoGhiChuPhieuChuyenTuKiemNhap(),
-      items
+
+      // dữ liệu để tự đẩy lên phiếu CCN1V2
+      items,
+
+      // dữ liệu để trang CCN1V2 hiển thị tham chiếu
+      xuat_nguon_chitiet: xuatNguonChiTiet
     };
   }
 
