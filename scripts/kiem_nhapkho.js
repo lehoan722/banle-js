@@ -1725,8 +1725,8 @@
     return groupByMaspForTransfer(rowsThua);
   }
 
-  function layDanhSachHangThieuDeTaoCCN1V2() {
-    const thongTinTong = tinhThongTinTongHopKiemNhap();
+  function layDanhSachHangThieuDeTaoCCN1V2() {    
+    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
     const chiTietLech = thongTinTong?.chiTietLech || [];
     const state = getState();
     const xuatMap = state.xuat || {};
