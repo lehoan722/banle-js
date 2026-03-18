@@ -551,8 +551,9 @@
     const tt = String(trangthai || "").trim().toUpperCase();
     if (tt === "THIEU") return 1;
     if (tt === "THUA") return 2;
-    if (tt === "OK") return 3;
-    return 4;
+    if (tt === "LECH") return 3;
+    if (tt === "OK") return 4;
+    return 5;
   }
 
   function sapXepLaiThuTuMaspTheoKetQua() {
