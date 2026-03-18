@@ -519,6 +519,38 @@
     const tt = String(trangthai || "").trim().toUpperCase();
     if (tt === "THIEU") return 1;
     if (tt === "THUA") return 2;
+    if (tt === "LECH") return 3;
+    if (tt === "OK") return 4;
+    return 5;
+  }
+
+  function sapXepLaiThuTuMaspTheoKetQua() {
+    const state = getState();
+    const nhapGroupMap = groupByMasp(state.nhap || {});
+    const xuatGroupMap = groupByMasp(state.xuat || {});
+    const ketQuaMap = state.ketQua || {};
+
+    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+    allMasps.sort((a, b) => {
+      const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
+      const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
+
+      const wA = getSortWeightByTrangThai(kqA?.trangthai);
+      const wB = getSortWeightByTrangThai(kqB?.trangthai);
+
+      if (wA !== wB) return wA - wB;
+
+      return String(a || "").localeCompare(String(b || ""), "vi");
+    });
+
+    state.nhapOrder = [...allMasps];
+  }
+
+  function getSortWeightByTrangThai(trangthai) {
+    const tt = String(trangthai || "").trim().toUpperCase();
+    if (tt === "THIEU") return 1;
+    if (tt === "THUA") return 2;
     if (tt === "OK") return 3;
     return 4;
   }
