@@ -1090,15 +1090,28 @@
             const hash = location.hash || '';
             if (!hash) return null;
 
-            const params = new URLSearchParams(hash.slice(1));
+            const rawHash = (location.hash || '').replace(/^#/, '');
+            if (!rawHash) return null;
+
+            const params = new URLSearchParams(rawHash);
             let payload = null;
 
             // 1) Base64 hash
             if (params.get('imp')) {
                 try {
-                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
+                    let imp = params.get('imp').trim();
+
+                    // khôi phục base64 nếu bị đổi ký tự
+                    imp = imp.replace(/ /g, '+').replace(/-/g, '+').replace(/_/g, '/');
+
+                    const pad = imp.length % 4;
+                    if (pad) imp += '='.repeat(4 - pad);
+
+                    const json = decodeURIComponent(escape(atob(imp)));
                     payload = JSON.parse(json);
-                } catch (e) { console.error('Decode imp error', e); }
+                } catch (e) {
+                    console.error('Decode imp error', e, params.get('imp'));
+                }
             }
 
             // 2) localStorage key
