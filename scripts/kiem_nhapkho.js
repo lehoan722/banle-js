@@ -1714,42 +1714,25 @@
     return groupByMaspForTransfer(rowsThua);
   }
 
-  function layChiTietXuatNguonTheoHangThieuCCN1V2() {
-    const state = getState();
-    const xuatMap = state.xuat || {};
-    const dsHangThieu = layDanhSachHangThieuDeTaoCCN1V2() || [];
+  function layDanhSachHangThieuDeTaoCCN1V2() {
+    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+    const chiTietLech = thongTinTong?.chiTietLech || [];
 
-    if (!dsHangThieu.length) return [];
+    const rowsThieu = chiTietLech
+      .filter(row => String(row.trangthai_nhan || "").trim().toLowerCase() === "thieu")
+      .map(row => ({
+        masp: normalizeMasp(row.masp),
+        size: normalizeSize(row.size || "0"),
+        sl: normalizeNumber(row.sl_lech || 0)
+      }))
+      .filter(row => row.masp && row.size && row.sl > 0);
 
-    const out = [];
-
-    dsHangThieu.forEach((group) => {
-      const masp = normalizeMasp(group.masp);
-      const itemsThieu = Array.isArray(group.items) ? group.items : [];
-
-      itemsThieu.forEach((it) => {
-        const size = normalizeSize(it.size);
-        const slThieu = normalizeNumber(it.sl);
-
-        const key = makeKey(masp, size);
-        const rowXuat = xuatMap[key];
-
-        out.push({
-          masp,
-          size,
-          sl_xuat_nguon: normalizeNumber(rowXuat?.sl || 0),
-          sl_thieu: slThieu
-        });
-      });
-    });
-
-    return out;
+    return groupByMaspForTransfer(rowsThieu);
   }
 
   function taoPayloadCCN1V2TuKiemNhap() {
     const state = getState();
     const items = layDanhSachHangThieuDeTaoCCN1V2();
-    const xuatNguonChiTiet = layChiTietXuatNguonTheoHangThieuCCN1V2();
 
     if (!items || items.length === 0) return null;
 
@@ -1759,14 +1742,8 @@
       created_at: new Date().toISOString(),
       so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
       ds_hoa_don_nguon: state.dsHoaDonNguon || [],
-      ds_hoa_don_nguon_info: state.dsHoaDonNguonInfo || [],
       note: taoGhiChuPhieuChuyenTuKiemNhap(),
-
-      // dữ liệu để tự đẩy lên phiếu CCN1V2
-      items,
-
-      // dữ liệu để trang CCN1V2 hiển thị tham chiếu
-      xuat_nguon_chitiet: xuatNguonChiTiet
+      items
     };
   }
 
