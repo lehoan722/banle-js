@@ -1032,11 +1032,11 @@
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhapmoimtcs1.html#imp=${b64} `, '_blank');
+                    window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhapmoimtcs1.html#impkey=${key} `, '_blank');
+                    window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
                 }
             }
 
@@ -1047,11 +1047,11 @@
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhaptamcs1.html#imp=${b64} `, '_blank');
+                    window.open(`/nhaptamcs1.html#imp=${b64}`, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhaptamcs1.html#impkey=${key} `, '_blank');
+                    window.open(`/nhaptamcs1.html#impkey=${key}`, '_blank');
                 }
             }
 
