@@ -1726,17 +1726,56 @@
   }
 
   function layDanhSachHangThieuDeTaoCCN1V2() {
-    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+    const thongTinTong = tinhThongTinTongHopKiemNhap();
     const chiTietLech = thongTinTong?.chiTietLech || [];
+    const state = getState();
+    const xuatMap = state.xuat || {};
 
-    const rowsThieu = chiTietLech
-      .filter(row => String(row.trangthai_nhan || "").trim().toLowerCase() === "thieu")
-      .map(row => ({
-        masp: normalizeMasp(row.masp),
-        size: normalizeSize(row.size || "0"),
-        sl: normalizeNumber(row.sl_lech || 0)
-      }))
-      .filter(row => row.masp && row.size && row.sl > 0);
+    const rowsThieu = [];
+
+    chiTietLech.forEach((row) => {
+      const trangthai = String(row.trangthai_nhan || "").trim().toLowerCase();
+      if (trangthai !== "thieu") return;
+
+      const masp = normalizeMasp(row.masp);
+      const size = normalizeSize(row.size || "0");
+      const sl = normalizeNumber(row.sl_lech || 0);
+
+      if (!masp || sl <= 0) return;
+
+      // Nếu đã có size thật thì dùng luôn
+      if (size && size !== "0") {
+        rowsThieu.push({
+          masp,
+          size,
+          sl
+        });
+        return;
+      }
+
+      // Nếu size = 0, nghĩa là trường hợp nhập trống / kiểm tổng
+      // -> bung ra toàn bộ size thật từ dữ liệu xuất nguồn của mã đó
+      const xuatRowsTheoMasp = Object.values(xuatMap)
+        .filter(r => normalizeMasp(r?.masp) === masp)
+        .map(r => ({
+          masp,
+          size: normalizeSize(r?.size || "0"),
+          sl: normalizeNumber(r?.sl || 0)
+        }))
+        .filter(r => r.masp && r.size && r.size !== "0" && r.sl > 0);
+
+      if (xuatRowsTheoMasp.length > 0) {
+        xuatRowsTheoMasp.forEach(r => rowsThieu.push(r));
+        return;
+      }
+
+      // Nếu vẫn không có size thật thì mới giữ 0 như cũ
+      rowsThieu.push({
+        masp,
+        size,
+        sl
+      });
+    });
 
     return groupByMaspForTransfer(rowsThieu);
   }
