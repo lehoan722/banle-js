@@ -35,6 +35,16 @@
     return document.getElementById(id);
   }
 
+  function focusInputAtEnd(el) {
+    if (!el) return;
+    el.focus();
+
+    try {
+      const len = String(el.value || "").length;
+      el.setSelectionRange(len, len);
+    } catch (err) { }
+  }
+
   function normalizeMasp(v) {
     let s = String(v || "").trim().toUpperCase();
 
@@ -503,6 +513,37 @@
     Array.from(allSet).forEach(pushOne);
 
     return result;
+  }
+
+  function getSortWeightByTrangThai(trangthai) {
+    const tt = String(trangthai || "").trim().toUpperCase();
+    if (tt === "THIEU") return 1;
+    if (tt === "THUA") return 2;
+    if (tt === "OK") return 3;
+    return 4;
+  }
+
+  function sapXepLaiThuTuMaspTheoKetQua() {
+    const state = getState();
+    const nhapGroupMap = groupByMasp(state.nhap || {});
+    const xuatGroupMap = groupByMasp(state.xuat || {});
+    const ketQuaMap = state.ketQua || {};
+
+    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+    allMasps.sort((a, b) => {
+      const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
+      const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
+
+      const wA = getSortWeightByTrangThai(kqA?.trangthai);
+      const wB = getSortWeightByTrangThai(kqB?.trangthai);
+
+      if (wA !== wB) return wA - wB;
+
+      return String(a || "").localeCompare(String(b || ""), "vi");
+    });
+
+    state.nhapOrder = [...allMasps];
   }
 
   function tinhThongKeTheoMap(mapObj) {
@@ -1133,6 +1174,7 @@
     }
 
     state.ketQua = ketQua;
+    sapXepLaiThuTuMaspTheoKetQua();
     renderBangKetQua();
   }
 
@@ -1725,7 +1767,7 @@
     return groupByMaspForTransfer(rowsThua);
   }
 
-  function layDanhSachHangThieuDeTaoCCN1V2() {    
+  function layDanhSachHangThieuDeTaoCCN1V2() {
     const thongTinTong = xayDungDuLieuTongVaChiTietLech();
     const chiTietLech = thongTinTong?.chiTietLech || [];
     const state = getState();
