@@ -1760,7 +1760,7 @@
     const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
     window.open(url, "_blank");
 
-    alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
+     // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
   }
 
   function taoPayloadCCN2V1TuKiemNhap() {
@@ -1803,7 +1803,7 @@
     const url = "https://banle-js.vercel.app/ccn2v1cs2.html";
     window.open(url, "_blank");
 
-    alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
+    // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
   }
 
   // =========================
