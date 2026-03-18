@@ -624,14 +624,25 @@
     }
 
     // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
+    // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
     if (!hasAnyKetQua && masp) {
       const keyTong = makeKey(masp, "0");
       const kqTong = ketQuaMap[keyTong];
 
       if (kqTong) {
         const diff = normalizeNumber(kqTong.chitiet || 0);
+        const tongNhap = tongSoLuong(nhapGroup?.items || []);
+        const xuatItems = Array.isArray(xuatGroup?.items) ? xuatGroup.items : [];
 
         if (kqTong.trangthai === "THIEU") {
+          // Nếu bên nhập trống hoàn toàn thì hiện chi tiết đúng theo toàn bộ size/sl của bên xuất
+          if (tongNhap <= 0 && xuatItems.length > 0) {
+            return {
+              trangthai: "THIEU",
+              chitiet: xuatItems.map(x => `${x.size}/${x.sl}`).join(" ")
+            };
+          }
+
           return {
             trangthai: "THIEU",
             chitiet: diff > 0 ? `0/${diff}` : ""
