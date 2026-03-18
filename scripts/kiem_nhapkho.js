@@ -580,6 +580,8 @@
   }
 
   function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
+    const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
+
     const allSizeKeys = new Set([
       ...((nhapGroup?.items || []).map(x => x.key)),
       ...((xuatGroup?.items || []).map(x => x.key))
@@ -590,10 +592,13 @@
     let tongThieu = 0;
     let tongThua = 0;
     let hasOk = false;
+    let hasAnyKetQua = false;
 
     for (const key of allSizeKeys) {
       const kq = ketQuaMap[key];
       if (!kq) continue;
+
+      hasAnyKetQua = true;
 
       const { size } = splitKey(key);
       const diff = normalizeNumber(kq.chitiet || 0);
@@ -606,6 +611,34 @@
         thuaParts.push(`${size}/${diff}`);
       } else if (kq.trangthai === "OK") {
         hasOk = true;
+      }
+    }
+
+    // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
+    if (!hasAnyKetQua && masp) {
+      const keyTong = makeKey(masp, "0");
+      const kqTong = ketQuaMap[keyTong];
+
+      if (kqTong) {
+        const diff = normalizeNumber(kqTong.chitiet || 0);
+
+        if (kqTong.trangthai === "THIEU") {
+          return {
+            trangthai: "THIEU",
+            chitiet: diff > 0 ? `0/${diff}` : ""
+          };
+        }
+
+        if (kqTong.trangthai === "THUA") {
+          return {
+            trangthai: "THUA",
+            chitiet: diff > 0 ? `0/${diff}` : ""
+          };
+        }
+
+        if (kqTong.trangthai === "OK") {
+          return { trangthai: "OK", chitiet: "" };
+        }
       }
     }
 
