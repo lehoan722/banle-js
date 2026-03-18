@@ -36,7 +36,16 @@
   }
 
   function normalizeMasp(v) {
-    return String(v || "").trim().toUpperCase();
+    let s = String(v || "").trim().toUpperCase();
+
+    // Nếu mã có hậu tố sau dấu "_" như REDLEO-DEN_43
+    // thì chỉ lấy phần trước dấu "_"
+    const idx = s.indexOf("_");
+    if (idx > -1) {
+      s = s.slice(0, idx).trim();
+    }
+
+    return s;
   }
 
   function normalizeSize(v) {
@@ -1760,7 +1769,7 @@
     const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
     window.open(url, "_blank");
 
-     // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
+    // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
   }
 
   function taoPayloadCCN2V1TuKiemNhap() {
