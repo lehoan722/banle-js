@@ -1028,7 +1028,7 @@ import "./stockQuickPopup.js";
             return;
           }
 
-          const chkNhapSize = byId("nhapsize");
+          const chkNhapNhanh = byId("chkNhapNhanh");
           const isNhapNhanh = !!chkNhapNhanh?.checked;
 
           if (isNhapNhanh) {
