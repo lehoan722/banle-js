@@ -1025,6 +1025,12 @@
 
           maspEl.value = masp;
 
+          const okTiepTuc = hoiTiepTucNeuMaspKhongCoTrongXuat(masp);
+          if (!okTiepTuc) {
+            focusVaBoiDenOmaSanPham();
+            return;
+          }
+
           const chkNhapNhanh = byId("chkNhapNhanh");
           const isNhapNhanh = !!chkNhapNhanh?.checked;
 
@@ -1356,6 +1362,46 @@
       .filter(Boolean);
 
     return [...new Set(ds)];
+  }
+
+  function tonTaiMaspTrongXuat(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return false;
+
+    const state = getState();
+    return Object.values(state.xuat || {}).some(row => normalizeMasp(row?.masp) === m);
+  }
+
+  function daCoDuLieuXuatDaNap() {
+    const state = getState();
+    return Object.keys(state.xuat || {}).length > 0;
+  }
+
+  function hoiTiepTucNeuMaspKhongCoTrongXuat(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return false;
+
+    // Nếu chưa nạp dữ liệu xuất thì không cần hỏi
+    if (!daCoDuLieuXuatDaNap()) return true;
+
+    // Có trong phiếu xuất rồi thì cho đi tiếp luôn
+    if (tonTaiMaspTrongXuat(m)) return true;
+
+    phatAmThanhLoi();
+
+    return confirm(`Mã sản phẩm (${m}) không có trong phiếu xuất. Bạn có muốn tiếp tục sử dụng nó không?`);
+  }
+
+  function focusVaBoiDenOmaSanPham() {
+    const maspEl = byId("masp");
+    if (!maspEl) return;
+
+    maspEl.focus();
+    setTimeout(() => {
+      try {
+        maspEl.select();
+      } catch (err) { }
+    }, 0);
   }
 
   function batDauNgay(dateObj) {
@@ -2847,11 +2893,35 @@
     bindButtons();
 
     // preload audio
-    phatAmThanhLoai("loi");
-    phatAmThanhLoai("size");
-    phatAmThanhLoai("thanhcong");
+    Object.keys(AUDIO_PATHS).forEach((k) => {
+      if (!audioCache[k]) {
+        audioCache[k] = new Audio(AUDIO_PATHS[k]);
+        audioCache[k].preload = "auto";
+      }
+    });
 
     await resetPhieu();
+
+    const hdStateEl = byId("hd_state");
+    const trangThai = String(hdStateEl?.value || "").trim().toLowerCase();
+
+    const state = getState ? getState() : {};
+    const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
+    const dangLaPhieuMoi = !trangThai || trangThai === "moi";
+
+    // Chỉ auto mở popup khi:
+    // 1) là phiếu mới
+    // 2) chưa có dữ liệu xuất nào được nạp sẵn
+    if (dangLaPhieuMoi && !daCoDuLieuXuat) {
+      setTimeout(async () => {
+        try {
+          await napHoaDonNguonPlaceholder();
+        } catch (err) {
+          console.warn("[AUTO NAP HOA DON NGUON] lỗi:", err);
+        }
+      }, 200);
+    }
+
     console.log("[nhapkiemkho] init OK", CFG);
   }
 
