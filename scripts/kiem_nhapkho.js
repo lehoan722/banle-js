@@ -1305,14 +1305,16 @@
         const daKiem = !!infoDaKiem;
         const tenNguoiKiem = String(infoDaKiem?.nhanvienkiem || "").trim();
 
+        const checked = daKiem ? "" : "checked";
+
         row.innerHTML = `
-          <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}">
-          <span>
-            ${escapeHtml(sohd)} | ${escapeHtml(ngayGio)} | ${escapeHtml(diadiem)}
-            ${daKiem ? `<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>` : ""}
-            ${daKiem && tenNguoiKiem ? ` | <b style="color:#333;">${escapeHtml(tenNguoiKiem)}</b>` : ""}
-          </span>
-        `;
+  <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}" ${checked}>
+  <span>
+    ${escapeHtml(sohd)} | ${escapeHtml(ngayGio)} | ${escapeHtml(diadiem)}
+    ${daKiem ? `<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>` : `<b style="color:green; margin-left:8px;">[CHƯA KIỂM]</b>`}
+    ${daKiem && tenNguoiKiem ? ` | <b style="color:#333;">${escapeHtml(tenNguoiKiem)}</b>` : ""}
+  </span>
+`;
 
         if (daKiem) {
           row.style.background = "#fff3cd";
@@ -1711,12 +1713,18 @@
 
       const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
 
+      const now = new Date();
+      const start = batDauNgay(truNgay(now, 3));
+      const end = now;
+
       const { data: dsHd, error: errHd } = await window.supabase
         .from("hoadon_banle")
         .select("sohd, ngay, created_at, diadiem, tennv, manv")
         .ilike("sohd", `${prefixNguon}%`)
+        .gte("created_at", toIsoLocal(start))
+        .lte("created_at", toIsoLocal(end))
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(300);
 
       if (errHd) {
         console.error("[nhapkiemkho] load ds hoa don nguon error:", errHd);
@@ -1725,9 +1733,10 @@
       }
 
       if (!dsHd || dsHd.length === 0) {
-        alert("Không tìm thấy hóa đơn nguồn phù hợp.");
+        alert("Không tìm thấy hóa đơn chuyển chi nhánh trong khoảng từ 3 ngày trước đến hiện tại.");
         return;
       }
+
 
       const mapDaKiem = await layMapHoaDonDaKiem();
       const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, mapDaKiem);
