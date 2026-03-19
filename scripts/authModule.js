@@ -266,8 +266,8 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     // ✅ Chỉ cần match theo tên file/đường dẫn bạn dùng thực tế
     // Ví dụ: /ccn2v1cs2.html, /ccn1v2cs1.html ...
     return (
-      p.includes("ccn1v2") ||
-      p.includes("ccn2v1")  ||
+      // p.includes("ccn1v2") ||
+       // p.includes("ccn2v1")  ||
       p.includes("banlemtcs1") ||
       p.includes("banlemtcs2")
     );
