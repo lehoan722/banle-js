@@ -146,7 +146,7 @@ function getFilters() {
         }
     }
 
-    // 3. Không có gì thì trả về mặc định tối thiểu
+    // 3. Mặc định tối thiểu
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const denNgay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
