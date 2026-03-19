@@ -796,14 +796,15 @@ async function onChuyenKhoFromTextarea() {
         const filters4den = getFilters() || {};
         const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
 
-        // ĐỔI SANG RPC đầy đủ hơn
         const snap = await rpcTonBanSnapshot(masps, denNgay, false);
+
+        console.log('[CK] masps =', masps);
+        console.log('[CK] denNgay =', denNgay);
+        console.log('[CK] snap =', snap);
 
         if (!Array.isArray(snap)) {
             throw new Error('rpcTonBanSnapshot trả về dữ liệu không hợp lệ');
         }
-
-        console.log('[CK] snap từ textarea =', snap);
 
         if (snap.length === 0) {
             if (statusEl) statusEl.textContent = 'Không có dữ liệu tồn';
@@ -819,8 +820,6 @@ async function onChuyenKhoFromTextarea() {
             ban_cs1: Number(s.ban_cs1 || 0),
             ban_cs2: Number(s.ban_cs2 || 0)
         }));
-
-        console.log('[CK] raw sau map =', raw);
 
         const rows = buildTransferTable(raw);
 
@@ -850,7 +849,6 @@ async function onChuyenKhoFromTextarea() {
         alert('Có lỗi khi lấy dữ liệu tồn kho từ danh sách mã sản phẩm.');
     }
 }
-
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
 // ==== ẢNH: copy từ XNT17 ====
 const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -1260,22 +1258,24 @@ function applyAnhChuyenToPhieu() {
 async function boot() {
     document.getElementById('status').textContent = 'Đang tải dữ liệu…';
 
-    // 1) Ưu tiên lấy data đã đẩy sẵn từ XNT17
     const rawRows = sessionStorage.getItem('xnt17_transfer_rows');
     let raw = [];
+
     if (rawRows) {
         raw = JSON.parse(rawRows);
     } else {
-        // (fallback) nếu mở thẳng trang này không qua XNT17, mới gọi RPC
-        const filters = getFilters();
-        if (!filters) { document.getElementById('status').textContent = 'Thiếu dữ liệu/thiếu filter'; return; }
-        raw = await fetchAllRows(filters); // giữ lại hàm này như phương án B
+        // Mở độc lập không qua XNT17:
+        // không gọi fetchAllRows nữa vì file này không có hàm đó.
+        raw = [];
+        document.getElementById('status').textContent = 'Nhập mã sản phẩm rồi bấm Chuyển kho';
     }
 
-    // 1.5) Vá TỒN THẬT cho tất cả size của các mã đã nhận
     const filters4den = getFilters() || {};
     const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
-    raw = await overlayTonThat(raw, denNgay);
+
+    if (raw.length > 0) {
+        raw = await overlayTonThat(raw, denNgay);
+    }
 
 
     // 2) Dựng bảng chuyển kho
