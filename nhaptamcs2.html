@@ -1495,8 +1495,25 @@
                 source: "nhaptamcs2"
             };
 
+            // 1. Danh sách mã sản phẩm
             localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
+
+            // 2. Filter tối thiểu để trang chuyển kho dùng được cả khi KHÔNG đi qua XNT17
+            const now = new Date();
+            const pad = n => String(n).padStart(2, "0");
+            const denNgay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+            const filterFallback = {
+                den_ngay: denNgay,
+                p_diadiem_filter: "cs2",
+                source: "nhaptamcs2",
+                ts: Date.now()
+            };
+
+            localStorage.setItem("xnt17_transfer_filters_ls", JSON.stringify(filterFallback));
+
             console.log("[NHAPTAM] Đã lưu XNT17_MASPS_LS:", payload);
+            console.log("[NHAPTAM] Đã lưu xnt17_transfer_filters_ls:", filterFallback);
 
             window.open(
                 "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html?from=nhaptam&t=" + Date.now(),
