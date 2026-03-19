@@ -126,9 +126,35 @@ function calcMoveQty(cs1, cs2, goiy) {
 
 // ===== 1) Đọc filter do XNT17 gửi sang =====
 function getFilters() {
-    const raw = sessionStorage.getItem('xnt17_transfer_filters');
-    if (!raw) return null;
-    return JSON.parse(raw);
+    // 1. Ưu tiên luồng chuẩn từ XNT17
+    const ss = sessionStorage.getItem('xnt17_transfer_filters');
+    if (ss) {
+        try {
+            return JSON.parse(ss);
+        } catch (e) {
+            console.warn('[CK] Lỗi parse sessionStorage xnt17_transfer_filters:', e);
+        }
+    }
+
+    // 2. Fallback cho luồng mở từ trang nhập tạm
+    const ls = localStorage.getItem('xnt17_transfer_filters_ls');
+    if (ls) {
+        try {
+            return JSON.parse(ls);
+        } catch (e) {
+            console.warn('[CK] Lỗi parse localStorage xnt17_transfer_filters_ls:', e);
+        }
+    }
+
+    // 3. Không có gì thì trả về mặc định tối thiểu
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const denNgay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    return {
+        den_ngay: denNgay,
+        p_diadiem_filter: null
+    };
 }
 
 function buildCountParams(params) {
