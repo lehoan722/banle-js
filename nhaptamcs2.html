@@ -1470,57 +1470,54 @@
 
     <script>
 
-        document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
-            const rows = document.querySelectorAll("#bangketqua tbody tr");
-            const maspSet = new Set();
+       document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
+    const rows = document.querySelectorAll("#bangketqua tbody tr");
+    const maspSet = new Set();
 
-            rows.forEach(tr => {
-                const maspCell = tr.cells[0];
-                if (!maspCell) return;
+    rows.forEach(tr => {
+        const maspCell = tr.cells[0];
+        if (!maspCell) return;
 
-                const masp = (maspCell.innerText || "").trim().toUpperCase();
-                if (masp) maspSet.add(masp);
-            });
+        const masp = (maspCell.innerText || "").trim().toUpperCase();
+        if (masp) maspSet.add(masp);
+    });
 
-            const maspList = Array.from(maspSet);
+    const maspList = Array.from(maspSet);
 
-            if (maspList.length === 0) {
-                alert("Phiếu chưa có mã sản phẩm.");
-                return;
-            }
+    if (maspList.length === 0) {
+        alert("Phiếu chưa có mã sản phẩm.");
+        return;
+    }
 
-            const payload = {
-                list: maspList,
-                ts: Date.now(),
-                source: "nhaptamcs2"
-            };
+    const payload = {
+        list: maspList,
+        ts: Date.now(),
+        source: "nhaptamcs2"
+    };
 
-            // 1. Danh sách mã sản phẩm
-            localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
+    localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
 
-            // 2. Filter tối thiểu để trang chuyển kho dùng được cả khi KHÔNG đi qua XNT17
-            const now = new Date();
-            const pad = n => String(n).padStart(2, "0");
-            const denNgay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const denNgay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-            const filterFallback = {
-                den_ngay: denNgay,
-                p_diadiem_filter: "cs2",
-                source: "nhaptamcs2",
-                ts: Date.now()
-            };
+    const filterFallback = {
+        den_ngay: denNgay,
+        p_diadiem_filter: "cs2",
+        source: "nhaptamcs2",
+        ts: Date.now()
+    };
 
-            localStorage.setItem("xnt17_transfer_filters_ls", JSON.stringify(filterFallback));
+    localStorage.setItem("xnt17_transfer_filters_ls", JSON.stringify(filterFallback));
 
-            console.log("[NHAPTAM] Đã lưu XNT17_MASPS_LS:", payload);
-            console.log("[NHAPTAM] Đã lưu xnt17_transfer_filters_ls:", filterFallback);
+    console.log("[NHAPTAM] Đã lưu XNT17_MASPS_LS:", payload);
+    console.log("[NHAPTAM] Đã lưu xnt17_transfer_filters_ls:", filterFallback);
 
-            window.open(
-                "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html?from=nhaptam&t=" + Date.now(),
-                "_blank"
-            );
-        });
-
+    window.open(
+        "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html?from=nhaptam&t=" + Date.now(),
+        "_blank"
+    );
+});
     </script>
 
     <!-- Overlay quét -->
