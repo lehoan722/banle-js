@@ -51,44 +51,7 @@ import {
     try { playSuccessBeep(); } catch (e) { }
   }
 
-  const audioCache = {};
 
-  function phatAmThanhLoai(type) {
-    try {
-      const src = AUDIO_PATHS[type];
-      if (!src) return;
-
-      if (!audioCache[type]) {
-        audioCache[type] = new Audio(src);
-        audioCache[type].preload = "auto";
-      }
-
-      const audio = audioCache[type];
-      audio.pause();
-      audio.currentTime = 0;
-
-      const p = audio.play();
-      if (p && typeof p.catch === "function") {
-        p.catch((err) => {
-          console.warn("[AUDIO] play blocked:", type, err);
-        });
-      }
-    } catch (err) {
-      console.warn("[AUDIO] error:", type, err);
-    }
-  }
-
-  function phatAmThanhLoi() {
-    phatAmThanhLoai("loi");
-  }
-
-  function phatAmThanhSize() {
-    phatAmThanhLoai("size");
-  }
-
-  function phatAmThanhThanhCong() {
-    phatAmThanhLoai("thanhcong");
-  }
 
   // ========================= 
   // HELPERS
@@ -2906,9 +2869,8 @@ import {
     bindInputEvents();
     bindButtons();
 
-    // 🔥 QUAN TRỌNG
-    setupBeepUnlockOnce();
-
+    // Mở khóa beep cho trình duyệt
+    setupBeepUnlockOnce(document);
 
     await resetPhieu();
 
@@ -2919,9 +2881,6 @@ import {
     const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
     const dangLaPhieuMoi = !trangThai || trangThai === "moi";
 
-    // Chỉ auto mở popup khi:
-    // 1) là phiếu mới
-    // 2) chưa có dữ liệu xuất nào được nạp sẵn
     if (dangLaPhieuMoi && !daCoDuLieuXuat) {
       setTimeout(async () => {
         try {
