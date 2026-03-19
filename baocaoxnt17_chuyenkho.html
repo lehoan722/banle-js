@@ -495,26 +495,27 @@ C789"></textarea>
                 textarea.dispatchEvent(new Event("change", { bubbles: true }));
                 console.log("[CK] Đã nhận danh sách mã:", obj.list);
 
-                // chờ module JS riêng expose hàm global xong
-                const waitRunnerReady = async () => {
-                    for (let i = 0; i < 60; i++) { // ~12 giây
-                        if (typeof window.runChuyenKhoFromTextarea === "function") {
-                            return true;
-                        }
+                const waitBtnReady = async () => {
+                    for (let i = 0; i < 50; i++) {
+                        const btn = document.getElementById("btnChuyenKho");
+                        if (btn) return btn;
                         await new Promise(r => setTimeout(r, 200));
                     }
-                    return false;
+                    return null;
                 };
 
-                const ready = await waitRunnerReady();
-                if (!ready) {
-                    console.error("[CK] Chưa sẵn sàng hàm runChuyenKhoFromTextarea");
+                const btn = await waitBtnReady();
+                if (!btn) {
+                    console.error("[CK] Không tìm thấy nút #btnChuyenKho");
                     return;
                 }
 
-                await window.runChuyenKhoFromTextarea();
+                await new Promise(r => setTimeout(r, 300));
+                btn.click();
 
-                console.log("[CK] Đã tự chạy chuyển kho");
+                console.log("[CK] Đã tự bấm nút Chuyển kho");
+
+                // chỉ xóa danh sách mã, còn filter fallback có thể giữ lại cho lần mở kế tiếp
                 localStorage.removeItem("XNT17_MASPS_LS");
 
             } catch (e) {
@@ -522,8 +523,8 @@ C789"></textarea>
             }
         }
 
-        window.addEventListener("pageshow", () => {
-            setTimeout(autoFillAndRunChuyenKho, 300);
+        window.addEventListener("DOMContentLoaded", () => {
+            setTimeout(autoFillAndRunChuyenKho, 150);
         });
     </script>
 
