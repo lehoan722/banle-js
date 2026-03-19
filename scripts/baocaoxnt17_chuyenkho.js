@@ -779,7 +779,10 @@ async function onChuyenKhoFromTextarea() {
     }
 
     const masps = Array.from(new Set(
-        ta.value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean)
+        ta.value
+            .split(/\r?\n/)
+            .map(s => s.trim().toUpperCase())
+            .filter(Boolean)
     ));
 
     if (masps.length === 0) {
@@ -793,25 +796,44 @@ async function onChuyenKhoFromTextarea() {
         const filters4den = getFilters() || {};
         const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
 
-        const snap = await rpcTonSnapshot(masps, denNgay, false);
+        // ĐỔI SANG RPC đầy đủ hơn
+        const snap = await rpcTonBanSnapshot(masps, denNgay, false);
 
         if (!Array.isArray(snap)) {
-            throw new Error("rpcTonSnapshot trả về dữ liệu không hợp lệ");
+            throw new Error('rpcTonBanSnapshot trả về dữ liệu không hợp lệ');
+        }
+
+        console.log('[CK] snap từ textarea =', snap);
+
+        if (snap.length === 0) {
+            if (statusEl) statusEl.textContent = 'Không có dữ liệu tồn';
+            alert('Không lấy được dữ liệu tồn kho cho danh sách mã này.');
+            return;
         }
 
         const raw = snap.map(s => ({
             masp: s.masp,
             size: s.size,
-            ton_cs1: s.ton_cs1,
-            ton_cs2: s.ton_cs2
+            ton_cs1: Number(s.ton_cs1 || 0),
+            ton_cs2: Number(s.ton_cs2 || 0),
+            ban_cs1: Number(s.ban_cs1 || 0),
+            ban_cs2: Number(s.ban_cs2 || 0)
         }));
 
+        console.log('[CK] raw sau map =', raw);
+
         const rows = buildTransferTable(raw);
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+            if (statusEl) statusEl.textContent = 'Không có dòng dữ liệu';
+            alert('Không lấy được dữ liệu tồn kho cho danh sách mã này.');
+            return;
+        }
+
         currentRows = rows;
-
         allMasps = Array.from(new Set(raw.map(r => r.masp)));
-        renderPreviewForMasps(allMasps);
 
+        renderPreviewForMasps(allMasps);
         await patchVitri(rows);
         renderHOT(rows);
 
@@ -819,17 +841,13 @@ async function onChuyenKhoFromTextarea() {
         updateStatusTotals(rows);
 
         if (statusEl) {
-            statusEl.textContent = `Đã tải ${rows.length} dòng từ danh sách MASP (tồn thật)`;
-        }
-
-        if (rows.length === 0) {
-            alert("Không lấy được dữ liệu tồn cho danh sách mã này.");
+            statusEl.textContent = `Đã tải ${rows.length} dòng từ danh sách MASP`;
         }
 
     } catch (err) {
-        console.error("[CK] onChuyenKhoFromTextarea error:", err);
+        console.error('[CK] onChuyenKhoFromTextarea error:', err);
         if (statusEl) statusEl.textContent = 'Lỗi khi tính tồn thật';
-        alert("Có lỗi khi lấy dữ liệu tồn thật trên iPhone. Bạn thử tải lại trang rồi bấm lại.");
+        alert('Có lỗi khi lấy dữ liệu tồn kho từ danh sách mã sản phẩm.');
     }
 }
 
