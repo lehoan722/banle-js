@@ -490,37 +490,31 @@ C789"></textarea>
                     return;
                 }
 
-                // 1. Đổ dữ liệu vào textarea
                 textarea.value = obj.list.join("\n");
                 textarea.dispatchEvent(new Event("input", { bubbles: true }));
                 textarea.dispatchEvent(new Event("change", { bubbles: true }));
                 console.log("[CK] Đã nhận danh sách mã:", obj.list);
 
-                // 2. Chờ nút thật sự sẵn sàng
-                const waitBtnReady = async () => {
-                    for (let i = 0; i < 40; i++) { // chờ tối đa ~8 giây
-                        const btn = document.getElementById("btnChuyenKho");
-                        if (btn) {
-                            return btn;
+                // chờ module JS riêng expose hàm global xong
+                const waitRunnerReady = async () => {
+                    for (let i = 0; i < 60; i++) { // ~12 giây
+                        if (typeof window.runChuyenKhoFromTextarea === "function") {
+                            return true;
                         }
                         await new Promise(r => setTimeout(r, 200));
                     }
-                    return null;
+                    return false;
                 };
 
-                const btn = await waitBtnReady();
-                if (!btn) {
-                    console.error("[CK] Không tìm thấy nút #btnChuyenKho");
+                const ready = await waitRunnerReady();
+                if (!ready) {
+                    console.error("[CK] Chưa sẵn sàng hàm runChuyenKhoFromTextarea");
                     return;
                 }
 
-                // 3. Chờ thêm một nhịp để module gắn event xong hẳn
-                await new Promise(r => setTimeout(r, 300));
+                await window.runChuyenKhoFromTextarea();
 
-                btn.click();
-                console.log("[CK] Đã tự bấm nút Chuyển kho");
-
-                // 4. Xóa key sau khi đã click thành công
+                console.log("[CK] Đã tự chạy chuyển kho");
                 localStorage.removeItem("XNT17_MASPS_LS");
 
             } catch (e) {
@@ -528,8 +522,8 @@ C789"></textarea>
             }
         }
 
-        window.addEventListener("DOMContentLoaded", () => {
-            setTimeout(autoFillAndRunChuyenKho, 100);
+        window.addEventListener("pageshow", () => {
+            setTimeout(autoFillAndRunChuyenKho, 300);
         });
     </script>
 
