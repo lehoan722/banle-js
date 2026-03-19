@@ -74,7 +74,31 @@ function extractSingleProductFromBangKetQua() {
     };
 }
 
-function showCandidatePicker(candidates) {
+function buildCandidateCardHtml(c, i, allowSelect) {
+    const badge = c.is_exact_match
+        ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#dff5df;color:#155724;font-weight:bold;margin-left:8px;">Khớp</span>`
+        : `<span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fff3cd;color:#856404;font-weight:bold;margin-left:8px;">Gần đúng</span>`;
+
+    return `
+        <label style="display:block; border:1px solid #ccc; border-radius:8px; padding:10px; margin:8px 0; cursor:${allowSelect ? "pointer" : "default"}; background:${c.is_exact_match ? "#f7fff7" : "#fffdf5"};">
+            ${allowSelect ? `<input type="radio" name="chonHoaDonDongBo" value="${i}" ${i === 0 ? "checked" : ""} />` : ""}
+            <span style="margin-left:${allowSelect ? "8px" : "0"};">
+                <b>${c.sohd}</b>
+                ${badge}
+                <br>
+                Ngày: ${c.ngay || ""} |
+                Giờ tạo: ${formatDateTimeVN(c.created_at)} |
+                NV: ${c.manv || ""} - ${c.tennv || ""}
+                <br>
+                Quản lý nhập: <b>${c.size0_qty}</b> |
+                Nhân viên nhập: <b>${c.input_qty}</b> |
+                Lệch: <b style="color:${c.qty_diff === 0 ? "green" : "#d35400"};">${c.qty_diff}</b>
+            </span>
+        </label>
+    `;
+}
+
+function showExactCandidatePicker(candidates) {
     return new Promise((resolve) => {
         const old = document.getElementById("popupChonHoaDonDongBo");
         if (old) old.remove();
@@ -93,8 +117,8 @@ function showCandidatePicker(candidates) {
 
         const box = document.createElement("div");
         box.style.cssText = `
-            width: min(760px, 92vw);
-            max-height: 80vh;
+            width: min(780px, 92vw);
+            max-height: 82vh;
             overflow: auto;
             background: #fff;
             border-radius: 10px;
@@ -103,23 +127,12 @@ function showCandidatePicker(candidates) {
             font-family: Arial, sans-serif;
         `;
 
-        const rowsHtml = candidates.map((c, i) => `
-            <label style="display:block; border:1px solid #ccc; border-radius:8px; padding:10px; margin:8px 0; cursor:pointer;">
-                <input type="radio" name="chonHoaDonDongBo" value="${i}" ${i === 0 ? "checked" : ""} />
-                <span style="margin-left:8px;">
-                    <b>${c.sohd}</b>
-                    | Ngày: ${c.ngay || ""}
-                    | Giờ tạo: ${formatDateTimeVN(c.created_at)}
-                    | NV: ${c.manv || ""} - ${c.tennv || ""}
-                    | 0/${c.size0_qty}
-                </span>
-            </label>
-        `).join("");
+        const rowsHtml = candidates.map((c, i) => buildCandidateCardHtml(c, i, true)).join("");
 
         box.innerHTML = `
             <div style="font-size:20px; font-weight:bold; margin-bottom:12px;">Chọn hóa đơn nhập mới để đồng bộ</div>
             <div style="font-size:15px; margin-bottom:10px;">
-                Có nhiều hóa đơn cùng khớp. Chọn đúng hóa đơn cần đồng bộ.
+                Các hóa đơn dưới đây khớp đúng số lượng. Chọn đúng hóa đơn cần đồng bộ.
             </div>
             <div>${rowsHtml}</div>
             <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
@@ -147,6 +160,66 @@ function showCandidatePicker(candidates) {
             if (e.target === overlay) {
                 overlay.remove();
                 resolve(null);
+            }
+        });
+    });
+}
+
+function showNearMatchPopup(candidates, masp) {
+    return new Promise((resolve) => {
+        const old = document.getElementById("popupGanDungNhapMoi");
+        if (old) old.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "popupGanDungNhapMoi";
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.35);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const box = document.createElement("div");
+        box.style.cssText = `
+            width: min(820px, 94vw);
+            max-height: 84vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.25);
+            padding: 16px;
+            font-family: Arial, sans-serif;
+        `;
+
+        const rowsHtml = candidates.map((c, i) => buildCandidateCardHtml(c, i, false)).join("");
+
+        box.innerHTML = `
+            <div style="font-size:20px; font-weight:bold; margin-bottom:12px;">Có hóa đơn gần đúng cho mã ${masp}</div>
+            <div style="font-size:15px; margin-bottom:10px; color:#8a5a00;">
+                Không có hóa đơn nào khớp tuyệt đối số lượng, nên hệ thống chưa đồng bộ tự động.
+                Dưới đây là các hóa đơn gần đúng để nhân viên đối chiếu và báo quản lý.
+            </div>
+            <div>${rowsHtml}</div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+                <button id="btnDongGanDung" type="button" style="padding:8px 14px;">Đã hiểu</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        box.querySelector("#btnDongGanDung").onclick = () => {
+            overlay.remove();
+            resolve();
+        };
+
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                resolve();
             }
         });
     });
@@ -223,46 +296,57 @@ async function handleKiemTraDongBo() {
         });
 
         if (!candidates.length) {
-            alert(`Không tìm thấy hóa đơn nhập mới cs2 phù hợp cho mã ${info.masp}.`);
+            alert(`Không tìm thấy hóa đơn nhập mới cs2 nào cho mã ${info.masp} trong hôm nay và hôm qua.`);
             return;
         }
 
-        let selected = null;
+        const exactMatches = candidates.filter(x => x.is_exact_match);
+        const nearMatches = candidates.filter(x => !x.is_exact_match);
 
-        if (candidates.length === 1) {
-            const c = candidates[0];
-            const ok = confirm(
-                `Tìm thấy hóa đơn nhập mới phù hợp.\n\n` +
-                `Mã: ${info.masp}\n` +
-                `Hóa đơn: ${c.sohd}\n` +
-                `Ngày: ${c.ngay || ""}\n` +
-                `Giờ tạo: ${formatDateTimeVN(c.created_at)}\n` +
-                `Nhân viên: ${c.manv || ""} - ${c.tennv || ""}\n` +
-                `Số lượng 0/x: ${c.size0_qty}\n\n` +
-                `Bạn có muốn đồng bộ size chi tiết sang hóa đơn này không?`
-            );
-            if (!ok) return;
-            selected = c;
-        } else {
-            selected = await showCandidatePicker(candidates);
-            if (!selected) return;
+        if (exactMatches.length > 0) {
+            let selected = null;
+
+            if (exactMatches.length === 1) {
+                const c = exactMatches[0];
+                const ok = confirm(
+                    `Tìm thấy hóa đơn nhập mới khớp đúng số lượng.\n\n` +
+                    `Mã: ${info.masp}\n` +
+                    `Hóa đơn: ${c.sohd}\n` +
+                    `Ngày: ${c.ngay || ""}\n` +
+                    `Giờ tạo: ${formatDateTimeVN(c.created_at)}\n` +
+                    `Nhân viên: ${c.manv || ""} - ${c.tennv || ""}\n` +
+                    `Quản lý nhập: ${c.size0_qty}\n` +
+                    `Nhân viên nhập: ${c.input_qty}\n` +
+                    `Lệch: ${c.qty_diff}\n\n` +
+                    `Bạn có muốn đồng bộ size chi tiết sang hóa đơn này không?`
+                );
+                if (!ok) return;
+                selected = c;
+            } else {
+                selected = await showExactCandidatePicker(exactMatches);
+                if (!selected) return;
+            }
+
+            const result = await syncToNhapMoi({
+                sohdNhapMoi: selected.sohd,
+                masp: info.masp,
+                details: info.details
+            });
+
+            alert((result.message || "Đồng bộ thành công.") + "\n\nHệ thống sẽ tự lưu phiếu nhập tạm.");
+
+            setTimeout(() => {
+                try {
+                    triggerSaveNhapTam();
+                } catch (e) {
+                    alert("Đồng bộ xong nhưng không tự bấm Lưu được: " + (e.message || e));
+                }
+            }, 150);
+
+            return;
         }
 
-        const result = await syncToNhapMoi({
-            sohdNhapMoi: selected.sohd,
-            masp: info.masp,
-            details: info.details
-        });
-
-        alert((result.message || "Đồng bộ thành công.") + "\n\nHệ thống sẽ tự lưu phiếu nhập tạm.");
-
-        setTimeout(() => {
-            try {
-                triggerSaveNhapTam();
-            } catch (e) {
-                alert("Đồng bộ xong nhưng không tự bấm Lưu được: " + (e.message || e));
-            }
-        }, 150);
+        await showNearMatchPopup(nearMatches, info.masp);
 
     } catch (err) {
         console.error("Lỗi kiểm tra/đồng bộ nhập tạm -> nhập mới:", err);
