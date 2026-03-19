@@ -1471,23 +1471,15 @@
     <script>
 
         document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
-
             const rows = document.querySelectorAll("#bangketqua tbody tr");
-
             const maspSet = new Set();
 
             rows.forEach(tr => {
-
-                const maspCell = tr.cells[0]; // cột mã hàng
-
+                const maspCell = tr.cells[0];
                 if (!maspCell) return;
 
-                const masp = maspCell.innerText.trim().toUpperCase();
-
-                if (masp) {
-                    maspSet.add(masp);
-                }
-
+                const masp = (maspCell.innerText || "").trim().toUpperCase();
+                if (masp) maspSet.add(masp);
             });
 
             const maspList = Array.from(maspSet);
@@ -1497,18 +1489,19 @@
                 return;
             }
 
-            // lưu localStorage để XNT17 đọc
-            localStorage.setItem(
-                "XNT17_MASPS_LS",
-                JSON.stringify({ list: maspList })
-            );
+            const payload = {
+                list: maspList,
+                ts: Date.now(),
+                source: "nhaptamcs2"
+            };
 
-            // mở trang gợi ý chuyển kho
+            localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
+            console.log("[NHAPTAM] Đã lưu XNT17_MASPS_LS:", payload);
+
             window.open(
-                "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html",
+                "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html?from=nhaptam&t=" + Date.now(),
                 "_blank"
             );
-
         });
 
     </script>
