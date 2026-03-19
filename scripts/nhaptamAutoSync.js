@@ -1,0 +1,294 @@
+function formatDateTimeVN(value) {
+    if (!value) return "";
+    try {
+        return new Date(value).toLocaleString("vi-VN");
+    } catch {
+        return String(value);
+    }
+}
+
+function ensureSupabase() {
+    if (!window.supabase) {
+        throw new Error("Chưa khởi tạo được window.supabase.");
+    }
+    return window.supabase;
+}
+
+function rebuildBangKetQua() {
+    if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+        window.capNhatBangKetQuaTuDOM();
+    }
+    return window.bangKetQua || {};
+}
+
+function extractSingleProductFromBangKetQua() {
+    const bang = rebuildBangKetQua();
+    const masps = Object.keys(bang).filter(Boolean);
+
+    if (masps.length === 0) {
+        throw new Error("Chưa có dữ liệu trong bảng kết quả.");
+    }
+
+    if (masps.length > 1) {
+        throw new Error("Phiếu nhập tạm chỉ được phép có 1 mã sản phẩm.");
+    }
+
+    const item = bang[masps[0]];
+    const detailsMap = new Map();
+    let hasZeroSize = false;
+
+    (item.sizes || []).forEach((rawSize, idx) => {
+        const size = String(rawSize ?? "").trim();
+        const soluong = Number(item.soluongs?.[idx] || 0);
+
+        if (!size || soluong <= 0) return;
+
+        if (size === "0") {
+            hasZeroSize = true;
+            return;
+        }
+
+        detailsMap.set(size, (detailsMap.get(size) || 0) + soluong);
+    });
+
+    if (hasZeroSize) {
+        throw new Error("Không được phép nhập size 0/x trên hóa đơn nhập tạm.");
+    }
+
+    const details = Array.from(detailsMap.entries()).map(([size, soluong]) => ({
+        size,
+        soluong
+    }));
+
+    if (details.length === 0) {
+        throw new Error("Chưa có size chi tiết để kiểm tra đồng bộ.");
+    }
+
+    const totalQty = details.reduce((sum, x) => sum + Number(x.soluong || 0), 0);
+
+    return {
+        masp: String(item.masp || "").trim().toUpperCase(),
+        tensp: item.tensp || "",
+        details,
+        totalQty
+    };
+}
+
+function showCandidatePicker(candidates) {
+    return new Promise((resolve) => {
+        const old = document.getElementById("popupChonHoaDonDongBo");
+        if (old) old.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "popupChonHoaDonDongBo";
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.35);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        const box = document.createElement("div");
+        box.style.cssText = `
+            width: min(760px, 92vw);
+            max-height: 80vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.25);
+            padding: 16px;
+            font-family: Arial, sans-serif;
+        `;
+
+        const rowsHtml = candidates.map((c, i) => `
+            <label style="display:block; border:1px solid #ccc; border-radius:8px; padding:10px; margin:8px 0; cursor:pointer;">
+                <input type="radio" name="chonHoaDonDongBo" value="${i}" ${i === 0 ? "checked" : ""} />
+                <span style="margin-left:8px;">
+                    <b>${c.sohd}</b>
+                    | Ngày: ${c.ngay || ""}
+                    | Giờ tạo: ${formatDateTimeVN(c.created_at)}
+                    | NV: ${c.manv || ""} - ${c.tennv || ""}
+                    | 0/${c.size0_qty}
+                </span>
+            </label>
+        `).join("");
+
+        box.innerHTML = `
+            <div style="font-size:20px; font-weight:bold; margin-bottom:12px;">Chọn hóa đơn nhập mới để đồng bộ</div>
+            <div style="font-size:15px; margin-bottom:10px;">
+                Có nhiều hóa đơn cùng khớp. Chọn đúng hóa đơn cần đồng bộ.
+            </div>
+            <div>${rowsHtml}</div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+                <button id="btnHuyChonDongBo" type="button" style="padding:8px 14px;">Hủy</button>
+                <button id="btnDongYChonDongBo" type="button" style="padding:8px 14px;">Đồng bộ</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        box.querySelector("#btnHuyChonDongBo").onclick = () => {
+            overlay.remove();
+            resolve(null);
+        };
+
+        box.querySelector("#btnDongYChonDongBo").onclick = () => {
+            const checked = box.querySelector('input[name="chonHoaDonDongBo"]:checked');
+            const idx = Number(checked?.value ?? -1);
+            overlay.remove();
+            resolve(idx >= 0 ? candidates[idx] : null);
+        };
+
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                resolve(null);
+            }
+        });
+    });
+}
+
+async function findCandidates({ masp, totalQty }) {
+    const supabase = ensureSupabase();
+
+    const { data, error } = await supabase.rpc("rpc_find_nhapmoi_candidates_for_nhaptam_cs2", {
+        p_masp: masp,
+        p_total_qty: totalQty
+    });
+
+    if (error) {
+        throw error;
+    }
+
+    return Array.isArray(data) ? data : [];
+}
+
+async function syncToNhapMoi({ sohdNhapMoi, masp, details }) {
+    const supabase = ensureSupabase();
+
+    const manv = localStorage.getItem("manv") || "";
+    const tennv = localStorage.getItem("tennv") || "";
+
+    const { data, error } = await supabase.rpc("rpc_sync_nhaptam_sizes_to_nhapmoi_cs2", {
+        p_sohd_nhapmoi: sohdNhapMoi,
+        p_masp: masp,
+        p_sizes_json: details,
+        p_actor_manv: manv,
+        p_actor_tennv: tennv
+    });
+
+    if (error) {
+        throw error;
+    }
+
+    const row = Array.isArray(data) ? data[0] : null;
+    if (!row) {
+        throw new Error("RPC đồng bộ không trả về kết quả.");
+    }
+
+    if (!row.success) {
+        throw new Error(row.message || "Đồng bộ thất bại.");
+    }
+
+    return row;
+}
+
+function triggerSaveNhapTam() {
+    const btnLuu = document.getElementById("btn-luu");
+    if (!btnLuu) {
+        throw new Error("Không tìm thấy nút Lưu của phiếu nhập tạm.");
+    }
+    btnLuu.click();
+}
+
+async function handleKiemTraDongBo() {
+    const btn = document.getElementById("btn-kiemtra");
+    const oldText = btn ? btn.textContent : "";
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Đang kiểm tra...";
+        }
+
+        const info = extractSingleProductFromBangKetQua();
+
+        const candidates = await findCandidates({
+            masp: info.masp,
+            totalQty: info.totalQty
+        });
+
+        if (!candidates.length) {
+            alert(`Không tìm thấy hóa đơn nhập mới cs2 phù hợp cho mã ${info.masp}.`);
+            return;
+        }
+
+        let selected = null;
+
+        if (candidates.length === 1) {
+            const c = candidates[0];
+            const ok = confirm(
+                `Tìm thấy hóa đơn nhập mới phù hợp.\n\n` +
+                `Mã: ${info.masp}\n` +
+                `Hóa đơn: ${c.sohd}\n` +
+                `Ngày: ${c.ngay || ""}\n` +
+                `Giờ tạo: ${formatDateTimeVN(c.created_at)}\n` +
+                `Nhân viên: ${c.manv || ""} - ${c.tennv || ""}\n` +
+                `Số lượng 0/x: ${c.size0_qty}\n\n` +
+                `Bạn có muốn đồng bộ size chi tiết sang hóa đơn này không?`
+            );
+            if (!ok) return;
+            selected = c;
+        } else {
+            selected = await showCandidatePicker(candidates);
+            if (!selected) return;
+        }
+
+        const result = await syncToNhapMoi({
+            sohdNhapMoi: selected.sohd,
+            masp: info.masp,
+            details: info.details
+        });
+
+        alert((result.message || "Đồng bộ thành công.") + "\n\nHệ thống sẽ tự lưu phiếu nhập tạm.");
+
+        setTimeout(() => {
+            try {
+                triggerSaveNhapTam();
+            } catch (e) {
+                alert("Đồng bộ xong nhưng không tự bấm Lưu được: " + (e.message || e));
+            }
+        }, 150);
+
+    } catch (err) {
+        console.error("Lỗi kiểm tra/đồng bộ nhập tạm -> nhập mới:", err);
+        alert("Lỗi: " + (err?.message || err));
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = oldText || "Kiểm tra";
+        }
+    }
+}
+
+function initNhapTamAutoSync() {
+    const btn = document.getElementById("btn-kiemtra");
+    if (!btn) return;
+
+    btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handleKiemTraDongBo();
+    });
+
+    window.kiemTraDongBoNhapMoiTuNhapTam = handleKiemTraDongBo;
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initNhapTamAutoSync);
+} else {
+    initNhapTamAutoSync();
+}
