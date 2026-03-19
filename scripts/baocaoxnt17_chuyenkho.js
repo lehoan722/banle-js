@@ -745,7 +745,12 @@ function onTaoPhieuChuyenCN() {
 // Chuyển kho theo danh sách MASP trong textarea (độc lập với XNT17)
 async function onChuyenKhoFromTextarea() {
     const ta = document.getElementById('maspTextarea');
-    if (!ta) { alert('Không tìm thấy ô nhập mã sản phẩm'); return; }
+    const statusEl = document.getElementById('status');
+
+    if (!ta) {
+        alert('Không tìm thấy ô nhập mã sản phẩm');
+        return;
+    }
 
     const masps = Array.from(new Set(
         ta.value.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean)
@@ -756,38 +761,51 @@ async function onChuyenKhoFromTextarea() {
         return;
     }
 
-    document.getElementById('status').textContent = 'Đang tính tồn thật…';
+    try {
+        if (statusEl) statusEl.textContent = 'Đang tính tồn thật…';
 
-    const filters4den = getFilters() || {};
-    const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
+        const filters4den = getFilters() || {};
+        const denNgay = filters4den.den_ngay || new Date().toISOString().slice(0, 10);
 
-    // lấy snapshot tồn thật cho list MASP
-    const snap = await rpcTonSnapshot(masps, denNgay, false);
+        const snap = await rpcTonSnapshot(masps, denNgay, false);
 
-    // chuyển snapshot thành raw giống cấu trúc buildTransferTable đang dùng
-    const raw = snap.map(s => ({
-        masp: s.masp, size: s.size, ton_cs1: s.ton_cs1, ton_cs2: s.ton_cs2
-    }));
+        if (!Array.isArray(snap)) {
+            throw new Error("rpcTonSnapshot trả về dữ liệu không hợp lệ");
+        }
 
-    // dựng bảng + render
-    const rows = buildTransferTable(raw);
+        const raw = snap.map(s => ({
+            masp: s.masp,
+            size: s.size,
+            ton_cs1: s.ton_cs1,
+            ton_cs2: s.ton_cs2
+        }));
 
-    currentRows = rows;
+        const rows = buildTransferTable(raw);
+        currentRows = rows;
 
+        allMasps = Array.from(new Set(raw.map(r => r.masp)));
+        renderPreviewForMasps(allMasps);
 
-    // cập nhật lưới ảnh theo danh sách masp mới
-    allMasps = Array.from(new Set(raw.map(r => r.masp)));
-    renderPreviewForMasps(allMasps);
+        await patchVitri(rows);
+        renderHOT(rows);
 
-    await patchVitri(rows);
-    renderHOT(rows);
-    if (allMasps.length) focusPreview(allMasps[0]);
-    updateStatusTotals(rows);
+        if (allMasps.length) focusPreview(allMasps[0]);
+        updateStatusTotals(rows);
 
-    document.getElementById('status').textContent =
-        `Đã tải ${rows.length} dòng từ danh sách MASP (tồn thật)`;
+        if (statusEl) {
+            statusEl.textContent = `Đã tải ${rows.length} dòng từ danh sách MASP (tồn thật)`;
+        }
+
+        if (rows.length === 0) {
+            alert("Không lấy được dữ liệu tồn cho danh sách mã này.");
+        }
+
+    } catch (err) {
+        console.error("[CK] onChuyenKhoFromTextarea error:", err);
+        if (statusEl) statusEl.textContent = 'Lỗi khi tính tồn thật';
+        alert("Có lỗi khi lấy dữ liệu tồn thật trên iPhone. Bạn thử tải lại trang rồi bấm lại.");
+    }
 }
-
 
 // ===== 5) Đồng bộ ảnh (reuse pattern của XNT17) =====
 // ==== ẢNH: copy từ XNT17 ====
@@ -1246,8 +1264,68 @@ async function boot() {
 document.getElementById('btnReload').onclick = boot;
 boot();
 
+// ===== helper: chờ supabase/session sẵn sàng hơn trên mobile Safari =====
+async function waitSupabaseReady(maxMs = 8000) {
+    const started = Date.now();
+
+    while (Date.now() - started < maxMs) {
+        try {
+            if (window.supabase?.auth?.getSession) {
+                // gọi thử để ép client sẵn sàng
+                await window.supabase.auth.getSession();
+                return true;
+            }
+        } catch (e) {
+            console.warn("[CK] waitSupabaseReady:", e);
+        }
+        await new Promise(r => setTimeout(r, 200));
+    }
+
+    return !!window.supabase;
+}
+
+// ===== wrapper chạy chuyển kho an toàn =====
+let __ckRunning = false;
+
+async function runChuyenKhoSafe(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    if (__ckRunning) return;
+    __ckRunning = true;
+
+    const statusEl = document.getElementById("status");
+
+    try {
+        if (statusEl) statusEl.textContent = "Đang chuẩn bị dữ liệu chuyển kho...";
+
+        await waitSupabaseReady(8000);
+
+        if (statusEl) statusEl.textContent = "Đang tính tồn thật...";
+        await onChuyenKhoFromTextarea();
+
+    } catch (err) {
+        console.error("[CK] Lỗi runChuyenKhoSafe:", err);
+        if (statusEl) statusEl.textContent = "Lỗi khi tải dữ liệu chuyển kho";
+        alert("Không tải được dữ liệu chuyển kho. Bạn mở lại trang rồi thử lại.");
+    } finally {
+        __ckRunning = false;
+    }
+}
+
+// expose ra global để HTML có thể gọi trực tiếp
+window.runChuyenKhoFromTextarea = runChuyenKhoSafe;
+
+// gắn cả click + touchend để iPhone bấm chắc hơn
 const btnCK = document.getElementById('btnChuyenKho');
-if (btnCK) btnCK.onclick = onChuyenKhoFromTextarea;
+if (btnCK) {
+    btnCK.setAttribute("type", "button");
+
+    btnCK.addEventListener("click", runChuyenKhoSafe, { passive: false });
+    btnCK.addEventListener("touchend", runChuyenKhoSafe, { passive: false });
+}
 
 // Gắn sự kiện cho popup ảnh chuyển CN
 const btnAnh = document.getElementById('btnAnhChuyen');
