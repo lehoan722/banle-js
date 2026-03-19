@@ -233,6 +233,7 @@
     const sl = normalizeNumber(slEl?.value || 1) || 1;
 
     if (!isValidSize(sizeVal)) {
+      phatAmThanhLoi();
       alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
       return;
     }
@@ -957,6 +958,7 @@
     }
 
     if (!isValidSize(size)) {
+      phatAmThanhLoi();
       alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
       if (sizeEl) sizeEl.focus();
       return;
@@ -1083,6 +1085,7 @@
 
           const masp = normalizeMasp(maspEl?.value);
           if (!masp) {
+            phatAmThanhLoi();
             alert("Vui lòng nhập mã sản phẩm.");
             maspEl?.focus();
             return;
@@ -1111,6 +1114,7 @@
 
           const masp = normalizeMasp(maspEl?.value);
           if (!masp) {
+            phatAmThanhLoi();
             alert("Vui lòng nhập mã sản phẩm.");
             maspEl?.focus();
             return;
@@ -1623,6 +1627,7 @@
       const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
 
       if (!dsHd.length || !ctRows.length) {
+        phatAmThanhLoi();
         alert("Không tìm thấy hóa đơn CCN phù hợp trong hôm qua và hôm nay.");
         return;
       }
@@ -1630,6 +1635,7 @@
       const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem);
 
       if (!dsDeXuat.length) {
+        phatAmThanhLoi();
         alert("Không tìm thấy hóa đơn CCN chưa kiểm nào có mã sản phẩm trùng với phần nhập.");
         return;
       }
@@ -1933,6 +1939,7 @@
     const payload = taoPayloadCCN1V2TuKiemNhap();
 
     if (!payload) {
+      phatAmThanhLoi();
       alert("Không có mã sản phẩm thiếu để tạo phiếu CCN1V2.");
       return;
     }
@@ -1976,6 +1983,7 @@
     console.log("[KNK] payload CCN2V1 =", payload);
 
     if (!payload) {
+      phatAmThanhLoi();
       alert("Không có mã sản phẩm thừa để tạo phiếu CCN2V1.");
       return;
     }
