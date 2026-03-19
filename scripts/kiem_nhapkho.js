@@ -13,9 +13,7 @@ import {
     pageId: "kiemnhap_cs1",
     fromBranch: "cs2",
     toBranch: "cs1",
-
     soPhieuPrefix: "kiemnhap2v1cs1_",
-
     title: "KIỂM NHẬP KHO"
   };
 
@@ -39,19 +37,19 @@ import {
   // AUDIO CẢNH BÁO
   // =========================
   // =========================
-// AUDIO (NEW - SOUND BEEP)
-// =========================
-function phatAmThanhLoi() {
-  try { playAlertBeep(); } catch (e) {}
-}
+  // AUDIO (NEW - SOUND BEEP)
+  // =========================
+  function phatAmThanhLoi() {
+    try { playAlertBeep(); } catch (e) { }
+  }
 
-function phatAmThanhSize() {
-  try { playWaitSizeBeep(); } catch (e) {}
-}
+  function phatAmThanhSize() {
+    try { playWaitSizeBeep(); } catch (e) { }
+  }
 
-function phatAmThanhThanhCong() {
-  try { playSuccessBeep(); } catch (e) {}
-}
+  function phatAmThanhThanhCong() {
+    try { playSuccessBeep(); } catch (e) { }
+  }
 
   const audioCache = {};
 
@@ -2909,9 +2907,9 @@ function phatAmThanhThanhCong() {
     bindButtons();
 
     // 🔥 QUAN TRỌNG
-  setupBeepUnlockOnce();
+    setupBeepUnlockOnce();
 
-    
+
     await resetPhieu();
 
     const hdStateEl = byId("hd_state");
