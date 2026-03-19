@@ -270,6 +270,18 @@ async function syncToNhapMoi({ sohdNhapMoi, masp, details }) {
     return row;
 }
 
+function appendNhapMoiSohdToGhiChu(sohdNhapMoi) {
+    const input = document.getElementById("ghichu");
+    if (!input || !sohdNhapMoi) return;
+
+    const current = String(input.value || "").trim();
+    const marker = `Đã đồng bộ vào ${sohdNhapMoi}`;
+
+    if (current.includes(sohdNhapMoi)) return;
+
+    input.value = current ? `${current} | ${marker}` : marker;
+}
+
 function triggerSaveNhapTam() {
     const btnLuu = document.getElementById("btn-luu");
     if (!btnLuu) {
@@ -333,7 +345,13 @@ async function handleKiemTraDongBo() {
                 details: info.details
             });
 
-            alert((result.message || "Đồng bộ thành công.") + "\n\nHệ thống sẽ tự lưu phiếu nhập tạm.");
+            appendNhapMoiSohdToGhiChu(selected.sohd);
+
+            alert(
+                (result.message || "Đồng bộ thành công.") +
+                `\n\nĐã ghi chú phiếu nhập mới: ${selected.sohd}` +
+                `\nHệ thống sẽ tự lưu phiếu nhập tạm.`
+            );
 
             setTimeout(() => {
                 try {
