@@ -1,3 +1,10 @@
+import {
+  playSuccessBeep,
+  playWaitSizeBeep,
+  playAlertBeep,
+  setupBeepUnlockOnce
+} from "./soundBeep.js";
+
 // scripts/nhapkiemkho.js
 (function () {
   "use strict";
@@ -31,11 +38,20 @@
   // =========================
   // AUDIO CẢNH BÁO
   // =========================
-  const AUDIO_PATHS = {
-    loi: "./scripts/canhbaoloi.wav",
-    size: "./scripts/canhbaosize.wav",
-    thanhcong: "./scripts/canhbaothanhcong.wav"
-  };
+  // =========================
+// AUDIO (NEW - SOUND BEEP)
+// =========================
+function phatAmThanhLoi() {
+  try { playAlertBeep(); } catch (e) {}
+}
+
+function phatAmThanhSize() {
+  try { playWaitSizeBeep(); } catch (e) {}
+}
+
+function phatAmThanhThanhCong() {
+  try { playSuccessBeep(); } catch (e) {}
+}
 
   const audioCache = {};
 
@@ -2892,14 +2908,10 @@
     bindInputEvents();
     bindButtons();
 
-    // preload audio
-    Object.keys(AUDIO_PATHS).forEach((k) => {
-      if (!audioCache[k]) {
-        audioCache[k] = new Audio(AUDIO_PATHS[k]);
-        audioCache[k].preload = "auto";
-      }
-    });
+    // 🔥 QUAN TRỌNG
+  setupBeepUnlockOnce();
 
+    
     await resetPhieu();
 
     const hdStateEl = byId("hd_state");
