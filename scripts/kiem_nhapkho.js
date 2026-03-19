@@ -5,6 +5,8 @@ import {
   setupBeepUnlockOnce
 } from "./soundBeep.js";
 
+import "./stockQuickPopup.js";
+
 // scripts/nhapkiemkho.js
 (function () {
   "use strict";
@@ -824,24 +826,42 @@ import {
         tr.classList.add("row-selected");
       }
       tr.innerHTML = `
-      <td>${escapeHtml(masp)}</td>
+  <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
+      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
+    ${escapeHtml(masp)}
+  </td>
+
   <td contenteditable="true"
       class="cell-nhap-sizesl"
       data-masp="${escapeHtml(masp)}"
       style="white-space: pre-line; text-align:left;">${escapeHtml(nhapText)}</td>
+
   <td contenteditable="true"
       class="cell-nhap-tongsl"
       data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
-  <td>${escapeHtml(masp)}</td>
+  <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
+      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
+    ${escapeHtml(masp)}
+  </td>
+
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
 
   <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
-    `;
+`;
       tbody.appendChild(tr);
     }
+
+    tbody.querySelectorAll(".cell-masp-click").forEach((el) => {
+      const masp = String(el.dataset.masp || "").trim().toUpperCase();
+      if (!masp) return;
+
+      if (window.StockQuick && typeof window.StockQuick.attach === "function") {
+        window.StockQuick.attach(el, masp);
+      }
+    });
 
     capNhatThongKeDauTrang();
   }
