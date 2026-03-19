@@ -476,47 +476,60 @@ C789"></textarea>
     <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
 
     <script>
-        window.addEventListener("load", function () {
+        async function autoFillAndRunChuyenKho() {
             try {
                 const data = localStorage.getItem("XNT17_MASPS_LS");
                 if (!data) return;
 
                 const obj = JSON.parse(data);
-                if (!obj.list || !Array.isArray(obj.list) || obj.list.length === 0) return;
+                if (!obj || !Array.isArray(obj.list) || obj.list.length === 0) return;
 
                 const textarea = document.getElementById("maspTextarea");
                 if (!textarea) {
-                    console.error("Không tìm thấy textarea #maspTextarea");
+                    console.error("Không tìm thấy #maspTextarea");
                     return;
                 }
 
-                // Điền mã sản phẩm
+                // 1. Đổ dữ liệu vào textarea
                 textarea.value = obj.list.join("\n");
-                console.log("Đã nhận danh sách masp:", obj.list);
-
-                // Phát sự kiện input/change nếu code trang có lắng nghe
                 textarea.dispatchEvent(new Event("input", { bubbles: true }));
                 textarea.dispatchEvent(new Event("change", { bubbles: true }));
+                console.log("[CK] Đã nhận danh sách mã:", obj.list);
 
-                // Chờ trang và module gắn xong sự kiện cho nút rồi mới bấm
-                setTimeout(function () {
-                    const btn = document.getElementById("btnChuyenKho");
-
-                    if (!btn) {
-                        console.error("Không tìm thấy nút #btnChuyenKho");
-                        return;
+                // 2. Chờ nút thật sự sẵn sàng
+                const waitBtnReady = async () => {
+                    for (let i = 0; i < 40; i++) { // chờ tối đa ~8 giây
+                        const btn = document.getElementById("btnChuyenKho");
+                        if (btn) {
+                            return btn;
+                        }
+                        await new Promise(r => setTimeout(r, 200));
                     }
+                    return null;
+                };
 
-                    btn.click();
-                    console.log("Đã tự bấm nút Chuyển kho");
+                const btn = await waitBtnReady();
+                if (!btn) {
+                    console.error("[CK] Không tìm thấy nút #btnChuyenKho");
+                    return;
+                }
 
-                    // Xóa dữ liệu để tránh lần sau bị dính lại
-                    localStorage.removeItem("XNT17_MASPS_LS");
-                }, 800);
+                // 3. Chờ thêm một nhịp để module gắn event xong hẳn
+                await new Promise(r => setTimeout(r, 300));
+
+                btn.click();
+                console.log("[CK] Đã tự bấm nút Chuyển kho");
+
+                // 4. Xóa key sau khi đã click thành công
+                localStorage.removeItem("XNT17_MASPS_LS");
 
             } catch (e) {
-                console.error("Lỗi đọc XNT17_MASPS_LS", e);
+                console.error("[CK] Lỗi autoFillAndRunChuyenKho:", e);
             }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            setTimeout(autoFillAndRunChuyenKho, 100);
         });
     </script>
 
