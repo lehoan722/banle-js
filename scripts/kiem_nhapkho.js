@@ -29,6 +29,54 @@
   let dangChonSizeTrongPopup = false;
 
   // =========================
+  // AUDIO CẢNH BÁO
+  // =========================
+  const AUDIO_PATHS = {
+    loi: "./scripts/canhbaoloi.wav",
+    size: "./scripts/canhbaosize.wav",
+    thanhcong: "./scripts/canhbaothanhcong.wav"
+  };
+
+  const audioCache = {};
+
+  function phatAmThanhLoai(type) {
+    try {
+      const src = AUDIO_PATHS[type];
+      if (!src) return;
+
+      if (!audioCache[type]) {
+        audioCache[type] = new Audio(src);
+        audioCache[type].preload = "auto";
+      }
+
+      const audio = audioCache[type];
+      audio.pause();
+      audio.currentTime = 0;
+
+      const p = audio.play();
+      if (p && typeof p.catch === "function") {
+        p.catch((err) => {
+          console.warn("[AUDIO] play blocked:", type, err);
+        });
+      }
+    } catch (err) {
+      console.warn("[AUDIO] error:", type, err);
+    }
+  }
+
+  function phatAmThanhLoi() {
+    phatAmThanhLoai("loi");
+  }
+
+  function phatAmThanhSize() {
+    phatAmThanhLoai("size");
+  }
+
+  function phatAmThanhThanhCong() {
+    phatAmThanhLoai("thanhcong");
+  }
+
+  // ========================= 
   // HELPERS
   // =========================
   function byId(id) {
@@ -206,6 +254,7 @@
 
     delete state.ketQua[key];
     renderBangKetQua();
+    phatAmThanhThanhCong();
 
     if (sizeEl) sizeEl.value = "";
     if (slEl) slEl.value = "1";
@@ -248,6 +297,7 @@
 
     delete state.ketQua[key];
     renderBangKetQua();
+    phatAmThanhThanhCong();
 
     if (slEl) slEl.value = "1";
 
@@ -892,6 +942,7 @@
     const sl = normalizeNumber(slEl.value || 1);
 
     if (!masp) {
+      phatAmThanhLoi();
       alert("Vui lòng nhập mã sản phẩm.");
       maspEl.focus();
       return;
@@ -964,6 +1015,7 @@
 
           const masp = normalizeMasp(maspEl.value);
           if (!masp) {
+            phatAmThanhLoi();
             alert("Vui lòng nhập mã sản phẩm.");
             maspEl.focus();
             return;
@@ -987,12 +1039,14 @@
             sizeEl.focus();
             sizeEl.value = "";
             showSizePopup(masp, "");
+            phatAmThanhSize();
 
             sizeEl.addEventListener("blur", () => {
               const v = normalizeSize(sizeEl.value);
               if (!v) return;
 
               if (!isValidSize(v)) {
+                phatAmThanhLoi();
                 alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
                 sizeEl.value = "";
                 sizeEl.focus();
@@ -2774,6 +2828,12 @@
     setDefaultBranchInfo();
     bindInputEvents();
     bindButtons();
+
+    // preload audio
+    phatAmThanhLoai("loi");
+    phatAmThanhLoai("size");
+    phatAmThanhLoai("thanhcong");
+
     await resetPhieu();
     console.log("[nhapkiemkho] init OK", CFG);
   }
