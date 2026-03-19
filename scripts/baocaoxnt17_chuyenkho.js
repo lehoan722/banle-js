@@ -1,5 +1,32 @@
 // scripts/baocaoxnt17_chuyenkho.js
-import { supabase } from './supabaseClient.js'; // dùng chung client đã có
+import { supabase } from './supabaseClient.js';
+import * as authModule from './authModule.js';
+
+// đảm bảo các popup/module khác nếu cần vẫn dùng được global supabase
+window.supabase = supabase;
+
+async function khoiTaoDangNhapChoTrangChuyenKho() {
+    try {
+        // Khởi tạo đăng nhập dùng chung giống các trang báo cáo
+        if (typeof authModule.khoiTaoDangNhapDungChung === "function") {
+            await authModule.khoiTaoDangNhapDungChung({
+                forceLogin: true
+            });
+        }
+
+        // Ép đọc session hiện tại để chắc chắn client đã sẵn sàng
+        if (supabase?.auth?.getSession) {
+            const { data, error } = await supabase.auth.getSession();
+            if (error) {
+                console.warn("[CK] getSession error:", error);
+            } else {
+                console.log("[CK] session =", data?.session ? "OK" : "NULL");
+            }
+        }
+    } catch (e) {
+        console.error("[CK] Lỗi khởi tạo đăng nhập:", e);
+    }
+}
 
 // == CSS & LIGHTBOX cho lưới ảnh (port từ XNT17) ==
 (function injectQuickViewCss() {
@@ -791,6 +818,10 @@ async function onChuyenKhoFromTextarea() {
     }
 
     try {
+        if (statusEl) statusEl.textContent = 'Đang kiểm tra đăng nhập...';
+
+        await khoiTaoDangNhapChoTrangChuyenKho();
+
         if (statusEl) statusEl.textContent = 'Đang tính tồn thật…';
 
         const filters4den = getFilters() || {};
@@ -1256,7 +1287,12 @@ function applyAnhChuyenToPhieu() {
 
 // ===== 6) Entry point =====
 async function boot() {
-    document.getElementById('status').textContent = 'Đang tải dữ liệu…';
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.textContent = 'Đang khởi tạo đăng nhập...';
+
+    await khoiTaoDangNhapChoTrangChuyenKho();
+
+    if (statusEl) statusEl.textContent = 'Đang tải dữ liệu…';
 
     const rawRows = sessionStorage.getItem('xnt17_transfer_rows');
     let raw = [];
@@ -1264,10 +1300,8 @@ async function boot() {
     if (rawRows) {
         raw = JSON.parse(rawRows);
     } else {
-        // Mở độc lập không qua XNT17:
-        // không gọi fetchAllRows nữa vì file này không có hàm đó.
         raw = [];
-        document.getElementById('status').textContent = 'Nhập mã sản phẩm rồi bấm Chuyển kho';
+        if (statusEl) statusEl.textContent = 'Nhập mã sản phẩm rồi bấm Chuyển kho';
     }
 
     const filters4den = getFilters() || {};
@@ -1277,25 +1311,16 @@ async function boot() {
         raw = await overlayTonThat(raw, denNgay);
     }
 
-
-    // 2) Dựng bảng chuyển kho
-    const rows = buildTransferTable(raw);   // 9 dòng size + 1 dòng “Tổng”
-
+    const rows = buildTransferTable(raw);
     currentRows = rows;
+    allMasps = Array.from(new Set(rows.map(r => r.masp).filter(Boolean)));
 
-
-    // Lập danh sách MASP duy nhất theo thứ tự xuất hiện trong raw
-    const masps = Array.from(new Map((raw || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
-    allMasps = masps;               // ⬅️ lưu lại để dùng cho "Hiện tất cả"
     renderPreviewForMasps(allMasps);
-
-
-    await patchVitri(rows);                 // lấy vị trí từ dmhanghoa (đọc trực tiếp table)
-
+    await patchVitri(rows);
     renderHOT(rows);
-    if (masps.length) focusPreview(masps[0]);
-    updateStatusTotals(rows);
 
+    if (allMasps.length) focusPreview(allMasps[0]);
+    updateStatusTotals(rows);
 
     // 3) Tuỳ chọn: dọn storage (tránh chiếm bộ nhớ phiên)
     // sessionStorage.removeItem('xnt17_transfer_rows');
