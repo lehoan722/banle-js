@@ -1467,49 +1467,73 @@
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
     </script>
 
-    <script>
+    <script type="module">
+        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js";
 
-        document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
-
-            const rows = document.querySelectorAll("#bangketqua tbody tr");
-
-            const maspSet = new Set();
-
-            rows.forEach(tr => {
-
-                const maspCell = tr.cells[0]; // cột mã hàng
-
-                if (!maspCell) return;
-
-                const masp = maspCell.innerText.trim().toUpperCase();
-
-                if (masp) {
-                    maspSet.add(masp);
-                }
-
-            });
-
-            const maspList = Array.from(maspSet);
-
-            if (maspList.length === 0) {
-                alert("Phiếu chưa có mã sản phẩm.");
-                return;
+        function layDanhSachMaspTuBangNhapTam() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
             }
 
-            // lưu localStorage để XNT17 đọc
-            localStorage.setItem(
-                "XNT17_MASPS_LS",
-                JSON.stringify({ list: maspList })
-            );
+            const bang = window.bangKetQua || {};
+            const masps = Object.keys(bang)
+                .map(x => String(x || "").trim().toUpperCase())
+                .filter(Boolean);
 
-            // mở trang gợi ý chuyển kho
-            window.open(
-                "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html",
-                "_blank"
-            );
+            if (masps.length) return [...new Set(masps)];
 
-        });
+            const rows = document.querySelectorAll("#bangketqua tbody tr");
+            const out = new Set();
 
+            rows.forEach(tr => {
+                const maspCell = tr.cells[0];
+                const masp = String(maspCell?.innerText || "").trim().toUpperCase();
+                if (masp) out.add(masp);
+            });
+
+            return Array.from(out);
+        }
+
+        async function goiYChuyenKhoTuNhapTamCs1() {
+            try {
+                const masps = layDanhSachMaspTuBangNhapTam();
+
+                if (!masps.length) {
+                    alert("Phiếu chưa có mã sản phẩm.");
+                    return;
+                }
+
+                const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
+                const sohd = String(document.getElementById("sohd")?.value || "").trim();
+                const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
+
+                const now = new Date();
+                const pad = n => String(n).padStart(2, "0");
+                const note =
+                    `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
+                    (manv ? ` - ${manv}` : "") +
+                    (sohd ? ` - ${sohd}` : "") +
+                    (ghichu ? ` - ${ghichu}` : "");
+
+                const rs = await autoSuggestAndOpenCcn({
+                    masps,
+                    pageKind: "cs1",
+                    note
+                });
+
+                if (!rs.ok) {
+                    alert(rs.message || "Không có mã nào cần chuyển kho.");
+                    return;
+                }
+
+                console.log("[NHAPTAM CS1] Đã mở phiếu chuyển kho:", rs);
+            } catch (e) {
+                console.error("[NHAPTAM CS1] Lỗi gợi ý chuyển kho:", e);
+                alert("Có lỗi khi tự động gợi ý chuyển kho.");
+            }
+        }
+
+        document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs1);
     </script>
 
     <!-- Overlay quét -->
