@@ -433,11 +433,41 @@ function showPopupChuyenKho(rows, context) {
     return th;
   }
 
-  trh.appendChild(mkTh('chuyen CN'));
+  function mkThWithCheckbox(text, checkboxEl) {
+    const th = document.createElement('th');
+    th.style.border = '1px solid #d2c19f';
+    th.style.padding = '4px 6px';
+    th.style.background = '#fff';
+
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.justifyContent = 'space-between';
+    wrap.style.gap = '6px';
+
+    const span = document.createElement('span');
+    span.textContent = text;
+
+    wrap.appendChild(span);
+    wrap.appendChild(checkboxEl);
+    th.appendChild(wrap);
+
+    return th;
+  }
+
+  const cbAllChuyen = document.createElement('input');
+  cbAllChuyen.type = 'checkbox';
+
+  const cbAllAdmin = document.createElement('input');
+  cbAllAdmin.type = 'checkbox';
+  cbAllAdmin.disabled = !isAdmin;
+
+  trh.appendChild(mkThWithCheckbox('chuyen CN', cbAllChuyen));
   trh.appendChild(mkTh('mã sp'));
   trh.appendChild(mkTh(getDirByPageKind(context.pageKind)));
   trh.appendChild(mkTh('GHI CHÚ'));
-  trh.appendChild(mkTh('admin'));
+  trh.appendChild(mkThWithCheckbox('admin', cbAllAdmin));
+
   thead.appendChild(trh);
   table.appendChild(thead);
 
@@ -505,6 +535,44 @@ function showPopupChuyenKho(rows, context) {
     tbody.appendChild(tr);
   });
 
+  // checkbox tổng cột "chuyen CN"
+  cbAllChuyen.addEventListener('change', () => {
+    rowCheckRefs.forEach(x => {
+      x.cb.checked = cbAllChuyen.checked;
+    });
+  });
+
+  // checkbox tổng cột "admin"
+  cbAllAdmin.addEventListener('change', () => {
+    if (!isAdmin) return;
+    adminRefs.forEach(x => {
+      if (!x.cb.disabled) {
+        x.cb.checked = cbAllAdmin.checked;
+      }
+    });
+  });
+
+  // đồng bộ trạng thái checkbox tổng "chuyen CN" khi user tick lẻ
+  rowCheckRefs.forEach(x => {
+    x.cb.addEventListener('change', () => {
+      const allChecked = rowCheckRefs.length > 0 && rowCheckRefs.every(r => r.cb.checked);
+      const anyChecked = rowCheckRefs.some(r => r.cb.checked);
+      cbAllChuyen.checked = allChecked;
+      cbAllChuyen.indeterminate = !allChecked && anyChecked;
+    });
+  });
+
+  // đồng bộ trạng thái checkbox tổng "admin" khi user tick lẻ
+  adminRefs.forEach(x => {
+    x.cb.addEventListener('change', () => {
+      const enabledAdmins = adminRefs.filter(r => !r.cb.disabled);
+      const allChecked = enabledAdmins.length > 0 && enabledAdmins.every(r => r.cb.checked);
+      const anyChecked = enabledAdmins.some(r => r.cb.checked);
+      cbAllAdmin.checked = allChecked;
+      cbAllAdmin.indeterminate = !allChecked && anyChecked;
+    });
+  });
+
   box.appendChild(headerRow);
   box.appendChild(table);
   overlay.appendChild(box);
@@ -568,16 +636,16 @@ async function runChuyenKhoCheck(contextOverride) {
   if (popupChuyenKhoDangMo) return;
 
   const headers = await fetchRecentSaleHeaders();
-console.log('[CK Popup] headers =', headers);
-if (!headers.length) return;
+  console.log('[CK Popup] headers =', headers);
+  if (!headers.length) return;
 
   const sohds = [...new Set(headers.map(x => String(x.sohd || '').trim()).filter(Boolean))];
-console.log('[CK Popup] sohds =', sohds);
-if (!sohds.length) return;
+  console.log('[CK Popup] sohds =', sohds);
+  if (!sohds.length) return;
 
   const ctRowsAll = await fetchRecentSaleDetails(sohds);
-console.log('[CK Popup] ctRowsAll =', ctRowsAll);
-if (!ctRowsAll.length) return;
+  console.log('[CK Popup] ctRowsAll =', ctRowsAll);
+  if (!ctRowsAll.length) return;
 
   // chỉ giữ các dòng chưa admin xác nhận
   const ctRows = ctRowsAll; // tạm thời chưa có cột admin
@@ -595,18 +663,18 @@ if (!ctRowsAll.length) return;
   if (!masps.length) return;
 
   const xntRows = await fetchXntNhanhRows(masps);
-console.log('[CK Popup] xntRows =', xntRows);
-if (!xntRows.length) return;
+  console.log('[CK Popup] xntRows =', xntRows);
+  if (!xntRows.length) return;
 
   const dir = getDirByPageKind(ctx.pageKind);
- const popupRows = buildPopupRows({
-  xntRows,
-  dir,
-  saleCtMapByMasp
-});
+  const popupRows = buildPopupRows({
+    xntRows,
+    dir,
+    saleCtMapByMasp
+  });
 
-console.log('[CK Popup] popupRows =', popupRows, 'dir =', dir, 'pageKind =', ctx.pageKind);
-if (!popupRows.length) return;
+  console.log('[CK Popup] popupRows =', popupRows, 'dir =', dir, 'pageKind =', ctx.pageKind);
+  if (!popupRows.length) return;
 
   showPopupChuyenKho(popupRows, {
     ...ctx,
