@@ -159,17 +159,21 @@ async function fetchRecentSaleHeaders() {
 
   const { data, error } = await supabase
     .from('hoadon_banle')
-    .select('sohd, loaihd, ngay')
+    .select('sohd, ngay')
     .gte('ngay', fromDate)
-    .lte('ngay', toDate)
-    .in('loaihd', SALES_PREFIXES);
+    .lte('ngay', toDate);
 
   if (error) {
     console.error('[CK Popup] Lỗi lấy header hóa đơn gần đây:', error);
     return [];
   }
 
-  return data || [];
+  const rows = (data || []).filter(r => {
+    const sohd = String(r.sohd || '').toLowerCase().trim();
+    return SALES_PREFIXES.some(prefix => sohd.startsWith(prefix));
+  });
+
+  return rows;
 }
 
 async function fetchRecentSaleDetails(sohds) {
@@ -564,13 +568,16 @@ async function runChuyenKhoCheck(contextOverride) {
   if (popupChuyenKhoDangMo) return;
 
   const headers = await fetchRecentSaleHeaders();
-  if (!headers.length) return;
+console.log('[CK Popup] headers:', headers);
+if (!headers.length) return;
 
   const sohds = [...new Set(headers.map(x => String(x.sohd || '').trim()).filter(Boolean))];
-  if (!sohds.length) return;
+console.log('[CK Popup] sohds:', sohds);
+if (!sohds.length) return;
 
   const ctRowsAll = await fetchRecentSaleDetails(sohds);
-  if (!ctRowsAll.length) return;
+console.log('[CK Popup] ctRowsAll:', ctRowsAll);
+if (!ctRowsAll.length) return;
 
   // chỉ giữ các dòng chưa admin xác nhận
   const ctRows = ctRowsAll.filter(x => x.admin_xncccn !== true);
@@ -588,16 +595,18 @@ async function runChuyenKhoCheck(contextOverride) {
   if (!masps.length) return;
 
   const xntRows = await fetchXntNhanhRows(masps);
-  if (!xntRows.length) return;
+console.log('[CK Popup] xntRows:', xntRows);
+if (!xntRows.length) return;
 
   const dir = getDirByPageKind(ctx.pageKind);
-  const popupRows = buildPopupRows({
-    xntRows,
-    dir,
-    saleCtMapByMasp
-  });
+ const popupRows = buildPopupRows({
+  xntRows,
+  dir,
+  saleCtMapByMasp
+});
 
-  if (!popupRows.length) return;
+console.log('[CK Popup] popupRows:', popupRows, 'dir=', dir, 'pageKind=', ctx.pageKind);
+if (!popupRows.length) return;
 
   showPopupChuyenKho(popupRows, {
     ...ctx,
