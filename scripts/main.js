@@ -17,6 +17,7 @@ import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
+import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchuyenkho.js';
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
@@ -227,6 +228,16 @@ export async function khoiTaoUngDung() {
       manvDangNhap,
     });
   }
+
+  if (isBanLePage || isBanNvPage) {
+    const pageKind =
+      (isBanLeMTcs2Page || isBanNvcs2Page) ? "cs2" : "cs1";
+
+    initPopupChuyenKhoContext({
+      pageKind,
+      manvDangNhap
+    });
+  }
   // === HẾT PHẦN NHẮC BÀY MẪU ===
 
 
@@ -430,6 +441,22 @@ export async function khoiTaoUngDung() {
   // Focus + autocomplete luôn dùng cho cả 2 trường hợp
   document.getElementById("masp").focus();
   initAutocompleteRealtimeMasp();
+
+    // ===== POPUP CHUYỂN KHO: chỉ chạy khi bấm THÊM MỚI -> CÓ =====
+  const btnThemMoiCo = document.getElementById("btnThemMoiCo");
+  if (btnThemMoiCo && !btnThemMoiCo.dataset.ckPopupBound) {
+    btnThemMoiCo.dataset.ckPopupBound = "1";
+    btnThemMoiCo.addEventListener("click", () => {
+      // để logic thêm mới gốc chạy xong trước rồi mới kiểm tra popup
+      setTimeout(() => {
+        try {
+          triggerChuyenKhoCheckNgay();
+        } catch (e) {
+          console.error("Lỗi trigger popup chuyển kho:", e);
+        }
+      }, 500);
+    });
+  }
 
 
   // Gắn nút chuyển dạng bảng
