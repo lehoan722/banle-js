@@ -8,7 +8,7 @@
   <style>
     :root {
       --scale: 1.1;
-      /* tăng chữ 1.5 lần */ 
+      /* tăng chữ 1.5 lần */
       --paperW: 80mm;
       /* khổ giấy in */
       --pageM: 2mm;
@@ -538,6 +538,13 @@
           const elAccName = document.getElementById("qr_account_name");
           const elAmount = document.getElementById("qr_amount");
           const elAddInfo = document.getElementById("qr_addinfo");
+
+          if (thanhtoan <= 0) {
+            document.querySelector('.invoice-layout').style.display = 'none';
+            document.getElementById('invalidInvoiceBox').style.display = 'block';
+            localStorage.removeItem("data_hoadon_in");
+            return;
+          }
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
