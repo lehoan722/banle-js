@@ -1022,8 +1022,8 @@ import "./stockQuickPopup.js";
 
           maspEl.value = masp;
 
-          const okTiepTuc = hoiTiepTucNeuMaspKhongCoTrongXuat(masp);
-          if (!okTiepTuc) {
+          const muonQuayVeNhapMaKhac = hoiTiepTucNeuMaspKhongCoTrongXuat(masp);
+          if (muonQuayVeNhapMaKhac) {
             focusVaBoiDenOmaSanPham();
             return;
           }
@@ -1379,14 +1379,14 @@ import "./stockQuickPopup.js";
     if (!m) return false;
 
     // Nếu chưa nạp dữ liệu xuất thì không cần hỏi
-    if (!daCoDuLieuXuatDaNap()) return true;
+    if (!daCoDuLieuXuatDaNap()) return false;
 
-    // Có trong phiếu xuất rồi thì cho đi tiếp luôn
-    if (tonTaiMaspTrongXuat(m)) return true;
+    // Có trong phiếu xuất rồi thì không cần quay về
+    if (tonTaiMaspTrongXuat(m)) return false;
 
     phatAmThanhLoi();
 
-    return confirm(`Mã sản phẩm (${m}) không có trong phiếu xuất. Bạn có muốn tiếp tục sử dụng nó không?`);
+    return confirm(`Mã sản phẩm (${m}) không có trong phiếu xuất. Bạn có muốn quay về nhập mã khác không?`);
   }
 
   function focusVaBoiDenOmaSanPham() {
