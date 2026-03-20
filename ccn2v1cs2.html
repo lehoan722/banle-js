@@ -369,7 +369,7 @@
 </head>
 
 <body class="popupnhanh">
-    
+
     <style>
         /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
         body.popupnhanh .sq-stock-popup {
@@ -456,7 +456,7 @@
     <div class="menu-bar">
         <div class="tennv">
 
-             <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
             <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
@@ -601,7 +601,7 @@
             </div>
         </div>
 
-         <div class="footer-buttons">
+        <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
             <button id="btn-sua" class="btn edit" type="button">SỬA</button>
@@ -629,7 +629,7 @@
 
         </div>
 
-         <div class="top-inputs">
+        <div class="top-inputs">
             F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
             F8: xem tồn kho nhanh, F9: nhập vị trí kho
         </div>
@@ -645,85 +645,85 @@
                 <button onclick="dongPopupDM()">Đóng</button>
             </div>
         </div>
-    <!-- ✅ Popup xác thực sửa hóa đơn -->
-    <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+        <!-- ✅ Popup xác thực sửa hóa đơn -->
+        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
   background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-        <h3>Xác thực sửa hóa đơn</h3>
-        <input id="xacmanv" placeholder="Mã nhân viên" type="password"
-            style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-        <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
-            style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-        <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
-        <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
-    </div>
+            <h3>Xác thực sửa hóa đơn</h3>
+            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+        </div>
 
-    <!-- Popup xác nhận thêm mới -->
-    <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+        <!-- Popup xác nhận thêm mới -->
+        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
   background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-        <h3>Bạn có thực sự muốn thêm mới?</h3>
-        <div style="text-align:center; margin-top:10px;">
-            <button id="btnThemMoiCo">✅ Có</button>
-            <button onclick="dongTatCaPopup()">❌ Không</button>
+            <h3>Bạn có thực sự muốn thêm mới?</h3>
+            <div style="text-align:center; margin-top:10px;">
+                <button id="btnThemMoiCo">✅ Có</button>
+                <button onclick="dongTatCaPopup()">❌ Không</button>
+            </div>
         </div>
-    </div>
 
-    <!-- Popup nhập mã sản phẩm mới -->
-    <div id="popupNhapMaMoi" class="popup-confirm"
-        style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
+        <!-- Popup nhập mã sản phẩm mới -->
+        <div id="popupNhapMaMoi" class="popup-confirm"
+            style="display:none; position:fixed; top:10%; left:50%; transform:translate(-50%,0);
   background:white; border:1px solid #888; padding:20px; z-index:10001; box-shadow:0 0 10px #000; width:400px; max-height:90%; overflow:auto;">
-        <h3>Thêm mã sản phẩm mới</h3>
-        <div id="formFields"></div>
-        <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
-        <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
-        <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
-    </div>
+            <h3>Thêm mã sản phẩm mới</h3>
+            <div id="formFields"></div>
+            <button onclick="luuMaSanPhamMoi()">Lưu mã mới</button>
+            <button onclick="document.getElementById('popupNhapMaMoi').style.display='none'">Hủy</button>
+            <button onclick="moCauHinhTruong()">⚙ Cấu hình hiển thị</button>
+        </div>
 
-    <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
+        <div id="popupCauHinh" class="popup-confirm" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%);
   background:white; z-index:10010; border:1px solid #888; padding:20px; width:400px;">
-        <h3>Cấu hình trường hiển thị</h3>
-        <div id="dsCauHinhTruong"></div>
-        <div style="text-align:right; margin-top:10px;">
-            <button onclick="luuCauHinhTruong()">Lưu</button>
-            <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
+            <h3>Cấu hình trường hiển thị</h3>
+            <div id="dsCauHinhTruong"></div>
+            <div style="text-align:right; margin-top:10px;">
+                <button onclick="luuCauHinhTruong()">Lưu</button>
+                <button onclick="document.getElementById('popupCauHinh').style.display='none'">Đóng</button>
+            </div>
         </div>
-    </div>
 
 
 
-    <div id="popupBangDanhMuc" class="popup"
-        style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
-        <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-            <strong>Danh mục hàng hóa</strong>
-            <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
+        <div id="popupBangDanhMuc" class="popup"
+            style="display:none; position:fixed; top:5%; left:5%; width:90%; height:85%; background:white; z-index:9999; border:1px solid #ccc; box-shadow: 0 0 10px #000;">
+            <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                <strong>Danh mục hàng hóa</strong>
+                <button onclick="document.getElementById('popupBangDanhMuc').style.display='none'">Đóng</button>
+            </div>
+            <div style="padding: 0 10px 10px;">
+                <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
+                    style="width: 300px; padding: 4px;" />
+                <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
+
+            </div>
+            <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
         </div>
-        <div style="padding: 0 10px 10px;">
-            <input id="timKiemMaspDM" placeholder="Tìm mã sản phẩm..." oninput="timLaiTrongBangDM()"
-                style="width: 300px; padding: 4px;" />
-            <button onclick="chonDongDeSua()">✏️ Sửa danh mục</button>
 
-        </div>
-        <div id="hotDanhMuc" style="height: calc(100% - 100px); margin: 0 10px;"></div>
-    </div>
-
-    <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
-    <div id="popupNhapHangHoa"
-        style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
+        <!-- ✅ Popup nhập/sửa mã sản phẩm mới -->
+        <div id="popupNhapHangHoa"
+            style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%);
   background:white; border:1px solid #888; padding:20px; z-index:10003; width:550px; max-height:90%; overflow:auto; box-shadow:0 0 10px #000;">
-        <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
+            <h3 id="tieudePopupHangHoa" style="text-align:center; margin-bottom:12px;">Thông tin sản phẩm</h3>
 
-        <div id="fieldsNhapHangHoa"></div>
+            <div id="fieldsNhapHangHoa"></div>
 
-        <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
+            <div id="footerHangHoa" style="margin-top:10px; font-size:13px; color:#444;"></div>
 
-        <div style="margin-top:14px; text-align:center;">
-            <button onclick="themTiepSanPham()">➕ Thêm mới</button>
-            <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
-            <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
-            <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
+            <div style="margin-top:14px; text-align:center;">
+                <button onclick="themTiepSanPham()">➕ Thêm mới</button>
+                <button onclick="luuHangHoa()">💾 Lưu dữ liệu</button>
+                <button onclick="document.getElementById('popupNhapHangHoa').style.display='none'">↩️ Trở về</button>
+                <button onclick="moPopupCauHinh()">⚙ Cấu hình hiển thị</button> <!-- ✅ mới thêm -->
+            </div>
+
+
         </div>
-
-
-    </div>
     </div>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -1058,49 +1058,98 @@
 
 
     <script>
+
         function renderRowsDirectIntoTable(rows) {
             // rows: [{ masp, size, sl }]
             const table = document.getElementById('bangketqua');
-            if (!table) { console.warn('[CCN 2v1] Không tìm thấy #bangketqua'); return false; }
-            const tbody = table.querySelector('tbody');
-            if (!tbody) { console.warn('[CCN 2v1] Không tìm thấy tbody'); return false; }
+            if (!table) {
+                console.warn('[CCN] Không tìm thấy #bangketqua');
+                return false;
+            }
 
-            // Xóa cũ rồi đổ mới
+            const tbody = table.querySelector('tbody');
+            if (!tbody) {
+                console.warn('[CCN] Không tìm thấy tbody');
+                return false;
+            }
+
+            // Gom theo mã hàng
+            const grouped = new Map();
+
+            for (const r of rows || []) {
+                const masp = String(r.masp || '').trim().toUpperCase();
+                const size = normSize(r.size);
+                const sl = Number(r.sl || 0);
+
+                if (!masp) continue;
+                if (!grouped.has(masp)) {
+                    grouped.set(masp, []);
+                }
+
+                grouped.get(masp).push({
+                    size,
+                    sl
+                });
+            }
+
+            // Sắp xếp size tăng dần
+            function sizeSortValue(size) {
+                const s = String(size || '').trim();
+                const m = s.match(/\d{1,2}/);
+                return m ? Number(m[0]) : 999999;
+            }
+
             tbody.innerHTML = '';
-            for (const r of rows) {
+
+            for (const [masp, items] of grouped.entries()) {
+                items.sort((a, b) => sizeSortValue(a.size) - sizeSortValue(b.size));
+
+                // Cột size hiển thị kiểu: 38/1 43/1 44/1
+                const sizeText = items
+                    .map(x => `${x.size}/${Number(x.sl || 0)}`)
+                    .join(' ');
+
+                // Tổng SL của mã
+                const tongSL = items.reduce((s, x) => s + Number(x.sl || 0), 0);
+
                 const tr = document.createElement('tr');
 
-                // Thứ tự cột: Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
+                // Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
                 const cells = [
-                    r.masp || '',
+                    masp,
                     '',
-                    normSize(r.size),   // <— thay vì r.size
-                    String(r.sl ?? 0),
-                    '', '', '', '',
+                    sizeText,
+                    String(tongSL),
                     '',
-                    '', ''
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    ''
                 ];
-
 
                 for (const c of cells) {
                     const td = document.createElement('td');
                     td.textContent = c;
                     tr.appendChild(td);
                 }
+
                 tbody.appendChild(tr);
             }
 
-            // Nếu dự án bạn có sẵn hàm này (đã thấy bạn gọi nó ở đoạn dán từ clipboard)
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
                 window.capNhatBangKetQuaTuDOM();
             }
-            // Nếu có hàm tính tổng:
+
             if (typeof window.capNhatThongTinTong === 'function') {
                 window.capNhatThongTinTong(window.bangKetQua || {});
             }
-            console.log('[CCN 2v1] Render trực tiếp vào bảng xong:', rows.length);
+
+            console.log('[CCN] Render trực tiếp vào bảng xong:', grouped.size, 'mã');
             return true;
         }
+
     </script>
 
     <script>
@@ -1140,14 +1189,18 @@
 
                 const rows = [];
                 for (const it of pf.items || []) {
-                    const masp = String(it.masp || '').toUpperCase();
+                    const masp = String(it.masp || '').trim().toUpperCase();
+
                     for (const line of (it.items || [])) {
-
-                        rows.push({ masp, size: normSize(line.size), sl: Number(line.sl || 0) });
-
+                        rows.push({
+                            masp,
+                            size: normSize(line.size),
+                            sl: Number(line.sl || 0)
+                        });
                     }
                 }
-                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
+
+                console.log('[CCN] Payload OK, rows:', rows.length);
 
                 // Ưu tiên dùng hàm render “chính chủ” nếu có public trên window
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
