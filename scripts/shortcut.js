@@ -69,6 +69,25 @@ function formatTimeHHMM(dateInput) {
   return `${hh}:${mm}`;
 }
 
+async function xuLyThemMoiCoPopup() {
+  const popup = document.getElementById("popupThemMoi");
+  if (popup) popup.style.display = "none";
+
+  await taoMoiHoaDon();
+
+  setTimeout(() => {
+    try {
+      if (typeof window.triggerChuyenKhoCheckNgay === "function") {
+        console.log("[CK Popup] trigger từ xuLyThemMoiCoPopup sau taoMoiHoaDon");
+        window.triggerChuyenKhoCheckNgay();
+      } else {
+        console.warn("[CK Popup] window.triggerChuyenKhoCheckNgay không tồn tại");
+      }
+    } catch (e) {
+      console.error("[CK Popup] Lỗi trigger từ xuLyThemMoiCoPopup:", e);
+    }
+  }, 700);
+}
 
 export function khoiTaoShortcut() {
   // ✅ Nếu đã khởi tạo rồi thì thoát luôn, không gắn thêm listener nữa
@@ -77,6 +96,32 @@ export function khoiTaoShortcut() {
   // ✅ Khởi tạo lệnh quét đặc biệt #### / ****
   khoiTaoLenhQuetDacBiet();
 
+    // Gắn chắc cho popup thêm mới khi bấm nút "Thêm mới" trên giao diện
+  const btnThemMoi = document.getElementById("themmoimoi") || document.getElementById("them");
+  const btnCo = document.getElementById("btnThemMoiCo");
+  const btnKhong = document.getElementById("btnThemMoiKhong");
+  const popupThemMoi = document.getElementById("popupThemMoi");
+
+  if (btnThemMoi && !btnThemMoi.dataset.boundPopupThemMoi) {
+    btnThemMoi.dataset.boundPopupThemMoi = "1";
+    btnThemMoi.addEventListener("click", () => {
+      if (popupThemMoi) popupThemMoi.style.display = "block";
+      setTimeout(() => btnCo?.focus(), 50);
+    });
+  }
+
+  if (btnCo && !btnCo.dataset.boundXuLyThemMoi) {
+    btnCo.dataset.boundXuLyThemMoi = "1";
+    btnCo.onclick = xuLyThemMoiCoPopup;
+  }
+
+  if (btnKhong && !btnKhong.dataset.boundDongPopupThemMoi) {
+    btnKhong.dataset.boundDongPopupThemMoi = "1";
+    btnKhong.onclick = () => {
+      if (popupThemMoi) popupThemMoi.style.display = "none";
+    };
+  }
+
   document.addEventListener("keydown", async function (e) {
     // F1: popup thêm mới
     if (e.key === "F1") {
@@ -84,24 +129,11 @@ export function khoiTaoShortcut() {
       const popup = document.getElementById("popupThemMoi");
       popup.style.display = "block";
       setTimeout(() => document.getElementById("btnThemMoiCo")?.focus(), 50);
-      document.getElementById("btnThemMoiCo").onclick = async () => {
-        popup.style.display = "none";
-        await taoMoiHoaDon();
 
-        setTimeout(() => {
-          try {
-            if (typeof window.triggerChuyenKhoCheckNgay === "function") {
-              console.log("[CK Popup] trigger từ shortcut.js sau taoMoiHoaDon");
-              window.triggerChuyenKhoCheckNgay();
-            } else {
-              console.warn("[CK Popup] window.triggerChuyenKhoCheckNgay không tồn tại");
-            }
-          } catch (e) {
-            console.error("[CK Popup] Lỗi trigger từ shortcut.js:", e);
-          }
-        }, 700);
-      };
+      const btnCo = document.getElementById("btnThemMoiCo");
+      if (btnCo) btnCo.onclick = xuLyThemMoiCoPopup;
     }
+
 
     // F2: lưu hóa đơn thường
 
