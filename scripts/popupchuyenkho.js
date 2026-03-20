@@ -181,7 +181,7 @@ async function fetchRecentSaleDetails(sohds) {
 
   const { data, error } = await supabase
     .from('ct_hoadon_banle')
-    .select('id, sohd, masp, size, soluong, admin_xncccn')
+    .select('id, sohd, masp, size, soluong')
     .in('sohd', sohds);
 
   if (error) {
@@ -195,7 +195,7 @@ async function fetchRecentSaleDetails(sohds) {
     masp: normalizeMasp(r.masp),
     size: normalizeSize(r.size),
     soluong: Number(r.soluong || 0),
-    admin_xncccn: r.admin_xncccn === true
+    admin_xncccn: false
   }));
 }
 
@@ -580,7 +580,7 @@ console.log('[CK Popup] ctRowsAll =', ctRowsAll);
 if (!ctRowsAll.length) return;
 
   // chỉ giữ các dòng chưa admin xác nhận
-  const ctRows = ctRowsAll.filter(x => x.admin_xncccn !== true);
+  const ctRows = ctRowsAll; // tạm thời chưa có cột admin
   if (!ctRows.length) return;
 
   const saleCtMapByMasp = new Map();
