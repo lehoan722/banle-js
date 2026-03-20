@@ -444,19 +444,19 @@ export async function khoiTaoUngDung() {
 
     // ===== POPUP CHUYỂN KHO: chỉ chạy khi bấm THÊM MỚI -> CÓ =====
   const btnThemMoiCo = document.getElementById("btnThemMoiCo");
-  if (btnThemMoiCo && !btnThemMoiCo.dataset.ckPopupBound) {
-    btnThemMoiCo.dataset.ckPopupBound = "1";
-    btnThemMoiCo.addEventListener("click", () => {
-      // để logic thêm mới gốc chạy xong trước rồi mới kiểm tra popup
-      setTimeout(() => {
-        try {
-          triggerChuyenKhoCheckNgay();
-        } catch (e) {
-          console.error("Lỗi trigger popup chuyển kho:", e);
-        }
-      }, 500);
-    });
-  }
+if (btnThemMoiCo && !btnThemMoiCo.dataset.ckPopupBound) {
+  btnThemMoiCo.dataset.ckPopupBound = "1";
+  btnThemMoiCo.addEventListener("click", () => {
+    setTimeout(() => {
+      try {
+        console.log("[CK Popup] trigger từ btnThemMoiCo");
+        triggerChuyenKhoCheckNgay();
+      } catch (e) {
+        console.error("Lỗi trigger popup chuyển kho:", e);
+      }
+    }, 900);
+  });
+}
 
 
   // Gắn nút chuyển dạng bảng
