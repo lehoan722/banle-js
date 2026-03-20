@@ -14,6 +14,36 @@ function ensureSupabase() {
     return window.supabase;
 }
 
+function detectNhapTamCoSo() {
+    const diadiemInput = document.getElementById("diadiem");
+    const v1 = String(diadiemInput?.value || "").trim().toLowerCase();
+    if (v1 === "cs1" || v1 === "cs2") return v1;
+
+    const v2 = String(localStorage.getItem("diadiem") || "").trim().toLowerCase();
+    if (v2 === "cs1" || v2 === "cs2") return v2;
+
+    const path = String(location.pathname || "").toLowerCase();
+    if (path.includes("cs2")) return "cs2";
+
+    return "cs1";
+}
+
+function getNhapTamRpcNames() {
+    const coSo = detectNhapTamCoSo();
+
+    return {
+        coSo,
+        findCandidatesRpc:
+            coSo === "cs1"
+                ? "rpc_find_nhapmoi_candidates_for_nhaptam_cs1"
+                : "rpc_find_nhapmoi_candidates_for_nhaptam_cs2",
+        syncRpc:
+            coSo === "cs1"
+                ? "rpc_sync_nhaptam_sizes_to_nhapmoi_cs1"
+                : "rpc_sync_nhaptam_sizes_to_nhapmoi_cs2"
+    };
+}
+
 function rebuildBangKetQua() {
     if (typeof window.capNhatBangKetQuaTuDOM === "function") {
         window.capNhatBangKetQuaTuDOM();
@@ -227,8 +257,9 @@ function showNearMatchPopup(candidates, masp) {
 
 async function findCandidates({ masp, totalQty }) {
     const supabase = ensureSupabase();
+    const { findCandidatesRpc } = getNhapTamRpcNames();
 
-    const { data, error } = await supabase.rpc("rpc_find_nhapmoi_candidates_for_nhaptam_cs2", {
+    const { data, error } = await supabase.rpc(findCandidatesRpc, {
         p_masp: masp,
         p_total_qty: totalQty
     });
@@ -242,11 +273,12 @@ async function findCandidates({ masp, totalQty }) {
 
 async function syncToNhapMoi({ sohdNhapMoi, masp, details }) {
     const supabase = ensureSupabase();
+    const { syncRpc } = getNhapTamRpcNames();
 
     const manv = localStorage.getItem("manv") || "";
     const tennv = localStorage.getItem("tennv") || "";
 
-    const { data, error } = await supabase.rpc("rpc_sync_nhaptam_sizes_to_nhapmoi_cs2", {
+    const { data, error } = await supabase.rpc(syncRpc, {
         p_sohd_nhapmoi: sohdNhapMoi,
         p_masp: masp,
         p_sizes_json: details,
@@ -308,7 +340,8 @@ async function handleKiemTraDongBo() {
         });
 
         if (!candidates.length) {
-            alert(`Không tìm thấy hóa đơn nhập mới cs2 nào cho mã ${info.masp} trong hôm nay và hôm qua.`);
+            const { coSo } = getNhapTamRpcNames();
+            alert(`Không tìm thấy hóa đơn nhập mới ${coSo} nào cho mã ${info.masp} trong hôm nay và hôm qua.`);
             return;
         }
 
