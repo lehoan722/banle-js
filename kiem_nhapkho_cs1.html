@@ -498,9 +498,12 @@
             <input id="soluong" value="1" placeholder="SL" />
             <input id="size" placeholder="SIZE" />
             <label style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap;">
-                <input type="checkbox" id="chkNhapNhanh"  />
+                <input type="checkbox" id="chkNhapNhanh" checked />
                 Nhập nhanh
             </label>
+
+            <input type="checkbox" id="nhapsize" hidden />
+
             <input id="sohd" placeholder="Số phiếu kiểm nhập" />
             <input id="ghichu_top" placeholder="Ghi chú / DS HĐ CCN" style="width:260px;" readonly />
 
@@ -541,12 +544,15 @@
             <button id="btn-copy-nhap" type="button">Copy</button>
             <button id="btn-paste-nhap" type="button">Dán</button>
             <button id="sua" class="btn edit" type="button">SỬA</button>
-            <button id="btnMoPhieuCu">Mở phiếu cũ</button>           
+            <button id="btnMoPhieuCu">Mở phiếu cũ</button>
 
             <button id="btnNapHoaDonCCNTheoMasp_footer">Nạp CCN theo MASP</button>
             <button id="btnKiemTraPhieu_footer">Kiểm tra</button>
             <button id="btnTaoPhieuCCN2V1">Thừa CCN2V1</button>
-            
+            <button id="btnTaoPhieuCCN1V2">Thiếu CCN1V2</button>
+
+            <button id="btn-logout">THOAT PM</button>
+            <button id="btnNapHoaDonCCN_footer">Nạp HĐ CCN</button>
         </div>
 
 
@@ -1607,7 +1613,24 @@
             title: "KIỂM NHẬP KHO CS1"
         };
     </script>
-    <script src="./scripts/kiem_nhapkho.js"></script>
+
+    <script>
+        function dongBoNhapNhanhVaNhapSize() {
+            const chkNhapNhanh = document.getElementById("chkNhapNhanh");
+            const nhapSize = document.getElementById("nhapsize");
+            if (!chkNhapNhanh || !nhapSize) return;
+
+            // Nhập nhanh checked => KHÔNG chọn size liên tiếp
+            nhapSize.checked = !chkNhapNhanh.checked;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            dongBoNhapNhanhVaNhapSize();
+            document.getElementById("chkNhapNhanh")?.addEventListener("change", dongBoNhapNhanhVaNhapSize);
+        });
+    </script>
+
+    <script type="module" src="./scripts/kiem_nhapkho.js"></script>
 
     <div id="popupChonHoaDonNguon" style="
   display:none;
