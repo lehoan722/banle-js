@@ -1468,56 +1468,73 @@
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
     </script>
 
-    <script>
+    <script type="module">
+        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js";
 
-       document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
-    const rows = document.querySelectorAll("#bangketqua tbody tr");
-    const maspSet = new Set();
+        function layDanhSachMaspTuBangNhapTam() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
 
-    rows.forEach(tr => {
-        const maspCell = tr.cells[0];
-        if (!maspCell) return;
+            const bang = window.bangKetQua || {};
+            const masps = Object.keys(bang)
+                .map(x => String(x || "").trim().toUpperCase())
+                .filter(Boolean);
 
-        const masp = (maspCell.innerText || "").trim().toUpperCase();
-        if (masp) maspSet.add(masp);
-    });
+            if (masps.length) return [...new Set(masps)];
 
-    const maspList = Array.from(maspSet);
+            const rows = document.querySelectorAll("#bangketqua tbody tr");
+            const out = new Set();
 
-    if (maspList.length === 0) {
-        alert("Phiếu chưa có mã sản phẩm.");
-        return;
-    }
+            rows.forEach(tr => {
+                const maspCell = tr.cells[0];
+                const masp = String(maspCell?.innerText || "").trim().toUpperCase();
+                if (masp) out.add(masp);
+            });
 
-    const payload = {
-        list: maspList,
-        ts: Date.now(),
-        source: "nhaptamcs2"
-    };
+            return Array.from(out);
+        }
 
-    localStorage.setItem("XNT17_MASPS_LS", JSON.stringify(payload));
+        async function goiYChuyenKhoTuNhapTamCs2() {
+            try {
+                const masps = layDanhSachMaspTuBangNhapTam();
 
-    const now = new Date();
-    const pad = n => String(n).padStart(2, "0");
-    const denNgay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                if (!masps.length) {
+                    alert("Phiếu chưa có mã sản phẩm.");
+                    return;
+                }
 
-    const filterFallback = {
-        den_ngay: denNgay,
-        p_diadiem_filter: "cs2",
-        source: "nhaptamcs2",
-        ts: Date.now()
-    };
+                const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
+                const sohd = String(document.getElementById("sohd")?.value || "").trim();
+                const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
 
-    localStorage.setItem("xnt17_transfer_filters_ls", JSON.stringify(filterFallback));
+                const now = new Date();
+                const pad = n => String(n).padStart(2, "0");
+                const note =
+                    `Tạo tự động từ nhập tạm CS2 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
+                    (manv ? ` - ${manv}` : "") +
+                    (sohd ? ` - ${sohd}` : "") +
+                    (ghichu ? ` - ${ghichu}` : "");
 
-    console.log("[NHAPTAM] Đã lưu XNT17_MASPS_LS:", payload);
-    console.log("[NHAPTAM] Đã lưu xnt17_transfer_filters_ls:", filterFallback);
+                const rs = await autoSuggestAndOpenCcn({
+                    masps,
+                    pageKind: "cs2",
+                    note
+                });
 
-    window.open(
-        "https://banle-js.vercel.app/baocaoxnt17_chuyenkho.html?from=nhaptam&t=" + Date.now(),
-        "_blank"
-    );
-});
+                if (!rs.ok) {
+                    alert(rs.message || "Không có mã nào cần chuyển kho.");
+                    return;
+                }
+
+                console.log("[NHAPTAM CS2] Đã mở phiếu chuyển kho:", rs);
+            } catch (e) {
+                console.error("[NHAPTAM CS2] Lỗi gợi ý chuyển kho:", e);
+                alert("Có lỗi khi tự động gợi ý chuyển kho.");
+            }
+        }
+
+        document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs2);
     </script>
 
     <!-- Overlay quét -->
