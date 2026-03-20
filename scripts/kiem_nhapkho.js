@@ -1386,18 +1386,7 @@ import "./stockQuickPopup.js";
 
     phatAmThanhLoi();
 
-    return showConfirmMaspKhongCoTrongXuat(m);
-  }
-
-  function showConfirmMaspKhongCoTrongXuat(masp) {
-    const result = window.prompt(
-      `Mã sản phẩm (${masp}) không có trong phiếu xuất.\n` +
-      `Gõ OK để tiếp tục.\n` +
-      `Để trống rồi nhấn Enter để hủy.`,
-      ""
-    );
-
-    return String(result || "").trim().toUpperCase() === "OK";
+    return confirm(`Mã sản phẩm (${m}) không có trong phiếu xuất. Bạn có muốn tiếp tục sử dụng nó không?`);
   }
 
   function focusVaBoiDenOmaSanPham() {
