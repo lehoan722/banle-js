@@ -450,6 +450,20 @@ export async function khoiTaoUngDung() {
     });
   }
 
+    // ===== NÚT CCN: gọi popup chuyển kho thủ công =====
+  const btnCCN = document.getElementById("btnCCN");
+  if (btnCCN && !btnCCN.dataset.boundPopupCcn) {
+    btnCCN.dataset.boundPopupCcn = "1";
+    btnCCN.addEventListener("click", () => {
+      try {
+        console.log("[CK Popup] trigger từ nút CCN");
+        triggerChuyenKhoCheckNgay();
+      } catch (e) {
+        console.error("[CK Popup] lỗi khi bấm nút CCN:", e);
+      }
+    });
+  }
+
   // Helper: lấy mã gốc, bỏ hậu tố (xx) nếu có, chuẩn hoá IN HOA
   function layMaspGoc(str) {
     return String(str || "")
