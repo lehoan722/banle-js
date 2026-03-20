@@ -195,7 +195,7 @@ async function fetchRecentSaleDetails(sohds) {
     masp: normalizeMasp(r.masp),
     size: normalizeSize(r.size),
     soluong: Number(r.soluong || 0),
-    admin_xncccn: false
+    admin_xnccn: false
   }));
 }
 
@@ -280,12 +280,12 @@ async function persistAdminConfirmByMasp({ masps, sohds }) {
 
   const { error } = await supabase
     .from('ct_hoadon_banle')
-    .update({ admin_xncccn: true })
+    .update({ admin_xnccn: true })
     .in('sohd', uniqSohds)
     .in('masp', uniqMasps);
 
   if (error) {
-    console.error('[CK Popup] Lỗi cập nhật admin_xncccn:', error);
+    console.error('[CK Popup] Lỗi cập nhật admin_xnccn:', error);
     throw error;
   }
 }
