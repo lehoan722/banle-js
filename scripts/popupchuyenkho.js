@@ -568,15 +568,15 @@ async function runChuyenKhoCheck(contextOverride) {
   if (popupChuyenKhoDangMo) return;
 
   const headers = await fetchRecentSaleHeaders();
-console.log('[CK Popup] headers:', headers);
+console.log('[CK Popup] headers =', headers);
 if (!headers.length) return;
 
   const sohds = [...new Set(headers.map(x => String(x.sohd || '').trim()).filter(Boolean))];
-console.log('[CK Popup] sohds:', sohds);
+console.log('[CK Popup] sohds =', sohds);
 if (!sohds.length) return;
 
   const ctRowsAll = await fetchRecentSaleDetails(sohds);
-console.log('[CK Popup] ctRowsAll:', ctRowsAll);
+console.log('[CK Popup] ctRowsAll =', ctRowsAll);
 if (!ctRowsAll.length) return;
 
   // chỉ giữ các dòng chưa admin xác nhận
@@ -595,7 +595,7 @@ if (!ctRowsAll.length) return;
   if (!masps.length) return;
 
   const xntRows = await fetchXntNhanhRows(masps);
-console.log('[CK Popup] xntRows:', xntRows);
+console.log('[CK Popup] xntRows =', xntRows);
 if (!xntRows.length) return;
 
   const dir = getDirByPageKind(ctx.pageKind);
@@ -605,7 +605,7 @@ if (!xntRows.length) return;
   saleCtMapByMasp
 });
 
-console.log('[CK Popup] popupRows:', popupRows, 'dir=', dir, 'pageKind=', ctx.pageKind);
+console.log('[CK Popup] popupRows =', popupRows, 'dir =', dir, 'pageKind =', ctx.pageKind);
 if (!popupRows.length) return;
 
   showPopupChuyenKho(popupRows, {
