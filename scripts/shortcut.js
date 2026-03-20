@@ -87,6 +87,19 @@ export function khoiTaoShortcut() {
       document.getElementById("btnThemMoiCo").onclick = async () => {
         popup.style.display = "none";
         await taoMoiHoaDon();
+
+        setTimeout(() => {
+          try {
+            if (typeof window.triggerChuyenKhoCheckNgay === "function") {
+              console.log("[CK Popup] trigger từ shortcut.js sau taoMoiHoaDon");
+              window.triggerChuyenKhoCheckNgay();
+            } else {
+              console.warn("[CK Popup] window.triggerChuyenKhoCheckNgay không tồn tại");
+            }
+          } catch (e) {
+            console.error("[CK Popup] Lỗi trigger từ shortcut.js:", e);
+          }
+        }, 700);
       };
     }
 
