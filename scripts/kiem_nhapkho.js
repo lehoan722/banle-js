@@ -1002,6 +1002,48 @@ import "./stockQuickPopup.js";
     }
   }
 
+  function chuyenSizeSaiThanhMaSanPhamMoi(rawValue) {
+    const maspEl = byId("masp");
+    const sizeEl = byId("size");
+    const slEl = byId("soluong");
+
+    const maspMoi = normalizeMasp(rawValue);
+    if (!maspMoi || !maspEl) return false;
+
+    // Đưa dữ liệu size sai sang ô mã sản phẩm
+    maspEl.value = maspMoi;
+
+    // Xóa ô size cũ để chuẩn bị nhập size cho mã mới
+    if (sizeEl) sizeEl.value = "";
+
+    const muonQuayVeNhapMaKhac = hoiTiepTucNeuMaspKhongCoTrongXuat(maspMoi);
+    if (muonQuayVeNhapMaKhac) {
+      focusVaBoiDenOmaSanPham();
+      return true;
+    }
+
+    const chkNhapNhanh = byId("chkNhapNhanh");
+    const isNhapNhanh = !!chkNhapNhanh?.checked;
+
+    if (isNhapNhanh) {
+      themNhanhKhongCanSize();
+      return true;
+    }
+
+    if (slEl && !normalizeNumber(slEl.value)) {
+      slEl.value = "1";
+    }
+
+    if (sizeEl) {
+      sizeEl.focus();
+      sizeEl.value = "";
+      showSizePopup(maspMoi, "");
+      phatAmThanhSize();
+    }
+
+    return true;
+  }
+
   function bindInputEvents() {
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -1046,20 +1088,7 @@ import "./stockQuickPopup.js";
             showSizePopup(masp, "");
             phatAmThanhSize();
 
-            sizeEl.addEventListener("blur", () => {
-              const v = normalizeSize(sizeEl.value);
-              if (!v) return;
 
-              if (!isValidSize(v)) {
-                phatAmThanhLoi();
-                alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
-                sizeEl.value = "";
-                sizeEl.focus();
-                return;
-              }
-
-              sizeEl.value = v;
-            });
           }
         }
       });
@@ -1095,8 +1124,15 @@ import "./stockQuickPopup.js";
           }
 
           const typedSize = normalizeSize(sizeEl.value);
+
           if (!typedSize) {
             showSizePopup(masp, "");
+            return;
+          }
+
+          // Nếu size không hợp lệ thì hiểu là người dùng đang nhập mã sản phẩm mới
+          if (!isValidSize(typedSize)) {
+            chuyenSizeSaiThanhMaSanPhamMoi(typedSize);
             return;
           }
 
