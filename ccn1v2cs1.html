@@ -1086,49 +1086,98 @@
     <div id="toastMsg"></div>
 
     <script>
+
         function renderRowsDirectIntoTable(rows) {
             // rows: [{ masp, size, sl }]
             const table = document.getElementById('bangketqua');
-            if (!table) { console.warn('[CCN 1v2] Không tìm thấy #bangketqua'); return false; }
-            const tbody = table.querySelector('tbody');
-            if (!tbody) { console.warn('[CCN 1v2] Không tìm thấy tbody'); return false; }
+            if (!table) {
+                console.warn('[CCN] Không tìm thấy #bangketqua');
+                return false;
+            }
 
-            // Xóa cũ rồi đổ mới
+            const tbody = table.querySelector('tbody');
+            if (!tbody) {
+                console.warn('[CCN] Không tìm thấy tbody');
+                return false;
+            }
+
+            // Gom theo mã hàng
+            const grouped = new Map();
+
+            for (const r of rows || []) {
+                const masp = String(r.masp || '').trim().toUpperCase();
+                const size = normSize(r.size);
+                const sl = Number(r.sl || 0);
+
+                if (!masp) continue;
+                if (!grouped.has(masp)) {
+                    grouped.set(masp, []);
+                }
+
+                grouped.get(masp).push({
+                    size,
+                    sl
+                });
+            }
+
+            // Sắp xếp size tăng dần
+            function sizeSortValue(size) {
+                const s = String(size || '').trim();
+                const m = s.match(/\d{1,2}/);
+                return m ? Number(m[0]) : 999999;
+            }
+
             tbody.innerHTML = '';
-            for (const r of rows) {
+
+            for (const [masp, items] of grouped.entries()) {
+                items.sort((a, b) => sizeSortValue(a.size) - sizeSortValue(b.size));
+
+                // Cột size hiển thị kiểu: 38/1 43/1 44/1
+                const sizeText = items
+                    .map(x => `${x.size}/${Number(x.sl || 0)}`)
+                    .join(' ');
+
+                // Tổng SL của mã
+                const tongSL = items.reduce((s, x) => s + Number(x.sl || 0), 0);
+
                 const tr = document.createElement('tr');
 
-                // Thứ tự cột: Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
+                // Mã hàng | Tên hàng | size | SL | ĐVT | Đơn giá | Khuyến mại | Thành tiền | Vị trí | T1 | T2
                 const cells = [
-                    r.masp || '',
+                    masp,
                     '',
-                    normSize(r.size),   // <— thay vì r.size
-                    String(r.sl ?? 0),
-                    '', '', '', '',
+                    sizeText,
+                    String(tongSL),
                     '',
-                    '', ''
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    ''
                 ];
-
 
                 for (const c of cells) {
                     const td = document.createElement('td');
                     td.textContent = c;
                     tr.appendChild(td);
                 }
+
                 tbody.appendChild(tr);
             }
 
-            // Nếu dự án bạn có sẵn hàm này (đã thấy bạn gọi nó ở đoạn dán từ clipboard)
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
                 window.capNhatBangKetQuaTuDOM();
             }
-            // Nếu có hàm tính tổng:
+
             if (typeof window.capNhatThongTinTong === 'function') {
                 window.capNhatThongTinTong(window.bangKetQua || {});
             }
-            console.log('[CCN 1v2] Render trực tiếp vào bảng xong:', rows.length);
+
+            console.log('[CCN] Render trực tiếp vào bảng xong:', grouped.size, 'mã');
             return true;
         }
+
     </script>
 
     <script>
@@ -1168,14 +1217,18 @@
 
                 const rows = [];
                 for (const it of pf.items || []) {
-                    const masp = String(it.masp || '').toUpperCase();
+                    const masp = String(it.masp || '').trim().toUpperCase();
+
                     for (const line of (it.items || [])) {
-
-                        rows.push({ masp, size: normSize(line.size), sl: Number(line.sl || 0) });
-
+                        rows.push({
+                            masp,
+                            size: normSize(line.size),
+                            sl: Number(line.sl || 0)
+                        });
                     }
                 }
-                console.log('[CCN 1v2] Payload OK, rows:', rows.length);
+
+                console.log('[CCN] Payload OK, rows:', rows.length);
 
                 // Ưu tiên dùng hàm render “chính chủ” nếu có public trên window
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
