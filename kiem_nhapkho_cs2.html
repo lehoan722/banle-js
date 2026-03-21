@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>kiemnhap2v1cs1</title>
+    <title>kiemnhap2v1cs2</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -501,6 +501,9 @@
                 <input type="checkbox" id="chkNhapNhanh" checked />
                 Nhập nhanh
             </label>
+
+            <input type="checkbox" id="nhapsize" hidden />
+
             <input id="sohd" placeholder="Số phiếu kiểm nhập" />
             <input id="ghichu_top" placeholder="Ghi chú / DS HĐ CCN" style="width:260px;" readonly />
 
@@ -515,8 +518,8 @@
                 <table id="bangketqua">
                     <thead>
                         <tr>
-                            <th colspan="3" style="color:blue;">NHẬP CS2</th>
-                            <th colspan="3" style="color:red;">XUẤT CS1</th>
+                            <th colspan="3" style="color:blue;">NHẬP cs2</th>
+                            <th colspan="3" style="color:red;">XUẤT CS2</th>
                             <th colspan="2">TRẠNG THÁI</th>
                         </tr>
                         <tr>
@@ -541,11 +544,13 @@
             <button id="btn-copy-nhap" type="button">Copy</button>
             <button id="btn-paste-nhap" type="button">Dán</button>
             <button id="sua" class="btn edit" type="button">SỬA</button>
-            <button id="btnMoPhieuCu">Mở phiếu cũ</button>            
+            <button id="btnMoPhieuCu">Mở phiếu cũ</button>
+
             <button id="btnNapHoaDonCCNTheoMasp_footer">Nạp CCN theo MASP</button>
             <button id="btnKiemTraPhieu_footer">Kiểm tra</button>
-            <button id="btnTaoPhieuCCN1V2">Thừa CCN1V2</button>
-            <button id="btnTaoPhieuCCN2V1">Thiếu CCN2V1</button>
+            <button id="btnTaoPhieuCCN2V1">Thừa CCN2V1</button>
+            <button id="btnTaoPhieuCCN1V2">Thiếu CCN1V2</button>
+
             <button id="btn-logout">THOAT PM</button>
             <button id="btnNapHoaDonCCN_footer">Nạp HĐ CCN</button>
         </div>
@@ -587,11 +592,11 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT cs1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs2",
+            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs2",
+            loginApiPath: "/api/login-cs2", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -692,7 +697,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -997,18 +1002,18 @@
                 });
             });
 
-            const payload = { source: "nhap-hd", cs: "cs1", items };
+            const payload = { source: "nhap-hd", cs: "cs2", items };
             const json = JSON.stringify(payload);
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachcs2.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
 
         // Gắn vào nút
-        // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
+        // nhapmoimtcs2.html (hoặc module xử lý nút in mã vạch)
 
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
@@ -1042,14 +1047,14 @@
 
             const payload = {
                 source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
+                cs: localStorage.getItem("diadiem") || "cs2",
                 items
             };
             console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachcs2.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
@@ -1135,7 +1140,7 @@
 
         async function importFromGoogleSheet() {
             const sheetId = "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8";
-            const sheetName = "kiemkhocs1";
+            const sheetName = "kiemkhocs2";
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
 
             try {
@@ -1280,7 +1285,7 @@
     <script type="module">
         import { popupNgang } from './scripts/popupNgang.js';
 
-        // ✅ Nút "Nạp nhập tạm" (nhaptamcs1_) -> tự đổ dữ liệu size chi tiết vào bảng kết quả của nmcs1_
+        // ✅ Nút "Nạp nhập tạm" (nhaptamcs2_) -> tự đổ dữ liệu size chi tiết vào bảng kết quả của nmcs2_
         async function napNhapTamTuSupabase() {
             // 1) Cập nhật dữ liệu mới nhất từ bảng DOM (tránh lấy thiếu nếu user vừa sửa)
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
@@ -1288,10 +1293,10 @@
             }
 
             const sohd = (document.getElementById('sohd')?.value || '').trim();
-            const diadiem = (document.getElementById('diadiem')?.value || '').trim() || 'cs1';
+            const diadiem = (document.getElementById('diadiem')?.value || '').trim() || 'cs2';
 
-            if (!sohd.startsWith('nmcs1_')) {
-                alert('⚠️ Nút này chỉ dùng khi đang mở hóa đơn nhập mới MT cơ sở 2 (sohd bắt đầu bằng nmcs1_)');
+            if (!sohd.startsWith('nmcs2_')) {
+                alert('⚠️ Nút này chỉ dùng khi đang mở hóa đơn nhập mới MT cơ sở 2 (sohd bắt đầu bằng nmcs2_)');
                 return;
             }
 
@@ -1308,7 +1313,7 @@
                 return;
             }
 
-            // 2) Lấy created_at của hóa đơn nmcs1_ hiện tại (mốc quét)
+            // 2) Lấy created_at của hóa đơn nmcs2_ hiện tại (mốc quét)
             const { data: nm, error: nmErr } = await window.supabase
                 .from('hoadon_banle')
                 .select('created_at, diadiem')
@@ -1317,26 +1322,26 @@
 
             if (nmErr || !nm?.created_at) {
                 console.error('nmErr:', nmErr);
-                alert('❌ Không lấy được created_at của hóa đơn nhập mới. Hãy chắc chắn hóa đơn nmcs1_ đã LƯU trước khi nạp nhập tạm.');
+                alert('❌ Không lấy được created_at của hóa đơn nhập mới. Hãy chắc chắn hóa đơn nmcs2_ đã LƯU trước khi nạp nhập tạm.');
                 return;
             }
 
             const nmCreatedAt = new Date(nm.created_at);
-            // ✅ Ngưỡng quét mặc định: lấy NHẬP TẠM trong "NGÀY tạo nmcs1_" và "NGÀY HÔM SAU"
-            // (để bao cả trường hợp nhaptam phát sinh TRƯỚC thời điểm tạo nmcs1_ nhưng vẫn trong cùng ngày)
+            // ✅ Ngưỡng quét mặc định: lấy NHẬP TẠM trong "NGÀY tạo nmcs2_" và "NGÀY HÔM SAU"
+            // (để bao cả trường hợp nhaptam phát sinh TRƯỚC thời điểm tạo nmcs2_ nhưng vẫn trong cùng ngày)
             const dayStart = new Date(nmCreatedAt);
             dayStart.setHours(0, 0, 0, 0);
             const dayEnd = new Date(dayStart);
             dayEnd.setDate(dayEnd.getDate() + 2); // [dayStart, dayEnd) = hôm nay + ngày mai
 
-            const cs = (nm.diadiem || diadiem || 'cs1').trim();
+            const cs = (nm.diadiem || diadiem || 'cs2').trim();
 
-            // 3) Lấy danh sách hóa đơn nhập tạm trong khoảng thời gian (NGÀY tạo nmcs1_ + NGÀY HÔM SAU)
+            // 3) Lấy danh sách hóa đơn nhập tạm trong khoảng thời gian (NGÀY tạo nmcs2_ + NGÀY HÔM SAU)
             const { data: hdsTam, error: hdErr } = await window.supabase
                 .from('hoadon_banle')
                 .select('sohd, created_at')
                 .eq('diadiem', cs)
-                .ilike('sohd', 'nhaptamcs1_%')
+                .ilike('sohd', 'nhaptamcs2_%')
                 .gte('created_at', dayStart.toISOString())
                 .lt('created_at', dayEnd.toISOString());
 
@@ -1349,7 +1354,7 @@
             const sohdTamList = (hdsTam || []).map(x => x.sohd).filter(Boolean);
 
             if (sohdTamList.length === 0) {
-                alert('ℹ️ Không tìm thấy hóa đơn nhaptamcs1_ nào trong NGÀY tạo hóa đơn nmcs1_ và NGÀY HÔM SAU.');
+                alert('ℹ️ Không tìm thấy hóa đơn nhaptamcs2_ nào trong NGÀY tạo hóa đơn nmcs2_ và NGÀY HÔM SAU.');
                 return;
             }
 
@@ -1388,7 +1393,7 @@
             }
 
             if (!ctRows || ctRows.length === 0) {
-                alert('ℹ️ Có hóa đơn nhập tạm, nhưng không có dòng nào trùng mã sản phẩm với hóa đơn nmcs1_ hiện tại.');
+                alert('ℹ️ Có hóa đơn nhập tạm, nhưng không có dòng nào trùng mã sản phẩm với hóa đơn nmcs2_ hiện tại.');
                 return;
             }
 
@@ -1427,7 +1432,7 @@
                 const sl = item.soluong;
 
                 const target = bang[masp];
-                if (!target) continue; // chỉ xử lý masp trùng trong hóa đơn nmcs1_
+                if (!target) continue; // chỉ xử lý masp trùng trong hóa đơn nmcs2_
 
                 // bổ sung tên hàng nếu thiếu
                 if (!target.tensp && item.tensp) target.tensp = item.tensp;
@@ -1602,13 +1607,30 @@
     <script>
         window.KIEM_NHAP_CONFIG = {
             pageId: "kiemnhap_cs2",
-            fromBranch: "cs1",
+            fromBranch: "cs2",
             toBranch: "cs2",
-            soPhieuPrefix: "kiemnhap1v2cs2_",
-            title: "KIỂM NHẬP KHO CS2"
+            soPhieuPrefix: "kiemnhap2v1cs2_",
+            title: "KIỂM NHẬP KHO cs2"
         };
     </script>
-    <script src="./scripts/kiem_nhapkho.js"></script>
+
+    <script>
+        function dongBoNhapNhanhVaNhapSize() {
+            const chkNhapNhanh = document.getElementById("chkNhapNhanh");
+            const nhapSize = document.getElementById("nhapsize");
+            if (!chkNhapNhanh || !nhapSize) return;
+
+            // Nhập nhanh checked => KHÔNG chọn size liên tiếp
+            nhapSize.checked = !chkNhapNhanh.checked;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            dongBoNhapNhanhVaNhapSize();
+            document.getElementById("chkNhapNhanh")?.addEventListener("change", dongBoNhapNhanhVaNhapSize);
+        });
+    </script>
+
+    <script type="module" src="./scripts/kiem_nhapkho.js"></script>
 
     <div id="popupChonHoaDonNguon" style="
   display:none;
