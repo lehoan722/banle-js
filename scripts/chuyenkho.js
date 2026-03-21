@@ -9,25 +9,25 @@ const PATH = (window.location.pathname || "").toLowerCase();
 
 const PAGE_CFG = PATH.includes("chuyenkho2v1cs2")
   ? {
-      pageKey: "chuyenkho2v1cs2",
-      loaiCt: "ck2v1_cs2",
-      tuCoso: "cs2",
-      denCoso: "cs1",
-      dir: "2v1",
-      ccnTargetUrl: "https://banle-js.vercel.app/ccn2v1cs2.html",
-      salesLoai: ["bancs2", "nmcs2"],
-      macDinhDiaDiem: "cs2",
-    }
+    pageKey: "chuyenkho2v1cs2",
+    loaiCt: "ck2v1_cs2",
+    tuCoso: "cs2",
+    denCoso: "cs1",
+    dir: "2v1",
+    ccnTargetUrl: "https://banle-js.vercel.app/ccn2v1cs2.html",
+    salesLoai: ["bancs2", "nmcs2"],
+    macDinhDiaDiem: "cs2",
+  }
   : {
-      pageKey: "chuyenkho1v2cs1",
-      loaiCt: "ck1v2_cs1",
-      tuCoso: "cs1",
-      denCoso: "cs2",
-      dir: "1v2",
-      ccnTargetUrl: "https://banle-js.vercel.app/ccn1v2cs1.html",
-      salesLoai: ["bancs1", "nmcs1"],
-      macDinhDiaDiem: "cs1",
-    };
+    pageKey: "chuyenkho1v2cs1",
+    loaiCt: "ck1v2_cs1",
+    tuCoso: "cs1",
+    denCoso: "cs2",
+    dir: "1v2",
+    ccnTargetUrl: "https://banle-js.vercel.app/ccn1v2cs1.html",
+    salesLoai: ["bancs1", "nmcs1"],
+    macDinhDiaDiem: "cs1",
+  };
 
 const STATE = {
   rows: [],
@@ -378,12 +378,16 @@ function renderBang() {
       <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet}"></td>
       <td class="col-slthuc"><input data-role="sl_thuc" data-idx="${idx}" value="${row.sl_thuc}"></td>
       <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}"></td>
-      <td>${escapeHtml(row.tennv_phutrach)}</td>
+      <td style="display:none;">${escapeHtml(row.tennv_phutrach)}</td>
       <td>${escapeHtml(row.trang_thai_dong)}</td>
       <td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}"></td>
     `;
 
-    tr.addEventListener("click", () => {
+    tr.addEventListener("click", (e) => {
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea" || e.target?.closest("input") || e.target?.closest("select")) {
+        return;
+      }
       STATE.selectedIndex = idx;
       renderBang();
     });
@@ -395,6 +399,11 @@ function renderBang() {
 }
 
 function ganSuKienBang() {
+  document.querySelectorAll('#bangketqua input, #bangketqua select, #bangketqua textarea').forEach((el) => {
+    el.addEventListener("click", (e) => e.stopPropagation());
+    el.addEventListener("mousedown", (e) => e.stopPropagation());
+  });
+
   document.querySelectorAll('[data-role="selected"]').forEach((el) => {
     el.addEventListener("change", (e) => {
       const idx = Number(e.target.dataset.idx);
