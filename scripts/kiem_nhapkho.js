@@ -206,11 +206,12 @@ import "./stockQuickPopup.js";
     return arr;
   }
 
-  const popup = byId("popup_size");
-  if (!popup) return;
-
-  popup.style.display = "none";
-  popup.innerHTML = "";
+  function hideSizePopup() {
+    const popup = byId("popup_size");
+    if (!popup) return;
+    popup.style.display = "none";
+    popup.innerHTML = "";
+  }
 
   function themNhanhTheoSize(size, giuPopup = true) {
     const maspEl = byId("masp");
@@ -304,12 +305,16 @@ import "./stockQuickPopup.js";
 
     hideSizePopup();
   }
-
   function showSizePopup(masp, keyword = "") {
-    const popup = byId("popup_size");
+    const popup = ensurePopupSizeExists();
     const sizeEl = byId("size");
 
     if (!popup || !sizeEl) return;
+
+    const rect = sizeEl.getBoundingClientRect();
+    popup.style.left = `${rect.left + window.scrollX}px`;
+    popup.style.top = `${rect.bottom + window.scrollY}px`;
+    popup.style.width = `${Math.max(rect.width, 180)}px`;
 
     const list = getAvailableSizesForMasp(masp);
     const kw = normalizeSize(keyword).toLowerCase();
@@ -2944,6 +2949,8 @@ import "./stockQuickPopup.js";
   async function init() {
     updateTitle();
     setDefaultBranchInfo();
+
+    ensurePopupSizeExists();
     bindInputEvents();
     bindButtons();
 
@@ -3002,3 +3009,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+function ensurePopupSizeExists() {
+  let popup = byId("popup_size");
+  if (popup) return popup;
+
+  popup = document.createElement("div");
+  popup.id = "popup_size";
+  popup.style.position = "absolute";
+  popup.style.display = "none";
+  popup.style.minWidth = "180px";
+  popup.style.maxHeight = "220px";
+  popup.style.overflowY = "auto";
+  popup.style.background = "#fff";
+  popup.style.border = "1px solid #ccc";
+  popup.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
+  popup.style.zIndex = "10001";
+
+  document.body.appendChild(popup);
+  return popup;
+}
