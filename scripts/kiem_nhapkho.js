@@ -559,8 +559,10 @@ import "./stockQuickPopup.js";
 
   function getSortWeightByTrangThai(trangthai) {
     const tt = String(trangthai || "").trim().toUpperCase();
-    if (tt === "THIEU") return 1;
-    if (tt === "THUA") return 2;
+    if (tt === "THUA") return 1;
+
+    if (tt === "THIEU") return 2;
+    
     if (tt === "LECH") return 3;
     if (tt === "OK") return 4;
     return 5;
@@ -591,8 +593,10 @@ import "./stockQuickPopup.js";
 
   function getSortWeightByTrangThai(trangthai) {
     const tt = String(trangthai || "").trim().toUpperCase();
-    if (tt === "THIEU") return 1;
-    if (tt === "THUA") return 2;
+    if (tt === "THUA") return 1;
+
+    if (tt === "THIEU") return 2;
+    
     if (tt === "LECH") return 3;
     if (tt === "OK") return 4;
     return 5;
@@ -3002,5 +3006,4 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(popup);
   }
 });
-
 
