@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>CHUYỂN KHO 1V2 - CS1</title>
 
   <style>
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -32,14 +34,17 @@
       box-sizing: border-box;
     }
 
-    .menu-left, .menu-right {
+    .menu-left,
+    .menu-right {
       display: flex;
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
     }
 
-    .menu-bar input, .menu-bar button, .menu-bar select {
+    .menu-bar input,
+    .menu-bar button,
+    .menu-bar select {
       font-size: 15px;
       padding: 4px 6px;
     }
@@ -54,7 +59,7 @@
 
     .filter-bar {
       display: grid;
-      grid-template-columns: 120px 120px 1fr auto auto;
+      grid-template-columns: 130px 130px 460px 90px 90px;
       gap: 8px;
       padding: 8px;
       background: #eef3fb;
@@ -72,8 +77,9 @@
     }
 
     #textarea-masp {
-      width: 100%;
+      width: 460px;
       min-height: 88px;
+      max-width: 460px;
       resize: vertical;
       grid-column: 1 / span 3;
     }
@@ -104,7 +110,8 @@
       font-size: 14px;
     }
 
-    th, td {
+    th,
+    td {
       border: 1px solid #d8d8d8;
       padding: 4px 6px;
       text-align: center;
@@ -135,7 +142,8 @@
     }
 
     .sidebar {
-      width: 330px;
+      width: 430px;
+      min-width: 430px;
       border-left: 1px solid #cfd7e6;
       background: #fff;
       display: flex;
@@ -185,11 +193,25 @@
       align-items: center;
     }
 
-    .info-grid input, .info-grid textarea {
+    .info-grid input,
+    .info-grid textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 5px;
       font-size: 14px;
+    }
+
+    .info-grid label {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .info-grid input[readonly] {
+      background: #f7f7f7;
+    }
+
+    #ghi_chu_phieu {
+      min-height: 140px;
     }
 
     #history-box {
@@ -251,7 +273,8 @@
     <div class="filter-bar">
       <input id="tu_ngay" type="date" />
       <input id="den_ngay" type="date" />
-      <textarea id="textarea-masp" placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
+      <textarea id="textarea-masp"
+        placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
 
       <div class="filter-actions">
         <button id="btn-goi-y" type="button">Lấy gợi ý</button>
@@ -281,7 +304,7 @@
               <th style="width:80px">SL duyệt</th>
               <th style="width:80px">SL thực</th>
               <th style="width:110px">Mã NV</th>
-              <th style="width:130px">Tên NV</th>
+             <th style="width:130px; display:none;">Tên NV</th>  
               <th style="width:130px">Trạng thái</th>
               <th style="width:180px">Ghi chú</th>
             </tr>
@@ -356,4 +379,5 @@
   <script src="scripts/stockQuickPopup.js"></script>
   <script type="module" src="./scripts/chuyenkho.js"></script>
 </body>
+
 </html>
