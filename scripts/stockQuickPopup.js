@@ -100,6 +100,21 @@
     font-weight: 600;
   }
 
+    /* Màu nền phân biệt tồn/bán theo từng cơ sở */
+  .sq-stock-popup th.sq-col-k1,
+  .sq-stock-popup td.sq-col-k1,
+  .sq-stock-popup th.sq-col-b1,
+  .sq-stock-popup td.sq-col-b1 {
+    background: #fff7cc;   /* vàng nhạt */
+  }
+
+  .sq-stock-popup th.sq-col-k2,
+  .sq-stock-popup td.sq-col-k2,
+  .sq-stock-popup th.sq-col-b2,
+  .sq-stock-popup td.sq-col-b2 {
+    background: #eaf4ff;   /* xanh nhạt */
+  }
+
   .sq-stock-popup td.num {
     text-align: right;
   }
@@ -541,14 +556,13 @@
         return `
         <tr>
           <td>${sizeLabel}</td>
-          <td class="num">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
-          <td class="num">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
-          <td class="num">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
-          <td class="num">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
+          <td class="num sq-col-k1">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
+          <td class="num sq-col-k2">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
+          <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
+          <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
           <td class="num sq-blue">${r.tong_nhap ? r.tong_nhap : ""}</td>
-          <td class="num">${r.tong_ban ? r.tong_ban : ""}</td>          <!-- ✅ THÊM -->
+          <td class="num">${r.tong_ban ? r.tong_ban : ""}</td>
           <td class="num sq-red">${tonTong ? tonTong : ""}</td>
-
         </tr>`;
       })
       .join("");
@@ -557,16 +571,15 @@
 
     const sumRow = rows.length
       ? `
-      <tr class="sum-row">
+            <tr class="sum-row">
         <td>tong</td>
-        <td class="num">${sum1 || ""}</td>
-        <td class="num">${sum2 || ""}</td>
-        <td class="num">${sumBan1 || ""}</td>
-        <td class="num">${sumBan2 || ""}</td>
+        <td class="num sq-col-k1">${sum1 || ""}</td>
+        <td class="num sq-col-k2">${sum2 || ""}</td>
+        <td class="num sq-col-b1">${sumBan1 || ""}</td>
+        <td class="num sq-col-b2">${sumBan2 || ""}</td>
         <td class="num sq-blue">${sumNhap || ""}</td>
-        <td class="num">${sumTongBan || ""}</td>       <!-- ✅ THÊM -->
+        <td class="num">${sumTongBan || ""}</td>
         <td class="num sq-red">${sumTongTon || ""}</td>
-
       </tr>`
       : "";
 
@@ -600,17 +613,16 @@
         <div class="sq-stock-layout">
           <div class="sq-stock-table-wrapper">
             <table>
-              <thead>
+                            <thead>
                 <tr>
                   <th>Size</th>
-                  <th>K1</th>
-                  <th>K2</th>
-                  <th>B1</th>
-                  <th>B2</th>
+                  <th class="sq-col-k1">K1</th>
+                  <th class="sq-col-k2">K2</th>
+                  <th class="sq-col-b1">B1</th>
+                  <th class="sq-col-b2">B2</th>
                   <th class="sq-blue">Tnhập</th>
-                  <th>Tban</th>                 <!-- ✅ THÊM -->
+                  <th>Tban</th>
                   <th class="sq-red">Ttồn</th>
-
                 </tr>
               </thead>
               <tbody>
