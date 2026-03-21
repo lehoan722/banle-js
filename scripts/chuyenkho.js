@@ -67,6 +67,16 @@ function normalizeSize(v) {
   return String(v || "").trim().toUpperCase();
 }
 
+function isSizeZero(size) {
+  const s = String(size ?? '').trim().toUpperCase();
+  return s === '0' || s === '0.0' || s === '00';
+}
+
+function isManagedSizeValue(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === 'true' || s === '1' || s === 'yes' || s === 'co' || s === 'có';
+}
+
 function toNumber(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -228,12 +238,15 @@ async function fetchXntRows(masps) {
 
   if (error) throw error;
 
-  return (data || []).map((r) => ({
+  return (data || [])
+  .map(r => ({
     masp: normalizeMasp(r.masp),
     size: normalizeSize(r.size),
-    ton_cs1: toNumber(r.ton_cs1),
-    ton_cs2: toNumber(r.ton_cs2),
-  }));
+    ton_cs1: Number(r.ton_cs1 || 0),
+    ton_cs2: Number(r.ton_cs2 || 0)
+  }))
+  .filter(r => !['0', '0.0', '00', ''].includes(String(r.size).trim()));
+  
 }
 
 /* =========================================================
