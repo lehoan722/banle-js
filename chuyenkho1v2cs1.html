@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>CHUYỂN KHO 1V2 - CS1</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+    }
+
+    body.popupnhanh .sq-stock-popup {
+      top: 8px !important;
+      right: 8px !important;
+      left: auto !important;
+      transform: none !important;
+    }
+
+    .menu-bar {
+      background: #0088cc;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      box-sizing: border-box;
+    }
+
+    .menu-left, .menu-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .menu-bar input, .menu-bar button, .menu-bar select {
+      font-size: 15px;
+      padding: 4px 6px;
+    }
+
+    #app-container {
+      display: none;
+      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 120px 120px 1fr auto auto;
+      gap: 8px;
+      padding: 8px;
+      background: #eef3fb;
+      border-bottom: 1px solid #ccd7ea;
+      align-items: start;
+    }
+
+    .filter-bar input,
+    .filter-bar textarea,
+    .filter-bar button,
+    .filter-bar select {
+      font-size: 15px;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+
+    #textarea-masp {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+      grid-column: 1 / span 3;
+    }
+
+    .filter-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .main {
+      flex: 1 1 auto;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .table-area {
+      flex: 1 1 auto;
+      overflow: auto;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #d8d8d8;
+      padding: 4px 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #e7eef9;
+      z-index: 2;
+    }
+
+    td.col-masp {
+      cursor: pointer;
+      color: #0b63c8;
+      font-weight: bold;
+    }
+
+    td.col-ghichu input,
+    td.col-slduyet input,
+    td.col-slthuc input,
+    td.col-manv select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px;
+      font-size: 13px;
+    }
+
+    .sidebar {
+      width: 330px;
+      border-left: 1px solid #cfd7e6;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .tabs {
+      display: flex;
+      background: #e8eef7;
+      border-bottom: 1px solid #d7e0ef;
+    }
+
+    .tabs button {
+      flex: 1;
+      border: none;
+      background: #dbe6f5;
+      padding: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .tabs button.active {
+      background: #fff;
+      border-bottom: 2px solid #0078d7;
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow: auto;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .info-grid input, .info-grid textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 5px;
+      font-size: 14px;
+    }
+
+    #history-box {
+      white-space: pre-wrap;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 160px;
+    }
+
+    .footer-buttons {
+      flex-shrink: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px;
+      background: #dce9f9;
+      border-top: 1px solid #c7d3e9;
+    }
+
+    .footer-buttons button {
+      min-width: 110px;
+      padding: 8px 12px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .done-row {
+      background: #edf9ed;
+    }
+
+    .highlight-row {
+      background: #fff8d8;
+    }
+  </style>
+</head>
+
+<body class="popupnhanh">
+  <div class="menu-bar">
+    <div class="menu-left">
+      <input id="diadiem" readonly style="width:70px" />
+      <input id="hd_state" readonly value="moi" style="width:60px;text-align:center;font-weight:bold;" />
+      <input id="ngay" type="date" readonly />
+      <input id="gio" type="text" readonly style="width:80px" />
+      <input id="manv" type="hidden" />
+      <input id="tennv" readonly placeholder="Tên NV" style="width:180px" />
+      <button id="btnReloadSP">🔄 Tải</button>
+    </div>
+
+    <div class="menu-right">
+      <input id="sohd" readonly placeholder="Số CT" style="width:170px;font-weight:bold;" />
+      <button id="btn-logout" type="button">Thoát PM</button>
+    </div>
+  </div>
+
+  <div id="app-container">
+    <div class="filter-bar">
+      <input id="tu_ngay" type="date" />
+      <input id="den_ngay" type="date" />
+      <textarea id="textarea-masp" placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
+
+      <div class="filter-actions">
+        <button id="btn-goi-y" type="button">Lấy gợi ý</button>
+        <button id="btn-xoa-goi-y" type="button">Xóa gợi ý</button>
+      </div>
+
+      <div class="filter-actions">
+        <button id="btn-open-old" type="button">Mở phiếu</button>
+        <button id="btn-stock-selected" type="button">Tồn nhanh</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="table-area">
+        <table id="bangketqua">
+          <thead>
+            <tr>
+              <th style="width:36px">Chọn</th>
+              <th style="width:46px">Xong</th>
+              <th style="width:130px">Mã SP</th>
+              <th>Tên hàng</th>
+              <th style="width:65px">Size</th>
+              <th style="width:70px">Tồn nguồn</th>
+              <th style="width:70px">Tồn đích</th>
+              <th style="width:65px">Hướng</th>
+              <th style="width:70px">SL gợi ý</th>
+              <th style="width:80px">SL duyệt</th>
+              <th style="width:80px">SL thực</th>
+              <th style="width:110px">Mã NV</th>
+              <th style="width:130px">Tên NV</th>
+              <th style="width:130px">Trạng thái</th>
+              <th style="width:180px">Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="sidebar">
+        <div class="tabs">
+          <button id="btn_tab_thongtin" type="button" onclick="switchTab('thongtin')">Thông tin</button>
+          <button id="btn_tab_tacvu" type="button" onclick="switchTab('tacvu')">Tác vụ</button>
+          <button id="btn_tab_history" type="button" onclick="switchTab('history')">Lịch sử</button>
+        </div>
+
+        <div class="tab-content">
+          <div class="tab-pane" id="thongtin">
+            <div class="info-grid">
+              <label>Loại CT</label><input id="loai_ct" value="ck1v2_cs1" readonly />
+              <label>Từ cơ sở</label><input id="tu_coso" value="cs1" readonly />
+              <label>Đến cơ sở</label><input id="den_coso" value="cs2" readonly />
+              <label>Trạng thái</label><input id="trang_thai" value="moi" />
+              <label>Số dòng</label><input id="tong_dong" readonly />
+              <label>Tổng SL gợi ý</label><input id="tong_goiy" readonly />
+              <label>Tổng SL duyệt</label><input id="tong_duyet" readonly />
+              <label>Tổng SL thực</label><input id="tong_thuc" readonly />
+              <label>Phiếu CCN</label><input id="so_ct_ccn" readonly />
+              <label>Ghi chú</label><textarea id="ghi_chu_phieu" rows="5"></textarea>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tacvu">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <button id="btn-them-moi" type="button">Thêm mới</button>
+              <button id="btn-luu" type="button">Lưu dữ liệu</button>
+              <button id="btn-giao-viec" type="button">Giao việc</button>
+              <button id="btn-danh-dau-xong" type="button">Đánh dấu xong</button>
+              <button id="btn-tao-ccn" type="button">Tạo phiếu CCN</button>
+              <button id="btn-xoa-dong" type="button">Xóa dòng</button>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="history">
+            <div id="history-box">Chưa có lịch sử.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-buttons">
+      <button id="btn-footer-them-moi" type="button">Thêm mới</button>
+      <button id="btn-footer-luu" type="button">Lưu dữ liệu</button>
+      <button id="btn-footer-mo" type="button">Mở phiếu</button>
+      <button id="btn-footer-giao" type="button">Giao việc</button>
+      <button id="btn-footer-xong" type="button">Đánh dấu xong</button>
+      <button id="btn-footer-tao-ccn" type="button">Tạo phiếu CCN</button>
+      <button id="btn-footer-xoa" type="button">Xóa dòng</button>
+      <button id="btn-footer-thoat" type="button">Thoát</button>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(tabName)?.classList.add('active');
+      document.getElementById('btn_tab_' + tabName)?.classList.add('active');
+    }
+    document.addEventListener('DOMContentLoaded', () => switchTab('thongtin'));
+  </script>
+
+  <script src="scripts/stockQuickPopup.js"></script>
+  <script type="module" src="./scripts/chuyenkho.js"></script>
+</body>
+</html>
