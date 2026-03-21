@@ -62,6 +62,17 @@ import "./stockQuickPopup.js";
     return document.getElementById(id);
   }
 
+  // ✅ helper an toàn
+  function safeEl(id) {
+    return document.getElementById(id) || null;
+  }
+
+  function safeSetStyle(id, fn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    fn(el);
+  }
+
   function focusInputAtEnd(el) {
     if (!el) return;
     el.focus();
@@ -195,12 +206,11 @@ import "./stockQuickPopup.js";
     return arr;
   }
 
-  function hideSizePopup() {
-    const popup = byId("popup_size");
-    if (!popup) return;
-    popup.style.display = "none";
-    popup.innerHTML = "";
-  }
+  const popup = byId("popup_size");
+  if (!popup) return;
+
+  popup.style.display = "none";
+  popup.innerHTML = "";
 
   function themNhanhTheoSize(size, giuPopup = true) {
     const maspEl = byId("masp");
@@ -298,6 +308,7 @@ import "./stockQuickPopup.js";
   function showSizePopup(masp, keyword = "") {
     const popup = byId("popup_size");
     const sizeEl = byId("size");
+
     if (!popup || !sizeEl) return;
 
     const list = getAvailableSizesForMasp(masp);
@@ -2041,7 +2052,12 @@ import "./stockQuickPopup.js";
     }
 
     const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
-    window.open(url, "_blank");
+    const newTab = window.open(url);
+
+    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+      // mobile bị chặn popup → chuyển luôn
+      window.location.href = url;
+    }
 
     // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
   }
@@ -2085,7 +2101,13 @@ import "./stockQuickPopup.js";
     }
 
     const url = "https://banle-js.vercel.app/ccn2v1cs2.html";
-    window.open(url, "_blank");
+
+    const newTab = window.open(url);
+
+    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+      // mobile bị chặn popup → chuyển luôn
+      window.location.href = url;
+    }
 
     // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
   }
@@ -2957,4 +2979,26 @@ import "./stockQuickPopup.js";
   }
 })();
 
+// ✅ đảm bảo popup_size luôn tồn tại
+document.addEventListener("DOMContentLoaded", () => {
+  let popup = document.getElementById("popup_size");
+
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "popup_size";
+
+    popup.style.position = "absolute";
+    popup.style.top = "100%";
+    popup.style.left = "0";
+    popup.style.width = "200px";
+    popup.style.maxHeight = "200px";
+    popup.style.background = "#fff";
+    popup.style.border = "1px solid #ccc";
+    popup.style.display = "none";
+    popup.style.overflowY = "auto";
+    popup.style.zIndex = "9999";
+
+    document.body.appendChild(popup);
+  }
+});
 
