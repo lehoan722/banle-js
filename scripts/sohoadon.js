@@ -81,6 +81,16 @@ export async function capNhatSoHoaDonTuDong() {
         } else if (pathname.includes("ccn1v2")) {
             // Trang chuyển CN 1 → 2: luôn xuất từ CS1
             loai = "xcncs1";
+
+        } else if (pathname.includes("chuyenkho1v2cs1")) {
+            loai = "ck1v2_cs1";
+
+        } else if (pathname.includes("chuyenkho2v1cs2")) {
+            loai = "ck2v1_cs2";
+
+        } else if (pathname.includes("ccn1v2")) {
+            loai = "xcncs1";
+
         } else if (pathname.includes("ncncs1")) {
             // Trang chuyển NCN 1, 
             loai = "ncncs1";
