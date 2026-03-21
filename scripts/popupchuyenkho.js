@@ -189,14 +189,14 @@ async function fetchRecentSaleDetails(sohds) {
     return [];
   }
 
-  return (data || []).map(r => ({
-    id: r.id,
-    sohd: String(r.sohd || ''),
-    masp: normalizeMasp(r.masp),
-    size: normalizeSize(r.size),
-    soluong: Number(r.soluong || 0),
-    admin_xnccn: false
-  }));
+  return (data || [])
+    .map(r => ({
+      masp: normalizeMasp(r.masp),
+      size: normalizeSize(r.size),
+      ton_cs1: Number(r.ton_cs1 || 0),
+      ton_cs2: Number(r.ton_cs2 || 0)
+    }))
+    .filter(r => !['0', '0.0', '00', ''].includes(String(r.size).trim()));
 }
 
 async function fetchXntNhanhRows(masps) {
