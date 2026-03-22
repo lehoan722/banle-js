@@ -313,38 +313,17 @@ function appendNhapMoiSohdToGhiChu(sohdNhapMoi) {
 
     input.value = current ? `${current} | ${marker}` : marker;
 }
-function appendNhapMoiSohdToGhiChu(sohdNhapMoi) {
-    const input = document.getElementById("ghichu");
-    if (!input || !sohdNhapMoi) return;
 
-    const current = String(input.value || "").trim();
-    const marker = `Đã đồng bộ vào ${sohdNhapMoi}`;
-
-    if (current.includes(sohdNhapMoi)) return;
-
-    input.value = current ? `${current} | ${marker}` : marker;
-}
-
-// ===== NEW: lưu thật, không click lồng nhau nữa =====
-async function saveNhapTamDirect() {
-    if (typeof window.saveNhapTam !== "function") {
-        throw new Error("Không tìm thấy hàm window.saveNhapTam.");
+function triggerSaveNhapTam() {
+    const btnLuu = document.getElementById("btn-luu");
+    if (!btnLuu) {
+        throw new Error("Không tìm thấy nút Lưu của phiếu nhập tạm.");
     }
-    return await window.saveNhapTam();
+    btnLuu.click();
 }
 
-// ===== NEW: kiểm tra đồng bộ, cho phép chọn có tự lưu sau khi đồng bộ hay không =====
-async function handleKiemTraDongBo(options = {}) {
-    const {
-        autoSaveAfterSync = false,
-        triggerButton = null
-    } = options;
-
-    const btn =
-        triggerButton ||
-        document.getElementById("btn-kiemtra") ||
-        document.getElementById("btn-luu");
-
+async function handleKiemTraDongBo() {
+    const btn = document.getElementById("btn-kiemtra");
     const oldText = btn ? btn.textContent : "";
 
     try {
@@ -363,7 +342,7 @@ async function handleKiemTraDongBo(options = {}) {
         if (!candidates.length) {
             const { coSo } = getNhapTamRpcNames();
             alert(`Không tìm thấy hóa đơn nhập mới ${coSo} nào cho mã ${info.masp} trong hôm nay và hôm qua.`);
-            return { ok: false, synced: false, saved: false, reason: "no_candidate" };
+            return;
         }
 
         const exactMatches = candidates.filter(x => x.is_exact_match);
@@ -386,15 +365,11 @@ async function handleKiemTraDongBo(options = {}) {
                     `Lệch: ${c.qty_diff}\n\n` +
                     `Bạn có muốn đồng bộ size chi tiết sang hóa đơn này không?`
                 );
-                if (!ok) {
-                    return { ok: false, synced: false, saved: false, reason: "user_cancel_sync" };
-                }
+                if (!ok) return;
                 selected = c;
             } else {
                 selected = await showExactCandidatePicker(exactMatches);
-                if (!selected) {
-                    return { ok: false, synced: false, saved: false, reason: "user_not_select_candidate" };
-                }
+                if (!selected) return;
             }
 
             const result = await syncToNhapMoi({
@@ -405,43 +380,28 @@ async function handleKiemTraDongBo(options = {}) {
 
             appendNhapMoiSohdToGhiChu(selected.sohd);
 
-            if (autoSaveAfterSync) {
-                await saveNhapTamDirect();
-
-                alert(
-                    (result.message || "Đồng bộ thành công.") +
-                    `\n\nĐã ghi chú phiếu nhập mới: ${selected.sohd}` +
-                    `\nPhiếu nhập tạm đã được lưu.`
-                );
-
-                return {
-                    ok: true,
-                    synced: true,
-                    saved: true,
-                    sohdNhapMoi: selected.sohd
-                };
-            }
-
             alert(
                 (result.message || "Đồng bộ thành công.") +
-                `\n\nĐã ghi chú phiếu nhập mới: ${selected.sohd}`
+                `\n\nĐã ghi chú phiếu nhập mới: ${selected.sohd}` +
+                `\nHệ thống sẽ tự lưu phiếu nhập tạm.`
             );
 
-            return {
-                ok: true,
-                synced: true,
-                saved: false,
-                sohdNhapMoi: selected.sohd
-            };
+            setTimeout(() => {
+                try {
+                    triggerSaveNhapTam();
+                } catch (e) {
+                    alert("Đồng bộ xong nhưng không tự bấm Lưu được: " + (e.message || e));
+                }
+            }, 150);
+
+            return;
         }
 
         await showNearMatchPopup(nearMatches, info.masp);
-        return { ok: false, synced: false, saved: false, reason: "near_match_only" };
 
     } catch (err) {
         console.error("Lỗi kiểm tra/đồng bộ nhập tạm -> nhập mới:", err);
         alert("Lỗi: " + (err?.message || err));
-        return { ok: false, synced: false, saved: false, reason: "exception", error: err };
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -450,62 +410,16 @@ async function handleKiemTraDongBo(options = {}) {
     }
 }
 
-// ===== NEW: API lưu chuẩn cho nút Lưu =====
-async function runNhapTamSaveFlow() {
-    const btnLuu = document.getElementById("btn-luu");
-    const oldText = btnLuu ? btnLuu.textContent : "";
-
-    try {
-        if (btnLuu) {
-            btnLuu.disabled = true;
-            btnLuu.textContent = "Đang lưu...";
-        }
-
-        // Nếu chưa có dữ liệu thì saveNhapTam sẽ tự chặn.
-        // Flow chuẩn: kiểm tra/đồng bộ trước, nếu đồng bộ thành công thì tự lưu.
-        // Nếu không có candidate hoặc chỉ gần đúng thì dừng, không lưu.
-        const result = await handleKiemTraDongBo({
-            autoSaveAfterSync: true,
-            triggerButton: btnLuu
-        });
-
-        return result;
-    } finally {
-        if (btnLuu) {
-            btnLuu.disabled = false;
-            btnLuu.textContent = oldText || "💾 Lưu";
-        }
-    }
-}
-
 function initNhapTamAutoSync() {
-    const btnKiemTra = document.getElementById("btn-kiemtra");
-    if (btnKiemTra) {
-        btnKiemTra.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await handleKiemTraDongBo({
-                autoSaveAfterSync: false,
-                triggerButton: btnKiemTra
-            });
-        });
-    }
+    const btn = document.getElementById("btn-kiemtra");
+    if (!btn) return;
 
-    const btnLuu = document.getElementById("btn-luu");
-    if (btnLuu) {
-        btnLuu.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await runNhapTamSaveFlow();
-        });
-    }
+    btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handleKiemTraDongBo();
+    });
 
     window.kiemTraDongBoNhapMoiTuNhapTam = handleKiemTraDongBo;
-    window.runNhapTamSaveFlow = runNhapTamSaveFlow;
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initNhapTamAutoSync);
-} else {
-    initNhapTamAutoSync();
 }
 
 if (document.readyState === "loading") {
