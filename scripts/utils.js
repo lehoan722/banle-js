@@ -19,18 +19,24 @@ export function capNhatThongTinTong(bangKetQua) {
         const soluong = Number(sl) || 0;
         tongSoLuong += soluong;
         // Khuyến mãi: có thể là số chung, nếu có mảng riêng cho từng size thì sửa lại cho phù hợp
-        let km1 = Number(item.km || 0);
-        tongKhuyenMai += km1 * soluong;
-        tongThanhTien += (Number(item.gia || 0) - km1) * soluong;
+
+        const gia1 = Number(item.gia || 0);
+        const km1 = Number(item.km || 0);
+        const kmTongDong = km1 * soluong;
+        tongKhuyenMai += kmTongDong;
+        tongThanhTien += (gia1 * soluong) - kmTongDong;
       });
     }
     // Trường hợp hiếm còn dữ liệu lẻ cũ
     else if (typeof item.soluong !== "undefined") {
       let soluong = Number(item.soluong) || 0;
       tongSoLuong += soluong;
-      let km1 = Number(item.km || 0);
-      tongKhuyenMai += km1 * soluong;
-      tongThanhTien += (Number(item.gia || 0) - km1) * soluong;
+
+      const gia1 = Number(item.gia || 0);
+      const km1 = Number(item.km || 0);
+      const kmTongDong = km1 * soluong;
+      tongKhuyenMai += kmTongDong;
+      tongThanhTien += (gia1 * soluong) - kmTongDong;
     }
   });
 
@@ -60,7 +66,7 @@ export function capNhatThongTinTong(bangKetQua) {
   // Còn lại
   const conlai = khachtra - phaitra;
   conlaiInput.value = conlai.toLocaleString();
-  
+
 }
 
 window.capNhatThongTinTong = capNhatThongTinTong;
