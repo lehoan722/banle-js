@@ -31,8 +31,7 @@ import "./stockQuickPopup.js";
     dsHoaDonNguon: [],
     dsHoaDonNguonInfo: [],
     selectedMasp: "",
-    dmMaspSet: new Set(),
-    dmMaspLoaded: false
+    dmMaspCache: new Map() // key: masp, value: true/false
   };
 
   let dangChonSizeTrongPopup = false;
@@ -263,7 +262,7 @@ import "./stockQuickPopup.js";
     }
   }
 
-  function themNhanhKhongCanSize() {
+  async function themNhanhKhongCanSize() {
     const maspEl = byId("masp");
     const slEl = byId("soluong");
 
@@ -271,7 +270,7 @@ import "./stockQuickPopup.js";
     const sl = normalizeNumber(slEl?.value || 1) || 1;
 
     if (!masp) return;
-    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) return;
+    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) return;
 
     const key = makeKey(masp, "0");
     const state = getState();
@@ -418,36 +417,60 @@ import "./stockQuickPopup.js";
     return window.kiemNhapState;
   }
 
-  async function napDanhMucMasp() {
+  async function kiemTraMaspTrongDanhMuc(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return false;
+
     const state = getState();
 
-    state.dmMaspSet = new Set();
-    state.dmMaspLoaded = false;
+    if (state.dmMaspCache instanceof Map && state.dmMaspCache.has(m)) {
+      return state.dmMaspCache.get(m) === true;
+    }
 
     if (!window.supabase) {
-      console.warn("[KNK] Không có Supabase để nạp danh mục mã sản phẩm.");
-      return;
+      console.warn("[KNK] Không có Supabase để kiểm tra mã sản phẩm.");
+      return false;
     }
 
     const { data, error } = await window.supabase
       .from("dmhanghoa")
       .select("masp")
-      .not("masp", "is", null)
-      .order("masp", { ascending: true });
+      .eq("masp", m)
+      .limit(1);
 
     if (error) {
-      console.error("[KNK] napDanhMucMasp error:", error);
-      alert("Lỗi khi tải danh mục hàng hóa.");
-      return;
+      console.error("[KNK] kiemTraMaspTrongDanhMuc error:", error);
+      throw error;
     }
 
-    (data || []).forEach((row) => {
-      const masp = normalizeMasp(row?.masp);
-      if (masp) state.dmMaspSet.add(masp);
-    });
+    const ok = Array.isArray(data) && data.length > 0;
 
-    state.dmMaspLoaded = true;
-    console.log("[KNK] Đã nạp danh mục mã sản phẩm:", state.dmMaspSet.size);
+    if (state.dmMaspCache instanceof Map) {
+      state.dmMaspCache.set(m, ok);
+    }
+
+    return ok;
+  }
+
+  async function baoLoiNeuMaspKhongCoTrongDanhMuc(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return true;
+
+    try {
+      const ok = await kiemTraMaspTrongDanhMuc(m);
+      if (ok) return true;
+
+      phatAmThanhLoi();
+      alert(`Mã sản phẩm (${m}) không có trong danh mục hàng hóa, không được nhập.`);
+      focusVaBoiDenOmaSanPham();
+      return false;
+    } catch (err) {
+      phatAmThanhLoi();
+      console.error("[KNK] Lỗi kiểm tra mã sản phẩm:", err);
+      alert("Lỗi khi kiểm tra mã sản phẩm trong danh mục hàng hóa.");
+      focusVaBoiDenOmaSanPham();
+      return false;
+    }
   }
 
   function tonTaiMaspTrongDanhMuc(masp) {
@@ -1136,7 +1159,7 @@ import "./stockQuickPopup.js";
     const slEl = byId("soluong");
 
     if (maspEl) {
-      maspEl.addEventListener("keydown", (e) => {
+      maspEl.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
 
@@ -1150,7 +1173,7 @@ import "./stockQuickPopup.js";
 
           maspEl.value = masp;
 
-          if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) {
+          if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
             return;
           }
 
@@ -1158,7 +1181,7 @@ import "./stockQuickPopup.js";
           const isNhapNhanh = !!chkNhapNhanh?.checked;
 
           if (isNhapNhanh) {
-            themNhanhKhongCanSize();
+            await themNhanhKhongCanSize();
             return;
           }
 
@@ -1171,8 +1194,6 @@ import "./stockQuickPopup.js";
             sizeEl.value = "";
             showSizePopup(masp, "");
             phatAmThanhSize();
-
-
           }
         }
       });
