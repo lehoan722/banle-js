@@ -88,16 +88,19 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
 
             // Tính giá/km theo nghiệp vụ
             let gia = item.gia || 0;
-            let km = item.km || 0;
+            let kmDonVi = item.km || 0;
+
             if (isNhap) {
                 if (window.sanPhamData && window.sanPhamData[item.masp]) {
                     gia = window.sanPhamData[item.masp].gianhap || 0;
                 } else {
                     gia = 0;
                 }
-                km = 0;
+                kmDonVi = 0;
             }
-            const thanhtien = (gia - km) * sl;
+
+            const kmTongDong = kmDonVi * sl;
+            const thanhtien = (gia * sl) - kmTongDong;
 
             const tr = tbody.insertRow();
             const vitri = getVitriTheoKho(item.masp);
@@ -108,8 +111,8 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         <td>${sz}</td>
         <td>${sl}</td>
         <td>${item.dvt || ""}</td>
-        <td>${gia}</td>
-        <td>${km}</td>
+        <td>${gia.toLocaleString()}</td>
+        <td>${kmTongDong.toLocaleString()}</td>
         <td>${thanhtien.toLocaleString()}</td>
         <td>${vitri}</td>
       `;
@@ -202,9 +205,14 @@ export function capNhatBangKetQuaTuDOM() {
         const masp = (row.cells[0]?.innerText || "").trim().toUpperCase();
         const tensp = (row.cells[1]?.innerText || "").trim();
         const sizeText = (row.cells[2]?.innerText || "").trim();
-        const slCell = parseFloat(row.cells[3]?.innerText || "0"); // SL của cả dòng
-        const gia = parseFloat((row.cells[5]?.innerText || "").replace(/,/g, "")) || 0;
-        const km = parseFloat((row.cells[6]?.innerText || "").replace(/,/g, "")) || 0;
+
+        const slCell = parseFloat(row.cells[3]?.innerText || "0");
+        const gia = parseFloat((row.cells[5]?.innerText || "").replace(/[.,\s]/g, "")) || 0;
+
+        // Cột khuyến mại trên bảng là KHUYẾN MẠI TỔNG DÒNG
+        // nên phải quy ngược lại thành km đơn vị để lưu vào state
+        const kmHienThi = parseFloat((row.cells[6]?.innerText || "").replace(/[.,\s]/g, "")) || 0;
+        const km = slCell > 0 ? Math.round(kmHienThi / slCell) : 0;
 
         if (!masp) return;
 
