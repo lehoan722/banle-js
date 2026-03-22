@@ -322,16 +322,44 @@ function triggerSaveNhapTam() {
     btnLuu.click();
 }
 
+function runImageGuardBeforeKiemTra() {
+    const guardBtn = document.getElementById("btn-kiemtra-guard");
+    if (!guardBtn) {
+        throw new Error("Không tìm thấy nút guard ảnh của nút Kiểm tra.");
+    }
+
+    // Tạo event click có thể bị preventDefault bởi guardAnhSanPham.js
+    const ev = new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        view: window
+    });
+
+    // dispatchEvent trả về false nếu có listener gọi preventDefault()
+    const passed = guardBtn.dispatchEvent(ev);
+
+    return passed;
+}
+
 async function handleKiemTraDongBo() {
     const btn = document.getElementById("btn-kiemtra");
     const oldText = btn ? btn.textContent : "";
 
     try {
+        // BƯỚC 1: chạy đúng guard ảnh giống nút Lưu
+        const imagePassed = runImageGuardBeforeKiemTra();
+
+        // Nếu guard chặn (ví dụ chưa có ảnh, cần chuyển sang up ảnh) thì dừng ở đây
+        if (!imagePassed) {
+            return;
+        }
+
         if (btn) {
             btn.disabled = true;
             btn.textContent = "Đang kiểm tra...";
         }
 
+        // BƯỚC 2: giữ nguyên toàn bộ nghiệp vụ kiểm tra cũ
         const info = extractSingleProductFromBangKetQua();
 
         const candidates = await findCandidates({
