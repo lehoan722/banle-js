@@ -604,6 +604,8 @@
             <button id="btn-luu">💾 Lưu</button>
             <button id="btn-kiemtra">Kiểm tra</button>
 
+            <button id="btn-kiemtra-guard" type="button" style="display:none;">Guard kiểm tra ảnh</button>
+
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
             <button id="quaylai">Quay lại</button>
@@ -1665,6 +1667,11 @@
 
         attachRequireImageBeforeSave({
             saveButtonId: "btn-luu",
+            dispatchTarget: (document.body || document.documentElement)
+        });
+
+        attachRequireImageBeforeSave({
+            saveButtonId: "btn-kiemtra-guard",
             dispatchTarget: (document.body || document.documentElement)
         });
     </script>
