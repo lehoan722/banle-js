@@ -1,5 +1,3 @@
-import { requireImageBeforeProceed } from "./guardAnhSanPham.js";
-
 function formatDateTimeVN(value) {
     if (!value) return "";
     try {
@@ -334,7 +332,7 @@ async function handleKiemTraDongBo() {
             btn.textContent = "Đang kiểm tra...";
         }
 
-        const info = await batBuocCoAnhTruocKhiKiemTra();
+        const info = extractSingleProductFromBangKetQua();
 
         const candidates = await findCandidates({
             masp: info.masp,
@@ -410,27 +408,6 @@ async function handleKiemTraDongBo() {
             btn.textContent = oldText || "Kiểm tra";
         }
     }
-}
-
-async function batBuocCoAnhTruocKhiKiemTra() {
-    const info = extractSingleProductFromBangKetQua();
-    const masp = String(info?.masp || "").trim().toUpperCase();
-
-    if (!masp) {
-        throw new Error("Không xác định được mã sản phẩm để kiểm tra ảnh.");
-    }
-
-    const ok = await requireImageBeforeProceed({
-        masp,
-        dispatchTarget: (document.body || document.documentElement),
-        source: "kiemtra"
-    });
-
-    if (!ok) {
-        throw new Error(`Mã ${masp} chưa hoàn tất chụp ảnh nên chưa thể kiểm tra đồng bộ.`);
-    }
-
-    return info;
 }
 
 function initNhapTamAutoSync() {
