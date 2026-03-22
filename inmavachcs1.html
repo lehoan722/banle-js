@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>in ma vach cs2</title>
+    <title>in ma vach cs1</title>
 
     <style>
         body {
@@ -363,11 +363,13 @@
                     <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                     <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
 
+
+
                     <!-- [ADD] Nút tạo HĐ nhập tạm 
                 <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
-                    <button class="btnTaoNhapTam" id="btnCreateNhaptamcs2">Tạo HĐ nhập tạm</button>
+                    <button class="btnTaoNhapTam" id="btnCreateNhaptamcs1">Tạo HĐ nhập tạm</button>
 
-                    <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 222</button>
+                    <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 111</button>
 
                 </div>
                 <div class="preview-area" id="previewArea"></div>
@@ -470,6 +472,7 @@
                     }
                 });
 
+                // ✅ Click 1 dòng trong bảng "Danh sách tem in" => bật popup tồn nhanh
                 // ✅ Chỉ click cột "Mã hàng" (col = 1) mới mở popup tồn nhanh
                 hot.addHook('afterOnCellMouseDown', function (event, coords) {
                     try {
@@ -494,6 +497,7 @@
                     }
                 });
 
+
                 window.hotInstance = hot;
                 window.hot = hot;
 
@@ -516,7 +520,7 @@
             window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
             // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-            const PAGE_MARGIN_TOP_MM = 3;      // Lề trên của toàn bộ khối tem (mm)
+            const PAGE_MARGIN_TOP_MM = 2.5;      // Lề trên của toàn bộ khối tem (mm)
             const PAGE_MARGIN_LEFT_MM = 11;   // Lề trái của toàn bộ khối tem (mm)
             const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
             const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
@@ -749,7 +753,7 @@
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
         column-gap: 5mm;
-        row-gap: 1.4mm;        
+        row-gap: 1.8mm;        
     ">`;
 
                 // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
@@ -760,7 +764,7 @@
                     else html += `
 
 
- <!--bat dau khu vuc thiet ke hien thi tem -->
+  <!--bat dau khu vuc thiet ke hien thi tem -->
 
 <div class="tem"
      data-masp="${t.masp}"
@@ -1023,31 +1027,31 @@
 
             // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
             function openNhapFromItems(items) {
-                const payload = { source: 'in-tem', cs: 'cs2', items }; // cs: bạn đổi cs2 nếu cần
+                const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
                 const json = JSON.stringify(payload);
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhapmoimtcs2.html#imp=${b64} `, '_blank');
+                    window.open(`/nhapmoimtcs1.html#imp=${b64}`, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhapmoimtcs2.html#impkey=${key} `, '_blank');
+                    window.open(`/nhapmoimtcs1.html#impkey=${key}`, '_blank');
                 }
             }
 
             // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
-            function openNhaptamcs2(items) {
-                const payload = { source: 'in-tem', cs: 'cs2', items }; // cs: bạn đổi cs2 nếu cần
+            function openNhaptamcs1(items) {
+                const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
                 const json = JSON.stringify(payload);
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhaptamcs2.html#imp=${b64} `, '_blank');
+                    window.open(`/nhaptamcs1.html#imp=${b64}`, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhaptamcs2.html#impkey=${key} `, '_blank');
+                    window.open(`/nhaptamcs1.html#impkey=${key}`, '_blank');
                 }
             }
 
@@ -1062,28 +1066,28 @@
             });
 
             // Click nút "Tạo HĐ nhập"
-            document.getElementById('btnCreateNhaptamcs2').addEventListener('click', () => {
+            document.getElementById('btnCreateNhaptamcs1').addEventListener('click', () => {
                 const items = collectInvoiceItems();
                 if (!items.length) {
                     alert('Danh sách in rỗng hoặc chưa tick In.');
                     return;
                 }
-                openNhaptamcs2(items);
+                openNhaptamcs1(items);
             });
 
 
             // [ADD] Mở trang NHẬP TẠM với cùng payload/format
             function openNhapTamFromItems(items) {
-                const payload = { source: 'in-tem', cs: 'cs2', items }; // giữ format y hệt
+                const payload = { source: 'in-tem', cs: 'cs1', items }; // giữ format y hệt
                 const json = JSON.stringify(payload);
                 const b64 = btoa(unescape(encodeURIComponent(json)));
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhaptamcs222.html#imp=${b64} `, '_blank');
+                    window.open(`/nhaptamcs111.html#imp=${b64} `, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhaptamcs222.html#impkey=${key} `, '_blank');
+                    window.open(`/nhaptamcs111.html#impkey=${key} `, '_blank');
                 }
             }
 
@@ -1100,7 +1104,7 @@
 
 
             // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====giale
-            const GIU_LAI_FIELDS = ['tensp', 'giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai', 'nhomhang'];
+            const GIU_LAI_FIELDS = ['tensp', 'giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
             // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
             // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -1341,7 +1345,7 @@
                     mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),
                     khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
-                    nhomhang: (document.getElementById('nhomhangInput').value.trim().toUpperCase() || null),//cho phep
+                    nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
@@ -1535,7 +1539,7 @@
             const gianhapInput = document.getElementById('gianhapInput');
             const gialeInput = document.getElementById('gialeInput');
             // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
-            const GIALE_LOCK_THRESHOLD = 149000; // đổi sau này nếu cần
+            const GIALE_LOCK_THRESHOLD = 150000; // đổi sau này nếu cần
 
             // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
             const mausacInput = document.getElementById('mausacInput');
@@ -1574,6 +1578,7 @@
 
                 if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
             }
+
             // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
             mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
 
@@ -1587,7 +1592,6 @@
                     if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
                 }
             });
-
 
             //Format số cho giá nhập & giá lẻ trên FORM
             [gianhapInput, gialeInput].forEach(inp => {
@@ -1626,6 +1630,7 @@
                 qlkcCheckbox.title = '';
                 qlkcLabel?.classList.remove('locked');
             }
+
             // [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
             function syncQuanLyKichCoByGiaLe() {
                 if (!gialeInput || !qlkcCheckbox) return;
@@ -1741,7 +1746,6 @@
             }
 
 
-
             function pushProductToGrid(product) {
                 if (!hot) return;
                 let data = hot.getSourceData();
@@ -1847,6 +1851,7 @@
             document.addEventListener("DOMContentLoaded", () => { importFromHashToInTem(); });
 
         </script>
+
 
         <script>
             (function () {
@@ -1973,11 +1978,11 @@
                     // 4️⃣ Encode payload và mở trang nhập tạm
                     const payload = {
                         source: "in-tem",
-                        cs: "cs2",
+                        cs: "cs1",
                         items
                     };
                     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-                    const url = `nhaptamcs222.html?data=${encoded}`;
+                    const url = `nhaptamcs111.html?data=${encoded}`;
                     window.open(url, "_blank");
                 } catch (err) {
                     console.error("❌ Lỗi khi tạo nhập tạm:", err);
@@ -1990,20 +1995,27 @@
 
             // 2) Mỗi khi quay lại tab, làm “refresh nhẹ”
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) {
-                    supabase.auth.refreshSession().catch(() => { });
+                const sb = window.supabase;         // lấy từ global
+                if (!document.hidden && sb?.auth) {
+                    sb.auth.refreshSession().catch(() => { });
                 }
             });
 
             // 3) Gia cố: canh thời điểm gần hết hạn thì refresh sớm
             const REFRESH_EARLY_SEC = 300; // 5 phút trước khi hết hạn
+
             setInterval(async () => {
-                const { data: { session } } = await supabase.auth.getSession();
+                const sb = window.supabase;
+                if (!sb?.auth) return;              // chưa khởi tạo thì bỏ qua
+
+                const { data: { session } = { session: null } } = await sb.auth.getSession();
                 const expMs = session?.expires_at ? session.expires_at * 1000 : 0;
+
                 if (expMs && expMs - Date.now() < REFRESH_EARLY_SEC * 1000) {
-                    await supabase.auth.refreshSession().catch(() => { });
+                    await sb.auth.refreshSession().catch(() => { });
                 }
             }, 60 * 1000);
+
 
         </script>
 
