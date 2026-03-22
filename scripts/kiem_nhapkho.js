@@ -11,13 +11,39 @@ import "./stockQuickPopup.js";
 (function () {
   "use strict";
 
-  const CFG = window.KIEM_NHAP_CONFIG || {
-    pageId: "kiemnhap_cs1",
-    fromBranch: "cs2",
-    toBranch: "cs1",
-    soPhieuPrefix: "kiemnhap2v1cs1_",
-    title: "KIỂM NHẬP KHO"
+  const CFG = {
+    ...getBranchInfoFromPath(),
+    ...(window.KIEM_NHAP_CONFIG || {})
   };
+
+  function getBranchInfoFromPath() {
+    const path = String(window.location.pathname || "").toLowerCase();
+    const fileName = path.split("/").pop() || "";
+
+    // Ưu tiên đọc hậu tố cs1 / cs2 trong tên file
+    const isCs1 = /cs1(?=\.html?$|[_-]?)/.test(fileName);
+    const isCs2 = /cs2(?=\.html?$|[_-]?)/.test(fileName);
+
+    let toBranch = "cs1";
+
+    if (isCs2) toBranch = "cs2";
+    else if (isCs1) toBranch = "cs1";
+
+    const fromBranch = toBranch === "cs1" ? "cs2" : "cs1";
+    const suffix = toBranch;
+    const pageId = `kiemnhap_${suffix}`;
+    const soPhieuPrefix = toBranch === "cs1"
+      ? "kiemnhap2v1cs1_"
+      : "kiemnhap1v2cs2_";
+
+    return {
+      toBranch,
+      fromBranch,
+      pageId,
+      soPhieuPrefix,
+      title: `KIỂM NHẬP KHO ${toBranch.toUpperCase()}`
+    };
+  }
 
   // =========================
   // STATE
