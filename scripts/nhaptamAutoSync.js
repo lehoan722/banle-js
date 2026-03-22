@@ -414,8 +414,17 @@ function initNhapTamAutoSync() {
     const btn = document.getElementById("btn-kiemtra");
     if (!btn) return;
 
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", async (e) => {
+        // nếu guard ảnh ở module khác chặn rồi thì không chạy tiếp
+        if (e.defaultPrevented) return;
+
         e.preventDefault();
+
+        // nhường 1 nhịp để guardAnhSanPham xử lý trước
+        await Promise.resolve();
+
+        if (e.defaultPrevented) return;
+
         handleKiemTraDongBo();
     });
 
