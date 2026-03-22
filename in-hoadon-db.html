@@ -617,16 +617,27 @@
 
 
         // Hiển thị danh sách sản phẩm
+        // Hiển thị danh sách sản phẩm
         const tbody = document.getElementById("noidungchitiet");
         data.forEach(sp => {
           const row = document.createElement("tr");
+
+          const sl = Number(sp.soluong || 0);
+          const gia = Number(sp.gia || 0);
+          const kmDonVi = Number(sp.km || 0);
+          const kmTongDong = kmDonVi * sl;
+
+          // ưu tiên giữ thành tiền đã truyền từ trang chính
+          // nếu thiếu thì tự tính lại cho an toàn
+          const thanhTien = Number(sp.thanhtien || ((gia * sl) - kmTongDong));
+
           row.innerHTML = `
-            <td>${sp.tensp} ${sp.masp || ""}</td>
-            <td>${sp.soluong}</td>
-            <td>${Number(sp.gia).toLocaleString()}</td>
-            <td>${Number(sp.km || 0).toLocaleString()}</td>
-            <td>${Number(sp.thanhtien).toLocaleString()}</td>
-        `;
+    <td>${sp.tensp || ""} ${sp.masp || ""}</td>
+    <td>${sl}</td>
+    <td>${gia.toLocaleString()}</td>
+    <td>${kmTongDong.toLocaleString()}</td>
+    <td>${thanhTien.toLocaleString()}</td>
+  `;
           tbody.appendChild(row);
         });
 
