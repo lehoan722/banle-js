@@ -88,16 +88,19 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
 
             // Tính giá/km theo nghiệp vụ
             let gia = item.gia || 0;
-            let km = item.km || 0;
+            let kmDonVi = item.km || 0;
+
             if (isNhap) {
                 if (window.sanPhamData && window.sanPhamData[item.masp]) {
                     gia = window.sanPhamData[item.masp].gianhap || 0;
                 } else {
                     gia = 0;
                 }
-                km = 0;
+                kmDonVi = 0;
             }
-            const thanhtien = (gia - km) * sl;
+
+            const kmTongDong = kmDonVi * sl;
+            const thanhtien = (gia * sl) - kmTongDong;
 
             const tr = tbody.insertRow();
             const vitri = getVitriTheoKho(item.masp);
@@ -109,8 +112,8 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         <td>${sl}</td>
         <td>${item.dvt || ""}</td>
         <td>${gia}</td>
-        <td>${km}</td>
-        <td>${thanhtien.toLocaleString()}</td>
+        <td>${kmTongDong.toLocaleString()}</td>
+        <td>${thanhtien.toLocaleString()}</td>        
         <td>${vitri}</td>
       `;
 
