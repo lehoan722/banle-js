@@ -602,6 +602,7 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
+             <button id="btn-kiemtra">Kiểm tra</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
@@ -610,6 +611,7 @@
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
+            <button id="btnGoiyChuyenKho">📦 Gợi ý chuyển kho</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
@@ -620,7 +622,7 @@
 
             <!-- Popup tìm khách hàng
              
-             <button id="xuatexcel">Xuất Excel</button>
+             
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
             <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
@@ -948,12 +950,6 @@
 
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-                
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
@@ -1472,6 +1468,75 @@
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
     </script>
 
+    <script type="module">
+        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js";
+
+        function layDanhSachMaspTuBangNhapTam() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            const bang = window.bangKetQua || {};
+            const masps = Object.keys(bang)
+                .map(x => String(x || "").trim().toUpperCase())
+                .filter(Boolean);
+
+            if (masps.length) return [...new Set(masps)];
+
+            const rows = document.querySelectorAll("#bangketqua tbody tr");
+            const out = new Set();
+
+            rows.forEach(tr => {
+                const maspCell = tr.cells[0];
+                const masp = String(maspCell?.innerText || "").trim().toUpperCase();
+                if (masp) out.add(masp);
+            });
+
+            return Array.from(out);
+        }
+
+        async function goiYChuyenKhoTuNhapTamCs1() {
+            try {
+                const masps = layDanhSachMaspTuBangNhapTam();
+
+                if (!masps.length) {
+                    alert("Phiếu chưa có mã sản phẩm.");
+                    return;
+                }
+
+                const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
+                const sohd = String(document.getElementById("sohd")?.value || "").trim();
+                const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
+
+                const now = new Date();
+                const pad = n => String(n).padStart(2, "0");
+                const note =
+                    `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
+                    (manv ? ` - ${manv}` : "") +
+                    (sohd ? ` - ${sohd}` : "") +
+                    (ghichu ? ` - ${ghichu}` : "");
+
+                const rs = await autoSuggestAndOpenCcn({
+                    masps,
+                    pageKind: "cs1",
+                    note
+                });
+
+                if (!rs.ok) {
+                    alert(rs.message || "Không có mã nào cần chuyển kho.");
+                    return;
+                }
+
+                console.log("[NHAPTAM CS1] Đã mở phiếu chuyển kho:", rs);
+            } catch (e) {
+                console.error("[NHAPTAM CS1] Lỗi gợi ý chuyển kho:", e);
+                alert("Có lỗi khi tự động gợi ý chuyển kho.");
+            }
+        }
+
+        document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs1);
+    </script>
+
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
         <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
@@ -1590,6 +1655,17 @@
 
             // fallback: kiểm tra định kỳ (rất nhẹ)
             setInterval(sync, 300);
+        });
+    </script>
+
+    <script type="module" src="./scripts/nhaptamAutoSync.js"></script>
+
+    <script type="module">
+        import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
+
+        attachRequireImageBeforeSave({
+            saveButtonId: "btn-luu",
+            dispatchTarget: (document.body || document.documentElement)
         });
     </script>
 
