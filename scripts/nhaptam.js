@@ -275,6 +275,7 @@ async function newDoc() {
 
 // ======= Gắn sự kiện UI =======
 document.addEventListener("DOMContentLoaded", async () => {
+    // Auto hiển thị số chứng từ mới nhất + 1 khi mở trang
     try {
         const soct = await getNextSoctFromDB(getCS());
         if ($("#socttam")) $("#socttam").value = soct;
@@ -282,12 +283,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Không lấy được số chứng từ ban đầu:", e);
     }
 
-    // KHÔNG gắn nút Lưu ở đây nữa.
-    // Nút #btn-luu sẽ được nhaptamAutoSync.js điều khiển theo flow chuẩn.
-    // File này chỉ giữ các hàm nghiệp vụ lõi.
-
+    $("#btn-luu-nt")?.addEventListener("click", () => window.saveNhapTam());
     $("#btn-quaylai-nt")?.addEventListener("click", () => openPrevDoc());
-    $("#tieptuc")?.addEventListener("click", () => openNextDoc());
+    $("#tieptuc")?.addEventListener("click", () => openNextDoc()); // ✅ nút Tiếp tục
     $("#them")?.addEventListener("click", () => newDoc());
 });
 
