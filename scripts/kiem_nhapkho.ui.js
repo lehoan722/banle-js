@@ -13,11 +13,14 @@ import {
   phatAmThanhLoi,
   phatAmThanhSize,
   phatAmThanhThanhCong,
-  baoLoiNeuMaspKhongCoTrongDanhMuc,
   ensureMaspAtTop,
   buildOrderedMasps,
   capNhatThongKeDauTrang
 } from "./kiem_nhapkho.core.js";
+
+import {
+  baoLoiNeuMaspKhongCoTrongDanhMuc
+} from "./kiem_nhapkho.data.js";
 
 let dangChonSizeTrongPopup = false;
 
@@ -172,7 +175,7 @@ export async function themNhanhKhongCanSize() {
     setTimeout(() => {
       try {
         maspEl.select();
-      } catch (err) {}
+      } catch (err) { }
     }, 0);
   }
 
@@ -391,8 +394,8 @@ export function renderBangKetQua() {
   tbody.innerHTML = rows.map(r => {
     const cls =
       r.trangThai === "Khớp" ? "khop" :
-      r.trangThai === "Thiếu" ? "thieu" :
-      r.trangThai === "Thừa" ? "thua" : "lech";
+        r.trangThai === "Thiếu" ? "thieu" :
+          r.trangThai === "Thừa" ? "thua" : "lech";
 
     return `
       <tr data-masp="${escapeHtml(r.masp)}" class="${cls}">
@@ -487,7 +490,7 @@ export function chuyenSizeSaiThanhMaSanPhamMoi(rawValue) {
   setTimeout(() => {
     try {
       maspEl.select();
-    } catch (err) {}
+    } catch (err) { }
   }, 0);
 }
 
@@ -582,7 +585,7 @@ export function bindInputEvents() {
     slEl.addEventListener("focus", () => {
       try {
         slEl.select();
-      } catch (err) {}
+      } catch (err) { }
     });
   }
 }
