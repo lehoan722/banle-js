@@ -432,7 +432,7 @@ import "./stockQuickPopup.js";
     const { data, error } = await window.supabase
       .from("dmhanghoa")
       .select("masp")
-      .eq("active", true)
+      .not("masp", "is", null)
       .order("masp", { ascending: true });
 
     if (error) {
