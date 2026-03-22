@@ -958,19 +958,30 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         dvt: sp.dvt || ""
     };
 
-    // Nếu không phải ADMIN: luôn lấy giá/km theo danh mục & rule hệ thống (không tin dữ liệu gõ tay)
+    // Nếu không phải ADMIN:
+    // - Giá vẫn lấy theo hệ thống
+    // - Khuyến mại: nếu người dùng đã nhập > 0 thì giữ nguyên số người dùng nhập
+    //   chỉ tự tính khi ô khuyến mại đang trống hoặc = 0
     if (!isAdminUser()) {
         const giaNguonSys = isNhapMode() ? (sp.gianhap || 0) : (sp.giale || 0);
         const giaSys = Math.round(parseMoneyInt(giaNguonSys));
+
         let kmSys = 0;
         if (!isNhapMode()) kmSys = tinhKhuyenMai(sp, giaSys) || 0;
+
+        // Giá luôn theo hệ thống
         giaForm = giaSys;
-        kmForm = kmSys;
+
+        // Chỉ ép KM theo hệ thống nếu người dùng chưa nhập gì
+        if (!kmForm || kmForm <= 0) {
+            kmForm = kmSys;
+        }
+
         // Đồng bộ lại form để người dùng thấy đúng
         const _giaEl = document.getElementById('gia');
         const _kmEl = document.getElementById('khuyenmai');
         if (_giaEl) _giaEl.value = giaSys.toLocaleString();
-        if (_kmEl) _kmEl.value = (kmSys || 0).toLocaleString();
+        if (_kmEl) _kmEl.value = (kmForm || 0).toLocaleString();
     }
 
     // Cập nhật giá/km cho nhóm
