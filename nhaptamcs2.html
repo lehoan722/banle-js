@@ -1014,18 +1014,8 @@
     </script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
-                });
-            }
-
-        });
+        // Nút Lưu sẽ do nhaptamAutoSync.js quản lý toàn bộ flow.
+        // Để trống đoạn này nhằm tránh gắn trùng event.
     </script>
 
     <script>
@@ -1668,6 +1658,9 @@
             dispatchTarget: (document.body || document.documentElement)
         });
     </script>
+
+    <script src="./scripts/nhaptam.js"></script>
+    <script src="./scripts/nhaptamAutoSync.js"></script>
 
 </body>
 
