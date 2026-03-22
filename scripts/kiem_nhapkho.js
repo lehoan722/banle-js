@@ -2981,12 +2981,32 @@ import "./stockQuickPopup.js";
   // INIT
   // =========================
   async function init() {
-    try { setupBeepUnlockOnce(); } catch (e) { }
-
     updateTitle();
     setDefaultBranchInfo();
     bindInputEvents();
+    bindButtons();
+
+    // Mở khóa beep cho trình duyệt
+    setupBeepUnlockOnce(document);
+
     await resetPhieu();
+
+    const hdStateEl = byId("hd_state");
+    const trangThai = String(hdStateEl?.value || "").trim().toLowerCase();
+
+    const state = getState();
+    const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
+    const dangLaPhieuMoi = !trangThai || trangThai === "moi";
+
+    if (dangLaPhieuMoi && !daCoDuLieuXuat) {
+      setTimeout(async () => {
+        try {
+          await napHoaDonNguonPlaceholder();
+        } catch (err) {
+          console.warn("[AUTO NAP HOA DON NGUON] lỗi:", err);
+        }
+      }, 200);
+    }
 
     console.log("[nhapkiemkho] init OK", CFG);
   }
