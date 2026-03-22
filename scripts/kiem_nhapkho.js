@@ -30,7 +30,9 @@ import "./stockQuickPopup.js";
     xuatOrder: [],
     dsHoaDonNguon: [],
     dsHoaDonNguonInfo: [],
-    selectedMasp: ""
+    selectedMasp: "",
+    dmMaspSet: new Set(),
+    dmMaspLoaded: false
   };
 
   let dangChonSizeTrongPopup = false;
@@ -204,14 +206,14 @@ import "./stockQuickPopup.js";
     });
 
     return arr;
-  } 
+  }
 
   function hideSizePopup() {
-  const popup = byId("popup_size");
-  if (!popup) return;
-  popup.style.display = "none";
-  popup.innerHTML = "";
-}
+    const popup = byId("popup_size");
+    if (!popup) return;
+    popup.style.display = "none";
+    popup.innerHTML = "";
+  }
 
   function themNhanhTheoSize(size, giuPopup = true) {
     const maspEl = byId("masp");
@@ -221,6 +223,9 @@ import "./stockQuickPopup.js";
     const masp = normalizeMasp(maspEl?.value);
     const sizeVal = normalizeSize(size);
     const sl = normalizeNumber(slEl?.value || 1) || 1;
+
+    if (!masp) return;
+    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) return;
 
     if (!isValidSize(sizeVal)) {
       phatAmThanhLoi();
@@ -266,6 +271,7 @@ import "./stockQuickPopup.js";
     const sl = normalizeNumber(slEl?.value || 1) || 1;
 
     if (!masp) return;
+    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) return;
 
     const key = makeKey(masp, "0");
     const state = getState();
@@ -410,6 +416,68 @@ import "./stockQuickPopup.js";
 
   function getState() {
     return window.kiemNhapState;
+  }
+
+  async function napDanhMucMasp() {
+    const state = getState();
+
+    state.dmMaspSet = new Set();
+    state.dmMaspLoaded = false;
+
+    if (!window.supabase) {
+      console.warn("[KNK] Không có Supabase để nạp danh mục mã sản phẩm.");
+      return;
+    }
+
+    const { data, error } = await window.supabase
+      .from("dmhanghoa")
+      .select("masp")
+      .eq("active", true)
+      .order("masp", { ascending: true });
+
+    if (error) {
+      console.error("[KNK] napDanhMucMasp error:", error);
+      alert("Lỗi khi tải danh mục hàng hóa.");
+      return;
+    }
+
+    (data || []).forEach((row) => {
+      const masp = normalizeMasp(row?.masp);
+      if (masp) state.dmMaspSet.add(masp);
+    });
+
+    state.dmMaspLoaded = true;
+    console.log("[KNK] Đã nạp danh mục mã sản phẩm:", state.dmMaspSet.size);
+  }
+
+  function tonTaiMaspTrongDanhMuc(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return false;
+
+    const state = getState();
+    return state.dmMaspSet instanceof Set && state.dmMaspSet.has(m);
+  }
+
+  function baoLoiNeuMaspKhongCoTrongDanhMuc(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return true;
+
+    const state = getState();
+
+    if (!state.dmMaspLoaded) {
+      phatAmThanhLoi();
+      alert("Danh mục hàng hóa chưa tải xong, vui lòng thử lại.");
+      return false;
+    }
+
+    if (tonTaiMaspTrongDanhMuc(m)) {
+      return true;
+    }
+
+    phatAmThanhLoi();
+    alert(`Mã sản phẩm (${m}) không có trong danh mục hàng hóa, không được nhập.`);
+    focusVaBoiDenOmaSanPham();
+    return false;
   }
 
   async function layMapHoaDonDaKiem() {
@@ -562,7 +630,7 @@ import "./stockQuickPopup.js";
     if (tt === "THUA") return 1;
 
     if (tt === "THIEU") return 2;
-    
+
     if (tt === "LECH") return 3;
     if (tt === "OK") return 4;
     return 5;
@@ -596,7 +664,7 @@ import "./stockQuickPopup.js";
     if (tt === "THUA") return 1;
 
     if (tt === "THIEU") return 2;
-    
+
     if (tt === "LECH") return 3;
     if (tt === "OK") return 4;
     return 5;
@@ -962,6 +1030,10 @@ import "./stockQuickPopup.js";
       return;
     }
 
+    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) {
+      return;
+    }
+
     if (!size) {
       if (sizeEl) {
         sizeEl.focus();
@@ -1032,9 +1104,7 @@ import "./stockQuickPopup.js";
     // Xóa ô size cũ để chuẩn bị nhập size cho mã mới
     if (sizeEl) sizeEl.value = "";
 
-    const muonQuayVeNhapMaKhac = hoiTiepTucNeuMaspKhongCoTrongXuat(maspMoi);
-    if (muonQuayVeNhapMaKhac) {
-      focusVaBoiDenOmaSanPham();
+    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(maspMoi)) {
       return true;
     }
 
@@ -1080,9 +1150,7 @@ import "./stockQuickPopup.js";
 
           maspEl.value = masp;
 
-          const muonQuayVeNhapMaKhac = hoiTiepTucNeuMaspKhongCoTrongXuat(masp);
-          if (muonQuayVeNhapMaKhac) {
-            focusVaBoiDenOmaSanPham();
+          if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) {
             return;
           }
 
@@ -1198,6 +1266,8 @@ import "./stockQuickPopup.js";
   // RESET PHIẾU
   // =========================
   async function resetPhieu() {
+    const oldState = getState();
+
     window.kiemNhapState = {
       nhap: {},
       xuat: {},
@@ -1206,7 +1276,9 @@ import "./stockQuickPopup.js";
       xuatOrder: [],
       dsHoaDonNguon: [],
       dsHoaDonNguonInfo: [],
-      selectedMasp: ""
+      selectedMasp: "",
+      dmMaspSet: oldState?.dmMaspSet instanceof Set ? oldState.dmMaspSet : new Set(),
+      dmMaspLoaded: !!oldState?.dmMaspLoaded
     };
 
     dangChonSizeTrongPopup = false;
@@ -1411,34 +1483,6 @@ import "./stockQuickPopup.js";
       .filter(Boolean);
 
     return [...new Set(ds)];
-  }
-
-  function tonTaiMaspTrongXuat(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return false;
-
-    const state = getState();
-    return Object.values(state.xuat || {}).some(row => normalizeMasp(row?.masp) === m);
-  }
-
-  function daCoDuLieuXuatDaNap() {
-    const state = getState();
-    return Object.keys(state.xuat || {}).length > 0;
-  }
-
-  function hoiTiepTucNeuMaspKhongCoTrongXuat(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return false;
-
-    // Nếu chưa nạp dữ liệu xuất thì không cần hỏi
-    if (!daCoDuLieuXuatDaNap()) return false;
-
-    // Có trong phiếu xuất rồi thì không cần quay về
-    if (tonTaiMaspTrongXuat(m)) return false;
-
-    phatAmThanhLoi();
-
-    return confirm(`Mã sản phẩm (${m}) không có trong phiếu xuất. Bạn có muốn quay về nhập mã khác không?`);
   }
 
   function focusVaBoiDenOmaSanPham() {
@@ -2955,6 +2999,8 @@ import "./stockQuickPopup.js";
     // Mở khóa beep cho trình duyệt
     setupBeepUnlockOnce(document);
 
+    await napDanhMucMasp();
+    console.log("[KNK] Đã tải", getState().dmMaspSet.size, "mã sản phẩm từ dmhanghoa");
     await resetPhieu();
 
     const hdStateEl = byId("hd_state");
