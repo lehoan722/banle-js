@@ -1535,7 +1535,7 @@
             const gianhapInput = document.getElementById('gianhapInput');
             const gialeInput = document.getElementById('gialeInput');
             // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
-            const GIALE_LOCK_THRESHOLD = 149000; // đổi sau này nếu cần
+            const GIALE_LOCK_THRESHOLD = 150000; // đổi sau này nếu cần
 
             // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
             const mausacInput = document.getElementById('mausacInput');
@@ -1614,29 +1614,31 @@
             function lockQuanLyKichCo() {
                 if (!qlkcCheckbox) return;
                 qlkcCheckbox.checked = true;
-                //qlkcCheckbox.disabled = true;
-                qlkcCheckbox.title = 'Đã khóa do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
+                qlkcCheckbox.disabled = false; // vẫn cho nhìn thấy và giữ trạng thái
+                qlkcCheckbox.title = 'Tự bật do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
                 qlkcLabel?.classList.add('locked');
             }
 
-            function unlockQuanLyKichCoAndUntick() {
+            function unlockQuanLyKichCoKeepUserChoice() {
                 if (!qlkcCheckbox) return;
                 qlkcCheckbox.disabled = false;
-                qlkcCheckbox.checked = false;
+                // QUAN TRỌNG: không bỏ tick nữa
                 qlkcCheckbox.title = '';
                 qlkcLabel?.classList.remove('locked');
             }
-
             // [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
             function syncQuanLyKichCoByGiaLe() {
                 if (!gialeInput || !qlkcCheckbox) return;
+
                 const raw = (gialeInput.value || '').toString().replace(/\./g, '').replace(/[^0-9]/g, '');
                 const val = Number(raw || 0);
+
                 if (val >= GIALE_LOCK_THRESHOLD) {
+                    // Từ 150.000 trở lên: tự bật quản lý kích cỡ
                     lockQuanLyKichCo();
                 } else {
-                    // Nếu hạ xuống dưới ngưỡng -> mở khóa & bỏ tick
-                    unlockQuanLyKichCoAndUntick();
+                    // Dưới 150.000: không tự bật, nhưng nếu người dùng đã tích tay thì giữ nguyên
+                    unlockQuanLyKichCoKeepUserChoice();
                 }
             }
 
