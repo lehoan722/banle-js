@@ -214,7 +214,7 @@ import "./stockQuickPopup.js";
     popup.innerHTML = "";
   }
 
-  function themNhanhTheoSize(size, giuPopup = true) {
+  async function themNhanhTheoSize(size, giuPopup = true) {
     const maspEl = byId("masp");
     const sizeEl = byId("size");
     const slEl = byId("soluong");
@@ -224,7 +224,7 @@ import "./stockQuickPopup.js";
     const sl = normalizeNumber(slEl?.value || 1) || 1;
 
     if (!masp) return;
-    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) return;
+    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) return;
 
     if (!isValidSize(sizeVal)) {
       phatAmThanhLoi();
@@ -473,35 +473,6 @@ import "./stockQuickPopup.js";
     }
   }
 
-  function tonTaiMaspTrongDanhMuc(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return false;
-
-    const state = getState();
-    return state.dmMaspSet instanceof Set && state.dmMaspSet.has(m);
-  }
-
-  function baoLoiNeuMaspKhongCoTrongDanhMuc(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return true;
-
-    const state = getState();
-
-    if (!state.dmMaspLoaded) {
-      phatAmThanhLoi();
-      alert("Danh mục hàng hóa chưa tải xong, vui lòng thử lại.");
-      return false;
-    }
-
-    if (tonTaiMaspTrongDanhMuc(m)) {
-      return true;
-    }
-
-    phatAmThanhLoi();
-    alert(`Mã sản phẩm (${m}) không có trong danh mục hàng hóa, không được nhập.`);
-    focusVaBoiDenOmaSanPham();
-    return false;
-  }
 
   async function layMapHoaDonDaKiem() {
     if (!window.supabase) return new Map();
@@ -1035,7 +1006,7 @@ import "./stockQuickPopup.js";
   // =========================
   // NHẬP BÊN TRÁI
   // =========================
-  function themDongNhapBenTrai() {
+  async function themDongNhapBenTrai() {
     const maspEl = byId("masp");
     const sizeEl = byId("size");
     const slEl = byId("soluong");
@@ -1053,7 +1024,7 @@ import "./stockQuickPopup.js";
       return;
     }
 
-    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(masp)) {
+    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
       return;
     }
 
@@ -1113,7 +1084,7 @@ import "./stockQuickPopup.js";
     }
   }
 
-  function chuyenSizeSaiThanhMaSanPhamMoi(rawValue) {
+  async function chuyenSizeSaiThanhMaSanPhamMoi(rawValue) {
     const maspEl = byId("masp");
     const sizeEl = byId("size");
     const slEl = byId("soluong");
@@ -1127,15 +1098,14 @@ import "./stockQuickPopup.js";
     // Xóa ô size cũ để chuẩn bị nhập size cho mã mới
     if (sizeEl) sizeEl.value = "";
 
-    if (!baoLoiNeuMaspKhongCoTrongDanhMuc(maspMoi)) {
+    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(maspMoi))) {
       return true;
     }
-
     const chkNhapNhanh = byId("chkNhapNhanh");
     const isNhapNhanh = !!chkNhapNhanh?.checked;
 
     if (isNhapNhanh) {
-      themNhanhKhongCanSize();
+      await themNhanhKhongCanSize();
       return true;
     }
 
@@ -1216,7 +1186,7 @@ import "./stockQuickPopup.js";
         showSizePopup(masp, sizeEl.value);
       });
 
-      sizeEl.addEventListener("keydown", (e) => {
+      sizeEl.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
 
@@ -1237,11 +1207,11 @@ import "./stockQuickPopup.js";
 
           // Nếu size không hợp lệ thì hiểu là người dùng đang nhập mã sản phẩm mới
           if (!isValidSize(typedSize)) {
-            chuyenSizeSaiThanhMaSanPhamMoi(typedSize);
+            await chuyenSizeSaiThanhMaSanPhamMoi(typedSize);
             return;
           }
 
-          themNhanhTheoSize(typedSize);
+          await themNhanhTheoSize(typedSize);
         }
 
         if (e.key === "Escape") {
@@ -1298,8 +1268,7 @@ import "./stockQuickPopup.js";
       dsHoaDonNguon: [],
       dsHoaDonNguonInfo: [],
       selectedMasp: "",
-      dmMaspSet: oldState?.dmMaspSet instanceof Set ? oldState.dmMaspSet : new Set(),
-      dmMaspLoaded: !!oldState?.dmMaspLoaded
+      dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map()
     };
 
     dangChonSizeTrongPopup = false;
@@ -3012,34 +2981,12 @@ import "./stockQuickPopup.js";
   // INIT
   // =========================
   async function init() {
+    try { setupBeepUnlockOnce(); } catch (e) { }
+
     updateTitle();
     setDefaultBranchInfo();
     bindInputEvents();
-    bindButtons();
-
-    // Mở khóa beep cho trình duyệt
-    setupBeepUnlockOnce(document);
-
-    await napDanhMucMasp();
-    console.log("[KNK] Đã tải", getState().dmMaspSet.size, "mã sản phẩm từ dmhanghoa");
     await resetPhieu();
-
-    const hdStateEl = byId("hd_state");
-    const trangThai = String(hdStateEl?.value || "").trim().toLowerCase();
-
-    const state = getState ? getState() : {};
-    const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
-    const dangLaPhieuMoi = !trangThai || trangThai === "moi";
-
-    if (dangLaPhieuMoi && !daCoDuLieuXuat) {
-      setTimeout(async () => {
-        try {
-          await napHoaDonNguonPlaceholder();
-        } catch (err) {
-          console.warn("[AUTO NAP HOA DON NGUON] lỗi:", err);
-        }
-      }, 200);
-    }
 
     console.log("[nhapkiemkho] init OK", CFG);
   }
