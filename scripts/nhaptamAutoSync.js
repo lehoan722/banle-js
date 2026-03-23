@@ -44,6 +44,71 @@ function getNhapTamRpcNames() {
     };
 }
 
+const SUPABASE_PUBLIC_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
+const IMAGE_BUCKET_NAME = "anhsanpham";
+
+// Lấy tất cả mã sản phẩm đang có trên bảng kết quả
+function getAllMaspFromBangKetQua() {
+    const bang = rebuildBangKetQua();
+    const masps = Object.keys(bang || {})
+        .map(x => String(x || "").trim().toUpperCase())
+        .filter(Boolean);
+
+    return [...new Set(masps)];
+}
+
+// Kiểm tra 1 mã có ảnh hay chưa
+// Ưu tiên chuẩn MASP.JPG, nhưng cho phép dò thêm các đuôi phổ biến
+async function checkImageExistsByMasp(masp) {
+    const cleanMasp = String(masp || "").trim().toUpperCase();
+    if (!cleanMasp) return false;
+
+    const exts = ["JPG", "jpg", "JPEG", "jpeg", "PNG", "png", "WEBP", "webp"];
+
+    for (const ext of exts) {
+        const url =
+            `${SUPABASE_PUBLIC_URL}/storage/v1/object/public/${IMAGE_BUCKET_NAME}/` +
+            `${encodeURIComponent(cleanMasp)}.${ext}`;
+
+        try {
+            const res = await fetch(url, {
+                method: "HEAD",
+                cache: "no-store"
+            });
+
+            if (res.ok) return true;
+        } catch (err) {
+            console.error("Lỗi kiểm tra ảnh:", cleanMasp, ext, err);
+        }
+    }
+
+    return false;
+}
+
+// Kiểm tra ảnh cho toàn bộ mã trên phiếu
+async function kiemTraAnhSanPhamTrenPhieu() {
+    const masps = getAllMaspFromBangKetQua();
+
+    if (!masps.length) {
+        throw new Error("Chưa có dữ liệu sản phẩm trên phiếu để kiểm tra ảnh.");
+    }
+
+    const missing = [];
+    const existing = [];
+
+    for (const masp of masps) {
+        const ok = await checkImageExistsByMasp(masp);
+        if (ok) existing.push(masp);
+        else missing.push(masp);
+    }
+
+    return {
+        allOk: missing.length === 0,
+        existing,
+        missing
+    };
+}
+
 function rebuildBangKetQua() {
     if (typeof window.capNhatBangKetQuaTuDOM === "function") {
         window.capNhatBangKetQuaTuDOM();
@@ -329,9 +394,26 @@ async function handleKiemTraDongBo() {
     try {
         if (btn) {
             btn.disabled = true;
-            btn.textContent = "Đang kiểm tra...";
+            btn.textContent = "Đang kiểm tra ảnh...";
         }
 
+        // BƯỚC 1: kiểm tra ảnh trước
+        const kqAnh = await kiemTraAnhSanPhamTrenPhieu();
+
+        if (!kqAnh.allOk) {
+            alert(
+                "Các mã sau chưa có ảnh sản phẩm trong cơ sở dữ liệu:\n\n" +
+                kqAnh.missing.join("\n") +
+                "\n\nVui lòng chụp ảnh cho các mã này rồi nhấn Kiểm tra lại."
+            );
+            return;
+        }
+
+        if (btn) {
+            btn.textContent = "Đang kiểm tra dữ liệu...";
+        }
+
+        // BƯỚC 2: ảnh đã đủ thì mới chạy logic cũ
         const info = extractSingleProductFromBangKetQua();
 
         const candidates = await findCandidates({
