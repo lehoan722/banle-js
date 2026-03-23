@@ -91,9 +91,9 @@
     }
 
     .filter-actions button {
-  min-width: 86px;
-  white-space: nowrap;
-}
+      min-width: 86px;
+      white-space: nowrap;
+    }
 
     .main {
       flex: 1 1 auto;
@@ -254,6 +254,9 @@
       background: #fff8d8;
     }
   </style>
+
+  <link rel="stylesheet" href="chuyenkho.css">
+
 </head>
 
 <body class="popupnhanh">
@@ -309,7 +312,7 @@
               <th style="width:80px">SL duyệt</th>
               <th style="width:80px">SL thực</th>
               <th style="width:90px">Mã NV</th>
-             <th style="width:130px; display:none;">Tên NV</th>  
+              <th style="width:130px; display:none;">Tên NV</th>
               <th style="width:130px">Trạng thái</th>
               <th style="width:180px">Ghi chú</th>
             </tr>
@@ -367,6 +370,8 @@
       <button id="btn-footer-xong" type="button">Đánh dấu xong</button>
       <button id="btn-footer-tao-ccn" type="button">Tạo phiếu CCN</button>
       <button id="btn-footer-xoa" type="button">Xóa dòng</button>
+      <button id="btn-footer-goi-y" type="button">Lấy gợi ý</button>
+      <button id="btn-footer-xoa-goi-y" type="button">Xóa gợi ý</button>
       <button id="btn-footer-thoat" type="button">Thoát</button>
     </div>
   </div>
@@ -383,6 +388,25 @@
 
   <script src="scripts/stockQuickPopup.js"></script>
   <script type="module" src="./scripts/chuyenkho.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnTopGoiY = document.getElementById('btn-goi-y');
+      const btnTopXoaGoiY = document.getElementById('btn-xoa-goi-y');
+
+      const btnFooterGoiY = document.getElementById('btn-footer-goi-y');
+      const btnFooterXoaGoiY = document.getElementById('btn-footer-xoa-goi-y');
+
+      if (btnTopGoiY && btnFooterGoiY) {
+        btnFooterGoiY.addEventListener('click', () => btnTopGoiY.click());
+      }
+
+      if (btnTopXoaGoiY && btnFooterXoaGoiY) {
+        btnFooterXoaGoiY.addEventListener('click', () => btnTopXoaGoiY.click());
+      }
+    });
+  </script>
+
 </body>
 
 </html>
