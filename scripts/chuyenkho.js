@@ -851,19 +851,36 @@ function buildCcnPayloadFromDoneRows() {
   const rows = STATE.rows.filter((r) => r.done && toNumber(r.sl_thuc) > 0);
   if (!rows.length) return null;
 
+  const grouped = new Map();
+
+  for (const r of rows) {
+    const masp = normalizeMasp(r.masp);
+    const size = normalizeSize(r.size);
+    const sl = toNumber(r.sl_thuc);
+
+    if (!grouped.has(masp)) {
+      grouped.set(masp, {
+        masp,
+        items: []
+      });
+    }
+
+    grouped.get(masp).items.push({
+      size,
+      sl
+    });
+  }
+
   return {
+    dir: PAGE_CFG.dir, // rất quan trọng để trang CCN chấp nhận payload
     source: PAGE_CFG.pageKey,
     so_ct_yeu_cau: $("sohd").value.trim(),
     from_diadiem: PAGE_CFG.tuCoso,
     to_diadiem: PAGE_CFG.denCoso,
     created_by: $("manv").value || "",
     created_by_name: $("tennv").value || "",
-    items: rows.map((r) => ({
-      masp: r.masp,
-      size: r.size,
-      soluong: toNumber(r.sl_thuc),
-      ghichu: r.ghi_chu || "",
-    })),
+    note: `Tạo từ phiếu yêu cầu ${$("sohd").value.trim()}`,
+    items: Array.from(grouped.values())
   };
 }
 
