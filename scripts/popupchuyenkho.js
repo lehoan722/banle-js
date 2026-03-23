@@ -31,6 +31,11 @@ function normalizeSize(v) {
   return String(v ?? '').trim();
 }
 
+function isInvalidTransferSize(size) {
+  const s = String(size ?? '').trim().toLowerCase();
+  return s === '' || s === '0' || s === '0.0' || s === '00';
+}
+
 function sizeSortValue(size) {
   const s = String(size || '').trim().toLowerCase();
   if (!s) return 999999;
@@ -62,82 +67,55 @@ function getIsAdminLike() {
   );
 }
 
+function getTargetStockByTotal(total) {
+  const t = Number(total || 0);
+
+  if (t <= 0) {
+    return { cs1: 0, cs2: 0 };
+  }
+
+  // Quy tắc cố định từ 1 đến 5
+  if (t === 1) return { cs1: 0, cs2: 1 };
+  if (t === 2) return { cs1: 1, cs2: 1 };
+  if (t === 3) return { cs1: 1, cs2: 2 };
+  if (t === 4) return { cs1: 1, cs2: 3 };
+  if (t === 5) return { cs1: 2, cs2: 3 };
+
+  // Từ 6 trở lên: CS1 = 1/3 làm tròn xuống, CS2 = phần còn lại
+  const targetCs1 = Math.floor(t / 3);
+  const targetCs2 = t - targetCs1;
+
+  return {
+    cs1: targetCs1,
+    cs2: targetCs2
+  };
+}
+
 function calcGoiy(cs1, cs2) {
-  if (cs1 >= 1 && cs2 === 0) return '1v2';
-  if (cs1 === 0 && cs2 >= 2) return '2v1';
-  if (cs1 <= 1 && cs2 > 2) return '2v1';
-  if (cs2 <= 1 && cs1 > 2) return '1v2';
+  const n1 = Number(cs1 || 0);
+  const n2 = Number(cs2 || 0);
+  const total = n1 + n2;
+
+  const target = getTargetStockByTotal(total);
+
+  if (n1 > target.cs1) return '1v2';
+  if (n1 < target.cs1) return '2v1';
   return 'cân bằng';
 }
 
-const CFG = {
-  keep_min_src: 1,
-  dest_min: 2,
-  max_move: 999999,
-  prefer_cs2: true
-};
-
 function calcMoveQty(cs1, cs2, goiy) {
-  const keep = CFG.keep_min_src;
-  const maxm = CFG.max_move;
-  const total = (cs1 || 0) + (cs2 || 0);
+  const n1 = Number(cs1 || 0);
+  const n2 = Number(cs2 || 0);
+  const total = n1 + n2;
 
-  if (total === 1) {
-    if (goiy === '1v2' && cs1 === 1) {
-      return Math.min(1, maxm);
-    }
-    return 0;
-  }
-
-  if (total === 5) {
-    const t1 = 2;
-    if (goiy === '1v2') {
-      const srcCap = Math.max(0, cs1 - keep);
-      return Math.max(0, Math.min(cs1 - t1, srcCap, maxm));
-    }
-    if (goiy === '2v1') {
-      const srcCap = Math.max(0, cs2 - keep);
-      return Math.max(0, Math.min(t1 - cs1, srcCap, maxm));
-    }
-    return 0;
-  }
-
-  if (total > 5) {
-    const t1 = Math.round(total / 3);
-    if (goiy === '1v2') {
-      const srcCap = Math.max(0, cs1 - keep);
-      return Math.max(0, Math.min(cs1 - t1, srcCap, maxm));
-    }
-    if (goiy === '2v1') {
-      const srcCap = Math.max(0, cs2 - keep);
-      return Math.max(0, Math.min(t1 - cs1, srcCap, maxm));
-    }
-    return 0;
-  }
-
-  if (cs1 === 0 && cs2 > 1) {
-    const srcCap = Math.max(0, cs2 - keep);
-    return Math.min(1, srcCap);
-  }
+  const target = getTargetStockByTotal(total);
 
   if (goiy === '1v2') {
-    const need_min = Math.max(0, CFG.dest_min - cs2);
-    const need_bias = CFG.prefer_cs2
-      ? Math.ceil((cs1 - cs2 + 1) / 2)
-      : Math.ceil((cs1 - cs2) / 2);
-    const q0 = Math.max(need_min, need_bias, 0);
-    const srcCap = Math.max(0, cs1 - keep);
-    return Math.max(0, Math.min(q0, srcCap, maxm));
+    return Math.max(0, n1 - target.cs1);
   }
 
   if (goiy === '2v1') {
-    const need_min = Math.max(0, CFG.dest_min - cs1);
-    const need_bias = CFG.prefer_cs2
-      ? Math.ceil((cs2 - cs1 - 1) / 2)
-      : Math.ceil((cs2 - cs1) / 2);
-    const q0 = Math.max(need_min, need_bias, 0);
-    const srcCap = Math.max(0, cs2 - keep);
-    return Math.max(0, Math.min(q0, srcCap, maxm));
+    return Math.max(0, target.cs1 - n1);
   }
 
   return 0;
@@ -196,7 +174,7 @@ async function fetchRecentSaleDetails(sohds) {
       ton_cs1: Number(r.ton_cs1 || 0),
       ton_cs2: Number(r.ton_cs2 || 0)
     }))
-    .filter(r => !['0', '0.0', '00', ''].includes(String(r.size).trim()));
+    .filter(r => !isInvalidTransferSize(r.size));
 }
 
 async function fetchXntNhanhRows(masps) {
@@ -224,16 +202,22 @@ async function fetchXntNhanhRows(masps) {
 function buildPopupRows({ xntRows, dir, saleCtMapByMasp }) {
   const grouped = new Map();
 
-  for (const r of xntRows) {
+    for (const r of xntRows) {
     const masp = normalizeMasp(r.masp);
+    const size = normalizeSize(r.size);
+
     if (!masp) continue;
+    if (isInvalidTransferSize(size)) continue;
 
     if (!saleCtMapByMasp.has(masp)) continue;
 
-    const goiy = calcGoiy(Number(r.ton_cs1 || 0), Number(r.ton_cs2 || 0));
+    const cs1 = Number(r.ton_cs1 || 0);
+    const cs2 = Number(r.ton_cs2 || 0);
+
+    const goiy = calcGoiy(cs1, cs2);
     if (goiy !== dir) continue;
 
-    const sl = calcMoveQty(Number(r.ton_cs1 || 0), Number(r.ton_cs2 || 0), goiy);
+    const sl = calcMoveQty(cs1, cs2, goiy);
     if (!sl || sl <= 0) continue;
 
     if (!grouped.has(masp)) {
@@ -244,8 +228,8 @@ function buildPopupRows({ xntRows, dir, saleCtMapByMasp }) {
       });
     }
 
-    grouped.get(masp).items.push({
-      size: normalizeSize(r.size),
+     grouped.get(masp).items.push({
+      size,
       sl: Number(sl)
     });
   }
