@@ -2,531 +2,410 @@
 <html lang="vi">
 
 <head>
-    <meta charset="UTF-8" />
-    <title>Gợi ý chuyển kho (XNT17)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>CHUYỂN KHO 1V2 - CS1</title>
 
-    <!-- Handsontable -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+    }
 
-    <!-- XLSX để xuất (giống trang XNT17) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    body.popupnhanh .sq-stock-popup {
+      top: 8px !important;
+      right: 8px !important;
+      left: auto !important;
+      transform: none !important;
+    }
 
-    <!-- Supabase client dùng chung -->
-    <script type="module" src="scripts/supabaseClient.js"></script>
+    .menu-bar {
+      background: #0088cc;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      box-sizing: border-box;
+    }
 
-    <style>
-        html,
-        body {
-            height: 100%
-        }
+    .menu-left,
+    .menu-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
 
-        body {
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            overflow: hidden;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto
-        }
+    .menu-bar input,
+    .menu-bar button,
+    .menu-bar select {
+      font-size: 15px;
+      padding: 4px 6px;
+    }
 
-        header {
-            padding: 8px 12px;
-            border-bottom: 1px solid #e7e7e7;
-            display: flex;
-            gap: 8px;
-            align-items: center
-        }
+    #app-container {
+      display: none;
+      min-height: 100vh;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-        header .spacer {
-            flex: 1
-        }
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 130px 130px 460px 90px 90px;
+      gap: 8px;
+      padding: 8px;
+      background: #eef3fb;
+      border-bottom: 1px solid #ccd7ea;
+      align-items: start;
+    }
 
-        .main {
-            display: grid;
-            grid-template-columns: 60% 40%;
-            gap: 8px;
-            padding: 8px;
-            box-sizing: border-box;
-            height: 100%;
-        }
+    .filter-bar input,
+    .filter-bar textarea,
+    .filter-bar button,
+    .filter-bar select {
+      font-size: 15px;
+      padding: 6px;
+      box-sizing: border-box;
+    }
 
-        #leftPane {
-            min-height: 0;
-            display: flex;
-            flex-direction: column
-        }
+    #textarea-masp {
+      width: 460px;
+      min-height: 88px;
+      max-width: 460px;
+      resize: vertical;
+      grid-column: 1 / span 3;
+    }
 
-        #hot {
-            flex: 1 1 auto;
-            min-height: 0
-        }
+    .filter-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-        #rightPane {
-            min-height: 0;
-            overflow: auto
-        }
+    .filter-actions button {
+      min-width: 86px;
+      white-space: nowrap;
+    }
 
-        #imagesWrap {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px
-        }
+    .main {
+      flex: 1 1 auto;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
 
-        #imagesWrap img {
-            width: 100%;
-            height: auto;
-            aspect-ratio: 3/4;
-            object-fit: cover;
-            display: block
-        }
+    .table-area {
+      flex: 1 1 auto;
+      overflow: auto;
+      background: #fff;
+    }
 
-        .sumRow {
-            background: #f2f2f2;
-            font-weight: bold
-        }
-    </style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 14px;
+    }
 
-    <style>
-        /* ===== Popup ẢNH CHUYỂN CHI NHÁNH (CK) ===== */
-        #ckGalleryModal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, .55);
-            z-index: 5000;
-            align-items: center;
-            justify-content: center;
-        }
+    th,
+    td {
+      border: 1px solid #d8d8d8;
+      padding: 4px 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
 
-        /* Khung trắng full màn hình */
-        #ckGalleryModal .ck-gcard {
-            background: #fff;
-            border-radius: 0;
-            width: 100vw;
-            /* lấy đúng chiều cao của popup, tránh bug 100vh trên mobile */
-            height: 100%;
-            max-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 14px 40px rgba(0, 0, 0, .25);
-        }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #e7eef9;
+      z-index: 2;
+    }
 
+    td.col-masp {
+      cursor: pointer;
+      color: #0b63c8;
+      font-weight: bold;
+    }
 
-        /* Header: tiêu đề + tìm kiếm + nút */
-        /* Header: tiêu đề + tìm kiếm + nút */
-        .ck-ghead {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            background: #f6f9ff;
-            border-bottom: 1px solid #e6eeff;
+    td.col-ghichu input,
+    td.col-slduyet input,
+    td.col-slthuc input,
+    td.col-manv select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px;
+      font-size: 13px;
+    }
 
-            /* cho phép các phần tử xuống dòng */
-            flex-wrap: wrap;
-        }
+    .sidebar {
+      width: 430px;
+      min-width: 430px;
+      border-left: 1px solid #cfd7e6;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
 
-        #ckGalTitle {
-            font-size: 16px;
-            color: #1b5dbf;
-        }
+    .tabs {
+      display: flex;
+      background: #e8eef7;
+      border-bottom: 1px solid #d7e0ef;
+    }
 
-        #ckSearch {
-            margin-left: auto;
-            height: 32px;
-            padding: 4px 8px;
-            border-radius: 8px;
-            border: 1px solid #cfe1ff;
-            min-width: 120px;
-        }
+    .tabs button {
+      flex: 1;
+      border: none;
+      background: #dbe6f5;
+      padding: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
 
-        /* Thân popup: lưới ảnh, phần này cuộn */
-        .ck-gbody {
-            flex: 1;
-            overflow: auto;
-            padding: 10px;
-        }
+    .tabs button.active {
+      background: #fff;
+      border-bottom: 2px solid #0078d7;
+    }
 
-        /* Lưới ảnh */
-        #ckGalGrid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 10px;
-        }
+    .tab-content {
+      flex: 1;
+      overflow: auto;
+      padding: 10px;
+      font-size: 14px;
+    }
 
-        /* Card ảnh */
-        .ck-item {
-            border-radius: 12px;
-            border: 1px solid #e6eeff;
-            overflow: hidden;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-        }
+    .tab-pane {
+      display: none;
+    }
 
-        @media (orientation: portrait) {
+    .tab-pane.active {
+      display: block;
+    }
 
-            .ck-ghead #ckGalTitle,
-            .ck-ghead #ckInfo {
-                display: none;
-            }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 6px;
+      align-items: center;
+    }
 
-            /* Header trên mobile dọc: xuống 2 dòng gọn hơn */
-            #ckGalleryModal .ck-ghead {
-                flex-wrap: wrap;
-                align-items: flex-start;
-            }
+    .info-grid input,
+    .info-grid textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 5px;
+      font-size: 14px;
+    }
 
-            /* Ô tìm kiếm chiếm cả dòng 1 */
-            #ckGalleryModal #ckSearch {
-                flex: 1 1 100%;
-                margin-left: 0;
-                /* bỏ margin-left: auto cũ */
-                margin-bottom: 6px;
-            }
+    .info-grid label {
+      font-weight: bold;
+      white-space: nowrap;
+    }
 
-            /* 4 nút chia làm 2 cột ở dòng 2 (mỗi nút ~1/2 hàng) */
-            #ckGalleryModal .ck-ghead button {
-                flex: 1 1 calc(50% - 4px);
-                margin: 0;
-                text-align: center;
-            }
-        }
+    .info-grid input[readonly] {
+      background: #f7f7f7;
+    }
 
-        /* Ẩn tiêu đề + dòng thông tin trong popup ảnh chuyển kho
-   để trên mobile chỉ còn ô tìm kiếm + 4 nút */
-        .ck-ghead #ckGalTitle,
-        .ck-ghead #ckInfo {
-            display: none;
-        }
+    #ghi_chu_phieu {
+      min-height: 140px;
+    }
 
+    #history-box {
+      white-space: pre-wrap;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 160px;
+    }
 
-        /* ===== Tùy biến stockQuickPopup cho trang XNT17 chuyển kho ===== */
+    .footer-buttons {
+      flex-shrink: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px;
+      background: #dce9f9;
+      border-top: 1px solid #c7d3e9;
+    }
 
-        /* Hiển thị popup ở góc trên bên trái màn hình, không căn giữa */
-        body.xnt17-chuyenkho .sq-stock-popup {
-            left: 8px !important;
-            top: 8px !important;
-            transform: none !important;
-            min-width: 220px;
-            max-width: 450px;
-            /* ~một nửa so với trước (900px) */
-            width: min(450px, 90vw);
-            /* co lại theo màn hình mobile */
-            max-height: 600px;
-        }
+    .footer-buttons button {
+      min-width: 110px;
+      padding: 8px 12px;
+      font-size: 15px;
+      cursor: pointer;
+    }
 
+    .done-row {
+      background: #edf9ed;
+    }
 
-        /* Trên trang này đã có ảnh nên ẩn phần ảnh trong popup stockQuick */
-        body.xnt17-chuyenkho .sq-img-wrapper {
-            display: none !important;
-        }
+    .highlight-row {
+      background: #fff8d8;
+    }
+  </style>
 
-        /* Checkbox "tạo phiếu" to hơn, dễ bấm */
-        .ck-row input[type="checkbox"].ck-create {
-            width: 22px;
-            height: 22px;
-            transform: scale(1.5);
-            margin-right: 4px;
-        }
+  <link rel="stylesheet" href="chuyenkho.css">
 
-
-        .ck-pic {
-            background: #f8faff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 180px;
-        }
-
-        .ck-pic img {
-            max-width: 100%;
-            max-height: 240px;
-            display: block;
-        }
-
-        .ck-body {
-            padding: 6px 9px 10px;
-            font-size: 14px;
-        }
-
-        .ck-row {
-            margin: 2px 0;
-            line-height: 1.3;
-        }
-
-        .ck-row b {
-            color: #333;
-        }
-
-        .ck-row a {
-            color: #1976d2;
-            text-decoration: none;
-        }
-
-        .ck-row a:hover {
-            text-decoration: underline;
-        }
-
-        .ck-row input[type="number"] {
-            width: 80px;
-            padding: 2px 4px;
-            border-radius: 6px;
-            border: 1px solid #cfe1ff;
-            font-size: 14px;
-        }
-
-        /* Ô nhập size + SL trong popup */
-        .ck-size-input {
-            width: 100%;
-            min-height: 38px;
-            padding: 3px 5px;
-            border-radius: 6px;
-            border: 1px solid #cfe1ff;
-            font-size: 13px;
-            resize: vertical;
-        }
-
-        .ck-size-input.ck-error {
-            border-color: #e53935;
-            background: #fff5f5;
-        }
-
-        /* Footer: text + nút tạo phiếu, dính đáy */
-        .ck-gfoot {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 8px 10px;
-            border-top: 1px solid #e6eeff;
-            background: #fdfdfd;
-            /* không dùng sticky nữa, để flex giữ nó ở đáy */
-            flex-shrink: 0;
-        }
-
-
-        /* Text thông tin nhỏ bên trái */
-        .ck-info {
-            font-size: 13px;
-            color: #555;
-        }
-
-        /* Mobile: lưới 1 cột cho dễ xem */
-        /* Điện thoại DỌC: 1 cột ảnh */
-        /* Điện thoại DỌC: luôn 1 cột ảnh */
-        /* Điện thoại DỌC: 1 cột, ảnh to hết chiều ngang */
-        @media (orientation: portrait) {
-            #ckGalGrid {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            .ck-item {
-                max-width: 520px;
-
-            }
-
-            .ck-pic {
-                min-height: 260px;
-            }
-
-            .ck-pic img {
-                width: 100%;
-                height: auto;
-                max-height: none;
-                object-fit: contain;
-            }
-
-            /* Header cao, thoáng */
-            #ckGalleryModal .ck-ghead {
-                padding: 10px 8px;
-                min-height: 52px;
-            }
-
-            /* Ô tìm kiếm to hơn */
-            #ckGalleryModal #ckSearch {
-                height: 50px;
-                padding: 6px 10px;
-                font-size: 20px;
-            }
-
-            /* Nút to hơn, dễ bấm */
-            #ckGalleryModal .ck-ghead button,
-            #ckGalleryModal .ck-gfoot button {
-                font-size: 18px;
-                padding: 8px 16px;
-                border-radius: 12px;
-                background: #e9d607;
-            }
-
-            #ckGalleryModal #ckApply {
-                min-width: 140px;
-                font-weight: 900;
-                background: #e9d607;
-            }
-        }
-
-
-        /* Điện thoại XOAY NGANG: 4 cột ảnh */
-        @media (orientation: landscape) {
-            #ckGalGrid {
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-            }
-
-            #ckGalleryModal {
-                align-items: stretch;
-                justify-content: stretch;
-            }
-
-            #ckGalleryModal .ck-gcard {
-                width: 100%;
-                height: 100%;
-                max-height: 100%;
-                border-radius: 0;
-            }
-        }
-    </style>
 </head>
 
-<body class="xnt17-chuyenkho">
+<body class="popupnhanh">
+  <div class="menu-bar">
+    <div class="menu-left">
+      <input id="diadiem" readonly style="width:70px" />
+      <input id="hd_state" readonly value="moi" style="width:60px;text-align:center;font-weight:bold;" />
+      <input id="ngay" type="date" readonly />
+      <input id="gio" type="text" readonly style="width:80px" />
+      <input id="manv" type="hidden" />
+      <input id="tennv" readonly placeholder="Tên NV" style="width:180px" />
+      <button id="btnReloadSP">🔄 Tải</button>
+    </div>
 
-    <header>
-        <button id="btnReload">Tải lại đề xuất</button>
-        <button id="btnCopy">📋 Copy bảng</button>
-        <button id="btnExport">Xuất Excel</button>
-        <button id="btnFilter1v2">1v2</button>
-        <button id="btnFilter2v1">2v1</button>
-        <button id="btnShowAll">Hiện tất cả</button>
-        <button id="btnTaoPhieuCN">Tạo phiếu chuyển CN</button>
-        <button id="btnAnhChuyen" class="btn secondary">ảnh chuyen</button>
+    <div class="menu-right">
+      <input id="sohd" readonly placeholder="Số CT" style="width:170px;font-weight:bold;" />
+      <button id="btn-logout" type="button">Thoát PM</button>
+    </div>
+  </div>
 
-        <div style="margin:10px 0;">
-            <label for="maspTextarea" style="display:block;font-weight:600;margin-bottom:4px;">
-                Danh sách mã sản phẩm (mỗi mã 1 dòng):
-            </label>
-            <textarea id="maspTextarea" rows="5" style="width:100%;max-width:680px;display:block;margin-bottom:6px;"
-                placeholder="VD:
-A123
-B456
-C789"></textarea>
-            <button id="btnChuyenKho">Chuyển kho</button>
-        </div>
+  <div id="app-container">
+    <div class="filter-bar">
+      <input id="tu_ngay" type="date" />
+      <input id="den_ngay" type="date" />
+      <textarea id="textarea-masp"
+        placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
 
+      <div class="filter-actions">
+        <button id="btn-goi-y" type="button">Lấy gợi ý</button>
+        <button id="btn-xoa-goi-y" type="button">Xóa gợi ý</button>
+      </div>
 
-        <div class="spacer"></div>
-        <small id="status" style="color:#666"></small>
-    </header>
+      <div class="filter-actions">
+        <button id="btn-open-old" type="button">Mở phiếu</button>
+        <button id="btn-stock-selected" type="button">Tồn nhanh</button>
+      </div>
+    </div>
 
     <div class="main">
-        <div id="leftPane">
-            <div id="hot"></div>
+      <div class="table-area">
+        <table id="bangketqua">
+          <thead>
+            <tr>
+              <th style="width:36px">Chọn</th>
+              <th style="width:46px">Xong</th>
+              <th style="width:130px">Mã SP</th>
+              <th>Tên hàng</th>
+              <th style="width:65px">Size</th>
+              <th style="width:70px">Tồn nguồn</th>
+              <th style="width:70px">Tồn đích</th>
+              <th style="width:65px">Hướng</th>
+              <th style="width:70px">SL gợi ý</th>
+              <th style="width:80px">SL duyệt</th>
+              <th style="width:80px">SL thực</th>
+              <th style="width:90px">Mã NV</th>
+              <th style="width:130px; display:none;">Tên NV</th>
+              <th style="width:130px">Trạng thái</th>
+              <th style="width:180px">Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="sidebar">
+        <div class="tabs">
+          <button id="btn_tab_thongtin" type="button" onclick="switchTab('thongtin')">Thông tin</button>
+          <button id="btn_tab_tacvu" type="button" onclick="switchTab('tacvu')">Tác vụ</button>
+          <button id="btn_tab_history" type="button" onclick="switchTab('history')">Lịch sử</button>
         </div>
 
-        <div id="rightPane">
-            <div style="display:flex;flex-direction:column;gap:8px;height:100%;">
-                <div id="previewTitle" style="font-weight:600;color:#111"></div>
-                <div id="previewGrid" style="flex:1 1 auto;min-height:0;overflow:auto;"></div>
+        <div class="tab-content">
+          <div class="tab-pane" id="thongtin">
+            <div class="info-grid">
+              <label>Loại CT</label><input id="loai_ct" value="ck1v2_cs1" readonly />
+              <label>Từ cơ sở</label><input id="tu_coso" value="cs1" readonly />
+              <label>Đến cơ sở</label><input id="den_coso" value="cs2" readonly />
+              <label>Trạng thái</label><input id="trang_thai" value="moi" />
+              <label>Số dòng</label><input id="tong_dong" readonly />
+              <label>Tổng SL gợi ý</label><input id="tong_goiy" readonly />
+              <label>Tổng SL duyệt</label><input id="tong_duyet" readonly />
+              <label>Tổng SL thực</label><input id="tong_thuc" readonly />
+              <label>Phiếu CCN</label><input id="so_ct_ccn" readonly />
+              <label>Ghi chú</label><textarea id="ghi_chu_phieu" rows="5"></textarea>
             </div>
+          </div>
 
+          <div class="tab-pane" id="tacvu">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <button id="btn-them-moi" type="button">Thêm mới</button>
+              <button id="btn-luu" type="button">Lưu dữ liệu</button>
+              <button id="btn-giao-viec" type="button">Giao việc</button>
+              <button id="btn-danh-dau-xong" type="button">Đánh dấu xong</button>
+              <button id="btn-tao-ccn" type="button">Tạo phiếu CCN</button>
+              <button id="btn-xoa-dong" type="button">Xóa dòng</button>
+            </div>
+          </div>
 
+          <div class="tab-pane" id="history">
+            <div id="history-box">Chưa có lịch sử.</div>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- Popup ẢNH CHUYỂN CHI NHÁNH -->
-    <div id="ckGalleryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000;">
-        <div class="ck-gcard">
-            <!-- Header -->
-            <div class="ck-ghead">
-                <b id="ckGalTitle">Ảnh chuyển chi nhánh</b>
-                <span id="ckInfo" class="ck-info"></span>
-
-                <input id="ckSearch" placeholder="Tìm nhanh mã SP..." autocomplete="off">
-                <button id="ckApply" class="btn">Tạo phiếu CCN</button>
-
-                <button id="ckSelectAll" class="btn secondary">Chọn tất cả</button>
-                <button id="ckClearAll" class="btn secondary">Bỏ chọn</button>
-                <button id="ckClose" class="btn secondary">Đóng</button>
-            </div>
-
-            <!-- Thân popup: lưới ảnh -->
-            <div class="ck-gbody">
-                <div id="ckGalGrid"></div>
-            </div>
-
-            <!-- Thanh nút luôn ở đáy màn hình (mobile/PC đều thấy) -->
-            <div class="ck-gfoot">
-
-                <button id="ckApplyFooter" class="btn">Tạo phiếu CCN</button>
-            </div>
-        </div>
+    <div class="footer-buttons">
+      <button id="btn-footer-them-moi" type="button">Thêm mới</button>
+      <button id="btn-footer-luu" type="button">Lưu dữ liệu</button>
+      <button id="btn-footer-mo" type="button">Mở phiếu</button>
+      <button id="btn-footer-giao" type="button">Giao việc</button>
+      <button id="btn-footer-xong" type="button">Đánh dấu xong</button>
+      <button id="btn-footer-tao-ccn" type="button">Tạo phiếu CCN</button>
+      <button id="btn-footer-xoa" type="button">Xóa dòng</button>
+      <button id="btn-footer-goi-y" type="button">Lấy gợi ý</button>
+      <button id="btn-footer-xoa-goi-y" type="button">Xóa gợi ý</button>
+      <button id="btn-footer-thoat" type="button">Thoát</button>
     </div>
+  </div>
 
-    <!-- Bridge: đưa supabase trong module ra global cho stockQuickPopup -->
-    <script type="module">
-        import { supabase as sb } from "./scripts/supabaseClient.js";
-        window.supabase = sb;
-    </script>
+  <script>
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(tabName)?.classList.add('active');
+      document.getElementById('btn_tab_' + tabName)?.classList.add('active');
+    }
+    document.addEventListener('DOMContentLoaded', () => switchTab('thongtin'));
+  </script>
 
-    <!-- Popup nhanh tồn kho -->
-    <script src="scripts/stockQuickPopup.js"></script>
+  <script src="scripts/stockQuickPopup.js"></script>
+  <script type="module" src="./scripts/chuyenkho.js"></script>
 
-    <!-- Logic riêng của trang -->
-    <script type="module" src="scripts/baocaoxnt17_chuyenkho.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnTopGoiY = document.getElementById('btn-goi-y');
+      const btnTopXoaGoiY = document.getElementById('btn-xoa-goi-y');
 
-    <script>
-        async function autoFillAndRunChuyenKho() {
-            try {
-                const data = localStorage.getItem("XNT17_MASPS_LS");
-                if (!data) return;
+      const btnFooterGoiY = document.getElementById('btn-footer-goi-y');
+      const btnFooterXoaGoiY = document.getElementById('btn-footer-xoa-goi-y');
 
-                const obj = JSON.parse(data);
-                if (!obj || !Array.isArray(obj.list) || obj.list.length === 0) return;
+      if (btnTopGoiY && btnFooterGoiY) {
+        btnFooterGoiY.addEventListener('click', () => btnTopGoiY.click());
+      }
 
-                const textarea = document.getElementById("maspTextarea");
-                if (!textarea) {
-                    console.error("Không tìm thấy #maspTextarea");
-                    return;
-                }
-
-                textarea.value = obj.list.join("\n");
-                textarea.dispatchEvent(new Event("input", { bubbles: true }));
-                textarea.dispatchEvent(new Event("change", { bubbles: true }));
-                console.log("[CK] Đã nhận danh sách mã:", obj.list);
-
-                const waitBtnReady = async () => {
-                    for (let i = 0; i < 50; i++) {
-                        const btn = document.getElementById("btnChuyenKho");
-                        if (btn) return btn;
-                        await new Promise(r => setTimeout(r, 200));
-                    }
-                    return null;
-                };
-
-                const btn = await waitBtnReady();
-                if (!btn) {
-                    console.error("[CK] Không tìm thấy nút #btnChuyenKho");
-                    return;
-                }
-
-                await new Promise(r => setTimeout(r, 300));
-                btn.click();
-
-                console.log("[CK] Đã tự bấm nút Chuyển kho");
-
-                // chỉ xóa danh sách mã, còn filter fallback có thể giữ lại cho lần mở kế tiếp
-                localStorage.removeItem("XNT17_MASPS_LS");
-
-            } catch (e) {
-                console.error("[CK] Lỗi autoFillAndRunChuyenKho:", e);
-            }
-        }
-
-        window.addEventListener("DOMContentLoaded", () => {
-            setTimeout(autoFillAndRunChuyenKho, 150);
-        });
-    </script>
+      if (btnTopXoaGoiY && btnFooterXoaGoiY) {
+        btnFooterXoaGoiY.addEventListener('click', () => btnTopXoaGoiY.click());
+      }
+    });
+  </script>
 
 </body>
 
