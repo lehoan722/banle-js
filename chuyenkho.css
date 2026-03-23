@@ -1,0 +1,353 @@
+/* =========================================================
+   CHUYENKHO MOBILE/DESKTOP OVERRIDE
+   Dùng cho: chuyenkho1v2cs1.html
+   Mục tiêu:
+   - Thu gọn sidebar trên desktop
+   - Mobile iPhone dọc: đẩy sidebar xuống dưới
+   - Ẩn bớt cột bảng để bảng rộng hơn
+   - Chuyển nút gợi ý/xóa gợi ý xuống footer
+   ========================================================= */
+
+/* ===== 1) Desktop: thu gọn panel phải ===== */
+.sidebar {
+  width: 230px !important;
+  min-width: 230px !important;
+}
+
+#history-box {
+  font-size: 11px;
+  min-height: 120px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.info-grid {
+  grid-template-columns: 85px 1fr !important;
+  gap: 5px !important;
+}
+
+.info-grid input,
+.info-grid textarea {
+  font-size: 13px !important;
+  padding: 4px !important;
+}
+
+.tabs button {
+  font-size: 13px;
+  padding: 7px 4px;
+}
+
+.tab-content {
+  font-size: 13px;
+  padding: 8px;
+}
+
+/* ===== 2) Chỉ dùng cho mobile dọc, ưu tiên iPhone ===== */
+@media (max-width: 480px) and (orientation: portrait) {
+
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  #app-container {
+    min-height: 100dvh;
+    height: auto !important;
+  }
+
+  /* --- Header trên cùng gọn lại --- */
+  .menu-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 6px 8px !important;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .menu-left,
+  .menu-right {
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .menu-left {
+    overflow-x: auto;
+  }
+
+  .menu-right {
+    justify-content: space-between;
+  }
+
+  #diadiem {
+    width: 58px !important;
+    min-width: 58px !important;
+  }
+
+  #hd_state {
+    width: 52px !important;
+    min-width: 52px !important;
+  }
+
+  #ngay {
+    width: 118px !important;
+    min-width: 118px !important;
+  }
+
+  #gio {
+    width: 72px !important;
+    min-width: 72px !important;
+  }
+
+  #tennv {
+    width: 130px !important;
+    min-width: 130px !important;
+  }
+
+  #sohd {
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: 120px !important;
+  }
+
+  #btnReloadSP,
+  #btn-logout {
+    display: none !important;
+  }
+
+  /* --- Thanh lọc phía trên --- */
+  .filter-bar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+
+  #tu_ngay,
+  #den_ngay {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #textarea-masp {
+    grid-column: 1 / span 2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 76px !important;
+  }
+
+  /* Ẩn cụm nút trên đầu ở mobile */
+  .filter-bar .filter-actions {
+    display: none !important;
+  }
+
+  /* --- Main đổi sang dọc --- */
+  .main {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 0;
+    overflow: visible !important;
+  }
+
+  .table-area {
+    order: 1;
+    width: 100%;
+    flex: 0 0 auto !important;
+    height: 58dvh !important;
+    max-height: none !important;
+    overflow: auto;
+    background: #fff;
+  }
+
+  .sidebar {
+    order: 2;
+    width: 100% !important;
+    min-width: 100% !important;
+    border-left: 0 !important;
+    border-top: 1px solid #cfd7e6;
+    max-height: none !important;
+  }
+
+  .tab-content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* --- Bảng kết quả: chỉ giữ cột cần thiết ---
+     Thứ tự cột hiện tại:
+     1 Chọn
+     2 Xong
+     3 Mã SP
+     4 Tên hàng
+     5 Size
+     6 Tồn nguồn
+     7 Tồn đích
+     8 Hướng
+     9 SL gợi ý
+     10 SL duyệt
+     11 SL thực
+     12 Mã NV
+     13 Tên NV (display:none sẵn)
+     14 Trạng thái
+     15 Ghi chú
+  */
+
+  /* Ẩn các cột không cần */
+  #bangketqua thead th:nth-child(4),
+  #bangketqua tbody td:nth-child(4),
+  #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),
+  #bangketqua thead th:nth-child(6),
+  #bangketqua tbody td:nth-child(6),
+  #bangketqua thead th:nth-child(7),
+  #bangketqua tbody td:nth-child(7),
+  #bangketqua thead th:nth-child(8),
+  #bangketqua tbody td:nth-child(8),
+  #bangketqua thead th:nth-child(10),
+  #bangketqua tbody td:nth-child(10),
+  #bangketqua thead th:nth-child(12),
+  #bangketqua tbody td:nth-child(12),
+  #bangketqua thead th:nth-child(15),
+  #bangketqua tbody td:nth-child(15) {
+    display: none !important;
+  }
+
+  table {
+    table-layout: auto !important;
+    font-size: 12px !important;
+  }
+
+  th,
+  td {
+    padding: 4px 4px !important;
+    white-space: nowrap;
+  }
+
+  /* Cỡ riêng cho các cột giữ lại */
+  #bangketqua thead th:nth-child(1),
+  #bangketqua tbody td:nth-child(1) {
+    width: 34px !important;
+    min-width: 34px !important;
+  }
+
+  #bangketqua thead th:nth-child(2),
+  #bangketqua tbody td:nth-child(2) {
+    width: 40px !important;
+    min-width: 40px !important;
+  }
+
+  #bangketqua thead th:nth-child(3),
+  #bangketqua tbody td:nth-child(3) {
+    width: 110px !important;
+    min-width: 110px !important;
+  }
+
+  /* cột 9 = SL gợi ý => dùng như "Số lượng" */
+  #bangketqua thead th:nth-child(9),
+  #bangketqua tbody td:nth-child(9) {
+    width: 58px !important;
+    min-width: 58px !important;
+  }
+
+  /* cột 11 = SL thực */
+  #bangketqua thead th:nth-child(11),
+  #bangketqua tbody td:nth-child(11) {
+    width: 68px !important;
+    min-width: 68px !important;
+  }
+
+  /* cột 14 = Trạng thái */
+  #bangketqua thead th:nth-child(14),
+  #bangketqua tbody td:nth-child(14) {
+    width: 90px !important;
+    min-width: 90px !important;
+    white-space: normal !important;
+  }
+
+  /* Đổi tên ý nghĩa hiển thị bằng CSS không làm được text header,
+     nên sẽ sửa HTML phần tiêu đề bên dưới */
+
+  /* --- Tabs và panel phải gọn lại --- */
+  .tabs button {
+    padding: 10px 4px !important;
+    font-size: 14px !important;
+  }
+
+  .tab-content {
+    padding: 8px !important;
+    font-size: 13px !important;
+  }
+
+  .info-grid {
+    grid-template-columns: 78px 1fr !important;
+    gap: 5px !important;
+  }
+
+  .info-grid label {
+    font-size: 12px !important;
+  }
+
+  .info-grid input,
+  .info-grid textarea {
+    font-size: 13px !important;
+    padding: 5px !important;
+  }
+
+  #ghi_chu_phieu {
+    min-height: 90px !important;
+  }
+
+  #history-box {
+    min-height: 90px !important;
+    max-height: 160px !important;
+    overflow: auto;
+  }
+
+  /* --- Footer mobile --- */
+  .footer-buttons {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px !important;
+    padding: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    background: #dce9f9 !important;
+  }
+
+  .footer-buttons button {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 10px 6px !important;
+    font-size: 14px !important;
+    font-weight: 700;
+  }
+
+  /* Ẩn bớt nút footer ít cần trên mobile */
+  #btn-footer-mo,
+  #btn-footer-thoat {
+    display: none !important;
+  }
+
+  /* Hiện 2 nút mobile thêm mới */
+  #btn-footer-goi-y,
+  #btn-footer-xoa-goi-y {
+    display: inline-block !important;
+  }
+}
+
+/* Mặc định desktop: ẩn 2 nút mobile mới */
+#btn-footer-goi-y,
+#btn-footer-xoa-goi-y {
+  display: none;
+}
