@@ -86,6 +86,22 @@ function uniq(arr) {
   return [...new Set(arr)];
 }
 
+function getPrevVoucherNo(soCt) {
+  const s = String(soCt || "").trim();
+  const m = s.match(/^([a-z0-9_]+)_(\d{5})$/i);
+  if (!m) return "";
+
+  const prefix = m[1];
+  const num = Number(m[2]);
+  if (!Number.isFinite(num) || num <= 1) return "";
+
+  return `${prefix}_${String(num - 1).padStart(5, "0")}`;
+}
+
+function getOpenVoucherDefault() {
+  return getPrevVoucherNo($("sohd")?.value || "");
+}
+
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -360,7 +376,7 @@ function buildSuggestionRows({ xntRows, tenHangMap }) {
       sl_thuc: 0,
       manv_phutrach: "",
       tennv_phutrach: "",
-      trang_thai_dong: "de_xuat",
+      trang_thai_dong: "",
       ghi_chu: "",
     });
   }
@@ -460,7 +476,17 @@ function ganSuKienBang() {
   document.querySelectorAll('[data-role="selected"]').forEach((el) => {
     el.addEventListener("change", (e) => {
       const idx = Number(e.target.dataset.idx);
-      STATE.rows[idx].selected = !!e.target.checked;
+      const checked = !!e.target.checked;
+      const row = STATE.rows[idx];
+
+      row.selected = checked;
+
+      if (!row.done) {
+        row.trang_thai_dong = checked ? "de_xuat" : "";
+      }
+
+      renderBang();
+      capNhatTong();
     });
   });
 
@@ -468,8 +494,18 @@ function ganSuKienBang() {
     el.addEventListener("change", (e) => {
       const idx = Number(e.target.dataset.idx);
       const checked = !!e.target.checked;
-      STATE.rows[idx].done = checked;
-      STATE.rows[idx].trang_thai_dong = checked ? "da_chuyen" : "de_xuat";
+      const row = STATE.rows[idx];
+
+      row.done = checked;
+
+      if (checked) {
+        row.selected = true;
+        row.trang_thai_dong = "da_chuyen";
+        if (!toNumber(row.sl_thuc)) row.sl_thuc = toNumber(row.sl_duyet);
+      } else {
+        row.trang_thai_dong = row.selected ? "de_xuat" : "";
+      }
+
       renderBang();
       capNhatTong();
     });
@@ -701,7 +737,9 @@ async function luuPhieu() {
 ========================================================= */
 async function napPhieu(soCtParam = "") {
   try {
-    const soCt = soCtParam || prompt("Nhập số chứng từ cần mở:");
+    const defaultSoCt = getOpenVoucherDefault();
+    const soCtInput = soCtParam || prompt("Nhập số chứng từ cần mở:", defaultSoCt);
+    const soCt = String(soCtInput || "").trim();
     if (!soCt) return;
 
     const { data: hd, error: errHd } = await supabase
@@ -733,7 +771,7 @@ async function napPhieu(soCtParam = "") {
 
     STATE.rows = (ct || []).map((r) => {
       const row = {
-        selected: false,
+        selected: true,
         done: !!r.done,
         masp: normalizeMasp(r.masp),
         tenhang: r.tenhang || "",
@@ -811,10 +849,25 @@ ${x.action_type} - ${x.changed_by || ""} ${x.changed_by_name || ""}`;
 ========================================================= */
 async function giaoViec() {
   try {
-    STATE.rows.forEach((r) => {
-      if (r.manv_phutrach) r.trang_thai_dong = "da_duyet";
-    });
+    const selectedRows = STATE.rows.filter((r) => r.selected);
+
+    if (!selectedRows.length) {
+      alert("Chưa chọn dòng nào để giao việc.");
+      return;
+    }
+
+    const rowsToSave = selectedRows.map((r) => ({
+      ...r,
+      selected: true,
+      done: !!r.done,
+      trang_thai_dong: r.done ? "da_chuyen" : "de_xuat",
+    }));
+
+    STATE.rows = rowsToSave;
+    STATE.selectedIndex = STATE.rows.length ? 0 : -1;
+
     $("trang_thai").value = "da_giao";
+
     renderBang();
     capNhatTong();
     await luuPhieu();
@@ -833,12 +886,17 @@ async function danhDauXong() {
 
     rows.forEach((r) => {
       r.done = true;
+      r.selected = true;
       r.trang_thai_dong = "da_chuyen";
-      if (!toNumber(r.sl_thuc)) r.sl_thuc = toNumber(r.sl_duyet);
+
+      if (!toNumber(r.sl_thuc)) {
+        r.sl_thuc = toNumber(r.sl_duyet);
+      }
     });
 
     renderBang();
     capNhatTong();
+    await luuPhieu();
   } catch (e) {
     showError("Không đánh dấu xong được.", e);
   }
