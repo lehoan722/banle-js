@@ -431,6 +431,10 @@ function renderBang() {
 
   STATE.rows.forEach((row, idx) => {
     const tr = document.createElement("tr");
+
+    if (row.needReview) {
+      tr.style.background = "#fff3cd"; // vàng nhạt
+    }
     if (row.done) tr.classList.add("done-row");
     if (idx === STATE.selectedIndex) tr.classList.add("highlight-row");
 
@@ -445,10 +449,18 @@ function renderBang() {
       <td>${escapeHtml(row.huong_goiy)}</td>
       <td>${row.sl_goiy}</td>
       <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet}"></td>
-      <td class="col-slthuc"><input data-role="sl_thuc" data-idx="${idx}" value="${row.sl_thuc}"></td>
+      <td class="col-slthuc">
+  <input data-role="sl_thuc"
+    data-idx="${idx}"
+    value="${row.sl_thuc}"
+    style="${row.needReview ? 'background:#ffeeba' : ''}"
+  >
+</td>
       <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}"></td>
       <td style="display:none;">${escapeHtml(row.tennv_phutrach)}</td>
-      <td>${escapeHtml(row.trang_thai_dong)}</td>
+      <td>
+  ${row.needReview ? "cần kiểm tra" : escapeHtml(row.trang_thai_dong)}
+</td>
       <td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}"></td>
     `;
 
@@ -551,6 +563,51 @@ function ganSuKienBang() {
       STATE.rows[idx].ghi_chu = e.target.value || "";
     });
   });
+}
+
+async function recheckAllRows() {
+  try {
+    if (!STATE.rows.length) return;
+
+    const masps = uniq(STATE.rows.map(r => r.masp));
+    const xntRows = await fetchXntRows(masps);
+
+    const map = new Map();
+    xntRows.forEach(r => {
+      map.set(`${r.masp}__${r.size}`, r);
+    });
+
+    STATE.rows.forEach(row => {
+      const key = `${row.masp}__${row.size}`;
+      const x = map.get(key);
+      if (!x) return;
+
+      const goiy = calcGoiy(x.ton_cs1, x.ton_cs2);
+      const newQty = calcMoveQty(x.ton_cs1, x.ton_cs2, goiy);
+
+      const oldQty = toNumber(row.sl_duyet);
+
+      if (goiy !== PAGE_CFG.dir || newQty <= 0) {
+        // ❌ không còn cần chuyển
+        row.needReview = true;
+        row.sl_thuc = 0;
+      } else if (newQty !== oldQty) {
+        // ⚠️ số lượng thay đổi
+        row.needReview = true;
+        row.sl_thuc = newQty;
+      } else {
+        // ✅ vẫn đúng
+        row.needReview = false;
+        row.sl_thuc = oldQty;
+      }
+    });
+
+    renderBang();
+    capNhatTong();
+
+  } catch (err) {
+    console.error("recheckAllRows error", err);
+  }
 }
 
 function capNhatTong() {
@@ -773,6 +830,7 @@ async function napPhieu(soCtParam = "") {
       const row = {
         selected: true,
         done: !!r.done,
+        needReview: false, // ✅ thêm dòng này
         masp: normalizeMasp(r.masp),
         tenhang: r.tenhang || "",
         size: normalizeSize(r.size),
@@ -810,6 +868,9 @@ async function napPhieu(soCtParam = "") {
 
     renderBang();
     capNhatTong();
+
+    await recheckAllRows(); // ✅ thêm dòng này
+
     await napHistory(soCt);
   } catch (e) {
     showError("Không mở được phiếu.", e);
