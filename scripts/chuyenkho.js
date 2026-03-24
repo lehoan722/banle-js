@@ -451,24 +451,9 @@ function renderBang() {
   const tbody = $("bangketqua").querySelector("tbody");
   tbody.innerHTML = "";
 
-  // Tập mã sản phẩm đang được chọn
-  const selectedMasps = new Set(
-    STATE.rows
-      .filter(row => !!row.selected)
-      .map(row => normalizeMasp(row.masp))
-      .filter(Boolean)
-  );
-
   STATE.rows.forEach((row, idx) => {
     const tr = document.createElement("tr");
-    const rowMasp = normalizeMasp(row.masp);
 
-    // 1) Tô nền theo nhóm mã sản phẩm đã chọn
-    if (selectedMasps.has(rowMasp)) {
-      tr.classList.add("masp-group-selected");
-    }
-
-    // 2) Giữ nguyên các trạng thái cũ
     if (row.needReview) {
       tr.style.background = "#fff3cd"; // vàng nhạt
     }
@@ -482,35 +467,38 @@ function renderBang() {
       <td>${escapeHtml(row.tenhang)}</td>
       <td>${escapeHtml(row.size)}</td>
       <td>${row.ton_nguon || ""}</td>
-      <td>${row.ton_dich || ""}</td>
+<td>${row.ton_dich || ""}</td>
       <td>${escapeHtml(row.huong_goiy)}</td>
       <td>${row.sl_goiy || ""}</td>
       <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet || ""}"></td>
       <td class="col-slthuc">
-        <input data-role="sl_thuc"
-          data-idx="${idx}"
-          value="${row.sl_thuc || ""}"
-          style="${row.needReview ? 'background:#fff3cd;' : ''}">
-      </td>
-      <td class="col-manv">
-        <select data-role="manv" data-idx="${idx}">
-          <option value="">-- Chọn --</option>
-          ${STATE.nhanVienOptionsHtml || ""}
-        </select>
-      </td>
-      <td style="display:none;">${escapeHtml(row.tennv_phutrach || "")}</td>
-      <td>${escapeHtml(row.trang_thai_dong || "")}</td>
-      <td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeHtml(row.ghi_chu || "")}"></td>
+  <input data-role="sl_thuc"
+    data-idx="${idx}"
+    value="${row.sl_thuc || ""}"
+    style="${row.needReview ? 'background:#ffeeba' : ''}"
+  >
+</td>
+      <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}"></td>
+      <td style="display:none;">${escapeHtml(row.tennv_phutrach)}</td>
+      <td>
+  ${row.needReview ? "cần kiểm tra" : escapeHtml(row.trang_thai_dong)}
+</td>
+      <td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}"></td>
     `;
 
-    tbody.appendChild(tr);
+    tr.addEventListener("click", (e) => {
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea" || e.target?.closest("input") || e.target?.closest("select")) {
+        return;
+      }
+      STATE.selectedIndex = idx;
+      renderBang();
+    });
 
-    const manvSelect = tr.querySelector('select[data-role="manv"]');
-    if (manvSelect) {
-      manvSelect.value = row.manv_phutrach || "";
-    }
+    tbody.appendChild(tr);
   });
 
+  ganSuKienBang();
   updateHeaderCheckboxState();
 }
 
