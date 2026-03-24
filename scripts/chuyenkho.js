@@ -277,27 +277,8 @@ async function fetchXntRows(masps) {
 
 /* =========================================================
    8) LẤY TÊN HÀNG
-
-async function fetchTenHangMap(masps) {
-  if (!masps?.length) return new Map();
-
-  const { data, error } = await supabase
-    .from("dmhanghoa")
-    .select("masp, tensp")
-    .in("masp", masps);
-
-  if (error) {
-    console.warn("fetchTenHangMap error:", error);
-    return new Map();
-  }
-
-  const m = new Map();
-  (data || []).forEach((r) => {
-    m.set(normalizeMasp(r.masp), String(r.tensp || ""));
-  });
-  return m;
-}
 ========================================================= */
+
 
 /* =========================================================
    9) LOGIC GỢI Ý
@@ -358,7 +339,7 @@ function calcMoveQty(cs1, cs2, goiy) {
   return 0;
 }
 
-function buildSuggestionRows({ xntRows, tenHangMap }) {
+function buildSuggestionRows({ xntRows }) {
   const out = [];
 
   for (const r of xntRows) {
@@ -377,7 +358,6 @@ function buildSuggestionRows({ xntRows, tenHangMap }) {
       selected: false,
       done: false,
       masp: r.masp,
-      tenhang: tenHangMap.get(r.masp) || "",
       size: r.size,
       ton_nguon: tonNguon,
       ton_dich: tonDich,
@@ -426,13 +406,10 @@ async function layGoiY() {
       return;
     }
 
-    const [xntRows, tenHangMap] = await Promise.all([
-      fetchXntRows(masps),
-      fetchTenHangMap(masps),
-    ]);
+    const xntRows = await fetchXntRows(masps);
 
     // Bước 1: dựng toàn bộ gợi ý theo logic ngày như cũ
-    const baseRows = buildSuggestionRows({ xntRows, tenHangMap });
+    const baseRows = buildSuggestionRows({ xntRows });
 
     // Bước 2: nếu textarea có nhập thì lọc thêm 1 lần nữa trên baseRows
     STATE.rows = filterSuggestionRowsByTextarea(baseRows);
@@ -465,7 +442,7 @@ function renderBang() {
       <td><input type="checkbox" data-role="selected" data-idx="${idx}" ${row.selected ? "checked" : ""}></td>
       <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""} ${row.selected ? "" : "disabled"}></td>
       <td class="col-masp" data-role="open-stock" data-idx="${idx}">${escapeHtml(row.masp)}</td>
-      <td>${escapeHtml(row.tenhang)}</td>
+      
       <td>${escapeHtml(row.size)}</td>
       <td>${row.ton_nguon || ""}</td>
 <td>${row.ton_dich || ""}</td>
@@ -817,7 +794,7 @@ function getDetailPayload() {
     so_ct: $("sohd").value.trim(),
     stt: idx + 1,
     masp: r.masp,
-    tenhang: r.tenhang,
+    
     size: r.size,
     ton_nguon: toNumber(r.ton_nguon),
     ton_dich: toNumber(r.ton_dich),
@@ -997,7 +974,7 @@ async function napPhieu(soCtParam = "") {
         done: !!r.done,
         needReview: false, // ✅ thêm dòng này
         masp: normalizeMasp(r.masp),
-        tenhang: r.tenhang || "",
+        
         size: normalizeSize(r.size),
         ton_nguon: toNumber(r.ton_nguon),
         ton_dich: toNumber(r.ton_dich),
@@ -1014,7 +991,7 @@ async function napPhieu(soCtParam = "") {
         so_ct: soCt,
         stt: r.stt,
         masp: row.masp,
-        tenhang: row.tenhang,
+        
         size: row.size,
         ton_nguon: row.ton_nguon,
         ton_dich: row.ton_dich,
