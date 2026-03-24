@@ -823,6 +823,16 @@ async function luuPhieu() {
     }
 
     const header = getHeaderPayload();
+
+    // Chỉ giữ lại các dòng đã chọn
+    STATE.rows = STATE.rows.filter(r => !!r.selected);
+    STATE.selectedIndex = STATE.rows.length ? 0 : -1;
+
+    if (!STATE.rows.length) {
+      alert("Không có dòng nào được chọn để lưu.");
+      return;
+    }
+
     const details = getDetailPayload();
 
     const isMoi = $("hd_state").value === "moi";
