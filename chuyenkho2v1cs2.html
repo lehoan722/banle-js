@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>CHUYỂN KHO 2V1 - CS2</title>
 
   <style>
-    html, body {
+    html,
+    body {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -32,14 +34,17 @@
       box-sizing: border-box;
     }
 
-    .menu-left, .menu-right {
+    .menu-left,
+    .menu-right {
       display: flex;
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
     }
 
-    .menu-bar input, .menu-bar button, .menu-bar select {
+    .menu-bar input,
+    .menu-bar button,
+    .menu-bar select {
       font-size: 15px;
       padding: 4px 6px;
     }
@@ -54,7 +59,7 @@
 
     .filter-bar {
       display: grid;
-      grid-template-columns: 120px 120px 1fr auto auto;
+      grid-template-columns: 130px 130px 460px 90px 90px;
       gap: 8px;
       padding: 8px;
       background: #eef3fb;
@@ -72,8 +77,9 @@
     }
 
     #textarea-masp {
-      width: 100%;
+      width: 460px;
       min-height: 88px;
+      max-width: 460px;
       resize: vertical;
       grid-column: 1 / span 3;
     }
@@ -82,6 +88,11 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+    }
+
+    .filter-actions button {
+      min-width: 86px;
+      white-space: nowrap;
     }
 
     .main {
@@ -104,7 +115,8 @@
       font-size: 14px;
     }
 
-    th, td {
+    th,
+    td {
       border: 1px solid #d8d8d8;
       padding: 4px 6px;
       text-align: center;
@@ -135,7 +147,8 @@
     }
 
     .sidebar {
-      width: 330px;
+      width: 430px;
+      min-width: 430px;
       border-left: 1px solid #cfd7e6;
       background: #fff;
       display: flex;
@@ -185,11 +198,25 @@
       align-items: center;
     }
 
-    .info-grid input, .info-grid textarea {
+    .info-grid input,
+    .info-grid textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 5px;
       font-size: 14px;
+    }
+
+    .info-grid label {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .info-grid input[readonly] {
+      background: #f7f7f7;
+    }
+
+    #ghi_chu_phieu {
+      min-height: 140px;
     }
 
     #history-box {
@@ -227,6 +254,9 @@
       background: #fff8d8;
     }
   </style>
+
+  <link rel="stylesheet" href="chuyenkho.css">
+
 </head>
 
 <body class="popupnhanh">
@@ -251,7 +281,8 @@
     <div class="filter-bar">
       <input id="tu_ngay" type="date" />
       <input id="den_ngay" type="date" />
-      <textarea id="textarea-masp" placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
+      <textarea id="textarea-masp"
+        placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
 
       <div class="filter-actions">
         <button id="btn-goi-y" type="button">Lấy gợi ý</button>
@@ -269,8 +300,18 @@
         <table id="bangketqua">
           <thead>
             <tr>
-              <th style="width:36px">Chọn</th>
-              <th style="width:46px">Xong</th>
+              <th style="width:36px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                  <span>Chọn</span>
+                  <input type="checkbox" id="check-all-selected" title="Chọn/Bỏ chọn tất cả">
+                </div>
+              </th>
+              <th style="width:46px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                  <span>Xong</span>
+                  <input type="checkbox" id="check-all-done" title="Đánh dấu/Bỏ đánh dấu tất cả">
+                </div>
+              </th>
               <th style="width:130px">Mã SP</th>
               <th>Tên hàng</th>
               <th style="width:65px">Size</th>
@@ -280,8 +321,8 @@
               <th style="width:70px">SL gợi ý</th>
               <th style="width:80px">SL duyệt</th>
               <th style="width:80px">SL thực</th>
-              <th style="width:110px">Mã NV</th>
-              <th style="width:130px">Tên NV</th>
+              <th style="width:90px">Mã NV</th>
+              <th style="width:130px; display:none;">Tên NV</th>
               <th style="width:130px">Trạng thái</th>
               <th style="width:180px">Ghi chú</th>
             </tr>
@@ -300,7 +341,6 @@
         <div class="tab-content">
           <div class="tab-pane" id="thongtin">
             <div class="info-grid">
-               
               <label>Loại CT</label><input id="loai_ct" value="ck2v1_cs2" readonly />
               <label>Từ cơ sở</label><input id="tu_coso" value="cs2" readonly />
               <label>Đến cơ sở</label><input id="den_coso" value="cs1" readonly />
@@ -319,7 +359,7 @@
               <button id="btn-them-moi" type="button">Thêm mới</button>
               <button id="btn-luu" type="button">Lưu dữ liệu</button>
               <button id="btn-giao-viec" type="button">Giao việc</button>
-              <button id="btn-danh-dau-xong" type="button">Đánh dấu xong</button>
+
               <button id="btn-tao-ccn" type="button">Tạo phiếu CCN</button>
               <button id="btn-xoa-dong" type="button">Xóa dòng</button>
             </div>
@@ -337,9 +377,11 @@
       <button id="btn-footer-luu" type="button">Lưu dữ liệu</button>
       <button id="btn-footer-mo" type="button">Mở phiếu</button>
       <button id="btn-footer-giao" type="button">Giao việc</button>
-      <button id="btn-footer-xong" type="button">Đánh dấu xong</button>
+
       <button id="btn-footer-tao-ccn" type="button">Tạo phiếu CCN</button>
       <button id="btn-footer-xoa" type="button">Xóa dòng</button>
+      <button id="btn-footer-goi-y" type="button">Lấy gợi ý</button>
+      <button id="btn-footer-xoa-goi-y" type="button">Xóa gợi ý</button>
       <button id="btn-footer-thoat" type="button">Thoát</button>
     </div>
   </div>
@@ -356,5 +398,25 @@
 
   <script src="scripts/stockQuickPopup.js"></script>
   <script type="module" src="./scripts/chuyenkho.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnTopGoiY = document.getElementById('btn-goi-y');
+      const btnTopXoaGoiY = document.getElementById('btn-xoa-goi-y');
+
+      const btnFooterGoiY = document.getElementById('btn-footer-goi-y');
+      const btnFooterXoaGoiY = document.getElementById('btn-footer-xoa-goi-y');
+
+      if (btnTopGoiY && btnFooterGoiY) {
+        btnFooterGoiY.addEventListener('click', () => btnTopGoiY.click());
+      }
+
+      if (btnTopXoaGoiY && btnFooterXoaGoiY) {
+        btnFooterXoaGoiY.addEventListener('click', () => btnTopXoaGoiY.click());
+      }
+    });
+  </script>
+
 </body>
+
 </html>
