@@ -1119,15 +1119,23 @@ function buildCcnPayloadFromDoneRows() {
   };
 }
 
-function taoPhieuCCN() {
-  const payload = buildCcnPayloadFromDoneRows();
-  if (!payload) {
-    alert("Không có dòng hoàn thành hợp lệ để tạo phiếu CCN.");
-    return;
-  }
+async function taoPhieuCCN() {
+  try {
+    // Lưu phiếu hiện tại trước
+    await luuPhieu({ silent: true });
 
-  localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-  window.open(PAGE_CFG.ccnTargetUrl, "_blank");
+    // Sau khi lưu xong mới tạo payload CCN
+    const payload = buildCcnPayloadFromDoneRows();
+    if (!payload) {
+      alert("Không có dòng hoàn thành hợp lệ để tạo phiếu CCN.");
+      return;
+    }
+
+    localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+    window.open(PAGE_CFG.ccnTargetUrl, "_blank");
+  } catch (e) {
+    showError("Không tạo được phiếu CCN.", e);
+  }
 }
 
 /* =========================================================
