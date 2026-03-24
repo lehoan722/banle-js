@@ -648,6 +648,19 @@ function updateHeaderCheckboxState() {
   }
 }
 
+function updateTrangThaiPhieu() {
+  if (!STATE.rows.length) return;
+
+  const allDone = STATE.rows.every(r => r.done);
+
+  if (allDone) {
+    $("trang_thai").value = "da_chuyen";
+  } else {
+    $("trang_thai").value = "da_giao";
+  }
+}
+
+
 function applySelectedState(row, checked) {
   row.selected = checked;
 
@@ -675,6 +688,8 @@ function applyDoneState(row, checked) {
     row.sl_thuc = 0;
     row.trang_thai_dong = row.selected ? "de_xuat" : "";
   }
+
+  updateTrangThaiPhieu();
 }
 
 function handleSelectedGroupLogic(idx, checked) {
