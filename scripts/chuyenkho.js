@@ -598,17 +598,11 @@ async function recheckAllRows() {
       const oldQty = toNumber(row.sl_duyet);
 
       if (goiy !== PAGE_CFG.dir || newQty <= 0) {
-        // ❌ không còn cần chuyển
         row.needReview = true;
-        row.sl_thuc = 0;
       } else if (newQty !== oldQty) {
-        // ⚠️ số lượng thay đổi
         row.needReview = true;
-        row.sl_thuc = newQty;
       } else {
-        // ✅ vẫn đúng
         row.needReview = false;
-        row.sl_thuc = oldQty;
       }
     });
 
@@ -969,9 +963,7 @@ async function napPhieu(soCtParam = "") {
     });
 
     renderBang();
-    capNhatTong();
-
-    await recheckAllRows(); // ✅ thêm dòng này
+    capNhatTong();    
 
     await napHistory(soCt);
   } catch (e) {
