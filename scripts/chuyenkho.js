@@ -504,6 +504,13 @@ function ganSuKienBang() {
       const checked = !!e.target.checked;
       const row = STATE.rows[idx];
 
+      // Không cho tích Xong nếu chưa tích Chọn
+      if (checked && !row.selected) {
+        alert("Phải tích chọn trước rồi mới được tích xong.");
+        e.target.checked = false;
+        return;
+      }
+
       applyDoneState(row, checked);
 
       renderBang();
@@ -1119,23 +1126,16 @@ function buildCcnPayloadFromDoneRows() {
   };
 }
 
-async function taoPhieuCCN() {
-  try {
-    // Lưu phiếu hiện tại trước
-    await luuPhieu({ silent: true });
+function taoPhieuCCN() {
 
-    // Sau khi lưu xong mới tạo payload CCN
-    const payload = buildCcnPayloadFromDoneRows();
-    if (!payload) {
-      alert("Không có dòng hoàn thành hợp lệ để tạo phiếu CCN.");
-      return;
-    }
-
-    localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-    window.open(PAGE_CFG.ccnTargetUrl, "_blank");
-  } catch (e) {
-    showError("Không tạo được phiếu CCN.", e);
+  const payload = buildCcnPayloadFromDoneRows();
+  if (!payload) {
+    alert("Không có dòng hoàn thành hợp lệ để tạo phiếu CCN.");
+    return;
   }
+
+  localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+  window.open(PAGE_CFG.ccnTargetUrl, "_blank");
 }
 
 /* =========================================================
