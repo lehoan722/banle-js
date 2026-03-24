@@ -575,7 +575,17 @@ function ganSuKienBang() {
     chkAllDone.dataset.bound = "1";
     chkAllDone.addEventListener("click", (e) => e.stopPropagation());
     chkAllDone.addEventListener("change", (e) => {
-      setAllDone(!!e.target.checked);
+      const checked = !!e.target.checked;
+
+      const hasSelected = STATE.rows.some(r => !!r.selected);
+      if (!hasSelected) {
+        alert("Phải tích chọn ít nhất một dòng trước rồi mới được tích xong.");
+        e.target.checked = false;
+        e.target.indeterminate = false;
+        return;
+      }
+
+      setAllDone(checked);
       renderBang();
       capNhatTong();
     });
@@ -644,13 +654,15 @@ function updateHeaderCheckboxState() {
   }
 
   if (chkAllDone) {
-    if (!STATE.rows.length) {
+    const selectedRows = STATE.rows.filter(r => !!r.selected);
+
+    if (!selectedRows.length) {
       chkAllDone.checked = false;
       chkAllDone.indeterminate = false;
     } else {
-      const doneCount = STATE.rows.filter(r => !!r.done).length;
-      chkAllDone.checked = doneCount === STATE.rows.length;
-      chkAllDone.indeterminate = doneCount > 0 && doneCount < STATE.rows.length;
+      const doneCount = selectedRows.filter(r => !!r.done).length;
+      chkAllDone.checked = doneCount === selectedRows.length;
+      chkAllDone.indeterminate = doneCount > 0 && doneCount < selectedRows.length;
     }
   }
 }
@@ -731,7 +743,10 @@ function setAllSelected(checked) {
 }
 
 function setAllDone(checked) {
-  STATE.rows.forEach(row => applyDoneState(row, checked));
+  STATE.rows.forEach(row => {
+    if (!row.selected) return; // chỉ xử lý các dòng đã chọn
+    applyDoneState(row, checked);
+  });
 }
 
 /* =========================================================
