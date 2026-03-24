@@ -18,6 +18,7 @@ import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
 import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchuyenkho.js';
+import { showPageLoading, hidePageLoading, setPageLoadingText } from './pageLoading.js';
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
@@ -100,6 +101,8 @@ async function checkInStoreLocation(pointsOverride) {
 // Khởi tạo âm thanh & tạo 2 helper toàn cục '/scripts/success.wav'
 
 export async function khoiTaoUngDung() {
+
+  showPageLoading("Đang tải dữ liệu ...", { timeout: 15000 });
 
   window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
 
@@ -450,7 +453,7 @@ export async function khoiTaoUngDung() {
     });
   }
 
-    // ===== NÚT CCN: gọi popup chuyển kho thủ công =====
+  // ===== NÚT CCN: gọi popup chuyển kho thủ công =====
   const btnCCN = document.getElementById("btnCCN");
   if (btnCCN && !btnCCN.dataset.boundPopupCcn) {
     btnCCN.dataset.boundPopupCcn = "1";
@@ -860,6 +863,7 @@ export async function khoiTaoUngDung() {
     }
   }
 
+  hidePageLoading(150);
 }
 
 export function setHoaDonState(state) {
