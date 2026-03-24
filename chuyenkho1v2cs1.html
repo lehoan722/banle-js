@@ -300,8 +300,18 @@
         <table id="bangketqua">
           <thead>
             <tr>
-              <th style="width:36px">Chọn</th>
-              <th style="width:46px">Xong</th>
+              <th style="width:36px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                  <span>Chọn</span>
+                  <input type="checkbox" id="check-all-selected" title="Chọn/Bỏ chọn tất cả">
+                </div>
+              </th>
+              <th style="width:46px">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                  <span>Xong</span>
+                  <input type="checkbox" id="check-all-done" title="Đánh dấu/Bỏ đánh dấu tất cả">
+                </div>
+              </th>
               <th style="width:130px">Mã SP</th>
               <th>Tên hàng</th>
               <th style="width:65px">Size</th>
