@@ -196,13 +196,15 @@
      13 Tên NV (display:none sẵn)
      14 Trạng thái
      15 Ghi chú
+
+     #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),
+
   */
 
   /* Ẩn các cột không cần */
   #bangketqua thead th:nth-child(4),
-  #bangketqua tbody td:nth-child(4),
-  #bangketqua thead th:nth-child(5),
-  #bangketqua tbody td:nth-child(5),
+  #bangketqua tbody td:nth-child(4),  
   #bangketqua thead th:nth-child(6),
   #bangketqua tbody td:nth-child(6),
   #bangketqua thead th:nth-child(7),
