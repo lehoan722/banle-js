@@ -102,7 +102,7 @@ async function checkInStoreLocation(pointsOverride) {
 
 export async function khoiTaoUngDung() {
 
-  showPageLoading("Đang tải dữ liệu ...", { timeout: 15000 });
+  showPageLoading("Đang tải dữ liệu ...", { timeout: 150000 });
 
   window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
 
