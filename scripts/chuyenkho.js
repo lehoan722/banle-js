@@ -366,7 +366,7 @@ function buildSuggestionRows({ xntRows }) {
       sl_duyet: 0,
       sl_thuc: 0,
       manv_phutrach: "",
-      tennv_phutrach: "",
+      
       trang_thai_dong: "",
       ghi_chu: "",
     });
@@ -439,29 +439,27 @@ function renderBang() {
     if (idx === STATE.selectedIndex) tr.classList.add("highlight-row");
 
     tr.innerHTML = `
-  <td><input type="checkbox" data-role="selected" data-idx="${idx}" ${row.selected ? "checked" : ""}></td>
-  <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""} ${row.selected ? "" : "disabled"}></td>
-  <td class="col-masp" data-role="open-stock" data-idx="${idx}">${escapeHtml(row.masp)}</td>
-  <td>${escapeHtml(row.size)}</td>
-  <td>${row.ton_nguon || ""}</td>
-  <td>${row.ton_dich || ""}</td>
-  <td>${escapeHtml(row.huong_goiy)}</td>
-  <td>${row.sl_goiy || ""}</td>
-  <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet || ""}"></td>
-  <td class="col-slthuc">
-    <input data-role="sl_thuc"
-      data-idx="${idx}"
-      value="${row.sl_thuc || ""}"
-      style="${row.needReview ? 'background:#ffeeba' : ''}"
-    >
-  </td>
-  <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}"></td>
-  <td style="display:none;">${escapeHtml(row.tennv_phutrach)}</td>
-  <td>
-    ${row.needReview ? "cần kiểm tra" : escapeHtml(row.trang_thai_dong)}
-  </td>
-  <td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}"></td>
-`;
+      <td><input type="checkbox" data-role="selected" data-idx="${idx}" ${row.selected ? "checked" : ""}></td>
+      <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""} ${row.selected ? "" : "disabled"}></td>
+      <td class="col-masp" data-role="open-stock" data-idx="${idx}">${escapeHtml(row.masp)}</td>
+      
+      <td>${escapeHtml(row.size)}</td>
+      <td>${row.ton_nguon || ""}</td>
+<td>${row.ton_dich || ""}</td>
+      <td>${escapeHtml(row.huong_goiy)}</td>
+      <td>${row.sl_goiy || ""}</td>
+      <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet || ""}"></td>
+      <td class="col-slthuc">
+  <input data-role="sl_thuc"
+    data-idx="${idx}"
+    value="${row.sl_thuc || ""}"
+    style="${row.needReview ? 'background:#ffeeba' : ''}"
+  >
+</td>
+      <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}"></td>
+<td>${row.needReview ? "cần kiểm tra" : escapeHtml(row.trang_thai_dong)}</td>
+<td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}"></td>
+    `;
 
     tr.addEventListener("click", (e) => {
       const tag = (e.target?.tagName || "").toLowerCase();
@@ -982,7 +980,7 @@ async function napPhieu(soCtParam = "") {
         sl_duyet: toNumber(r.sl_duyet),
         sl_thuc: toNumber(r.sl_thuc),
         manv_phutrach: r.manv_phutrach || "",
-        tennv_phutrach: r.tennv_phutrach || "",
+        
         trang_thai_dong: r.trang_thai_dong || "de_xuat",
         ghi_chu: r.ghi_chu || "",
       };
