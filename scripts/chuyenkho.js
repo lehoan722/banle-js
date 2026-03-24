@@ -277,7 +277,7 @@ async function fetchXntRows(masps) {
 
 /* =========================================================
    8) LẤY TÊN HÀNG
-========================================================= */
+
 async function fetchTenHangMap(masps) {
   if (!masps?.length) return new Map();
 
@@ -297,6 +297,7 @@ async function fetchTenHangMap(masps) {
   });
   return m;
 }
+========================================================= */
 
 /* =========================================================
    9) LOGIC GỢI Ý
