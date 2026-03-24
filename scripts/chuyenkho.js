@@ -372,7 +372,7 @@ function buildSuggestionRows({ xntRows, tenHangMap }) {
       ton_dich: tonDich,
       huong_goiy: goiy,
       sl_goiy: slGoiy,
-      sl_duyet: slGoiy,
+      sl_duyet: 0,
       sl_thuc: 0,
       manv_phutrach: "",
       tennv_phutrach: "",
@@ -444,15 +444,15 @@ function renderBang() {
       <td class="col-masp" data-role="open-stock" data-idx="${idx}">${escapeHtml(row.masp)}</td>
       <td>${escapeHtml(row.tenhang)}</td>
       <td>${escapeHtml(row.size)}</td>
-      <td>${row.ton_nguon}</td>
-      <td>${row.ton_dich}</td>
+      <td>${row.ton_nguon || ""}</td>
+<td>${row.ton_dich || ""}</td>
       <td>${escapeHtml(row.huong_goiy)}</td>
-      <td>${row.sl_goiy}</td>
-      <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet}"></td>
+      <td>${row.sl_goiy || ""}</td>
+      <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet || ""}"></td>
       <td class="col-slthuc">
   <input data-role="sl_thuc"
     data-idx="${idx}"
-    value="${row.sl_thuc}"
+    value="${row.sl_thuc || ""}"
     style="${row.needReview ? 'background:#ffeeba' : ''}"
   >
 </td>
@@ -669,7 +669,6 @@ function applyDoneState(row, checked) {
   row.done = checked;
 
   if (checked) {
-    row.selected = true;
     row.trang_thai_dong = "da_chuyen";
     row.sl_thuc = toNumber(row.sl_duyet);
   } else {
@@ -963,7 +962,7 @@ async function napPhieu(soCtParam = "") {
     });
 
     renderBang();
-    capNhatTong();    
+    capNhatTong();
 
     await napHistory(soCt);
   } catch (e) {
@@ -1041,7 +1040,7 @@ async function danhDauXong() {
 
     rows.forEach((r) => {
       r.done = true;
-      r.selected = true;
+
       r.trang_thai_dong = "da_chuyen";
 
       r.sl_thuc = toNumber(r.sl_duyet);
