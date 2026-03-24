@@ -667,8 +667,9 @@ function applyDoneState(row, checked) {
   if (checked) {
     row.selected = true;
     row.trang_thai_dong = "da_chuyen";
-    if (!toNumber(row.sl_thuc)) row.sl_thuc = toNumber(row.sl_duyet);
+    row.sl_thuc = toNumber(row.sl_duyet);
   } else {
+    row.sl_thuc = 0;
     row.trang_thai_dong = row.selected ? "de_xuat" : "";
   }
 }
@@ -1041,9 +1042,7 @@ async function danhDauXong() {
       r.selected = true;
       r.trang_thai_dong = "da_chuyen";
 
-      if (!toNumber(r.sl_thuc)) {
-        r.sl_thuc = toNumber(r.sl_duyet);
-      }
+      r.sl_thuc = toNumber(r.sl_duyet);
     });
 
     renderBang();
