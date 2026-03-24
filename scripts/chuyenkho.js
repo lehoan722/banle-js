@@ -658,18 +658,16 @@ function applySelectedState(row, checked) {
   row.selected = checked;
 
   if (checked) {
-    // Khi chọn → cập nhật số lượng thực = duyệt
-    row.sl_thuc = toNumber(row.sl_duyet);
+    row.sl_duyet = toNumber(row.sl_goiy);
 
     if (!row.done) {
       row.trang_thai_dong = "de_xuat";
     }
   } else {
-    // Khi bỏ chọn → xoá số lượng thực
+    row.sl_duyet = 0;
     row.sl_thuc = 0;
-
+    row.done = false;
     row.trang_thai_dong = "";
-    row.done = false; // đảm bảo không còn trạng thái xong
   }
 }
 
