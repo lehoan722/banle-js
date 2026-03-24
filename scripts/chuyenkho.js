@@ -283,7 +283,7 @@ async function fetchTenHangMap(masps) {
 
   const { data, error } = await supabase
     .from("dmhanghoa")
-    .select("masp, tenhang")
+    .select("masp, tensp")
     .in("masp", masps);
 
   if (error) {
@@ -293,7 +293,7 @@ async function fetchTenHangMap(masps) {
 
   const m = new Map();
   (data || []).forEach((r) => {
-    m.set(normalizeMasp(r.masp), String(r.tenhang || ""));
+    m.set(normalizeMasp(r.masp), String(r.tensp || ""));
   });
   return m;
 }
