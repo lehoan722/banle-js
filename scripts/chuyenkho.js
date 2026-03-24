@@ -440,7 +440,7 @@ function renderBang() {
 
     tr.innerHTML = `
       <td><input type="checkbox" data-role="selected" data-idx="${idx}" ${row.selected ? "checked" : ""}></td>
-      <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""}></td>
+      <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""} ${row.selected ? "" : "disabled"}></td>
       <td class="col-masp" data-role="open-stock" data-idx="${idx}">${escapeHtml(row.masp)}</td>
       <td>${escapeHtml(row.tenhang)}</td>
       <td>${escapeHtml(row.size)}</td>
