@@ -477,6 +477,7 @@ function renderBang() {
   });
 
   ganSuKienBang();
+  updateHeaderCheckboxState();
 }
 
 function ganSuKienBang() {
@@ -489,13 +490,8 @@ function ganSuKienBang() {
     el.addEventListener("change", (e) => {
       const idx = Number(e.target.dataset.idx);
       const checked = !!e.target.checked;
-      const row = STATE.rows[idx];
 
-      row.selected = checked;
-
-      if (!row.done) {
-        row.trang_thai_dong = checked ? "de_xuat" : "";
-      }
+      handleSelectedGroupLogic(idx, checked);
 
       renderBang();
       capNhatTong();
@@ -508,15 +504,7 @@ function ganSuKienBang() {
       const checked = !!e.target.checked;
       const row = STATE.rows[idx];
 
-      row.done = checked;
-
-      if (checked) {
-        row.selected = true;
-        row.trang_thai_dong = "da_chuyen";
-        if (!toNumber(row.sl_thuc)) row.sl_thuc = toNumber(row.sl_duyet);
-      } else {
-        row.trang_thai_dong = row.selected ? "de_xuat" : "";
-      }
+      applyDoneState(row, checked);
 
       renderBang();
       capNhatTong();
@@ -563,6 +551,28 @@ function ganSuKienBang() {
       STATE.rows[idx].ghi_chu = e.target.value || "";
     });
   });
+
+  const chkAllSelected = $("check-all-selected");
+  if (chkAllSelected && !chkAllSelected.dataset.bound) {
+    chkAllSelected.dataset.bound = "1";
+    chkAllSelected.addEventListener("click", (e) => e.stopPropagation());
+    chkAllSelected.addEventListener("change", (e) => {
+      setAllSelected(!!e.target.checked);
+      renderBang();
+      capNhatTong();
+    });
+  }
+
+  const chkAllDone = $("check-all-done");
+  if (chkAllDone && !chkAllDone.dataset.bound) {
+    chkAllDone.dataset.bound = "1";
+    chkAllDone.addEventListener("click", (e) => e.stopPropagation());
+    chkAllDone.addEventListener("change", (e) => {
+      setAllDone(!!e.target.checked);
+      renderBang();
+      capNhatTong();
+    });
+  }
 }
 
 async function recheckAllRows() {
@@ -615,6 +625,87 @@ function capNhatTong() {
   $("tong_goiy").value = String(STATE.rows.reduce((s, r) => s + toNumber(r.sl_goiy), 0));
   $("tong_duyet").value = String(STATE.rows.reduce((s, r) => s + toNumber(r.sl_duyet), 0));
   $("tong_thuc").value = String(STATE.rows.reduce((s, r) => s + toNumber(r.sl_thuc), 0));
+}
+
+function updateHeaderCheckboxState() {
+  const chkAllSelected = $("check-all-selected");
+  const chkAllDone = $("check-all-done");
+
+  if (chkAllSelected) {
+    if (!STATE.rows.length) {
+      chkAllSelected.checked = false;
+      chkAllSelected.indeterminate = false;
+    } else {
+      const selectedCount = STATE.rows.filter(r => !!r.selected).length;
+      chkAllSelected.checked = selectedCount === STATE.rows.length;
+      chkAllSelected.indeterminate = selectedCount > 0 && selectedCount < STATE.rows.length;
+    }
+  }
+
+  if (chkAllDone) {
+    if (!STATE.rows.length) {
+      chkAllDone.checked = false;
+      chkAllDone.indeterminate = false;
+    } else {
+      const doneCount = STATE.rows.filter(r => !!r.done).length;
+      chkAllDone.checked = doneCount === STATE.rows.length;
+      chkAllDone.indeterminate = doneCount > 0 && doneCount < STATE.rows.length;
+    }
+  }
+}
+
+function applySelectedState(row, checked) {
+  row.selected = checked;
+  if (!row.done) {
+    row.trang_thai_dong = checked ? "de_xuat" : "";
+  }
+}
+
+function applyDoneState(row, checked) {
+  row.done = checked;
+
+  if (checked) {
+    row.selected = true;
+    row.trang_thai_dong = "da_chuyen";
+    if (!toNumber(row.sl_thuc)) row.sl_thuc = toNumber(row.sl_duyet);
+  } else {
+    row.trang_thai_dong = row.selected ? "de_xuat" : "";
+  }
+}
+
+function handleSelectedGroupLogic(idx, checked) {
+  const row = STATE.rows[idx];
+  if (!row) return;
+
+  const masp = normalizeMasp(row.masp);
+
+  // Luôn áp dụng cho dòng vừa thao tác trước
+  applySelectedState(row, checked);
+
+  // Chỉ có tick lên mới xét lan theo nhóm
+  if (!checked) return;
+
+  const sameRows = STATE.rows
+    .map((r, i) => ({ r, i }))
+    .filter(x => normalizeMasp(x.r.masp) === masp);
+
+  const otherRows = sameRows.filter(x => x.i !== idx);
+
+  // Nếu đã có ít nhất 1 dòng khác cùng mã đang check sẵn
+  // thì không lan nữa, giữ nguyên trạng thái cũ
+  const hasAnyOtherChecked = otherRows.some(x => !!x.r.selected);
+  if (hasAnyOtherChecked) return;
+
+  // Nếu tất cả dòng còn lại đều chưa check -> tick toàn bộ các dòng còn lại
+  otherRows.forEach(x => applySelectedState(x.r, true));
+}
+
+function setAllSelected(checked) {
+  STATE.rows.forEach(row => applySelectedState(row, checked));
+}
+
+function setAllDone(checked) {
+  STATE.rows.forEach(row => applyDoneState(row, checked));
 }
 
 /* =========================================================
