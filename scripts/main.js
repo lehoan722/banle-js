@@ -865,9 +865,28 @@ export async function khoiTaoUngDung() {
     }
 
   } finally {
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await doiTrangSanSangHienThi();
     hidePageLoading();
   }
+}
+
+async function doiTrangSanSangHienThi() {
+  // Nếu trang chưa load xong toàn bộ resource thì đợi tiếp
+  if (document.readyState !== "complete") {
+    await new Promise(resolve => {
+      window.addEventListener("load", resolve, { once: true });
+    });
+  }
+
+  // Đợi browser render ít nhất 2 nhịp
+  await new Promise(resolve =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(resolve)
+    )
+  );
+
+  // Chờ thêm một nhịp nhỏ để DOM/layout ổn định hơn với trang nặng
+  await new Promise(resolve => setTimeout(resolve, 250));
 }
 
 export function setHoaDonState(state) {
