@@ -204,6 +204,16 @@ function getMaspsFromTextarea() {
   return uniq(list);
 }
 
+function getKeywordFiltersFromTextarea() {
+  const text = $("textarea-masp").value || "";
+  return uniq(
+    text
+      .split(/\r?\n/)
+      .map(v => String(v || "").trim().toUpperCase())
+      .filter(Boolean)
+  );
+}
+
 /* =========================================================
    6) NẾU TEXTAREA RỖNG -> LẤY MÃ THEO KHOẢNG NGÀY
 ========================================================= */
@@ -389,16 +399,23 @@ function buildSuggestionRows({ xntRows, tenHangMap }) {
   return out;
 }
 
+function filterSuggestionRowsByTextarea(rows) {
+  const keywords = getKeywordFiltersFromTextarea();
+  if (!keywords.length) return rows;
+
+  return rows.filter((row) => {
+    const masp = normalizeMasp(row.masp);
+    return keywords.some((kw) => masp.includes(kw));
+  });
+}
+
 /* =========================================================
    10) LẤY GỢI Ý
 ========================================================= */
 async function layGoiY() {
   try {
-    const textareaMasps = getMaspsFromTextarea();
-
-    const masps = textareaMasps.length
-      ? textareaMasps
-      : await fetchMaspsByDateRange();
+    // Luôn lấy danh sách mã gốc theo khoảng ngày trước
+    const masps = await fetchMaspsByDateRange();
 
     if (!masps.length) {
       alert("Không có mã sản phẩm để gợi ý.");
@@ -413,7 +430,12 @@ async function layGoiY() {
       fetchTenHangMap(masps),
     ]);
 
-    STATE.rows = buildSuggestionRows({ xntRows, tenHangMap });
+    // Bước 1: dựng toàn bộ gợi ý theo logic ngày như cũ
+    const baseRows = buildSuggestionRows({ xntRows, tenHangMap });
+
+    // Bước 2: nếu textarea có nhập thì lọc thêm 1 lần nữa trên baseRows
+    STATE.rows = filterSuggestionRowsByTextarea(baseRows);
+
     renderBang();
     capNhatTong();
     $("hd_state").value = $("hd_state").value || "moi";
