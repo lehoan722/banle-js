@@ -119,10 +119,23 @@
     text-align: right;
   }
 
-  .sq-stock-popup tr.sum-row td {
+    .sq-stock-popup tr.sum-row td {
     font-weight: 600;
     border-top: 1px solid #d1d5db;
     background: #f9fafb;
+  }
+
+  .sq-stock-popup tr.sq-hide-row td {
+    cursor: pointer;
+  }
+
+  .sq-stock-popup tr.sq-hide-row:hover td {
+    background: #eef2f7;
+  }
+
+  .sq-stock-popup tr.sq-hide-row td:first-child {
+    color: #111827;
+    font-weight: 700;
   }
 
     .sq-stock-popup-header {
@@ -571,16 +584,16 @@
 
     const sumRow = rows.length
       ? `
-            <tr class="sum-row">
-        <td>tong</td>
-        <td class="num sq-col-k1">${sum1 || ""}</td>
-        <td class="num sq-col-k2">${sum2 || ""}</td>
-        <td class="num sq-col-b1">${sumBan1 || ""}</td>
-        <td class="num sq-col-b2">${sumBan2 || ""}</td>
-        <td class="num sq-blue">${sumNhap || ""}</td>
-        <td class="num">${sumTongBan || ""}</td>
-        <td class="num sq-red">${sumTongTon || ""}</td>
-      </tr>`
+        <tr class="sum-row sq-hide-row" title="Bấm để đóng popup">
+    <td>Tổng / Ẩn</td>
+    <td class="num sq-col-k1">${sum1 || ""}</td>
+    <td class="num sq-col-k2">${sum2 || ""}</td>
+    <td class="num sq-col-b1">${sumBan1 || ""}</td>
+    <td class="num sq-col-b2">${sumBan2 || ""}</td>
+    <td class="num sq-blue">${sumNhap || ""}</td>
+    <td class="num">${sumTongBan || ""}</td>
+    <td class="num sq-red">${sumTongTon || ""}</td>
+  </tr>`
       : "";
 
     const vitriParts = [];
@@ -893,6 +906,15 @@
         e.stopPropagation();
         popup.classList.remove("show");
       };
+    }
+
+    const hideRow = popup.querySelector(".sq-hide-row");
+    if (hideRow) {
+      hideRow.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        popup.classList.remove("show");
+      });
     }
 
     const headerEl = popup.querySelector(".sq-stock-popup-header");
