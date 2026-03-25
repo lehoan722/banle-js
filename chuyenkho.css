@@ -191,8 +191,7 @@
      8 SL gợi ý
      9 SL duyệt
      10 SL thực
-     11 Mã NV
-     12 Tên NV (display:none sẵn)
+     11 Mã NV     
      13 Trạng thái
      14 Ghi chú
 
@@ -213,9 +212,7 @@
   #bangketqua thead th:nth-child(9),
   #bangketqua tbody td:nth-child(9),
   #bangketqua thead th:nth-child(11),
-  #bangketqua tbody td:nth-child(11),
-  #bangketqua thead th:nth-child(12),
-  #bangketqua tbody td:nth-child(12) {
+  #bangketqua tbody td:nth-child(11)   {
     display: none !important;
   }
 
