@@ -583,6 +583,11 @@ function ganSuKienBang() {
 
       applyDoneState(row, checked);
 
+      // 👉 THÊM ĐOẠN NÀY
+      if (checked) {
+        openQuickStock(row.masp);
+      }
+
       renderBang();
       capNhatTong();
     });
