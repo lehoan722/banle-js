@@ -34,6 +34,8 @@ const STATE = {
   oldHeader: null,
   oldRowsMap: new Map(),
   selectedIndex: -1,
+  chungLoaiMap: new Map(),   // masp -> chungloai
+  allChungLoaiSet: new Set() // tập tất cả mã chủng loại có trong DB
 };
 
 /* =========================================================
@@ -180,6 +182,8 @@ async function taoPhieuMoi() {
     STATE.oldHeader = null;
     STATE.oldRowsMap = new Map();
     STATE.selectedIndex = -1;
+    STATE.chungLoaiMap = new Map();
+    STATE.allChungLoaiSet = new Set();
     renderBang();
     capNhatTong();
 
@@ -212,6 +216,26 @@ function getKeywordFiltersFromTextarea() {
       .map(v => String(v || "").trim().toUpperCase())
       .filter(Boolean)
   );
+}
+
+function splitTextareaKeywords() {
+  const keywords = getKeywordFiltersFromTextarea();
+
+  const typeKeywords = [];
+  const maspKeywords = [];
+
+  keywords.forEach((kw) => {
+    if (STATE.allChungLoaiSet.has(kw)) {
+      typeKeywords.push(kw);
+    } else {
+      maspKeywords.push(kw);
+    }
+  });
+
+  return {
+    typeKeywords: uniq(typeKeywords),
+    maspKeywords: uniq(maspKeywords)
+  };
 }
 
 /* =========================================================
@@ -279,6 +303,41 @@ async function fetchXntRows(masps) {
    8) LẤY TÊN HÀNG
 ========================================================= */
 
+/* =========================================================
+   8) LẤY CHỦNG LOẠI HÀNG
+========================================================= */
+async function fetchChungLoaiMap(masps) {
+  if (!masps?.length) {
+    return {
+      chungLoaiMap: new Map(),
+      allChungLoaiSet: new Set()
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("dmhanghoa")
+    .select("masp, chungloai")
+    .in("masp", masps);
+
+  if (error) throw error;
+
+  const chungLoaiMap = new Map();
+  const allChungLoaiSet = new Set();
+
+  (data || []).forEach((r) => {
+    const masp = normalizeMasp(r.masp);
+    const chungloai = String(r.chungloai || "").trim().toUpperCase();
+
+    if (masp) {
+      chungLoaiMap.set(masp, chungloai);
+    }
+    if (chungloai) {
+      allChungLoaiSet.add(chungloai);
+    }
+  });
+
+  return { chungLoaiMap, allChungLoaiSet };
+}
 
 /* =========================================================
    9) LOGIC GỢI Ý
@@ -366,7 +425,7 @@ function buildSuggestionRows({ xntRows }) {
       sl_duyet: 0,
       sl_thuc: 0,
       manv_phutrach: "",
-      
+
       trang_thai_dong: "",
       ghi_chu: "",
     });
@@ -381,12 +440,18 @@ function buildSuggestionRows({ xntRows }) {
 }
 
 function filterSuggestionRowsByTextarea(rows) {
-  const keywords = getKeywordFiltersFromTextarea();
-  if (!keywords.length) return rows;
+  const { typeKeywords, maspKeywords } = splitTextareaKeywords();
+
+  if (!typeKeywords.length && !maspKeywords.length) return rows;
 
   return rows.filter((row) => {
     const masp = normalizeMasp(row.masp);
-    return keywords.some((kw) => masp.includes(kw));
+    const chungloai = String(STATE.chungLoaiMap.get(masp) || "").trim().toUpperCase();
+
+    const matchMasp = maspKeywords.some((kw) => masp.includes(kw));
+    const matchType = typeKeywords.includes(chungloai);
+
+    return matchMasp || matchType;
   });
 }
 
@@ -401,12 +466,20 @@ async function layGoiY() {
     if (!masps.length) {
       alert("Không có mã sản phẩm để gợi ý.");
       STATE.rows = [];
+      STATE.chungLoaiMap = new Map();
+      STATE.allChungLoaiSet = new Set();
       renderBang();
       capNhatTong();
       return;
     }
 
-    const xntRows = await fetchXntRows(masps);
+    const [xntRows, dmhhInfo] = await Promise.all([
+      fetchXntRows(masps),
+      fetchChungLoaiMap(masps)
+    ]);
+
+    STATE.chungLoaiMap = dmhhInfo.chungLoaiMap || new Map();
+    STATE.allChungLoaiSet = dmhhInfo.allChungLoaiSet || new Set();
 
     // Bước 1: dựng toàn bộ gợi ý theo logic ngày như cũ
     const baseRows = buildSuggestionRows({ xntRows });
@@ -980,7 +1053,7 @@ async function napPhieu(soCtParam = "") {
         sl_duyet: toNumber(r.sl_duyet),
         sl_thuc: toNumber(r.sl_thuc),
         manv_phutrach: r.manv_phutrach || "",
-        
+
         trang_thai_dong: r.trang_thai_dong || "de_xuat",
         ghi_chu: r.ghi_chu || "",
       };
