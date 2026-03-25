@@ -183,19 +183,18 @@
      Thứ tự cột hiện tại:
      1 Chọn
      2 Xong
-     3 Mã SP
-     4 Tên hàng
-     5 Size
-     6 Tồn nguồn
-     7 Tồn đích
-     8 Hướng
-     9 SL gợi ý
-     10 SL duyệt
-     11 SL thực
-     12 Mã NV
-     13 Tên NV (display:none sẵn)
-     14 Trạng thái
-     15 Ghi chú
+     3 Mã SP     
+     4 Size
+     5 Tồn nguồn
+     6 Tồn đích
+     7 Hướng
+     8 SL gợi ý
+     9 SL duyệt
+     10 SL thực
+     11 Mã NV
+     12 Tên NV (display:none sẵn)
+     13 Trạng thái
+     14 Ghi chú
 
      #bangketqua thead th:nth-child(5),
   #bangketqua tbody td:nth-child(5),
@@ -203,8 +202,8 @@
   */
 
   /* Ẩn các cột không cần */
-  #bangketqua thead th:nth-child(4),
-  #bangketqua tbody td:nth-child(4),  
+  #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),  
   #bangketqua thead th:nth-child(6),
   #bangketqua tbody td:nth-child(6),
   #bangketqua thead th:nth-child(7),
@@ -213,10 +212,10 @@
   #bangketqua tbody td:nth-child(8),
   #bangketqua thead th:nth-child(9),
   #bangketqua tbody td:nth-child(9),
+  #bangketqua thead th:nth-child(11),
+  #bangketqua tbody td:nth-child(11),
   #bangketqua thead th:nth-child(12),
-  #bangketqua tbody td:nth-child(12),
-  #bangketqua thead th:nth-child(15),
-  #bangketqua tbody td:nth-child(15) {
+  #bangketqua tbody td:nth-child(12) {
     display: none !important;
   }
 
