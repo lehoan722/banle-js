@@ -120,10 +120,12 @@
   }
 
     .sq-stock-popup tr.sum-row td {
-    font-weight: 600;
-    border-top: 1px solid #d1d5db;
-    background: #f9fafb;
-  }
+  font-weight: 700;
+  border-top: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #2563eb;         /* xanh */
+  text-decoration: underline;  /* gạch chân */
+}
 
   .sq-stock-popup tr.sq-hide-row td {
     cursor: pointer;
@@ -383,6 +385,7 @@
     let vitri_cs2 = "";
     let nhap_dau_ma = "";
     let nhap_cuoi_ma = "";
+    let giale = "";
 
     const client = getSupabaseClient();
     if (!client) {
@@ -399,7 +402,7 @@
         }),
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, nhapdau")
+          .select("vitrikho1, vitrikho2, nhapdau, giale")
           .eq("masp", masp)
           .maybeSingle(),
       ]);
@@ -438,6 +441,7 @@
       } else if (hh) {
         vitri_cs1 = hh.vitrikho1 || "";
         vitri_cs2 = hh.vitrikho2 || "";
+        giale = hh.giale || "";
 
         // ✅ Ưu tiên ND từ dmhanghoa.nhapdau (nếu có)
         const ndRaw = hh.nhapdau ? String(hh.nhapdau).trim() : "";
@@ -490,7 +494,7 @@
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
 
-    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
+    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale };
   }
 
   // ===== HTML popup =====
@@ -506,6 +510,12 @@
 
     const nhap_dau_ma = payload && payload.nhap_dau_ma ? String(payload.nhap_dau_ma).trim() : "";
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
+    const giale = payload && payload.giale ? payload.giale : "";
+
+    function formatPrice(v) {
+      if (!v) return "";
+      return Number(v).toLocaleString("vi-VN");
+    }
 
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
       return `
@@ -619,7 +629,9 @@
       <div class="sq-stock-popup" data-masp="${upper}">
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
-  <span class="sq-title-text">Mã: ${upper} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}</span>
+  <span class="sq-title-text">
+  Mã: ${upper}${giale ? " / " + formatPrice(giale) : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+</span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
 </div>
 
