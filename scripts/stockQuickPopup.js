@@ -50,6 +50,15 @@
   .sq-red { color:#dc2626; font-weight:700; }
 .sq-blue { color:#2563eb; font-weight:700; }
 
+.sq-title-text {
+  font-weight: 600;
+}
+
+.sq-title-price {
+  color: #dc2626;
+  font-weight: 700;
+}
+
   .sq-stock-popup.show {
     display: block;
   }
@@ -630,7 +639,7 @@
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  Mã: ${upper}${giale ? " / " + formatPrice(giale) : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+  Mã: ${upper}${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
 </div>
