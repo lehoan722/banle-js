@@ -2838,7 +2838,6 @@ import "./stockQuickPopup.js";
         renderBangKetQua();
         kiemTraPhieu();
         state.daKiemTra = true;
-        state.bayMau = {};
     }
 
     async function docPhieuKiemTonTuDB(soPhieu) {
@@ -3406,11 +3405,11 @@ import "./stockQuickPopup.js";
                 items
             });
 
-          //  alert(
-              //  mode === "nhap"
-               //     ? `Đã đẩy ${items.length} dòng sang trang nhập kiểm.`
-              //      : `Đã đẩy ${items.length} dòng sang trang xuất kiểm.`
-           // );
+            //  alert(
+            //  mode === "nhap"
+            //     ? `Đã đẩy ${items.length} dòng sang trang nhập kiểm.`
+            //      : `Đã đẩy ${items.length} dòng sang trang xuất kiểm.`
+            // );
 
         } catch (err) {
             console.error(`[taoPhieuDieuChinhKiem:${mode}]`, err);
