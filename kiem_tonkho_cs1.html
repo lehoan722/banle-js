@@ -746,8 +746,8 @@
             e.preventDefault();
             if (!precheckNhaCungCapBeforeSave()) return;
 
-            if (window.NhapKiemKho && typeof window.NhapKiemKho.luuPhieuKiemNhapKho === "function") {
-                await window.NhapKiemKho.luuPhieuKiemNhapKho();
+            if (window.KiemTonKho && typeof window.KiemTonKho.luuPhieuKiemTonKho === "function") {
+                await window.KiemTonKho.luuPhieuKiemTonKho();
             }
         });
 
@@ -1628,8 +1628,8 @@
         });
     </script>
 
-    
-    
+
+
     <script type="module" src="./scripts/kiem_tonkho.js"></script>
 
 
