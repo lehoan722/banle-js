@@ -2115,18 +2115,23 @@ import "./stockQuickPopup.js";
             }
 
             const lines = rows.map((tr) => {
-                const col1 = String(tr.children[0]?.innerText || "").trim();
+                const col1 = String(tr.children[0]?.innerText || "").trim(); // mã hàng
 
-                // đổi toàn bộ xuống dòng trong ô Size/SL thành khoảng trắng
-                const col2 = String(tr.children[1]?.innerText || "")
+                const col2 = String(tr.children[1]?.innerText || "")         // kho
                     .replace(/\r/g, "")
                     .replace(/\n+/g, " ")
                     .replace(/\s+/g, " ")
                     .trim();
 
-                const col3 = String(tr.children[2]?.innerText || "").trim();
+                const col3 = String(tr.children[2]?.innerText || "")         // mẫu
+                    .replace(/\r/g, "")
+                    .replace(/\n+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
 
-                return [col1, col2, col3].join("\t");
+                const col4 = String(tr.children[3]?.innerText || "").trim(); // tổng SL
+
+                return [col1, col2, col3, col4].join("\t");
             }).filter(Boolean);
 
             const text = lines.join("\n");
@@ -2147,21 +2152,25 @@ import "./stockQuickPopup.js";
             .filter(Boolean);
 
         const nhapMoi = {};
+        const bayMauMoi = {};
 
         for (const line of lines) {
             const cols = line.split("\t");
 
             const masp = normalizeMasp(cols[0] || "");
-            const sizeSlText = String(cols[1] || "").trim();
-            const tongSlText = String(cols[2] || "").trim();
+            const khoText = String(cols[1] || "").trim();
+            const bayMauText = String(cols[2] || "").trim();
+            const tongSlText = String(cols[3] || "").trim();
 
             if (!masp) continue;
 
-            const items = parseSizeSlText(sizeSlText);
+            const khoItems = parseSizeSlText(khoText);
+            const bayMauItems = parseSizeSlText(bayMauText);
             const tongSl = normalizeNumber(tongSlText);
 
-            if (hasRealSizeItems(items)) {
-                items.forEach((item) => {
+            // 1) nạp kho
+            if (hasRealSizeItems(khoItems)) {
+                khoItems.forEach((item) => {
                     const key = makeKey(masp, item.size);
                     nhapMoi[key] = {
                         masp,
@@ -2169,10 +2178,22 @@ import "./stockQuickPopup.js";
                         sl: item.sl
                     };
                 });
-                continue;
             }
 
-            if (tongSl > 0) {
+            // 2) nạp mẫu
+            if (hasRealSizeItems(bayMauItems)) {
+                bayMauItems.forEach((item) => {
+                    const key = makeKey(masp, item.size);
+                    bayMauMoi[key] = {
+                        masp,
+                        size: item.size,
+                        sl: item.sl
+                    };
+                });
+            }
+
+            // 3) fallback cho kiểu cũ: chỉ có mã + kho + tổng, chưa có mẫu
+            if (!hasRealSizeItems(khoItems) && !hasRealSizeItems(bayMauItems) && tongSl > 0) {
                 const key = makeKey(masp, "0");
                 nhapMoi[key] = {
                     masp,
@@ -2182,7 +2203,7 @@ import "./stockQuickPopup.js";
             }
         }
 
-        return nhapMoi;
+        return { nhapMoi, bayMauMoi };
     }
 
     async function pasteDuLieuNhap() {
@@ -2193,8 +2214,13 @@ import "./stockQuickPopup.js";
                 return;
             }
 
-            const nhapMoi = parseClipboardToNhapMap(text);
-            const soDong = Object.keys(nhapMoi).length;
+            const { nhapMoi, bayMauMoi } = parseClipboardToNhapMap(text);
+
+            const soDong =
+                new Set([
+                    ...Object.values(nhapMoi).map(x => normalizeMasp(x.masp)),
+                    ...Object.values(bayMauMoi).map(x => normalizeMasp(x.masp))
+                ]).size;
 
             if (soDong === 0) {
                 alert("Dữ liệu dán không hợp lệ.");
@@ -2206,9 +2232,14 @@ import "./stockQuickPopup.js";
 
             const state = getState();
             state.nhap = nhapMoi;
+            state.bayMau = bayMauMoi;
             state.ketQua = {};
             state.selectedMasp = "";
-            state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
+
+            state.nhapOrder = [...new Set([
+                ...Object.values(nhapMoi).map(x => normalizeMasp(x.masp)),
+                ...Object.values(bayMauMoi).map(x => normalizeMasp(x.masp))
+            ])];
 
             renderBangKetQua();
             alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
