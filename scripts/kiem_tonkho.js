@@ -2847,12 +2847,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.body.appendChild(popup);
     }
-
-    if (e.key === "F11") {
-        e.preventDefault();
-        moPopupChonPhieuCu();
-        return;
-    }
+    
 });
 
 document.addEventListener("keydown", function (e) {
