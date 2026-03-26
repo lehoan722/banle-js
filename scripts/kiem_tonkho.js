@@ -3251,6 +3251,30 @@ async function taoPhieuDieuChinhKiem(mode) {
         );
     } catch (err) {
         console.error(`[taoPhieuDieuChinhKiem:${mode}]`, err);
-        alert("Có lỗi khi tạo phiếu điều chỉnh từ phiếu kiểm tồn.");
+        alert("Lỗi thật: " + (err?.message || err));
     }
+}
+
+async function docPhieuKiemTonTuDB(soPhieu) {
+    const sohd = String(soPhieu || "").trim();
+    if (!sohd) throw new Error("Chưa có số phiếu.");
+
+    const { data: phieuTong, error: errTong } = await window.supabase
+        .from("kiem_ton_kho")
+        .select("*")
+        .eq("so_phieu", sohd)
+        .maybeSingle();
+
+    if (errTong) throw errTong;
+    if (!phieuTong) throw new Error("Không tìm thấy phiếu kiểm tồn.");
+
+    const { data: rows, error: errRows } = await window.supabase
+        .from("ct_kiem_ton_kho")
+        .select("*")
+        .eq("so_phieu", sohd)
+        .order("stt", { ascending: true });
+
+    if (errRows) throw errRows;
+
+    return { phieuTong, rows: rows || [] };
 }
