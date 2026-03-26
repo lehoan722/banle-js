@@ -1043,14 +1043,14 @@ import "./stockQuickPopup.js";
   </td>
 
   <td contenteditable="true"
-      class="cell-nhap-sizesl"
-      data-masp="${escapeHtml(masp)}"
-      style="white-space: pre-line; text-align:left;">${escapeHtml(nhapKhoText)}</td>
+    class="cell-nhap-sizesl"
+    data-masp="${escapeHtml(masp)}"
+    style="white-space: pre-line; text-align:left; cursor:text;">${escapeHtml(nhapKhoText)}</td>
 
-  <td contenteditable="true"
-      class="cell-baymau-sizesl"
-      data-masp="${escapeHtml(masp)}"
-      style="white-space: pre-line; text-align:left; background:#eef7ff;">${escapeHtml(bayMauText)}</td>
+<td contenteditable="true"
+    class="cell-baymau-sizesl"
+    data-masp="${escapeHtml(masp)}"
+    style="white-space: pre-line; text-align:left; background:#eef7ff; cursor:text;">${escapeHtml(bayMauText)}</td>
 
   <td data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapTongGroup?.items || []) || ""}</td>
 
@@ -2041,6 +2041,14 @@ import "./stockQuickPopup.js";
         tbody.addEventListener("click", (e) => {
             const tr = e.target.closest("tr");
             if (!tr) return;
+
+            // Nếu click vào ô cho phép sửa trực tiếp thì KHÔNG render lại
+            if (
+                e.target.closest(".cell-nhap-sizesl") ||
+                e.target.closest(".cell-baymau-sizesl")
+            ) {
+                return;
+            }
 
             const masp = normalizeMasp(tr.dataset.masp || "");
             if (!masp) return;
