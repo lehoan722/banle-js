@@ -120,7 +120,9 @@ import "./stockQuickPopup.js";
 
     function isPhieuDangXem() {
         const hdState = byId("hd_state");
-        const v = String(hdState?.value || hdState?.getAttribute("data-state") || "").trim().toLowerCase();
+        const v = String(hdState?.value || hdState?.getAttribute("data-state") || "")
+            .trim()
+            .toLowerCase();
         return v === "xem";
     }
 
