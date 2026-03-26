@@ -690,7 +690,7 @@ import "./stockQuickPopup.js";
         const xuatOrder = Array.isArray(state.xuatOrder) ? state.xuatOrder.map(normalizeMasp).filter(Boolean) : [];
 
         const allSet = new Set([
-            ...Object.keys(nhapGroupMap || {}),
+            ...Object.keys(nhapTongGroup || {}),
             ...Object.keys(xuatGroupMap || {})
         ]);
 
@@ -865,7 +865,7 @@ import "./stockQuickPopup.js";
         return items.reduce((sum, x) => sum + normalizeNumber(x.sl), 0);
     }
 
-    function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
+    function buildKetQuaTheoMasp(nhapTongGroup, xuatGroup, ketQuaMap) {
         const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
 
         const allSizeKeys = new Set([
@@ -988,9 +988,9 @@ import "./stockQuickPopup.js";
         tbody.innerHTML = "";
 
         for (const masp of allMasps) {
-            const nhapKhoGroup = nhapKhoGroupMap[masp];
-            const bayMauGroup = bayMauGroupMap[masp];
-            const nhapTongGroup = nhapTongGroupMap[masp];
+            formatSizeSl(nhapKhoGroup?.items || []);
+            formatSizeSl(bayMauGroup?.items || []);
+            formatSizeSl(nhapTongGroup?.items || []);
             const xuatGroup = xuatGroupMap[masp];
 
             const nhapKhoText = formatSizeSl(nhapKhoGroup?.items || []);
@@ -1186,27 +1186,7 @@ import "./stockQuickPopup.js";
             state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
         }
 
-        // moimoi
 
-        Object.keys(state.bayMau || {}).forEach((key) => {
-            const row = state.bayMau[key];
-            if (!row) return;
-            if (normalizeMasp(row.masp) !== masp) return;
-
-            const size = normalizeSize(row.size);
-            const sl = normalizeNumber(row.sl);
-            if (!size) return;
-
-            if (!sizeMap.has(size)) {
-                sizeMap.set(size, {
-                    size,
-                    slXuat: 0,
-                    slNhap: sl
-                });
-            } else {
-                sizeMap.get(size).slNhap += sl;
-            }
-        });
 
         delete state.ketQua[key];
 
@@ -1409,6 +1389,7 @@ import "./stockQuickPopup.js";
 
         window.kiemTonState = {
             nhap: {},
+            bayMau: {},   // ✅ thêm dòng này
             xuat: {},
             ketQua: {},
             nhapOrder: [],
@@ -1475,7 +1456,7 @@ import "./stockQuickPopup.js";
         docLaiNhapTuBangHTML();
 
         const state = getState();
-        const nhapMap = state.nhap || {};
+        const nhapMap = getMapNhapTong();
         const xuatMap = state.xuat || {};
         const ketQua = {};
 
@@ -1564,7 +1545,7 @@ import "./stockQuickPopup.js";
         docLaiNhapTuBangHTML();
 
         const state = getState();
-        const nhapMap = state.nhap || {};
+        const nhapMap = getMapNhapTong();
 
         const dsMasp = Array.from(
             new Set(
