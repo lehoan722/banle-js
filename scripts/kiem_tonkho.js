@@ -3192,7 +3192,12 @@ async function taoPhieuDieuChinhKiem(mode) {
             return;
         }
 
-        if (!isPhieuDangXem()) {
+        const hdStateEl = byId("hd_state");
+        const hdStateValue = String(
+            hdStateEl?.value || hdStateEl?.getAttribute("data-state") || ""
+        ).trim().toLowerCase();
+
+        if (hdStateValue !== "xem") {
             alert("Chỉ được tạo phiếu điều chỉnh khi đang mở phiếu kiểm tồn cũ.");
             return;
         }
