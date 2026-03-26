@@ -924,6 +924,17 @@ import "./stockQuickPopup.js";
             if (selectedMasp && selectedMasp === masp) {
                 tr.classList.add("row-selected");
             }
+
+            const tt = String(kqTong.trangthai || "").toUpperCase();
+
+            if (tt === "THIEU") {
+                tr.style.background = "#fff7cc"; // vàng nhạt
+            } else if (tt === "THUA") {
+                tr.style.background = "#e8f7ff"; // xanh nhạt
+            } else if (tt === "LECH") {
+                tr.style.background = "#fcefdc"; // vàng cam nhạt
+            }
+
             tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
       style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
@@ -2434,8 +2445,8 @@ import "./stockQuickPopup.js";
 
 
         const btnMoPhieuCu = byId("btn-MoPhieutruoc");
-        if (btn-MoPhieutruoc) {
-            btn-MoPhieutruoc.addEventListener("click", async (e) => {
+        if (btn - MoPhieutruoc) {
+            btn - MoPhieutruoc.addEventListener("click", async (e) => {
                 e.preventDefault();
                 await moPhieuTruoc();
             });
