@@ -1078,6 +1078,20 @@ import "./stockQuickPopup.js";
         });
 
         bindRowSelection();
+
+        tbody.querySelectorAll(".cell-nhap-sizesl, .cell-baymau-sizesl").forEach((el) => {
+            if (el.dataset.syncBound === "1") return;
+            el.dataset.syncBound = "1";
+
+            el.addEventListener("input", () => {
+                docLaiNhapTuBangHTML();
+            });
+
+            el.addEventListener("blur", () => {
+                docLaiNhapTuBangHTML();
+                capNhatThongKeDauTrang();
+            });
+        });
         capNhatThongKeDauTrang();
     }
 
@@ -2050,6 +2064,9 @@ import "./stockQuickPopup.js";
                 return;
             }
 
+            // Trước khi chọn dòng khác, luôn đồng bộ dữ liệu đang sửa từ DOM vào state
+            docLaiNhapTuBangHTML();
+
             const masp = normalizeMasp(tr.dataset.masp || "");
             if (!masp) return;
 
@@ -2073,6 +2090,13 @@ import "./stockQuickPopup.js";
             const row = state.nhap[key];
             if (normalizeMasp(row?.masp) === masp) {
                 delete state.nhap[key];
+            }
+        });
+
+        Object.keys(state.bayMau || {}).forEach((key) => {
+            const row = state.bayMau[key];
+            if (normalizeMasp(row?.masp) === masp) {
+                delete state.bayMau[key];
             }
         });
 
