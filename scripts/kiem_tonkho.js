@@ -1333,6 +1333,21 @@ import "./stockQuickPopup.js";
         capNhatThongKeDauTrang();
         hideSizePopup();
         if (maspEl) maspEl.focus();
+
+    }
+
+    function focusNhapMasp(selectAll = true) {
+        const el = byId("masp");
+        if (!el) return;
+
+        setTimeout(() => {
+            try {
+                el.focus();
+                if (selectAll && typeof el.select === "function") {
+                    el.select();
+                }
+            } catch (err) { }
+        }, 0);
     }
 
     // =========================
@@ -2386,6 +2401,9 @@ import "./stockQuickPopup.js";
                 return;
             }
 
+            // Tự động kiểm tra trước khi lưu
+            await napTonMayVaKiemTra();
+
             if (!state.daKiemTra) {
                 alert("Bạn phải bấm KIỂM TRA trước khi lưu.");
                 return;
@@ -2831,6 +2849,7 @@ import "./stockQuickPopup.js";
         setupBeepUnlockOnce(document);
 
         await resetPhieu();
+        focusNhapMasp(true);
 
         console.log("[nhapkiemkho] init OK", CFG);
     }
