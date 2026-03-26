@@ -118,6 +118,27 @@ import "./stockQuickPopup.js";
         return s;
     }
 
+    function isPhieuDangXem() {
+        const hdState = byId("hd_state");
+        const v = String(hdState?.value || hdState?.getAttribute("data-state") || "").trim().toLowerCase();
+        return v === "xem";
+    }
+
+    function getCurrentUserInfo() {
+        return {
+            manv: String(localStorage.getItem("manv") || byId("manv")?.value || "").trim(),
+            tennv: String(localStorage.getItem("tennv") || byId("tennv")?.value || "").trim()
+        };
+    }
+
+    function getNhapKiemPageUrl() {
+        return CFG.branch === "cs2" ? "nhapkiemcs2.html" : "nhapkiemcs1.html";
+    }
+
+    function getXuatKiemPageUrl() {
+        return CFG.branch === "cs2" ? "xuatkiemcs2.html" : "xuatkiemcs1.html";
+    }
+
     function normalizeSize(v) {
         return String(v || "").trim();
     }
@@ -1334,6 +1355,7 @@ import "./stockQuickPopup.js";
         hideSizePopup();
         if (maspEl) maspEl.focus();
 
+        focusNhapMasp(true);
     }
 
     function focusNhapMasp(selectAll = true) {
@@ -2548,6 +2570,22 @@ import "./stockQuickPopup.js";
                 suaDongDangChon();
             });
         }
+
+        const btnThuaNhapKiem = byId("btnThuaNhapKiem");
+        if (btnThuaNhapKiem) {
+            btnThuaNhapKiem.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await taoPhieuDieuChinhKiem("nhap");
+            });
+        }
+
+        const btnThieuXuatKiem = byId("btnThieuXuatKiem");
+        if (btnThieuXuatKiem) {
+            btnThieuXuatKiem.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await taoPhieuDieuChinhKiem("xuat");
+            });
+        }
     }
 
     async function moLaiPhieuKiemTonCu(soPhieu) {
@@ -2647,6 +2685,30 @@ import "./stockQuickPopup.js";
         renderBangKetQua();
         kiemTraPhieu();
         state.daKiemTra = true;
+    }
+
+    async function docPhieuKiemTonTuDB(soPhieu) {
+        const sohd = String(soPhieu || "").trim();
+        if (!sohd) throw new Error("Chưa có số phiếu.");
+
+        const { data: phieuTong, error: errTong } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .maybeSingle();
+
+        if (errTong) throw errTong;
+        if (!phieuTong) throw new Error("Không tìm thấy phiếu kiểm tồn.");
+
+        const { data: rows, error: errRows } = await window.supabase
+            .from("ct_kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .order("stt", { ascending: true });
+
+        if (errRows) throw errRows;
+
+        return { phieuTong, rows: rows || [] };
     }
 
     async function layDanhSachSoPhieuKiemTonTheoCoSo() {
@@ -2906,3 +2968,282 @@ document.addEventListener("keydown", function (e) {
     }
 });
 
+function buildTonMapFromSavedRows(rows) {
+    const out = {};
+    (rows || []).forEach(row => {
+        const masp = normalizeMasp(row.masp);
+        const arr = Array.isArray(row.du_lieu_ton_json) ? row.du_lieu_ton_json : [];
+        arr.forEach(it => {
+            const key = makeKey(masp, it.size || "0");
+            out[key] = {
+                masp,
+                size: normalizeSize(it.size || "0"),
+                sl: normalizeNumber(it.sl || 0)
+            };
+        });
+    });
+    return out;
+}
+
+function buildTonMapFromRpcData(data) {
+    const out = {};
+    (data || []).forEach(item => {
+        const masp = normalizeMasp(item.masp);
+        const size = normalizeSize(item.size || "0");
+        const sl = normalizeNumber(item.ton_cuoi || item.ton || item.soluong || 0);
+        const key = makeKey(masp, size);
+        out[key] = { masp, size, sl };
+    });
+    return out;
+}
+
+function areTonMapsEqual(savedMap, currentMap) {
+    const keys = new Set([
+        ...Object.keys(savedMap || {}),
+        ...Object.keys(currentMap || {})
+    ]);
+
+    for (const key of keys) {
+        const a = normalizeNumber(savedMap?.[key]?.sl || 0);
+        const b = normalizeNumber(currentMap?.[key]?.sl || 0);
+        if (a !== b) {
+            return false;
+        }
+    }
+    return true;
+}
+
+async function kiemTraTonMayPhiếuConHopLe(rows, ngayCt) {
+    const dsMasp = Array.from(new Set(
+        (rows || []).map(r => normalizeMasp(r.masp)).filter(Boolean)
+    ));
+
+    if (!dsMasp.length) {
+        return { ok: false, message: "Phiếu không có mã sản phẩm." };
+    }
+
+    const { data, error } = await window.supabase.rpc("xntnhanh", {
+        p_masps: dsMasp,
+        p_den_ngay: ngayCt,
+        p_tonghop_size: false
+    });
+
+    if (error) {
+        console.error("[xntnhanh] kiemTraTonMayPhiếuConHopLe:", error);
+        return { ok: false, message: "Lỗi khi kiểm tra tồn máy hiện tại." };
+    }
+
+    const savedMap = buildTonMapFromSavedRows(rows);
+    const currentMap = buildTonMapFromRpcData(data || []);
+
+    const equal = areTonMapsEqual(savedMap, currentMap);
+
+    return {
+        ok: equal,
+        savedMap,
+        currentMap,
+        rpcData: data || [],
+        message: equal
+            ? "Tồn máy hiện tại khớp với tồn máy đã lưu."
+            : "Tồn máy hiện tại đã thay đổi so với thời điểm kiểm. Không được tạo phiếu điều chỉnh."
+    };
+}
+
+function tachItemsNhapXuatTuRowsKiemTon(rows, mode) {
+    const items = [];
+
+    (rows || []).forEach(row => {
+        const masp = normalizeMasp(row.masp);
+        const trangThai = String(row.trang_thai || "").trim().toUpperCase();
+
+        const duLieuKiem = Array.isArray(row.du_lieu_kiem_json) ? row.du_lieu_kiem_json : [];
+        const duLieuTon = Array.isArray(row.du_lieu_ton_json) ? row.du_lieu_ton_json : [];
+
+        const mapKiem = {};
+        const mapTon = {};
+
+        duLieuKiem.forEach(it => {
+            const key = makeKey(masp, it.size || "0");
+            mapKiem[key] = normalizeNumber(it.sl || 0);
+        });
+
+        duLieuTon.forEach(it => {
+            const key = makeKey(masp, it.size || "0");
+            mapTon[key] = normalizeNumber(it.sl || 0);
+        });
+
+        const keys = new Set([...Object.keys(mapKiem), ...Object.keys(mapTon)]);
+
+        for (const key of keys) {
+            const { size } = splitKey(key);
+            const slKiem = normalizeNumber(mapKiem[key] || 0);
+            const slTon = normalizeNumber(mapTon[key] || 0);
+
+            if (slKiem > slTon) {
+                if (mode === "nhap") {
+                    items.push({
+                        masp,
+                        size: size || "0",
+                        sl: slKiem - slTon
+                    });
+                }
+            } else if (slKiem < slTon) {
+                if (mode === "xuat") {
+                    items.push({
+                        masp,
+                        size: size || "0",
+                        sl: slTon - slKiem
+                    });
+                }
+            }
+        }
+    });
+
+    const merged = new Map();
+    items.forEach(it => {
+        const key = `${it.masp}@@${it.size}`;
+        if (!merged.has(key)) merged.set(key, { ...it });
+        else merged.get(key).sl += it.sl;
+    });
+
+    return Array.from(merged.values()).filter(x => normalizeNumber(x.sl) > 0);
+}
+
+async function kiemTraDaTaoPhieuDieuChinh(phieuTong, mode) {
+    if (mode === "nhap" && phieuTong.da_tao_nhap_kiem) {
+        return {
+            ok: false,
+            message: `Phiếu này đã tạo nhập kiểm rồi (${phieuTong.so_phieu_nhap_kiem || "không rõ số phiếu"}).`
+        };
+    }
+
+    if (mode === "xuat" && phieuTong.da_tao_xuat_kiem) {
+        return {
+            ok: false,
+            message: `Phiếu này đã tạo xuất kiểm rồi (${phieuTong.so_phieu_xuat_kiem || "không rõ số phiếu"}).`
+        };
+    }
+
+    return { ok: true };
+}
+
+async function capNhatTracePhieuKiemTon(soPhieuKiemTon, mode, payloadMeta) {
+    const { manv, tennv } = getCurrentUserInfo();
+    const nowIso = new Date().toISOString();
+
+    const patch = mode === "nhap"
+        ? {
+            da_tao_nhap_kiem: true,
+            so_phieu_nhap_kiem: payloadMeta.so_phieu_dich || null,
+            nguoi_tao_nhap_kiem: manv || null,
+            ten_nguoi_tao_nhap_kiem: tennv || null,
+            thoi_diem_tao_nhap_kiem: nowIso,
+            so_dong_nhap_kiem: payloadMeta.so_dong || 0,
+            nhap_kiem_meta_json: payloadMeta
+        }
+        : {
+            da_tao_xuat_kiem: true,
+            so_phieu_xuat_kiem: payloadMeta.so_phieu_dich || null,
+            nguoi_tao_xuat_kiem: manv || null,
+            ten_nguoi_tao_xuat_kiem: tennv || null,
+            thoi_diem_tao_xuat_kiem: nowIso,
+            so_dong_xuat_kiem: payloadMeta.so_dong || 0,
+            xuat_kiem_meta_json: payloadMeta
+        };
+
+    const { error } = await window.supabase
+        .from("kiem_ton_kho")
+        .update(patch)
+        .eq("so_phieu", soPhieuKiemTon);
+
+    if (error) throw error;
+}
+
+function moTrangDieuChinhKiem(mode, soPhieuKiemTon, items) {
+    const payload = {
+        source: mode === "nhap" ? "kiemton_nhapkiem" : "kiemton_xuatkiem",
+        cs: CFG.branch,
+        from_so_phieu_kiem_ton: soPhieuKiemTon,
+        created_at: new Date().toISOString(),
+        items: items.map(x => ({
+            masp: x.masp,
+            size: x.size || "0",
+            sl: normalizeNumber(x.sl || 0)
+        }))
+    };
+
+    const key = `imp_kiemton_${mode}_${Date.now()}`;
+    localStorage.setItem(key, JSON.stringify(payload));
+
+    const page = mode === "nhap" ? getNhapKiemPageUrl() : getXuatKiemPageUrl();
+    const url = `${location.origin}/${page}#impkey=${encodeURIComponent(key)}`;
+
+    window.open(url, "_blank");
+
+    return payload;
+}
+
+async function taoPhieuDieuChinhKiem(mode) {
+    try {
+        if (!window.supabase) {
+            alert("Không tìm thấy kết nối Supabase.");
+            return;
+        }
+
+        if (!isPhieuDangXem()) {
+            alert("Chỉ được tạo phiếu điều chỉnh khi đang mở phiếu kiểm tồn cũ.");
+            return;
+        }
+
+        const soPhieu = String(byId("sohd")?.value || "").trim();
+        const ngayCt = String(byId("ngay")?.value || "").trim();
+
+        if (!soPhieu || !ngayCt) {
+            alert("Phiếu kiểm tồn không hợp lệ.");
+            return;
+        }
+
+        const { phieuTong, rows } = await docPhieuKiemTonTuDB(soPhieu);
+
+        const ckDup = await kiemTraDaTaoPhieuDieuChinh(phieuTong, mode);
+        if (!ckDup.ok) {
+            alert(ckDup.message);
+            return;
+        }
+
+        const ckTon = await kiemTraTonMayPhiếuConHopLe(rows, ngayCt);
+        if (!ckTon.ok) {
+            alert(ckTon.message);
+            return;
+        }
+
+        const items = tachItemsNhapXuatTuRowsKiemTon(rows, mode);
+        if (!items.length) {
+            alert(mode === "nhap"
+                ? "Không có dữ liệu thừa để tạo phiếu nhập kiểm."
+                : "Không có dữ liệu thiếu để tạo phiếu xuất kiểm.");
+            return;
+        }
+
+        const payload = moTrangDieuChinhKiem(mode, soPhieu, items);
+
+        await capNhatTracePhieuKiemTon(soPhieu, mode, {
+            so_phieu_kiem_ton: soPhieu,
+            so_phieu_dich: null,
+            mode,
+            so_dong: items.length,
+            tong_sl: items.reduce((s, x) => s + normalizeNumber(x.sl || 0), 0),
+            created_at: new Date().toISOString(),
+            items
+        });
+
+        alert(
+            mode === "nhap"
+                ? `Đã đẩy ${items.length} dòng sang trang nhập kiểm.`
+                : `Đã đẩy ${items.length} dòng sang trang xuất kiểm.`
+        );
+    } catch (err) {
+        console.error(`[taoPhieuDieuChinhKiem:${mode}]`, err);
+        alert("Có lỗi khi tạo phiếu điều chỉnh từ phiếu kiểm tồn.");
+    }
+}
