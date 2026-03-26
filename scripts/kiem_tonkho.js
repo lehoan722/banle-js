@@ -1929,22 +1929,7 @@ import "./stockQuickPopup.js";
             return;
         }
 
-        const nhapGroupMap = groupByMasp(state.nhap || {});
-        const group = nhapGroupMap[masp];
-
-        if (!group || !group.items || !group.items.length) {
-            alert("Không tìm thấy dữ liệu dòng đã chọn.");
-            return;
-        }
-
-        const maspEl = byId("masp");
-        const sizeEl = byId("size");
-        const slEl = byId("soluong");
-
-        if (maspEl) maspEl.value = masp;
-        if (sizeEl) sizeEl.value = formatSizeSl(group.items || []).replace(/\n/g, " ");
-        if (slEl) slEl.value = tongSoLuong(group.items || []) || 1;
-
+        // Xóa toàn bộ dữ liệu kiểm bên trái của mã đang chọn
         Object.keys(state.nhap || {}).forEach((key) => {
             const row = state.nhap[key];
             if (normalizeMasp(row?.masp) === masp) {
@@ -1952,6 +1937,7 @@ import "./stockQuickPopup.js";
             }
         });
 
+        // Xóa kết quả kiểm liên quan đến mã đó
         Object.keys(state.ketQua || {}).forEach((key) => {
             const info = splitKey(key);
             if (normalizeMasp(info.masp) === masp) {
@@ -1959,13 +1945,24 @@ import "./stockQuickPopup.js";
             }
         });
 
+        // Giữ mã đó lên ô nhập để nhập lại nhanh
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        if (maspEl) maspEl.value = masp;
+        if (sizeEl) sizeEl.value = "";
+        if (slEl) slEl.value = "1";
+
         state.selectedMasp = "";
         renderBangKetQua();
 
         if (maspEl) {
             maspEl.focus();
             setTimeout(() => {
-                try { maspEl.select(); } catch (err) { }
+                try {
+                    maspEl.select();
+                } catch (err) { }
             }, 0);
         }
     }
@@ -2660,15 +2657,30 @@ import "./stockQuickPopup.js";
         }
 
         const soHienTai = String(byId("sohd")?.value || "").trim();
+
+        // Nếu chưa có số phiếu hiện tại:
+        // - Quay lại => mở phiếu cuối cùng
+        // - Tiếp tục => mở phiếu đầu tiên
         if (!soHienTai) {
-            alert("Chưa có số phiếu hiện tại.");
+            const fallback = offset < 0 ? ds[ds.length - 1] : ds[0];
+            await moLaiPhieuKiemTonCu(fallback);
             return;
         }
 
         const idx = ds.indexOf(soHienTai);
+
+        // Nếu số phiếu hiện tại chưa được lưu (ví dụ đang là phiếu mới kế tiếp),
+        // thì:
+        // - Quay lại => mở phiếu cuối cùng đã lưu
+        // - Tiếp tục => báo đã là phiếu cuối
         if (idx < 0) {
-            alert("Không tìm thấy phiếu hiện tại trong danh sách.");
-            return;
+            if (offset < 0) {
+                await moLaiPhieuKiemTonCu(ds[ds.length - 1]);
+                return;
+            } else {
+                alert("Đây đã là phiếu cuối cùng.");
+                return;
+            }
         }
 
         const newIndex = idx + offset;
@@ -2788,7 +2800,11 @@ import "./stockQuickPopup.js";
         copyDuLieuNhap,
         pasteDuLieuNhap,
         xoaDongDangChon,
+        suaDongDangChon,
         moLaiPhieuKiemTonCu,
+        moPopupChonPhieuCu,
+        moPhieuTruoc,
+        moPhieuSau,
 
         setXuatData(dataMap, orderArr) {
             const state = getState();
@@ -2847,7 +2863,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.body.appendChild(popup);
     }
-    
+
 });
 
 document.addEventListener("keydown", function (e) {
