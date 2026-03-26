@@ -3406,11 +3406,12 @@ import "./stockQuickPopup.js";
                 items
             });
 
-            alert(
-                mode === "nhap"
-                    ? `Đã đẩy ${items.length} dòng sang trang nhập kiểm.`
-                    : `Đã đẩy ${items.length} dòng sang trang xuất kiểm.`
-            );
+          //  alert(
+              //  mode === "nhap"
+               //     ? `Đã đẩy ${items.length} dòng sang trang nhập kiểm.`
+              //      : `Đã đẩy ${items.length} dòng sang trang xuất kiểm.`
+           // );
+
         } catch (err) {
             console.error(`[taoPhieuDieuChinhKiem:${mode}]`, err);
             alert("Lỗi thật: " + (err?.message || err));
