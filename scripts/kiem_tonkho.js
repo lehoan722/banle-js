@@ -2923,7 +2923,7 @@ import "./stockQuickPopup.js";
     } else {
         init();
     }
-})();
+
 
 // ✅ đảm bảo popup_size luôn tồn tại
 document.addEventListener("DOMContentLoaded", () => {
@@ -3278,3 +3278,5 @@ async function docPhieuKiemTonTuDB(soPhieu) {
 
     return { phieuTong, rows: rows || [] };
 }
+
+})();
