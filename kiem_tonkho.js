@@ -2433,15 +2433,15 @@ import "./stockQuickPopup.js";
         });
 
 
-        const btnMoPhieuCu = byId("btnMoPhieuCu");
-        if (btnMoPhieuCu) {
-            btnMoPhieuCu.addEventListener("click", async (e) => {
+        const btnMoPhieuCu = byId("btn-MoPhieutruoc");
+        if (btn-MoPhieutruoc) {
+            btn-MoPhieutruoc.addEventListener("click", async (e) => {
                 e.preventDefault();
                 await moPhieuTruoc();
             });
         }
 
-        const btnTiepTuc = byId("btnNapHoaDonCCN_footer");
+        const btnTiepTuc = byId("btn-mophieusau");
         if (btnTiepTuc) {
             btnTiepTuc.addEventListener("click", async (e) => {
                 e.preventDefault();
