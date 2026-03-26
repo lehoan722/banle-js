@@ -973,6 +973,7 @@ import "./stockQuickPopup.js";
             }
         });
 
+        bindRowSelection();
         capNhatThongKeDauTrang();
     }
 
@@ -1917,6 +1918,58 @@ import "./stockQuickPopup.js";
         });
     }
 
+    function suaDongDangChon() {
+        docLaiNhapTuBangHTML();
+
+        const state = getState();
+        const masp = normalizeMasp(state.selectedMasp || "");
+
+        if (!masp) {
+            alert("Bạn chưa chọn dòng cần sửa.");
+            return;
+        }
+
+        const nhapGroupMap = groupByMasp(state.nhap || {});
+        const group = nhapGroupMap[masp];
+
+        if (!group || !group.items || !group.items.length) {
+            alert("Không tìm thấy dữ liệu dòng đã chọn.");
+            return;
+        }
+
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        if (maspEl) maspEl.value = masp;
+        if (sizeEl) sizeEl.value = formatSizeSl(group.items || []).replace(/\n/g, " ");
+        if (slEl) slEl.value = tongSoLuong(group.items || []) || 1;
+
+        Object.keys(state.nhap || {}).forEach((key) => {
+            const row = state.nhap[key];
+            if (normalizeMasp(row?.masp) === masp) {
+                delete state.nhap[key];
+            }
+        });
+
+        Object.keys(state.ketQua || {}).forEach((key) => {
+            const info = splitKey(key);
+            if (normalizeMasp(info.masp) === masp) {
+                delete state.ketQua[key];
+            }
+        });
+
+        state.selectedMasp = "";
+        renderBangKetQua();
+
+        if (maspEl) {
+            maspEl.focus();
+            setTimeout(() => {
+                try { maspEl.select(); } catch (err) { }
+            }, 0);
+        }
+    }
+
     async function copyDuLieuNhap() {
         try {
             docLaiNhapTuBangHTML();
@@ -2433,28 +2486,25 @@ import "./stockQuickPopup.js";
             });
         }
 
-        const btnKiem1 = byId("btnKiemTraPhieu");
-        const btnKiem2 = byId("btnKiemTraPhieu_footer");
-        [btnKiem1, btnKiem2].forEach((btn) => {
-            if (!btn) return;
-            btn.addEventListener("click", async (e) => {
+        const btnKiemTra = byId("btnKiemTraPhieu_footer");
+        if (btnKiemTra) {
+            btnKiemTra.addEventListener("click", async (e) => {
                 e.preventDefault();
                 await napTonMayVaKiemTra();
             });
-        });
+        }
 
-
-        const btnMoPhieuCu = byId("btn-MoPhieutruoc");
-        if (btn - MoPhieutruoc) {
-            btn - MoPhieutruoc.addEventListener("click", async (e) => {
+        const btnPhieuTruoc = byId("btn-phieu-truoc");
+        if (btnPhieuTruoc) {
+            btnPhieuTruoc.addEventListener("click", async (e) => {
                 e.preventDefault();
                 await moPhieuTruoc();
             });
         }
 
-        const btnTiepTuc = byId("btn-mophieusau");
-        if (btnTiepTuc) {
-            btnTiepTuc.addEventListener("click", async (e) => {
+        const btnPhieuSau = byId("btn-phieu-sau");
+        if (btnPhieuSau) {
+            btnPhieuSau.addEventListener("click", async (e) => {
                 e.preventDefault();
                 await moPhieuSau();
             });
@@ -2478,13 +2528,11 @@ import "./stockQuickPopup.js";
 
         const btnSua = byId("sua");
         if (btnSua) {
-            btnSua.addEventListener("click", (e) => {
+            btnSua.addEventListener("click", async (e) => {
                 e.preventDefault();
-                xoaDongDangChon();
+                suaDongDangChon();
             });
         }
-
-        bindRowSelection();
     }
 
     async function moLaiPhieuKiemTonCu(soPhieu) {
@@ -2640,6 +2688,92 @@ import "./stockQuickPopup.js";
         await moPhieuLienKe(1);
     }
 
+    async function moPopupChonPhieuCu() {
+        const ds = await layDanhSachSoPhieuKiemTonTheoCoSo();
+        if (!ds.length) {
+            alert("Không có phiếu kiểm tồn cũ.");
+            return;
+        }
+
+        const old = document.getElementById("popup_chon_phieu_cu");
+        if (old) old.remove();
+
+        const wrap = document.createElement("div");
+        wrap.id = "popup_chon_phieu_cu";
+        wrap.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.35);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+        const box = document.createElement("div");
+        box.style.cssText = `
+        width: 420px;
+        max-width: 95vw;
+        max-height: 80vh;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 8px 30px rgba(0,0,0,.25);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    `;
+
+        box.innerHTML = `
+        <div style="font-weight:700; font-size:18px;">Chọn phiếu kiểm tồn cũ</div>
+        <input id="popup_chon_phieu_cu_kw" placeholder="Lọc số phiếu..." style="padding:6px 8px;">
+        <div id="popup_chon_phieu_cu_list" style="border:1px solid #ddd; overflow:auto; max-height:50vh;"></div>
+        <div style="text-align:right;">
+            <button id="popup_chon_phieu_cu_dong">Đóng</button>
+        </div>
+    `;
+
+        wrap.appendChild(box);
+        document.body.appendChild(wrap);
+
+        const listEl = box.querySelector("#popup_chon_phieu_cu_list");
+        const kwEl = box.querySelector("#popup_chon_phieu_cu_kw");
+        const btnDong = box.querySelector("#popup_chon_phieu_cu_dong");
+
+        function renderList(keyword = "") {
+            const kw = String(keyword || "").trim().toLowerCase();
+            const filtered = ds.filter(so => !kw || so.toLowerCase().includes(kw));
+
+            listEl.innerHTML = "";
+            filtered.slice().reverse().forEach((so) => {
+                const row = document.createElement("div");
+                row.textContent = so;
+                row.style.cssText = `
+                padding: 8px 10px;
+                border-bottom: 1px solid #eee;
+                cursor: pointer;
+            `;
+                row.addEventListener("mouseenter", () => row.style.background = "#f5f5f5");
+                row.addEventListener("mouseleave", () => row.style.background = "#fff");
+                row.addEventListener("click", async () => {
+                    wrap.remove();
+                    await moLaiPhieuKiemTonCu(so);
+                });
+                listEl.appendChild(row);
+            });
+        }
+
+        renderList("");
+
+        kwEl.addEventListener("input", () => renderList(kwEl.value));
+        btnDong.addEventListener("click", () => wrap.remove());
+        wrap.addEventListener("click", (e) => {
+            if (e.target === wrap) wrap.remove();
+        });
+
+        kwEl.focus();
+    }
+
     // =========================
     // API công khai
     // =========================
@@ -2675,6 +2809,7 @@ import "./stockQuickPopup.js";
         setDefaultBranchInfo();
         bindInputEvents();
         bindButtons();
+        bindRowSelection();
 
         // Mở khóa beep cho trình duyệt
         setupBeepUnlockOnce(document);
@@ -2711,6 +2846,33 @@ document.addEventListener("DOMContentLoaded", () => {
         popup.style.zIndex = "9999";
 
         document.body.appendChild(popup);
+    }
+
+    if (e.key === "F11") {
+        e.preventDefault();
+        moPopupChonPhieuCu();
+        return;
+    }
+});
+
+document.addEventListener("keydown", function (e) {
+    const tag = (document.activeElement?.tagName || "").toUpperCase();
+    const isTyping =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        document.activeElement?.isContentEditable;
+
+    if (e.key === "F11") {
+        e.preventDefault();
+        moPopupChonPhieuCu();
+        return;
+    }
+
+    if (e.key === "F3") {
+        e.preventDefault();
+        suaDongDangChon();
+        return;
     }
 });
 
