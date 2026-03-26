@@ -7,7 +7,7 @@ import {
 
 import "./stockQuickPopup.js";
 
-// scripts/nhapkiemkho.js
+// scripts/nhapkiemkho.js 
 (function () {
     "use strict";
 
@@ -1585,7 +1585,7 @@ import "./stockQuickPopup.js";
         return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
     }
 
-    
+
 
     function tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem = new Map()) {
         const setNhap = new Set((dsMaspNhap || []).map(normalizeMasp).filter(Boolean));
@@ -1669,7 +1669,7 @@ import "./stockQuickPopup.js";
         return ketQua;
     }
 
-    
+
     function taoGhiChuPhieuChuyenTuKiemNhap() {
         const state = getState();
         const soHdKiemNhap = String(byId("sohd")?.value || "").trim();
@@ -2435,10 +2435,17 @@ import "./stockQuickPopup.js";
 
         const btnMoPhieuCu = byId("btnMoPhieuCu");
         if (btnMoPhieuCu) {
-            btnMoPhieuCu.addEventListener("click", async () => {
-                const sohd = prompt("Nhập số phiếu kiểm tồn cần mở:", byId("sohd")?.value || "");
-                if (!sohd) return;
-                await moLaiPhieuKiemTonCu(sohd);
+            btnMoPhieuCu.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await moPhieuTruoc();
+            });
+        }
+
+        const btnTiepTuc = byId("btnNapHoaDonCCN_footer");
+        if (btnTiepTuc) {
+            btnTiepTuc.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await moPhieuSau();
             });
         }
 
@@ -2568,32 +2575,86 @@ import "./stockQuickPopup.js";
         state.daKiemTra = true;
     }
 
+    async function layDanhSachSoPhieuKiemTonTheoCoSo() {
+        if (!window.supabase) return [];
+
+        const prefix = String(CFG.soPhieuPrefix || "").trim();
+        const { data, error } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("so_phieu, ngay_ct, created_at")
+            .ilike("so_phieu", `${prefix}%`)
+            .order("so_phieu", { ascending: true });
+
+        if (error) {
+            console.error("[KTK] layDanhSachSoPhieuKiemTonTheoCoSo error:", error);
+            return [];
+        }
+
+        return (data || []).map(x => String(x.so_phieu || "").trim()).filter(Boolean);
+    }
+
+    async function moPhieuLienKe(offset) {
+        const ds = await layDanhSachSoPhieuKiemTonTheoCoSo();
+        if (!ds.length) {
+            alert("Không có phiếu kiểm tồn nào.");
+            return;
+        }
+
+        const soHienTai = String(byId("sohd")?.value || "").trim();
+        if (!soHienTai) {
+            alert("Chưa có số phiếu hiện tại.");
+            return;
+        }
+
+        const idx = ds.indexOf(soHienTai);
+        if (idx < 0) {
+            alert("Không tìm thấy phiếu hiện tại trong danh sách.");
+            return;
+        }
+
+        const newIndex = idx + offset;
+        if (newIndex < 0 || newIndex >= ds.length) {
+            alert(offset < 0 ? "Đây đã là phiếu đầu tiên." : "Đây đã là phiếu cuối cùng.");
+            return;
+        }
+
+        await moLaiPhieuKiemTonCu(ds[newIndex]);
+    }
+
+    async function moPhieuTruoc() {
+        await moPhieuLienKe(-1);
+    }
+
+    async function moPhieuSau() {
+        await moPhieuLienKe(1);
+    }
+
     // =========================
     // API công khai
     // =========================
     window.KiemTonKho = {
-  resetPhieu,
-  renderBangKetQua,
-  kiemTraPhieu,
-  napTonMayVaKiemTra,
-  themDongNhapBenTrai,
-  getState,
-  luuPhieuKiemTonKho,
-  copyDuLieuNhap,
-  pasteDuLieuNhap,
-  xoaDongDangChon,
-  moLaiPhieuKiemTonCu,
+        resetPhieu,
+        renderBangKetQua,
+        kiemTraPhieu,
+        napTonMayVaKiemTra,
+        themDongNhapBenTrai,
+        getState,
+        luuPhieuKiemTonKho,
+        copyDuLieuNhap,
+        pasteDuLieuNhap,
+        xoaDongDangChon,
+        moLaiPhieuKiemTonCu,
 
-  setXuatData(dataMap, orderArr) {
-    const state = getState();
-    state.xuat = dataMap || {};
-    state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
-    state.ketQua = {};
-    state.daKiemTra = false;
-    renderBangKetQua();
-  }
-};
-     
+        setXuatData(dataMap, orderArr) {
+            const state = getState();
+            state.xuat = dataMap || {};
+            state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
+            state.ketQua = {};
+            state.daKiemTra = false;
+            renderBangKetQua();
+        }
+    };
+
 
     // =========================
     // INIT
@@ -2607,7 +2668,7 @@ import "./stockQuickPopup.js";
         // Mở khóa beep cho trình duyệt
         setupBeepUnlockOnce(document);
 
-        await resetPhieu();        
+        await resetPhieu();
 
         console.log("[nhapkiemkho] init OK", CFG);
     }
