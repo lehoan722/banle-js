@@ -44,13 +44,14 @@ import "./stockQuickPopup.js";
     // =========================
 
     window.kiemTonState = {
-        nhap: {},
+        nhap: {},          // kiểm kho thường
+        bayMau: {},        // kiểm bày mẫu
         xuat: {},
         ketQua: {},
         nhapOrder: [],
         xuatOrder: [],
         selectedMasp: "",
-        dmMaspCache: new Map(), // key: masp, value: true/false
+        dmMaspCache: new Map(),
         daKiemTra: false,
         thoiDiemChotTon: null
     };
@@ -278,13 +279,17 @@ import "./stockQuickPopup.js";
 
         const key = makeKey(masp, sizeVal);
         const state = getState();
+        const targetMapName = isKiemMauMode() ? "bayMau" : "nhap";
+        const targetMap = state[targetMapName] || (state[targetMapName] = {});
 
-        const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+        const isNewMasp =
+            !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp) &&
+            !Object.values(state.bayMau || {}).some(r => normalizeMasp(r?.masp) === masp);
 
-        if (!state.nhap[key]) {
-            state.nhap[key] = { masp, size: sizeVal, sl };
+        if (!targetMap[key]) {
+            targetMap[key] = { masp, size: sizeVal, sl };
         } else {
-            state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+            targetMap[key].sl = normalizeNumber(targetMap[key].sl) + sl;
         }
 
         if (isNewMasp) {
@@ -318,17 +323,21 @@ import "./stockQuickPopup.js";
 
         const key = makeKey(masp, "0");
         const state = getState();
+        const targetMapName = isKiemMauMode() ? "bayMau" : "nhap";
+        const targetMap = state[targetMapName] || (state[targetMapName] = {});
 
-        const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+        const isNewMasp =
+            !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp) &&
+            !Object.values(state.bayMau || {}).some(r => normalizeMasp(r?.masp) === masp);
 
-        if (!state.nhap[key]) {
-            state.nhap[key] = {
+        if (!targetMap[key]) {
+            targetMap[key] = {
                 masp,
                 size: "0",
                 sl
             };
         } else {
-            state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+            targetMap[key].sl = normalizeNumber(targetMap[key].sl) + sl;
         }
 
         if (isNewMasp) {
@@ -459,6 +468,48 @@ import "./stockQuickPopup.js";
 
     function getState() {
         return window.kiemTonState;
+    }
+
+    function isKiemMauMode() {
+        return !!document.getElementById("chkKiemMau")?.checked;
+    }
+
+    function getMapNhapTong() {
+        const state = getState();
+        const out = {};
+
+        const addMap = (mapObj) => {
+            Object.keys(mapObj || {}).forEach((key) => {
+                const row = mapObj[key];
+                if (!row) return;
+
+                if (!out[key]) {
+                    out[key] = {
+                        masp: normalizeMasp(row.masp),
+                        size: normalizeSize(row.size),
+                        sl: normalizeNumber(row.sl)
+                    };
+                } else {
+                    out[key].sl += normalizeNumber(row.sl);
+                }
+            });
+        };
+
+        addMap(state.nhap || {});
+        addMap(state.bayMau || {});
+
+        return out;
+    }
+
+    function capNhatUIKiemMau() {
+        const lbl = document.getElementById("lblKiemMau");
+        const checked = isKiemMauMode();
+        if (!lbl) return;
+
+        lbl.style.background = checked ? "#e8f7ff" : "#fff";
+        lbl.style.borderColor = checked ? "#0b57d0" : "#999";
+        lbl.style.color = checked ? "#0b57d0" : "#000";
+        lbl.style.fontWeight = checked ? "700" : "400";
     }
 
     async function kiemTraMaspTrongDanhMuc(masp) {
@@ -756,7 +807,7 @@ import "./stockQuickPopup.js";
         if (!el) return;
 
         const state = getState();
-        const tkNhap = tinhThongKeTheoMap(state.nhap || {});
+        const tkNhap = tinhThongKeTheoMap(getMapNhapTong());
         const tkXuat = tinhThongKeTheoMap(state.xuat || {});
 
         el.textContent = `Kiểm: ${tkNhap.soMa}/${tkNhap.tongSl} , Tồn máy: ${tkXuat.soMa}/${tkXuat.tongSl}`;
@@ -921,25 +972,32 @@ import "./stockQuickPopup.js";
         if (!tbody) return;
 
         const state = getState();
-        const nhapMap = state.nhap || {};
+        const nhapKhoMap = state.nhap || {};
+        const bayMauMap = state.bayMau || {};
+        const nhapTongMap = getMapNhapTong();
         const xuatMap = state.xuat || {};
         const ketQuaMap = state.ketQua || {};
 
-        const nhapGroupMap = groupByMasp(nhapMap);
+        const nhapKhoGroupMap = groupByMasp(nhapKhoMap);
+        const bayMauGroupMap = groupByMasp(bayMauMap);
+        const nhapTongGroupMap = groupByMasp(nhapTongMap);
         const xuatGroupMap = groupByMasp(xuatMap);
 
-        const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+        const allMasps = buildOrderedMasps(nhapTongGroupMap, xuatGroupMap, state);
 
         tbody.innerHTML = "";
 
         for (const masp of allMasps) {
-            const nhapGroup = nhapGroupMap[masp];
+            const nhapKhoGroup = nhapKhoGroupMap[masp];
+            const bayMauGroup = bayMauGroupMap[masp];
+            const nhapTongGroup = nhapTongGroupMap[masp];
             const xuatGroup = xuatGroupMap[masp];
 
-            const nhapText = formatSizeSl(nhapGroup?.items || []);
+            const nhapKhoText = formatSizeSl(nhapKhoGroup?.items || []);
+            const bayMauText = formatSizeSl(bayMauGroup?.items || []);
             const xuatText = formatSizeSl(xuatGroup?.items || []);
 
-            const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
+            const kqTong = buildKetQuaTheoMasp(nhapTongGroup, xuatGroup, ketQuaMap);
 
             const tr = document.createElement("tr");
             const selectedMasp = normalizeMasp(state.selectedMasp || "");
@@ -967,11 +1025,14 @@ import "./stockQuickPopup.js";
   <td contenteditable="true"
       class="cell-nhap-sizesl"
       data-masp="${escapeHtml(masp)}"
-      style="white-space: pre-line; text-align:left;">${escapeHtml(nhapText)}</td>
+      style="white-space: pre-line; text-align:left;">${escapeHtml(nhapKhoText)}</td>
 
   <td contenteditable="true"
-      class="cell-nhap-tongsl"
-      data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
+      class="cell-baymau-sizesl"
+      data-masp="${escapeHtml(masp)}"
+      style="white-space: pre-line; text-align:left; background:#eef7ff;">${escapeHtml(bayMauText)}</td>
+
+  <td data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapTongGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
       style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
@@ -1007,12 +1068,13 @@ import "./stockQuickPopup.js";
         const state = getState();
         const rows = Array.from(tbody.querySelectorAll("tr"));
         const nhapMoi = {};
+        const bayMauMoi = {};
         const nhapOrderMoi = [];
 
         rows.forEach((tr) => {
             const tdMasp = tr.children[0];
-            const tdSizeSl = tr.querySelector(".cell-nhap-sizesl");
-            const tdTongSl = tr.querySelector(".cell-nhap-tongsl");
+            const tdKho = tr.querySelector(".cell-nhap-sizesl");
+            const tdBayMau = tr.querySelector(".cell-baymau-sizesl");
 
             const masp = normalizeMasp(tdMasp?.innerText || "");
             if (!masp) return;
@@ -1021,37 +1083,33 @@ import "./stockQuickPopup.js";
                 nhapOrderMoi.push(masp);
             }
 
-            const sizeSlText = String(tdSizeSl?.innerText || "").trim();
-            const tongSlText = String(tdTongSl?.innerText || "").trim();
+            const khoText = String(tdKho?.innerText || "").trim();
+            const bayMauText = String(tdBayMau?.innerText || "").trim();
 
-            const items = parseSizeSlText(sizeSlText);
-            const tongSl = normalizeNumber(tongSlText);
+            const khoItems = parseSizeSlText(khoText);
+            const bayMauItems = parseSizeSlText(bayMauText);
 
-            // Có size thật => ưu tiên kiểm chi tiết
-            if (hasRealSizeItems(items)) {
-                items.forEach((item) => {
-                    const key = makeKey(masp, item.size);
-                    nhapMoi[key] = {
-                        masp,
-                        size: item.size,
-                        sl: item.sl
-                    };
-                });
-                return;
-            }
-
-            // Không có size thật nhưng có tổng => kiểm tổng bằng size 0
-            if (tongSl > 0) {
-                const key = makeKey(masp, "0");
+            khoItems.forEach((item) => {
+                const key = makeKey(masp, item.size);
                 nhapMoi[key] = {
                     masp,
-                    size: "0",
-                    sl: tongSl
+                    size: item.size,
+                    sl: item.sl
                 };
-            }
+            });
+
+            bayMauItems.forEach((item) => {
+                const key = makeKey(masp, item.size);
+                bayMauMoi[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
         });
 
         state.nhap = nhapMoi;
+        state.bayMau = bayMauMoi;
         state.nhapOrder = nhapOrderMoi;
     }
 
@@ -1107,22 +1165,48 @@ import "./stockQuickPopup.js";
 
         const key = makeKey(masp, size);
         const state = getState();
+        const targetMapName = isKiemMauMode() ? "bayMau" : "nhap";
+        const targetMap = state[targetMapName] || (state[targetMapName] = {});
 
-        const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+        const isNewMasp =
+            !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp) &&
+            !Object.values(state.bayMau || {}).some(r => normalizeMasp(r?.masp) === masp);
 
-        if (!state.nhap[key]) {
-            state.nhap[key] = {
+        if (!targetMap[key]) {
+            targetMap[key] = {
                 masp,
                 size,
                 sl
             };
         } else {
-            state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+            targetMap[key].sl = normalizeNumber(targetMap[key].sl) + sl;
         }
 
         if (isNewMasp) {
             state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
         }
+
+        // moimoi
+
+        Object.keys(state.bayMau || {}).forEach((key) => {
+            const row = state.bayMau[key];
+            if (!row) return;
+            if (normalizeMasp(row.masp) !== masp) return;
+
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+            if (!size) return;
+
+            if (!sizeMap.has(size)) {
+                sizeMap.set(size, {
+                    size,
+                    slXuat: 0,
+                    slNhap: sl
+                });
+            } else {
+                sizeMap.get(size).slNhap += sl;
+            }
+        });
 
         delete state.ketQua[key];
 
@@ -1295,6 +1379,14 @@ import "./stockQuickPopup.js";
                         showSizePopup(masp, sizeEl.value);
                     }
                 }
+            });
+        }
+
+        const chkKiemMau = document.getElementById("chkKiemMau");
+        if (chkKiemMau) {
+            chkKiemMau.addEventListener("change", () => {
+                capNhatUIKiemMau();
+                document.getElementById("masp")?.focus();
             });
         }
 
@@ -2230,7 +2322,7 @@ import "./stockQuickPopup.js";
 
     function xayDungDuLieuTongVaChiTietLech() {
         const state = getState();
-        const nhapMap = state.nhap || {};
+        const nhapMap = getMapNhapTong();
         const xuatMap = state.xuat || {};
         const ketQuaMap = state.ketQua || {};
 
@@ -2339,11 +2431,15 @@ import "./stockQuickPopup.js";
 
     function buildChiTietKiemTonRows(so_phieu, diadiem) {
         const state = getState();
-        const nhapMap = state.nhap || {};
+        const nhapKhoMap = state.nhap || {};
+        const bayMauMap = state.bayMau || {};
+        const nhapTongMap = getMapNhapTong();
         const xuatMap = state.xuat || {};
         const ketQuaMap = state.ketQua || {};
 
-        const nhapGroupMap = groupByMasp(nhapMap);
+        const nhapKhoGroupMap = groupByMasp(nhapKhoMap);
+        const bayMauGroupMap = groupByMasp(bayMauMap);
+        const nhapTongGroupMap = groupByMasp(nhapTongMap);
         const xuatGroupMap = groupByMasp(xuatMap);
 
         const allMasps = Array.from(
@@ -2356,9 +2452,11 @@ import "./stockQuickPopup.js";
         const orderedMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
 
         return orderedMasps.map((masp, index) => {
-            const nhapGroup = nhapGroupMap[masp];
+            const nhapKhoGroup = nhapKhoGroupMap[masp];
+            const bayMauGroup = bayMauGroupMap[masp];
+            const nhapTongGroup = nhapTongGroupMap[masp];
             const xuatGroup = xuatGroupMap[masp];
-            const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
+            const kqTong = buildKetQuaTheoMasp(nhapTongGroup, xuatGroup, ketQuaMap);
 
             return {
                 so_phieu,
@@ -2366,13 +2464,24 @@ import "./stockQuickPopup.js";
                 diadiem,
                 masp,
                 tensp: "",
-                size_kiem: formatSizeSl(nhapGroup?.items || []) || "",
-                tong_sl_kiem: tongSoLuong(nhapGroup?.items || []) || 0,
+                size_kiem: formatSizeSl(nhapTongGroup?.items || []) || "",
+                tong_sl_kiem: tongSoLuong(nhapTongGroup?.items || []) || 0,
+
+                size_kiem_kho: formatSizeSl(nhapKhoGroup?.items || []) || "",
+                tong_sl_kiem_kho: tongSoLuong(nhapKhoGroup?.items || []) || 0,
+
+                size_kiem_bay_mau: formatSizeSl(bayMauGroup?.items || []) || "",
+                tong_sl_kiem_bay_mau: tongSoLuong(bayMauGroup?.items || []) || 0,
+
                 size_ton_may: formatSizeSl(xuatGroup?.items || []) || "",
                 tong_sl_ton_may: tongSoLuong(xuatGroup?.items || []) || 0,
                 trang_thai: String(kqTong?.trangthai || "OK").toUpperCase(),
                 chi_tiet_chenh_lech: kqTong?.chitiet || "",
-                du_lieu_kiem_json: nhapGroup?.items || [],
+
+                du_lieu_kiem_json: nhapTongGroup?.items || [],
+                du_lieu_kiem_kho_json: nhapKhoGroup?.items || [],
+                du_lieu_kiem_bay_mau_json: bayMauGroup?.items || [],
+
                 du_lieu_ton_json: xuatGroup?.items || []
             };
         });
@@ -2663,8 +2772,43 @@ import "./stockQuickPopup.js";
                 if (!state.xuatOrder.includes(masp)) state.xuatOrder.push(masp);
             }
 
-            const nhapItems = parseSizeSlText(row.size_kiem || "");
-            nhapItems.forEach(item => {
+            const khoItems =
+                Array.isArray(row.du_lieu_kiem_kho_json) && row.du_lieu_kiem_kho_json.length
+                    ? row.du_lieu_kiem_kho_json
+                    : parseSizeSlText(row.size_kiem_kho || "");
+
+            const bayMauItems =
+                Array.isArray(row.du_lieu_kiem_bay_mau_json) && row.du_lieu_kiem_bay_mau_json.length
+                    ? row.du_lieu_kiem_bay_mau_json
+                    : parseSizeSlText(row.size_kiem_bay_mau || "");
+
+            // fallback cho phiếu cũ chưa có dữ liệu tách kho / mẫu  moi2
+            const tongItemsFallback =
+                (!khoItems.length && !bayMauItems.length)
+                    ? (Array.isArray(row.du_lieu_kiem_json) && row.du_lieu_kiem_json.length
+                        ? row.du_lieu_kiem_json
+                        : parseSizeSlText(row.size_kiem || ""))
+                    : [];
+
+            khoItems.forEach(item => {
+                const key = makeKey(masp, item.size);
+                state.nhap[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+
+            bayMauItems.forEach(item => {
+                const key = makeKey(masp, item.size);
+                state.bayMau[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+
+            tongItemsFallback.forEach(item => {
                 const key = makeKey(masp, item.size);
                 state.nhap[key] = {
                     masp,
@@ -2687,6 +2831,7 @@ import "./stockQuickPopup.js";
         renderBangKetQua();
         kiemTraPhieu();
         state.daKiemTra = true;
+        state.bayMau = {};
     }
 
     async function docPhieuKiemTonTuDB(soPhieu) {
