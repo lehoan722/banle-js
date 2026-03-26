@@ -119,7 +119,7 @@ import "./stockQuickPopup.js";
     }
 
     function isPhieuDangXem() {
-        const hdState = byId("hd_state");
+        const hdState = document.getElementById("hd_state");
         const v = String(hdState?.value || hdState?.getAttribute("data-state") || "")
             .trim()
             .toLowerCase();
@@ -3192,7 +3192,7 @@ async function taoPhieuDieuChinhKiem(mode) {
             return;
         }
 
-        const hdStateEl = byId("hd_state");
+        const hdStateEl = document.getElementById("hd_state");
         const hdStateValue = String(
             hdStateEl?.value || hdStateEl?.getAttribute("data-state") || ""
         ).trim().toLowerCase();
@@ -3202,8 +3202,8 @@ async function taoPhieuDieuChinhKiem(mode) {
             return;
         }
 
-        const soPhieu = String(byId("sohd")?.value || "").trim();
-        const ngayCt = String(byId("ngay")?.value || "").trim();
+        const soPhieu = String(document.getElementById("sohd")?.value || "").trim();
+        const ngayCt = String(document.getElementById("ngay")?.value || "").trim();
 
         if (!soPhieu || !ngayCt) {
             alert("Phiếu kiểm tồn không hợp lệ.");
