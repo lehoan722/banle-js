@@ -130,6 +130,13 @@
       }
     }
 
+    @media print {
+
+      #qrAmountInput,
+      #btnPrintQR {
+        display: none !important;
+      }
+    }
 
     .header,
     .invoice-info {
@@ -456,18 +463,18 @@
           </div>
         </div>
 
-        <div style="margin-top:10px; text-align:center;">
+        <div class="qr-tools" style="margin-top:10px; text-align:center;">
           <input id="qrAmountInput" type="text"
             style="width:160px; padding:6px; font-size:22px; text-align:center; color:#007bff;" />
 
           <br />
 
           <button id="btnPrintQR" style="
-              margin-top:6px;
-              padding:6px 16px;
-              font-size:16px;
-              cursor:pointer;
-            ">
+      margin-top:6px;
+      padding:6px 16px;
+      font-size:16px;
+      cursor:pointer;
+    ">
             In hoa don
           </button>
         </div>
