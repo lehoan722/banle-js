@@ -696,7 +696,10 @@
         // Cho phép in bằng phím Enter
         // Cho phép in bằng phím Enter + đóng tab bằng F5
         document.addEventListener("keydown", function (e) {
-          if (e.key === "Enter") {
+          const target = e.target;
+          const isQrAmountInput = target && target.id === "qrAmountInput";
+
+          if (e.key === "Enter" && !isQrAmountInput) {
             e.preventDefault();
             window.print();
             return;
@@ -771,7 +774,6 @@
             let raw = input.value.trim();
 
             if (!raw) {
-              // nếu xóa trắng → reset về hóa đơn
               qrCustomAmount = null;
               input.value = formatNumber(defaultAmount);
               renderVietQR();
@@ -780,28 +782,25 @@
 
             const num = parseNumber(raw);
             qrCustomAmount = num;
-
             input.value = formatNumber(num);
-
             renderVietQR();
-            setupQRInput();
           }
 
-          // Enter
           input.addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
               e.preventDefault();
+              e.stopPropagation();
               applyValue();
-              input.select(); // bôi lại để nhập nhanh tiếp
+              input.select();
             }
           });
 
-          // blur
           input.addEventListener("blur", function () {
             applyValue();
           });
         }
 
+        setupQRInput();
       </script>
 
     </div>
