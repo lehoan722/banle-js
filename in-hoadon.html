@@ -475,7 +475,9 @@
         const thuegtgt = Number(hoadon.thuegtgt) || Math.round(tongtienhang * 0.01);
         const giamthue = Number(hoadon.giamthue) || -thuegtgt;
         // ========== Trạng thái QR ==========
-        let qrManualAmountMode = false; // false = QR theo tổng phải trả, true = QR để 0 đồng cho khách tự nhập
+        // ========== Trạng thái QR ==========
+        let qrManualAmountMode = false; // F1: false = QR theo tổng phải trả, true = QR để 0 đồng cho khách tự nhập
+        let qrF2TechcombankMode = false; // F2: QR 0 đồng + ép tài khoản Techcombank theo cơ sở
 
         function formatSo(val) {
           if (isNaN(val)) return '0';
@@ -514,6 +516,7 @@
           const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
 
           // ===== Tài khoản nhận theo cơ sở =====
+          // ===== Tài khoản nhận mặc định theo cơ sở =====
           let bankId = "VCB";
           let bankLabel = "VietcomBank";
           let accountNo = "1058609346";
@@ -526,11 +529,27 @@
             accountName = "  cs2   ";
           }
 
+          // ===== Nếu đang bật chế độ F2 thì ép về Techcombank theo cơ sở =====
+          if (qrF2TechcombankMode) {
+            bankId = "TCB";
+            bankLabel = "Techcombank";
+
+            if (isCS2) {
+              accountNo = "MS00P000000000635573";
+              accountName = "NGUYEN ANH TUYET";
+            } else {
+              accountNo = "2662222333";
+              accountName = "DANG LE HOAN";
+            }
+          }
+
           const sohdText = (hoadon.sohd || "").toString().trim();
           const addInfo = " CK ";
 
           // ✅ Nếu đang bật chế độ nhập tay số tiền thì QR = 0
-          const amount = qrManualAmountMode ? 0 : Math.round(Number(thanhtoan) || 0);
+          const amount = (qrManualAmountMode || qrF2TechcombankMode)
+            ? 0
+            : Math.round(Number(thanhtoan) || 0);
 
           // cập nhật thông tin hiển thị dưới QR
           const elBank = document.getElementById("qr_bank_label");
@@ -662,7 +681,31 @@
           // - lần 2: quay lại số tiền đúng của hóa đơn
           if (e.key === "F1") {
             e.preventDefault();
+
             qrManualAmountMode = !qrManualAmountMode;
+
+            // Khi bật F1 thì tắt F2 để tránh chồng trạng thái
+            if (qrManualAmountMode) {
+              qrF2TechcombankMode = false;
+            }
+
+            renderVietQR();
+            return;
+          }
+
+          // F2: QR 0 đồng + ép tài khoản Techcombank theo cơ sở
+          // - lần 1: bật chế độ F2
+          // - lần 2: tắt chế độ F2, quay về logic bình thường
+          if (e.key === "F2") {
+            e.preventDefault();
+
+            qrF2TechcombankMode = !qrF2TechcombankMode;
+
+            // Khi bật F2 thì tắt F1 để tránh chồng trạng thái
+            if (qrF2TechcombankMode) {
+              qrManualAmountMode = false;
+            }
+
             renderVietQR();
             return;
           }
