@@ -442,15 +442,19 @@
           <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
 
           <div style="margin-top:10px; text-align:center;">
-            <input id="qrAmountInput" type="text" placeholder="Nhập số tiền" style="
-      width:160px;
-      padding:6px;
-      font-size:22px;
-      text-align:center;
-      color:#007bff;
-      border:1px solid #ccc;
-      border-radius:4px;
-    " />
+            <input id="qrAmountInput" type="text"
+              style="width:160px; padding:6px; font-size:22px; text-align:center; color:#007bff;" />
+
+            <br />
+
+            <button id="btnPrintQR" style="
+      margin-top:6px;
+      padding:6px 16px;
+      font-size:16px;
+      cursor:pointer;
+    ">
+              In hoa don
+            </button>
           </div>
 
 
@@ -790,14 +794,57 @@
             if (e.key === "Enter") {
               e.preventDefault();
               e.stopPropagation();
-              applyValue();
-              input.select();
+
+              const raw = input.value.trim();
+              const num = parseNumber(raw);
+              const defaultAmount = Math.round(Number(thanhtoan) || 0);
+
+              // luôn format lại trước
+              input.value = formatNumber(num);
+
+              // nếu bằng tiền hóa đơn → in luôn
+              if (num === defaultAmount) {
+                qrCustomAmount = null;
+                renderVietQR();
+                window.print();
+                return;
+              }
+
+              // nếu khác → chỉ cập nhật QR
+              qrCustomAmount = num;
+              renderVietQR();
+
+              input.select(); // cho nhập tiếp nhanh
             }
           });
 
           input.addEventListener("blur", function () {
             applyValue();
           });
+
+          const btn = document.getElementById("btnPrintQR");
+
+          if (btn) {
+            btn.addEventListener("click", function () {
+              const raw = input.value.trim();
+              const num = parseNumber(raw);
+              const defaultAmount = Math.round(Number(thanhtoan) || 0);
+
+              // format lại
+              input.value = formatNumber(num);
+
+              if (num === defaultAmount) {
+                qrCustomAmount = null;
+              } else {
+                qrCustomAmount = num;
+              }
+
+              renderVietQR();
+
+              // in luôn
+              window.print();
+            });
+          }
         }
 
         setupQRInput();
