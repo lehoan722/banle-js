@@ -441,6 +441,18 @@
 
           <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
 
+          <div style="margin-top:10px; text-align:center;">
+            <input id="qrAmountInput" type="text" placeholder="Nhập số tiền" style="
+      width:160px;
+      padding:6px;
+      font-size:22px;
+      text-align:center;
+      color:#007bff;
+      border:1px solid #ccc;
+      border-radius:4px;
+    " />
+          </div>
+
 
         </div>
 
@@ -478,6 +490,7 @@
         // ========== Trạng thái QR ==========
         let qrManualAmountMode = false; // F1: false = QR theo tổng phải trả, true = QR để 0 đồng cho khách tự nhập
         let qrF2TechcombankMode = false; // F2: QR 0 đồng + ép tài khoản Techcombank theo cơ sở
+        let qrCustomAmount = null; // số tiền nhập tay
 
         function formatSo(val) {
           if (isNaN(val)) return '0';
@@ -535,7 +548,7 @@
             bankLabel = "Techcombank";
 
             if (isCS2) {
-              accountNo = "MS00P00000000635573"; 
+              accountNo = "MS00P00000000635573";
               accountName = "NGUYEN ANH TUYET";
             } else {
               accountNo = "2662222333";
@@ -547,9 +560,15 @@
           const addInfo = " CK ";
 
           // ✅ Nếu đang bật chế độ nhập tay số tiền thì QR = 0
-          const amount = (qrManualAmountMode || qrF2TechcombankMode)
-            ? 0
-            : Math.round(Number(thanhtoan) || 0);
+          let amount;
+
+          if (qrCustomAmount !== null) {
+            amount = qrCustomAmount;
+          } else if (qrManualAmountMode || qrF2TechcombankMode) {
+            amount = 0;
+          } else {
+            amount = Math.round(Number(thanhtoan) || 0);
+          }
 
           // cập nhật thông tin hiển thị dưới QR
           const elBank = document.getElementById("qr_bank_label");
@@ -622,6 +641,13 @@
           }
         })();
 
+        function formatNumber(n) {
+          return Number(n).toLocaleString("vi-VN");
+        }
+
+        function parseNumber(str) {
+          return Number(str.replace(/[^\d]/g, "")) || 0;
+        }
 
 
         // Hiển thị thông tin hóa đơn
@@ -725,6 +751,56 @@
             return;
           }
         });
+
+        function setupQRInput() {
+          const input = document.getElementById("qrAmountInput");
+          if (!input) return;
+
+          const defaultAmount = Math.round(Number(thanhtoan) || 0);
+
+          // set giá trị ban đầu
+          input.value = formatNumber(defaultAmount);
+
+          // focus + bôi đen
+          setTimeout(() => {
+            input.focus();
+            input.select();
+          }, 300);
+
+          function applyValue() {
+            let raw = input.value.trim();
+
+            if (!raw) {
+              // nếu xóa trắng → reset về hóa đơn
+              qrCustomAmount = null;
+              input.value = formatNumber(defaultAmount);
+              renderVietQR();
+              return;
+            }
+
+            const num = parseNumber(raw);
+            qrCustomAmount = num;
+
+            input.value = formatNumber(num);
+
+            renderVietQR();
+            setupQRInput();
+          }
+
+          // Enter
+          input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applyValue();
+              input.select(); // bôi lại để nhập nhanh tiếp
+            }
+          });
+
+          // blur
+          input.addEventListener("blur", function () {
+            applyValue();
+          });
+        }
 
       </script>
 
