@@ -599,6 +599,7 @@
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
+                                <option value="tmt">Tiền mặtt</option>
                             </select></label>
 
                         <label>Chiết khấu <input id="chietkhau" /></label>
@@ -1105,10 +1106,10 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
-       // document.getElementById('btn-luu')?.addEventListener('click', () => {
-          //  const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-          //  dispatchTarget.dispatchEvent(ev);
-       // });
+        // document.getElementById('btn-luu')?.addEventListener('click', () => {
+        //  const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+        //  dispatchTarget.dispatchEvent(ev);
+        // });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1208,6 +1209,91 @@
             this.disabled = false;
             this.innerText = "💾 Lưu";
         };
+    </script>
+
+    <script>
+        // ===== Điều khiển riêng cho Hình thức thanh toán: tm / tmt / ck =====
+        document.addEventListener('DOMContentLoaded', () => {
+            const hinhThucTT = document.getElementById('hinhthuctt');
+            const btnLuu = document.getElementById('btn-luu');
+
+            if (!hinhThucTT) return;
+
+            // Mặc định khi tải trang: Tiền mặt
+            hinhThucTT.value = 'tm';
+
+            function thongBaoNhanh(msg) {
+                // Ưu tiên dùng toast nếu trang có sẵn
+                if (typeof window.showToast === 'function') {
+                    window.showToast(msg);
+                } else {
+                    console.log(msg);
+                }
+            }
+
+            function toggleTienMatMode() {
+                // Chỉ toggle giữa tm <-> tmt
+                if (hinhThucTT.value === 'tmt') {
+                    hinhThucTT.value = 'tm';
+                    thongBaoNhanh('Đã chuyển về Tiền mặt');
+                } else {
+                    hinhThucTT.value = 'tmt';
+                    thongBaoNhanh('Đã chuyển sang Tiền mặtt');
+                }
+            }
+
+            async function luuTheoHinhThucThanhToan() {
+                if (window.dangLuu) return;
+
+                const isTienMatT = hinhThucTT.value === 'tmt';
+
+                if (isTienMatT) {
+                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
+                    if (!btnLuu) return;
+                    btnLuu.click();
+                    return;
+                }
+
+                // Các trường hợp còn lại => chạy F2 cũ
+                try {
+                    if (typeof window.LUU_HOADON_F2 === 'function') {
+                        await window.LUU_HOADON_F2();
+                    } else if (typeof window.luuHoaDonQuaAPI === 'function') {
+                        await window.luuHoaDonQuaAPI();
+                    } else {
+                        alert('Không tìm thấy hàm lưu F2 hiện tại.');
+                    }
+                } catch (e) {
+                    alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
+                }
+            }
+
+            // Cho phép chỗ khác gọi nếu cần
+            window.toggleTienMatMode = toggleTienMatMode;
+            window.luuTheoHinhThucThanhToan = luuTheoHinhThucThanhToan;
+
+            // Phím F10: đổi Tiền mặt <-> Tiền mặtt
+            document.addEventListener('keydown', async (e) => {
+                const tag = (document.activeElement?.tagName || '').toUpperCase();
+                const id = document.activeElement?.id || '';
+
+                // F10 luôn cho phép đổi chế độ
+                if (e.key === 'F10') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleTienMatMode();
+                    return;
+                }
+
+                // F2: chỉ xử lý tại đây
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await luuTheoHinhThucThanhToan();
+                    return;
+                }
+            }, true);
+        });
     </script>
 
     <script>
