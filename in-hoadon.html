@@ -707,32 +707,37 @@
 
         // Cho phép in bằng phím Enter
         // Cho phép in bằng phím Enter + đóng tab bằng F5
-        document.addEventListener("keydown", function (e) {
-          const target = e.target;
-          const isQrAmountInput = target && target.id === "qrAmountInput";
+        function closeParentPrintOverlay() {
+          try {
+            if (window.parent && window.parent !== window) {
+              const btnClose = window.parent.document.getElementById("poBtnClose");
+              if (btnClose) {
+                btnClose.click();
+              }
+            }
+          } catch (err) {
+            console.warn("Không đóng được popup in của trang cha:", err);
+          }
+        }
 
-          // ESC: gọi đúng nút Đóng của popup bên trang cha
+        // Khi in xong ở trang con -> đóng luôn popup in ở trang cha
+        window.addEventListener("afterprint", function () {
+          setTimeout(() => {
+            closeParentPrintOverlay();
+          }, 100);
+        });
+
+        document.addEventListener("keydown", function (e) {
           if (e.key === "Escape") {
             e.preventDefault();
             e.stopPropagation();
-
-            try {
-              if (window.parent && window.parent !== window) {
-                const btnClose = window.parent.document.getElementById("poBtnClose");
-                if (btnClose) {
-                  btnClose.click();
-                  return;
-                }
-              }
-            } catch (err) {
-              console.warn("Không gọi được nút Đóng của trang cha:", err);
-            }
-
+            closeParentPrintOverlay();
             return;
           }
 
-          if (e.key === "Enter" && !isQrAmountInput) {
+          if (e.key === "Enter") {
             e.preventDefault();
+            e.stopPropagation();
             window.print();
             return;
           }
@@ -742,31 +747,7 @@
           // - lần 2: quay lại số tiền đúng của hóa đơn
           if (e.key === "F1") {
             e.preventDefault();
-
             qrManualAmountMode = !qrManualAmountMode;
-
-            // Khi bật F1 thì tắt F2 để tránh chồng trạng thái
-            if (qrManualAmountMode) {
-              qrF2TechcombankMode = false;
-            }
-
-            renderVietQR();
-            return;
-          }
-
-          // F2: QR 0 đồng + ép tài khoản Techcombank theo cơ sở
-          // - lần 1: bật chế độ F2
-          // - lần 2: tắt chế độ F2, quay về logic bình thường
-          if (e.key === "F2") {
-            e.preventDefault();
-
-            qrF2TechcombankMode = !qrF2TechcombankMode;
-
-            // Khi bật F2 thì tắt F1 để tránh chồng trạng thái
-            if (qrF2TechcombankMode) {
-              qrManualAmountMode = false;
-            }
-
             renderVietQR();
             return;
           }
@@ -774,10 +755,8 @@
           if (e.key === "F6") {
             e.preventDefault();
 
-            // Đóng tab nếu tab được mở bằng window.open
             window.close();
 
-            // Nếu bị chặn (mở trực tiếp), fallback: quay về trang trước
             setTimeout(() => {
               if (!document.hidden) {
                 history.back();
@@ -786,7 +765,7 @@
             return;
           }
         });
-
+        
         function setupQRInput() {
           const input = document.getElementById("qrAmountInput");
           if (!input) return;
