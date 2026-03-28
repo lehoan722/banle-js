@@ -274,7 +274,7 @@ import "./stockQuickPopup.js";
     }
 
     delete state.ketQua[key];
-    renderBangKetQua();
+    autoKiemTraSauNhap();
     phatAmThanhThanhCong();
 
     if (sizeEl) sizeEl.value = "";
@@ -318,7 +318,7 @@ import "./stockQuickPopup.js";
     }
 
     delete state.ketQua[key];
-    renderBangKetQua();
+    autoKiemTraSauNhap();
     phatAmThanhThanhCong();
 
     if (slEl) slEl.value = "1";
@@ -744,6 +744,15 @@ import "./stockQuickPopup.js";
     el.textContent = `Nhập: ${tkNhap.soMa}/${tkNhap.tongSl} , Xuất: ${tkXuat.soMa}/${tkXuat.tongSl}`;
   }
 
+  function autoKiemTraSauNhap() {
+    try {
+      kiemTraPhieu();
+    } catch (err) {
+      console.error("[KNK] autoKiemTraSauNhap error:", err);
+      renderBangKetQua();
+    }
+  }
+
   // =========================
   // RENDER
   // =========================
@@ -925,10 +934,24 @@ import "./stockQuickPopup.js";
 
       const tr = document.createElement("tr");
       const selectedMasp = normalizeMasp(state.selectedMasp || "");
+      const trangThaiTong = String(kqTong.trangthai || "").trim().toUpperCase();
+
       tr.dataset.masp = masp;
+      tr.dataset.trangthai = trangThaiTong;
+
       if (selectedMasp && selectedMasp === masp) {
         tr.classList.add("row-selected");
       }
+
+      // Tô màu theo kết quả kiểm
+      if (trangThaiTong === "THUA" || trangThaiTong === "THIEU" || trangThaiTong === "LECH") {
+        tr.style.background = "#e8f5e9"; // xanh nhạt
+      } else if (trangThaiTong === "OK") {
+        tr.style.background = "#ffffff"; // trắng
+      } else {
+        tr.style.background = "#ffffff"; // mặc định vẫn trắng
+      }
+
       tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
       style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
@@ -1096,9 +1119,10 @@ import "./stockQuickPopup.js";
 
     delete state.ketQua[key];
 
-    renderBangKetQua();
+    autoKiemTraSauNhap();
 
     if (sizeEl) sizeEl.value = "";
+
     slEl.value = "1";
 
     if (sizeEl) {
@@ -2315,7 +2339,7 @@ import "./stockQuickPopup.js";
       state.selectedMasp = "";
       state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
 
-      renderBangKetQua();
+      autoKiemTraSauNhap();
       alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
     } catch (err) {
       console.error("[KNK] pasteDuLieuNhap error:", err);
@@ -2352,7 +2376,7 @@ import "./stockQuickPopup.js";
     });
 
     state.selectedMasp = "";
-    renderBangKetQua();
+    autoKiemTraSauNhap();
 
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -2999,7 +3023,7 @@ import "./stockQuickPopup.js";
       state.xuat = dataMap || {};
       state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
       state.ketQua = {};
-      renderBangKetQua();
+      autoKiemTraSauNhap();
     }
   };
 
