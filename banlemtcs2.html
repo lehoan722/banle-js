@@ -432,7 +432,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css">
+    <link rel="stylesheet" href="banlemobilecs2.css">
 
 </head>
 
@@ -696,8 +696,8 @@
 
 
         <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tim Kiem,
-            F8: nhập vị trí kho.
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
+            F8: xem tồn kho nhanh, F9: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -1106,10 +1106,10 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+        // document.getElementById('btn-luu')?.addEventListener('click', () => {
+        //  const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+        //  dispatchTarget.dispatchEvent(ev);
+        // });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1190,6 +1190,26 @@
             this.innerText = "💾 Lưu";
         };
     </script>  -->
+
+    <script>
+        // Sau khi DOMContentLoaded hoặc ở script type="module" 
+        document.getElementById('btn-luu').onclick = async function () {
+            if (window.dangLuu) return;
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await window.luuHoaDonCaHaiBan?.();
+            } catch (e) {
+                alert("Lỗi lưu hóa đơn: " + e.message);
+            }
+
+            window.dangLuu = false;
+            this.disabled = false;
+            this.innerText = "💾 Lưu";
+        };
+    </script>
 
     <script>
         // ===== Điều khiển riêng cho Hình thức thanh toán: tm / tmt / ck =====
