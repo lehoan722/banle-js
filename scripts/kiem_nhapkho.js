@@ -681,12 +681,12 @@ import "./stockQuickPopup.js";
 
   function getSortWeightByTrangThai(trangthai) {
     const tt = String(trangthai || "").trim().toUpperCase();
-    if (tt === "THUA") return 1;
+    if (tt === "OK") return 1;
 
     if (tt === "THIEU") return 2;
 
     if (tt === "LECH") return 3;
-    if (tt === "OK") return 4;
+    if (tt === "THUA") return 4;
     return 5;
   }
 
