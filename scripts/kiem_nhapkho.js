@@ -80,7 +80,17 @@ import "./stockQuickPopup.js";
     try { playSuccessBeep(); } catch (e) { }
   }
 
+  function phatAmThanhThanhCong3Lan() {
+    try { playSuccessBeep(); } catch (e) { }
 
+    setTimeout(() => {
+      try { playSuccessBeep(); } catch (e) { }
+    }, 180);
+
+    setTimeout(() => {
+      try { playSuccessBeep(); } catch (e) { }
+    }, 360);
+  }
 
   // ========================= 
   // HELPERS
@@ -275,7 +285,10 @@ import "./stockQuickPopup.js";
 
     delete state.ketQua[key];
     autoKiemTraSauNhap();
-    phatAmThanhThanhCong();
+
+    if (!baoThanhCongNeuMaspDaOK(masp)) {
+      phatAmThanhThanhCong();
+    }
 
     if (sizeEl) sizeEl.value = "";
     if (slEl) slEl.value = "1";
@@ -319,7 +332,10 @@ import "./stockQuickPopup.js";
 
     delete state.ketQua[key];
     autoKiemTraSauNhap();
-    phatAmThanhThanhCong();
+
+    if (!baoThanhCongNeuMaspDaOK(masp)) {
+      phatAmThanhThanhCong();
+    }
 
     if (slEl) slEl.value = "1";
 
@@ -757,6 +773,33 @@ import "./stockQuickPopup.js";
     }
   }
 
+  function layTrangThaiTongTheoMasp(masp) {
+    const m = normalizeMasp(masp);
+    if (!m) return "";
+
+    const state = getState();
+    const nhapGroupMap = groupByMasp(state.nhap || {});
+    const xuatGroupMap = groupByMasp(state.xuat || {});
+    const ketQuaMap = state.ketQua || {};
+
+    const kqTong = buildKetQuaTheoMasp(
+      nhapGroupMap[m],
+      xuatGroupMap[m],
+      ketQuaMap
+    );
+
+    return String(kqTong?.trangthai || "").trim().toUpperCase();
+  }
+
+  function baoThanhCongNeuMaspDaOK(masp) {
+    const trangThai = layTrangThaiTongTheoMasp(masp);
+    if (trangThai === "OK") {
+      phatAmThanhThanhCong3Lan();
+      return true;
+    }
+    return false;
+  }
+
   // =========================
   // RENDER
   // =========================
@@ -1122,10 +1165,13 @@ import "./stockQuickPopup.js";
     }
 
     delete state.ketQua[key];
-
     autoKiemTraSauNhap();
+    if (!baoThanhCongNeuMaspDaOK(masp)) {
+      phatAmThanhThanhCong();
+    }
 
     if (sizeEl) sizeEl.value = "";
+
     slEl.value = "1";
 
     if (sizeEl) {
