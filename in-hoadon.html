@@ -711,6 +711,31 @@
           const target = e.target;
           const isQrAmountInput = target && target.id === "qrAmountInput";
 
+          // ESC: đóng popup xem in và quay về trang bán lẻ
+          if (e.key === "Escape" || e.key === "Esc") {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Nếu đang mở trong iframe/popup overlay thì báo cho trang cha tự đóng
+            try {
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: "close-print-popup" }, "*");
+              }
+            } catch (err) {
+              console.warn("Không gửi được message đóng popup:", err);
+            }
+
+            // fallback: thử tự đóng cửa sổ/tab
+            try { window.close(); } catch (err) { }
+
+            // fallback cuối: quay lại trang trước
+            setTimeout(() => {
+              try { history.back(); } catch (err) { }
+            }, 100);
+
+            return;
+          }
+
           if (e.key === "Enter" && !isQrAmountInput) {
             e.preventDefault();
             window.print();
@@ -766,6 +791,7 @@
             return;
           }
         });
+
 
         function setupQRInput() {
           const input = document.getElementById("qrAmountInput");
