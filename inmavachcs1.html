@@ -1063,6 +1063,47 @@
                 return parseInt(val).toLocaleString('vi-VN');
             }
 
+            function kiemTraGiaLeTruocKhiIn() {
+                syncHandsontableToSelected();
+
+                const dsCanhBao = (selected || []).filter(row => {
+                    if (!row || !row.tick) return false;
+
+                    const gianhap = Number(row.gianhap) || 0;
+                    const giale = Number(row.giale) || 0;
+
+                    // Nếu không có giá nhập thì bỏ qua kiểm tra
+                    if (gianhap <= 0) return false;
+
+                    return giale < (gianhap * 1.4);
+                });
+
+                if (!dsCanhBao.length) {
+                    return true;
+                }
+
+                const dsText = dsCanhBao.map((row, idx) => {
+                    const masp = row.masp || '';
+                    const tensp = row.tensp || '';
+                    const gianhap = Number(row.gianhap) || 0;
+                    const giale = Number(row.giale) || 0;
+                    const giaToiThieu = Math.ceil(gianhap * 1.4);
+
+                    return `${idx + 1}. ${masp}${tensp ? ' - ' + tensp : ''}\n` +
+                        `   Giá nhập: ${gianhap.toLocaleString('vi-VN')} | ` +
+                        `Giá lẻ: ${giale.toLocaleString('vi-VN')} | ` +
+                        `Tối thiểu nên là: ${giaToiThieu.toLocaleString('vi-VN')}`;
+                }).join('\n\n');
+
+                const msg =
+                    `⚠️ Bạn kiểm tra lại giá lẻ.\n\n` +
+                    `Có ${dsCanhBao.length} sản phẩm có giá lẻ chưa cao hơn giá nhập 40%.\n\n` +
+                    `${dsText}\n\n` +
+                    `Bạn có đồng ý in tem với giá lẻ hiện tại không?`;
+
+                return confirm(msg);
+            }
+
             // Xuất Excel
             window.exportExcel = function () {
                 const headers = ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"];
@@ -1087,11 +1128,21 @@
 
             window.checkLoaiTemAndRender = function () {
                 const loaiTem = document.getElementById('loaiTem').value;
-                if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return;
+                }
+
+                const ok = kiemTraGiaLeTruocKhiIn();
+                if (!ok) {
+                    return;
+                }
+
                 applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
                 if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
                 else renderPreview(1);
             };
+
             window.checkLoaiTemAndPrint = function () {
                 const loaiTem = document.getElementById('loaiTem').value;
                 if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
@@ -1566,7 +1617,7 @@
                 // Đẩy toàn bộ mã vừa tạo vào lưới tem in
                 records.forEach(pushProductToGrid);
             };
-            
+
             loadDropdownOptions();
 
             // Xử lý nút XÓA sản phẩm
