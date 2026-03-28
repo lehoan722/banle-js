@@ -1312,6 +1312,38 @@
         }
     </style>
 
+    <script>
+        (function () {
+            const masp = document.getElementById('masp');
+
+            function khoaMasp() {
+                if (!masp) return;
+
+                masp.value = '';
+                masp.setAttribute('readonly', true);
+                masp.style.background = '#ccc';
+                masp.style.cursor = 'not-allowed';
+                masp.placeholder = 'ĐÃ KHÓA SAU KHI LƯU - F5 để làm mới';
+            }
+
+            // ===== BẮT alert() =====
+            const originalAlert = window.alert;
+
+            window.alert = function (msg) {
+                try {
+                    if (typeof msg === 'string' && msg.includes('Đã lưu hóa đơn CCN')) {
+                        // 👉 Nếu thấy thông báo thành công → khóa ngay
+                        khoaMasp();
+                    }
+                } catch (e) { }
+
+                // vẫn gọi alert gốc
+                return originalAlert.apply(this, arguments);
+            };
+
+        })();
+    </script>
+
 </body>
 
 </html>
