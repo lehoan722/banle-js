@@ -318,7 +318,7 @@ import "./stockQuickPopup.js";
     }
 
     delete state.ketQua[key];
-    autoKiemTraSauNhap();
+    renderBangKetQua();
     phatAmThanhThanhCong();
 
     if (slEl) slEl.value = "1";
@@ -1119,10 +1119,9 @@ import "./stockQuickPopup.js";
 
     delete state.ketQua[key];
 
-    autoKiemTraSauNhap();
+    renderBangKetQua();
 
     if (sizeEl) sizeEl.value = "";
-
     slEl.value = "1";
 
     if (sizeEl) {
@@ -2339,7 +2338,7 @@ import "./stockQuickPopup.js";
       state.selectedMasp = "";
       state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
 
-      autoKiemTraSauNhap();
+      renderBangKetQua();
       alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
     } catch (err) {
       console.error("[KNK] pasteDuLieuNhap error:", err);
@@ -2376,7 +2375,7 @@ import "./stockQuickPopup.js";
     });
 
     state.selectedMasp = "";
-    autoKiemTraSauNhap();
+    renderBangKetQua();
 
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -3023,7 +3022,7 @@ import "./stockQuickPopup.js";
       state.xuat = dataMap || {};
       state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
       state.ketQua = {};
-      autoKiemTraSauNhap();
+      renderBangKetQua();
     }
   };
 
