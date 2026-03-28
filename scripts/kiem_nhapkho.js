@@ -318,7 +318,7 @@ import "./stockQuickPopup.js";
     }
 
     delete state.ketQua[key];
-    renderBangKetQua();
+    autoKiemTraSauNhap();
     phatAmThanhThanhCong();
 
     if (slEl) slEl.value = "1";
@@ -1119,7 +1119,7 @@ import "./stockQuickPopup.js";
 
     delete state.ketQua[key];
 
-    renderBangKetQua();
+    autoKiemTraSauNhap();
 
     if (sizeEl) sizeEl.value = "";
     slEl.value = "1";
