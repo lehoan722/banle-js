@@ -746,6 +746,10 @@ import "./stockQuickPopup.js";
 
   function autoKiemTraSauNhap() {
     try {
+      // Bước 1: render trước để dòng mới được đẩy xuống bảng
+      renderBangKetQua();
+
+      // Bước 2: sau đó mới kiểm tra lại
       kiemTraPhieu();
     } catch (err) {
       console.error("[KNK] autoKiemTraSauNhap error:", err);
@@ -2338,7 +2342,7 @@ import "./stockQuickPopup.js";
       state.selectedMasp = "";
       state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
 
-      renderBangKetQua();
+      autoKiemTraSauNhap();
       alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
     } catch (err) {
       console.error("[KNK] pasteDuLieuNhap error:", err);
@@ -2375,7 +2379,7 @@ import "./stockQuickPopup.js";
     });
 
     state.selectedMasp = "";
-    renderBangKetQua();
+    autoKiemTraSauNhap();
 
     const maspEl = byId("masp");
     const sizeEl = byId("size");
@@ -3022,7 +3026,7 @@ import "./stockQuickPopup.js";
       state.xuat = dataMap || {};
       state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
       state.ketQua = {};
-      renderBangKetQua();
+      autoKiemTraSauNhap();
     }
   };
 
