@@ -602,7 +602,7 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
-             <button id="btn-kiemtra">Kiểm tra</button>
+            <button id="btn-kiemtra">Kiểm tra</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
@@ -1011,7 +1011,22 @@
                 });
             }
         });
-    </script>    
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.addEventListener('click', () => {
+                    const ev = new KeyboardEvent('keydown', {
+                        key: 'F2',
+                        bubbles: true
+                    });
+                    (document.body || document.documentElement).dispatchEvent(ev);
+                });
+            }
+        });
+    </script>
 
     <script>
         // Tránh "URI malformed" khi có % không hợp lệ
@@ -1645,7 +1660,7 @@
 
     <script type="module" src="./scripts/nhaptamAutoSync.js"></script>
 
-    
+
 
 </body>
 
