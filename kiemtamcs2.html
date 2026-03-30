@@ -1017,14 +1017,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             const btnLuu = document.getElementById('btn-luu');
             if (btnLuu) {
-                btnLuu.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+                btnLuu.addEventListener('click', () => {
+                    const ev = new KeyboardEvent('keydown', {
+                        key: 'F2',
+                        bubbles: true
+                    });
+                    (document.body || document.documentElement).dispatchEvent(ev);
                 });
             }
-
         });
     </script>
 
@@ -1657,8 +1657,8 @@
             setInterval(sync, 300);
         });
     </script>
+   
 
-    
 </body>
 
 </html>
