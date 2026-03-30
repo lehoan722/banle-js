@@ -1623,8 +1623,9 @@ import "./stockQuickPopup.js";
     // 1) lấy các hóa đơn nguồn trong khoảng thời gian cho phép
     const { data: dsHd, error: errHd } = await window.supabase
       .from("hoadon_banle")
-      .select("sohd, ngay, created_at, diadiem, tennv, manv")
+      .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
       .ilike("sohd", `${prefixNguon}%`)
+      .or("kiem_nhapkho.is.null,kiem_nhapkho.neq.DK")
       .gte("created_at", toIsoLocal(start))
       .lte("created_at", toIsoLocal(end))
       .order("created_at", { ascending: false })
@@ -1853,7 +1854,6 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      const mapDaKiem = await layMapHoaDonDaKiem();
       const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
 
       if (!dsHd.length || !ctRows.length) {
@@ -1862,7 +1862,7 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem);
+      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, new Map());
 
       if (!dsDeXuat.length) {
         phatAmThanhLoi();
@@ -1947,8 +1947,9 @@ import "./stockQuickPopup.js";
 
       const { data: dsHd, error: errHd } = await window.supabase
         .from("hoadon_banle")
-        .select("sohd, ngay, created_at, diadiem, tennv, manv")
+        .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
         .ilike("sohd", `${prefixNguon}%`)
+        .or("kiem_nhapkho.is.null,kiem_nhapkho.neq.DK")
         .gte("created_at", toIsoLocal(start))
         .lte("created_at", toIsoLocal(end))
         .order("created_at", { ascending: false })
@@ -1966,8 +1967,7 @@ import "./stockQuickPopup.js";
       }
 
 
-      const mapDaKiem = await layMapHoaDonDaKiem();
-      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, mapDaKiem);
+      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, new Map());
       if (!dsSoHdChon || dsSoHdChon.length === 0) return;
 
       const dsHoaDonNguonInfo = dsHd
@@ -2667,6 +2667,35 @@ import "./stockQuickPopup.js";
     return rows;
   }
 
+  async function danhDauHoaDonNguonDaKiemNhap(dsSoHd) {
+    if (!window.supabase) {
+      throw new Error("Không tìm thấy kết nối Supabase.");
+    }
+
+    const dsSach = Array.from(
+      new Set(
+        (Array.isArray(dsSoHd) ? dsSoHd : [])
+          .map(x => String(x || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (!dsSach.length) {
+      return { success: true, updated: 0, message: "Không có hóa đơn nguồn để đánh dấu." };
+    }
+
+    const { data, error } = await window.supabase.rpc("rpc_danh_dau_kiem_nhapkho_hoa_don", {
+      p_ds_sohd: dsSach
+    });
+
+    if (error) {
+      console.error("[KNK] rpc_danh_dau_kiem_nhapkho_hoa_don error:", error);
+      throw new Error("Lỗi khi đánh dấu hóa đơn nguồn đã kiểm nhập.");
+    }
+
+    return data || { success: true, updated: 0 };
+  }
+
   async function luuPhieuKiemNhapKho() {
     try {
       if (!window.supabase) {
@@ -2830,6 +2859,7 @@ import "./stockQuickPopup.js";
         }
       }
 
+      await danhDauHoaDonNguonDaKiemNhap(stateSauKiem.dsHoaDonNguon || []);
       alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
       await resetPhieu();
 
