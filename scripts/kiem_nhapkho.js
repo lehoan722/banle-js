@@ -1609,6 +1609,23 @@ import "./stockQuickPopup.js";
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
   }
 
+
+  function layKhoangNgayHoaDonNguonMacDinh() {
+    const now = new Date();
+
+    // hôm nay (end)
+    const end = new Date(now);
+
+    // hôm kia (start = today - 2 ngày)
+    const start = new Date(now);
+    start.setDate(start.getDate() - 2);
+    start.setHours(0, 0, 0, 0);
+
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+
   async function layHoaDonNguonUngVienTheoMasp(dsMaspNhap) {
     if (!window.supabase || !Array.isArray(dsMaspNhap) || !dsMaspNhap.length) {
       return { dsHd: [], ctRows: [] };
