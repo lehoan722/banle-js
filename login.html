@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập hệ thống</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+    }
+
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-box {
+      width: 360px;
+      max-width: 95vw;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      padding: 24px;
+    }
+
+    .login-box h1 {
+      margin: 0 0 18px 0;
+      font-size: 24px;
+      text-align: center;
+      color: #111827;
+    }
+
+    .login-box p.desc {
+      margin: 0 0 18px 0;
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .login-box label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: bold;
+      color: #111827;
+    }
+
+    .login-box input,
+    .login-box select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+
+    .login-box button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 11px;
+      font-size: 16px;
+      font-weight: bold;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .login-box button:hover {
+      background: #1d4ed8;
+    }
+
+    #login-error {
+      min-height: 22px;
+      margin-top: 12px;
+      color: #c62828;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    #login-loading {
+      min-height: 22px;
+      margin-top: 8px;
+      color: #374151;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-box">
+      <h1>Đăng nhập hệ thống</h1>
+      <p class="desc">Đăng nhập để vào trang làm việc</p>
+
+      <div id="login-root"></div>
+      <div id="login-loading"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initLoginPage } from "./scripts/authModule.js";
+
+    initLoginPage({
+      loginRootId: "login-root",
+      defaultBranch: "cs1",
+      loginApiPath: (cs) => `/api/login-${cs}`
+    });
+  </script>
+</body>
+</html>
