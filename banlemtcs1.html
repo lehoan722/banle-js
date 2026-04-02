@@ -1025,37 +1025,23 @@
             await dangXuatApp();
         };
 
-        async function dangXuatApp() {
-            // Copy logic đăng xuất cũ của anh
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
+        document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
             }
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-password-nv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
 
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-
-            document.getElementById('login-manv').focus();
-            location.reload(); // ✅ reset sạch main.js, không bị init chồng
-        }
-
+            await window.dangXuatApp();
+        };
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
