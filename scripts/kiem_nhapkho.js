@@ -1615,17 +1615,13 @@ import "./stockQuickPopup.js";
     }
 
     const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
+    const { start, end } = layKhoangNgayHoaDonNguonMacDinh(1);
 
-    const now = new Date();
-    const start = batDauNgay(truNgay(now, 1));
-    const end = now;
-
-    // 1) lấy các hóa đơn nguồn trong khoảng thời gian cho phép
+    // Lấy cả hóa đơn CHƯA KIỂM và ĐÃ KIỂM
     const { data: dsHd, error: errHd } = await window.supabase
       .from("hoadon_banle")
       .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
       .ilike("sohd", `${prefixNguon}%`)
-      .or("kiem_nhapkho.is.null,kiem_nhapkho.neq.DK")
       .gte("created_at", toIsoLocal(start))
       .lte("created_at", toIsoLocal(end))
       .order("created_at", { ascending: false })
@@ -1648,7 +1644,6 @@ import "./stockQuickPopup.js";
       return { dsHd: [], ctRows: [] };
     }
 
-    // 2) lấy toàn bộ chi tiết của các hóa đơn đó
     const { data: ctRows, error: errCt } = await window.supabase
       .from("ct_hoadon_banle")
       .select("sohd, masp, size, soluong")
@@ -1684,7 +1679,7 @@ import "./stockQuickPopup.js";
       if (!sohd) return;
 
       const infoDaKiem = mapDaKiem.get(sohd);
-      if (infoDaKiem) return; // bỏ qua hóa đơn đã kiểm
+      const daKiem = !!infoDaKiem;
 
       const rows = nhomCtTheoSoHd[sohd] || [];
       if (!rows.length) return;
@@ -1733,10 +1728,14 @@ import "./stockQuickPopup.js";
         tyLeTheoHoaDon,
         score,
         dsMaspTrung,
+        daKiem,
+        infoDaKiem,
         autoChecked:
-          soMaTrung >= 2 ||
-          tyLeTheoNhap >= 0.3 ||
-          tyLeTheoHoaDon >= 0.5
+          !daKiem && (
+            soMaTrung >= 2 ||
+            tyLeTheoNhap >= 0.3 ||
+            tyLeTheoHoaDon >= 0.5
+          )
       });
     });
 
@@ -1777,6 +1776,8 @@ import "./stockQuickPopup.js";
           const ngayGio = formatDateTimeVN(hd.created_at || hd.ngay);
           const dsMau = (hd.dsMaspTrung || []).slice(0, 6).join(", ");
           const checked = hd.autoChecked ? "checked" : "";
+          const daKiem = !!hd.daKiem;
+          const tenNguoiKiem = String(hd.infoDaKiem?.nhanvienkiem || "").trim();
 
           row.innerHTML = `
             <div style="display:flex; align-items:flex-start; gap:8px;">
@@ -1784,6 +1785,12 @@ import "./stockQuickPopup.js";
               <div style="flex:1;">
                 <div style="font-weight:bold; color:#003366;">
                   ${escapeHtml(hd.sohd)}
+                  ${daKiem
+              ? `<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>`
+              : `<b style="color:green; margin-left:8px;">[CHƯA KIỂM]</b>`}
+                  ${daKiem && tenNguoiKiem
+              ? ` | <b style="color:#333;">${escapeHtml(tenNguoiKiem)}</b>`
+              : ""}
                 </div>
                 <div style="font-size:13px; color:#333; margin-top:2px;">
                   ${escapeHtml(ngayGio)} | ${escapeHtml(hd.diadiem || "")}
@@ -1801,7 +1808,9 @@ import "./stockQuickPopup.js";
             </div>
           `;
 
-          if (hd.autoChecked) {
+          if (daKiem) {
+            row.style.background = "#fff3cd";
+          } else if (hd.autoChecked) {
             row.style.background = "#eef8ee";
           }
 
@@ -1854,6 +1863,7 @@ import "./stockQuickPopup.js";
         return;
       }
 
+      const mapDaKiem = await layMapHoaDonDaKiem();
       const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
 
       if (!dsHd.length || !ctRows.length) {
@@ -1862,11 +1872,11 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, new Map());
+      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem);
 
       if (!dsDeXuat.length) {
         phatAmThanhLoi();
-        alert("Không tìm thấy hóa đơn CCN chưa kiểm nào có mã sản phẩm trùng với phần nhập.");
+        alert("Không tìm thấy hóa đơn CCN nào trong khung ngày đã chọn có mã sản phẩm trùng với phần nhập.");
         return;
       }
 
@@ -1940,16 +1950,13 @@ import "./stockQuickPopup.js";
       }
 
       const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
-
-      const now = new Date();
-      const start = batDauNgay(truNgay(now, 3));
-      const end = now;
+      const { start, end } = layKhoangNgayHoaDonNguonMacDinh(3);
+      const mapDaKiem = await layMapHoaDonDaKiem();
 
       const { data: dsHd, error: errHd } = await window.supabase
         .from("hoadon_banle")
         .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
         .ilike("sohd", `${prefixNguon}%`)
-        .or("kiem_nhapkho.is.null,kiem_nhapkho.neq.DK")
         .gte("created_at", toIsoLocal(start))
         .lte("created_at", toIsoLocal(end))
         .order("created_at", { ascending: false })
@@ -1962,12 +1969,11 @@ import "./stockQuickPopup.js";
       }
 
       if (!dsHd || dsHd.length === 0) {
-        alert("Không tìm thấy hóa đơn chuyển chi nhánh trong khoảng từ 3 ngày trước đến hiện tại.");
+        alert("Không tìm thấy hóa đơn chuyển chi nhánh trong khung ngày đã chọn.");
         return;
       }
 
-
-      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, new Map());
+      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, mapDaKiem);
       if (!dsSoHdChon || dsSoHdChon.length === 0) return;
 
       const dsHoaDonNguonInfo = dsHd
