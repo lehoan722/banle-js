@@ -4,7 +4,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // 1) CẤU HÌNH SUPABASE
 // =======================================================
 const SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
-const SUPABASE_ANON_KEY = "DAN_KEY_ANON_CUA_BAN_VAO_DAY";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
 
 if (
   !window.supabase ||
@@ -39,7 +39,7 @@ const UI_PROFILE_KEYS = [
 function ssSet(key, value) {
   try {
     sessionStorage.setItem(key, String(value ?? ""));
-  } catch {}
+  } catch { }
 }
 
 function ssGet(key) {
@@ -53,7 +53,7 @@ function ssGet(key) {
 function lsSet(key, value) {
   try {
     localStorage.setItem(key, String(value ?? ""));
-  } catch {}
+  } catch { }
 }
 
 function lsGet(key) {
@@ -66,8 +66,8 @@ function lsGet(key) {
 
 function clearUiProfile() {
   UI_PROFILE_KEYS.forEach((k) => {
-    try { sessionStorage.removeItem(k); } catch {}
-    try { localStorage.removeItem(k); } catch {}
+    try { sessionStorage.removeItem(k); } catch { }
+    try { localStorage.removeItem(k); } catch { }
   });
 }
 
@@ -92,7 +92,7 @@ function syncGlobalsFromProfile(profile = {}) {
     window.manv = profile.manv || "";
     window.tennv = profile.tennv || "";
     window.is_admin = !!profile.is_admin;
-  } catch {}
+  } catch { }
 }
 
 export function getCurrentUserInfo() {
@@ -225,18 +225,19 @@ async function loginAdmin({ cs, email, password }) {
   });
 
   if (error || !data?.session) {
-    throw new Error("Đăng nhập admin thất bại");
+    console.error("[loginAdmin] Supabase signIn error:", error);
+    throw new Error(error?.message || "Đăng nhập admin thất bại");
   }
 
   const isAdmin = await checkIsAdminBestEffort();
   if (!isAdmin) {
-    await window.supabase.auth.signOut().catch(() => {});
+    await window.supabase.auth.signOut().catch(() => { });
     throw new Error("Tài khoản không có quyền admin");
   }
 
   const profile = await readAdminProfile();
   if (!profile) {
-    await window.supabase.auth.signOut().catch(() => {});
+    await window.supabase.auth.signOut().catch(() => { });
     throw new Error("Không đọc được hồ sơ admin");
   }
 
@@ -255,7 +256,7 @@ async function loginAdmin({ cs, email, password }) {
 export async function logoutAndClear() {
   try {
     await window.supabase.auth.signOut();
-  } catch {}
+  } catch { }
 
   clearUiProfile();
 
@@ -264,7 +265,7 @@ export async function logoutAndClear() {
     window.manv = "";
     window.tennv = "";
     window.is_admin = false;
-  } catch {}
+  } catch { }
 }
 
 // =======================================================
@@ -345,7 +346,7 @@ export async function initLoginPage(options = {}) {
       location.replace(redirect);
       return;
     }
-  } catch {}
+  } catch { }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
