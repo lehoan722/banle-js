@@ -219,6 +219,7 @@
             <th>Tổng thành tiền</th>
             <th>Chiết khấu</th>
             <th>TT</th>
+            <th>Kiểm nhập kho</th>
             <th>Ghi chú</th>
           </tr>
         </thead>
@@ -741,19 +742,20 @@
       hienThiData.forEach((hd, idx) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-        <td>${hd.sohd || ""}</td>
-        <td>${dinhDangNgayGio(hd.created_at)}</td>
-        <td>${dinhDangNgayGio(hd.updated_at)}</td>
-        <td>${hd.manv || ""}</td>
-        <td>${hd.khachhang || ""}</td>
-        <td>${hd.tongsl || 0}</td>
-        <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
-        <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
-        <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
-        <td>${hd.ghichu || ""}</td>
-      `;
+  <td>${idx + 1}</td>
+  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+  <td>${hd.sohd || ""}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
+  <td>${dinhDangNgayGio(hd.updated_at)}</td>
+  <td>${hd.manv || ""}</td>
+  <td>${hd.khachhang || ""}</td>
+  <td>${hd.tongsl || 0}</td>
+  <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+  <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
+  <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+  <td>${hd.kiem_nhapkho || ""}</td>
+  <td>${hd.ghichu || ""}</td>
+`;
 
         // Click chọn dòng => tô vàng + hiện popup chi tiết
         tr.addEventListener('click', async (ev) => {
@@ -813,13 +815,14 @@
       trTong.style.fontWeight = "bold";
       trTong.style.background = "#f8f8f8";
       trTong.innerHTML = `
-          <td colspan="7" style="text-align:right">TỔNG</td>
-          <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
-          <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
-          <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
-          <td id="tongTien">${tongTien.toLocaleString()}</td>
-          <td></td>
-        `;
+    <td colspan="7" style="text-align:right">TỔNG</td>
+    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+    <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
+    <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
+    <td id="tongTien">${tongTien.toLocaleString()}</td>
+    <td></td>
+    <td></td>
+  `;
       tbody.appendChild(trTong);
 
       // GẮN SỰ KIỆN CHỌN TẤT CẢ
@@ -875,6 +878,7 @@
             tennv: r.tennv,
             khachhang: r.khachhang,
             ghichu: r.ghichu,
+            kiem_nhapkho: r.kiem_nhapkho,
 
             tongsl: r.sl_detail,
             tongthanhtien: r.tong_detail,
