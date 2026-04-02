@@ -711,13 +711,25 @@ async function taiBangCong() {
     return;
   }
 
-  const nhanvien = [
-    ...new Set(
-      data
-        .filter(d => Number(d.gio_cong || 0) > 0)
-        .map(d => `${normalizeManv(d.manv)}|${d.tennv}`)
-    )
-  ];
+  // =========================
+  // Chuẩn hóa danh sách nhân viên theo MANV
+  // =========================
+  const nhanvienMap = new Map();
+
+  data.forEach(d => {
+    const manv = normalizeManv(d.manv);
+    if (!manv) return;
+
+    const ten = String(d.tennv || "").trim() || manv;
+
+    if (!nhanvienMap.has(manv)) {
+      nhanvienMap.set(manv, ten);
+    }
+  });
+
+  const nhanvien = Array.from(nhanvienMap.keys()).sort((a, b) =>
+    a.localeCompare(b, "vi")
+  );
 
   if (nhanvien.length === 0) {
     thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
@@ -728,56 +740,69 @@ async function taiBangCong() {
 
   // Header HTML dự phòng
   let header = `<th>Ngày</th><th>Thứ</th>`;
-  nhanvien.forEach(n => {
-    const [, tennv] = n.split("|");
-    header += `<th>${tennv}</th>`;
+  nhanvien.forEach(manv => {
+    header += `<th>${nhanvienMap.get(manv) || manv}</th>`;
   });
   header += `<th>Tổng</th>`;
   thead.innerHTML = `<tr>${header}</tr>`;
 
-  // Group theo ngày
+  // =========================
+  // Group dữ liệu theo ngày + manv, cộng dồn nếu trùng
+  // =========================
   const groupByNgay = {};
+
   data.forEach(d => {
     const ngayNum = Number(d.ngay || 0);
-    if (!ngayNum) return;
-    groupByNgay[ngayNum] = groupByNgay[ngayNum] || [];
-    groupByNgay[ngayNum].push(d);
+    const manv = normalizeManv(d.manv);
+    const gio = Number(d.gio_cong || 0);
+
+    if (!ngayNum || !manv) return;
+
+    if (!groupByNgay[ngayNum]) {
+      groupByNgay[ngayNum] = {
+        thu: d.thu || getThuLabel(nam, thang, ngayNum),
+        byManv: {}
+      };
+    }
+
+    groupByNgay[ngayNum].byManv[manv] =
+      (groupByNgay[ngayNum].byManv[manv] || 0) + gio;
   });
 
   // Header cho Handsontable
   const colHeaders = ["Ngày", "Thứ"];
-  nhanvien.forEach(n => {
-    const [, tennv] = n.split("|");
-    colHeaders.push(tennv);
+  nhanvien.forEach(manv => {
+    colHeaders.push(nhanvienMap.get(manv) || manv);
   });
   colHeaders.push("Tổng");
 
   const hotData = [];
   const tongTheoNhanVien = {};
-  nhanvien.forEach(n => {
-    const manv = normalizeManv(n.split("|")[0]);
+  nhanvien.forEach(manv => {
     tongTheoNhanVien[manv] = 0;
   });
   let tongTatCa = 0;
 
-  // ✅ Luôn dựng đủ số ngày thực của tháng
+  // Luôn dựng đủ số ngày thực của tháng
   const daysInMonth = getDaysInMonth(thang, nam);
   const ngayList = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   let html = "";
 
   ngayList.forEach(ng => {
-    const row = groupByNgay[ng] || [];
-    const thu = row.length ? row[0].thu : getThuLabel(nam, thang, ng);
+    const row = groupByNgay[ng] || {
+      thu: getThuLabel(nam, thang, ng),
+      byManv: {}
+    };
+
+    const thu = row.thu;
     let sum = 0;
 
     const rowData = [ng, thu];
     let cellsHtml = "";
 
-    nhanvien.forEach(n => {
-      const manv = normalizeManv(n.split("|")[0]);
-      const found = row.find(r => normalizeManv(r.manv) === manv);
-      const gioCong = found ? Number(found.gio_cong || 0) : 0;
+    nhanvien.forEach(manv => {
+      const gioCong = Number(row.byManv[manv] || 0);
 
       sum += gioCong;
       tongTheoNhanVien[manv] += gioCong;
@@ -796,11 +821,12 @@ async function taiBangCong() {
   // Total row
   let totalHtml = `<tr style="font-weight:bold;background:#f3f3f3"><td colspan="2">Tổng</td>`;
   const totalRow = ["Tổng", ""];
-  nhanvien.forEach(n => {
-    const manv = normalizeManv(n.split("|")[0]);
+
+  nhanvien.forEach(manv => {
     totalRow.push(Number(tongTheoNhanVien[manv].toFixed(2)));
     totalHtml += `<td>${tongTheoNhanVien[manv] ? tongTheoNhanVien[manv].toFixed(2) : ""}</td>`;
   });
+
   totalRow.push(Number(tongTatCa.toFixed(2)));
   totalHtml += `<td>${tongTatCa ? tongTatCa.toFixed(2) : ""}</td></tr>`;
 
