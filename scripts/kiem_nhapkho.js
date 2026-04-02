@@ -852,6 +852,24 @@ import "./stockQuickPopup.js";
     return items.reduce((sum, x) => sum + normalizeNumber(x.sl), 0);
   }
 
+  function formatSohdNguonTheoMasp(xuatGroup) {
+    const sohdSet = new Set();
+
+    (xuatGroup?.items || []).forEach(item => {
+      const rowKey = item.key;
+      const state = getState();
+      const rowXuat = state.xuat?.[rowKey];
+
+      const ds = Array.isArray(rowXuat?.sohd_list) ? rowXuat.sohd_list : [];
+      ds.forEach(sohd => {
+        const s = String(sohd || "").trim();
+        if (s) sohdSet.add(s);
+      });
+    });
+
+    return Array.from(sohdSet).join("\n");
+  }
+
   function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
     const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
 
@@ -976,6 +994,7 @@ import "./stockQuickPopup.js";
 
       const nhapText = formatSizeSl(nhapGroup?.items || []);
       const xuatText = formatSizeSl(xuatGroup?.items || []);
+      const sohdNguonText = formatSohdNguonTheoMasp(xuatGroup);
 
       const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
 
@@ -1024,6 +1043,7 @@ import "./stockQuickPopup.js";
 
   <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
+  <td style="white-space: pre-line; text-align:left;">${escapeHtml(sohdNguonText || "")}</td>
 `;
       tbody.appendChild(tr);
     }
@@ -1927,6 +1947,7 @@ import "./stockQuickPopup.js";
         const masp = normalizeMasp(row.masp);
         const size = normalizeSize(row.size);
         const sl = normalizeNumber(row.soluong);
+        const sohdNguon = String(row.sohd || "").trim();
 
         if (!masp || !size || sl <= 0) continue;
 
@@ -1937,9 +1958,22 @@ import "./stockQuickPopup.js";
         const key = makeKey(masp, size);
 
         if (!xuatMap[key]) {
-          xuatMap[key] = { masp, size, sl };
+          xuatMap[key] = {
+            masp,
+            size,
+            sl,
+            sohd_list: sohdNguon ? [sohdNguon] : []
+          };
         } else {
           xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+
+          if (sohdNguon) {
+            const oldList = Array.isArray(xuatMap[key].sohd_list) ? xuatMap[key].sohd_list : [];
+            if (!oldList.includes(sohdNguon)) {
+              oldList.push(sohdNguon);
+            }
+            xuatMap[key].sohd_list = oldList;
+          }
         }
       }
 
@@ -2027,6 +2061,7 @@ import "./stockQuickPopup.js";
         const masp = normalizeMasp(row.masp);
         const size = normalizeSize(row.size);
         const sl = normalizeNumber(row.soluong);
+        const sohdNguon = String(row.sohd || "").trim();
 
         if (!masp || !size || sl <= 0) continue;
 
@@ -2040,10 +2075,19 @@ import "./stockQuickPopup.js";
           xuatMap[key] = {
             masp,
             size,
-            sl
+            sl,
+            sohd_list: sohdNguon ? [sohdNguon] : []
           };
         } else {
           xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+
+          if (sohdNguon) {
+            const oldList = Array.isArray(xuatMap[key].sohd_list) ? xuatMap[key].sohd_list : [];
+            if (!oldList.includes(sohdNguon)) {
+              oldList.push(sohdNguon);
+            }
+            xuatMap[key].sohd_list = oldList;
+          }
         }
       }
 
