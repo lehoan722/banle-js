@@ -1618,7 +1618,7 @@ import "./stockQuickPopup.js";
 
     // hôm kia (start = today - 2 ngày)
     const start = new Date(now);
-    start.setDate(start.getDate() - 2);
+    start.setDate(start.getDate() - 3);
     start.setHours(0, 0, 0, 0);
 
     end.setHours(23, 59, 59, 999);
