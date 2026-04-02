@@ -676,6 +676,15 @@ async function taiBangLuong() {
   }
 }
 
+function getDaysInMonth(month, year) {
+  return new Date(year, month, 0).getDate();
+}
+
+function getThuLabel(year, month, day) {
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString("en-US", { weekday: "short" });
+}
+
 async function taiBangCong() {
   const thang = parseInt(document.getElementById("bc-thang")?.value || "0");
   const nam = parseInt(document.getElementById("bc-nam")?.value || "0");
@@ -729,8 +738,10 @@ async function taiBangCong() {
   // Group theo ngày
   const groupByNgay = {};
   data.forEach(d => {
-    groupByNgay[d.ngay] = groupByNgay[d.ngay] || [];
-    groupByNgay[d.ngay].push(d);
+    const ngayNum = Number(d.ngay || 0);
+    if (!ngayNum) return;
+    groupByNgay[ngayNum] = groupByNgay[ngayNum] || [];
+    groupByNgay[ngayNum].push(d);
   });
 
   // Header cho Handsontable
@@ -749,17 +760,18 @@ async function taiBangCong() {
   });
   let tongTatCa = 0;
 
-  const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
+  // ✅ Luôn dựng đủ số ngày thực của tháng
+  const daysInMonth = getDaysInMonth(thang, nam);
+  const ngayList = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   let html = "";
 
   ngayList.forEach(ng => {
-    const row = groupByNgay[ng];
-    const thu = row[0].thu;
+    const row = groupByNgay[ng] || [];
+    const thu = row.length ? row[0].thu : getThuLabel(nam, thang, ng);
     let sum = 0;
 
-    const rowData = [Number(ng), thu];
-
+    const rowData = [ng, thu];
     let cellsHtml = "";
 
     nhanvien.forEach(n => {
