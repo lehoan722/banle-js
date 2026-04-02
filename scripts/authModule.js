@@ -1,475 +1,781 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+// scripts/authModule.js
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm";
 
 // =======================================================
-// 1) CẤU HÌNH SUPABASE
+// 1) CẤU HÌNH SUPABASE DÙNG CHUNG (frontend anon key)
 // =======================================================
 const SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
 
+// Luôn tái sử dụng 1 instance trên window để đồng bộ session giữa các trang/tab
 if (
   !window.supabase ||
-  typeof window.supabase.from !== "function" ||
-  !window.supabase.auth
+  !window.supabase.auth ||
+  typeof window.supabase.auth.setSession !== "function"
 ) {
-  window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       persistSession: true,
+      storage: sessionStorage,   // ✅ tách session theo từng tab
       autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: sessionStorage
+      detectSessionInUrl: true
     }
   });
+
 }
 
+// Helper: lấy client Supabase chuẩn (cho page nào muốn dùng chung)
 export function getSupabaseClient() {
   return window.supabase;
 }
 
 // =======================================================
-// 2) KEY UI PROFILE
+// 2) HÀM LẤY THÔNG TIN USER HIỆN TẠI (tương thích code cũ)
 // =======================================================
-const UI_PROFILE_KEYS = [
-  "diadiem",
-  "manv",
-  "tennv",
-  "is_admin",
-  "quyen_sua_hoadon"
-];
-
-function ssSet(key, value) {
-  try {
-    sessionStorage.setItem(key, String(value ?? ""));
-  } catch {}
-}
-
-function ssGet(key) {
-  try {
-    return (sessionStorage.getItem(key) || "").trim();
-  } catch {
-    return "";
-  }
-}
-
-function lsSet(key, value) {
-  try {
-    localStorage.setItem(key, String(value ?? ""));
-  } catch {}
-}
-
-function lsGet(key) {
-  try {
-    return (localStorage.getItem(key) || "").trim();
-  } catch {
-    return "";
-  }
-}
-
-function clearUiProfile() {
-  UI_PROFILE_KEYS.forEach((k) => {
-    try { sessionStorage.removeItem(k); } catch {}
-    try { localStorage.removeItem(k); } catch {}
-  });
-}
-
-function saveUiProfile(profile = {}) {
-  const data = {
-    diadiem: profile.diadiem || "",
-    manv: profile.manv || "",
-    tennv: profile.tennv || "",
-    is_admin: profile.is_admin ? "true" : "false",
-    quyen_sua_hoadon: profile.quyen_sua_hoadon ? "true" : "false"
-  };
-
-  Object.entries(data).forEach(([k, v]) => {
-    ssSet(k, v);
-    lsSet(k, v);
-  });
-}
-
-function syncGlobalsFromProfile(profile = {}) {
-  try {
-    window.diadiem = profile.diadiem || "";
-    window.manv = profile.manv || "";
-    window.tennv = profile.tennv || "";
-    window.is_admin = !!profile.is_admin;
-  } catch {}
-}
-
+// Nhiều trang của anh đang gọi: await authModule.getCurrentUserInfo()
+// -> Phải tồn tại hàm này để không bị TypeError.
 export function getCurrentUserInfo() {
+  const get = (k) => (sessionStorage.getItem(k) || localStorage.getItem(k) || "").trim();
   return {
-    diadiem: ssGet("diadiem") || lsGet("diadiem"),
-    manv: ssGet("manv") || lsGet("manv"),
-    tennv: ssGet("tennv") || lsGet("tennv"),
-    is_admin: (ssGet("is_admin") || lsGet("is_admin")) === "true",
-    quyen_sua_hoadon: (ssGet("quyen_sua_hoadon") || lsGet("quyen_sua_hoadon")) === "true"
+    diadiem: get("diadiem"),
+    manv: get("manv"),
+    tennv: get("tennv"),
+    is_admin: (sessionStorage.getItem("is_admin") || localStorage.getItem("is_admin")) === "true",
+    quyen_sua_hoadon: (sessionStorage.getItem("quyen_sua_hoadon") || localStorage.getItem("quyen_sua_hoadon")) === "true",
   };
 }
 
 // =======================================================
-// 3) TIỆN ÍCH CHUNG
+// 3) ĐỒNG BỘ / KHÔI PHỤC SESSION KHI MỞ TAB/TRANG MỚI
 // =======================================================
-function getRedirectUrl(defaultUrl = "/") {
+// Vì dự án của anh có trang dùng supabaseClient.js (có thể dùng sessionStorage),
+// nên ta giữ 2 key "legacy" để phục hồi session trên mọi trang:
+//
+// - supabase_access_token
+// - supabase_refresh_token
+//
+// Khi mở tab mới: nếu Supabase chưa có session nhưng 2 key này còn,
+// sẽ gọi setSession() để khôi phục (không cần nhập mật khẩu lại).
+async function tryRestoreSessionFromLegacyTokens() {
   try {
-    const url = new URL(window.location.href);
-    const redirect = url.searchParams.get("redirect");
-    return redirect || defaultUrl;
-  } catch {
-    return defaultUrl;
-  }
-}
+    const at = localStorage.getItem("supabase_access_token") || "";
+    const rt = localStorage.getItem("supabase_refresh_token") || "";
+    if (!at || !rt) return false;
 
-function goToLoginPage(redirectTo = null) {
-  const current = redirectTo || (location.pathname + location.search + location.hash);
-  const url = `/login.html?redirect=${encodeURIComponent(current)}`;
-  window.location.replace(url);
-}
-
-function resolveLoginApiPath(loginApiPath, cs) {
-  if (typeof loginApiPath === "function") return loginApiPath(cs);
-  if (typeof loginApiPath === "string" && loginApiPath.trim()) return loginApiPath.trim();
-  if (loginApiPath && typeof loginApiPath === "object") return loginApiPath[cs];
-  return `/api/login-${cs}`;
-}
-
-async function checkIsAdminBestEffort() {
-  try {
-    const { data, error } = await window.supabase.rpc("is_admin");
+    const { error } = await window.supabase.auth.setSession({
+      access_token: at,
+      refresh_token: rt,
+    });
     if (error) return false;
-    return data === true;
+    return true;
   } catch {
     return false;
   }
 }
 
-async function readAdminProfile() {
-  try {
-    const { data: userRes } = await window.supabase.auth.getUser();
-    const user = userRes?.user;
-    if (!user?.id) return null;
-
-    const { data, error } = await window.supabase
-      .from("admin_users")
-      .select("manv, tenadmin, active")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (error || !data || data.active === false) return null;
-
-    return {
-      manv: String(data.manv || "ADMIN").trim().toUpperCase(),
-      tennv: String(data.tenadmin || "ADMIN").trim(),
-      is_admin: true,
-      quyen_sua_hoadon: true
-    };
-  } catch {
-    return null;
-  }
-}
-
 // =======================================================
-// 4) LOGIN NHÂN VIÊN
+// 4) MODULE ĐĂNG NHẬP DÙNG CHUNG
 // =======================================================
-async function loginEmployee({ cs, manv, password, loginApiPath }) {
-  const apiPath = resolveLoginApiPath(loginApiPath, cs);
-
-  const resp = await fetch(apiPath, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify({
-      manv: String(manv || "").trim().toUpperCase(),
-      passwordNV: String(password || ""),
-      diadiem: cs
-    })
-  });
-
-  const result = await resp.json().catch(() => ({}));
-
-  if (!resp.ok || !result?.ok) {
-    throw new Error(result?.error || "Đăng nhập nhân viên thất bại");
-  }
-
-  const session = result?.session;
-  const nhanvien = result?.nhanvien || {};
-  const diadiem = result?.diadiem || cs;
-
-  if (!session?.access_token || !session?.refresh_token) {
-    throw new Error("Server không trả session hợp lệ");
-  }
-
-  const { error: setSessionError } = await window.supabase.auth.setSession({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token
-  });
-
-  if (setSessionError) {
-    throw new Error("Không set được session");
-  }
-
-  return {
-    diadiem,
-    manv: String(nhanvien.manv || manv || "").trim().toUpperCase(),
-    tennv: String(nhanvien.tennv || "").trim(),
-    is_admin: false,
-    quyen_sua_hoadon: !!nhanvien.sua_hoadon
-  };
-}
-
-// =======================================================
-// 5) LOGIN ADMIN
-// =======================================================
-async function loginAdmin({ cs, email, password }) {
-  const { data, error } = await window.supabase.auth.signInWithPassword({
-    email: String(email || "").trim().toLowerCase(),
-    password: String(password || "")
-  });
-
-  if (error || !data?.session) {
-    throw new Error("Đăng nhập admin thất bại");
-  }
-
-  const isAdmin = await checkIsAdminBestEffort();
-  if (!isAdmin) {
-    await window.supabase.auth.signOut().catch(() => {});
-    throw new Error("Tài khoản không có quyền admin");
-  }
-
-  const profile = await readAdminProfile();
-  if (!profile) {
-    await window.supabase.auth.signOut().catch(() => {});
-    throw new Error("Không đọc được hồ sơ admin");
-  }
-
-  return {
-    diadiem: cs,
-    manv: profile.manv,
-    tennv: profile.tennv,
-    is_admin: true,
-    quyen_sua_hoadon: true
-  };
-}
-
-// =======================================================
-// 6) LOGOUT
-// =======================================================
-export async function logoutAndClear() {
-  try {
-    await window.supabase.auth.signOut();
-  } catch {}
-
-  clearUiProfile();
-
-  try {
-    window.diadiem = "";
-    window.manv = "";
-    window.tennv = "";
-    window.is_admin = false;
-  } catch {}
-}
-
-// =======================================================
-// 7) RENDER FORM LOGIN
-// =======================================================
-function renderLoginForm(rootEl, options = {}) {
+export function khoiTaoDangNhapDungChung(options = {}) {
   const {
-    defaultBranch = "cs1",
-    lockBranch = false
+    loginContainerId = "login-container",
+    appContainerId = "app-container",
+    macDinhDiaDiem = "cs1",
+    tuDongKhoaCoSo = false,
+    loginApiPath = null,
+    onLoginSuccess,
   } = options;
+  // ✅ đăng ký 1 lần để các trang gọi window.capNhatQuyenGiaoDien()
+  registerGlobalUiPermissionHook();
 
-  rootEl.innerHTML = `
-    <form id="auth-login-form">
-      <label for="login-cs">Cơ sở</label>
-      <select id="login-cs">
+  // Tạo/đảm bảo có div login
+  let loginContainer = document.getElementById(loginContainerId);
+  if (!loginContainer) {
+    loginContainer = document.createElement("div");
+    loginContainer.id = loginContainerId;
+    document.body.appendChild(loginContainer);
+  }
+
+  // Style overlay
+  loginContainer.style.position = "fixed";
+  loginContainer.style.top = "0";
+  loginContainer.style.left = "0";
+  loginContainer.style.width = "100%";
+  loginContainer.style.height = "100%";
+  loginContainer.style.background = "#fff";
+  loginContainer.style.display = "flex";
+  loginContainer.style.flexDirection = "column";
+  loginContainer.style.alignItems = "center";
+  loginContainer.style.justifyContent = "center";
+  loginContainer.style.zIndex = "99999";
+
+  // App ẩn lúc chưa login (sẽ bật lại nếu auto session)
+  const appContainer = document.getElementById(appContainerId);
+  if (appContainer) appContainer.style.display = "none";
+
+  // 1 FORM: “Mã nhân viên (hoặc email admin)” + “Mật khẩu”
+  loginContainer.innerHTML = `
+  <div style="background:#f9f9f9; padding:30px; border-radius:8px; box-shadow:0 0 10px #ccc; min-width:280px;">
+    <h2>Đăng nhập</h2>
+    <form id="form-login-dungchung">
+      <label>Cơ sở:</label><br />
+      <select id="login-cs" style="width:100%; padding:6px; margin-bottom:8px;">
         <option value="">-- Chọn cơ sở --</option>
         <option value="cs1">Cơ sở 1</option>
         <option value="cs2">Cơ sở 2</option>
       </select>
 
-      <label for="login-id">Mã nhân viên hoặc email admin</label>
-      <input
-        id="login-id"
-        type="text"
-        autocomplete="username"
-        placeholder="Ví dụ: NV01 hoặc admin@email.com"
-      />
+      <label for="login-manv">Mã nhân viên / Email admin</label><br />
+      <input type="text" id="login-manv" autocomplete="off" list="email-suggest"
+             placeholder="Ví dụ: NV01 hoặc admin@email.com" required
+             style="width:100%;padding:6px;margin-bottom:8px;" /><br />
+      <datalist id="email-suggest"></datalist>
 
-      <label for="login-password">Mật khẩu</label>
-      <input
-        id="login-password"
-        type="password"
-        autocomplete="current-password"
-        placeholder="Nhập mật khẩu"
-      />
+      <label for="login-password-nv">Mật khẩu</label><br />
+      <input type="password" id="login-password-nv"
+             placeholder="Nhập mật khẩu"
+             style="width:100%;padding:6px;margin-bottom:12px;" /><br />
 
-      <button type="submit">Đăng nhập</button>
-      <div id="login-error"></div>
+      <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
+      <p id="login-error" style="color:red; margin-top:10px;"></p>
     </form>
+  </div>
   `;
 
-  const csEl = document.getElementById("login-cs");
-  if (csEl) {
-    csEl.value = defaultBranch || "cs1";
-    csEl.disabled = !!lockBranch;
-  }
-}
-
-// =======================================================
-// 8) LOGIN PAGE MODE
-// =======================================================
-export async function initLoginPage(options = {}) {
-  const {
-    loginRootId = "login-root",
-    defaultBranch = "cs1",
-    lockBranch = false,
-    loginApiPath = null
-  } = options;
-
-  const root = document.getElementById(loginRootId);
-  if (!root) {
-    throw new Error(`Không tìm thấy #${loginRootId}`);
-  }
-
-  renderLoginForm(root, { defaultBranch, lockBranch });
-
-  const form = document.getElementById("auth-login-form");
-  const csEl = document.getElementById("login-cs");
-  const idEl = document.getElementById("login-id");
-  const pwEl = document.getElementById("login-password");
+  const csSelect = document.getElementById("login-cs");
+  const manvInput = document.getElementById("login-manv");
+  const passInput = document.getElementById("login-password-nv");
   const errorEl = document.getElementById("login-error");
+  const form = document.getElementById("form-login-dungchung");
 
-  // Nếu đã có session sẵn thì chuyển luôn
+  // ===== Email dropdown gợi ý (vừa chọn vừa gõ) =====
+  const emailDatalist = document.getElementById("email-suggest");
+  const FIXED_ADMIN_EMAILS = [
+    "nguyenanhtuyet140175@gmail.com",
+    "danghoanghai02@gmail.com",
+    "lehoan722@gmail.com",
+  ];
+
+  function readEmailHistory() {
+    try {
+      return JSON.parse(localStorage.getItem("email_suggest_history") || "[]");
+    } catch {
+      return [];
+    }
+  }
+  function writeEmailHistory(list) {
+    try {
+      localStorage.setItem(
+        "email_suggest_history",
+        JSON.stringify(list.slice(0, 10))
+      );
+    } catch { }
+  }
+  function addEmailToHistory(email) {
+    const e = (email || "").trim();
+    if (!e || !e.includes("@")) return;
+    const cur = readEmailHistory();
+    const next = [e, ...cur.filter((x) => x !== e)];
+    writeEmailHistory(next);
+  }
+  function renderEmailDatalist() {
+    if (!emailDatalist) return;
+    const history = readEmailHistory();
+    const last = (localStorage.getItem("last_login_identifier") || "").trim();
+    const merged = [
+      ...FIXED_ADMIN_EMAILS,
+      ...(last.includes("@") ? [last] : []),
+      ...history,
+    ];
+    const uniq = [];
+    for (const x of merged) {
+      const v = (x || "").trim();
+      if (!v) continue;
+      if (!uniq.includes(v)) uniq.push(v);
+    }
+    emailDatalist.innerHTML = uniq.map((v) => `<option value="${v}"></option>`).join("");
+  }
+  renderEmailDatalist();
+
+  // Set default cơ sở (ưu tiên localStorage)
   try {
-    const { data } = await window.supabase.auth.getSession();
-    if (data?.session?.user) {
-      const redirect = getRedirectUrl("/");
-      location.replace(redirect);
-      return;
+    const savedBranch = (localStorage.getItem("diadiem") || "").trim().toLowerCase();
+    if (savedBranch) csSelect.value = savedBranch;
+
+    else if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
+  } catch {
+    if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
+  }
+
+  if (tuDongKhoaCoSo) csSelect.disabled = true;
+
+  function syncGlobalsFromLocalStorage() {
+    try {
+      window.diadiem = localStorage.getItem("diadiem") || "";
+      window.manv = localStorage.getItem("manv") || "";
+      window.tennv = localStorage.getItem("tennv") || "";
+      window.is_admin = localStorage.getItem("is_admin") === "true";
+    } catch { }
+  }
+
+  function showAppAfterLogin(nhanvienLike, context) {
+    const hook =
+      typeof onLoginSuccess === "function"
+        ? Promise.resolve(onLoginSuccess(nhanvienLike, context))
+        : Promise.resolve(true);
+
+    hook
+      .then((res) => {
+        if (res === false) return;
+        syncGlobalsFromLocalStorage();
+
+        // ✅ áp quyền UI ngay sau login/auto-session
+        try { window.capNhatQuyenGiaoDien?.(); } catch { }
+        // hoặc gọi thẳng:
+        // try { applyBanLeHeaderEditPermission(); } catch {}
+
+        if (appContainer) appContainer.style.display = "";
+        loginContainer.style.display = "none";
+      })
+      .catch(console.error);
+  }
+
+  async function checkIsAdminBestEffort() {
+    try {
+      const { data, error } = await window.supabase.rpc("is_admin");
+      if (error) return false;
+      return data === true;
+    } catch {
+      return false;
     }
-  } catch {}
+  }
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  function resolveLoginApiPath(cs) {
+    try {
+      if (typeof loginApiPath === "function") return loginApiPath(cs);
+      if (loginApiPath && typeof loginApiPath === "object") return loginApiPath[cs];
+      if (typeof loginApiPath === "string" && loginApiPath.trim()) return loginApiPath.trim();
+    } catch { }
+    return `/api/login-${cs}`;
+  }
 
-    const cs = String(csEl?.value || "").trim().toLowerCase();
-    const identifier = String(idEl?.value || "").trim();
-    const password = String(pwEl?.value || "").trim();
+  function isForceLoginNoRememberPage() {
+    const p = (location.pathname || "").toLowerCase();
 
-    errorEl.style.color = "#c62828";
-    errorEl.textContent = "";
+    // ✅ Chỉ cần match theo tên file/đường dẫn bạn dùng thực tế
+    // Ví dụ: /ccn2v1cs2.html, /ccn1v2cs1.html ...
+    return (
+      // p.includes("ccn1v2") ||
+       // p.includes("ccn2v1")  ||
+      p.includes("banlemtcs1") ||
+      p.includes("banlemtcs2")
+    );
+  }
 
-    if (!cs) {
-      errorEl.textContent = "Vui lòng chọn cơ sở";
-      return;
+  function getCcnUnlockKey() {
+    // khóa theo từng trang + từng tab
+    const p = (location.pathname || "").toLowerCase();
+    return `ccn_unlocked:${p}`;
+  }
+
+  function isCcnUnlockedInThisTab() {
+    try { return sessionStorage.getItem(getCcnUnlockKey()) === "1"; } catch { return false; }
+  }
+
+  function setCcnUnlockedForThisTab() {
+    try { sessionStorage.setItem(getCcnUnlockKey(), "1"); } catch { }
+  }
+
+
+  function clearAuthMemoryForThisPage() {
+    // Xóa các key “nhớ đăng nhập” của app
+    [
+      "supabase_access_token",
+      "supabase_refresh_token",
+      "manv",
+      "tennv",
+      "is_admin",
+      "quyen_sua_hoadon",
+      "last_login_identifier",
+    ].forEach((k) => {
+      try { localStorage.removeItem(k); } catch { }
+      try { sessionStorage.removeItem(k); } catch { }
+    });
+
+    // Xóa token supabase-js (sb-...-auth-token) để không có session auto
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+          localStorage.removeItem(key);
+        }
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+          sessionStorage.removeItem(key);
+        }
+      }
+    } catch { }
+  }
+
+  function saveSessionLegacy(session) {
+    try {
+      if (session?.access_token) localStorage.setItem("supabase_access_token", session.access_token);
+      if (session?.refresh_token) localStorage.setItem("supabase_refresh_token", session.refresh_token);
+    } catch { }
+  }
+
+  async function tryEmployeeLogin(cs, manvUpper, password) {
+    if (String(manvUpper || "").includes("@")) {
+      return { ok: false, error: "SKIP_EMPLOYEE_LOGIN_FOR_EMAIL" };
     }
 
-    if (!identifier) {
-      errorEl.textContent = "Vui lòng nhập mã nhân viên hoặc email";
-      return;
+    const resp = await fetch(resolveLoginApiPath(cs), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manv: manvUpper, passwordNV: password, diadiem: cs }),
+    });
+
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok || !result.ok) {
+      return { ok: false, error: result?.error || "Đăng nhập thất bại" };
     }
 
-    if (!password) {
-      errorEl.textContent = "Vui lòng nhập mật khẩu";
-      return;
+    const { session, nhanvien, diadiem } = result;
+    if (!session?.access_token || !session?.refresh_token) {
+      return { ok: false, error: "Không nhận được session hợp lệ từ server" };
     }
+
+    // Set session Supabase ở frontend
+    const { data: setSessionData, error: setSessionError } = await window.supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    });
+    if (setSessionError) {
+      console.error("Lỗi setSession:", setSessionError);
+      return { ok: false, error: "Không set được session Supabase" };
+    }
+
+    const csFinal = diadiem || cs;
+
+    // IMPORTANT: nhân viên luôn is_admin=false (không tin dmnhanvien.is_admin trên client)
+    localStorage.setItem("diadiem", csFinal);
+    localStorage.setItem("manv", (nhanvien?.manv || manvUpper || "").trim().toUpperCase());
+    localStorage.setItem("tennv", String(nhanvien?.tennv || "").trim());
+    localStorage.setItem("quyen_sua_hoadon", nhanvien?.sua_hoadon ? "true" : "false");
+    localStorage.setItem("is_admin", "false");
+
+    saveSessionLegacy(setSessionData?.session || session);
+    syncGlobalsFromLocalStorage();
+
+    return {
+      ok: true,
+      nhanvienLike: { ...(nhanvien || {}), is_admin: false },
+      context: { diadiem: csFinal, nhanvien, session: setSessionData?.session || session },
+    };
+  }
+
+  async function tryAdminLogin(cs, email, password) {
+    const { data: signInData, error: signInError } = await window.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError || !signInData?.session) {
+      return { ok: false, error: "Không đăng nhập được" };
+    }
+
+    const isAdmin = await checkIsAdminBestEffort();
+    if (!isAdmin) {
+      await window.supabase.auth.signOut().catch(() => { });
+      return { ok: false, error: "Không được phép đăng nhập" };
+    }
+
+    // Load profile admin
+    let manvAdmin = "ADMIN";
+    let tenAdmin = "ADMIN";
 
     try {
-      errorEl.style.color = "#444";
-      errorEl.textContent = "Đang đăng nhập...";
+      const uid = signInData?.user?.id || signInData?.session?.user?.id;
+      if (uid) {
+        const { data: prof, error: profErr } = await window.supabase
+          .from("admin_users")
+          .select("manv, tenadmin, active")
+          .eq("user_id", uid)
+          .maybeSingle();
 
-      let profile;
-      if (identifier.includes("@")) {
-        profile = await loginAdmin({
-          cs,
-          email: identifier,
-          password
-        });
-      } else {
-        profile = await loginEmployee({
-          cs,
-          manv: identifier,
-          password,
-          loginApiPath
-        });
+        if (!profErr && prof) {
+          if (prof.active === false) {
+            await window.supabase.auth.signOut().catch(() => { });
+            return { ok: false, error: "Tài khoản admin đang bị khóa" };
+          }
+          manvAdmin = String(prof.manv || "ADMIN").trim().toUpperCase();
+          tenAdmin = String(prof.tenadmin || manvAdmin).trim();
+        }
+      }
+    } catch (e) {
+      console.warn("Không lấy được profile admin_users:", e);
+    }
+
+    localStorage.setItem("diadiem", cs);
+    localStorage.setItem("is_admin", "true");
+    localStorage.setItem("manv", manvAdmin);
+    localStorage.setItem("tennv", tenAdmin);
+    localStorage.setItem("quyen_sua_hoadon", "true");
+
+    saveSessionLegacy(signInData.session);
+    addEmailToHistory(email);
+    syncGlobalsFromLocalStorage();
+
+    return {
+      ok: true,
+      nhanvienLike: { manv: manvAdmin, tennv: tenAdmin, is_admin: true, sua_hoadon: true, xoa_hoadon: true },
+      context: { diadiem: cs, nhanvien: { manv: manvAdmin, tennv: tenAdmin, is_admin: true }, session: signInData.session },
+    };
+  }
+
+  async function xuLyDangNhap(e) {
+    e.preventDefault();
+
+    const cs = csSelect.value;
+    const rawId = (manvInput.value || "").trim();
+    const password = (passInput.value || "").trim();
+
+    errorEl.style.color = "red";
+
+    if (!cs) return (errorEl.textContent = "Vui lòng chọn cơ sở!");
+    if (!rawId) return (errorEl.textContent = "Vui lòng nhập mã nhân viên hoặc email!");
+    if (!password) return (errorEl.textContent = "Vui lòng nhập mật khẩu!");
+
+    try {
+      localStorage.setItem("last_login_identifier", rawId);
+    } catch { }
+
+    errorEl.textContent = "Đang xác thực, vui lòng đợi…";
+
+    const looksLikeEmail = rawId.includes("@");
+
+    // A) Thử login nhân viên trước
+    try {
+      const manvUpper = rawId.toUpperCase();
+      const emp = await tryEmployeeLogin(cs, manvUpper, password);
+      if (emp.ok) {
+        errorEl.style.color = "green";
+        errorEl.textContent = "✅ Đăng nhập thành công!";
+        showAppAfterLogin(emp.nhanvienLike, emp.context);
+        return;
       }
 
-      saveUiProfile(profile);
-      syncGlobalsFromProfile(profile);
-
-      const redirect = getRedirectUrl("/");
-      location.replace(redirect);
+      if (!looksLikeEmail) {
+        errorEl.textContent = "❌ Không đăng nhập được";
+        return;
+      }
     } catch (err) {
-      console.error("[authModule] initLoginPage login error:", err);
-      errorEl.style.color = "#c62828";
-      errorEl.textContent = err?.message || "Không đăng nhập được";
+      if (!looksLikeEmail) {
+        console.error(err);
+        errorEl.textContent = "❌ Không đăng nhập được";
+        return;
+      }
+    }
+
+    // B) Thử login admin
+    try {
+      const email = rawId.toLowerCase();
+      const adm = await tryAdminLogin(cs, email, password);
+      if (!adm.ok) {
+        errorEl.textContent = "❌ " + (adm.error || "Không đăng nhập được");
+        return;
+      }
+      errorEl.style.color = "green";
+      errorEl.textContent = "✅ Đăng nhập thành công!";
+      showAppAfterLogin(adm.nhanvienLike, adm.context);
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = "❌ Không đăng nhập được";
+    }
+  }
+
+  form.addEventListener("submit", xuLyDangNhap);
+
+  // =======================================================
+  // AUTO: nếu đã có session (hoặc phục hồi được session) -> bỏ qua login overlay
+  // =======================================================
+  (async () => {
+    try {
+      // ✅ Nếu là trang chuyển chi nhánh: không nhớ đăng nhập, không auto điền
+      // ✅ Trang chuyển chi nhánh: bắt xác nhận lại (unlock theo tab), KHÔNG xóa nhớ đăng nhập
+      if (isForceLoginNoRememberPage() && !isCcnUnlockedInThisTab()) {
+        // đảm bảo overlay login vẫn hiện, app vẫn ẩn
+        if (appContainer) appContainer.style.display = "none";
+        loginContainer.style.display = "flex";
+
+        // có thể cho phép auto-fill manv/cs (tùy bạn thích), nhưng tuyệt đối không auto-pass
+        // không tryRestoreSessionFromLegacyTokens, không getSession để auto-pass
+        return;
+      }
+
+      // ====== (phần code cũ giữ nguyên từ đây trở xuống) ======
+      const savedId =
+        localStorage.getItem("last_login_identifier") ||
+        localStorage.getItem("manv") ||
+        "";
+      const savedBranch = localStorage.getItem("diadiem") || "";
+      if (savedId) manvInput.value = savedId;
+      if (savedBranch) csSelect.value = savedBranch;
+
+      // 1) Nếu supabase chưa có session, thử phục hồi từ legacy tokens
+      const { data: pre } = await window.supabase.auth.getSession();
+      if (!pre?.session) {
+        await tryRestoreSessionFromLegacyTokens();
+      }
+
+      // 2) Lấy session lần nữa
+      const { data } = await window.supabase.auth.getSession();
+      const session = data?.session;
+      if (!session) return;
+
+      const uid = session?.user?.id || null;
+      const isAdmin = await checkIsAdminBestEffort();
+
+      // ✅ CHỐT is_admin đúng theo RPC (an toàn nhất)
+      localStorage.setItem("is_admin", isAdmin ? "true" : "false");
+
+      if (isAdmin) {
+        // --- hydrate admin_users ---
+        try {
+          if (uid) {
+            const { data: prof, error: profErr } = await window.supabase
+              .from("admin_users")
+              .select("manv, tenadmin, active")
+              .eq("user_id", uid)
+              .maybeSingle();
+
+            if (!profErr && prof) {
+              if (prof.active === false) {
+                await window.supabase.auth.signOut().catch(() => { });
+                throw new Error("Tài khoản admin đang bị khóa");
+              }
+
+              const manvAdmin = String(prof.manv || "ADMIN").trim().toUpperCase();
+              const tenAdmin = String(prof.tenadmin || manvAdmin).trim();
+
+              localStorage.setItem("manv", manvAdmin);
+              localStorage.setItem("tennv", tenAdmin);
+              localStorage.setItem("quyen_sua_hoadon", "true");
+              localStorage.setItem("is_admin", "true");
+            } else {
+              // Không ép ADMIN bừa: giữ nguyên manv/tennv hiện có nếu có
+              localStorage.setItem("quyen_sua_hoadon", "true");
+              localStorage.setItem("is_admin", "true");
+            }
+          }
+        } catch (e) {
+          console.warn("Auto session (admin): không lấy được profile admin_users:", e);
+          localStorage.setItem("quyen_sua_hoadon", "true");
+          localStorage.setItem("is_admin", "true");
+        }
+      } else {
+        // --- hydrate nhân viên từ dmnhanvien theo user_id ---
+        try {
+          if (uid) {
+            const { data: nv, error: nvErr } = await window.supabase
+              .from("dmnhanvien")
+              .select("manv, tennv, sua_hoadon, xoa_hoadon")
+              .eq("user_id", uid)
+              .maybeSingle();
+
+            if (!nvErr && nv) {
+              if (nv && Object.prototype.hasOwnProperty.call(nv, "active") && nv.active === false) {
+                await window.supabase.auth.signOut().catch(() => { });
+                throw new Error("Tài khoản nhân viên đang bị khóa");
+              }
+
+              localStorage.setItem("manv", String(nv.manv || "").trim().toUpperCase());
+              localStorage.setItem("tennv", String(nv.tennv || "").trim());
+              localStorage.setItem("quyen_sua_hoadon", nv.sua_hoadon ? "true" : "false");
+              localStorage.setItem("is_admin", "false");
+            } else {
+              // Không tìm thấy dòng nv: giữ nguyên localStorage (nếu có), nhưng TUYỆT ĐỐI không gán ADMIN
+              localStorage.setItem("is_admin", "false");
+              localStorage.setItem(
+                "quyen_sua_hoadon",
+                localStorage.getItem("quyen_sua_hoadon") || "false"
+              );
+            }
+          }
+        } catch (e) {
+          console.warn("Auto session (nv): không hydrate được dmnhanvien:", e);
+          localStorage.setItem("is_admin", "false");
+        }
+      }
+
+      // đảm bảo diadiem
+      if (!localStorage.getItem("diadiem")) {
+        localStorage.setItem("diadiem", macDinhDiaDiem || "cs1");
+      }
+
+      // lưu legacy tokens để tab khác phục hồi
+      saveSessionLegacy(session);
+      syncGlobalsFromLocalStorage();
+
+      showAppAfterLogin(getCurrentUserInfo(), {
+        diadiem: localStorage.getItem("diadiem") || macDinhDiaDiem,
+        session,
+      });
+    } catch {
+      // ignore
+    } finally {
+      manvInput.focus();
+    }
+  })();
+
+  // Enter UX
+  manvInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      passInput?.focus();
+    }
+  });
+
+  passInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (typeof form.requestSubmit === "function") form.requestSubmit();
+      else form.submit();
     }
   });
 }
 
+// ======================================================= 
+// 5) ĐĂNG XUẤT DÙNG CHUNG
 // =======================================================
-// 9) GUARD MODE CHO CÁC TRANG NGHIỆP VỤ
-// =======================================================
-export async function requireAuth(options = {}) {
+// ==== 3. HÀM ĐĂNG XUẤT DÙNG CHUNG ====
+export async function dangXuatDungChung(options = {}) {
   const {
-    expectedBranch = "",
-    onAuthenticated = null
+    loginContainerId = 'login-container',
+    appContainerId = 'app-container',
+    clearDraft = true,
+    reloadPage = true, // ✅ mặc định: logout xong reload luôn cho ổn định
   } = options;
 
+  // 1) Sign out Supabase
   try {
-    const { data } = await window.supabase.auth.getSession();
-    const session = data?.session;
-
-    if (!session?.user) {
-      goToLoginPage();
-      return false;
+    if (window.supabase && window.supabase.auth) {
+      await window.supabase.auth.signOut();
     }
-
-    let profile = getCurrentUserInfo();
-
-    const isAdmin = await checkIsAdminBestEffort();
-
-    if (isAdmin) {
-      const adminProfile = await readAdminProfile();
-      if (!adminProfile) {
-        await logoutAndClear();
-        goToLoginPage();
-        return false;
-      }
-
-      profile = {
-        diadiem: profile.diadiem || expectedBranch || "cs1",
-        manv: adminProfile.manv,
-        tennv: adminProfile.tennv,
-        is_admin: true,
-        quyen_sua_hoadon: true
-      };
-
-      saveUiProfile(profile);
-      syncGlobalsFromProfile(profile);
-    } else {
-      if (!profile.manv) {
-        await logoutAndClear();
-        goToLoginPage();
-        return false;
-      }
-
-      if (expectedBranch && profile.diadiem && profile.diadiem !== expectedBranch) {
-        await logoutAndClear();
-        alert(`Tài khoản này không đúng cơ sở yêu cầu (${expectedBranch}).`);
-        goToLoginPage();
-        return false;
-      }
-
-      syncGlobalsFromProfile(profile);
-    }
-
-    if (typeof onAuthenticated === "function") {
-      await onAuthenticated(profile);
-    }
-
-    return true;
   } catch (err) {
-    console.error("[authModule] requireAuth error:", err);
-    goToLoginPage();
-    return false;
+    console.warn('Lỗi khi signOut Supabase:', err);
+  }
+
+  // 2) Chỉ xóa key liên quan auth (không clear all để khỏi mất config khác)
+  const keepBranch = localStorage.getItem('diadiem');
+  const keepId = localStorage.getItem('last_login_identifier');
+
+  localStorage.removeItem('supabase_access_token');
+  localStorage.removeItem('manv');
+  localStorage.removeItem('tennv');
+  localStorage.removeItem('is_admin');
+  localStorage.removeItem('quyen_sua_hoadon');
+
+  // sessionStorage: xóa sạch cho chắc (reload cũng sẽ sạch)
+  try { sessionStorage.clear(); } catch (e) { }
+
+  // giữ lại cơ sở + identifier để lần sau chọn nhanh
+  if (keepBranch) localStorage.setItem('diadiem', keepBranch);
+  if (keepId) localStorage.setItem('last_login_identifier', keepId);
+
+  // 3) Ẩn app / hiện login (phòng trường hợp reload bị chặn)
+  const loginContainer = document.getElementById(loginContainerId);
+  const appContainer = document.getElementById(appContainerId);
+  if (loginContainer) loginContainer.style.display = '';
+  if (appContainer) appContainer.style.display = 'none';
+
+  // 4) Xóa draft nếu muốn
+  if (clearDraft) {
+    localStorage.removeItem('draft_hoadon');
+    try { sessionStorage.removeItem('draft_hoadon'); } catch (e) { }
+  }
+
+  // 5) ✅ Ổn định nhất: reload trang để tránh bị init/lắng nghe sự kiện nhiều lần
+  if (reloadPage) {
+    try {
+      location.reload();
+    } catch (e) {
+      // ignore
+    }
   }
 }
+
+// =======================================================
+// 2.1) PHÂN QUYỀN UI BÁN LẺ: chỉ ADMIN được sửa #sohd, #chietkhau
+// =======================================================
+export function applyBanLeHeaderEditPermission(options = {}) {
+  const {
+    sohdSelector = "#sohd",
+    chietkhauSelector = "#chietkhau",
+    // nếu sau này muốn mở rộng thêm ô khác thì thêm vào đây
+  } = options;
+
+  const info = getCurrentUserInfo();
+  const isAdmin = !!info.is_admin;
+
+  const lockInput = (el, locked, reasonText) => {
+    if (!el) return;
+
+    // locked = true => chỉ xem
+    // locked = false => admin sửa được
+    el.readOnly = !!locked;
+
+    // gợi ý UX
+    if (locked) {
+      el.setAttribute("data-locked-by-role", "1");
+      el.title = reasonText || "Chỉ ADMIN mới được phép chỉnh sửa ô này.";
+      // vẫn cho copy nên KHÔNG dùng disabled
+      // chặn một số trình duyệt/tiện ích vẫn cố set value qua UI
+      el.addEventListener(
+        "keydown",
+        (e) => {
+          // cho phép Ctrl/Cmd + C/A và phím điều hướng
+          const k = e.key;
+          const ctrl = e.ctrlKey || e.metaKey;
+          const okKeys = ["Tab", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+          if (ctrl && (k.toLowerCase() === "c" || k.toLowerCase() === "a")) return;
+          if (okKeys.includes(k)) return;
+          // chặn nhập liệu
+          e.preventDefault();
+        },
+        { passive: false }
+      );
+    } else {
+      el.removeAttribute("data-locked-by-role");
+      el.title = "";
+      // readOnly=false là đủ để admin sửa
+    }
+  };
+
+  const sohdEl = document.querySelector(sohdSelector);
+  const ckEl = document.querySelector(chietkhauSelector);
+
+  // Nhân viên: khóa; Admin: mở
+  const locked = !isAdmin;
+  const msg = "Chỉ ADMIN mới được phép chỉnh sửa.";
+  lockInput(sohdEl, locked, msg);
+  lockInput(ckEl, locked, msg);
+
+  return { isAdmin, locked };
+}
+
+// helper legacy: để các trang cũ chỉ cần gọi window.capNhatQuyenGiaoDien()
+export function registerGlobalUiPermissionHook() {
+  try {
+    window.capNhatQuyenGiaoDien = function () {
+      // an toàn: trang nào không có #sohd hoặc #chietkhau thì hàm tự bỏ qua
+      applyBanLeHeaderEditPermission();
+    };
+  } catch { }
+}
+
+
+
