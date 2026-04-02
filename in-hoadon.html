@@ -556,11 +556,11 @@
 
           // ===== Nếu đang bật chế độ F2 thì ép về Techcombank theo cơ sở =====
           if (qrF2TechcombankMode) {
-            bankId = "TCB";
-            bankLabel = "Techcombank";
+            bankId = "VPBank";
+            bankLabel = "VPBank";
 
             if (isCS2) {
-              accountNo = "MS00P00000000635573";
+              accountNo = "AGBHENO60402090454";
               accountName = "NGUYEN ANH TUYET";
             } else {
               accountNo = "2662222333";
@@ -764,8 +764,26 @@
             }, 150);
             return;
           }
+
+          // F2: chuyển đổi tài khoản QR sang Techcombank theo cơ sở
+          if (e.key === "F2") {
+            e.preventDefault();
+            e.stopPropagation();
+
+            qrF2TechcombankMode = !qrF2TechcombankMode;
+
+            // Khi bật F2 thì ưu tiên chế độ QR = 0 để khách tự nhập
+            if (qrF2TechcombankMode) {
+              qrManualAmountMode = false;
+              qrCustomAmount = null;
+            }
+
+            renderVietQR();
+            return;
+          }
+
         });
-        
+
         function setupQRInput() {
           const input = document.getElementById("qrAmountInput");
           if (!input) return;
