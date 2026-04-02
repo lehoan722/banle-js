@@ -676,15 +676,6 @@ async function taiBangLuong() {
   }
 }
 
-function getDaysInMonth(month, year) {
-  return new Date(year, month, 0).getDate();
-}
-
-function getThuLabel(year, month, day) {
-  const d = new Date(year, month - 1, day);
-  return d.toLocaleDateString("en-US", { weekday: "short" });
-}
-
 async function taiBangCong() {
   const thang = parseInt(document.getElementById("bc-thang")?.value || "0");
   const nam = parseInt(document.getElementById("bc-nam")?.value || "0");
