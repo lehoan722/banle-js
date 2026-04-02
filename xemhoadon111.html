@@ -180,6 +180,7 @@
     <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
     <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
     <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
+    <button class="xoa-btn" onclick="boDanhDauKiemNhapKhoDaChon()">🧹 Xóa kiểm nhập kho đã chọn</button>
 
     <br />
 
@@ -815,14 +816,13 @@
       trTong.style.fontWeight = "bold";
       trTong.style.background = "#f8f8f8";
       trTong.innerHTML = `
-    <td colspan="7" style="text-align:right">TỔNG</td>
-    <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
-    <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
-    <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
-    <td id="tongTien">${tongTien.toLocaleString()}</td>
-    <td></td>
-    <td></td>
-  `;
+          <td colspan="7" style="text-align:right">TỔNG</td>
+          <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+          <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
+          <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
+          <td id="tongTien">${tongTien.toLocaleString()}</td>
+          <td></td>
+        `;
       tbody.appendChild(trTong);
 
       // GẮN SỰ KIỆN CHỌN TẤT CẢ
@@ -1049,6 +1049,62 @@
 
         await taiDanhSachHoaDon(); // refresh lại bảng
 
+      });
+    }
+
+    async function boDanhDauKiemNhapKhoDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      if (checkboxes.length === 0) {
+        alert("❌ Bạn chưa chọn hóa đơn nào.");
+        return;
+      }
+
+      kiemTraNhanVienTruocKhiXoa(async function () {
+        let dsSua = [];
+        let fail = [];
+        let okCount = 0;
+
+        for (const cb of checkboxes) {
+          const sohd = cb.getAttribute("data-sohd");
+          if (!sohd) continue;
+          dsSua.push(sohd);
+        }
+
+        dsSua = [...new Set(dsSua)];
+
+        const xacNhan = confirm(
+          `Bạn có chắc muốn xóa trạng thái kiểm nhập kho của ${dsSua.length} hóa đơn đã chọn không?\n\n` +
+          `Sau thao tác này, các phiếu sẽ trở về trạng thái CHƯA kiểm kho để có thể kiểm tra lại.`
+        );
+        if (!xacNhan) return;
+
+        const reason = prompt("Nhập lý do bỏ đánh dấu kiểm nhập kho:", "Kiểm lại phiếu") || "";
+
+        for (const sohd of dsSua) {
+          const { data, error } = await window.supabase.rpc("admin_clear_kiem_nhapkho", {
+            p_sohd: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Đã bỏ đánh dấu được ${okCount}/${dsSua.length} hóa đơn.\n` +
+            `Các hóa đơn lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa trạng thái kiểm nhập kho thành công ${okCount} hóa đơn.`);
+        }
+
+        await taiDanhSachHoaDon();
       });
     }
 
