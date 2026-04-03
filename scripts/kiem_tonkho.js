@@ -59,6 +59,83 @@ import "./stockQuickPopup.js";
     let dangChonSizeTrongPopup = false;
 
     // =========================
+    // GOOGLE SHEET KIỂM MẪU
+    // =========================
+    const KIEM_MAU_SHEET_ID = "1ka8nuwIRaqUaVyZsuHyu-HJsVvdFpNkmzurvHvqPaoM";
+    const KIEM_MAU_SHEET_GID = "1397210330";
+    const KIEM_MAU_CSV_URL =
+        `https://docs.google.com/spreadsheets/d/${KIEM_MAU_SHEET_ID}/gviz/tq?tqx=out:csv&gid=${KIEM_MAU_SHEET_GID}`;
+
+    const VALID_BAY_MAU_SIZES = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+
+    function isValidBayMauSheetSize(v) {
+        return VALID_BAY_MAU_SIZES.has(String(v || "").trim());
+    }
+
+    function parseCsvLineSimple(line) {
+        const out = [];
+        let cur = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch === "," && !inQuotes) {
+                out.push(cur);
+                cur = "";
+            } else {
+                cur += ch;
+            }
+        }
+
+        out.push(cur);
+        return out.map(x => String(x || "").trim());
+    }
+
+    async function docDanhSachBayMauTuGoogleSheet() {
+        const res = await fetch(KIEM_MAU_CSV_URL, { cache: "no-store" });
+        if (!res.ok) {
+            throw new Error(`Không đọc được Google Sheet kiểm mẫu (${res.status})`);
+        }
+
+        const raw = await res.text();
+        const csv = raw.replace(/^\uFEFF/, "");
+        const lines = csv.split(/\r?\n/).filter(x => String(x || "").trim());
+
+        if (!lines.length) return new Map();
+
+        let start = 0;
+        const first = String(lines[0] || "").toLowerCase();
+        if (first.includes("mã") || first.includes("masp") || first.includes("size")) {
+            start = 1;
+        }
+
+        const map = new Map();
+
+        for (let i = start; i < lines.length; i++) {
+            const cols = parseCsvLineSimple(lines[i]);
+            const masp = normalizeMasp(cols[0] || "");
+            const sizeRaw = String(cols[1] || "").trim();
+
+            if (!masp) continue;
+
+            // giữ dòng đầu tiên gặp được cho mỗi mã
+            if (!map.has(masp)) {
+                map.set(masp, sizeRaw);
+            }
+        }
+
+        return map;
+    }
+
+    // =========================
     // AUDIO CẢNH BÁO
     // =========================
     // =========================
@@ -1145,6 +1222,77 @@ import "./stockQuickPopup.js";
         state.nhap = nhapMoi;
         state.bayMau = bayMauMoi;
         state.nhapOrder = nhapOrderMoi;
+    }
+
+    async function layBayMauTuGoogleSheet() {
+        try {
+            docLaiNhapTuBangHTML();
+
+            const state = getState();
+            const nhapGroupMap = groupByMasp(state.nhap || {});
+            const xuatGroupMap = groupByMasp(state.xuat || {});
+            const orderedMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+            if (!orderedMasps.length) {
+                alert("Chưa có dữ liệu trên bảng để đối chiếu bày mẫu.");
+                return;
+            }
+
+            const sheetMap = await docDanhSachBayMauTuGoogleSheet();
+
+            let soDongCapNhat = 0;
+            let soDongDungSize = 0;
+            let soDongMacDinh0 = 0;
+
+            // Xóa dữ liệu bày mẫu cũ của các mã đang có trên bảng
+            Object.keys(state.bayMau || {}).forEach((key) => {
+                const info = splitKey(key);
+                if (orderedMasps.includes(normalizeMasp(info.masp))) {
+                    delete state.bayMau[key];
+                }
+            });
+
+            for (const masp of orderedMasps) {
+                if (!sheetMap.has(masp)) {
+                    // không tìm thấy mã -> để trống
+                    continue;
+                }
+
+                const sizeRaw = String(sheetMap.get(masp) || "").trim();
+
+                let sizeToSave = "0";
+                if (isValidBayMauSheetSize(sizeRaw)) {
+                    sizeToSave = sizeRaw;
+                    soDongDungSize++;
+                } else {
+                    sizeToSave = "0";
+                    soDongMacDinh0++;
+                }
+
+                const key = makeKey(masp, sizeToSave);
+                state.bayMau[key] = {
+                    masp,
+                    size: sizeToSave,
+                    sl: 1
+                };
+
+                soDongCapNhat++;
+            }
+
+            state.ketQua = {};
+            renderBangKetQua();
+            capNhatThongKeDauTrang();
+
+            alert(
+                `Đã tải dữ liệu bày mẫu từ Google Sheet.\n` +
+                `- Mã khớp: ${soDongCapNhat}\n` +
+                `- Đúng size 38-45: ${soDongDungSize}\n` +
+                `- Mặc định 0/1: ${soDongMacDinh0}`
+            );
+        } catch (err) {
+            console.error("[KTK] layBayMauTuGoogleSheet error:", err);
+            alert("Lỗi khi tải dữ liệu bày mẫu từ Google Sheet.");
+        }
     }
 
     // Expose để HTML cũ không lỗi nếu còn gọi
@@ -2629,18 +2777,11 @@ import "./stockQuickPopup.js";
                 return;
             }
 
-            if (tonTaiCu) {
-                alert("Số phiếu kiểm tồn này đã được lưu rồi.");
-                return;
-            }
 
-            const thongTinTong = xayDungDuLieuTongVaChiTietLech();
-            const rowsChiTiet = buildChiTietKiemTonRows(so_phieu, diadiem);
-
-            const so_dong_ok = rowsChiTiet.filter(x => x.trang_thai === "OK").length;
-            const so_dong_thieu = rowsChiTiet.filter(x => x.trang_thai === "THIEU").length;
-            const so_dong_thua = rowsChiTiet.filter(x => x.trang_thai === "THUA").length;
-            const so_dong_lech = rowsChiTiet.filter(x => x.trang_thai === "LECH").length;
+            const so_dong_ok = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "OK").length;
+            const so_dong_thieu = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "THIEU").length;
+            const so_dong_thua = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "THUA").length;
+            const so_dong_lech = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "LECH").length;
 
             const rowTong = {
                 so_phieu,
@@ -2649,18 +2790,41 @@ import "./stockQuickPopup.js";
                 thoi_diem_chot_ton: state.thoiDiemChotTon || new Date().toISOString(),
                 diadiem,
                 nguoi_kiem: String(byId("manv")?.value || "").trim(),
-                ten_nguoi_kiem,
+                ten_nguoi_kiem: ten_nguoi_kiem,
                 ghi_chu,
-                tong_masp: thongTinTong.tong_so_mat_hang,
-                tong_sl_kiem: thongTinTong.tong_so_luong_nhan,
-                tong_sl_ton_may: thongTinTong.tong_so_luong_xuat,
-                tong_sl_lech: thongTinTong.tong_sl_lech_thieu + thongTinTong.tong_sl_lech_thua,
+                tong_masp: thongTinTong.tong_so_mat_hang || 0,
+                tong_sl_kiem: thongTinTong.tong_so_luong_nhan || 0,
+                tong_sl_ton_may: thongTinTong.tong_so_luong_xuat || 0,
+                tong_sl_lech_thieu: thongTinTong.tong_sl_lech_thieu || 0,
+                tong_sl_lech_thua: thongTinTong.tong_sl_lech_thua || 0,
                 so_dong_ok,
                 so_dong_thieu,
                 so_dong_thua,
-                so_dong_lech,
-                trang_thai: "DA_KIEM"
+                so_dong_lech
             };
+
+            if (tonTaiCu) {
+                const { error: rpcError } = await window.supabase.rpc("rpc_update_kiem_ton_kho", {
+                    p_so_phieu: so_phieu,
+                    p_row_tong: rowTong,
+                    p_rows_chi_tiet: rowsChiTiet
+                });
+
+                if (rpcError) {
+                    console.error("[KTK] rpc_update_kiem_ton_kho error:", rpcError);
+                    alert("Lỗi khi cập nhật phiếu kiểm tồn cũ.");
+                    return;
+                }
+
+                const hdStateEl = byId("hd_state");
+                if (hdStateEl) {
+                    hdStateEl.value = "xem";
+                    hdStateEl.setAttribute("data-state", "xem");
+                }
+
+                alert(`Đã cập nhật phiếu cũ: ${so_phieu}`);
+                return;
+            }
 
             const { error: errTong } = await window.supabase
                 .from("kiem_ton_kho")
@@ -2767,6 +2931,11 @@ import "./stockQuickPopup.js";
                 await taoPhieuDieuChinhKiem("xuat");
             });
         }
+
+        byId("btnLayBayMau")?.addEventListener("click", async () => {
+            await layBayMauTuGoogleSheet();
+        });
+
     }
 
     async function moLaiPhieuKiemTonCu(soPhieu) {
@@ -3101,6 +3270,7 @@ import "./stockQuickPopup.js";
         moPopupChonPhieuCu,
         moPhieuTruoc,
         moPhieuSau,
+        layBayMauTuGoogleSheet,
 
         setXuatData(dataMap, orderArr) {
             const state = getState();
