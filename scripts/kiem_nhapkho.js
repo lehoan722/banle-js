@@ -446,13 +446,42 @@ import "./stockQuickPopup.js";
 
     const vn = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
 
-    const yyyy = vn.getFullYear();
-    const mm = String(vn.getMonth() + 1).padStart(2, "0");
     const dd = String(vn.getDate()).padStart(2, "0");
+    const mm = String(vn.getMonth() + 1).padStart(2, "0");
+    const yyyy = vn.getFullYear();
     const hh = String(vn.getHours()).padStart(2, "0");
     const mi = String(vn.getMinutes()).padStart(2, "0");
 
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    return `${dd}/${mm}/${yyyy} ${hh}h${mi}`;
+  }
+
+  function formatSohdNguonDayDuTheoMasp(xuatGroup) {
+    const state = getState();
+    const sohdSet = new Set();
+
+    (xuatGroup?.items || []).forEach(item => {
+      const rowKey = item.key;
+      const rowXuat = state.xuat?.[rowKey];
+
+      const ds = Array.isArray(rowXuat?.sohd_list) ? rowXuat.sohd_list : [];
+      ds.forEach(sohd => {
+        const s = String(sohd || "").trim();
+        if (s) sohdSet.add(s);
+      });
+    });
+
+    const dsInfo = Array.isArray(state.dsHoaDonNguonInfo) ? state.dsHoaDonNguonInfo : [];
+
+    const lines = Array.from(sohdSet).map((sohd) => {
+      const info = dsInfo.find(x => String(x?.sohd || "").trim() === sohd);
+
+      const ngayGio = formatDateTimeVN(info?.created_at || info?.ngay || "");
+      const manv = String(info?.manv || "").trim();
+
+      return [sohd, ngayGio, manv].filter(Boolean).join(" ");
+    });
+
+    return lines.join("\n");
   }
 
   function getState() {
@@ -994,7 +1023,7 @@ import "./stockQuickPopup.js";
 
       const nhapText = formatSizeSl(nhapGroup?.items || []);
       const xuatText = formatSizeSl(xuatGroup?.items || []);
-      const sohdNguonText = formatSohdNguonTheoMasp(xuatGroup);
+      const sohdNguonText = formatSohdNguonDayDuTheoMasp(xuatGroup);
 
       const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
 
@@ -1926,6 +1955,7 @@ import "./stockQuickPopup.js";
         .map(hd => ({
           sohd: String(hd.sohd || "").trim(),
           ngay: hd.ngay || null,
+          created_at: hd.created_at || null,
           diadiem: hd.diadiem || "",
           manv: String(hd.manv || "").trim(),
           tennv: String(hd.tennv || "").trim()
@@ -2032,6 +2062,7 @@ import "./stockQuickPopup.js";
         .map(hd => ({
           sohd: String(hd.sohd || "").trim(),
           ngay: hd.ngay || null,
+          created_at: hd.created_at || null,
           diadiem: hd.diadiem || "",
           manv: String(hd.manv || "").trim(),
           tennv: String(hd.tennv || "").trim()
