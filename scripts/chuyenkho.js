@@ -645,6 +645,17 @@ function ganSuKienBang() {
     });
   }
 
+  const chkAllZeroTarget = $("check-all-zero-target");
+  if (chkAllZeroTarget && !chkAllZeroTarget.dataset.bound) {
+    chkAllZeroTarget.dataset.bound = "1";
+    chkAllZeroTarget.addEventListener("click", (e) => e.stopPropagation());
+    chkAllZeroTarget.addEventListener("change", (e) => {
+      setSelectedZeroTargetOnly(!!e.target.checked);
+      renderBang();
+      capNhatTong();
+    });
+  }
+
   const chkAllDone = $("check-all-done");
   if (chkAllDone && !chkAllDone.dataset.bound) {
     chkAllDone.dataset.bound = "1";
@@ -715,6 +726,7 @@ function capNhatTong() {
 
 function updateHeaderCheckboxState() {
   const chkAllSelected = $("check-all-selected");
+  const chkAllZeroTarget = $("check-all-zero-target");
   const chkAllDone = $("check-all-done");
 
   if (chkAllSelected) {
@@ -725,6 +737,20 @@ function updateHeaderCheckboxState() {
       const selectedCount = STATE.rows.filter(r => !!r.selected).length;
       chkAllSelected.checked = selectedCount === STATE.rows.length;
       chkAllSelected.indeterminate = selectedCount > 0 && selectedCount < STATE.rows.length;
+    }
+  }
+
+  if (chkAllZeroTarget) {
+    const zeroTargetRows = STATE.rows.filter(r => toNumber(r.ton_dich) === 0);
+
+    if (!zeroTargetRows.length) {
+      chkAllZeroTarget.checked = false;
+      chkAllZeroTarget.indeterminate = false;
+    } else {
+      const selectedZeroCount = zeroTargetRows.filter(r => !!r.selected).length;
+      chkAllZeroTarget.checked = selectedZeroCount === zeroTargetRows.length;
+      chkAllZeroTarget.indeterminate =
+        selectedZeroCount > 0 && selectedZeroCount < zeroTargetRows.length;
     }
   }
 
@@ -815,6 +841,14 @@ function handleSelectedGroupLogic(idx, checked) {
 
 function setAllSelected(checked) {
   STATE.rows.forEach(row => applySelectedState(row, checked));
+}
+
+function setSelectedZeroTargetOnly(checked) {
+  STATE.rows.forEach((row) => {
+    if (toNumber(row.ton_dich) === 0) {
+      applySelectedState(row, checked);
+    }
+  });
 }
 
 function setAllDone(checked) {
