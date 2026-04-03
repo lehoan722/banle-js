@@ -126,10 +126,11 @@ import "./stockQuickPopup.js";
 
             if (!masp) continue;
 
-            // giữ dòng đầu tiên gặp được cho mỗi mã
             if (!map.has(masp)) {
-                map.set(masp, sizeRaw);
+                map.set(masp, []);
             }
+
+            map.get(masp).push(sizeRaw);
         }
 
         return map;
@@ -1240,7 +1241,8 @@ import "./stockQuickPopup.js";
 
             const sheetMap = await docDanhSachBayMauTuGoogleSheet();
 
-            let soDongCapNhat = 0;
+            let soMaKhop = 0;
+            let soDongSheetKhop = 0;
             let soDongDungSize = 0;
             let soDongMacDinh0 = 0;
 
@@ -1254,29 +1256,37 @@ import "./stockQuickPopup.js";
 
             for (const masp of orderedMasps) {
                 if (!sheetMap.has(masp)) {
-                    // không tìm thấy mã -> để trống
-                    continue;
+                    continue; // không tìm thấy mã -> để trống
                 }
 
-                const sizeRaw = String(sheetMap.get(masp) || "").trim();
+                soMaKhop++;
 
-                let sizeToSave = "0";
-                if (isValidBayMauSheetSize(sizeRaw)) {
-                    sizeToSave = sizeRaw;
-                    soDongDungSize++;
-                } else {
-                    sizeToSave = "0";
-                    soDongMacDinh0++;
+                const sizeList = Array.isArray(sheetMap.get(masp)) ? sheetMap.get(masp) : [];
+                if (!sizeList.length) continue;
+
+                for (const raw of sizeList) {
+                    const sizeRaw = String(raw || "").trim();
+                    const sizeToSave = isValidBayMauSheetSize(sizeRaw) ? sizeRaw : "0";
+                    const key = makeKey(masp, sizeToSave);
+
+                    if (!state.bayMau[key]) {
+                        state.bayMau[key] = {
+                            masp,
+                            size: sizeToSave,
+                            sl: 1
+                        };
+                    } else {
+                        state.bayMau[key].sl = normalizeNumber(state.bayMau[key].sl) + 1;
+                    }
+
+                    soDongSheetKhop++;
+
+                    if (sizeToSave === "0") {
+                        soDongMacDinh0++;
+                    } else {
+                        soDongDungSize++;
+                    }
                 }
-
-                const key = makeKey(masp, sizeToSave);
-                state.bayMau[key] = {
-                    masp,
-                    size: sizeToSave,
-                    sl: 1
-                };
-
-                soDongCapNhat++;
             }
 
             state.ketQua = {};
@@ -1285,9 +1295,10 @@ import "./stockQuickPopup.js";
 
             alert(
                 `Đã tải dữ liệu bày mẫu từ Google Sheet.\n` +
-                `- Mã khớp: ${soDongCapNhat}\n` +
-                `- Đúng size 38-45: ${soDongDungSize}\n` +
-                `- Mặc định 0/1: ${soDongMacDinh0}`
+                `- Số mã khớp: ${soMaKhop}\n` +
+                `- Số dòng sheet đã lấy: ${soDongSheetKhop}\n` +
+                `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
+                `- Dòng mặc định 0/1: ${soDongMacDinh0}`
             );
         } catch (err) {
             console.error("[KTK] layBayMauTuGoogleSheet error:", err);
