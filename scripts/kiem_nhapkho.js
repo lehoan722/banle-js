@@ -894,6 +894,35 @@ import "./stockQuickPopup.js";
     return Array.from(sohdSet).join("\n");
   }
 
+  function formatSohdNguonLuuTheoMasp(xuatGroup) {
+    const state = getState();
+    const sohdSet = new Set();
+
+    (xuatGroup?.items || []).forEach(item => {
+      const rowKey = item.key;
+      const rowXuat = state.xuat?.[rowKey];
+
+      const ds = Array.isArray(rowXuat?.sohd_list) ? rowXuat.sohd_list : [];
+      ds.forEach(sohd => {
+        const s = String(sohd || "").trim();
+        if (s) sohdSet.add(s);
+      });
+    });
+
+    const dsInfo = Array.isArray(state.dsHoaDonNguonInfo) ? state.dsHoaDonNguonInfo : [];
+
+    const lines = Array.from(sohdSet).map((sohd) => {
+      const info = dsInfo.find(x => String(x?.sohd || "").trim() === sohd);
+
+      const ngayGio = formatDateTimeVN(info?.created_at || info?.ngay || "");
+      const manv = String(info?.manv || "").trim();
+
+      return [sohd, ngayGio, manv].filter(Boolean).join(" ");
+    });
+
+    return lines.join("\n");
+  }
+
   function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
     const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
 
@@ -2740,6 +2769,7 @@ import "./stockQuickPopup.js";
 
       const nhapText = formatSizeSl(nhapGroup?.items || []);
       const xuatText = formatSizeSl(xuatGroup?.items || []);
+      const sohdXuatCnText = formatSohdNguonLuuTheoMasp(xuatGroup);
 
       const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
 
@@ -2763,6 +2793,7 @@ import "./stockQuickPopup.js";
         masp_xuat: masp,
         size_sl_xuat: xuatText || "",
         tongsl_xuat: tongSoLuong(xuatGroup?.items || []) || 0,
+        sohd_xuat_cn: sohdXuatCnText || "",
 
         trangthai: kqTong.trangthai || "",
         chitiet: kqTong.chitiet || "",
