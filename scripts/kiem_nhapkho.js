@@ -690,39 +690,6 @@ import "./stockQuickPopup.js";
     return result;
   }
 
-  function getSortWeightByTrangThai(trangthai) {
-    const tt = String(trangthai || "").trim().toUpperCase();
-    if (tt === "THUA") return 1;
-
-    if (tt === "THIEU") return 2;
-
-    if (tt === "LECH") return 3;
-    if (tt === "OK") return 4;
-    return 5;
-  }
-
-  function sapXepLaiThuTuMaspTheoKetQua() {
-    const state = getState();
-    const nhapGroupMap = groupByMasp(state.nhap || {});
-    const xuatGroupMap = groupByMasp(state.xuat || {});
-    const ketQuaMap = state.ketQua || {};
-
-    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
-
-    allMasps.sort((a, b) => {
-      const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
-      const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
-
-      const wA = getSortWeightByTrangThai(kqA?.trangthai);
-      const wB = getSortWeightByTrangThai(kqB?.trangthai);
-
-      if (wA !== wB) return wA - wB;
-
-      return String(a || "").localeCompare(String(b || ""), "vi");
-    });
-
-    state.nhapOrder = [...allMasps];
-  }
 
   function getSortWeightByTrangThai(trangthai) {
     const tt = String(trangthai || "").trim().toUpperCase();
@@ -743,7 +710,13 @@ import "./stockQuickPopup.js";
 
     const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
 
-    allMasps.sort((a, b) => {
+    // lấy mã sản phẩm đang nằm trong ô nhập
+    const maspDangNhap = normalizeMasp(byId("masp")?.value || "");
+
+    // tách mã đang nhập ra khỏi danh sách sort chung
+    const dsConLai = allMasps.filter(m => normalizeMasp(m) !== maspDangNhap);
+
+    dsConLai.sort((a, b) => {
       const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
       const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
 
@@ -755,7 +728,12 @@ import "./stockQuickPopup.js";
       return String(a || "").localeCompare(String(b || ""), "vi");
     });
 
-    state.nhapOrder = [...allMasps];
+    // nếu mã đang nhập có tồn tại trong bảng thì ép nó lên đầu
+    if (maspDangNhap && allMasps.includes(maspDangNhap)) {
+      state.nhapOrder = [maspDangNhap, ...dsConLai];
+    } else {
+      state.nhapOrder = dsConLai;
+    }
   }
 
   function tinhThongKeTheoMap(mapObj) {
