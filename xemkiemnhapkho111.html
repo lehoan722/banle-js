@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Xem phiếu kiểm nhập kho</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    thead tr th {
+      position: sticky;
+      top: 0;
+      background: #f9f9f9;
+      z-index: 2;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+      cursor: pointer;
+    }
+
+    input, select {
+      margin: 4px;
+      padding: 6px;
+    }
+
+    button.loc-btn {
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    button.loc-btn:hover {
+      background: #1769aa;
+    }
+
+    button.xoa-btn {
+      background: #ffe066;
+      color: #555;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button.xoa-btn:hover {
+      background: #ffe599;
+    }
+
+    .popup {
+      display: none;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      left: auto;
+      width: 950px;
+      min-width: 500px;
+      min-height: 300px;
+      height: 650px;
+      background: #fff;
+      border: 2px solid #4884ce;
+      overflow: auto;
+      padding: 20px;
+      z-index: 9999;
+      box-shadow: 0 2px 18px rgba(0, 0, 0, 0.2);
+      border-radius: 7px;
+      resize: both;
+    }
+
+    .popup .drag-header {
+      cursor: move;
+      background: #f3f7fa;
+      font-weight: bold;
+      padding: 8px 10px;
+      margin: -20px -20px 15px -20px;
+      border-bottom: 1px solid #4884ce;
+      border-radius: 7px 7px 0 0;
+      user-select: none;
+    }
+
+    .box-section {
+      margin-bottom: 18px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    .box-title {
+      font-weight: bold;
+      color: #0066cc;
+      margin-bottom: 8px;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .status-ok {
+      color: green;
+      font-weight: bold;
+    }
+
+    .status-lech, .status-thieu, .status-thua {
+      color: #c62828;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-container">
+    <h2>📋 Tra cứu Phiếu Kiểm Nhập Kho</h2>
+
+    <label><input type="date" id="tuNgay"></label>
+    <label><input type="date" id="denNgay"></label>
+    <label><input type="text" id="locSoPhieu" placeholder="Số phiếu kiểm nhập"></label>
+    <label><input type="text" id="locNVKiem" placeholder="Nhân viên kiểm"></label>
+    <label><input type="text" id="locSoHDCCN" placeholder="Số HĐ CCN"></label>
+    <label><input type="text" id="locNVXuat" placeholder="Nhân viên xuất"></label>
+
+    <label>
+      <select id="locTuCoSo">
+        <option value="">Từ cơ sở</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+    </label>
+
+    <label>
+      <select id="locDenCoSo">
+        <option value="">Đến cơ sở</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+    </label>
+
+    <label>
+      <select id="locKetQua">
+        <option value="">Tất cả kết quả</option>
+        <option value="ok">OK</option>
+        <option value="lech">Lệch</option>
+      </select>
+    </label>
+
+    <button class="loc-btn" onclick="taiDanhSachPhieu()">🔍 Lọc phiếu</button>
+    <button class="xoa-btn" onclick="xoaPhieuDaChon()">❌ Xóa phiếu đã chọn</button>
+    <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
+
+    <div id="tongHopNhanh" style="font-size:1.05em;margin:12px 0;color:#0066cc;font-weight:bold;">
+      Tổng mặt hàng: <span id="tongMatHang">0</span> |
+      Tổng SL xuất: <span id="tongSLXuat">0</span> |
+      Tổng SL nhận: <span id="tongSLNhan">0</span> |
+      Tổng mã lệch: <span id="tongMaLech">0</span> |
+      Tổng lệch thiếu: <span id="tongLechThieu">0</span> |
+      Tổng lệch thừa: <span id="tongLechThua">0</span>
+    </div>
+
+    <div id="pagingBar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <label><b>Số dòng/trang:</b></label>
+      <select id="pageSize">
+        <option value="100">100</option>
+        <option value="300">300</option>
+        <option value="500">500</option>
+        <option value="1000" selected>1000</option>
+      </select>
+
+      <button id="btnPrevPage" type="button">← Trang trước</button>
+      <span id="pageInfo">Trang 1/1</span>
+      <button id="btnNextPage" type="button">Trang sau →</button>
+
+      <span id="dangHienThiInfo" style="color:#666;"></span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th><input type="checkbox" id="chonTatCa"></th>
+          <th>Số phiếu</th>
+          <th>Ngày kiểm</th>
+          <th>Ngày tạo</th>
+          <th>Ngày sửa</th>
+          <th>NV kiểm</th>
+          <th>Số HĐ CCN</th>
+          <th>NV xuất</th>
+          <th>Từ CS</th>
+          <th>Đến CS</th>
+          <th>Tổng MH</th>
+          <th>Tổng SL xuất</th>
+          <th>Tổng SL nhận</th>
+          <th>Số mã lệch</th>
+          <th>Lệch thiếu</th>
+          <th>Lệch thừa</th>
+          <th>KQ chung</th>
+          <th>Ghi chú</th>
+        </tr>
+      </thead>
+      <tbody id="dsPhieu"></tbody>
+    </table>
+  </div>
+
+  <div id="popup" class="popup">
+    <div class="drag-header" id="popupHeader">
+      Chi tiết phiếu kiểm nhập: <span id="soPhieuCT"></span>
+      <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
+    </div>
+
+    <div class="box-section">
+      <div class="box-title">Thông tin đầu phiếu</div>
+      <div id="headerInfo"></div>
+    </div>
+
+    <div class="box-section">
+      <div class="box-title">Chi tiết hóa đơn</div>
+      <button id="btnCopyCTHD" class="loc-btn" style="margin-bottom:8px;">Copy chi tiết hóa đơn</button>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Số HĐ CCN</th>
+            <th>Số HĐ xuất CN</th>
+            <th>Mã nhập</th>
+            <th>Size/SL nhập</th>
+            <th>Tổng SL nhập</th>
+            <th>Mã xuất</th>
+            <th>Size/SL xuất</th>
+            <th>Tổng SL xuất</th>
+            <th>Trạng thái</th>
+            <th>Chi tiết</th>
+            <th>Mã key</th>
+            <th>Chế độ kiểm</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody id="ctHoaDon"></tbody>
+      </table>
+    </div>
+
+    <div class="box-section">
+      <div class="box-title">Chi tiết lệch</div>
+      <button id="btnCopyCTL" class="loc-btn" style="margin-bottom:8px;">Copy chi tiết lệch</button>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Số HĐ CCN</th>
+            <th>Mã SP</th>
+            <th>Tên hàng</th>
+            <th>Size</th>
+            <th>Trạng thái</th>
+            <th>SL xuất</th>
+            <th>SL nhận</th>
+            <th>SL lệch</th>
+            <th>Chi tiết</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody id="ctLech"></tbody>
+      </table>
+    </div>
+
+    <button onclick="dongPopup()">Đóng</button>
+  </div>
+
+  <script>
+    let rowDangChon = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let lastParamsBase = null;
+    let lastTotalRows = 0;
+
+    function normalizePgTimestamp(input) {
+      if (!input) return input;
+      let s = String(input).trim();
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) s = s.replace(' ', 'T');
+      s = s.replace(/([+-]\d{2})$/, '$1:00');
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:\d{2})$/.test(s)) s += 'Z';
+      return s;
+    }
+
+    function dinhDangNgay(ngayStr) {
+      if (!ngayStr) return "";
+      const d = new Date(normalizePgTimestamp(ngayStr));
+      return new Intl.DateTimeFormat("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(d);
+    }
+
+    function dinhDangNgayGio(ngayStr) {
+      if (!ngayStr) return "";
+      const d = new Date(normalizePgTimestamp(ngayStr));
+      const datePart = new Intl.DateTimeFormat("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(d);
+
+      const timePart = new Intl.DateTimeFormat("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(d);
+
+      return `${datePart} ${timePart.replace(":", "h")}`;
+    }
+
+    async function taiDanhSachPhieu() {
+      const paramsBase = {
+        p_tu_ngay: document.getElementById("tuNgay").value || null,
+        p_den_ngay: document.getElementById("denNgay").value || null,
+        p_so_hd_kiemnhap: document.getElementById("locSoPhieu").value.trim() || null,
+        p_nhanvienkiem: document.getElementById("locNVKiem").value.trim() || null,
+        p_sohdccn: document.getElementById("locSoHDCCN").value.trim() || null,
+        p_nhanvienxuat: document.getElementById("locNVXuat").value.trim() || null,
+        p_tu_co_so: document.getElementById("locTuCoSo").value || null,
+        p_den_co_so: document.getElementById("locDenCoSo").value || null,
+        p_ket_qua_chung: document.getElementById("locKetQua").value || null
+      };
+
+      const tbody = document.getElementById("dsPhieu");
+      tbody.innerHTML = "";
+
+      const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_count", paramsBase);
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="19">❌ Lỗi count: ${error.message}</td></tr>`;
+        return;
+      }
+
+      const row = data?.[0] || {};
+      lastTotalRows = Number(row.total_rows || 0);
+      lastParamsBase = paramsBase;
+      currentPage = 1;
+
+      document.getElementById("tongMatHang").textContent = Number(row.total_mat_hang || 0).toLocaleString();
+      document.getElementById("tongSLXuat").textContent = Number(row.total_sl_xuat || 0).toLocaleString();
+      document.getElementById("tongSLNhan").textContent = Number(row.total_sl_nhan || 0).toLocaleString();
+      document.getElementById("tongMaLech").textContent = Number(row.total_ma_lech || 0).toLocaleString();
+      document.getElementById("tongLechThieu").textContent = Number(row.total_sl_lech_thieu || 0).toLocaleString();
+      document.getElementById("tongLechThua").textContent = Number(row.total_sl_lech_thua || 0).toLocaleString();
+
+      const pageSize = Number(document.getElementById("pageSize").value || 1000);
+      totalPages = Math.max(1, Math.ceil(lastTotalRows / pageSize));
+
+      await loadPage();
+    }
+
+    async function loadPage() {
+      if (!lastParamsBase) return;
+
+      const tbody = document.getElementById("dsPhieu");
+      tbody.innerHTML = `<tr><td colspan="19">Đang tải dữ liệu...</td></tr>`;
+
+      const pageSize = Number(document.getElementById("pageSize").value || 1000);
+      const offset = (currentPage - 1) * pageSize;
+
+      const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_paged", {
+        ...lastParamsBase,
+        p_limit: pageSize,
+        p_offset: offset
+      });
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="19">❌ Lỗi tải dữ liệu: ${error.message}</td></tr>`;
+        return;
+      }
+
+      const rows = data || [];
+      tbody.innerHTML = "";
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="19">Không có dữ liệu</td></tr>`;
+      }
+
+      rows.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        const stt = offset + idx + 1;
+
+        tr.innerHTML = `
+          <td>${stt}</td>
+          <td><input type="checkbox" class="chonPhieu" data-sohd="${r.so_hd_kiemnhap || ''}"></td>
+          <td class="so-phieu-cell" style="font-weight:600;text-decoration:underline;cursor:pointer;">${r.so_hd_kiemnhap || ''}</td>
+          <td>${dinhDangNgay(r.ngay_kiem)}</td>
+          <td>${dinhDangNgayGio(r.created_at)}</td>
+          <td>${dinhDangNgayGio(r.updated_at)}</td>
+          <td>${r.nhanvienkiem || ''}</td>
+          <td>${r.sohdccn || ''}</td>
+          <td>${r.nhanvienxuat || ''}</td>
+          <td>${r.tu_co_so || ''}</td>
+          <td>${r.den_co_so || ''}</td>
+          <td class="text-right">${Number(r.tong_so_mat_hang || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.tong_so_luong_xuat || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.tong_so_luong_nhan || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.so_ma_lech || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.tong_sl_lech_thieu || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.tong_sl_lech_thua || 0).toLocaleString()}</td>
+          <td class="${r.ket_qua_chung === 'ok' ? 'status-ok' : 'status-lech'}">${r.ket_qua_chung || ''}</td>
+          <td>${r.ghi_chu || ''}</td>
+        `;
+
+        tr.addEventListener("click", async (ev) => {
+          if (ev.target && (ev.target.matches('input[type="checkbox"]') || ev.target.closest('input[type="checkbox"]'))) return;
+
+          if (rowDangChon && rowDangChon !== tr) rowDangChon.style.background = '';
+          rowDangChon = tr;
+          tr.style.background = '#ffe08a';
+
+          await xemChiTietPhieu(r.so_hd_kiemnhap);
+        });
+
+        const chk = tr.querySelector('.chonPhieu');
+        if (chk) chk.addEventListener('click', e => e.stopPropagation());
+
+        const soPhieuCell = tr.querySelector('.so-phieu-cell');
+        if (soPhieuCell) {
+          soPhieuCell.ondblclick = (ev) => {
+            ev.stopPropagation();
+            openKiemNhapKhoBySoPhieu(r.so_hd_kiemnhap);
+          };
+        }
+
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("pageInfo").textContent = `Trang ${currentPage}/${totalPages}`;
+      document.getElementById("dangHienThiInfo").textContent =
+        `Đang hiển thị ${rows.length.toLocaleString()} phiếu của trang này`;
+    }
+
+    async function xemChiTietPhieu(soPhieu) {
+      const popup = document.getElementById("popup");
+      popup.style.display = "block";
+      popup.style.top = "10px";
+      popup.style.right = "10px";
+      popup.style.left = "auto";
+
+      document.getElementById("soPhieuCT").textContent = soPhieu;
+      document.getElementById("headerInfo").innerHTML = "Đang tải...";
+      document.getElementById("ctHoaDon").innerHTML = "";
+      document.getElementById("ctLech").innerHTML = "";
+
+      const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_chitiet", {
+        p_so_hd_kiemnhap: soPhieu
+      });
+
+      if (error) {
+        document.getElementById("headerInfo").innerHTML = `❌ Lỗi: ${error.message}`;
+        return;
+      }
+
+      const row = data?.[0] || {};
+      const header = row.header || {};
+      const chiTietHoaDon = row.chi_tiet_hoa_don || [];
+      const chiTietLech = row.chi_tiet_lech || [];
+
+      document.getElementById("headerInfo").innerHTML = `
+        <div><b>Số phiếu:</b> ${header.so_hd_kiemnhap || ''}</div>
+        <div><b>Ngày kiểm:</b> ${dinhDangNgay(header.ngay_kiem)}</div>
+        <div><b>Nhân viên kiểm:</b> ${header.nhanvienkiem || ''}</div>
+        <div><b>Số HĐ CCN:</b> ${header.sohdccn || ''}</div>
+        <div><b>Nhân viên xuất:</b> ${header.nhanvienxuat || ''}</div>
+        <div><b>Từ cơ sở:</b> ${header.tu_co_so || ''} | <b>Đến cơ sở:</b> ${header.den_co_so || ''}</div>
+        <div><b>Tổng mặt hàng:</b> ${Number(header.tong_so_mat_hang || 0).toLocaleString()}</div>
+        <div><b>Tổng SL xuất:</b> ${Number(header.tong_so_luong_xuat || 0).toLocaleString()} | <b>Tổng SL nhận:</b> ${Number(header.tong_so_luong_nhan || 0).toLocaleString()}</div>
+        <div><b>Số mã lệch:</b> ${Number(header.so_ma_lech || 0).toLocaleString()} | <b>Lệch thiếu:</b> ${Number(header.tong_sl_lech_thieu || 0).toLocaleString()} | <b>Lệch thừa:</b> ${Number(header.tong_sl_lech_thua || 0).toLocaleString()}</div>
+        <div><b>KQ chung:</b> ${header.ket_qua_chung || ''}</div>
+        <div><b>Ghi chú:</b> ${header.ghi_chu || ''}</div>
+      `;
+
+      const tb1 = document.getElementById("ctHoaDon");
+      tb1.innerHTML = "";
+      chiTietHoaDon.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${r.sohdccn || ''}</td>
+          <td>${r.sohd_xuat_cn || ''}</td>
+          <td>${r.masp_nhap || ''}</td>
+          <td>${r.size_sl_nhap || ''}</td>
+          <td class="text-right">${Number(r.tongsl_nhap || 0).toLocaleString()}</td>
+          <td>${r.masp_xuat || ''}</td>
+          <td>${r.size_sl_xuat || ''}</td>
+          <td class="text-right">${Number(r.tongsl_xuat || 0).toLocaleString()}</td>
+          <td>${r.trangthai || ''}</td>
+          <td>${r.chitiet || ''}</td>
+          <td>${r.masp_key || ''}</td>
+          <td>${r.che_do_kiem || ''}</td>
+          <td>${r.ghi_chu || ''}</td>
+        `;
+        tb1.appendChild(tr);
+      });
+
+      const tb2 = document.getElementById("ctLech");
+      tb2.innerHTML = "";
+      chiTietLech.forEach((r, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${r.sohdccn || ''}</td>
+          <td>${r.masp || ''}</td>
+          <td>${r.tenhang || ''}</td>
+          <td>${r.size || ''}</td>
+          <td class="status-${r.trangthai_nhan || ''}">${r.trangthai_nhan || ''}</td>
+          <td class="text-right">${Number(r.sl_xuat || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.sl_nhan || 0).toLocaleString()}</td>
+          <td class="text-right">${Number(r.sl_lech || 0).toLocaleString()}</td>
+          <td>${r.chi_tiet || ''}</td>
+          <td>${r.ghi_chu || ''}</td>
+        `;
+        tb2.appendChild(tr);
+      });
+    }
+
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    async function xoaPhieuDaChon() {
+      const checkboxes = document.querySelectorAll(".chonPhieu:checked");
+      if (!checkboxes.length) {
+        alert("❌ Bạn chưa chọn phiếu nào để xóa.");
+        return;
+      }
+
+      kiemTraNhanVienTruocKhiXoa(async function () {
+        const dsXoa = [...new Set([...checkboxes].map(cb => cb.getAttribute("data-sohd")).filter(Boolean))];
+
+        const xacNhan = confirm(
+          `⚠️ Bạn có chắc muốn xóa ${dsXoa.length} phiếu kiểm nhập kho đã chọn không?\n\n` +
+          `Thao tác này sẽ:\n` +
+          `- Xóa header phiếu\n` +
+          `- Xóa chi tiết hóa đơn\n` +
+          `- Xóa chi tiết lệch\n` +
+          `- Bỏ trạng thái DK của các hóa đơn nguồn liên quan`
+        );
+        if (!xacNhan) return;
+
+        const reason = prompt("Nhập lý do xóa (bắt buộc):", "Xóa phiếu kiểm nhập kho nhầm") || "";
+        if (!reason.trim()) {
+          alert("❌ Bạn chưa nhập lý do xóa.");
+          return;
+        }
+
+        let okCount = 0;
+        let fail = [];
+
+        for (const sohd of dsXoa) {
+          const { data, error } = await window.supabase.rpc("admin_delete_kiem_nhap_kho", {
+            p_so_hd_kiemnhap: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+
+          if (data?.ok === false) {
+            fail.push(`${sohd}: ${data?.message || 'Xóa thất bại'}`);
+            continue;
+          }
+
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Xóa được ${okCount}/${dsXoa.length} phiếu.\n` +
+            `Các phiếu lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa thành công ${okCount} phiếu kiểm nhập kho.`);
+        }
+
+        await taiDanhSachPhieu();
+      });
+    }
+
+    function openKiemNhapKhoBySoPhieu(soPhieu) {
+      if (!soPhieu) return;
+      const prefix = soPhieu.split('_')[0].toLowerCase();
+
+      let url = null;
+      if (prefix.includes('cs1')) {
+        url = `kiem_nhapkho_cs1.html?sohd=${encodeURIComponent(soPhieu)}`;
+      } else if (prefix.includes('cs2')) {
+        url = `kiem_nhapkho_cs2.html?sohd=${encodeURIComponent(soPhieu)}`;
+      }
+
+      if (!url) {
+        alert("Không xác định được trang mở cho phiếu này.");
+        return;
+      }
+
+      window.open(`https://banle-js.vercel.app/${url}`, "_blank");
+    }
+
+    function bindPagingEvents() {
+      document.getElementById('btnPrevPage').addEventListener('click', async () => {
+        if (currentPage <= 1) return;
+        currentPage -= 1;
+        await loadPage();
+      });
+
+      document.getElementById('btnNextPage').addEventListener('click', async () => {
+        if (currentPage >= totalPages) return;
+        currentPage += 1;
+        await loadPage();
+      });
+
+      document.getElementById('pageSize').addEventListener('change', async () => {
+        currentPage = 1;
+        totalPages = Math.max(1, Math.ceil((lastTotalRows || 0) / Number(document.getElementById('pageSize').value || 1000)));
+        await loadPage();
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === "Escape") dongPopup();
+    });
+
+    (function dragPopup() {
+      let popup = document.getElementById('popup');
+      let header = document.getElementById('popupHeader');
+      let offsetX, offsetY, isDragging = false;
+      if (header) {
+        header.onmousedown = function (e) {
+          isDragging = true;
+          let rect = popup.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          document.onmousemove = function (ev) {
+            if (isDragging) {
+              popup.style.left = (ev.clientX - offsetX) + 'px';
+              popup.style.top = (ev.clientY - offsetY) + 'px';
+              popup.style.right = 'auto';
+            }
+          };
+          document.onmouseup = function () {
+            isDragging = false;
+            document.onmousemove = null;
+          };
+        };
+      }
+    })();
+
+    function copyTableByTbodyId(tbodyId) {
+      const rows = Array.from(document.querySelectorAll(`#${tbodyId} tr`));
+      if (!rows.length) {
+        alert("Không có dữ liệu để copy!");
+        return;
+      }
+
+      const text = rows.map(tr =>
+        Array.from(tr.cells).map(td => (td.innerText || "").replace(/\n/g, " ")).join("\t")
+      ).join("\n");
+
+      navigator.clipboard.writeText(text);
+    }
+
+    document.getElementById('btnCopyCTHD').onclick = function () {
+      copyTableByTbodyId('ctHoaDon');
+    };
+
+    document.getElementById('btnCopyCTL').onclick = function () {
+      copyTableByTbodyId('ctLech');
+    };
+
+    document.getElementById('btnCopyTable').onclick = function () {
+      let table = document.querySelector("table");
+      if (!table) return alert("Không tìm thấy bảng dữ liệu!");
+
+      let ths = Array.from(table.querySelectorAll("thead tr th"));
+      let colChon = 1;
+
+      let headers = ths.map((th, i) => i !== colChon ? th.innerText.replace(/\n/g, " ") : null)
+        .filter(x => x !== null).join('\t');
+
+      let rows = Array.from(document.querySelectorAll("tbody#dsPhieu tr"));
+      if (!rows.length) return alert("Không có dữ liệu để copy!");
+
+      let lines = rows
+        .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
+        .map(tr => Array.from(tr.cells)
+          .map((td, i) => i !== colChon ? td.innerText.replace(/\n/g, " ") : null)
+          .filter(x => x !== null).join('\t')
+        );
+
+      let all = [headers].concat(lines).join('\n');
+      navigator.clipboard.writeText(all);
+    };
+
+    async function initFilters() {
+      const today = new Date();
+      const before7 = new Date();
+      before7.setDate(today.getDate() - 7);
+
+      document.getElementById("tuNgay").value = before7.toISOString().slice(0, 10);
+      document.getElementById("denNgay").value = today.toISOString().slice(0, 10);
+    }
+  </script>
+
+  <script>
+    async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+      (async () => {
+        const ok = confirm("Bạn có chắc muốn XÓA phiếu kiểm nhập kho đã chọn không?");
+        if (!ok) return;
+
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            alert("Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+            return;
+          }
+
+          try {
+            const { data: isAdmin, error } = await supabase.rpc('is_admin');
+            if (!error && isAdmin !== true) {
+              alert("Bạn không có quyền xóa phiếu.");
+              return;
+            }
+          } catch (e) {}
+
+          if (typeof callbackSauXacThuc === 'function') {
+            await callbackSauXacThuc({ user_id: user.id, is_admin: true });
+          }
+        } catch (e) {
+          alert("Không kiểm tra được phiên đăng nhập. Vui lòng tải lại trang.");
+        }
+      })();
+    }
+  </script>
+
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+
+    khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+      macDinhDiaDiem: '',
+      tuDongKhoaCoSo: false,
+      loginApiPath: (cs) => `/api/login-${cs}`,
+
+      async onLoginSuccess(nv, ctx) {
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) {
+          isAdmin = false;
+        }
+
+        if (!isAdmin) {
+          alert('Bạn không phải ADMIN, không được phép xem trang này.');
+          const app = document.getElementById('app-container') || document.body;
+          app.style.display = '';
+          app.innerHTML = `<h2 style="color:#c00;margin-top:20px;font-weight:bold;">🚫 Bạn không có quyền xem trang này</h2>`;
+          return false;
+        }
+
+        await initFilters();
+        bindPagingEvents();
+
+        document.getElementById('chonTatCa').onclick = function () {
+          document.querySelectorAll('.chonPhieu').forEach(cb => cb.checked = this.checked);
+        };
+
+        await taiDanhSachPhieu();
+        return true;
+      }
+    });
+  </script>
+</body>
+</html>
