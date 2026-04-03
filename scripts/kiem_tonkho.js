@@ -2788,6 +2788,8 @@ import "./stockQuickPopup.js";
                 return;
             }
 
+            const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+            const rowsChiTiet = buildChiTietKiemTonRows(so_phieu, diadiem);
 
             const so_dong_ok = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "OK").length;
             const so_dong_thieu = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "THIEU").length;
