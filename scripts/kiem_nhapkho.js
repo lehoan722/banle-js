@@ -703,6 +703,23 @@ import "./stockQuickPopup.js";
     return `${prefix}${soMoi}`;
   }
 
+  function laySoPhieuLienSau(sohdHienTai) {
+    const raw = String(sohdHienTai || "").trim();
+    if (!raw) return "";
+
+    const m = raw.match(/^(.*?)(\d+)$/);
+    if (!m) return raw;
+
+    const prefix = m[1];
+    const soText = m[2];
+    const so = Number(soText);
+
+    if (!Number.isFinite(so)) return raw;
+
+    const soMoi = String(so + 1).padStart(soText.length, "0");
+    return `${prefix}${soMoi}`;
+  }
+
   function ensureMaspAtTop(orderArr, masp) {
     const m = normalizeMasp(masp);
     if (!m) return Array.isArray(orderArr) ? orderArr : [];
@@ -3201,17 +3218,29 @@ import "./stockQuickPopup.js";
         moTrangCCN1V2TuHangThieu();
       });
     }
+    // ===== NÚT QUAY LẠI =====
+    const btnPrev = byId("btnPrevPhieu");
+    if (btnPrev) {
+      btnPrev.addEventListener("click", async () => {
+        const sohdHienTai = byId("sohd")?.value || "";
+        const sohdTruoc = laySoPhieuLienTruoc(sohdHienTai);
 
-    const btnMoPhieuCu = byId("btnMoPhieuCu");
-    if (btnMoPhieuCu) {
-      btnMoPhieuCu.addEventListener("click", async () => {
-        const sohdHienTai = String(byId("sohd")?.value || "").trim();
-        const sohdGoiY = laySoPhieuLienTruoc(sohdHienTai);
+        if (!sohdTruoc) return;
 
-        const sohd = prompt("Nhập số phiếu kiểm nhập cần mở:", sohdGoiY);
-        if (!sohd) return;
+        await moLaiPhieuKiemNhapCu(sohdTruoc);
+      });
+    }
 
-        await moLaiPhieuKiemNhapCu(sohd);
+    // ===== NÚT TIẾP THEO =====
+    const btnNext = byId("btnNextPhieu");
+    if (btnNext) {
+      btnNext.addEventListener("click", async () => {
+        const sohdHienTai = byId("sohd")?.value || "";
+        const sohdSau = laySoPhieuLienSau(sohdHienTai);
+
+        if (!sohdSau) return;
+
+        await moLaiPhieuKiemNhapCu(sohdSau);
       });
     }
 
