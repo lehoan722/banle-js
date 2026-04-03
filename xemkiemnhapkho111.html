@@ -599,8 +599,10 @@
             p_source: location.pathname
           });
 
+          console.log("delete result:", sohd, { data, error });
+
           if (error) {
-            fail.push(`${sohd}: ${error.message}`);
+            fail.push(`${sohd}: ${error.message || error.details || JSON.stringify(error)}`);
             continue;
           }
 
