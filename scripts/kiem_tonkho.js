@@ -2817,6 +2817,12 @@ import "./stockQuickPopup.js";
             };
 
             if (tonTaiCu) {
+                const okSua = confirm(`Bạn có chắc chắn sửa phiếu cũ này không?\n\nSố phiếu: ${so_phieu}`);
+
+                if (!okSua) {
+                    return;
+                }
+
                 const { error: rpcError } = await window.supabase.rpc("rpc_update_kiem_ton_kho", {
                     p_so_phieu: so_phieu,
                     p_row_tong: rowTong,
