@@ -15,16 +15,17 @@ function ensureSupabase() {
 }
 
 function detectNhapTamCoSo() {
-    const diadiemInput = document.getElementById("diadiem");
-    const v1 = String(diadiemInput?.value || "").trim().toLowerCase();
-    if (v1 === "cs1" || v1 === "cs2") return v1;
-
-    const v2 = String(localStorage.getItem("diadiem") || "").trim().toLowerCase();
-    if (v2 === "cs1" || v2 === "cs2") return v2;
-
     const path = String(location.pathname || "").toLowerCase();
-    if (path.includes("cs2")) return "cs2";
 
+    // Ưu tiên tuyệt đối theo tên file trang
+    if (path.includes("nhaptamcs2.html")) return "cs2";
+    if (path.includes("nhaptamcs1.html")) return "cs1";
+
+    // Dự phòng nếu đường dẫn không đủ phần .html
+    if (path.includes("nhaptamcs2")) return "cs2";
+    if (path.includes("nhaptamcs1")) return "cs1";
+
+    // Dự phòng cuối cùng
     return "cs1";
 }
 
