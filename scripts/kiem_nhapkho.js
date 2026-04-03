@@ -598,8 +598,15 @@ import "./stockQuickPopup.js";
   async function taoSoPhieuMoi() {
     const prefix = String(CFG.soPhieuPrefix || "kiemnhap2v1cs1_").trim();
 
+    // Chờ Supabase sẵn sàng một lúc ngắn trước khi kết luận là chưa có
+    for (let i = 0; i < 30; i++) {
+      if (window.supabase) break;
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
     if (!window.supabase) {
-      return `${prefix}00001`;
+      console.warn("[KNK] Supabase chưa sẵn sàng khi tạo số phiếu mới.");
+      return "";
     }
 
     const { data, error } = await window.supabase
@@ -609,7 +616,7 @@ import "./stockQuickPopup.js";
 
     if (error) {
       console.error("[KNK] taoSoPhieuMoi error:", error);
-      return `${prefix}00001`;
+      return "";
     }
 
     let maxSo = 0;
@@ -658,6 +665,22 @@ import "./stockQuickPopup.js";
       };
       tick();
       setInterval(tick, 1000 * 15);
+    }
+  }
+
+  async function khoiTaoSoPhieuBanDau() {
+    const sohdEl = byId("sohd");
+    if (!sohdEl) return;
+
+    // Nếu đang mở phiếu cũ thì không tự đè số phiếu
+    const hdState = byId("hd_state");
+    const isPhieuCu = String(hdState?.value || "").trim() === "cu";
+
+    if (isPhieuCu) return;
+
+    const soPhieuMoi = await taoSoPhieuMoi();
+    if (soPhieuMoi) {
+      sohdEl.value = soPhieuMoi;
     }
   }
 
@@ -1544,7 +1567,10 @@ import "./stockQuickPopup.js";
     if (maspEl) maspEl.value = "";
     if (sizeEl) sizeEl.value = "";
     if (slEl) slEl.value = "1";
-    if (sohdEl) sohdEl.value = await taoSoPhieuMoi();
+    if (sohdEl) {
+      const soPhieuMoi = await taoSoPhieuMoi();
+      sohdEl.value = soPhieuMoi || "";
+    }
     if (ghichuEl) ghichuEl.value = "";
 
     const hdState = byId("hd_state");
@@ -3353,6 +3379,9 @@ import "./stockQuickPopup.js";
 
     // Mở khóa beep cho trình duyệt
     setupBeepUnlockOnce(document);
+
+    // Không reset phiếu ngay theo kiểu ép số 00001 nữa
+    await khoiTaoSoPhieuBanDau();
 
     await resetPhieu();
 
