@@ -492,7 +492,8 @@ import "./stockQuickPopup.js";
     const lines = Array.from(sohdSet).map((sohd) => {
       const info = dsInfo.find(x => String(x?.sohd || "").trim() === sohd);
 
-      const ngayGio = formatDateTimeVN(info?.created_at || info?.ngay || "");
+      const createdAtText = String(info?.created_at_text || "").trim();
+      const ngayGio = createdAtText || formatDateTimeVN(info?.created_at || info?.ngay || "");
       const manv = String(info?.manv || "").trim();
 
       return [sohd, ngayGio, manv].filter(Boolean).join(" ");
@@ -921,6 +922,85 @@ import "./stockQuickPopup.js";
     });
 
     return lines.join("\n");
+  }
+
+  function tachThongTinSohdXuatCn(text) {
+    const raw = String(text || "").replace(/\r/g, "").trim();
+    if (!raw) return [];
+
+    return raw
+      .split("\n")
+      .map(line => String(line || "").trim())
+      .filter(Boolean)
+      .map(line => {
+        const m = line.match(/^(\S+)(?:\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}h\d{2}))?(?:\s+(\S+))?$/);
+
+        if (!m) {
+          return {
+            sohd: line,
+            created_at_text: "",
+            manv: ""
+          };
+        }
+
+        return {
+          sohd: String(m[1] || "").trim(),
+          created_at_text: String(m[2] || "").trim(),
+          manv: String(m[3] || "").trim()
+        };
+      });
+  }
+
+  function ganSohdXuatCnChoStateXuat(masp, sohdXuatCnText, state) {
+    const dsInfo = tachThongTinSohdXuatCn(sohdXuatCnText);
+    if (!dsInfo.length) return;
+
+    const dsSohd = dsInfo
+      .map(x => String(x.sohd || "").trim())
+      .filter(Boolean);
+
+    if (!dsSohd.length) return;
+
+    Object.keys(state.xuat || {}).forEach((key) => {
+      const row = state.xuat[key];
+      if (!row) return;
+      if (normalizeMasp(row.masp) !== normalizeMasp(masp)) return;
+
+      row.sohd_list = [...dsSohd];
+    });
+
+    if (!Array.isArray(state.dsHoaDonNguonInfo)) {
+      state.dsHoaDonNguonInfo = [];
+    }
+
+    dsInfo.forEach((item) => {
+      const sohd = String(item.sohd || "").trim();
+      if (!sohd) return;
+
+      const daCo = state.dsHoaDonNguonInfo.some(
+        x => String(x?.sohd || "").trim() === sohd
+      );
+
+      if (!daCo) {
+        state.dsHoaDonNguonInfo.push({
+          sohd,
+          ngay: null,
+          created_at: null,
+          created_at_text: String(item.created_at_text || "").trim(),
+          diadiem: "",
+          manv: String(item.manv || "").trim(),
+          tennv: ""
+        });
+      }
+    });
+
+    const dsNguonMoi = dsInfo
+      .map(x => String(x.sohd || "").trim())
+      .filter(Boolean);
+
+    state.dsHoaDonNguon = Array.from(
+      new Set([...(state.dsHoaDonNguon || []), ...dsNguonMoi])
+    );
   }
 
   function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
@@ -3164,6 +3244,7 @@ import "./stockQuickPopup.js";
       .split(";")
       .map(x => String(x || "").trim())
       .filter(Boolean);
+    state.dsHoaDonNguonInfo = [];
 
     byId("sohd").value = phieuTong.so_hd_kiemnhap || "";
     byId("ngay").value = phieuTong.ngay_kiem || "";
@@ -3213,7 +3294,8 @@ import "./stockQuickPopup.js";
           state.xuat[key] = {
             masp,
             size: item.size,
-            sl: item.sl
+            sl: item.sl,
+            sohd_list: []
           };
         });
       } else if (normalizeNumber(row.tongsl_xuat) > 0) {
@@ -3221,9 +3303,12 @@ import "./stockQuickPopup.js";
         state.xuat[key] = {
           masp,
           size: "0",
-          sl: normalizeNumber(row.tongsl_xuat)
+          sl: normalizeNumber(row.tongsl_xuat),
+          sohd_list: []
         };
       }
+
+      ganSohdXuatCnChoStateXuat(masp, row.sohd_xuat_cn || "", state);
     });
 
     renderBangKetQua();
