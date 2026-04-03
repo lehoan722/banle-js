@@ -684,6 +684,25 @@ import "./stockQuickPopup.js";
     }
   }
 
+  function laySoPhieuLienTruoc(sohdHienTai) {
+    const raw = String(sohdHienTai || "").trim();
+    if (!raw) return "";
+
+    const m = raw.match(/^(.*?)(\d+)$/);
+    if (!m) return raw;
+
+    const prefix = m[1];
+    const soText = m[2];
+    const so = Number(soText);
+
+    if (!Number.isFinite(so) || so <= 1) {
+      return raw;
+    }
+
+    const soMoi = String(so - 1).padStart(soText.length, "0");
+    return `${prefix}${soMoi}`;
+  }
+
   function ensureMaspAtTop(orderArr, masp) {
     const m = normalizeMasp(masp);
     if (!m) return Array.isArray(orderArr) ? orderArr : [];
@@ -3186,8 +3205,12 @@ import "./stockQuickPopup.js";
     const btnMoPhieuCu = byId("btnMoPhieuCu");
     if (btnMoPhieuCu) {
       btnMoPhieuCu.addEventListener("click", async () => {
-        const sohd = prompt("Nhập số phiếu kiểm nhập cần mở:", byId("sohd")?.value || "");
+        const sohdHienTai = String(byId("sohd")?.value || "").trim();
+        const sohdGoiY = laySoPhieuLienTruoc(sohdHienTai);
+
+        const sohd = prompt("Nhập số phiếu kiểm nhập cần mở:", sohdGoiY);
         if (!sohd) return;
+
         await moLaiPhieuKiemNhapCu(sohd);
       });
     }
