@@ -1572,6 +1572,22 @@ import "./stockQuickPopup.js";
 
       hideSizePopup();
     });
+
+    const sohdEl = byId("sohd");
+    if (sohdEl) {
+      sohdEl.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+
+          const sohdNhap = String(sohdEl.value || "").trim();
+          if (!sohdNhap) return;
+
+          sohdEl.value = sohdNhap;
+          await moLaiPhieuKiemNhapCu(sohdNhap);
+        }
+      });
+    }
+
   }
 
   // =========================
