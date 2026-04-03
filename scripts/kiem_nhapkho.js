@@ -695,10 +695,10 @@ import "./stockQuickPopup.js";
     const tt = String(trangthai || "").trim().toUpperCase();
     if (tt === "THIEU") return 1;
 
-    if (tt === "OK") return 2;
+    if (tt === "LECH") return 2;
 
     if (tt === "THUA") return 3;
-    if (tt === "LECH") return 4;
+    if (tt === "OK") return 4;
     return 5;
   }
 
