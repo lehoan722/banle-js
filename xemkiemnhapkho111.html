@@ -16,7 +16,8 @@
       margin-top: 10px;
     }
 
-    th, td {
+    th,
+    td {
       border: 1px solid #ccc;
       padding: 6px 8px;
       text-align: left;
@@ -35,7 +36,8 @@
       cursor: pointer;
     }
 
-    input, select {
+    input,
+    select {
       margin: 4px;
       padding: 6px;
     }
@@ -123,7 +125,9 @@
       font-weight: bold;
     }
 
-    .status-lech, .status-thieu, .status-thua {
+    .status-lech,
+    .status-thieu,
+    .status-thua {
       color: #c62828;
       font-weight: bold;
     }
@@ -303,7 +307,19 @@
 
     function dinhDangNgay(ngayStr) {
       if (!ngayStr) return "";
-      const d = new Date(normalizePgTimestamp(ngayStr));
+
+      const s = String(ngayStr).trim();
+
+      // Nếu là dạng YYYY-MM-DD thì tự tách để tránh lỗi parse
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d] = s.split("-").map(Number);
+        if (!y || !m || !d) return s;
+        return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
+      }
+
+      const d = new Date(normalizePgTimestamp(s));
+      if (isNaN(d.getTime())) return s;
+
       return new Intl.DateTimeFormat("vi-VN", {
         timeZone: "Asia/Ho_Chi_Minh",
         day: "2-digit",
@@ -314,7 +330,12 @@
 
     function dinhDangNgayGio(ngayStr) {
       if (!ngayStr) return "";
-      const d = new Date(normalizePgTimestamp(ngayStr));
+
+      const s = String(ngayStr).trim();
+      const d = new Date(normalizePgTimestamp(s));
+
+      if (isNaN(d.getTime())) return s;
+
       const datePart = new Intl.DateTimeFormat("vi-VN", {
         timeZone: "Asia/Ho_Chi_Minh",
         day: "2-digit",
@@ -747,7 +768,7 @@
               alert("Bạn không có quyền xóa phiếu.");
               return;
             }
-          } catch (e) {}
+          } catch (e) { }
 
           if (typeof callbackSauXacThuc === 'function') {
             await callbackSauXacThuc({ user_id: user.id, is_admin: true });
@@ -798,4 +819,5 @@
     });
   </script>
 </body>
+
 </html>
