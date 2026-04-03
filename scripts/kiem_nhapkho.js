@@ -455,6 +455,23 @@ import "./stockQuickPopup.js";
     return `${dd}/${mm}/${yyyy} ${hh}h${mi}`;
   }
 
+  function formatDateTimeForKiemNhapKho(input) {
+    if (!input) return "";
+
+    const d = new Date(input);
+    if (Number.isNaN(d.getTime())) return "";
+
+    const vn = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+
+    const dd = String(vn.getDate()).padStart(2, "0");
+    const mm = String(vn.getMonth() + 1).padStart(2, "0");
+    const yyyy = vn.getFullYear();
+    const hh = String(vn.getHours()).padStart(2, "0");
+    const mi = String(vn.getMinutes()).padStart(2, "0");
+
+    return `${dd}/${mm}/${yyyy} ${hh}h${mi}`;
+  }
+
   function formatSohdNguonDayDuTheoMasp(xuatGroup) {
     const state = getState();
     const sohdSet = new Set();
@@ -1063,7 +1080,7 @@ import "./stockQuickPopup.js";
         window.StockQuick.attach(el, masp);
       }
     });
-    
+
     tbody.querySelectorAll(".cell-nhap-sizesl, .cell-nhap-tongsl").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -2759,7 +2776,7 @@ import "./stockQuickPopup.js";
     return rows;
   }
 
-  async function danhDauHoaDonNguonDaKiemNhap(dsSoHd) {
+  async function danhDauHoaDonNguonDaKiemNhap(dsSoHd, soHdKiemNhap, ngayGioKiem, nhanVienKiem) {
     if (!window.supabase) {
       throw new Error("Không tìm thấy kết nối Supabase.");
     }
@@ -2777,7 +2794,10 @@ import "./stockQuickPopup.js";
     }
 
     const { data, error } = await window.supabase.rpc("rpc_danh_dau_kiem_nhapkho_hoa_don", {
-      p_ds_sohd: dsSach
+      p_ds_sohd: dsSach,
+      p_so_hd_kiemnhap: String(soHdKiemNhap || "").trim(),
+      p_ngay_kiem: String(ngayGioKiem || "").trim(),
+      p_nhanvienkiem: String(nhanVienKiem || "").trim()
     });
 
     if (error) {
@@ -2951,7 +2971,15 @@ import "./stockQuickPopup.js";
         }
       }
 
-      await danhDauHoaDonNguonDaKiemNhap(stateSauKiem.dsHoaDonNguon || []);
+      const ngayGioKiemText = formatDateTimeForKiemNhapKho(new Date());
+
+      await danhDauHoaDonNguonDaKiemNhap(
+        stateSauKiem.dsHoaDonNguon || [],
+        so_hd_kiemnhap,
+        ngayGioKiemText,
+        nhanvienkiem
+      );
+
       alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
       await resetPhieu();
 
