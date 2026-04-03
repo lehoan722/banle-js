@@ -1669,6 +1669,14 @@
         });
     </script>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const diadiem = document.getElementById("diadiem");
+            if (diadiem) diadiem.value = "cs1";
+            localStorage.setItem("diadiem", "cs1");
+        });
+    </script>
+
 </body>
 
 </html>
