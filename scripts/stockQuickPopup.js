@@ -607,6 +607,7 @@
     let nhap_dau_ma = "";
     let nhap_cuoi_ma = "";
     let giale = "";
+    let nhomhang = "";
 
     const client = getSupabaseClient();
     if (!client) {
@@ -623,7 +624,7 @@
         }),
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, nhapdau, giale")
+          .select("vitrikho1, vitrikho2, nhapdau, giale, nhomhang")
           .eq("masp", masp)
           .maybeSingle(),
       ]);
@@ -663,6 +664,7 @@
         vitri_cs1 = hh.vitrikho1 || "";
         vitri_cs2 = hh.vitrikho2 || "";
         giale = hh.giale || "";
+        nhomhang = hh.nhomhang || "";
 
         // ✅ Ưu tiên ND từ dmhanghoa.nhapdau (nếu có)
         const ndRaw = hh.nhapdau ? String(hh.nhapdau).trim() : "";
@@ -715,7 +717,7 @@
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
 
-    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale };
+    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
   }
 
   // ===== HTML popup =====
@@ -732,6 +734,7 @@
     const nhap_dau_ma = payload && payload.nhap_dau_ma ? String(payload.nhap_dau_ma).trim() : "";
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
+    const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
 
     function formatPrice(v) {
       if (!v) return "";
@@ -895,7 +898,9 @@
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  Mã: ${upper}${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+  Mã: ${upper}
+${nhomhang ? ` / ${nhomhang}` : ""}
+${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
 </div>
