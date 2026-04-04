@@ -1296,7 +1296,8 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
             window.StockQuickSimilar.openFromPopup({
               masp,
               size,
-              nhomhang: popup.dataset.nhomhang
+              nhomhang: popup.dataset.nhomhang,
+              denNgay: getDenNgay()
             });
           }
         });
