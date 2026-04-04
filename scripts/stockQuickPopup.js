@@ -307,38 +307,122 @@
   }
 
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
-  @media (max-width: 800px) and (orientation: portrait) {
+   @media (max-width: 800px) and (orientation: portrait) {
     .sq-stock-popup {
-      /* RỘNG HƠN ~20% */
-      width: 68vw;          /* trước ~47.5vw */
+      width: 68vw;
       max-width: 68vw;
 
-      /* CAO GẤP ĐÔI */
-      height: 90vh;         /* trước ~45vh */
-      max-height: 90vh;
+      /* GIẢM CHIỀU CAO POPUP */
+      height: 78vh;
+      max-height: 78vh;
 
       overflow-y: auto;
-      overflow-x: visible;
+      overflow-x: hidden;
 
-      /* giữ cố định góc trên phải */
       top: 6px;
       right: 6px;
       left: auto;
+
+      padding: 6px 8px;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    .sq-stock-popup-header {
+      margin-bottom: 4px;
+      gap: 6px;
+      font-size: 15px;
+      line-height: 1.15;
+    }
+
+    .sq-title-text {
+      font-size: 15px;
+      line-height: 1.15;
+    }
+
+    .sq-photo-btn {
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 6px;
     }
 
     .sq-stock-layout {
-      flex-direction: column;   /* xếp dọc: bảng trên, ảnh dưới */
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sq-stock-table-wrapper {
+      max-height: none;
+      overflow: visible;
+    }
+
+    .sq-stock-popup th,
+    .sq-stock-popup td {
+      padding: 2px 4px;
+      font-size: 14px;
+      line-height: 1.1;
+    }
+
+    .sq-stock-popup th {
+      font-weight: 700;
+    }
+
+    .sq-stock-popup tr.sum-row td {
+      padding-top: 3px;
+      padding-bottom: 3px;
     }
 
     .sq-img-wrapper {
       flex: 0 0 auto;
       width: 100%;
       max-width: 100%;
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
     .sq-img-wrapper img {
-      max-height: 30vh;         /* ảnh không quá cao, vẫn cuộn được */
+      max-height: 22vh;
+      object-fit: contain;
+    }
+
+    .sq-vitri-actions-wrap {
+      margin-top: 6px;
+      padding-top: 4px;
+    }
+
+    .sq-vitri-action-row {
+      gap: 6px;
+      margin: 4px 0;
+      font-size: 14px;
+      line-height: 1.1;
+    }
+
+    .sq-vitri-save-btn {
+      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .sq-vitri-input {
+      min-width: 110px;
+      max-width: 150px;
+      padding: 3px 6px;
+      font-size: 14px;
+    }
+
+    .sq-vitri-value-readonly {
+      padding: 3px 6px;
+      font-size: 14px;
+    }
+
+    .sq-vitri-msg {
+      font-size: 12px;
+      line-height: 1.1;
+    }
+
+    .sq-close {
+      top: 0;
+      right: 2px;
+      font-size: 18px;
     }
   }
 
