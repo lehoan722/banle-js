@@ -307,27 +307,24 @@
   }
 
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
-
-  
   @media (max-width: 800px) and (orientation: portrait) {
     .sq-stock-popup {
-    /* RỘNG HƠN ~20% */
-    width: 68vw;          /* trước ~47.5vw */
-    max-width: 68vw;
+      /* RỘNG HƠN ~20% */
+      width: 68vw;          /* trước ~47.5vw */
+      max-width: 68vw;
 
-    /* CAO GẤP ĐÔI */
-    height: 90vh;         /* trước ~45vh */
-    max-height: 90vh;
+      /* CAO GẤP ĐÔI */
+      height: 90vh;         /* trước ~45vh */
+      max-height: 90vh;
 
-    overflow-y: auto;
-    overflow-x: visible;
+      overflow-y: auto;
+      overflow-x: visible;
 
-    /* giữ cố định góc trên phải */
-    top: 6px;
-    right: 6px;
-    left: auto;
-    
-  
+      /* giữ cố định góc trên phải */
+      top: 6px;
+      right: 6px;
+      left: auto;
+    }
 
     .sq-stock-layout {
       flex-direction: column;   /* xếp dọc: bảng trên, ảnh dưới */
@@ -344,6 +341,7 @@
       max-height: 30vh;         /* ảnh không quá cao, vẫn cuộn được */
     }
   }
+
   `;
 
   const s = document.createElement("style");
