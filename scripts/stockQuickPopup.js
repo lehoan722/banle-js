@@ -717,8 +717,6 @@
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
 
-    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
-
     // cache lại dữ liệu để dùng cho filter JS
     window.__SQ_DATA = window.__SQ_DATA || {};
     window.__SQ_DATA[masp] = {
@@ -726,6 +724,8 @@
       nhomhang,
       giale
     };
+
+    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
 
   }
 
