@@ -16,6 +16,8 @@
   }
 
   function buildListFromCache({ masp, size, nhomhang }) {
+
+    console.log("CACHE DATA:", window.__SQ_DATA);
     const all = window.__SQ_DATA || {};
     const sizeNorm = normalizeSize(size);
     const branch = detectBranch();
