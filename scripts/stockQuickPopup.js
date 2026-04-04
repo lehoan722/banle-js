@@ -718,7 +718,16 @@
     }
 
     return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
+
   }
+
+  // cache lại dữ liệu để dùng cho filter JS
+  window.__SQ_DATA = window.__SQ_DATA || {};
+  window.__SQ_DATA[masp] = {
+    rows,
+    nhomhang,
+    giale
+  };
 
   // ===== HTML popup =====
   function buildTableHtml(masp, payload) {
@@ -1236,6 +1245,7 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
 
     // đảm bảo có data-masp (để toggle theo mã)
     popup.dataset.masp = String(masp || "").trim().toUpperCase();
+    popup.dataset.nhomhang = payload.nhomhang || "";
 
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
@@ -1284,7 +1294,7 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
             window.StockQuickSimilar.openFromPopup({
               masp,
               size,
-              denNgay: getDenNgay()
+              nhomhang: popup.dataset.nhomhang
             });
           }
         });
