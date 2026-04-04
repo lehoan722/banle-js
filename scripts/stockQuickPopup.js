@@ -798,7 +798,7 @@
 
 
         return `
-        <tr>
+        <tr data-size="${sizeNum}">
           <td>${sizeLabel}</td>
           <td class="num sq-col-k1">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
           <td class="num sq-col-k2">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
@@ -1264,6 +1264,26 @@
         window.open(url, "_blank");
 
       };
+
+      // ===== DOUBLE CLICK → tìm sản phẩm cùng nhóm =====
+      popup.querySelectorAll("tbody tr").forEach(tr => {
+        tr.addEventListener("dblclick", (e) => {
+          e.stopPropagation();
+
+          const size = tr.dataset.size;
+          const masp = popup.dataset.masp;
+
+          if (!size || !masp) return;
+
+          if (window.StockQuickSimilar) {
+            window.StockQuickSimilar.openFromPopup({
+              masp,
+              size,
+              denNgay: getDenNgay()
+            });
+          }
+        });
+      });
     }
 
     const closeBtn = popup.querySelector(".sq-close");
