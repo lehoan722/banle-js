@@ -193,6 +193,96 @@
     border-bottom: none;
   }
 
+    .sq-vitri-actions-wrap {
+    margin-top: 8px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 6px;
+  }
+
+  .sq-vitri-action-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 6px 0;
+    font-size: 16px;
+    color: #111827;
+  }
+
+  .sq-vitri-save-btn {
+    font-weight: 700;
+    color: #1d4ed8;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    border-radius: 6px;
+    padding: 3px 8px;
+    line-height: 1.2;
+  }
+
+  .sq-vitri-save-btn:hover {
+    background: #dbeafe;
+  }
+
+  .sq-vitri-save-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    background: #f3f4f6;
+    color: #6b7280;
+    border-color: #d1d5db;
+  }
+
+  .sq-vitri-label {
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+
+  .sq-vitri-coso {
+    font-weight: 700;
+    color: #b91c1c;
+  }
+
+  .sq-vitri-input {
+    min-width: 150px;
+    max-width: 220px;
+    padding: 4px 8px;
+    font-size: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  .sq-vitri-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+  }
+
+  .sq-vitri-value-readonly {
+    font-weight: 700;
+    color: #111827;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 4px 8px;
+    display: inline-block;
+  }
+
+  .sq-vitri-msg {
+    font-size: 14px;
+    margin-left: 4px;
+  }
+
+  .sq-vitri-msg.ok {
+    color: #15803d;
+    font-weight: 700;
+  }
+
+  .sq-vitri-msg.err {
+    color: #dc2626;
+    font-weight: 700;
+  }
+
   .sq-close {
     position: absolute;
     top: 2px;
@@ -236,6 +326,7 @@
     top: 6px;
     right: 6px;
     left: auto;
+    
   
 
     .sq-stock-layout {
@@ -356,6 +447,45 @@
   }
 
   // ===== Gọi RPC xntnhanh + lấy vị trí kho =====
+
+  async function saveVitriKhoNhanh(maspRaw, cosoRaw, vitriRaw) {
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    const coso = String(cosoRaw || "").trim().toLowerCase();
+    const vitri = String(vitriRaw || "").trim();
+
+    if (!masp) {
+      return { ok: false, message: "Mã sản phẩm trống" };
+    }
+    if (!["cs1", "cs2"].includes(coso)) {
+      return { ok: false, message: "Cơ sở không hợp lệ" };
+    }
+    if (!vitri) {
+      return { ok: false, message: "Vị trí kho trống" };
+    }
+
+    const client = getSupabaseClient();
+    if (!client) {
+      return { ok: false, message: "Supabase chưa sẵn sàng" };
+    }
+
+    try {
+      const { data, error } = await client.rpc("rpc_save_vitrikho_nhanh", {
+        p_masp: masp,
+        p_coso: coso,
+        p_vitri: vitri,
+      });
+
+      if (error) {
+        console.warn("[StockQuickPopup] rpc_save_vitrikho_nhanh error:", error);
+        return { ok: false, message: error.message || "Lỗi gọi RPC lưu vị trí kho" };
+      }
+
+      return data || { ok: false, message: "Không nhận được phản hồi từ RPC" };
+    } catch (e) {
+      console.warn("[StockQuickPopup] saveVitriKhoNhanh exception:", e);
+      return { ok: false, message: e.message || "Có lỗi xảy ra khi lưu vị trí kho" };
+    }
+  }
 
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
@@ -615,16 +745,60 @@
   </tr>`
       : "";
 
-    const vitriParts = [];
-    if (vitri_cs1) vitriParts.push("CS1: " + vitri_cs1);
-    if (vitri_cs2) vitriParts.push("CS2: " + vitri_cs2);
-
-    const vitriRow = vitriParts.length
+    const vitriRowCs1 = vitri_cs1
       ? `
-      <tr class="sq-vitri-row">
-        <td colspan="8">Vị trí: ${vitriParts.join(" , ")}</td>
-      </tr>`
-      : "";
+        <div class="sq-vitri-action-row" data-coso="cs1">
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
+          <span class="sq-vitri-coso">CS1:</span>
+          <span class="sq-vitri-value-readonly">${vitri_cs1}</span>
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+      : `
+        <div class="sq-vitri-action-row" data-coso="cs1">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1">Lưu vị trí</button>
+          <span class="sq-vitri-coso">CS1:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs1"
+            placeholder="Nhập vị trí CS1"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `;
+
+    const vitriRowCs2 = vitri_cs2
+      ? `
+        <div class="sq-vitri-action-row" data-coso="cs2">
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
+          <span class="sq-vitri-coso">CS2:</span>
+          <span class="sq-vitri-value-readonly">${vitri_cs2}</span>
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+      : `
+        <div class="sq-vitri-action-row" data-coso="cs2">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2">Lưu vị trí</button>
+          <span class="sq-vitri-coso">CS2:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs2"
+            placeholder="Nhập vị trí CS2"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `;
+
+    const vitriEditorBlock = `
+      <div class="sq-vitri-actions-wrap">
+        ${vitriRowCs1}
+        ${vitriRowCs2}
+      </div>
+    `;
 
     const imgUrl = IMG_BASE + upper + ".JPG";
     const imgBlock = `
@@ -662,18 +836,98 @@
               <tbody>
                 ${body}
                 ${sumRow}
-                ${vitriRow}
               </tbody>
             </table>
           </div>
           ${imgBlock}
         </div>
+        ${vitriEditorBlock}
       </div>`;
   }
 
   function hideAllPopups() {
     document.querySelectorAll(".sq-stock-popup.show").forEach((p) => {
       p.classList.remove("show");
+    });
+  }
+
+  function bindVitriActions(popup) {
+    if (!popup) return;
+
+    const actionRows = popup.querySelectorAll(".sq-vitri-action-row");
+
+    actionRows.forEach((row) => {
+      const btn = row.querySelector(".sq-vitri-save-btn[data-coso]");
+      const input = row.querySelector(".sq-vitri-input[data-coso]");
+      const msgEl = row.querySelector(".sq-vitri-msg");
+      const coso = row.dataset.coso || (btn ? btn.dataset.coso : "");
+
+      if (!btn || !input || !coso) return;
+
+      const runSave = async () => {
+        const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+        const vitri = String(input.value || "").trim();
+
+        if (!vitri) {
+          if (msgEl) {
+            msgEl.textContent = "Chưa nhập vị trí";
+            msgEl.className = "sq-vitri-msg err";
+          }
+          input.focus();
+          input.select();
+          return;
+        }
+
+        btn.disabled = true;
+        const oldBtnText = btn.textContent;
+        btn.textContent = "Đang lưu...";
+
+        if (msgEl) {
+          msgEl.textContent = "";
+          msgEl.className = "sq-vitri-msg";
+        }
+
+        const rs = await saveVitriKhoNhanh(masp, coso, vitri);
+
+        if (rs && rs.ok) {
+          const vitriMoi = String(rs.vitri_moi || vitri).trim();
+
+          const readonlyHtml = `
+            <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
+            <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
+            <span class="sq-vitri-value-readonly">${vitriMoi}</span>
+            <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
+          `;
+
+          row.innerHTML = readonlyHtml;
+          return;
+        }
+
+        btn.disabled = false;
+        btn.textContent = oldBtnText;
+
+        if (msgEl) {
+          msgEl.textContent = (rs && rs.message) ? rs.message : "Lưu vị trí thất bại";
+          msgEl.className = "sq-vitri-msg err";
+        }
+
+        input.focus();
+        input.select();
+      };
+
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        runSave();
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          runSave();
+        }
+      });
     });
   }
 
@@ -898,6 +1152,15 @@
 
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
+
+    // bind lưu vị trí kho nhanh cho CS1 / CS2
+    bindVitriActions(popup);
+
+    popup.querySelectorAll(".sq-vitri-input, .sq-vitri-save-btn").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    });
 
     // NEW: nút chụp ảnh -> copy MASP + mở trang up ảnh nhanh
     const btnPhoto = popup.querySelector(".sq-photo-btn");
