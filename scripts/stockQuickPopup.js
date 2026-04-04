@@ -906,8 +906,8 @@
                             <thead>
                 <tr>
                   <th>Size</th>
-                  <th class="sq-col-k1">K1</th>
-                  <th class="sq-col-k2">K2</th>
+                  <th class="sq-col-k1">T1</th>
+                  <th class="sq-col-k2">T2</th>
                   <th class="sq-col-b1">B1</th>
                   <th class="sq-col-b2">B2</th>
                   <th class="sq-blue">Tnhập</th>
