@@ -533,29 +533,6 @@
     }
   }
 
-  async function waitForSupabaseReady(maxWaitMs = 12000) {
-    const start = Date.now();
-
-    while (Date.now() - start < maxWaitMs) {
-      const client = getSupabaseClient();
-
-      if (client && client.auth && typeof client.auth.getSession === "function") {
-        try {
-          const rs = await client.auth.getSession();
-          // Có client là điều kiện tối thiểu.
-          // Nếu có session thì càng tốt, nhưng không bắt buộc phải chặn cứng.
-          return client;
-        } catch (e) {
-          // bỏ qua, thử lại
-        }
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 150));
-    }
-
-    return getSupabaseClient();
-  }
-
 
   function getDenNgay() {
     try {
@@ -649,19 +626,14 @@
     let giale = "";
     let nhomhang = "";
 
-    const client = await waitForSupabaseReady(12000);
+    const client = getSupabaseClient();
     if (!client) {
-      console.warn("[StockQuickPopup] Supabase chưa sẵn sàng sau thời gian chờ");
-      return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
+      return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
     }
 
     try {
       // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
-      let snapRes = null;
-      let hhRes = null;
-
-      // lần 1
-      [snapRes, hhRes] = await Promise.all([
+      const [snapRes, hhRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -673,18 +645,6 @@
           .eq("masp", masp)
           .maybeSingle(),
       ]);
-
-      // nếu lần đầu chưa ra dữ liệu tồn, chờ chút rồi thử lại 1 lần
-      const firstRows = snapRes && Array.isArray(snapRes.data) ? snapRes.data : [];
-      if ((!snapRes || snapRes.error || firstRows.length === 0)) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        snapRes = await client.rpc("xntnhanh", {
-          p_masps: [masp],
-          p_den_ngay: denNgay,
-          p_tonghop_size: false,
-        });
-      }
 
       // --- A) dữ liệu từ RPC ---
       const { data, error } = snapRes || {};
@@ -1414,20 +1374,7 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
       document.body.appendChild(globalHost);
     }
 
-    let payload = await fetchTonBanByMasp(masp);
-
-    // Nếu lần đầu ra rỗng hoàn toàn, thử lại 1 lần nữa
-    if (
-      payload &&
-      Array.isArray(payload.rows) &&
-      payload.rows.length === 0 &&
-      !payload.vitri_cs1 &&
-      !payload.vitri_cs2
-    ) {
-      await new Promise(resolve => setTimeout(resolve, 600));
-      payload = await fetchTonBanByMasp(masp);
-    }
-
+    const payload = await fetchTonBanByMasp(masp);
     globalHost.innerHTML = buildTableHtml(masp, payload);
 
     const popup = globalHost.querySelector(".sq-stock-popup");
