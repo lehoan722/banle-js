@@ -3007,7 +3007,6 @@ import "./stockQuickPopup.js";
       throw new Error("Thiếu số phiếu kiểm nhập để xóa dữ liệu cũ.");
     }
 
-    // 1) tìm phiếu cũ
     const { data: phieuCu, error: errTim } = await window.supabase
       .from("kiem_nhap_kho")
       .select("id, so_hd_kiemnhap")
@@ -3025,7 +3024,6 @@ import "./stockQuickPopup.js";
 
     const kiemNhapId = phieuCu.id;
 
-    // 2) xóa chi tiết hóa đơn trước
     const { error: errCtHd } = await window.supabase
       .from("kiem_nhap_kho_chi_tiet_hoa_don")
       .delete()
@@ -3036,7 +3034,6 @@ import "./stockQuickPopup.js";
       throw new Error("Lỗi khi xóa chi tiết hóa đơn phiếu cũ.");
     }
 
-    // 3) xóa chi tiết lệch
     const { error: errLech } = await window.supabase
       .from("kiem_nhap_kho_chitiet_lech")
       .delete()
@@ -3047,7 +3044,6 @@ import "./stockQuickPopup.js";
       throw new Error("Lỗi khi xóa chi tiết lệch phiếu cũ.");
     }
 
-    // 4) xóa bảng tổng sau cùng
     const { error: errTong } = await window.supabase
       .from("kiem_nhap_kho")
       .delete()
