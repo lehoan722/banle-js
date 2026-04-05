@@ -2997,6 +2997,74 @@ import "./stockQuickPopup.js";
     return data || { success: true, updated: 0 };
   }
 
+  async function xoaDuLieuPhieuKiemNhapCu(soHdKiemNhap) {
+    if (!window.supabase) {
+      throw new Error("Không tìm thấy kết nối Supabase.");
+    }
+
+    const sohd = String(soHdKiemNhap || "").trim();
+    if (!sohd) {
+      throw new Error("Thiếu số phiếu kiểm nhập để xóa dữ liệu cũ.");
+    }
+
+    // 1) tìm phiếu cũ
+    const { data: phieuCu, error: errTim } = await window.supabase
+      .from("kiem_nhap_kho")
+      .select("id, so_hd_kiemnhap")
+      .eq("so_hd_kiemnhap", sohd)
+      .maybeSingle();
+
+    if (errTim) {
+      console.error("[KNK] xoaDuLieuPhieuKiemNhapCu - tìm phiếu cũ lỗi:", errTim);
+      throw new Error("Lỗi khi tìm phiếu cũ.");
+    }
+
+    if (!phieuCu) {
+      return { deleted: false, message: "Không tìm thấy phiếu cũ để xóa." };
+    }
+
+    const kiemNhapId = phieuCu.id;
+
+    // 2) xóa chi tiết hóa đơn trước
+    const { error: errCtHd } = await window.supabase
+      .from("kiem_nhap_kho_chi_tiet_hoa_don")
+      .delete()
+      .eq("kiem_nhap_id", kiemNhapId);
+
+    if (errCtHd) {
+      console.error("[KNK] xóa kiem_nhap_kho_chi_tiet_hoa_don lỗi:", errCtHd);
+      throw new Error("Lỗi khi xóa chi tiết hóa đơn phiếu cũ.");
+    }
+
+    // 3) xóa chi tiết lệch
+    const { error: errLech } = await window.supabase
+      .from("kiem_nhap_kho_chitiet_lech")
+      .delete()
+      .eq("kiem_nhap_id", kiemNhapId);
+
+    if (errLech) {
+      console.error("[KNK] xóa kiem_nhap_kho_chitiet_lech lỗi:", errLech);
+      throw new Error("Lỗi khi xóa chi tiết lệch phiếu cũ.");
+    }
+
+    // 4) xóa bảng tổng sau cùng
+    const { error: errTong } = await window.supabase
+      .from("kiem_nhap_kho")
+      .delete()
+      .eq("id", kiemNhapId);
+
+    if (errTong) {
+      console.error("[KNK] xóa kiem_nhap_kho lỗi:", errTong);
+      throw new Error("Lỗi khi xóa phiếu tổng cũ.");
+    }
+
+    return {
+      deleted: true,
+      id: kiemNhapId,
+      so_hd_kiemnhap: sohd
+    };
+  }
+
   async function luuPhieuKiemNhapKho() {
     try {
       if (!window.supabase) {
@@ -3066,6 +3134,8 @@ import "./stockQuickPopup.js";
 
       const nhanvienxuat = dsNhanVienXuat.join(" ; ");
 
+      const hdState = String(hdStateEl?.value || "").trim().toLowerCase();
+
       const { data: tonTaiCu, error: errCheck } = await window.supabase
         .from("kiem_nhap_kho")
         .select("id, so_hd_kiemnhap")
@@ -3078,9 +3148,22 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      if (tonTaiCu) {
-        alert("Số phiếu kiểm nhập này đã được lưu rồi.");
-        return;
+      // ===== PHIẾU MỚI =====
+      if (hdState !== "cu") {
+        if (tonTaiCu) {
+          alert("Số phiếu kiểm nhập này đã được lưu rồi.");
+          return;
+        }
+      }
+
+      // ===== PHIẾU CŨ =====
+      if (hdState === "cu") {
+        const okSua = confirm(`Bạn có chắc chắn muốn sửa phiếu cũ ${so_hd_kiemnhap} không?`);
+        if (!okSua) {
+          return;
+        }
+
+        await xoaDuLieuPhieuKiemNhapCu(so_hd_kiemnhap);
       }
 
       const rowTong = {
@@ -3351,9 +3434,14 @@ import "./stockQuickPopup.js";
 
     const hdState = byId("hd_state");
     if (hdState) {
-      hdState.value = "xem";
-      hdState.setAttribute("data-state", "xem");
+      hdState.value = "cu";
+      hdState.setAttribute("data-state", "cu");
     }
+
+    const okSua = confirm(
+      `Bạn có chắc chắn muốn sửa phiếu cũ ${so_hd_kiemnhap} không?\n\n` +
+      `Hệ thống sẽ xóa toàn bộ dữ liệu cũ của phiếu này và ghi lại dữ liệu mới.`
+    );
 
     (rows || []).forEach((row) => {
       const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
