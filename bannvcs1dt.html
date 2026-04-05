@@ -443,30 +443,6 @@
         }
     </style>
 
-    <div class="menu-bar">
-        <div class="tennv">
-
-            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
-            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
-            <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
-                style="width:55px; text-align:center; font-weight:bold;" />
-            <input id="ngay" type="date" readonly />
-
-            <input id="gio" type="text" readonly style="width:70px" />
-
-            <input id="manv" type="hidden" />
-            <input id="tennv" placeholder="Tên NV" readonly />
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-
-        </div>
-
-        <div id="app-menu" class="menu-item"></div>
-
-        <!--        
-        <label>Giờ <input id="gio" /></label> -->
-
-
-    </div>
 
     <div id="app-container" class="mobile-pos-app" style="display:none;">
 
@@ -496,6 +472,7 @@
                 <input id="manv" type="hidden" />
                 <button id="btnReloadSP" class="mobile-icon-btn" type="button">↻</button>
             </div>
+            <div id="app-menu" class="mobile-app-menu"></div>
         </div>
 
         <!-- Khối nhập hàng -->
@@ -709,11 +686,6 @@
             <button onclick="dongTatCaPopup()">❌ Không</button>
         </div>
     </div>
-
-    </div>
-
-
-
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
@@ -952,10 +924,12 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
-        document.getElementById('btn-logout').onclick = async function () {
-
-            await dangXuatApp();
-        };
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.onclick = async function () {
+                await dangXuatApp();
+            };
+        }
 
         async function dangXuatApp() {
             // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
@@ -989,11 +963,10 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
-        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+        const cs = (localStorage.diadiem || "cs1");
+        const manv = (localStorage.manv || "");
 
-        // Bạn đã cung cấp:
-        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk_sua_o_day';
+        const SHEET_ID = '...';
         const SHEET_NAME = 'menubanlemt';
 
         MenuComponent.mount({
@@ -1002,7 +975,7 @@
             sheetName: SHEET_NAME,
             cs,
             manv,
-            cacheTtlMin: 30 // TTL cache 30 phút
+            cacheTtlMin: 30
         });
     </script>
 
