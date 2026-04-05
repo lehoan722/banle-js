@@ -115,76 +115,140 @@
     </div>
 
     <!-- 1. Dùng module để import supabase và gắn ra window -->
-<script type="module" src="scripts/supabaseClientGlobal.js"></script>
+    <script type="module" src="scripts/supabaseClientGlobal.js"></script>
 
-<!-- 2. Popup bán/tồn – script thường, dùng window.supabase -->
-<script src="scripts/stockQuickPopup.js"></script>
+    <!-- 2. Popup bán/tồn – script thường, dùng window.supabase -->
+    <script src="scripts/stockQuickPopup.js"></script>
 
 
 
     <!-- 3. Script tạo grid ảnh -->
     <script>
-        // Base lưu ảnh ...
         const BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+        const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
 
         function fmtVND(n) {
             if (n == null || isNaN(n)) return "";
             return Number(n).toLocaleString("vi-VN");
         }
 
-        const grid = document.getElementById("grid");
-        const list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
-        document.getElementById("count").textContent = list.length ? `Tổng: ${list.length}` : "";
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
 
-        if (!list.length) {
-            document.getElementById("empty").style.display = "block";
-        } else {
-            list.forEach(({ masp, giale, toncs1, toncs2 }) => {
-                const card = document.createElement("div");
-                card.className = "card";
+        async function waitForDependencies(maxWaitMs = 8000) {
+            const start = Date.now();
 
-                // KHÔNG dùng <a>, chỉ dùng div bọc ảnh
-                const imgwrap = document.createElement("div");
-                imgwrap.className = "imgwrap";
+            while (Date.now() - start < maxWaitMs) {
+                const hasSQ =
+                    !!(window.StockQuick && typeof window.StockQuick.attach === "function");
 
-                const img = document.createElement("img");
-                img.loading = "lazy";
-                img.alt = masp;
-                img.src = BASE + masp + ".JPG";
-                img.onerror = function () {
-                    if (img.src.endsWith(".JPG")) {
-                        img.src = BASE + masp + ".png";
-                    } else {
-                        imgwrap.textContent = "Không có ảnh";
-                    }
-                };
+                const hasSupabase =
+                    !!(window.supabase &&
+                        typeof window.supabase.from === "function" &&
+                        window.supabase.auth);
 
-                imgwrap.appendChild(img);
-
-                const cap = document.createElement("div");
-                cap.className = "cap";
-                const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
-
-                cap.innerHTML =
-                    `<a class="cap-link" href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}" 
-           target="_blank" rel="noopener">
-           ${masp} / ${fmtVND(giale)} ${Number(toncs1||0)}/${Number(toncs2||0)}
-         </a>`;
-
-                // gắn vào card
-                card.appendChild(imgwrap);
-                card.appendChild(cap);
-                grid.appendChild(card);
-
-                // gắn popup bán/tồn cho card
-                if (window.StockQuick) {
-                    window.StockQuick.attach(card, masp);
+                if (hasSQ && hasSupabase) {
+                    return true;
                 }
+
+                await sleep(100);
+            }
+
+            return false;
+        }
+
+        function createCard({ masp, giale, toncs1, toncs2 }) {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.dataset.masp = masp;
+
+            const imgwrap = document.createElement("div");
+            imgwrap.className = "imgwrap";
+
+            const img = document.createElement("img");
+            img.loading = "lazy";
+            img.alt = masp;
+            img.src = BASE + masp + ".JPG";
+            img.onerror = function () {
+                if (img.src.endsWith(".JPG")) {
+                    img.src = BASE + masp + ".png";
+                } else {
+                    imgwrap.textContent = "Không có ảnh";
+                }
+            };
+
+            imgwrap.appendChild(img);
+
+            const cap = document.createElement("div");
+            cap.className = "cap";
+            cap.innerHTML =
+                `<a class="cap-link"
+                href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}"
+                target="_blank"
+                rel="noopener">
+                ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
+            </a>`;
+
+            card.appendChild(imgwrap);
+            card.appendChild(cap);
+
+            return card;
+        }
+
+        function renderList(list) {
+            const grid = document.getElementById("grid");
+            const empty = document.getElementById("empty");
+            const count = document.getElementById("count");
+
+            grid.innerHTML = "";
+            count.textContent = list.length ? `Tổng: ${list.length}` : "";
+
+            if (!list.length) {
+                empty.style.display = "block";
+                return [];
+            }
+
+            empty.style.display = "none";
+
+            const cards = [];
+            list.forEach(item => {
+                const card = createCard(item);
+                grid.appendChild(card);
+                cards.push(card);
             });
 
+            return cards;
         }
-    </script>
 
+        function attachPopupToCards(cards) {
+            if (!window.StockQuick || typeof window.StockQuick.attach !== "function") return;
+
+            cards.forEach(card => {
+                if (card.dataset.sqBound === "1") return;
+                card.dataset.sqBound = "1";
+                window.StockQuick.attach(card, card.dataset.masp);
+            });
+        }
+
+        async function initPage() {
+            const list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
+            const cards = renderList(list);
+
+            if (!list.length) return;
+
+            const ok = await waitForDependencies(8000);
+
+            if (!ok) {
+                console.warn("[xemanhxnt14] StockQuick hoặc Supabase chưa sẵn sàng sau thời gian chờ.");
+                return;
+            }
+
+            attachPopupToCards(cards);
+        }
+
+        document.addEventListener("DOMContentLoaded", initPage);
+    </script>
 
 
 
