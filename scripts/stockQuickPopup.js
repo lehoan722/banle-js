@@ -144,17 +144,20 @@
     background: #eef2f7;
   }
 
-    /* Dòng size bấm 1 lần để mở sản phẩm cùng nhóm */
+  /* Dòng size bấm 1 lần để mở sản phẩm cùng nhóm */
   .sq-stock-popup tr.sq-open-similar-row td {
     cursor: pointer;
     transition: background-color .12s ease;
+    -webkit-tap-highlight-color: rgba(37,99,235,0.18);
+    user-select: none;
+    touch-action: manipulation;
   }
 
   .sq-stock-popup tr.sq-open-similar-row:hover td {
     background: #eef2f7;
   }
 
-  .sq-stock-popup tr.sq-open-similar-row.sq-active-touch td {
+  .sq-stock-popup tr.sq-open-similar-row.sq-row-press td {
     background: #dbeafe;
   }
 
@@ -1244,6 +1247,124 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
 
   let globalHost = null;
 
+  function bindOpenSimilarRows(popup) {
+    if (!popup) return;
+
+    const tbody = popup.querySelector("tbody");
+    if (!tbody) return;
+    if (tbody.dataset.similarBound === "1") return;
+    tbody.dataset.similarBound = "1";
+
+    let opening = false;
+    let lastOpenAt = 0;
+
+    function findClickableRow(target) {
+      if (!target) return null;
+      const tr = target.closest("tr.sq-open-similar-row");
+      if (!tr || !tbody.contains(tr)) return null;
+      return tr;
+    }
+
+    async function runOpen(tr) {
+      if (!tr) return;
+      if (tr.classList.contains("sq-hide-row")) return;
+
+      const now = Date.now();
+      if (opening) return;
+      if (now - lastOpenAt < 450) return;
+
+      const size = String(tr.dataset.size || "").trim();
+      const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+      const nhomhang = String(popup.dataset.nhomhang || "").trim();
+
+      if (!size || !masp || !nhomhang) return;
+
+      if (!window.StockQuickSimilar || typeof window.StockQuickSimilar.openFromPopup !== "function") {
+        console.warn("[StockQuickPopup] StockQuickSimilar chưa sẵn sàng");
+        return;
+      }
+
+      opening = true;
+      lastOpenAt = now;
+
+      tr.classList.add("sq-row-press");
+
+      try {
+        await Promise.resolve(
+          window.StockQuickSimilar.openFromPopup({
+            masp,
+            size,
+            nhomhang,
+            denNgay: getDenNgay()
+          })
+        );
+      } catch (err) {
+        console.warn("[StockQuickPopup] openFromPopup error:", err);
+      } finally {
+        setTimeout(() => {
+          tr.classList.remove("sq-row-press");
+        }, 180);
+
+        setTimeout(() => {
+          opening = false;
+        }, 250);
+      }
+    }
+
+    // CLICK: chạy tốt trên PC / đa số mobile
+    tbody.addEventListener("click", (e) => {
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      runOpen(tr);
+    });
+
+    // POINTERUP: tăng độ ổn định cho iPhone / máy cảm ứng / Safari
+    tbody.addEventListener("pointerup", (e) => {
+      if (e.pointerType === "mouse") return; // chuột đã có click xử lý
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      runOpen(tr);
+    });
+
+    // Hiệu ứng nhấn
+    tbody.addEventListener("pointerdown", (e) => {
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+      tr.classList.add("sq-row-press");
+    });
+
+    tbody.addEventListener("pointercancel", (e) => {
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+      tr.classList.remove("sq-row-press");
+    });
+
+    tbody.addEventListener("pointerleave", (e) => {
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+      tr.classList.remove("sq-row-press");
+    });
+
+    // fallback cho iPhone cũ
+    tbody.addEventListener("touchstart", (e) => {
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+      tr.classList.add("sq-row-press");
+    }, { passive: true });
+
+    tbody.addEventListener("touchend", (e) => {
+      const tr = findClickableRow(e.target);
+      if (!tr) return;
+      setTimeout(() => tr.classList.remove("sq-row-press"), 180);
+    }, { passive: true });
+  }
+
   async function ensurePopup(card, masp) {
     if (!card) return;
 
@@ -1268,6 +1389,9 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
 
     // bind lưu vị trí kho nhanh cho CS1 / CS2
     bindVitriActions(popup);
+
+    // bind click dòng size mở sản phẩm cùng nhóm
+    bindOpenSimilarRows(popup);
 
     popup.querySelectorAll(".sq-vitri-input, .sq-vitri-save-btn").forEach((el) => {
       el.addEventListener("click", (e) => {
@@ -1296,31 +1420,6 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
 
       };
 
-      // ===== CLICK 1 LẦN → tìm sản phẩm cùng nhóm cùng size =====
-      popup.querySelectorAll("tbody tr.sq-open-similar-row").forEach((tr) => {
-        tr.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const size = String(tr.dataset.size || "").trim();
-          const masp = String(popup.dataset.masp || "").trim().toUpperCase();
-          const nhomhang = String(popup.dataset.nhomhang || "").trim();
-
-          if (!size || !masp || !nhomhang) return;
-          if (!window.StockQuickSimilar || typeof window.StockQuickSimilar.openFromPopup !== "function") return;
-
-          // hiệu ứng chạm cho mobile
-          tr.classList.add("sq-active-touch");
-          setTimeout(() => tr.classList.remove("sq-active-touch"), 180);
-
-          window.StockQuickSimilar.openFromPopup({
-            masp,
-            size,
-            nhomhang,
-            denNgay: getDenNgay()
-          });
-        });
-      });
     }
 
     const closeBtn = popup.querySelector(".sq-close");
