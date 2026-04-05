@@ -698,9 +698,6 @@ async function renderOneProductDetail(masp) {
     const groupVal = getHanghoaGroup(hanghoa);
     window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
 
-    let SEARCH_RUNNING = false;
-    let SEARCH_SEQ = 0;
-
     window.PRODUCT_GROUP_MAP[masp] = groupVal || '';
 
 
@@ -868,13 +865,11 @@ async function renderProductDetailHTML(masp) {
 
     const [
         hanghoaRes,
-        nhapListRes,
         k1Res,
         k2Res,
         xntRes
     ] = await Promise.all([
         hanghoaPromise,
-
         k1Promise,
         k2Promise,
         xntPromise ? xntPromise : Promise.resolve({ data: cachedXnt, error: null })
@@ -888,9 +883,6 @@ async function renderProductDetailHTML(masp) {
     CURRENT_GROUP = groupVal || '';
     window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
 
-    let SEARCH_RUNNING = false;
-    let SEARCH_SEQ = 0;
-
     window.PRODUCT_GROUP_MAP[masp] = CURRENT_GROUP;
 
 
@@ -900,22 +892,8 @@ async function renderProductDetailHTML(masp) {
     let xntdata = cachedXnt || (xntRes && xntRes.data) || [];
 
     // ngày nhập đầu/cuối
-    let ngay_nhapdau = "";
+    let ngay_nhapdau = hanghoa.nhapdau || "";
     let ngay_nhapcuoi = "";
-    if (nhapList.length) {
-        const sohdArr = nhapList.map(e => e.sohd);
-        const { data: cts } = await supabase
-            .from("ct_hoadon_banle")
-            .select("sohd,masp")
-            .in("sohd", sohdArr)
-            .eq("masp", masp);
-        const setSohd = new Set((cts || []).map(e => e.sohd));
-        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-        if (filtered.length) {
-            ngay_nhapdau = filtered[0].ngay;
-            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
-        }
-    }
 
     // ngày kiểm
     let ngay_kiem_cs1 = "";
