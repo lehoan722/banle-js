@@ -136,7 +136,35 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        async function waitForDependencies(maxWaitMs = 8000) {
+        function getLocalYMD() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+        }
+
+        function ensureXNT14Filters() {
+            try {
+                const raw = sessionStorage.getItem("XNT14_FILTERS");
+                if (raw) {
+                    const obj = JSON.parse(raw);
+                    if (obj && obj.den_ngay) return;
+                }
+            } catch (e) { }
+
+            const fallback = {
+                den_ngay: getLocalYMD()
+            };
+
+            try {
+                sessionStorage.setItem("XNT14_FILTERS", JSON.stringify(fallback));
+            } catch (e) {
+                console.warn("[xemanhxnt14] Không ghi được XNT14_FILTERS:", e);
+            }
+        }
+
+        async function waitForDependencies(maxWaitMs = 18000) {
             const start = Date.now();
 
             while (Date.now() - start < maxWaitMs) {
@@ -230,47 +258,49 @@
                 window.StockQuick.attach(card, card.dataset.masp);
             });
 
-            // làm ấm popup nhanh cho iPhone / Safari:
-            // gọi sẵn 1 lần bằng mã đầu tiên để module popup + supabase ổn định hơn
-            const firstCard = cards && cards.length ? cards[0] : null;
-            if (firstCard && !window.__XNT14_STOCKQUICK_WARMED__) {
+            // warmup để iPhone/Safari ổn định hơn khi mở trực tiếp từ popup bán lẻ
+            const warmCard = (cards || []).find(c => c && c.dataset && c.dataset.masp) || null;
+
+            if (warmCard && !window.__XNT14_STOCKQUICK_WARMED__) {
                 window.__XNT14_STOCKQUICK_WARMED__ = true;
 
                 setTimeout(async () => {
                     try {
-                        await window.StockQuick.showFor(document.body, firstCard.dataset.masp);
+                        await window.StockQuick.showFor(document.body, warmCard.dataset.masp);
+
+                        await sleep(250);
 
                         const popup = document.querySelector(".sq-stock-popup.show");
-                        if (popup) {
-                            popup.classList.remove("show");
-                        }
+                        if (popup) popup.classList.remove("show");
                     } catch (err) {
                         console.warn("[xemanhxnt14] warmup popup lỗi:", err);
                     }
-                }, 300);
+                }, 700);
             }
         }
 
         async function initPage() {
+            ensureXNT14Filters();
+
             const list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
             const cards = renderList(list);
 
             if (!list.length) return;
 
-            const ok = await waitForDependencies(12000);
+            const ok = await waitForDependencies(15000);
 
             if (!ok) {
                 console.warn("[xemanhxnt14] StockQuick hoặc Supabase chưa sẵn sàng sau thời gian chờ.");
                 return;
             }
 
-            // chờ thêm 1 nhịp nhỏ cho Safari / iPhone ổn định hơn
-            await sleep(250);
+            // đợi thêm cho Safari / iPhone phục hồi module + session ổn định hơn
+            await sleep(500);
 
             attachPopupToCards(cards);
         }
 
-       if (document.readyState === "loading") {
+        if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", initPage);
         } else {
             initPage();
