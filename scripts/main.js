@@ -113,11 +113,11 @@ export async function khoiTaoUngDung() {
 
   // Xác định đang ở trang nào (dựa theo URL)
   const path = (window.location && window.location.pathname) || "";
-  const isBannvcs1Page = path.includes("bannvcs1");
+  const isBannvcsPage = path.includes("bannvcs1");
   const isBannvcs2Page = path.includes("bannvcs2");
 
   // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 HOẶC CS2 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
-  if (isBannvcs1Page || isBannvcs2Page) {
+  if (isBannvcsPage || isBannvcs2Page) {
     // Chỉ cho phép trên điện thoại / tablet
     if (!isMobileDevice()) {
       alert("Ứng dụng bán hàng nhân viên chỉ được dùng trên điện thoại tại cửa hàng.");
