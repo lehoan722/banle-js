@@ -229,6 +229,26 @@
                 card.dataset.sqBound = "1";
                 window.StockQuick.attach(card, card.dataset.masp);
             });
+
+            // làm ấm popup nhanh cho iPhone / Safari:
+            // gọi sẵn 1 lần bằng mã đầu tiên để module popup + supabase ổn định hơn
+            const firstCard = cards && cards.length ? cards[0] : null;
+            if (firstCard && !window.__XNT14_STOCKQUICK_WARMED__) {
+                window.__XNT14_STOCKQUICK_WARMED__ = true;
+
+                setTimeout(async () => {
+                    try {
+                        await window.StockQuick.showFor(document.body, firstCard.dataset.masp);
+
+                        const popup = document.querySelector(".sq-stock-popup.show");
+                        if (popup) {
+                            popup.classList.remove("show");
+                        }
+                    } catch (err) {
+                        console.warn("[xemanhxnt14] warmup popup lỗi:", err);
+                    }
+                }, 300);
+            }
         }
 
         async function initPage() {
@@ -237,12 +257,15 @@
 
             if (!list.length) return;
 
-            const ok = await waitForDependencies(8000);
+            const ok = await waitForDependencies(12000);
 
             if (!ok) {
                 console.warn("[xemanhxnt14] StockQuick hoặc Supabase chưa sẵn sàng sau thời gian chờ.");
                 return;
             }
+
+            // chờ thêm 1 nhịp nhỏ cho Safari / iPhone ổn định hơn
+            await sleep(250);
 
             attachPopupToCards(cards);
         }
