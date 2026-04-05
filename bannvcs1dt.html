@@ -751,7 +751,13 @@
                     }
                 } catch (e) {
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-                    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+
+                    const msg =
+                        (e && (e.stack || e.message || e.toString()))
+                            ? (e.stack || e.message || e.toString())
+                            : "Không rõ lỗi";
+
+                    alert("Lỗi tải module:\n" + msg);
                     return false;
                 }
                 if (okInit === false) return false;
@@ -962,21 +968,7 @@
     <script src="scripts/menu-component.js"></script>
 
     <script>
-        // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");
-        const manv = (localStorage.manv || "");
-
-        const SHEET_ID = '...';
-        const SHEET_NAME = 'menubanlemt';
-
-        MenuComponent.mount({
-            el: '#app-menu',
-            sheetId: SHEET_ID,
-            sheetName: SHEET_NAME,
-            cs,
-            manv,
-            cacheTtlMin: 30
-        });
+        // Tạm tắt menu ngoài để tránh lỗi 404
     </script>
 
     <script>  //<!-- banlemobile -->
