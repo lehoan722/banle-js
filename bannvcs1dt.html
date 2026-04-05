@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN LE cs1</title>
+    <title>BAN NV cs1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -339,50 +339,8 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
-
-        /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
-        body.popupnhanh .sq-stock-popup {
-            top: 8px !important;
-            left: 8px !important;
-            left: auto !important;
-            transform: none !important;
-        }
-
-        #printOverlay{ position:fixed; inset:0; z-index:99999; }
-#printOverlay .po-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.35); }
-#printOverlay .po-panel{
-  position:absolute; inset:10px;
-  background:#fff; border-radius:10px;
-  display:flex; flex-direction:column;
-  overflow:hidden;
-}
-#printOverlay .po-header{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px; border-bottom:1px solid #eee;
-}
-#printOverlay .po-title{ font-weight:700; }
-#printOverlay .po-actions{ display:flex; gap:8px; }
-#printOverlay #poFrame{ width:100%; height:100%; border:0; }
-
     </style>
-    <style>
-        /* hd_state = xem => chữ đỏ nền hồng */
-        #hd_state[data-state="xem"] {
-            color: red !important;
-            background: #ffecec !important;
-            border: 1px solid red !important;
-            font-weight: bold;
-            text-align: center;
-        }
 
-        /* sohd chia hết cho 3 => nền đỏ chữ trắng */
-        #sohd[data-mod3="yes"] {
-            background: #d50000 !important;
-            color: #ffffff !important;
-            border: 2px solid #8b0000 !important;
-            font-weight: bold;
-        }
-    </style>
 
     <script>
 
@@ -408,7 +366,7 @@
 
 </head>
 
-<body class="popupnhanh">
+<body>
 
     <style>
         .menu-bar {
@@ -488,15 +446,11 @@
     <div class="menu-bar">
         <div class="tennv">
 
-
             <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
-
             <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
             <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
                 style="width:55px; text-align:center; font-weight:bold;" />
-
             <input id="ngay" type="date" readonly />
-
 
             <input id="gio" type="text" readonly style="width:70px" />
 
@@ -508,37 +462,100 @@
 
         <div id="app-menu" class="menu-item"></div>
 
-        <!--
+        <!--        
         <label>Giờ <input id="gio" /></label> -->
 
 
     </div>
 
-    <div id="app-container" style="display:none;">
+    <div id="app-container" class="mobile-pos-app" style="display:none;">
 
-        <div class="top-inputs">
-            <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
-                <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+        <!-- Header mobile -->
+        <div class="mobile-topbar">
+            <div class="mobile-topbar-row">
+                <div class="mobile-badge">
+                    <span class="mobile-label">CS</span>
+                    <input id="diadiem" placeholder="diadiem" readonly />
+                </div>
+
+                <div class="mobile-badge">
+                    <span class="mobile-label">HĐ</span>
+                    <input id="sohd" placeholder="Số HĐ" />
+                </div>
+
+                <div class="mobile-badge mobile-badge-state">
+                    <span class="mobile-label">TT</span>
+                    <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua" />
                 </div>
             </div>
-            <input id="soluong" value="1" />
-            <input id="dvt" placeholder="DVT" />
-            <input id="size" placeholder="SIZE" />
-            <input id="gia" placeholder="Giá SP" />
-            <input id="khuyenmai" placeholder="khuyen mai" />
-            <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />
-            <input id="vitri" placeholder="vi tri" readonly />
-            <button id="xemtonkho">🔍</button>
-            <button id="ghivitri">✏️</button>
+
+            <div class="mobile-topbar-row">
+                <input id="tennv" class="mobile-tennv" placeholder="Tên NV" readonly />
+                <input id="ngay" type="date" readonly />
+                <input id="gio" type="text" readonly />
+                <input id="manv" type="hidden" />
+                <button id="btnReloadSP" class="mobile-icon-btn" type="button">↻</button>
+            </div>
         </div>
 
+        <!-- Khối nhập hàng -->
+        <div class="mobile-entry-card">
+            <div class="mobile-card-title">Bán hàng nhân viên</div>
 
-        <div class="main">
-            <div class="table-area">
+            <div class="mobile-masp-wrap" style="position:relative;">
+                <input id="masp" class="mobile-input mobile-input-main" placeholder="Quét / nhập mã sản phẩm"
+                    autocomplete="off" />
+                <div id="popup_masp"
+                    style="position:absolute; top:100%; left:0; right:0; max-height:220px; background:#fff; border:1px solid #dcdfe6; display:none; overflow-y:auto; z-index:10000; border-radius:12px;">
+                </div>
+            </div>
 
+            <div class="mobile-entry-grid">
+                <div class="mobile-field">
+                    <label>SL</label>
+                    <input id="soluong" value="1" inputmode="numeric" />
+                </div>
+
+                <div class="mobile-field">
+                    <label>Size</label>
+                    <input id="size" placeholder="SIZE" />
+                </div>
+
+                <div class="mobile-field mobile-field-price">
+                    <label>Giá</label>
+                    <input id="gia" placeholder="Giá SP" />
+                </div>
+            </div>
+
+            <div class="mobile-entry-grid mobile-entry-grid-2">
+                <div class="mobile-field">
+                    <label>Vị trí</label>
+                    <input id="vitri" placeholder="Vị trí" readonly />
+                </div>
+
+                <div class="mobile-field mobile-field-actions">
+                    <label>Tác vụ nhanh</label>
+                    <div class="mobile-mini-actions">
+                        <button id="xemtonkho" type="button">🔍 Tồn</button>
+                        <button id="ghivitri" type="button">✏️ Vị trí</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Giữ DOM cũ nhưng ẩn -->
+            <input id="dvt" placeholder="DVT" class="mobile-hidden-dom" />
+            <input id="khuyenmai" placeholder="khuyen mai" class="mobile-hidden-dom" />
+            <input id="thanhtien" placeholder="Thành tiền" class="mobile-hidden-dom" />
+        </div>
+
+        <!-- Danh sách hàng -->
+        <div class="mobile-list-card">
+            <div class="mobile-card-title mobile-card-title-flex">
+                <span>Danh sách hàng</span>
+                <span class="mobile-note">Chạm 1 dòng để chọn sửa</span>
+            </div>
+
+            <div class="table-area mobile-table-area">
                 <table id="bangketqua">
                     <thead>
                         <tr>
@@ -550,154 +567,152 @@
                             <th>Đơn giá</th>
                             <th>Khuyến mại</th>
                             <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- (giữ nguyên) -->
-                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                            <th>Vị trí</th>
                             <th>T1</th>
                             <th>T2</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
-
             </div>
-            <div class="sidebar">
-                <div class="tabs">
-                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
-                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
-                </div>
-                <div class="tab-content">
-                    <div class="tab-pane" id="thongtin">
 
-                        <label>Hình thức TT <select id="hinhthuctt">
+            <img alt="Ảnh sản phẩm" class="product-image"
+                src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+        </div>
+
+        <!-- Khối tiền -->
+        <div class="mobile-payment-card">
+            <div class="mobile-money-line mobile-total-line">
+                <span>Tổng phải trả</span>
+                <input id="phaithanhtoan" readonly />
+            </div>
+
+            <div class="mobile-money-line">
+                <span>Khách thanh toán</span>
+                <input id="khachtra" />
+            </div>
+
+            <div class="mobile-money-line">
+                <span>Còn lại</span>
+                <input id="conlai" readonly />
+            </div>
+        </div>
+
+        <!-- Panel thêm -->
+        <div class="mobile-extra-card">
+            <div class="tabs mobile-tabs">
+                <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin</button>
+                <button id="btn_tacvu" onclick="switchTab('tacvu')">Tác vụ</button>
+            </div>
+
+            <div class="tab-content mobile-tab-content">
+                <div class="tab-pane" id="thongtin">
+                    <div class="mobile-form-grid">
+                        <label>Hình thức TT
+                            <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
-                            </select></label>
+                            </select>
+                        </label>
 
-                        <label>Chiết khấu <input id="chietkhau" /></label>
-                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
+                        <label>Chiết khấu
+                            <input id="chietkhau" />
+                        </label>
 
-                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
-                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+                        <label>Tổng KM
+                            <input id="tongkm" readonly />
+                        </label>
 
-                        <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mã khách"
-                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
-                            <button id="btnPopupKH" type="button"
-                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                🔍
-                            </button>
-                        </div>
-                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+                        <label>Mặt hàng
+                            <input id="mathang" readonly />
+                        </label>
 
-                        <!-- Popup tìm khách hàng -->
-                        <div id="popupTimKH"
-                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
-                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
-                            <table id="tableKH" style="width:100%;font-size:15px"></table>
-                        </div>
-                        <!-- het khu vuc tìm khách hàng -->
+                        <label>Tổng SL
+                            <input id="tongsl" readonly />
+                        </label>
+
+                        <label>Ghi chú
+                            <input id="ghichu" placeholder="Ghi chú HH" />
+                        </label>
                     </div>
-                    <div class="tab-pane" id="tacvu">
-                        <div class="checkbox-list">
-                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
-                            <label><input id="size45" type="checkbox" />QL SIZE</label>
-                            <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
-                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
-                            <label><input id="inNhanh" type="checkbox" /> In nhanh </label>
-                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
-                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
+
+                    <div class="mobile-kh-wrap">
+                        <div class="mobile-kh-search">
+                            <input id="makh" placeholder="Mã khách" autocomplete="off">
+                            <button id="btnPopupKH" type="button">🔍</button>
                         </div>
+
+                        <label>Khách hàng
+                            <input id="khachhang" readonly />
+                        </label>
+                    </div>
+
+                    <div id="popupTimKH"
+                        style="display:none; position:fixed; inset:12% 4% auto 4%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:auto; max-height:60vh; overflow:auto; border-radius:14px;">
+                        <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:8px">
+                        <table id="tableKH" style="width:100%;font-size:15px"></table>
                     </div>
                 </div>
 
-                <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
-                    Tổng phải trả
-                    <input id="phaithanhtoan"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
-                </div>
-                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    Khách thanh toán
-                    <input id="khachtra"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
-                </div>
-                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
-                    Còn lại
-                    <input id="conlai"
-                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
-                        readonly />
-                </div>
+                <div class="tab-pane" id="tacvu">
+                    <div class="checkbox-list mobile-checkbox-list">
+                        <label><input id="nhapnhanh" type="checkbox" /> Nhập số lượng</label>
+                        <label><input id="size45" type="checkbox" /> Quản lý size</label>
+                        <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
+                        <label><input id="quanlysizetheonhom" type="checkbox" /> Quản lý size theo nhóm</label>
+                        <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                        <label><input checked type="checkbox" /> Hiển thị hình ảnh</label>
+                        <label><input id="nhapsize" type="checkbox" /> Nhập size liên tiếp</label>
+                        <label><input type="checkbox" id="quanlysizetheogia" /> Quản lý size theo giá</label>
+                    </div>
 
-
-
-                <img alt="Ảnh sản phẩm" class="product-image"
-                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+                    <div class="mobile-secondary-actions">
+                        <button id="quaylai" type="button">◀ Quay lại</button>
+                        <button id="tieptuc" type="button">Tiếp tục ▶</button>
+                        <button id="xemin" type="button">🖨 Xem in</button>
+                        <button id="btnCopy" type="button">📋 Copy</button>
+                        <button id="xuatexcel" type="button">📤 Excel</button>
+                        <button id="btnCCN" type="button">CCN</button>
+                    </div>
+                </div>
             </div>
         </div>
 
-
-        <div class="footer-buttons">
-            <button id="them">Thêm mới</button>
-            <button id="btn-luu">💾 Lưu</button>
-
-            <button id="sua" class="btn edit" type="button">SỬA</button>
-
-            <button id="quaylai">Quay lại</button>
-            <button id="tieptuc">Tiếp tục</button>
-            <button id="xemin">Xem in</button>
-            <button id="btnCopy">Copy</button>
-            <button id="xuatexcel">Xuất Excel</button>
-            <button id="btn-logout">THOAT PM</button>
-
-
-            <!-- Popup tìm khách hàng
-             
-             <button id="xuatexcel">Xuất Excel</button>
-             <button id="timkiem">Tìm kiếm</button>
-             <button id="luu">Lưu</button>
-            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
-            
-            -->
-
-        </div>
-
-
-        <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
-            F7: xem tồn kho nhanh, F8: nhập vị trí kho
-        </div>
-        <div class="top-inputs">
-            ----------------------------------------------------------
-        </div>
-
-        <!-- ✅ Popup xác thực sửa hóa đơn -->
-        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-            <h3>Xác thực sửa hóa đơn</h3>
-            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
-                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
-                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
-
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
-        </div>
-
-        <!-- Popup xác nhận thêm mới -->
-        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-            <h3>Bạn có thực sự muốn thêm mới?</h3>
-            <div style="text-align:center; margin-top:10px;">
-                <button id="btnThemMoiCo">✅ Có</button>
-                <button onclick="dongTatCaPopup()">❌ Không</button>
-            </div>
+        <!-- Footer hành động chính -->
+        <div class="footer-buttons mobile-footer-buttons">
+            <button id="them" type="button">Thêm mới</button>
+            <button id="sua" class="btn edit" type="button">Sửa dòng</button>
+            <button id="btn-luu" type="button">💾 Lưu hóa đơn</button>
         </div>
 
     </div>
 
-    <script src="scripts/stockQuickPopup.js"></script>
+    <!-- ✅ Popup xác thực sửa hóa đơn -->
+    <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+        <h3>Xác thực sửa hóa đơn</h3>
+        <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+            style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+        <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+            style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+        <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+
+        <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+    </div>
+
+    <!-- Popup xác nhận thêm mới -->
+    <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+        <h3>Bạn có thực sự muốn thêm mới?</h3>
+        <div style="text-align:center; margin-top:10px;">
+            <button id="btnThemMoiCo">✅ Có</button>
+            <button onclick="dongTatCaPopup()">❌ Không</button>
+        </div>
+    </div>
+
+    </div>
+
+
 
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -754,15 +769,20 @@
                 }
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
+                //    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
+                //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
+                let okInit = true;
                 try {
                     const module = await import("./scripts/main.js");
                     if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
+                        okInit = await module.khoiTaoUngDung();
                     }
                 } catch (e) {
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+                    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+                    return false;
                 }
-
+                if (okInit === false) return false;
                 // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
@@ -772,6 +792,9 @@
 
                 const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
+
+                const nhapsize = document.getElementById("nhapsize");
+                if (nhapsize) nhapsize.checked = true;
 
                 // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
                 const appContainer = document.getElementById("app-container");
@@ -848,7 +871,7 @@
             }
 
             navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy dữ liệu ra clipboard'));
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
         };
 
 
@@ -929,33 +952,13 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
-        // Gắn lại sự kiện cho nút THOAT PM
         document.getElementById('btn-logout').onclick = async function () {
-            const overlay = document.getElementById('backup-overlay');
-
-            // Hỏi người dùng có muốn tạo file dự phòng không
-            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
-
-            if (muonBackup) {
-                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
-                overlay.style.display = "block";
-                try {
-                    await backupAllTablesToZip();
-                    // Có thể bật lại thông báo nếu muốn:
-                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
-                } catch (err) {
-                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
-                } finally {
-                    overlay.style.display = "none";
-                }
-            }
-            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
 
             await dangXuatApp();
         };
 
         async function dangXuatApp() {
-            // Copy logic đăng xuất cũ của anh
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
                 localStorage.clear();
@@ -963,32 +966,24 @@
                 localStorage.removeItem("quyen_sua_hoadon");
             }
             document.getElementById('login-manv').value = "";
-            document.getElementById('login-password-nv').value = "";
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
-
             const tbody = document.getElementById('bangketqua').querySelector('tbody');
             if (tbody) tbody.innerHTML = '';
             if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-
             const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
             idsToClear.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
-
             localStorage.removeItem('draft_hoadon');
             sessionStorage.removeItem('draft_hoadon');
-
             document.getElementById('login-manv').focus();
-            location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
-
     </script>
-
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-
+    <script src="scripts/stockQuickPopup.js"></script>
 
     <script src="scripts/menu-component.js"></script>
 
@@ -998,7 +993,7 @@
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
-        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk_sua_o_day';
         const SHEET_NAME = 'menubanlemt';
 
         MenuComponent.mount({
@@ -1025,10 +1020,10 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         document.getElementById('btn-luu')?.addEventListener('click', () => {
-         const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-         dispatchTarget.dispatchEvent(ev);
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
         });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
@@ -1053,6 +1048,7 @@
             setTimeout(() => {
                 const manv = document.getElementById('xacmanv');
                 if (manv) { manv.focus(); manv.select(); }
+                return true;
             }, 0);
         }
 
@@ -1091,318 +1087,20 @@
         });
     </script>
 
-    <!-- <script>
-        // Sau khi DOMContentLoaded hoặc ở script type="module" 
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-    </script>  -->
-
     <script>
-        //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
-
-        // ✅ Tô đỏ #sohd theo RPC (đồng bộ 100% với logic gửi Viettel)
-        document.addEventListener("DOMContentLoaded", () => {
-            const hd = document.getElementById("hd_state");
-            const sohdEl = document.getElementById("sohd");
-            const totalEl = document.getElementById("phaithanhtoan");
-            const ngayEl = document.getElementById("ngay");
-
-            if (!sohdEl) return;
-
-            // Trang CS1 nên diadiem cố định = cs1 (đúng mục tiêu của bạn)
-            const DIADIEM = "cs1";
-
-            const getMoney = (el) => {
-                const raw = String(el?.value || "0");
-                const n = parseInt(raw.replace(/\D/g, ""), 10);
-                return Number.isFinite(n) ? n : 0;
-            };
-
-            // Debounce nhẹ để tránh spam RPC khi gõ
-            let t = null;
-            let lastKey = "";
-            let inFlight = 0;
-
-            async function checkViettelEligibility() {
-                // 1) hd_state -> data-state (giữ behavior cũ)
-                if (hd) hd.setAttribute("data-state", hd.value);
-
-                const sohd = String(sohdEl.value || "").trim();
-                const ngay = String(ngayEl?.value || "").trim(); // yyyy-mm-dd
-                const thanhtoan = getMoney(totalEl);
-
-                // Nếu chưa đủ dữ liệu tối thiểu thì bỏ tô đỏ
-
-                if (!sohd || !ngay) {
-                    sohdEl.removeAttribute("data-mod3");
-                    lastKey = "";            // ✅ reset cache để lát nữa dữ liệu về lại sẽ check lại
-                    return;
-                }
-
-
-                // Cache theo key để giảm gọi lặp
-                const key = `${DIADIEM}|${ngay}|${sohd}|${thanhtoan}`;
-                if (key === lastKey) return;
-                lastKey = key;
-
-                const reqId = ++inFlight;
-
-                try {
-                    // ✅ gọi RPC trực tiếp (trang đã login)
-                    const { data, error } = await window.supabase.rpc("preview_viettel_eligibility", {
-                        p_diadiem: DIADIEM,
-                        p_ngay: ngay,
-                        p_sohd: sohd,
-                        p_thanhtoan: thanhtoan
-                    });
-
-                    // Nếu có request mới hơn thì bỏ qua kết quả cũ
-                    if (reqId !== inFlight) return;
-
-                    if (error) {
-                        sohdEl.removeAttribute("data-mod3");
-                        lastKey = "";            // ✅
-                        return;
-                    }
-
-                    // data là array 1 dòng (returns table)
-                    const row = Array.isArray(data) ? data[0] : data;
-                    const eligible = !!row?.eligible;
-
-                    if (eligible) sohdEl.setAttribute("data-mod3", "yes");
-                    else sohdEl.removeAttribute("data-mod3");
-
-                } catch (e) {
-                    sohdEl.removeAttribute("data-mod3");
-                    lastKey = "";            // ✅
-                }
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
+                    //moPopupXacThucSua();
+                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+                });
             }
 
-            function scheduleCheck() {
-                clearTimeout(t);
-                t = setTimeout(checkViettelEligibility, 180);
-            }
-
-            // Bắt các thay đổi thường gặp
-            ["input", "change"].forEach(evt => {
-                sohdEl.addEventListener(evt, scheduleCheck);
-                if (totalEl) totalEl.addEventListener(evt, scheduleCheck);
-                if (ngayEl) ngayEl.addEventListener(evt, scheduleCheck);
-                if (hd) hd.addEventListener(evt, scheduleCheck);
-            });
-
-            // fallback: nhiều chỗ set .value bằng JS
-            setInterval(checkViettelEligibility, 500);
-
-            // chạy lần đầu
-            checkViettelEligibility();
         });
     </script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const hdState = document.getElementById("hd_state");
-            const btnXemIn = document.getElementById("xemin");
-            if (!hdState || !btnXemIn) return;
-
-            function normalizeState(v) {
-                return String(v || "")
-                    .trim()
-                    .toLowerCase()
-                    .replace(/\s+/g, " "); // gộp khoảng trắng
-            }
-
-            function isChuaXemState(v) {
-                const s = normalizeState(v);
-                // chấp nhận nhiều biến thể để khỏi lệ thuộc chính tả/dấu
-                return (
-                    s === "chua xem" ||
-                    s === "chưa xem" ||
-                    s === "chuaxem" ||
-                    s === "xem"
-                );
-            }
-
-            // Double click / double tap vào ô trạng thái -> gọi "Xem in"
-            hdState.addEventListener("click", (e) => {
-                if (!isChuaXemState(hdState.value)) return;
-
-                e.preventDefault();
-                e.stopPropagation();
-
-                // Gọi đúng logic hiện có của nút "Xem in"
-                btnXemIn.click();
-            });
-
-            // (Tùy chọn) nếu điện thoại đôi khi không bắn dblclick tốt,
-            // bạn có thể bật "double tap" thủ công (giữ an toàn, không ảnh hưởng PC)
-            let lastTap = 0;
-            hdState.addEventListener("touchend", () => {
-                const now = Date.now();
-                if (now - lastTap < 300) {
-                    if (isChuaXemState(hdState.value)) btnXemIn.click();
-                }
-                lastTap = now;
-            });
-        });
-    </script>
-
-   <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const chk = document.getElementById('inNhanh') || document.getElementById('chk_innhanh');
-  const overlay = document.getElementById('printOverlay');
-  const frame = document.getElementById('poFrame');
-  const btnClose = document.getElementById('poBtnClose');
-  const btnPrint = document.getElementById('poBtnPrint');
-
-  // Nếu trang không có overlay thì vẫn tạo móc tối thiểu
-  if (!overlay || !frame) {
-    window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
-    window.openPrintOverlay = (url) => window.open(url, '_blank'); // fallback
-    window.quickPrint = (url) => window.open(url, '_blank');
-    return;
-  }
-
-  // nhớ lựa chọn In nhanh theo máy
-  const saved = localStorage.getItem('banle_print_fast');
-  if (saved !== null && chk) chk.checked = (saved === '1');
-  chk?.addEventListener('change', () => {
-    localStorage.setItem('banle_print_fast', chk.checked ? '1' : '0');
-  });
-
-  let printedOnce = false;
-
-  function openOverlay(url) {
-    printedOnce = false;
-    overlay.style.display = 'block';
-    frame.src = url;
-  }
-
-  function closeOverlay() {
-    frame.src = 'about:blank';
-    overlay.style.display = 'none';
-    printedOnce = false;
-  }
-
-  function doPrint() {
-    try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch(e) {}
-    printedOnce = true;
-  }
-
-  btnClose?.addEventListener('click', closeOverlay);
-  overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlay);
-
-  // Nút In trong overlay
-  btnPrint?.addEventListener('click', doPrint);
-
-  // ✅ Enter để In, Enter lần 2 để Đóng (chỉ trên máy tính)
-  document.addEventListener('keydown', (e) => {
-    if (overlay.style.display !== 'block') return;
-
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (!printedOnce) doPrint();
-      else closeOverlay();
-    }
-
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      closeOverlay();
-    }
-  });
-
-  // ✅ Sau khi in xong (đóng dialog in), tự đóng overlay (đỡ phải Enter lần 2)
-  function bindAutoCloseAfterPrint(win) {
-    if (!win) return;
-    const handler = () => {
-      // tránh đóng khi overlay đã bị tắt
-      if (overlay.style.display === 'block') closeOverlay();
-      win.removeEventListener('afterprint', handler);
-    };
-    win.addEventListener('afterprint', handler);
-  }
-
-  // ====== API cho luuhoadon.js dùng chung ======
-  window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
-
-  // Mở overlay để xem/in
-  window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
-    openOverlay(url);
-
-    frame.onload = () => {
-      if (autoPrint) {
-        // gắn tự đóng sau in
-        bindAutoCloseAfterPrint(frame.contentWindow);
-        // gọi in
-        setTimeout(doPrint, 150);
-      }
-    };
-  };
-
-  // ✅ In nhanh thật sự: KHÔNG mở overlay, chỉ gọi print bằng iframe ẩn
-  window.quickPrint = (url) => {
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-
-    iframe.onload = () => {
-      setTimeout(() => {
-        try {
-          // gắn tự remove sau in (nếu có afterprint)
-          const w = iframe.contentWindow;
-          const cleanup = () => {
-            try { iframe.remove(); } catch(e) {}
-            w?.removeEventListener?.('afterprint', cleanup);
-          };
-          w?.addEventListener?.('afterprint', cleanup);
-
-          w?.focus();
-          w?.print();
-
-          // fallback: remove sau 2s nếu afterprint không chạy
-          setTimeout(cleanup, 2000);
-        } catch (e) {
-          console.error(e);
-          try { iframe.remove(); } catch(_) {}
-        }
-      }, 150);
-    };
-  };
-});
-</script>
-
-    <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
-<div id="printOverlay" style="display:none;">
-  <div class="po-backdrop"></div>
-
-  <div class="po-panel">
-    <div class="po-header">
-      <div class="po-title">In hóa đơn</div>
-      <div class="po-actions">
-        <button id="poBtnPrint" type="button">In</button>
-        <button id="poBtnClose" type="button">Đóng</button>
-      </div>
-    </div>
-
-    <iframe id="poFrame" src="about:blank"></iframe>
-  </div>
-</div>
-
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
@@ -1434,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
+    <script src="scripts/stockQuickSimilar.js"></script>
 
 </body>
 
