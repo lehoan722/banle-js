@@ -420,6 +420,17 @@
             font-weight: 700;
         }
 
+        .bulk-note-line {
+            margin-top: 8px;
+            padding: 4px 2px 0;
+            color: #ff2a2a;
+            font-size: 16px;
+            line-height: 1.45;
+            font-weight: 600;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
         #popupSearch,
         #scannerModal {
             display: none;
@@ -951,6 +962,7 @@
             const currentVitri = branch === 'cs2' ? (payload.vitri_cs2 || '') : (payload.vitri_cs1 || '');
             const branchLabel = branch === 'cs2' ? 'CS2' : 'CS1';
             const imgUrl = `${IMG_BASE}${encodeURIComponent(masp)}.JPG`;
+            const bulkNote = getBulkNoteByMasp(masp);
 
             return `
         <div class="product-card" data-masp="${masp}">
@@ -969,6 +981,7 @@
                 <div class="meta-item"><div class="k">Vị trí CS2</div><div class="v">${payload.vitri_cs2 || ''}</div></div>
               </div>
               ${buildStockTable(masp, payload)}
+              <div class="bulk-note-line">${bulkNote || ''}</div>
 
               <div class="vitri-row">
                 <div class="vitri-box">
@@ -1029,6 +1042,34 @@
             return normCode(s);
         }
 
+        function buildBulkNoteMapFromTextarea() {
+            const rawLines = String(bulkTextarea.value || '')
+                .split(/[\r\n]+/)
+                .map(x => String(x || '').trim())
+                .filter(Boolean);
+
+            const map = {};
+
+            for (const line of rawLines) {
+                if (!isLikelyProductCode(line)) continue;
+
+                const code = normalizeIncomingProductCode(line);
+                if (!code) continue;
+
+                // giữ nguyên dòng gốc để hiển thị lại
+                map[code] = line;
+            }
+
+            window.BULK_NOTE_MAP = map;
+            return map;
+        }
+
+        function getBulkNoteByMasp(masp) {
+            const key = normCode(masp);
+            const map = window.BULK_NOTE_MAP || {};
+            return map[key] || '';
+        }
+
         function parseBulkCodes() {
             const rawLines = String(bulkTextarea.value || '')
                 .split(/[\r\n]+/)
@@ -1059,6 +1100,8 @@
         }
 
         async function triggerSearch() {
+            buildBulkNoteMapFromTextarea();
+
             const bulkCodes = parseBulkCodes();
             const singleCode = normCode(stripSizeSuffixAtEnd(maspInput.value));
             const codes = bulkCodes.length ? bulkCodes : (singleCode ? [singleCode] : []);
@@ -1257,33 +1300,18 @@
             const bulk = localStorage.getItem('TKHH333_BULK') || localStorage.getItem('STOCKQUICK_BULK') || '';
             if (!bulk) return false;
 
-            // luôn chuẩn hóa lại chỉ còn các mã thật sự
-            const rawLines = String(bulk)
+            // GIỮ NGUYÊN dòng gốc để còn hiển thị lại số lượng / size đẩy về
+            bulkTextarea.value = String(bulk)
                 .split(/[\r\n]+/)
                 .map(x => String(x || '').trim())
-                .filter(Boolean);
-
-            const seen = new Set();
-            const codes = [];
-
-            for (const line of rawLines) {
-                if (!isLikelyProductCode(line)) continue;
-
-                const code = normalizeIncomingProductCode(line);
-                if (!code) continue;
-                if (seen.has(code)) continue;
-
-                seen.add(code);
-                codes.push(code);
-            }
-
-            bulkTextarea.value = codes.join('\n');
+                .filter(Boolean)
+                .join('\n');
 
             localStorage.removeItem('TKHH333_BULK');
             localStorage.removeItem('STOCKQUICK_BULK');
 
             toggleTools(true);
-            return codes.length > 0;
+            return true;
         }
 
         function bindEvents() {
