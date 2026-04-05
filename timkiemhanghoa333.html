@@ -994,12 +994,62 @@
       `;
         }
 
+        function isLikelyProductCode(line) {
+            const s = normCode(line);
+
+            if (!s) return false;
+
+            // loại các dòng chỉ là size / số lượng / chi tiết size
+            // ví dụ: 40/1 42/1 , 2 , / 2 , 38,2,S,46...
+            if (/^\d+\s*$/.test(s)) return false;
+            if (/^(\d{1,2}\/\d+\s*)+$/.test(s)) return false;
+            if (/^\s*\/\s*\d+\s*$/.test(s)) return false;
+            if (/^\d{1,2}(,\d+)*(,[A-Z0-9]+)*$/.test(s)) return false;
+
+            // lấy phần trước dấu " / " nếu có kiểu: MDN600.NAU / 2
+            const leftPart = s.split(/\s*\/\s*/)[0].trim();
+
+            // mã hàng của bạn thường có chữ
+            if (!/[A-Z]/.test(leftPart)) return false;
+
+            // loại trường hợp size có chữ đơn lẻ kiểu XL/2 nếu có
+            if (/^(S|M|L|XL|XXL|2XL|3XL|4XL|5XL)$/i.test(leftPart)) return false;
+
+            return true;
+        }
+
+        function normalizeIncomingProductCode(line) {
+            let s = normCode(line);
+            if (!s) return '';
+
+            // kiểu: MDN600.NAU / 2  -> lấy MDN600.NAU
+            s = s.split(/\s*\/\s*/)[0].trim();
+
+            s = stripSizeSuffixAtEnd(s);
+            return normCode(s);
+        }
+
         function parseBulkCodes() {
-            return String(bulkTextarea.value || '')
-                .split(/[\r\n,;\t]+/)
-                .map(stripSizeSuffixAtEnd)
-                .map(normCode)
+            const rawLines = String(bulkTextarea.value || '')
+                .split(/[\r\n]+/)
+                .map(x => String(x || '').trim())
                 .filter(Boolean);
+
+            const seen = new Set();
+            const out = [];
+
+            for (const line of rawLines) {
+                if (!isLikelyProductCode(line)) continue;
+
+                const code = normalizeIncomingProductCode(line);
+                if (!code) continue;
+                if (seen.has(code)) continue;
+
+                seen.add(code);
+                out.push(code);
+            }
+
+            return out;
         }
 
         async function renderSingle(masp) {
@@ -1206,11 +1256,34 @@
         function applyIncomingBulk() {
             const bulk = localStorage.getItem('TKHH333_BULK') || localStorage.getItem('STOCKQUICK_BULK') || '';
             if (!bulk) return false;
-            bulkTextarea.value = bulk;
+
+            // luôn chuẩn hóa lại chỉ còn các mã thật sự
+            const rawLines = String(bulk)
+                .split(/[\r\n]+/)
+                .map(x => String(x || '').trim())
+                .filter(Boolean);
+
+            const seen = new Set();
+            const codes = [];
+
+            for (const line of rawLines) {
+                if (!isLikelyProductCode(line)) continue;
+
+                const code = normalizeIncomingProductCode(line);
+                if (!code) continue;
+                if (seen.has(code)) continue;
+
+                seen.add(code);
+                codes.push(code);
+            }
+
+            bulkTextarea.value = codes.join('\n');
+
             localStorage.removeItem('TKHH333_BULK');
             localStorage.removeItem('STOCKQUICK_BULK');
+
             toggleTools(true);
-            return true;
+            return codes.length > 0;
         }
 
         function bindEvents() {
