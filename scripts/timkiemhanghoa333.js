@@ -457,136 +457,181 @@ function showEmptyIfZero(val) {
 // ==== Hàm chính lấy và render dữ liệu ==== 
 // ==== Hàm chính lấy và render dữ liệu ==== 
 async function triggerSearch(_masp = null) {
+    const mySeq = ++SEARCH_SEQ;
     const msg = document.getElementById("statusMsg");
-    msg.textContent = "Đang tìm kiếm mã sản phẩm...";
-    // Lưu lại dòng chú thích đỏ theo từng mã trước khi textarea bị xóa
-    buildBulkNoteMap();
-    document.getElementById("multiDetailBox").innerHTML = "";
-    document.getElementById("multiDetailBox").style.display = "none";
-    document.getElementById("singleDetailBox").style.display = "";
+    const searchBtn = document.getElementById("searchBtn");
 
-    // clear vùng hiển thị
-    const tTop = document.getElementById("infoTopTable");
-    const tRight = document.getElementById("infoTableRight");
-    if (tTop) tTop.innerHTML = "";
-    if (tRight) tRight.innerHTML = "";
-    const img = document.getElementById("productImage");
-    if (img) img.src = "";
-
-    document.getElementById("maspInput").select();
-
-    // 1) lấy danh sách mã từ textarea (nếu có) → ưu tiên 
-    const bulkCodes = parseBulkMasp(); // [ '11376-GDM', ... ]
-    let candidates = [];
-
-    if (bulkCodes.length > 0) {
-        candidates = bulkCodes;
-        msg.textContent = `Đang tìm ${candidates.length} mã từ Textarea...`;
-    } else {
-        // 2) nếu textarea trống → chạy như cũ (từ ô maspInput)
-        let masp = _masp || document.getElementById("maspInput").value.trim().toUpperCase();
-        if (!masp || masp.length < 3) {
-            msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
-            return;
-        }
-        let { data: list, error } = await supabase.from("dmhanghoa")
-            .select("*").ilike("masp", `%${masp}%`).order("masp").limit(100);
-        if (error || !list || !list.length) {
-            msg.textContent = "SAI MÃ";
-            return;
-        }
-        candidates = list.map(r => r.masp);
-    }
-
-    if (candidates.length === 0) {
-        msg.textContent = "Không có mã hợp lệ để tìm!";
+    if (SEARCH_RUNNING) {
+        msg.textContent = "Đang tìm kiếm, vui lòng chờ...";
         return;
     }
 
-    // === GỌI RPC BULK 1 LẦN ===
-    const { data: bulkData, error: bulkErr } = await supabase.rpc("timkiemhanghoa_bulk", {
-        masp_list: candidates
-    });
+    SEARCH_RUNNING = true;
+    if (searchBtn) searchBtn.disabled = true;
 
-    if (bulkErr || !bulkData) {
-        msg.textContent = "❌ Lỗi khi gọi RPC bulk!";
-        console.error(bulkErr);
-        return;
-    }
+    try {
+        msg.textContent = "Đang tìm kiếm mã sản phẩm...";
 
-    // 👉 Cache XNT theo từng mã (chuẩn hoá masp: trim + toUpperCase)
-    window.XNT_BULK_MAP = {};
-    for (const row of bulkData) {
-        const key = String(row.masp || "").trim().toUpperCase();
-        if (!key) continue;
-        if (!window.XNT_BULK_MAP[key]) window.XNT_BULK_MAP[key] = [];
-        window.XNT_BULK_MAP[key].push(row);
-    }
+        buildBulkNoteMap();
 
-    // Gom danh sách mã có dữ liệu XNT (dùng key đã chuẩn hoá)
-    let productWithXNT = Object.keys(window.XNT_BULK_MAP);
-
-    // Nếu đang ở chế độ nhiều mã (textarea) → sắp xếp đúng thứ tự người dùng nhập
-    if (Array.isArray(candidates) && candidates.length > 0) {
-        const norm = s => String(s || "").trim().toUpperCase();
-
-        const orderMap = new Map(candidates.map((m, i) => [norm(m), i]));
-
-        productWithXNT.sort((a, b) => {
-            const ia = orderMap.get(norm(a));
-            const ib = orderMap.get(norm(b));
-            return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
-        });
-    }
-
-    if (productWithXNT.length === 0) {
-        msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
-        document.getElementById("singleDetailBox").style.display = "none";
-        return;
-    }
-
-    if (productWithXNT.length === 1) {
+        document.getElementById("multiDetailBox").innerHTML = "";
+        document.getElementById("multiDetailBox").style.display = "none";
         document.getElementById("singleDetailBox").style.display = "";
-        await renderOneProductDetail(productWithXNT[0]);
-        msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
+
+        const tTop = document.getElementById("infoTopTable");
+        const tRight = document.getElementById("infoTableRight");
+        if (tTop) tTop.innerHTML = "";
+        if (tRight) tRight.innerHTML = "";
+        const img = document.getElementById("productImage");
+        if (img) img.src = "";
+
+        document.getElementById("maspInput")?.select();
+
+        const bulkCodes = parseBulkMasp();
+        let candidates = [];
+
+        if (bulkCodes.length > 0) {
+            candidates = bulkCodes;
+            msg.textContent = `Đang tìm ${candidates.length} mã từ Textarea...`;
+        } else {
+            let masp = _masp || document.getElementById("maspInput").value.trim().toUpperCase();
+            if (!masp || masp.length < 3) {
+                msg.textContent = "Vui lòng nhập tối thiểu 3 ký tự mã sản phẩm!";
+                return;
+            }
+
+            const { data: list, error } = await supabase
+                .from("dmhanghoa")
+                .select("masp")
+                .ilike("masp", `%${masp}%`)
+                .order("masp")
+                .limit(100);
+
+            if (mySeq !== SEARCH_SEQ) return;
+
+            if (error) {
+                console.error(error);
+                msg.textContent = "❌ Lỗi tìm mã sản phẩm!";
+                return;
+            }
+
+            if (!list || !list.length) {
+                msg.textContent = "SAI MÃ";
+                return;
+            }
+
+            candidates = list.map(r => r.masp);
+        }
+
+        if (candidates.length === 0) {
+            msg.textContent = "Không có mã hợp lệ để tìm!";
+            return;
+        }
+
+        const { data: bulkData, error: bulkErr } = await supabase.rpc("timkiemhanghoa_bulk", {
+            masp_list: candidates
+        });
+
+        if (mySeq !== SEARCH_SEQ) return;
+
+        if (bulkErr) {
+            console.error(bulkErr);
+            msg.textContent = "❌ Lỗi khi gọi RPC bulk!";
+            return;
+        }
+
+        if (!bulkData) {
+            msg.textContent = "❌ Không nhận được dữ liệu từ RPC bulk!";
+            return;
+        }
+
+        window.XNT_BULK_MAP = {};
+        for (const row of bulkData) {
+            const key = String(row.masp || "").trim().toUpperCase();
+            if (!key) continue;
+            if (!window.XNT_BULK_MAP[key]) window.XNT_BULK_MAP[key] = [];
+            window.XNT_BULK_MAP[key].push(row);
+        }
+
+        let productWithXNT = Object.keys(window.XNT_BULK_MAP);
+
+        if (Array.isArray(candidates) && candidates.length > 0) {
+            const norm = s => String(s || "").trim().toUpperCase();
+            const orderMap = new Map(candidates.map((m, i) => [norm(m), i]));
+
+            productWithXNT.sort((a, b) => {
+                const ia = orderMap.get(norm(a));
+                const ib = orderMap.get(norm(b));
+                return (ia ?? Number.MAX_SAFE_INTEGER) - (ib ?? Number.MAX_SAFE_INTEGER);
+            });
+        }
+
+        if (productWithXNT.length === 0) {
+            msg.textContent = "Không có mã sản phẩm nào phát sinh xuất nhập tồn!";
+            document.getElementById("singleDetailBox").style.display = "none";
+            return;
+        }
+
+        if (productWithXNT.length === 1) {
+            document.getElementById("singleDetailBox").style.display = "";
+            await renderOneProductDetail(productWithXNT[0]);
+
+            if (mySeq !== SEARCH_SEQ) return;
+
+            msg.textContent = "Hoàn thành! Trả về 1 sản phẩm.";
+            clearBulkTextareaAfterSuccess();
+            return;
+        }
+
+        document.getElementById("singleDetailBox").style.display = "none";
+        const multi = document.getElementById("multiDetailBox");
+        multi.innerHTML = "";
+
+        const hotList = [];
+        for (const m of productWithXNT) {
+            if (mySeq !== SEARCH_SEQ) return;
+
+            const html = await renderProductDetailHTML(m);
+            if (!html) continue;
+
+            const wrap = document.createElement("div");
+            wrap.innerHTML = html;
+            multi.appendChild(wrap);
+            toggleVitriInputsByBranch();
+
+            const safeId = _safeIdFromMasp(m);
+            const el = wrap.querySelector(`#xntHot_${safeId}`);
+            const rowMap = window.XNT_ROW_MAPS[m];
+            if (el && rowMap) {
+                const hot = initXntHot(el, rowMap, m);
+                hotList.push(hot);
+            }
+        }
+
+        if (mySeq !== SEARCH_SEQ) return;
+
+        requestAnimationFrame(() => {
+            for (const hot of hotList) {
+                try {
+                    hot.refreshDimensions();
+                    hot.render();
+                } catch (_) { }
+            }
+        });
+
+        multi.style.display = "";
+        msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
         clearBulkTextareaAfterSuccess();
-        return;
-    }
 
-    // nhiều mã → render từng block + HOT editable
-    document.getElementById("singleDetailBox").style.display = "none";
-    const multi = document.getElementById("multiDetailBox");
-    multi.innerHTML = "";
-
-    const hotList = [];
-    for (const m of productWithXNT) {
-        const html = await renderProductDetailHTML(m);
-        const wrap = document.createElement("div");
-        wrap.innerHTML = html;
-        multi.appendChild(wrap);
-        toggleVitriInputsByBranch();
-
-        const safeId = _safeIdFromMasp(m);
-        const el = wrap.querySelector(`#xntHot_${safeId}`);
-        const rowMap = window.XNT_ROW_MAPS[m];
-        if (el && rowMap) {
-            const hot = initXntHot(el, rowMap, m);
-            hotList.push(hot);
+    } catch (err) {
+        console.error("Lỗi triggerSearch:", err);
+        msg.textContent = "❌ Có lỗi khi tìm kiếm dữ liệu!";
+    } finally {
+        if (mySeq === SEARCH_SEQ) {
+            SEARCH_RUNNING = false;
+            if (searchBtn) searchBtn.disabled = false;
         }
     }
-
-    requestAnimationFrame(() => {
-        for (const hot of hotList) {
-            try {
-                hot.refreshDimensions();
-                hot.render();
-            } catch (e) { }
-        }
-    });
-
-    multi.style.display = "";
-    msg.textContent = `Hoàn thành! Trả về ${productWithXNT.length} sản phẩm.`;
-    clearBulkTextareaAfterSuccess();
 }
 
 
@@ -607,12 +652,6 @@ async function renderOneProductDetail(masp) {
         .select("*")
         .eq("masp", masp)
         .single();
-
-    const nhapListPromise = supabase
-        .from("hoadon_banle")
-        .select("ngay,sohd")
-        .in("loaihd", ["nmcs1", "nmcs2"])
-        .order("ngay", { ascending: true });
 
     const k1Promise = supabase
         .from("kiemkho")
@@ -644,7 +683,7 @@ async function renderOneProductDetail(masp) {
         xntRes
     ] = await Promise.all([
         hanghoaPromise,
-        nhapListPromise,
+
         k1Promise,
         k2Promise,
         xntPromise ? xntPromise : Promise.resolve({ data: cachedXnt, error: null })
@@ -658,33 +697,22 @@ async function renderOneProductDetail(masp) {
     // Lưu nhóm hàng để dùng cho chức năng "tìm sản phẩm tương đồng theo size"
     const groupVal = getHanghoaGroup(hanghoa);
     window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
+
+    let SEARCH_RUNNING = false;
+    let SEARCH_SEQ = 0;
+
     window.PRODUCT_GROUP_MAP[masp] = groupVal || '';
 
-    const nhapList = nhapListRes.data || [];
+
 
     const k1 = k1Res.data || [];
     const k2 = k2Res.data || [];
     let xntdata = cachedXnt || (xntRes && xntRes.data) || [];
 
     // ND lấy từ dmhanghoa.nhapdau; fallback tính từ hóa đơn nếu thiếu
+
     let ngay_nhapdau = hanghoa.nhapdau || "";
     let ngay_nhapcuoi = "";
-
-    if ((!ngay_nhapdau || !ngay_nhapcuoi) && nhapList.length) {
-        const sohdArr = nhapList.map(e => e.sohd);
-        const { data: cts } = await supabase
-            .from("ct_hoadon_banle")
-            .select("sohd,masp")
-            .in("sohd", sohdArr)
-            .eq("masp", masp);
-
-        const setSohd = new Set((cts || []).map(e => e.sohd));
-        const filtered = nhapList.filter(e => setSohd.has(e.sohd));
-        if (filtered.length) {
-            if (!ngay_nhapdau) ngay_nhapdau = filtered[0].ngay;
-            ngay_nhapcuoi = filtered[filtered.length - 1].ngay;
-        }
-    }
 
     // ngày kiểm gần nhất CS1/CS2
     let ngay_kiem_cs1 = "";
@@ -815,11 +843,6 @@ async function renderProductDetailHTML(masp) {
         .eq("masp", masp)
         .single();
 
-    const nhapListPromise = supabase
-        .from("hoadon_banle")
-        .select("ngay,sohd")
-        .in("loaihd", ["nmcs1", "nmcs2"])
-        .order("ngay", { ascending: true });
 
     const k1Promise = supabase
         .from("kiemkho")
@@ -851,7 +874,7 @@ async function renderProductDetailHTML(masp) {
         xntRes
     ] = await Promise.all([
         hanghoaPromise,
-        nhapListPromise,
+
         k1Promise,
         k2Promise,
         xntPromise ? xntPromise : Promise.resolve({ data: cachedXnt, error: null })
@@ -864,9 +887,13 @@ async function renderProductDetailHTML(masp) {
     const groupVal = getHanghoaGroup(hanghoa);
     CURRENT_GROUP = groupVal || '';
     window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
+
+    let SEARCH_RUNNING = false;
+    let SEARCH_SEQ = 0;
+
     window.PRODUCT_GROUP_MAP[masp] = CURRENT_GROUP;
 
-    const nhapList = nhapListRes.data || [];
+
 
     const k1 = k1Res.data || [];
     const k2 = k2Res.data || [];
@@ -1791,6 +1818,9 @@ let _orderAutoFlow = false;     // true khi bấm Đặt hàng mà chưa có ả
 
 // Map: masp -> nhóm hàng (dùng cho chế độ nhiều mã)
 window.PRODUCT_GROUP_MAP = window.PRODUCT_GROUP_MAP || {};
+
+let SEARCH_RUNNING = false;
+let SEARCH_SEQ = 0;
 
 
 // Thử .JPG → .jpg → .PNG → .png
