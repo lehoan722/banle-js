@@ -1616,12 +1616,6 @@ function buildXntRows(rowMap) {
 
 }
 
-// Lưu lần click gần nhất trên bảng size để bắt double-click
-let lastSizeClick = {
-    time: 0,
-    row: null,
-    masp: null
-};
 
 
 function initXntHot(containerEl, rowMap, masp) {
@@ -1663,14 +1657,42 @@ function initXntHot(containerEl, rowMap, masp) {
 
         const branch = (window.CURRENT_BRANCH || '').trim().toLowerCase();
         if (!branch) {
-            showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
+            showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi mở xem ảnh!', 'warn');
             return;
         }
 
         const groupMap = window.PRODUCT_GROUP_MAP || {};
         const groupVal = (masp && groupMap[masp]) || (window.CURRENT_GROUP || '');
+        if (!groupVal) {
+            showToast('⚠️ Không lấy được nhóm hàng để mở xem ảnh XNT14!', 'warn');
+            return;
+        }
 
-        openSimilarSearchFromSize({ masp, sizeEU, branch, group: groupVal });
+        if (!window.StockQuickSimilar || typeof window.StockQuickSimilar.openFromPopup !== 'function') {
+            showToast('⚠️ Module mở xem ảnh XNT14 chưa sẵn sàng!', 'warn');
+            return;
+        }
+
+        Promise.resolve(
+            window.StockQuickSimilar.openFromPopup({
+                masp,
+                size: sizeEU,
+                nhomhang: groupVal,
+                denNgay: (() => {
+                    try {
+                        const raw = sessionStorage.getItem('XNT14_FILTERS');
+                        if (raw) {
+                            const f = JSON.parse(raw);
+                            if (f.den_ngay) return f.den_ngay;
+                        }
+                    } catch (_) { }
+                    return new Date().toISOString().slice(0, 10);
+                })()
+            })
+        ).catch(err => {
+            console.error('Lỗi mở xem ảnh XNT14 từ tìm kiếm 333:', err);
+            showToast('❌ Mở xem ảnh XNT14 thất bại!', 'warn');
+        });
     }
 
 
@@ -1717,41 +1739,16 @@ function initXntHot(containerEl, rowMap, masp) {
             }
         },
 
-        // 👉 CHỈ khi kích ĐÚP vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
-        afterOnCellDblClick: (event, coords) => {
-            _openSimilarByRow(coords?.row);
-        },
-
-        // Fallback cho Safari iOS (double tap) + vẫn giữ cho desktop
-        afterOnCellMouseDown: (event, coords) => {
+        // 👉 CHỈ khi kích don vào dòng size (trừ dòng Tổng) mới mở tìm tương đồng
+        afterOnCellMouseUp: (event, coords) => {
             const row = coords?.row;
-            if (row == null || row <= 0) return;
+            const col = coords?.col;
 
-            const now = Date.now();
+            if (row == null || row <= 0) return; // bỏ hàng Tổng
+            if (col == null || col !== 0) return; // chỉ bấm cột Size mới mở
 
-            // Một số browser có event.detail = số lần click
-            if (event && typeof event.detail === 'number' && event.detail >= 2) {
-                _openSimilarByRow(row);
-                lastSizeClick = { time: now, row, masp };
-                return;
-            }
-
-            // Fallback double-tap: nới ngưỡng lên 650ms cho Safari
-            const THRESH = 650;
-
-            if (
-                lastSizeClick.row === row &&
-                lastSizeClick.masp === masp &&
-                (now - lastSizeClick.time) < THRESH
-            ) {
-                _openSimilarByRow(row);
-            }
-
-            lastSizeClick = { time: now, row, masp };
-
-
-
-        }
+            _openSimilarByRow(row);
+        },
 
     });
 
@@ -1759,42 +1756,6 @@ function initXntHot(containerEl, rowMap, masp) {
     xntHotInstances[masp] = hot;  // lưu lại
     return hot;
 }
-
-// Mở trang bán theo size và truyền điều kiện tìm tương đồng qua localStorage
-function openSimilarSearchFromSize({ masp, sizeEU, branch, group }) {
-    const normMasp = (masp || '').toUpperCase();
-    const sizeKey = String(sizeEU || '').trim();
-    if (!normMasp || !sizeKey) {
-        showToast('Không lấy được thông tin sản phẩm / size để tìm tương đồng!', 'warn');
-        return;
-    }
-
-    const branchClean = (branch || '').toLowerCase();
-    if (!branchClean || (branchClean !== 'cs1' && branchClean !== 'cs2')) {
-        showToast('⚠️ Chọn cơ sở (CS1/CS2) ở dropdown trước khi tìm tương đồng!', 'warn');
-        return;
-    }
-
-    const payload = {
-        masp: normMasp,
-        sizeEU: sizeKey,
-        branch: branchClean,   // 'cs1' | 'cs2'
-        group: group || '',    // nhóm hàng (nếu lấy được)
-        createdAt: Date.now()
-    };
-
-    try {
-        localStorage.setItem('bantheosize_similar_params', JSON.stringify(payload));
-    } catch (err) {
-        console.error('Không lưu được tham số tìm tương đồng:', err);
-    }
-
-    // Mở trang bán theo size (cùng thư mục với trang 333)
-    const url = 'bantheosize.html?mode=similar';
-    //window.location.href = url;
-    window.open(url, '_blank');
-}
-
 
 /* ====== TIỆN ÍCH ====== */
 /* ====== TIỆN ÍCH ====== */
