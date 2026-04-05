@@ -144,6 +144,20 @@
     background: #eef2f7;
   }
 
+    /* Dòng size bấm 1 lần để mở sản phẩm cùng nhóm */
+  .sq-stock-popup tr.sq-open-similar-row td {
+    cursor: pointer;
+    transition: background-color .12s ease;
+  }
+
+  .sq-stock-popup tr.sq-open-similar-row:hover td {
+    background: #eef2f7;
+  }
+
+  .sq-stock-popup tr.sq-open-similar-row.sq-active-touch td {
+    background: #dbeafe;
+  }
+
   .sq-stock-popup tr.sq-hide-row td:first-child {
     color: #111827;
     font-weight: 700;
@@ -812,7 +826,7 @@
 
 
         return `
-        <tr data-size="${sizeNum}">
+        <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
           <td class="num sq-col-k1">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
           <td class="num sq-col-k2">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
@@ -1282,24 +1296,29 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
 
       };
 
-      // ===== DOUBLE CLICK → tìm sản phẩm cùng nhóm =====
-      popup.querySelectorAll("tbody tr").forEach(tr => {
-        tr.addEventListener("dblclick", (e) => {
+      // ===== CLICK 1 LẦN → tìm sản phẩm cùng nhóm cùng size =====
+      popup.querySelectorAll("tbody tr.sq-open-similar-row").forEach((tr) => {
+        tr.addEventListener("click", (e) => {
+          e.preventDefault();
           e.stopPropagation();
 
-          const size = tr.dataset.size;
-          const masp = popup.dataset.masp;
+          const size = String(tr.dataset.size || "").trim();
+          const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+          const nhomhang = String(popup.dataset.nhomhang || "").trim();
 
-          if (!size || !masp) return;
+          if (!size || !masp || !nhomhang) return;
+          if (!window.StockQuickSimilar || typeof window.StockQuickSimilar.openFromPopup !== "function") return;
 
-          if (window.StockQuickSimilar) {
-            window.StockQuickSimilar.openFromPopup({
-              masp,
-              size,
-              nhomhang: popup.dataset.nhomhang,
-              denNgay: getDenNgay()
-            });
-          }
+          // hiệu ứng chạm cho mobile
+          tr.classList.add("sq-active-touch");
+          setTimeout(() => tr.classList.remove("sq-active-touch"), 180);
+
+          window.StockQuickSimilar.openFromPopup({
+            masp,
+            size,
+            nhomhang,
+            denNgay: getDenNgay()
+          });
         });
       });
     }
