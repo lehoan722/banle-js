@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Tìm kiếm nhanh hàng hóa</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --line: #dbe4f0;
+      --blue: #1d4ed8;
+      --blue-soft: #eaf2ff;
+      --red: #dc2626;
+      --text: #0f172a;
+      --muted: #64748b;
+      --green: #15803d;
+      --yellow: #fff7cc;
+      --cyan: #eaf4ff;
+      --shadow: 0 8px 24px rgba(15,23,42,.08);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); font-family: Arial, sans-serif; color: var(--text); }
+    body { min-height: 100vh; }
+
+    .app {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 10px 10px 80px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(243,246,251,.96);
+      backdrop-filter: blur(8px);
+      padding: 8px 0 10px;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px 44px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .icon-btn, .action-btn, .small-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    #maspInput {
+      height: 44px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0 12px;
+      font-size: 18px;
+      outline: none;
+      box-shadow: var(--shadow);
+      text-transform: uppercase;
+    }
+
+    .tools-card {
+      margin-top: 8px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .tools-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      font-weight: 700;
+      background: var(--blue-soft);
+      color: var(--blue);
+      cursor: pointer;
+    }
+
+    .tools-body {
+      display: none;
+      padding: 10px;
+    }
+
+    .tools-card.open .tools-body { display: block; }
+
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 15px;
+      outline: none;
+      background: #fff;
+    }
+
+    .field textarea {
+      min-height: 100px;
+      resize: vertical;
+      font-family: Consolas, monospace;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .action-btn, .small-btn {
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .action-btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .action-btn.green { background: #ecfdf5; color: var(--green); border-color: #bbf7d0; }
+    .action-btn.red { background: #fef2f2; color: var(--red); border-color: #fecaca; }
+
+    .status {
+      margin-top: 8px;
+      min-height: 20px;
+      font-size: 14px;
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .result-list {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .product-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, #fff, #f8fbff);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .card-title {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .card-title .masp {
+      font-size: 19px;
+      font-weight: 800;
+      color: #111827;
+      word-break: break-word;
+    }
+
+    .card-title .meta {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .price-box {
+      text-align: right;
+      white-space: nowrap;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--red);
+    }
+
+    .card-body {
+      padding: 10px 12px 12px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .meta-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: #fff;
+      min-height: 60px;
+    }
+
+    .meta-item .k {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .meta-item .v {
+      font-size: 15px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .stock-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    table.stock-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 560px;
+      font-size: 14px;
+    }
+
+    .stock-table th, .stock-table td {
+      border-bottom: 1px solid #edf2f7;
+      padding: 7px 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .stock-table th {
+      background: #f8fafc;
+      color: var(--blue);
+      font-weight: 800;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .stock-table .c-k1, .stock-table .c-b1 { background: var(--yellow); }
+    .stock-table .c-k2, .stock-table .c-b2 { background: var(--cyan); }
+    .stock-table .sum td { font-weight: 800; color: var(--blue); text-decoration: underline; }
+    .stock-table tr.size-row { cursor: pointer; }
+    .stock-table tr.size-row:active td { background: #dbeafe; }
+
+    .vitri-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .vitri-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .vitri-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    .vitri-input-row {
+      display: grid;
+      grid-template-columns: 1fr 88px;
+      gap: 8px;
+    }
+
+    .vitri-input-row input {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 15px;
+    }
+
+    .thumb-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .thumb-box img {
+      width: 100%;
+      height: auto;
+      display: block;
+      max-height: 230px;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .empty {
+      padding: 24px 12px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    #popupSearch, #scannerModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+    }
+
+    #popupSearch {
+      background: rgba(15,23,42,.35);
+      padding: 14px 10px;
+    }
+
+    .popup-box {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,.18);
+    }
+
+    .popup-head {
+      display: grid;
+      grid-template-columns: 1fr 70px;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    #popupSearchInput {
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 10px;
+      font-size: 16px;
+    }
+
+    #popupSearchList {
+      max-height: 70vh;
+      overflow: auto;
+    }
+
+    #popupSearchList > div {
+      padding: 14px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      line-height: 1.45;
+    }
+
+    #popupSearchList > div:active { background: #eff6ff; }
+
+    #scannerModal {
+      background: rgba(0,0,0,.6);
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .scanner-box {
+      width: min(96vw, 720px);
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+    }
+
+    #scannerVideo {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #000;
+    }
+
+    .scanner-foot {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: #111827;
+      color: #fff;
+    }
+
+    #scannerStatus {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      padding: 8px 10px 0;
+    }
+
+    #flashOverlay {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 10000;
+      transition: .2s;
+    }
+
+    #toastMsg {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(15,23,42,.9);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      opacity: 0;
+      z-index: 10001;
+      transition: .2s;
+      max-width: calc(100vw - 24px);
+      text-align: center;
+    }
+
+    @media (min-width: 700px) {
+      .card-body {
+        grid-template-columns: 1fr 190px;
+        align-items: start;
+      }
+      .main-pane { min-width: 0; }
+      .side-pane { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container" style="display:none;">
+    <div class="app">
+      <div class="topbar">
+        <div class="search-row">
+          <button class="icon-btn" id="popupBtn" title="Tìm mã">🔍</button>
+          <input id="maspInput" autocomplete="off" placeholder="Nhập mã sản phẩm" />
+          <button class="icon-btn" id="searchBtn" title="Tìm">↩</button>
+          <button class="icon-btn" id="scanBtn" title="Quét mã">📷</button>
+        </div>
+
+        <div class="tools-card" id="toolsCard">
+          <div class="tools-head" id="toggleToolsBtn">
+            <span>Công cụ nhanh</span>
+            <span id="toolsArrow">▾</span>
+          </div>
+          <div class="tools-body">
+            <div class="row2">
+              <div class="field">
+                <label>Cơ sở mặc định để lưu vị trí</label>
+                <select id="branchPicker">
+                  <option value="">Tự nhận theo tên trang</option>
+                  <option value="cs1">CS1</option>
+                  <option value="cs2">CS2</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Tìm nhiều mã</label>
+                <button class="action-btn primary" id="searchBulkBtn" type="button">Tìm danh sách mã</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Dán nhiều mã, mỗi dòng 1 mã</label>
+              <textarea id="bulkTextarea" placeholder="VD:
+66862-AP
+11376-GDM"></textarea>
+            </div>
+
+            <div class="actions">
+              <button class="action-btn" id="clearBulkBtn" type="button">Xóa danh sách</button>
+              <button class="action-btn green" id="pasteFromTransferBtn" type="button">Nhận dữ liệu đẩy về</button>
+              <button class="action-btn red" id="closeToolsBtn" type="button">Thu gọn</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="status" id="statusMsg"></div>
+      </div>
+
+      <div id="resultList" class="result-list"></div>
+    </div>
+  </div>
+
+  <div id="popupSearch">
+    <div class="popup-box">
+      <div class="popup-head">
+        <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa mã hàng..." />
+        <button class="action-btn red" id="closePopupBtn" type="button">Đóng</button>
+      </div>
+      <div id="popupSearchList"></div>
+    </div>
+  </div>
+
+  <div id="scannerModal">
+    <div class="scanner-box">
+      <video id="scannerVideo" playsinline autoplay muted></video>
+      <div id="scannerStatus">Đang chuẩn bị camera...</div>
+      <div class="scanner-foot">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="cameraSelect" class="small-btn"></select>
+          <button id="switchCameraBtn" class="small-btn" type="button">Đổi camera</button>
+        </div>
+        <button id="closeScannerBtn" class="small-btn" type="button">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="flashOverlay"></div>
+  <div id="toastMsg"></div>
+
+  <script src="./scripts/stockQuickSimilar.js"></script>
+
+  <script type="module">
+    import * as authModule from "./scripts/authModule.js";
+    import "./scripts/supabaseClient.js";
+
+    const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+    const appContainer = document.getElementById('app-container');
+    const statusMsg = document.getElementById('statusMsg');
+    const resultList = document.getElementById('resultList');
+    const maspInput = document.getElementById('maspInput');
+    const bulkTextarea = document.getElementById('bulkTextarea');
+    const branchPicker = document.getElementById('branchPicker');
+    const toolsCard = document.getElementById('toolsCard');
+    const popupSearch = document.getElementById('popupSearch');
+    const popupSearchInput = document.getElementById('popupSearchInput');
+    const popupSearchList = document.getElementById('popupSearchList');
+    const toastMsg = document.getElementById('toastMsg');
+    const flashOverlay = document.getElementById('flashOverlay');
+
+    let ZXING = null;
+    let codeReader = null;
+    let scanControls = null;
+    let scanTrack = null;
+    let activeCameraId = '';
+
+    function getSupabaseClient() {
+      const client = window.supabase;
+      if (!client || typeof client.from !== 'function' || typeof client.rpc !== 'function') {
+        showToast('Supabase chưa sẵn sàng', 'warn');
+        return null;
+      }
+      return client;
+    }
+
+    function normCode(s) {
+      return String(s || '').trim().toUpperCase();
+    }
+
+    function stripSizeSuffixAtEnd(s) {
+      s = String(s || '').trim();
+      const m = s.match(/^(.*)_[A-Za-z0-9.\-]+$/);
+      return m ? m[1] : s;
+    }
+
+    function detectBranchFromPage() {
+      const path = String(window.location.pathname || '').toLowerCase();
+      if (path.includes('cs1')) return 'cs1';
+      if (path.includes('cs2')) return 'cs2';
+      return '';
+    }
+
+    function getCurrentBranch() {
+      return branchPicker.value || detectBranchFromPage() || '';
+    }
+
+    function getDenNgay() {
+      try {
+        const raw = sessionStorage.getItem('XNT14_FILTERS');
+        if (raw) {
+          const f = JSON.parse(raw);
+          if (f.den_ngay) return f.den_ngay;
+        }
+      } catch (_) {}
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function formatPrice(v) {
+      const n = Number(v || 0);
+      return n ? n.toLocaleString('vi-VN') : '';
+    }
+
+    function showToast(msg, type = 'info') {
+      toastMsg.textContent = msg;
+      toastMsg.style.background = type === 'warn' ? 'rgba(185,28,28,.92)' : 'rgba(15,23,42,.92)';
+      toastMsg.style.opacity = '1';
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => { toastMsg.style.opacity = '0'; }, 1800);
+    }
+
+    function showFlash() {
+      flashOverlay.style.opacity = '1';
+      clearTimeout(showFlash._timer);
+      showFlash._timer = setTimeout(() => { flashOverlay.style.opacity = '0'; }, 130);
+    }
+
+    function normalizeSizeValue(v) {
+      const raw = String(v || '').trim();
+      const noPrefix = raw.replace(/^size\s+/i, '').trim();
+      const m = noPrefix.match(/(\d{1,2})/);
+      return m ? m[1] : noPrefix;
+    }
+
+    function displaySizeLabel(size) {
+      const noPrefix = String(size || '').replace(/^size\s+/i, '').trim();
+      if (!noPrefix) return '';
+      if (noPrefix === '0') return '0';
+      const map = {
+        '38': '38,2,S,46,240,165',
+        '39': '39,3,M,48,245,170',
+        '40': '40,4,L,50,250,175',
+        '41': '41,5,XL,52,255,180',
+        '42': '42,6,2XL,54,260,185',
+        '43': '43,7,3X,56,265,190',
+        '44': '44,8,4X,58,270,195',
+        '45': '45,9,5X,60,275,200'
+      };
+      return map[noPrefix] || noPrefix;
+    }
+
+    async function waitForSupabaseReady(maxWaitMs = 12000) {
+      const start = Date.now();
+      while (Date.now() - start < maxWaitMs) {
+        const client = getSupabaseClient();
+        if (client && client.auth && typeof client.auth.getSession === 'function') {
+          try {
+            await client.auth.getSession();
+            return client;
+          } catch (_) {}
+        }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      return getSupabaseClient();
+    }
+
+    async function fetchTonBanByMasp(maspRaw) {
+      const masp = normCode(maspRaw);
+      if (!masp) return { masp: '', rows: [], vitri_cs1: '', vitri_cs2: '', nhap_dau_ma: '', nhap_cuoi_ma: '', giale: '', nhomhang: '' };
+
+      const client = await waitForSupabaseReady(12000);
+      if (!client) return { masp, rows: [], vitri_cs1: '', vitri_cs2: '', nhap_dau_ma: '', nhap_cuoi_ma: '', giale: '', nhomhang: '' };
+
+      let rows = [];
+      let vitri_cs1 = '';
+      let vitri_cs2 = '';
+      let nhap_dau_ma = '';
+      let nhap_cuoi_ma = '';
+      let giale = '';
+      let nhomhang = '';
+
+      try {
+        const denNgay = getDenNgay();
+        let [snapRes, hhRes] = await Promise.all([
+          client.rpc('xntnhanh', {
+            p_masps: [masp],
+            p_den_ngay: denNgay,
+            p_tonghop_size: false,
+          }),
+          client
+            .from('dmhanghoa')
+            .select('vitrikho1, vitrikho2, nhapdau, giale, nhomhang')
+            .eq('masp', masp)
+            .maybeSingle()
+        ]);
+
+        const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
+        if (!firstRows.length && !snapRes?.error) {
+          await new Promise(r => setTimeout(r, 400));
+          snapRes = await client.rpc('xntnhanh', {
+            p_masps: [masp],
+            p_den_ngay: denNgay,
+            p_tonghop_size: false,
+          });
+        }
+
+        if (Array.isArray(snapRes?.data) && snapRes.data.length) {
+          nhap_dau_ma = String(snapRes.data[0].nhap_dau_ma || '').trim();
+          nhap_cuoi_ma = String(snapRes.data[0].nhap_cuoi_ma || '').trim();
+          rows = snapRes.data.map(r => ({
+            masp: normCode(r.masp),
+            size: String(r.size || '').trim(),
+            ton_cs1: Number(r.ton_cs1 || 0),
+            ton_cs2: Number(r.ton_cs2 || 0),
+            ban_cs1: Number(r.ban_cs1 || 0),
+            ban_cs2: Number(r.ban_cs2 || 0),
+            tong_ban: Number(r.tong_ban || 0),
+            tong_nhap: Number(r.tong_nhap || 0),
+            tong_ton: Number(r.tong_ton || 0),
+          }));
+        }
+
+        if (hhRes?.data) {
+          vitri_cs1 = hhRes.data.vitrikho1 || '';
+          vitri_cs2 = hhRes.data.vitrikho2 || '';
+          giale = hhRes.data.giale || '';
+          nhomhang = hhRes.data.nhomhang || '';
+          if (hhRes.data.nhapdau && !nhap_dau_ma) {
+            const d = new Date(hhRes.data.nhapdau);
+            if (!isNaN(d.getTime())) {
+              const yy = String(d.getFullYear()).slice(2);
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              nhap_dau_ma = `${dd}${mm}${yy}`;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[quicksearch] fetchTonBanByMasp error:', e);
+      }
+
+      return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
+    }
+
+    async function saveVitriKhoNhanh(maspRaw, cosoRaw, vitriRaw) {
+      const masp = normCode(maspRaw);
+      const coso = String(cosoRaw || '').trim().toLowerCase();
+      const vitri = String(vitriRaw || '').trim();
+      if (!masp || !coso || !vitri) return { ok: false, message: 'Thiếu dữ liệu lưu vị trí' };
+
+      const client = getSupabaseClient();
+      if (!client) return { ok: false, message: 'Supabase chưa sẵn sàng' };
+
+      try {
+        const { data, error } = await client.rpc('rpc_save_vitrikho_nhanh', {
+          p_masp: masp,
+          p_coso: coso,
+          p_vitri: vitri,
+        });
+        if (error) return { ok: false, message: error.message || 'Lỗi lưu vị trí' };
+        return data || { ok: true, message: 'Đã lưu' };
+      } catch (e) {
+        return { ok: false, message: e.message || 'Lỗi lưu vị trí' };
+      }
+    }
+
+    function buildStockTable(masp, payload) {
+      const sizeOrder = ['0', '38', '39', '40', '41', '42', '43', '44', '45'];
+      const map = new Map();
+      (payload.rows || []).forEach(r => {
+        map.set(normalizeSizeValue(r.size), r);
+      });
+
+      let sumTon1 = 0, sumTon2 = 0, sumBan1 = 0, sumBan2 = 0, sumNhap = 0, sumTongBan = 0, sumTongTon = 0;
+
+      const body = sizeOrder.map(sizeNum => {
+        const r = map.get(sizeNum) || {
+          size: sizeNum,
+          ton_cs1: 0,
+          ton_cs2: 0,
+          ban_cs1: 0,
+          ban_cs2: 0,
+          tong_ban: 0,
+          tong_nhap: 0,
+          tong_ton: 0,
+        };
+
+        sumTon1 += Number(r.ton_cs1 || 0);
+        sumTon2 += Number(r.ton_cs2 || 0);
+        sumBan1 += Number(r.ban_cs1 || 0);
+        sumBan2 += Number(r.ban_cs2 || 0);
+        sumNhap += Number(r.tong_nhap || 0);
+        sumTongBan += Number(r.tong_ban || 0);
+        sumTongTon += Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0);
+
+        return `
+          <tr class="size-row" data-masp="${masp}" data-size="${sizeNum}" data-nhomhang="${payload.nhomhang || ''}">
+            <td style="text-align:left;">${displaySizeLabel(sizeNum)}</td>
+            <td class="c-k1">${Number(r.ton_cs1 || 0) || ''}</td>
+            <td class="c-k2">${Number(r.ton_cs2 || 0) || ''}</td>
+            <td class="c-b1">${Number(r.ban_cs1 || 0) || ''}</td>
+            <td class="c-b2">${Number(r.ban_cs2 || 0) || ''}</td>
+            <td>${Number(r.tong_ban || 0) || ''}</td>
+            <td>${Number(r.tong_nhap || 0) || ''}</td>
+            <td>${(Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0)) || ''}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="stock-wrap">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Size</th>
+                <th class="c-k1">Tồn 1</th>
+                <th class="c-k2">Tồn 2</th>
+                <th class="c-b1">Bán 1</th>
+                <th class="c-b2">Bán 2</th>
+                <th>T.Bán</th>
+                <th>T.Nhập</th>
+                <th>T.Tồn</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${body}
+              <tr class="sum">
+                <td style="text-align:left;">Tổng</td>
+                <td class="c-k1">${sumTon1 || ''}</td>
+                <td class="c-k2">${sumTon2 || ''}</td>
+                <td class="c-b1">${sumBan1 || ''}</td>
+                <td class="c-b2">${sumBan2 || ''}</td>
+                <td>${sumTongBan || ''}</td>
+                <td>${sumNhap || ''}</td>
+                <td>${sumTongTon || ''}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function buildCardHtml(payload) {
+      const masp = payload.masp;
+      const branch = getCurrentBranch();
+      const currentVitri = branch === 'cs2' ? (payload.vitri_cs2 || '') : (payload.vitri_cs1 || '');
+      const branchLabel = branch === 'cs2' ? 'CS2' : 'CS1';
+      const imgUrl = `${IMG_BASE}${encodeURIComponent(masp)}.JPG`;
+
+      return `
+        <div class="product-card" data-masp="${masp}">
+          <div class="card-head">
+            <div class="card-title">
+              <div class="masp">${masp}</div>
+              <div class="meta">${payload.nhomhang || ''} ${payload.nhomhang ? '•' : ''} ND: ${payload.nhap_dau_ma || ''} • NC: ${payload.nhap_cuoi_ma || ''}</div>
+            </div>
+            <div class="price-box">${formatPrice(payload.giale)}</div>
+          </div>
+
+          <div class="card-body">
+            <div class="main-pane">
+              <div class="meta-grid">
+                <div class="meta-item"><div class="k">Vị trí CS1</div><div class="v">${payload.vitri_cs1 || ''}</div></div>
+                <div class="meta-item"><div class="k">Vị trí CS2</div><div class="v">${payload.vitri_cs2 || ''}</div></div>
+              </div>
+              ${buildStockTable(masp, payload)}
+
+              <div class="vitri-row">
+                <div class="vitri-box">
+                  <div class="vitri-head">
+                    <span>Lưu vị trí nhanh ${branchLabel}</span>
+                    <span style="font-size:12px;color:#64748b;">theo cơ sở đang chọn</span>
+                  </div>
+                  <div class="vitri-input-row">
+                    <input type="text" class="vitri-input" data-masp="${masp}" data-branch="${branch || ''}" value="${currentVitri.replace(/"/g, '&quot;')}" placeholder="Nhập vị trí kho" />
+                    <button class="small-btn save-vitri-btn" data-masp="${masp}">Lưu</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="side-pane">
+              <div class="thumb-box">
+                <img src="${imgUrl}" alt="${masp}" onerror="this.onerror=null;this.src='${IMG_BASE}${encodeURIComponent(masp)}.png'" />
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function parseBulkCodes() {
+      return String(bulkTextarea.value || '')
+        .split(/[\r\n,;\t]+/)
+        .map(stripSizeSuffixAtEnd)
+        .map(normCode)
+        .filter(Boolean);
+    }
+
+    async function renderSingle(masp) {
+      const payload = await fetchTonBanByMasp(masp);
+      if (!payload.masp) return '';
+      return buildCardHtml(payload);
+    }
+
+    async function triggerSearch() {
+      const bulkCodes = parseBulkCodes();
+      const singleCode = normCode(stripSizeSuffixAtEnd(maspInput.value));
+      const codes = bulkCodes.length ? bulkCodes : (singleCode ? [singleCode] : []);
+
+      if (!codes.length) {
+        statusMsg.textContent = 'Vui lòng nhập mã hoặc dán danh sách mã.';
+        return;
+      }
+
+      statusMsg.textContent = `Đang tìm ${codes.length} mã...`;
+      resultList.innerHTML = '<div class="empty">Đang tải dữ liệu...</div>';
+
+      const htmlParts = [];
+      for (const code of codes) {
+        const html = await renderSingle(code);
+        if (html) htmlParts.push(html);
+      }
+
+      if (!htmlParts.length) {
+        resultList.innerHTML = '<div class="empty">Không tìm thấy dữ liệu.</div>';
+        statusMsg.textContent = 'Không có dữ liệu phù hợp.';
+        return;
+      }
+
+      resultList.innerHTML = htmlParts.join('');
+      statusMsg.textContent = `Hoàn thành: ${htmlParts.length} sản phẩm.`;
+      bindCardEvents();
+    }
+
+    function bindCardEvents() {
+      document.querySelectorAll('.save-vitri-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const masp = btn.getAttribute('data-masp');
+          const card = btn.closest('.product-card');
+          const ip = card?.querySelector('.vitri-input');
+          const branch = getCurrentBranch();
+          const vitri = ip?.value || '';
+          if (!branch) {
+            showToast('Chưa xác định được cơ sở', 'warn');
+            return;
+          }
+          btn.disabled = true;
+          const rs = await saveVitriKhoNhanh(masp, branch, vitri);
+          btn.disabled = false;
+          if (rs?.ok) {
+            showToast('Đã lưu vị trí');
+          } else {
+            showToast(rs?.message || 'Lưu vị trí lỗi', 'warn');
+          }
+        };
+      });
+
+      document.querySelectorAll('.size-row').forEach(row => {
+        row.onclick = async () => {
+          const masp = row.getAttribute('data-masp');
+          const size = row.getAttribute('data-size');
+          const nhomhang = row.getAttribute('data-nhomhang');
+          if (!window.StockQuickSimilar?.openFromPopup) {
+            showToast('Chưa load xong module nhóm hàng', 'warn');
+            return;
+          }
+          await window.StockQuickSimilar.openFromPopup({
+            masp,
+            size,
+            nhomhang,
+            denNgay: getDenNgay()
+          });
+        };
+      });
+    }
+
+    async function searchPopup(keyword) {
+      const client = getSupabaseClient();
+      if (!client) return;
+      let q = client.from('dmhanghoa').select('masp, tensp').limit(100);
+      if (keyword && keyword.length >= 1) q = q.ilike('masp', `%${keyword}%`);
+      const { data, error } = await q;
+      if (error || !data?.length) {
+        popupSearchList.innerHTML = '<div>Không tìm thấy dữ liệu</div>';
+        return;
+      }
+      popupSearchList.innerHTML = data.map(r => `
+        <div data-masp="${String(r.masp || '').replace(/"/g, '&quot;')}"><b>${r.masp}</b>${r.tensp ? ' - ' + r.tensp : ''}</div>
+      `).join('');
+      popupSearchList.querySelectorAll('[data-masp]').forEach(el => {
+        el.onclick = () => {
+          maspInput.value = el.getAttribute('data-masp') || '';
+          closePopupSearch();
+          triggerSearch();
+        };
+      });
+    }
+
+    function openPopupSearch() {
+      popupSearch.style.display = 'block';
+      popupSearchInput.value = '';
+      popupSearchInput.focus();
+      searchPopup('');
+    }
+
+    function closePopupSearch() {
+      popupSearch.style.display = 'none';
+    }
+
+    async function ensureZXing() {
+      if (ZXING) return;
+      ZXING = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm');
+    }
+
+    function scoreCameraLabel(label = '') {
+      const s = label.toLowerCase();
+      let score = 0;
+      if (/(back|rear|environment|mặt sau)/.test(s)) score += 50;
+      if (/(ultra\s*wide|0\.5x|0,5x|cực rộng|siêu rộng)/.test(s)) score += 120;
+      if (/(tele|zoom|2x|3x|chụp xa)/.test(s)) score -= 100;
+      if (/(front|trước|mặt trước)/.test(s)) score -= 200;
+      return score;
+    }
+
+    async function listVideoDevices() {
+      await ensureZXing();
+      const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+      return devices || [];
+    }
+
+    async function populateCameraList() {
+      const sel = document.getElementById('cameraSelect');
+      const devices = await listVideoDevices();
+      devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+      sel.innerHTML = devices.map(d => `<option value="${d.deviceId}">${d.label || 'Camera'}</option>`).join('');
+      if (!activeCameraId && devices[0]) activeCameraId = devices[0].deviceId;
+      if (activeCameraId) sel.value = activeCameraId;
+      return devices;
+    }
+
+    async function startScanner(deviceId = '') {
+      const scannerModal = document.getElementById('scannerModal');
+      const scannerVideo = document.getElementById('scannerVideo');
+      const scannerStatus = document.getElementById('scannerStatus');
+      scannerModal.style.display = 'flex';
+      scannerStatus.textContent = 'Đang mở camera...';
+
+      await ensureZXing();
+      await populateCameraList();
+      codeReader = new ZXING.BrowserMultiFormatReader(undefined, { delayBetweenScanAttempts: 25 });
+
+      try {
+        scanControls?.stop?.();
+      } catch (_) {}
+
+      try {
+        const useId = deviceId || activeCameraId;
+        activeCameraId = useId;
+        scanControls = await codeReader.decodeFromVideoDevice(useId || undefined, scannerVideo, (result, err, controls) => {
+          if (result?.getText) {
+            const code = normCode(stripSizeSuffixAtEnd(result.getText()));
+            if (!code) return;
+            showFlash();
+            showToast(`Đã quét ${code}`);
+            maspInput.value = code;
+            closeScanner();
+            triggerSearch();
+          }
+        });
+
+        const stream = scannerVideo.srcObject;
+        if (stream) scanTrack = stream.getVideoTracks()[0] || null;
+        scannerStatus.textContent = 'Đưa mã vạch hoặc QR vào khung.';
+      } catch (e) {
+        console.error(e);
+        scannerStatus.textContent = 'Không mở được camera. Kiểm tra quyền camera.';
+      }
+    }
+
+    function closeScanner() {
+      document.getElementById('scannerModal').style.display = 'none';
+      try { scanControls?.stop?.(); } catch (_) {}
+      try { scanTrack?.stop?.(); } catch (_) {}
+      scanControls = null;
+      scanTrack = null;
+    }
+
+    function toggleTools(forceOpen) {
+      const willOpen = typeof forceOpen === 'boolean' ? forceOpen : !toolsCard.classList.contains('open');
+      toolsCard.classList.toggle('open', willOpen);
+      document.getElementById('toolsArrow').textContent = willOpen ? '▴' : '▾';
+      localStorage.setItem('quicksearch_tools_open', willOpen ? '1' : '0');
+    }
+
+    function restoreToolsState() {
+      const isOpen = localStorage.getItem('quicksearch_tools_open') === '1';
+      toggleTools(isOpen);
+    }
+
+    function applyIncomingBulk() {
+      const bulk = localStorage.getItem('TKHH333_BULK') || localStorage.getItem('STOCKQUICK_BULK') || '';
+      if (!bulk) return false;
+      bulkTextarea.value = bulk;
+      localStorage.removeItem('TKHH333_BULK');
+      localStorage.removeItem('STOCKQUICK_BULK');
+      toggleTools(true);
+      return true;
+    }
+
+    function bindEvents() {
+      document.getElementById('toggleToolsBtn').onclick = () => toggleTools();
+      document.getElementById('closeToolsBtn').onclick = () => toggleTools(false);
+      document.getElementById('popupBtn').onclick = openPopupSearch;
+      document.getElementById('closePopupBtn').onclick = closePopupSearch;
+      document.getElementById('searchBtn').onclick = triggerSearch;
+      document.getElementById('searchBulkBtn').onclick = () => { toggleTools(true); triggerSearch(); };
+      document.getElementById('clearBulkBtn').onclick = () => { bulkTextarea.value = ''; showToast('Đã xóa danh sách'); };
+      document.getElementById('pasteFromTransferBtn').onclick = () => {
+        const ok = applyIncomingBulk();
+        showToast(ok ? 'Đã nhận dữ liệu đẩy về' : 'Chưa có dữ liệu đẩy về', ok ? 'info' : 'warn');
+        if (ok) triggerSearch();
+      };
+      document.getElementById('scanBtn').onclick = () => startScanner();
+      document.getElementById('closeScannerBtn').onclick = closeScanner;
+      document.getElementById('switchCameraBtn').onclick = async () => {
+        const sel = document.getElementById('cameraSelect');
+        activeCameraId = sel.value || '';
+        await startScanner(activeCameraId);
+      };
+      document.getElementById('cameraSelect').onchange = async (e) => {
+        activeCameraId = e.target.value || '';
+        await startScanner(activeCameraId);
+      };
+
+      popupSearchInput.addEventListener('input', e => searchPopup(e.target.value.trim()));
+      popupSearch.addEventListener('click', e => { if (e.target === popupSearch) closePopupSearch(); });
+      maspInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          triggerSearch();
+        }
+      });
+    }
+
+    window.triggerSearch = triggerSearch;
+
+    window.onLoginSuccessQuickSearch = async function (nhanvien, context) {
+      const diadiem = (context && context.diadiem) || detectBranchFromPage() || '';
+      if (diadiem) branchPicker.value = diadiem;
+      appContainer.style.display = '';
+      maspInput.focus();
+
+      const hasIncoming = applyIncomingBulk();
+      const urlMasp = new URLSearchParams(window.location.search).get('masp');
+      if (urlMasp) {
+        maspInput.value = normCode(stripSizeSuffixAtEnd(urlMasp));
+        await triggerSearch();
+      } else if (hasIncoming) {
+        await triggerSearch();
+      }
+    };
+
+    restoreToolsState();
+    bindEvents();
+
+    authModule.khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+      macDinhDiaDiem: '',
+      tuDongKhoaCoSo: false,
+      loginApiPath: '/api/login-cs1',
+      onLoginSuccess: window.onLoginSuccessQuickSearch,
+      skipPagePermissionCheck: true
+    });
+  </script>
+</body>
+</html>
