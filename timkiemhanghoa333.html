@@ -680,6 +680,35 @@
         let scanControls = null;
         let scanTrack = null;
         let activeCameraId = '';
+        let audioCtx = null;
+
+        function playScanBeep() {
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return;
+
+                if (!audioCtx) audioCtx = new AC();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => { });
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = 1600;
+
+                gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.13);
+            } catch (_) { }
+        }
 
         function getSupabaseClient() {
             const client = window.supabase;
@@ -1212,12 +1241,21 @@
         }
 
         function scoreCameraLabel(label = '') {
-            const s = label.toLowerCase();
+            const s = String(label || '').toLowerCase();
             let score = 0;
-            if (/(back|rear|environment|mặt sau)/.test(s)) score += 50;
-            if (/(ultra\s*wide|0\.5x|0,5x|cực rộng|siêu rộng)/.test(s)) score += 120;
-            if (/(tele|zoom|2x|3x|chụp xa)/.test(s)) score -= 100;
-            if (/(front|trước|mặt trước)/.test(s)) score -= 200;
+
+            // ưu tiên camera sau
+            if (/(back|rear|environment|mặt sau|camera sau)/.test(s)) score += 100;
+
+            // ưu tiên CAO NHẤT: cực rộng / siêu rộng / 0.5x
+            if (/(ultra\s*wide|ultrawide|0\.5x|0,5x|0\.5|0,5|cực rộng|siêu rộng)/.test(s)) score += 1000;
+
+            // tránh tele / zoom
+            if (/(tele|zoom|2x|3x|chụp xa)/.test(s)) score -= 300;
+
+            // tránh camera trước
+            if (/(front|trước|mặt trước)/.test(s)) score -= 1000;
+
             return score;
         }
 
@@ -1230,10 +1268,17 @@
         async function populateCameraList() {
             const sel = document.getElementById('cameraSelect');
             const devices = await listVideoDevices();
+
             devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+
             sel.innerHTML = devices.map(d => `<option value="${d.deviceId}">${d.label || 'Camera'}</option>`).join('');
-            if (!activeCameraId && devices[0]) activeCameraId = devices[0].deviceId;
-            if (activeCameraId) sel.value = activeCameraId;
+
+            // luôn mặc định chọn camera điểm cao nhất = cực rộng mặt sau nếu máy có
+            if (devices[0]) {
+                activeCameraId = devices[0].deviceId;
+                sel.value = activeCameraId;
+            }
+
             return devices;
         }
 
@@ -1259,8 +1304,11 @@
                     if (result?.getText) {
                         const code = normCode(stripSizeSuffixAtEnd(result.getText()));
                         if (!code) return;
+
+                        playScanBeep();
                         showFlash();
                         showToast(`Đã quét ${code}`);
+
                         maspInput.value = code;
                         closeScanner();
                         triggerSearch();
@@ -1327,7 +1375,10 @@
                 showToast(ok ? 'Đã nhận dữ liệu đẩy về' : 'Chưa có dữ liệu đẩy về', ok ? 'info' : 'warn');
                 if (ok) triggerSearch();
             };
-            document.getElementById('scanBtn').onclick = () => startScanner();
+            document.getElementById('scanBtn').onclick = async () => {
+                activeCameraId = '';
+                await startScanner('');
+            };
             document.getElementById('closeScannerBtn').onclick = closeScanner;
             document.getElementById('switchCameraBtn').onclick = async () => {
                 const sel = document.getElementById('cameraSelect');
