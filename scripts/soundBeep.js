@@ -1,7 +1,6 @@
 // public/scripts/soundBeep.js
 
 let _ctx = null;
-let _unlocking = null;
 let _unlocked = false;
 
 export function getAudioCtx() {
@@ -13,43 +12,43 @@ export function getAudioCtx() {
   return _ctx;
 }
 
-async function ensureRunning() {
+export async function unlockBeepAudio() {
   const ctx = getAudioCtx();
-  if (!ctx) return null;
+  if (!ctx) return false;
 
-  if (ctx.state === "running") return ctx;
+  try {
+    if (ctx.state !== "running") {
+      await ctx.resume();
+    }
 
-  if (!_unlocking) {
-    _unlocking = (async () => {
-      try {
-        await ctx.resume();
+    // phát 1 tiếng siêu nhỏ để iPhone chịu mở audio hoàn toàn
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-        // silent unlock cho iPhone/Safari
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.00001;
-        osc.type = "sine";
-        osc.frequency.value = 1200;
-        osc.connect(gain).connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.01);
+    gain.gain.value = 0.00001;
+    osc.frequency.value = 1000;
+    osc.type = "sine";
 
-        _unlocked = true;
-      } catch (e) {
-        console.warn("Audio resume lỗi:", e);
-      } finally {
-        _unlocking = null;
-      }
-    })();
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.01);
+
+    _unlocked = true;
+    return true;
+  } catch (e) {
+    console.warn("unlockBeepAudio lỗi:", e);
+    return false;
   }
-
-  await _unlocking;
-  return ctx;
 }
 
-async function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) {
-  const ctx = await ensureRunning();
-  if (!ctx || ctx.state !== "running") return;
+function safeBeep(frequency = 1000, durationMs = 150, type = "sine", volume = 0.25) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+
+  if (ctx.state !== "running") {
+    console.warn("AudioContext chưa running, bỏ qua beep này");
+    return;
+  }
 
   const now = ctx.currentTime;
   const dur = durationMs / 1000;
@@ -71,20 +70,20 @@ async function beep(frequency = 1000, durationMs = 150, type = "sine", volume = 
 }
 
 export function playSuccessBeep() {
-  beep(2400, 120, "sine", 0.3);
+  safeBeep(2400, 120, "sine", 0.3);
 }
 
 export function playWaitSizeBeep() {
-  beep(1200, 180, "sine", 0.4);
+  safeBeep(1200, 180, "sine", 0.4);
 }
 
 export function playAlertBeep() {
-  beep(800, 250, "square", 0.3);
+  safeBeep(800, 250, "square", 0.3);
 }
 
 export function setupBeepUnlockOnce(dom = document) {
-  const unlock = () => {
-    ensureRunning();
+  const unlock = async () => {
+    await unlockBeepAudio();
     dom.removeEventListener("click", unlock, true);
     dom.removeEventListener("keydown", unlock, true);
     dom.removeEventListener("touchstart", unlock, true);
@@ -95,10 +94,6 @@ export function setupBeepUnlockOnce(dom = document) {
   dom.addEventListener("keydown", unlock, true);
   dom.addEventListener("touchstart", unlock, true);
   dom.addEventListener("pointerdown", unlock, true);
-}
-
-export function isBeepUnlocked() {
-  return _unlocked;
 }
 
 export function isBeepUnlocked() {
