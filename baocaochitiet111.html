@@ -168,6 +168,115 @@
         #popupSearchList div:hover {
             background: #e3f0ff;
         }
+
+        .loaihd-wrap {
+            display: inline-block;
+            position: relative;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .loaihd-box {
+            display: flex;
+            align-items: stretch;
+            min-width: 230px;
+        }
+
+        #loaihdDisplay {
+            width: 230px;
+            background: #fff;
+            cursor: pointer;
+            padding: 6px 9px;
+            border-radius: 3px 0 0 3px;
+            border: 1px solid #ccc;
+            font-size: 15px;
+        }
+
+        .loaihd-btn {
+            width: 34px;
+            border: 1px solid #999;
+            border-left: none;
+            background: #f3f3f3;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 0 3px 3px 0;
+        }
+
+        .loaihd-btn:hover {
+            background: #e6e6e6;
+        }
+
+        .loaihd-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 9999;
+            background: #f8f3df;
+            border: 1px solid #c8b98b;
+            border-radius: 4px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+            width: 360px;
+            max-height: 320px;
+            overflow-y: auto;
+            margin-top: 2px;
+            padding: 4px 0;
+        }
+
+        .loaihd-actions {
+            display: flex;
+            gap: 6px;
+            padding: 6px 8px;
+            border-bottom: 1px solid #d8cfa5;
+            background: #f5ecd0;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .loaihd-actions button {
+            flex: 1;
+            padding: 5px;
+            font-size: 12px;
+            border: 1px solid #aaa;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .loaihd-actions button:hover {
+            background: #e6dba8;
+        }
+
+        .loaihd-row {
+            display: grid;
+            grid-template-columns: 1fr 28px;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-bottom: 1px solid #eadfb9;
+        }
+
+        .loaihd-row:last-child {
+            border-bottom: none;
+        }
+
+        .loaihd-row:hover {
+            background: #efe5bf;
+        }
+
+        .loaihd-label {
+            border: 1px solid #aaa;
+            background: #fff;
+            padding: 5px 8px;
+            line-height: 1.2;
+            font-size: 13px;
+        }
+
+        .loaihd-check {
+            width: 16px;
+            height: 16px;
+            justify-self: center;
+        }
     </style>
 </head>
 
@@ -178,8 +287,19 @@
             <div class="filters-left filters">
                 <label>Từ ngày: <input type="date" id="tuNgay"></label>
                 <label>Đến ngày: <input type="date" id="denNgay"></label>
-                <label>Loại hóa đơn:
-                    <select id="loaihdSelect" multiple style="min-width:140px; max-width:220px;">
+                <label>Loại hóa đơn:</label>
+
+                <div class="loaihd-wrap" id="loaihdWrap">
+                    <div class="loaihd-box">
+                        <input type="text" id="loaihdDisplay" readonly placeholder="Chọn loại hóa đơn">
+                        <button type="button" id="toggleLoaihdPopup" class="loaihd-btn">▼</button>
+                    </div>
+
+                    <div id="loaihdPopup" class="loaihd-popup" style="display:none;">
+                        <div id="loaihdPopupList"></div>
+                    </div>
+
+                    <select id="loaihdSelect" multiple style="display:none;">
                         <option value="bancs1">bancs1</option>
                         <option value="bancs2">bancs2</option>
                         <option value="bannvcs1">bannvcs1</option>
@@ -195,9 +315,8 @@
                         <option value="xuatkiem">xuatkiem</option>
                         <option value="nhaptamcs1">nhaptamcs1</option>
                         <option value="nhaptamcs2">nhaptamcs2</option>
-
                     </select>
-                </label>
+                </div>
                 <label>Địa điểm:
                     <select id="diadiemSelect" style="min-width:90px;">
                         <option value="">Tất cả</option>
@@ -235,7 +354,7 @@
                     <input type="checkbox" id="tongHopSize">
                     Tổng hợp size
                 </label>
-                
+
                 <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
                 <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
                 <button class="main-btn" id="btnCompact" onclick="toggleCompact()">Rút gọn</button>
