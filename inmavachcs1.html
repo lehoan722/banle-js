@@ -1546,9 +1546,17 @@
                             ...baseData
                         }];
                     } else {
-                        document.getElementById('addProductMessage').style.color = 'red';
-                        document.getElementById('addProductMessage').textContent =
-                            'Bạn phải nhập hoặc chọn ít nhất 1 màu. Riêng mã cũ không có màu thì được phép sửa và lưu không cần màu.';
+                        alert(
+                            `⚠️ LỖI NHẬP LIỆU !!!
+
+Bạn chưa nhập màu sắc.
+
+✔ Nếu là mã mới → BẮT BUỘC phải chọn màu.
+✔ Chỉ được bỏ qua màu khi:
+   → SỬA mã cũ KHÔNG có màu.
+
+👉 Vui lòng kiểm tra lại!`
+                        );
                         return;
                     }
                 }
