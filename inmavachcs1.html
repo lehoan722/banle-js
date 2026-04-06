@@ -1864,8 +1864,14 @@ Bạn chưa nhập màu sắc.
             });
 
             mausacInput?.addEventListener('input', function () {
+                // ❌ KHÔNG chuẩn hóa ngay khi đang gõ nữa
+                // Chỉ update preview thôi
+                updateMauSacPreview();
+            });
+
+            mausacInput?.addEventListener('blur', function () {
                 const colors = parseColorsFromInput(mausacInput.value);
-                setColorsToInput(colors);
+                setColorsToInput(colors); // chuẩn hóa sau khi nhập xong
                 syncPopupChecksFromInput();
             });
 
