@@ -1498,27 +1498,12 @@
                 const maspGoc = maspRaw.split('.')[0].trim();
 
                 const colors = parseColorsFromInput(document.getElementById('mausacInput').value);
+                const maspDayDu = maspRaw;
 
                 if (!maspGoc) {
                     document.getElementById('addProductMessage').style.color = 'red';
                     document.getElementById('addProductMessage').textContent = 'Mã sản phẩm gốc không hợp lệ.';
                     return;
-                }
-
-                if (!colors.length) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = 'Bạn phải nhập hoặc chọn ít nhất 1 màu.';
-                    return;
-                }
-
-                const unknownColors = getUnknownColors(colors);
-                if (unknownColors.length) {
-                    const ok = confirm(
-                        `⚠️ Có ${unknownColors.length} màu không có trong danh mục màu:\n` +
-                        `${unknownColors.join(', ')}\n\n` +
-                        `Bạn vẫn muốn lưu chứ?`
-                    );
-                    if (!ok) return;
                 }
 
                 const baseData = {
@@ -1532,11 +1517,41 @@
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
 
-                const records = colors.map(color => ({
-                    masp: `${maspGoc}.${color}`,
-                    mausac: color,
-                    ...baseData
-                }));
+                let records = [];
+
+                // 1) Có màu => giữ logic cũ: tạo / cập nhật theo MASP.MAU
+                if (colors.length) {
+                    const unknownColors = getUnknownColors(colors);
+                    if (unknownColors.length) {
+                        const ok = confirm(
+                            `⚠️ Có ${unknownColors.length} màu không có trong danh mục màu:\n` +
+                            `${unknownColors.join(', ')}\n\n` +
+                            `Bạn vẫn muốn lưu chứ?`
+                        );
+                        if (!ok) return;
+                    }
+
+                    records = colors.map(color => ({
+                        masp: `${maspGoc}.${color}`,
+                        mausac: color,
+                        ...baseData
+                    }));
+                }
+                // 2) Không có màu => chỉ chấp nhận nếu đang sửa mã cũ không có màu
+                else {
+                    if (isEditMode && !maspDayDu.includes('.')) {
+                        records = [{
+                            masp: maspDayDu,
+                            mausac: '',
+                            ...baseData
+                        }];
+                    } else {
+                        document.getElementById('addProductMessage').style.color = 'red';
+                        document.getElementById('addProductMessage').textContent =
+                            'Bạn phải nhập hoặc chọn ít nhất 1 màu. Riêng mã cũ không có màu thì được phép sửa và lưu không cần màu.';
+                        return;
+                    }
+                }
 
                 let insertCount = 0;
                 let updateCount = 0;
@@ -1595,7 +1610,7 @@
                         `Lưu thành công! Thêm mới: ${insertCount}, cập nhật: ${updateCount}.`;
                 }
 
-                const savedMaspGoc = maspGoc;
+                const savedMaspGoc = records[0]?.masp || maspRaw;
 
                 resetForm();
 
