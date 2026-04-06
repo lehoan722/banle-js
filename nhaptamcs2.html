@@ -668,18 +668,42 @@
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
+
     <script type="module">
+        import { setupBeepUnlockOnce, unlockBeepAudio, playAlertBeep, playSuccessBeep, playWaitSizeBeep } from "./scripts/soundBeep.js";
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
-        khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
-            tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs2", // API backend mới
+        // Gắn unlock NGAY từ đầu trang
+        setupBeepUnlockOnce(document);
 
-            // Hàm được gọi khi đăng nhập thành công
+        // Gắn sẵn hàm global để các đoạn code sớm cũng gọi được
+        window.soundSuccess = playSuccessBeep;
+        window.soundWaitSize = playWaitSizeBeep;
+        window.soundAlert = playAlertBeep;
+
+        // Patch alert NGAY từ đầu, không chờ main.js
+        if (!window.__alertBeepPatched) {
+            window.__alertBeepPatched = true;
+            window.__nativeAlert = window.__nativeAlert || window.alert.bind(window);
+
+            window.alert = function (message) {
+                try { window.soundAlert?.(); } catch { }
+                setTimeout(() => window.__nativeAlert(String(message ?? "")), 120);
+            };
+        }
+
+        // Nếu người dùng vừa chạm vào màn hình thì mở khóa luôn
+        document.addEventListener("pointerdown", () => {
+            unlockBeepAudio();
+        }, { once: true, passive: true });
+
+        // Khởi tạo đăng nhập như cũ
+        khoiTaoDangNhapDungChung({
+            macDinhDiaDiem: "cs2",
+            tuDongKhoaCoSo: true,
+            loginApiPath: "/api/login-cs2",
+
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // 1. Lưu thông tin vào localStorage giống logic cũ
                 if (diadiem) {
                     localStorage.setItem("diadiem", diadiem);
                 }
@@ -689,15 +713,13 @@
                 localStorage.setItem("manv", nhanvien.manv);
                 localStorage.setItem("tennv", nhanvien.tennv);
                 localStorage.setItem(
-                    "quyen_sua_hoadon",
+                    quyen_sua_hoadon,
                     nhanvien.sua_hoadon ? "true" : "false"
                 );
 
-                // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
 
-                // 3. Cập nhật lên giao diện bán hàng
                 const manvInput = document.getElementById("manv");
                 const tennvInput = document.getElementById("tennv");
                 if (manvInput) {
@@ -709,12 +731,10 @@
                     tennvInput.readOnly = true;
                 }
 
-                // 4. Cập nhật quyền giao diện nếu có hàm này
                 if (typeof window.capNhatQuyenGiaoDien === "function") {
                     window.capNhatQuyenGiaoDien();
                 }
 
-                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
                     const module = await import("./scripts/main.js");
                     if (typeof module.khoiTaoUngDung === "function") {
@@ -724,7 +744,6 @@
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
                 }
 
-                // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
                 }
@@ -734,7 +753,6 @@
                 const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
 
-                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
                 const appContainer = document.getElementById("app-container");
                 if (appContainer) appContainer.style.display = "";
 
@@ -743,6 +761,7 @@
             }
         });
     </script>
+
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
 
@@ -1670,12 +1689,12 @@
     </script>
 
     <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const diadiem = document.getElementById("diadiem");
-    if (diadiem) diadiem.value = "cs2";
-    localStorage.setItem("diadiem", "cs2");
-});
-</script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const diadiem = document.getElementById("diadiem");
+            if (diadiem) diadiem.value = "cs2";
+            localStorage.setItem("diadiem", "cs2");
+        });
+    </script>
 
 </body>
 
