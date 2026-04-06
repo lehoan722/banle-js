@@ -570,7 +570,9 @@
     if (!["kho", "baymau", "nhomhang"].includes(loai)) {
       return { ok: false, message: "Loại dữ liệu không hợp lệ" };
     }
-    if (!vitri) {
+    const isAdminNow = getIsAdminLocal();
+
+    if (!vitri && !isAdminNow) {
       return {
         ok: false,
         message:
