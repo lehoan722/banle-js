@@ -9,6 +9,125 @@ let currentPage = 1;
 let onlyOneProduct = false; // <== thêm biến toàn cục để xác định 
 let isCompactMode = false;
 
+// popup chọn loại hóa đơn
+let bindLoaihdPopupDone = false;
+
+function renderLoaihdPopup() {
+    const select = document.getElementById('loaihdSelect');
+    const popupList = document.getElementById('loaihdPopupList');
+    if (!select || !popupList) return;
+
+    let html = `
+        <div class="loaihd-actions">
+            <button type="button" id="btnSelectAllLoaihd">✔ Chọn tất cả</button>
+            <button type="button" id="btnUnselectAllLoaihd">✖ Bỏ chọn</button>
+        </div>
+    `;
+
+    Array.from(select.options).forEach(opt => {
+        html += `
+            <div class="loaihd-row" data-value="${opt.value}">
+                <div class="loaihd-label">${opt.text}</div>
+                <input type="checkbox" class="loaihd-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
+            </div>
+        `;
+    });
+
+    popupList.innerHTML = html;
+    updateLoaihdDisplay();
+}
+
+function updateLoaihdDisplay() {
+    const select = document.getElementById('loaihdSelect');
+    const display = document.getElementById('loaihdDisplay');
+    if (!select || !display) return;
+
+    const selectedTexts = Array.from(select.selectedOptions).map(o => o.text.trim());
+    display.value = selectedTexts.join(', ');
+}
+
+function syncLoaihdSelectFromPopup() {
+    const select = document.getElementById('loaihdSelect');
+    if (!select) return;
+
+    const checkedValues = new Set(
+        Array.from(document.querySelectorAll('.loaihd-check:checked')).map(chk => chk.value)
+    );
+
+    Array.from(select.options).forEach(opt => {
+        opt.selected = checkedValues.has(opt.value);
+    });
+
+    updateLoaihdDisplay();
+}
+
+function openLoaihdPopup() {
+    const popup = document.getElementById('loaihdPopup');
+    if (!popup) return;
+    popup.style.display = 'block';
+}
+
+function closeLoaihdPopup() {
+    const popup = document.getElementById('loaihdPopup');
+    if (!popup) return;
+    popup.style.display = 'none';
+}
+
+function bindLoaihdPopupEvents() {
+    if (bindLoaihdPopupDone) return;
+    bindLoaihdPopupDone = true;
+
+    const wrap = document.getElementById('loaihdWrap');
+    const popupList = document.getElementById('loaihdPopupList');
+    const toggleBtn = document.getElementById('toggleLoaihdPopup');
+    const display = document.getElementById('loaihdDisplay');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const popup = document.getElementById('loaihdPopup');
+            if (!popup) return;
+            popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+    }
+
+    if (display) {
+        display.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const popup = document.getElementById('loaihdPopup');
+            if (!popup) return;
+            popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+    }
+
+    if (popupList) {
+        popupList.addEventListener('change', function (e) {
+            if (e.target.classList.contains('loaihd-check')) {
+                syncLoaihdSelectFromPopup();
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.id === 'btnSelectAllLoaihd') {
+            document.querySelectorAll('.loaihd-check').forEach(chk => chk.checked = true);
+            syncLoaihdSelectFromPopup();
+        }
+
+        if (e.target.id === 'btnUnselectAllLoaihd') {
+            document.querySelectorAll('.loaihd-check').forEach(chk => chk.checked = false);
+            syncLoaihdSelectFromPopup();
+        }
+    });
+
+    document.addEventListener('mousedown', function (e) {
+        if (!wrap?.contains(e.target)) {
+            closeLoaihdPopup();
+        }
+    });
+}
 
 
 // ⚠️ PostgREST thường giới hạn ~1000 dòng trả về cho mỗi request RPC qua REST.
@@ -46,6 +165,7 @@ function getFiltersFromUI() {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    updateLoaihdDisplay();
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = document.getElementById("khachhangInput").value.trim() || null;
     const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
@@ -99,6 +219,7 @@ window.taiBaoCaoChiTiet = async function () {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    updateLoaihdDisplay();
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
     const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
@@ -432,7 +553,7 @@ window.xuatExcelToanBo = async function () {
         const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
             r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
-        ];        
+        ];
         if (onlyOneProduct && !tongHopSize) row.push(r.ton_tichluy);
         aoa.push(row);
     });
@@ -531,6 +652,9 @@ window.onload = function () {
 
     // Đến ngày là hôm nay
     document.getElementById('denNgay').value = today;
+
+    renderLoaihdPopup();
+    bindLoaihdPopupEvents();
 
     // === NHẬN MÃ SP TỪ URL & AUTO CHẠY ===
     try {
