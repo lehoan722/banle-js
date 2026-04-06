@@ -1204,7 +1204,9 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
               ? "nhóm hàng"
               : "vị trí";
 
-        if (!vitri) {
+        const isAdminNow = getIsAdminLocal();
+
+        if (!vitri && !isAdminNow) {
           if (msgEl) {
             msgEl.textContent = `Chưa nhập ${nhan}`;
             msgEl.className = "sq-vitri-msg err";
