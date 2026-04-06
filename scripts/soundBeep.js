@@ -100,3 +100,7 @@ export function setupBeepUnlockOnce(dom = document) {
 export function isBeepUnlocked() {
   return _unlocked;
 }
+
+export function isBeepUnlocked() {
+  return _unlocked;
+}
