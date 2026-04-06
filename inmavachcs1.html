@@ -1943,18 +1943,31 @@ Bạn chưa nhập màu sắc.
                 mausacPreview.textContent = 'Sẽ tạo: ' + previewCodes.join(', ');
             }
 
-            function renderMauSacPopup() {
+            function renderMauSacPopup(keyword = '') {
                 if (!mausacPopupList) return;
 
+                const kw = normalizeColorToken(keyword);
+                const filteredOptions = !kw
+                    ? allMauSacOptions
+                    : allMauSacOptions.filter(item =>
+                        (item.mamau || '').includes(kw) ||
+                        normalizeColorToken(item.tenmau || '').includes(kw)
+                    );
+
                 let html = '';
-                allMauSacOptions.forEach(item => {
-                    html += `
-            <div class="mausac-popup-row" data-mamau="${item.mamau}">
-                <input type="text" value="${item.mamau}" readonly tabindex="-1" />
-                <input type="checkbox" class="mausac-check" value="${item.mamau}" />
-            </div>
-        `;
-                });
+
+                if (!filteredOptions.length) {
+                    html = `<div class="mausac-popup-row"><div style="padding:6px 8px;color:#666;">Không có màu phù hợp</div></div>`;
+                } else {
+                    filteredOptions.forEach(item => {
+                        html += `
+                <div class="mausac-popup-row" data-mamau="${item.mamau}">
+                    <input type="text" value="${item.mamau}" readonly tabindex="-1" />
+                    <input type="checkbox" class="mausac-check" value="${item.mamau}" />
+                </div>
+            `;
+                    });
+                }
 
                 mausacPopupList.innerHTML = html;
                 syncPopupChecksFromInput();
@@ -1973,34 +1986,36 @@ Bạn chưa nhập màu sắc.
             function updateInputFromPopupChecks(changedColor = '', isChecked = false) {
                 const color = normalizeColorToken(changedColor);
 
-                // Đồng bộ từ input trước để không mất các màu gõ tay
                 if (!selectedColorOrder.length) {
                     selectedColorOrder = parseColorsFromInput(mausacInput.value);
                 }
 
-                const manualColors = parseColorsFromInput(mausacInput.value)
-                    .filter(c => !allMauSacOptions.some(m => m.mamau === c));
-
-                // Giữ lại thứ tự cũ của các màu đã chọn trong popup
                 let popupSelected = selectedColorOrder.filter(c =>
                     allMauSacOptions.some(m => m.mamau === c)
                 );
 
+                const manualColors = parseColorsFromInput(mausacInput.value)
+                    .filter(c => !allMauSacOptions.some(m => m.mamau === c));
+
                 if (color) {
                     if (isChecked) {
-                        if (!popupSelected.includes(color)) {
-                            popupSelected.push(color); // chọn sau -> đứng sau
-                        }
+                        if (!popupSelected.includes(color)) popupSelected.push(color);
                     } else {
-                        popupSelected = popupSelected.filter(c => c !== color); // bỏ tick -> xóa đúng màu
+                        popupSelected = popupSelected.filter(c => c !== color);
                     }
                 }
 
                 selectedColorOrder = [...popupSelected, ...manualColors];
-                updateInputFromSelectedColorOrder();
+                mausacInput.value = selectedColorOrder.join(',');
+                updateMauSacPreview();
+
+                const parts = (mausacInput.value || '').split(',');
+                const currentKeyword = (parts[parts.length - 1] || '').trim();
+                renderMauSacPopup(currentKeyword);
             }
 
-            function openMauSacPopup() {
+            function openMauSacPopup(keyword = '') {
+                renderMauSacPopup(keyword);
                 syncPopupChecksFromInput();
                 mausacPopup.style.display = 'block';
             }
@@ -2019,8 +2034,15 @@ Bạn chưa nhập màu sắc.
             toggleMauSacPopupBtn?.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (mausacPopup.style.display === 'block') closeMauSacPopup();
-                else openMauSacPopup();
+
+                if (mausacPopup.style.display === 'block') {
+                    closeMauSacPopup();
+                } else {
+                    const rawValue = mausacInput.value || '';
+                    const parts = rawValue.split(',');
+                    const currentKeyword = (parts[parts.length - 1] || '').trim();
+                    openMauSacPopup(currentKeyword);
+                }
             });
 
             mausacPopupList?.addEventListener('change', function (e) {
@@ -2032,7 +2054,17 @@ Bạn chưa nhập màu sắc.
             mausacInput?.addEventListener('input', function () {
                 selectedColorOrder = parseColorsFromInput(mausacInput.value);
                 updateMauSacPreview();
-                syncPopupChecksFromInput();
+
+                const rawValue = mausacInput.value || '';
+                const parts = rawValue.split(',');
+                const currentKeyword = (parts[parts.length - 1] || '').trim();
+
+                if (currentKeyword.length >= 1) {
+                    openMauSacPopup(currentKeyword);
+                } else {
+                    renderMauSacPopup('');
+                    syncPopupChecksFromInput();
+                }
             });
 
             mausacInput?.addEventListener('blur', function () {
@@ -2044,8 +2076,13 @@ Bạn chưa nhập màu sắc.
 
             mausacInput?.addEventListener('focus', function () {
                 updateMauSacPreview();
-            });
 
+                const rawValue = mausacInput.value || '';
+                const parts = rawValue.split(',');
+                const currentKeyword = (parts[parts.length - 1] || '').trim();
+
+                openMauSacPopup(currentKeyword);
+            });
             mausacInput?.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
