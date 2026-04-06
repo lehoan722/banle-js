@@ -624,6 +624,7 @@
             let filtered = [];
             let selected = [];
             let allMauSacOptions = [];
+            let selectedColorOrder = [];
 
             // Elements
             const searchInput = document.getElementById('search');
@@ -848,7 +849,7 @@
         row-gap: 1.8mm;        
     ">`;
 
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs21  row-gap: 1.5mm; voi cs22
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2
                 for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
                 for (let i = 0; i < maxTems; i++) {
                     const t = pageTems[i] || null;
@@ -1003,7 +1004,7 @@
                 const maxTems = PER_PAGE - (currentPage === 1 ? blank : 0);
 
                 // Dựng HTML: padding theo thông số bạn cung cấp
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2
                 let html = `<div class="print-preview" style="padding-top:5.5mm; padding-left:9.3mm;">
     <div class="tem-grid" style="
       display:grid;
@@ -1063,6 +1064,47 @@
                 return parseInt(val).toLocaleString('vi-VN');
             }
 
+            function kiemTraGiaLeTruocKhiIn() {
+                syncHandsontableToSelected();
+
+                const dsCanhBao = (selected || []).filter(row => {
+                    if (!row || !row.tick) return false;
+
+                    const gianhap = Number(row.gianhap) || 0;
+                    const giale = Number(row.giale) || 0;
+
+                    // Nếu không có giá nhập thì bỏ qua kiểm tra
+                    if (gianhap <= 0) return false;
+
+                    return giale < (gianhap * 1.4);
+                });
+
+                if (!dsCanhBao.length) {
+                    return true;
+                }
+
+                const dsText = dsCanhBao.map((row, idx) => {
+                    const masp = row.masp || '';
+                    const tensp = row.tensp || '';
+                    const gianhap = Number(row.gianhap) || 0;
+                    const giale = Number(row.giale) || 0;
+                    const giaToiThieu = Math.ceil(gianhap * 1.4);
+
+                    return `${idx + 1}. ${masp}${tensp ? ' - ' + tensp : ''}\n` +
+                        `   Giá nhập: ${gianhap.toLocaleString('vi-VN')} | ` +
+                        `Giá lẻ: ${giale.toLocaleString('vi-VN')} | ` +
+                        `Tối thiểu nên là: ${giaToiThieu.toLocaleString('vi-VN')}`;
+                }).join('\n\n');
+
+                const msg =
+                    `⚠️ Bạn kiểm tra lại giá lẻ.\n\n` +
+                    `Có ${dsCanhBao.length} sản phẩm có giá lẻ chưa cao hơn giá nhập 40%.\n\n` +
+                    `${dsText}\n\n` +
+                    `Bạn có đồng ý in tem với giá lẻ hiện tại không?`;
+
+                return confirm(msg);
+            }
+
             // Xuất Excel
             window.exportExcel = function () {
                 const headers = ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"];
@@ -1087,11 +1129,21 @@
 
             window.checkLoaiTemAndRender = function () {
                 const loaiTem = document.getElementById('loaiTem').value;
-                if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return;
+                }
+
+                const ok = kiemTraGiaLeTruocKhiIn();
+                if (!ok) {
+                    return;
+                }
+
                 applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
                 if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
                 else renderPreview(1);
             };
+
             window.checkLoaiTemAndPrint = function () {
                 const loaiTem = document.getElementById('loaiTem').value;
                 if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
@@ -1329,6 +1381,8 @@
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
             let justSavedReturnToMasp = false; // vừa lưu xong và đang đứng lại ở ô mã sản phẩm
             let skipNextAutoFillFromMaspBlur = false; // bỏ qua 1 lần auto fill khi rời ô mã SP sau khi lưu
+            let originalGiaNhap = null;
+            let originalGiaLe = null;
 
             async function checkExistAndFillForm() {
                 if (skipNextAutoFillFromMaspBlur) {
@@ -1348,7 +1402,11 @@
                     document.getElementById('tenspInput').value = data.tensp || '';
                     document.getElementById('gianhapInput').value = data.gianhap || '';
                     document.getElementById('gialeInput').value = data.giale || '';
+
+                    originalGiaNhap = Number(data.gianhap) || 0;
+                    originalGiaLe = Number(data.giale) || 0;
                     document.getElementById('mausacInput').value = data.mausac || '';
+                    selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
                     syncPopupChecksFromInput();
                     document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
@@ -1362,6 +1420,8 @@
                 } else {
                     // Không fill gì cả, không reset
                     isEditMode = false;
+                    originalGiaNhap = null;
+                    originalGiaLe = null;
                     document.getElementById('addProductForm').style.border = '';
                     // Không gọi resetForm ở đây!
                     // Giữ nguyên các trường, để người dùng nhập tiếp tục
@@ -1391,9 +1451,12 @@
                 document.getElementById('addProductMessage').textContent = '';
                 document.getElementById('addProductForm').style.border = '';
                 isEditMode = false;
+                originalGiaNhap = null;
+                originalGiaLe = null;
                 // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
                 syncQuanLyKichCoByGiaLe();
 
+                selectedColorOrder = parseColorsFromInput(document.getElementById('mausacInput').value || '');
                 updateMauSacPreview();
                 syncPopupChecksFromInput();
             }
@@ -1429,6 +1492,76 @@
                 return colors.filter(c => !knownSet.has(c));
             }
 
+            async function getOtherColorProductsByBaseCode(maspDayDu) {
+                const maspFull = (maspDayDu || '').trim().toUpperCase();
+                if (!maspFull.includes('.')) {
+                    return [];
+                }
+
+                const maspGoc = maspFull.split('.')[0].trim();
+                if (!maspGoc) {
+                    return [];
+                }
+
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp, mausac')
+                    .ilike('masp', `${maspGoc}.%`)
+                    .order('masp', { ascending: true });
+
+                if (error) {
+                    console.error('Lỗi tải danh sách màu cùng mã gốc:', error);
+                    return [];
+                }
+
+                return (data || []).filter(x => (x.masp || '').toUpperCase() !== maspFull);
+            }
+
+            async function confirmAndUpdateSiblingColors({
+                maspDayDu,
+                baseData,
+                giaNhapChanged,
+                giaLeChanged
+            }) {
+                const maspFull = (maspDayDu || '').trim().toUpperCase();
+                if (!maspFull.includes('.')) return;
+
+                if (!giaNhapChanged && !giaLeChanged) return;
+
+                const siblings = await getOtherColorProductsByBaseCode(maspFull);
+                if (!siblings.length) return;
+
+                const mauConLai = siblings.map(x => x.masp || '').join('\n- ');
+                const noiDungSua = [
+                    giaNhapChanged ? 'Giá nhập' : null,
+                    giaLeChanged ? 'Giá lẻ' : null
+                ].filter(Boolean).join(' và ');
+
+                const ok = confirm(
+                    `⚠️ Bạn vừa sửa ${noiDungSua} của mã:\n` +
+                    `${maspFull}\n\n` +
+                    `Các mã màu còn lại cùng sản phẩm:\n- ${mauConLai}\n\n` +
+                    `Bạn có muốn cập nhật ${noiDungSua} cho tất cả các mã màu còn lại không?`
+                );
+
+                if (!ok) return;
+
+                const updateData = {};
+                if (giaNhapChanged) updateData.gianhap = baseData.gianhap;
+                if (giaLeChanged) updateData.giale = baseData.giale;
+
+                for (const item of siblings) {
+                    const { error } = await supabase
+                        .from('dmhanghoa')
+                        .update(updateData)
+                        .eq('masp', item.masp);
+
+                    if (error) {
+                        console.error('Lỗi cập nhật đồng bộ màu:', item.masp, error);
+                    }
+                }
+            }
+
             // ==== Nút Lưu (submit form) ====
             document.getElementById('addProductForm').onsubmit = async function (e) {
                 e.preventDefault();
@@ -1447,27 +1580,12 @@
                 const maspGoc = maspRaw.split('.')[0].trim();
 
                 const colors = parseColorsFromInput(document.getElementById('mausacInput').value);
+                const maspDayDu = maspRaw;
 
                 if (!maspGoc) {
                     document.getElementById('addProductMessage').style.color = 'red';
                     document.getElementById('addProductMessage').textContent = 'Mã sản phẩm gốc không hợp lệ.';
                     return;
-                }
-
-                if (!colors.length) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = 'Bạn phải nhập hoặc chọn ít nhất 1 màu.';
-                    return;
-                }
-
-                const unknownColors = getUnknownColors(colors);
-                if (unknownColors.length) {
-                    const ok = confirm(
-                        `⚠️ Có ${unknownColors.length} màu không có trong danh mục màu:\n` +
-                        `${unknownColors.join(', ')}\n\n` +
-                        `Bạn vẫn muốn lưu chứ?`
-                    );
-                    if (!ok) return;
                 }
 
                 const baseData = {
@@ -1481,11 +1599,55 @@
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
 
-                const records = colors.map(color => ({
-                    masp: `${maspGoc}.${color}`,
-                    mausac: color,
-                    ...baseData
-                }));
+                const giaNhapMoi = Number(baseData.gianhap) || 0;
+                const giaLeMoi = Number(baseData.giale) || 0;
+
+                const giaNhapChanged = isEditMode && originalGiaNhap !== null && giaNhapMoi !== originalGiaNhap;
+                const giaLeChanged = isEditMode && originalGiaLe !== null && giaLeMoi !== originalGiaLe;
+
+                let records = [];
+
+                // 1) Có màu => giữ logic cũ: tạo / cập nhật theo MASP.MAU
+                if (colors.length) {
+                    const unknownColors = getUnknownColors(colors);
+                    if (unknownColors.length) {
+                        const ok = confirm(
+                            `⚠️ Có ${unknownColors.length} màu không có trong danh mục màu:\n` +
+                            `${unknownColors.join(', ')}\n\n` +
+                            `Bạn vẫn muốn lưu chứ?`
+                        );
+                        if (!ok) return;
+                    }
+
+                    records = colors.map(color => ({
+                        masp: `${maspGoc}.${color}`,
+                        mausac: color,
+                        ...baseData
+                    }));
+                }
+                // 2) Không có màu => chỉ chấp nhận nếu đang sửa mã cũ không có màu
+                else {
+                    if (isEditMode && !maspDayDu.includes('.')) {
+                        records = [{
+                            masp: maspDayDu,
+                            mausac: '',
+                            ...baseData
+                        }];
+                    } else {
+                        alert(
+                            `⚠️ LỖI NHẬP LIỆU !!!
+
+Bạn chưa nhập màu sắc.
+
+✔ Nếu là mã mới → BẮT BUỘC phải chọn màu.
+✔ Chỉ được bỏ qua màu khi:
+   → SỬA mã cũ KHÔNG có màu.
+
+👉 Vui lòng kiểm tra lại!`
+                        );
+                        return;
+                    }
+                }
 
                 let insertCount = 0;
                 let updateCount = 0;
@@ -1531,6 +1693,15 @@
                     }
                 }
 
+                if (errorList.length === 0 && records.length === 1) {
+                    await confirmAndUpdateSiblingColors({
+                        maspDayDu: records[0].masp,
+                        baseData,
+                        giaNhapChanged,
+                        giaLeChanged
+                    });
+                }
+
                 const msgEl = document.getElementById('addProductMessage');
 
                 if (errorList.length) {
@@ -1544,7 +1715,7 @@
                         `Lưu thành công! Thêm mới: ${insertCount}, cập nhật: ${updateCount}.`;
                 }
 
-                const savedMaspGoc = maspGoc;
+                const savedMaspGoc = records[0]?.masp || maspRaw;
 
                 resetForm();
 
@@ -1566,7 +1737,7 @@
                 // Đẩy toàn bộ mã vừa tạo vào lưới tem in
                 records.forEach(pushProductToGrid);
             };
-            
+
             loadDropdownOptions();
 
             // Xử lý nút XÓA sản phẩm
@@ -1707,8 +1878,18 @@
                 return [...new Set(arr)];
             }
 
+            function syncSelectedColorOrderFromInput() {
+                selectedColorOrder = parseColorsFromInput(mausacInput.value);
+            }
+
+            function updateInputFromSelectedColorOrder() {
+                mausacInput.value = selectedColorOrder.join(',');
+                updateMauSacPreview();
+            }
+
             function setColorsToInput(colors) {
-                mausacInput.value = colors.join(',');
+                selectedColorOrder = [...colors];
+                mausacInput.value = selectedColorOrder.join(',');
                 updateMauSacPreview();
             }
 
@@ -1743,21 +1924,43 @@
             }
 
             function syncPopupChecksFromInput() {
-                const selectedColors = parseColorsFromInput(mausacInput.value);
+                const selectedColors = selectedColorOrder.length
+                    ? selectedColorOrder
+                    : parseColorsFromInput(mausacInput.value);
+
                 document.querySelectorAll('.mausac-check').forEach(chk => {
                     chk.checked = selectedColors.includes(normalizeColorToken(chk.value));
                 });
             }
 
-            function updateInputFromPopupChecks() {
-                const checked = [...document.querySelectorAll('.mausac-check:checked')]
-                    .map(chk => normalizeColorToken(chk.value));
+            function updateInputFromPopupChecks(changedColor = '', isChecked = false) {
+                const color = normalizeColorToken(changedColor);
+
+                // Đồng bộ từ input trước để không mất các màu gõ tay
+                if (!selectedColorOrder.length) {
+                    selectedColorOrder = parseColorsFromInput(mausacInput.value);
+                }
 
                 const manualColors = parseColorsFromInput(mausacInput.value)
                     .filter(c => !allMauSacOptions.some(m => m.mamau === c));
 
-                const finalColors = [...new Set([...checked, ...manualColors])];
-                setColorsToInput(finalColors);
+                // Giữ lại thứ tự cũ của các màu đã chọn trong popup
+                let popupSelected = selectedColorOrder.filter(c =>
+                    allMauSacOptions.some(m => m.mamau === c)
+                );
+
+                if (color) {
+                    if (isChecked) {
+                        if (!popupSelected.includes(color)) {
+                            popupSelected.push(color); // chọn sau -> đứng sau
+                        }
+                    } else {
+                        popupSelected = popupSelected.filter(c => c !== color); // bỏ tick -> xóa đúng màu
+                    }
+                }
+
+                selectedColorOrder = [...popupSelected, ...manualColors];
+                updateInputFromSelectedColorOrder();
             }
 
             function openMauSacPopup() {
@@ -1785,13 +1988,20 @@
 
             mausacPopupList?.addEventListener('change', function (e) {
                 if (e.target.classList.contains('mausac-check')) {
-                    updateInputFromPopupChecks();
+                    updateInputFromPopupChecks(e.target.value, e.target.checked);
                 }
             });
 
             mausacInput?.addEventListener('input', function () {
+                selectedColorOrder = parseColorsFromInput(mausacInput.value);
+                updateMauSacPreview();
+                syncPopupChecksFromInput();
+            });
+
+            mausacInput?.addEventListener('blur', function () {
                 const colors = parseColorsFromInput(mausacInput.value);
-                setColorsToInput(colors);
+                selectedColorOrder = [...colors];
+                updateInputFromSelectedColorOrder();
                 syncPopupChecksFromInput();
             });
 
