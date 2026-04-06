@@ -104,6 +104,85 @@
     button.xoa-btn:hover {
       background: #ffe599;
     }
+
+    .loai-ct-wrap {
+      display: inline-block;
+      position: relative;
+      vertical-align: middle;
+      margin: 4px;
+    }
+
+    .loai-ct-box {
+      display: flex;
+      align-items: stretch;
+      min-width: 230px;
+    }
+
+    #loaiChungTuDisplay {
+      width: 220px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .loai-ct-btn {
+      width: 34px;
+      border: 1px solid #999;
+      border-left: none;
+      background: #f3f3f3;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .loai-ct-btn:hover {
+      background: #e6e6e6;
+    }
+
+    .loai-ct-popup {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 9999;
+      background: #f8f3df;
+      border: 1px solid #c8b98b;
+      border-radius: 4px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+      width: 360px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 2px;
+      padding: 4px 0;
+    }
+
+    .loai-ct-row {
+      display: grid;
+      grid-template-columns: 1fr 28px;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-bottom: 1px solid #eadfb9;
+    }
+
+    .loai-ct-row:last-child {
+      border-bottom: none;
+    }
+
+    .loai-ct-row:hover {
+      background: #efe5bf;
+    }
+
+    .loai-ct-label {
+      border: 1px solid #aaa;
+      background: #fff;
+      padding: 5px 8px;
+      line-height: 1.2;
+      font-size: 13px;
+    }
+
+    .loai-ct-check {
+      width: 16px;
+      height: 16px;
+      justify-self: center;
+    }
   </style>
 </head>
 
@@ -128,43 +207,53 @@
     <label style="user-select:none"> <input type="checkbox" id="chkMatchAll"> HĐ phải chứa tất cả mã </label>
 
 
-    <label>Loại chứng từ:</label>
-    <select id="loaiChungTu" multiple style="min-width:140px;">
-      <option value="bancs1">ban cs1</option>
-      <option value="bancs2">ban cs2</option>
+    <label for="loaiChungTuDisplay">Loại chứng từ:</label>
 
-      <option value="bannvcs1">ban nv cs1</option>
-      <option value="bannvcs2">ban nv cs2</option>
+    <div class="loai-ct-wrap" id="loaiChungTuWrap">
+      <div class="loai-ct-box">
+        <input type="text" id="loaiChungTuDisplay" readonly placeholder="Chọn loại chứng từ" />
+        <button type="button" id="toggleLoaiChungTuPopup" class="loai-ct-btn">▼</button>
+      </div>
 
-      <option value="nmcs1">nhap moi cs1</option>
-      <option value="nmcs2">nhap moics2</option>
+      <div id="loaiChungTuPopup" class="loai-ct-popup" style="display:none;">
+        <div id="loaiChungTuPopupList"></div>
+      </div>
 
-      <option value="nhaptamcs1">nhap tam cs1</option>
-      <option value="nhaptamcs2">nhap tam cs2</option>
+      <select id="loaiChungTu" multiple style="display:none;">
+        <option value="bancs1">ban cs1</option>
+        <option value="bancs2">ban cs2</option>
 
-      <option value="xcncs1">xuat cn cs1</option>
-      <option value="ncncs1">nhap cn cs1</option>
+        <option value="bannvcs1">ban nv cs1</option>
+        <option value="bannvcs2">ban nv cs2</option>
 
-      <option value="xcncs2">xuat cn cs2</option>
-      <option value="ncncs2">nhap cn cs2 </option>
+        <option value="nmcs1">nhap moi cs1</option>
+        <option value="nmcs2">nhap moi cs2</option>
 
-      <option value="nhapkiemcs1">nhap kiem cs1</option>
-      <option value="nhapkiemcs2">nhap kiem cs2</option>
+        <option value="nhaptamcs1">nhap tam cs1</option>
+        <option value="nhaptamcs2">nhap tam cs2</option>
 
-      <option value="xuatkiemcs1">xuat kiem cs1</option>
-      <option value="xuatkiemcs2">xuat kiem cs2</option>
+        <option value="xcncs1">xuat cn cs1</option>
+        <option value="ncncs1">nhap cn cs1</option>
 
-      <option value="nhapdoics1">nhap doi tu khach cs1</option>
-      <option value="nhapdoics2">nhap doi tu khach cs2</option>
+        <option value="xcncs2">xuat cn cs2</option>
+        <option value="ncncs2">nhap cn cs2</option>
 
-      <option value="tralaincccs1">xuat tra lai ncc cs1</option>
-      <option value="tralaincccs2">xuat tra lai ncc cs2</option>
+        <option value="nhapkiemcs1">nhap kiem cs1</option>
+        <option value="nhapkiemcs2">nhap kiem cs2</option>
 
-      <option value="xuathuycs1">xuat huy cs1</option>
-      <option value="xuathuycs2">xuat huy cs2</option>
+        <option value="xuatkiemcs1">xuat kiem cs1</option>
+        <option value="xuatkiemcs2">xuat kiem cs2</option>
 
+        <option value="nhapdoics1">nhap doi tu khach cs1</option>
+        <option value="nhapdoics2">nhap doi tu khach cs2</option>
 
-    </select>
+        <option value="tralaincccs1">xuat tra lai ncc cs1</option>
+        <option value="tralaincccs2">xuat tra lai ncc cs2</option>
+
+        <option value="xuathuycs1">xuat huy cs1</option>
+        <option value="xuathuycs2">xuat huy cs2</option>
+      </select>
+    </div>
 
     <label>
 
@@ -360,6 +449,102 @@
       }
     }
 
+    function renderLoaiChungTuPopup() {
+      const select = document.getElementById('loaiChungTu');
+      const popupList = document.getElementById('loaiChungTuPopupList');
+      if (!select || !popupList) return;
+
+      let html = '';
+      Array.from(select.options).forEach(opt => {
+        html += `
+      <div class="loai-ct-row" data-value="${opt.value}">
+        <div class="loai-ct-label">${opt.text}</div>
+        <input type="checkbox" class="loai-ct-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
+      </div>
+    `;
+      });
+
+      popupList.innerHTML = html;
+      updateLoaiChungTuDisplay();
+    }
+
+    function updateLoaiChungTuDisplay() {
+      const select = document.getElementById('loaiChungTu');
+      const display = document.getElementById('loaiChungTuDisplay');
+      if (!select || !display) return;
+
+      const selectedTexts = Array.from(select.selectedOptions).map(o => o.text.trim());
+      display.value = selectedTexts.join(', ');
+    }
+
+    function syncLoaiChungTuSelectFromPopup() {
+      const select = document.getElementById('loaiChungTu');
+      if (!select) return;
+
+      const checkedValues = new Set(
+        Array.from(document.querySelectorAll('.loai-ct-check:checked')).map(chk => chk.value)
+      );
+
+      Array.from(select.options).forEach(opt => {
+        opt.selected = checkedValues.has(opt.value);
+      });
+
+      updateLoaiChungTuDisplay();
+    }
+
+    function openLoaiChungTuPopup() {
+      const popup = document.getElementById('loaiChungTuPopup');
+      if (!popup) return;
+      popup.style.display = 'block';
+    }
+
+    function closeLoaiChungTuPopup() {
+      const popup = document.getElementById('loaiChungTuPopup');
+      if (!popup) return;
+      popup.style.display = 'none';
+    }
+
+    function bindLoaiChungTuPopupEvents() {
+      const wrap = document.getElementById('loaiChungTuWrap');
+      const popupList = document.getElementById('loaiChungTuPopupList');
+      const toggleBtn = document.getElementById('toggleLoaiChungTuPopup');
+      const display = document.getElementById('loaiChungTuDisplay');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const popup = document.getElementById('loaiChungTuPopup');
+          if (!popup) return;
+          popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+      }
+
+      if (display) {
+        display.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const popup = document.getElementById('loaiChungTuPopup');
+          if (!popup) return;
+          popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+      }
+
+      if (popupList) {
+        popupList.addEventListener('change', function (e) {
+          if (e.target.classList.contains('loai-ct-check')) {
+            syncLoaiChungTuSelectFromPopup();
+          }
+        });
+      }
+
+      document.addEventListener('mousedown', function (e) {
+        if (!wrap?.contains(e.target)) {
+          closeLoaiChungTuPopup();
+        }
+      });
+    }
+
 
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
@@ -376,6 +561,7 @@
 
       const selectLoai = document.getElementById("loaiChungTu");
       const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+      updateLoaiChungTuDisplay();
 
       const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
 
@@ -1127,6 +1313,7 @@
         // chọn đúng option nếu có
         const opt = Array.from(selectLoai.options).find(o => o.value === prefix);
         if (opt) opt.selected = true;
+        updateLoaiChungTuDisplay();
 
         // lấy ngày của hóa đơn -> đặt từ/đến đúng ngày đó
         try {
@@ -1414,6 +1601,8 @@
 
         // ✅ Admin OK -> lúc này mới init filter + bind events + load data
         await initFiltersFromUrl();
+        renderLoaiChungTuPopup();
+        bindLoaiChungTuPopupEvents();
         bindEventsAfterAdmin();
 
         // Gắn popup tìm mã sản phẩm (chỉ admin)
