@@ -20,6 +20,14 @@
     return client;
   }
 
+  function getIsAdminLocal() {
+    try {
+      return (sessionStorage.getItem("is_admin") || localStorage.getItem("is_admin")) === "true";
+    } catch {
+      return false;
+    }
+  }
+
   // ===== CSS cho popup =====
   const css = `
   .card {
@@ -559,11 +567,19 @@
     if (!["cs1", "cs2"].includes(coso)) {
       return { ok: false, message: "Cơ sở không hợp lệ" };
     }
-    if (!["kho", "baymau"].includes(loai)) {
+    if (!["kho", "baymau", "nhomhang"].includes(loai)) {
       return { ok: false, message: "Loại dữ liệu không hợp lệ" };
     }
     if (!vitri) {
-      return { ok: false, message: loai === "baymau" ? "Vị trí bày mẫu trống" : "Vị trí kho trống" };
+      return {
+        ok: false,
+        message:
+          loai === "baymau"
+            ? "Vị trí bày mẫu trống"
+            : loai === "nhomhang"
+              ? "Nhóm hàng trống"
+              : "Vị trí kho trống"
+      };
     }
 
     const client = getSupabaseClient();
@@ -581,19 +597,13 @@
 
       if (error) {
         console.warn("[StockQuickPopup] rpc_save_vitrikho_nhanh error:", error);
-        return {
-          ok: false,
-          message: error.message || (loai === "baymau" ? "Lỗi gọi RPC lưu vị trí bày mẫu" : "Lỗi gọi RPC lưu vị trí kho")
-        };
+        return { ok: false, message: error.message || "Lỗi gọi RPC" };
       }
 
       return data || { ok: false, message: "Không nhận được phản hồi từ RPC" };
     } catch (e) {
       console.warn("[StockQuickPopup] saveVitriNhanh exception:", e);
-      return {
-        ok: false,
-        message: e.message || (loai === "baymau" ? "Có lỗi khi lưu vị trí bày mẫu" : "Có lỗi khi lưu vị trí kho")
-      };
+      return { ok: false, message: e.message || "Có lỗi xảy ra khi lưu dữ liệu" };
     }
   }
 
@@ -791,6 +801,51 @@
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
+    const isAdmin = getIsAdminLocal();
+
+    const nhomhangRow = nhomhang
+      ? (
+        isAdmin
+          ? `
+    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
+      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm hàng</button>
+      <span class="sq-vitri-label">Nhóm hàng:</span>
+      <input
+        type="text"
+        class="sq-vitri-input"
+        data-coso="cs1"
+        data-loai="nhomhang"
+        value="${nhomhang}"
+        placeholder="Nhập nhóm hàng"
+        autocomplete="off"
+      />
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `
+          : `
+    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
+      <button type="button" class="sq-vitri-save-btn" disabled>Lưu nhóm hàng</button>
+      <span class="sq-vitri-label">Nhóm hàng:</span>
+      <span class="sq-vitri-value-readonly">${nhomhang}</span>
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `
+      )
+      : `
+    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
+      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm hàng</button>
+      <span class="sq-vitri-label">Nhóm hàng:</span>
+      <input
+        type="text"
+        class="sq-vitri-input"
+        data-coso="cs1"
+        data-loai="nhomhang"
+        placeholder="Nhập nhóm hàng"
+        autocomplete="off"
+      />
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `;
 
     function formatPrice(v) {
       if (!v) return "";
@@ -887,22 +942,42 @@
       : "";
 
     const vitriRowCs1 = vitri_cs1
-      ? `
-        <div class="sq-vitri-action-row" data-coso="cs1">
+      ? (
+        isAdmin
+          ? `
+        <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu vị trí</button>
+          <span class="sq-vitri-coso">CS1:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs1"
+            data-loai="kho"
+            value="${vitri_cs1}"
+            placeholder="Nhập vị trí CS1"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+          : `
+        <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
           <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
           <span class="sq-vitri-coso">CS1:</span>
           <span class="sq-vitri-value-readonly">${vitri_cs1}</span>
           <span class="sq-vitri-msg"></span>
         </div>
       `
+      )
       : `
-        <div class="sq-vitri-action-row" data-coso="cs1">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1">Lưu vị trí</button>
+        <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu vị trí</button>
           <span class="sq-vitri-coso">CS1:</span>
           <input
             type="text"
             class="sq-vitri-input"
             data-coso="cs1"
+            data-loai="kho"
             placeholder="Nhập vị trí CS1"
             autocomplete="off"
           />
@@ -911,22 +986,42 @@
       `;
 
     const vitriRowCs2 = vitri_cs2
-      ? `
-        <div class="sq-vitri-action-row" data-coso="cs2">
+      ? (
+        isAdmin
+          ? `
+        <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu vị trí</button>
+          <span class="sq-vitri-coso">CS2:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs2"
+            data-loai="kho"
+            value="${vitri_cs2}"
+            placeholder="Nhập vị trí CS2"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+          : `
+        <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
           <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
           <span class="sq-vitri-coso">CS2:</span>
           <span class="sq-vitri-value-readonly">${vitri_cs2}</span>
           <span class="sq-vitri-msg"></span>
         </div>
       `
+      )
       : `
-        <div class="sq-vitri-action-row" data-coso="cs2">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2">Lưu vị trí</button>
+        <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu vị trí</button>
           <span class="sq-vitri-coso">CS2:</span>
           <input
             type="text"
             class="sq-vitri-input"
             data-coso="cs2"
+            data-loai="kho"
             placeholder="Nhập vị trí CS2"
             autocomplete="off"
           />
@@ -935,54 +1030,92 @@
       `;
 
     const baymauRowCs1 = baymau_cs1
-      ? `
-    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-      <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
-      <span class="sq-vitri-coso">CS1:</span>
-      <span class="sq-vitri-value-readonly">${baymau_cs1}</span>
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `
+      ? (
+        isAdmin
+          ? `
+        <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu bày mẫu</button>
+          <span class="sq-vitri-coso">CS1:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs1"
+            data-loai="baymau"
+            value="${baymau_cs1}"
+            placeholder="Nhập vị trí bày mẫu CS1"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+          : `
+        <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
+          <span class="sq-vitri-coso">CS1:</span>
+          <span class="sq-vitri-value-readonly">${baymau_cs1}</span>
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+      )
       : `
-    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu bày mẫu</button>
-      <span class="sq-vitri-coso">CS1:</span>
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="cs1"
-        data-loai="baymau"
-        placeholder="Nhập vị trí bày mẫu CS1"
-        autocomplete="off"
-      />
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `;
+        <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu bày mẫu</button>
+          <span class="sq-vitri-coso">CS1:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs1"
+            data-loai="baymau"
+            placeholder="Nhập vị trí bày mẫu CS1"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `;
 
     const baymauRowCs2 = baymau_cs2
-      ? `
-    <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-      <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
-      <span class="sq-vitri-coso">CS2:</span>
-      <span class="sq-vitri-value-readonly">${baymau_cs2}</span>
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `
+      ? (
+        isAdmin
+          ? `
+        <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu bày mẫu</button>
+          <span class="sq-vitri-coso">CS2:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs2"
+            data-loai="baymau"
+            value="${baymau_cs2}"
+            placeholder="Nhập vị trí bày mẫu CS2"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+          : `
+        <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
+          <span class="sq-vitri-coso">CS2:</span>
+          <span class="sq-vitri-value-readonly">${baymau_cs2}</span>
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `
+      )
       : `
-    <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-      <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu bày mẫu</button>
-      <span class="sq-vitri-coso">CS2:</span>
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="cs2"
-        data-loai="baymau"
-        placeholder="Nhập vị trí bày mẫu CS2"
-        autocomplete="off"
-      />
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `;
+        <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu bày mẫu</button>
+          <span class="sq-vitri-coso">CS2:</span>
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="cs2"
+            data-loai="baymau"
+            placeholder="Nhập vị trí bày mẫu CS2"
+            autocomplete="off"
+          />
+          <span class="sq-vitri-msg"></span>
+        </div>
+      `;
 
     const vitriEditorBlock = `
   <div class="sq-vitri-actions-wrap">
@@ -990,6 +1123,7 @@
     ${baymauRowCs1}
     ${vitriRowCs2}
     ${baymauRowCs2}
+    ${nhomhangRow}
   </div>
 `;
 
@@ -1063,7 +1197,12 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
       const runSave = async () => {
         const masp = String(popup.dataset.masp || "").trim().toUpperCase();
         const vitri = String(input.value || "").trim();
-        const nhan = loai === "baymau" ? "vị trí bày mẫu" : "vị trí";
+        const nhan =
+          loai === "baymau"
+            ? "vị trí bày mẫu"
+            : loai === "nhomhang"
+              ? "nhóm hàng"
+              : "vị trí";
 
         if (!vitri) {
           if (msgEl) {
@@ -1090,7 +1229,12 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
           const vitriMoi = String(rs.vitri_moi || vitri).trim();
 
           const readonlyHtml = `
-            <button type="button" class="sq-vitri-save-btn" disabled>${loai === "baymau" ? "Lưu bày mẫu" : "Lưu vị trí"}</button>
+            <button type="button" class="sq-vitri-save-btn" disabled>${loai === "baymau"
+              ? "Lưu bày mẫu"
+              : loai === "nhomhang"
+                ? "Lưu nhóm hàng"
+                : "Lưu vị trí"
+            }</button>
             <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
             <span class="sq-vitri-value-readonly">${vitriMoi}</span>
             <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
@@ -1104,7 +1248,14 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
         btn.textContent = oldBtnText;
 
         if (msgEl) {
-          msgEl.textContent = (rs && rs.message) ? rs.message : "Lưu vị trí thất bại";
+          msgEl.textContent =
+            (rs && rs.message)
+              ? rs.message
+              : (loai === "baymau"
+                ? "Lưu vị trí bày mẫu thất bại"
+                : loai === "nhomhang"
+                  ? "Lưu nhóm hàng thất bại"
+                  : "Lưu vị trí thất bại");
           msgEl.className = "sq-vitri-msg err";
         }
 
