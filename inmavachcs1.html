@@ -624,6 +624,7 @@
             let filtered = [];
             let selected = [];
             let allMauSacOptions = [];
+            let selectedColorOrder = [];
 
             // Elements
             const searchInput = document.getElementById('search');
@@ -1400,6 +1401,7 @@
                     document.getElementById('gianhapInput').value = data.gianhap || '';
                     document.getElementById('gialeInput').value = data.giale || '';
                     document.getElementById('mausacInput').value = data.mausac || '';
+                    selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
                     syncPopupChecksFromInput();
                     document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
@@ -1445,6 +1447,7 @@
                 // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
                 syncQuanLyKichCoByGiaLe();
 
+                selectedColorOrder = parseColorsFromInput(document.getElementById('mausacInput').value || '');
                 updateMauSacPreview();
                 syncPopupChecksFromInput();
             }
@@ -1781,8 +1784,18 @@ Bạn chưa nhập màu sắc.
                 return [...new Set(arr)];
             }
 
+            function syncSelectedColorOrderFromInput() {
+                selectedColorOrder = parseColorsFromInput(mausacInput.value);
+            }
+
+            function updateInputFromSelectedColorOrder() {
+                mausacInput.value = selectedColorOrder.join(',');
+                updateMauSacPreview();
+            }
+
             function setColorsToInput(colors) {
-                mausacInput.value = colors.join(',');
+                selectedColorOrder = [...colors];
+                mausacInput.value = selectedColorOrder.join(',');
                 updateMauSacPreview();
             }
 
@@ -1817,21 +1830,43 @@ Bạn chưa nhập màu sắc.
             }
 
             function syncPopupChecksFromInput() {
-                const selectedColors = parseColorsFromInput(mausacInput.value);
+                const selectedColors = selectedColorOrder.length
+                    ? selectedColorOrder
+                    : parseColorsFromInput(mausacInput.value);
+
                 document.querySelectorAll('.mausac-check').forEach(chk => {
                     chk.checked = selectedColors.includes(normalizeColorToken(chk.value));
                 });
             }
 
-            function updateInputFromPopupChecks() {
-                const checked = [...document.querySelectorAll('.mausac-check:checked')]
-                    .map(chk => normalizeColorToken(chk.value));
+            function updateInputFromPopupChecks(changedColor = '', isChecked = false) {
+                const color = normalizeColorToken(changedColor);
+
+                // Đồng bộ từ input trước để không mất các màu gõ tay
+                if (!selectedColorOrder.length) {
+                    selectedColorOrder = parseColorsFromInput(mausacInput.value);
+                }
 
                 const manualColors = parseColorsFromInput(mausacInput.value)
                     .filter(c => !allMauSacOptions.some(m => m.mamau === c));
 
-                const finalColors = [...new Set([...checked, ...manualColors])];
-                setColorsToInput(finalColors);
+                // Giữ lại thứ tự cũ của các màu đã chọn trong popup
+                let popupSelected = selectedColorOrder.filter(c =>
+                    allMauSacOptions.some(m => m.mamau === c)
+                );
+
+                if (color) {
+                    if (isChecked) {
+                        if (!popupSelected.includes(color)) {
+                            popupSelected.push(color); // chọn sau -> đứng sau
+                        }
+                    } else {
+                        popupSelected = popupSelected.filter(c => c !== color); // bỏ tick -> xóa đúng màu
+                    }
+                }
+
+                selectedColorOrder = [...popupSelected, ...manualColors];
+                updateInputFromSelectedColorOrder();
             }
 
             function openMauSacPopup() {
@@ -1859,19 +1894,20 @@ Bạn chưa nhập màu sắc.
 
             mausacPopupList?.addEventListener('change', function (e) {
                 if (e.target.classList.contains('mausac-check')) {
-                    updateInputFromPopupChecks();
+                    updateInputFromPopupChecks(e.target.value, e.target.checked);
                 }
             });
 
             mausacInput?.addEventListener('input', function () {
-                // ❌ KHÔNG chuẩn hóa ngay khi đang gõ nữa
-                // Chỉ update preview thôi
+                selectedColorOrder = parseColorsFromInput(mausacInput.value);
                 updateMauSacPreview();
+                syncPopupChecksFromInput();
             });
 
             mausacInput?.addEventListener('blur', function () {
                 const colors = parseColorsFromInput(mausacInput.value);
-                setColorsToInput(colors); // chuẩn hóa sau khi nhập xong
+                selectedColorOrder = [...colors];
+                updateInputFromSelectedColorOrder();
                 syncPopupChecksFromInput();
             });
 
