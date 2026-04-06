@@ -1226,19 +1226,42 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
         const rs = await saveVitriNhanh(masp, coso, vitri, loai);
 
         if (rs && rs.ok) {
-          const vitriMoi = String(rs.vitri_moi || vitri).trim();
+          const vitriMoi = String(
+            Object.prototype.hasOwnProperty.call(rs, "vitri_moi") ? rs.vitri_moi : vitri
+          ).trim();
 
-          const readonlyHtml = `
-            <button type="button" class="sq-vitri-save-btn" disabled>${loai === "baymau"
+          const isAdminNow = getIsAdminLocal();
+          const btnLabel =
+            loai === "baymau"
               ? "Lưu bày mẫu"
               : loai === "nhomhang"
                 ? "Lưu nhóm hàng"
-                : "Lưu vị trí"
-            }</button>
-            <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
-            <span class="sq-vitri-value-readonly">${vitriMoi}</span>
-            <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
-          `;
+                : "Lưu vị trí";
+
+          if (isAdminNow) {
+            row.innerHTML = `
+      <button type="button" class="sq-vitri-save-btn" data-coso="${coso}" data-loai="${loai}">${btnLabel}</button>
+      <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
+      <input
+        type="text"
+        class="sq-vitri-input"
+        data-coso="${coso}"
+        data-loai="${loai}"
+        value="${vitriMoi}"
+        autocomplete="off"
+      />
+      <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
+    `;
+            bindVitriActions(popup);
+            return;
+          }
+
+          const readonlyHtml = `
+    <button type="button" class="sq-vitri-save-btn" disabled>${btnLabel}</button>
+    <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
+    <span class="sq-vitri-value-readonly">${vitriMoi || ""}</span>
+    <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
+  `;
 
           row.innerHTML = readonlyHtml;
           return;
