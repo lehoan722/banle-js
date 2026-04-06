@@ -547,10 +547,11 @@
 
   // ===== Gọi RPC xntnhanh + lấy vị trí kho =====
 
-  async function saveVitriKhoNhanh(maspRaw, cosoRaw, vitriRaw) {
+  async function saveVitriNhanh(maspRaw, cosoRaw, vitriRaw, loaiRaw = "kho") {
     const masp = String(maspRaw || "").trim().toUpperCase();
     const coso = String(cosoRaw || "").trim().toLowerCase();
     const vitri = String(vitriRaw || "").trim();
+    const loai = String(loaiRaw || "kho").trim().toLowerCase();
 
     if (!masp) {
       return { ok: false, message: "Mã sản phẩm trống" };
@@ -558,8 +559,11 @@
     if (!["cs1", "cs2"].includes(coso)) {
       return { ok: false, message: "Cơ sở không hợp lệ" };
     }
+    if (!["kho", "baymau"].includes(loai)) {
+      return { ok: false, message: "Loại dữ liệu không hợp lệ" };
+    }
     if (!vitri) {
-      return { ok: false, message: "Vị trí kho trống" };
+      return { ok: false, message: loai === "baymau" ? "Vị trí bày mẫu trống" : "Vị trí kho trống" };
     }
 
     const client = getSupabaseClient();
@@ -572,17 +576,24 @@
         p_masp: masp,
         p_coso: coso,
         p_vitri: vitri,
+        p_loai: loai,
       });
 
       if (error) {
         console.warn("[StockQuickPopup] rpc_save_vitrikho_nhanh error:", error);
-        return { ok: false, message: error.message || "Lỗi gọi RPC lưu vị trí kho" };
+        return {
+          ok: false,
+          message: error.message || (loai === "baymau" ? "Lỗi gọi RPC lưu vị trí bày mẫu" : "Lỗi gọi RPC lưu vị trí kho")
+        };
       }
 
       return data || { ok: false, message: "Không nhận được phản hồi từ RPC" };
     } catch (e) {
-      console.warn("[StockQuickPopup] saveVitriKhoNhanh exception:", e);
-      return { ok: false, message: e.message || "Có lỗi xảy ra khi lưu vị trí kho" };
+      console.warn("[StockQuickPopup] saveVitriNhanh exception:", e);
+      return {
+        ok: false,
+        message: e.message || (loai === "baymau" ? "Có lỗi khi lưu vị trí bày mẫu" : "Có lỗi khi lưu vị trí kho")
+      };
     }
   }
 
@@ -621,6 +632,8 @@
     let rows = [];
     let vitri_cs1 = "";
     let vitri_cs2 = "";
+    let baymau_cs1 = "";
+    let baymau_cs2 = "";
     let nhap_dau_ma = "";
     let nhap_cuoi_ma = "";
     let giale = "";
@@ -641,7 +654,7 @@
         }),
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, nhapdau, giale, nhomhang")
+          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang")
           .eq("masp", masp)
           .maybeSingle(),
       ]);
@@ -680,6 +693,8 @@
       } else if (hh) {
         vitri_cs1 = hh.vitrikho1 || "";
         vitri_cs2 = hh.vitrikho2 || "";
+        baymau_cs1 = hh.treomaucs1 || "";
+        baymau_cs2 = hh.treomaucs2 || "";
         giale = hh.giale || "";
         nhomhang = hh.nhomhang || "";
 
@@ -742,7 +757,18 @@
       giale
     };
 
-    return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
+    return {
+      masp,
+      rows,
+      vitri_cs1,
+      vitri_cs2,
+      baymau_cs1,
+      baymau_cs2,
+      nhap_dau_ma,
+      nhap_cuoi_ma,
+      giale,
+      nhomhang
+    };
 
   }
 
@@ -758,6 +784,8 @@
         : [];
     const vitri_cs1 = payload && payload.vitri_cs1 ? payload.vitri_cs1 : "";
     const vitri_cs2 = payload && payload.vitri_cs2 ? payload.vitri_cs2 : "";
+    const baymau_cs1 = payload && payload.baymau_cs1 ? payload.baymau_cs1 : "";
+    const baymau_cs2 = payload && payload.baymau_cs2 ? payload.baymau_cs2 : "";
 
     const nhap_dau_ma = payload && payload.nhap_dau_ma ? String(payload.nhap_dau_ma).trim() : "";
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
@@ -906,12 +934,64 @@
         </div>
       `;
 
+    const baymauRowCs1 = baymau_cs1
+      ? `
+    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
+      <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
+      <span class="sq-vitri-coso">CS1:</span>
+      <span class="sq-vitri-value-readonly">${baymau_cs1}</span>
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `
+      : `
+    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
+      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu bày mẫu</button>
+      <span class="sq-vitri-coso">CS1:</span>
+      <input
+        type="text"
+        class="sq-vitri-input"
+        data-coso="cs1"
+        data-loai="baymau"
+        placeholder="Nhập vị trí bày mẫu CS1"
+        autocomplete="off"
+      />
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `;
+
+    const baymauRowCs2 = baymau_cs2
+      ? `
+    <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
+      <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
+      <span class="sq-vitri-coso">CS2:</span>
+      <span class="sq-vitri-value-readonly">${baymau_cs2}</span>
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `
+      : `
+    <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
+      <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu bày mẫu</button>
+      <span class="sq-vitri-coso">CS2:</span>
+      <input
+        type="text"
+        class="sq-vitri-input"
+        data-coso="cs2"
+        data-loai="baymau"
+        placeholder="Nhập vị trí bày mẫu CS2"
+        autocomplete="off"
+      />
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `;
+
     const vitriEditorBlock = `
-      <div class="sq-vitri-actions-wrap">
-        ${vitriRowCs1}
-        ${vitriRowCs2}
-      </div>
-    `;
+  <div class="sq-vitri-actions-wrap">
+    ${vitriRowCs1}
+    ${baymauRowCs1}
+    ${vitriRowCs2}
+    ${baymauRowCs2}
+  </div>
+`;
 
     const imgUrl = IMG_BASE + upper + ".JPG";
     const imgBlock = `
@@ -976,16 +1056,18 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
       const input = row.querySelector(".sq-vitri-input[data-coso]");
       const msgEl = row.querySelector(".sq-vitri-msg");
       const coso = row.dataset.coso || (btn ? btn.dataset.coso : "");
+      const loai = row.dataset.loai || (btn ? btn.dataset.loai : "kho") || "kho";
 
       if (!btn || !input || !coso) return;
 
       const runSave = async () => {
         const masp = String(popup.dataset.masp || "").trim().toUpperCase();
         const vitri = String(input.value || "").trim();
+        const nhan = loai === "baymau" ? "vị trí bày mẫu" : "vị trí";
 
         if (!vitri) {
           if (msgEl) {
-            msgEl.textContent = "Chưa nhập vị trí";
+            msgEl.textContent = `Chưa nhập ${nhan}`;
             msgEl.className = "sq-vitri-msg err";
           }
           input.focus();
@@ -1002,13 +1084,13 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
           msgEl.className = "sq-vitri-msg";
         }
 
-        const rs = await saveVitriKhoNhanh(masp, coso, vitri);
+        const rs = await saveVitriNhanh(masp, coso, vitri, loai);
 
         if (rs && rs.ok) {
           const vitriMoi = String(rs.vitri_moi || vitri).trim();
 
           const readonlyHtml = `
-            <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
+            <button type="button" class="sq-vitri-save-btn" disabled>${loai === "baymau" ? "Lưu bày mẫu" : "Lưu vị trí"}</button>
             <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
             <span class="sq-vitri-value-readonly">${vitriMoi}</span>
             <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
