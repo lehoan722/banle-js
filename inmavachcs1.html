@@ -592,7 +592,7 @@
                 window.hotInstance = hot;
                 window.hot = hot;
 
-                // 🔐 Khởi tạo đăng nhập chuẩn cho trang in mã vạch CS1
+                // 🔐 Khởi tạo đăng nhập chuẩn cho trang in mã vạch cs1
                 khoiTaoDangNhapDungChung({
                     appContainerId: 'app-container',   // ID mình vừa bọc ở bước 2
                     macDinhDiaDiem: 'cs1',
@@ -849,7 +849,7 @@
         row-gap: 1.8mm;        
     ">`;
 
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs1
                 for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
                 for (let i = 0; i < maxTems; i++) {
                     const t = pageTems[i] || null;
@@ -1004,7 +1004,7 @@
                 const maxTems = PER_PAGE - (currentPage === 1 ? blank : 0);
 
                 // Dựng HTML: padding theo thông số bạn cung cấp
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs1
                 let html = `<div class="print-preview" style="padding-top:5.5mm; padding-left:9.3mm;">
     <div class="tem-grid" style="
       display:grid;
@@ -1171,7 +1171,7 @@
 
             // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
             function openNhapFromItems(items) {
-                const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+                const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs1 nếu cần
                 const json = JSON.stringify(payload);
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
@@ -1186,7 +1186,7 @@
 
             // Mở trang nhập và truyền payload qua hash (nếu dài quá thì dùng localStorage)
             function openNhaptamcs1(items) {
-                const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs2 nếu cần
+                const payload = { source: 'in-tem', cs: 'cs1', items }; // cs: bạn đổi cs1 nếu cần
                 const json = JSON.stringify(payload);
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
@@ -1517,19 +1517,29 @@
                 return (data || []).filter(x => (x.masp || '').toUpperCase() !== maspFull);
             }
 
-            async function confirmAndUpdateSiblingColors({
+            async function confirmBulkPriceUpdateBeforeSave({
                 maspDayDu,
-                baseData,
                 giaNhapChanged,
                 giaLeChanged
             }) {
                 const maspFull = (maspDayDu || '').trim().toUpperCase();
-                if (!maspFull.includes('.')) return;
 
-                if (!giaNhapChanged && !giaLeChanged) return;
+                // Không phải mã có màu => không cần hỏi
+                if (!maspFull.includes('.')) {
+                    return { proceed: true, siblings: [] };
+                }
+
+                // Không sửa giá => không cần hỏi
+                if (!giaNhapChanged && !giaLeChanged) {
+                    return { proceed: true, siblings: [] };
+                }
 
                 const siblings = await getOtherColorProductsByBaseCode(maspFull);
-                if (!siblings.length) return;
+
+                // Không có màu còn lại => cho lưu bình thường
+                if (!siblings.length) {
+                    return { proceed: true, siblings: [] };
+                }
 
                 const mauConLai = siblings.map(x => x.masp || '').join('\n- ');
                 const noiDungSua = [
@@ -1541,26 +1551,18 @@
                     `⚠️ Bạn vừa sửa ${noiDungSua} của mã:\n` +
                     `${maspFull}\n\n` +
                     `Các mã màu còn lại cùng sản phẩm:\n- ${mauConLai}\n\n` +
-                    `Bạn có muốn cập nhật ${noiDungSua} cho tất cả các mã màu còn lại không?`
+                    `Bạn có muốn cập nhật ${noiDungSua} cho tất cả các mã màu còn lại không?\n\n` +
+                    `OK = cập nhật đồng bộ tất cả màu\n` +
+                    `Hủy = không cập nhật gì cả`
                 );
 
-                if (!ok) return;
-
-                const updateData = {};
-                if (giaNhapChanged) updateData.gianhap = baseData.gianhap;
-                if (giaLeChanged) updateData.giale = baseData.giale;
-
-                for (const item of siblings) {
-                    const { error } = await supabase
-                        .from('dmhanghoa')
-                        .update(updateData)
-                        .eq('masp', item.masp);
-
-                    if (error) {
-                        console.error('Lỗi cập nhật đồng bộ màu:', item.masp, error);
-                    }
+                if (!ok) {
+                    return { proceed: false, siblings: [] };
                 }
+
+                return { proceed: true, siblings };
             }
+
 
             // ==== Nút Lưu (submit form) ====
             document.getElementById('addProductForm').onsubmit = async function (e) {
@@ -1649,6 +1651,23 @@ Bạn chưa nhập màu sắc.
                     }
                 }
 
+                let bulkPriceDecision = { proceed: true, siblings: [] };
+
+                if (records.length === 1) {
+                    bulkPriceDecision = await confirmBulkPriceUpdateBeforeSave({
+                        maspDayDu: records[0].masp,
+                        giaNhapChanged,
+                        giaLeChanged
+                    });
+
+                    if (!bulkPriceDecision.proceed) {
+                        document.getElementById('addProductMessage').style.color = 'red';
+                        document.getElementById('addProductMessage').textContent =
+                            'Đã hủy cập nhật. Không có mã nào được thay đổi.';
+                        return;
+                    }
+                }
+
                 let insertCount = 0;
                 let updateCount = 0;
                 let errorList = [];
@@ -1693,13 +1712,30 @@ Bạn chưa nhập màu sắc.
                     }
                 }
 
-                if (errorList.length === 0 && records.length === 1) {
-                    await confirmAndUpdateSiblingColors({
-                        maspDayDu: records[0].masp,
-                        baseData,
-                        giaNhapChanged,
-                        giaLeChanged
-                    });
+                if (
+                    errorList.length === 0 &&
+                    records.length === 1 &&
+                    bulkPriceDecision.proceed &&
+                    bulkPriceDecision.siblings.length > 0 &&
+                    (giaNhapChanged || giaLeChanged)
+                ) {
+                    const updateData = {};
+                    if (giaNhapChanged) updateData.gianhap = baseData.gianhap;
+                    if (giaLeChanged) updateData.giale = baseData.giale;
+
+                    for (const item of bulkPriceDecision.siblings) {
+                        const { error } = await supabase
+                            .from('dmhanghoa')
+                            .update(updateData)
+                            .eq('masp', item.masp);
+
+                        if (error) {
+                            errorList.push(`${item.masp}: ${error.message}`);
+                            console.error('Lỗi cập nhật đồng bộ màu:', item.masp, error);
+                        } else {
+                            updateCount++;
+                        }
+                    }
                 }
 
                 const msgEl = document.getElementById('addProductMessage');
