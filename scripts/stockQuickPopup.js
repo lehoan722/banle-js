@@ -804,50 +804,7 @@
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
     const isAdmin = getIsAdminLocal();
-
-    const nhomhangRow = nhomhang
-      ? (
-        isAdmin
-          ? `
-    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
-      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm hàng</button>
-      <span class="sq-vitri-label">Nhóm hàng:</span>
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="cs1"
-        data-loai="nhomhang"
-        value="${nhomhang}"
-        placeholder="Nhập nhóm hàng"
-        autocomplete="off"
-      />
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `
-          : `
-    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
-      <button type="button" class="sq-vitri-save-btn" disabled>Lưu nhóm hàng</button>
-      <span class="sq-vitri-label">Nhóm hàng:</span>
-      <span class="sq-vitri-value-readonly">${nhomhang}</span>
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `
-      )
-      : `
-    <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
-      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm hàng</button>
-      <span class="sq-vitri-label">Nhóm hàng:</span>
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="cs1"
-        data-loai="nhomhang"
-        placeholder="Nhập nhóm hàng"
-        autocomplete="off"
-      />
-      <span class="sq-vitri-msg"></span>
-    </div>
-  `;
+        
 
     function formatPrice(v) {
       if (!v) return "";
