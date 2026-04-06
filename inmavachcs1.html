@@ -1325,28 +1325,20 @@
                     e.preventDefault();
                     e.stopPropagation();
 
-                    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
                     try {
                         const pop = document.getElementById('maspSuggestList');
                         if (pop) pop.style.display = 'none';
                     } catch (_) { }
 
-                    // Nếu vừa lưu xong và đang quay lại ô mã SP,
-                    // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
-                    if (justSavedReturnToMasp) {
-                        justSavedReturnToMasp = false;
-                        const mausac = document.getElementById('mausacInput');
-                        if (mausac) {
-                            mausac.focus();
-                            setTimeout(() => mausac.select?.(), 10);
-                        }
-                        return;
-                    }
+                    justSavedReturnToMasp = false;
 
-                    // Luồng cũ
                     checkExistAndFillForm();
+
                     const tensp = document.getElementById('tenspInput');
-                    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
+                    if (tensp) {
+                        tensp.focus();
+                        setTimeout(() => tensp.select?.(), 10);
+                    }
                 }
             });
 
