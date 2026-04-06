@@ -1381,6 +1381,8 @@
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
             let justSavedReturnToMasp = false; // vừa lưu xong và đang đứng lại ở ô mã sản phẩm
             let skipNextAutoFillFromMaspBlur = false; // bỏ qua 1 lần auto fill khi rời ô mã SP sau khi lưu
+            let originalGiaNhap = null;
+            let originalGiaLe = null;
 
             async function checkExistAndFillForm() {
                 if (skipNextAutoFillFromMaspBlur) {
@@ -1400,6 +1402,9 @@
                     document.getElementById('tenspInput').value = data.tensp || '';
                     document.getElementById('gianhapInput').value = data.gianhap || '';
                     document.getElementById('gialeInput').value = data.giale || '';
+
+                    originalGiaNhap = Number(data.gianhap) || 0;
+                    originalGiaLe = Number(data.giale) || 0;
                     document.getElementById('mausacInput').value = data.mausac || '';
                     selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
@@ -1415,6 +1420,8 @@
                 } else {
                     // Không fill gì cả, không reset
                     isEditMode = false;
+                    originalGiaNhap = null;
+                    originalGiaLe = null;
                     document.getElementById('addProductForm').style.border = '';
                     // Không gọi resetForm ở đây!
                     // Giữ nguyên các trường, để người dùng nhập tiếp tục
@@ -1444,6 +1451,8 @@
                 document.getElementById('addProductMessage').textContent = '';
                 document.getElementById('addProductForm').style.border = '';
                 isEditMode = false;
+                originalGiaNhap = null;
+                originalGiaLe = null;
                 // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
                 syncQuanLyKichCoByGiaLe();
 
@@ -1483,6 +1492,76 @@
                 return colors.filter(c => !knownSet.has(c));
             }
 
+            async function getOtherColorProductsByBaseCode(maspDayDu) {
+                const maspFull = (maspDayDu || '').trim().toUpperCase();
+                if (!maspFull.includes('.')) {
+                    return [];
+                }
+
+                const maspGoc = maspFull.split('.')[0].trim();
+                if (!maspGoc) {
+                    return [];
+                }
+
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp, mausac')
+                    .ilike('masp', `${maspGoc}.%`)
+                    .order('masp', { ascending: true });
+
+                if (error) {
+                    console.error('Lỗi tải danh sách màu cùng mã gốc:', error);
+                    return [];
+                }
+
+                return (data || []).filter(x => (x.masp || '').toUpperCase() !== maspFull);
+            }
+
+            async function confirmAndUpdateSiblingColors({
+                maspDayDu,
+                baseData,
+                giaNhapChanged,
+                giaLeChanged
+            }) {
+                const maspFull = (maspDayDu || '').trim().toUpperCase();
+                if (!maspFull.includes('.')) return;
+
+                if (!giaNhapChanged && !giaLeChanged) return;
+
+                const siblings = await getOtherColorProductsByBaseCode(maspFull);
+                if (!siblings.length) return;
+
+                const mauConLai = siblings.map(x => x.masp || '').join('\n- ');
+                const noiDungSua = [
+                    giaNhapChanged ? 'Giá nhập' : null,
+                    giaLeChanged ? 'Giá lẻ' : null
+                ].filter(Boolean).join(' và ');
+
+                const ok = confirm(
+                    `⚠️ Bạn vừa sửa ${noiDungSua} của mã:\n` +
+                    `${maspFull}\n\n` +
+                    `Các mã màu còn lại cùng sản phẩm:\n- ${mauConLai}\n\n` +
+                    `Bạn có muốn cập nhật ${noiDungSua} cho tất cả các mã màu còn lại không?`
+                );
+
+                if (!ok) return;
+
+                const updateData = {};
+                if (giaNhapChanged) updateData.gianhap = baseData.gianhap;
+                if (giaLeChanged) updateData.giale = baseData.giale;
+
+                for (const item of siblings) {
+                    const { error } = await supabase
+                        .from('dmhanghoa')
+                        .update(updateData)
+                        .eq('masp', item.masp);
+
+                    if (error) {
+                        console.error('Lỗi cập nhật đồng bộ màu:', item.masp, error);
+                    }
+                }
+            }
+
             // ==== Nút Lưu (submit form) ====
             document.getElementById('addProductForm').onsubmit = async function (e) {
                 e.preventDefault();
@@ -1519,6 +1598,12 @@
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
+
+                const giaNhapMoi = Number(baseData.gianhap) || 0;
+                const giaLeMoi = Number(baseData.giale) || 0;
+
+                const giaNhapChanged = isEditMode && originalGiaNhap !== null && giaNhapMoi !== originalGiaNhap;
+                const giaLeChanged = isEditMode && originalGiaLe !== null && giaLeMoi !== originalGiaLe;
 
                 let records = [];
 
@@ -1606,6 +1691,15 @@ Bạn chưa nhập màu sắc.
                     } catch (err) {
                         errorList.push(`${record.masp}: ${err.message}`);
                     }
+                }
+
+                if (errorList.length === 0 && records.length === 1) {
+                    await confirmAndUpdateSiblingColors({
+                        maspDayDu: records[0].masp,
+                        baseData,
+                        giaNhapChanged,
+                        giaLeChanged
+                    });
                 }
 
                 const msgEl = document.getElementById('addProductMessage');
