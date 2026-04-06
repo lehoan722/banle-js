@@ -183,6 +183,30 @@
       height: 16px;
       justify-self: center;
     }
+
+    .loai-ct-actions {
+      display: flex;
+      gap: 6px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #d8cfa5;
+      background: #f5ecd0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .loai-ct-actions button {
+      flex: 1;
+      padding: 5px;
+      font-size: 12px;
+      border: 1px solid #aaa;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .loai-ct-actions button:hover {
+      background: #e6dba8;
+    }
   </style>
 </head>
 
@@ -454,14 +478,20 @@
       const popupList = document.getElementById('loaiChungTuPopupList');
       if (!select || !popupList) return;
 
-      let html = '';
+      let html = `
+  <div class="loai-ct-actions">
+    <button type="button" id="btnSelectAllLoai">✔ Chọn tất cả</button>
+    <button type="button" id="btnUnselectAllLoai">✖ Bỏ chọn</button>
+  </div>
+`;
+
       Array.from(select.options).forEach(opt => {
         html += `
-      <div class="loai-ct-row" data-value="${opt.value}">
-        <div class="loai-ct-label">${opt.text}</div>
-        <input type="checkbox" class="loai-ct-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
-      </div>
-    `;
+    <div class="loai-ct-row" data-value="${opt.value}">
+      <div class="loai-ct-label">${opt.text}</div>
+      <input type="checkbox" class="loai-ct-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
+    </div>
+  `;
       });
 
       popupList.innerHTML = html;
@@ -543,6 +573,20 @@
           closeLoaiChungTuPopup();
         }
       });
+
+      // ===== Chọn tất cả =====
+      document.addEventListener('click', function (e) {
+        if (e.target.id === 'btnSelectAllLoai') {
+          document.querySelectorAll('.loai-ct-check').forEach(chk => chk.checked = true);
+          syncLoaiChungTuSelectFromPopup();
+        }
+
+        if (e.target.id === 'btnUnselectAllLoai') {
+          document.querySelectorAll('.loai-ct-check').forEach(chk => chk.checked = false);
+          syncLoaiChungTuSelectFromPopup();
+        }
+      });
+
     }
 
 
