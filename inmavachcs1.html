@@ -2048,7 +2048,13 @@ Bạn chưa nhập màu sắc.
                     const rawValue = mausacInput.value || '';
                     const parts = rawValue.split(',');
                     const currentKeyword = (parts[parts.length - 1] || '').trim();
-                    openMauSacPopup(currentKeyword);
+
+                    openMauSacPopup(currentKeyword || '');
+                    setTimeout(() => {
+                        mausacInput.focus();
+                        const len = mausacInput.value.length;
+                        mausacInput.setSelectionRange(len, len);
+                    }, 0);
                 }
             });
 
