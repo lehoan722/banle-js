@@ -2,15 +2,14 @@ import {
   playSuccessBeep,
   playWaitSizeBeep,
   playAlertBeep,
-  setupBeepUnlockOnce,
-  patchAlertWithBeep
-} from "./soundBeep.js";
+  setupBeepUnlockOnce
+} from "./soundBeepkieucu.js";
 
 import "./stockQuickPopup.js";
 
 // scripts/nhapkiemkho.js
 (function () {
-  "use strict";  
+  "use strict";
 
   const CFG = {
     ...getBranchInfoFromPath(),
@@ -3438,7 +3437,7 @@ import "./stockQuickPopup.js";
       hdState.value = "cu";
       hdState.setAttribute("data-state", "cu");
     }
-
+    
 
     (rows || []).forEach((row) => {
       const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
@@ -3532,7 +3531,6 @@ import "./stockQuickPopup.js";
 
     // Mở khóa beep cho trình duyệt
     setupBeepUnlockOnce(document);
-     patchAlertWithBeep();
 
     // Không reset phiếu ngay theo kiểu ép số 00001 nữa
     await khoiTaoSoPhieuBanDau();
