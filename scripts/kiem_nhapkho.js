@@ -2447,6 +2447,82 @@ import "./stockQuickPopup.js";
     }
   }
 
+  function getTrangThaiCanLayTheoDir(dir) {
+    const d = String(dir || "").trim().toLowerCase();
+    const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
+
+    // CS1:
+    //   CCN2V1 = THUA
+    //   CCN1V2 = THIEU
+    //
+    // CS2:
+    //   CCN1V2 = THUA
+    //   CCN2V1 = THIEU
+
+    if (toBranch === "cs2") {
+      if (d === "1v2") return "THUA";
+      if (d === "2v1") return "THIEU";
+      return "";
+    }
+
+    // mặc định CS1
+    if (d === "2v1") return "THUA";
+    if (d === "1v2") return "THIEU";
+    return "";
+  }
+
+  function moTrangChuyenChiNhanhTheoDir(dir) {
+    docLaiNhapTuBangHTML();
+    kiemTraPhieu();
+
+    const d = String(dir || "").trim().toLowerCase();
+    const url = getTransferPageUrlByDir(d);
+    const items = getItemsForTransferByDir(d);
+    const state = getState();
+    const trangThaiCanLay = getTrangThaiCanLayTheoDir(d);
+
+    if (!d || !url) {
+      phatAmThanhLoi();
+      alert("Không xác định được chiều chuyển chi nhánh.");
+      return;
+    }
+
+    if (!items || items.length === 0) {
+      phatAmThanhLoi();
+      if (trangThaiCanLay === "THUA") {
+        alert(`Không có mã sản phẩm thừa để tạo phiếu CCN ${d.toUpperCase()}.`);
+      } else if (trangThaiCanLay === "THIEU") {
+        alert(`Không có mã sản phẩm thiếu để tạo phiếu CCN ${d.toUpperCase()}.`);
+      } else {
+        alert(`Không có dữ liệu để tạo phiếu CCN ${d.toUpperCase()}.`);
+      }
+      return;
+    }
+
+    const payload = {
+      dir: d,
+      source: "kiem_nhap_kho",
+      created_at: new Date().toISOString(),
+      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
+      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+      note: taoGhiChuPhieuChuyenTuKiemNhap(),
+      items
+    };
+
+    try {
+      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+    } catch (err) {
+      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
+      alert(`Không lưu được dữ liệu tạm để chuyển sang trang CCN ${d.toUpperCase()}.`);
+      return;
+    }
+
+    const newTab = window.open(url);
+    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+      window.location.href = url;
+    }
+  }
+
   // =========================
   // TAO PHIEU CCN2V1 TU HANG THUA
   // =========================
@@ -3284,19 +3360,19 @@ import "./stockQuickPopup.js";
       });
     });
 
-    const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
-    if (btnTaoPhieuCCN1V2) {
-      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
-        e.preventDefault();
-        moTrangChuyenChiNhanhTheoTrangThai("THUA");
-      });
-    }
-
     const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
     if (btnTaoPhieuCCN2V1) {
       btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
         e.preventDefault();
-        moTrangChuyenChiNhanhTheoTrangThai("THIEU");
+        moTrangChuyenChiNhanhTheoDir("2v1");
+      });
+    }
+
+    const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
+    if (btnTaoPhieuCCN1V2) {
+      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
+        e.preventDefault();
+        moTrangChuyenChiNhanhTheoDir("1v2");
       });
     }
 
@@ -3485,7 +3561,7 @@ import "./stockQuickPopup.js";
     kiemTraPhieu,
     themDongNhapBenTrai,
     getState,
-    moTrangChuyenChiNhanhTheoTrangThai,
+    moTrangChuyenChiNhanhTheoDir,
 
     luuPhieuKiemNhapKho,
     copyDuLieuNhap,
