@@ -92,19 +92,18 @@ async function safeBeep(frequency = 1000, durationMs = 150, type = "sine", volum
 }
 
 export function playSuccessBeep() {
-  safeBeep(2400, 120, "sine", 0.3);
+  return safeBeep(2400, 120, "sine", 0.3);
 }
 
 export function playWaitSizeBeep() {
-  safeBeep(1200, 180, "sine", 0.4);
+  return safeBeep(1200, 180, "sine", 0.4);
 }
 
 export function playAlertBeep() {
-  // chặn alert beep chồng quá dày gây nghẹt
-  if (_alertBeepBusy) return;
+  if (_alertBeepBusy) return Promise.resolve(false);
 
   _alertBeepBusy = true;
-  safeBeep(800, 220, "square", 0.25).finally(() => {
+  return safeBeep(800, 220, "square", 0.25).finally(() => {
     setTimeout(() => {
       _alertBeepBusy = false;
     }, 260);
@@ -117,17 +116,37 @@ export async function unlockBeepAudio() {
 }
 
 export function setupBeepUnlockOnce(dom = document) {
-  const unlock = async () => {
-    await unlockBeepAudio();
+  let done = false;
+
+  const removeAll = () => {
     dom.removeEventListener("click", unlock, true);
     dom.removeEventListener("keydown", unlock, true);
     dom.removeEventListener("touchstart", unlock, true);
+    dom.removeEventListener("touchend", unlock, true);
     dom.removeEventListener("pointerdown", unlock, true);
+  };
+
+  const unlock = async () => {
+    if (done) return;
+
+    const ok = await unlockBeepAudio();
+
+    // chỉ gỡ listener khi unlock THẬT SỰ thành công
+    if (ok || isBeepUnlocked()) {
+      done = true;
+      removeAll();
+
+      // phát 1 beep rất ngắn để "hâm nóng" audio trên mobile
+      try {
+        safeBeep(1800, 40, "sine", 0.0001);
+      } catch (e) { }
+    }
   };
 
   dom.addEventListener("click", unlock, true);
   dom.addEventListener("keydown", unlock, true);
   dom.addEventListener("touchstart", unlock, true);
+  dom.addEventListener("touchend", unlock, true);
   dom.addEventListener("pointerdown", unlock, true);
 }
 
@@ -155,7 +174,7 @@ export function patchAlertWithBeep() {
 
     alertBusy = true;
 
-    try { playAlertBeep(); } catch {}
+    try { playAlertBeep(); } catch { }
 
     setTimeout(() => {
       try {
@@ -166,3 +185,13 @@ export function patchAlertWithBeep() {
     }, 120);
   };
 }
+
+window.addEventListener("pageshow", () => {
+  _unlocking = null;
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && _ctx && _ctx.state !== "running") {
+    _ctx.resume().catch(() => { });
+  }
+});
