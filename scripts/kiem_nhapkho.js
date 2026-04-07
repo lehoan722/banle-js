@@ -3486,13 +3486,12 @@ import "./stockQuickPopup.js";
     kiemTraPhieu,
     themDongNhapBenTrai,
     getState,
-    moTrangCCN2V1TuHangThua,
+    moTrangChuyenChiNhanhTheoTrangThai,
 
     luuPhieuKiemNhapKho,
     copyDuLieuNhap,
     pasteDuLieuNhap,
     xoaDongDangChon,
-    moTrangCCN1V2TuHangThieu,
     moLaiPhieuKiemNhapCu,
 
     setXuatData(dataMap, orderArr) {
