@@ -2045,16 +2045,9 @@ Bạn chưa nhập màu sắc.
                 if (mausacPopup.style.display === 'block') {
                     closeMauSacPopup();
                 } else {
-                    const rawValue = mausacInput.value || '';
-                    const parts = rawValue.split(',');
-                    const currentKeyword = (parts[parts.length - 1] || '').trim();
-
-                    openMauSacPopup(currentKeyword || '');
-                    setTimeout(() => {
-                        mausacInput.focus();
-                        const len = mausacInput.value.length;
-                        mausacInput.setSelectionRange(len, len);
-                    }, 0);
+                    // Bấm nút tam giác thì luôn mở FULL danh sách màu,
+                    // không lọc theo giá trị đang có trong ô
+                    openMauSacPopup('');
                 }
             });
 
@@ -2094,8 +2087,15 @@ Bạn chưa nhập màu sắc.
                 const parts = rawValue.split(',');
                 const currentKeyword = (parts[parts.length - 1] || '').trim();
 
-                openMauSacPopup(currentKeyword);
+                // Nếu ô đang là 1 mã màu hoàn chỉnh như DEN
+                // thì focus vào ô sẽ mở full danh sách để chọn tiếp
+                const isExactColor = allMauSacOptions.some(
+                    item => item.mamau === normalizeColorToken(currentKeyword)
+                );
+
+                openMauSacPopup(isExactColor ? '' : currentKeyword);
             });
+
             mausacInput?.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
