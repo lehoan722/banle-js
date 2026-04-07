@@ -243,11 +243,14 @@
         }
 
         .multi-color-box input {
-            flex: 1;
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
             border-right: none;
         }
 
         .color-picker-btn {
+            flex: 0 0 34px;
             width: 34px;
             border: 1px solid #999;
             background: #f3f3f3;
@@ -360,27 +363,24 @@
                                 <input name="giale" id="gialeInput" type="text" required />
                             </div>
                         </div>
+
                         <div class="form-row">
                             <label for="mausacInput">Màu sắc</label>
-
-                            <div class="form-row">
-                                <label for="mausacInput">Màu sắc</label>
-                                <div class="form-input" id="mausacWrap">
-                                    <div class="multi-color-box">
-                                        <input name="mausac" id="mausacInput" type="text" autocomplete="off"
-                                            placeholder="Chọn hoặc nhập: DEN,TRANG,XANH" />
-                                        <button type="button" id="toggleMauSacPopup" class="color-picker-btn">▼</button>
-                                    </div>
-
-                                    <div id="mausacPopup" class="mausac-popup" style="display:none;">
-                                        <div id="mausacPopupList" class="mausac-popup-list"></div>
-                                    </div>
-
-                                    <div id="mausacPreview" class="mausac-preview"></div>
+                            <div class="form-input" id="mausacWrap">
+                                <div class="multi-color-box">
+                                    <input name="mausac" id="mausacInput" type="text" autocomplete="off"
+                                        placeholder="Chọn hoặc nhập: DEN,TRANG,XANH" />
+                                    <button type="button" id="toggleMauSacPopup" class="color-picker-btn">▼</button>
                                 </div>
-                            </div>
 
+                                <div id="mausacPopup" class="mausac-popup" style="display:none;">
+                                    <div id="mausacPopupList" class="mausac-popup-list"></div>
+                                </div>
+
+                                <div id="mausacPreview" class="mausac-preview"></div>
+                            </div>
                         </div>
+
                         <div class="form-row">
                             <label for="khuyenmaiInput">Khuyến mãi</label>
                             <div class="form-input">
