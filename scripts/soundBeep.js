@@ -5,6 +5,13 @@ let _unlocking = null;
 let _unlocked = false;
 let _alertBeepBusy = false;
 
+let _iosMediaPrimed = false;
+let _silentAudio = null;
+
+// silent wav cực ngắn
+const IOS_SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
 export function getAudioCtx() {
   if (!_ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -13,6 +20,31 @@ export function getAudioCtx() {
   }
   return _ctx;
 }
+
+async function primeIosMediaChannel() {
+  if (_iosMediaPrimed) return true;
+
+  try {
+    if (!_silentAudio) {
+      _silentAudio = new Audio(IOS_SILENT_WAV);
+      _silentAudio.preload = "auto";
+      _silentAudio.playsInline = true;
+      _silentAudio.muted = false;
+      _silentAudio.volume = 0.001;
+      _silentAudio.setAttribute("webkit-playsinline", "true");
+      _silentAudio.setAttribute("playsinline", "true");
+    }
+
+    _silentAudio.currentTime = 0;
+    await _silentAudio.play().catch(() => { });
+    _iosMediaPrimed = true;
+    return true;
+  } catch (e) {
+    console.warn("primeIosMediaChannel lỗi:", e);
+    return false;
+  }
+}
+
 
 async function ensureRunning() {
   const ctx = getAudioCtx();
@@ -110,6 +142,7 @@ export function playAlertBeep() {
 }
 
 export async function unlockBeepAudio() {
+  await primeIosMediaChannel();
   const ctx = await ensureRunning();
   _unlocked = !!ctx && ctx.state === "running";
   return _unlocked;
@@ -133,6 +166,7 @@ export function setupBeepUnlockOnce(dom = document) {
   const unlock = async () => {
     if (done) return;
 
+    await primeIosMediaChannel();
     const ok = await unlockBeepAudio();
 
     if (ok || isBeepUnlocked()) {
@@ -167,7 +201,7 @@ export function patchAlertWithBeep() {
 
     alertBusy = true;
 
-    try { playAlertBeep(); } catch {}
+    try { playAlertBeep(); } catch { }
 
     setTimeout(() => {
       try {
@@ -185,6 +219,6 @@ window.addEventListener("pageshow", () => {
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && _ctx && _ctx.state !== "running") {
-    _ctx.resume().catch(() => {});
+    _ctx.resume().catch(() => { });
   }
 });
