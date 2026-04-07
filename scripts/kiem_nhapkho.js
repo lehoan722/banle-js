@@ -2,14 +2,18 @@ import {
   playSuccessBeep,
   playWaitSizeBeep,
   playAlertBeep,
-  setupBeepUnlockOnce
-} from "./soundBeepkieucu.js";
+  setupBeepUnlockOnce,
+  patchAlertWithBeep
+} from "./soundBeep.js";
 
 import "./stockQuickPopup.js";
 
 // scripts/nhapkiemkho.js
 (function () {
   "use strict";
+
+  setupBeepUnlockOnce(document);
+  patchAlertWithBeep();
 
   const CFG = {
     ...getBranchInfoFromPath(),
@@ -3437,7 +3441,7 @@ import "./stockQuickPopup.js";
       hdState.value = "cu";
       hdState.setAttribute("data-state", "cu");
     }
-    
+
 
     (rows || []).forEach((row) => {
       const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
