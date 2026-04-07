@@ -2346,6 +2346,108 @@ import "./stockQuickPopup.js";
     return note;
   }
 
+  function getTransferDirectionByTrangThai(trangThai) {
+    const tt = String(trangThai || "").trim().toUpperCase();
+    const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
+
+    // CS1:
+    //   THUA  -> 1v2
+    //   THIEU -> 2v1
+    //
+    // CS2:
+    //   THUA  -> 2v1
+    //   THIEU -> 1v2
+
+    if (toBranch === "cs2") {
+      if (tt === "THUA") return "2v1";
+      if (tt === "THIEU") return "1v2";
+      return "";
+    }
+
+    // mặc định CS1
+    if (tt === "THUA") return "1v2";
+    if (tt === "THIEU") return "2v1";
+    return "";
+  }
+
+  function getTransferPageUrlByDir(dir) {
+    const d = String(dir || "").trim().toLowerCase();
+    if (d === "1v2") return "https://banle-js.vercel.app/ccn1v2cs1.html";
+    if (d === "2v1") return "https://banle-js.vercel.app/ccn2v1cs2.html";
+    return "";
+  }
+
+  function getItemsForTransferByDir(dir) {
+    const d = String(dir || "").trim().toLowerCase();
+
+    if (d === "1v2") {
+      // hàng đi từ CS1 sang CS2
+      // bản chất là:
+      // - CS1: dùng cho HÀNG THỪA
+      // - CS2: dùng cho HÀNG THIẾU
+      return layDanhSachHangTheoTrangThai("THIEU");
+    }
+
+    if (d === "2v1") {
+      // hàng đi từ CS2 sang CS1
+      // bản chất là:
+      // - CS1: dùng cho HÀNG THIẾU
+      // - CS2: dùng cho HÀNG THỪA
+      return layDanhSachHangTheoTrangThai("THUA");
+    }
+
+    return [];
+  }
+
+  function moTrangChuyenChiNhanhTheoTrangThai(trangThai) {
+    docLaiNhapTuBangHTML();
+    kiemTraPhieu();
+
+    const dir = getTransferDirectionByTrangThai(trangThai);
+    const url = getTransferPageUrlByDir(dir);
+    const items = getItemsForTransferByDir(dir);
+    const state = getState();
+
+    if (!dir || !url) {
+      phatAmThanhLoi();
+      alert("Không xác định được chiều chuyển chi nhánh.");
+      return;
+    }
+
+    if (!items || items.length === 0) {
+      phatAmThanhLoi();
+      if (String(trangThai).toUpperCase() === "THUA") {
+        alert(`Không có mã sản phẩm thừa để tạo phiếu CCN ${dir.toUpperCase()}.`);
+      } else {
+        alert(`Không có mã sản phẩm thiếu để tạo phiếu CCN ${dir.toUpperCase()}.`);
+      }
+      return;
+    }
+
+    const payload = {
+      dir,
+      source: "kiem_nhap_kho",
+      created_at: new Date().toISOString(),
+      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
+      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+      note: taoGhiChuPhieuChuyenTuKiemNhap(),
+      items
+    };
+
+    try {
+      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+    } catch (err) {
+      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
+      alert(`Không lưu được dữ liệu tạm để chuyển sang trang CCN ${dir.toUpperCase()}.`);
+      return;
+    }
+
+    const newTab = window.open(url);
+    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+      window.location.href = url;
+    }
+  }
+
   // =========================
   // TAO PHIEU CCN2V1 TU HANG THUA
   // =========================
@@ -2375,33 +2477,18 @@ import "./stockQuickPopup.js";
     return Object.values(out);
   }
 
-  function layDanhSachHangThuaDeTaoCCN2V1() {
-    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
-    const chiTietLech = thongTinTong?.chiTietLech || [];
-
-    const rowsThua = chiTietLech
-      .filter(row => String(row.trangthai_nhan || "").trim().toLowerCase() === "thua")
-      .map(row => ({
-        masp: normalizeMasp(row.masp),
-        size: normalizeSize(row.size || "0"),
-        sl: normalizeNumber(row.sl_lech || 0)
-      }))
-      .filter(row => row.masp && row.size && row.sl > 0);
-
-    return groupByMaspForTransfer(rowsThua);
-  }
-
-  function layDanhSachHangThieuDeTaoCCN1V2() {
+  function layDanhSachHangTheoTrangThai(trangThaiCanLay) {
     const thongTinTong = xayDungDuLieuTongVaChiTietLech();
     const chiTietLech = thongTinTong?.chiTietLech || [];
     const state = getState();
     const xuatMap = state.xuat || {};
 
-    const rowsThieu = [];
+    const ttCanLay = String(trangThaiCanLay || "").trim().toLowerCase();
+    const rows = [];
 
     chiTietLech.forEach((row) => {
       const trangthai = String(row.trangthai_nhan || "").trim().toLowerCase();
-      if (trangthai !== "thieu") return;
+      if (trangthai !== ttCanLay) return;
 
       const masp = normalizeMasp(row.masp);
       const size = normalizeSize(row.size || "0");
@@ -2409,139 +2496,31 @@ import "./stockQuickPopup.js";
 
       if (!masp || sl <= 0) return;
 
-      // Nếu đã có size thật thì dùng luôn
-      if (size && size !== "0") {
-        rowsThieu.push({
-          masp,
-          size,
-          sl
-        });
-        return;
+      // THIẾU + size=0 => bung toàn bộ size thật từ dữ liệu xuất nguồn
+      if (ttCanLay === "thieu" && (!size || size === "0")) {
+        const xuatRowsTheoMasp = Object.values(xuatMap)
+          .filter(r => normalizeMasp(r?.masp) === masp)
+          .map(r => ({
+            masp,
+            size: normalizeSize(r?.size || "0"),
+            sl: normalizeNumber(r?.sl || 0)
+          }))
+          .filter(r => r.masp && r.size && r.size !== "0" && r.sl > 0);
+
+        if (xuatRowsTheoMasp.length > 0) {
+          xuatRowsTheoMasp.forEach(r => rows.push(r));
+          return;
+        }
       }
 
-      // Nếu size = 0, nghĩa là trường hợp nhập trống / kiểm tổng
-      // -> bung ra toàn bộ size thật từ dữ liệu xuất nguồn của mã đó
-      const xuatRowsTheoMasp = Object.values(xuatMap)
-        .filter(r => normalizeMasp(r?.masp) === masp)
-        .map(r => ({
-          masp,
-          size: normalizeSize(r?.size || "0"),
-          sl: normalizeNumber(r?.sl || 0)
-        }))
-        .filter(r => r.masp && r.size && r.size !== "0" && r.sl > 0);
-
-      if (xuatRowsTheoMasp.length > 0) {
-        xuatRowsTheoMasp.forEach(r => rowsThieu.push(r));
-        return;
-      }
-
-      // Nếu vẫn không có size thật thì mới giữ 0 như cũ
-      rowsThieu.push({
+      rows.push({
         masp,
-        size,
+        size: size || "0",
         sl
       });
     });
 
-    return groupByMaspForTransfer(rowsThieu);
-  }
-
-  function taoPayloadCCN1V2TuKiemNhap() {
-    const state = getState();
-    const items = layDanhSachHangThieuDeTaoCCN1V2();
-
-    if (!items || items.length === 0) return null;
-
-    return {
-      dir: "1v2",
-      source: "kiem_nhap_kho",
-      created_at: new Date().toISOString(),
-      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
-      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
-      note: taoGhiChuPhieuChuyenTuKiemNhap(),
-      items
-    };
-  }
-
-  function moTrangCCN1V2TuHangThieu() {
-    docLaiNhapTuBangHTML();
-    kiemTraPhieu();
-
-    const payload = taoPayloadCCN1V2TuKiemNhap();
-
-    if (!payload) {
-      phatAmThanhLoi();
-      alert("Không có mã sản phẩm thiếu để tạo phiếu CCN1V2.");
-      return;
-    }
-
-    try {
-      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-    } catch (err) {
-      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
-      alert("Không lưu được dữ liệu tạm để chuyển sang trang CCN1V2.");
-      return;
-    }
-
-    const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
-    const newTab = window.open(url);
-
-    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
-      // mobile bị chặn popup → chuyển luôn
-      window.location.href = url;
-    }
-
-    // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
-  }
-
-  function taoPayloadCCN2V1TuKiemNhap() {
-    const state = getState();
-    const items = layDanhSachHangThuaDeTaoCCN2V1();
-
-    if (!items || items.length === 0) return null;
-
-    return {
-      dir: "2v1",
-      source: "kiem_nhap_kho",
-      created_at: new Date().toISOString(),
-      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
-      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
-      note: taoGhiChuPhieuChuyenTuKiemNhap(),
-      items
-    };
-  }
-
-  function moTrangCCN2V1TuHangThua() {
-    docLaiNhapTuBangHTML();
-    kiemTraPhieu();
-
-    const payload = taoPayloadCCN2V1TuKiemNhap();
-    console.log("[KNK] payload CCN2V1 =", payload);
-
-    if (!payload) {
-      phatAmThanhLoi();
-      alert("Không có mã sản phẩm thừa để tạo phiếu CCN2V1.");
-      return;
-    }
-
-    try {
-      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-    } catch (err) {
-      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
-      alert("Không lưu được dữ liệu tạm để chuyển sang trang CCN2V1.");
-      return;
-    }
-
-    const url = "https://banle-js.vercel.app/ccn2v1cs2.html";
-
-    const newTab = window.open(url);
-
-    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
-      // mobile bị chặn popup → chuyển luôn
-      window.location.href = url;
-    }
-
-    // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
+    return groupByMaspForTransfer(rows);
   }
 
   // =========================
@@ -3310,7 +3289,7 @@ import "./stockQuickPopup.js";
     if (btnTaoPhieuCCN2V1) {
       btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
         e.preventDefault();
-        moTrangCCN2V1TuHangThua();
+        moTrangChuyenChiNhanhTheoTrangThai("THUA");
       });
     }
 
@@ -3318,9 +3297,10 @@ import "./stockQuickPopup.js";
     if (btnTaoPhieuCCN1V2) {
       btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
         e.preventDefault();
-        moTrangCCN1V2TuHangThieu();
+        moTrangChuyenChiNhanhTheoTrangThai("THIEU");
       });
     }
+
     // ===== NÚT QUAY LẠI =====
     const btnPrev = byId("btnPrevPhieu");
     if (btnPrev) {
