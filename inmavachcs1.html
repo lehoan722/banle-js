@@ -1998,12 +1998,27 @@ Bạn chưa nhập màu sắc.
                 }
 
                 selectedColorOrder = [...popupSelected, ...manualColors];
-                mausacInput.value = selectedColorOrder.join(',');
+
+                // Nếu vừa tick chọn màu thì tự chèn dấu phẩy cuối
+                // để người dùng chọn tiếp màu khác ngay
+                if (isChecked && selectedColorOrder.length) {
+                    mausacInput.value = selectedColorOrder.join(',') + ',';
+                } else {
+                    mausacInput.value = selectedColorOrder.join(',');
+                }
+
                 updateMauSacPreview();
 
                 const parts = (mausacInput.value || '').split(',');
                 const currentKeyword = (parts[parts.length - 1] || '').trim();
                 renderMauSacPopup(currentKeyword);
+
+                // giữ focus để chọn tiếp
+                setTimeout(() => {
+                    mausacInput.focus();
+                    const len = mausacInput.value.length;
+                    mausacInput.setSelectionRange(len, len);
+                }, 0);
             }
 
             function openMauSacPopup(keyword = '') {
