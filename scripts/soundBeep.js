@@ -27,7 +27,6 @@ async function ensureRunning() {
           await ctx.resume();
         }
 
-        // silent unlock nhẹ để Safari/iPhone chịu mở hẳn audio
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         gain.gain.value = 0.00001;
@@ -37,7 +36,7 @@ async function ensureRunning() {
         osc.start();
         osc.stop(ctx.currentTime + 0.01);
 
-        _unlocked = true;
+        _unlocked = (ctx.state === "running");
       } catch (e) {
         console.warn("ensureRunning lỗi:", e);
       } finally {
@@ -48,7 +47,6 @@ async function ensureRunning() {
 
   await _unlocking;
 
-  // thử thêm 1 lần cuối
   if (ctx.state !== "running") {
     try {
       await ctx.resume();
@@ -57,6 +55,7 @@ async function ensureRunning() {
     }
   }
 
+  _unlocked = (ctx.state === "running");
   return ctx;
 }
 
@@ -112,7 +111,12 @@ export function playAlertBeep() {
 
 export async function unlockBeepAudio() {
   const ctx = await ensureRunning();
-  return !!ctx && ctx.state === "running";
+  _unlocked = !!ctx && ctx.state === "running";
+  return _unlocked;
+}
+
+export function isBeepUnlocked() {
+  return _unlocked;
 }
 
 export function setupBeepUnlockOnce(dom = document) {
@@ -131,15 +135,9 @@ export function setupBeepUnlockOnce(dom = document) {
 
     const ok = await unlockBeepAudio();
 
-    // chỉ gỡ listener khi unlock THẬT SỰ thành công
     if (ok || isBeepUnlocked()) {
       done = true;
       removeAll();
-
-      // phát 1 beep rất ngắn để "hâm nóng" audio trên mobile
-      try {
-        safeBeep(1800, 40, "sine", 0.0001);
-      } catch (e) { }
     }
   };
 
@@ -148,10 +146,6 @@ export function setupBeepUnlockOnce(dom = document) {
   dom.addEventListener("touchstart", unlock, true);
   dom.addEventListener("touchend", unlock, true);
   dom.addEventListener("pointerdown", unlock, true);
-}
-
-export function isBeepUnlocked() {
-  return _unlocked;
 }
 
 export function patchAlertWithBeep() {
@@ -167,14 +161,13 @@ export function patchAlertWithBeep() {
   window.alert = function (message) {
     const text = String(message ?? "");
 
-    // nếu đang có 1 alert mở/đợi mở rồi thì không tạo thêm beep chồng
     if (alertBusy) {
       return window.__nativeAlert(text);
     }
 
     alertBusy = true;
 
-    try { playAlertBeep(); } catch { }
+    try { playAlertBeep(); } catch {}
 
     setTimeout(() => {
       try {
@@ -192,6 +185,6 @@ window.addEventListener("pageshow", () => {
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && _ctx && _ctx.state !== "running") {
-    _ctx.resume().catch(() => { });
+    _ctx.resume().catch(() => {});
   }
 });
