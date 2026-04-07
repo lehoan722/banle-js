@@ -61,10 +61,30 @@ import "./stockQuickPopup.js";
     // =========================
     // GOOGLE SHEET KIỂM MẪU
     // =========================
-    const KIEM_MAU_SHEET_ID = "1ka8nuwIRaqUaVyZsuHyu-HJsVvdFpNkmzurvHvqPaoM";
-    const KIEM_MAU_SHEET_GID = "1397210330";
-    const KIEM_MAU_CSV_URL =
-        `https://docs.google.com/spreadsheets/d/${KIEM_MAU_SHEET_ID}/gviz/tq?tqx=out:csv&gid=${KIEM_MAU_SHEET_GID}`;
+    // =========================
+    // GOOGLE SHEET KIỂM MẪU
+    // =========================
+    const BAY_MAU_SHEET_CONFIG = {
+        cs1: {
+            spreadsheetId: "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA",
+            gid: "1239758850",
+            sheetName: "BAYMAUCS1"
+        },
+        cs2: {
+            spreadsheetId: "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8",
+            gid: "1391280527",
+            sheetName: "BAYMAUCS2"
+        }
+    };
+
+    function getBayMauSheetConfig() {
+        return BAY_MAU_SHEET_CONFIG[CFG.branch] || BAY_MAU_SHEET_CONFIG.cs1;
+    }
+
+    function getBayMauCsvUrl() {
+        const cfg = getBayMauSheetConfig();
+        return `https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${cfg.gid}`;
+    }
 
     const VALID_BAY_MAU_SIZES = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
 
@@ -100,7 +120,15 @@ import "./stockQuickPopup.js";
     }
 
     async function docDanhSachBayMauTuGoogleSheet() {
-        const res = await fetch(KIEM_MAU_CSV_URL, { cache: "no-store" });
+        const cfg = getBayMauSheetConfig();
+        const csvUrl = getBayMauCsvUrl();
+
+        const res = await fetch(csvUrl, { cache: "no-store" });
+        if (!res.ok) {
+            throw new Error(
+                `Không đọc được Google Sheet kiểm mẫu ${cfg.sheetName} (${res.status})`
+            );
+        }
         if (!res.ok) {
             throw new Error(`Không đọc được Google Sheet kiểm mẫu (${res.status})`);
         }
@@ -1293,8 +1321,10 @@ import "./stockQuickPopup.js";
             renderBangKetQua();
             capNhatThongKeDauTrang();
 
+            const cfgSheet = getBayMauSheetConfig();
+
             alert(
-                `Đã tải dữ liệu bày mẫu từ Google Sheet.\n` +
+                `Đã tải dữ liệu bày mẫu từ Google Sheet (${cfgSheet.sheetName}).\n` +
                 `- Số mã khớp: ${soMaKhop}\n` +
                 `- Số dòng sheet đã lấy: ${soDongSheetKhop}\n` +
                 `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
@@ -1302,7 +1332,8 @@ import "./stockQuickPopup.js";
             );
         } catch (err) {
             console.error("[KTK] layBayMauTuGoogleSheet error:", err);
-            alert("Lỗi khi tải dữ liệu bày mẫu từ Google Sheet.");
+            const cfgSheet = getBayMauSheetConfig();
+            alert(`Lỗi khi tải dữ liệu bày mẫu từ Google Sheet (${cfgSheet.sheetName}).`);
         }
     }
 
