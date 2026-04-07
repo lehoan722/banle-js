@@ -2350,23 +2350,24 @@ import "./stockQuickPopup.js";
     const tt = String(trangThai || "").trim().toUpperCase();
     const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
 
+    // NGHIỆP VỤ ĐÚNG:
     // CS1:
-    //   THUA  -> 1v2
-    //   THIEU -> 2v1
-    //
-    // CS2:
     //   THUA  -> 2v1
     //   THIEU -> 1v2
+    //
+    // CS2:
+    //   THUA  -> 1v2
+    //   THIEU -> 2v1
 
     if (toBranch === "cs2") {
-      if (tt === "THUA") return "2v1";
-      if (tt === "THIEU") return "1v2";
+      if (tt === "THUA") return "1v2";
+      if (tt === "THIEU") return "2v1";
       return "";
     }
 
     // mặc định CS1
-    if (tt === "THUA") return "1v2";
-    if (tt === "THIEU") return "2v1";
+    if (tt === "THUA") return "2v1";
+    if (tt === "THIEU") return "1v2";
     return "";
   }
 
@@ -2381,19 +2382,17 @@ import "./stockQuickPopup.js";
     const d = String(dir || "").trim().toLowerCase();
 
     if (d === "1v2") {
-      // hàng đi từ CS1 sang CS2
-      // bản chất là:
-      // - CS1: dùng cho HÀNG THỪA
-      // - CS2: dùng cho HÀNG THIẾU
-      return layDanhSachHangTheoTrangThai("THIEU");
+      // chiều 1 -> 2
+      // CS1: dùng cho THIEU
+      // CS2: dùng cho THUA
+      return layDanhSachHangTheoTrangThai(CFG.toBranch === "cs2" ? "THUA" : "THIEU");
     }
 
     if (d === "2v1") {
-      // hàng đi từ CS2 sang CS1
-      // bản chất là:
-      // - CS1: dùng cho HÀNG THIẾU
-      // - CS2: dùng cho HÀNG THỪA
-      return layDanhSachHangTheoTrangThai("THUA");
+      // chiều 2 -> 1
+      // CS1: dùng cho THUA
+      // CS2: dùng cho THIEU
+      return layDanhSachHangTheoTrangThai(CFG.toBranch === "cs2" ? "THIEU" : "THUA");
     }
 
     return [];
@@ -3285,17 +3284,17 @@ import "./stockQuickPopup.js";
       });
     });
 
-    const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
-    if (btnTaoPhieuCCN2V1) {
-      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
+    const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
+    if (btnTaoPhieuCCN1V2) {
+      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
         e.preventDefault();
         moTrangChuyenChiNhanhTheoTrangThai("THUA");
       });
     }
 
-    const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
-    if (btnTaoPhieuCCN1V2) {
-      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
+    const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
+    if (btnTaoPhieuCCN2V1) {
+      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
         e.preventDefault();
         moTrangChuyenChiNhanhTheoTrangThai("THIEU");
       });
