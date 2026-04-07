@@ -13,6 +13,7 @@ import { moBangDanhMucHangHoa, timLaiTrongBangDM, chonDongDeSua } from './bangha
 import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.js';
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep } from './soundBeep.js';
+setupBeepUnlockOnce(document);
 import { setupScanner } from './scanner.js';
 import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
@@ -600,10 +601,7 @@ export async function khoiTaoUngDung() {
       window.danhMucSize = dsSize.map(row => String(row.size).trim());
     } else {
       window.danhMucSize = []; // fallback rỗng nếu có lỗi
-    }
-
-    // Mở khóa audio trên iOS sau tương tác đầu tiên
-    setupBeepUnlockOnce(document);
+    }   
 
     // Gán 3 hàm toàn cục để các module khác gọi như cũ
     window.soundSuccess = playSuccessBeep;
