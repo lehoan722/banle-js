@@ -61,9 +61,6 @@ import "./stockQuickPopup.js";
     // =========================
     // GOOGLE SHEET KIỂM MẪU
     // =========================
-    // =========================
-    // GOOGLE SHEET KIỂM MẪU
-    // =========================
     const BAY_MAU_SHEET_CONFIG = {
         cs1: {
             spreadsheetId: "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA",
@@ -83,6 +80,28 @@ import "./stockQuickPopup.js";
 
     function getBayMauCsvUrl() {
         const cfg = getBayMauSheetConfig();
+        return `https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${cfg.gid}`;
+    }
+
+    const KIEM_KHO_SHEET_CONFIG = {
+        cs1: {
+            spreadsheetId: "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA",
+            gid: "1596489919",
+            sheetName: "KIEMKHOCS1"
+        },
+        cs2: {
+            spreadsheetId: "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8",
+            gid: "1009415488",
+            sheetName: "KIEMKHOCS2"
+        }
+    };
+
+    function getKiemKhoSheetConfig() {
+        return KIEM_KHO_SHEET_CONFIG[CFG.branch] || KIEM_KHO_SHEET_CONFIG.cs1;
+    }
+
+    function getKiemKhoCsvUrl() {
+        const cfg = getKiemKhoSheetConfig();
         return `https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${cfg.gid}`;
     }
 
@@ -159,6 +178,50 @@ import "./stockQuickPopup.js";
             }
 
             map.get(masp).push(sizeRaw);
+        }
+
+        return map;
+    }
+
+    async function docDanhSachKiemKhoTuGoogleSheet() {
+        const cfg = getKiemKhoSheetConfig();
+        const csvUrl = getKiemKhoCsvUrl();
+
+        const res = await fetch(csvUrl, { cache: "no-store" });
+        if (!res.ok) {
+            throw new Error(
+                `Không đọc được Google Sheet kiểm kho ${cfg.sheetName} (${res.status})`
+            );
+        }
+
+        const raw = await res.text();
+        const csv = raw.replace(/^\uFEFF/, "");
+        const lines = csv.split(/\r?\n/).filter(x => String(x || "").trim());
+
+        if (!lines.length) return new Map();
+
+        let start = 0;
+        const first = String(lines[0] || "").toLowerCase();
+        if (first.includes("mã") || first.includes("ma sp") || first.includes("masp") || first.includes("size")) {
+            start = 1;
+        }
+
+        const map = new Map();
+
+        for (let i = start; i < lines.length; i++) {
+            const cols = parseCsvLineSimple(lines[i]);
+            const masp = normalizeMasp(cols[0] || "");
+            const sizeRaw = String(cols[1] || "").trim();
+
+            if (!masp) continue;
+
+            const sizeToSave = isValidSize(sizeRaw) ? normalizeSize(sizeRaw) : "0";
+
+            if (!map.has(masp)) {
+                map.set(masp, []);
+            }
+
+            map.get(masp).push(sizeToSave);
         }
 
         return map;
@@ -1334,6 +1397,77 @@ import "./stockQuickPopup.js";
             console.error("[KTK] layBayMauTuGoogleSheet error:", err);
             const cfgSheet = getBayMauSheetConfig();
             alert(`Lỗi khi tải dữ liệu bày mẫu từ Google Sheet (${cfgSheet.sheetName}).`);
+        }
+    }
+
+    async function layKiemKhoTuGoogleSheet() {
+        try {
+            docLaiNhapTuBangHTML();
+
+            const state = getState();
+            const sheetMap = await docDanhSachKiemKhoTuGoogleSheet();
+
+            if (!sheetMap.size) {
+                alert("Google Sheet kiểm kho không có dữ liệu.");
+                return;
+            }
+
+            let soMa = 0;
+            let soDongSheet = 0;
+            let soDongDungSize = 0;
+            let soDongMacDinh0 = 0;
+
+            // Xóa toàn bộ dữ liệu kiểm kho cũ bên cột kho
+            state.nhap = {};
+            state.nhapOrder = [];
+
+            for (const [masp, sizeList] of sheetMap.entries()) {
+                const maspNorm = normalizeMasp(masp);
+                if (!maspNorm) continue;
+
+                soMa++;
+                state.nhapOrder.push(maspNorm);
+
+                for (const rawSize of (sizeList || [])) {
+                    const sizeToSave = isValidSize(rawSize) ? normalizeSize(rawSize) : "0";
+                    const key = makeKey(maspNorm, sizeToSave);
+
+                    if (!state.nhap[key]) {
+                        state.nhap[key] = {
+                            masp: maspNorm,
+                            size: sizeToSave,
+                            sl: 1
+                        };
+                    } else {
+                        state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + 1;
+                    }
+
+                    soDongSheet++;
+
+                    if (sizeToSave === "0") soDongMacDinh0++;
+                    else soDongDungSize++;
+                }
+            }
+
+            state.selectedMasp = "";
+            state.ketQua = {};
+
+            renderBangKetQua();
+            capNhatThongKeDauTrang();
+
+            const cfgSheet = getKiemKhoSheetConfig();
+
+            alert(
+                `Đã tải dữ liệu kiểm kho từ Google Sheet (${cfgSheet.sheetName}).\n` +
+                `- Số mã đã lấy: ${soMa}\n` +
+                `- Số dòng sheet đã lấy: ${soDongSheet}\n` +
+                `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
+                `- Dòng mặc định 0/1: ${soDongMacDinh0}`
+            );
+        } catch (err) {
+            console.error("[KTK] layKiemKhoTuGoogleSheet error:", err);
+            const cfgSheet = getKiemKhoSheetConfig();
+            alert(`Lỗi khi tải dữ liệu kiểm kho từ Google Sheet (${cfgSheet.sheetName}).`);
         }
     }
 
@@ -2984,6 +3118,10 @@ import "./stockQuickPopup.js";
 
         byId("btnLayBayMau")?.addEventListener("click", async () => {
             await layBayMauTuGoogleSheet();
+        });
+
+        byId("btnLayKiemKho")?.addEventListener("click", async () => {
+            await layKiemKhoTuGoogleSheet();
         });
 
     }
