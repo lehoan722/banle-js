@@ -720,6 +720,8 @@
           masp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
+              __sizeInput.focus();
+              __sizeInput.select();
               __sizeDD.openFor(__sizeInput);
             }
           });
