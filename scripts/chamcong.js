@@ -6,6 +6,78 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 // Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
 let supabase = null;
 
+// ===== ÉP FORM ĐĂNG NHẬP LUÔN TRỐNG, KHÔNG TỰ LẤY LOCALSTORAGE =====
+function clearSavedLoginForChamCong() {
+    const keysToRemove = [
+        "manv",
+        "matkhau",
+        "password",
+        "username",
+        "savedManv",
+        "savedPassword",
+        "rememberLogin",
+        "loginData"
+    ];
+
+    keysToRemove.forEach((key) => {
+        try { localStorage.removeItem(key); } catch (_) { }
+        try { sessionStorage.removeItem(key); } catch (_) { }
+    });
+}
+
+function forceBlankLoginForm(containerId = "login-container") {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const clearInputs = () => {
+        // Chỉ ép trống khi màn hình login còn đang hiện
+        const appContainer = document.getElementById("app-container");
+        const appDangAn = !appContainer || appContainer.style.display === "none";
+
+        if (!appDangAn) return;
+
+        const fields = container.querySelectorAll("input, select, textarea");
+        fields.forEach((el) => {
+            const tag = (el.tagName || "").toLowerCase();
+            const type = (el.type || "").toLowerCase();
+
+            // Tắt autofill
+            el.setAttribute("autocomplete", "off");
+            el.setAttribute("autocapitalize", "off");
+            el.setAttribute("autocorrect", "off");
+            el.setAttribute("spellcheck", "false");
+
+            // Chỉ xóa các ô nhập login
+            if (tag === "input" && ["text", "password", "number", "search", ""].includes(type)) {
+                el.value = "";
+            }
+
+            if (tag === "select") {
+                el.selectedIndex = 0;
+            }
+        });
+    };
+
+    // Xóa ngay
+    clearInputs();
+
+    // Theo dõi nếu authModule render lại form rồi tự đổ dữ liệu vào thì lại xóa tiếp
+    const observer = new MutationObserver(() => {
+        clearInputs();
+    });
+
+    observer.observe(container, {
+        childList: true,
+        subtree: true,
+        attributes: true
+    });
+
+    // Chạy thêm vài nhịp để chặn trường hợp authModule fill chậm
+    setTimeout(clearInputs, 0);
+    setTimeout(clearInputs, 100);
+    setTimeout(clearInputs, 300);
+    setTimeout(clearInputs, 800);
+}
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
@@ -1000,6 +1072,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const diadiem = getDiaDiemFromPath(); // cs1 / cs2
     const loginApiPath = diadiem === "cs1" ? "/api/login-cs1" : "/api/login-cs2";
 
+    // Xóa dữ liệu đăng nhập đã lưu của riêng trang chấm công
+    clearSavedLoginForChamCong();
+
     khoiTaoDangNhapDungChung({
         loginContainerId: 'login-container',
         appContainerId: 'app-container',
@@ -1007,10 +1082,12 @@ document.addEventListener("DOMContentLoaded", () => {
         tuDongKhoaCoSo: true,
         loginApiPath,
         onLoginSuccess: async () => {
-            // Không kiểm tra bày mẫu khi đăng nhập nữa
             await initChamCong(diadiem);
         }
     });
+
+    // Sau khi authModule vẽ form xong thì ép form luôn trắng
+    forceBlankLoginForm('login-container');
 });
 
 
