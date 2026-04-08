@@ -4,310 +4,418 @@ import { resetBangKetQua, getBangKetQua } from './hoadon.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
-import {
-  refreshSessionIfNeeded,
-  ensureCatalogsReady,
-  hoaDonDaTonTai
-} from './luuhoadon/api.js';
+/* =========================================================
+ * MODULE LƯU HÓA ĐƠN CHUYỂN CHI NHÁNH (CCN)
+ * - Dùng riêng cho:
+ *   + ccn1v2cs1.html
+ *   + ccn2v1cs2.html
+ * - Frontend:
+ *   + validate dữ liệu trên UI
+ *   + build payload
+ *   + gọi RPC atomic
+ * - Database / RPC:
+ *   + ghi hóa đơn gốc
+ *   + ghi chi tiết gốc
+ *   + ghi hóa đơn đối ứng
+ *   + ghi chi tiết đối ứng
+ *   + cập nhật sochungtu
+ *   + rollback toàn bộ nếu có lỗi
+ * ========================================================= */
 
-import {
-  buildCCNCtxFromPathname,
-  showExistDialog
-} from './luuhoadon/builders.js';
+let choPhepSuaCCN = false;
 
-import {
-  normalizeBangKetQua,
-  calcTongThanhTienFromBangKetQua
-} from './luuhoadon/pricing.js';
+/* =========================
+ * HELPERS GỘP CHUNG TRONG FILE
+ * ========================= */
 
-import { requireManagedAtBranch } from './luuhoadon/validators.js';
+function buildCCNCtxFromPathname() {
+  const p = (window.location.pathname || '').toLowerCase();
 
-window.HD_CTX = window.HD_CTX || { mode: 'NEW', version: null };
+  let ctx = {
+    isCCN: false,
+    src: 'CS1',
+    dst: 'CS2',
+    loaihdGoc: '',
+    loaihdDoiUng: '',
+    page: p
+  };
 
-const CCN_CTX = buildCCNCtxFromPathname();
-let choPhepSua = false;
+  if (p.includes('ccn1v2')) {
+    ctx.isCCN = true;
+    ctx.src = 'CS1';
+    ctx.dst = 'CS2';
+    ctx.loaihdGoc = 'xcncs1';
+    ctx.loaihdDoiUng = 'ncncs2';
+    return ctx;
+  }
 
-function toastError(msg) {
-  alert('❌ ' + msg);
+  if (p.includes('ccn2v1')) {
+    ctx.isCCN = true;
+    ctx.src = 'CS2';
+    ctx.dst = 'CS1';
+    ctx.loaihdGoc = 'xcncs2';
+    ctx.loaihdDoiUng = 'ncncs1';
+    return ctx;
+  }
+
+  return ctx;
 }
 
-function getInt(id) {
-  return parseInt((document.getElementById(id)?.value || '').replace(/[.,]/g, '') || '0', 10);
-}
+async function ensureCatalogsReady() {
+  // Sản phẩm
+  if (!window.sanPhamData || Object.keys(window.sanPhamData).length === 0) {
+    const { data: dssp, error } = await supabase.from('dmhanghoa').select('*');
 
-function getVal(id) {
-  return document.getElementById(id)?.value?.trim() || '';
-}
+    if (!error && Array.isArray(dssp)) {
+      window.sanPhamData = {};
+      dssp.forEach((sp) => {
+        const key = String(sp.masp || '').toUpperCase().trim();
+        window.sanPhamData[key] = sp;
+      });
+    } else {
+      console.warn('⚠️ Không tải được dmhanghoa.', error);
+      window.sanPhamData = window.sanPhamData || {};
+    }
+  }
 
-function parseSoHD(sohd) {
-  const [prefix = '', numStr = ''] = String(sohd || '').trim().split('_');
-  const so = parseInt(numStr, 10);
-  return { prefix, numStr, so };
-}
+  // Nhóm hàng
+  if (!(window.danhMucNhom instanceof Map) || window.danhMucNhom.size === 0) {
+    const { data, error } = await supabase
+      .from('dmnhomhang')
+      .select('manhom, quanlysize, diadiem');
 
-function buildCounterpartSoHD(sohdGoc, loaiDoiUng) {
-  const { numStr } = parseSoHD(sohdGoc);
-  if (!numStr) throw new Error('Số hóa đơn gốc không hợp lệ.');
-  return `${loaiDoiUng}_${numStr}`;
-}
-
-function ensureCCNPage() {
-  if (!CCN_CTX?.isCCN) {
-    throw new Error('Trang hiện tại không phải trang chuyển chi nhánh.');
+    if (!error && Array.isArray(data)) {
+      window.danhMucNhom = new Map();
+      data.forEach((row) => {
+        window.danhMucNhom.set(String(row.manhom).toUpperCase().trim(), {
+          quanlysize: !!row.quanlysize,
+          diadiem: String(row.diadiem || 'ALL').toUpperCase().trim()
+        });
+      });
+    } else {
+      console.warn('⚠️ Không tải được dmnhomhang.', error);
+      window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
+    }
   }
 }
 
-function ensureBaseInputs() {
-  capNhatThongTinTong(getBangKetQua());
+function resolveGroupKeyFromSP(sp) {
+  const candidates = ['nhomhang', 'manhom', 'nhom', 'group_code', 'nhomsp'];
+  for (const key of candidates) {
+    if (sp && sp[key] != null && String(sp[key]).trim() !== '') {
+      return String(sp[key]).toUpperCase().trim();
+    }
+  }
+  return null;
+}
 
-  const maspChuaNhap = getVal('masp');
-  if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-    document.getElementById('masp')?.focus();
-    throw new Error('Bạn còn mã sản phẩm chưa thêm vào bảng!');
+function requireManagedAtBranch(masp, branch) {
+  const upper = (s) => String(s || '').toUpperCase().trim();
+  const sp = window.sanPhamData?.[upper(masp)];
+  const br = upper(branch);
+
+  // Nếu chưa tra được catalog -> giữ size
+  if (!sp) return true;
+
+  // Chủng loại GD => quản size
+  if (upper(sp.chungloai || '') === 'GD') return true;
+
+  // Cờ riêng của sản phẩm
+  if (sp.quanlykichco === true) return true;
+
+  // Theo nhóm + địa điểm
+  if (window.danhMucNhom instanceof Map && window.danhMucNhom.size) {
+    const groupKey = resolveGroupKeyFromSP(sp);
+    if (groupKey) {
+      const nhom = window.danhMucNhom.get(upper(groupKey));
+      if (nhom && nhom.quanlysize) {
+        const dia = upper(nhom.diadiem || 'ALL');
+        return dia === 'ALL' || dia === br;
+      }
+    }
   }
 
-  const sohd = getVal('sohd');
-  if (!sohd) throw new Error('Chưa có số hóa đơn.');
+  return true;
+}
 
-  const tennv = getVal('tennv');
-  if (!tennv) throw new Error('Bạn chưa nhập tên nhân viên.');
+const getIntValue = (id) =>
+  parseInt((document.getElementById(id)?.value || '').replace(/[.,]/g, '') || '0', 10);
 
-  const manv = getVal('manv') || localStorage.getItem('manv') || '';
-  if (!manv || manv.toUpperCase() === 'ADMIN') {
-    throw new Error('Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.');
+function normalizeSizeValue(v) {
+  const s = String(v ?? '').trim();
+  return s === '' ? '0' : s;
+}
+
+function getNgayValue() {
+  return document.getElementById('ngay')?.value || new Date().toISOString().slice(0, 10);
+}
+
+function getNowIso() {
+  return new Date().toISOString();
+}
+
+function calcTongThanhTienFromBangKetQuaCCN(bangKetQua) {
+  let sum = 0;
+  try {
+    Object.values(bangKetQua || {}).forEach((item) => {
+      const gia = Number(item?.gia || 0);
+      const km = Number(item?.km || 0);
+      const soluongs = item?.soluongs || [];
+      for (let i = 0; i < soluongs.length; i++) {
+        const sl = Number(soluongs[i] || 0);
+        sum += (gia - km) * sl;
+      }
+    });
+  } catch (e) {
+    console.warn('calcTongThanhTienFromBangKetQuaCCN error:', e);
   }
+  return Math.round(sum);
+}
 
+function getHeaderFromUI(sohd, ctx, createdAt, updatedAt = null) {
   const bangKetQua = getBangKetQua();
-  if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
-    throw new Error('Không có dữ liệu để lưu hóa đơn.');
-  }
 
-  return { sohd, tennv, manv, bangKetQua };
-}
-
-function appendEditNote(noteGoc) {
-  const oldNote = String(noteGoc || '').trim();
-  const manv = getVal('manv');
-  const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  const count = (oldNote.match(/Sửa lần/g) || []).length + 1;
-  const line = `Sửa lần ${count} – ${timestamp} – ${manv}`;
-  return oldNote ? `${oldNote}\n${line}` : line;
-}
-
-function buildHeaderBase(bangKetQua, noteOverride = null) {
   return {
-    ngay: getVal('ngay'),
-    manv: getVal('manv'),
-    tennv: getVal('tennv'),
-    khachhang: getVal('khachhang'),
-    tongsl: getInt('tongsl'),
-    tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-    tongkm: getInt('tongkm'),
-    chietkhau: getInt('chietkhau'),
-    thanhtoan: getInt('phaithanhtoan'),
-    hinhthuctt: getVal('hinhthuctt'),
-    ghichu: noteOverride !== null ? noteOverride : (document.getElementById('ghichu')?.value || ''),
+    sohd,
+    ngay: getNgayValue(),
+    manv: document.getElementById('manv')?.value?.trim() || '',
+    tennv: document.getElementById('tennv')?.value?.trim() || '',
+    diadiem: ctx.src.toLowerCase(),
+    khachhang: document.getElementById('khachhang')?.value || '',
+    tongsl: getIntValue('tongsl'),
+    tongthanhtien: calcTongThanhTienFromBangKetQuaCCN(bangKetQua),
+    tongkm: getIntValue('tongkm'),
+    chietkhau: getIntValue('chietkhau'),
+    thanhtoan: getIntValue('phaithanhtoan'),
+    hinhthuctt: document.getElementById('hinhthuctt')?.value || 'tm',
+    ghichu: document.getElementById('ghichu')?.value || '',
+    created_at: createdAt,
+    updated_at: updatedAt,
+    loaihd: ctx.loaihdGoc,
     loai: '',
     dvt: '',
     nhacc: ''
   };
 }
 
-function buildDetailRowsForBranch(bangKetQua, sohd, branchCode, createdAt, updatedAt = null) {
-  const rows = [];
-  const branchUpper = String(branchCode || '').toUpperCase();
+async function buildDetailsForRPC(sohd, ctx, createdAt, updatedAt = null) {
+  await ensureCatalogsReady();
 
-  Object.values(bangKetQua).forEach(item => {
+  const bangKetQua = getBangKetQua();
+  const src = ctx.src;
+  const dst = ctx.dst;
+
+  const details_goc = [];
+  const details_doi_ung = [];
+
+  Object.values(bangKetQua || {}).forEach((item) => {
+    const masp = String(item.masp || '').trim().toUpperCase();
+    const tensp = item.tensp || '';
+    const dvt = item.dvt || '';
+    const gia = Number(item.gia || 0);
+    const km = Number(item.km || 0);
+
     const sizes = Array.isArray(item.sizes) ? item.sizes : [];
     const soluongs = Array.isArray(item.soluongs) ? item.soluongs : [];
 
     sizes.forEach((sz, i) => {
+      const sizeInput = normalizeSizeValue(sz);
       const sl = Number(soluongs[i] || 0);
-      if (!sl) return;
 
-      const masp = String(item.masp || '').trim().toUpperCase();
-      const inputSize = String(sz ?? '').trim() || '0';
-      const managed = requireManagedAtBranch(masp, branchUpper);
-      const effectiveSize = managed ? inputSize : '0';
+      const managedAtSrc = requireManagedAtBranch(masp, src);
+      const managedAtDst = requireManagedAtBranch(masp, dst);
 
-      const row = {
+      const sizeSrc = managedAtSrc ? sizeInput : '0';
+      const sizeDst = managedAtDst ? sizeInput : '0';
+
+      details_goc.push({
         sohd,
         masp,
-        tensp: item.tensp || '',
-        size: effectiveSize,
+        tensp,
+        size: sizeSrc,
         soluong: sl,
-        gia: Number(item.gia || 0),
-        km: Number(item.km || 0),
-        thanhtien: (Number(item.gia || 0) - Number(item.km || 0)) * sl,
-        dvt: item.dvt || '',
-        diadiem: branchCode.toLowerCase(),
+        gia,
+        km,
+        thanhtien: (gia - km) * sl,
+        dvt,
+        diadiem: ctx.src.toLowerCase(),
         created_at: createdAt,
-        ngay: getVal('ngay')
-      };
+        updated_at: updatedAt,
+        ngay: getNgayValue()
+      });
 
-      if (updatedAt) row.updated_at = updatedAt;
-      rows.push(row);
+      details_doi_ung.push({
+        sohd: '', // RPC tự gán số hóa đơn đối ứng
+        masp,
+        tensp,
+        size: sizeDst,
+        soluong: sl,
+        gia,
+        km,
+        thanhtien: (gia - km) * sl,
+        dvt,
+        diadiem: ctx.dst.toLowerCase(),
+        created_at: createdAt,
+        updated_at: updatedAt,
+        ngay: getNgayValue()
+      });
     });
   });
 
-  return rows;
+  return { details_goc, details_doi_ung };
 }
 
-async function buildCCNPayload() {
-  ensureCCNPage();
-  const { sohd, bangKetQua } = ensureBaseInputs();
+function validateBeforeSaveCCN(ctx) {
+  capNhatThongTinTong(getBangKetQua());
 
-  normalizeBangKetQua(bangKetQua);
-  await ensureCatalogsReady();
-
-  const { prefix, so } = parseSoHD(sohd);
-  if (!Number.isInteger(so) || so <= 0) {
-    throw new Error('Số hóa đơn không hợp lệ.');
+  const maspChuaNhap = document.getElementById('masp')?.value?.trim();
+  if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
+    alert('❌ Bạn còn mã sản phẩm chưa thêm vào bảng!');
+    document.getElementById('masp')?.focus();
+    return false;
   }
 
-  if (prefix !== CCN_CTX.loaihdGoc) {
-    throw new Error(`Trang này yêu cầu số chứng từ có tiền tố "${CCN_CTX.loaihdGoc}_*".`);
+  const sohd = document.getElementById('sohd')?.value?.trim();
+  if (!sohd) {
+    alert('❌ Chưa có số hóa đơn.');
+    return false;
   }
 
-  const isEdit = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-  const updatedAt = isEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
-
-  let note = document.getElementById('ghichu')?.value || '';
-  if (isEdit) {
-    note = appendEditNote(note);
-    document.getElementById('ghichu').value = note;
+  const prefix = sohd.split('_')[0] || '';
+  if (prefix !== ctx.loaihdGoc) {
+    alert(`🚫 Sai prefix số chứng từ. Trang này yêu cầu "${ctx.loaihdGoc}_*"`);
+    return false;
   }
 
-  const sohdGoc = sohd;
-  const sohdDoiUng = buildCounterpartSoHD(sohdGoc, CCN_CTX.loaihdDoiUng);
-
-  const baseHeader = buildHeaderBase(bangKetQua, note);
-  const headerGoc = {
-    ...baseHeader,
-    sohd: sohdGoc,
-    loaihd: CCN_CTX.loaihdGoc,
-    diadiem: CCN_CTX.src.toLowerCase()
-  };
-
-  const headerDoiUng = {
-    ...baseHeader,
-    sohd: sohdDoiUng,
-    loaihd: CCN_CTX.loaihdDoiUng,
-    diadiem: CCN_CTX.dst.toLowerCase()
-  };
-
-  if (updatedAt) {
-    headerGoc.updated_at = updatedAt;
-    headerDoiUng.updated_at = updatedAt;
+  const tennv = document.getElementById('tennv')?.value?.trim();
+  if (!tennv) {
+    alert('❌ Bạn chưa nhập tên nhân viên.');
+    return false;
   }
 
-  const createdAtTemp = new Date().toISOString();
+  const manv =
+    document.getElementById('manv')?.value?.trim() ||
+    localStorage.getItem('manv') ||
+    '';
 
-  const linesGoc = buildDetailRowsForBranch(
-    bangKetQua,
-    sohdGoc,
-    CCN_CTX.src,
-    createdAtTemp,
-    updatedAt
-  );
+  if (!manv || manv.toUpperCase() === 'ADMIN') {
+    alert('❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.');
+    return false;
+  }
 
-  const linesDoiUng = buildDetailRowsForBranch(
-    bangKetQua,
-    sohdDoiUng,
-    CCN_CTX.dst,
-    createdAtTemp,
-    updatedAt
-  );
+  const bangKetQua = getBangKetQua();
+  if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
+    alert('❌ Chưa có dữ liệu hàng hóa để lưu.');
+    return false;
+  }
 
-  if (!linesGoc.length) throw new Error('Không có dòng chi tiết hợp lệ của hóa đơn gốc.');
-  if (!linesDoiUng.length) throw new Error('Không có dòng chi tiết hợp lệ của hóa đơn đối ứng.');
-
-  return {
-    mode: isEdit ? 'edit' : 'new',
-    sohd_goc: sohdGoc,
-    sohd_doi_ung: sohdDoiUng,
-    loaihd_goc: CCN_CTX.loaihdGoc,
-    loaihd_doi_ung: CCN_CTX.loaihdDoiUng,
-    diadiem_goc: CCN_CTX.src.toLowerCase(),
-    diadiem_doi_ung: CCN_CTX.dst.toLowerCase(),
-    header_goc: headerGoc,
-    header_doi_ung: headerDoiUng,
-    lines_goc: linesGoc,
-    lines_doi_ung: linesDoiUng
-  };
+  return true;
 }
 
-async function saveCCNViaRPC(payload) {
-  await refreshSessionIfNeeded();
-
-  const { data, error } = await supabase.rpc('rpc_save_ccn_atomic', {
-    p_mode: payload.mode,
-    p_sohd_goc: payload.sohd_goc,
-    p_loaihd_goc: payload.loaihd_goc,
-    p_loaihd_doi_ung: payload.loaihd_doi_ung,
-    p_diadiem_goc: payload.diadiem_goc,
-    p_diadiem_doi_ung: payload.diadiem_doi_ung,
-    p_header_goc: payload.header_goc,
-    p_header_doi_ung: payload.header_doi_ung,
-    p_lines_goc: payload.lines_goc,
-    p_lines_doi_ung: payload.lines_doi_ung
-  });
-
-  if (error) {
-    throw new Error(error.message || 'RPC lưu chuyển chi nhánh thất bại.');
+async function checkEditPermission() {
+  try {
+    const { data, error } = await supabase.rpc('is_admin');
+    if (error || data !== true) {
+      alert('❌ Bạn không có quyền sửa hóa đơn CCN.');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    alert('❌ Không kiểm tra được quyền sửa hóa đơn CCN.');
+    return false;
   }
-
-  if (!data || data.ok !== true) {
-    throw new Error(data?.error || 'RPC lưu chuyển chi nhánh trả về không hợp lệ.');
-  }
-
-  return data;
 }
 
-function inHoaDon(hoadon, chitiet) {
-  const data = { hoadon, chitiet };
-  localStorage.setItem('data_hoadon_in', JSON.stringify(data));
+async function saveViaRpcCCN({ isEdit = false } = {}) {
+  const ctx = buildCCNCtxFromPathname();
 
-  const url = '/in-hoadon.html';
+  if (!ctx?.isCCN) {
+    alert('❌ Trang hiện tại không phải trang chuyển chi nhánh.');
+    return;
+  }
 
-  if (typeof window.openPrintOverlay === 'function') {
-    const fast1 = document.getElementById('inNhanh')?.checked;
-    const fast2 = document.getElementById('chk_innhanh')?.checked;
-    const fast3 = document.getElementById('inKhongHoi')?.checked;
-    const fast = !!(fast1 || fast2 || fast3);
+  if (!validateBeforeSaveCCN(ctx)) return;
 
-    if (fast && typeof window.quickPrint === 'function') {
-      window.quickPrint(url);
+  const sohd = document.getElementById('sohd')?.value?.trim();
+  const hdState = (document.getElementById('hd_state')?.value || 'moi').trim().toLowerCase();
+
+  const shouldEdit = isEdit || choPhepSuaCCN || (window.HD_CTX?.mode === 'EDIT');
+
+  if (hdState === 'xem' && !shouldEdit) {
+    const p = document.getElementById('popupXacThucSua');
+    if (p) {
+      p.style.display = 'block';
+      document.getElementById('xacmanv')?.focus();
     } else {
-      window.openPrintOverlay(url, { autoPrint: false });
+      alert('❌ Bạn đang xem hóa đơn cũ. Vui lòng xác thực sửa trước khi lưu.');
     }
     return;
   }
 
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = url;
-  document.body.appendChild(iframe);
+  const xacNhan = confirm(
+    shouldEdit
+      ? 'Bạn có chắc chắn muốn SỬA hóa đơn chuyển chi nhánh này không?'
+      : 'Bạn có chắc chắn muốn LƯU hóa đơn chuyển chi nhánh này không?'
+  );
+  if (!xacNhan) return;
 
-  iframe.onload = () => {
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error('Không thể gọi print() từ iframe:', e);
-      } finally {
-        iframe.remove();
-      }
-    }, 500);
+  const createdAt = getNowIso();
+  const updatedAt = shouldEdit ? getNowIso() : null;
+
+  const header_goc = getHeaderFromUI(sohd, ctx, createdAt, updatedAt);
+  const { details_goc, details_doi_ung } = await buildDetailsForRPC(sohd, ctx, createdAt, updatedAt);
+
+  const payload = {
+    mode: shouldEdit ? 'EDIT' : 'NEW',
+    page_ctx: {
+      page: window.location.pathname || '',
+      src: ctx.src,
+      dst: ctx.dst,
+      loaihd_goc: ctx.loaihdGoc,
+      loaihd_doi_ung: ctx.loaihdDoiUng
+    },
+    header_goc,
+    details_goc,
+    details_doi_ung,
+    user_info: {
+      manv: document.getElementById('manv')?.value?.trim() || '',
+      tennv: document.getElementById('tennv')?.value?.trim() || ''
+    }
   };
+
+  const { data, error } = await supabase.rpc('rpc_save_ccn_atomic', {
+    p_payload: payload
+  });
+
+  if (error) {
+    console.error('rpc_save_ccn_atomic error:', error);
+    alert(`❌ Lưu hóa đơn CCN thất bại!\n${error.message || 'Lỗi không xác định'}`);
+    return;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.ok) {
+    alert(`❌ Lưu hóa đơn CCN thất bại!\n${row?.message || 'Không rõ nguyên nhân'}`);
+    return;
+  }
+
+  document.getElementById('sohd').value = row.sohd_goc || sohd;
+
+  alert(`✅ Đã lưu hóa đơn CCN thành công!\nGốc: ${row.sohd_goc}\nĐối ứng: ${row.sohd_doi_ung}`);
+
+  await lamMoiSauKhiLuuCCN();
+
+  choPhepSuaCCN = false;
+  window.choPhepSua = false;
+  window.HD_CTX = { mode: 'NEW', version: null };
 }
 
-async function lamMoiSauKhiLuu() {
+async function lamMoiSauKhiLuuCCN() {
   const diadiemVal = document.getElementById('diadiem')?.value || '';
   const manvVal = document.getElementById('manv')?.value || '';
   const tennvVal = document.getElementById('tennv')?.value || '';
 
-  document.querySelectorAll('input').forEach(input => {
+  document.querySelectorAll('input').forEach((input) => {
     if (!['diadiem', 'manv', 'tennv', 'hd_state'].includes(input.id)) {
       input.value = '';
     }
@@ -321,10 +429,6 @@ async function lamMoiSauKhiLuu() {
   if (document.getElementById('tennv')) document.getElementById('tennv').value = tennvVal;
   if (document.getElementById('ngay')) document.getElementById('ngay').value = new Date().toISOString().slice(0, 10);
 
-  window.HD_CTX = { mode: 'NEW', version: null };
-  choPhepSua = false;
-  window.choPhepSua = false;
-
   await capNhatSoHoaDonTuDong();
 
   const st = document.getElementById('hd_state');
@@ -333,96 +437,19 @@ async function lamMoiSauKhiLuu() {
   document.getElementById('masp')?.focus();
 }
 
-async function handleNewWhenExists(sohd) {
-  const choice = await showExistDialog(sohd);
+/* =========================
+ * PUBLIC FUNCTIONS
+ * ========================= */
 
-  if (choice === 'edit') {
-    const p = document.getElementById('popupXacThucSua');
-    if (p) {
-      p.style.display = 'block';
-      document.getElementById('xacmanv')?.focus();
-    }
-    return true;
-  }
-
-  await capNhatSoHoaDonTuDong();
-  const sohdMoi = getVal('sohd');
-  alert(`ℹ️ Số cũ đã tồn tại. Hệ thống đã cấp số mới: ${sohdMoi}. Bấm Lưu lại để lưu số mới.`);
-  return true;
+export async function luuHoaDonCCN() {
+  await saveViaRpcCCN({ isEdit: false });
 }
 
-export async function luuHoaDonccn1v2() {
-  try {
-    ensureCCNPage();
+export async function xacNhanSuaHoaDonCCN() {
+  const ok = await checkEditPermission();
+  if (!ok) return;
 
-    const hdState = (document.getElementById('hd_state')?.value || 'moi').trim().toLowerCase();
-    const isEdit = (window.HD_CTX?.mode === 'EDIT') || !!choPhepSua;
-
-    if (hdState === 'xem' && !isEdit) {
-      const p = document.getElementById('popupXacThucSua');
-      if (p) {
-        p.style.display = 'block';
-        document.getElementById('xacmanv')?.focus();
-      } else {
-        throw new Error('Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.');
-      }
-      return;
-    }
-
-    const sohd = getVal('sohd');
-    if (!isEdit && sohd && await hoaDonDaTonTai(sohd)) {
-      const handled = await handleNewWhenExists(sohd);
-      if (handled) return;
-    }
-
-    const payload = await buildCCNPayload();
-    const out = await saveCCNViaRPC(payload);
-
-    document.getElementById('sohd').value = out.sohd_goc || payload.sohd_goc;
-    alert(`✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!`);
-
-    inHoaDon(payload.header_goc, payload.lines_goc);
-    await lamMoiSauKhiLuu();
-  } catch (err) {
-    console.error('luuHoaDonccn1v2 error:', err);
-    alert('❌ ' + (err?.message || 'Lưu hóa đơn CCN thất bại.'));
-    throw err;
-  }
-}
-
-export async function xacNhanSuaHoaDon() {
-  const popup = document.getElementById('popupXacThucSua');
-  const closePopup = () => {
-    if (popup) popup.style.display = 'none';
-  };
-
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toastError('Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.');
-      closePopup();
-      return;
-    }
-  } catch (e) {
-    toastError('Không kiểm tra được phiên đăng nhập. Vui lòng tải lại trang.');
-    closePopup();
-    return;
-  }
-
-  try {
-    const { data: isAdmin, error } = await supabase.rpc('is_admin');
-    if (error || isAdmin !== true) {
-      toastError('Bạn không có quyền sửa hóa đơn.');
-      closePopup();
-      return;
-    }
-  } catch (e) {
-    toastError('Không kiểm tra được quyền sửa hóa đơn.');
-    closePopup();
-    return;
-  }
-
-  choPhepSua = true;
+  choPhepSuaCCN = true;
   window.choPhepSua = true;
   window.HD_CTX = {
     ...(window.HD_CTX || {}),
@@ -431,10 +458,15 @@ export async function xacNhanSuaHoaDon() {
     edit_at: new Date().toISOString()
   };
 
-  closePopup();
-  await luuHoaDonccn1v2();
+  const popup = document.getElementById('popupXacThucSua');
+  if (popup) popup.style.display = 'none';
+
+  await saveViaRpcCCN({ isEdit: true });
 }
 
-window.luuHoaDonccn1v2 = luuHoaDonccn1v2;
-window.xacNhanSuaHoaDon = xacNhanSuaHoaDon;
-window.LUU_HOADON_F2 = luuHoaDonccn1v2;
+/* =========================
+ * EXPOSE TO WINDOW
+ * ========================= */
+window.luuHoaDonCCN = luuHoaDonCCN;
+window.xacNhanSuaHoaDonCCN = xacNhanSuaHoaDonCCN;
+window.LUU_HOADON_F2 = luuHoaDonCCN;
