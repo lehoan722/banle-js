@@ -588,7 +588,7 @@
             width: '',
             height: '',
             // CHÌA KHÓA: rút ngắn popup còn ~2/3 màn hình + cuộn
-            maxHeight: '78vh',
+            maxHeight: '68vh',
             overflowY: 'auto',
             overflowX: 'hidden',
             display: 'block',
@@ -620,7 +620,7 @@
           const tightenCells = el => {
             el.style.padding = '4px 4px';
             el.style.lineHeight = '1.5';   // siết chiều cao dòng
-            el.style.fontSize = '24px';    // chữ nhỏ lại một chút
+            el.style.fontSize = '30px';    // chữ nhỏ lại một chút
             el.style.minHeight = '0';      // tránh min-height đẩy cao ô
           };
           // áp cho mọi phần tử con trong list (an toàn khi không biết class cụ thể)
