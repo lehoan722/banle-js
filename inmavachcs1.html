@@ -650,7 +650,16 @@
                 const suffix = code.slice(lastDashIndex + 1).trim().toUpperCase();
                 if (!suffix) return '';
 
-                return NHOMHANG_SUFFIX_MAP[suffix] || '';
+                // Ưu tiên mã dài hơn trước để tránh khớp nhầm
+                const suffixKeys = Object.keys(NHOMHANG_SUFFIX_MAP).sort((a, b) => b.length - a.length);
+
+                for (const key of suffixKeys) {
+                    if (suffix.startsWith(key)) {
+                        return NHOMHANG_SUFFIX_MAP[key];
+                    }
+                }
+
+                return '';
             }
 
             function autoFillNhomHangFromMasp(options = {}) {
