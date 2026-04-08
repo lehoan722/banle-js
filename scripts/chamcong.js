@@ -1020,14 +1020,10 @@ document.addEventListener("DOMContentLoaded", () => {
         tuDongKhoaCoSo: true,
         loginApiPath,
         onLoginSuccess: async () => {
+            // Không kiểm tra bày mẫu khi đăng nhập nữa
             await initChamCong(diadiem);
         }
     });
-
-    // Xóa trắng ô mã nhân viên và mật khẩu sau khi form login hiện ra
-    setTimeout(xoaTrangOLoginChamCong, 50);
-    setTimeout(xoaTrangOLoginChamCong, 200);
-    setTimeout(xoaTrangOLoginChamCong, 500);
 });
 
 
