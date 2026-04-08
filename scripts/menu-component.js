@@ -310,7 +310,7 @@
         this.cardsWrap.style.padding = '4px';
         // Grid 3 cột (mỗi thẻ là 1 “hàng lớn” có QR + text)
         this.cardsWrap.style.gridTemplateColumns = '1fr 1fr 1fr';
-        this.cardsWrap.style.columnGap = '24px';
+        this.cardsWrap.style.columnGap = '20px';
         this.cardsWrap.style.rowGap = '24px';
         this.root.appendChild(this.cardsWrap);
 
