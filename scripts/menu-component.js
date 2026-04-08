@@ -246,7 +246,7 @@
 
     // Dữ liệu hiển thị (3 cột): [vòng cổ -> giá trị ghi vào #size, size chữ, cột 3] 
     const SIZE_ROWS = [
-      ['38','2/S','46/ 240/ 165'],
+      ['38', '2/S', '46/ 240/ 165'],
       ['39', '3/M', '48/ 245/  170'],
       ['40', '4/L', '50/ 250/ 175'],
       ['41', '5/XL', '52/ 255/ 180'],
@@ -700,14 +700,11 @@
           __sizeInput.value = String(val);
           __sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
           __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
-          __sizeInput.focus();
-          __sizeInput.select();
 
           if (source === 'mouse') {
             const plannedValue = __sizeInput.value;
             setTimeout(() => {
               if (Date.now() - __lastTrustedEnterAt <= ENTER_WINDOW_MS) return;
-              if (document.activeElement !== __sizeInput) return;
               if (!__sizeInput.value || __sizeInput.value.trim() === '') return;
               if (__sizeInput.value !== plannedValue) return;
               const kd = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
@@ -716,9 +713,6 @@
               __sizeInput.dispatchEvent(ku);
             }, ENTER_DELAY_MS);
           }
-
-
-
         };
 
         // Từ #masp nhấn Enter -> focus #size + mở dropdown
