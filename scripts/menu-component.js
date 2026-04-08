@@ -310,8 +310,8 @@
         this.cardsWrap.style.padding = '4px';
         // Grid 3 cột (mỗi thẻ là 1 “hàng lớn” có QR + text)
         this.cardsWrap.style.gridTemplateColumns = '1fr 1fr 1fr';
-        this.cardsWrap.style.columnGap = '20px';
-        this.cardsWrap.style.rowGap = '24px';
+        this.cardsWrap.style.columnGap = '16px';   // giảm ngang
+        this.cardsWrap.style.rowGap = '20px';      // giảm nhẹ dọc
         this.root.appendChild(this.cardsWrap);
 
         // ép fill theo cột: 2 cột đầu nhiều hàng (38..43), cột cuối (44..45)
@@ -438,9 +438,9 @@
             display: 'grid',
             gridTemplateColumns: 'auto 1fr 1fr 1fr',
             alignItems: 'center',
-            gap: '16px',
-            padding: '14px',
-            margin: '6px',
+            gap: '12px',        // giảm khoảng cách trong card
+            padding: '10px 12px', // giảm padding ngang
+            margin: '4px',
             borderRadius: '10px',
             background: '#fffbe6',
             boxShadow: '0 0 0 1px #e5e7eb inset',
@@ -538,7 +538,7 @@
         if (isDesktopWide()) {
           // Desktop: mở lớn từ vị trí ô SIZE, phủ phần màn hình còn lại
           const pad = 12; // chừa biên
-          const w = Math.max(420, window.innerWidth - left - pad);
+          const w = Math.max(420, window.innerWidth - left - pad - 20);
           const h = Math.max(260, window.innerHeight - top - pad);
 
           Object.assign(this.root.style, {
