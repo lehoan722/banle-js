@@ -6,19 +6,6 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 // Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
 let supabase = null;
 
-function xoaTrangOLoginChamCong() {
-    const loginContainer = document.getElementById("login-container");
-    if (!loginContainer) return;
-
-    const inputs = loginContainer.querySelectorAll("input");
-    inputs.forEach((inp) => {
-        const type = (inp.type || "").toLowerCase();
-        if (type !== "hidden" && type !== "checkbox" && type !== "radio") {
-            inp.value = "";
-        }
-    });
-}
-
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
