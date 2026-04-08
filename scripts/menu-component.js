@@ -563,6 +563,13 @@
             this.root.style.left = `${leftPx}px`;
           }
 
+          // Desktop: hiện lại QR trong list nếu trước đó đã bị ẩn ở mobile
+          this.rows.forEach(r => {
+            if (r.cells && r.cells[0]) r.cells[0].style.display = '';
+            if (r.cells && r.cells[1]) r.cells[1].style.display = '';
+            if (r.cells && r.cells[2]) r.cells[2].style.display = '';
+            if (r.cells && r.cells[3]) r.cells[3].style.display = '';
+          });
 
           // Bật layout 3 cột rộng
           this.list.style.display = 'none';
@@ -597,13 +604,22 @@
           });
 
           // Grid 4 cột, gap nhỏ
+          // Mobile: bỏ cột QR, chỉ còn 3 cột
           this.list.style.display = 'grid';
-          this.list.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
-          this.list.style.columnGap = '8px';  // bạn đang dùng 8px là ok
-          this.list.style.rowGap = '6px';     // bạn đang dùng 6px là ok
+          this.list.style.gridTemplateColumns = '1fr 1fr 1.4fr';
+          this.list.style.columnGap = '12px';
+          this.list.style.rowGap = '12px';
 
           // Tắt layout thẻ 3 cột desktop
           this.cardsWrap.style.display = 'none';
+
+          // Mobile: ẩn toàn bộ cột QR (mỗi dòng phần tử thứ 1 trong nhóm 4 phần tử)
+          this.rows.forEach(r => {
+            if (r.cells && r.cells[0]) r.cells[0].style.display = 'none'; // QR
+            if (r.cells && r.cells[1]) r.cells[1].style.display = '';     // size số
+            if (r.cells && r.cells[2]) r.cells[2].style.display = '';     // size chữ
+            if (r.cells && r.cells[3]) r.cells[3].style.display = '';     // thông số
+          });
 
           // === SIẾT Ô/CELL để hàng sát hơn thực sự ===
           // 1) Xóa margin/padding “thừa” của từng dòng/ô
