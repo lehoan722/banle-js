@@ -626,6 +626,66 @@
             let allMauSacOptions = [];
             let selectedColorOrder = [];
 
+            // ==== QUY TẮC TỰ GÁN NHÓM HÀNG THEO HẬU TỐ MÃ SẢN PHẨM ====
+            const NHOMHANG_SUFFIX_MAP = {
+                'AP': 'AP',
+                'SM': 'SM',
+                'QB': 'QB',
+                'QT': 'QT',
+                'NGB': 'NGOBO',
+                'BOC': 'BOCOC',
+                'NGV': 'NGOVAI',
+                'QV': 'QV',
+                'QNI': 'QNI',
+                'BOD': 'BODAI'
+            };
+
+            function getNhomHangByMaspSuffix(masp) {
+                const code = (masp || '').trim().toUpperCase();
+                if (!code) return '';
+
+                const lastDashIndex = code.lastIndexOf('-');
+                if (lastDashIndex === -1) return '';
+
+                const suffix = code.slice(lastDashIndex + 1).trim().toUpperCase();
+                if (!suffix) return '';
+
+                // Ưu tiên mã dài hơn trước để tránh khớp nhầm
+                const suffixKeys = Object.keys(NHOMHANG_SUFFIX_MAP).sort((a, b) => b.length - a.length);
+
+                for (const key of suffixKeys) {
+                    if (suffix.startsWith(key)) {
+                        return NHOMHANG_SUFFIX_MAP[key];
+                    }
+                }
+
+                return '';
+            }
+
+            function autoFillNhomHangFromMasp(options = {}) {
+                const {
+                    force = false
+                } = options;
+
+                const masp = document.getElementById('maspInput')?.value.trim().toUpperCase() || '';
+                const nhomhangInput = document.getElementById('nhomhangInput');
+
+                if (!nhomhangInput) return;
+                if (!masp) return;
+
+                // Nếu không force thì chỉ tự điền khi ô nhóm hàng đang trống
+                if (!force && nhomhangInput.value.trim()) return;
+
+                const nhomhangAuto = getNhomHangByMaspSuffix(masp);
+
+                if (nhomhangAuto) {
+                    nhomhangInput.value = nhomhangAuto;
+                } else if (force) {
+                    // Nếu là mã mới và không khớp quy tắc thì để trống cho người dùng tự nhập
+                    nhomhangInput.value = '';
+                }
+            }
+
             // Elements
             const searchInput = document.getElementById('search');
             const productListDiv = document.getElementById('productList');
@@ -1416,8 +1476,8 @@
                     originalGiaLe = null;
                     document.getElementById('addProductForm').style.border = '';
 
-                    // Bắt buộc chọn lại nhóm hàng cho mã mới
-                    document.getElementById('nhomhangInput').value = '';
+                    // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
+                    autoFillNhomHangFromMasp({ force: true });
                 }
             }
 
@@ -1441,6 +1501,10 @@
                     //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
                     document.getElementById(field + 'Input').value = data[field] || '';
                 });
+
+                // Không giữ lại nhóm hàng cũ khi thêm mã mới, sẽ để hệ thống tự suy ra lại từ mã sản phẩm
+                document.getElementById('nhomhangInput').value = '';
+
                 document.getElementById('addProductMessage').textContent = '';
                 document.getElementById('addProductForm').style.border = '';
                 isEditMode = false;
@@ -1823,12 +1887,15 @@ Bạn chưa nhập màu sắc.
 
 
             maspInput.addEventListener('input', async function () {
+                autoFillNhomHangFromMasp();
                 const val = maspInput.value.trim().toLowerCase();
                 if (val.length === 0) {
                     maspSuggestDiv.style.display = 'none';
                     maspSuggestDiv.innerHTML = '';
                     return;
                 }
+
+
                 // Lọc mã & tên
                 let { data } = await supabase
                     .from('dmhanghoa')
@@ -1858,6 +1925,7 @@ Bạn chưa nhập màu sắc.
                         maspInput.value = row.dataset.masp;
                         document.getElementById('tenspInput').value = row.dataset.tensp;
                         maspSuggestDiv.style.display = 'none';
+                        autoFillNhomHangFromMasp();
                         checkExistAndFillForm(); // Tải info nếu có
                         document.getElementById('tenspInput').focus();
                     }
